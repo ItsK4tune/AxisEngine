@@ -30,20 +30,42 @@ include_directories(${CMAKE_BINARY_DIR}/configuration)
 add_executable(GameEngine ${SOURCES})
 
 if (WIN32)
-    target_link_libraries(GameEngine glfw3 opengl32 assimp)
+    target_link_libraries(GameEngine 
+        glfw3 
+        opengl32 
+        assimp
+        BulletDynamics_Debug
+        BulletCollision_Debug
+        LinearMath_Debug
+    )
 endif()
+
 if (UNIX)
     find_package(OpenGL REQUIRED)
-    target_link_libraries(GameEngine glfw GL dl pthread X11 Xrandr Xi Xxf86vm Xinerama Xcursor)
+    target_link_libraries(GameEngine 
+        glfw 
+        GL 
+        dl 
+        pthread 
+        X11 
+        Xrandr 
+        Xi 
+        Xxf86vm 
+        Xinerama 
+        Xcursor
+        BulletDynamics_Debug
+        BulletCollision_Debug
+        LinearMath_Debug
+    )
 endif()
+
 if (WIN32)
     file(GLOB DLLS "${CMAKE_SOURCE_DIR}/dlls/*.dll")
-
-foreach(DLL ${DLLS})
-    add_custom_command(TARGET GameEngine POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${DLL}
-        $<TARGET_FILE_DIR:GameEngine>
-    )
-endforeach()
+    foreach(DLL ${DLLS})
+        add_custom_command(TARGET GameEngine POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${DLL}
+            $<TARGET_FILE_DIR:GameEngine>
+        )
+    endforeach()
 endif()
