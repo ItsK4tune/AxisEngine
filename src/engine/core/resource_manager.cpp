@@ -1,0 +1,43 @@
+#include <engine/core/resource_manager.h>
+#include <engine/utils/filesystem.h>
+
+void ResourceManager::LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath) {
+    shaders[name] = std::make_unique<Shader>(FileSystem::getPath(vsPath).c_str(), FileSystem::getPath(fsPath).c_str());
+}
+
+void ResourceManager::LoadModel(const std::string& name, const std::string& path) {
+    models[name] = std::make_unique<Model>(FileSystem::getPath(path));
+}
+
+void ResourceManager::LoadAnimation(const std::string& name, const std::string& path, const std::string& modelName) {
+    Model* model = GetModel(modelName);
+    if(model) {
+        animations[name] = std::make_unique<Animation>(FileSystem::getPath(path), model);
+    }
+}
+
+void ResourceManager::CreateUIModel(const std::string& name, UIType type) {
+    uiModels[name] = std::make_unique<UIModel>(type);
+}
+
+Shader* ResourceManager::GetShader(const std::string& name) {
+    if (shaders.find(name) != shaders.end()) return shaders[name].get();
+    std::cerr << "[ResourceManager] Shader not found: " << name << std::endl;
+    return nullptr;
+}
+
+Model* ResourceManager::GetModel(const std::string& name) {
+    if (models.find(name) != models.end()) return models[name].get();
+    std::cerr << "[ResourceManager] Model not found: " << name << std::endl;
+    return nullptr;
+}
+
+Animation* ResourceManager::GetAnimation(const std::string& name) {
+    if (animations.find(name) != animations.end()) return animations[name].get();
+    return nullptr;
+}
+
+UIModel* ResourceManager::GetUIModel(const std::string& name) {
+    if (uiModels.find(name) != uiModels.end()) return uiModels[name].get();
+    return nullptr;
+}

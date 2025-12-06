@@ -1,0 +1,25 @@
+#pragma once
+
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <vector>
+
+#include <engine/ecs/system.h>
+#include <engine/core/resource_manager.h>
+#include <engine/physic/physic_world.h>
+
+class SceneManager {
+public:
+    SceneManager(Scene& scene, ResourceManager& res, PhysicsWorld& phys);
+
+    void LoadScene(const std::string& filePath);
+    void ClearScene();
+
+private:
+    Scene& m_Scene;
+    ResourceManager& m_Resources;
+    PhysicsWorld& m_Physics;
+
+    entt::entity currentEntity = entt::null;
+};

@@ -76,98 +76,18 @@ bool Application::Init()
 
     physicsWorld = std::make_unique<PhysicsWorld>();
 
-    modelShader = std::make_unique<Shader>(
-        FileSystem::getPath("resources/shaders/anim_model.vs").c_str(),
-        FileSystem::getPath("resources/shaders/anim_model.fs").c_str());
+    sceneManager = std::make_unique<SceneManager>(scene, resourceManager, *physicsWorld);
+    resourceManager.CreateUIModel("default_rect", UIType::Color);
+    sceneManager->LoadScene("scenes/placeholder.scene");
 
-    uiShader = std::make_unique<Shader>(
-        FileSystem::getPath("resources/shaders/ui.vs").c_str(),
-        FileSystem::getPath("resources/shaders/ui.fs").c_str());
-
-    static Model playerModel(FileSystem::getPath("resources/objects/player/Dying.fbx"));
-    static Animation danceAnim(FileSystem::getPath("resources/objects/player/Dying.fbx"), &playerModel);
-
-    auto playerEntity = scene.createEntity();
-
-    auto &pTrans = scene.registry.emplace<TransformComponent>(playerEntity);
-    pTrans.position = glm::vec3(0.0f, 5.0f, 0.0f);
-    pTrans.scale = glm::vec3(0.01f);
-
-    auto &pRender = scene.registry.emplace<MeshRendererComponent>(playerEntity);
-    pRender.model = &playerModel;
-    pRender.shader = modelShader.get();
-
-    auto &pAnim = scene.registry.emplace<AnimationComponent>(playerEntity);
-    pAnim.animator = new Animator(&danceAnim);
-
-    auto &pRb = scene.registry.emplace<RigidBodyComponent>(playerEntity);
-    btCollisionShape *colShape = new btCapsuleShape(0.5f, 2.0f);
-    btTransform startTransform;
-    startTransform.setIdentity();
-    startTransform.setOrigin(BulletGLMHelpers::convert(pTrans.position));
-    pRb.body = physicsWorld->CreateRigidBody(10.0f, startTransform, colShape);
-    pRb.body->setAngularFactor(btVector3(0, 1, 0));
-
-    auto camEntity = scene.createEntity();
-    auto &cTrans = scene.registry.emplace<TransformComponent>(camEntity);
-    cTrans.position = glm::vec3(0.0f, 2.0f, 10.0f);
-
-    auto &cComp = scene.registry.emplace<CameraComponent>(camEntity);
-    cComp.isPrimary = true;
-    cComp.yaw = -90.0f;
-
-    auto floorEntity = scene.createEntity();
-    auto &fTrans = scene.registry.emplace<TransformComponent>(floorEntity);
-    fTrans.position = glm::vec3(0.0f, -2.0f, 0.0f);
-
-    auto &fRb = scene.registry.emplace<RigidBodyComponent>(floorEntity);
-    btCollisionShape *groundShape = new btBoxShape(btVector3(50, 1, 50));
-    btTransform groundTrans;
-    groundTrans.setIdentity();
-    groundTrans.setOrigin(btVector3(0, -2, 0));
-    fRb.body = physicsWorld->CreateRigidBody(0.0f, groundTrans, groundShape);
-
-    auto sunEntity = scene.createEntity();
-    auto &dirLight = scene.registry.emplace<DirectionalLightComponent>(sunEntity);
-    dirLight.direction = glm::vec3(-0.5f, -1.0f, -0.5f);
-    dirLight.intensity = 0.8f;
-    dirLight.color = glm::vec3(1.0f, 0.95f, 0.8f);
-
-    auto bulbEntity = scene.createEntity();
-    auto &bulbTrans = scene.registry.emplace<TransformComponent>(bulbEntity);
-    bulbTrans.position = glm::vec3(2.0f, 2.0f, 2.0f);
-
-    auto &pointLight = scene.registry.emplace<PointLightComponent>(bulbEntity);
-    pointLight.color = glm::vec3(1.0f, 0.0f, 0.0f); // Đỏ
-    pointLight.intensity = 2.0f;
-    pointLight.radius = 5.0f;
-
-    buttonModel = std::make_unique<UIModel>(UIType::Color);
-
-    auto btnEntity = scene.createEntity();
-    auto &uiTrans = scene.registry.emplace<UITransformComponent>(btnEntity);
-    uiTrans.position = glm::vec2(100, 100);
-    uiTrans.size = glm::vec2(200, 50);
-    uiTrans.zIndex = 10;
-
-    auto &uiRenderer = scene.registry.emplace<UIRendererComponent>(btnEntity);
-    uiRenderer.model = buttonModel.get();
-    uiRenderer.shader = uiShader.get();
-    uiRenderer.color = glm::vec4(1, 0, 0, 1);
-
-    auto &uiInteract = scene.registry.emplace<UIInteractiveComponent>(btnEntity);
-    uiInteract.onClick = [](entt::entity e)
+    auto view = scene.registry.view<UITransformComponent>();
+    for (auto e : view)
     {
-        std::cout << "Button Clicked! Entity ID: " << (uint32_t)e << std::endl;
-    };
-    uiInteract.onHoverEnter = [](entt::entity e)
-    {
-        std::cout << "Hover Enter!" << std::endl;
-    };
-
-    auto &uiAnim = scene.registry.emplace<UIAnimationComponent>(btnEntity);
-    uiAnim.hoverColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
-    uiAnim.normalColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+        // Gán đại event cho tất cả UI (Demo)
+        auto &interact = scene.registry.emplace<UIInteractiveComponent>(e);
+        interact.onClick = [](entt::entity)
+        { std::cout << "Clicked from Scene File!\n"; };
+    }
 
     return true;
 }
