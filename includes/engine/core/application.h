@@ -32,11 +32,8 @@ private:
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
-    float lastX;
-    float lastY;
-    float xOffset = 0.0f;
-    float yOffset = 0.0f;
-    bool firstMouse = true;
+    KeyboardManager keyboardManager;
+    MouseManager mouseManager;
 
     std::unique_ptr<PhysicsWorld> physicsWorld;
     Scene scene;

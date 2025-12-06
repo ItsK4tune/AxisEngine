@@ -6,6 +6,8 @@
 #include <engine/ecs/component.h>
 #include <engine/utils/bullet_glm_helpers.h>
 #include <engine/graphic/shader.h>
+#include <engine/core/keyboard_manager.h>
+#include <engine/core/mouse_manager.h>
 
 using EntityID = size_t;
 
@@ -48,5 +50,5 @@ public:
 class CameraControlSystem 
 {
 public:
-    void Update(Scene &scene, float dt, GLFWwindow* window, double xoffset, double yoffset);
+    void Update(Scene &scene, float dt, const KeyboardManager& keyboard, const MouseManager& mouse);
 };

@@ -121,30 +121,36 @@ void CameraSystem::Update(Scene &scene, float screenWidth, float screenHeight)
     }
 }
 
-void CameraControlSystem::Update(Scene &scene, float dt, GLFWwindow* window, double xoffset, double yoffset)
+void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager& keyboard, const MouseManager& mouse)
 {
     EntityID id = scene.GetActiveCameraID();
+    if (id >= scene.cameras.size()) return;
+
     auto& cam = scene.cameras[id];
     auto& transform = scene.transforms[id];
 
     float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    cam.yaw += (float)xoffset;
-    cam.pitch += (float)yoffset;
+    cam.yaw += mouse.GetXOffset() * sensitivity;
+    cam.pitch += mouse.GetYOffset() * sensitivity;
 
     if (cam.pitch > 89.0f) cam.pitch = 89.0f;
     if (cam.pitch < -89.0f) cam.pitch = -89.0f;
+    
+    float scroll = mouse.GetScrollY();
+    if (scroll != 0.0f) {
+        cam.fov -= scroll;
+        if (cam.fov < 1.0f) cam.fov = 1.0f;
+        if (cam.fov > 45.0f) cam.fov = 45.0f;
+    }
 
     float velocity = 2.5f * dt;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (keyboard.GetKey(GLFW_KEY_W))
         transform.position += cam.front * velocity;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (keyboard.GetKey(GLFW_KEY_S))
         transform.position -= cam.front * velocity;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (keyboard.GetKey(GLFW_KEY_A))
         transform.position -= cam.right * velocity;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (keyboard.GetKey(GLFW_KEY_D))
         transform.position += cam.right * velocity;
 }
