@@ -7,8 +7,10 @@ MouseManager::MouseManager()
 {
 }
 
-void MouseManager::UpdatePosition(double xpos, double ypos) {
-    if (m_FirstMouse) {
+void MouseManager::UpdatePosition(double xpos, double ypos)
+{
+    if (m_FirstMouse)
+    {
         m_LastX = xpos;
         m_LastY = ypos;
         m_FirstMouse = false;
@@ -21,29 +23,59 @@ void MouseManager::UpdatePosition(double xpos, double ypos) {
     m_LastY = ypos;
 }
 
-void MouseManager::UpdateScroll(double xoffset, double yoffset) {
+void MouseManager::UpdateScroll(double xoffset, double yoffset)
+{
     m_ScrollY = static_cast<float>(yoffset);
 }
 
-void MouseManager::EndFrame() {
+void MouseManager::UpdateButton(int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS)
+            m_LeftButtonPressed = true;
+        else if (action == GLFW_RELEASE)
+            m_LeftButtonPressed = false;
+    }
+}
+
+void MouseManager::EndFrame()
+{
     m_XOffset = 0.0f;
     m_YOffset = 0.0f;
     m_ScrollY = 0.0f;
 }
 
-float MouseManager::GetXOffset() const {
+float MouseManager::GetXOffset() const
+{
     return m_XOffset;
 }
 
-float MouseManager::GetYOffset() const {
+float MouseManager::GetYOffset() const
+{
     return m_YOffset;
 }
 
-float MouseManager::GetScrollY() const {
+float MouseManager::GetScrollY() const
+{
     return m_ScrollY;
 }
 
-void MouseManager::SetLastPosition(double x, double y) {
+float MouseManager::GetLastX() const
+{
+    return static_cast<float>(m_LastX);
+}
+
+float MouseManager::GetLastY() const
+{
+    return static_cast<float>(m_LastY);
+}
+
+bool MouseManager::IsLeftButtonPressed() const
+{
+    return m_LeftButtonPressed;
+}
+
+void MouseManager::SetLastPosition(double x, double y)
+{
     m_LastX = x;
     m_LastY = y;
     m_FirstMouse = true;

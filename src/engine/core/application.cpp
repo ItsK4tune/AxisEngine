@@ -20,6 +20,13 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
         app->OnMouseMove(xpos, ypos);
 }
 
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
+{
+    auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
+    if (app)
+        app->OnMouseButton(button, action, mods);
+}
+
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
     auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
@@ -55,6 +62,7 @@ bool Application::Init()
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -75,31 +83,77 @@ bool Application::Init()
     static Model playerModel(FileSystem::getPath("resources/objects/player/Dying.fbx"));
     static Animation danceAnim(FileSystem::getPath("resources/objects/player/Dying.fbx"), &playerModel);
 
-    EntityID playerID = scene.createEntity();
-    scene.renderers[playerID].model = &playerModel;
-    scene.animators[playerID].animator = new Animator(&danceAnim);
-    scene.transforms[playerID].position = glm::vec3(0.0f, 5.0f, 0.0f);
-    scene.transforms[playerID].scale = glm::vec3(0.01f);
+    auto playerEntity = scene.createEntity();
+
+    auto &pTrans = scene.registry.emplace<TransformComponent>(playerEntity);
+    pTrans.position = glm::vec3(0.0f, 5.0f, 0.0f);
+    pTrans.scale = glm::vec3(0.01f);
+
+    auto &pRender = scene.registry.emplace<MeshRendererComponent>(playerEntity);
+    pRender.model = &playerModel;
+
+    auto &pAnim = scene.registry.emplace<AnimationComponent>(playerEntity);
+    pAnim.animator = new Animator(&danceAnim);
+
+    auto &pRb = scene.registry.emplace<RigidBodyComponent>(playerEntity);
     btCollisionShape *colShape = new btCapsuleShape(0.5f, 2.0f);
     btTransform startTransform;
     startTransform.setIdentity();
-    startTransform.setOrigin(BulletGLMHelpers::convert(scene.transforms[playerID].position));
-    float mass = 10.0f;
-    scene.rigidbodies[playerID].body = physicsWorld->CreateRigidBody(mass, startTransform, colShape);
-    scene.rigidbodies[playerID].body->setAngularFactor(btVector3(0, 1, 0));
+    startTransform.setOrigin(BulletGLMHelpers::convert(pTrans.position));
+    pRb.body = physicsWorld->CreateRigidBody(10.0f, startTransform, colShape);
+    pRb.body->setAngularFactor(btVector3(0, 1, 0));
 
-    EntityID camID = scene.createEntity();
-    scene.transforms[camID].position = glm::vec3(0.0f, 2.0f, 10.0f);
-    scene.cameras[camID].isPrimary = true;
-    scene.cameras[camID].yaw = -90.0f;
+    auto camEntity = scene.createEntity();
+    auto &cTrans = scene.registry.emplace<TransformComponent>(camEntity);
+    cTrans.position = glm::vec3(0.0f, 2.0f, 10.0f);
 
-    EntityID floorID = scene.createEntity();
-    scene.transforms[floorID].position = glm::vec3(0.0f, -2.0f, 0.0f);
+    auto &cComp = scene.registry.emplace<CameraComponent>(camEntity);
+    cComp.isPrimary = true;
+    cComp.yaw = -90.0f;
+
+    auto floorEntity = scene.createEntity();
+    auto &fTrans = scene.registry.emplace<TransformComponent>(floorEntity);
+    fTrans.position = glm::vec3(0.0f, -2.0f, 0.0f);
+
+    auto &fRb = scene.registry.emplace<RigidBodyComponent>(floorEntity);
     btCollisionShape *groundShape = new btBoxShape(btVector3(50, 1, 50));
     btTransform groundTrans;
     groundTrans.setIdentity();
     groundTrans.setOrigin(btVector3(0, -2, 0));
-    physicsWorld->CreateRigidBody(0.0f, groundTrans, groundShape);
+    fRb.body = physicsWorld->CreateRigidBody(0.0f, groundTrans, groundShape);
+
+    auto sunEntity = scene.createEntity();
+    auto &dirLight = scene.registry.emplace<DirectionalLightComponent>(sunEntity);
+    dirLight.direction = glm::vec3(-0.5f, -1.0f, -0.5f);
+    dirLight.intensity = 0.8f;
+    dirLight.color = glm::vec3(1.0f, 0.95f, 0.8f);
+
+    auto bulbEntity = scene.createEntity();
+    auto &bulbTrans = scene.registry.emplace<TransformComponent>(bulbEntity);
+    bulbTrans.position = glm::vec3(2.0f, 2.0f, 2.0f);
+
+    auto &pointLight = scene.registry.emplace<PointLightComponent>(bulbEntity);
+    pointLight.color = glm::vec3(1.0f, 0.0f, 0.0f); // Đỏ
+    pointLight.intensity = 2.0f;
+    pointLight.radius = 5.0f;
+
+    auto btnEntity = scene.createEntity();
+    auto &uiTrans = scene.registry.emplace<UITransformComponent>(btnEntity);
+    uiTrans.position = glm::vec2(100, 100);
+    uiTrans.size = glm::vec2(200, 50);
+
+    auto &uiInteract = scene.registry.emplace<UIInteractiveComponent>(btnEntity);
+    uiInteract.onClick = [](entt::entity e)
+    {
+        std::cout << "Button Clicked! Entity ID: " << (uint32_t)e << std::endl;
+    };
+    uiInteract.onHoverEnter = [](entt::entity e)
+    {
+        std::cout << "Hover Enter!" << std::endl;
+    };
+
+    auto &uiAnim = scene.registry.emplace<UIAnimationComponent>(btnEntity);
+    uiAnim.hoverColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
 
     return true;
 }
@@ -149,6 +203,10 @@ void Application::OnResize(int width, int height)
 void Application::OnMouseMove(double xpos, double ypos)
 {
     mouseManager.UpdatePosition(xpos, ypos);
+}
+
+void Application::OnMouseButton(int button, int action, int mods) {
+    mouseManager.UpdateButton(button, action, mods);
 }
 
 void Application::OnScroll(double xoffset, double yoffset)

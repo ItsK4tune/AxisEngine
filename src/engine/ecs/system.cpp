@@ -1,45 +1,40 @@
 #include <engine/ecs/system.h>
 
-size_t Scene::createEntity()
+entt::entity Scene::createEntity()
 {
-    transforms.emplace_back();
-    renderers.emplace_back();
-    rigidbodies.emplace_back();
-    animators.emplace_back();
-    cameras.emplace_back();
-
-    cameras.back().isPrimary = false;
-
-    return transforms.size() - 1;
+    return registry.create();
 }
 
-EntityID Scene::GetActiveCameraID()
+entt::entity Scene::GetActiveCamera()
 {
-    for (size_t i = 0; i < cameras.size(); ++i)
+    auto view = registry.view<const CameraComponent>();
+    for (auto entity : view)
     {
-        if (cameras[i].isPrimary)
-            return i;
+        const auto &cam = view.get<const CameraComponent>(entity);
+        if (cam.isPrimary)
+        {
+            return entity;
+        }
     }
-    return 0;
+    return entt::null;
 }
 
 void PhysicsSystem::Update(Scene &scene)
 {
-    for (size_t i = 0; i < scene.rigidbodies.size(); ++i)
+    auto view = scene.registry.view<RigidBodyComponent, TransformComponent>();
+
+    for (auto entity : view)
     {
-        auto &rb = scene.rigidbodies[i];
+        auto &rb = view.get<RigidBodyComponent>(entity);
+        auto &transform = view.get<TransformComponent>(entity);
+
         if (rb.body)
         {
-            auto &transform = scene.transforms[i];
             btTransform trans;
             if (rb.body->getMotionState())
-            {
                 rb.body->getMotionState()->getWorldTransform(trans);
-            }
             else
-            {
                 trans = rb.body->getWorldTransform();
-            }
 
             transform.position = BulletGLMHelpers::convert(trans.getOrigin());
             transform.rotation = BulletGLMHelpers::convert(trans.getRotation());
@@ -49,63 +44,134 @@ void PhysicsSystem::Update(Scene &scene)
 
 void AnimationSystem::Update(Scene &scene, float dt)
 {
-    for (size_t i = 0; i < scene.animators.size(); ++i)
+    auto view = scene.registry.view<AnimationComponent>();
+
+    for (auto entity : view)
     {
-        if (scene.animators[i].animator)
+        auto &anim = view.get<AnimationComponent>(entity);
+        if (anim.animator)
         {
-            scene.animators[i].animator->UpdateAnimation(dt);
+            anim.animator->UpdateAnimation(dt);
         }
     }
 }
 
 void RenderSystem::Render(Scene &scene, Shader &shader)
 {
-    EntityID camID = scene.GetActiveCameraID();
-    auto& cam = scene.cameras[camID];
-    
-    shader.use();
-    shader.setMat4("projection", cam.projectionMatrix);
-    shader.setMat4("view", cam.viewMatrix);
-    
-    for (size_t i = 0; i < scene.renderers.size(); ++i)
+    entt::entity camEntity = scene.GetActiveCamera();
+    if (camEntity != entt::null)
     {
-        if (scene.renderers[i].model)
-        {
-            shader.use();
+        auto &cam = scene.registry.get<CameraComponent>(camEntity);
+        auto &camTrans = scene.registry.get<TransformComponent>(camEntity);
 
-            glm::mat4 modelMatrix = scene.transforms[i].GetTransformMatrix();
+        shader.use();
+        shader.setMat4("projection", cam.projectionMatrix);
+        shader.setMat4("view", cam.viewMatrix);
+        shader.setVec3("viewPos", camTrans.position);
+    }
+
+    auto dirLightView = scene.registry.view<DirectionalLightComponent>();
+
+    for (auto entity : dirLightView)
+    {
+        auto &light = dirLightView.get<DirectionalLightComponent>(entity);
+        shader.setVec3("dirLight.direction", light.direction);
+        shader.setVec3("dirLight.ambient", light.ambient * light.intensity);
+        shader.setVec3("dirLight.diffuse", light.diffuse * light.intensity);
+        shader.setVec3("dirLight.specular", light.specular * light.intensity);
+        break;
+    }
+
+    int i = 0;
+    auto spotLightView = scene.registry.view<SpotLightComponent, TransformComponent>();
+    for (auto entity : spotLightView)
+    {
+        if (i >= 4)
+            break;
+
+        auto [light, trans] = spotLightView.get<SpotLightComponent, TransformComponent>(entity);
+
+        std::string number = std::to_string(i);
+        shader.setVec3("spotLights[" + number + "].position", trans.position);
+        shader.setVec3("spotLights[" + number + "].ambient", light.color * 0.1f * light.intensity);
+        shader.setVec3("spotLights[" + number + "].diffuse", light.color * light.intensity);
+        shader.setVec3("spotLights[" + number + "].specular", glm::vec3(1.0f) * light.intensity);
+        shader.setFloat("spotLights[" + number + "].constant", light.constant);
+        shader.setFloat("spotLights[" + number + "].linear", light.linear);
+        shader.setFloat("spotLights[" + number + "].quadratic", light.quadratic);
+
+        i++;
+    }
+    shader.setInt("nrSpotLights", i);
+
+    i = 0;
+    auto pointLightView = scene.registry.view<PointLightComponent, TransformComponent>();
+    for (auto entity : pointLightView)
+    {
+        if (i >= 4)
+            break;
+
+        auto [light, trans] = pointLightView.get<PointLightComponent, TransformComponent>(entity);
+
+        std::string number = std::to_string(i);
+        shader.setVec3("pointLights[" + number + "].position", trans.position);
+        shader.setVec3("pointLights[" + number + "].ambient", light.color * 0.1f * light.intensity);
+        shader.setVec3("pointLights[" + number + "].diffuse", light.color * light.intensity);
+        shader.setVec3("pointLights[" + number + "].specular", glm::vec3(1.0f) * light.intensity);
+        shader.setFloat("pointLights[" + number + "].constant", light.constant);
+        shader.setFloat("pointLights[" + number + "].linear", light.linear);
+        shader.setFloat("pointLights[" + number + "].quadratic", light.quadratic);
+
+        i++;
+    }
+    shader.setInt("nrPointLights", i);
+
+    auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
+
+    for (auto entity : view)
+    {
+        auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
+
+        if (renderer.model)
+        {
+            glm::mat4 modelMatrix = transform.GetTransformMatrix();
             shader.setMat4("model", modelMatrix);
 
-            if (scene.animators[i].animator)
+            if (scene.registry.all_of<AnimationComponent>(entity))
             {
-                auto transforms = scene.animators[i].animator->GetFinalBoneMatrices();
-                for (int j = 0; j < transforms.size(); ++j)
+                auto &anim = scene.registry.get<AnimationComponent>(entity);
+                if (anim.animator)
                 {
-                    shader.setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                    auto transforms = anim.animator->GetFinalBoneMatrices();
+                    for (int j = 0; j < transforms.size(); ++j)
+                    {
+                        shader.setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                    }
                 }
             }
             else
             {
-                // Reset bone matrices nếu không có animation (để tránh lỗi shader)
-                // Hoặc dùng shader riêng cho static mesh
+                // Xử lý static mesh (có thể gửi ma trận identity hoặc dùng shader khác)
+                // Ở đây giả sử shader yêu cầu thì phải gửi identity hoặc mảng rỗng
             }
 
-            scene.renderers[i].model->Draw(shader);
+            renderer.model->Draw(shader);
         }
     }
 }
 
-void CameraSystem::Update(Scene &scene, float screenWidth, float screenHeight) 
+void CameraSystem::Update(Scene &scene, float screenWidth, float screenHeight)
 {
-    for (size_t i = 0; i < scene.cameras.size(); ++i) 
-    {
-        auto& cam = scene.cameras[i];
-        if (!cam.isPrimary) continue;
+    auto view = scene.registry.view<CameraComponent, const TransformComponent>();
 
-        auto& transform = scene.transforms[i];
+    for (auto entity : view)
+    {
+        auto [cam, transform] = view.get<CameraComponent, const TransformComponent>(entity);
+
+        if (!cam.isPrimary)
+            continue;
 
         cam.aspectRatio = screenWidth / screenHeight;
-
         cam.projectionMatrix = glm::perspective(glm::radians(cam.fov), cam.aspectRatio, cam.nearPlane, cam.farPlane);
 
         glm::vec3 front;
@@ -115,36 +181,41 @@ void CameraSystem::Update(Scene &scene, float screenWidth, float screenHeight)
         cam.front = glm::normalize(front);
 
         cam.right = glm::normalize(glm::cross(cam.front, cam.worldUp));
-        cam.up    = glm::normalize(glm::cross(cam.right, cam.front));
+        cam.up = glm::normalize(glm::cross(cam.right, cam.front));
 
         cam.viewMatrix = glm::lookAt(transform.position, transform.position + cam.front, cam.up);
     }
 }
 
-void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager& keyboard, const MouseManager& mouse)
+void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager &keyboard, const MouseManager &mouse)
 {
-    EntityID id = scene.GetActiveCameraID();
-    if (id >= scene.cameras.size()) return;
+    entt::entity camEntity = scene.GetActiveCamera();
+    if (camEntity == entt::null)
+        return;
 
-    auto& cam = scene.cameras[id];
-    auto& transform = scene.transforms[id];
+    auto &cam = scene.registry.get<CameraComponent>(camEntity);
+    auto &transform = scene.registry.get<TransformComponent>(camEntity);
 
     float sensitivity = 0.1f;
     cam.yaw += mouse.GetXOffset() * sensitivity;
     cam.pitch += mouse.GetYOffset() * sensitivity;
 
-    if (cam.pitch > 89.0f) cam.pitch = 89.0f;
-    if (cam.pitch < -89.0f) cam.pitch = -89.0f;
-    
+    if (cam.pitch > 89.0f)
+        cam.pitch = 89.0f;
+    if (cam.pitch < -89.0f)
+        cam.pitch = -89.0f;
+
     float scroll = mouse.GetScrollY();
-    if (scroll != 0.0f) {
+    if (scroll != 0.0f)
+    {
         cam.fov -= scroll;
-        if (cam.fov < 1.0f) cam.fov = 1.0f;
-        if (cam.fov > 45.0f) cam.fov = 45.0f;
+        if (cam.fov < 1.0f)
+            cam.fov = 1.0f;
+        if (cam.fov > 45.0f)
+            cam.fov = 45.0f;
     }
 
     float velocity = 2.5f * dt;
-
     if (keyboard.GetKey(GLFW_KEY_W))
         transform.position += cam.front * velocity;
     if (keyboard.GetKey(GLFW_KEY_S))
@@ -153,4 +224,74 @@ void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager& 
         transform.position -= cam.right * velocity;
     if (keyboard.GetKey(GLFW_KEY_D))
         transform.position += cam.right * velocity;
+}
+
+void UISystem::Update(Scene &scene, float dt, const MouseManager &mouse)
+{
+    float mx = mouse.GetLastX();
+    float my = mouse.GetLastY();
+    bool isMouseDown = mouse.IsLeftButtonPressed();
+
+    auto view = scene.registry.view<UITransformComponent, UIInteractiveComponent>();
+
+    for (auto entity : view)
+    {
+        auto &transform = view.get<UITransformComponent>(entity);
+        auto &interact = view.get<UIInteractiveComponent>(entity);
+
+        bool hit = (mx >= transform.position.x && mx <= transform.position.x + transform.size.x &&
+                    my >= transform.position.y && my <= transform.position.y + transform.size.y);
+
+        if (hit)
+        {
+            if (!interact.isHovered)
+            {
+                interact.isHovered = true;
+                if (interact.onHoverEnter)
+                    interact.onHoverEnter(entity);
+            }
+        }
+        else
+        {
+            if (interact.isHovered)
+            {
+                interact.isHovered = false;
+                if (interact.onHoverExit)
+                    interact.onHoverExit(entity);
+            }
+        }
+
+        if (hit && isMouseDown)
+        {
+            if (!interact.isPressed)
+            {
+                interact.isPressed = true;
+                if (interact.onClick)
+                    interact.onClick(entity);
+            }
+        }
+        else if (!isMouseDown)
+        {
+            interact.isPressed = false;
+        }
+
+        if (scene.registry.all_of<UIAnimationComponent>(entity))
+        {
+            auto &anim = scene.registry.get<UIAnimationComponent>(entity);
+            auto &img = scene.registry.get_or_emplace<UIRendererComponent>(entity);
+
+            if (interact.isHovered)
+            {
+                img.color = glm::mix(img.color, anim.hoverColor, dt * anim.speed);
+                anim.targetScale = 1.2f;
+            }
+            else
+            {
+                img.color = glm::mix(img.color, anim.normalColor, dt * anim.speed);
+                anim.targetScale = 1.0f;
+            }
+
+            anim.currentScale += (anim.targetScale - anim.currentScale) * dt * anim.speed;
+        }
+    }
 }

@@ -22,6 +22,7 @@ public:
     void ProcessInput();
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
+    void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
 
 private:
