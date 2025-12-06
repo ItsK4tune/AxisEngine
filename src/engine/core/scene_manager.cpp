@@ -1,0 +1,185 @@
+#include <engine/core/scene_manager.h>
+
+#include <engine/utils/filesystem.h>
+#include <engine/utils/bullet_glm_helpers.h>
+
+SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys)
+    : m_Scene(scene), m_Resources(res), m_Physics(phys) {}
+
+void SceneManager::ClearScene()
+{
+    m_Scene.registry.clear();
+    currentEntity = entt::null;
+}
+
+void SceneManager::LoadScene(const std::string &filePath)
+{
+    std::string fullPath = FileSystem::getPath(filePath);
+    std::ifstream file(fullPath);
+
+    if (!file.is_open())
+    {
+        std::cerr << "Could not open scene file: " << fullPath << std::endl;
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        if (line.empty() || line[0] == '#')
+            continue;
+
+        std::stringstream ss(line);
+        std::string command;
+        ss >> command;
+
+        if (command == "LOAD_SHADER")
+        {
+            std::string name, vs, fs;
+            ss >> name >> vs >> fs;
+            m_Resources.LoadShader(name, vs, fs);
+        }
+        else if (command == "LOAD_MODEL")
+        {
+            std::string name, path;
+            ss >> name >> path;
+            m_Resources.LoadModel(name, path);
+        }
+        else if (command == "LOAD_ANIMATION")
+        {
+            std::string name, modelName, path;
+            ss >> name >> modelName >> path;
+            m_Resources.LoadAnimation(name, path, modelName);
+        }
+
+        else if (command == "NEW_ENTITY")
+        {
+            currentEntity = m_Scene.createEntity();
+            std::string entityName;
+            if (ss >> entityName) {
+                m_Scene.registry.emplace<InfoComponent>(currentEntity, entityName);
+            } else {
+                m_Scene.registry.emplace<InfoComponent>(currentEntity, "Unnamed");
+            }
+        }
+
+        else if (command == "TRANSFORM")
+        {
+            float x, y, z, rx, ry, rz, sx, sy, sz;
+            ss >> x >> y >> z >> rx >> ry >> rz >> sx >> sy >> sz;
+            auto &t = m_Scene.registry.emplace<TransformComponent>(currentEntity);
+            t.position = glm::vec3(x, y, z);
+            t.rotation = glm::quat(glm::vec3(rx, ry, rz));
+            t.scale = glm::vec3(sx, sy, sz);
+        }
+        else if (command == "RENDERER")
+        {
+            std::string modelName, shaderName;
+            ss >> modelName >> shaderName;
+            auto &r = m_Scene.registry.emplace<MeshRendererComponent>(currentEntity);
+            r.model = m_Resources.GetModel(modelName);
+            r.shader = m_Resources.GetShader(shaderName);
+        }
+        else if (command == "ANIMATOR")
+        {
+            std::string animName;
+            ss >> animName;
+            auto &a = m_Scene.registry.emplace<AnimationComponent>(currentEntity);
+            a.animator = new Animator(m_Resources.GetAnimation(animName));
+        }
+        else if (command == "CAMERA")
+        {
+            int isPrimary;
+            float fov, yaw, pitch;
+            ss >> isPrimary >> fov >> yaw >> pitch;
+            auto &c = m_Scene.registry.emplace<CameraComponent>(currentEntity);
+            c.isPrimary = (bool)isPrimary;
+            c.fov = fov;
+            c.yaw = yaw;
+            c.pitch = pitch;
+        }
+        else if (command == "RIGIDBODY")
+        {
+            std::string type;
+            float mass;
+            ss >> type >> mass;
+
+            auto &trans = m_Scene.registry.get<TransformComponent>(currentEntity);
+            auto &rb = m_Scene.registry.emplace<RigidBodyComponent>(currentEntity);
+
+            btCollisionShape *shape = nullptr;
+            if (type == "CAPSULE")
+            {
+                float r, h;
+                ss >> r >> h;
+                shape = new btCapsuleShape(r, h);
+
+                if (mass > 0)
+                {
+                    btTransform transform;
+                    transform.setIdentity();
+                    transform.setOrigin(BulletGLMHelpers::convert(trans.position));
+                    transform.setRotation(BulletGLMHelpers::convert(trans.rotation));
+
+                    rb.body = m_Physics.CreateRigidBody(mass, transform, shape);
+                }
+                if (rb.body)
+                    rb.body->setAngularFactor(btVector3(0, 1, 0));
+            }
+            else if (type == "BOX")
+            {
+                float x, y, z;
+                ss >> x >> y >> z;
+                shape = new btBoxShape(btVector3(x, y, z));
+
+                btTransform transform;
+                transform.setIdentity();
+                transform.setOrigin(BulletGLMHelpers::convert(trans.position));
+                transform.setRotation(BulletGLMHelpers::convert(trans.rotation));
+
+                rb.body = m_Physics.CreateRigidBody(mass, transform, shape);
+            }
+        }
+        else if (command == "LIGHT_DIR")
+        {
+            float dx, dy, dz, r, g, b, i;
+            ss >> dx >> dy >> dz >> r >> g >> b >> i;
+            auto &l = m_Scene.registry.emplace<DirectionalLightComponent>(currentEntity);
+            l.direction = glm::vec3(dx, dy, dz);
+            l.color = glm::vec3(r, g, b);
+            l.intensity = i;
+        }
+
+        else if (command == "UI_TRANSFORM")
+        {
+            float x, y, w, h;
+            int z;
+            ss >> x >> y >> w >> h >> z;
+            m_Scene.registry.emplace<UITransformComponent>(currentEntity, glm::vec2(x, y), glm::vec2(w, h), z);
+        }
+        else if (command == "UI_RENDERER")
+        {
+            float r, g, b, a;
+            std::string shaderName;
+            ss >> r >> g >> b >> a >> shaderName;
+            auto &ui = m_Scene.registry.emplace<UIRendererComponent>(currentEntity);
+            ui.color = glm::vec4(r, g, b, a);
+            ui.shader = m_Resources.GetShader(shaderName);
+
+            // Mặc định tạo model Color cho UI (hoặc thêm lệnh LOAD_UI_TEXTURE sau)
+            if (!m_Resources.GetUIModel("default_rect"))
+                m_Resources.CreateUIModel("default_rect", UIType::Color);
+            ui.model = m_Resources.GetUIModel("default_rect");
+        }
+        else if (command == "UI_ANIMATION")
+        {
+            float hr, hg, hb, ha;
+            ss >> hr >> hg >> hb >> ha;
+            auto &anim = m_Scene.registry.emplace<UIAnimationComponent>(currentEntity);
+            anim.hoverColor = glm::vec4(hr, hg, hb, ha);
+
+            auto &ui = m_Scene.registry.get<UIRendererComponent>(currentEntity);
+            anim.normalColor = ui.color;
+        }
+    }
+}

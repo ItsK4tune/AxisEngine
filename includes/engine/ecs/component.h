@@ -11,6 +11,11 @@
 
 #include <functional>
 
+struct InfoComponent {
+    std::string name = "Entity";
+    std::string tag = "Default";
+};
+
 struct TransformComponent
 {
     glm::vec3 position = glm::vec3(0.0f);

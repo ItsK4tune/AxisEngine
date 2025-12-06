@@ -10,6 +10,8 @@
 #include <engine/ecs/component.h>
 #include <engine/ecs/system.h>
 #include <engine/physic/physic_world.h> 
+#include <engine/core/resource_manager.h>
+#include <engine/core/scene_manager.h> 
 
 class Application {
 public:
@@ -46,10 +48,6 @@ private:
     UIInteractSystem uiInteractSystem;
     UIRenderSystem uiRenderSystem;
 
-    // Resources (giữ shader để dùng trong loop)
-    std::unique_ptr<Shader> modelShader;
-    std::unique_ptr<Shader> uiShader;
-
-    std::unique_ptr<UIModel> buttonModel;
-    std::unique_ptr<UIModel> imageModel;
+    ResourceManager resourceManager;
+    std::unique_ptr<SceneManager> sceneManager;
 };

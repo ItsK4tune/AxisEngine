@@ -1,13 +1,18 @@
 #pragma once
+
 #include <btBulletDynamicsCommon.h>
 #include <memory>
+#include <vector>
 
 class PhysicsWorld
 {
 public:
     PhysicsWorld();
+    ~PhysicsWorld();
 
     void Update(float dt);
+    void Clear();
+
     btDiscreteDynamicsWorld *GetWorld();
     btRigidBody *CreateRigidBody(float mass, const btTransform &startTransform, btCollisionShape *shape);
 
@@ -17,4 +22,6 @@ private:
     std::unique_ptr<btDbvtBroadphase> overlappingPairCache;
     std::unique_ptr<btSequentialImpulseConstraintSolver> solver;
     std::unique_ptr<btDiscreteDynamicsWorld> dynamicsWorld;
+
+    std::vector<btCollisionShape *> m_collisionShapes;
 };
