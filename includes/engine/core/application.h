@@ -32,9 +32,10 @@ private:
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
-    Camera camera;
     float lastX;
     float lastY;
+    float xOffset = 0.0f;
+    float yOffset = 0.0f;
     bool firstMouse = true;
 
     std::unique_ptr<PhysicsWorld> physicsWorld;
@@ -42,6 +43,8 @@ private:
     PhysicsSystem physicsSystem;
     RenderSystem renderSystem;
     AnimationSystem animationSystem;
+    CameraSystem cameraSystem;
+    CameraControlSystem cameraControlSystem;
 
     // Resources (giữ shader để dùng trong loop)
     std::unique_ptr<Shader> mainShader;
