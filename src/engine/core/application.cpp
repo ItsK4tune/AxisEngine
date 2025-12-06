@@ -22,7 +22,6 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 }
 
 Application::Application() 
-    : camera(glm::vec3(0.0f, 0.0f, 3.0f)) 
 {
     lastX = SCR_WIDTH / 2.0f;
     lastY = SCR_HEIGHT / 2.0f;
@@ -71,22 +70,23 @@ bool Application::Init() {
     EntityID playerID = scene.createEntity();
     scene.renderers[playerID].model = &playerModel;
     scene.animators[playerID].animator = new Animator(&danceAnim);
-    
     scene.transforms[playerID].position = glm::vec3(0.0f, 5.0f, 0.0f);
     scene.transforms[playerID].scale = glm::vec3(0.01f);
-
     btCollisionShape* colShape = new btCapsuleShape(0.5f, 2.0f);
     btTransform startTransform;
     startTransform.setIdentity();
     startTransform.setOrigin(BulletGLMHelpers::convert(scene.transforms[playerID].position));
-    
     float mass = 10.0f;
     scene.rigidbodies[playerID].body = physicsWorld->CreateRigidBody(mass, startTransform, colShape);
-    scene.rigidbodies[playerID].body->setAngularFactor(btVector3(0, 1, 0)); // Khóa xoay trục X, Z
+    scene.rigidbodies[playerID].body->setAngularFactor(btVector3(0, 1, 0));
+
+    EntityID camID = scene.createEntity();
+    scene.transforms[camID].position = glm::vec3(0.0f, 2.0f, 10.0f);
+    scene.cameras[camID].isPrimary = true;
+    scene.cameras[camID].yaw = -90.0f;
 
     EntityID floorID = scene.createEntity();
     scene.transforms[floorID].position = glm::vec3(0.0f, -2.0f, 0.0f);
-    // Physics cho Floor (Box tĩnh)
     btCollisionShape* groundShape = new btBoxShape(btVector3(50, 1, 50));
     btTransform groundTrans;
     groundTrans.setIdentity();
@@ -102,30 +102,24 @@ void Application::Run() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // Input
         ProcessInput();
 
-        // --- UPDATE ---
-        // 1. Physics Step
+        cameraControlSystem.Update(scene, deltaTime, window, xOffset, yOffset);
+        xOffset = 0;
+        yOffset = 0;
+
         physicsWorld->Update(deltaTime);
-        
-        // 2. Sync Physics to Transform
         physicsSystem.Update(scene);
 
-        // 3. Animation Step
         animationSystem.Update(scene, deltaTime);
+
+        cameraSystem.Update(scene, (float)SCR_WIDTH, (float)SCR_HEIGHT);
 
         // --- RENDER ---
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mainShader->use();
-
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = camera.GetViewMatrix();
-        mainShader->setMat4("projection", projection);
-        mainShader->setMat4("view", view);
-
         renderSystem.Render(scene, *mainShader);
 
         glfwSwapBuffers(window);
@@ -136,15 +130,6 @@ void Application::Run() {
 void Application::ProcessInput() {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
 void Application::OnResize(int width, int height) {
@@ -158,14 +143,18 @@ void Application::OnMouseMove(double xpos, double ypos) {
         firstMouse = false;
     }
 
-    float xoffset = (float)xpos - lastX;
-    float yoffset = lastY - (float)ypos; 
+    xOffset += (float)xpos - lastX;
+    yOffset += lastY - (float)ypos; 
+
     lastX = (float)xpos;
     lastY = (float)ypos;
-
-    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void Application::OnScroll(double xoffset, double yoffset) {
-    camera.ProcessMouseScroll((float)yoffset);
+    EntityID id = scene.GetActiveCameraID();
+    if(scene.cameras.size() > id) {
+        scene.cameras[id].fov -= (float)yoffset;
+        if (scene.cameras[id].fov < 1.0f) scene.cameras[id].fov = 1.0f;
+        if (scene.cameras[id].fov > 45.0f) scene.cameras[id].fov = 45.0f;
+    }
 }
