@@ -240,89 +240,43 @@ void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager &
         transform.position += cam.right * velocity;
 }
 
-UIRenderSystem::UIRenderSystem() : quadVAO(0), quadVBO(0) {}
-UIRenderSystem::~UIRenderSystem()
-{
-    glDeleteVertexArrays(1, &quadVAO);
-    glDeleteBuffers(1, &quadVBO);
-}
-
-void UIRenderSystem::Init() { InitQuad(); }
-
-void UIRenderSystem::InitQuad()
-{
-    // ... (Giữ nguyên code tạo VAO/VBO hình vuông như bài trước) ...
-    float vertices[] = {
-        0.0f, 1.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 0.0f, 1.0f, 0.0f};
-    glGenVertexArrays(1, &quadVAO);
-    glGenBuffers(1, &quadVBO);
-    glBindVertexArray(quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
-void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
+void UIRenderSystem::Render(Scene& scene, float screenWidth, float screenHeight)
 {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    scene.registry.sort<UITransformComponent>([](const auto &lhs, const auto &rhs)
-                                              { return lhs.zIndex < rhs.zIndex; });
+    scene.registry.sort<UITransformComponent>([](const auto& lhs, const auto& rhs) {
+        return lhs.zIndex < rhs.zIndex;
+    });
 
     glm::mat4 projection = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -1.0f, 1.0f);
-    Shader *currentShader = nullptr;
+    Shader* currentShader = nullptr;
 
     auto view = scene.registry.view<UITransformComponent, UIRendererComponent>();
     view.use<UITransformComponent>();
-
-    glBindVertexArray(quadVAO);
 
     for (auto entity : view)
     {
         auto [transform, renderer] = view.get<UITransformComponent, UIRendererComponent>(entity);
 
-        // Nếu không có shader, bỏ qua (hoặc bạn có thể set một defaultShader ở đây)
-        if (!renderer.shader)
-            continue;
+        if (!renderer.model || !renderer.shader) continue;
 
-        // Switch Shader
-        if (currentShader != renderer.shader)
-        {
+        if (currentShader != renderer.shader) {
             currentShader = renderer.shader;
             currentShader->use();
-            // Projection Matrix phải set lại mỗi khi đổi shader
             currentShader->setMat4("projection", projection);
+             currentShader->setInt("image", 0);
         }
 
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(transform.position, 0.0f));
-        model = glm::scale(model, glm::vec3(transform.size, 1.0f));
-
+        model = glm::scale(model, glm::vec3(transform.size, 1.0f)); 
         currentShader->setMat4("model", model);
-        currentShader->setVec4("spriteColor", renderer.color);
 
-        // Bind Texture nếu có
-        if (renderer.texture)
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, renderer.texture->id);
-            // currentShader->setInt("image", 0); // Đảm bảo shader có uniform này
-        }
-
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        renderer.model->Draw(*currentShader, renderer.color);
     }
 
-    glBindVertexArray(0);
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
 }

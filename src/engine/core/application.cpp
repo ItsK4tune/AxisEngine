@@ -84,8 +84,6 @@ bool Application::Init()
         FileSystem::getPath("resources/shaders/ui.vs").c_str(),
         FileSystem::getPath("resources/shaders/ui.fs").c_str());
 
-    uiRenderSystem.Init();
-
     static Model playerModel(FileSystem::getPath("resources/objects/player/Dying.fbx"));
     static Animation danceAnim(FileSystem::getPath("resources/objects/player/Dying.fbx"), &playerModel);
 
@@ -144,6 +142,8 @@ bool Application::Init()
     pointLight.intensity = 2.0f;
     pointLight.radius = 5.0f;
 
+    buttonModel = std::make_unique<UIModel>(UIType::Color);
+
     auto btnEntity = scene.createEntity();
     auto &uiTrans = scene.registry.emplace<UITransformComponent>(btnEntity);
     uiTrans.position = glm::vec2(100, 100);
@@ -151,8 +151,9 @@ bool Application::Init()
     uiTrans.zIndex = 10;
 
     auto &uiRenderer = scene.registry.emplace<UIRendererComponent>(btnEntity);
-    uiRenderer.color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    uiRenderer.model = buttonModel.get();
     uiRenderer.shader = uiShader.get();
+    uiRenderer.color = glm::vec4(1, 0, 0, 1);
 
     auto &uiInteract = scene.registry.emplace<UIInteractiveComponent>(btnEntity);
     uiInteract.onClick = [](entt::entity e)
@@ -166,6 +167,7 @@ bool Application::Init()
 
     auto &uiAnim = scene.registry.emplace<UIAnimationComponent>(btnEntity);
     uiAnim.hoverColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    uiAnim.normalColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 
     return true;
 }
@@ -177,6 +179,8 @@ void Application::Run()
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        glfwPollEvents();
 
         ProcessInput();
 
@@ -197,7 +201,6 @@ void Application::Run()
         uiRenderSystem.Render(scene, (float)SCR_WIDTH, (float)SCR_HEIGHT);
 
         glfwSwapBuffers(window);
-        glfwPollEvents();
     }
 }
 

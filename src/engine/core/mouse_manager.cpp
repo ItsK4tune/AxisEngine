@@ -3,7 +3,8 @@
 MouseManager::MouseManager()
     : m_LastX(400.0), m_LastY(300.0),
       m_XOffset(0.0f), m_YOffset(0.0f), m_ScrollY(0.0f),
-      m_FirstMouse(true)
+      m_FirstMouse(true),
+      m_LeftButtonPressed(false)
 {
 }
 
@@ -16,8 +17,8 @@ void MouseManager::UpdatePosition(double xpos, double ypos)
         m_FirstMouse = false;
     }
 
-    m_XOffset = static_cast<float>(xpos - m_LastX);
-    m_YOffset = static_cast<float>(m_LastY - ypos);
+    m_XOffset += static_cast<float>(xpos - m_LastX);
+    m_YOffset += static_cast<float>(m_LastY - ypos);
 
     m_LastX = xpos;
     m_LastY = ypos;
@@ -78,5 +79,5 @@ void MouseManager::SetLastPosition(double x, double y)
 {
     m_LastX = x;
     m_LastY = y;
-    m_FirstMouse = true;
+    m_FirstMouse = false;
 }

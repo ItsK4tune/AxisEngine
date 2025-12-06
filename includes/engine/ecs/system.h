@@ -57,18 +57,7 @@ public:
     void Update(Scene &scene, float dt, const MouseManager &mouse);
 };
 
-class UIRenderSystem
-{
+class UIRenderSystem {
 public:
-    UIRenderSystem();
-    ~UIRenderSystem();
-
-    void Init();
-    void InitQuad();
-
-    void Render(Scene &scene, float screenWidth, float screenHeight);
-
-private:
-    unsigned int quadVAO = 0;
-    unsigned int quadVBO = 0;
+    void Render(Scene& scene, float screenWidth, float screenHeight);
 };

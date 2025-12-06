@@ -49,4 +49,7 @@ private:
     // Resources (giữ shader để dùng trong loop)
     std::unique_ptr<Shader> modelShader;
     std::unique_ptr<Shader> uiShader;
+
+    std::unique_ptr<UIModel> buttonModel;
+    std::unique_ptr<UIModel> imageModel;
 };
