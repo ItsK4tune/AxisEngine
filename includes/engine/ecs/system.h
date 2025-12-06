@@ -33,7 +33,10 @@ public:
 class RenderSystem
 {
 public:
-    void Render(Scene &scene, Shader &shader);
+    void Render(Scene &scene);
+
+private:
+    void UploadLightData(Scene &scene, Shader *shader);
 };
 
 class CameraSystem
@@ -42,13 +45,30 @@ public:
     void Update(Scene &scene, float screenWidth, float screenHeight);
 };
 
-class CameraControlSystem 
+class CameraControlSystem
 {
 public:
-    void Update(Scene &scene, float dt, const KeyboardManager& keyboard, const MouseManager& mouse);
+    void Update(Scene &scene, float dt, const KeyboardManager &keyboard, const MouseManager &mouse);
 };
 
-class UISystem {
+class UIInteractSystem
+{
 public:
-    void Update(Scene& scene, float dt, const MouseManager& mouse);
+    void Update(Scene &scene, float dt, const MouseManager &mouse);
+};
+
+class UIRenderSystem
+{
+public:
+    UIRenderSystem();
+    ~UIRenderSystem();
+
+    void Init();
+    void InitQuad();
+
+    void Render(Scene &scene, float screenWidth, float screenHeight);
+
+private:
+    unsigned int quadVAO = 0;
+    unsigned int quadVBO = 0;
 };

@@ -76,9 +76,15 @@ bool Application::Init()
 
     physicsWorld = std::make_unique<PhysicsWorld>();
 
-    mainShader = std::make_unique<Shader>(
+    modelShader = std::make_unique<Shader>(
         FileSystem::getPath("resources/shaders/anim_model.vs").c_str(),
         FileSystem::getPath("resources/shaders/anim_model.fs").c_str());
+
+    uiShader = std::make_unique<Shader>(
+        FileSystem::getPath("resources/shaders/ui.vs").c_str(),
+        FileSystem::getPath("resources/shaders/ui.fs").c_str());
+
+    uiRenderSystem.Init();
 
     static Model playerModel(FileSystem::getPath("resources/objects/player/Dying.fbx"));
     static Animation danceAnim(FileSystem::getPath("resources/objects/player/Dying.fbx"), &playerModel);
@@ -91,6 +97,7 @@ bool Application::Init()
 
     auto &pRender = scene.registry.emplace<MeshRendererComponent>(playerEntity);
     pRender.model = &playerModel;
+    pRender.shader = modelShader.get();
 
     auto &pAnim = scene.registry.emplace<AnimationComponent>(playerEntity);
     pAnim.animator = new Animator(&danceAnim);
@@ -141,6 +148,11 @@ bool Application::Init()
     auto &uiTrans = scene.registry.emplace<UITransformComponent>(btnEntity);
     uiTrans.position = glm::vec2(100, 100);
     uiTrans.size = glm::vec2(200, 50);
+    uiTrans.zIndex = 10;
+
+    auto &uiRenderer = scene.registry.emplace<UIRendererComponent>(btnEntity);
+    uiRenderer.color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    uiRenderer.shader = uiShader.get();
 
     auto &uiInteract = scene.registry.emplace<UIInteractiveComponent>(btnEntity);
     uiInteract.onClick = [](entt::entity e)
@@ -169,11 +181,11 @@ void Application::Run()
         ProcessInput();
 
         cameraControlSystem.Update(scene, deltaTime, keyboardManager, mouseManager);
+        uiInteractSystem.Update(scene, deltaTime, mouseManager);
         mouseManager.EndFrame();
 
         physicsWorld->Update(deltaTime);
         physicsSystem.Update(scene);
-
         animationSystem.Update(scene, deltaTime);
 
         cameraSystem.Update(scene, (float)SCR_WIDTH, (float)SCR_HEIGHT);
@@ -181,8 +193,8 @@ void Application::Run()
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        mainShader->use();
-        renderSystem.Render(scene, *mainShader);
+        renderSystem.Render(scene);
+        uiRenderSystem.Render(scene, (float)SCR_WIDTH, (float)SCR_HEIGHT);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -205,7 +217,8 @@ void Application::OnMouseMove(double xpos, double ypos)
     mouseManager.UpdatePosition(xpos, ypos);
 }
 
-void Application::OnMouseButton(int button, int action, int mods) {
+void Application::OnMouseButton(int button, int action, int mods)
+{
     mouseManager.UpdateButton(button, action, mods);
 }
 

@@ -43,7 +43,10 @@ private:
     AnimationSystem animationSystem;
     CameraSystem cameraSystem;
     CameraControlSystem cameraControlSystem;
+    UIInteractSystem uiInteractSystem;
+    UIRenderSystem uiRenderSystem;
 
     // Resources (giữ shader để dùng trong loop)
-    std::unique_ptr<Shader> mainShader;
+    std::unique_ptr<Shader> modelShader;
+    std::unique_ptr<Shader> uiShader;
 };

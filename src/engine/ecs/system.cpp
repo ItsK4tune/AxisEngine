@@ -56,33 +56,41 @@ void AnimationSystem::Update(Scene &scene, float dt)
     }
 }
 
-void RenderSystem::Render(Scene &scene, Shader &shader)
+void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
 {
-    entt::entity camEntity = scene.GetActiveCamera();
-    if (camEntity != entt::null)
-    {
-        auto &cam = scene.registry.get<CameraComponent>(camEntity);
-        auto &camTrans = scene.registry.get<TransformComponent>(camEntity);
-
-        shader.use();
-        shader.setMat4("projection", cam.projectionMatrix);
-        shader.setMat4("view", cam.viewMatrix);
-        shader.setVec3("viewPos", camTrans.position);
-    }
-
     auto dirLightView = scene.registry.view<DirectionalLightComponent>();
-
     for (auto entity : dirLightView)
     {
         auto &light = dirLightView.get<DirectionalLightComponent>(entity);
-        shader.setVec3("dirLight.direction", light.direction);
-        shader.setVec3("dirLight.ambient", light.ambient * light.intensity);
-        shader.setVec3("dirLight.diffuse", light.diffuse * light.intensity);
-        shader.setVec3("dirLight.specular", light.specular * light.intensity);
+        shader->setVec3("dirLight.direction", light.direction);
+        shader->setVec3("dirLight.ambient", light.ambient * light.intensity);
+        shader->setVec3("dirLight.diffuse", light.diffuse * light.intensity);
+        shader->setVec3("dirLight.specular", light.specular * light.intensity);
         break;
     }
 
     int i = 0;
+    auto pointLightView = scene.registry.view<PointLightComponent, TransformComponent>();
+    for (auto entity : pointLightView)
+    {
+        if (i >= 4)
+            break;
+
+        auto [light, trans] = pointLightView.get<PointLightComponent, TransformComponent>(entity);
+        std::string number = std::to_string(i);
+
+        shader->setVec3("pointLights[" + number + "].position", trans.position);
+        shader->setVec3("pointLights[" + number + "].ambient", light.color * 0.1f * light.intensity);
+        shader->setVec3("pointLights[" + number + "].diffuse", light.color * light.intensity);
+        shader->setVec3("pointLights[" + number + "].specular", glm::vec3(1.0f) * light.intensity);
+        shader->setFloat("pointLights[" + number + "].constant", light.constant);
+        shader->setFloat("pointLights[" + number + "].linear", light.linear);
+        shader->setFloat("pointLights[" + number + "].quadratic", light.quadratic);
+        i++;
+    }
+    shader->setInt("nrPointLights", i);
+
+    i = 0;
     auto spotLightView = scene.registry.view<SpotLightComponent, TransformComponent>();
     for (auto entity : spotLightView)
     {
@@ -92,71 +100,77 @@ void RenderSystem::Render(Scene &scene, Shader &shader)
         auto [light, trans] = spotLightView.get<SpotLightComponent, TransformComponent>(entity);
 
         std::string number = std::to_string(i);
-        shader.setVec3("spotLights[" + number + "].position", trans.position);
-        shader.setVec3("spotLights[" + number + "].ambient", light.color * 0.1f * light.intensity);
-        shader.setVec3("spotLights[" + number + "].diffuse", light.color * light.intensity);
-        shader.setVec3("spotLights[" + number + "].specular", glm::vec3(1.0f) * light.intensity);
-        shader.setFloat("spotLights[" + number + "].constant", light.constant);
-        shader.setFloat("spotLights[" + number + "].linear", light.linear);
-        shader.setFloat("spotLights[" + number + "].quadratic", light.quadratic);
+        shader->setVec3("spotLights[" + number + "].position", trans.position);
+        shader->setVec3("spotLights[" + number + "].ambient", light.color * 0.1f * light.intensity);
+        shader->setVec3("spotLights[" + number + "].diffuse", light.color * light.intensity);
+        shader->setVec3("spotLights[" + number + "].specular", glm::vec3(1.0f) * light.intensity);
+        shader->setFloat("spotLights[" + number + "].constant", light.constant);
+        shader->setFloat("spotLights[" + number + "].linear", light.linear);
+        shader->setFloat("spotLights[" + number + "].quadratic", light.quadratic);
 
         i++;
     }
-    shader.setInt("nrSpotLights", i);
+    shader->setInt("nrSpotLights", i);
+}
 
-    i = 0;
-    auto pointLightView = scene.registry.view<PointLightComponent, TransformComponent>();
-    for (auto entity : pointLightView)
+void RenderSystem::Render(Scene &scene)
+{
+    entt::entity camEntity = scene.GetActiveCamera();
+    CameraComponent *cam = nullptr;
+    TransformComponent *camTrans = nullptr;
+
+    if (camEntity != entt::null)
     {
-        if (i >= 4)
-            break;
-
-        auto [light, trans] = pointLightView.get<PointLightComponent, TransformComponent>(entity);
-
-        std::string number = std::to_string(i);
-        shader.setVec3("pointLights[" + number + "].position", trans.position);
-        shader.setVec3("pointLights[" + number + "].ambient", light.color * 0.1f * light.intensity);
-        shader.setVec3("pointLights[" + number + "].diffuse", light.color * light.intensity);
-        shader.setVec3("pointLights[" + number + "].specular", glm::vec3(1.0f) * light.intensity);
-        shader.setFloat("pointLights[" + number + "].constant", light.constant);
-        shader.setFloat("pointLights[" + number + "].linear", light.linear);
-        shader.setFloat("pointLights[" + number + "].quadratic", light.quadratic);
-
-        i++;
+        cam = &scene.registry.get<CameraComponent>(camEntity);
+        camTrans = &scene.registry.get<TransformComponent>(camEntity);
     }
-    shader.setInt("nrPointLights", i);
 
+    scene.registry.sort<MeshRendererComponent>([](const auto &lhs, const auto &rhs)
+                                               { return lhs.shader < rhs.shader; });
+
+    Shader *currentShader = nullptr;
     auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
+    view.use<MeshRendererComponent>();
 
     for (auto entity : view)
     {
         auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
 
-        if (renderer.model)
-        {
-            glm::mat4 modelMatrix = transform.GetTransformMatrix();
-            shader.setMat4("model", modelMatrix);
+        if (!renderer.model || !renderer.shader)
+            continue;
 
-            if (scene.registry.all_of<AnimationComponent>(entity))
+        if (currentShader != renderer.shader)
+        {
+            currentShader = renderer.shader;
+            currentShader->use();
+
+            if (cam && camTrans)
             {
-                auto &anim = scene.registry.get<AnimationComponent>(entity);
-                if (anim.animator)
+                currentShader->setMat4("projection", cam->projectionMatrix);
+                currentShader->setMat4("view", cam->viewMatrix);
+                currentShader->setVec3("viewPos", camTrans->position);
+            }
+
+            UploadLightData(scene, currentShader);
+        }
+
+        glm::mat4 modelMatrix = transform.GetTransformMatrix();
+        currentShader->setMat4("model", modelMatrix);
+
+        if (scene.registry.all_of<AnimationComponent>(entity))
+        {
+            auto &anim = scene.registry.get<AnimationComponent>(entity);
+            if (anim.animator)
+            {
+                auto transforms = anim.animator->GetFinalBoneMatrices();
+                for (int j = 0; j < transforms.size(); ++j)
                 {
-                    auto transforms = anim.animator->GetFinalBoneMatrices();
-                    for (int j = 0; j < transforms.size(); ++j)
-                    {
-                        shader.setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
-                    }
+                    currentShader->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
                 }
             }
-            else
-            {
-                // Xử lý static mesh (có thể gửi ma trận identity hoặc dùng shader khác)
-                // Ở đây giả sử shader yêu cầu thì phải gửi identity hoặc mảng rỗng
-            }
-
-            renderer.model->Draw(shader);
         }
+
+        renderer.model->Draw(*currentShader);
     }
 }
 
@@ -226,7 +240,94 @@ void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager &
         transform.position += cam.right * velocity;
 }
 
-void UISystem::Update(Scene &scene, float dt, const MouseManager &mouse)
+UIRenderSystem::UIRenderSystem() : quadVAO(0), quadVBO(0) {}
+UIRenderSystem::~UIRenderSystem()
+{
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &quadVBO);
+}
+
+void UIRenderSystem::Init() { InitQuad(); }
+
+void UIRenderSystem::InitQuad()
+{
+    // ... (Giữ nguyên code tạo VAO/VBO hình vuông như bài trước) ...
+    float vertices[] = {
+        0.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, 1.0f, 1.0f, 1.0f,
+        1.0f, 0.0f, 1.0f, 0.0f};
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
+{
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    scene.registry.sort<UITransformComponent>([](const auto &lhs, const auto &rhs)
+                                              { return lhs.zIndex < rhs.zIndex; });
+
+    glm::mat4 projection = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -1.0f, 1.0f);
+    Shader *currentShader = nullptr;
+
+    auto view = scene.registry.view<UITransformComponent, UIRendererComponent>();
+    view.use<UITransformComponent>();
+
+    glBindVertexArray(quadVAO);
+
+    for (auto entity : view)
+    {
+        auto [transform, renderer] = view.get<UITransformComponent, UIRendererComponent>(entity);
+
+        // Nếu không có shader, bỏ qua (hoặc bạn có thể set một defaultShader ở đây)
+        if (!renderer.shader)
+            continue;
+
+        // Switch Shader
+        if (currentShader != renderer.shader)
+        {
+            currentShader = renderer.shader;
+            currentShader->use();
+            // Projection Matrix phải set lại mỗi khi đổi shader
+            currentShader->setMat4("projection", projection);
+        }
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(transform.position, 0.0f));
+        model = glm::scale(model, glm::vec3(transform.size, 1.0f));
+
+        currentShader->setMat4("model", model);
+        currentShader->setVec4("spriteColor", renderer.color);
+
+        // Bind Texture nếu có
+        if (renderer.texture)
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, renderer.texture->id);
+            // currentShader->setInt("image", 0); // Đảm bảo shader có uniform này
+        }
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
+    glBindVertexArray(0);
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+}
+
+void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
 {
     float mx = mouse.GetLastX();
     float my = mouse.GetLastY();

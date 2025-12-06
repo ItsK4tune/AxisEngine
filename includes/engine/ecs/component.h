@@ -20,6 +20,7 @@ struct TransformComponent {
 
 struct MeshRendererComponent {
     Model* model = nullptr;
+    Shader* shader = nullptr;
     bool castShadow = true;
 };
 
@@ -60,6 +61,7 @@ struct UITransformComponent {
 struct UIRendererComponent {
     glm::vec4 color = glm::vec4(1.0f);
     Texture* texture = nullptr;
+    Shader* shader = nullptr;
 };
 
 struct UIInteractiveComponent {
