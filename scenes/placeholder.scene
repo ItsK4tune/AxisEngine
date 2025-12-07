@@ -1,6 +1,7 @@
 # --- RESOURCES (Load trước) ---
 # LOAD_SHADER <name> <vs_path> <fs_path>
-LOAD_SHADER modelShader resources/shaders/anim_model.vs resources/shaders/anim_model.fs
+LOAD_SHADER animationShader resources/shaders/anim_model.vs resources/shaders/anim_model.fs
+LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 
 # LOAD_MODEL <name> <path>
