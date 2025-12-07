@@ -57,32 +57,50 @@ int Bone::GetBoneID() { return m_ID; }
 
 int Bone::GetPositionIndex(float animationTime)
 {
-    for (int index = 0; index < m_NumPositions - 1; ++index)
-    {
-        if (animationTime < m_Positions[index + 1].timeStamp)
-            return index;
+    if (m_LastPositionIndex >= m_NumPositions - 1 || animationTime < m_Positions[m_LastPositionIndex].timeStamp) {
+        m_LastPositionIndex = 0;
     }
-    assert(0);
+
+    for (int index = m_LastPositionIndex; index < m_NumPositions - 1; ++index)
+    {
+        if (animationTime < m_Positions[index + 1].timeStamp) {
+            m_LastPositionIndex = index;
+            return index;
+        }
+    }
+    return 0;
 }
 
 int Bone::GetRotationIndex(float animationTime)
 {
-    for (int index = 0; index < m_NumRotations - 1; ++index)
-    {
-        if (animationTime < m_Rotations[index + 1].timeStamp)
-            return index;
+    if (m_LastRotationIndex >= m_NumRotations - 1 || animationTime < m_Rotations[m_LastRotationIndex].timeStamp) {
+        m_LastRotationIndex = 0;
     }
-    assert(0);
+
+    for (int index = m_LastRotationIndex; index < m_NumRotations - 1; ++index)
+    {
+        if (animationTime < m_Rotations[index + 1].timeStamp) {
+            m_LastRotationIndex = index;
+            return index;
+        }
+    }
+    return 0;
 }
 
 int Bone::GetScaleIndex(float animationTime)
 {
-    for (int index = 0; index < m_NumScalings - 1; ++index)
-    {
-        if (animationTime < m_Scales[index + 1].timeStamp)
-            return index;
+    if (m_LastScaleIndex >= m_NumScalings - 1 || animationTime < m_Scales[m_LastScaleIndex].timeStamp) {
+        m_LastScaleIndex = 0;
     }
-    assert(0);
+
+    for (int index = m_LastScaleIndex; index < m_NumScalings - 1; ++index)
+    {
+        if (animationTime < m_Scales[index + 1].timeStamp) {
+            m_LastScaleIndex = index;
+            return index;
+        }
+    }
+    return 0;
 }
 
 float Bone::GetScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime)

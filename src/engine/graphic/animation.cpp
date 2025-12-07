@@ -27,23 +27,20 @@ Animation::~Animation()
 
 Bone *Animation::FindBone(const std::string &name)
 {
-    auto iter = std::find_if(m_Bones.begin(), m_Bones.end(),
-                             [&](const Bone &Bone)
-                             {
-                                 return Bone.GetBoneName() == name;
-                             });
-    if (iter == m_Bones.end())
-        return nullptr;
-    else
-        return &(*iter);
+    if (m_BoneMap.find(name) != m_BoneMap.end()) {
+        return m_BoneMap[name];
+    }
+    return nullptr;
 }
 
 void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
 {
     int size = animation->mNumChannels;
 
-    std::map<std::string, BoneInfo> &boneInfoMap = model.GetBoneInfoMap(); 
+    std::unordered_map<std::string, BoneInfo> &boneInfoMap = model.GetBoneInfoMap(); 
     int &boneCount = model.GetBoneCount();      
+
+    m_Bones.reserve(size); 
 
     for (int i = 0; i < size; i++)
     {
@@ -55,11 +52,17 @@ void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
             boneInfoMap[boneName].id = boneCount;
             boneCount++;
         }
+        
         m_Bones.push_back(Bone(channel->mNodeName.data,
                                boneInfoMap[channel->mNodeName.data].id, channel));
     }
 
     m_BoneInfoMap = boneInfoMap;
+
+    m_BoneMap.clear();
+    for (auto& bone : m_Bones) {
+        m_BoneMap[bone.GetBoneName()] = &bone;
+    }
 }
 
 void Animation::ReadHierarchyData(AssimpNodeData &dest, const aiNode *src)

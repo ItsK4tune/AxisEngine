@@ -12,6 +12,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})
 find_package(ASSIMP REQUIRED)
 find_package(GLFW3 REQUIRED)
 find_package(GLM REQUIRED)
+find_package(Bullet REQUIRED)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}/includes
@@ -32,14 +33,18 @@ include_directories(${CMAKE_BINARY_DIR}/configuration)
 
 add_executable(GameEngine ${SOURCES})
 
+set(BULLET_LIBS
+    BulletDynamics$<$<CONFIG:Debug>:_Debug>
+    BulletCollision$<$<CONFIG:Debug>:_Debug>
+    LinearMath$<$<CONFIG:Debug>:_Debug>
+)
+
 if (WIN32)
     target_link_libraries(GameEngine 
         glfw3 
         opengl32 
         assimp
-        BulletDynamics_Debug
-        BulletCollision_Debug
-        LinearMath_Debug
+        ${BULLET_LIBS}
     )
 endif()
 
@@ -56,9 +61,7 @@ if (UNIX)
         Xxf86vm 
         Xinerama 
         Xcursor
-        BulletDynamics_Debug
-        BulletCollision_Debug
-        LinearMath_Debug
+        ${BULLET_LIBS}
     )
 endif()
 

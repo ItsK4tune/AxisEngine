@@ -10,6 +10,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <cstring>
 
 #include <engine/utils/assimp_glm_helpers.h>
 
@@ -24,13 +25,13 @@ void Model::Draw(Shader &shader)
         meshes[i].Draw(shader);
 }
 
-std::map<std::string, BoneInfo> &Model::GetBoneInfoMap() { return m_BoneInfoMap; }
+std::unordered_map<std::string, BoneInfo> &Model::GetBoneInfoMap() { return m_BoneInfoMap; }
 int &Model::GetBoneCount() { return m_BoneCounter; }
 
 void Model::loadModel(std::string const &path)
 {
     Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace);
+    const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_FlipUVs);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
@@ -70,6 +71,9 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<Texture> textures;
+
+    vertices.reserve(mesh->mNumVertices);
+    indices.reserve(mesh->mNumFaces * 3);
 
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {

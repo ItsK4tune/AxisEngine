@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <assimp/scene.h>
 
-#include <map>
+#include <unordered_map>
 
 #include <engine/graphic/mesh.h>
 #include <engine/graphic/shader.h>
@@ -21,11 +21,11 @@ public:
 
 	void Draw(Shader &shader);
 
-	std::map<std::string, BoneInfo> &GetBoneInfoMap();
+	std::unordered_map<std::string, BoneInfo> &GetBoneInfoMap();
 	int &GetBoneCount();
 
 private:
-	std::map<std::string, BoneInfo> m_BoneInfoMap;
+	std::unordered_map<std::string, BoneInfo> m_BoneInfoMap;
 	int m_BoneCounter = 0;
 
 	void loadModel(std::string const &path);

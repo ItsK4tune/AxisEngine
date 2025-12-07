@@ -51,6 +51,10 @@ private:
 	int m_NumRotations;
 	int m_NumScalings;
 
+	int m_LastPositionIndex = 0;
+    int m_LastRotationIndex = 0;
+    int m_LastScaleIndex = 0;
+
 	glm::mat4 m_LocalTransform;
 	std::string m_Name;
 	int m_ID;
