@@ -1,7 +1,8 @@
 #include "engine/core/mouse_manager.h"
 
-MouseManager::MouseManager()
-    : m_LastX(400.0), m_LastY(300.0),
+MouseManager::MouseManager(GLFWwindow *window)
+    : m_Window(window),
+      m_LastX(400.0), m_LastY(300.0),
       m_XOffset(0.0f), m_YOffset(0.0f), m_ScrollY(0.0f),
       m_FirstMouse(true),
       m_LeftButtonPressed(false)
@@ -29,8 +30,10 @@ void MouseManager::UpdateScroll(double xoffset, double yoffset)
     m_ScrollY = static_cast<float>(yoffset);
 }
 
-void MouseManager::UpdateButton(int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+void MouseManager::UpdateButton(int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+    {
         if (action == GLFW_PRESS)
             m_LeftButtonPressed = true;
         else if (action == GLFW_RELEASE)
@@ -43,6 +46,35 @@ void MouseManager::EndFrame()
     m_XOffset = 0.0f;
     m_YOffset = 0.0f;
     m_ScrollY = 0.0f;
+}
+
+void MouseManager::SetCursorMode(CursorMode mode) {
+    if (!m_Window) return;
+
+    switch (mode) {
+        case CursorMode::Normal:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            break;
+        case CursorMode::Hidden:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            break;
+        case CursorMode::Locked:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            break;
+        case CursorMode::LockedCenter:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            break;
+    }
+
+    m_Mode = mode;
+
+    if (mode == CursorMode::Locked) {
+        m_FirstMouse = true;
+    }
+}
+
+CursorMode MouseManager::GetCursorMode() const {
+    return m_Mode;
 }
 
 float MouseManager::GetXOffset() const

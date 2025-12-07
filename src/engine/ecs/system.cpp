@@ -283,6 +283,8 @@ void UIRenderSystem::Render(Scene& scene, float screenWidth, float screenHeight)
 
 void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
 {
+    if (mouse.GetCursorMode() == CursorMode::Hidden) return;
+    
     float mx = mouse.GetLastX();
     float my = mouse.GetLastY();
     bool isMouseDown = mouse.IsLeftButtonPressed();

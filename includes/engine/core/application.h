@@ -4,42 +4,81 @@
 #include <GLFW/glfw3.h>
 #include <memory>
 #include <vector>
+#include <functional>
 
-#include <engine/graphic/shader.h>
-#include <engine/graphic/camera.h>
+#include <engine/core/state_machine.h>
 #include <engine/ecs/component.h>
 #include <engine/ecs/system.h>
-#include <engine/physic/physic_world.h> 
+#include <engine/physic/physic_world.h>
 #include <engine/core/resource_manager.h>
-#include <engine/core/scene_manager.h> 
+#include <engine/core/scene_manager.h>
 
-class Application {
+struct AppConfig
+{
+    std::string title = "Game Engine";
+    int width = 800;
+    int height = 600;
+    bool vsync = false;
+};
+
+class Application
+{
 public:
-    Application();
+    Application(const AppConfig &config);
     ~Application();
 
     bool Init();
     void Run();
+
+    template <typename T, typename... Args>
+    void PushState(Args &&...args)
+    {
+        m_StateMachine.PushState(std::make_unique<T>(std::forward<Args>(args)...));
+    }
+
+    Scene &GetScene() { return scene; }
+    PhysicsWorld &GetPhysicsWorld() { return *physicsWorld; }
+
+    ResourceManager &GetResourceManager() { return resourceManager; }
+    SceneManager &GetSceneManager() { return *sceneManager; }
+    KeyboardManager &GetKeyboard() const { return *keyboardManager; }
+    MouseManager &GetMouse() const { return *mouseManager; }
+
+    GLFWwindow *GetWindow() const { return window; }
+    int GetWidth() const { return m_Config.width; }
+    int GetHeight() const { return m_Config.height; }
+
+    RenderSystem &GetRenderSystem() { return renderSystem; }
+    UIRenderSystem &GetUIRenderSystem() { return uiRenderSystem; }
+    CameraSystem &GetCameraSystem() { return cameraSystem; }
+    CameraControlSystem &GetCameraControlSystem() { return cameraControlSystem; }
+    UIInteractSystem &GetUIInteractSystem() { return uiInteractSystem; }
+    PhysicsSystem &GetPhysicsSystem() { return physicsSystem; }
+    AnimationSystem &GetAnimationSystem() { return animationSystem; }
 
     void ProcessInput();
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
+    // void OnKey(int key, int scancode, int action, int mods);
 
 private:
-    const unsigned int SCR_WIDTH = 800;
-    const unsigned int SCR_HEIGHT = 600;
-    GLFWwindow* window = nullptr;
+    AppConfig m_Config;
+    GLFWwindow *window = nullptr;
+    StateMachine m_StateMachine;
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
-    KeyboardManager keyboardManager;
-    MouseManager mouseManager;
-
     std::unique_ptr<PhysicsWorld> physicsWorld;
     Scene scene;
+
+    std::unique_ptr<KeyboardManager> keyboardManager;
+    std::unique_ptr<MouseManager> mouseManager;
+    std::unique_ptr<SceneManager> sceneManager;
+    ResourceManager resourceManager;
+
     PhysicsSystem physicsSystem;
     RenderSystem renderSystem;
     AnimationSystem animationSystem;
@@ -47,7 +86,4 @@ private:
     CameraControlSystem cameraControlSystem;
     UIInteractSystem uiInteractSystem;
     UIRenderSystem uiRenderSystem;
-
-    ResourceManager resourceManager;
-    std::unique_ptr<SceneManager> sceneManager;
 };

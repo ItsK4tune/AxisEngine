@@ -1,6 +1,6 @@
 #include <engine/core/keyboard_manager.h>
 
-void KeyboardManager::Init(GLFWwindow *window)
+KeyboardManager::KeyboardManager(GLFWwindow *window)
 {
     m_Window = window;
 }
