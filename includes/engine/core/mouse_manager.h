@@ -3,15 +3,26 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+enum class CursorMode
+{
+    Normal,
+    Hidden,
+    Locked,
+    LockedCenter
+};
+
 class MouseManager
 {
 public:
-    MouseManager();
+    MouseManager(GLFWwindow *window);
 
     void UpdatePosition(double xpos, double ypos);
     void UpdateScroll(double xoffset, double yoffset);
     void UpdateButton(int button, int action, int mods);
     void EndFrame();
+
+    void SetCursorMode(CursorMode mode);
+    CursorMode GetCursorMode() const;
 
     float GetXOffset() const;
     float GetYOffset() const;
@@ -24,6 +35,8 @@ public:
     void SetLastPosition(double x, double y);
 
 private:
+    GLFWwindow *m_Window = nullptr;
+
     double m_LastX;
     double m_LastY;
 
@@ -32,5 +45,7 @@ private:
     float m_ScrollY;
 
     bool m_FirstMouse;
-    bool m_LeftButtonPressed; 
+    bool m_LeftButtonPressed;
+
+    CursorMode m_Mode;
 };

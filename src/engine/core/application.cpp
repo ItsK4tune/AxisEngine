@@ -2,8 +2,6 @@
 
 #include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
-#include <engine/graphic/model.h>
-
 #include <iostream>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -34,7 +32,17 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
         app->OnScroll(xoffset, yoffset);
 }
 
-Application::Application() {}
+// void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+// {
+//     auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
+//     if (app)
+//         app->OnKey(key, scancode, action, mods);
+// }
+
+Application::Application(const AppConfig& config) 
+    : m_Config(config), m_StateMachine(this) 
+{
+}
 
 Application::~Application()
 {
@@ -43,15 +51,19 @@ Application::~Application()
 
 bool Application::Init()
 {
-    glfwInit();
+    if (!glfwInit()) {
+        std::cerr << "[Application] Failed to initialize GLFW" << std::endl;
+        return false;
+    }
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Game Engine", NULL, NULL);
+    window = glfwCreateWindow(m_Config.width, m_Config.height, m_Config.title.c_str(), NULL, NULL);
     if (window == NULL)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        std::cout << "[Application] Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return false;
     }
@@ -60,34 +72,30 @@ bool Application::Init()
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    // glfwSetKeyCallback(window, key_callback);
+
+    if (m_Config.vsync) {
+        glfwSwapInterval(1);
+    } else {
+        glfwSwapInterval(0);
+    }
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "Failed to initialize GLAD" << std::endl;
+        std::cout << "[Application] Failed to initialize GLAD" << std::endl;
         return false;
     }
     glEnable(GL_DEPTH_TEST);
-
-    keyboardManager.Init(window);
-    mouseManager.SetLastPosition(SCR_WIDTH / 2.0, SCR_HEIGHT / 2.0);
-
+    
     physicsWorld = std::make_unique<PhysicsWorld>();
-
     sceneManager = std::make_unique<SceneManager>(scene, resourceManager, *physicsWorld);
-    resourceManager.CreateUIModel("default_rect", UIType::Color);
-    sceneManager->LoadScene("scenes/placeholder.scene");
+    keyboardManager = std::make_unique<KeyboardManager>(window);
+    mouseManager = std::make_unique<MouseManager>(window);
+    mouseManager->SetLastPosition(m_Config.width / 2.0, m_Config.height / 2.0);
 
-    auto view = scene.registry.view<UITransformComponent>();
-    for (auto e : view)
-    {
-        // Gán đại event cho tất cả UI (Demo)
-        auto &interact = scene.registry.emplace<UIInteractiveComponent>(e);
-        interact.onClick = [](entt::entity)
-        { std::cout << "Clicked from Scene File!\n"; };
-    }
+    resourceManager.CreateUIModel("default_rect", UIType::Color);
 
     return true;
 }
@@ -100,25 +108,18 @@ void Application::Run()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        std::cout << "Current fps: " << (int)(1 / deltaTime) << std::endl;
+
         glfwPollEvents();
 
         ProcessInput();
-
-        cameraControlSystem.Update(scene, deltaTime, keyboardManager, mouseManager);
-        uiInteractSystem.Update(scene, deltaTime, mouseManager);
-        mouseManager.EndFrame();
-
-        physicsWorld->Update(deltaTime);
-        physicsSystem.Update(scene);
-        animationSystem.Update(scene, deltaTime);
-
-        cameraSystem.Update(scene, (float)SCR_WIDTH, (float)SCR_HEIGHT);
+        m_StateMachine.Update(deltaTime);
+        mouseManager->EndFrame();
 
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        renderSystem.Render(scene);
-        uiRenderSystem.Render(scene, (float)SCR_WIDTH, (float)SCR_HEIGHT);
+        m_StateMachine.Render();
 
         glfwSwapBuffers(window);
     }
@@ -126,7 +127,7 @@ void Application::Run()
 
 void Application::ProcessInput()
 {
-    if (keyboardManager.GetKey(GLFW_KEY_ESCAPE))
+    if (keyboardManager->GetKey(GLFW_KEY_ESCAPE))
         glfwSetWindowShouldClose(window, true);
 }
 
@@ -137,15 +138,15 @@ void Application::OnResize(int width, int height)
 
 void Application::OnMouseMove(double xpos, double ypos)
 {
-    mouseManager.UpdatePosition(xpos, ypos);
+    mouseManager->UpdatePosition(xpos, ypos);
 }
 
 void Application::OnMouseButton(int button, int action, int mods)
 {
-    mouseManager.UpdateButton(button, action, mods);
+    mouseManager->UpdateButton(button, action, mods);
 }
 
 void Application::OnScroll(double xoffset, double yoffset)
 {
-    mouseManager.UpdateScroll(xoffset, yoffset);
+    mouseManager->UpdateScroll(xoffset, yoffset);
 }

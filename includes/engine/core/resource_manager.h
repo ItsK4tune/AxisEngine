@@ -13,6 +13,8 @@
 class ResourceManager
 {
 public:
+    ~ResourceManager();
+
     void LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath);
     void LoadModel(const std::string &name, const std::string &path);
     void LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName);
@@ -22,6 +24,8 @@ public:
     Model *GetModel(const std::string &name);
     Animation *GetAnimation(const std::string &name);
     UIModel *GetUIModel(const std::string &name);
+
+    void ClearResource();
 
 private:
     std::map<std::string, std::unique_ptr<Shader>> shaders;

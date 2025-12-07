@@ -8,12 +8,12 @@
 class KeyboardManager
 {
 public:
-    void Init(GLFWwindow *window);
+    KeyboardManager(GLFWwindow *Window);
 
     bool GetKey(int key) const;
     bool GetKeyUp(int key) const;
     bool IsKeyDown(int key);
-    
+
 private:
     GLFWwindow *m_Window = nullptr;
     std::unordered_map<int, bool> m_PreviousState;
