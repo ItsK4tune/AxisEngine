@@ -17,8 +17,11 @@ Animation::Animation(const std::string &animationPath, Model *model)
     m_TicksPerSecond = animation->mTicksPerSecond;
     aiMatrix4x4 globalTransformation = scene->mRootNode->mTransformation;
     globalTransformation = globalTransformation.Inverse();
+
     ReadHierarchyData(m_RootNode, scene->mRootNode);
     ReadMissingBones(animation, *model);
+
+    BindNodesToBones(m_RootNode);
 }
 
 Animation::~Animation()
@@ -78,5 +81,17 @@ void Animation::ReadHierarchyData(AssimpNodeData &dest, const aiNode *src)
         AssimpNodeData newData;
         ReadHierarchyData(newData, src->mChildren[i]);
         dest.children.push_back(newData);
+    }
+}
+
+void Animation::BindNodesToBones(AssimpNodeData& node)
+{
+    auto iter = m_BoneMap.find(node.name);
+    if (iter != m_BoneMap.end()) {
+        node.cachedBone = iter->second;
+    }
+
+    for (auto& child : node.children) {
+        BindNodesToBones(child);
     }
 }

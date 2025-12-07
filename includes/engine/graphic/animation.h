@@ -16,6 +16,8 @@ struct AssimpNodeData
 	std::string name;
 	int childrenCount;
 	std::vector<AssimpNodeData> children;
+
+	Bone *cachedBone = nullptr;
 };
 
 class Animation
@@ -29,11 +31,8 @@ public:
 
 	inline float GetTicksPerSecond() { return m_TicksPerSecond; }
 	inline float GetDuration() { return m_Duration; }
-	inline const AssimpNodeData &GetRootNode() { return m_RootNode; }
-	inline const std::unordered_map<std::string, BoneInfo> &GetBoneIDMap()
-	{
-		return m_BoneInfoMap;
-	}
+	inline AssimpNodeData &GetRootNode() { return m_RootNode; }
+	inline const std::unordered_map<std::string, BoneInfo> &GetBoneIDMap() { return m_BoneInfoMap; }
 
 private:
 	float m_Duration;
@@ -46,4 +45,6 @@ private:
 
 	void ReadMissingBones(const aiAnimation *animation, Model &model);
 	void ReadHierarchyData(AssimpNodeData &dest, const aiNode *src);
+
+	void BindNodesToBones(AssimpNodeData& node); 
 };
