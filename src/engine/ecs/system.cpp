@@ -1,5 +1,7 @@
 #include <engine/ecs/system.h>
 
+#include <execution>
+
 entt::entity Scene::createEntity()
 {
     return registry.create();
@@ -46,14 +48,15 @@ void AnimationSystem::Update(Scene &scene, float dt)
 {
     auto view = scene.registry.view<AnimationComponent>();
 
-    for (auto entity : view)
-    {
-        auto &anim = view.get<AnimationComponent>(entity);
+    std::vector<entt::entity> entities(view.begin(), view.end());
+
+    std::for_each(std::execution::par, entities.begin(), entities.end(), [&scene, dt](entt::entity entity)
+                  {
+        auto &anim = scene.registry.get<AnimationComponent>(entity);
         if (anim.animator)
         {
             anim.animator->UpdateAnimation(dt);
-        }
-    }
+        } });
 }
 
 void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
@@ -240,18 +243,17 @@ void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager &
         transform.position += cam.right * velocity;
 }
 
-void UIRenderSystem::Render(Scene& scene, float screenWidth, float screenHeight)
+void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
 {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    scene.registry.sort<UITransformComponent>([](const auto& lhs, const auto& rhs) {
-        return lhs.zIndex < rhs.zIndex;
-    });
+    scene.registry.sort<UITransformComponent>([](const auto &lhs, const auto &rhs)
+                                              { return lhs.zIndex < rhs.zIndex; });
 
     glm::mat4 projection = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -1.0f, 1.0f);
-    Shader* currentShader = nullptr;
+    Shader *currentShader = nullptr;
 
     auto view = scene.registry.view<UITransformComponent, UIRendererComponent>();
     view.use<UITransformComponent>();
@@ -260,18 +262,20 @@ void UIRenderSystem::Render(Scene& scene, float screenWidth, float screenHeight)
     {
         auto [transform, renderer] = view.get<UITransformComponent, UIRendererComponent>(entity);
 
-        if (!renderer.model || !renderer.shader) continue;
+        if (!renderer.model || !renderer.shader)
+            continue;
 
-        if (currentShader != renderer.shader) {
+        if (currentShader != renderer.shader)
+        {
             currentShader = renderer.shader;
             currentShader->use();
             currentShader->setMat4("projection", projection);
-             currentShader->setInt("image", 0);
+            currentShader->setInt("image", 0);
         }
 
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(transform.position, 0.0f));
-        model = glm::scale(model, glm::vec3(transform.size, 1.0f)); 
+        model = glm::scale(model, glm::vec3(transform.size, 1.0f));
         currentShader->setMat4("model", model);
 
         renderer.model->Draw(*currentShader, renderer.color);
@@ -283,8 +287,9 @@ void UIRenderSystem::Render(Scene& scene, float screenWidth, float screenHeight)
 
 void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
 {
-    if (mouse.GetCursorMode() == CursorMode::Hidden) return;
-    
+    if (mouse.GetCursorMode() == CursorMode::Hidden)
+        return;
+
     float mx = mouse.GetLastX();
     float my = mouse.GetLastY();
     bool isMouseDown = mouse.IsLeftButtonPressed();
