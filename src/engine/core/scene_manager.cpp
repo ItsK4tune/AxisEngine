@@ -56,9 +56,12 @@ void SceneManager::LoadScene(const std::string &filePath)
         {
             currentEntity = m_Scene.createEntity();
             std::string entityName;
-            if (ss >> entityName) {
+            if (ss >> entityName)
+            {
                 m_Scene.registry.emplace<InfoComponent>(currentEntity, entityName);
-            } else {
+            }
+            else
+            {
                 m_Scene.registry.emplace<InfoComponent>(currentEntity, "Unnamed");
             }
         }
@@ -84,8 +87,25 @@ void SceneManager::LoadScene(const std::string &filePath)
         {
             std::string animName;
             ss >> animName;
+
+            float speed = 1.0f;
+            float startTime = 0.0f;
+            float rate = 30.0f;
+
+            if (ss >> speed)
+            {
+                if (ss >> startTime)
+                {
+                    ss >> rate;
+                }
+            }
+
             auto &a = m_Scene.registry.emplace<AnimationComponent>(currentEntity);
+
             a.animator = new Animator(m_Resources.GetAnimation(animName));
+            a.animator->SetSpeed(speed);
+            a.animator->SetTime(startTime);
+            a.animator->SetUpdateRate(rate);
         }
         else if (command == "CAMERA")
         {

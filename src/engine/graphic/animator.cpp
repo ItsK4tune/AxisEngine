@@ -10,20 +10,43 @@ Animator::Animator(Animation *animation)
 {
     m_CurrentTime = 0.0;
     m_CurrentAnimation = animation;
-
-    m_FinalBoneMatrices.reserve(100);
-
-    for (int i = 0; i < 100; i++)
-        m_FinalBoneMatrices.push_back(glm::mat4(1.0f));
+    m_FinalBoneMatrices.resize(100, glm::mat4(1.0f));
+    m_Speed = 1.0f;
+    m_UpdateRate = 0.0f;
+    m_TimeSinceLastUpdate = 0.0f;
 }
 
 void Animator::UpdateAnimation(float dt)
 {
-    m_DeltaTime = dt;
     if (m_CurrentAnimation)
     {
-        m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * dt;
-        m_CurrentTime = fmod(m_CurrentTime, m_CurrentAnimation->GetDuration());
+        float ticksPerSecond = m_CurrentAnimation->GetTicksPerSecond();
+        float duration = m_CurrentAnimation->GetDuration();
+
+        m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * dt * m_Speed;
+
+        if (m_CurrentTime >= duration)
+        {
+            m_CurrentTime = fmod(m_CurrentTime, duration);
+        }
+        else if (m_CurrentTime < 0.0f)
+        {
+            m_CurrentTime = duration + fmod(m_CurrentTime, duration);
+        }
+
+        if (m_UpdateRate > 0.0f) 
+        {
+            m_TimeSinceLastUpdate += dt;
+            float timePerFrame = 1.0f / m_UpdateRate;
+
+            if (m_TimeSinceLastUpdate < timePerFrame) {
+                return; 
+            }
+
+            m_TimeSinceLastUpdate = fmod(m_TimeSinceLastUpdate, timePerFrame);
+        }
+
+
         CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f));
     }
 }
