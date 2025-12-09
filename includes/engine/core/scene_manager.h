@@ -14,7 +14,9 @@ public:
     SceneManager(Scene& scene, ResourceManager& res, PhysicsWorld& phys);
 
     void LoadScene(const std::string& filePath);
-    void ClearScene();
+    void UnloadScene(const std::string& filePath);
+    
+    void ClearAllScenes();
 
 private:
     Scene& m_Scene;
@@ -22,4 +24,8 @@ private:
     PhysicsWorld& m_Physics;
 
     entt::entity currentEntity = entt::null;
+
+    std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
+    
+    void DestroyEntity(entt::entity entity);
 };

@@ -1,154 +1,119 @@
-# --- RESOURCES (Load trước) ---
-# LOAD_SHADER <name> <vs_path> <fs_path>
-LOAD_SHADER animationShader resources/shaders/anim_model.vs resources/shaders/anim_model.fs
-LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
-LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
-
-# LOAD_MODEL <name> <path>
-LOAD_MODEL playerModel resources/objects/player/Dying.fbx
-
-# LOAD_ANIMATION <name> <model_name> <path>
-LOAD_ANIMATION danceAnim playerModel resources/objects/player/Dying.fbx
-
-# --- ENTITIES ---
-
-# 1. Player
-NEW_ENTITY Player1
+NEW_ENTITY Player21
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player2
+NEW_ENTITY Player22
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player3
+NEW_ENTITY Player23
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player4
+NEW_ENTITY Player24
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player5
+NEW_ENTITY Player25
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player6
+NEW_ENTITY Player26
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player7
+NEW_ENTITY Player27
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player8
+NEW_ENTITY Player28
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player9
+NEW_ENTITY Player29
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player10
+NEW_ENTITY Player30
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player11
+NEW_ENTITY Player31
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player12
+NEW_ENTITY Player32
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player13
+NEW_ENTITY Player33
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player14
+NEW_ENTITY Player34
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player15
+NEW_ENTITY Player35
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player16
+NEW_ENTITY Player36
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player17
+NEW_ENTITY Player37
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player18
+NEW_ENTITY Player38
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player19
+NEW_ENTITY Player39
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-NEW_ENTITY Player20
+NEW_ENTITY Player40
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER playerModel animationShader
 ANIMATOR danceAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-# 2. Camera
-NEW_ENTITY MainCamera
-TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
-CAMERA 1 45.0 -90.0 0.0 
-
-# 3. Floor
-NEW_ENTITY Floor
-TRANSFORM 0.0 -2.0 0.0 0.0 0.0 0.0 1.0 1.0 1.0
-RIGIDBODY BOX 0.0 50.0 1.0 50.0
-
-# 4. Sun Light
-NEW_ENTITY Sun
-LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8
-
-# 5. UI Button
-NEW_ENTITY Button
-UI_TRANSFORM 100 100 200 50 10
-UI_RENDERER 1.0 0.0 0.0 1.0 uiShader
-UI_ANIMATION 0.0 1.0 0.0 1.0

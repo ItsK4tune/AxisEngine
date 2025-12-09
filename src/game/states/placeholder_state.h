@@ -53,6 +53,16 @@ public:
             }
         }
 
+        if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_I))
+        {
+            m_App->GetSceneManager().LoadScene("scenes/placeholder2.scene");
+        }
+
+        if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_U))
+        {
+            m_App->GetSceneManager().UnloadScene("scenes/placeholder2.scene");
+        }
+
         m_App->GetCameraControlSystem().Update(
             m_App->GetScene(),
             dt,
@@ -90,7 +100,7 @@ public:
 
     void OnExit() override
     {
-        m_App->GetSceneManager().ClearScene();
+        m_App->GetSceneManager().UnloadScene("scenes/placeholder.scene");
     }
 
 private:
