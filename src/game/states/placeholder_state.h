@@ -11,8 +11,18 @@ public:
     {
         m_App->GetSceneManager().LoadScene("scenes/placeholder.scene");
 
-        auto view = m_App->GetScene().registry.view<UITransformComponent>();
-        for (auto e : view)
+        auto view = m_App->GetScene().registry.view<InfoComponent>();
+        for (auto entity : view)
+        {
+            if (view.get<InfoComponent>(entity).name == "FPSLabel")
+            {
+                fpsEntity = entity;
+                break;
+            }
+        }
+
+        auto anotherview = m_App->GetScene().registry.view<UITransformComponent>();
+        for (auto e : anotherview)
         {
             auto &interact = m_App->GetScene().registry.emplace_or_replace<UIInteractiveComponent>(e);
             interact.onClick = [](entt::entity)
@@ -86,6 +96,27 @@ public:
         m_App->GetPhysicsSystem().Update(m_App->GetScene());
 
         m_App->GetAnimationSystem().Update(m_App->GetScene(), dt);
+
+        static float timeAccumulator = 0.0f;
+        static int frameCount = 0;
+
+        timeAccumulator += dt;
+        frameCount++;
+
+        if (timeAccumulator >= 0.5f)
+        {
+            int fps = static_cast<int>(frameCount / timeAccumulator);
+            std::string fpsText = "FPS: " + std::to_string(fps);
+
+            if (fpsEntity != entt::null && m_App->GetScene().registry.valid(fpsEntity))
+            {
+                auto &txt = m_App->GetScene().registry.get<UITextComponent>(fpsEntity);
+                txt.text = "FPS: " + std::to_string(fps);
+            }
+
+            timeAccumulator = 0.0f;
+            frameCount = 0;
+        }
     }
 
     void OnRender() override
@@ -105,6 +136,8 @@ public:
 
 private:
     bool isPaused = false;
+
+    entt::entity fpsEntity = entt::null;
 
     CursorMode NextCursorMode(CursorMode mode)
     {

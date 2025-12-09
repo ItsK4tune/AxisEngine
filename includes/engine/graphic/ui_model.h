@@ -20,6 +20,8 @@ public:
     void SetTexture(unsigned int textureID);
 
     void Draw(Shader& shader, const glm::vec4& color);
+    void DrawDynamic(Shader& shader, unsigned int textureID, const glm::vec3& color, const std::vector<float>& vertices);
+
     UIType GetType() const { return m_Type; }
 
 private:
@@ -28,4 +30,5 @@ private:
     unsigned int m_TextureID = 0;
 
     void InitQuad();
+    void InitDynamic();
 };

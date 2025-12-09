@@ -46,6 +46,7 @@ if (WIN32)
         opengl32 
         assimp
         ${BULLET_LIBS}
+        freetype
     )
 endif()
 
@@ -63,6 +64,7 @@ if (UNIX)
         Xinerama 
         Xcursor
         ${BULLET_LIBS}
+        freetype
     )
 endif()
 

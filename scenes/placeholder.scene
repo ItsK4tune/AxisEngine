@@ -3,12 +3,16 @@
 LOAD_SHADER animationShader resources/shaders/anim_model.vs resources/shaders/anim_model.fs
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
+LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
 
 # LOAD_MODEL <name> <path>
 LOAD_MODEL playerModel resources/objects/player/Dying.fbx
 
 # LOAD_ANIMATION <name> <model_name> <path>
 LOAD_ANIMATION danceAnim playerModel resources/objects/player/Dying.fbx
+
+# LOAD_FONT <name> <path> <size>
+LOAD_FONT arialFont resources/fonts/time.ttf 48
 
 # --- ENTITIES ---
 
@@ -152,3 +156,7 @@ NEW_ENTITY Button
 UI_TRANSFORM 100 100 200 50 10
 UI_RENDERER 1.0 0.0 0.0 1.0 uiShader
 UI_ANIMATION 0.0 1.0 0.0 1.0
+
+NEW_ENTITY FPSLabel
+UI_TRANSFORM 1000 50 0 0 20
+UI_TEXT "FPS: 60" arialFont 0.0 0.0 0.0 1.0
