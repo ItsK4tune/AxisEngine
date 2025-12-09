@@ -13,6 +13,7 @@ find_package(ASSIMP REQUIRED)
 find_package(GLFW3 REQUIRED)
 find_package(GLM REQUIRED)
 find_package(Bullet REQUIRED)
+find_package(Freetype REQUIRED)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}/includes
