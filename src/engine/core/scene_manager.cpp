@@ -6,14 +6,14 @@
 SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys)
     : m_Scene(scene), m_Resources(res), m_Physics(phys) {}
 
-void SceneManager::ClearScene()
-{
-    m_Scene.registry.clear();
-    currentEntity = entt::null;
-}
-
 void SceneManager::LoadScene(const std::string &filePath)
 {
+    if (m_LoadedScenes.find(filePath) != m_LoadedScenes.end())
+    {
+        std::cout << "Scene already loaded: " << filePath << std::endl;
+        return;
+    }
+
     std::string fullPath = FileSystem::getPath(filePath);
     std::ifstream file(fullPath);
 
@@ -22,6 +22,8 @@ void SceneManager::LoadScene(const std::string &filePath)
         std::cerr << "Could not open scene file: " << fullPath << std::endl;
         return;
     }
+
+    std::vector<entt::entity> &sceneEntities = m_LoadedScenes[filePath];
 
     std::string line;
     while (std::getline(file, line))
@@ -55,6 +57,7 @@ void SceneManager::LoadScene(const std::string &filePath)
         else if (command == "NEW_ENTITY")
         {
             currentEntity = m_Scene.createEntity();
+            sceneEntities.push_back(currentEntity);
             std::string entityName;
             if (ss >> entityName)
             {
@@ -201,5 +204,65 @@ void SceneManager::LoadScene(const std::string &filePath)
             auto &ui = m_Scene.registry.get<UIRendererComponent>(currentEntity);
             anim.normalColor = ui.color;
         }
+    }
+}
+
+void SceneManager::UnloadScene(const std::string &filePath)
+{
+    auto it = m_LoadedScenes.find(filePath);
+    if (it == m_LoadedScenes.end())
+    {
+        std::cout << "Scene not found or not loaded: " << filePath << std::endl;
+        return;
+    }
+
+    for (auto entity : it->second)
+    {
+        DestroyEntity(entity);
+    }
+
+    m_LoadedScenes.erase(it);
+}
+
+void SceneManager::ClearAllScenes()
+{
+    m_Scene.registry.clear();
+
+    m_Physics.Clear();
+
+    m_LoadedScenes.clear();
+    currentEntity = entt::null;
+}
+
+void SceneManager::DestroyEntity(entt::entity entity)
+{
+    if (m_Scene.registry.all_of<RigidBodyComponent>(entity))
+    {
+        auto &rb = m_Scene.registry.get<RigidBodyComponent>(entity);
+        if (rb.body)
+        {
+            m_Physics.GetWorld()->removeRigidBody(rb.body);
+
+            if (rb.body->getMotionState())
+                delete rb.body->getMotionState();
+
+            delete rb.body;
+            rb.body = nullptr;
+        }
+    }
+
+    if (m_Scene.registry.all_of<AnimationComponent>(entity))
+    {
+        auto &anim = m_Scene.registry.get<AnimationComponent>(entity);
+        if (anim.animator)
+        {
+            delete anim.animator;
+            anim.animator = nullptr;
+        }
+    }
+
+    if (m_Scene.registry.valid(entity))
+    {
+        m_Scene.registry.destroy(entity);
     }
 }
