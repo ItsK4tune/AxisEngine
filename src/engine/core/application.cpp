@@ -108,8 +108,6 @@ void Application::Run()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        std::cout << "Current fps: " << (int)(1 / deltaTime) << std::endl;
-
         glfwPollEvents();
 
         ProcessInput();

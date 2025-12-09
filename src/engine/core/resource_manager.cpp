@@ -25,6 +25,13 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
     }
 }
 
+void ResourceManager::LoadFont(const std::string& name, const std::string& path, unsigned int fontSize) {
+    auto font = std::make_unique<Font>();
+    if (font->Load(FileSystem::getPath(path), fontSize)) {
+        fonts[name] = std::move(font);
+    }
+}
+
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
     uiModels[name] = std::make_unique<UIModel>(type);
@@ -53,6 +60,11 @@ Animation *ResourceManager::GetAnimation(const std::string &name)
     return nullptr;
 }
 
+Font* ResourceManager::GetFont(const std::string& name) {
+    if (fonts.find(name) != fonts.end()) return fonts[name].get();
+    return nullptr;
+}
+
 UIModel *ResourceManager::GetUIModel(const std::string &name)
 {
     if (uiModels.find(name) != uiModels.end())
@@ -65,6 +77,7 @@ void ResourceManager::ClearResource()
     shaders.clear();
     models.clear();
     animations.clear();
+    fonts.clear();
     uiModels.clear();
 
     std::cout << "[ResourceManager] Cleared all resources.\n";

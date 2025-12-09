@@ -53,6 +53,13 @@ void SceneManager::LoadScene(const std::string &filePath)
             ss >> name >> modelName >> path;
             m_Resources.LoadAnimation(name, path, modelName);
         }
+        else if (command == "LOAD_FONT")
+        {
+            std::string name, path;
+            int size;
+            ss >> name >> path >> size;
+            m_Resources.LoadFont(name, path, size);
+        }
 
         else if (command == "NEW_ENTITY")
         {
@@ -193,6 +200,37 @@ void SceneManager::LoadScene(const std::string &filePath)
             if (!m_Resources.GetUIModel("default_rect"))
                 m_Resources.CreateUIModel("default_rect", UIType::Color);
             ui.model = m_Resources.GetUIModel("default_rect");
+        }
+        else if (command == "UI_TEXT")
+        {
+            std::string textContent;
+            std::string fontName;
+            float r, g, b, scale;
+
+            ss >> std::ws;
+            if (ss.peek() == '"')
+            {
+                char quote;
+                ss >> quote;
+                std::getline(ss, textContent, '"');
+            }
+            else
+            {
+                ss >> textContent;
+            }
+
+            ss >> fontName >> r >> g >> b >> scale;
+
+            auto &txt = m_Scene.registry.emplace<UITextComponent>(currentEntity);
+            txt.text = textContent;
+            txt.font = m_Resources.GetFont(fontName);
+            txt.color = glm::vec3(r, g, b);
+            txt.scale = scale;
+
+            if (!m_Resources.GetUIModel("default_text_rect"))
+                m_Resources.CreateUIModel("default_text_rect", UIType::Text);
+            txt.model = m_Resources.GetUIModel("default_text_rect");
+            txt.shader = m_Resources.GetShader("textShader");
         }
         else if (command == "UI_ANIMATION")
         {

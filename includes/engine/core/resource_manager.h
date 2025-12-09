@@ -9,6 +9,7 @@
 #include <engine/graphic/model.h>
 #include <engine/graphic/ui_model.h>
 #include <engine/graphic/animation.h>
+#include <engine/graphic/font.h>
 
 class ResourceManager
 {
@@ -18,11 +19,13 @@ public:
     void LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath);
     void LoadModel(const std::string &name, const std::string &path);
     void LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName);
+    void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
     void CreateUIModel(const std::string &name, UIType type);
-
+    
     Shader *GetShader(const std::string &name);
     Model *GetModel(const std::string &name);
     Animation *GetAnimation(const std::string &name);
+    Font* GetFont(const std::string& name);
     UIModel *GetUIModel(const std::string &name);
 
     void ClearResource();
@@ -31,5 +34,6 @@ private:
     std::map<std::string, std::unique_ptr<Shader>> shaders;
     std::map<std::string, std::unique_ptr<Model>> models;
     std::map<std::string, std::unique_ptr<Animation>> animations;
+    std::map<std::string, std::unique_ptr<Font>> fonts;
     std::map<std::string, std::unique_ptr<UIModel>> uiModels;
 };

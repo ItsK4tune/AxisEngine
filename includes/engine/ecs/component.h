@@ -8,6 +8,7 @@
 #include <engine/graphic/model.h>
 #include <engine/graphic/ui_model.h>
 #include <engine/graphic/animator.h>
+#include <engine/graphic/font.h>
 
 #include <functional>
 
@@ -96,6 +97,16 @@ struct UIAnimationComponent
 
     glm::vec4 hoverColor = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
     glm::vec4 normalColor = glm::vec4(1.0f);
+};
+
+struct UITextComponent {
+    UIModel* model = nullptr;
+    Shader* shader = nullptr;
+    std::string text;
+    Font* font = nullptr;
+    glm::vec3 color = glm::vec3(1.0f);
+    float scale = 1.0f;
+    // float padding/lineHeight... (nâng cao)
 };
 
 struct DirectionalLightComponent
