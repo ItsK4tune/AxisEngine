@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 
-#include <engine/ecs/system.h>
+#include <engine/core/scene.h>
 #include <engine/core/resource_manager.h>
 #include <engine/physic/physic_world.h>
 

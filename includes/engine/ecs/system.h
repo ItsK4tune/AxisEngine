@@ -2,21 +2,13 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <entt/entt.hpp>
 
+#include <engine/core/scene.h>
 #include <engine/ecs/component.h>
 #include <engine/utils/bullet_glm_helpers.h>
 #include <engine/graphic/shader.h>
 #include <engine/core/keyboard_manager.h>
 #include <engine/core/mouse_manager.h>
-
-struct Scene
-{
-    entt::registry registry;
-
-    entt::entity createEntity();
-    entt::entity GetActiveCamera();
-};
 
 class PhysicsSystem
 {
@@ -60,4 +52,9 @@ public:
 class UIRenderSystem {
 public:
     void Render(Scene& scene, float screenWidth, float screenHeight);
+};
+
+class ScriptableSystem {
+public:
+    void Update(Scene& scene, float dt);
 };
