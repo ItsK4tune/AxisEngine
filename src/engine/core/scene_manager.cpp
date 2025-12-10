@@ -1,5 +1,4 @@
 #include <engine/core/scene_manager.h>
-
 #include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
 
@@ -10,7 +9,7 @@ void SceneManager::LoadScene(const std::string &filePath)
 {
     if (m_LoadedScenes.find(filePath) != m_LoadedScenes.end())
     {
-        std::cout << "Scene already loaded: " << filePath << std::endl;
+        std::cout << "[SceneManager] Scene already loaded: " << filePath << std::endl;
         return;
     }
 
@@ -19,7 +18,7 @@ void SceneManager::LoadScene(const std::string &filePath)
 
     if (!file.is_open())
     {
-        std::cerr << "Could not open scene file: " << fullPath << std::endl;
+        std::cerr << "[SceneManager] Could not open scene file: " << fullPath << std::endl;
         return;
     }
 
@@ -250,7 +249,7 @@ void SceneManager::UnloadScene(const std::string &filePath)
     auto it = m_LoadedScenes.find(filePath);
     if (it == m_LoadedScenes.end())
     {
-        std::cout << "Scene not found or not loaded: " << filePath << std::endl;
+        std::cout << "[SceneManager] Scene not found or not loaded: " << filePath << std::endl;
         return;
     }
 

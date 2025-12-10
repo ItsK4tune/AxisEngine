@@ -2,6 +2,8 @@
 
 #include <engine/core/scene.h>
 
+class Application;
+
 class Scriptable
 {
 public:
@@ -26,6 +28,7 @@ public:
 protected:
     entt::entity m_Entity;
     Scene* m_Scene = nullptr;
+    Application* m_App = nullptr;
     
     friend class ScriptableSystem;
 };

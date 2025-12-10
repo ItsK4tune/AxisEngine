@@ -50,8 +50,6 @@ public:
 
     RenderSystem &GetRenderSystem() { return renderSystem; }
     UIRenderSystem &GetUIRenderSystem() { return uiRenderSystem; }
-    CameraSystem &GetCameraSystem() { return cameraSystem; }
-    CameraControlSystem &GetCameraControlSystem() { return cameraControlSystem; }
     UIInteractSystem &GetUIInteractSystem() { return uiInteractSystem; }
     PhysicsSystem &GetPhysicsSystem() { return physicsSystem; }
     AnimationSystem &GetAnimationSystem() { return animationSystem; }
@@ -83,8 +81,6 @@ private:
     PhysicsSystem physicsSystem;
     RenderSystem renderSystem;
     AnimationSystem animationSystem;
-    CameraSystem cameraSystem;
-    CameraControlSystem cameraControlSystem;
     UIInteractSystem uiInteractSystem;
     UIRenderSystem uiRenderSystem;
     ScriptableSystem scriptSystem;
