@@ -28,8 +28,13 @@ void SoundManager::Play3D(ISoundSource* source, glm::vec3 pos, bool loop) {
 
 void SoundManager::UpdateListener(glm::vec3 position, glm::vec3 lookDir, glm::vec3 up) {
     if (m_Engine) {
-        // Vận tốc tạm để 0
         m_Engine->setListenerPosition(IrrKlangGLMHelpers::convert(position), IrrKlangGLMHelpers::convert(lookDir), vec3df(0,0,0), IrrKlangGLMHelpers::convert(up));
+    }
+}
+
+void SoundManager::Stop(ISoundSource* source) {
+    if (m_Engine && source) {
+        m_Engine->stopAllSoundsOfSoundSource(source);
     }
 }
 
