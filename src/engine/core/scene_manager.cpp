@@ -2,8 +2,8 @@
 #include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
 
-SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys)
-    : m_Scene(scene), m_Resources(res), m_Physics(phys) {}
+SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager& sound)
+    : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound) {}
 
 void SceneManager::LoadScene(const std::string &filePath)
 {
@@ -58,6 +58,12 @@ void SceneManager::LoadScene(const std::string &filePath)
             int size;
             ss >> name >> path >> size;
             m_Resources.LoadFont(name, path, size);
+        }
+        else if (command == "LOAD_SOUND")
+        {
+            std::string name, path;
+            ss >> name >> path;
+            m_Resources.LoadSound(name, path, m_SoundManager.GetEngine());
         }
 
         else if (command == "NEW_ENTITY")

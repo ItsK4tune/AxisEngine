@@ -32,6 +32,20 @@ void ResourceManager::LoadFont(const std::string& name, const std::string& path,
     }
 }
 
+void ResourceManager::LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine) {
+    if (!engine) return;
+
+    std::string fullPath = FileSystem::getPath(path);
+    
+    irrklang::ISoundSource* source = engine->addSoundSourceFromFile(fullPath.c_str());
+    
+    if (source) {
+        sounds[name] = source;
+    } else {
+        std::cerr << "[ResourceManager] Failed to load sound: " << fullPath << std::endl;
+    }
+}
+
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
     uiModels[name] = std::make_unique<UIModel>(type);
@@ -74,6 +88,12 @@ UIModel *ResourceManager::GetUIModel(const std::string &name)
     return nullptr;
 }
 
+irrklang::ISoundSource* ResourceManager::GetSound(const std::string& name) {
+    if (sounds.find(name) != sounds.end()) return sounds[name];
+    std::cerr << "[ResourceManager] Sound not found: " << name << std::endl;
+    return nullptr;
+}
+
 void ResourceManager::ClearResource()
 {
     shaders.clear();
@@ -81,6 +101,7 @@ void ResourceManager::ClearResource()
     animations.clear();
     fonts.clear();
     uiModels.clear();
+    sounds.clear();
 
     std::cout << "[ResourceManager] Cleared all resources.\n";
 }
