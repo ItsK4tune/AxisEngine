@@ -1,25 +1,7 @@
 #include <engine/ecs/system.h>
+#include <engine/core/scriptable.h>
 
 #include <execution>
-
-entt::entity Scene::createEntity()
-{
-    return registry.create();
-}
-
-entt::entity Scene::GetActiveCamera()
-{
-    auto view = registry.view<const CameraComponent>();
-    for (auto entity : view)
-    {
-        const auto &cam = view.get<const CameraComponent>(entity);
-        if (cam.isPrimary)
-        {
-            return entity;
-        }
-    }
-    return entt::null;
-}
 
 void PhysicsSystem::Update(Scene &scene)
 {
@@ -398,5 +380,25 @@ void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
 
             anim.currentScale += (anim.targetScale - anim.currentScale) * dt * anim.speed;
         }
+    }
+}
+
+void ScriptableSystem::Update(Scene& scene, float dt)
+{
+    auto view = scene.registry.view<ScriptComponent>();
+    
+    for(auto entity : view)
+    {
+        auto& nsc = view.get<ScriptComponent>(entity);
+
+        if (!nsc.instance)
+        {
+            nsc.instance = nsc.InstantiateScript();
+            nsc.instance->m_Entity = entity;
+            nsc.instance->m_Scene = &scene;
+            nsc.instance->OnCreate();
+        }
+
+        nsc.instance->OnUpdate(dt);
     }
 }

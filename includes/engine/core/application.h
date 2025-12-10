@@ -55,6 +55,7 @@ public:
     UIInteractSystem &GetUIInteractSystem() { return uiInteractSystem; }
     PhysicsSystem &GetPhysicsSystem() { return physicsSystem; }
     AnimationSystem &GetAnimationSystem() { return animationSystem; }
+    ScriptableSystem &GetScriptSystem() { return scriptSystem; }
 
     void ProcessInput();
     void OnResize(int width, int height);
@@ -86,4 +87,5 @@ private:
     CameraControlSystem cameraControlSystem;
     UIInteractSystem uiInteractSystem;
     UIRenderSystem uiRenderSystem;
+    ScriptableSystem scriptSystem;
 };

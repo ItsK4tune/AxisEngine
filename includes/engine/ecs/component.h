@@ -3,14 +3,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <entt/entt.hpp>
+#include <functional>
 
 #include <btBulletDynamicsCommon.h>
 #include <engine/graphic/model.h>
 #include <engine/graphic/ui_model.h>
 #include <engine/graphic/animator.h>
 #include <engine/graphic/font.h>
-
-#include <functional>
 
 struct InfoComponent {
     std::string name = "Entity";
@@ -143,4 +142,22 @@ struct SpotLightComponent
     float constant = 1.0f;
     float linear = 0.09f;
     float quadratic = 0.032f;
+};
+
+class Scriptable;
+
+struct ScriptComponent
+{
+    Scriptable* instance = nullptr;
+
+    Scriptable* (*InstantiateScript)();
+    void (*DestroyScript)(ScriptComponent*);
+
+    // Cách dùng: entity.emplace<ScriptComponent>().Bind<PlayerController>();
+    template<typename T>
+    void Bind()
+    {
+        InstantiateScript = []() { return static_cast<Scriptable*>(new T()); };
+        DestroyScript = [](ScriptComponent* nsc) { delete nsc->instance; nsc->instance = nullptr; };
+    }
 };

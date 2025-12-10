@@ -34,11 +34,7 @@ public:
         {
             auto [anim, info] = anotheranotherview.get<AnimationComponent, InfoComponent>(entity);
 
-            if (info.name == "Player1" && anim.animator)
-            {
-                anim.animator->AddAnimation("dyingAnim", m_App->GetResourceManager().GetAnimation("dyingAnim"));
-                std::cout << "Animations added to Player1" << std::endl;
-            }
+            anim.animator->AddAnimation("dyingAnim", m_App->GetResourceManager().GetAnimation("dyingAnim"));
         }
     }
 
@@ -92,10 +88,7 @@ public:
             {
                 auto [anim, info] = anotheranotherview.get<AnimationComponent, InfoComponent>(entity);
 
-                if (info.name == "Player1" && anim.animator)
-                {
-                    anim.animator->PlayAnimation("dyingAnim");
-                }
+                anim.animator->PlayAnimation("dyingAnim");
             }
         }
 
@@ -117,6 +110,8 @@ public:
 
         if (isPaused)
             return;
+
+        m_App->GetScriptSystem().Update(m_App->GetScene(), dt);
 
         m_App->GetPhysicsWorld().Update(dt);
         m_App->GetPhysicsSystem().Update(m_App->GetScene());
