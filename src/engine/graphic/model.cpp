@@ -110,13 +110,13 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     }
     aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
 
-    std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+    std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-    std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+    std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene);
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-    std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+    std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", scene);
     textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-    std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+    std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height", scene);
     textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
     ExtractBoneWeightForVertices(vertices, mesh, scene);
@@ -173,16 +173,50 @@ void Model::ExtractBoneWeightForVertices(std::vector<Vertex> &vertices, aiMesh *
     }
 }
 
-unsigned int Model::TextureFromFile(const char *path, const std::string &directory, bool gamma)
+unsigned int Model::TextureFromFile(const char *path, const std::string &directory, const aiScene* scene, bool gamma)
 {
     std::string filename = std::string(path);
-    filename = directory + '/' + filename;
-
     unsigned int textureID;
     glGenTextures(1, &textureID);
 
     int width, height, nrComponents;
-    unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
+    unsigned char *data = nullptr;
+
+    if (filename[0] == '*')
+    {
+        try {
+            int id = std::stoi(filename.substr(1));
+            if (id < scene->mNumTextures) {
+                aiTexture* texture = scene->mTextures[id];
+
+                if (texture->mHeight == 0) {
+                    data = stbi_load_from_memory(
+                        reinterpret_cast<unsigned char*>(texture->pcData),
+                        texture->mWidth,
+                        &width, &height, &nrComponents, 0
+                    );
+                }
+                else {
+                    // Nếu mHeight > 0 thì là raw ARGB data (ít gặp ở Mixamo FBX nhưng vẫn nên handle)
+                    data = reinterpret_cast<unsigned char*>(texture->pcData);
+                    width = texture->mWidth;
+                    height = texture->mHeight;
+                    nrComponents = 4;
+                    // Lưu ý: Raw data cần xử lý khác với stbi_load, nhưng Mixamo thường dùng nén.
+                    std::cout << "[Model] Raw texture format not fully implemented for: " << path << std::endl;
+                }
+            }
+        }
+        catch (...) {
+            std::cout << "[Model] Error parsing embedded texture ID: " << path << std::endl;
+        }
+    }
+    else 
+    {
+        filename = directory + '/' + filename;
+        data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
+    }
+
     if (data)
     {
         GLenum format;
@@ -213,7 +247,7 @@ unsigned int Model::TextureFromFile(const char *path, const std::string &directo
     return textureID;
 }
 
-std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)
+std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName, const aiScene* scene)
 {
     std::vector<Texture> textures;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
@@ -233,7 +267,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         if (!skip)
         {
             Texture texture;
-            texture.id = TextureFromFile(str.C_Str(), this->directory);
+            texture.id = TextureFromFile(str.C_Str(), this->directory, scene);
             texture.type = typeName;
             texture.path = str.C_Str();
             textures.push_back(texture);

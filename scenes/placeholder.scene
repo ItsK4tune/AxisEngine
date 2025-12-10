@@ -7,9 +7,11 @@ LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
 
 # LOAD_MODEL <name> <path>
 LOAD_MODEL playerModel resources/objects/player/Dying.fbx
+LOAD_MODEL humanModel resources/objects/player/SittingLaughing.fbx
 
 # LOAD_ANIMATION <name> <model_name> <path>
-LOAD_ANIMATION danceAnim playerModel resources/objects/player/Dying.fbx
+LOAD_ANIMATION dyingAnim playerModel resources/objects/player/Dying.fbx
+LOAD_ANIMATION laughAnim humanModel resources/objects/player/SittingLaughing.fbx
 
 # LOAD_FONT <name> <path> <size>
 LOAD_FONT arialFont resources/fonts/time.ttf 48
@@ -19,122 +21,122 @@ LOAD_FONT arialFont resources/fonts/time.ttf 48
 # 1. Player
 NEW_ENTITY Player1
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim 2.0
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player2
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player3
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player4
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player5
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player6
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player7
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player8
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player9
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player10
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player11
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player12
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player13
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player14
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player15
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player16
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player17
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player18
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player19
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 NEW_ENTITY Player20
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR danceAnim
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
 # 2. Camera
