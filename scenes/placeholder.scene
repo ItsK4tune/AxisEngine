@@ -4,6 +4,7 @@ LOAD_SHADER animationShader resources/shaders/anim_model.vs resources/shaders/an
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
+LOAD_SOUND cuayo resources/audios/cuayo1.mp3
 
 # LOAD_MODEL <name> <path>
 LOAD_MODEL playerModel resources/objects/player/Dying.fbx

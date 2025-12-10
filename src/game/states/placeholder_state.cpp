@@ -96,6 +96,13 @@ void PlaceHolderState::OnUpdate(float dt)
         }
     }
 
+    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_M))
+    {
+        auto cuayo = m_App->GetResourceManager().GetSound("cuayo");
+        m_App->GetSoundManager().Play2D(cuayo);
+        m_App->GetSoundManager().SetVolume(0.5f);
+    }
+
     m_App->GetUIInteractSystem().Update(
         m_App->GetScene(),
         dt,

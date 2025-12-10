@@ -14,6 +14,7 @@ find_package(GLFW3 REQUIRED)
 find_package(GLM REQUIRED)
 find_package(Bullet REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(IrrKlang REQUIRED)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}/includes
@@ -46,6 +47,7 @@ if (WIN32)
         assimp
         ${BULLET_LIBS}
         freetype
+        irrKlang
     )
 endif()
 
@@ -64,6 +66,7 @@ if (UNIX)
         Xcursor
         ${BULLET_LIBS}
         freetype
+        irrKlang
     )
 endif()
 

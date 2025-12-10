@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <iostream>
+#include <irrKlang/irrKlang.h>
 
 #include <engine/graphic/shader.h>
 #include <engine/graphic/model.h>
@@ -20,6 +21,7 @@ public:
     void LoadModel(const std::string &name, const std::string &path);
     void LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName);
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
+    void LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine);
     void CreateUIModel(const std::string &name, UIType type);
     
     Shader *GetShader(const std::string &name);
@@ -27,6 +29,7 @@ public:
     Animation *GetAnimation(const std::string &name);
     Font* GetFont(const std::string& name);
     UIModel *GetUIModel(const std::string &name);
+    irrklang::ISoundSource* GetSound(const std::string& name);
 
     void ClearResource();
 
@@ -36,4 +39,5 @@ private:
     std::map<std::string, std::unique_ptr<Animation>> animations;
     std::map<std::string, std::unique_ptr<Font>> fonts;
     std::map<std::string, std::unique_ptr<UIModel>> uiModels;
+    std::map<std::string, irrklang::ISoundSource*> sounds;
 };

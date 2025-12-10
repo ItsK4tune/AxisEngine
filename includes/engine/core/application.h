@@ -12,6 +12,7 @@
 #include <engine/physic/physic_world.h>
 #include <engine/core/resource_manager.h>
 #include <engine/core/scene_manager.h>
+#include <engine/core/sound_manager.h>
 
 struct AppConfig
 {
@@ -39,7 +40,7 @@ public:
     Scene &GetScene() { return scene; }
     PhysicsWorld &GetPhysicsWorld() { return *physicsWorld; }
 
-    ResourceManager &GetResourceManager() { return resourceManager; }
+    ResourceManager &GetResourceManager() { return *resourceManager; }
     SceneManager &GetSceneManager() { return *sceneManager; }
     KeyboardManager &GetKeyboard() const { return *keyboardManager; }
     MouseManager &GetMouse() const { return *mouseManager; }
@@ -54,6 +55,7 @@ public:
     PhysicsSystem &GetPhysicsSystem() { return physicsSystem; }
     AnimationSystem &GetAnimationSystem() { return animationSystem; }
     ScriptableSystem &GetScriptSystem() { return scriptSystem; }
+    SoundManager& GetSoundManager() { return *soundManager; }
 
     void ProcessInput();
     void OnResize(int width, int height);
@@ -75,8 +77,9 @@ private:
 
     std::unique_ptr<KeyboardManager> keyboardManager;
     std::unique_ptr<MouseManager> mouseManager;
+    std::unique_ptr<SoundManager> soundManager;
     std::unique_ptr<SceneManager> sceneManager;
-    ResourceManager resourceManager;
+    std::unique_ptr<ResourceManager> resourceManager;
 
     PhysicsSystem physicsSystem;
     RenderSystem renderSystem;

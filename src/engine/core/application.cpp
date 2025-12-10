@@ -90,12 +90,15 @@ bool Application::Init()
     glEnable(GL_DEPTH_TEST);
     
     physicsWorld = std::make_unique<PhysicsWorld>();
-    sceneManager = std::make_unique<SceneManager>(scene, resourceManager, *physicsWorld);
     keyboardManager = std::make_unique<KeyboardManager>(window);
     mouseManager = std::make_unique<MouseManager>(window);
+    resourceManager = std::make_unique<ResourceManager>();
+    soundManager = std::make_unique<SoundManager>();
+    sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager);
+    
     mouseManager->SetLastPosition(m_Config.width / 2.0, m_Config.height / 2.0);
-
-    resourceManager.CreateUIModel("default_rect", UIType::Color);
+    soundManager->Init();
+    resourceManager->CreateUIModel("default_rect", UIType::Color);
 
     return true;
 }
