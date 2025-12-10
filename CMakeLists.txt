@@ -19,7 +19,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/includes/bullet
     ${CMAKE_SOURCE_DIR}/includes/entt
-    ${CMAKE_SOURCE_DIR}/src/game/states
 )
 
 link_directories(${CMAKE_SOURCE_DIR}/lib)

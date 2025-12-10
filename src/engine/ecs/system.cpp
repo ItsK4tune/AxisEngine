@@ -159,72 +159,6 @@ void RenderSystem::Render(Scene &scene)
     }
 }
 
-void CameraSystem::Update(Scene &scene, float screenWidth, float screenHeight)
-{
-    auto view = scene.registry.view<CameraComponent, const TransformComponent>();
-
-    for (auto entity : view)
-    {
-        auto [cam, transform] = view.get<CameraComponent, const TransformComponent>(entity);
-
-        if (!cam.isPrimary)
-            continue;
-
-        cam.aspectRatio = screenWidth / screenHeight;
-        cam.projectionMatrix = glm::perspective(glm::radians(cam.fov), cam.aspectRatio, cam.nearPlane, cam.farPlane);
-
-        glm::vec3 front;
-        front.x = cos(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
-        front.y = sin(glm::radians(cam.pitch));
-        front.z = sin(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
-        cam.front = glm::normalize(front);
-
-        cam.right = glm::normalize(glm::cross(cam.front, cam.worldUp));
-        cam.up = glm::normalize(glm::cross(cam.right, cam.front));
-
-        cam.viewMatrix = glm::lookAt(transform.position, transform.position + cam.front, cam.up);
-    }
-}
-
-void CameraControlSystem::Update(Scene &scene, float dt, const KeyboardManager &keyboard, const MouseManager &mouse)
-{
-    entt::entity camEntity = scene.GetActiveCamera();
-    if (camEntity == entt::null)
-        return;
-
-    auto &cam = scene.registry.get<CameraComponent>(camEntity);
-    auto &transform = scene.registry.get<TransformComponent>(camEntity);
-
-    float sensitivity = 0.1f;
-    cam.yaw += mouse.GetXOffset() * sensitivity;
-    cam.pitch += mouse.GetYOffset() * sensitivity;
-
-    if (cam.pitch > 89.0f)
-        cam.pitch = 89.0f;
-    if (cam.pitch < -89.0f)
-        cam.pitch = -89.0f;
-
-    float scroll = mouse.GetScrollY();
-    if (scroll != 0.0f)
-    {
-        cam.fov -= scroll;
-        if (cam.fov < 1.0f)
-            cam.fov = 1.0f;
-        if (cam.fov > 45.0f)
-            cam.fov = 45.0f;
-    }
-
-    float velocity = 2.5f * dt;
-    if (keyboard.GetKey(GLFW_KEY_W))
-        transform.position += cam.front * velocity;
-    if (keyboard.GetKey(GLFW_KEY_S))
-        transform.position -= cam.front * velocity;
-    if (keyboard.GetKey(GLFW_KEY_A))
-        transform.position -= cam.right * velocity;
-    if (keyboard.GetKey(GLFW_KEY_D))
-        transform.position += cam.right * velocity;
-}
-
 void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
 {
     glDisable(GL_DEPTH_TEST);
@@ -383,7 +317,7 @@ void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
     }
 }
 
-void ScriptableSystem::Update(Scene& scene, float dt)
+void ScriptableSystem::Update(Scene& scene, float dt, Application* app)
 {
     auto view = scene.registry.view<ScriptComponent>();
     
@@ -396,6 +330,7 @@ void ScriptableSystem::Update(Scene& scene, float dt)
             nsc.instance = nsc.InstantiateScript();
             nsc.instance->m_Entity = entity;
             nsc.instance->m_Scene = &scene;
+            nsc.instance->m_App = app;
             nsc.instance->OnCreate();
         }
 

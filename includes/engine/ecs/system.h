@@ -31,18 +31,6 @@ private:
     void UploadLightData(Scene &scene, Shader *shader);
 };
 
-class CameraSystem
-{
-public:
-    void Update(Scene &scene, float screenWidth, float screenHeight);
-};
-
-class CameraControlSystem
-{
-public:
-    void Update(Scene &scene, float dt, const KeyboardManager &keyboard, const MouseManager &mouse);
-};
-
 class UIInteractSystem
 {
 public:
@@ -54,7 +42,9 @@ public:
     void Render(Scene& scene, float screenWidth, float screenHeight);
 };
 
+class Application;
+
 class ScriptableSystem {
 public:
-    void Update(Scene& scene, float dt);
+    void Update(Scene& scene, float dt, Application* app);
 };
