@@ -28,6 +28,18 @@ public:
             interact.onClick = [](entt::entity)
             { std::cout << "Button Clicked!\n"; };
         }
+
+        auto anotheranotherview = m_App->GetScene().registry.view<AnimationComponent, InfoComponent>();
+        for (auto entity : anotheranotherview)
+        {
+            auto [anim, info] = anotheranotherview.get<AnimationComponent, InfoComponent>(entity);
+
+            if (info.name == "Player1" && anim.animator)
+            {
+                anim.animator->AddAnimation("dyingAnim", m_App->GetResourceManager().GetAnimation("dyingAnim"));
+                std::cout << "Animations added to Player1" << std::endl;
+            }
+        }
     }
 
     void OnUpdate(float dt) override
@@ -71,6 +83,20 @@ public:
         if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_U))
         {
             m_App->GetSceneManager().UnloadScene("scenes/placeholder2.scene");
+        }
+
+        if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_Y))
+        {
+            auto anotheranotherview = m_App->GetScene().registry.view<AnimationComponent, InfoComponent>();
+            for (auto entity : anotheranotherview)
+            {
+                auto [anim, info] = anotheranotherview.get<AnimationComponent, InfoComponent>(entity);
+
+                if (info.name == "Player1" && anim.animator)
+                {
+                    anim.animator->PlayAnimation("dyingAnim");
+                }
+            }
         }
 
         m_App->GetCameraControlSystem().Update(

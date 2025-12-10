@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <assimp/scene.h>
+#include <unordered_map>
+
 #include <engine/graphic/animation.h>
 
 class Animator
@@ -11,7 +13,10 @@ public:
 	Animator(Animation *animation);
 
 	void UpdateAnimation(float dt);
+	void AddAnimation(const std::string& name, Animation* animation);
 	void PlayAnimation(Animation *pAnimation);
+	void PlayAnimation(const std::string& name);
+
 	void CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform);
 	std::vector<glm::mat4> GetFinalBoneMatrices();
 
@@ -30,4 +35,6 @@ private:
 	
 	float m_UpdateRate = 0.0f;
     float m_TimeSinceLastUpdate = 0.0f;
+
+	std::unordered_map<std::string, Animation*> m_AnimationsMap;
 };

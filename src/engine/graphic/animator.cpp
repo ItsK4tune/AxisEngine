@@ -1,7 +1,7 @@
 #include <engine/graphic/animator.h>
 
 #include <map>
-
+#include <iostream>
 #include <assimp/Importer.hpp>
 
 #include <engine/graphic/bone.h>
@@ -14,6 +14,10 @@ Animator::Animator(Animation *animation)
     m_Speed = 1.0f;
     m_UpdateRate = 0.0f;
     m_TimeSinceLastUpdate = 0.0f;
+
+    if(animation) {
+		AddAnimation("Default", animation);
+	}
 }
 
 void Animator::UpdateAnimation(float dt)
@@ -51,10 +55,31 @@ void Animator::UpdateAnimation(float dt)
     }
 }
 
+void Animator::AddAnimation(const std::string& name, Animation* animation)
+{
+	if(animation) {
+		m_AnimationsMap[name] = animation;
+	}
+}
+
 void Animator::PlayAnimation(Animation *pAnimation)
 {
     m_CurrentAnimation = pAnimation;
     m_CurrentTime = 0.0f;
+}
+
+void Animator::PlayAnimation(const std::string& name)
+{
+	if (m_AnimationsMap.find(name) != m_AnimationsMap.end()) {
+		Animation* targetAnim = m_AnimationsMap[name];
+		
+		if (m_CurrentAnimation != targetAnim) {
+			m_CurrentAnimation = targetAnim;
+			m_CurrentTime = 0.0f;
+		}
+	} else {
+		std::cout << "[Animator] Animation not found: " << name << std::endl;
+	}
 }
 
 void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform)
