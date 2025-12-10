@@ -57,11 +57,13 @@ Animation *ResourceManager::GetAnimation(const std::string &name)
 {
     if (animations.find(name) != animations.end())
         return animations[name].get();
+    std::cerr << "[ResourceManager] Animation not found: " << name << std::endl;
     return nullptr;
 }
 
 Font* ResourceManager::GetFont(const std::string& name) {
     if (fonts.find(name) != fonts.end()) return fonts[name].get();
+    std::cerr << "[ResourceManager] Font not found: " << name << std::endl;
     return nullptr;
 }
 
