@@ -18,7 +18,9 @@ public:
 
     void UpdateListener(glm::vec3 position, glm::vec3 lookDir, glm::vec3 up);
 
+    void Stop(ISoundSource* source);
     void StopAll();
+    
     void SetVolume(float volume);
 
     ISoundEngine* GetEngine() const { return m_Engine; }
