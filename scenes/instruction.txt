@@ -1,0 +1,120 @@
+==================================================
+                ENGINE INSTRUCTION FILE
+==================================================
+
+--------------------------------------------------
+[ RESOURCES ]
+--------------------------------------------------
+Khai báo toàn bộ tài nguyên được load trước khi tạo entity
+
+# LOAD_SHADER    <name> <vertex_shader_path> <fragment_shader_path>
+# LOAD_MODEL     <name> <model_path>
+# LOAD_ANIMATION <name> <model_name> <animation_path>
+# LOAD_FONT      <name> <font_path> <font_size>
+
+
+--------------------------------------------------
+[ ENTITIES ]
+--------------------------------------------------
+Mỗi entity bắt đầu bằng NEW_ENTITY
+Sau đó có thể khai báo nhiều component (không bắt buộc thứ tự)
+
+# NEW_ENTITY <entity_name>
+
+
+--------------------------------------------------
+[ COMPONENTS ]
+--------------------------------------------------
+
+-------------------------
+Transform Component
+-------------------------
+# TRANSFORM <pos_x> <pos_y> <pos_z>
+            <rot_x> <rot_y> <rot_z>
+            <scale_x> <scale_y> <scale_z>
+
+
+-------------------------
+Renderer Component
+-------------------------
+# RENDERER <model_name> <shader_name>
+
+
+-------------------------
+Animator Component
+-------------------------
+# ANIMATOR <animation_name> <speed> <start_time> <frame_rate>
+
+
+-------------------------
+Camera Component
+-------------------------
+# CAMERA <is_primary: true|false> <fov> <yaw> <pitch>
+
+
+-------------------------
+RigidBody Component
+-------------------------
+# RIGIDBODY <TYPE> <mass>
+
+TYPE có thể là:
+- CAPSULE
+- BOX
+- COMPOUND
+
+
+CAPSULE:
+# RIGIDBODY CAPSULE <radius> <height> <mass>
+
+
+BOX:
+# RIGIDBODY BOX <size_x> <size_y> <size_z> <mass>
+
+
+COMPOUND:
+# RIGIDBODY COMPOUND <mass>
+    # SHAPE <TYPE> <local_pos_x> <local_pos_y> <local_pos_z>
+            <local_rot_x> <local_rot_y> <local_rot_z>
+            <params...>
+    (có thể khai báo nhiều SHAPE)
+# END_RIGIDBODY
+
+
+-------------------------
+Directional Light
+-------------------------
+# LIGHT_DIR <dir_x> <dir_y> <dir_z>
+            <color_r> <color_g> <color_b>
+            <intensity>
+
+
+--------------------------------------------------
+[ UI COMPONENTS ]
+--------------------------------------------------
+
+-------------------------
+UI Transform
+-------------------------
+# UI_TRANSFORM <x> <y> <width> <height> <z_index>
+
+
+-------------------------
+UI Renderer
+-------------------------
+# UI_RENDERER <r> <g> <b> <a> <shader_name>
+
+
+-------------------------
+UI Text
+-------------------------
+# UI_TEXT <text> <font_name>
+          <r> <g> <b>
+          <scale>
+
+
+-------------------------
+UI Animation
+-------------------------
+# UI_ANIMATION <r> <g> <b> <a>
+
+==================================================

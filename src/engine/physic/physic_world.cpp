@@ -62,3 +62,10 @@ btRigidBody *PhysicsWorld::CreateRigidBody(float mass, const btTransform &startT
     dynamicsWorld->addRigidBody(body);
     return body;
 }
+
+void PhysicsWorld::RegisterShape(btCollisionShape* shape)
+{
+    if (shape) {
+        m_collisionShapes.push_back(shape);
+    }
+}

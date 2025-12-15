@@ -15,6 +15,7 @@ public:
 
     btDiscreteDynamicsWorld *GetWorld();
     btRigidBody *CreateRigidBody(float mass, const btTransform &startTransform, btCollisionShape *shape);
+    void RegisterShape(btCollisionShape* shape);
 
 private:
     std::unique_ptr<btDefaultCollisionConfiguration> collisionConfig;

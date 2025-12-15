@@ -1,25 +1,21 @@
-# --- RESOURCES (Load trước) ---
-# LOAD_SHADER <name> <vs_path> <fs_path>
+# --- RESOURCES ---
+
 LOAD_SHADER animationShader resources/shaders/anim_model.vs resources/shaders/anim_model.fs
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
 LOAD_SOUND cuayo resources/audios/cuayo.wav
 
-# LOAD_MODEL <name> <path>
 LOAD_MODEL playerModel resources/objects/player/Dying.fbx
 LOAD_MODEL humanModel resources/objects/player/SittingLaughing.fbx
 
-# LOAD_ANIMATION <name> <model_name> <path>
 LOAD_ANIMATION dyingAnim playerModel resources/objects/player/Dying.fbx
 LOAD_ANIMATION laughAnim humanModel resources/objects/player/SittingLaughing.fbx
 
-# LOAD_FONT <name> <path> <size>
 LOAD_FONT arialFont resources/fonts/time.ttf 48
 
 # --- ENTITIES ---
 
-# 1. Player
 NEW_ENTITY Player1
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER humanModel animationShader
@@ -140,21 +136,17 @@ RENDERER humanModel animationShader
 ANIMATOR laughAnim
 RIGIDBODY CAPSULE 10.0 0.5 2.0
 
-# 2. Camera
 NEW_ENTITY MainCamera
 TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
 CAMERA 1 45.0 -90.0 0.0 
 
-# 3. Floor
 NEW_ENTITY Floor
 TRANSFORM 0.0 -2.0 0.0 0.0 0.0 0.0 1.0 1.0 1.0
 RIGIDBODY BOX 0.0 50.0 1.0 50.0
 
-# 4. Sun Light
 NEW_ENTITY Sun
 LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8
 
-# 5. UI Button
 NEW_ENTITY Button
 UI_TRANSFORM 100 100 200 50 10
 UI_RENDERER 1.0 0.0 0.0 1.0 uiShader
