@@ -2,7 +2,7 @@
 #include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
 
-SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager& sound)
+SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound)
     : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound) {}
 
 void SceneManager::LoadScene(const std::string &filePath)
@@ -142,37 +142,87 @@ void SceneManager::LoadScene(const std::string &filePath)
             auto &trans = m_Scene.registry.get<TransformComponent>(currentEntity);
             auto &rb = m_Scene.registry.emplace<RigidBodyComponent>(currentEntity);
 
-            btCollisionShape *shape = nullptr;
+            btCollisionShape *finalShape = nullptr;
+            if (type == "COMPOUND")
+            {
+                btCompoundShape *compound = new btCompoundShape();
+                std::string subLine;
+
+                while (std::getline(file, subLine))
+                {
+                    std::stringstream subSS(subLine);
+                    std::string subCmd;
+                    subSS >> subCmd;
+
+                    if (subCmd == "END_RIGIDBODY")
+                        break;
+
+                    if (subCmd == "SHAPE")
+                    {
+                        std::string shapeType;
+                        float lx, ly, lz, lrx, lry, lrz;
+                        subSS >> shapeType >> lx >> ly >> lz >> lrx >> lry >> lrz;
+
+                        btTransform localTrans;
+                        localTrans.setIdentity();
+                        localTrans.setOrigin(btVector3(lx, ly, lz));
+                        btQuaternion localRot;
+                        localRot.setEuler(glm::radians(lry), glm::radians(lrx), glm::radians(lrz));
+                        localTrans.setRotation(localRot);
+
+                        btCollisionShape *childShape = nullptr;
+
+                        if (shapeType == "BOX")
+                        {
+                            float x, y, z;
+                            subSS >> x >> y >> z;
+                            childShape = new btBoxShape(btVector3(x, y, z));
+                        }
+                        else if (shapeType == "SPHERE")
+                        {
+                            float r;
+                            subSS >> r;
+                            childShape = new btSphereShape(r);
+                        }
+                        else if (shapeType == "CAPSULE")
+                        {
+                            float r, h;
+                            subSS >> r >> h;
+                            childShape = new btCapsuleShape(r, h);
+                        }
+
+                        if (childShape)
+                        {
+                            compound->addChildShape(localTrans, childShape);
+                            m_Physics.RegisterShape(childShape);
+                        }
+                    }
+                }
+                finalShape = compound;
+            }
             if (type == "CAPSULE")
             {
                 float r, h;
                 ss >> r >> h;
-                shape = new btCapsuleShape(r, h);
-
-                if (mass > 0)
-                {
-                    btTransform transform;
-                    transform.setIdentity();
-                    transform.setOrigin(BulletGLMHelpers::convert(trans.position));
-                    transform.setRotation(BulletGLMHelpers::convert(trans.rotation));
-
-                    rb.body = m_Physics.CreateRigidBody(mass, transform, shape);
-                }
-                if (rb.body)
-                    rb.body->setAngularFactor(btVector3(0, 1, 0));
+                finalShape = new btCapsuleShape(r, h);
             }
             else if (type == "BOX")
             {
                 float x, y, z;
                 ss >> x >> y >> z;
-                shape = new btBoxShape(btVector3(x, y, z));
-
+                finalShape = new btBoxShape(btVector3(x, y, z));
+            }
+            if (finalShape)
+            {
                 btTransform transform;
                 transform.setIdentity();
                 transform.setOrigin(BulletGLMHelpers::convert(trans.position));
                 transform.setRotation(BulletGLMHelpers::convert(trans.rotation));
 
-                rb.body = m_Physics.CreateRigidBody(mass, transform, shape);
+                rb.body = m_Physics.CreateRigidBody(mass, transform, finalShape);
+                
+                if (type == "CAPSULE" || type == "PLAYER")
+                    if (rb.body) rb.body->setAngularFactor(btVector3(0, 1, 0));
             }
         }
         else if (command == "LIGHT_DIR")
