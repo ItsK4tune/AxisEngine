@@ -13,15 +13,16 @@ public:
     void Init();
     
     void Play2D(const char* path, bool loop = false);
-    void Play2D(ISoundSource* source, bool loop = false);
-    void Play3D(ISoundSource* source, glm::vec3 pos, bool loop = false);
+    ISound* Play2D(ISoundSource* source, bool loop = false);
+    ISound* Play3D(ISoundSource* source, glm::vec3 pos, bool loop = false);
 
     void UpdateListener(glm::vec3 position, glm::vec3 lookDir, glm::vec3 up);
 
+    void SetVolume(float volume);
+    void SetVolume(ISoundSource* source, float volume);
+
     void Stop(ISoundSource* source);
     void StopAll();
-    
-    void SetVolume(float volume);
 
     ISoundEngine* GetEngine() const { return m_Engine; }
 
