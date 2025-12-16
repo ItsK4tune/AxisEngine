@@ -44,7 +44,7 @@ if (WIN32)
     target_link_libraries(GameEngine 
         glfw3 
         opengl32 
-        assimp
+        assimp-vc143-mt
         ${BULLET_LIBS}
         freetype
         irrKlang
