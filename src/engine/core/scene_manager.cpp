@@ -40,11 +40,17 @@ void SceneManager::LoadScene(const std::string &filePath)
             ss >> name >> vs >> fs;
             m_Resources.LoadShader(name, vs, fs);
         }
-        else if (command == "LOAD_MODEL")
+        if (command == "LOAD_MODEL")
         {
             std::string name, path;
             ss >> name >> path;
-            m_Resources.LoadModel(name, path);
+            m_Resources.LoadModel(name, path, false);
+        }
+        else if (command == "LOAD_STATIC_MODEL")
+        {
+            std::string name, path;
+            ss >> name >> path;
+            m_Resources.LoadModel(name, path, true);
         }
         else if (command == "LOAD_ANIMATION")
         {
@@ -220,9 +226,10 @@ void SceneManager::LoadScene(const std::string &filePath)
                 transform.setRotation(BulletGLMHelpers::convert(trans.rotation));
 
                 rb.body = m_Physics.CreateRigidBody(mass, transform, finalShape);
-                
+
                 if (type == "CAPSULE" || type == "PLAYER")
-                    if (rb.body) rb.body->setAngularFactor(btVector3(0, 1, 0));
+                    if (rb.body)
+                        rb.body->setAngularFactor(btVector3(0, 1, 0));
             }
         }
         else if (command == "LIGHT_DIR")
