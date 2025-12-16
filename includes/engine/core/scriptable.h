@@ -10,6 +10,13 @@ class Scriptable
 public:
     virtual ~Scriptable() {}
 
+    void Init(entt::entity entity, Scene *scene, Application *app)
+    {
+        m_Entity = entity;
+        m_Scene = scene;
+        m_App = app;
+    }
+
     virtual void OnCreate() {}
     virtual void OnUpdate(float dt) {}
     virtual void OnDestroy() {}
