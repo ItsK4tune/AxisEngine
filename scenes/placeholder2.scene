@@ -1,119 +1,12 @@
+LOAD_SHADER animationShader resources/shaders/anim_model.vs resources/shaders/anim_model.fs
+LOAD_MODEL humanModel resources/objects/player/SittingLaughing.fbx
+LOAD_ANIMATION laughAnim humanModel resources/objects/player/SittingLaughing.fbx
+
 NEW_ENTITY Player21
 TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
+RENDERER humanModel animationShader
+ANIMATOR laughAnim
 
-NEW_ENTITY Player22
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player23
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player24
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player25
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player26
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player27
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player28
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player29
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player30
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player31
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player32
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player33
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player34
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player35
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player36
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player37
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player38
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player39
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
-
-NEW_ENTITY Player40
-TRANSFORM 0.0 5.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER playerModel animationShader
-ANIMATOR dyingAnim
-RIGIDBODY CAPSULE 10.0 0.5 2.0
+NEW_ENTITY MainCamera
+TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
+CAMERA 1 45.0 -90.0 0.0 

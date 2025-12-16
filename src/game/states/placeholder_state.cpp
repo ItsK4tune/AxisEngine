@@ -6,33 +6,7 @@
 
 void PlaceHolderState::OnEnter()
 {
-    m_App->GetSceneManager().LoadScene("scenes/placeholder.scene");
-
-    auto view = m_App->GetScene().registry.view<InfoComponent>();
-    for (auto entity : view)
-    {
-        if (view.get<InfoComponent>(entity).name == "FPSLabel")
-        {
-            fpsEntity = entity;
-            break;
-        }
-    }
-
-    auto anotherview = m_App->GetScene().registry.view<UITransformComponent>();
-    for (auto e : anotherview)
-    {
-        auto &interact = m_App->GetScene().registry.emplace_or_replace<UIInteractiveComponent>(e);
-        interact.onClick = [](entt::entity)
-        { std::cout << "Button Clicked!\n"; };
-    }
-
-    auto anotheranotherview = m_App->GetScene().registry.view<AnimationComponent, InfoComponent>();
-    for (auto entity : anotheranotherview)
-    {
-        auto [anim, info] = anotheranotherview.get<AnimationComponent, InfoComponent>(entity);
-
-        anim.animator->AddAnimation("dyingAnim", m_App->GetResourceManager().GetAnimation("dyingAnim"));
-    }
+    m_App->GetSceneManager().LoadScene("scenes/placeholder2.scene");
 
     auto camEntity = m_App->GetScene().GetActiveCamera();
     if (camEntity != entt::null)
@@ -44,12 +18,6 @@ void PlaceHolderState::OnEnter()
 
 void PlaceHolderState::OnUpdate(float dt)
 {
-    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_P))
-    {
-        std::cout << "Pause Pressed\n";
-        isPaused = !isPaused;
-    }
-
     if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_O))
     {
 
@@ -75,41 +43,10 @@ void PlaceHolderState::OnUpdate(float dt)
         }
     }
 
-    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_I))
-    {
-        m_App->GetSceneManager().LoadScene("scenes/placeholder2.scene");
-    }
-
-    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_U))
-    {
-        m_App->GetSceneManager().UnloadScene("scenes/placeholder2.scene");
-    }
-
-    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_Y))
-    {
-        auto anotheranotherview = m_App->GetScene().registry.view<AnimationComponent, InfoComponent>();
-        for (auto entity : anotheranotherview)
-        {
-            auto [anim, info] = anotheranotherview.get<AnimationComponent, InfoComponent>(entity);
-
-            anim.animator->PlayAnimation("dyingAnim");
-        }
-    }
-
-    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_M))
-    {
-        auto cuayo = m_App->GetResourceManager().GetSound("cuayo");
-        m_App->GetSoundManager().Play2D(cuayo);
-        m_App->GetSoundManager().SetVolume(0.5f);
-    }
-
     m_App->GetUIInteractSystem().Update(
         m_App->GetScene(),
         dt,
         m_App->GetMouse());
-
-    if (isPaused)
-        return;
 
     m_App->GetScriptSystem().Update(m_App->GetScene(), dt, m_App);
 
@@ -117,27 +54,6 @@ void PlaceHolderState::OnUpdate(float dt)
     m_App->GetPhysicsSystem().Update(m_App->GetScene());
 
     m_App->GetAnimationSystem().Update(m_App->GetScene(), dt);
-
-    static float timeAccumulator = 0.0f;
-    static int frameCount = 0;
-
-    timeAccumulator += dt;
-    frameCount++;
-
-    if (timeAccumulator >= 0.5f)
-    {
-        int fps = static_cast<int>(frameCount / timeAccumulator);
-        std::string fpsText = "FPS: " + std::to_string(fps);
-
-        if (fpsEntity != entt::null && m_App->GetScene().registry.valid(fpsEntity))
-        {
-            auto &txt = m_App->GetScene().registry.get<UITextComponent>(fpsEntity);
-            txt.text = "FPS: " + std::to_string(fps);
-        }
-
-        timeAccumulator = 0.0f;
-        frameCount = 0;
-    }
 }
 
 void PlaceHolderState::OnRender()
@@ -152,7 +68,7 @@ void PlaceHolderState::OnRender()
 
 void PlaceHolderState::OnExit()
 {
-    m_App->GetSceneManager().UnloadScene("scenes/placeholder.scene");
+    m_App->GetSceneManager().UnloadScene("scenes/placeholder2.scene");
 }
 
 CursorMode PlaceHolderState::NextCursorMode(CursorMode mode)
