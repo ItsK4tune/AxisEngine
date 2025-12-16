@@ -20,7 +20,6 @@ void PlaceHolderState::OnUpdate(float dt)
 {
     if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_O))
     {
-
         CursorMode m_CurrentCursorMode = NextCursorMode(m_App->GetMouse().GetCursorMode());
 
         m_App->GetMouse().SetCursorMode(m_CurrentCursorMode);

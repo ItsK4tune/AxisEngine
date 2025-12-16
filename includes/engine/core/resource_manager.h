@@ -18,7 +18,7 @@ public:
     ~ResourceManager();
 
     void LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath);
-    void LoadModel(const std::string &name, const std::string &path);
+    void LoadModel(const std::string &name, const std::string &path, bool isStatic = false);
     void LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName);
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
     void LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine);

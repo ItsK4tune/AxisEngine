@@ -11,9 +11,9 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
     shaders[name] = std::make_unique<Shader>(FileSystem::getPath(vsPath).c_str(), FileSystem::getPath(fsPath).c_str());
 }
 
-void ResourceManager::LoadModel(const std::string &name, const std::string &path)
+void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
 {
-    models[name] = std::make_unique<Model>(FileSystem::getPath(path));
+    models[name] = std::make_unique<Model>(FileSystem::getPath(path), isStatic);
 }
 
 void ResourceManager::LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName)
