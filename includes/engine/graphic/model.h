@@ -17,7 +17,7 @@ public:
 	std::string directory;
 	bool gammaCorrection;
 
-	Model(std::string const &path, bool gamma = false);
+	Model(std::string const &path, bool isStatic = false, bool gamma = false);
 
 	void Draw(Shader &shader);
 
@@ -28,7 +28,7 @@ private:
 	std::unordered_map<std::string, BoneInfo> m_BoneInfoMap;
 	int m_BoneCounter = 0;
 
-	void loadModel(std::string const &path);
+	void loadModel(std::string const &path, bool isStatic);
 	void processNode(aiNode *node, const aiScene *scene);
 	void SetVertexBoneDataToDefault(Vertex &vertex);
 	Mesh processMesh(aiMesh *mesh, const aiScene *scene);
