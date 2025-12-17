@@ -14,6 +14,9 @@ void PhysicsSystem::Update(Scene &scene)
 
         if (rb.body)
         {
+            if (rb.body->isKinematicObject())
+                continue;
+                
             btTransform trans;
             if (rb.body->getMotionState())
                 rb.body->getMotionState()->getWorldTransform(trans);
@@ -317,13 +320,13 @@ void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
     }
 }
 
-void ScriptableSystem::Update(Scene& scene, float dt, Application* app)
+void ScriptableSystem::Update(Scene &scene, float dt, Application *app)
 {
     auto view = scene.registry.view<ScriptComponent>();
-    
-    for(auto entity : view)
+
+    for (auto entity : view)
     {
-        auto& nsc = view.get<ScriptComponent>(entity);
+        auto &nsc = view.get<ScriptComponent>(entity);
 
         if (!nsc.instance)
         {
