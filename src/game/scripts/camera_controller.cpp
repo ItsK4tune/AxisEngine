@@ -4,62 +4,44 @@
 
 void CameraController::OnUpdate(float dt)
 {
-    if (!HasComponent<TransformComponent>() || !HasComponent<CameraComponent>())
-        return;
+    if (!HasComponent<TransformComponent>() || !HasComponent<CameraComponent>()) return;
 
     auto &transform = GetComponent<TransformComponent>();
     auto &camera = GetComponent<CameraComponent>();
-
-    const auto &mouse = m_App->GetMouse();
     const auto &keyboard = m_App->GetKeyboard();
 
-    if (mouse.GetCursorMode() == CursorMode::Locked || mouse.GetCursorMode() == CursorMode::LockedCenter)
-    {
-        camera.yaw += mouse.GetXOffset() * mouseSensitivity;
-        camera.pitch += mouse.GetYOffset() * mouseSensitivity;
+    // 1. Zoom (Radius) - W/S
+    if (keyboard.GetKey(GLFW_KEY_W)) radius -= moveSpeed * dt;
+    if (keyboard.GetKey(GLFW_KEY_S)) radius += moveSpeed * dt;
+    if (radius < 2.0f) radius = 2.0f; // Min zoom
+    if (radius > 50.0f) radius = 50.0f; // Max zoom
 
-        if (camera.pitch > 89.0f)
-            camera.pitch = 89.0f;
-        if (camera.pitch < -89.0f)
-            camera.pitch = -89.0f;
-    }
+    // 2. Rotate (Angle) - A/D
+    if (keyboard.GetKey(GLFW_KEY_A)) angle -= moveSpeed * dt;
+    if (keyboard.GetKey(GLFW_KEY_D)) angle += moveSpeed * dt;
 
-    float scroll = mouse.GetScrollY();
-    if (scroll != 0.0f)
-    {
-        camera.fov -= scroll;
-        if (camera.fov < 1.0f)
-            camera.fov = 1.0f;
-        if (camera.fov > 45.0f)
-            camera.fov = 45.0f;
-    }
+    // 3. Height (Y) - Space/Shift
+    if (keyboard.GetKey(GLFW_KEY_SPACE)) height += moveSpeed * dt;
+    if (keyboard.GetKey(GLFW_KEY_LEFT_SHIFT)) height -= moveSpeed * dt;
 
-    glm::vec3 front;
-    front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-    front.y = sin(glm::radians(camera.pitch));
-    front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-    camera.front = glm::normalize(front);
-    camera.right = glm::normalize(glm::cross(camera.front, camera.worldUp));
-    camera.up = glm::normalize(glm::cross(camera.right, camera.front));
+    // 4. Tính toán vị trí mới (Polar Coordinates)
+    float camX = sin(angle) * radius;
+    float camZ = cos(angle) * radius;
+    
+    transform.position = glm::vec3(camX, height, camZ);
 
-    float velocity = moveSpeed * dt;
-    if (keyboard.GetKey(GLFW_KEY_W))
-        transform.position += camera.front * velocity;
-    if (keyboard.GetKey(GLFW_KEY_S))
-        transform.position -= camera.front * velocity;
-    if (keyboard.GetKey(GLFW_KEY_A))
-        transform.position -= camera.right * velocity;
-    if (keyboard.GetKey(GLFW_KEY_D))
-        transform.position += camera.right * velocity;
-
-    if (keyboard.GetKey(GLFW_KEY_SPACE))
-        transform.position += camera.worldUp * velocity;
-    if (keyboard.GetKey(GLFW_KEY_LEFT_SHIFT))
-        transform.position -= camera.worldUp * velocity;
-
+    // 5. Look At Center (0,0,0)
+    glm::vec3 target(0.0f, 0.0f, 0.0f);
+    
+    // Cập nhật ma trận View
+    camera.viewMatrix = glm::lookAt(transform.position, target, glm::vec3(0,1,0));
+    
+    // Cập nhật Projection
     camera.aspectRatio = (float)m_App->GetWidth() / (float)m_App->GetHeight();
-
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
 
-    camera.viewMatrix = glm::lookAt(transform.position, transform.position + camera.front, camera.up);
+    // Cập nhật vectors hướng để dùng cho mục đích khác nếu cần (dù viewMatrix đã tính rồi)
+    camera.front = glm::normalize(target - transform.position);
+    camera.right = glm::normalize(glm::cross(camera.front, glm::vec3(0,1,0)));
+    camera.up    = glm::normalize(glm::cross(camera.right, camera.front));
 }

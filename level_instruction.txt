@@ -1,0 +1,15 @@
+# Width Height Depth(Layers)
+eg:
+5 5 2  # Width Height Depth(Layers)
+# Layer 0
+1 1 1 1 1
+1 1 1 1 1
+1 1 1 1 1
+1 1 1 1 1
+1 1 1 1 1
+# Layer 1
+0 0 0 0 0
+0 0 1 0 0
+0 1 1 1 0
+0 0 1 0 0
+0 0 0 0 0

@@ -7,8 +7,8 @@
 class Unit : public Scriptable
 {
 public:
-    HexCoord gridPos{0, 0};
-    bool isPlayerTeam = true;
+    HexCoord gridPos{0, 0, 0};
+    int teamID = 1;
     float moveSpeed = 10.0f;
 
     bool isMoving = false;

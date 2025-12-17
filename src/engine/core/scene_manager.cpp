@@ -76,15 +76,13 @@ void SceneManager::LoadScene(const std::string &filePath)
         {
             currentEntity = m_Scene.createEntity();
             sceneEntities.push_back(currentEntity);
-            std::string entityName;
+            std::string entityName = "unnamed";
+            std::string entityTag = "default";
             if (ss >> entityName)
             {
-                m_Scene.registry.emplace<InfoComponent>(currentEntity, entityName);
+                ss >> entityTag;
             }
-            else
-            {
-                m_Scene.registry.emplace<InfoComponent>(currentEntity, "Unnamed");
-            }
+            m_Scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
         }
 
         else if (command == "TRANSFORM")

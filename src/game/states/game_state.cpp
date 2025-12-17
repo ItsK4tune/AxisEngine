@@ -25,7 +25,6 @@ void TacticsState::OnUpdate(float dt)
     // }
 
     m_App->GetScriptSystem().Update(m_App->GetScene(), dt, m_App);
-
     m_App->GetPhysicsWorld().Update(dt);
     m_App->GetPhysicsSystem().Update(m_App->GetScene());
     m_App->GetAnimationSystem().Update(m_App->GetScene(), dt);
@@ -34,6 +33,10 @@ void TacticsState::OnUpdate(float dt)
 void TacticsState::OnRender()
 {
     m_App->GetRenderSystem().Render(m_App->GetScene());
+    m_App->GetUIRenderSystem().Render(
+        m_App->GetScene(),
+        (float)m_App->GetWidth(),
+        (float)m_App->GetHeight());
 }
 
 void TacticsState::OnExit()

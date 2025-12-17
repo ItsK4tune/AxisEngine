@@ -1,7 +1,10 @@
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
+LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
 
 LOAD_STATIC_MODEL hex_model resources/objects/hex/Platform.fbx
 LOAD_MODEL playerModel resources/objects/player/SittingLaughing.fbx
+
+LOAD_FONT timeFont resources/fonts/time.ttf 48
 
 # --- ENVIRONMENT ---
 NEW_ENTITY MainCamera
@@ -15,3 +18,8 @@ LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8
 # --- LOGIC ---
 NEW_ENTITY GameManager
 SCRIPT LevelManager
+
+# --- UI ---
+NEW_ENTITY TurnText
+UI_TRANSFORM 10 20 0 0 20
+UI_TEXT "Player 1 Turn (SP: 10)" timeFont 0.0 0.0 0.0 0.8

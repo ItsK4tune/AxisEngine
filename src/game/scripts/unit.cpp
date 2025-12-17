@@ -20,11 +20,12 @@ void Unit::OnUpdate(float dt)
 
         glm::vec3 dir = targetPos - trans.position;
 
-        float distSq = (dir.x * dir.x) + (dir.z * dir.z);
+        float distSq = (dir.x * dir.x) + (dir.y * dir.y) + (dir.z * dir.z);
 
         if (distSq < 0.01f)
         {
             trans.position.x = targetPos.x;
+            trans.position.y = targetPos.y;
             trans.position.z = targetPos.z;
             isMoving = false;
         }
@@ -43,7 +44,7 @@ void Unit::MoveTo(HexCoord newCoords)
     gridPos = newCoords;
     targetPos = HexMath::HexToWorld(newCoords);
     isMoving = true;
-    std::cout << "[Unit] Unit moving to World Pos: " << targetPos.x << ", " << targetPos.z << "\n";
+    std::cout << "[Unit] Unit moving to World Pos: (" << targetPos.x << ", " << targetPos.y << ", " << targetPos.z << ")\n";
 }
 
 void Unit::SyncPhysics(const glm::vec3 &pos)
