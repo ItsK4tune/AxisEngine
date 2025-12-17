@@ -304,6 +304,20 @@ void SceneManager::LoadScene(const std::string &filePath)
             auto &ui = m_Scene.registry.get<UIRendererComponent>(currentEntity);
             anim.normalColor = ui.color;
         }
+        else if (command == "SCRIPT")
+        {
+            std::string scriptName;
+            ss >> scriptName;
+
+            if (m_ScriptRegistry.find(scriptName) != m_ScriptRegistry.end())
+            {
+                m_ScriptRegistry[scriptName](m_Scene, currentEntity);
+            }
+            else
+            {
+                std::cout << "[SceneManager] Warning: Script '" << scriptName << "' not found in registry!" << std::endl;
+            }
+        }
     }
 }
 

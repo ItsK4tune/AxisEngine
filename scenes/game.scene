@@ -1,0 +1,17 @@
+LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
+
+LOAD_STATIC_MODEL hex_model resources/objects/hex/Platform.fbx
+LOAD_MODEL playerModel resources/objects/player/SittingLaughing.fbx
+
+# --- ENVIRONMENT ---
+NEW_ENTITY MainCamera
+TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
+CAMERA 1 45.0 -90.0 0.0 
+SCRIPT CameraController
+
+NEW_ENTITY Sun
+LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8
+
+# --- LOGIC ---
+NEW_ENTITY GameManager
+SCRIPT LevelManager

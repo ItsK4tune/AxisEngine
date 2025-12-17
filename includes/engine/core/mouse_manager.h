@@ -30,7 +30,12 @@ public:
 
     float GetLastX() const;
     float GetLastY() const;
+    
     bool IsLeftButtonPressed() const;
+    bool IsRightButtonPressed() const;
+
+    bool IsLeftMouseClicked() const;
+    bool IsRightMouseClicked() const;
 
     void SetLastPosition(double x, double y);
 
@@ -45,7 +50,12 @@ private:
     float m_ScrollY;
 
     bool m_FirstMouse;
+
     bool m_LeftButtonPressed;
+    bool m_RightButtonPressed;
+
+    bool m_LeftMouseClicked;
+    bool m_RightMouseClicked;
 
     CursorMode m_Mode;
 };
