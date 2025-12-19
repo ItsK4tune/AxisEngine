@@ -71,6 +71,21 @@ void SceneManager::LoadScene(const std::string &filePath)
             ss >> name >> path;
             m_Resources.LoadSound(name, path, m_SoundManager.GetEngine());
         }
+        else if (command == "LOAD_SKYBOX")
+        {
+            std::string name;
+            ss >> name;
+
+            std::vector<std::string> faces(6);
+            for (int i = 0; i < 6; i++)
+            {
+                std::string path;
+                ss >> path;
+                faces[i] = FileSystem::getPath(path);
+            }
+
+            m_Resources.LoadSkybox(name, faces);
+        }
 
         else if (command == "NEW_ENTITY")
         {
@@ -84,7 +99,6 @@ void SceneManager::LoadScene(const std::string &filePath)
             }
             m_Scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
         }
-
 
         else if (command == "TRANSFORM")
         {
@@ -302,6 +316,15 @@ void SceneManager::LoadScene(const std::string &filePath)
 
             auto &ui = m_Scene.registry.get<UIRendererComponent>(currentEntity);
             anim.normalColor = ui.color;
+        }
+        else if (command == "SKYBOX_RENDERER")
+        {
+            std::string skyboxName, shaderName;
+            ss >> skyboxName >> shaderName;
+
+            auto &comp = m_Scene.registry.emplace<SkyboxRenderComponent>(currentEntity);
+            comp.skybox = m_Resources.GetSkybox(skyboxName);
+            comp.shader = m_Resources.GetShader(shaderName);
         }
         else if (command == "SCRIPT")
         {

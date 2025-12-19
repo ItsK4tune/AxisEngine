@@ -37,14 +37,22 @@ public:
     void Update(Scene &scene, float dt, const MouseManager &mouse);
 };
 
-class UIRenderSystem {
+class UIRenderSystem
+{
 public:
-    void Render(Scene& scene, float screenWidth, float screenHeight);
+    void Render(Scene &scene, float screenWidth, float screenHeight);
 };
 
 class Application;
 
-class ScriptableSystem {
+class ScriptableSystem
+{
 public:
-    void Update(Scene& scene, float dt, Application* app);
+    void Update(Scene &scene, float dt, Application *app);
+};
+
+class SkyboxRenderSystem
+{
+public:
+    void Render(Scene &scene);
 };

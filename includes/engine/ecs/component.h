@@ -10,6 +10,7 @@
 #include <engine/graphic/ui_model.h>
 #include <engine/graphic/animator.h>
 #include <engine/graphic/font.h>
+#include <engine/graphic/skybox.h>
 
 struct InfoComponent {
     std::string name = "Entity";
@@ -160,4 +161,10 @@ struct ScriptComponent
         InstantiateScript = []() { return static_cast<Scriptable*>(new T()); };
         DestroyScript = [](ScriptComponent* nsc) { delete nsc->instance; nsc->instance = nullptr; };
     }
+};
+
+struct SkyboxRenderComponent
+{
+    Skybox* skybox;
+    Shader* shader;
 };

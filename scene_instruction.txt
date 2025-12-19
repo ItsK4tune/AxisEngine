@@ -11,7 +11,7 @@ Khai báo toàn bộ tài nguyên được load trước khi tạo entity
 # LOAD_MODEL     <name> <model_path>
 # LOAD_ANIMATION <name> <model_name> <animation_path>
 # LOAD_FONT      <name> <font_path> <font_size>
-
+# LOAD_SKYBOX    <name> <right> <left> <top> <bottom> <front> <back>
 
 --------------------------------------------------
 [ ENTITIES ]
@@ -116,5 +116,11 @@ UI Text
 UI Animation
 -------------------------
 # UI_ANIMATION <r> <g> <b> <a>
+
+
+-------------------------
+Skybox Renderer Component
+-------------------------
+# SKYBOX_RENDERER <skybox_name> <shader_name>
 
 ==================================================
