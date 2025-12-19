@@ -32,6 +32,7 @@ void TacticsState::OnUpdate(float dt)
 
 void TacticsState::OnRender()
 {
+    m_App->GetSkyboxRenderSystem().Render(m_App->GetScene());
     m_App->GetRenderSystem().Render(m_App->GetScene());
     m_App->GetUIRenderSystem().Render(
         m_App->GetScene(),
