@@ -100,6 +100,8 @@ bool Application::Init()
     soundManager->Init();
     resourceManager->CreateUIModel("default_rect", UIType::Color);
 
+    postProcess.Init(m_Config.width, m_Config.height);
+
     return true;
 }
 
@@ -116,11 +118,12 @@ void Application::Run()
         ProcessInput();
         m_StateMachine.Update(deltaTime);
         mouseManager->EndFrame();
-
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        postProcess.BeginCapture();
 
         m_StateMachine.Render();
+
+        postProcess.EndCapture();
 
         glfwSwapBuffers(window);
     }

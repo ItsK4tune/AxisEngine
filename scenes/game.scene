@@ -1,5 +1,8 @@
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
 LOAD_SHADER skyboxShader resources/shaders/skybox.vs resources/shaders/skybox.fs
+LOAD_SHADER ppShader_default resources/shaders/post_process/screen.vs resources/shaders/post_process/screen_default.fs
+LOAD_SHADER ppShader_invert resources/shaders/post_process/screen.vs resources/shaders/post_process/screen_invert.fs
+LOAD_SHADER ppShader_gray resources/shaders/post_process/screen.vs resources/shaders/post_process/screen_gray.fs
 
 LOAD_STATIC_MODEL hex_model resources/objects/hex/Platform.fbx
 LOAD_MODEL playerModel resources/objects/player/SittingLaughing.fbx
