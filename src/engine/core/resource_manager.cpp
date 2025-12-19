@@ -25,25 +25,39 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
     }
 }
 
-void ResourceManager::LoadFont(const std::string& name, const std::string& path, unsigned int fontSize) {
+void ResourceManager::LoadFont(const std::string &name, const std::string &path, unsigned int fontSize)
+{
     auto font = std::make_unique<Font>();
-    if (font->Load(FileSystem::getPath(path), fontSize)) {
+    if (font->Load(FileSystem::getPath(path), fontSize))
+    {
         fonts[name] = std::move(font);
     }
 }
 
-void ResourceManager::LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine) {
-    if (!engine) return;
+void ResourceManager::LoadSound(const std::string &name, const std::string &path, irrklang::ISoundEngine *engine)
+{
+    if (!engine)
+        return;
 
     std::string fullPath = FileSystem::getPath(path);
-    
-    irrklang::ISoundSource* source = engine->addSoundSourceFromFile(fullPath.c_str());
-    
-    if (source) {
+
+    irrklang::ISoundSource *source = engine->addSoundSourceFromFile(fullPath.c_str());
+
+    if (source)
+    {
         sounds[name] = source;
-    } else {
+    }
+    else
+    {
         std::cerr << "[ResourceManager] Failed to load sound: " << fullPath << std::endl;
     }
+}
+
+void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
+{
+    auto skybox = std::make_unique<Skybox>();
+    skybox->LoadCubemap(faces);
+    skyboxes[name] = std::move(skybox);
 }
 
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
@@ -75,8 +89,10 @@ Animation *ResourceManager::GetAnimation(const std::string &name)
     return nullptr;
 }
 
-Font* ResourceManager::GetFont(const std::string& name) {
-    if (fonts.find(name) != fonts.end()) return fonts[name].get();
+Font *ResourceManager::GetFont(const std::string &name)
+{
+    if (fonts.find(name) != fonts.end())
+        return fonts[name].get();
     std::cerr << "[ResourceManager] Font not found: " << name << std::endl;
     return nullptr;
 }
@@ -88,9 +104,19 @@ UIModel *ResourceManager::GetUIModel(const std::string &name)
     return nullptr;
 }
 
-irrklang::ISoundSource* ResourceManager::GetSound(const std::string& name) {
-    if (sounds.find(name) != sounds.end()) return sounds[name];
+irrklang::ISoundSource *ResourceManager::GetSound(const std::string &name)
+{
+    if (sounds.find(name) != sounds.end())
+        return sounds[name];
     std::cerr << "[ResourceManager] Sound not found: " << name << std::endl;
+    return nullptr;
+}
+
+Skybox *ResourceManager::GetSkybox(const std::string &name)
+{
+    if (skyboxes.find(name) != skyboxes.end())
+        return skyboxes[name].get();
+    std::cerr << "[ResourceManager] Skybox not found: " << name << std::endl;
     return nullptr;
 }
 
@@ -102,6 +128,7 @@ void ResourceManager::ClearResource()
     fonts.clear();
     uiModels.clear();
     sounds.clear();
+    skyboxes.clear();
 
     std::cout << "[ResourceManager] Cleared all resources.\n";
 }
