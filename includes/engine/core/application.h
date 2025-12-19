@@ -13,6 +13,7 @@
 #include <engine/core/resource_manager.h>
 #include <engine/core/scene_manager.h>
 #include <engine/core/sound_manager.h>
+#include <engine/core/post_process_pipeline.h>
 
 struct AppConfig
 {
@@ -58,6 +59,8 @@ public:
     ScriptableSystem &GetScriptSystem() { return scriptSystem; }
     SoundManager& GetSoundManager() { return *soundManager; }
 
+    PostProcessPipeline& GetPostProcess() { return postProcess; }
+
     void ProcessInput();
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
@@ -89,4 +92,6 @@ private:
     UIRenderSystem uiRenderSystem;
     ScriptableSystem scriptSystem;
     SkyboxRenderSystem skyboxRenderSystem;
+
+    PostProcessPipeline postProcess;
 };
