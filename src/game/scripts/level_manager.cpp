@@ -66,7 +66,7 @@ void LevelManager::OnUpdate(float dt)
 
 void LevelManager::UpdatePlacement()
 {
-    if (m_App->GetMouse().IsRightMouseClicked())
+    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_P))
     {
         std::cout << "[Placement] Team " << activeTeamID << " finished placement\n";
 
@@ -152,7 +152,7 @@ void LevelManager::SwitchTurn(GamePhase phase, bool isManual)
 
 void LevelManager::EndTurnInput()
 {
-    if (m_App->GetMouse().IsRightMouseClicked())
+    if (m_App->GetKeyboard().IsKeyDown(GLFW_KEY_P))
     {
         std::cout << "[LevelManager] Team " << activeTeamID << " ended turn\n";
         SwitchTurn(currentPhase, true);
