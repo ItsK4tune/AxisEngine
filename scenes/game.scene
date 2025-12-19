@@ -1,8 +1,11 @@
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
 LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
+LOAD_SHADER skyboxShader resources/shaders/skybox.vs resources/shaders/skybox.fs
 
 LOAD_STATIC_MODEL hex_model resources/objects/hex/Platform.fbx
 LOAD_MODEL playerModel resources/objects/player/SittingLaughing.fbx
+
+LOAD_SKYBOX daySky resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png
 
 LOAD_FONT timeFont resources/fonts/time.ttf 48
 
@@ -23,3 +26,6 @@ SCRIPT LevelManager
 NEW_ENTITY TurnText
 UI_TRANSFORM 10 20 0 0 20
 UI_TEXT "Player 1 Turn (SP: 10)" timeFont 0.0 0.0 0.0 0.8
+
+NEW_ENTITY Sky
+SKYBOX_RENDERER daySky skyboxShader
