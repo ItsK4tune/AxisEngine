@@ -31,6 +31,7 @@ struct MeshRendererComponent
     Model *model = nullptr;
     Shader *shader = nullptr;
     bool castShadow = true;
+    bool visible = true;
 };
 
 struct RigidBodyComponent

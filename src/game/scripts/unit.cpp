@@ -14,36 +14,37 @@ void Unit::OnCreate()
 
 void Unit::OnUpdate(float dt)
 {
-    if (isMoving)
+    if (isMoving && pathIndex < movePath.size())
     {
         auto &trans = GetComponent<TransformComponent>();
-        glm::vec3 dir = targetPos - trans.position;
+        glm::vec3 target = movePath[pathIndex];
+        glm::vec3 dir = target - trans.position;
 
-        float distSq = (dir.x * dir.x) + (dir.y * dir.y) + (dir.z * dir.z);
-
-        if (distSq < 0.01f)
+        if (glm::length2(dir) < 0.01f)
         {
-            trans.position.x = targetPos.x;
-            trans.position.y = targetPos.y;
-            trans.position.z = targetPos.z;
-            isMoving = false;
+            trans.position = target;
+            pathIndex++;
+
+            if (pathIndex >= movePath.size())
+                isMoving = false;
         }
         else
         {
-            glm::vec3 moveDir = glm::normalize(dir);
-            trans.position += moveDir * moveSpeed * dt;
+            trans.position += glm::normalize(dir) * moveSpeed * dt;
         }
 
         SyncPhysics(trans.position);
     }
 }
 
-void Unit::MoveTo(HexCoord newCoords)
+void Unit::MoveByPath(const std::vector<HexCoord> &path)
 {
-    gridPos = newCoords;
-    targetPos = HexMath::HexToWorld(newCoords);
+    movePath.clear();
+    for (auto &h : path)
+        movePath.push_back(HexMath::HexToWorld(h));
+
+    pathIndex = 0;
     isMoving = true;
-    std::cout << "[Unit] Unit moving to World Pos: (" << targetPos.x << ", " << targetPos.y << ", " << targetPos.z << ")\n";
 }
 
 void Unit::Attack(Unit *target)

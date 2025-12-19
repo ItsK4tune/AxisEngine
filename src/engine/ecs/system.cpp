@@ -124,7 +124,7 @@ void RenderSystem::Render(Scene &scene)
     {
         auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
 
-        if (!renderer.model || !renderer.shader)
+        if (!renderer.model || !renderer.shader || !renderer.visible)
             continue;
 
         if (currentShader != renderer.shader)

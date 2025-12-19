@@ -2,7 +2,7 @@
 
 #include <engine/core/scriptable.h>
 #include <engine/core/application.h>
-#include <game/utils/hex_math.h>
+#include <game/commons/utils/hex_math.h>
 
 struct UnitStats
 {
@@ -23,6 +23,9 @@ struct UnitStats
     bool isAfflicted = false;
     int synchronizeBonus = 50;
 
+    int moveRadius = 4;
+    int lightRadius = 2;
+
     int moveCost = 2;
     int actionCost = 4;
 };
@@ -36,12 +39,13 @@ public:
 
     float moveSpeed = 10.0f;
     bool isMoving = false;
-    glm::vec3 targetPos;
+    std::vector<glm::vec3> movePath;
+    int pathIndex = 0;
 
     void OnCreate() override;
     void OnUpdate(float dt) override;
 
-    void MoveTo(HexCoord newCoords);
+    void MoveByPath(const std::vector<HexCoord> &path);
     void Attack(Unit *target);
     void Guard();
     void TakeDamage(int rawPhys, int rawElem, Unit *attacker);

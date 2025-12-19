@@ -1,7 +1,9 @@
 #pragma once
+
 #include <glm/glm.hpp>
 #include <cmath>
 #include <vector>
+#include <functional>
 
 struct HexCoord
 {
@@ -12,6 +14,21 @@ struct HexCoord
         return q == other.q && r == other.r && h == other.h;
     }
 };
+
+namespace std
+{
+    template <>
+    struct hash<HexCoord>
+    {
+        size_t operator()(const HexCoord &c) const
+        {
+            size_t h1 = std::hash<int>()(c.q);
+            size_t h2 = std::hash<int>()(c.r);
+            size_t h3 = std::hash<int>()(c.h);
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
+        }
+    };
+}
 
 class HexMath
 {

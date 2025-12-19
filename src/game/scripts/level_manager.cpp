@@ -1,6 +1,7 @@
 #include <game/scripts/level_manager.h>
 #include <game/scripts/team.h>
 #include <game/scripts/unit.h>
+#include <game/commons/utils/hex_astar.h>
 
 #include <engine/utils/bullet_glm_helpers.h>
 #include <engine/ecs/component.h>
@@ -238,9 +239,32 @@ void LevelManager::HandleLogic()
     }
 
     auto &tileTrans = m_Scene->registry.get<TransformComponent>(hit);
+    HexCoord start = unit->gridPos;
     HexCoord target = HexMath::WorldToHex(tileTrans.position);
 
-    unit->MoveTo(target);
+    int dist = HexMath::Distance(start, target);
+    if (dist > unit->stats.moveRadius)
+    {
+        std::cout << "[Move] Target too far: " << dist
+                  << " tiles, max allowed: " << unit->stats.moveRadius << "\n";
+        myTeam->ConsumeMovePoints(-unit->stats.moveCost);
+        return;
+    }
+
+    std::vector<HexCoord> path;
+    if (!HexAStar::FindPath(start, target, m_WalkableTiles, path))
+    {
+        std::cout << "[Move] No path found\n";
+        myTeam->ConsumeMovePoints(-unit->stats.moveCost);
+        return;
+    }
+
+    unit->gridPos = target;
+    unit->MoveByPath(path);
+
+    unit->gridPos = path.back();
+    unit->MoveByPath(path);
+
     UpdateUIText();
     SwitchTurn(currentPhase, false);
 }
@@ -385,6 +409,8 @@ void LevelManager::SpawnUnit(int q, int r, int h, int team)
 
 void LevelManager::CreateHexTile(int q, int r, int h)
 {
+    m_WalkableTiles.insert({q, r, h});
+
     auto e = m_Scene->createEntity();
 
     m_Scene->registry.emplace<InfoComponent>(e, "tile", "tile");

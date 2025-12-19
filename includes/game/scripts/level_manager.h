@@ -3,7 +3,8 @@
 #include <engine/core/scriptable.h>
 #include <engine/core/application.h>
 #include <vector>
-#include <game/utils/hex_math.h>
+#include <unordered_set>
+#include <game/commons/utils/hex_math.h>
 #include <game/commons/enums/game_phase.h>
 
 class Team;
@@ -25,6 +26,7 @@ private:
 
     entt::entity m_SelectedUnit = entt::null;
     entt::entity m_UIEntity = entt::null;
+    std::unordered_set<HexCoord> m_WalkableTiles;
 
     void UpdatePlacement();
     void UpdateMovement();
