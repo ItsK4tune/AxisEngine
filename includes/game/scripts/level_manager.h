@@ -1,15 +1,12 @@
 #pragma once
+
 #include <engine/core/scriptable.h>
 #include <engine/core/application.h>
 #include <vector>
-#include <game/scripts/unit.h>
 #include <game/utils/hex_math.h>
+#include <game/commons/enums/game_phase.h>
 
-enum class Turn
-{
-    Player1,
-    Player2
-};
+class Team;
 
 class LevelManager : public Scriptable
 {
@@ -17,27 +14,32 @@ public:
     void OnCreate() override;
     void OnUpdate(float dt) override;
 
-    void UpdateUIText();
-
 private:
-    std::vector<entt::entity> tiles;
-    std::vector<entt::entity> units;
+    GamePhase currentPhase = GamePhase::PLACEMENT;
+
+    Team* m_Team1 = nullptr;
+    Team* m_Team2 = nullptr;
+
+    int activeTeamID = 1;
+    bool prevManualEnd = false;
 
     entt::entity m_SelectedUnit = entt::null;
-
-    Turn m_CurrentTurn = Turn::Player1;
-    int m_CurrentSP = 10;
-    const int MAX_SP = 10;
-    const int MOVE_COST = 2;
-
     entt::entity m_UIEntity = entt::null;
 
-    void LoadLevelFile(const std::string &path);
-    void CreateHexTile(int q, int r, int h);
+    void UpdatePlacement();
+    void UpdateMovement();
+    void UpdateAction();
+
+    void SwitchTurn(GamePhase phase, bool isManual);
+    void EndTurnInput();
+    void HandleLogic();
+    void GetMouseRay(glm::vec3& origin, glm::vec3& end);
+    void UpdateUIText();
+    void CheckWinCondition();
+
+    Team* GetActiveTeamScript();
+    void CreateTeamScripts();
     void SpawnUnit(int q, int r, int h, int team);
-
-    void HandleClick();
-    void GetMouseRay(glm::vec3 &outOrigin, glm::vec3 &outEnd);
-
-    void EndTurn();
+    void CreateHexTile(int q, int r, int h);
+    void LoadLevelFile(const std::string& path);
 };

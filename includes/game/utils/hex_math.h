@@ -39,6 +39,12 @@ public:
         return coord;
     }
 
+    static int Distance(HexCoord a, HexCoord b)
+    {
+        int dist2D = (abs(a.q - b.q) + abs(a.q + a.r - b.q - b.r) + abs(a.r - b.r)) / 2;
+        return dist2D + abs(a.h - b.h);
+    }
+
 private:
     static HexCoord HexRound(float fracQ, float fracR)
     {

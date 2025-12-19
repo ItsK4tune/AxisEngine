@@ -153,7 +153,6 @@ struct ScriptComponent
     Scriptable* (*InstantiateScript)();
     void (*DestroyScript)(ScriptComponent*);
 
-    // Cách dùng: entity.emplace<ScriptComponent>().Bind<PlayerController>();
     template<typename T>
     void Bind()
     {

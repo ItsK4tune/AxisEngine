@@ -1,16 +1,35 @@
 #include <game/scripts/level_manager.h>
-
-#include <algorithm>
+#include <game/scripts/team.h>
 #include <game/scripts/unit.h>
-#include <game/utils/hex_math.h>
+
+#include <engine/utils/bullet_glm_helpers.h>
+#include <engine/ecs/component.h>
 #include <engine/utils/filesystem.h>
+
+#include <fstream>
+#include <iostream>
+
+static bool CheckTag(Scene *scene, entt::entity e, std::string tag)
+{
+    if (!scene->registry.valid(e))
+        return false;
+    if (!scene->registry.all_of<InfoComponent>(e))
+        return false;
+
+    auto &ic = scene->registry.get<InfoComponent>(e);
+    if (ic.tag != tag)
+        return false;
+
+    return true;
+}
 
 void LevelManager::OnCreate()
 {
+    CreateTeamScripts();
     LoadLevelFile("resources/levels/test.lvl");
 
     SpawnUnit(0, 0, 0, 1);
-    SpawnUnit(3, 3, 0, 2);
+    SpawnUnit(0, 1, 0, 2);
 
     auto view = m_Scene->registry.view<UITextComponent>();
     for (auto e : view)
@@ -18,118 +37,129 @@ void LevelManager::OnCreate()
         m_UIEntity = e;
         break;
     }
+
+    currentPhase = GamePhase::PLACEMENT;
+    activeTeamID = 1;
+    prevManualEnd = false;
+
+    std::cout << "[LevelManager] game phase: PLACEMENT\n";
     UpdateUIText();
 }
 
 void LevelManager::OnUpdate(float dt)
 {
-    if (m_App->GetMouse().IsLeftMouseClicked())
+    switch (currentPhase)
     {
-        HandleClick();
+    case GamePhase::PLACEMENT:
+        UpdatePlacement();
+        break;
+    case GamePhase::MOVEMENT:
+        UpdateMovement();
+        break;
+    case GamePhase::ACTION:
+        UpdateAction();
+        break;
+    case GamePhase::END_GAME:
+        break;
     }
+}
 
+void LevelManager::UpdatePlacement()
+{
     if (m_App->GetMouse().IsRightMouseClicked())
     {
-        EndTurn();
+        std::cout << "[Placement] Team " << activeTeamID << " finished placement\n";
+
+        if (activeTeamID == 1)
+            activeTeamID = 2;
+        else
+        {
+            currentPhase = GamePhase::MOVEMENT;
+            activeTeamID = 1;
+            m_Team1->ResetState();
+            m_Team2->ResetState();
+            std::cout << "[LevelManager] game phase: MOVEMENT\n";
+        }
+
+        UpdateUIText();
     }
 }
 
-void LevelManager::LoadLevelFile(const std::string &path)
+void LevelManager::UpdateMovement()
 {
-    std::ifstream file(FileSystem::getPath(path).c_str());
+    if (m_App->GetMouse().IsLeftMouseClicked())
+        HandleLogic();
+    EndTurnInput();
+}
 
-    if (!file.is_open())
+void LevelManager::UpdateAction()
+{
+    if (m_SelectedUnit != entt::null && m_App->GetKeyboard().GetKey(GLFW_KEY_G))
     {
-        std::cerr << "[LevelManager] Cannot open level file " << FileSystem::getPath(path).c_str() << std::endl;
-        return;
-    }
-
-    int w, h, d;
-    file >> w >> h >> d;
-
-    for (int layer = 0; layer < d; layer++)
-    {
-        for (int row = 0; row < h; row++)
+        Unit *u = GetScript<Unit>(m_SelectedUnit);
+        if (u && u->teamID == activeTeamID)
         {
-            for (int col = 0; col < w; col++)
+            if (GetActiveTeamScript()->ConsumeActionPoints(u->stats.actionCost))
             {
-                int hasTile;
-                file >> hasTile;
-                if (hasTile)
-                {
-                    int q = col - (row - (row & 1)) / 2;
-                    int r = row;
-                    CreateHexTile(q, r, layer);
-                }
+                u->Guard();
+                SwitchTurn(currentPhase, false);
+                return;
             }
+
+            std::cout << "[LevelManager] not enough AP\n";
         }
     }
+
+    if (m_App->GetMouse().IsLeftMouseClicked())
+        HandleLogic();
+    EndTurnInput();
 }
 
-void LevelManager::CreateHexTile(int q, int r, int h)
+void LevelManager::SwitchTurn(GamePhase phase, bool isManual)
 {
-    auto e = m_Scene->createEntity();
-    auto &t = m_Scene->registry.emplace<TransformComponent>(e);
+    if (prevManualEnd && isManual)
+    {
+        switch (phase)
+        {
+        case GamePhase::MOVEMENT:
+            currentPhase = GamePhase::ACTION;
+            activeTeamID = 2;
+            prevManualEnd = false;
+            std::cout << "[LevelManager] game phase: ACTION\n";
+            break;
+        case GamePhase::ACTION:
+            currentPhase = GamePhase::PLACEMENT;
+            activeTeamID = 1;
+            prevManualEnd = false;
+            m_Team1->ResetState();
+            m_Team2->ResetState();
+            std::cout << "[LevelManager] game phase: PLACEMENT\n";
+            break;
+        default:
+            break;
+        }
+    }
+    else
+    {
+        std::cout << "[LevelManager] change order\n";
+        prevManualEnd = isManual;
+        activeTeamID = (activeTeamID == 1) ? 2 : 1;
+    }
 
-    t.position = HexMath::HexToWorld({q, r, h});
-
-    t.scale = glm::vec3(0.0003f);
-
-    auto &ren = m_Scene->registry.emplace<MeshRendererComponent>(e);
-    ren.model = m_App->GetResourceManager().GetModel("hex_model");
-    ren.shader = m_App->GetResourceManager().GetShader("modelShader");
-
-    auto &rb = m_Scene->registry.emplace<RigidBodyComponent>(e);
-    btBoxShape *shape = new btBoxShape(btVector3(0.5f, 0.5f, 0.5f));
-
-    btTransform trans;
-    trans.setIdentity();
-    trans.setOrigin(BulletGLMHelpers::convert(t.position));
-
-    rb.body = m_App->GetPhysicsWorld().CreateRigidBody(0.0f, trans, shape);
-    rb.body->setUserIndex((int)e);
-
-    tiles.push_back(e);
+    m_SelectedUnit = entt::null;
+    UpdateUIText();
 }
 
-void LevelManager::SpawnUnit(int q, int r, int h, int team)
+void LevelManager::EndTurnInput()
 {
-    auto e = m_Scene->createEntity();
-
-    auto &t = m_Scene->registry.emplace<TransformComponent>(e);
-    t.scale = glm::vec3(0.01f);
-
-    auto &ren = m_Scene->registry.emplace<MeshRendererComponent>(e);
-    ren.model = m_App->GetResourceManager().GetModel("playerModel");
-    ren.shader = m_App->GetResourceManager().GetShader("modelShader");
-
-    auto &sc = m_Scene->registry.emplace<ScriptComponent>(e);
-    sc.Bind<Unit>();
-
-    sc.instance = sc.InstantiateScript();
-    sc.instance->Init(e, m_Scene, m_App);
-    sc.instance->OnCreate();
-
-    Unit *unit = static_cast<Unit *>(sc.instance);
-    unit->gridPos = {q, r, h};
-    unit->teamID = team;
-
-    t.position = HexMath::HexToWorld({q, r, h});
-
-    auto &rb = m_Scene->registry.emplace<RigidBodyComponent>(e);
-    btCapsuleShape *shape = new btCapsuleShape(0.5f, 2.0f);
-    btTransform trans;
-    trans.setIdentity();
-    trans.setOrigin(BulletGLMHelpers::convert(t.position));
-    rb.body = m_App->GetPhysicsWorld().CreateRigidBody(0.0f, trans, shape);
-    rb.body->setUserIndex((int)e);
-    rb.body->setCollisionFlags(rb.body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
-    rb.body->setActivationState(DISABLE_DEACTIVATION);
-
-    units.push_back(e);
+    if (m_App->GetMouse().IsRightMouseClicked())
+    {
+        std::cout << "[LevelManager] Team " << activeTeamID << " ended turn\n";
+        SwitchTurn(currentPhase, true);
+    }
 }
 
-void LevelManager::HandleClick()
+void LevelManager::HandleLogic()
 {
     glm::vec3 rayFrom, rayTo;
     GetMouseRay(rayFrom, rayTo);
@@ -143,95 +173,119 @@ void LevelManager::HandleClick()
         BulletGLMHelpers::convert(rayTo),
         rayCallback);
 
-    if (rayCallback.hasHit())
+    if (!rayCallback.hasHit())
+        return;
+
+    entt::entity hit = (entt::entity)rayCallback.m_collisionObject->getUserIndex();
+    if (!m_Scene->registry.valid(hit))
+        return;
+
+    Team *myTeam = GetActiveTeamScript();
+
+    if (Unit *clicked = GetScript<Unit>(hit))
     {
-        entt::entity hitEntity = (entt::entity)rayCallback.m_collisionObject->getUserIndex();
-
-        if (!m_Scene->registry.valid(hitEntity))
-            return;
-
-        if (auto *clickedUnit = GetScript<Unit>(hitEntity))
+        if (clicked->teamID == activeTeamID)
         {
-            // Kiểm tra đúng lượt không
-            if ((m_CurrentTurn == Turn::Player1 && clickedUnit->teamID == 1) ||
-                (m_CurrentTurn == Turn::Player2 && clickedUnit->teamID == 2))
-            {
-                m_SelectedUnit = hitEntity;
-                std::cout << "[LevelManager] Selected Unit Team " << clickedUnit->teamID << "\n";
-            }
-            else
-            {
-                std::cout << "[LevelManager] Wrong Turn! Cannot select enemy.\n";
-            }
+            m_SelectedUnit = hit;
+            std::cout << "[Select] Team " << activeTeamID << " selected unit\n";
             return;
         }
 
-        if (m_SelectedUnit != entt::null)
+        if (currentPhase != GamePhase::ACTION || m_SelectedUnit == entt::null)
+            return;
+
+        Unit *attacker = GetScript<Unit>(m_SelectedUnit);
+        if (!attacker)
+            return;
+
+        int dist = HexMath::Distance(attacker->gridPos, clicked->gridPos);
+        if (dist > attacker->stats.attackRange)
         {
-            auto &tileTrans = m_Scene->registry.get<TransformComponent>(hitEntity);
-            HexCoord targetHex = HexMath::WorldToHex(tileTrans.position);
-
-            Unit *unit = GetScript<Unit>(m_SelectedUnit);
-
-            if (m_CurrentSP >= MOVE_COST)
-            {
-                if (!unit->isMoving)
-                {
-                    unit->MoveTo(targetHex);
-                    m_CurrentSP -= MOVE_COST;
-                    std::cout << "[LevelManager] Moved. SP left: " << m_CurrentSP << "\n";
-                    UpdateUIText();
-
-                    m_SelectedUnit = entt::null;
-
-                    if (m_CurrentSP <= 0)
-                        EndTurn();
-                }
-            }
-            else
-            {
-                std::cout << "[LevelManager] Not enough SP!\n";
-            }
+            std::cout << "[Action] Out of range\n";
+            return;
         }
+
+        if (!myTeam->ConsumeActionPoints(attacker->stats.actionCost))
+        {
+            std::cout << "[Action] Not enough AP\n";
+            return;
+        }
+
+        attacker->Attack(clicked);
+        if (clicked->stats.currentHP <= 0)
+            (clicked->teamID == 1 ? m_Team1 : m_Team2)->RemoveUnit(hit);
+
+        CheckWinCondition();
+        UpdateUIText();
+        SwitchTurn(currentPhase, false);
+        return;
     }
-}
 
-void LevelManager::EndTurn()
-{
-    if (m_CurrentTurn == Turn::Player1)
-        m_CurrentTurn = Turn::Player2;
-    else
-        m_CurrentTurn = Turn::Player1;
+    if (currentPhase != GamePhase::MOVEMENT || m_SelectedUnit == entt::null)
+        return;
 
-    m_CurrentSP = MAX_SP;
-    m_SelectedUnit = entt::null;
+    if (!CheckTag(m_Scene, hit, "tile"))
+        return;
 
-    std::cout << "[LevelManager] Turn Changed. Current: Player " << (m_CurrentTurn == Turn::Player1 ? "1" : "2") << "\n";
+    Unit *unit = GetScript<Unit>(m_SelectedUnit);
+    if (!unit || unit->isMoving)
+        return;
+
+    if (!myTeam->ConsumeMovePoints(unit->stats.moveCost))
+    {
+        std::cout << "[Move] Not enough MP\n";
+        return;
+    }
+
+    auto &tileTrans = m_Scene->registry.get<TransformComponent>(hit);
+    HexCoord target = HexMath::WorldToHex(tileTrans.position);
+
+    unit->MoveTo(target);
     UpdateUIText();
+    SwitchTurn(currentPhase, false);
 }
 
 void LevelManager::UpdateUIText()
 {
-    if (m_UIEntity != entt::null && m_Scene->registry.valid(m_UIEntity))
+    if (m_UIEntity == entt::null || !m_Scene->registry.valid(m_UIEntity))
+        return;
+
+    auto &txt = m_Scene->registry.get<UITextComponent>(m_UIEntity);
+    Team *t = GetActiveTeamScript();
+    std::string phaseStr, pointsStr;
+
+    switch (currentPhase)
     {
-        auto &txt = m_Scene->registry.get<UITextComponent>(m_UIEntity);
-        std::string p = (m_CurrentTurn == Turn::Player1) ? "Player 1" : "Player 2";
-        txt.text = p + " Turn (SP: " + std::to_string(m_CurrentSP) + ")";
+    case GamePhase::PLACEMENT:
+        phaseStr = "PLACEMENT";
+        pointsStr = "Click to Ready";
+        break;
+    case GamePhase::MOVEMENT:
+        phaseStr = "MOVE PHASE";
+        pointsStr = "MP: " + std::to_string(t->currentMovePoints);
+        break;
+    case GamePhase::ACTION:
+        phaseStr = "ACTION PHASE";
+        pointsStr = "AP: " + std::to_string(t->currentActionPoints);
+        break;
+    case GamePhase::END_GAME:
+        phaseStr = "GAME OVER";
+        pointsStr = "";
+        break;
     }
+
+    txt.text = phaseStr + " | Team " + std::to_string(activeTeamID) + " | " + pointsStr;
 }
 
 void LevelManager::GetMouseRay(glm::vec3 &outOrigin, glm::vec3 &outEnd)
 {
-    float mouseX = m_App->GetMouse().GetLastX();
-    float mouseY = m_App->GetMouse().GetLastY();
-    int width = m_App->GetWidth();
-    int height = m_App->GetHeight();
+    float mx = m_App->GetMouse().GetLastX();
+    float my = m_App->GetMouse().GetLastY();
+    int w = m_App->GetWidth();
+    int h = m_App->GetHeight();
 
-    float x = (2.0f * mouseX) / width - 1.0f;
-    float y = 1.0f - (2.0f * mouseY) / height;
-    float z = 1.0f;
-    glm::vec3 ray_nds = glm::vec3(x, y, z);
-    glm::vec4 ray_clip = glm::vec4(ray_nds.x, ray_nds.y, -1.0, 1.0);
+    glm::vec3 ray_nds((2.0f * mx) / w - 1.0f, 1.0f - (2.0f * my) / h, 1.0f);
+    glm::vec4 ray_clip(ray_nds.x, ray_nds.y, -1.0, 1.0);
 
     entt::entity camEntity = m_Scene->GetActiveCamera();
     if (camEntity == entt::null)
@@ -241,10 +295,161 @@ void LevelManager::GetMouseRay(glm::vec3 &outOrigin, glm::vec3 &outEnd)
     glm::vec4 ray_eye = glm::inverse(cam.projectionMatrix) * ray_clip;
     ray_eye = glm::vec4(ray_eye.x, ray_eye.y, -1.0, 0.0);
 
-    glm::vec3 ray_wor = glm::vec3(glm::inverse(cam.viewMatrix) * ray_eye);
-    ray_wor = glm::normalize(ray_wor);
-
+    glm::vec3 ray_wor = glm::normalize(glm::vec3(glm::inverse(cam.viewMatrix) * ray_eye));
     auto &camTrans = m_Scene->registry.get<TransformComponent>(camEntity);
     outOrigin = camTrans.position;
     outEnd = outOrigin + ray_wor * 1000.0f;
+}
+
+void LevelManager::CheckWinCondition()
+{
+    if (m_Team1->IsDefeated())
+        currentPhase = GamePhase::END_GAME;
+    else if (m_Team2->IsDefeated())
+        currentPhase = GamePhase::END_GAME;
+}
+
+Team *LevelManager::GetActiveTeamScript()
+{
+    return (activeTeamID == 1) ? m_Team1 : m_Team2;
+}
+
+void LevelManager::CreateTeamScripts()
+{
+    auto createTeam = [&](int id, const std::string &name) -> Team *
+    {
+        auto e = m_Scene->createEntity();
+        m_Scene->registry.emplace<InfoComponent>(e, name, "team_manager");
+        auto &sc = m_Scene->registry.emplace<ScriptComponent>(e);
+        sc.Bind<Team>();
+        sc.instance = sc.InstantiateScript();
+        sc.instance->Init(e, m_Scene, m_App);
+        sc.instance->OnCreate();
+        Team *t = static_cast<Team *>(sc.instance);
+        t->teamID = id;
+        return t;
+    };
+
+    m_Team1 = createTeam(1, "team1");
+    m_Team2 = createTeam(2, "team2");
+}
+
+void LevelManager::SpawnUnit(int q, int r, int h, int team)
+{
+    auto e = m_Scene->createEntity();
+    m_Scene->registry.emplace<InfoComponent>(e, "unit", "unit");
+
+    auto &t = m_Scene->registry.emplace<TransformComponent>(e);
+    t.scale = glm::vec3(0.01f);
+
+    auto &ren = m_Scene->registry.emplace<MeshRendererComponent>(e);
+    ren.model = m_App->GetResourceManager().GetModel("playerModel");
+    ren.shader = m_App->GetResourceManager().GetShader("modelShader");
+    ren.castShadow = true;
+
+    auto &sc = m_Scene->registry.emplace<ScriptComponent>(e);
+    sc.Bind<Unit>();
+    sc.instance = sc.InstantiateScript();
+    sc.instance->Init(e, m_Scene, m_App);
+
+    Unit *unit = static_cast<Unit *>(sc.instance);
+    unit->gridPos = {q, r, h};
+    unit->teamID = team;
+
+    if (team == 1)
+        unit->stats.maxHP = 150;
+    else
+    {
+        unit->stats.maxHP = 100;
+        unit->stats.attackRange = 2;
+    }
+    unit->stats.currentHP = unit->stats.maxHP;
+
+    sc.instance->OnCreate();
+
+    auto &rb = m_Scene->registry.emplace<RigidBodyComponent>(e);
+    btCapsuleShape *shape = new btCapsuleShape(0.5f, 2.0f);
+    btTransform trans;
+    trans.setIdentity();
+    trans.setOrigin(BulletGLMHelpers::convert(t.position));
+    rb.body = m_App->GetPhysicsWorld().CreateRigidBody(0.0f, trans, shape);
+    rb.body->setUserIndex((int)e);
+    rb.body->setCollisionFlags(rb.body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+    rb.body->setActivationState(DISABLE_DEACTIVATION);
+
+    if (team == 1)
+        m_Team1->AddUnit(e);
+    else
+        m_Team2->AddUnit(e);
+}
+
+void LevelManager::CreateHexTile(int q, int r, int h)
+{
+    auto e = m_Scene->createEntity();
+
+    m_Scene->registry.emplace<InfoComponent>(e, "tile", "tile");
+
+    auto &t = m_Scene->registry.emplace<TransformComponent>(e);
+    t.position = HexMath::HexToWorld({q, r, h});
+    t.scale = glm::vec3(0.0003f);
+
+    auto &ren = m_Scene->registry.emplace<MeshRendererComponent>(e);
+    ren.model = m_App->GetResourceManager().GetModel("hex_model");
+    ren.shader = m_App->GetResourceManager().GetShader("modelShader");
+
+    auto &rb = m_Scene->registry.emplace<RigidBodyComponent>(e);
+    btBoxShape *shape = new btBoxShape(btVector3(0.5f, 0.25f, 0.5f));
+
+    btTransform trans;
+    trans.setIdentity();
+    trans.setOrigin(BulletGLMHelpers::convert(t.position));
+
+    rb.body = m_App->GetPhysicsWorld().CreateRigidBody(0.0f, trans, shape);
+    rb.body->setUserIndex((int)e);
+}
+
+void LevelManager::LoadLevelFile(const std::string &path)
+{
+    std::ifstream file(FileSystem::getPath(path).c_str());
+
+    if (!file.is_open())
+        return;
+
+    int w, h, d;
+    if (!(file >> w >> h >> d))
+        return;
+
+    std::string dummy;
+    std::getline(file, dummy);
+
+    for (int layer = 0; layer < d; layer++)
+    {
+        for (int row = 0; row < h; row++)
+        {
+            for (int col = 0; col < w; col++)
+            {
+                while (file.peek() == '#' || file.peek() == '\n' || file.peek() == '\r' || file.peek() == ' ')
+                {
+                    if (file.peek() == '#')
+                    {
+                        std::string c;
+                        std::getline(file, c);
+                    }
+                    else
+                        file.get();
+                }
+
+                int hasTile;
+                if (file >> hasTile)
+                {
+                    if (hasTile)
+                    {
+                        int q = col - (row - (row & 1)) / 2;
+                        int r = row;
+                        CreateHexTile(q, r, layer);
+                    }
+                }
+            }
+        }
+    }
 }
