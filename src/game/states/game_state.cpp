@@ -15,15 +15,15 @@ void TacticsState::OnEnter()
 
     m_App->GetMouse().SetCursorMode(CursorMode::Normal);
 
+    Shader *ppShader_invert = m_App->GetResourceManager().GetShader("ppShader_invert");
+    Shader *ppShader_gray = m_App->GetResourceManager().GetShader("ppShader_gray");
+    m_App->GetPostProcess().AddEffect(ppShader_invert);
+    m_App->GetPostProcess().AddEffect(ppShader_gray, 100, 100, 700, 700);
     std::cout << "[TacticsState] Level Loaded.\n";
 }
 
 void TacticsState::OnUpdate(float dt)
 {
-    // if (m_App->GetKeyboard().GetKey(GLFW_KEY_ESCAPE)) {
-
-    // }
-
     m_App->GetScriptSystem().Update(m_App->GetScene(), dt, m_App);
 
     m_App->GetPhysicsWorld().Update(dt);
