@@ -1,6 +1,7 @@
 #include <game/scripts/level_manager.h>
 #include <game/scripts/team.h>
 #include <game/scripts/unit.h>
+#include <game/scripts/tile.h>
 #include <game/commons/utils/hex_astar.h>
 
 #include <engine/utils/bullet_glm_helpers.h>
@@ -10,18 +11,25 @@
 #include <fstream>
 #include <iostream>
 
-static bool CheckTag(Scene *scene, entt::entity e, std::string tag)
+static std::unordered_set<HexCoord> BuildWalkableSet(Scene *scene, const std::vector<entt::entity> &tiles)
 {
-    if (!scene->registry.valid(e))
-        return false;
-    if (!scene->registry.all_of<InfoComponent>(e))
-        return false;
+    std::unordered_set<HexCoord> result;
+    result.reserve(tiles.size());
 
-    auto &ic = scene->registry.get<InfoComponent>(e);
-    if (ic.tag != tag)
-        return false;
+    for (auto tileEntity : tiles)
+    {
+        if (!scene->registry.valid(tileEntity))
+            continue;
 
-    return true;
+        if (scene->registry.all_of<ScriptComponent>(tileEntity))
+        {
+            auto &nsc = scene->registry.get<ScriptComponent>(tileEntity);
+            Tile *tileScript = static_cast<Tile *>(nsc.instance);
+            result.insert(tileScript->gridPos);
+        }
+    }
+
+    return result;
 }
 
 void LevelManager::OnCreate()
@@ -44,6 +52,7 @@ void LevelManager::OnCreate()
     prevManualEnd = false;
 
     std::cout << "[LevelManager] game phase: PLACEMENT\n";
+    UpdateFogOfWar();
     UpdateUIText();
 }
 
@@ -116,6 +125,83 @@ void LevelManager::UpdateAction()
     EndTurnInput();
 }
 
+void LevelManager::UpdateFogOfWar()
+{
+    std::cout << "[LevelManager] Update fog of war" << std::endl;
+    for (auto tileEntity : tiles)
+    {
+        if (!m_Scene->registry.valid(tileEntity))
+            continue;
+
+        if (auto *tileScript = GetScript<Tile>(tileEntity))
+        {
+            tileScript->SetVisibility(TileVisibility::FOGGED);
+        }
+    }
+
+    Team *currentTeam = GetActiveTeamScript();
+    const auto &myUnits = currentTeam->GetUnits();
+
+    for (auto unitEntity : myUnits)
+    {
+        Unit *u = GetScript<Unit>(unitEntity);
+        if (!u || u->stats.currentHP <= 0)
+            continue;
+
+        for (auto tileEntity : tiles)
+        {
+            if (auto *tileScript = GetScript<Tile>(tileEntity))
+            {
+                int dist = HexMath::Distance(u->gridPos, tileScript->gridPos);
+
+                if (dist <= u->stats.lightRadius)
+                {
+                    tileScript->SetVisibility(TileVisibility::VISIBLE);
+                }
+            }
+        }
+
+        if (m_Scene->registry.all_of<MeshRendererComponent>(unitEntity))
+        {
+            auto &render = m_Scene->registry.get<MeshRendererComponent>(unitEntity);
+            render.visible = true;
+        }
+    }
+
+    int enemyTeamID = (activeTeamID == 1) ? 2 : 1;
+    Team *enemyTeam = (activeTeamID == 1) ? m_Team2 : m_Team1;
+
+    for (auto enemyEntity : enemyTeam->GetUnits())
+    {
+        Unit *enemyUnit = GetScript<Unit>(enemyEntity);
+        if (!enemyUnit)
+            continue;
+
+        bool isVisible = false;
+
+        for (auto tileEntity : tiles)
+        {
+            if (auto *tileScript = GetScript<Tile>(tileEntity))
+            {
+                if (tileScript->gridPos == enemyUnit->gridPos)
+                {
+                    if (tileScript->visibility == TileVisibility::VISIBLE)
+                    {
+                        isVisible = true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (m_Scene->registry.all_of<MeshRendererComponent>(enemyEntity))
+        {
+            auto &render = m_Scene->registry.get<MeshRendererComponent>(enemyEntity);
+            render.visible = isVisible;
+        }
+    }
+}
+
 void LevelManager::SwitchTurn(GamePhase phase, bool isManual)
 {
     if (prevManualEnd && isManual)
@@ -148,6 +234,7 @@ void LevelManager::SwitchTurn(GamePhase phase, bool isManual)
     }
 
     m_SelectedUnit = entt::null;
+    UpdateFogOfWar();
     UpdateUIText();
 }
 
@@ -225,7 +312,8 @@ void LevelManager::HandleLogic()
     if (currentPhase != GamePhase::MOVEMENT || m_SelectedUnit == entt::null)
         return;
 
-    if (!CheckTag(m_Scene, hit, "tile"))
+    Tile *tile = GetScript<Tile>(hit);
+    if (!tile)
         return;
 
     Unit *unit = GetScript<Unit>(m_SelectedUnit);
@@ -238,9 +326,8 @@ void LevelManager::HandleLogic()
         return;
     }
 
-    auto &tileTrans = m_Scene->registry.get<TransformComponent>(hit);
     HexCoord start = unit->gridPos;
-    HexCoord target = HexMath::WorldToHex(tileTrans.position);
+    HexCoord target = tile->gridPos;
 
     int dist = HexMath::Distance(start, target);
     if (dist > unit->stats.moveRadius)
@@ -252,7 +339,8 @@ void LevelManager::HandleLogic()
     }
 
     std::vector<HexCoord> path;
-    if (!HexAStar::FindPath(start, target, m_WalkableTiles, path))
+    std::unordered_set<HexCoord> walkable = BuildWalkableSet(m_Scene, tiles);
+    if (!HexAStar::FindPath(start, target, walkable, path))
     {
         std::cout << "[Move] No path found\n";
         myTeam->ConsumeMovePoints(-unit->stats.moveCost);
@@ -409,14 +497,12 @@ void LevelManager::SpawnUnit(int q, int r, int h, int team)
 
 void LevelManager::CreateHexTile(int q, int r, int h)
 {
-    m_WalkableTiles.insert({q, r, h});
-
     auto e = m_Scene->createEntity();
-
     m_Scene->registry.emplace<InfoComponent>(e, "tile", "tile");
 
     auto &t = m_Scene->registry.emplace<TransformComponent>(e);
     t.position = HexMath::HexToWorld({q, r, h});
+    t.position.y = (h * 0.5f) - 0.5f;
     t.scale = glm::vec3(0.0003f);
 
     auto &ren = m_Scene->registry.emplace<MeshRendererComponent>(e);
@@ -425,13 +511,23 @@ void LevelManager::CreateHexTile(int q, int r, int h)
 
     auto &rb = m_Scene->registry.emplace<RigidBodyComponent>(e);
     btBoxShape *shape = new btBoxShape(btVector3(0.5f, 0.25f, 0.5f));
-
     btTransform trans;
     trans.setIdentity();
     trans.setOrigin(BulletGLMHelpers::convert(t.position));
-
     rb.body = m_App->GetPhysicsWorld().CreateRigidBody(0.0f, trans, shape);
     rb.body->setUserIndex((int)e);
+
+    auto &sc = m_Scene->registry.emplace<ScriptComponent>(e);
+    sc.Bind<Tile>();
+    sc.instance = sc.InstantiateScript();
+    sc.instance->Init(e, m_Scene, m_App);
+
+    Tile *tileScript = static_cast<Tile *>(sc.instance);
+    tileScript->gridPos = {q, r, h};
+
+    sc.instance->OnCreate();
+
+    tiles.push_back(e);
 }
 
 void LevelManager::LoadLevelFile(const std::string &path)

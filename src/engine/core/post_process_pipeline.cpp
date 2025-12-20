@@ -90,7 +90,7 @@ void PostProcessPipeline::EndCapture()
 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO[readIdx]);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO[writeIdx]);
-        glBlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        glBlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FBO[writeIdx]);
 
@@ -125,7 +125,7 @@ void PostProcessPipeline::EndCapture()
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
     glBindVertexArray(0);
     glEnable(GL_DEPTH_TEST);

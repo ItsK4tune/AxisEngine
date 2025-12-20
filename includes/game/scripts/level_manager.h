@@ -26,11 +26,12 @@ private:
 
     entt::entity m_SelectedUnit = entt::null;
     entt::entity m_UIEntity = entt::null;
-    std::unordered_set<HexCoord> m_WalkableTiles;
+    std::vector<entt::entity> tiles;
 
     void UpdatePlacement();
     void UpdateMovement();
     void UpdateAction();
+    void UpdateFogOfWar();
 
     void SwitchTurn(GamePhase phase, bool isManual);
     void EndTurnInput();

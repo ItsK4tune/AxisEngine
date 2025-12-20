@@ -32,6 +32,7 @@ struct MeshRendererComponent
     Shader *shader = nullptr;
     bool castShadow = true;
     bool visible = true;
+    glm::vec4 color = glm::vec4(1.0f);
 };
 
 struct RigidBodyComponent

@@ -145,6 +145,8 @@ void RenderSystem::Render(Scene &scene)
         glm::mat4 modelMatrix = transform.GetTransformMatrix();
         currentShader->setMat4("model", modelMatrix);
 
+        currentShader->setVec4("tintColor", renderer.color);
+
         if (scene.registry.all_of<AnimationComponent>(entity))
         {
             auto &anim = scene.registry.get<AnimationComponent>(entity);
