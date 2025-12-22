@@ -12,10 +12,15 @@ public:
     int currentMovePoints = 10;
     int currentActionPoints = 10;
 
+    std::vector<std::string> startingUnitsFile;
+
     void OnCreate() override;
+
+    void AddStartingUnit(const std::string& filePath);
 
     void AddUnit(entt::entity unitEntity);
     void RemoveUnit(entt::entity unitEntity);
+    void RemoveAllUnit();
     const std::vector<entt::entity> &GetUnits() const;
 
     void ResetState();

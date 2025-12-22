@@ -1,5 +1,6 @@
 #include <game/scripts/unit.h>
-
+#include <game/scripts/skill_registry.h>
+#include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
 
 void Unit::OnCreate()
@@ -35,6 +36,86 @@ void Unit::OnUpdate(float dt)
 
         SyncPhysics(trans.position);
     }
+}
+
+void Unit::LoadFromFile(const std::string &path)
+{
+    std::ifstream file(FileSystem::getPath(path).c_str());
+    std::string line, key;
+
+    while (std::getline(file, line))
+    {
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::stringstream ss(line);
+        ss >> key;
+
+        if (key == "HP")
+            ss >> stats.maxHP;
+        else if (key == "PHYS")
+            ss >> stats.physicDmg;
+        else if (key == "ELE")
+            ss >> stats.physicDmg;
+        else if (key == "RANGE")
+            ss >> stats.physicDmg;
+        else if (key == "CRIT_CHANCE")
+            ss >> stats.physicDmg;
+        else if (key == "DEF")
+            ss >> stats.defense;
+        else if (key == "RES")
+            ss >> stats.resistance;
+        else if (key == "EVAS")
+            ss >> stats.resistance;
+        else if (key == "GUARD")
+            ss >> stats.moveCost;
+        else if (key == "SYNC")
+            ss >> stats.moveCost;
+        else if (key == "MOVE_RADIUS")
+            ss >> stats.moveCost;
+        else if (key == "LIGHT_RADIUS")
+            ss >> stats.moveCost;
+        else if (key == "MOVE_COST")
+            ss >> stats.actionCost;
+        else if (key == "ACTION_COST")
+            ss >> stats.actionCost;
+
+        else if (key == "MODEL")
+        {
+            std::string modelName;
+            ss >> modelName;
+
+            if(HasComponent<MeshRendererComponent>()) {
+                auto& ren = GetComponent<MeshRendererComponent>();
+                ren.model = m_App->GetResourceManager().GetModel(modelName);
+            }
+        }
+
+        else if (key == "SHADER") {
+            std::string shaderName;
+            ss >> shaderName;
+            
+            if(HasComponent<MeshRendererComponent>()) {
+                auto& ren = GetComponent<MeshRendererComponent>();
+                ren.shader = m_App->GetResourceManager().GetShader(shaderName);
+            }
+        }
+
+        else if (key == "SKILLS")
+        {
+            std::string skillName;
+            while (ss >> skillName)
+            {
+                if (skillName.back() == '|')
+                    skillName.pop_back();
+                auto skill = SkillRegistry::CreateSkill(skillName);
+                if (skill)
+                    skills.push_back(skill);
+            }
+        }
+    }
+    stats.currentHP = stats.maxHP;
+
+    std::cout << "[Unit] Loaded unit from " << path << std::endl;
 }
 
 void Unit::MoveByPath(const std::vector<HexCoord> &path)

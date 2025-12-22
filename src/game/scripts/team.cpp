@@ -10,6 +10,10 @@ void Team::OnCreate()
     currentActionPoints = maxActionPoints;
 }
 
+void Team::AddStartingUnit(const std::string& filePath) {
+    startingUnitsFile.push_back(filePath);
+}
+
 void Team::AddUnit(entt::entity unitEntity)
 {
     m_Units.push_back(unitEntity);
@@ -18,6 +22,11 @@ void Team::AddUnit(entt::entity unitEntity)
 void Team::RemoveUnit(entt::entity unitEntity)
 {
     m_Units.erase(std::remove(m_Units.begin(), m_Units.end(), unitEntity), m_Units.end());
+}
+
+void Team::RemoveAllUnit()
+{
+    m_Units.clear();
 }
 
 const std::vector<entt::entity> &Team::GetUnits() const

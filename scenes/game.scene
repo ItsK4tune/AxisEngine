@@ -27,7 +27,7 @@ SCRIPT LevelManager
 
 # --- UI ---
 NEW_ENTITY TurnText
-UI_TRANSFORM 10 20 0 0 20
+UI_TRANSFORM 10 50 0 0 20
 UI_TEXT "Player 1 Turn (SP: 10)" timeFont 0.0 0.0 0.0 0.8
 
 NEW_ENTITY Sky

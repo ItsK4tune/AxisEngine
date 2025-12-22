@@ -3,6 +3,7 @@
 #include <game/scripts/unit.h>
 #include <game/scripts/tile.h>
 #include <game/commons/utils/hex_astar.h>
+#include <game/scripts/skill_registry.h>
 
 #include <engine/utils/bullet_glm_helpers.h>
 #include <engine/ecs/component.h>
@@ -34,11 +35,10 @@ static std::unordered_set<HexCoord> BuildWalkableSet(Scene *scene, const std::ve
 
 void LevelManager::OnCreate()
 {
+    SkillRegistry::RegisterAll();
     CreateTeamScripts();
     LoadLevelFile("resources/levels/test.lvl");
-
-    SpawnUnit(0, 0, 0, 1);
-    SpawnUnit(0, 1, 0, 2);
+    SpawnTeamsUnits();
 
     auto view = m_Scene->registry.view<UITextComponent>();
     for (auto e : view)
@@ -444,9 +444,25 @@ void LevelManager::CreateTeamScripts()
 
     m_Team1 = createTeam(1, "team1");
     m_Team2 = createTeam(2, "team2");
+
+    m_Team1->AddStartingUnit("resources/units/knight.unit"); 
+    m_Team2->AddStartingUnit("resources/units/knight.unit");
 }
 
-void LevelManager::SpawnUnit(int q, int r, int h, int team)
+void LevelManager::SpawnTeamsUnits()
+{
+    for (const auto &data : m_Team1->startingUnitsFile)
+    {
+        SpawnUnit(0, 0, 0, 1, data);
+    }
+
+    for (const auto &data : m_Team2->startingUnitsFile)
+    {
+        SpawnUnit(1, 1, 0, 2, data);
+    }
+}
+
+void LevelManager::SpawnUnit(int q, int r, int h, int team, const std::string &unitFile)
 {
     auto e = m_Scene->createEntity();
     m_Scene->registry.emplace<InfoComponent>(e, "unit", "unit");
@@ -455,8 +471,6 @@ void LevelManager::SpawnUnit(int q, int r, int h, int team)
     t.scale = glm::vec3(0.01f);
 
     auto &ren = m_Scene->registry.emplace<MeshRendererComponent>(e);
-    ren.model = m_App->GetResourceManager().GetModel("playerModel");
-    ren.shader = m_App->GetResourceManager().GetShader("modelShader");
     ren.castShadow = true;
 
     auto &sc = m_Scene->registry.emplace<ScriptComponent>(e);
@@ -468,14 +482,10 @@ void LevelManager::SpawnUnit(int q, int r, int h, int team)
     unit->gridPos = {q, r, h};
     unit->teamID = team;
 
-    if (team == 1)
-        unit->stats.maxHP = 150;
-    else
-    {
-        unit->stats.maxHP = 100;
-        unit->stats.attackRange = 2;
-    }
-    unit->stats.currentHP = unit->stats.maxHP;
+    unit->LoadFromFile(unitFile);
+
+    // auto &anim = m_Scene->registry.emplace<AnimationComponent>(e);
+    // anim.animator = new Animator(m_App->GetResourceManager().GetAnimation("danceAnim"));
 
     sc.instance->OnCreate();
 
@@ -484,7 +494,7 @@ void LevelManager::SpawnUnit(int q, int r, int h, int team)
     btTransform trans;
     trans.setIdentity();
     trans.setOrigin(BulletGLMHelpers::convert(t.position));
-    rb.body = m_App->GetPhysicsWorld().CreateRigidBody(0.0f, trans, shape);
+    rb.body = m_App->GetPhysicsWorld().CreateRigidBody(10.0f, trans, shape);
     rb.body->setUserIndex((int)e);
     rb.body->setCollisionFlags(rb.body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
     rb.body->setActivationState(DISABLE_DEACTIVATION);

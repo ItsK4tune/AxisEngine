@@ -27,6 +27,8 @@ private:
     entt::entity m_SelectedUnit = entt::null;
     entt::entity m_UIEntity = entt::null;
     std::vector<entt::entity> tiles;
+    std::vector<HexCoord> m_SpawnPointsTeam1;
+    std::vector<HexCoord> m_SpawnPointsTeam2;
 
     void UpdatePlacement();
     void UpdateMovement();
@@ -42,7 +44,8 @@ private:
 
     Team* GetActiveTeamScript();
     void CreateTeamScripts();
-    void SpawnUnit(int q, int r, int h, int team);
+    void SpawnTeamsUnits();
+    void SpawnUnit(int q, int r, int h, int team, const std::string& unitFile);
     void CreateHexTile(int q, int r, int h);
     void LoadLevelFile(const std::string& path);
 };

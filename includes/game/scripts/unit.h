@@ -3,6 +3,7 @@
 #include <engine/core/scriptable.h>
 #include <engine/core/application.h>
 #include <game/commons/utils/hex_math.h>
+#include <game/scripts/skill.h>
 
 struct UnitStats
 {
@@ -42,9 +43,13 @@ public:
     std::vector<glm::vec3> movePath;
     int pathIndex = 0;
 
+    std::vector<std::shared_ptr<Skill>> skills;
+    
     void OnCreate() override;
     void OnUpdate(float dt) override;
-
+    
+    void LoadFromFile(const std::string& path);
+    
     void MoveByPath(const std::vector<HexCoord> &path);
     void Attack(Unit *target);
     void Guard();
