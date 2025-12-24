@@ -12,7 +12,8 @@
 #include <engine/graphic/font.h>
 #include <engine/graphic/skybox.h>
 
-struct InfoComponent {
+struct InfoComponent
+{
     std::string name = "Entity";
     std::string tag = "Default";
 };
@@ -73,9 +74,10 @@ struct UITransformComponent
     int zIndex = 0;
 };
 
-struct UIRendererComponent {
-    UIModel* model = nullptr;
-    Shader* shader = nullptr;   
+struct UIRendererComponent
+{
+    UIModel *model = nullptr;
+    Shader *shader = nullptr;
     glm::vec4 color = glm::vec4(1.0f);
 };
 
@@ -101,11 +103,12 @@ struct UIAnimationComponent
     glm::vec4 normalColor = glm::vec4(1.0f);
 };
 
-struct UITextComponent {
-    UIModel* model = nullptr;
-    Shader* shader = nullptr;
+struct UITextComponent
+{
+    UIModel *model = nullptr;
+    Shader *shader = nullptr;
     std::string text;
-    Font* font = nullptr;
+    Font *font = nullptr;
     glm::vec3 color = glm::vec3(1.0f);
     float scale = 1.0f;
     // float padding/lineHeight... (nâng cao)
@@ -151,21 +154,23 @@ class Scriptable;
 
 struct ScriptComponent
 {
-    Scriptable* instance = nullptr;
+    Scriptable *instance = nullptr;
 
-    Scriptable* (*InstantiateScript)();
-    void (*DestroyScript)(ScriptComponent*);
+    Scriptable *(*InstantiateScript)();
+    void (*DestroyScript)(ScriptComponent *);
 
     template<typename T>
     void Bind()
     {
-        InstantiateScript = []() { return static_cast<Scriptable*>(new T()); };
-        DestroyScript = [](ScriptComponent* nsc) { delete nsc->instance; nsc->instance = nullptr; };
+        InstantiateScript = []()
+        { return static_cast<Scriptable *>(new T()); };
+        DestroyScript = [](ScriptComponent *nsc)
+        { delete nsc->instance; nsc->instance = nullptr; };
     }
 };
 
 struct SkyboxRenderComponent
 {
-    Skybox* skybox;
-    Shader* shader;
+    Skybox *skybox;
+    Shader *shader;
 };
