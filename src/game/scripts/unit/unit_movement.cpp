@@ -1,10 +1,17 @@
 #include <game/scripts/unit/unit_movement.h>
 
-void UnitMovement::StartPath(const std::vector<HexCoord> &pathHex)
+void UnitMovement::StartHexPath(const std::vector<HexCoord> &pathHex)
 {
     m_MovePath.clear();
     for (auto &h : pathHex)
         m_MovePath.push_back(HexMath::HexToWorld(h));
+    m_PathIndex = 0;
+    isMoving = true;
+}
+
+void UnitMovement::StartWorldPath(const std::vector<glm::vec3> &pathWorld)
+{
+    m_MovePath = pathWorld;
     m_PathIndex = 0;
     isMoving = true;
 }

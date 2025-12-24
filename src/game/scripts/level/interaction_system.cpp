@@ -140,26 +140,46 @@ void InteractionSystem::HandleClick(LevelModel &level, Scene *scene, Application
             return;
         }
 
-        std::vector<HexCoord> path;
-        std::unordered_set<HexCoord> walkable = BuildWalkableSet(scene, level.tiles);
+        // std::vector<HexCoord> path;
+        // std::unordered_set<HexCoord> walkable = BuildWalkableSet(scene, level.tiles);
 
+        // walkable.insert(start);
+
+        // if (!HexAStar::FindPath(start, target, walkable, path))
+        // {
+        //     std::cout << "[Move] No path found or blocked\n";
+        //     return;
+        // }
+
+        // // if (auto *startTileScript = GetScriptInstance<Tile>(scene, unit->currentTileEntity))
+        // // {
+        // //     startTileScript->isOccupied = false;
+        // // }
+        // // targetTile->isOccupied = true;
+        // // unit->currentTileEntity = hitEntity; // Cần lưu entity tile vào unit để tiện xử lý sau này
+        // activeTeam->ConsumeMovePoints(unit->stats.moveCost);
+        // unit->state.gridPos = target;
+        // unit->MoveByHexPath(path);
+
+        std::unordered_set<HexCoord> walkable = BuildWalkableSet(scene, level.tiles);
         walkable.insert(start);
 
-        if (!HexAStar::FindPath(start, target, walkable, path))
+        // convert hex → world
+        glm::vec3 worldStart = HexMath::HexToWorld(start);
+        glm::vec3 worldTarget = HexMath::HexToWorld(target);
+
+        std::vector<glm::vec3> smoothPath;
+
+        if (!HexAStar::FindSmoothPath(worldStart, worldTarget, walkable, smoothPath))
         {
-            std::cout << "[Move] No path found or blocked\n";
+            std::cout << "[Move] No smooth path found or blocked\n";
             return;
         }
 
-        // if (auto *startTileScript = GetScriptInstance<Tile>(scene, unit->currentTileEntity))
-        // {
-        //     startTileScript->isOccupied = false;
-        // }
-        // targetTile->isOccupied = true;
-        // unit->currentTileEntity = hitEntity; // Cần lưu entity tile vào unit để tiện xử lý sau này
+        // consume MP + apply move
         activeTeam->ConsumeMovePoints(unit->stats.moveCost);
         unit->state.gridPos = target;
-        unit->MoveByPath(path);
+        unit->MoveByWorldPath(smoothPath);
 
         UpdateUI(level, scene);
         TurnSystem::SwitchTurn(level, scene, false);

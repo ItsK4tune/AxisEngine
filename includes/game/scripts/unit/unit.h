@@ -22,7 +22,8 @@ public:
 
     void InitFromFile(const std::string &path);
 
-    void MoveByPath(const std::vector<HexCoord> &path);
+    void MoveByHexPath(const std::vector<HexCoord> &path);
+    void MoveByWorldPath(const std::vector<glm::vec3> &path);
     void Attack(Unit *target);
     void Guard();
     void ResetState();

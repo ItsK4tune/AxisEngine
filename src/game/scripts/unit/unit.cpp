@@ -1,5 +1,6 @@
 #include <game/scripts/unit/unit.h>
 #include <engine/core/application.h>
+#include <game/commons/utils/hex_math.h>
 
 void Unit::OnCreate()
 {
@@ -32,10 +33,17 @@ void Unit::InitFromFile(const std::string &path)
     loader.Load(path, stats, m_App->GetResourceManager(), renderer);
 }
 
-void Unit::MoveByPath(const std::vector<HexCoord> &path)
+void Unit::MoveByHexPath(const std::vector<HexCoord> &path)
 {
-    movement.StartPath(path);
+    movement.StartHexPath(path);
     state.gridPos = path.back();
+    state.isGuarding = false;
+}
+
+void Unit::MoveByWorldPath(const std::vector<glm::vec3> &path)
+{
+    movement.StartWorldPath(path);
+    state.gridPos = HexMath::WorldToHex(path.back());
     state.isGuarding = false;
 }
 

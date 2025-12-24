@@ -20,6 +20,20 @@ struct HexNodeCmp
     }
 };
 
+struct WorldNode
+{
+    glm::vec3 pos;
+    float f, g;
+};
+
+struct WorldNodeCmp
+{
+    bool operator()(const WorldNode &a, const WorldNode &b) const
+    {
+        return a.f > b.f;
+    }
+};
+
 class HexAStar
 {
 public:
@@ -28,4 +42,10 @@ public:
         const HexCoord &goal,
         const std::unordered_set<HexCoord> &walkable,
         std::vector<HexCoord> &outPath);
+
+    static bool FindSmoothPath(
+        const glm::vec3 &start,
+        const glm::vec3 &goal,
+        const std::unordered_set<HexCoord> &walkable,
+        std::vector<glm::vec3> &outPath);
 };
