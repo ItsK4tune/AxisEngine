@@ -1,4 +1,4 @@
-#include <game/scripts/camera_controller.h>
+#include <game/scripts/camera/camera_controller.h>
 #include <engine/core/application.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>

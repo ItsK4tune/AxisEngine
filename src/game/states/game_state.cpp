@@ -2,9 +2,8 @@
 
 #include <iostream>
 
-#include <game/scripts/unit.h>
-#include <game/scripts/level_manager.h>
-#include <game/scripts/camera_controller.h>
+#include <game/scripts/level/level_manager.h>
+#include <game/scripts/camera/camera_controller.h>
 
 void TacticsState::OnEnter()
 {
