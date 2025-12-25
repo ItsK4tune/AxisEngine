@@ -3,14 +3,14 @@
 #include <entt/entt.hpp>
 #include <engine/ecs/component.h> 
 
-class Application;
+class SceneManager;
 
 struct Scene
 {
     entt::registry registry;
 
     entt::entity createEntity();
-    void destroyEntity(entt::entity entity, Application* app = nullptr);
+    void destroyEntity(entt::entity entity, SceneManager* manager);
     
     entt::entity GetActiveCamera();
 };

@@ -33,6 +33,8 @@ public:
     void ClearAllScenes();
 
 private:
+    friend class Scene;
+
     Scene &m_Scene;
     ResourceManager &m_Resources;
     SoundManager &m_SoundManager;
@@ -41,7 +43,5 @@ private:
     entt::entity currentEntity = entt::null;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
-    std::unordered_map<std::string, std::function<void(Scene&, entt::entity)>> m_ScriptRegistry;
-
-    void DestroyEntity(entt::entity entity);
+    std::unordered_map<std::string, std::function<void(Scene &, entt::entity)>> m_ScriptRegistry;
 };
