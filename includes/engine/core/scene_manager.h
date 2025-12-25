@@ -27,6 +27,10 @@ public:
         };
     }
 
+    void AddEntity(entt::entity entity, const std::string& sceneName) {
+        m_LoadedScenes[sceneName].push_back(entity);
+    }
+
     void LoadScene(const std::string &filePath);
     void UnloadScene(const std::string &filePath);
 
