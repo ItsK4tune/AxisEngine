@@ -354,7 +354,7 @@ void SceneManager::UnloadScene(const std::string &filePath)
 
     for (auto entity : it->second)
     {
-        DestroyEntity(entity);
+        m_Scene.destroyEntity(entity, this);
     }
 
     m_LoadedScenes.erase(it);
@@ -368,37 +368,4 @@ void SceneManager::ClearAllScenes()
 
     m_LoadedScenes.clear();
     currentEntity = entt::null;
-}
-
-void SceneManager::DestroyEntity(entt::entity entity)
-{
-    if (m_Scene.registry.all_of<RigidBodyComponent>(entity))
-    {
-        auto &rb = m_Scene.registry.get<RigidBodyComponent>(entity);
-        if (rb.body)
-        {
-            m_Physics.GetWorld()->removeRigidBody(rb.body);
-
-            if (rb.body->getMotionState())
-                delete rb.body->getMotionState();
-
-            delete rb.body;
-            rb.body = nullptr;
-        }
-    }
-
-    if (m_Scene.registry.all_of<AnimationComponent>(entity))
-    {
-        auto &anim = m_Scene.registry.get<AnimationComponent>(entity);
-        if (anim.animator)
-        {
-            delete anim.animator;
-            anim.animator = nullptr;
-        }
-    }
-
-    if (m_Scene.registry.valid(entity))
-    {
-        m_Scene.registry.destroy(entity);
-    }
 }

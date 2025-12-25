@@ -1,12 +1,12 @@
 #include <engine/core/scene.h>
-#include <engine/core/application.h>
+#include <engine/core/scene_manager.h>
 
 entt::entity Scene::createEntity()
 {
     return registry.create();
 }
 
-void Scene::destroyEntity(entt::entity entity, Application *app)
+void Scene::destroyEntity(entt::entity entity, SceneManager* manager)
 {
     if (!registry.valid(entity))
         return;
@@ -22,8 +22,8 @@ void Scene::destroyEntity(entt::entity entity, Application *app)
     {
         if (rb->body)
         {
-            if (app)
-                app->GetPhysicsWorld().GetWorld()->removeRigidBody(rb->body);
+            if (manager)
+                manager->m_Physics.GetWorld()->removeRigidBody(rb->body);
             delete rb->body;
             rb->body = nullptr;
         }
