@@ -10,7 +10,7 @@
 
 void LevelGenerator::InitTeams(Scene *scene, Application *app, LevelModel &level)
 {
-    auto createTeam = [&](int id, std::string name) -> Team *
+    auto createTeam = [&](std::string name) -> Team *
     {
         auto e = scene->createEntity();
         scene->registry.emplace<InfoComponent>(e, name, "team");
@@ -20,12 +20,11 @@ void LevelGenerator::InitTeams(Scene *scene, Application *app, LevelModel &level
         sc.instance->Init(e, scene, app);
         sc.instance->OnCreate();
         auto *t = static_cast<Team *>(sc.instance);
-        t->stats.teamID = id;
         return t;
     };
 
-    level.team1 = createTeam(1, "Team1");
-    level.team2 = createTeam(2, "Team2");
+    level.team1 = createTeam("Team1");
+    level.team2 = createTeam("Team2");
 }
 
 void LevelGenerator::LoadMap(const std::string &path, Scene *scene, Application *app, LevelModel &level)
@@ -72,7 +71,7 @@ void LevelGenerator::LoadMap(const std::string &path, Scene *scene, Application 
     }
 }
 
-void LevelGenerator::SpawnUnit(int q, int r, int h, int teamID, Scene *scene, Application *app, LevelModel &level)
+void LevelGenerator::SpawnUnit(int q, int r, int h, Team* team, Scene *scene, Application *app, LevelModel &level)
 {
     auto e = scene->createEntity();
     scene->registry.emplace<InfoComponent>(e, "Unit", "unit");
@@ -88,9 +87,9 @@ void LevelGenerator::SpawnUnit(int q, int r, int h, int teamID, Scene *scene, Ap
 
     Unit *unit = static_cast<Unit *>(sc.instance);
     unit->state.gridPos = {q, r, h};
-    unit->state.teamID = teamID;
+    unit->state.team = team;
 
-    if (teamID == 1)
+    if (team == level.team1)
         unit->InitFromFile("resources/units/knight.unit");
     else
         unit->InitFromFile("resources/units/knight.unit");
@@ -107,7 +106,7 @@ void LevelGenerator::SpawnUnit(int q, int r, int h, int teamID, Scene *scene, Ap
     rb.body->setCollisionFlags(rb.body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
     rb.body->setActivationState(DISABLE_DEACTIVATION);
 
-    if (teamID == 1)
+    if (team == level.team1)
         level.team1->AddUnit(e);
     else
         level.team2->AddUnit(e);

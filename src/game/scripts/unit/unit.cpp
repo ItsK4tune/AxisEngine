@@ -1,6 +1,8 @@
 #include <game/scripts/unit/unit.h>
 #include <engine/core/application.h>
 #include <game/commons/utils/hex_math.h>
+#include <game/scripts/team/team.h>
+#include <game/scripts/unit/unit_loader.h>
 
 void Unit::OnCreate()
 {
@@ -24,13 +26,30 @@ void Unit::OnUpdate(float dt)
     }
 }
 
+Team *Unit::GetTeam() const { return state.team; }
+
+std::pair<bool, bool> Unit::CanConsumeAP(int cost) const
+{
+    return {state.team && state.team->CheckCanConsume(cost).first, state.team && state.team->CheckCanConsume(cost).second};
+}
+
+bool Unit::ConsumeMP(int cost)
+{
+    return state.team && state.team->ConsumeMovePoints(cost);
+}
+
+bool Unit::ConsumeAP(int cost)
+{
+    return state.team && state.team->ConsumeActionPoints(cost);
+}
+
 void Unit::InitFromFile(const std::string &path)
 {
     MeshRendererComponent *renderer = nullptr;
     if (HasComponent<MeshRendererComponent>())
         renderer = &GetComponent<MeshRendererComponent>();
 
-    loader.Load(path, stats, m_App->GetResourceManager(), renderer);
+    UnitLoader::Load(path, stats, skills, m_App->GetResourceManager(), renderer);
 }
 
 void Unit::MoveByHexPath(const std::vector<HexCoord> &path)
@@ -92,6 +111,29 @@ void Unit::ReceiveDamage(const UnitStats &attackerStats)
 
     if (stats.currentHP <= 0)
         Die();
+}
+
+void Unit::UsePassiveSkills(SkillTrigger trigger, Unit *target)
+{
+    for (const auto &skill : skills)
+    {
+        if (skill->GetType() == SkillType::PASSIVE && skill->CanTrigger(trigger))
+        {
+            skill->OnTrigger(trigger, this, target);
+        }
+    }
+}
+
+void Unit::UseActiveSkills(SkillTrigger trigger, Unit *target)
+{
+    for (const auto &skill : skills)
+    {
+        if (skill->GetType() == SkillType::ACTIVE && skill->CanTrigger(trigger))
+        {
+            std::cout << "[Unit] Using active skill: " << skill->GetName() << "\n";
+            skill->OnTrigger(trigger, this, target);
+        }
+    }
 }
 
 void Unit::Die()

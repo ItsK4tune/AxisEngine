@@ -2,6 +2,8 @@
 
 #include <game/commons/utils/hex_math.h>
 
+class Team;
+
 struct UnitStats
 {
     int maxHP = 100;
@@ -29,8 +31,9 @@ struct UnitStats
 struct UnitState
 {
     HexCoord gridPos{0, 0, 0};
-    int teamID = 1;
+    Team* team = nullptr;
     bool isGuarding = false;
     bool isAfflicted = false;
     bool isDead = false;
+    bool wantToUseSkill = false;
 };

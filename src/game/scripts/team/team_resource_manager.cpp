@@ -34,5 +34,5 @@ void TeamResourceManager::ResetCycle(TeamStats &stats)
 {
     stats.currentMP = stats.maxMP;
     stats.currentAP = stats.maxAP;
-    std::cout << "[TeamResourceManager:  " << stats.teamID << "] Resources Refreshed.\n";
+    std::cout << "[TeamResourceManager] Resources Refreshed.\n";
 }

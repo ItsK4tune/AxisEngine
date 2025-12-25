@@ -29,9 +29,27 @@ void InteractionSystem::Update(LevelModel &level, Scene *scene, Application *app
     if (app->GetKeyboard().IsKeyDown(GLFW_KEY_P))
     {
         TurnSystem::SwitchTurn(level, scene, true);
-        // VisionSystem::UpdateFogOfWar(level, scene);
         UpdateUI(level, scene);
         return;
+    }
+
+    if (app->GetKeyboard().IsKeyDown(GLFW_KEY_SPACE))
+    {
+        if (level.currentPhase == GamePhase::ACTION)
+        {
+            Team *team = level.GetActiveTeam();
+            for (auto unitEntity : team->GetUnits())
+            {
+                if (Unit *unit = SceneHelper::GetScriptInstance<Unit>(scene, unitEntity))
+                {
+                    unit->state.wantToUseSkill = !unit->state.wantToUseSkill;
+                }
+            }
+
+            Unit *firstUnit = SceneHelper::GetScriptInstance<Unit>(scene, team->GetUnits()[0]);
+            std::cout << "[InteractionSystem] Team " << level.activeTeamID << " set all units to "
+                      << (firstUnit && firstUnit->state.wantToUseSkill ? "" : "NOT ") << "use skills.\n";
+        }
     }
 
     if (app->GetMouse().IsLeftMouseClicked())
@@ -67,7 +85,7 @@ void InteractionSystem::HandleClick(LevelModel &level, Scene *scene, Application
 
     if (Unit *clickedUnit = SceneHelper::GetScriptInstance<Unit>(scene, hitEntity))
     {
-        if (clickedUnit->state.teamID == level.activeTeamID)
+        if (clickedUnit->state.team == level.GetActiveTeam())
         {
             level.selectedUnit = hitEntity;
             std::cout << "[InteractionSystem] Team " << level.activeTeamID << " selected unit at " << clickedUnit->state.gridPos.q << "," << clickedUnit->state.gridPos.r << "," << clickedUnit->state.gridPos.h << std::endl;
@@ -87,18 +105,24 @@ void InteractionSystem::HandleClick(LevelModel &level, Scene *scene, Application
                 return;
             }
 
-            if (!activeTeam->CheckCanConsume(attacker->stats.actionCost).second)
+            if (attacker->state.wantToUseSkill)
             {
-                std::cout << "[InteractionSystem] Not enough AP\n";
-                return;
+                attacker->UseActiveSkills(SkillTrigger::OnAttack, clickedUnit);
             }
-
-            activeTeam->ConsumeActionPoints(attacker->stats.actionCost);
-            attacker->Attack(clickedUnit);
+            else
+            {
+                if (!activeTeam->CheckCanConsume(attacker->stats.actionCost).second)
+                {
+                    std::cout << "[InteractionSystem] Not enough AP\n";
+                    return;
+                }
+                activeTeam->ConsumeActionPoints(attacker->stats.actionCost);
+                attacker->Attack(clickedUnit);
+            }
 
             if (clickedUnit->stats.currentHP <= 0)
             {
-                Team *enemyTeam = (clickedUnit->state.teamID == 1) ? level.team1 : level.team2;
+                Team *enemyTeam = (clickedUnit->state.team == level.team1) ? level.team2 : level.team1;
                 enemyTeam->RemoveUnit(hitEntity);
 
                 if (enemyTeam->IsDefeated())

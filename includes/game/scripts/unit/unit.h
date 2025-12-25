@@ -4,7 +4,7 @@
 #include <game/scripts/unit/unit_data.h>
 #include <game/scripts/unit/unit_movement.h>
 #include <game/scripts/unit/unit_combat.h>
-#include <game/scripts/unit/unit_loader.h>
+#include <game/scripts/skill/skill.h>
 
 class Unit : public Scriptable
 {
@@ -12,13 +12,17 @@ public:
     UnitStats stats;
     UnitState state;
 
-    UnitLoader loader;
     UnitMovement movement;
     UnitCombat combat;
-    // std::vector<std::shared_ptr<Skill>> skills;
+    std::vector<std::shared_ptr<Skill>> skills;
 
     void OnCreate() override;
     void OnUpdate(float dt) override;
+
+    Team *GetTeam() const;
+    std::pair<bool, bool> CanConsumeAP(int cost) const;
+    bool ConsumeMP(int cost);
+    bool ConsumeAP(int cost);
 
     void InitFromFile(const std::string &path);
 
@@ -28,6 +32,8 @@ public:
     void Guard();
     void ResetState();
     void ReceiveDamage(const UnitStats &attackerStats);
+    void UsePassiveSkills(SkillTrigger trigger, Unit *target = nullptr);
+    void UseActiveSkills(SkillTrigger trigger, Unit *target = nullptr);
 
 private:
     void Die();

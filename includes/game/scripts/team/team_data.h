@@ -4,8 +4,6 @@
 #include <string>
 
 struct TeamStats {
-    int teamID = 0;
-    
     int maxMP = 10;
     int currentMP = 10;
 

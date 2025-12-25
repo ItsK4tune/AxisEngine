@@ -4,11 +4,11 @@
 #include <sstream>
 #include <iostream>
 
-// #include <game/scripts/skill_registry.h>
+#include <game/scripts/skill/skill.h>
 #include <engine/utils/filesystem.h>
+#include <game/scripts/skill/skill_registry.h>
 
-// static void Load(const std::string &path, UnitStats &stats, std::vector<std::shared_ptr<Skill>> &skills, ResourceManager &resManager, MeshRendererComponent *renderer = nullptr)
-void UnitLoader::Load(const std::string &path, UnitStats &stats, ResourceManager &resManager, MeshRendererComponent *renderer)
+void UnitLoader::Load(const std::string &path, UnitStats &stats, std::vector<std::shared_ptr<Skill>> &skills, ResourceManager &resManager, MeshRendererComponent *renderer)
 {
     std::ifstream file(FileSystem::getPath(path).c_str());
 
@@ -70,18 +70,18 @@ void UnitLoader::Load(const std::string &path, UnitStats &stats, ResourceManager
             renderer->shader = resManager.GetShader(shaderName);
         }
 
-        // else if (key == "SKILLS")
-        // {
-        //     std::string skillName;
-        //     while (ss >> skillName)
-        //     {
-        //         if (skillName.back() == '|')
-        //             skillName.pop_back();
-        //         auto skill = SkillRegistry::CreateSkill(skillName);
-        //         if (skill)
-        //             skills.push_back(skill);
-        //     }
-        // }
+        else if (key == "SKILLS")
+        {
+            std::string skillName;
+            while (ss >> skillName)
+            {
+                if (skillName.back() == '|')
+                    skillName.pop_back();
+                auto skill = SkillRegistry::CreateSkill(skillName);
+                if (skill)
+                    skills.push_back(skill);
+            }
+        }
     }
     stats.currentHP = stats.maxHP;
     std::cout << "[UnitLoader] Loaded unit from " << path << std::endl;

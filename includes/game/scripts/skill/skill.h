@@ -1,20 +1,32 @@
-// #pragma once
-// #include <string>
+#pragma once
+#include <string>
 
-// class Unit;
+class Unit;
 
-// enum class SkillType { PASSIVE, ACTIVE };
+enum class SkillType
+{
+    PASSIVE,
+    ACTIVE
+};
 
-// class Skill {
-// public:
-//     virtual ~Skill() = default;
-//     virtual std::string GetName() const = 0;
-//     virtual SkillType GetType() const = 0;
+enum class SkillTrigger
+{
+    TurnStart,
+    TurnEnd,
+    OnAttack,
+    OnHit,
+    OnDamaged,
+    OnKill,
+    OnMove,
+};
 
-//     virtual void OnTurnStart(Unit* owner) {}
-//     virtual int OnCalculateDamage(Unit* owner, Unit* target, int baseDamage) { return baseDamage; }
-    
-//     virtual int GetCost() { return 0; }
-//     virtual int GetRange() { return 1; }
-//     virtual void Execute(Unit* owner, Unit* target) {}
-// };
+class Skill
+{
+public:
+    virtual ~Skill() = default;
+    virtual std::string GetName() const = 0;
+    virtual SkillType GetType() const = 0;
+
+    virtual bool CanTrigger(SkillTrigger t) const { return false; }
+    virtual void OnTrigger(SkillTrigger t, Unit *owner, Unit *target) {}
+};

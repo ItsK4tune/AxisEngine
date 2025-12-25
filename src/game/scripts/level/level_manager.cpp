@@ -9,8 +9,8 @@ void LevelManager::OnCreate()
     LevelGenerator::InitTeams(m_Scene, m_App, m_Level);
     LevelGenerator::LoadMap("resources/levels/test.lvl", m_Scene, m_App, m_Level);
 
-    LevelGenerator::SpawnUnit(0, 0, 0, 1, m_Scene, m_App, m_Level);
-    LevelGenerator::SpawnUnit(0, 1, 0, 2, m_Scene, m_App, m_Level);
+    LevelGenerator::SpawnUnit(0, 0, 0, m_Level.team1, m_Scene, m_App, m_Level);
+    LevelGenerator::SpawnUnit(0, 1, 0, m_Level.team2, m_Scene, m_App, m_Level);
 
     auto view = m_Scene->registry.view<UITextComponent>();
     for (auto e : view)

@@ -4,11 +4,13 @@
 
 #include <game/scripts/level/level_manager.h>
 #include <game/scripts/camera/camera_controller.h>
+#include <game/scripts/skill/skill_registry.h>
 
 void TacticsState::OnEnter()
 {
     m_App->GetSceneManager().RegisterScript<CameraController>("CameraController");
     m_App->GetSceneManager().RegisterScript<LevelManager>("LevelManager");
+    SkillRegistry::RegisterAll();
 
     m_App->GetSceneManager().LoadScene("scenes/game.scene");
 

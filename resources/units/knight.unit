@@ -17,3 +17,4 @@ MODEL playerModel
 SHADER modelShader
 
 SKILLS TankUp
+SKILLS HeavyStrike
