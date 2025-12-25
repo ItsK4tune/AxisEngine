@@ -8,6 +8,8 @@
 class TankUpSkill : public Skill
 {
 public:
+    TankUpSkill() : Skill(0, 0, 0, -1, -1) {}
+
     std::string GetName() const override
     {
         return "TankUp";
@@ -18,7 +20,7 @@ public:
         return SkillType::PASSIVE;
     }
 
-    bool CanTrigger(SkillTrigger t) const override
+    bool CanTrigger(SkillTrigger t, Unit *owner, Unit *target) const override
     {
         return t == SkillTrigger::TurnStart;
     }

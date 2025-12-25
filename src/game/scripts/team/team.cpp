@@ -8,7 +8,7 @@ void Team::OnCreate()
     m_Resources.ResetCycle(stats);
 }
 
-void Team::ResetCycle()
+void Team::OnCycleReset()
 {
     m_Resources.ResetCycle(stats);
 
@@ -21,7 +21,41 @@ void Team::ResetCycle()
             auto u = GetScript<Unit>(e);
             if (u)
             {
-                u->ResetState();
+                u->OnCycleReset();
+            }
+        }
+    }
+}
+
+void Team::OnPhaseReset()
+{
+    m_Roster.CleanUp(m_Scene);
+
+    for (auto e : GetUnits())
+    {
+        if (m_Scene->registry.all_of<ScriptComponent>(e))
+        {
+            auto u = GetScript<Unit>(e);
+            if (u)
+            {
+                u->OnPhaseReset();
+            }
+        }
+    }
+}
+
+void Team::OnTurnReset()
+{
+    m_Roster.CleanUp(m_Scene);
+
+    for (auto e : GetUnits())
+    {
+        if (m_Scene->registry.all_of<ScriptComponent>(e))
+        {
+            auto u = GetScript<Unit>(e);
+            if (u)
+            {
+                u->OnTurnReset();
             }
         }
     }

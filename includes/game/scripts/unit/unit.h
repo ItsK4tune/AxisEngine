@@ -26,14 +26,19 @@ public:
 
     void InitFromFile(const std::string &path);
 
-    void MoveByHexPath(const std::vector<HexCoord> &path);
-    void MoveByWorldPath(const std::vector<glm::vec3> &path);
-    void Attack(Unit *target);
-    void Guard();
-    void ResetState();
+    bool CanMove(const HexCoord &begin, const HexCoord &end);
+    bool CanAttack(Unit *target);
+
+    bool MoveByWorldPath(const std::vector<glm::vec3> &path);
+    bool Attack(Unit *target);
+    bool Guard();
     void ReceiveDamage(const UnitStats &attackerStats);
-    void UsePassiveSkills(SkillTrigger trigger, Unit *target = nullptr);
-    void UseActiveSkills(SkillTrigger trigger, Unit *target = nullptr);
+    bool UsePassiveSkills(SkillTrigger trigger, Unit *target = nullptr);
+    bool UseActiveSkills(SkillTrigger trigger, Unit *target = nullptr);
+
+    void OnCycleReset();
+    void OnPhaseReset();
+    void OnTurnReset();
 
 private:
     void Die();

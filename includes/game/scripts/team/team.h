@@ -17,12 +17,14 @@ public:
     const std::vector<entt::entity> &GetUnits() const { return m_Roster.GetAll(); }
     void ClearUnit() { m_Roster.Clear(); }
 
-    void ResetCycle();
+    void OnCycleReset();
+    void OnPhaseReset();
+    void OnTurnReset();
     bool IsDefeated();
 
-    std::pair<bool, bool> CheckCanConsume(int amount) const { return m_Resources.CheckCanConsume(stats, amount); }
-    bool ConsumeMovePoints(int amount) { return m_Resources.ConsumeMP(stats, amount); }
-    bool ConsumeActionPoints(int amount) { return m_Resources.ConsumeAP(stats, amount); }
+    std::pair<bool, bool> CanConsume(int amount) const { return m_Resources.CanConsume(stats, amount); }
+    bool ConsumeMP(int amount) { return m_Resources.ConsumeMP(stats, amount); }
+    bool ConsumeAP(int amount) { return m_Resources.ConsumeAP(stats, amount); }
 
     void AddStartingUnit(const std::string &path) { config.AddFile(path); }
 

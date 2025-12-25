@@ -8,6 +8,8 @@
 class HeavyStrikeSkill : public Skill
 {
 public:
+    HeavyStrikeSkill() : Skill(6, 0, 0, -1, -1) {}
+
     std::string GetName() const override
     {
         return "HeavyStrike";
@@ -18,7 +20,7 @@ public:
         return SkillType::ACTIVE;
     }
 
-    bool CanTrigger(SkillTrigger t) const override
+    bool CanTrigger(SkillTrigger t, Unit *owner, Unit *target) const override
     {
         return t == SkillTrigger::OnAttack;
     }
@@ -26,20 +28,18 @@ public:
     void OnTrigger(SkillTrigger t, Unit *owner, Unit *target) override
     {
         if (t != SkillTrigger::OnAttack || target == nullptr)
-            return; 
-
-        constexpr int COST = 6;
-
-        if (!owner->CanConsumeAP(COST).second)
             return;
 
-        owner->ConsumeAP(COST);
+        if (!owner->CanConsumeAP(GetAPCost()).second)
+            return;
+
+        owner->ConsumeAP(GetAPCost());
 
         std::cout << "[HeavyStrikeSkill] Heavy Strike!\n";
 
         UnitStats clonedStats = owner->stats;
         clonedStats.physicDmg *= 2;
-        
+
         target->ReceiveDamage(clonedStats);
     }
 };

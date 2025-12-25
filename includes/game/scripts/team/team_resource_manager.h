@@ -6,7 +6,7 @@
 class TeamResourceManager
 {
 public:
-    std::pair<bool, bool> CheckCanConsume(const TeamStats &stats, int amount) const ;
+    std::pair<bool, bool> CanConsume(const TeamStats &stats, int amount) const ;
     bool ConsumeMP(TeamStats &stats, int amount);
     bool ConsumeAP(TeamStats &stats, int amount);
 

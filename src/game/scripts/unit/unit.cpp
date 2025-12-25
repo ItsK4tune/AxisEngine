@@ -30,17 +30,17 @@ Team *Unit::GetTeam() const { return state.team; }
 
 std::pair<bool, bool> Unit::CanConsumeAP(int cost) const
 {
-    return {state.team && state.team->CheckCanConsume(cost).first, state.team && state.team->CheckCanConsume(cost).second};
+    return {state.team && state.team->CanConsume(cost).first, state.team && state.team->CanConsume(cost).second};
 }
 
 bool Unit::ConsumeMP(int cost)
 {
-    return state.team && state.team->ConsumeMovePoints(cost);
+    return state.team && state.team->ConsumeMP(cost);
 }
 
 bool Unit::ConsumeAP(int cost)
 {
-    return state.team && state.team->ConsumeActionPoints(cost);
+    return state.team && state.team->ConsumeAP(cost);
 }
 
 void Unit::InitFromFile(const std::string &path)
@@ -52,38 +52,121 @@ void Unit::InitFromFile(const std::string &path)
     UnitLoader::Load(path, stats, skills, m_App->GetResourceManager(), renderer);
 }
 
-void Unit::MoveByHexPath(const std::vector<HexCoord> &path)
+bool Unit::CanMove(const HexCoord &begin, const HexCoord &end)
 {
-    movement.StartHexPath(path);
-    state.gridPos = path.back();
-    state.isGuarding = false;
+    std::cout << "[Unit] Checking move from (" << begin.q << "," << begin.r << "," << begin.h << ") to ("
+              << end.q << "," << end.r << "," << end.h << ")\n";
+    float dist = HexMath::Distance(begin, end);
+    std::cout << "[Unit] Distance: " << dist << ", Move Radius: " << stats.moveRadius << "\n";
+    return dist <= stats.moveRadius;
 }
 
-void Unit::MoveByWorldPath(const std::vector<glm::vec3> &path)
+bool Unit::CanAttack(Unit *target)
 {
+    if (!target)
+        return false;
+
+    int dist = HexMath::Distance(state.gridPos, target->state.gridPos);
+    return dist <= stats.attackRange;
+}
+
+bool Unit::MoveByWorldPath(const std::vector<glm::vec3> &path)
+{
+    Team *team = GetTeam();
+    if (!team)
+    {
+        std::cout << "[Unit] Cannot move: No team assigned.\n";
+        return false;
+    }
+
+    if (!CanMove(state.gridPos, HexMath::WorldToHex(path.back())))
+    {
+        std::cout << "[Unit] Cannot move: Target too far.\n";
+        return false;
+    }
+
+    if (!team->CanConsume(stats.moveCost).first)
+    {
+        std::cout << "[Unit] Cannot move: Not enough MP.\n";
+        return false;
+    }
+
     movement.StartWorldPath(path);
     state.gridPos = HexMath::WorldToHex(path.back());
     state.isGuarding = false;
+
+    team->ConsumeMP(stats.moveCost);
+    return true;
 }
 
-void Unit::Attack(Unit *target)
+bool Unit::Attack(Unit *target)
 {
+    Team *team = GetTeam();
+    if (!team)
+    {
+        std::cout << "[Unit] Cannot attack: No team assigned.\n";
+        return false;
+    }
+
+    if (!CanAttack(target))
+    {
+        std::cout << "[Unit] Cannot attack: Target too far.\n";
+        return false;
+    }
+
+    if (!team->CanConsume(stats.actionCost).second)
+    {
+        std::cout << "[Unit] Cannot attack: Not enough AP.\n";
+        return false;
+    }
+
     if (!target)
-        return;
+        return false;
     state.isGuarding = false;
 
     target->ReceiveDamage(stats);
+    team->ConsumeAP(stats.actionCost);
+    return true;
 }
 
-void Unit::Guard()
+bool Unit::Guard()
 {
+    Team *team = GetTeam();
+    if (!team)
+    {
+        std::cout << "[Unit] Cannot attack: No team assigned.\n";
+        return false;
+    }
+
+    if (!team->CanConsume(stats.actionCost).second)
+    {
+        std::cout << "[Unit] Cannot attack: Not enough AP.\n";
+        return false;
+    }
+
     state.isGuarding = true;
     std::cout << "[Unit] Guarding.\n";
+    team->ConsumeAP(stats.actionCost);
+    return true;
 }
 
-void Unit::ResetState()
+void Unit::OnCycleReset()
 {
+    state.wantToUseSkill = false;
     state.isGuarding = false;
+    state.isAfflicted = false;
+}
+
+void Unit::OnPhaseReset()
+{
+}
+
+void Unit::OnTurnReset()
+{
+    for (const auto &skill : skills)
+    {
+        skill->ReduceCooldown();
+    }
 }
 
 void Unit::ReceiveDamage(const UnitStats &attackerStats)
@@ -92,13 +175,24 @@ void Unit::ReceiveDamage(const UnitStats &attackerStats)
 
     if (res.isMiss)
     {
-        std::cout << "[Combat] Missed!\n";
+        std::cout << "[Unit] Missed!\n";
         return;
+    }
+
+    if (state.isGuarding)
+    {
+        res.finalDamage = res.finalDamage * stats.guardBonus / 100;
+        std::cout << "[Unit] Guarding! Damage reduced to " << res.finalDamage << "\n";
+    }
+
+    if (res.isCrit)
+    {
+        std::cout << "[Unit] Critical Hit!\n";
     }
 
     if (res.isSync)
     {
-        std::cout << "[Combat] Synchronize Boom!\n";
+        std::cout << "[Unit] Synchronize Boom!\n";
         state.isAfflicted = false;
     }
     else if (attackerStats.elementalDmg > 0)
@@ -107,33 +201,57 @@ void Unit::ReceiveDamage(const UnitStats &attackerStats)
     }
 
     stats.currentHP -= res.finalDamage;
-    std::cout << "[Combat] Took " << res.finalPhys << " physical dmg and " << res.finalElem << " elemental dmg. HP: " << stats.currentHP << "\n";
+    std::cout << "[Unit] Took " << res.finalPhys << " physical dmg and " << res.finalElem << " elemental dmg. HP: " << stats.currentHP << "\n";
 
     if (stats.currentHP <= 0)
         Die();
 }
 
-void Unit::UsePassiveSkills(SkillTrigger trigger, Unit *target)
+bool Unit::UsePassiveSkills(SkillTrigger trigger, Unit *target)
 {
+    Team *team = GetTeam();
+    if (!team)
+    {
+        std::cout << "[Unit] Cannot use active skill: No team assigned.\n";
+        return false;
+    }
+
+    bool triggered = false;
     for (const auto &skill : skills)
     {
-        if (skill->GetType() == SkillType::PASSIVE && skill->CanTrigger(trigger))
+        if (skill->GetType() == SkillType::PASSIVE && skill->CanTrigger(trigger, this, target))
         {
+            std::cout << "[Unit] Using passive skill: " << skill->GetName() << "\n";
             skill->OnTrigger(trigger, this, target);
+            triggered = true;
         }
     }
+
+    return triggered;
 }
 
-void Unit::UseActiveSkills(SkillTrigger trigger, Unit *target)
+bool Unit::UseActiveSkills(SkillTrigger trigger, Unit *target)
 {
+    Team *team = GetTeam();
+    if (!team)
+    {
+        std::cout << "[Unit] Cannot use active skill: No team assigned.\n";
+        return false;
+    }
+
+    bool triggered = false;
     for (const auto &skill : skills)
     {
-        if (skill->GetType() == SkillType::ACTIVE && skill->CanTrigger(trigger))
+
+        if (skill->GetType() == SkillType::ACTIVE && skill->CanTrigger(trigger, this, target))
         {
             std::cout << "[Unit] Using active skill: " << skill->GetName() << "\n";
             skill->OnTrigger(trigger, this, target);
+            triggered = true;
         }
     }
+
+    return triggered;
 }
 
 void Unit::Die()

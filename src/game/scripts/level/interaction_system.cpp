@@ -18,14 +18,6 @@ static std::unordered_set<HexCoord> BuildWalkableSet(Scene *scene, const std::ve
 
 void InteractionSystem::Update(LevelModel &level, Scene *scene, Application *app, float dt)
 {
-    // if (m_Level.currentPhase == GamePhase::PLACEMENT)
-    // {
-    //     if (m_App->GetMouse().IsLeftMouseClicked())
-    //     {
-    //         m_Level.currentPhase = GamePhase::MOVEMENT;
-    //     }
-    // }
-
     if (app->GetKeyboard().IsKeyDown(GLFW_KEY_P))
     {
         TurnSystem::SwitchTurn(level, scene, true);
@@ -98,26 +90,19 @@ void InteractionSystem::HandleClick(LevelModel &level, Scene *scene, Application
             if (!attacker)
                 return;
 
-            int dist = HexMath::Distance(attacker->state.gridPos, clickedUnit->state.gridPos);
-            if (dist > attacker->stats.attackRange)
-            {
-                std::cout << "[InteractionSystem] Out of range (Dist: " << dist << ")\n";
-                return;
-            }
-
             if (attacker->state.wantToUseSkill)
             {
-                attacker->UseActiveSkills(SkillTrigger::OnAttack, clickedUnit);
+                if (!attacker->UseActiveSkills(SkillTrigger::OnAttack, clickedUnit))
+                {
+                    return;
+                }
             }
             else
             {
-                if (!activeTeam->CheckCanConsume(attacker->stats.actionCost).second)
+                if(!attacker->Attack(clickedUnit))
                 {
-                    std::cout << "[InteractionSystem] Not enough AP\n";
                     return;
                 }
-                activeTeam->ConsumeActionPoints(attacker->stats.actionCost);
-                attacker->Attack(clickedUnit);
             }
 
             if (clickedUnit->stats.currentHP <= 0)
@@ -148,47 +133,12 @@ void InteractionSystem::HandleClick(LevelModel &level, Scene *scene, Application
         if (!unit || unit->movement.isMoving)
             return;
 
-        if (!activeTeam->CheckCanConsume(unit->stats.moveCost).first)
-        {
-            std::cout << "[Move] Not enough MP\n";
-            return;
-        }
-
         HexCoord start = unit->state.gridPos;
         HexCoord target = targetTile->gridPos;
-
-        int dist = HexMath::Distance(start, target);
-        if (dist > unit->stats.moveRadius)
-        {
-            std::cout << "[Move] Target too far: " << dist << " / " << unit->stats.moveRadius << "\n";
-            return;
-        }
-
-        // std::vector<HexCoord> path;
-        // std::unordered_set<HexCoord> walkable = BuildWalkableSet(scene, level.tiles);
-
-        // walkable.insert(start);
-
-        // if (!HexAStar::FindPath(start, target, walkable, path))
-        // {
-        //     std::cout << "[Move] No path found or blocked\n";
-        //     return;
-        // }
-
-        // // if (auto *startTileScript = GetScriptInstance<Tile>(scene, unit->currentTileEntity))
-        // // {
-        // //     startTileScript->isOccupied = false;
-        // // }
-        // // targetTile->isOccupied = true;
-        // // unit->currentTileEntity = hitEntity; // Cần lưu entity tile vào unit để tiện xử lý sau này
-        // activeTeam->ConsumeMovePoints(unit->stats.moveCost);
-        // unit->state.gridPos = target;
-        // unit->MoveByHexPath(path);
 
         std::unordered_set<HexCoord> walkable = BuildWalkableSet(scene, level.tiles);
         walkable.insert(start);
 
-        // convert hex → world
         glm::vec3 worldStart = HexMath::HexToWorld(start);
         glm::vec3 worldTarget = HexMath::HexToWorld(target);
 
@@ -200,10 +150,10 @@ void InteractionSystem::HandleClick(LevelModel &level, Scene *scene, Application
             return;
         }
 
-        // consume MP + apply move
-        activeTeam->ConsumeMovePoints(unit->stats.moveCost);
-        unit->state.gridPos = target;
-        unit->MoveByWorldPath(smoothPath);
+        if (!unit->MoveByWorldPath(smoothPath))
+        {
+            return;
+        }
 
         UpdateUI(level, scene);
         TurnSystem::SwitchTurn(level, scene, false);

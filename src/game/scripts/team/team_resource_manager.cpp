@@ -1,7 +1,7 @@
 #include <game/scripts/team/team_resource_manager.h>
 #include <iostream>
 
-std::pair<bool, bool> TeamResourceManager::CheckCanConsume(const TeamStats &stats, int amount) const
+std::pair<bool, bool> TeamResourceManager::CanConsume(const TeamStats &stats, int amount) const
 {
     return std::make_pair(
         stats.currentMP >= amount,

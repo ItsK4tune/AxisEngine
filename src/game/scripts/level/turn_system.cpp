@@ -3,28 +3,56 @@
 #include <game/scripts/team/team.h>
 #include <iostream>
 
-void TurnSystem::SwitchTurn(LevelModel &level, Scene* scene, bool isManualSkip)
+static void ResetTurn(LevelModel& level)
+{
+    if (level.team1) level.team1->OnTurnReset();
+    if (level.team2) level.team2->OnTurnReset();
+}
+
+static void ResetPhase(LevelModel& level)
+{
+    if (level.team1) level.team1->OnPhaseReset();
+    if (level.team2) level.team2->OnPhaseReset();
+}
+
+static void ResetCycle(LevelModel& level)
+{
+    if (level.team1) level.team1->OnCycleReset();
+    if (level.team2) level.team2->OnCycleReset();
+}
+
+void TurnSystem::SwitchTurn(LevelModel& level, Scene* scene, bool isManualSkip)
 {
     if (isManualSkip)
     {
         if (level.prevManualEnd)
         {
             AdvancePhase(level);
-            ResetUnitsIfNeeded(level);
             level.prevManualEnd = false;
             level.selectedUnit = entt::null;
+
+            VisionSystem::UpdateFogOfWar(level, scene);
             return;
         }
+
         level.prevManualEnd = true;
+    }
+    else
+    {
+        level.prevManualEnd = false;
     }
 
     level.activeTeamID = (level.activeTeamID == 1) ? 2 : 1;
-    VisionSystem::UpdateFogOfWar(level, scene);
     level.selectedUnit = entt::null;
+
+    ResetTurn(level);
+    VisionSystem::UpdateFogOfWar(level, scene);
 }
 
-void TurnSystem::AdvancePhase(LevelModel &level)
+void TurnSystem::AdvancePhase(LevelModel& level)
 {
+    ResetPhase(level);
+
     switch (level.currentPhase)
     {
     case GamePhase::PLACEMENT:
@@ -39,22 +67,16 @@ void TurnSystem::AdvancePhase(LevelModel &level)
 
     case GamePhase::ACTION:
         level.currentPhase = GamePhase::PLACEMENT;
+
+        ResetCycle(level);
+
+        level.movementPhaseFirstTeamIsTeam1 = !level.movementPhaseFirstTeamIsTeam1;
+        level.actionPhaseFirstTeamIsTeam1   = !level.actionPhaseFirstTeamIsTeam1;
+
+        level.activeTeamID = 1;
         break;
     }
 
-    std::cout << "[TurnSystem] Phase changed to " << (int)level.currentPhase << "\n";
-}
-
-void TurnSystem::ResetUnitsIfNeeded(LevelModel &level)
-{
-    if (level.currentPhase == GamePhase::PLACEMENT)
-    {
-        if (level.team1)
-            level.team1->ResetCycle();
-        if (level.team2)
-            level.team2->ResetCycle();
-
-        level.movementPhaseFirstTeamIsTeam1 = !level.movementPhaseFirstTeamIsTeam1;
-        level.actionPhaseFirstTeamIsTeam1 = !level.actionPhaseFirstTeamIsTeam1;
-    }
+    std::cout << "[TurnSystem] Phase changed to "
+              << static_cast<int>(level.currentPhase) << "\n";
 }

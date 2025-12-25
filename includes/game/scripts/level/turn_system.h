@@ -9,5 +9,4 @@ public:
 
 private:
     static void AdvancePhase(LevelModel &level);
-    static void ResetUnitsIfNeeded(LevelModel &level);
 };
