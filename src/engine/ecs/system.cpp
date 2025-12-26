@@ -107,11 +107,13 @@ void RenderSystem::Render(Scene &scene)
     CameraComponent *cam = nullptr;
     TransformComponent *camTrans = nullptr;
 
-    if (camEntity != entt::null)
+    if (camEntity == entt::null)
     {
-        cam = &scene.registry.get<CameraComponent>(camEntity);
-        camTrans = &scene.registry.get<TransformComponent>(camEntity);
+        return;
     }
+
+    cam = &scene.registry.get<CameraComponent>(camEntity);
+    camTrans = &scene.registry.get<TransformComponent>(camEntity);
 
     scene.registry.sort<MeshRendererComponent>([](const auto &lhs, const auto &rhs)
                                                { return lhs.shader < rhs.shader; });
