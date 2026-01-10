@@ -10,16 +10,20 @@ uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
 
+layout(location = 10) in mat4 instanceMatrix;
+uniform bool isInstanced;
+
 out vec2 TexCoords;
 out vec3 Normal;
 out vec3 FragPos;
 
 void main()
 {
-    vec4 worldPos = model * vec4(pos, 1.0);
+    mat4 modelMatrix = isInstanced ? instanceMatrix : model;
+    vec4 worldPos = modelMatrix * vec4(pos, 1.0);
     FragPos = vec3(worldPos);
 
-    Normal = normalize(mat3(transpose(inverse(model))) * norm);
+    Normal = normalize(mat3(transpose(inverse(modelMatrix))) * norm);
 
     TexCoords = tex;
 

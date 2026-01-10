@@ -27,6 +27,9 @@ class RenderSystem
 public:
     void Render(Scene &scene);
 
+    void SetFaceCulling(bool enabled, int mode = GL_BACK);
+    void SetDepthTest(bool enabled, int func = GL_LESS);
+
 private:
     void UploadLightData(Scene &scene, Shader *shader);
 };

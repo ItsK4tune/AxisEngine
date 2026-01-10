@@ -34,11 +34,14 @@ public:
     std::vector<unsigned int> indices;
     std::vector<Texture> textures;
     unsigned int VAO;
+    glm::vec3 AABBmin;
+    glm::vec3 AABBmax;
 
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
     void Draw(Shader &shader);
+    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models);
 
 private:
-    unsigned int VBO, EBO;
+    unsigned int VBO, EBO, instanceVBO;
     void setupMesh();
 };

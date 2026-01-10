@@ -18,12 +18,35 @@
 Model::Model(std::string const &path, bool isStatic, bool gamma) : gammaCorrection(gamma)
 {
     loadModel(path, isStatic);
+
+    // Calculate Model AABB from meshes
+    if (!meshes.empty())
+    {
+        AABBmin = meshes[0].AABBmin;
+        AABBmax = meshes[0].AABBmax;
+        for (const auto &mesh : meshes)
+        {
+            AABBmin.x = (std::min)(AABBmin.x, mesh.AABBmin.x);
+            AABBmin.y = (std::min)(AABBmin.y, mesh.AABBmin.y);
+            AABBmin.z = (std::min)(AABBmin.z, mesh.AABBmin.z);
+
+            AABBmax.x = (std::max)(AABBmax.x, mesh.AABBmax.x);
+            AABBmax.y = (std::max)(AABBmax.y, mesh.AABBmax.y);
+            AABBmax.z = (std::max)(AABBmax.z, mesh.AABBmax.z);
+        }
+    }
 }
 
 void Model::Draw(Shader &shader)
 {
     for (unsigned int i = 0; i < meshes.size(); i++)
         meshes[i].Draw(shader);
+}
+
+void Model::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
+{
+    for (unsigned int i = 0; i < meshes.size(); i++)
+        meshes[i].DrawInstanced(shader, models);
 }
 
 std::unordered_map<std::string, BoneInfo> &Model::GetBoneInfoMap() { return m_BoneInfoMap; }

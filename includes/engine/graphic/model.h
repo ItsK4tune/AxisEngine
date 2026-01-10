@@ -16,10 +16,13 @@ public:
 	std::vector<Mesh> meshes;
 	std::string directory;
 	bool gammaCorrection;
+	glm::vec3 AABBmin;
+	glm::vec3 AABBmax;
 
 	Model(std::string const &path, bool isStatic = false, bool gamma = false);
 
 	void Draw(Shader &shader);
+    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models);
 
 	std::unordered_map<std::string, BoneInfo> &GetBoneInfoMap();
 	int &GetBoneCount();

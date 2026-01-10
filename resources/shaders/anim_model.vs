@@ -12,6 +12,9 @@ uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
 
+layout(location = 10) in mat4 instanceMatrix;
+uniform bool isInstanced;
+
 const int MAX_BONES = 100;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 
@@ -57,12 +60,14 @@ void main()
         totalPosition = vec4(pos, 1.0f);
         totalNormal = norm;
     }
+    }
 	
-    mat4 viewModel = view * model;
+    mat4 modelMatrix = isInstanced ? instanceMatrix : model;
+    mat4 viewModel = view * modelMatrix;
     gl_Position =  projection * viewModel * totalPosition;
 	
     TexCoords = tex;
     // Chuyển Normal sang World Space
-    Normal = normalize(mat3(transpose(inverse(model))) * totalNormal);
-    FragPos = vec3(model * totalPosition);
+    Normal = normalize(mat3(transpose(inverse(modelMatrix))) * totalNormal);
+    FragPos = vec3(modelMatrix * totalPosition);
 }

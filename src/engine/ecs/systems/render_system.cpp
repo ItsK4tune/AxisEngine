@@ -1,5 +1,8 @@
 #include <engine/ecs/system.h>
+#include <engine/graphic/frustum.h>
 #include <string>
+#include <algorithm>
+#include <vector>
 
 void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
 {
@@ -87,6 +90,13 @@ void RenderSystem::Render(Scene &scene)
     cam = &scene.registry.get<CameraComponent>(camEntity);
     camTrans = &scene.registry.get<TransformComponent>(camEntity);
 
+    // --- Frustum Culling Setup ---
+    Frustum frustum;
+    if (cam)
+    {
+        frustum.Update(cam->projectionMatrix * cam->viewMatrix);
+    }
+
     scene.registry.sort<MeshRendererComponent>([](const auto &lhs, const auto &rhs)
                                                { return lhs.shader < rhs.shader; });
 
@@ -100,6 +110,43 @@ void RenderSystem::Render(Scene &scene)
 
         if (!renderer.model || !renderer.shader)
             continue;
+
+        glm::mat4 modelMatrix = transform.GetTransformMatrix();
+
+        // --- Frustum Culling Check ---
+        if (cam)
+        {
+            glm::vec3 min = renderer.model->AABBmin;
+            glm::vec3 max = renderer.model->AABBmax;
+
+            // Transform 8 corners to world space
+            std::vector<glm::vec3> corners = {
+                {min.x, min.y, min.z}, {min.x, min.y, max.z},
+                {min.x, max.y, min.z}, {min.x, max.y, max.z},
+                {max.x, min.y, min.z}, {max.x, min.y, max.z},
+                {max.x, max.y, min.z}, {max.x, max.y, max.z}
+            };
+
+            glm::vec3 minWorld(FLT_MAX);
+            glm::vec3 maxWorld(-FLT_MAX);
+
+            for (auto& p : corners)
+            {
+                glm::vec4 worldPos = modelMatrix * glm::vec4(p, 1.0f);
+                minWorld.x = std::min(minWorld.x, worldPos.x);
+                minWorld.y = std::min(minWorld.y, worldPos.y);
+                minWorld.z = std::min(minWorld.z, worldPos.z);
+                
+                maxWorld.x = std::max(maxWorld.x, worldPos.x);
+                maxWorld.y = std::max(maxWorld.y, worldPos.y);
+                maxWorld.z = std::max(maxWorld.z, worldPos.z);
+            }
+
+            if (!frustum.IsBoxVisible(minWorld, maxWorld))
+            {
+                continue; // Skip rendering effectively
+            }
+        }
 
         if (currentShader != renderer.shader)
         {
@@ -116,7 +163,6 @@ void RenderSystem::Render(Scene &scene)
             UploadLightData(scene, currentShader);
         }
 
-        glm::mat4 modelMatrix = transform.GetTransformMatrix();
         currentShader->setMat4("model", modelMatrix);
 
         currentShader->setVec4("tintColor", renderer.color);
@@ -127,13 +173,48 @@ void RenderSystem::Render(Scene &scene)
             if (anim.animator)
             {
                 auto transforms = anim.animator->GetFinalBoneMatrices();
-                for (int j = 0; j < transforms.size(); ++j)
+                
+                static std::vector<std::string> boneUniforms;
+                if (boneUniforms.empty())
                 {
-                    currentShader->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                    boneUniforms.reserve(100);
+                    for (int i = 0; i < 100; i++)
+                        boneUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
+                }
+
+                for (int j = 0; j < transforms.size() && j < 100; ++j)
+                {
+                    currentShader->setMat4(boneUniforms[j], transforms[j]);
                 }
             }
         }
 
         renderer.model->Draw(*currentShader);
+    }
+}
+
+void RenderSystem::SetFaceCulling(bool enabled, int mode)
+{
+    if (enabled)
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(mode);
+    }
+    else
+    {
+        glDisable(GL_CULL_FACE);
+    }
+}
+
+void RenderSystem::SetDepthTest(bool enabled, int func)
+{
+    if (enabled)
+    {
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(func);
+    }
+    else
+    {
+        glDisable(GL_DEPTH_TEST);
     }
 }

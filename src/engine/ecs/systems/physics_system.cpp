@@ -11,7 +11,7 @@ void PhysicsSystem::Update(Scene &scene)
 
         if (rb.body)
         {
-            if (rb.body->isKinematicObject())
+            if (rb.body->isKinematicObject() || !rb.body->isActive())
                 continue;
 
             btTransform trans;
