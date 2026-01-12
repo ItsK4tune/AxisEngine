@@ -94,7 +94,7 @@ bool Application::Init()
     mouseManager = std::make_unique<MouseManager>(window);
     resourceManager = std::make_unique<ResourceManager>();
     soundManager = std::make_unique<SoundManager>();
-    sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager);
+    sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager, this);
     
     mouseManager->SetLastPosition(m_Config.width / 2.0, m_Config.height / 2.0);
     soundManager->Init();

@@ -155,10 +155,9 @@ struct ScriptComponent
 {
     Scriptable *instance = nullptr;
 
-    Scriptable *(*InstantiateScript)();
-    void (*DestroyScript)(ScriptComponent *);
+    std::function<Scriptable *()> InstantiateScript;
+    std::function<void(ScriptComponent *)> DestroyScript; 
 
-    // Cách dùng: entity.emplace<ScriptComponent>().Bind<PlayerController>();
     template <typename T>
     void Bind()
     {

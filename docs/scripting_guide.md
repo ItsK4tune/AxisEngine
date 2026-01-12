@@ -39,16 +39,19 @@ public:
 
 ## 2. Registering and Using Scripts
 
-Scripts must be registered in the `GameState` or `Application` initialization logic so they can be instantiated by name from string (e.g., from `.scene` files).
+Scripts use a self-registration macro, so you don't need to touch the engine core code.
 
-**In `GameState::Init`:**
+**In your script source file (.cpp):**
 ```cpp
-// Assuming you have a helper or manually adding a component
-// Currently, the engine uses magic string mapping in SceneManager if implemented, 
-// OR you manually bind them in code:
+#include "your_script.h"
+#include <engine/core/script_registry.h>
 
-auto& script = m_Scene->registry.emplace<ScriptComponent>(entity);
-script.Bind<PlayerController>();
+REGISTER_SCRIPT(YourClassName)
+```
+
+The engine will automatically register `YourClassName` so it can be used in `.scene` files:
+```text
+SCRIPT YourClassName
 ```
 
 ## 3. Accessing Components
@@ -82,4 +85,24 @@ if (m_App->GetInput()->GetKey(GLFW_KEY_SPACE))
 {
     // Jump
 }
+```
+
+## 5. Manual Script Binding (Advanced)
+
+If you are creating entities via C++ code (instead of `.scene` files), you can manually bind scripts using `ScriptComponent::Bind<T>()`. This bypasses the registry lookup and provides type safety.
+
+```cpp
+#include <game/scripts/my_script.h>
+
+// ... inside a system or initialization function
+auto entity = m_Scene.registry.create();
+auto& scriptComp = m_Scene.registry.emplace<ScriptComponent>(entity);
+
+// Bind the script class directly
+scriptComp.Bind<MyScript>();
+
+// Initialize manual script
+scriptComp.instance = scriptComp.InstantiateScript();
+scriptComp.instance->Init(entity, &m_Scene, m_App);
+scriptComp.instance->OnCreate();
 ```

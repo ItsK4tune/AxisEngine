@@ -1,9 +1,10 @@
 #include <engine/core/scene_manager.h>
+#include <engine/core/script_registry.h>
 #include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
 
-SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound)
-    : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound) {}
+SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application* app)
+    : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound), m_App(app) {}
 
 void SceneManager::LoadScene(const std::string &filePath)
 {
@@ -386,16 +387,21 @@ void SceneManager::LoadScene(const std::string &filePath)
         }
         else if (command == "SCRIPT")
         {
-            std::string scriptName;
-            ss >> scriptName;
+            std::string className;
+            ss >> className;
 
-            if (m_ScriptRegistry.find(scriptName) != m_ScriptRegistry.end())
+            auto &scriptComp = m_Scene.registry.emplace<ScriptComponent>(currentEntity);
+            
+            Scriptable* scriptInstance = ScriptRegistry::Instance().Create(className);
+            
+            if (scriptInstance)
             {
-                m_ScriptRegistry[scriptName](m_Scene, currentEntity);
-            }
-            else
-            {
-                std::cout << "[SceneManager] Warning: Script '" << scriptName << "' not found in registry!" << std::endl;
+                scriptComp.instance = scriptInstance;
+                scriptComp.InstantiateScript = [className]() { return ScriptRegistry::Instance().Create(className); };
+                scriptComp.DestroyScript = [](ScriptComponent *nsc) { delete nsc->instance; nsc->instance = nullptr; };
+                
+                scriptComp.instance->Init(currentEntity, &m_Scene, m_App);
+                scriptComp.instance->OnCreate();
             }
         }
     }

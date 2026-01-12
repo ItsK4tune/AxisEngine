@@ -3,8 +3,6 @@
 
 void GameState::OnEnter()
 {
-    m_App->GetSceneManager().RegisterScript<CameraController>("CameraController");
-
     m_App->GetSceneManager().LoadScene("scenes/game.scene");
     m_App->GetMouse().SetCursorMode(CursorMode::Locked);
 }

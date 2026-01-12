@@ -12,20 +12,12 @@
 #include <engine/physic/physic_world.h>
 #include <engine/ecs/component.h>
 
+class Application; // Forward declaration
+
 class SceneManager
 {
 public:
-    SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound);
-
-    template <typename T>
-    void RegisterScript(const std::string &name)
-    {
-        m_ScriptRegistry[name] = [](Scene &scene, entt::entity entity)
-        {
-            auto &sc = scene.registry.emplace_or_replace<ScriptComponent>(entity);
-            sc.Bind<T>();
-        };
-    }
+    SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application* app);
 
     void AddEntity(entt::entity entity, const std::string& sceneName) {
         m_LoadedScenes[sceneName].push_back(entity);
@@ -43,9 +35,9 @@ private:
     ResourceManager &m_Resources;
     SoundManager &m_SoundManager;
     PhysicsWorld &m_Physics;
+    Application* m_App = nullptr; // [NEW]
 
     entt::entity currentEntity = entt::null;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
-    std::unordered_map<std::string, std::function<void(Scene &, entt::entity)>> m_ScriptRegistry;
 };

@@ -1,6 +1,9 @@
 #include <game/scripts/camera_controller.h>
 #include <engine/core/application.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <engine/core/script_registry.h>
+
+REGISTER_SCRIPT(CameraController)
 
 void CameraController::OnUpdate(float dt)
 {
