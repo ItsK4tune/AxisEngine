@@ -1,0 +1,3 @@
+# Load Shader first in <scene_name>.scene
+# Get Shader instance Using m_App->GetResourceManager().GetShader(<shader_name>);
+# Load PostProcess Using m_App->GetPostProcess().AddEffect(<shader_name>, x, y, w, h);
