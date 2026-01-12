@@ -3,7 +3,7 @@
 #include <engine/core/state.h>
 #include <engine/core/application.h>
 
-class TacticsState : public State
+class GameState : public State
 {
 public:
     void OnEnter() override;

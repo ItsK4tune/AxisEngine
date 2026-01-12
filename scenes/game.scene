@@ -1,26 +1,17 @@
-LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/anim_model.fs
+LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/model.fs
+LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 LOAD_SHADER skyboxShader resources/shaders/skybox.vs resources/shaders/skybox.fs
-LOAD_SHADER ppShader_default resources/shaders/post_process/screen.vs resources/shaders/post_process/screen_default.fs
-LOAD_SHADER ppShader_invert resources/shaders/post_process/screen.vs resources/shaders/post_process/screen_invert.fs
-LOAD_SHADER ppShader_gray resources/shaders/post_process/screen.vs resources/shaders/post_process/screen_gray.fs
 
-LOAD_STATIC_MODEL hex_model resources/objects/hex/Platform.fbx
-LOAD_MODEL playerModel resources/objects/player/SittingLaughing.fbx
+LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
 
-LOAD_SKYBOX daySky resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png resources/skybox/skybox.png
-
-# --- ENVIRONMENT ---
 NEW_ENTITY MainCamera
 TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
-CAMERA 1 45.0 -90.0 0.0 
+CAMERA 1 90.0 -90.0 0.0 
 SCRIPT CameraController
+
+NEW_ENTITY Plane
+TRANSFORM 0.0 0.0 0.0 0.0 0.0 0.0 1 1 1
+RENDERER planeModel modelShader
 
 NEW_ENTITY Sun
 LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8
-
-# --- LOGIC ---
-NEW_ENTITY GameManager
-SCRIPT LevelManager
-
-NEW_ENTITY Sky
-SKYBOX_RENDERER daySky skyboxShader

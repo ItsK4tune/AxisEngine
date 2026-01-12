@@ -157,9 +157,46 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
         // 1. Diffuse / Base Color
         std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
         if (diffuseMaps.empty()) {
-            // Hỗ trợ GLB PBR (Base Color)
+            // Support GLB PBR (Base Color)
             diffuseMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_diffuse", scene);
         }
+        
+        // [FALLBACK] If no texture maps found, try to use Material Color
+        if (diffuseMaps.empty())
+        {
+            aiColor4D color;
+            // Try base color first (physically based), then diffuse
+            if (aiGetMaterialColor(material, AI_MATKEY_BASE_COLOR, &color) == AI_SUCCESS || 
+                aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS)
+            {
+                unsigned char data[4];
+                data[0] = (unsigned char)(color.r * 255.0f);
+                data[1] = (unsigned char)(color.g * 255.0f);
+                data[2] = (unsigned char)(color.b * 255.0f);
+                data[3] = (unsigned char)(color.a * 255.0f);
+
+                unsigned int textureID;
+                glGenTextures(1, &textureID);
+                glBindTexture(GL_TEXTURE_2D, textureID);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+                Texture texture;
+                texture.id = textureID;
+                texture.type = "texture_diffuse";
+                texture.path = "INTERNAL_COLOR_FALLBACK";
+                
+                diffuseMaps.push_back(texture);
+                
+                // Note: we don't push to textures_loaded to act as a unique resource per material
+                // Or we could, but let's keep it simple for now. 
+            }
+        }
+
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
         // 2. Specular
@@ -237,22 +274,23 @@ void Model::ExtractBoneWeightForVertices(std::vector<Vertex> &vertices, aiMesh *
 unsigned int Model::TextureFromFile(const char *path, const std::string &directory, const aiScene *scene, bool gamma)
 {
     std::string filename = std::string(path);
-    
-    // [FIX PATH] Cắt bỏ đường dẫn tuyệt đối rác của Mixamo/FBX
+    std::replace(filename.begin(), filename.end(), '\\', '/');
+
+    std::string directory_sanitized = directory;
+    std::replace(directory_sanitized.begin(), directory_sanitized.end(), '\\', '/');
+
     std::string pureFilename = filename;
-    size_t lastSlash = filename.find_last_of("/\\");
+    size_t lastSlash = filename.find_last_of('/');
     if (lastSlash != std::string::npos) {
         pureFilename = filename.substr(lastSlash + 1);
     }
 
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
+    unsigned int textureID = 0;
 
     int width, height, nrComponents;
     unsigned char *data = nullptr;
     bool shouldFree = true;
 
-    // --- BƯỚC 1: TÌM TEXTURE NHÚNG ---
     const aiTexture* aiTex = nullptr;
 
     if (filename[0] == '*') {
@@ -262,7 +300,6 @@ unsigned int Model::TextureFromFile(const char *path, const std::string &directo
         } catch (...) {}
     }
     
-    // Nếu không tìm thấy bằng ID, thử tìm bằng đường dẫn (đặc biệt quan trọng với GLB/Mixamo)
     if (!aiTex) {
         aiTex = scene->GetEmbeddedTexture(path);
     }
@@ -270,15 +307,11 @@ unsigned int Model::TextureFromFile(const char *path, const std::string &directo
         aiTex = scene->GetEmbeddedTexture(pureFilename.c_str());
     }
 
-    // --- BƯỚC 2: LOAD DỮ LIỆU ---
-    // Luôn ép về 4 kênh (RGBA) để tránh lỗi format OpenGL
     const int req_comp = 4; 
 
     if (aiTex) 
     {
-        // Embedded Texture (Trong RAM)
         if (aiTex->mHeight == 0) {
-            // Compressed (PNG/JPG...)
             data = stbi_load_from_memory(
                 reinterpret_cast<unsigned char*>(aiTex->pcData),
                 aiTex->mWidth,
@@ -286,25 +319,30 @@ unsigned int Model::TextureFromFile(const char *path, const std::string &directo
             shouldFree = true;
         } 
         else {
-            // Raw Data (ARGB8888)
             data = reinterpret_cast<unsigned char*>(aiTex->pcData);
             width = aiTex->mWidth;
             height = aiTex->mHeight;
             nrComponents = 4;
-            shouldFree = false; // Dữ liệu của Assimp, KHÔNG ĐƯỢC FREE
+            shouldFree = false;
         }
     } 
     else 
     {
-        // External Texture (Trên đĩa)
-        std::string fullPath = directory + '/' + pureFilename;
+        std::string fullPath = directory_sanitized + '/' + pureFilename;
         data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, req_comp);
+        
+        if (!data && filename != pureFilename)
+        {
+             std::string fullPathOriginal = directory_sanitized + '/' + filename;
+             data = stbi_load(fullPathOriginal.c_str(), &width, &height, &nrComponents, req_comp);
+        }
+
         shouldFree = true;
     }
 
-    // --- BƯỚC 3: TẠO OPENGL TEXTURE ---
     if (data)
     {
+        glGenTextures(1, &textureID);
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -320,9 +358,10 @@ unsigned int Model::TextureFromFile(const char *path, const std::string &directo
     }
     else
     {
+        std::string fullPath = directory_sanitized + '/' + pureFilename;
         std::cout << "[Model] Texture failed to load: " << pureFilename 
-                  << " (Original Path: " << path << ")" << std::endl;
-        // Trả về ID nhưng không hợp lệ (texture rỗng)
+                  << " (Tried: " << fullPath << ")" << std::endl;
+        return 0;
     }
 
     return textureID;
@@ -336,10 +375,11 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         aiString str;
         mat->GetTexture(type, i, &str);
         
-        // [FIX DUPLICATE CHECK] Dùng tên file ngắn gọn để so sánh cache
         std::string rawPath = str.C_Str();
+        std::replace(rawPath.begin(), rawPath.end(), '\\', '/'); // Fix separator
+        
         std::string filename = rawPath;
-        size_t lastSlash = rawPath.find_last_of("/\\");
+        size_t lastSlash = rawPath.find_last_of('/');
         if (lastSlash != std::string::npos) {
             filename = rawPath.substr(lastSlash + 1);
         }
@@ -347,10 +387,12 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         bool skip = false;
         for (unsigned int j = 0; j < textures_loaded.size(); j++)
         {
-            // So sánh tên file
             std::string loadedName = textures_loaded[j].path;
-            size_t ls = loadedName.find_last_of("/\\");
-            if(ls != std::string::npos) loadedName = loadedName.substr(ls+1);
+            
+            // Fix loaded path for comparison
+            std::replace(loadedName.begin(), loadedName.end(), '\\', '/');
+            size_t ls = loadedName.find_last_of('/');
+             if(ls != std::string::npos) loadedName = loadedName.substr(ls+1);
 
             if (filename == loadedName)
             {
@@ -362,12 +404,16 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         
         if (!skip)
         {
-            Texture texture;
-            texture.id = TextureFromFile(str.C_Str(), this->directory, scene);
-            texture.type = typeName;
-            texture.path = str.C_Str(); // Lưu đường dẫn gốc
-            textures.push_back(texture);
-            textures_loaded.push_back(texture);
+            unsigned int id = TextureFromFile(str.C_Str(), this->directory, scene);
+            if (id != 0) // Only add if valid
+            {
+                Texture texture;
+                texture.id = id;
+                texture.type = typeName;
+                texture.path = str.C_Str();
+                textures.push_back(texture);
+                textures_loaded.push_back(texture);
+            }
         }
     }
 

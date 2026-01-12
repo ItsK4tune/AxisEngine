@@ -55,30 +55,37 @@ Camera Component
 -------------------------
 RigidBody Component
 -------------------------
-# RIGIDBODY <TYPE> <mass>
+# RIGIDBODY <SHAPE_TYPE> [shape_params...] <mass> [BODY_TYPE]
 
-TYPE có thể là:
-- CAPSULE
-- BOX
-- COMPOUND
+BODY_TYPE (Optional):
+- DYNAMIC (Default if mass > 0)
+- STATIC (Default if mass = 0)
+- KINEMATIC
+
+SHAPE_TYPE & Examples:
+
+1. CAPSULE:
+# RIGIDBODY CAPSULE <radius> <height> <mass> [BODY_TYPE]
+Example: RIGIDBODY CAPSULE 0.5 2.0 1.0 DYNAMIC
+Example: RIGIDBODY CAPSULE 0.5 2.0 0.0 KINEMATIC
 
 
-CAPSULE:
-# RIGIDBODY CAPSULE <radius> <height> <mass>
+2. BOX:
+# RIGIDBODY BOX <size_x> <size_y> <size_z> <mass> [BODY_TYPE]
+Example: RIGIDBODY BOX 1.0 1.0 1.0 5.0
 
 
-BOX:
-# RIGIDBODY BOX <size_x> <size_y> <size_z> <mass>
-
-
-COMPOUND:
-# RIGIDBODY COMPOUND <mass>
-    # SHAPE <TYPE> <local_pos_x> <local_pos_y> <local_pos_z>
-            <local_rot_x> <local_rot_y> <local_rot_z>
-            <params...>
-    (có thể khai báo nhiều SHAPE)
+3. COMPOUND:
+# RIGIDBODY COMPOUND <mass> [BODY_TYPE]
+    # SHAPE <TYPE> <local_pos...> <local_rot...> <params...>
 # END_RIGIDBODY
 
+Note: nếu BODY_TYPE là STATIC hoặc KINEMATIC, mass sẽ được set về 0.
+
+
+--------------------------------------------------
+[ LIGHT COMPONENTS ]
+--------------------------------------------------
 
 -------------------------
 Directional Light
@@ -86,6 +93,20 @@ Directional Light
 # LIGHT_DIR <dir_x> <dir_y> <dir_z>
             <color_r> <color_g> <color_b>
             <intensity>
+
+
+-------------------------
+Point Light
+-------------------------
+# LIGHT_POINT <r> <g> <b> <i> <radius>
+              <constant> <linear> <quadratic> (Optional)
+
+
+-------------------------
+Spot Light
+-------------------------
+# LIGHT_SPOT <r> <g> <b> <i> <cut_off> <outer_cut>
+             <constant> <linear> <quadratic> (Optional)
 
 
 --------------------------------------------------

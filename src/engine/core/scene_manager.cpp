@@ -233,6 +233,22 @@ void SceneManager::LoadScene(const std::string &filePath)
             }
             if (finalShape)
             {
+                std::string bodyType = "UNKNOWN";
+                
+                if (ss >> bodyType)
+                {
+                    // Found explicit type
+                }
+                else
+                {
+                    // Deduce fram mass
+                    if (mass > 0.0f) bodyType = "DYNAMIC";
+                    else bodyType = "STATIC";
+                }
+
+                if (bodyType == "STATIC") mass = 0.0f;
+                if (bodyType == "KINEMATIC") mass = 0.0f;
+
                 btTransform transform;
                 transform.setIdentity();
                 transform.setOrigin(BulletGLMHelpers::convert(trans.position));
@@ -240,9 +256,17 @@ void SceneManager::LoadScene(const std::string &filePath)
 
                 rb.body = m_Physics.CreateRigidBody(mass, transform, finalShape);
 
-                if (type == "CAPSULE" || type == "PLAYER")
-                    if (rb.body)
+                if (rb.body)
+                {
+                    if (bodyType == "KINEMATIC")
+                    {
+                        rb.body->setCollisionFlags(rb.body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+                        rb.body->setActivationState(DISABLE_DEACTIVATION);
+                    }
+                    
+                    if (type == "CAPSULE" || type == "PLAYER")
                         rb.body->setAngularFactor(btVector3(0, 1, 0));
+                }
             }
         }
         else if (command == "LIGHT_DIR")
@@ -254,8 +278,42 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.color = glm::vec3(r, g, b);
             l.intensity = i;
         }
-
-        else if (command == "UI_TRANSFORM")
+        else if (command == "LIGHT_POINT")
+        {
+            float r, g, b, i, rad;
+            ss >> r >> g >> b >> i >> rad;
+            auto &l = m_Scene.registry.emplace<PointLightComponent>(currentEntity);
+            l.color = glm::vec3(r, g, b);
+            l.intensity = i;
+            l.radius = rad;
+            
+            // Optional: Parse attenuation if provided
+            float c, lin, quad;
+            if (ss >> c >> lin >> quad) {
+                l.constant = c;
+                l.linear = lin;
+                l.quadratic = quad;
+            }
+        }
+        else if (command == "LIGHT_SPOT")
+        {
+            float r, g, b, i, cut, outer;
+            ss >> r >> g >> b >> i >> cut >> outer;
+            auto &l = m_Scene.registry.emplace<SpotLightComponent>(currentEntity);
+            l.color = glm::vec3(r, g, b);
+            l.intensity = i;
+            l.cutOff = glm::cos(glm::radians(cut));
+            l.outerCutOff = glm::cos(glm::radians(outer));
+            
+             // Optional: Parse attenuation if provided
+            float c, lin, quad;
+            if (ss >> c >> lin >> quad) {
+                l.constant = c;
+                l.linear = lin;
+                l.quadratic = quad;
+            }
+        }
+        else if (command == "RENDERER" || command == "MODEL")
         {
             float x, y, w, h;
             int z;

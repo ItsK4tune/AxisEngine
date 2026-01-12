@@ -3,6 +3,7 @@
 #include <string>
 #include <algorithm>
 #include <vector>
+#include <iostream>
 
 void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
 {
@@ -47,6 +48,10 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
     shader->setInt("nrPointLights", i);
 
     static const std::string spotLightPos[4] = { "spotLights[0].position", "spotLights[1].position", "spotLights[2].position", "spotLights[3].position" };
+    static const std::string spotLightDir[4] = { "spotLights[0].direction", "spotLights[1].direction", "spotLights[2].direction", "spotLights[3].direction" };
+    static const std::string spotLightCut[4] = { "spotLights[0].cutOff", "spotLights[1].cutOff", "spotLights[2].cutOff", "spotLights[3].cutOff" };
+    static const std::string spotLightOut[4] = { "spotLights[0].outerCutOff", "spotLights[1].outerCutOff", "spotLights[2].outerCutOff", "spotLights[3].outerCutOff" };
+    
     static const std::string spotLightAmb[4] = { "spotLights[0].ambient", "spotLights[1].ambient", "spotLights[2].ambient", "spotLights[3].ambient" };
     static const std::string spotLightDiff[4] = { "spotLights[0].diffuse", "spotLights[1].diffuse", "spotLights[2].diffuse", "spotLights[3].diffuse" };
     static const std::string spotLightSpec[4] = { "spotLights[0].specular", "spotLights[1].specular", "spotLights[2].specular", "spotLights[3].specular" };
@@ -62,6 +67,11 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
             break;
 
         auto [light, trans] = spotLightView.get<SpotLightComponent, TransformComponent>(entity);
+
+        glm::vec3 direction = trans.rotation * glm::vec3(0, 0, -1);
+        shader->setVec3(spotLightDir[i], direction);
+        shader->setFloat(spotLightCut[i], light.cutOff);
+        shader->setFloat(spotLightOut[i], light.outerCutOff);
 
         shader->setVec3(spotLightPos[i], trans.position);
         shader->setVec3(spotLightAmb[i], light.color * 0.1f * light.intensity);
@@ -145,6 +155,7 @@ void RenderSystem::Render(Scene &scene)
             if (!frustum.IsBoxVisible(minWorld, maxWorld))
             {
                 continue; // Skip rendering effectively
+                std::cout << "skipped\n";
             }
         }
 

@@ -1,6 +1,5 @@
 #include <engine/core/application.h>
 
-// #include <game/states/placeholder_state.h>
 #include <game/states/game_state.h>
 #include <iostream>
 
@@ -13,8 +12,7 @@ int main() {
     Application app(config);
 
     if (app.Init()) {
-        app.PushState<TacticsState>();
-        
+        app.PushState<GameState>();
         app.Run();
     }
     
