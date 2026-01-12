@@ -9,6 +9,7 @@
 #include <engine/graphic/shader.h>
 #include <engine/core/keyboard_manager.h>
 #include <engine/core/mouse_manager.h>
+#include <engine/core/sound_manager.h>
 
 class PhysicsSystem
 {
@@ -58,4 +59,11 @@ class SkyboxRenderSystem
 {
 public:
     void Render(Scene &scene);
+};
+
+class AudioSystem
+{
+public:
+    void Update(Scene &scene, SoundManager& soundManager);
+    void StopAll(Scene &scene);
 };

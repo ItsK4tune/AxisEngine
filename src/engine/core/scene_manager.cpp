@@ -399,10 +399,29 @@ void SceneManager::LoadScene(const std::string &filePath)
                 scriptComp.instance = scriptInstance;
                 scriptComp.InstantiateScript = [className]() { return ScriptRegistry::Instance().Create(className); };
                 scriptComp.DestroyScript = [](ScriptComponent *nsc) { delete nsc->instance; nsc->instance = nullptr; };
-                
+                // Init script immediately
                 scriptComp.instance->Init(currentEntity, &m_Scene, m_App);
                 scriptComp.instance->OnCreate();
             }
+        }
+        else if (command == "AUDIO_SOURCE")
+        {
+            std::string path;
+            float volume, minDistance;
+            bool loop, is3D, playOnAwake;
+            
+            // Syntax: AUDIO_SOURCE <path> <volume> <loop> <is3D> <min_dist> [playOnAwake]
+            ss >> path >> volume >> loop >> is3D >> minDistance;
+            
+            if (!(ss >> playOnAwake)) playOnAwake = true; // Default
+
+            auto &audio = m_Scene.registry.emplace<AudioSourceComponent>(currentEntity);
+            audio.filePath = path;
+            audio.volume = volume;
+            audio.loop = loop;
+            audio.is3D = is3D;
+            audio.minDistance = minDistance;
+            audio.playOnAwake = playOnAwake;
         }
     }
 }

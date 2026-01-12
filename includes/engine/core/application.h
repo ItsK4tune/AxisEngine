@@ -60,6 +60,7 @@ public:
     SoundManager& GetSoundManager() { return *soundManager; }
 
     PostProcessPipeline& GetPostProcess() { return postProcess; }
+    AudioSystem& GetAudioSystem() { return audioSystem; }
 
     void ProcessInput();
     void OnResize(int width, int height);
@@ -92,6 +93,7 @@ private:
     UIRenderSystem uiRenderSystem;
     ScriptableSystem scriptSystem;
     SkyboxRenderSystem skyboxRenderSystem;
+    AudioSystem audioSystem; // [NEW]
 
     PostProcessPipeline postProcess;
 };

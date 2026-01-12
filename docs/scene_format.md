@@ -124,7 +124,22 @@ LIGHT_SPOT <r> <g> <b> <intensity> <cut_off> <outer_cut> [constant] [linear] [qu
 
 ---
 
-## 6. UI Components
+## 6. Audio Components
+
+### Audio Source
+Plays a 3D or 2D sound.
+```text
+AUDIO_SOURCE <path> <volume> <loop: 1|0> <is3D: 1|0> <min_dist> [playOnAwake: 1|0]
+```
+**Example:**
+```text
+AUDIO_SOURCE resources/audio/music.mp3 0.5 1 0 10.0 1
+AUDIO_SOURCE resources/audio/footstep.wav 1.0 0 1 5.0 0
+```
+
+---
+
+## 7. UI Components
 
 ### UI Transform
 ```text

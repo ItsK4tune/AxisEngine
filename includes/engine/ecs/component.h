@@ -4,6 +4,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <entt/entt.hpp>
 #include <functional>
+#include <irrKlang/irrKlang.h>
 
 #include <btBulletDynamicsCommon.h>
 #include <engine/graphic/model.h>
@@ -166,6 +167,19 @@ struct ScriptComponent
         DestroyScript = [](ScriptComponent *nsc)
         { delete nsc->instance; nsc->instance = nullptr; };
     }
+};
+
+struct AudioSourceComponent
+{
+    std::string filePath;
+    float volume = 1.0f;
+    bool loop = false;
+    bool is3D = true;
+    bool playOnAwake = true;
+    float minDistance = 1.0f;
+
+    irrklang::ISound* sound = nullptr;
+    bool shouldPlay = false; // Trigger to play
 };
 
 struct SkyboxRenderComponent
