@@ -6,9 +6,15 @@ ResourceManager::~ResourceManager()
     ClearResource();
 }
 
-void ResourceManager::LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath)
+void ResourceManager::LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
 {
-    shaders[name] = std::make_unique<Shader>(FileSystem::getPath(vsPath).c_str(), FileSystem::getPath(fsPath).c_str());
+    const char* gShaderPtr = nullptr;
+    std::string gShaderPath;
+    if (!gsPath.empty()) {
+        gShaderPath = FileSystem::getPath(gsPath);
+        gShaderPtr = gShaderPath.c_str();
+    }
+    shaders[name] = std::make_unique<Shader>(FileSystem::getPath(vsPath).c_str(), FileSystem::getPath(fsPath).c_str(), gShaderPtr);
 }
 
 #include <stb_image.h>

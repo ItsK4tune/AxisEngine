@@ -4,6 +4,152 @@
 #include <algorithm>
 #include <vector>
 #include <iostream>
+#include <glad/glad.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <engine/core/resource_manager.h>
+
+void RenderSystem::InitShadows(ResourceManager &res)
+{
+    m_Shadow.Init();
+
+    res.LoadShader("shadow_depth", "resources/shaders/shadow_depth.vs", "resources/shaders/shadow_depth.fs");
+    res.LoadShader("shadow_point", "resources/shaders/shadow_point.vs", "resources/shaders/shadow_point.fs", "resources/shaders/shadow_point.gs");
+
+    m_Shadow.SetShaderDir(res.GetShader("shadow_depth"));
+    m_Shadow.SetShaderPoint(res.GetShader("shadow_point"));
+}
+
+void RenderSystem::RenderShadows(Scene &scene)
+{
+    Shader *shaderDir = m_Shadow.GetShaderDir();
+    Shader *shaderPoint = m_Shadow.GetShaderPoint();
+
+    if (!shaderDir || !shaderPoint)
+        return;
+
+    auto dirLightView = scene.registry.view<DirectionalLightComponent>();
+
+    glm::vec3 lightDir = glm::vec3(-1.0f);
+    for (auto entity : dirLightView)
+    {
+        lightDir = dirLightView.get<DirectionalLightComponent>(entity).direction;
+        break;
+    }
+
+    glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 50.0f);
+    glm::mat4 lightView = glm::lookAt(glm::vec3(10.0f) * -glm::normalize(lightDir),
+                                      glm::vec3(0.0f),
+                                      glm::vec3(0.0f, 1.0f, 0.0f));
+    m_LightSpaceMatrixDir = lightProjection * lightView;
+
+    m_Shadow.BindFBO_Dir();
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glCullFace(GL_FRONT);
+
+    shaderDir->use();
+    shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
+
+    auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
+    for (auto entity : view)
+    {
+        auto [trans, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
+        if (renderer.model)
+        {
+            shaderDir->setMat4("model", trans.GetTransformMatrix());
+            if (scene.registry.all_of<AnimationComponent>(entity))
+            {
+                auto &anim = scene.registry.get<AnimationComponent>(entity);
+                if (anim.animator)
+                {
+                    auto transforms = anim.animator->GetFinalBoneMatrices();
+                    for (int j = 0; j < transforms.size() && j < 100; ++j)
+                        shaderDir->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                    shaderDir->setBool("hasAnimation", true);
+                }
+                else
+                {
+                    shaderDir->setBool("hasAnimation", false);
+                }
+            }
+            else
+            {
+                shaderDir->setBool("hasAnimation", false);
+            }
+            renderer.model->Draw(*shaderDir);
+        }
+    }
+
+    glCullFace(GL_BACK);
+    m_Shadow.UnbindFBO();
+
+    int pIdx = 0;
+    shaderPoint->use();
+    auto pView = scene.registry.view<PointLightComponent, TransformComponent>();
+
+    for (auto entity : pView)
+    {
+        if (pIdx >= Shadow::MAX_POINT_LIGHTS_SHADOW)
+            break;
+
+        auto [light, trans] = pView.get<PointLightComponent, TransformComponent>(entity);
+        glm::vec3 lightPos = trans.position;
+
+        float aspect = (float)m_Shadow.GetShadowPointWidth() / (float)m_Shadow.GetShadowPointHeight();
+        float nearP = 1.0f;
+        float farP = m_FarPlanePoint;
+        glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, nearP, farP);
+
+        std::vector<glm::mat4> shadowTransforms;
+        shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+        shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+        shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+        shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+        shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+        shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+
+        for (int i = 0; i < 6; ++i)
+            shaderPoint->setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);
+
+        shaderPoint->setFloat("farPlane", farP);
+        shaderPoint->setVec3("lightPos", lightPos);
+
+        m_Shadow.BindFBO_Point(pIdx);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        for (auto obj : view)
+        {
+            auto [tObj, rObj] = view.get<TransformComponent, MeshRendererComponent>(obj);
+            if (rObj.model)
+            {
+                shaderPoint->setMat4("model", tObj.GetTransformMatrix());
+                if (scene.registry.all_of<AnimationComponent>(obj))
+                {
+                    auto &anim = scene.registry.get<AnimationComponent>(obj);
+                    if (anim.animator)
+                    {
+                        auto transforms = anim.animator->GetFinalBoneMatrices();
+                        for (int j = 0; j < transforms.size() && j < 100; ++j)
+                            shaderPoint->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                        shaderPoint->setBool("hasAnimation", true);
+                    }
+                    else
+                    {
+                        shaderPoint->setBool("hasAnimation", false);
+                    }
+                }
+                else
+                {
+                    shaderPoint->setBool("hasAnimation", false);
+                }
+                rObj.model->Draw(*shaderPoint);
+            }
+        }
+
+        pIdx++;
+    }
+
+    m_Shadow.UnbindFBO();
+}
 
 void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
 {
@@ -18,14 +164,13 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
         break;
     }
 
-    // Optimized light data upload
-    static const std::string pointLightPos[4] = { "pointLights[0].position", "pointLights[1].position", "pointLights[2].position", "pointLights[3].position" };
-    static const std::string pointLightAmb[4] = { "pointLights[0].ambient", "pointLights[1].ambient", "pointLights[2].ambient", "pointLights[3].ambient" };
-    static const std::string pointLightDiff[4] = { "pointLights[0].diffuse", "pointLights[1].diffuse", "pointLights[2].diffuse", "pointLights[3].diffuse" };
-    static const std::string pointLightSpec[4] = { "pointLights[0].specular", "pointLights[1].specular", "pointLights[2].specular", "pointLights[3].specular" };
-    static const std::string pointLightConst[4] = { "pointLights[0].constant", "pointLights[1].constant", "pointLights[2].constant", "pointLights[3].constant" };
-    static const std::string pointLightLin[4] = { "pointLights[0].linear", "pointLights[1].linear", "pointLights[2].linear", "pointLights[3].linear" };
-    static const std::string pointLightQuad[4] = { "pointLights[0].quadratic", "pointLights[1].quadratic", "pointLights[2].quadratic", "pointLights[3].quadratic" };
+    static const std::string pointLightPos[4] = {"pointLights[0].position", "pointLights[1].position", "pointLights[2].position", "pointLights[3].position"};
+    static const std::string pointLightAmb[4] = {"pointLights[0].ambient", "pointLights[1].ambient", "pointLights[2].ambient", "pointLights[3].ambient"};
+    static const std::string pointLightDiff[4] = {"pointLights[0].diffuse", "pointLights[1].diffuse", "pointLights[2].diffuse", "pointLights[3].diffuse"};
+    static const std::string pointLightSpec[4] = {"pointLights[0].specular", "pointLights[1].specular", "pointLights[2].specular", "pointLights[3].specular"};
+    static const std::string pointLightConst[4] = {"pointLights[0].constant", "pointLights[1].constant", "pointLights[2].constant", "pointLights[3].constant"};
+    static const std::string pointLightLin[4] = {"pointLights[0].linear", "pointLights[1].linear", "pointLights[2].linear", "pointLights[3].linear"};
+    static const std::string pointLightQuad[4] = {"pointLights[0].quadratic", "pointLights[1].quadratic", "pointLights[2].quadratic", "pointLights[3].quadratic"};
 
     int i = 0;
     auto pointLightView = scene.registry.view<PointLightComponent, TransformComponent>();
@@ -47,17 +192,17 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
     }
     shader->setInt("nrPointLights", i);
 
-    static const std::string spotLightPos[4] = { "spotLights[0].position", "spotLights[1].position", "spotLights[2].position", "spotLights[3].position" };
-    static const std::string spotLightDir[4] = { "spotLights[0].direction", "spotLights[1].direction", "spotLights[2].direction", "spotLights[3].direction" };
-    static const std::string spotLightCut[4] = { "spotLights[0].cutOff", "spotLights[1].cutOff", "spotLights[2].cutOff", "spotLights[3].cutOff" };
-    static const std::string spotLightOut[4] = { "spotLights[0].outerCutOff", "spotLights[1].outerCutOff", "spotLights[2].outerCutOff", "spotLights[3].outerCutOff" };
-    
-    static const std::string spotLightAmb[4] = { "spotLights[0].ambient", "spotLights[1].ambient", "spotLights[2].ambient", "spotLights[3].ambient" };
-    static const std::string spotLightDiff[4] = { "spotLights[0].diffuse", "spotLights[1].diffuse", "spotLights[2].diffuse", "spotLights[3].diffuse" };
-    static const std::string spotLightSpec[4] = { "spotLights[0].specular", "spotLights[1].specular", "spotLights[2].specular", "spotLights[3].specular" };
-    static const std::string spotLightConst[4] = { "spotLights[0].constant", "spotLights[1].constant", "spotLights[2].constant", "spotLights[3].constant" };
-    static const std::string spotLightLin[4] = { "spotLights[0].linear", "spotLights[1].linear", "spotLights[2].linear", "spotLights[3].linear" };
-    static const std::string spotLightQuad[4] = { "spotLights[0].quadratic", "spotLights[1].quadratic", "spotLights[2].quadratic", "spotLights[3].quadratic" };
+    static const std::string spotLightPos[4] = {"spotLights[0].position", "spotLights[1].position", "spotLights[2].position", "spotLights[3].position"};
+    static const std::string spotLightDir[4] = {"spotLights[0].direction", "spotLights[1].direction", "spotLights[2].direction", "spotLights[3].direction"};
+    static const std::string spotLightCut[4] = {"spotLights[0].cutOff", "spotLights[1].cutOff", "spotLights[2].cutOff", "spotLights[3].cutOff"};
+    static const std::string spotLightOut[4] = {"spotLights[0].outerCutOff", "spotLights[1].outerCutOff", "spotLights[2].outerCutOff", "spotLights[3].outerCutOff"};
+
+    static const std::string spotLightAmb[4] = {"spotLights[0].ambient", "spotLights[1].ambient", "spotLights[2].ambient", "spotLights[3].ambient"};
+    static const std::string spotLightDiff[4] = {"spotLights[0].diffuse", "spotLights[1].diffuse", "spotLights[2].diffuse", "spotLights[3].diffuse"};
+    static const std::string spotLightSpec[4] = {"spotLights[0].specular", "spotLights[1].specular", "spotLights[2].specular", "spotLights[3].specular"};
+    static const std::string spotLightConst[4] = {"spotLights[0].constant", "spotLights[1].constant", "spotLights[2].constant", "spotLights[3].constant"};
+    static const std::string spotLightLin[4] = {"spotLights[0].linear", "spotLights[1].linear", "spotLights[2].linear", "spotLights[3].linear"};
+    static const std::string spotLightQuad[4] = {"spotLights[0].quadratic", "spotLights[1].quadratic", "spotLights[2].quadratic", "spotLights[3].quadratic"};
 
     i = 0;
     auto spotLightView = scene.registry.view<SpotLightComponent, TransformComponent>();
@@ -93,19 +238,14 @@ void RenderSystem::Render(Scene &scene)
     TransformComponent *camTrans = nullptr;
 
     if (camEntity == entt::null)
-    {
         return;
-    }
 
     cam = &scene.registry.get<CameraComponent>(camEntity);
     camTrans = &scene.registry.get<TransformComponent>(camEntity);
 
-    // --- Frustum Culling Setup ---
     Frustum frustum;
     if (cam)
-    {
         frustum.Update(cam->projectionMatrix * cam->viewMatrix);
-    }
 
     scene.registry.sort<MeshRendererComponent>([](const auto &lhs, const auto &rhs)
                                                { return lhs.shader < rhs.shader; });
@@ -123,40 +263,10 @@ void RenderSystem::Render(Scene &scene)
 
         glm::mat4 modelMatrix = transform.GetTransformMatrix();
 
-        // --- Frustum Culling Check ---
         if (cam)
         {
             glm::vec3 min = renderer.model->AABBmin;
             glm::vec3 max = renderer.model->AABBmax;
-
-            // Transform 8 corners to world space
-            std::vector<glm::vec3> corners = {
-                {min.x, min.y, min.z}, {min.x, min.y, max.z},
-                {min.x, max.y, min.z}, {min.x, max.y, max.z},
-                {max.x, min.y, min.z}, {max.x, min.y, max.z},
-                {max.x, max.y, min.z}, {max.x, max.y, max.z}
-            };
-
-            glm::vec3 minWorld(FLT_MAX);
-            glm::vec3 maxWorld(-FLT_MAX);
-
-            for (auto& p : corners)
-            {
-                glm::vec4 worldPos = modelMatrix * glm::vec4(p, 1.0f);
-                minWorld.x = std::min(minWorld.x, worldPos.x);
-                minWorld.y = std::min(minWorld.y, worldPos.y);
-                minWorld.z = std::min(minWorld.z, worldPos.z);
-                
-                maxWorld.x = std::max(maxWorld.x, worldPos.x);
-                maxWorld.y = std::max(maxWorld.y, worldPos.y);
-                maxWorld.z = std::max(maxWorld.z, worldPos.z);
-            }
-
-            if (!frustum.IsBoxVisible(minWorld, maxWorld))
-            {
-                continue; // Skip rendering effectively
-                std::cout << "skipped\n";
-            }
         }
 
         if (currentShader != renderer.shader)
@@ -169,13 +279,24 @@ void RenderSystem::Render(Scene &scene)
                 currentShader->setMat4("projection", cam->projectionMatrix);
                 currentShader->setMat4("view", cam->viewMatrix);
                 currentShader->setVec3("viewPos", camTrans->position);
+
+                currentShader->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
+                currentShader->setFloat("farPlanePoint", m_FarPlanePoint);
+
+                m_Shadow.BindTexture_Dir(10);
+                currentShader->setInt("shadowMapDir", 10);
+
+                for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
+                {
+                    m_Shadow.BindTexture_Point(i, 11 + i);
+                    currentShader->setInt("shadowMapPoint[" + std::to_string(i) + "]", 11 + i);
+                }
             }
 
             UploadLightData(scene, currentShader);
         }
 
         currentShader->setMat4("model", modelMatrix);
-
         currentShader->setVec4("tintColor", renderer.color);
 
         if (scene.registry.all_of<AnimationComponent>(entity))
@@ -184,19 +305,8 @@ void RenderSystem::Render(Scene &scene)
             if (anim.animator)
             {
                 auto transforms = anim.animator->GetFinalBoneMatrices();
-                
-                static std::vector<std::string> boneUniforms;
-                if (boneUniforms.empty())
-                {
-                    boneUniforms.reserve(100);
-                    for (int i = 0; i < 100; i++)
-                        boneUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
-                }
-
                 for (int j = 0; j < transforms.size() && j < 100; ++j)
-                {
-                    currentShader->setMat4(boneUniforms[j], transforms[j]);
-                }
+                    currentShader->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
             }
         }
 

@@ -103,6 +103,10 @@ bool Application::Init()
 
     postProcess.Init(m_Config.width, m_Config.height);
 
+    renderSystem.InitShadows(*resourceManager);
+    
+    if (m_Config.width > 0) {}
+    
     return true;
 }
 

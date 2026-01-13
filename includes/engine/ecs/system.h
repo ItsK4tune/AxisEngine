@@ -7,6 +7,7 @@
 #include <engine/ecs/component.h>
 #include <engine/utils/bullet_glm_helpers.h>
 #include <engine/graphic/shader.h>
+#include <engine/graphic/shadow.h>
 #include <engine/core/keyboard_manager.h>
 #include <engine/core/mouse_manager.h>
 #include <engine/core/sound_manager.h>
@@ -14,7 +15,7 @@
 #include <set>
 #include <utility>
 
-class PhysicsWorld; // Forward declaration
+class PhysicsWorld;
 
 class PhysicsSystem
 {
@@ -32,16 +33,28 @@ public:
     void Update(Scene &scene, float dt);
 };
 
+
+
 class RenderSystem
 {
 public:
     void Render(Scene &scene);
 
+    void InitShadows(class ResourceManager& res);
+    void RenderShadows(Scene &scene);
+
     void SetFaceCulling(bool enabled, int mode = GL_BACK);
     void SetDepthTest(bool enabled, int func = GL_LESS);
+    
+    Shadow& GetShadow() { return m_Shadow; }
 
 private:
     void UploadLightData(Scene &scene, Shader *shader);
+    
+    Shadow m_Shadow;
+
+    glm::mat4 m_LightSpaceMatrixDir;
+    float m_FarPlanePoint = 25.0f;
 };
 
 class UIInteractSystem
