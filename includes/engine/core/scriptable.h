@@ -28,6 +28,10 @@ public:
     virtual void OnTriggerStay(entt::entity other) {}
     virtual void OnTriggerExit(entt::entity other) {}
 
+    bool GetAction(const std::string& name);
+    bool GetActionDown(const std::string& name);
+    bool GetActionUp(const std::string& name);
+
     template <typename T>
     T &GetComponent()
     {

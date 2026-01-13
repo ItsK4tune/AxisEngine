@@ -1,127 +1,152 @@
 # C++ Scripting Guide
 
-The game engine utilizes a robust C++ scripting system based on the `Scriptable` class. Scripts are standard C++ classes that inherit from `Scriptable` and are attached to entities.
+The game engine utilizes a robust C++ scripting system based on the `Scriptable` class. This guide covers how to create, register, and use scripts, including interaction with Physics and Input systems.
 
-## 1. Creating a Script
+---
 
+## 1. Core Concepts
+
+### Creating a Script
 Inherit from `Scriptable` and override lifecycle methods.
 
 ```cpp
 #include <engine/core/scriptable.h>
-#include <engine/engine.h> // For Application, Input, etc.
+#include <engine/engine.h> 
 
 class PlayerController : public Scriptable
 {
 public:
-    virtual void OnCreate() override
-    {
-        // Called when the script is instantiated
-        auto& transform = GetComponent<TransformComponent>();
-        transform.position = glm::vec3(0, 5, 0);
-    }
-
-    virtual void OnUpdate(float dt) override
-    {
-        // Called every frame
-        // 'm_App' gives access to Input and Window
-        if (m_App->GetInput()->GetKey(GLFW_KEY_W))
-        {
-             // Move Logic
-        }
-    }
-
-    virtual void OnDestroy() override
-    {
-        // Cleanup
-    }
+    virtual void OnCreate() override { /* Called on start */ }
+    virtual void OnUpdate(float dt) override { /* Called every frame */ }
+    virtual void OnDestroy() override { /* Called on destroy */ }
 };
 ```
 
-## 2. Registering and Using Scripts
-
-Scripts use a self-registration macro, so you don't need to touch the engine core code.
-
-**In your script source file (.cpp):**
+### Registering Scripts
+To use scripts in `.scene` files, register them in your `.cpp` file:
 ```cpp
 #include "your_script.h"
 #include <engine/core/script_registry.h>
 
-REGISTER_SCRIPT(YourClassName)
+REGISTER_SCRIPT(PlayerController)
 ```
 
-The engine will automatically register `YourClassName` so it can be used in `.scene` files:
+### Using in Scene
 ```text
-SCRIPT YourClassName
+NEW_ENTITY Player
+SCRIPT PlayerController
 ```
 
-## 3. Accessing Components
+---
 
-Use `GetComponent<T>()` to access components on the same entity.
+## 2. Entity & Components
 
-```cpp
-auto& rb = GetComponent<RigidBodyComponent>();
-rb.body->setLinearVelocity(btVector3(0, 10, 0));
-```
-
-Use `HasComponent<T>()` to check existence.
+### Accessing Components
+Use templates to get components attached to the same entity.
 
 ```cpp
-if (HasComponent<CameraComponent>())
-{
-    // ...
+// Get Component
+auto& transform = GetComponent<TransformComponent>();
+transform.position.y += 1.0f * dt;
+
+// Check Component
+if (HasComponent<RigidBodyComponent>()) {
+    auto& rb = GetComponent<RigidBodyComponent>();
 }
 ```
 
-## 4. Accessing Application & Input
-
-The `Scriptable` base class provides protected members:
-- `m_Entity`: Handle to the owning entity.
-- `m_Scene`: Pointer to the Scene.
-- `m_App`: Pointer to the Application instance.
-
-**Example Input:**
+### Accessing Other Entities
+You can manipulate other entities if you have their ID.
 ```cpp
-if (m_App->GetInput()->GetKey(GLFW_KEY_SPACE))
-{
-    // Jump
+// Example: Get script from another entity
+if (m_Scene->registry.all_of<ScriptComponent>(otherEntity)) {
+    ScriptComponent& sc = m_Scene->registry.get<ScriptComponent>(otherEntity);
+    // Cast to your specific script type if needed
 }
 ```
 
-## 5. Manual Script Binding (Advanced)
+---
 
-If you are creating entities via C++ code (instead of `.scene` files), you can manually bind scripts using `ScriptComponent::Bind<T>()`. This bypasses the registry lookup and provides type safety.
+## 3. Input System
+
+The engine provides an Action-based input system. Bind keys to actions in `GameState`, then check actions in scripts.
+
+### 1. Bindings (in GameState)
+```cpp
+auto& input = m_App->GetInputManager();
+input.BindAction("Jump", InputType::Key, GLFW_KEY_SPACE);
+input.BindAction("Fire", InputType::MouseButton, GLFW_MOUSE_BUTTON_LEFT);
+input.BindAction("MoveX", InputType::Key, GLFW_KEY_D); // Simplified example
+```
+
+### 2. Checking Input (in Script)
+```cpp
+void OnUpdate(float dt) override
+{
+    // Check if pressed this frame
+    if (GetActionDown("Jump")) {
+        // Jump logic
+    }
+
+    // Check if held down
+    if (GetAction("Fire")) {
+        // Shooting logic
+    }
+}
+```
+
+---
+
+## 4. Physics System
+
+### Callbacks
+Override these virtual methods to handle collisions.
 
 ```cpp
-#include <game/scripts/my_script.h>
+virtual void OnCollisionEnter(entt::entity other) override;
+virtual void OnCollisionStay(entt::entity other) override;
+virtual void OnCollisionExit(entt::entity other) override;
 
-// ... inside a system or initialization function
+virtual void OnTriggerEnter(entt::entity other) override;
+virtual void OnTriggerStay(entt::entity other) override;
+virtual void OnTriggerExit(entt::entity other) override;
+```
+
+### Example Usage
+```cpp
+void OnCollisionEnter(entt::entity other) override
+{
+    // Check what we hit
+    if (m_Scene->registry.all_of<InfoComponent>(other)) {
+        std::cout << "Hit object!" << std::endl;
+    }
+}
+```
+
+**Concepts:**
+- **Collision**: Physical interaction between two solid objects.
+- **Trigger**: Interaction where at least one object is a "Trigger" (sensor). Set the `No Contact Response` flag on the body.
+
+---
+
+## 5. Advanced Topics
+
+### Manual Script Binding
+For entities created purely in C++ (not from Scene file), you can bind scripts manually:
+
+```cpp
 auto entity = m_Scene.registry.create();
 auto& scriptComp = m_Scene.registry.emplace<ScriptComponent>(entity);
 
-// Bind the script class directly
-scriptComp.Bind<MyScript>();
-
-// Initialize manual script
+scriptComp.Bind<MyScript>(); // Type-safe binding
 scriptComp.instance = scriptComp.InstantiateScript();
 scriptComp.instance->Init(entity, &m_Scene, m_App);
 scriptComp.instance->OnCreate();
 ```
 
-## 6. Physics Callbacks
-
-Override these methods to handle collision events.
-
+### Accessing Core Systems
+The `Scriptable` base class gives you access to the engine core via `m_App`.
 ```cpp
-virtual void OnCollisionEnter(entt::entity other) {}
-virtual void OnCollisionStay(entt::entity other) {}
-virtual void OnCollisionExit(entt::entity other) {}
-
-virtual void OnTriggerEnter(entt::entity other) {}
-virtual void OnTriggerStay(entt::entity other) {}
-virtual void OnTriggerExit(entt::entity other) {}
+m_App->GetSoundManager().Play2D("audio/click.wav");
+m_App->GetPhysicsWorld()...
 ```
-
-**Note:**
-- `Other` is the entity ID you collided with.
-- Use `GetComponent<InfoComponent>(other)` to identify the object.
-- **Triggers**: Occur if one of the bodies has the `No Contact Response` flag (often used for sensors/zones).

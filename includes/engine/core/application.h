@@ -14,6 +14,7 @@
 #include <engine/core/scene_manager.h>
 #include <engine/core/sound_manager.h>
 #include <engine/core/post_process_pipeline.h>
+#include <engine/core/input_manager.h>
 
 struct AppConfig
 {
@@ -45,6 +46,7 @@ public:
     SceneManager &GetSceneManager() { return *sceneManager; }
     KeyboardManager &GetKeyboard() const { return *keyboardManager; }
     MouseManager &GetMouse() const { return *mouseManager; }
+    InputManager &GetInputManager() const { return *inputManager; }
 
     GLFWwindow *GetWindow() const { return window; }
     int GetWidth() const { return m_Config.width; }
@@ -82,6 +84,7 @@ private:
 
     std::unique_ptr<KeyboardManager> keyboardManager;
     std::unique_ptr<MouseManager> mouseManager;
+    std::unique_ptr<InputManager> inputManager;
     std::unique_ptr<SoundManager> soundManager;
     std::unique_ptr<SceneManager> sceneManager;
     std::unique_ptr<ResourceManager> resourceManager;

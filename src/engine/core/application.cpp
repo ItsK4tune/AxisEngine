@@ -92,6 +92,7 @@ bool Application::Init()
     physicsWorld = std::make_unique<PhysicsWorld>();
     keyboardManager = std::make_unique<KeyboardManager>(window);
     mouseManager = std::make_unique<MouseManager>(window);
+    inputManager = std::make_unique<InputManager>(*keyboardManager, *mouseManager);
     resourceManager = std::make_unique<ResourceManager>();
     soundManager = std::make_unique<SoundManager>();
     sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager, this);

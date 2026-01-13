@@ -2,8 +2,12 @@
 
 The scene file (`.scene`) is a text-based format used to define resources, entities, and components in the game. It is parsed line-by-line by the `SceneManager`.
 
+---
+
 ## 1. Resources
 Resources must be loaded **before** they are used by entities.
+
+### Commands
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
@@ -13,7 +17,7 @@ Resources must be loaded **before** they are used by entities.
 | `LOAD_FONT` | `<name> <font_path> <size>` | Load a TTF font. |
 | `LOAD_SKYBOX` | `<name> <right> <left> <top> <bot> <front> <back>` | Load a cube map skybox. |
 
-**Example:**
+### Example
 ```text
 LOAD_SHADER    modelShader    resources/shaders/model.vs    resources/shaders/model.fs
 LOAD_MODEL     unityChan      resources/models/unitychan.fbx
@@ -38,7 +42,7 @@ NEW_ENTITY <entity_name> <entity_tag>
 ## 3. General Components
 
 ### Transform
-Position, rotation (quaternion or euler depends on implementation, usually euler in loader), and scale.
+Position, rotation (euler), and scale.
 ```text
 TRANSFORM <pos_x> <pos_y> <pos_z> <rot_x> <rot_y> <rot_z> <scale_x> <scale_y> <scale_z>
 ```
