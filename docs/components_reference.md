@@ -19,6 +19,13 @@ RENDERER <model_name> <shader_name>
 SCRIPT <Class_Name>
 ```
 
+### Camera
+```text
+CAMERA <isPrimary> <fov> <yaw> <pitch> [near] [far]
+```
+- **near**: Near plane distance (optional, default 0.1).
+- **far**: Far plane distance (optional, default 1000.0).
+
 ## Physics
 
 ### RigidBody

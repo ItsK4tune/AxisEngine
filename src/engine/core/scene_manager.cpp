@@ -148,12 +148,21 @@ void SceneManager::LoadScene(const std::string &filePath)
         {
             int isPrimary;
             float fov, yaw, pitch;
+            float nearPlane = 0.1f;
+            float farPlane = 1000.0f;
+            
             ss >> isPrimary >> fov >> yaw >> pitch;
+            
+            if (!ss.eof()) ss >> nearPlane;
+            if (!ss.eof()) ss >> farPlane;
+
             auto &c = m_Scene.registry.emplace<CameraComponent>(currentEntity);
             c.isPrimary = (bool)isPrimary;
             c.fov = fov;
             c.yaw = yaw;
             c.pitch = pitch;
+            c.nearPlane = nearPlane;
+            c.farPlane = farPlane;
         }
         else if (command == "RIGIDBODY")
         {
