@@ -10,11 +10,19 @@
 #include <engine/core/keyboard_manager.h>
 #include <engine/core/mouse_manager.h>
 #include <engine/core/sound_manager.h>
+#include <set>
+#include <utility>
+
+class PhysicsWorld; // Forward declaration
 
 class PhysicsSystem
 {
 public:
-    void Update(Scene &scene);
+    void Update(Scene &scene, PhysicsWorld &physicsWorld, float dt);
+
+private:
+    using CollisionPair = std::pair<entt::entity, entt::entity>;
+    std::set<CollisionPair> m_activeCollisions;
 };
 
 class AnimationSystem

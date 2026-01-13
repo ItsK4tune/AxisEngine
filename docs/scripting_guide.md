@@ -106,3 +106,22 @@ scriptComp.instance = scriptComp.InstantiateScript();
 scriptComp.instance->Init(entity, &m_Scene, m_App);
 scriptComp.instance->OnCreate();
 ```
+
+## 6. Physics Callbacks
+
+Override these methods to handle collision events.
+
+```cpp
+virtual void OnCollisionEnter(entt::entity other) {}
+virtual void OnCollisionStay(entt::entity other) {}
+virtual void OnCollisionExit(entt::entity other) {}
+
+virtual void OnTriggerEnter(entt::entity other) {}
+virtual void OnTriggerStay(entt::entity other) {}
+virtual void OnTriggerExit(entt::entity other) {}
+```
+
+**Note:**
+- `Other` is the entity ID you collided with.
+- Use `GetComponent<InfoComponent>(other)` to identify the object.
+- **Triggers**: Occur if one of the bodies has the `No Contact Response` flag (often used for sensors/zones).

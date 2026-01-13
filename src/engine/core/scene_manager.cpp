@@ -265,6 +265,8 @@ void SceneManager::LoadScene(const std::string &filePath)
                         rb.body->setActivationState(DISABLE_DEACTIVATION);
                     }
                     
+                    rb.body->setUserPointer((void*)(uintptr_t)currentEntity);
+
                     if (type == "CAPSULE" || type == "PLAYER")
                         rb.body->setAngularFactor(btVector3(0, 1, 0));
                 }

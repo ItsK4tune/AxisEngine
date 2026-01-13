@@ -10,8 +10,7 @@ void GameState::OnEnter()
 void GameState::OnUpdate(float dt)
 {
     m_App->GetScriptSystem().Update(m_App->GetScene(), dt, m_App);
-    m_App->GetPhysicsWorld().Update(dt);
-    m_App->GetPhysicsSystem().Update(m_App->GetScene());
+    m_App->GetPhysicsSystem().Update(m_App->GetScene(), m_App->GetPhysicsWorld(), dt);
     m_App->GetAnimationSystem().Update(m_App->GetScene(), dt);
     m_App->GetAudioSystem().Update(m_App->GetScene(), m_App->GetSoundManager());
 }

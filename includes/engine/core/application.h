@@ -93,7 +93,7 @@ private:
     UIRenderSystem uiRenderSystem;
     ScriptableSystem scriptSystem;
     SkyboxRenderSystem skyboxRenderSystem;
-    AudioSystem audioSystem; // [NEW]
+    AudioSystem audioSystem;
 
     PostProcessPipeline postProcess;
 };

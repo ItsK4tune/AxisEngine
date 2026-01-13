@@ -20,6 +20,13 @@ public:
     virtual void OnCreate() {}
     virtual void OnUpdate(float dt) {}
     virtual void OnDestroy() {}
+    virtual void OnCollisionEnter(entt::entity other) {}
+    virtual void OnCollisionStay(entt::entity other) {}
+    virtual void OnCollisionExit(entt::entity other) {}
+
+    virtual void OnTriggerEnter(entt::entity other) {}
+    virtual void OnTriggerStay(entt::entity other) {}
+    virtual void OnTriggerExit(entt::entity other) {}
 
     template <typename T>
     T &GetComponent()
