@@ -12,6 +12,7 @@
 #include <engine/graphic/animator.h>
 #include <engine/graphic/font.h>
 #include <engine/graphic/skybox.h>
+#include <engine/graphic/particle_emitter.h>
 
 struct InfoComponent
 {
@@ -186,4 +187,10 @@ struct SkyboxRenderComponent
 {
     Skybox *skybox;
     Shader *shader;
+};
+
+struct ParticleEmitterComponent
+{
+    ParticleEmitter emitter;
+    bool isActive = true;
 };

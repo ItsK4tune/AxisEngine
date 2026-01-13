@@ -1,7 +1,9 @@
 #include <engine/core/scene_manager.h>
 #include <engine/core/script_registry.h>
 #include <engine/utils/filesystem.h>
+#include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
+#include <engine/core/application.h> // Fixed incomplete type
 
 SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application* app)
     : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound), m_App(app) {}
@@ -409,21 +411,43 @@ void SceneManager::LoadScene(const std::string &filePath)
         else if (command == "AUDIO_SOURCE")
         {
             std::string path;
-            float volume, minDistance;
-            bool loop, is3D, playOnAwake;
-            
-            // Syntax: AUDIO_SOURCE <path> <volume> <loop> <is3D> <min_dist> [playOnAwake]
-            ss >> path >> volume >> loop >> is3D >> minDistance;
-            
-            if (!(ss >> playOnAwake)) playOnAwake = true; // Default
+            float vol, minDur;
+            int loop, is3d, awake;
+            ss >> path >> vol >> loop >> is3d >> minDur >> awake;
 
-            auto &audio = m_Scene.registry.emplace<AudioSourceComponent>(currentEntity);
+            AudioSourceComponent audio;
             audio.filePath = path;
-            audio.volume = volume;
-            audio.loop = loop;
-            audio.is3D = is3D;
-            audio.minDistance = minDistance;
-            audio.playOnAwake = playOnAwake;
+            audio.volume = vol;
+            audio.loop = (loop != 0);
+            audio.is3D = (is3d != 0);
+            audio.minDistance = minDur;
+            audio.playOnAwake = (awake != 0);
+
+            m_Scene.registry.emplace<AudioSourceComponent>(currentEntity, audio);
+        }
+        else if (command == "LOAD_PARTICLE")
+        {
+            std::string name, path;
+            ss >> name >> path;
+            m_Resources.LoadTexture(name, path);
+        }
+        else if (command == "PARTICLE_EMITTER") 
+        {
+            std::string texName;
+            int maxParticles;
+            float life;
+            ss >> texName >> maxParticles >> life;
+            
+            auto& emitterComp = m_Scene.registry.emplace<ParticleEmitterComponent>(currentEntity);
+            emitterComp.emitter.Init(maxParticles);
+            emitterComp.emitter.LifeTime = life;
+            emitterComp.emitter.StartLife = life;
+            
+            emitterComp.emitter.texture = m_Resources.GetTexture(texName);
+            
+            if (!emitterComp.emitter.texture) {
+                std::cerr << "[SceneManager] Particle Texture not found: " << texName << std::endl;
+            }
         }
     }
 }

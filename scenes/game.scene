@@ -1,8 +1,13 @@
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/model.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
-LOAD_SHADER skyboxShader resources/shaders/skybox.vs resources/shaders/skybox.fs
+LOAD_SHADER particle resources/shaders/particle.vs resources/shaders/particle.fs
 
 LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
+LOAD_PARTICLE firefx resources/textures/fire.png
+
+NEW_ENTITY FireFX
+TRANSFORM 0 0 0 0 0 0 1 1 1
+PARTICLE_EMITTER firefx 1000 200.0 1.5 2.0 0.0 CONE
 
 NEW_ENTITY MainCamera
 TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0

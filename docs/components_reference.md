@@ -68,3 +68,16 @@ UI_RENDERER <r> <g> <b> <a> <shader>
 ```text
 UI_TEXT "String" <font> <r> <g> <b> <scale>
 ```
+
+## Particle System
+
+### `LOAD_PARTICLE`
+Loads a particle texture into the resource manager.
+- **Syntax**: `LOAD_PARTICLE <name> <path>`
+- **Example**: `LOAD_PARTICLE fireTex resources/textures/fire.png`
+
+### `PARTICLE_EMITTER`
+Creates a particle emitter attached to the entities.
+- **Syntax**: `PARTICLE_EMITTER <texture_name> <max_particles> <spawn_rate> <lifetime> <start_size> <end_size> <shape>`
+- **Shapes**: `DIRECTIONAL`, `CONE`, `FIGURE8`
+- **Example**: `PARTICLE_EMITTER fireTex 1000 200.0 1.5 2.0 0.0 CONE`

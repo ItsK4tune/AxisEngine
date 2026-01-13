@@ -10,6 +10,7 @@
 #include <engine/core/keyboard_manager.h>
 #include <engine/core/mouse_manager.h>
 #include <engine/core/sound_manager.h>
+#include <engine/core/resource_manager.h>
 #include <set>
 #include <utility>
 
@@ -74,4 +75,11 @@ class AudioSystem
 public:
     void Update(Scene &scene, SoundManager& soundManager);
     void StopAll(Scene &scene);
+};
+
+class ParticleSystem
+{
+public:
+    void Update(Scene &scene, float dt);
+    void Render(Scene &scene, ResourceManager &res);
 };

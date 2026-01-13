@@ -14,6 +14,7 @@
 #include <engine/core/scene_manager.h>
 #include <engine/core/sound_manager.h>
 #include <engine/core/post_process_pipeline.h>
+#include <engine/core/post_process_pipeline.h>
 #include <engine/core/input_manager.h>
 
 struct AppConfig
@@ -63,6 +64,7 @@ public:
 
     PostProcessPipeline& GetPostProcess() { return postProcess; }
     AudioSystem& GetAudioSystem() { return audioSystem; }
+    ParticleSystem& GetParticleSystem() { return particleSystem; }
 
     void ProcessInput();
     void OnResize(int width, int height);
@@ -97,6 +99,7 @@ private:
     ScriptableSystem scriptSystem;
     SkyboxRenderSystem skyboxRenderSystem;
     AudioSystem audioSystem;
+    ParticleSystem particleSystem; // New
 
     PostProcessPipeline postProcess;
 };

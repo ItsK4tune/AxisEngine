@@ -11,7 +11,9 @@
 #include <engine/graphic/ui_model.h>
 #include <engine/graphic/animation.h>
 #include <engine/graphic/font.h>
+#include <engine/graphic/font.h>
 #include <engine/graphic/skybox.h>
+#include <engine/graphic/mesh.h> // Includes Texture struct
 
 class ResourceManager
 {
@@ -19,6 +21,7 @@ public:
     ~ResourceManager();
 
     void LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath);
+    void LoadTexture(const std::string &name, const std::string &path); // New
     void LoadModel(const std::string &name, const std::string &path, bool isStatic = false);
     void LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName);
     void LoadFont(const std::string &name, const std::string &path, unsigned int fontSize);
@@ -27,6 +30,7 @@ public:
     void CreateUIModel(const std::string &name, UIType type);
 
     Shader *GetShader(const std::string &name);
+    Texture *GetTexture(const std::string &name); // New
     Model *GetModel(const std::string &name);
     Animation *GetAnimation(const std::string &name);
     Font *GetFont(const std::string &name);
@@ -38,6 +42,7 @@ public:
 
 private:
     std::map<std::string, std::unique_ptr<Shader>> shaders;
+    std::map<std::string, Texture> textures; // New
     std::map<std::string, std::unique_ptr<Model>> models;
     std::map<std::string, std::unique_ptr<Animation>> animations;
     std::map<std::string, std::unique_ptr<Font>> fonts;

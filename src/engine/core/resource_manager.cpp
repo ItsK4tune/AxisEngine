@@ -11,6 +11,52 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
     shaders[name] = std::make_unique<Shader>(FileSystem::getPath(vsPath).c_str(), FileSystem::getPath(fsPath).c_str());
 }
 
+#include <stb_image.h>
+
+void ResourceManager::LoadTexture(const std::string &name, const std::string &path)
+{
+    std::string fullPath = FileSystem::getPath(path);
+    
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, 4);
+    if (data)
+    {
+        GLenum format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+        
+        Texture tex;
+        tex.id = textureID;
+        tex.type = "texture_diffuse";
+        tex.path = path;
+        textures[name] = tex;
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+}
+
+Texture *ResourceManager::GetTexture(const std::string &name)
+{
+    if (textures.find(name) != textures.end())
+        return &textures[name];
+    return nullptr;
+}
+
 void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
 {
     models[name] = std::make_unique<Model>(FileSystem::getPath(path), isStatic);
@@ -123,6 +169,7 @@ Skybox *ResourceManager::GetSkybox(const std::string &name)
 void ResourceManager::ClearResource()
 {
     shaders.clear();
+    textures.clear();
     models.clear();
     animations.clear();
     fonts.clear();
