@@ -28,6 +28,11 @@ public:
 
     void ClearAllScenes();
 
+    // Deferred Loading
+    void QueueLoadScene(const std::string& path);
+    void UpdatePendingScene();
+    bool HasPendingScene() const { return m_isPending; }
+
 private:
     friend class Scene;
 
@@ -40,4 +45,8 @@ private:
     entt::entity currentEntity = entt::null;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
+    
+    // Deferred Loading State
+    std::string m_pendingPath = "";
+    bool m_isPending = false;
 };

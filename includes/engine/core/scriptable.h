@@ -20,6 +20,22 @@ public:
     virtual void OnCreate() {}
     virtual void OnUpdate(float dt) {}
     virtual void OnDestroy() {}
+    
+    // Lifecycle
+    virtual void OnEnable() {}
+    virtual void OnDisable() {}
+    virtual void OnReset() {}
+
+    void SetEnabled(bool enabled) {
+        if (m_Enabled == enabled) return;
+        m_Enabled = enabled;
+        if (m_Enabled) OnEnable();
+        else OnDisable();
+    }
+
+    bool IsEnabled() const { return m_Enabled; }
+
+    // Physics CallBacks
     virtual void OnCollisionEnter(entt::entity other) {}
     virtual void OnCollisionStay(entt::entity other) {}
     virtual void OnCollisionExit(entt::entity other) {}
@@ -28,9 +44,13 @@ public:
     virtual void OnTriggerStay(entt::entity other) {}
     virtual void OnTriggerExit(entt::entity other) {}
 
+    // Input Helper Methods
     bool GetAction(const std::string& name);
     bool GetActionDown(const std::string& name);
     bool GetActionUp(const std::string& name);
+
+    // Scene Helper Methods
+    void LoadScene(const std::string& path);
 
     template <typename T>
     T &GetComponent()
@@ -61,4 +81,7 @@ protected:
     Application *m_App = nullptr;
 
     friend class ScriptableSystem;
+
+private:
+    bool m_Enabled = true;
 };

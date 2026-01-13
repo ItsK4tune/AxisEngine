@@ -454,3 +454,21 @@ void SceneManager::ClearAllScenes()
     m_LoadedScenes.clear();
     currentEntity = entt::null;
 }
+
+void SceneManager::QueueLoadScene(const std::string& path)
+{
+    m_pendingPath = path;
+    m_isPending = true;
+    std::cout << "[SceneManager] Queued load scene: " << path << std::endl;
+}
+
+void SceneManager::UpdatePendingScene()
+{
+    if (m_isPending)
+    {
+        ClearAllScenes();
+        LoadScene(m_pendingPath);
+        m_isPending = false;
+        m_pendingPath = "";
+    }
+}

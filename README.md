@@ -4,25 +4,22 @@ Welcome to the documentation for the C++ Game Engine.
 
 ## Documentation Sections
 
-### 1. [Project Structure & Config](docs/project_structure.md)
-Overview of folders, `AppConfig`, CMake setup, and how to add new libraries/assets.
+### 1. Project & Config
+- [Directory Structure](docs/project_structure.md)
+- [Configuration & Build](docs/configuration.md)
 
-### 2. [Scene File Format](docs/scene_format.md)
-Reference for the `.scene` file based entity definition system. Learn how to:
-- Load Resources (Models, Shaders, Animations).
-- Define Entities.
-- Configure Components (Transform, Physics, Lighting, UI).
-- Add Audio Sources.
+### 2. Scene System
+- [Scene File Format](docs/scene_format.md)
+- [Component Reference](docs/components_reference.md)
 
-### 3. [Scripting Guide](docs/scripting_guide.md)
-Learn how to write C++ scripts (`Scriptable`) to add logic to your entities.
-- Lifecycle (`OnCreate`, `OnUpdate`).
-- Input Handling (Key/Mouse Actions).
-- Physics Callbacks (`OnCollisionEnter`, `OnTriggerEnter`).
-- Component Interaction.
+### 3. Scripting
+- [Scripting Basics (Lifecycle)](docs/scripting_basics.md)
+- [Scripting API (Input, Physics)](docs/scripting_api.md)
 
-### 4. [Post Processing](docs/post_processing.md)
-How to apply screen-space effects like Inversion, Grayscale, or custom shaders.
+### 4. Advanced Systems
+- [Asset Management](docs/asset_management.md)
+- [Graphics & Rendering](docs/graphics_guide.md)
+- [Post Processing](docs/post_processing.md)
 
 ---
 

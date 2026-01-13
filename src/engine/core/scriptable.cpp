@@ -15,3 +15,8 @@ bool Scriptable::GetActionUp(const std::string& name)
 {
     return m_App->GetInputManager().GetActionUp(name);
 }
+
+void Scriptable::LoadScene(const std::string& path)
+{
+    m_App->GetSceneManager().QueueLoadScene(path);
+}
