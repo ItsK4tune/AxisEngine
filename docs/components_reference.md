@@ -39,18 +39,27 @@ RIGIDBODY <SHAPE> [params] <mass> [TYPE]
 
 ### Directional Light
 ```text
-LIGHT_DIR <dir_x> <dir_y> <dir_z> <r> <g> <b> <intensity>
+LIGHT_DIR <dir_x> <dir_y> <dir_z> <r> <g> <b> <intensity> [ambient] [diffuse]
 ```
+- **intensity**: Light intensity multiplier.
+- **ambient**: Ambient strength multiplier (optional, default 0.2).
+- **diffuse**: Diffuse strength multiplier (optional, default 0.8).
 
 ### Point Light
 ```text
-LIGHT_POINT <r> <g> <b> <intensity> <radius> [attenuation...]
+LIGHT_POINT <r> <g> <b> <intensity> <radius> [constant] [linear] [quadratic] [ambient] [diffuse]
 ```
+- **radius**: Approximate range of the light.
+- **attenuation**: optional constant, linear, quadratic falloff.
+- **ambient/diffuse**: optional multipliers (defaults: 0.1, 1.0).
 
 ### Spot Light
 ```text
-LIGHT_SPOT <r> <g> <b> <intensity> <cut> <outer>
+LIGHT_SPOT <r> <g> <b> <intensity> <cut> <outer> [constant] [linear] [quadratic] [ambient] [diffuse]
 ```
+- **cut/outer**: Cutoff angles in degrees.
+- **attenuation**: optional constant, linear, quadratic falloff.
+- **ambient/diffuse**: optional multipliers (defaults: 0.1, 1.0).
 
 ## Audio
 

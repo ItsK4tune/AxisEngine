@@ -123,6 +123,11 @@ void Application::Run()
         ProcessInput();
         m_StateMachine.Update(deltaTime);
         mouseManager->EndFrame();
+        // Shadow Pass
+        renderSystem.RenderShadows(scene);
+        
+        // Reset Viewport for Main Render
+        glViewport(0, 0, m_Config.width, m_Config.height);
         
         postProcess.BeginCapture();
 

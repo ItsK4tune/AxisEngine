@@ -291,6 +291,23 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.direction = glm::vec3(dx, dy, dz);
             l.color = glm::vec3(r, g, b);
             l.intensity = i;
+
+            // Default coefficients
+            float ambientStr = 0.2f;
+            float diffuseStr = 0.8f;
+
+            // Try parsing optional ambient/diffuse coefficients
+            if (ss >> ambientStr)
+            {
+                if (ss >> diffuseStr)
+                {
+                    // Successfully read both
+                }
+            }
+
+            l.ambient = l.color * ambientStr;
+            l.diffuse = l.color * diffuseStr;
+            l.specular = glm::vec3(0.5f);
         }
         else if (command == "LIGHT_POINT")
         {
@@ -308,6 +325,18 @@ void SceneManager::LoadScene(const std::string &filePath)
                 l.linear = lin;
                 l.quadratic = quad;
             }
+
+            // Optional: Parse Ambient/Diffuse
+            float ambStr = 0.1f;    // Default point/spot ambient is usually low
+            float diffStr = 1.0f;
+            if (ss >> ambStr) {
+                 if (ss >> diffStr) {
+                     // Read both
+                 }
+            }
+            l.ambient = l.color * ambStr;
+            l.diffuse = l.color * diffStr;
+            l.specular = glm::vec3(1.0f); // Specular white for point/spot often makes sense, or derive from color?
         }
         else if (command == "LIGHT_SPOT")
         {
@@ -326,6 +355,18 @@ void SceneManager::LoadScene(const std::string &filePath)
                 l.linear = lin;
                 l.quadratic = quad;
             }
+
+            // Optional: Parse Ambient/Diffuse
+            float ambStr = 0.1f;
+            float diffStr = 1.0f;
+            if (ss >> ambStr) {
+                 if (ss >> diffStr) {
+                     // Read both
+                 }
+            }
+            l.ambient = l.color * ambStr;
+            l.diffuse = l.color * diffStr;
+            l.specular = glm::vec3(1.0f);
         }
         else if (command == "RENDERER" || command == "MODEL")
         {

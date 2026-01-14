@@ -44,7 +44,8 @@ void RenderSystem::RenderShadows(Scene &scene)
 
     m_Shadow.BindFBO_Dir();
     glClear(GL_DEPTH_BUFFER_BIT);
-    glCullFace(GL_FRONT);
+    // glCullFace(GL_FRONT); // Removed: Culling Front hides 1-sided planes from shadow map!
+
 
     shaderDir->use();
     shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
@@ -79,7 +80,7 @@ void RenderSystem::RenderShadows(Scene &scene)
         }
     }
 
-    glCullFace(GL_BACK);
+    // glCullFace(GL_BACK); // Reset not needed
     m_Shadow.UnbindFBO();
 
     int pIdx = 0;
@@ -182,9 +183,9 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
         auto [light, trans] = pointLightView.get<PointLightComponent, TransformComponent>(entity);
 
         shader->setVec3(pointLightPos[i], trans.position);
-        shader->setVec3(pointLightAmb[i], light.color * 0.1f * light.intensity);
-        shader->setVec3(pointLightDiff[i], light.color * light.intensity);
-        shader->setVec3(pointLightSpec[i], glm::vec3(1.0f) * light.intensity);
+        shader->setVec3(pointLightAmb[i], light.ambient * light.intensity);   // Use stored ambient
+        shader->setVec3(pointLightDiff[i], light.diffuse * light.intensity);  // Use stored diffuse
+        shader->setVec3(pointLightSpec[i], light.specular * light.intensity); // Use stored specular
         shader->setFloat(pointLightConst[i], light.constant);
         shader->setFloat(pointLightLin[i], light.linear);
         shader->setFloat(pointLightQuad[i], light.quadratic);
@@ -219,9 +220,9 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
         shader->setFloat(spotLightOut[i], light.outerCutOff);
 
         shader->setVec3(spotLightPos[i], trans.position);
-        shader->setVec3(spotLightAmb[i], light.color * 0.1f * light.intensity);
-        shader->setVec3(spotLightDiff[i], light.color * light.intensity);
-        shader->setVec3(spotLightSpec[i], glm::vec3(1.0f) * light.intensity);
+        shader->setVec3(spotLightAmb[i], light.ambient * light.intensity);   // Use stored ambient
+        shader->setVec3(spotLightDiff[i], light.diffuse * light.intensity);  // Use stored diffuse
+        shader->setVec3(spotLightSpec[i], light.specular * light.intensity); // Use stored specular
         shader->setFloat(spotLightConst[i], light.constant);
         shader->setFloat(spotLightLin[i], light.linear);
         shader->setFloat(spotLightQuad[i], light.quadratic);

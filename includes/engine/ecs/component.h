@@ -136,6 +136,10 @@ struct PointLightComponent
     float quadratic = 0.032f;
 
     float radius = 10.0f;
+
+    glm::vec3 ambient = glm::vec3(0.05f);
+    glm::vec3 diffuse = glm::vec3(1.0f);
+    glm::vec3 specular = glm::vec3(1.0f);
 };
 
 struct SpotLightComponent
@@ -149,6 +153,10 @@ struct SpotLightComponent
     float constant = 1.0f;
     float linear = 0.09f;
     float quadratic = 0.032f;
+
+    glm::vec3 ambient = glm::vec3(0.05f);
+    glm::vec3 diffuse = glm::vec3(1.0f);
+    glm::vec3 specular = glm::vec3(1.0f);
 };
 
 class Scriptable;

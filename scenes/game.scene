@@ -1,13 +1,11 @@
 LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/model.fs
+LOAD_SHADER litNoShadowShader resources/shaders/lit_no_shadow.vs resources/shaders/lit_no_shadow.fs
+LOAD_SHADER litShadowShader resources/shaders/lit_shadow.vs resources/shaders/lit_shadow.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 LOAD_SHADER particle resources/shaders/particle.vs resources/shaders/particle.fs
 
 LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
-LOAD_PARTICLE firefx resources/textures/fire.png
-
-NEW_ENTITY FireFX
-TRANSFORM 0 0 0 0 0 0 1 1 1
-PARTICLE_EMITTER firefx 1000 200.0 1.5 2.0 0.0 CONE
+LOAD_STATIC_MODEL singleModel resources/objects/plane/single_cube.fbx
 
 NEW_ENTITY MainCamera
 TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
@@ -16,7 +14,11 @@ SCRIPT CameraController
 
 NEW_ENTITY Plane
 TRANSFORM 0.0 0.0 0.0 0.0 0.0 0.0 1 1 1
-RENDERER planeModel modelShader
+RENDERER planeModel litShadowShader
+
+NEW_ENTITY Single
+TRANSFORM 0.0 2.0 0.0 0.0 0.0 0.0 0.1 0.1 0.1
+RENDERER singleModel litShadowShader
 
 NEW_ENTITY Sun
 LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8
