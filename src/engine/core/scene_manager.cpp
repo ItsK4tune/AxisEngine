@@ -147,6 +147,28 @@ void SceneManager::LoadScene(const std::string &filePath)
                     if (m_App) m_App->GetRenderSystem().SetDepthTest(false);
                 }
             }
+            else if (subCmd == "WINDOW")
+            {
+                int w, h;
+                if (ss >> w >> h)
+                {
+                    std::string modeStr;
+                    int monitorIdx = 0;
+                    WindowMode mode = WindowMode::WINDOWED;
+
+                    if (ss >> modeStr)
+                    {
+                        if (modeStr == "FULLSCREEN") mode = WindowMode::FULLSCREEN;
+                        else if (modeStr == "BORDERLESS") mode = WindowMode::BORDERLESS;
+                        else mode = WindowMode::WINDOWED;
+                    }
+                    
+                    if (!ss.eof())
+                        ss >> monitorIdx;
+
+                    if (m_App) m_App->SetWindowConfiguration(w, h, mode, monitorIdx);
+                }
+            }
         }
 
         else if (command == "NEW_ENTITY")

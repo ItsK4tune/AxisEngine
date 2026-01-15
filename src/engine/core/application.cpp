@@ -145,9 +145,73 @@ void Application::ProcessInput()
         glfwSetWindowShouldClose(window, true);
 }
 
+// GLFW 3.0 check: glfwSetWindowMonitor is NOT available.
+// We can only move and resize. Runtime window mode switching (Windowed <-> Fullscreen) 
+// without losing context is not supported natively in GLFW 3.0.
+// We will perform a "best effort" behavior: Move and Resize.
+
+void Application::SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex)
+{
+    m_Config.width = width;
+    m_Config.height = height;
+    m_Config.mode = mode;
+    m_Config.monitorIndex = monitorIndex;
+
+    int count;
+    GLFWmonitor** monitors = glfwGetMonitors(&count);
+    GLFWmonitor* targetMonitor = nullptr;
+
+    if (monitorIndex >= 0 && monitorIndex < count)
+        targetMonitor = monitors[monitorIndex];
+    else if (count > 0)
+        targetMonitor = monitors[0];
+
+    // Basic Resize
+    glfwSetWindowSize(window, width, height);
+
+    // Get Target Monitor Position
+    int xpos = 0, ypos = 0;
+    if (targetMonitor)
+    {
+        glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
+    }
+
+    const GLFWvidmode* videoMode = glfwGetVideoMode(targetMonitor ? targetMonitor : glfwGetPrimaryMonitor());
+
+    if (mode == WindowMode::FULLSCREEN || mode == WindowMode::BORDERLESS)
+    {
+        // For GLFW 3.0, we can't easily remove borders at runtime or switch to exclusive fullscreen 
+        // without recreation. So we simulate by covering the screen.
+        // Ideally, user should start the app in the correct mode via config file passed to main, 
+        // but here we are changing it dynamically.
+        
+        // Resize to monitor res for "fullscreen" feel
+        if (targetMonitor) {
+            // Note: In 3.0, we can't assume we can override decoration.
+            // Just move to monitor and resize.
+            // If the window was created windowed, it stays windowed.
+            glfwSetWindowSize(window, videoMode->width, videoMode->height);
+            glfwSetWindowPos(window, xpos, ypos);
+        }
+    }
+    else // WINDOWED
+    {
+        // Center on target monitor
+        if (targetMonitor) 
+        {
+            int cx = xpos + (videoMode->width - width) / 2;
+            int cy = ypos + (videoMode->height - height) / 2;
+            glfwSetWindowPos(window, cx, cy);
+        }
+    }
+}
+
 void Application::OnResize(int width, int height)
 {
+    m_Config.width = width;
+    m_Config.height = height;
     glViewport(0, 0, width, height);
+    postProcess.Resize(width, height);
 }
 
 void Application::OnMouseMove(double xpos, double ypos)

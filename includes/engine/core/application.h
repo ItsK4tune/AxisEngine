@@ -17,12 +17,21 @@
 #include <engine/core/post_process_pipeline.h>
 #include <engine/core/input_manager.h>
 
+enum class WindowMode
+{
+    WINDOWED,
+    FULLSCREEN,
+    BORDERLESS
+};
+
 struct AppConfig
 {
     std::string title = "Game Engine";
     int width = 800;
     int height = 600;
     bool vsync = false;
+    WindowMode mode = WindowMode::WINDOWED;
+    int monitorIndex = 0;
 };
 
 class Application
@@ -67,6 +76,7 @@ public:
     ParticleSystem& GetParticleSystem() { return particleSystem; }
 
     void ProcessInput();
+    void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::WINDOWED, int monitorIndex = 0);
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);

@@ -35,12 +35,14 @@ Global engine settings can be configured using the `CONFIG` command.
 | `SHADOWS` | `1` or `0` | - | Enable (`1`) or disable (`0`) shadow rendering. |
 | `CULL_FACE`| `1` or `0` | `BACK`, `FRONT`, `FRONT_AND_BACK` | Enable face culling with specified mode. |
 | `DEPTH_TEST`| `1` or `0` | `LESS`, `ALWAYS`, `LEQUAL`, etc. | Enable depth test with specified function. |
+| `WINDOW` | `<w> <h>` | `[mode] [monitor]` | Set resolution, mode (`WINDOWED`/`FULLSCREEN`/`BORDERLESS`), and monitor index. |
 
 ### Example
 ```text
 CONFIG SHADOWS 1
 CONFIG CULL_FACE 1 BACK
 CONFIG DEPTH_TEST 1 LESS
+CONFIG WINDOW 1920 1080 BORDERLESS 0
 ```
 
 ---
