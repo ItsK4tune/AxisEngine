@@ -160,7 +160,7 @@ void SceneManager::LoadScene(const std::string &filePath)
                     {
                         if (modeStr == "FULLSCREEN") mode = WindowMode::FULLSCREEN;
                         else if (modeStr == "BORDERLESS") mode = WindowMode::BORDERLESS;
-                        else mode = WindowMode::WINDOWED;
+                        else if (modeStr == "WINDOWED") mode = WindowMode::WINDOWED;
                     }
                     
                     if (!ss.eof())
