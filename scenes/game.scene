@@ -1,7 +1,9 @@
 CONFIG SHADOWS 1
 CONFIG CULL_FACE 1 BACK
 CONFIG DEPTH_TEST 1 LESS
-CONFIG WINDOW 1920 1080 FULLSCREEN 0
+CONFIG WINDOW 1920 1080 FULLSCREEN 0 0
+CONFIG VSYNC 0
+CONFIG FPS 0
 
 LOAD_SHADER phongLitNoShadowShader resources/shaders/phong_lit_no_shadow.vs resources/shaders/phong_lit_no_shadow.fs
 LOAD_SHADER phongLitShadowShader resources/shaders/phong_lit_shadow.vs resources/shaders/phong_lit_shadow.fs

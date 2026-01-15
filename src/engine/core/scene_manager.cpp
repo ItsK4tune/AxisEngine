@@ -165,8 +165,28 @@ void SceneManager::LoadScene(const std::string &filePath)
                     
                     if (!ss.eof())
                         ss >> monitorIdx;
+                    
+                    int refreshRate = 0;
+                    if (!ss.eof())
+                        ss >> refreshRate;
 
-                    if (m_App) m_App->SetWindowConfiguration(w, h, mode, monitorIdx);
+                    if (m_App) m_App->SetWindowConfiguration(w, h, mode, monitorIdx, refreshRate);
+                }
+            }
+            else if (subCmd == "VSYNC")
+            {
+                int enable = 0;
+                if (ss >> enable)
+                {
+                    if (m_App) m_App->SetVsync(enable != 0);
+                }
+            }
+            else if (subCmd == "FPS")
+            {
+                int fps = 0;
+                if (ss >> fps)
+                {
+                    if (m_App) m_App->SetFrameRateLimit(fps);
                 }
             }
         }

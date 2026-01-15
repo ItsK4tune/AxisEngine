@@ -9,15 +9,22 @@ AppConfig config;
 config.title = "GameEngine";
 config.width = 1280;
 config.height = 720;
-config.vsync = false; // Enable Vertical Sync
-
-Application app(config);
-```
-
-**Parameters:**
-- **title**: Window title bar text.
-- **width/height**: Initial window resolution.
-- **vsync**: Limits frame rate to monitor refresh rate if true.
+    config.mode = WindowMode::WINDOWED;
+    config.monitorIndex = 0; // Select Monitor
+    config.refreshRate = 0; // 0 = Unlimited/Default
+    config.frameRateLimit = 0; // 0 = Unlimited
+    
+    Application app(config);
+    ```
+    
+    **Parameters:**
+    - **title**: Window title bar text.
+    - **width/height**: Initial window resolution.
+    - **vsync**: Limits frame rate to monitor refresh rate if true (via `glfwSwapInterval`).
+    - **mode**: `WINDOWED`, `FULLSCREEN`, or `BORDERLESS`.
+    - **monitorIndex**: Index of the monitor to display on (0 = Primary).
+    - **refreshRate**: Target refresh rate (Hz) for Fullscreen mode.
+    - **frameRateLimit**: Cap FPS to save CPU/GPU (0 = Unlimited).
 
 ## 2. CMake Build System
 

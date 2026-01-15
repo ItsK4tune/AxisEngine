@@ -136,6 +136,24 @@ void Application::Run()
         postProcess.EndCapture();
 
         glfwSwapBuffers(window);
+
+        // Frame Rate Limiter
+        if (m_Config.frameRateLimit > 0)
+        {
+            double targetFrameTime = 1.0 / (double)m_Config.frameRateLimit;
+            double frameEnd = glfwGetTime();
+            double frameElapsed = frameEnd - currentFrame;
+            
+            while (frameElapsed < targetFrameTime)
+            {
+                frameEnd = glfwGetTime();
+                frameElapsed = frameEnd - currentFrame;
+                
+                // Optional: Sleep if wait is long enough to save CPU
+                // if (targetFrameTime - frameElapsed > 0.002) 
+                //    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
     }
 }
 
@@ -145,17 +163,14 @@ void Application::ProcessInput()
         glfwSetWindowShouldClose(window, true);
 }
 
-// GLFW 3.0 check: glfwSetWindowMonitor is NOT available.
-// We can only move and resize. Runtime window mode switching (Windowed <-> Fullscreen) 
-// without losing context is not supported natively in GLFW 3.0.
-// We will perform a "best effort" behavior: Move and Resize.
-
-void Application::SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex)
+// GLFW 3.4+ Implementation for Fullscreen/Borderless support
+void Application::SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex, int refreshRate)
 {
     m_Config.width = width;
     m_Config.height = height;
     m_Config.mode = mode;
     m_Config.monitorIndex = monitorIndex;
+    m_Config.refreshRate = refreshRate;
 
     int count;
     GLFWmonitor** monitors = glfwGetMonitors(&count);
@@ -166,48 +181,71 @@ void Application::SetWindowConfiguration(int width, int height, WindowMode mode,
     else if (count > 0)
         targetMonitor = monitors[0];
 
-    // Basic Resize
-    glfwSetWindowSize(window, width, height);
+    // If no monitor found, fallback to primary
+    if (!targetMonitor) targetMonitor = glfwGetPrimaryMonitor();
 
-    // Get Target Monitor Position
-    int xpos = 0, ypos = 0;
-    if (targetMonitor)
+    const GLFWvidmode* videoMode = glfwGetVideoMode(targetMonitor);
+    if (!videoMode) return;
+
+    int targetRefreshRate = (refreshRate > 0) ? refreshRate : videoMode->refreshRate;
+
+    if (mode == WindowMode::FULLSCREEN)
     {
-        glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
+        // Exclusive Fullscreen
+        glfwSetWindowMonitor(window, targetMonitor, 0, 0, width, height, targetRefreshRate);
     }
-
-    const GLFWvidmode* videoMode = glfwGetVideoMode(targetMonitor ? targetMonitor : glfwGetPrimaryMonitor());
-
-    if (mode == WindowMode::FULLSCREEN || mode == WindowMode::BORDERLESS)
+    else if (mode == WindowMode::BORDERLESS)
     {
-        // For GLFW 3.0, we can't easily remove borders at runtime or switch to exclusive fullscreen 
-        // without recreation. So we simulate by covering the screen.
-        // Ideally, user should start the app in the correct mode via config file passed to main, 
-        // but here we are changing it dynamically.
+        // Borderless Windowed
+        // 1. Remove decoration
+        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         
-        // Resize to monitor res for "fullscreen" feel
-        if (targetMonitor) {
-            // Note: In 3.0, we can't assume we can override decoration.
-            // Just move to monitor and resize.
-            // If the window was created windowed, it stays windowed.
-            glfwSetWindowSize(window, videoMode->width, videoMode->height);
-            glfwSetWindowPos(window, xpos, ypos);
-        }
+        // 2. Get monitor position and size
+        int xpos = 0, ypos = 0;
+        glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
+        
+        // 3. Update config to match monitor resolution (Borderless is usually full monitor res)
+        m_Config.width = videoMode->width;
+        m_Config.height = videoMode->height;
+        
+        // 4. Set window monitor to NULL (windowed mode) but at monitor position/size
+        glfwSetWindowMonitor(window, nullptr, xpos, ypos, videoMode->width, videoMode->height, targetRefreshRate);
     }
     else // WINDOWED
     {
-        // Center on target monitor
-        if (targetMonitor) 
-        {
-            int cx = xpos + (videoMode->width - width) / 2;
-            int cy = ypos + (videoMode->height - height) / 2;
-            glfwSetWindowPos(window, cx, cy);
-        }
+        // 1. Restore decoration
+        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+        
+        // 2. Center window
+        int xpos = 0, ypos = 0;
+        glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
+        int cx = xpos + (videoMode->width - width) / 2;
+        int cy = ypos + (videoMode->height - height) / 2;
+
+        // 3. Set window monitor to NULL
+        glfwSetWindowMonitor(window, nullptr, cx, cy, width, height, targetRefreshRate);
     }
+
+    // Resize viewport and post process buffers
+    glViewport(0, 0, m_Config.width, m_Config.height);
+    postProcess.Resize(m_Config.width, m_Config.height);
+}
+
+void Application::SetVsync(bool enable)
+{
+    m_Config.vsync = enable;
+    glfwSwapInterval(enable ? 1 : 0);
+}
+
+void Application::SetFrameRateLimit(int limit)
+{
+    m_Config.frameRateLimit = limit;
 }
 
 void Application::OnResize(int width, int height)
 {
+    if (width == 0 || height == 0) return;
+
     m_Config.width = width;
     m_Config.height = height;
     glViewport(0, 0, width, height);

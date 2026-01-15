@@ -32,6 +32,8 @@ struct AppConfig
     bool vsync = false;
     WindowMode mode = WindowMode::WINDOWED;
     int monitorIndex = 0;
+    int refreshRate = 0; // 0 = unlimited/monitor default
+    int frameRateLimit = 0; // 0 = unlimited
 };
 
 class Application
@@ -76,7 +78,9 @@ public:
     ParticleSystem& GetParticleSystem() { return particleSystem; }
 
     void ProcessInput();
-    void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::WINDOWED, int monitorIndex = 0);
+    void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::WINDOWED, int monitorIndex = 0, int refreshRate = 0);
+    void SetVsync(bool enable);
+    void SetFrameRateLimit(int limit);
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);

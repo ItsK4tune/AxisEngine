@@ -35,7 +35,9 @@ Global engine settings can be configured using the `CONFIG` command.
 | `SHADOWS` | `1` or `0` | - | Enable (`1`) or disable (`0`) shadow rendering. |
 | `CULL_FACE`| `1` or `0` | `BACK`, `FRONT`, `FRONT_AND_BACK` | Enable face culling with specified mode. |
 | `DEPTH_TEST`| `1` or `0` | `LESS`, `ALWAYS`, `LEQUAL`, etc. | Enable depth test with specified function. |
-| `WINDOW` | `<w> <h>` | `[mode] [monitor]` | Set resolution, mode (`WINDOWED`/`FULLSCREEN`/`BORDERLESS`), and monitor index. |
+| `WINDOW` | `<w> <h>` | `[mode] [monitor] [hz]` | Set resolution, mode (`WINDOWED`/`FULLSCREEN`/`BORDERLESS`), monitor index, and refresh rate. |
+| `VSYNC` | `1` or `0` | - | Enable (`1`) or disable (`0`) Vertical Sync. |
+| `FPS` | `<int>` | - | Set target frame rate limit (0 for unlimited). |
 
 ### Example
 ```text
