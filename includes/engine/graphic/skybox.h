@@ -3,7 +3,7 @@
 #include <glad/glad.h>
 #include <vector>
 #include <string>
-#include <engine/graphic/shader.h>
+#include <graphic/shader.h>
 
 class Skybox
 {

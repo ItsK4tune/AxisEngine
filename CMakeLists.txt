@@ -20,19 +20,25 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/includes/bullet
     ${CMAKE_SOURCE_DIR}/includes/entt
+    ${CMAKE_SOURCE_DIR}/includes/engine
+    ${CMAKE_SOURCE_DIR}/game/includes
 )
 
 link_directories(${CMAKE_SOURCE_DIR}/lib)
 
-file(GLOB_RECURSE SOURCES
+file(GLOB_RECURSE ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/*.cpp
     ${CMAKE_SOURCE_DIR}/src/*.c
+)
+
+file(GLOB_RECURSE GAME_SOURCES
+    ${CMAKE_SOURCE_DIR}/game/src/*.cpp
 )
 
 configure_file(configuration/root_directory.h.in configuration/root_directory.h)
 include_directories(${CMAKE_BINARY_DIR}/configuration)
 
-add_executable(GameEngine ${SOURCES})
+add_executable(GameEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
 
 set(BULLET_LIBS
     BulletDynamics$<$<CONFIG:Debug>:_Debug>

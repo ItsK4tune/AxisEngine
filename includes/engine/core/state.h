@@ -1,10 +1,10 @@
 #pragma once
 
-#include <engine/core/scene_manager.h>
-#include <engine/core/resource_manager.h>
-#include <engine/physic/physic_world.h>
-#include <engine/core/keyboard_manager.h>
-#include <engine/core/mouse_manager.h>
+#include <core/scene_manager.h>
+#include <core/resource_manager.h>
+#include <core/keyboard_manager.h>
+#include <core/mouse_manager.h>
+#include <physic/physic_world.h>
 
 class Application;
 

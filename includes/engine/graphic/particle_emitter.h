@@ -2,8 +2,8 @@
 
 #include <vector>
 #include <glm/glm.hpp>
-#include <engine/graphic/shader.h>
-#include <engine/graphic/mesh.h> // For Texture struct
+#include <graphic/shader.h>
+#include <graphic/mesh.h> // For Texture struct
 
 struct Particle {
     glm::vec3 Position;

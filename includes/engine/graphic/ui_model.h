@@ -3,7 +3,7 @@
 #include <glad/glad.h>
 #include <vector>
 #include <glm/glm.hpp>
-#include <engine/graphic/shader.h>
+#include <graphic/shader.h>
 
 enum class UIType {
     Color,

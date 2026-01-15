@@ -1,7 +1,7 @@
 #pragma once
 
 #include <entt/entt.hpp>
-#include <engine/ecs/component.h> 
+#include <ecs/component.h> 
 
 class SceneManager;
 

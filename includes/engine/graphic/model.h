@@ -5,9 +5,9 @@
 
 #include <unordered_map>
 
-#include <engine/graphic/mesh.h>
-#include <engine/graphic/shader.h>
-#include <engine/graphic/animdata.h>
+#include <graphic/mesh.h>
+#include <graphic/shader.h>
+#include <graphic/animdata.h>
 
 class Model
 {

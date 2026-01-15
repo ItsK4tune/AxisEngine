@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>
-#include <engine/graphic/shader.h>
+#include <graphic/shader.h>
 
 class Shadow {
 public:

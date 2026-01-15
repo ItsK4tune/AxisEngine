@@ -1,7 +1,7 @@
 #pragma once
 #include <glad/glad.h>
 #include <vector>
-#include <engine/graphic/shader.h>
+#include <graphic/shader.h>
 
 struct PostProcessEffect {
     Shader* shader;

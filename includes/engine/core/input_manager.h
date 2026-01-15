@@ -2,8 +2,8 @@
 
 #include <string>
 #include <unordered_map>
-#include <engine/core/keyboard_manager.h>
-#include <engine/core/mouse_manager.h>
+#include <core/keyboard_manager.h>
+#include <core/mouse_manager.h>
 
 enum class InputType
 {

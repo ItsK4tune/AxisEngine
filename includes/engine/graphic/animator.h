@@ -5,7 +5,7 @@
 #include <assimp/scene.h>
 #include <unordered_map>
 
-#include <engine/graphic/animation.h>
+#include <graphic/animation.h>
 
 class Animator
 {

@@ -6,16 +6,16 @@
 #include <vector>
 #include <functional>
 
-#include <engine/core/state_machine.h>
-#include <engine/ecs/component.h>
-#include <engine/ecs/system.h>
-#include <engine/physic/physic_world.h>
-#include <engine/core/resource_manager.h>
-#include <engine/core/scene_manager.h>
-#include <engine/core/sound_manager.h>
-#include <engine/core/post_process_pipeline.h>
-#include <engine/core/post_process_pipeline.h>
-#include <engine/core/input_manager.h>
+#include <core/state_machine.h>
+#include <ecs/component.h>
+#include <ecs/system.h>
+#include <physic/physic_world.h>
+#include <core/resource_manager.h>
+#include <core/scene_manager.h>
+#include <core/sound_manager.h>
+#include <core/post_process_pipeline.h>
+#include <core/post_process_pipeline.h>
+#include <core/input_manager.h>
 
 enum class WindowMode
 {

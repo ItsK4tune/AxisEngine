@@ -6,9 +6,9 @@
 #include <glm/glm.hpp>
 #include <assimp/scene.h>
 
-#include <engine/graphic/bone.h>
-#include <engine/graphic/animdata.h>
-#include <engine/graphic/model.h>
+#include <graphic/bone.h>
+#include <graphic/animdata.h>
+#include <graphic/model.h>
 
 struct AssimpNodeData
 {

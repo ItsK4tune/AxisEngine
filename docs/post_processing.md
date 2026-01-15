@@ -23,7 +23,7 @@ LOAD_SHADER    GrayScale       resources/shaders/ppt.vs    resources/shaders/gra
 You can add effects to the pipeline in your Game State (e.g., `GameState::Init`) or Script.
 
 ```cpp
-#include <engine/engine.h>
+#include <engine.h>
 
 void GameState::Init()
 {

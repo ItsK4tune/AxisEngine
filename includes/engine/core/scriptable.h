@@ -1,7 +1,7 @@
 #pragma once
 
-#include <engine/core/scene.h>
-#include <engine/ecs/component.h>
+#include <core/scene.h>
+#include <ecs/component.h>
 
 class Application;
 

@@ -7,7 +7,7 @@ Scripts in the engine are C++ classes inheriting from `Scriptable`. They allow y
 Inherit from `Scriptable` and override lifecycle methods.
 
 ```cpp
-#include <engine/core/scriptable.h>
+#include <core/scriptable.h>
 
 class PlayerController : public Scriptable
 {
@@ -35,7 +35,7 @@ To use a script in a `.scene` file, you must register it.
 
 ```cpp
 #include "player_controller.h"
-#include <engine/core/script_registry.h>
+#include <core/script_registry.h>
 
 REGISTER_SCRIPT(PlayerController)
 ```

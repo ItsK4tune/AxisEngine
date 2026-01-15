@@ -6,14 +6,14 @@
 #include <iostream>
 #include <irrKlang/irrKlang.h>
 
-#include <engine/graphic/shader.h>
-#include <engine/graphic/model.h>
-#include <engine/graphic/ui_model.h>
-#include <engine/graphic/animation.h>
-#include <engine/graphic/font.h>
-#include <engine/graphic/font.h>
-#include <engine/graphic/skybox.h>
-#include <engine/graphic/mesh.h>
+#include <graphic/shader.h>
+#include <graphic/model.h>
+#include <graphic/ui_model.h>
+#include <graphic/animation.h>
+#include <graphic/font.h>
+#include <graphic/font.h>
+#include <graphic/skybox.h>
+#include <graphic/mesh.h>
 
 class ResourceManager
 {

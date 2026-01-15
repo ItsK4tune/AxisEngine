@@ -6,11 +6,11 @@
 #include <vector>
 #include <unordered_map>
 
-#include <engine/core/scene.h>
-#include <engine/core/resource_manager.h>
-#include <engine/core/sound_manager.h>
-#include <engine/physic/physic_world.h>
-#include <engine/ecs/component.h>
+#include <core/scene.h>
+#include <core/resource_manager.h>
+#include <core/sound_manager.h>
+#include <physic/physic_world.h>
+#include <ecs/component.h>
 
 class Application; // Forward declaration
 

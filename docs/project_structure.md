@@ -4,8 +4,10 @@
 
 | Directory | Description |
 | :--- | :--- |
-| `src/` | **Source Code**. Contains `.cpp` files for Engine core and Game logic. |
-| `includes/` | **Headers**. Contains `.h` files. Includes third-party libs (Bullet, EnTT) and Engine headers. |
+| `src/` | **Engine Source**. Contains `.cpp` files for the Engine core. |
+| `includes/` | **Engine Headers**. Contains `.h` files for Engine and third-party libs (Bullet, EnTT). |
+| `game/src/` | **Game Source**. Contains `.cpp` files for Game logic (Scripts, States). |
+| `game/includes/` | **Game Headers**. Contains `.h` files for Game specific code. |
 | `resources/` | **Assets**. Stores Models, Shaders, Textures, Audio, Fonts. |
 | `scenes/` | **Scene Files**. `.scene` files defining the game world. |
 | `dlls/` | **Runtime Binaries**. Dynamic Link Libraries (Assimp, Freetype, etc.) needed by the executable. |

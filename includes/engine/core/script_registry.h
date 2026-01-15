@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <functional>
 #include <iostream>
-#include <engine/core/scriptable.h>
+#include <core/scriptable.h>
 
 class ScriptRegistry
 {
