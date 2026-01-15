@@ -3,9 +3,9 @@
 #include <engine/utils/filesystem.h>
 #include <engine/utils/filesystem.h>
 #include <engine/utils/bullet_glm_helpers.h>
-#include <engine/core/application.h> // Fixed incomplete type
+#include <engine/core/application.h>
 
-SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application* app)
+SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application *app)
     : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound), m_App(app) {}
 
 void SceneManager::LoadScene(const std::string &filePath)
@@ -90,6 +90,65 @@ void SceneManager::LoadScene(const std::string &filePath)
             m_Resources.LoadSkybox(name, faces);
         }
 
+        else if (command == "CONFIG")
+        {
+            std::string subCmd;
+            ss >> subCmd;
+            if (subCmd == "SHADOWS")
+            {
+                int enable = 0;
+                ss >> enable;
+                if (m_App)
+                {
+                    m_App->GetRenderSystem().SetEnableShadows(enable != 0);
+                }
+            }
+            else if (subCmd == "CULL_FACE")
+            {
+                int enable = 0;
+                std::string modeStr;
+                ss >> enable;
+                if (enable)
+                {
+                    ss >> modeStr;
+                    int mode = GL_BACK;
+                    if (modeStr == "FRONT") mode = GL_FRONT;
+                    else if (modeStr == "FRONT_AND_BACK") mode = GL_FRONT_AND_BACK;
+                    
+                    if (m_App) m_App->GetRenderSystem().SetFaceCulling(true, mode);
+                }
+                else
+                {
+                    if (m_App) m_App->GetRenderSystem().SetFaceCulling(false);
+                }
+            }
+            else if (subCmd == "DEPTH_TEST")
+            {
+                int enable = 0;
+                std::string funcStr;
+                ss >> enable;
+                if (enable)
+                {
+                    ss >> funcStr;
+                    int func = GL_LESS;
+                    if (funcStr == "NEVER") func = GL_NEVER;
+                    else if (funcStr == "LESS") func = GL_LESS;
+                    else if (funcStr == "EQUAL") func = GL_EQUAL;
+                    else if (funcStr == "LEQUAL") func = GL_LEQUAL;
+                    else if (funcStr == "GREATER") func = GL_GREATER;
+                    else if (funcStr == "NOTEQUAL") func = GL_NOTEQUAL;
+                    else if (funcStr == "GEQUAL") func = GL_GEQUAL;
+                    else if (funcStr == "ALWAYS") func = GL_ALWAYS;
+
+                    if (m_App) m_App->GetRenderSystem().SetDepthTest(true, func);
+                }
+                else
+                {
+                    if (m_App) m_App->GetRenderSystem().SetDepthTest(false);
+                }
+            }
+        }
+
         else if (command == "NEW_ENTITY")
         {
             currentEntity = m_Scene.createEntity();
@@ -150,11 +209,13 @@ void SceneManager::LoadScene(const std::string &filePath)
             float fov, yaw, pitch;
             float nearPlane = 0.1f;
             float farPlane = 1000.0f;
-            
+
             ss >> isPrimary >> fov >> yaw >> pitch;
-            
-            if (!ss.eof()) ss >> nearPlane;
-            if (!ss.eof()) ss >> farPlane;
+
+            if (!ss.eof())
+                ss >> nearPlane;
+            if (!ss.eof())
+                ss >> farPlane;
 
             auto &c = m_Scene.registry.emplace<CameraComponent>(currentEntity);
             c.isPrimary = (bool)isPrimary;
@@ -246,7 +307,7 @@ void SceneManager::LoadScene(const std::string &filePath)
             if (finalShape)
             {
                 std::string bodyType = "UNKNOWN";
-                
+
                 if (ss >> bodyType)
                 {
                     // Found explicit type
@@ -254,12 +315,16 @@ void SceneManager::LoadScene(const std::string &filePath)
                 else
                 {
                     // Deduce fram mass
-                    if (mass > 0.0f) bodyType = "DYNAMIC";
-                    else bodyType = "STATIC";
+                    if (mass > 0.0f)
+                        bodyType = "DYNAMIC";
+                    else
+                        bodyType = "STATIC";
                 }
 
-                if (bodyType == "STATIC") mass = 0.0f;
-                if (bodyType == "KINEMATIC") mass = 0.0f;
+                if (bodyType == "STATIC")
+                    mass = 0.0f;
+                if (bodyType == "KINEMATIC")
+                    mass = 0.0f;
 
                 btTransform transform;
                 transform.setIdentity();
@@ -275,8 +340,8 @@ void SceneManager::LoadScene(const std::string &filePath)
                         rb.body->setCollisionFlags(rb.body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
                         rb.body->setActivationState(DISABLE_DEACTIVATION);
                     }
-                    
-                    rb.body->setUserPointer((void*)(uintptr_t)currentEntity);
+
+                    rb.body->setUserPointer((void *)(uintptr_t)currentEntity);
 
                     if (type == "CAPSULE" || type == "PLAYER")
                         rb.body->setAngularFactor(btVector3(0, 1, 0));
@@ -317,22 +382,25 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.color = glm::vec3(r, g, b);
             l.intensity = i;
             l.radius = rad;
-            
+
             // Optional: Parse attenuation if provided
             float c, lin, quad;
-            if (ss >> c >> lin >> quad) {
+            if (ss >> c >> lin >> quad)
+            {
                 l.constant = c;
                 l.linear = lin;
                 l.quadratic = quad;
             }
 
             // Optional: Parse Ambient/Diffuse
-            float ambStr = 0.1f;    // Default point/spot ambient is usually low
+            float ambStr = 0.1f; // Default point/spot ambient is usually low
             float diffStr = 1.0f;
-            if (ss >> ambStr) {
-                 if (ss >> diffStr) {
-                     // Read both
-                 }
+            if (ss >> ambStr)
+            {
+                if (ss >> diffStr)
+                {
+                    // Read both
+                }
             }
             l.ambient = l.color * ambStr;
             l.diffuse = l.color * diffStr;
@@ -347,10 +415,11 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.intensity = i;
             l.cutOff = glm::cos(glm::radians(cut));
             l.outerCutOff = glm::cos(glm::radians(outer));
-            
-             // Optional: Parse attenuation if provided
+
+            // Optional: Parse attenuation if provided
             float c, lin, quad;
-            if (ss >> c >> lin >> quad) {
+            if (ss >> c >> lin >> quad)
+            {
                 l.constant = c;
                 l.linear = lin;
                 l.quadratic = quad;
@@ -359,10 +428,12 @@ void SceneManager::LoadScene(const std::string &filePath)
             // Optional: Parse Ambient/Diffuse
             float ambStr = 0.1f;
             float diffStr = 1.0f;
-            if (ss >> ambStr) {
-                 if (ss >> diffStr) {
-                     // Read both
-                 }
+            if (ss >> ambStr)
+            {
+                if (ss >> diffStr)
+                {
+                    // Read both
+                }
             }
             l.ambient = l.color * ambStr;
             l.diffuse = l.color * diffStr;
@@ -445,14 +516,16 @@ void SceneManager::LoadScene(const std::string &filePath)
             ss >> className;
 
             auto &scriptComp = m_Scene.registry.emplace<ScriptComponent>(currentEntity);
-            
-            Scriptable* scriptInstance = ScriptRegistry::Instance().Create(className);
-            
+
+            Scriptable *scriptInstance = ScriptRegistry::Instance().Create(className);
+
             if (scriptInstance)
             {
                 scriptComp.instance = scriptInstance;
-                scriptComp.InstantiateScript = [className]() { return ScriptRegistry::Instance().Create(className); };
-                scriptComp.DestroyScript = [](ScriptComponent *nsc) { delete nsc->instance; nsc->instance = nullptr; };
+                scriptComp.InstantiateScript = [className]()
+                { return ScriptRegistry::Instance().Create(className); };
+                scriptComp.DestroyScript = [](ScriptComponent *nsc)
+                { delete nsc->instance; nsc->instance = nullptr; };
                 // Init script immediately
                 scriptComp.instance->Init(currentEntity, &m_Scene, m_App);
                 scriptComp.instance->OnCreate();
@@ -487,66 +560,74 @@ void SceneManager::LoadScene(const std::string &filePath)
             ss >> typeStr;
 
             MaterialComponent mat;
-            
+
             if (typeStr == "PBR")
             {
                 mat.type = MaterialType::PBR;
                 ss >> mat.roughness >> mat.metallic >> mat.ao;
-                
-                float er=0.0f, eg=0.0f, eb=0.0f;
-                if (ss >> er >> eg >> eb) {
+
+                float er = 0.0f, eg = 0.0f, eb = 0.0f;
+                if (ss >> er >> eg >> eb)
+                {
                     mat.emission = glm::vec3(er, eg, eb);
                 }
             }
             else if (typeStr == "PHONG")
             {
                 mat.type = MaterialType::PHONG;
-                float r=0.5f, g=0.5f, b=0.5f;
+                float r = 0.5f, g = 0.5f, b = 0.5f;
                 ss >> mat.shininess >> r >> g >> b;
                 mat.specular = glm::vec3(r, g, b);
-                
-                float er=0.0f, eg=0.0f, eb=0.0f;
-                if (ss >> er >> eg >> eb) {
+
+                float er = 0.0f, eg = 0.0f, eb = 0.0f;
+                if (ss >> er >> eg >> eb)
+                {
                     mat.emission = glm::vec3(er, eg, eb);
                 }
-                
-                float ar=1.0f, ag=1.0f, ab=1.0f;
-                 if (ss >> ar >> ag >> ab) {
+
+                float ar = 1.0f, ag = 1.0f, ab = 1.0f;
+                if (ss >> ar >> ag >> ab)
+                {
                     mat.ambient = glm::vec3(ar, ag, ab);
                 }
             }
             else
             {
-                try {
+                try
+                {
                     mat.type = MaterialType::PHONG;
                     mat.shininess = std::stof(typeStr);
-                    
-                    float r=0.5f, g=0.5f, b=0.5f;
-                     if (ss >> r >> g >> b) {
+
+                    float r = 0.5f, g = 0.5f, b = 0.5f;
+                    if (ss >> r >> g >> b)
+                    {
                         mat.specular = glm::vec3(r, g, b);
-                     }
-                } catch (...) {
+                    }
+                }
+                catch (...)
+                {
                     std::cout << "Invalid MATERIAL format for entity " << (int)currentEntity << std::endl;
                 }
             }
 
             m_Scene.registry.emplace<MaterialComponent>(currentEntity, mat);
         }
-        else if (command == "PARTICLE_EMITTER") 
+        else if (command == "PARTICLE_EMITTER")
         {
             std::string texName;
             int maxParticles;
             float life;
             ss >> texName >> maxParticles >> life;
-            
-            auto& emitterComp = m_Scene.registry.emplace<ParticleEmitterComponent>(currentEntity);
+
+            auto &emitterComp = m_Scene.registry.emplace<ParticleEmitterComponent>(currentEntity);
             emitterComp.emitter.Init(maxParticles);
             emitterComp.emitter.LifeTime = life;
             emitterComp.emitter.StartLife = life;
-            
+
             emitterComp.emitter.texture = m_Resources.GetTexture(texName);
-            
-            if (!emitterComp.emitter.texture) {
+
+            if (!emitterComp.emitter.texture)
+            {
                 std::cerr << "[SceneManager] Particle Texture not found: " << texName << std::endl;
             }
         }
@@ -580,7 +661,7 @@ void SceneManager::ClearAllScenes()
     currentEntity = entt::null;
 }
 
-void SceneManager::QueueLoadScene(const std::string& path)
+void SceneManager::QueueLoadScene(const std::string &path)
 {
     m_pendingPath = path;
     m_isPending = true;

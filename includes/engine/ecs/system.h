@@ -33,8 +33,6 @@ public:
     void Update(Scene &scene, float dt);
 };
 
-
-
 class RenderSystem
 {
 public:
@@ -42,6 +40,7 @@ public:
 
     void InitShadows(class ResourceManager& res);
     void RenderShadows(Scene &scene);
+    void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
 
     void SetFaceCulling(bool enabled, int mode = GL_BACK);
     void SetDepthTest(bool enabled, int func = GL_LESS);
@@ -55,6 +54,7 @@ private:
 
     glm::mat4 m_LightSpaceMatrixDir;
     float m_FarPlanePoint = 25.0f;
+    bool m_EnableShadows = true;
 };
 
 class UIInteractSystem

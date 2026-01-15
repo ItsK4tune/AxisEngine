@@ -57,6 +57,7 @@ uniform Material material;
 uniform int nrPointLights;
 uniform int nrSpotLights;
 uniform vec4 tintColor;
+uniform bool u_ReceiveShadow;
 uniform sampler2D shadowMapDir;
 uniform samplerCube shadowMapPoint[NR_POINT_LIGHTS];
 uniform float farPlanePoint;
@@ -98,7 +99,7 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     vec3 diffuse = light.diffuse * diff * vec3(texture(material.texture_diffuse1, TexCoords));
     vec3 specular = light.specular * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
 
-    float shadow = ShadowCalculationDir(FragPosLightSpace, normal, lightDir);
+    float shadow = u_ReceiveShadow ? ShadowCalculationDir(FragPosLightSpace, normal, lightDir) : 0.0;
     return (ambient + (1.0 - shadow) * (diffuse + specular));
 }
 
@@ -144,7 +145,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, i
     diffuse *= attenuation;
     specular *= attenuation;
 
-    float shadow = ShadowCalculationPoint(FragPos, light.position, index);
+    float shadow = u_ReceiveShadow ? ShadowCalculationPoint(FragPos, light.position, index) : 0.0;
     return (ambient + (1.0 - shadow) * (diffuse + specular));
 }
 

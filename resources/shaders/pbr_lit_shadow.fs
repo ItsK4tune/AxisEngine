@@ -41,6 +41,7 @@ uniform int nrPointLights;
 uniform vec3 viewPos;
 uniform Material material;
 uniform vec4 tintColor;
+uniform bool u_ReceiveShadow;
 
 uniform sampler2D shadowMapDir;
 
@@ -66,12 +67,11 @@ void main()
     F0 = mix(F0, albedo, metallic);
 
     vec3 Lo = vec3(0.0);
-
     {
         vec3 L = normalize(-dirLight.direction);
         vec3 H = normalize(V + L);
 
-        float shadow = ShadowCalculationDir(FragPosLightSpace, N, L);
+        float shadow = u_ReceiveShadow ? ShadowCalculationDir(FragPosLightSpace, N, L) : 0.0;
         if(shadow < 1.0)
         {
             vec3 radiance = dirLight.color;

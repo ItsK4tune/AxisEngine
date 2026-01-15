@@ -1,3 +1,7 @@
+CONFIG SHADOWS 1
+CONFIG CULL_FACE 1 BACK
+CONFIG DEPTH_TEST 1 LESS
+
 LOAD_SHADER phongLitNoShadowShader resources/shaders/phong_lit_no_shadow.vs resources/shaders/phong_lit_no_shadow.fs
 LOAD_SHADER phongLitShadowShader resources/shaders/phong_lit_shadow.vs resources/shaders/phong_lit_shadow.fs
 LOAD_SHADER pbrLitNoShadowShader resources/shaders/pbr_lit_no_shadow.vs resources/shaders/pbr_lit_no_shadow.fs
@@ -7,7 +11,7 @@ LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 LOAD_SHADER particle resources/shaders/particle.vs resources/shaders/particle.fs
 
 LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
-LOAD_STATIC_MODEL singleModel resources/objects/plane/single_cube.fbx
+LOAD_STATIC_MODEL dummyModel resources/objects/dummy/dummy.fbx
 
 NEW_ENTITY MainCamera
 TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
@@ -16,12 +20,13 @@ SCRIPT CameraController
 
 NEW_ENTITY Plane
 TRANSFORM 0.0 0.0 0.0 0.0 0.0 0.0 1 1 1
-RENDERER planeModel phongLitNoShadowShader
+RENDERER planeModel phongLitShadowShader
 MATERIAL PHONG 32 0.5 0.5 0.5
 
-NEW_ENTITY Single
-TRANSFORM 0.0 2.0 0.0 0.0 0.0 0.0 0.1 0.1 0.1
-RENDERER singleModel phongLitNoShadowShader
+NEW_ENTITY Dummy
+TRANSFORM 0.0 0.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
+RENDERER dummyModel phongLitNoShadowShader
+MATERIAL PHONG 32 0.5 0.5 0.5
 
 NEW_ENTITY Sun
 LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8 0.1 0.3

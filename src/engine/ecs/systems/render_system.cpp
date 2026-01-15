@@ -24,7 +24,7 @@ void RenderSystem::RenderShadows(Scene &scene)
     Shader *shaderDir = m_Shadow.GetShaderDir();
     Shader *shaderPoint = m_Shadow.GetShaderPoint();
 
-    if (!shaderDir || !shaderPoint)
+    if (!shaderDir || !shaderPoint || !m_EnableShadows)
         return;
 
     auto dirLightView = scene.registry.view<DirectionalLightComponent>();
@@ -286,6 +286,7 @@ void RenderSystem::Render(Scene &scene)
 
                 currentShader->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
                 currentShader->setFloat("farPlanePoint", m_FarPlanePoint);
+                currentShader->setBool("u_ReceiveShadow", m_EnableShadows);
                 currentShader->setFloat("material.shininess", 32.0f); // Default shininess
 
                 m_Shadow.BindTexture_Dir(10);

@@ -19,14 +19,33 @@ Resources must be loaded **before** they are used by entities.
 
 ### Example
 ```text
-LOAD_SHADER    modelShader    resources/shaders/model.vs    resources/shaders/model.fs
-LOAD_MODEL     unityChan      resources/models/unitychan.fbx
-LOAD_FONT      arial          resources/fonts/arial.ttf  24
+```
+21: LOAD_SHADER    modelShader    resources/shaders/model.vs    resources/shaders/model.fs
+22: LOAD_MODEL     unityChan      resources/models/unitychan.fbx
+23: LOAD_FONT      arial          resources/fonts/arial.ttf  24
+25: ```
+
+---
+
+## 2. Configuration
+Global engine settings can be configured using the `CONFIG` command.
+
+| Argument 1 | Argument 2 | Argument 3 | Description |
+| :--- | :--- | :--- | :--- |
+| `SHADOWS` | `1` or `0` | - | Enable (`1`) or disable (`0`) shadow rendering. |
+| `CULL_FACE`| `1` or `0` | `BACK`, `FRONT`, `FRONT_AND_BACK` | Enable face culling with specified mode. |
+| `DEPTH_TEST`| `1` or `0` | `LESS`, `ALWAYS`, `LEQUAL`, etc. | Enable depth test with specified function. |
+
+### Example
+```text
+CONFIG SHADOWS 1
+CONFIG CULL_FACE 1 BACK
+CONFIG DEPTH_TEST 1 LESS
 ```
 
 ---
 
-## 2. Entities
+## 3. Entities
 Entities are the objects in your game world.
 
 - Start a new entity with `NEW_ENTITY`.
