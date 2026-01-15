@@ -2,6 +2,37 @@
 setlocal enabledelayedexpansion
 
 :: -----------------------------------------------------------------------------
+:: SINGLE INSTANCE CHECK (STREAM LOCK)
+:: -----------------------------------------------------------------------------
+set "LOCK_FILE=%~dp0build_engine.lock"
+
+:: Debug: Check if we are the locked session
+if "%~1"==":LOCKED_SESSION" goto :MAIN_LOGIC
+
+:: Try to launch the locked session
+:: redirecting stream 9 to the lock file.
+:: If file is locked by another instance, this fails.
+(
+    "%COMSPEC%" /c "%~f0" :LOCKED_SESSION
+) 9>"%LOCK_FILE%" || (
+    echo.
+    echo [ERROR] Another instance of 'Game Engine Builder' is already running!
+    echo         (File '%LOCK_FILE%' is locked)
+    echo.
+    pause
+    exit /b
+)
+
+:: If the child process finished, we exit too.
+exit /b
+
+:MAIN_LOGIC
+:: Set title
+title Game Engine Builder
+
+:: -----------------------------------------------------------------------------
+
+:: -----------------------------------------------------------------------------
 :: -----------------------------------------------------------------------------
 :: 0. SELECT ACTION
 :: -----------------------------------------------------------------------------
@@ -48,27 +79,28 @@ echo  7. Visual Studio 2015
 echo  8. Visual Studio 2017
 echo  9. Visual Studio 2019
 echo 10. Visual Studio 2022
-echo 11. Visual Studio 2026 (Default - Will try VS 2022 or Latest)
+echo 11. Visual Studio 2026
 echo 12. MinGW (MinGW Makefiles)
 echo 13. Clang (Ninja / NMake)
+echo 14. Auto-Detect (Default - CMake will pick latest VS)
 echo ==========================================
 set "comp_choice="
-set /p comp_choice="Enter number (Default: 11): "
+set /p comp_choice="Enter number (Default: 14): "
 
-if "%comp_choice%"=="" set comp_choice=11
+if "%comp_choice%"=="" set comp_choice=14
 
 :: Validate number
 echo %comp_choice%| findstr /r "^[0-9]*$" >nul
 if errorlevel 1 goto RETRY_COMPILER
 
 if %comp_choice% LSS 1 goto RETRY_COMPILER
-if %comp_choice% GTR 13 goto RETRY_COMPILER
+if %comp_choice% GTR 14 goto RETRY_COMPILER
 
 goto COMPILER_CHOSEN
 
 :RETRY_COMPILER
 echo.
-echo [ERROR] Invalid selection! Please enter a number between 1 and 13.
+echo [ERROR] Invalid selection! Please enter a number between 1 and 14.
 pause
 goto SELECT_COMPILER
 
@@ -85,9 +117,10 @@ if "%comp_choice%"=="7" set GENERATOR="Visual Studio 14 2015"
 if "%comp_choice%"=="8" set GENERATOR="Visual Studio 15 2017"
 if "%comp_choice%"=="9" set GENERATOR="Visual Studio 16 2019"
 if "%comp_choice%"=="10" set GENERATOR="Visual Studio 17 2022"
-if "%comp_choice%"=="11" set "GENERATOR=" 
+if "%comp_choice%"=="11" set GENERATOR="Visual Studio 18 2026" 
 if "%comp_choice%"=="12" set GENERATOR="MinGW Makefiles"
 if "%comp_choice%"=="13" set GENERATOR="Ninja"
+if "%comp_choice%"=="14" set "GENERATOR="
 
 echo Selected Compiler Option: %comp_choice%
 
@@ -95,6 +128,7 @@ echo Selected Compiler Option: %comp_choice%
 :: 2. CHOOSE BUILD TYPE (FOR REBUILD)
 :: -----------------------------------------------------------------------------
 :SELECT_BUILD_TYPE
+cls
 echo.
 echo ==========================================
 echo           SELECT BUILD TYPE
@@ -132,6 +166,40 @@ if "%type_choice%"=="3" set BUILD_TYPE=RelWithDebInfo
 if "%type_choice%"=="4" set BUILD_TYPE=MinSizeRel
 
 echo Selected Build Type: %BUILD_TYPE%
+goto SELECT_CLEAN_MODE
+
+:: -----------------------------------------------------------------------------
+:: 2b. SELECT CLEAN MODE
+:: -----------------------------------------------------------------------------
+:SELECT_CLEAN_MODE
+cls
+echo.
+echo ==========================================
+echo           SELECT CLEAN MODE
+echo ==========================================
+echo  1. Strict (Fail if cannot clean build/bin)
+echo  2. Soft   (Warning only if cannot clean)
+echo ==========================================
+set "clean_mode_choice="
+set /p clean_mode_choice="Enter number (Default: 2): "
+
+if "%clean_mode_choice%"=="" set clean_mode_choice=2
+
+:: Validate
+echo %clean_mode_choice%| findstr /r "^[1-2]$" >nul
+if errorlevel 1 goto RETRY_CLEAN_MODE
+
+set CLEAN_MODE=Soft
+if "%clean_mode_choice%"=="1" set CLEAN_MODE=Strict
+if "%clean_mode_choice%"=="2" set CLEAN_MODE=Soft
+
+echo Selected Clean Mode: %CLEAN_MODE%
+goto CONFIRM_CONFIG
+
+:RETRY_CLEAN_MODE
+echo [ERROR] Invalid selection!
+pause
+goto SELECT_CLEAN_MODE
 
 :: -----------------------------------------------------------------------------
 :: 2c. CONFIRM CONFIG
@@ -148,6 +216,7 @@ if not defined GENERATOR (
     echo  Generator:  %GENERATOR%
 )
 echo  Build Type: %BUILD_TYPE%
+echo  Clean Mode: %CLEAN_MODE%
 echo ==========================================
 set "confirm="
 set /p confirm="Do you want to proceed? (Y/N, M=Main Menu) [Default: Y]: "
@@ -158,12 +227,11 @@ if /i "%confirm%"=="n" goto SELECT_COMPILER
 if /i "%confirm%"=="y" goto CLEAN_FOLDERS
 goto CONFIRM_CONFIG
 
-
 :SELECT_BUILD_TYPE_FOR_RUN
+cls
 echo.
 echo ==========================================
 echo      SELECT VERSION TO RUN
-echo ==========================================
 echo ==========================================
 echo  1. Debug
 echo  2. Release (Default)
@@ -200,12 +268,55 @@ echo ==========================================
 echo        CLEANING BIN AND BUILD...
 echo ==========================================
 
-:: Kill the game process if running
+:: Kill processes...
 taskkill /F /IM GameEngine.exe >nul 2>&1
-
-:: Kill lingering build processes (fix file lock issues if script was interrupted)
 taskkill /F /IM cmake.exe >nul 2>&1
 taskkill /F /IM MSBuild.exe >nul 2>&1
+taskkill /F /IM cl.exe >nul 2>&1
+taskkill /F /IM link.exe >nul 2>&1
+taskkill /F /IM ninja.exe >nul 2>&1
+
+timeout /t 1 /nobreak >nul
+
+if exist "build" (
+    echo Deleting build folder...
+    rmdir /s /q "build"
+    if exist "build" (
+        echo [WARNING] Could not delete 'build' folder.
+        if "%CLEAN_MODE%"=="Strict" (
+            echo [ERROR] Strict Mode enabled. Aborting because cleanup failed.
+            echo [HINT]  Close any programs using files in 'build' (VS Code, Explorer, etc.)
+            pause
+            goto EXIT_SCRIPT
+        )
+    )
+) else (
+    echo Build folder not found.
+)
+
+if exist "bin\%BUILD_TYPE%" (
+    echo Deleting bin\%BUILD_TYPE% folder...
+    rmdir /s /q "bin\%BUILD_TYPE%"
+    if exist "bin\%BUILD_TYPE%" (
+        echo [WARNING] Could not delete 'bin\%BUILD_TYPE%' folder.
+        if "%CLEAN_MODE%"=="Strict" (
+            echo [ERROR] Strict Mode enabled. Aborting because cleanup failed.
+            pause
+            goto EXIT_SCRIPT
+        )
+    )
+) else (
+    :: Handle flat structure (MinGW) or if folder doesn't exist
+    if exist "bin\GameEngine.exe" (
+        echo Deleting existing executable...
+        del /f /q "bin\GameEngine.exe"
+    )
+)
+
+
+:: -----------------------------------------------------------------------------
+:: 4. RUN CMAKE
+:: -----------------------------------------------------------------------------
 taskkill /F /IM cl.exe >nul 2>&1
 taskkill /F /IM link.exe >nul 2>&1
 taskkill /F /IM ninja.exe >nul 2>&1
@@ -272,18 +383,30 @@ if not defined GENERATOR (
 )
 
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] CMake Configuration failed!
+    echo.
+    echo [ERROR] CMake Configuration failed with error code: !ERRORLEVEL!
+    echo [HINT]  Possible causes:
+    echo         - CMakeLists.txt has syntax errors.
+    echo         - Selected Generator/Compiler is not installed or invalid.
+    echo         - Missing dependencies/libraries.
+    echo.
     pause
-    exit /b %ERRORLEVEL%
+    goto EXIT_SCRIPT
 )
 
 :: CMake will pick the correct default target (ALL_BUILD for VS, all for Makefiles)
 "!CMAKE_CMD!" --build build --config %BUILD_TYPE%
 
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Build failed!
+    echo.
+    echo [ERROR] Build failed with error code: !ERRORLEVEL!
+    echo [HINT]  Possible causes:
+    echo         - C++ Syntax errors ^(check log above^).
+    echo         - Linker errors ^(missing symbols/libraries^).
+    echo         - File lock issues ^(if clean failed^).
+    echo.
     pause
-    exit /b %ERRORLEVEL%
+    goto EXIT_SCRIPT
 )
 
 :: -----------------------------------------------------------------------------
@@ -310,9 +433,43 @@ if exist "bin\%BUILD_TYPE%\GameEngine.exe" (
 if exist "%EXE_PATH%" (
     echo Launching: %EXE_PATH%
     "%EXE_PATH%"
+    
+    if !ERRORLEVEL! NEQ 0 (
+        echo.
+        echo [ERROR] Game exited with error code: !ERRORLEVEL!
+        echo [HINT]  Possible causes:
+        echo         - Runtime crash ^(Segmentation fault, Exception^).
+        echo         - Missing DLLs in the executable folder.
+        echo         - Asset loading failure ^(check scenes/resources^).
+    )
 ) else (
-    echo [ERROR] Executable not found at %EXE_PATH%
-    pause
+    echo.
+    echo [ERROR] Executable not found at:
+    echo         %EXE_PATH%
+    echo [HINT]  Build process might have reported success but failed to link the final .exe.
+    
+    echo.
+    echo [AUTO-RECOVERY] Attempting to clean build/bin artifacts...
+    
+    if exist "build" (
+        rmdir /s /q "build" 
+        if exist "build" echo [FAIL] Could not delete 'build'.
+        else echo [SUCCESS] Deleted 'build'.
+    )
+    if exist "bin" (
+        rmdir /s /q "bin"
+        if exist "bin" echo [FAIL] Could not delete 'bin'.
+        else echo [SUCCESS] Deleted 'bin'.
+    )
 )
 
+echo.
+echo ==========================================
+echo           FINISHED
+echo ==========================================
 pause
+
+:EXIT_SCRIPT
+:: Lock is explicitly held by the parent process stream. 
+:: We just exit, and the parent will close, releasing the lock.
+exit /b %ERRORLEVEL%
