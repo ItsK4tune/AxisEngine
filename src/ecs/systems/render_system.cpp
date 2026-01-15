@@ -271,6 +271,28 @@ void RenderSystem::Render(Scene &scene)
         {
             glm::vec3 min = renderer.model->AABBmin;
             glm::vec3 max = renderer.model->AABBmax;
+            
+            // Transform AABB to World AABB (Axis Aligned Bounding Box of the transformed model)
+            // Center and Extents approach is faster
+            glm::vec3 center = (min + max) * 0.5f;
+            glm::vec3 extent = (max - min) * 0.5f;
+            
+            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+            
+            // Transform extent with absolute rotation matrix to maintain AABB axis alignment
+            // mat3 of modelMatrix
+            glm::mat3 rot = glm::mat3(modelMatrix);
+            glm::vec3 worldExtent = glm::vec3(
+                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z
+            );
+            
+            glm::vec3 worldMin = worldCenter - worldExtent;
+            glm::vec3 worldMax = worldCenter + worldExtent;
+
+            if (!frustum.IsBoxVisible(worldMin, worldMax))
+                continue;
         }
 
         if (currentShader != renderer.shader)

@@ -19,6 +19,12 @@ struct Particle {
     }
 };
 
+struct ParticleInstanceData {
+    glm::vec4 color;
+    glm::vec3 offset;
+    float scale;
+};
+
 class ParticleEmitter
 {
 public:
@@ -65,6 +71,7 @@ private:
     float m_SpawnAccumulator = 0.0f;
     
     unsigned int m_VAO, m_VBO;
+    unsigned int m_instanceVBO; // For Instanced Rendering
     
     unsigned int FirstUnusedParticle();
     void RespawnParticle(Particle& particle, const glm::vec3& offset);

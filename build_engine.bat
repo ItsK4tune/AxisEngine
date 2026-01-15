@@ -1,6 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
+
 :: -----------------------------------------------------------------------------
 :: SINGLE INSTANCE CHECK (STREAM LOCK)
 :: -----------------------------------------------------------------------------
@@ -224,7 +225,10 @@ if "%confirm%"=="" set confirm=y
 
 if /i "%confirm%"=="m" goto SELECT_ACTION
 if /i "%confirm%"=="n" goto SELECT_COMPILER
-if /i "%confirm%"=="y" goto CLEAN_FOLDERS
+if /i "%confirm%"=="y" (
+    cls
+    goto CLEAN_FOLDERS
+)
 goto CONFIRM_CONFIG
 
 :SELECT_BUILD_TYPE_FOR_RUN
@@ -467,7 +471,7 @@ echo.
 echo ==========================================
 echo           FINISHED
 echo ==========================================
-pause
+:: pause
 
 :EXIT_SCRIPT
 :: Lock is explicitly held by the parent process stream. 
