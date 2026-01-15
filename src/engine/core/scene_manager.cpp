@@ -481,6 +481,57 @@ void SceneManager::LoadScene(const std::string &filePath)
             ss >> name >> path;
             m_Resources.LoadTexture(name, path);
         }
+        else if (command == "MATERIAL")
+        {
+            std::string typeStr;
+            ss >> typeStr;
+
+            MaterialComponent mat;
+            
+            if (typeStr == "PBR")
+            {
+                mat.type = MaterialType::PBR;
+                ss >> mat.roughness >> mat.metallic >> mat.ao;
+                
+                float er=0.0f, eg=0.0f, eb=0.0f;
+                if (ss >> er >> eg >> eb) {
+                    mat.emission = glm::vec3(er, eg, eb);
+                }
+            }
+            else if (typeStr == "PHONG")
+            {
+                mat.type = MaterialType::PHONG;
+                float r=0.5f, g=0.5f, b=0.5f;
+                ss >> mat.shininess >> r >> g >> b;
+                mat.specular = glm::vec3(r, g, b);
+                
+                float er=0.0f, eg=0.0f, eb=0.0f;
+                if (ss >> er >> eg >> eb) {
+                    mat.emission = glm::vec3(er, eg, eb);
+                }
+                
+                float ar=1.0f, ag=1.0f, ab=1.0f;
+                 if (ss >> ar >> ag >> ab) {
+                    mat.ambient = glm::vec3(ar, ag, ab);
+                }
+            }
+            else
+            {
+                try {
+                    mat.type = MaterialType::PHONG;
+                    mat.shininess = std::stof(typeStr);
+                    
+                    float r=0.5f, g=0.5f, b=0.5f;
+                     if (ss >> r >> g >> b) {
+                        mat.specular = glm::vec3(r, g, b);
+                     }
+                } catch (...) {
+                    std::cout << "Invalid MATERIAL format for entity " << (int)currentEntity << std::endl;
+                }
+            }
+
+            m_Scene.registry.emplace<MaterialComponent>(currentEntity, mat);
+        }
         else if (command == "PARTICLE_EMITTER") 
         {
             std::string texName;

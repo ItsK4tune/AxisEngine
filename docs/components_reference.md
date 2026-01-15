@@ -35,6 +35,23 @@ RIGIDBODY <SHAPE> [params] <mass> [TYPE]
 - **Shapes**: `BOX`, `SPHERE`, `CAPSULE`, `COMPOUND`.
 - **Types**: `DYNAMIC` (default), `STATIC`, `KINEMATIC`.
 
+## Material
+## Material
+**Phong (Legacy/Cartoonish)**
+```text
+MATERIAL PHONG <shininess> <spec_r> <spec_g> <spec_b>
+```
+- **shininess**: Specular exponent.
+- **spec_rgb**: Specular Color Color.
+
+**PBR (Realistic)**
+```text
+MATERIAL PBR <roughness> <metallic> <ao>
+```
+- **roughness**: Surface irregularity (0.0 = Smooth, 1.0 = Rough).
+- **metallic**: Metalness (0.0 = Dielectric/Plastic, 1.0 = Metal).
+- **ao**: Ambient Occlusion factor (0.0 - 1.0).
+
 ## Lighting
 
 ### Directional Light

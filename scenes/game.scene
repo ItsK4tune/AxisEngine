@@ -1,6 +1,8 @@
-LOAD_SHADER modelShader resources/shaders/model.vs resources/shaders/model.fs
-LOAD_SHADER litNoShadowShader resources/shaders/lit_no_shadow.vs resources/shaders/lit_no_shadow.fs
-LOAD_SHADER litShadowShader resources/shaders/lit_shadow.vs resources/shaders/lit_shadow.fs
+LOAD_SHADER phongLitNoShadowShader resources/shaders/phong_lit_no_shadow.vs resources/shaders/phong_lit_no_shadow.fs
+LOAD_SHADER phongLitShadowShader resources/shaders/phong_lit_shadow.vs resources/shaders/phong_lit_shadow.fs
+LOAD_SHADER pbrLitNoShadowShader resources/shaders/pbr_lit_no_shadow.vs resources/shaders/pbr_lit_no_shadow.fs
+LOAD_SHADER pbrLitShadowShader resources/shaders/pbr_lit_shadow.vs resources/shaders/pbr_lit_shadow.fs
+LOAD_SHADER unlitShader resources/shaders/unlit.vs resources/shaders/unlit.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 LOAD_SHADER particle resources/shaders/particle.vs resources/shaders/particle.fs
 
@@ -14,11 +16,12 @@ SCRIPT CameraController
 
 NEW_ENTITY Plane
 TRANSFORM 0.0 0.0 0.0 0.0 0.0 0.0 1 1 1
-RENDERER planeModel litShadowShader
+RENDERER planeModel phongLitNoShadowShader
+MATERIAL PHONG 32 0.5 0.5 0.5
 
 NEW_ENTITY Single
 TRANSFORM 0.0 2.0 0.0 0.0 0.0 0.0 0.1 0.1 0.1
-RENDERER singleModel litShadowShader
+RENDERER singleModel phongLitNoShadowShader
 
 NEW_ENTITY Sun
-LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8
+LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8 0.1 0.3

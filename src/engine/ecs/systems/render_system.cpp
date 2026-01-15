@@ -162,6 +162,7 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
         shader->setVec3("dirLight.ambient", light.ambient * light.intensity);
         shader->setVec3("dirLight.diffuse", light.diffuse * light.intensity);
         shader->setVec3("dirLight.specular", light.specular * light.intensity);
+        shader->setVec3("dirLight.color", light.color * light.intensity);
         break;
     }
 
@@ -169,6 +170,7 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
     static const std::string pointLightAmb[4] = {"pointLights[0].ambient", "pointLights[1].ambient", "pointLights[2].ambient", "pointLights[3].ambient"};
     static const std::string pointLightDiff[4] = {"pointLights[0].diffuse", "pointLights[1].diffuse", "pointLights[2].diffuse", "pointLights[3].diffuse"};
     static const std::string pointLightSpec[4] = {"pointLights[0].specular", "pointLights[1].specular", "pointLights[2].specular", "pointLights[3].specular"};
+    static const std::string pointLightColor[4] = {"pointLights[0].color", "pointLights[1].color", "pointLights[2].color", "pointLights[3].color"};
     static const std::string pointLightConst[4] = {"pointLights[0].constant", "pointLights[1].constant", "pointLights[2].constant", "pointLights[3].constant"};
     static const std::string pointLightLin[4] = {"pointLights[0].linear", "pointLights[1].linear", "pointLights[2].linear", "pointLights[3].linear"};
     static const std::string pointLightQuad[4] = {"pointLights[0].quadratic", "pointLights[1].quadratic", "pointLights[2].quadratic", "pointLights[3].quadratic"};
@@ -183,9 +185,10 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
         auto [light, trans] = pointLightView.get<PointLightComponent, TransformComponent>(entity);
 
         shader->setVec3(pointLightPos[i], trans.position);
-        shader->setVec3(pointLightAmb[i], light.ambient * light.intensity);   // Use stored ambient
-        shader->setVec3(pointLightDiff[i], light.diffuse * light.intensity);  // Use stored diffuse
-        shader->setVec3(pointLightSpec[i], light.specular * light.intensity); // Use stored specular
+        shader->setVec3(pointLightAmb[i], light.ambient * light.intensity);
+        shader->setVec3(pointLightDiff[i], light.diffuse * light.intensity);
+        shader->setVec3(pointLightSpec[i], light.specular * light.intensity);
+        shader->setVec3(pointLightColor[i], light.color * light.intensity);
         shader->setFloat(pointLightConst[i], light.constant);
         shader->setFloat(pointLightLin[i], light.linear);
         shader->setFloat(pointLightQuad[i], light.quadratic);
@@ -283,6 +286,7 @@ void RenderSystem::Render(Scene &scene)
 
                 currentShader->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
                 currentShader->setFloat("farPlanePoint", m_FarPlanePoint);
+                currentShader->setFloat("material.shininess", 32.0f); // Default shininess
 
                 m_Shadow.BindTexture_Dir(10);
                 currentShader->setInt("shadowMapDir", 10);
@@ -309,6 +313,34 @@ void RenderSystem::Render(Scene &scene)
                 for (int j = 0; j < transforms.size() && j < 100; ++j)
                     currentShader->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
             }
+        }
+
+        if (scene.registry.all_of<MaterialComponent>(entity))
+        {
+            auto &mat = scene.registry.get<MaterialComponent>(entity);
+            if (mat.type == MaterialType::PBR)
+            {
+                currentShader->setFloat("material.roughness", mat.roughness);
+                currentShader->setFloat("material.metallic", mat.metallic);
+                currentShader->setFloat("material.ao", mat.ao);
+                currentShader->setVec3("material.emission", mat.emission);
+            }
+            else
+            {
+                currentShader->setFloat("material.shininess", mat.shininess);
+                currentShader->setVec3("material.specular", mat.specular);
+                currentShader->setVec3("material.ambient", mat.ambient);
+                currentShader->setVec3("material.emission", mat.emission);
+            }
+            currentShader->setFloat("material.opacity", mat.opacity);
+        }
+        else
+        {
+            currentShader->setFloat("material.shininess", 32.0f); 
+            currentShader->setVec3("material.specular", glm::vec3(0.5f));
+            currentShader->setVec3("material.ambient", glm::vec3(1.0f));
+            currentShader->setVec3("material.emission", glm::vec3(0.0f));
+            currentShader->setFloat("material.opacity", 1.0f);
         }
 
         renderer.model->Draw(*currentShader);

@@ -8,10 +8,15 @@ layout (location = 6) in vec4 aWeights;
 out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoords;
+out vec4 FragPosLightSpace; // For Dir Light Shadow
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpaceMatrix; // Dir Projection * View
+
+layout(location = 10) in mat4 instanceMatrix;
+uniform bool isInstanced;
 
 const int MAX_BONES = 100;
 const int MAX_BONE_INFLUENCE = 4;
@@ -44,9 +49,12 @@ void main()
         totalNormal = aNormal;
     }
 
-    FragPos = vec3(model * totalPosition);
-    Normal = mat3(transpose(inverse(model))) * totalNormal;  
+    mat4 modelMatrix = isInstanced ? instanceMatrix : model;
+
+    FragPos = vec3(modelMatrix * totalPosition);
+    Normal = mat3(transpose(inverse(modelMatrix))) * totalNormal;  
     TexCoords = aTexCoords;
+    FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);
     
     gl_Position = projection * view * vec4(FragPos, 1.0);
 }

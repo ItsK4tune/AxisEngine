@@ -154,65 +154,84 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     {
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
 
-        // 1. Diffuse / Base Color
-        std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
+        // 1. Diffuse / Albedo
+        // PBR: BASE_COLOR
+        std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_diffuse", scene);
         if (diffuseMaps.empty()) {
-            // Support GLB PBR (Base Color)
-            diffuseMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_diffuse", scene);
+            // Phong: DIFFUSE
+            diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
         }
-        
-        // [FALLBACK] If no texture maps found, try to use Material Color
+        // Fallback color
         if (diffuseMaps.empty())
         {
-            aiColor4D color;
-            // Try base color first (physically based), then diffuse
-            if (aiGetMaterialColor(material, AI_MATKEY_BASE_COLOR, &color) == AI_SUCCESS || 
-                aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS)
-            {
-                unsigned char data[4];
-                data[0] = (unsigned char)(color.r * 255.0f);
-                data[1] = (unsigned char)(color.g * 255.0f);
-                data[2] = (unsigned char)(color.b * 255.0f);
-                data[3] = (unsigned char)(color.a * 255.0f);
-
-                unsigned int textureID;
-                glGenTextures(1, &textureID);
-                glBindTexture(GL_TEXTURE_2D, textureID);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-                Texture texture;
-                texture.id = textureID;
-                texture.type = "texture_diffuse";
-                texture.path = "INTERNAL_COLOR_FALLBACK";
-                
-                diffuseMaps.push_back(texture);
-                
-                // Note: we don't push to textures_loaded to act as a unique resource per material
-                // Or we could, but let's keep it simple for now. 
-            }
+             aiColor4D color;
+             if (aiGetMaterialColor(material, AI_MATKEY_BASE_COLOR, &color) == AI_SUCCESS || 
+                 aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS)
+             {
+                 // Create 1x1 color texture ... (Existing logic)
+                 unsigned char data[4];
+                 data[0] = (unsigned char)(color.r * 255.0f);
+                 data[1] = (unsigned char)(color.g * 255.0f);
+                 data[2] = (unsigned char)(color.b * 255.0f);
+                 data[3] = (unsigned char)(color.a * 255.0f);
+                 // ... Generate texture ...
+                 unsigned int textureID;
+                 glGenTextures(1, &textureID);
+                 glBindTexture(GL_TEXTURE_2D, textureID);
+                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                 Texture texture;
+                 texture.id = textureID;
+                 texture.type = "texture_diffuse";
+                 texture.path = "INTERNAL_COLOR_FALLBACK";
+                 diffuseMaps.push_back(texture);
+             }
         }
-
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
-        // 2. Specular
+        // 2. Specular (Phong)
         std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene);
+        if (specularMaps.empty()) {
+             // Default white specular for Phong if missing
+            unsigned char data[4] = {255, 255, 255, 255};
+            unsigned int textureID;
+            glGenTextures(1, &textureID);
+            glBindTexture(GL_TEXTURE_2D, textureID);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            Texture texture;
+            texture.id = textureID;
+            texture.type = "texture_specular"; 
+            texture.path = "INTERNAL_SPECULAR_FALLBACK";
+            specularMaps.push_back(texture);
+        }
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
         // 3. Normal
-        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", scene);
+        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", scene);
         if (normalMaps.empty()) {
-            normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", scene);
+             normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", scene);
         }
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 
-        // 4. Height / Ambient
-        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height", scene);
-        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        // 4. PBR Maps
+        // Metallic
+        std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", scene);
+        textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
+
+        // Roughness
+        std::vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", scene);
+        textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
+
+        // AO
+        std::vector<Texture> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao", scene);
+        // Sometimes AO is in Lightmap
+        if (aoMaps.empty()) aoMaps = loadMaterialTextures(material, aiTextureType_LIGHTMAP, "texture_ao", scene);
+        textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
     }
 
     ExtractBoneWeightForVertices(vertices, mesh, scene);

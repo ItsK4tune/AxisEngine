@@ -37,6 +37,31 @@ struct MeshRendererComponent
     glm::vec4 color = glm::vec4(1.0f);
 };
 
+enum class MaterialType
+{
+    PHONG,
+    PBR
+};
+
+struct MaterialComponent
+{
+    MaterialType type = MaterialType::PHONG;
+
+    // Common
+    float roughness = 0.5f; 
+    float opacity = 1.0f;
+    glm::vec3 emission = glm::vec3(0.0f);
+
+    // Phong
+    float shininess = 32.0f;
+    glm::vec3 specular = glm::vec3(0.5f);
+    glm::vec3 ambient = glm::vec3(1.0f);
+
+    // PBR
+    float metallic = 0.0f;
+    float ao = 1.0f;
+};
+
 struct RigidBodyComponent
 {
     btRigidBody *body = nullptr;
