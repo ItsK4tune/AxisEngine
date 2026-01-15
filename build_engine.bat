@@ -2,6 +2,35 @@
 setlocal enabledelayedexpansion
 
 :: -----------------------------------------------------------------------------
+:: -----------------------------------------------------------------------------
+:: 0. SELECT ACTION
+:: -----------------------------------------------------------------------------
+:SELECT_ACTION
+cls
+echo ==========================================
+echo           GAME ENGINE LAUNCHER
+echo ==========================================
+echo  1. Full Rebuild (Clean + Build + Run)
+echo  2. Run Existing Game
+echo ==========================================
+set "action_choice="
+set /p action_choice="Enter number (Default: 1): "
+
+if "%action_choice%"=="" set action_choice=1
+
+:: Validate number
+echo %action_choice%| findstr /r "^[1-2]$" >nul
+if errorlevel 1 goto RETRY_ACTION
+
+if "%action_choice%"=="2" goto SELECT_BUILD_TYPE_FOR_RUN
+goto SELECT_COMPILER
+
+:RETRY_ACTION
+echo [ERROR] Invalid selection!
+pause
+goto SELECT_ACTION
+
+:: -----------------------------------------------------------------------------
 :: 1. CHOOSE COMPILER / GENERATOR
 :: -----------------------------------------------------------------------------
 :SELECT_COMPILER
@@ -56,29 +85,29 @@ if "%comp_choice%"=="7" set GENERATOR="Visual Studio 14 2015"
 if "%comp_choice%"=="8" set GENERATOR="Visual Studio 15 2017"
 if "%comp_choice%"=="9" set GENERATOR="Visual Studio 16 2019"
 if "%comp_choice%"=="10" set GENERATOR="Visual Studio 17 2022"
-if "%comp_choice%"=="11" set GENERATOR="" 
+if "%comp_choice%"=="11" set "GENERATOR=" 
 if "%comp_choice%"=="12" set GENERATOR="MinGW Makefiles"
 if "%comp_choice%"=="13" set GENERATOR="Ninja"
 
 echo Selected Compiler Option: %comp_choice%
 
 :: -----------------------------------------------------------------------------
-:: 2. CHOOSE BUILD TYPE
+:: 2. CHOOSE BUILD TYPE (FOR REBUILD)
 :: -----------------------------------------------------------------------------
 :SELECT_BUILD_TYPE
 echo.
 echo ==========================================
 echo           SELECT BUILD TYPE
 echo ==========================================
-echo  1. Debug   (Default)
-echo  2. Release
+echo  1. Debug
+echo  2. Release (Default)
 echo  3. RelWithDebInfo
 echo  4. MinSizeRel
 echo ==========================================
 set "type_choice="
-set /p type_choice="Enter number (Default: 1): "
+set /p type_choice="Enter number (Default: 2): "
 
-if "%type_choice%"=="" set type_choice=1
+if "%type_choice%"=="" set type_choice=2
 
 :: Validate number
 echo %type_choice%| findstr /r "^[0-9]*$" >nul
@@ -96,7 +125,7 @@ pause
 goto SELECT_BUILD_TYPE
 
 :BUILD_TYPE_CHOSEN
-set BUILD_TYPE=Debug
+set BUILD_TYPE=Release
 if "%type_choice%"=="1" set BUILD_TYPE=Debug
 if "%type_choice%"=="2" set BUILD_TYPE=Release
 if "%type_choice%"=="3" set BUILD_TYPE=RelWithDebInfo
@@ -105,8 +134,67 @@ if "%type_choice%"=="4" set BUILD_TYPE=MinSizeRel
 echo Selected Build Type: %BUILD_TYPE%
 
 :: -----------------------------------------------------------------------------
+:: 2c. CONFIRM CONFIG
+:: -----------------------------------------------------------------------------
+:CONFIRM_CONFIG
+cls
+echo.
+echo ==========================================
+echo           CONFIRM CONFIGURATION
+echo ==========================================
+if not defined GENERATOR (
+    echo  Generator:  Default (Auto-Detect VS^)
+) else (
+    echo  Generator:  %GENERATOR%
+)
+echo  Build Type: %BUILD_TYPE%
+echo ==========================================
+set "confirm="
+set /p confirm="Do you want to proceed? (Y/N, M=Main Menu) [Default: Y]: "
+if "%confirm%"=="" set confirm=y
+
+if /i "%confirm%"=="m" goto SELECT_ACTION
+if /i "%confirm%"=="n" goto SELECT_COMPILER
+if /i "%confirm%"=="y" goto CLEAN_FOLDERS
+goto CONFIRM_CONFIG
+
+
+:SELECT_BUILD_TYPE_FOR_RUN
+echo.
+echo ==========================================
+echo      SELECT VERSION TO RUN
+echo ==========================================
+echo ==========================================
+echo  1. Debug
+echo  2. Release (Default)
+echo  M. Back to Main Menu
+echo ==========================================
+set "run_type_choice="
+set /p run_type_choice="Enter selection (Default: 2): "
+
+if "%run_type_choice%"=="" set run_type_choice=2
+
+if /i "%run_type_choice%"=="m" goto SELECT_ACTION
+
+:: Validate number
+echo %run_type_choice%| findstr /r "^[1-2]$" >nul
+if errorlevel 1 goto RETRY_RUN_TYPE
+
+set BUILD_TYPE=Release
+if "%run_type_choice%"=="1" set BUILD_TYPE=Debug
+if "%run_type_choice%"=="2" set BUILD_TYPE=Release
+
+goto RUN_GAME
+
+:RETRY_RUN_TYPE
+echo [ERROR] Invalid selection!
+pause
+goto SELECT_BUILD_TYPE_FOR_RUN
+
+:: -----------------------------------------------------------------------------
 :: 3. CLEAN OLD FILES
 :: -----------------------------------------------------------------------------
+:CLEAN_FOLDERS
 echo.
 echo ==========================================
 echo        CLEANING BIN AND BUILD...
@@ -114,6 +202,14 @@ echo ==========================================
 
 :: Kill the game process if running
 taskkill /F /IM GameEngine.exe >nul 2>&1
+
+:: Kill lingering build processes (fix file lock issues if script was interrupted)
+taskkill /F /IM cmake.exe >nul 2>&1
+taskkill /F /IM MSBuild.exe >nul 2>&1
+taskkill /F /IM cl.exe >nul 2>&1
+taskkill /F /IM link.exe >nul 2>&1
+taskkill /F /IM ninja.exe >nul 2>&1
+
 timeout /t 1 /nobreak >nul
 
 if exist "build" (
@@ -169,7 +265,7 @@ if %ERRORLEVEL% EQU 0 (
 
 echo Using CMake: "!CMAKE_CMD!"
 
-if %GENERATOR%=="" (
+if not defined GENERATOR (
     "!CMAKE_CMD!" -B build
 ) else (
     "!CMAKE_CMD!" -G %GENERATOR% -B build
@@ -193,6 +289,7 @@ if %ERRORLEVEL% NEQ 0 (
 :: -----------------------------------------------------------------------------
 :: 5. RUN EXECUTABLE
 :: -----------------------------------------------------------------------------
+:RUN_GAME
 echo.
 echo ==========================================
 echo          RUNNING GAME ENGINE
