@@ -35,6 +35,12 @@ void StateMachine::Update(float dt)
         s->OnUpdate(dt);
 }
 
+void StateMachine::FixedUpdate(float fixedDt)
+{
+    if (State *s = GetCurrentState())
+        s->OnFixedUpdate(fixedDt);
+}
+
 void StateMachine::Render()
 {
     if (State *s = GetCurrentState())

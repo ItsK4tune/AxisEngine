@@ -334,7 +334,7 @@ void SceneManager::LoadScene(const std::string &filePath)
                 }
                 finalShape = compound;
             }
-            if (type == "CAPSULE")
+            else if (type == "CAPSULE")
             {
                 float r, h;
                 ss >> r >> h;
@@ -346,32 +346,81 @@ void SceneManager::LoadScene(const std::string &filePath)
                 ss >> x >> y >> z;
                 finalShape = new btBoxShape(btVector3(x, y, z));
             }
+
+            // Offset & BodyType Parsing
+            glm::vec3 centerOffset(0.0f);
+            glm::vec3 rotFactor(1.0f);
+            glm::vec3 posFactor(1.0f);
+            bool hasRotFactor = false;
+            bool hasPosFactor = false;
+            float restitution = 0.0f;
+            std::string bodyType = "UNKNOWN";
+            std::string nextToken;
+            
+            while (ss >> nextToken)
+            {
+                if (nextToken == "OFFSET")
+                {
+                    float ox, oy, oz;
+                    ss >> ox >> oy >> oz;
+                    centerOffset = glm::vec3(ox, oy, oz);
+                }
+                else if (nextToken == "RESTITUTION")
+                {
+                    ss >> restitution;
+                }
+                else if (nextToken == "ROT_FACTOR")
+                {
+                    float x, y, z;
+                    ss >> x >> y >> z;
+                    rotFactor = glm::vec3(x, y, z);
+                    hasRotFactor = true;
+                }
+                else if (nextToken == "POS_FACTOR")
+                {
+                    float x, y, z;
+                    ss >> x >> y >> z;
+                    posFactor = glm::vec3(x, y, z);
+                    hasPosFactor = true;
+                }
+                else if (nextToken == "STATIC") { bodyType = "STATIC"; }
+                else if (nextToken == "DYNAMIC") { bodyType = "DYNAMIC"; }
+                else if (nextToken == "KINEMATIC") { bodyType = "KINEMATIC"; }
+            }
+
+            // Apply Offset if needed
+            if (finalShape && glm::length(centerOffset) > 0.001f)
+            {
+                btCompoundShape* compound = new btCompoundShape();
+                btTransform localTrans;
+                localTrans.setIdentity();
+                localTrans.setOrigin(BulletGLMHelpers::convert(centerOffset));
+                compound->addChildShape(localTrans, finalShape);
+                finalShape = compound;
+                 m_Physics.RegisterShape(finalShape);
+            }
+
             if (finalShape)
             {
-                std::string bodyType = "UNKNOWN";
-
-                if (ss >> bodyType)
+                // Deduce bodyType if not found
+                if (bodyType == "UNKNOWN")
                 {
-                    // Found explicit type
-                }
-                else
-                {
-                    // Deduce fram mass
-                    if (mass > 0.0f)
-                        bodyType = "DYNAMIC";
-                    else
-                        bodyType = "STATIC";
+                    if (mass > 0.0f) bodyType = "DYNAMIC";
+                    else bodyType = "STATIC";
                 }
 
-                if (bodyType == "STATIC")
-                    mass = 0.0f;
-                if (bodyType == "KINEMATIC")
-                    mass = 0.0f;
+                if (bodyType == "STATIC") mass = 0.0f;
+                if (bodyType == "KINEMATIC") mass = 0.0f;
 
                 btTransform transform;
                 transform.setIdentity();
                 transform.setOrigin(BulletGLMHelpers::convert(trans.position));
                 transform.setRotation(BulletGLMHelpers::convert(trans.rotation));
+
+                if (finalShape)
+                {
+                    // finalShape->setLocalScaling(BulletGLMHelpers::convert(trans.scale));
+                }
 
                 rb.body = m_Physics.CreateRigidBody(mass, transform, finalShape);
 
@@ -387,6 +436,16 @@ void SceneManager::LoadScene(const std::string &filePath)
 
                     if (type == "CAPSULE" || type == "PLAYER")
                         rb.body->setAngularFactor(btVector3(0, 1, 0));
+
+                    if (hasRotFactor)
+                        rb.body->setAngularFactor(BulletGLMHelpers::convert(rotFactor));
+                    
+                    if (hasPosFactor)
+                        rb.body->setLinearFactor(BulletGLMHelpers::convert(posFactor));
+
+                    if (restitution > 0.0f) {
+                        rb.body->setRestitution(restitution);
+                    }
                 }
             }
         }
@@ -399,11 +458,9 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.color = glm::vec3(r, g, b);
             l.intensity = i;
 
-            // Default coefficients
             float ambientStr = 0.2f;
             float diffuseStr = 0.8f;
 
-            // Try parsing optional ambient/diffuse coefficients
             if (ss >> ambientStr)
             {
                 if (ss >> diffuseStr)
@@ -425,7 +482,6 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.intensity = i;
             l.radius = rad;
 
-            // Optional: Parse attenuation if provided
             float c, lin, quad;
             if (ss >> c >> lin >> quad)
             {
@@ -434,8 +490,7 @@ void SceneManager::LoadScene(const std::string &filePath)
                 l.quadratic = quad;
             }
 
-            // Optional: Parse Ambient/Diffuse
-            float ambStr = 0.1f; // Default point/spot ambient is usually low
+            float ambStr = 0.1f;
             float diffStr = 1.0f;
             if (ss >> ambStr)
             {
@@ -446,7 +501,7 @@ void SceneManager::LoadScene(const std::string &filePath)
             }
             l.ambient = l.color * ambStr;
             l.diffuse = l.color * diffStr;
-            l.specular = glm::vec3(1.0f); // Specular white for point/spot often makes sense, or derive from color?
+            l.specular = glm::vec3(1.0f);
         }
         else if (command == "LIGHT_SPOT")
         {
@@ -458,7 +513,6 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.cutOff = glm::cos(glm::radians(cut));
             l.outerCutOff = glm::cos(glm::radians(outer));
 
-            // Optional: Parse attenuation if provided
             float c, lin, quad;
             if (ss >> c >> lin >> quad)
             {
@@ -467,7 +521,6 @@ void SceneManager::LoadScene(const std::string &filePath)
                 l.quadratic = quad;
             }
 
-            // Optional: Parse Ambient/Diffuse
             float ambStr = 0.1f;
             float diffStr = 1.0f;
             if (ss >> ambStr)
@@ -497,7 +550,6 @@ void SceneManager::LoadScene(const std::string &filePath)
             ui.color = glm::vec4(r, g, b, a);
             ui.shader = m_Resources.GetShader(shaderName);
 
-            // Mặc định tạo model Color cho UI (hoặc thêm lệnh LOAD_UI_TEXTURE sau)
             if (!m_Resources.GetUIModel("default_rect"))
                 m_Resources.CreateUIModel("default_rect", UIType::Color);
             ui.model = m_Resources.GetUIModel("default_rect");
@@ -568,7 +620,6 @@ void SceneManager::LoadScene(const std::string &filePath)
                 { return ScriptRegistry::Instance().Create(className); };
                 scriptComp.DestroyScript = [](ScriptComponent *nsc)
                 { delete nsc->instance; nsc->instance = nullptr; };
-                // Init script immediately
                 scriptComp.instance->Init(currentEntity, &m_Scene, m_App);
                 scriptComp.instance->OnCreate();
             }

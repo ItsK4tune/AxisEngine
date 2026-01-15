@@ -129,3 +129,53 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
 
     m_activeCollisions = currentCollisions;
 }
+
+void PhysicsSystem::RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight)
+{
+    DebugDrawer* drawer = physicsWorld.GetDebugDrawer();
+    if (!drawer) return;
+
+    // Draw the physics world (populates the drawer)
+    physicsWorld.GetWorld()->debugDrawWorld();
+
+    // Setup Camera
+    glm::mat4 view = glm::mat4(1.0f);
+    glm::mat4 projection = glm::mat4(1.0f);
+
+    auto viewCamera = scene.registry.view<CameraComponent, TransformComponent>();
+    for (auto entity : viewCamera)
+    {
+        auto &camera = viewCamera.get<CameraComponent>(entity);
+        if (camera.isPrimary)
+        {
+            auto &transform = viewCamera.get<TransformComponent>(entity);
+            
+            // Recompute View/Proj (Code duplication from RenderSystem, but acceptable for now or refactor helper)
+            glm::vec3 pos = transform.position;
+            glm::vec3 front;
+            front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+            front.y = sin(glm::radians(camera.pitch));
+            front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+            front = glm::normalize(front);
+            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+            view = glm::lookAt(pos, pos + front, up);
+            
+            float aspect = (float)screenWidth / (float)screenHeight;
+            
+            projection = glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
+            break;
+        }
+    }
+
+    shader.use();
+    shader.setMat4("view", view);
+    shader.setMat4("projection", projection);
+
+    glDisable(GL_DEPTH_TEST);
+    drawer->Flush();
+    glEnable(GL_DEPTH_TEST);
+    
+    // Clear lines for next frame
+    drawer->FrameStart(); 
+}

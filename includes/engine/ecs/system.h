@@ -21,6 +21,7 @@ class PhysicsSystem
 {
 public:
     void Update(Scene &scene, PhysicsWorld &physicsWorld, float dt);
+    void RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight);
 
 private:
     using CollisionPair = std::pair<entt::entity, entt::entity>;

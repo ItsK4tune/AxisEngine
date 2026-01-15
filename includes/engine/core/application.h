@@ -81,6 +81,7 @@ public:
     void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::WINDOWED, int monitorIndex = 0, int refreshRate = 0);
     void SetVsync(bool enable);
     void SetFrameRateLimit(int limit);
+    void SetPhysicsStep(float step);
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);
@@ -94,6 +95,8 @@ private:
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
+    float m_Accumulator = 0.0f;
+    float m_FixedDeltaTime = 1.0f / 60.0f;
 
     std::unique_ptr<PhysicsWorld> physicsWorld;
     Scene scene;
@@ -113,7 +116,9 @@ private:
     ScriptableSystem scriptSystem;
     SkyboxRenderSystem skyboxRenderSystem;
     AudioSystem audioSystem;
-    ParticleSystem particleSystem; // New
+    ParticleSystem particleSystem;
 
     PostProcessPipeline postProcess;
+    
+    bool m_ShowPhysicsDebug = false;
 };

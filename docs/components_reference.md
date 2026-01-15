@@ -29,11 +29,27 @@ CAMERA <isPrimary> <fov> <yaw> <pitch> [near] [far]
 ## Physics
 
 ### RigidBody
+### RigidBody
 ```text
-RIGIDBODY <SHAPE> [params] <mass> [TYPE]
+RIGIDBODY <SHAPE> <mass> [shape_params] [OPTIONS...]
 ```
-- **Shapes**: `BOX`, `SPHERE`, `CAPSULE`, `COMPOUND`.
-- **Types**: `DYNAMIC` (default), `STATIC`, `KINEMATIC`.
+- **SHAPE**: `BOX`, `SPHERE`, `CAPSULE`, `COMPOUND`.
+- **shape_params**:
+    - `BOX`: width height depth
+    - `SPHERE`: radius
+    - `CAPSULE`: radius height
+- **OPTIONS** (Can be in any order):
+    - `OFFSET x y z`: Offset of the collider center.
+    - `RESTITUTION val`: Bounciness (0.0 - 1.0).
+    - `ROT_FACTOR x y z`: Angular Factor (1=Enable, 0=Lock).
+    - `POS_FACTOR x y z`: Linear Factor (1=Enable, 0=Lock).
+    - `STATIC` / `DYNAMIC` / `KINEMATIC`: Body type. 
+
+**Examples:**
+- Static Floor: `RIGIDBODY BOX 0.0 50.0 0.1 50.0 STATIC`
+- Offset Collider: `RIGIDBODY BOX 1.0 1.0 1.0 1.0 OFFSET 0.0 0.5 0.0`
+- Bouncy Ball: `RIGIDBODY SPHERE 1.0 0.5 RESTITUTION 0.8 DYNAMIC`
+
 
 ## Material
 ## Material

@@ -16,6 +16,7 @@ public:
     State *GetCurrentState();
 
     void Update(float dt);
+    void FixedUpdate(float fixedDt);
     void Render();
 
 private:

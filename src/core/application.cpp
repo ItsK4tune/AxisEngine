@@ -104,6 +104,7 @@ bool Application::Init()
     postProcess.Init(m_Config.width, m_Config.height);
 
     renderSystem.InitShadows(*resourceManager);
+    resourceManager->LoadShader("debugLine", "resources/shaders/debug_line.vs", "resources/shaders/debug_line.fs");
     
     return true;
 }
@@ -121,8 +122,17 @@ void Application::Run()
         if (resourceManager) resourceManager->Update();
 
         ProcessInput();
+
+        m_Accumulator += deltaTime;
+        while (m_Accumulator >= m_FixedDeltaTime)
+        {
+            m_StateMachine.FixedUpdate(m_FixedDeltaTime);
+            m_Accumulator -= m_FixedDeltaTime;
+        }
+
         m_StateMachine.Update(deltaTime);
         mouseManager->EndFrame();
+        
         renderSystem.RenderShadows(scene);
         
         glViewport(0, 0, m_Config.width, m_Config.height);
@@ -130,6 +140,13 @@ void Application::Run()
         postProcess.BeginCapture();
 
         m_StateMachine.Render();
+
+        if (m_ShowPhysicsDebug)
+        {
+            Shader* debugShader = resourceManager->GetShader("debugLine");
+            if (debugShader)
+                physicsSystem.RenderDebug(scene, *physicsWorld, *debugShader, m_Config.width, m_Config.height);
+        }
 
         postProcess.EndCapture();
 
@@ -154,6 +171,11 @@ void Application::ProcessInput()
 {
     if (keyboardManager->GetKey(GLFW_KEY_ESCAPE))
         glfwSetWindowShouldClose(window, true);
+    
+    if (keyboardManager->IsKeyDown(GLFW_KEY_F1))
+    {
+        m_ShowPhysicsDebug = !m_ShowPhysicsDebug;
+    }
 }
 
 void Application::SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex, int refreshRate)
@@ -221,6 +243,12 @@ void Application::SetVsync(bool enable)
 void Application::SetFrameRateLimit(int limit)
 {
     m_Config.frameRateLimit = limit;
+}
+
+void Application::SetPhysicsStep(float step)
+{
+    if (step > 0.0f)
+        m_FixedDeltaTime = step;
 }
 
 void Application::OnResize(int width, int height)

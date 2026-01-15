@@ -10,10 +10,15 @@ void GameState::OnEnter()
 void GameState::OnUpdate(float dt)
 {
     m_App->GetScriptSystem().Update(m_App->GetScene(), dt, m_App);
-    m_App->GetPhysicsSystem().Update(m_App->GetScene(), m_App->GetPhysicsWorld(), dt);
+    // Physics moved to FixedUpdate
     m_App->GetAnimationSystem().Update(m_App->GetScene(), dt);
     m_App->GetAudioSystem().Update(m_App->GetScene(), m_App->GetSoundManager());
     m_App->GetParticleSystem().Update(m_App->GetScene(), dt);
+}
+
+void GameState::OnFixedUpdate(float fixedDt)
+{
+    m_App->GetPhysicsSystem().Update(m_App->GetScene(), m_App->GetPhysicsWorld(), fixedDt);
 }
 
 void GameState::OnRender()

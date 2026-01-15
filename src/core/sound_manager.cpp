@@ -9,7 +9,7 @@ SoundManager::~SoundManager()
 
 void SoundManager::Init()
 {
-    m_Engine = createIrrKlangDevice();
+    m_Engine = createIrrKlangDevice(ESOD_AUTO_DETECT, ESEO_MULTI_THREADED | ESEO_LOAD_PLUGINS | ESEO_USE_3D_BUFFERS);
     if (!m_Engine)
     {
         std::cerr << "[SoundManager] Could not startup irrKlang engine" << std::endl;

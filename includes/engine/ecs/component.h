@@ -65,6 +65,36 @@ struct MaterialComponent
 struct RigidBodyComponent
 {
     btRigidBody *body = nullptr;
+
+    void SetRestitution(float restitution) {
+        if (body) body->setRestitution(restitution);
+    }
+    
+    void SetFriction(float friction) {
+        if (body) body->setFriction(friction);
+    }
+
+    void SetLinearFactor(const glm::vec3& factor) {
+        if (body) body->setLinearFactor(btVector3(factor.x, factor.y, factor.z));
+    }
+
+    void SetAngularFactor(const glm::vec3& factor) {
+        if (body) body->setAngularFactor(btVector3(factor.x, factor.y, factor.z));
+    }
+    
+    void SetLinearVelocity(const glm::vec3& vel) {
+        if (body) {
+            body->setLinearVelocity(btVector3(vel.x, vel.y, vel.z));
+            body->activate(true);
+        }
+    }
+
+    void SetAngularVelocity(const glm::vec3& vel) {
+        if (body) {
+            body->setAngularVelocity(btVector3(vel.x, vel.y, vel.z));
+            body->activate(true);
+        }
+    }
 };
 
 struct AnimationComponent

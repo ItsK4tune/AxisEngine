@@ -9,6 +9,10 @@ PhysicsWorld::PhysicsWorld()
     dynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
         dispatcher.get(), overlappingPairCache.get(), solver.get(), collisionConfig.get());
     dynamicsWorld->setGravity(btVector3(0, -9.81f, 0));
+
+    debugDrawer = std::make_unique<DebugDrawer>();
+    debugDrawer->Init();
+    dynamicsWorld->setDebugDrawer(debugDrawer.get());
 }
 
 PhysicsWorld::~PhysicsWorld()
@@ -18,7 +22,7 @@ PhysicsWorld::~PhysicsWorld()
 
 void PhysicsWorld::Update(float dt)
 {
-    dynamicsWorld->stepSimulation(dt, 10);
+    dynamicsWorld->stepSimulation(dt, 0);
 }
 
 void PhysicsWorld::Clear()
