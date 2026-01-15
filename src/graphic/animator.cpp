@@ -20,37 +20,59 @@ Animator::Animator(Animation *animation)
 	}
 }
 
+// ... (Previous includes)
+
+// Helper to construct matrix from TRS
+static glm::mat4 ComposeTransform(const glm::vec3& t, const glm::quat& r, const glm::vec3& s) {
+    glm::mat4 translation = glm::translate(glm::mat4(1.0f), t);
+    glm::mat4 rotation = glm::toMat4(r);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), s);
+    return translation * rotation * scale;
+}
+
 void Animator::UpdateAnimation(float dt)
 {
     if (m_CurrentAnimation)
     {
-        float ticksPerSecond = m_CurrentAnimation->GetTicksPerSecond();
-        float duration = m_CurrentAnimation->GetDuration();
-
+        // 1. Update Current Animation Time
         m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * dt * m_Speed;
+        m_CurrentTime = fmod(m_CurrentTime, m_CurrentAnimation->GetDuration());
+        if (m_CurrentTime < 0.0f) m_CurrentTime += m_CurrentAnimation->GetDuration();
 
-        if (m_CurrentTime >= duration)
+        // 2. Update Next Animation Time (if exists)
+        if (m_NextAnimation)
         {
-            m_CurrentTime = fmod(m_CurrentTime, duration);
-        }
-        else if (m_CurrentTime < 0.0f)
-        {
-            m_CurrentTime = duration + fmod(m_CurrentTime, duration);
+            m_NextTime += m_NextAnimation->GetTicksPerSecond() * dt * m_Speed;
+            m_NextTime = fmod(m_NextTime, m_NextAnimation->GetDuration());
+            if (m_NextTime < 0.0f) m_NextTime += m_NextAnimation->GetDuration();
         }
 
+        // 3. Handle CrossFading
+        if (m_IsCrossFading && m_NextAnimation)
+        {
+            m_BlendFactor += m_TransitionSpeed * dt;
+            if (m_BlendFactor >= 1.0f)
+            {
+                // Transition Complete: Next becomes Current
+                m_CurrentAnimation = m_NextAnimation;
+                m_CurrentTime = m_NextTime;
+                
+                m_NextAnimation = nullptr;
+                m_BlendFactor = 0.0f;
+                m_IsCrossFading = false;
+            }
+        }
+
+        // 4. Update Rate Limiter (Optional)
         if (m_UpdateRate > 0.0f) 
         {
             m_TimeSinceLastUpdate += dt;
             float timePerFrame = 1.0f / m_UpdateRate;
-
-            if (m_TimeSinceLastUpdate < timePerFrame) {
-                return; 
-            }
-
+            if (m_TimeSinceLastUpdate < timePerFrame) return; 
             m_TimeSinceLastUpdate = fmod(m_TimeSinceLastUpdate, timePerFrame);
         }
 
-
+        // 5. Calculate Matrices
         CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f));
     }
 }
@@ -82,18 +104,90 @@ void Animator::PlayAnimation(const std::string& name)
 	}
 }
 
+void Animator::CrossFade(const std::string& name, float transitionDuration)
+{
+    if (m_AnimationsMap.find(name) == m_AnimationsMap.end()) {
+        std::cout << "[Animator] CrossFade: Animation not found: " << name << std::endl;
+        return;
+    }
+
+    Animation* target = m_AnimationsMap[name];
+    if (target == m_CurrentAnimation && !m_IsCrossFading) return;
+    if (target == m_NextAnimation && m_IsCrossFading) return; // Already fading to it
+
+    m_NextAnimation = target;
+    m_NextTime = 0.0f;
+    m_BlendFactor = 0.0f;
+    m_IsCrossFading = true;
+    
+    if (transitionDuration <= 0.0f) m_TransitionSpeed = 1000.0f; // Instant
+    else m_TransitionSpeed = 1.0f / transitionDuration;
+}
+
+void Animator::PlayBlend(const std::string& nameA, const std::string& nameB, float factor)
+{
+    if (m_AnimationsMap.count(nameA) && m_AnimationsMap.count(nameB))
+    {
+        m_CurrentAnimation = m_AnimationsMap[nameA];
+        m_NextAnimation = m_AnimationsMap[nameB];
+        m_BlendFactor = glm::clamp(factor, 0.0f, 1.0f);
+        m_IsCrossFading = false; // Manual blend, not auto transition
+    }
+}
+
 void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform)
 {
     std::string nodeName = node->name;
     glm::mat4 nodeTransform = node->transformation;
 
-    Bone *Bone = node->cachedBone;
+    // --- BLENDING LOGIC ---
+    Bone *boneA = node->cachedBone; // Cached for Current Animation
+    
+    // Default components (Node Transform)
+    // We assume node->transformation is irrelevant if bone exists? 
+    // Actually standard generic node transform is used if no bone.
 
-    if (Bone)
+    if (boneA) // Bone exists in Current Animation
     {
-        Bone->Update(m_CurrentTime);
-        nodeTransform = Bone->GetLocalTransform();
+        boneA->Update(m_CurrentTime);
+        
+        if (m_NextAnimation && (m_BlendFactor > 0.001f))
+        {
+            // Blending needed
+            Bone* boneB = m_NextAnimation->FindBone(nodeName);
+            
+            if (boneB)
+            {
+                // Get TRS from A
+                glm::vec3 posA = boneA->GetPosition(m_CurrentTime);
+                glm::quat rotA = boneA->GetRotation(m_CurrentTime);
+                glm::vec3 scaleA = boneA->GetScale(m_CurrentTime);
+
+                // Get TRS from B
+                glm::vec3 posB = boneB->GetPosition(m_NextTime);
+                glm::quat rotB = boneB->GetRotation(m_NextTime);
+                glm::vec3 scaleB = boneB->GetScale(m_NextTime);
+
+                // Interpolate
+                glm::vec3 pos = glm::mix(posA, posB, m_BlendFactor);
+                glm::quat rot = glm::slerp(rotA, rotB, m_BlendFactor);
+                glm::vec3 scale = glm::mix(scaleA, scaleB, m_BlendFactor);
+
+                nodeTransform = ComposeTransform(pos, rot, scale);
+            }
+            else
+            {
+                // Bone missing in B, use A
+                nodeTransform = boneA->GetLocalTransform();
+            }
+        }
+        else
+        {
+            // No blending or Factor 0
+            nodeTransform = boneA->GetLocalTransform();
+        }
     }
+    // ----------------------
 
     glm::mat4 globalTransformation = parentTransform * nodeTransform;
 

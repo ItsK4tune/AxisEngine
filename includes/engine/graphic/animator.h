@@ -27,9 +27,24 @@ public:
 	float GetDuration() const { return m_CurrentAnimation ? m_CurrentAnimation->GetDuration() : 0.0f; }
 
 private:
+	// Blending API
+	void CrossFade(const std::string& name, float transitionDuration);
+	void PlayBlend(const std::string& nameA, const std::string& nameB, float factor);
+	
+	// Helper to set blend factor directly (e.g. from Blend Tree script)
+	void SetBlendFactor(float factor) { m_BlendFactor = factor; }
+
+private:
 	std::vector<glm::mat4> m_FinalBoneMatrices;
 	Animation *m_CurrentAnimation;
 	float m_CurrentTime;
+
+	// Blending
+	Animation *m_NextAnimation = nullptr;
+    float m_NextTime = 0.0f;
+    float m_BlendFactor = 0.0f; // 0.0 = Current, 1.0 = Next
+    bool m_IsCrossFading = false;
+    float m_TransitionSpeed = 0.0f;
 
 	float m_Speed = 1.0f; 
 	

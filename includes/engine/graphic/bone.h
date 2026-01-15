@@ -38,11 +38,17 @@ public:
 	int GetRotationIndex(float animationTime);
 	int GetScaleIndex(float animationTime);
 
+    // Changed to public and return raw types for blending
+    glm::vec3 GetPosition(float animationTime);
+    glm::quat GetRotation(float animationTime);
+    glm::vec3 GetScale(float animationTime);
+
 private:
-	float GetScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime);
-	glm::mat4 InterpolatePosition(float animationTime);
-	glm::mat4 InterpolateRotation(float animationTime);
-	glm::mat4 InterpolateScaling(float animationTime);
+	glm::vec3 InterpolatePosition(float animationTime);
+	glm::quat InterpolateRotation(float animationTime);
+	glm::vec3 InterpolateScaling(float animationTime);
+    
+    float GetScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime);
 
 	std::vector<KeyPosition> m_Positions;
 	std::vector<KeyRotation> m_Rotations;
