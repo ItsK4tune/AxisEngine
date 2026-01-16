@@ -6,7 +6,9 @@
 
 using namespace irrklang;
 
-class SoundManager {
+#include <core/device_manager.h>
+
+class SoundManager : public IDeviceManager {
 public:
     ~SoundManager();
 
@@ -25,6 +27,11 @@ public:
     void StopAll();
 
     ISoundEngine* GetEngine() const { return m_Engine; }
+
+    // IDeviceManager Implementation
+    std::vector<DeviceInfo> GetAllDevices() const override;
+    DeviceInfo GetCurrentDevice() const override;
+    bool SetActiveDevice(const std::string& deviceId) override;
 
 private:
     ISoundEngine* m_Engine = nullptr;

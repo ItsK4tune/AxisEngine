@@ -17,7 +17,9 @@ struct InputBinding
     int code;
 };
 
-class InputManager
+#include <core/device_manager.h>
+
+class InputManager : public IDeviceManager
 {
 public:
     InputManager(const KeyboardManager& keyboard, const MouseManager& mouse);
@@ -28,6 +30,11 @@ public:
     bool GetAction(const std::string& actionName) const;
     bool GetActionDown(const std::string& actionName) const;
     bool GetActionUp(const std::string& actionName) const;
+
+    // IDeviceManager Implementation
+    std::vector<DeviceInfo> GetAllDevices() const override;
+    DeviceInfo GetCurrentDevice() const override;
+    bool SetActiveDevice(const std::string& deviceId) override;
 
 private:
     const KeyboardManager& m_Keyboard;

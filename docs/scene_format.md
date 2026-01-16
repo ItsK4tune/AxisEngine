@@ -1,6 +1,10 @@
 # Scene File Format Reference
+![AXIS Engine Logo](../assets/logo.png)
 
-The scene file (`.scene`) is a text-based format used to define resources, entities, and components in the game. It is parsed line-by-line by the `SceneManager`.
+**Engine**: AXIS Engine  
+**Contributor**: Duong "Caftun" Nguyen
+
+The scene file (`.scene`) is a text-based format used to define resources, entities, and components in the AXIS Engine. It is parsed line-by-line by the `SceneManager`.
 
 ---
 
@@ -19,16 +23,16 @@ Resources must be loaded **before** they are used by entities.
 
 ### Example
 ```text
+LOAD_SHADER    modelShader    resources/shaders/model.vs    resources/shaders/model.fs
+LOAD_MODEL     unityChan      resources/models/unitychan.fbx
+LOAD_FONT      arial          resources/fonts/arial.ttf  24
 ```
-21: LOAD_SHADER    modelShader    resources/shaders/model.vs    resources/shaders/model.fs
-22: LOAD_MODEL     unityChan      resources/models/unitychan.fbx
-23: LOAD_FONT      arial          resources/fonts/arial.ttf  24
-25: ```
 
 ---
 
 ## 2. Configuration
 Global engine settings can be configured using the `CONFIG` command.
+> **Note**: For initial startup configuration (Title, resolution preference, icon), use `configuration/settings.json`. The scene config below overrides specific runtime settings.
 
 | Argument 1 | Argument 2 | Argument 3 | Description |
 | :--- | :--- | :--- | :--- |
@@ -62,11 +66,7 @@ NEW_ENTITY <entity_name> <entity_tag>
 
 ---
 
-```
-
----
-
-## 3. Components
+## 4. Components
 
 Components define the behavior and properties of entities.
 

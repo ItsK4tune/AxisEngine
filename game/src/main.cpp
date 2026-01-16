@@ -4,12 +4,7 @@
 #include <iostream>
 
 int main() {
-    AppConfig config;
-    config.title = "GameEngine";
-    config.width = 1280;
-    config.height = 720;
-
-    Application app(config);
+    Application app;
 
     if (app.Init()) {
         app.PushState<GameState>();

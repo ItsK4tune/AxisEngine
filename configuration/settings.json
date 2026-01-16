@@ -1,0 +1,15 @@
+{
+    "title": "Game Engine",
+    "width": 1280,
+    "height": 720,
+    "windowMode": 0,
+    "vsync": true,
+    "monitorIndex": 0,
+    "refreshRate": 60,
+    "frameRateLimit": 120,
+    "shadowsEnabled": true,
+    "cullFaceEnabled": true,
+    "depthTestEnabled": true,
+    "audioDevice": "default",
+    "iconPath": "assets/icon.png"
+}

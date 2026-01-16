@@ -1,54 +1,46 @@
 # Scripting API Reference
+![AXIS Engine Logo](../assets/logo.png)
 
-This guide covers helper methods available inside `Scriptable` classes.
+**Engine**: AXIS Engine  
+**Contributor**: Duong "Caftun" Nguyen
 
-## 1. Input Mapping
-Checks actions bound in `InputManager`.
+Common API methods available to `Scriptable` classes in the AXIS Engine.
 
-```cpp
-// Check if pressed this frame
-if (GetActionDown("Jump")) { ... }
-
-// Check if held
-if (GetAction("MoveForward")) { ... }
-
-// Check if released
-if (GetActionUp("Fire")) { ... }
-```
-
-## 2. Scene Management
-To switch scenes safely (deferred to end of frame):
+## Input Handling
+Access input via `m_App` (Application instance).
 
 ```cpp
-LoadScene("scenes/level2.scene");
+if (m_App->GetAppHandler().GetKeyboard().GetKey(GLFW_KEY_SPACE)) {
+    // Jump
+}
+
+if (m_App->GetAppHandler().GetMouse().IsButtonDown(GLFW_MOUSE_BUTTON_LEFT)) {
+    // Fire
+}
 ```
 
-## 3. Physics Callbacks
-Override these methods to handle collision events.
-
-```cpp
-virtual void OnCollisionEnter(entt::entity other);
-virtual void OnCollisionStay(entt::entity other);
-virtual void OnCollisionExit(entt::entity other);
-
-// For sensors/triggers
-virtual void OnTriggerEnter(entt::entity other);
-virtual void OnTriggerStay(entt::entity other);
-virtual void OnTriggerExit(entt::entity other);
-```
-
-## 4. Components
-Access components on the current entity.
+## Physics
+Modify the `RigidBodyComponent` for physics-based movement.
 
 ```cpp
 auto& rb = GetComponent<RigidBodyComponent>();
-if (HasComponent<CameraComponent>()) { ... }
+if (rb.body) {
+    rb.body->applyCentralForce(btVector3(0, 10, 0));
+}
 ```
 
-## 5. Core Systems Access
-Access engine systems via `m_App`.
+## Audio
+Play sounds via `SoundManager`.
 
 ```cpp
-m_App->GetSoundManager().Play2D("audio/click.wav");
-m_App->GetPhysicsWorld()...
+m_App->GetSoundManager().Play2D("sfx_explosion", false);
+```
+
+## Scene Management
+Spawn or destroy entities.
+
+```cpp
+// Creation is usually done via SceneManager, or spawning prefabs (if supported)
+// Destroy
+m_Scene->registry.destroy(entity);
 ```

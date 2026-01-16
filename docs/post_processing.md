@@ -1,57 +1,59 @@
 # Post Processing Guide
+![AXIS Engine Logo](../assets/logo.png)
 
-The Post Processing system allows you to apply full-screen effects (shaders) to the rendered scene. Currently, this is configured purely through C++ code, but relies on shaders loaded in the scene.
+**Engine**: AXIS Engine  
+**Contributor**: Duong "Caftun" Nguyen
 
----
+The AXIS Engine includes a post-processing stack that applies effects to the final rendered image before displaying it to the screen.
 
-## 1. Setup in Scene File
+## 1. How it Works
+1.  The scene is rendered to an off-screen Framebuffer (FBO).
+2.  The FBO texture is drawn onto a full-screen quad.
+3.  A Post-Processing Shader is applied to this quad.
 
-First, load your post-processing shaders in your `.scene` file.
+## 2. Default Pipeline
+The engine comes with a default post-processing pipeline (`PostProcessPipeline`) that supports:
+- **Inversion**: Inverts colors.
+- **Grayscale**: Converts to black and white.
+- **Sharpen**: Applies a sharpening kernel.
+- **Blur**: Applies a blur kernel.
+- **Edge Detection**: Highlights edges.
 
-```text
-# LOAD_SHADER <name> <vertex> <fragment>
-LOAD_SHADER    InvertEffect    resources/shaders/ppt.vs    resources/shaders/invert.fs
-LOAD_SHADER    GrayScale       resources/shaders/ppt.vs    resources/shaders/grayscale.fs
-```
-
-> **Note**: Post Process shaders typically use a simple screen-quad vertex shader (often `ppt.vs`) that passes valid texture coordinates.
-
----
-
-## 2. Applying Effects in Code
-
-You can add effects to the pipeline in your Game State (e.g., `GameState::Init`) or Script.
+## 3. Configuration
+You can control post-processing effects via the `PostProcessPipeline` class.
 
 ```cpp
-#include <engine.h>
+auto& postProcess = m_App->GetPostProcess();
 
-void GameState::Init()
-{
-    // Retrieve the shader loaded from the scene
-    Shader* invertShader = m_App->GetResources().GetShader("InvertEffect");
-    
-    // Add to PostProcess Pipeline
-    // AddEffect(Shader* shader, float x, float y, float width, float height)
-    if (invertShader)
-    {
-        // 1.0f = full screen relative size
-        m_App->GetPostProcess().AddEffect(invertShader, 0, 0, 1.0f, 1.0f); 
-    }
-}
+// Enable Grayscale
+postProcess.SetEffect(PostProcessEffect::GRAYSCALE);
+
+// Disable effects
+postProcess.SetEffect(PostProcessEffect::NONE);
 ```
 
----
+## 4. Custom Shaders
+The post-processing shader is located at `resources/shaders/postprocess.fs`. You can modify this file to add custom effects like Bloom, Vignette, or Color Correction.
 
-## 3. Pipeline Order
-Effects are applied in the order they are added. The output of one effect becomes the input texture of the next (Ping-Pong buffering).
+### Shader Structure
+The vertex shader simply renders a full-screen quad. The fragment shader samples the screen texture and applies the effect.
 
----
+```glsl
+// Fragment Shader
+in vec2 TexCoords;
+out vec4 color;
 
-## 4. API Reference
+uniform sampler2D screenTexture;
+uniform int effectType; // Controlled by code
 
-### `PostProcessPipeline`
-
-#### `AddEffect(Shader* shader, float x, float y, float w, float h)`
-*   **shader**: The shader program to use.
-*   **x, y**: Viewport offset (0.0 - 1.0).
-*   **w, h**: Viewport size (0.0 - 1.0). Default is full screen (1.0).
+void main() {
+    // Sample texture
+    vec3 col = texture(screenTexture, TexCoords).rgb;
+    
+    // Apply Logic based on effectType
+    if (effectType == 1) { // Inversion
+        color = vec4(1.0 - col, 1.0);
+    } 
+    // ...
+}
+```

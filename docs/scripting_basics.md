@@ -1,51 +1,52 @@
 # Scripting Basics
+![AXIS Engine Logo](../assets/logo.png)
 
-Scripts in the engine are C++ classes inheriting from `Scriptable`. They allow you to attach logic to entities.
+**Engine**: AXIS Engine  
+**Contributor**: Duong "Caftun" Nguyen
+
+Scripting in the AXIS Engine is done using Native C++ classes. Scripts are components derived from the `Scriptable` class.
 
 ## 1. Creating a Script
 
-Inherit from `Scriptable` and override lifecycle methods.
+Inherit from `Scriptable` and implement the lifecycle methods.
 
 ```cpp
-#include <core/scriptable.h>
+#include <engine/scriptable.h>
 
-class PlayerController : public Scriptable
+class MyScript : public Scriptable
 {
 public:
-    virtual void OnCreate() override;
-    virtual void OnUpdate(float dt) override;
-    
-    // Lifecycle
-    virtual void OnEnable() override;  // Called when enabled
-    virtual void OnDisable() override; // Called when disabled
-    virtual void OnDestroy() override;
+    void OnStart() override
+    {
+        // Called when the script starts
+    }
+
+    void OnUpdate(float dt) override
+    {
+        // Called every frame
+    }
 };
 ```
 
-### Lifecycle Methods
-- **OnCreate()**: Called once when the script starts.
-- **OnUpdate(dt)**: Called every frame. `dt` is delta time.
-- **OnEnable()**: Called when the script becomes active.
-- **OnDisable()**: Called when the script is disabled.
-- **OnDestroy()**: Called when the script/entity is removed.
-
 ## 2. Registering Scripts
+Scripts must be registered in the `SceneManager` or via `Application` to be usable in `.scene` files.
 
-To use a script in a `.scene` file, you must register it.
+## 3. Using in Scene
+Attach the script to an entity using the `SCRIPT` command.
 
-```cpp
-#include "player_controller.h"
-#include <core/script_registry.h>
-
-REGISTER_SCRIPT(PlayerController)
+```text
+NEW_ENTITY MyEntity
+SCRIPT MyScript
 ```
 
-## 3. Disabling Scripts
-
-You can enable/disable scripts at runtime. `OnUpdate` will not be called for disabled scripts.
+## 4. Entity Access
+Inside a script, you have access to the attached `entity` (ID) and the `scene`.
 
 ```cpp
-if (Input::GetKeyDown(KEY_P)) {
-    SetEnabled(false); // Triggers OnDisable()
+void OnUpdate(float dt) override
+{
+    // Access Transform
+    auto& transform = GetComponent<TransformComponent>();
+    transform.position.x += 5.0f * dt;
 }
 ```

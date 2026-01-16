@@ -1,6 +1,10 @@
 # Asset Management
+![AXIS Engine Logo](../assets/logo.png)
 
-The **ResourceManager** handles loading and retrieving game assets. In most cases, you define these in your `.scene` file, but you can also load them manually via C++.
+**Engine**: AXIS Engine  
+**Contributor**: Duong "Caftun" Nguyen
+
+The **ResourceManager** handles loading and retrieving game assets in the AXIS Engine. In most cases, you define these in your `.scene` file, but you can also load them manually via C++.
 
 ## 1. Supported Formats
 - **Models**: `.fbx`, `.obj`, `.gltf`, `.glb`

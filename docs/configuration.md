@@ -1,30 +1,55 @@
 # Application & Build Configuration
+![AXIS Engine Logo](../assets/logo.png)
+
+**Engine**: AXIS Engine  
+**Contributor**: Duong "Caftun" Nguyen
 
 ## 1. Application Configuration
 
-The application is configured in `main.cpp` using the `AppConfig` struct.
+The AXIS Engine is configured via a JSON file located at `configuration/settings.json`. This file is loaded at startup.
 
-```cpp
-AppConfig config;
-config.title = "GameEngine";
-config.width = 1280;
-config.height = 720;
-    config.mode = WindowMode::WINDOWED;
-    config.monitorIndex = 0; // Select Monitor
-    config.refreshRate = 0; // 0 = Unlimited/Default
-    config.frameRateLimit = 0; // 0 = Unlimited
-    
-    Application app(config);
-    ```
-    
-    **Parameters:**
-    - **title**: Window title bar text.
-    - **width/height**: Initial window resolution.
-    - **vsync**: Limits frame rate to monitor refresh rate if true (via `glfwSwapInterval`).
-    - **mode**: `WINDOWED`, `FULLSCREEN`, or `BORDERLESS`.
-    - **monitorIndex**: Index of the monitor to display on (0 = Primary).
-    - **refreshRate**: Target refresh rate (Hz) for Fullscreen mode.
-    - **frameRateLimit**: Cap FPS to save CPU/GPU (0 = Unlimited).
+### `settings.json` Structure
+
+```json
+{
+    "title": "AXIS Engine",
+    "width": 1280,
+    "height": 720,
+    "windowMode": 0,
+    "vsync": true,
+    "monitorIndex": 0,
+    "refreshRate": 60,
+    "frameRateLimit": 120,
+    "shadowsEnabled": true,
+    "cullFaceEnabled": true,
+    "depthTestEnabled": true,
+    "audioDevice": "default",
+    "iconPath": "assets/icon.png"
+}
+```
+
+### Parameters
+
+- **Window Settings**
+    - `title`: Text displayed in the window title bar.
+    - `width`, `height`: Initial resolution of the window.
+    - `windowMode`: Window display mode.
+        - `0`: Windowed
+        - `1`: Fullscreen
+        - `2`: Borderless Windowed
+    - `monitorIndex`: Index of the monitor to display on (0 = Primary, 1 = Secondary, etc.).
+    - `vsync`: Enable Vertical Sync (locks FPS to refresh rate).
+    - `refreshRate`: Target refresh rate (Hz) for Fullscreen mode.
+    - `frameRateLimit`: Maximum frames per second (0 = Unlimited).
+    - `iconPath`: Path to the window icon image (PNG/JPG).
+
+- **Graphics Settings**
+    - `shadowsEnabled`: Enable/Disable shadow mapping.
+    - `cullFaceEnabled`: Enable/Disable back-face culling.
+    - `depthTestEnabled`: Enable/Disable depth testing.
+
+- **Audio Settings**
+    - `audioDevice`: ID or Name of the audio output device (use "default" for system default). Use F2 in-game to see available device IDs.
 
 ## 2. CMake Build System
 
@@ -45,24 +70,3 @@ To integrate a new third-party library:
 2.  **Static Libs**: Place `.lib` files in `lib/`.
 3.  **Dynamic Libs**: Place `.dll` files in `dlls/`.
 4.  **CMake**: Update `CMakeLists.txt` to find and link the library.
-
-## 3. Scene-Based Configuration
-You can configure engine settings directly in your `.scene` file using the `CONFIG` command.
-
-### Window Settings
-```text
-CONFIG WINDOW <width> <height> [mode] [monitor_idx] [refresh_rate]
-```
-- **width/height**: Resolution.
-- **mode**: `WINDOWED` (default), `FULLSCREEN`, `BORDERLESS`.
-- **monitor_idx**: 0, 1, etc.
-- **refresh_rate**: Target Hz (useful for Fullscreen).
-
-### Graphics Settings
-```text
-CONFIG SHADOWS <0/1>           # Enable/Disable Shadows
-CONFIG VSYNC <0/1>             # Enable/Disable VSync
-CONFIG FPS <limit>             # Frame Rate Cap (0 = Unlimited)
-CONFIG CULL_FACE <0/1> [mode]  # Face Culling (mode: FRONT, BACK, FRONT_AND_BACK)
-CONFIG DEPTH_TEST <0/1> [func] # Depth Test (func: LESS, ALWAYS, etc.)
-```

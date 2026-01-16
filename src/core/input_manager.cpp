@@ -68,3 +68,59 @@ bool InputManager::GetActionUp(const std::string& actionName) const
     }
     return false;
 }
+
+// IDeviceManager Implementation
+std::vector<DeviceInfo> InputManager::GetAllDevices() const
+{
+    std::vector<DeviceInfo> devices;
+    
+    // Keyboard
+    DeviceInfo kbdInfo;
+    kbdInfo.id = "keyboard_0";
+    kbdInfo.name = "Primary Keyboard";
+    kbdInfo.type = DeviceType::Keyboard;
+    kbdInfo.isDefault = true;
+    devices.push_back(kbdInfo);
+
+    // Mouse
+    DeviceInfo mouseInfo;
+    mouseInfo.id = "mouse_0";
+    mouseInfo.name = "Primary Mouse";
+    mouseInfo.type = DeviceType::Mouse;
+    mouseInfo.isDefault = true;
+    devices.push_back(mouseInfo);
+
+    // Joysticks
+    for (int i = 0; i <= GLFW_JOYSTICK_LAST; i++)
+    {
+        if (glfwJoystickPresent(i))
+        {
+            DeviceInfo joyInfo;
+            joyInfo.id = std::to_string(i);
+            const char* name = glfwGetJoystickName(i);
+            joyInfo.name = name ? name : "Unknown Joystick";
+            joyInfo.type = DeviceType::Joystick;
+            joyInfo.isDefault = false;
+            devices.push_back(joyInfo);
+        }
+    }
+
+    return devices;
+}
+
+DeviceInfo InputManager::GetCurrentDevice() const
+{
+    // Return Primary Keyboard/Mouse combo as "current"
+    DeviceInfo info;
+    info.id = "merged_input";
+    info.name = "Keyboard & Mouse";
+    info.type = DeviceType::Keyboard; // Placeholder type
+    info.isDefault = true;
+    return info;
+}
+
+bool InputManager::SetActiveDevice(const std::string& deviceId)
+{
+    // Input switching logic (e.g. focusing on a specific gamepad) is not yet implemented.
+    return true;
+}

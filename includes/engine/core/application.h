@@ -14,32 +14,13 @@
 #include <core/scene_manager.h>
 #include <core/sound_manager.h>
 #include <core/post_process_pipeline.h>
-#include <core/post_process_pipeline.h>
-#include <core/input_manager.h>
-
-enum class WindowMode
-{
-    WINDOWED,
-    FULLSCREEN,
-    BORDERLESS
-};
-
-struct AppConfig
-{
-    std::string title = "Game Engine";
-    int width = 800;
-    int height = 600;
-    bool vsync = false;
-    WindowMode mode = WindowMode::WINDOWED;
-    int monitorIndex = 0;
-    int refreshRate = 0; // 0 = unlimited/monitor default
-    int frameRateLimit = 0; // 0 = unlimited
-};
+#include <core/app_handler.h>
+#include <core/monitor_manager.h>
 
 class Application
 {
 public:
-    Application(const AppConfig &config);
+    Application();
     ~Application();
 
     bool Init();
@@ -56,13 +37,16 @@ public:
 
     ResourceManager &GetResourceManager() { return *resourceManager; }
     SceneManager &GetSceneManager() { return *sceneManager; }
-    KeyboardManager &GetKeyboard() const { return *keyboardManager; }
-    MouseManager &GetMouse() const { return *mouseManager; }
-    InputManager &GetInputManager() const { return *inputManager; }
+    MonitorManager& GetMonitorManager() { return monitorManager; }
+    AppHandler& GetAppHandler() const { return *appHandler; }
+    
+    KeyboardManager &GetKeyboard() const { return appHandler->GetKeyboard(); }
+    MouseManager &GetMouse() const { return appHandler->GetMouse(); }
+    InputManager &GetInputManager() const { return appHandler->GetInputManager(); }
 
-    GLFWwindow *GetWindow() const { return window; }
-    int GetWidth() const { return m_Config.width; }
-    int GetHeight() const { return m_Config.height; }
+    GLFWwindow *GetWindow() const { return monitorManager.GetWindow(); }
+    int GetWidth() const { return monitorManager.GetWidth(); }
+    int GetHeight() const { return monitorManager.GetHeight(); }
 
     RenderSystem &GetRenderSystem() { return renderSystem; }
     UIRenderSystem &GetUIRenderSystem() { return uiRenderSystem; }
@@ -77,20 +61,23 @@ public:
     AudioSystem& GetAudioSystem() { return audioSystem; }
     ParticleSystem& GetParticleSystem() { return particleSystem; }
 
-    void ProcessInput();
-    void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::WINDOWED, int monitorIndex = 0, int refreshRate = 0);
-    void SetVsync(bool enable);
-    void SetFrameRateLimit(int limit);
+    // Deprecated/Delegated Configuration Methods
+    void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::WINDOWED, int monitorIndex = 0, int refreshRate = 0) {
+        monitorManager.SetWindowConfiguration(width, height, mode, monitorIndex, refreshRate);
+    }
+    void SetVsync(bool enable) { monitorManager.SetVsync(enable); }
+    void SetFrameRateLimit(int limit) { monitorManager.SetFrameRateLimit(limit); }
     void SetPhysicsStep(float step);
-    void OnResize(int width, int height);
+
+    void OnResize(int width, int height); 
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
-    // void OnKey(int key, int scancode, int action, int mods);
 
 private:
-    AppConfig m_Config;
-    GLFWwindow *window = nullptr;
+    MonitorManager monitorManager;
+    std::unique_ptr<AppHandler> appHandler;
+
     StateMachine m_StateMachine;
 
     float deltaTime = 0.0f;
@@ -101,9 +88,6 @@ private:
     std::unique_ptr<PhysicsWorld> physicsWorld;
     Scene scene;
 
-    std::unique_ptr<KeyboardManager> keyboardManager;
-    std::unique_ptr<MouseManager> mouseManager;
-    std::unique_ptr<InputManager> inputManager;
     std::unique_ptr<SoundManager> soundManager;
     std::unique_ptr<SceneManager> sceneManager;
     std::unique_ptr<ResourceManager> resourceManager;

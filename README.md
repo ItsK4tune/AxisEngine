@@ -1,12 +1,16 @@
-# Game Engine Manual
+# AXIS Engine
+![AXIS Engine Logo](assets/logo.png)
 
-Welcome to the documentation for the C++ Game Engine.
+**Contributor**: Duong "Caftun" Nguyen
+
+Welcome to the documentation for the AXIS C++ Game Engine.
 
 ## Documentation Sections
 
 ### 1. Project & Config
 - [Directory Structure](docs/project_structure.md)
 - [Configuration & Build](docs/configuration.md)
+- [Device Management](docs/device_management.md)
 
 ### 2. Scene System
 - [Scene File Format](docs/scene_format.md)
@@ -29,6 +33,7 @@ Welcome to the documentation for the C++ Game Engine.
     - Select cleaning options (Strict/Soft) for easy rebuilding.
 2.  **Scene**: Create a `game.scene` in `scenes/` folder.
 3.  **Run**: Launch the executable. It defaults to loading `scenes/game.scene`.
+    - Check `configuration/settings.json` for startup settings.
 
 ---
 

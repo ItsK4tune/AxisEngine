@@ -1,6 +1,10 @@
 # Component Reference
+![AXIS Engine Logo](../assets/logo.png)
 
-This page lists all components supported in `.scene` files.
+**Engine**: AXIS Engine  
+**Contributor**: Duong "Caftun" Nguyen
+
+This page lists all components supported in `.scene` files for the AXIS Engine.
 
 ## General
 
@@ -61,7 +65,7 @@ RIGIDBODY <SHAPE> <mass> [shape_params] [OPTIONS...]
 
 
 ## Material
-## Material
+
 **Phong (Legacy/Cartoonish)**
 ```text
 MATERIAL PHONG <shininess> <spec_r> <spec_g> <spec_b>
