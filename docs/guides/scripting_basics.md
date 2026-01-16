@@ -108,3 +108,49 @@ void OnUpdate(float dt) override
     }
 }
 ```
+
+## 6. Input & Interaction API (New)
+
+The `Scriptable` class now supports event-driven input handling, allowing you to react to mouse interactions and key bindings without manual polling in `OnUpdate`.
+
+### Virtual Mouse Methods
+Override these methods to handle mouse interaction with the entity's UI area (defined by `UITransformComponent`).
+
+```cpp
+virtual void OnLeftClick() override { /* ... */ }
+virtual void OnLeftHold(float duration) override { /* ... */ }
+virtual void OnLeftRelease(float duration) override { /* ... */ }
+
+virtual void OnRightClick() override { /* ... */ }
+virtual void OnRightHold(float duration) override { /* ... */ }
+virtual void OnRightRelease(float duration) override { /* ... */ }
+
+// Hover Events
+virtual void OnHoverEnter() override { /* Change color? */ }
+virtual void OnHoverStay() override { /* ... */ }
+virtual void OnHoverExit() override { /* Revert color? */ }
+```
+
+### Key Bindings
+You can bind keys to trigger specific functions using `BindKey`. This is best done in `OnCreate`. Bindings are automatically removed when the script is destroyed.
+
+```cpp
+void OnCreate() override
+{
+    // Bind 'SPACE' to Jump function
+    BindKey(GLFW_KEY_SPACE, InputEvent::Pressed, [this]() {
+        Jump();
+    });
+
+    // Bind 'SHIFT' Hold to Sprint
+    BindKey(GLFW_KEY_LEFT_SHIFT, InputEvent::Held, [this]() {
+        sprintTimer += 0.1f;
+    });
+}
+```
+
+### Input State Access
+You can check the current interaction state of the entity:
+*   `IsHovered()`: Is the mouse over the entity?
+*   `IsLeftPressed()`, `IsRightPressed()`: Is the button currently held down on this entity?
+

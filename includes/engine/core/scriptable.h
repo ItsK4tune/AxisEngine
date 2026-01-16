@@ -2,6 +2,8 @@
 
 #include <core/scene.h>
 #include <ecs/component.h>
+#include <vector>
+#include <functional>
 
 class Application;
 
@@ -34,6 +36,41 @@ public:
     }
 
     bool IsEnabled() const { return m_Enabled; }
+
+    // Input Callbacks (Mouse)
+    virtual void OnLeftClick() {}
+    virtual void OnLeftHold(float duration) {}
+    virtual void OnLeftRelease(float duration) {}
+
+    virtual void OnRightClick() {}
+    virtual void OnRightHold(float duration) {}
+    virtual void OnRightRelease(float duration) {}
+
+    virtual void OnMiddleClick() {}
+    virtual void OnMiddleHold(float duration) {}
+    virtual void OnMiddleRelease(float duration) {}
+
+    virtual void OnHoverEnter() {}
+    virtual void OnHoverStay() {}
+    virtual void OnHoverExit() {}
+
+    // Input Binding
+    enum class InputEvent { Pressed, Held, Released };
+    struct KeyBinding {
+        int key;
+        InputEvent event;
+        std::function<void()> callback;
+    };
+
+    void BindKey(int key, InputEvent event, std::function<void()> callback) {
+        m_KeyBindings.push_back({key, event, callback});
+    }
+
+    // Input State Accessors (for Subclasses)
+    bool IsHovered() const { return m_IsHovered; }
+    bool IsLeftPressed() const { return m_LeftPressed; }
+    bool IsRightPressed() const { return m_RightPressed; }
+    bool IsMiddlePressed() const { return m_MiddlePressed; }
 
     // Physics CallBacks
     virtual void OnCollisionEnter(entt::entity other) {}
@@ -90,7 +127,22 @@ protected:
     Application *m_App = nullptr;
 
     friend class ScriptableSystem;
+    friend class ScriptSystem; // Allow ScriptSystem to access internal state
 
 private:
     bool m_Enabled = true;
+
+    // Internal Input State
+    bool m_IsHovered = false;
+    
+    bool m_LeftPressed = false;
+    float m_LeftHoldTime = 0.0f;
+
+    bool m_RightPressed = false;
+    float m_RightHoldTime = 0.0f;
+
+    bool m_MiddlePressed = false;
+    float m_MiddleHoldTime = 0.0f;
+
+    std::vector<KeyBinding> m_KeyBindings;
 };

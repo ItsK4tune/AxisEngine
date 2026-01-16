@@ -13,67 +13,86 @@ public:
     glm::vec2 originalSize;
     bool isInit = false;
 
+    void OnCreate() override
+    {
+        // Example: Bind 'K' to pause/resume video
+        BindKey(GLFW_KEY_K, InputEvent::Pressed, [this]()
+                { ToggleVideo(); });
+    }
+
+    void OnLeftClick() override
+    {
+        ToggleVideo();
+
+        // Visual Feedback
+        if (HasComponent<UITransformComponent>())
+        {
+            auto &transform = GetComponent<UITransformComponent>();
+            transform.size = originalSize * 0.9f; // Snap shrink
+        }
+    }
+
+    void OnLeftRelease(float duration) override
+    {
+        // Return to normal (handled by Update animation)
+    }
+
+    void ToggleVideo()
+    {
+        auto view = m_Scene->registry.view<VideoPlayerComponent>();
+        bool found = false;
+        for (auto entity : view)
+        {
+            auto &video = view.get<VideoPlayerComponent>(entity);
+            if (video.isPlaying)
+            {
+                video.Pause();
+                std::cout << "[UIButton] Paused Video (API)" << std::endl;
+            }
+            else
+            {
+                video.Play();
+                std::cout << "[UIButton] Resumed Video (API)" << std::endl;
+            }
+            found = true;
+        }
+        if (!found)
+            std::cout << "[UIButton] No Video Player found!" << std::endl;
+    }
+
     void OnUpdate(float dt) override
     {
-        if (!IsEnabled()) return;
+        if (!IsEnabled())
+            return;
+        if (!HasComponent<UITransformComponent>() || !HasComponent<UIRendererComponent>())
+            return;
 
-        // Ensure we have required components
-        if (!HasComponent<UITransformComponent>() || !HasComponent<UIRendererComponent>()) return;
-
-        auto& transform = GetComponent<UITransformComponent>();
-        auto& renderer = GetComponent<UIRendererComponent>();
+        auto &transform = GetComponent<UITransformComponent>();
+        auto &renderer = GetComponent<UIRendererComponent>();
 
         // Init initial state
-        if (!isInit) {
+        if (!isInit)
+        {
             normalColor = renderer.color;
             originalSize = transform.size;
             isInit = true;
         }
 
-        // Logic
-        float mx = (float)m_App->GetMouse().GetLastX();
-        float my = (float)m_App->GetMouse().GetLastY();
-
-        bool hit = (mx >= transform.position.x && mx <= transform.position.x + transform.size.x &&
-                    my >= transform.position.y && my <= transform.position.y + transform.size.y);
-
+        // Visual Logic based on State (set by ScriptSystem)
         glm::vec4 targetColor = normalColor;
         glm::vec2 targetSize = originalSize;
 
-        if (hit)
+        if (IsHovered())
         {
-            if (m_App->GetMouse().IsLeftButtonPressed())
+            if (IsLeftPressed()) // Internal state from Scriptable
             {
                 targetColor = clickColor;
-                targetSize = originalSize * 0.95f; // Shrink on click
+                targetSize = originalSize * 0.95f;
             }
             else
             {
                 targetColor = hoverColor;
-                targetSize = originalSize * 1.05f; // Grow on hover
-            }
-
-            // Click Event (Trigger once)
-            if (m_App->GetMouse().IsLeftMouseClicked())
-            {
-                auto view = m_Scene->registry.view<VideoPlayerComponent>();
-                bool found = false;
-                for (auto entity : view)
-                {
-                    auto& video = view.get<VideoPlayerComponent>(entity);
-                    if (video.isPlaying) 
-                    {
-                        video.Pause();
-                        std::cout << "[UIButton] Paused Video" << std::endl;
-                    }
-                    else 
-                    {
-                        video.Play();
-                        std::cout << "[UIButton] Resumed Video" << std::endl;
-                    }
-                    found = true;
-                }
-                if (!found) std::cout << "[UIButton] No Video Player found!" << std::endl;
+                targetSize = originalSize * 1.05f;
             }
         }
 
