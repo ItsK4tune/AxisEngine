@@ -13,8 +13,8 @@ void CameraController::OnUpdate(float dt)
     auto &transform = GetComponent<TransformComponent>();
     auto &camera = GetComponent<CameraComponent>();
 
-    const auto &mouse = m_App->GetMouse();
-    const auto &keyboard = m_App->GetKeyboard();
+    const auto &mouse = GetAppHandler().GetMouse();
+    const auto &keyboard = GetAppHandler().GetKeyboard();
 
     if (mouse.GetCursorMode() == CursorMode::Locked || mouse.GetCursorMode() == CursorMode::LockedCenter)
     {

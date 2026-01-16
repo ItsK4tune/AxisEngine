@@ -42,10 +42,22 @@ private:
     std::unordered_map<std::string, ScriptFactory> m_FactoryMap;
 };
 
-#define REGISTER_SCRIPT(TYPE) \
+// Helper macros for optional arguments
+#define GET_MACRO(_1, _2, NAME, ...) NAME
+#define REGISTER_SCRIPT(...) GET_MACRO(__VA_ARGS__, REGISTER_SCRIPT_NAMED, REGISTER_SCRIPT_DEFAULT)(__VA_ARGS__)
+
+#define REGISTER_SCRIPT_DEFAULT(TYPE) \
     struct AutoRegister_##TYPE { \
         AutoRegister_##TYPE() { \
             ScriptRegistry::Instance().Register<TYPE>(#TYPE); \
+        } \
+    }; \
+    static AutoRegister_##TYPE global_ver_##TYPE;
+
+#define REGISTER_SCRIPT_NAMED(TYPE, NAME) \
+    struct AutoRegister_##TYPE { \
+        AutoRegister_##TYPE() { \
+            ScriptRegistry::Instance().Register<TYPE>(NAME); \
         } \
     }; \
     static AutoRegister_##TYPE global_ver_##TYPE;

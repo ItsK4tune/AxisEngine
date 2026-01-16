@@ -52,6 +52,15 @@ public:
     // Scene Helper Methods
     void LoadScene(const std::string& path);
 
+    // Manager Accessors
+    class SoundManager& GetSoundManager();
+    class ResourceManager& GetResourceManager();
+    class AppHandler& GetAppHandler();
+    class SceneManager& GetSceneManager();
+    class InputManager& GetInputManager();
+    class KeyboardManager& GetKeyboard();
+    class MouseManager& GetMouse();
+
     template <typename T>
     T &GetComponent()
     {

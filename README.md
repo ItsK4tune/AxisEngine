@@ -9,7 +9,7 @@
 <p align="center">
   <strong>High-Performance C++ ECS Configuration</strong>
   <br>
-  Developed by <a href="https://github.com/Caftun">Duong "Caftun" Nguyen</a>
+  Developed by <a href="https://github.com/ItsK4tune">Duong "Caftun" Nguyen</a>
 </p>
 
 <p align="center">
@@ -59,20 +59,20 @@
 
 ## Documentation
 
-### 📘 Project & Configuration
-- [**Project Structure**](docs/project_structure.md): Understanding the directory layout.
-- [**Configuration Guide**](docs/configuration.md): Setting up resolution, graphics, and inputs.
-- [**Device Management**](docs/device_management.md): Managing Monitors, Audio, and Debug tools.
+### 📚 Guides
+*   [Build Guide](docs/guides/build_guide.md)
+*   [Project Structure](docs/guides/project_structure.md)
+*   [State System](docs/guides/state_system.md)
+*   [Configuration Guide](docs/guides/configuration.md)
+*   [Device Management](docs/guides/device_management.md)
+*   [Scripting Basics](docs/guides/scripting_basics.md)
+*   [Scene Format](docs/guides/scene_format.md)
+*   [Component Syntax Reference](docs/guides/components_reference.md)
+*   [Asset Management](docs/guides/asset_management.md)
+*   [Graphics Guide](docs/guides/graphics_guide.md)
+*   [Post Processing](docs/guides/post_processing.md)
 
-### 🎬 Scene & Assets
-- [**Scene Format**](docs/scene_format.md): How to write `.scene` files.
-- [**Component Reference**](docs/components_reference.md): List of all available ECS components.
-- [**Asset Management**](docs/asset_management.md): Loading Models, Textures, and Audio.
-
-### 💻 Scripting
-- [**Scripting Basics**](docs/scripting_basics.md): Lifecycle methods and creation.
-- [**Scripting API**](docs/scripting_api.md): Input, Physics, and Audio API.
-
-### 🎨 Graphics
-- [**Rendering Guide**](docs/graphics_guide.md): Lighting, Shadows, and Materials.
-- [**Post Processing**](docs/post_processing.md): Screen-space effects.
+### ⚙️ API Reference
+*   [Managers](docs/api/managers/)
+*   [Components (C++)](docs/api/components/)
+*   [Systems](docs/api/systems/)

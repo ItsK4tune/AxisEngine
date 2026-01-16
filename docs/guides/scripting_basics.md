@@ -53,10 +53,21 @@ These are called when the entity's `RigidBodyComponent` interacts with others:
 *   `OnTriggerExit(entt::entity other)`
 
 ## 3. Registering Scripts
-To make your script available to the engine (e.g., for loading from `.scene` files), you must use the `REGISTER_SCRIPT(ClassName)` macro at the end of your header or source file.
 
+To make your script available to the engine (e.g., for loading from `.scene` files), you must use the `REGISTER_SCRIPT` macro at the end of your header or source file.
+
+### Default Registration
+Registers the script using the class name as the string key.
 ```cpp
-REGISTER_SCRIPT(PlayerController)
+REGISTER_SCRIPT(PlayerController) 
+// Key: "PlayerController"
+```
+
+### Custom Name Registration
+Registers the script using a custom string key. Useful if you want to alias a class or resolve naming conflicts.
+```cpp
+REGISTER_SCRIPT(PlayerController, "player_ctrl")
+// Key: "player_ctrl"
 ```
 
 ## 4. Using in Scene
@@ -64,11 +75,25 @@ Attach the script to an entity using the `SCRIPT` command in your scene file:
 
 ```text
 NEW_ENTITY MyEntity
-SCRIPT MyScript
+SCRIPT PlayerController
 ```
 
-## 5. Entity Access
-Inside a script, you have access to:
+Or if you used a custom name:
+```text
+NEW_ENTITY MyEntity
+SCRIPT player_ctrl
+```
+
+## 5. Entity Access & API Helpers
+Inside a script, you have direct access to helper methods:
+
+*   **Components**: `GetComponent<T>()`, `HasComponent<T>()`
+*   **Scene**: `GetSceneManager()`, `LoadScene()`
+*   **Input**: `GetInputManager()`, `GetKeyboard()`, `GetMouse()`, `GetAction()`
+*   **Audio**: `GetSoundManager()`
+*   **Resources**: `GetResourceManager()`
+
+Basic pointers are also available if needed:
 *   `m_Entity`: The ID of the entity this script is attached to.
 *   `m_Scene`: Pointer to the `Scene`.
 *   `m_App`: Pointer to the `Application`.

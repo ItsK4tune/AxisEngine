@@ -66,7 +66,7 @@ NEW_ENTITY <entity_name> <entity_tag>
 
 Components define the behavior and properties of entities.
 
-> For a full list of available components and their syntax, see [Component Reference](components_reference.md).
+> For a full list of available components and their scene syntax, see [Component Reference](components_reference.md).
 
 ### Basic Example
 ```text

@@ -3,32 +3,32 @@
 
 void GameState::OnEnter()
 {
-    m_App->GetSceneManager().LoadScene("scenes/game.scene");
-    m_App->GetMouse().SetCursorMode(CursorMode::Locked);
+    GetSceneManager().LoadScene("scenes/game.scene");
+    m_App->GetMouse().SetCursorMode(CursorMode::Locked); // AppHandler wrapper not in State yet?
 }
 
 void GameState::OnUpdate(float dt)
 {
-    m_App->GetScriptSystem().Update(m_App->GetScene(), dt, m_App);
+    GetScriptSystem().Update(m_App->GetScene(), dt, m_App);
     // Physics moved to FixedUpdate
-    m_App->GetAnimationSystem().Update(m_App->GetScene(), dt);
-    m_App->GetAudioSystem().Update(m_App->GetScene(), m_App->GetSoundManager());
-    m_App->GetParticleSystem().Update(m_App->GetScene(), dt);
+    GetAnimationSystem().Update(m_App->GetScene(), dt);
+    GetAudioSystem().Update(m_App->GetScene(), m_App->GetSoundManager());
+    GetParticleSystem().Update(m_App->GetScene(), dt);
 }
 
 void GameState::OnFixedUpdate(float fixedDt)
 {
-    m_App->GetPhysicsSystem().Update(m_App->GetScene(), m_App->GetPhysicsWorld(), fixedDt);
+    GetPhysicsSystem().Update(m_App->GetScene(), m_App->GetPhysicsWorld(), fixedDt);
 }
 
 void GameState::OnRender()
 {
-    // m_App->GetSkyboxRenderSystem().Render(m_App->GetScene());
-    m_App->GetRenderSystem().Render(m_App->GetScene());
-    m_App->GetParticleSystem().Render(m_App->GetScene(), m_App->GetResourceManager());
+    // GetSkyboxRenderSystem().Render(m_App->GetScene());
+    GetRenderSystem().Render(m_App->GetScene());
+    GetParticleSystem().Render(m_App->GetScene(), m_App->GetResourceManager());
 }
 
 void GameState::OnExit()
 {
-    m_App->GetSceneManager().ClearAllScenes();
+    GetSceneManager().ClearAllScenes();
 }
