@@ -40,6 +40,7 @@ public:
     void Render(Scene &scene);
 
     void InitShadows(class ResourceManager& res);
+    void Shutdown();
     void RenderShadows(Scene &scene);
     void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
 

@@ -25,7 +25,8 @@ Welcome to the documentation for the C++ Game Engine.
 
 ## Quick Start
 
-1.  **Build**: Open the project in Visual Studio or use Makefile/CMake.
+1.  **Build**: Run `build_engine.bat` to Configure, Build, Run, or Clean the project.
+    - Select cleaning options (Strict/Soft) for easy rebuilding.
 2.  **Scene**: Create a `game.scene` in `scenes/` folder.
 3.  **Run**: Launch the executable. It defaults to loading `scenes/game.scene`.
 

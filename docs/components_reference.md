@@ -28,12 +28,15 @@ CAMERA <isPrimary> <fov> <yaw> <pitch> [near] [far]
 
 ## Physics
 
-### RigidBody
-### RigidBody
+### `RigidBodyComponent` / `RIGIDBODY`
+Adds a physics body to the entity.
+
+**Syntax**:
 ```text
 RIGIDBODY <SHAPE> <mass> [shape_params] [OPTIONS...]
 ```
 - **SHAPE**: `BOX`, `SPHERE`, `CAPSULE`, `COMPOUND`.
+- **mass**: Float value (0.0 = STATIC, >0.0 = DYNAMIC).
 - **shape_params**:
     - `BOX`: width height depth
     - `SPHERE`: radius
@@ -41,9 +44,15 @@ RIGIDBODY <SHAPE> <mass> [shape_params] [OPTIONS...]
 - **OPTIONS** (Can be in any order):
     - `OFFSET x y z`: Offset of the collider center.
     - `RESTITUTION val`: Bounciness (0.0 - 1.0).
-    - `ROT_FACTOR x y z`: Angular Factor (1=Enable, 0=Lock).
-    - `POS_FACTOR x y z`: Linear Factor (1=Enable, 0=Lock).
-    - `STATIC` / `DYNAMIC` / `KINEMATIC`: Body type. 
+    - `ROT_FACTOR x y z`: Lockdown rotation axes (1=Enable, 0=Lock).
+    - `POS_FACTOR x y z`: Lockdown movement axes (1=Enable, 0=Lock).
+    - `STATIC` / `DYNAMIC` / `KINEMATIC`: Body type override.
+    - `ATTACH_TO_PARENT`: Creates a Fixed Joint to the parent entity's body.
+
+**Component Data (C++)**:
+- `body` (btRigidBody*): Pointer to Bullet body.
+- `constraint` (btTypedConstraint*): Pointer to joint.
+- `isAttachedToParent` (bool): Flag. 
 
 **Examples:**
 - Static Floor: `RIGIDBODY BOX 0.0 50.0 0.1 50.0 STATIC`

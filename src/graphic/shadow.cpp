@@ -12,17 +12,34 @@ Shadow::Shadow()
 
 Shadow::~Shadow()
 {
+    Shutdown();
+}
+
+void Shadow::Shutdown()
+{
     if (m_ShadowFBO_Dir != 0)
+    {
         glDeleteFramebuffers(1, &m_ShadowFBO_Dir);
+        m_ShadowFBO_Dir = 0;
+    }
     if (m_ShadowMap_Dir != 0)
+    {
         glDeleteTextures(1, &m_ShadowMap_Dir);
+        m_ShadowMap_Dir = 0;
+    }
 
     for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i)
     {
         if (m_ShadowFBO_Point[i] != 0)
+        {
             glDeleteFramebuffers(1, &m_ShadowFBO_Point[i]);
+            m_ShadowFBO_Point[i] = 0;
+        }
         if (m_ShadowMap_Point[i] != 0)
+        {
             glDeleteTextures(1, &m_ShadowMap_Point[i]);
+            m_ShadowMap_Point[i] = 0;
+        }
     }
 }
 

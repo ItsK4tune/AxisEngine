@@ -286,37 +286,47 @@ if exist "build" (
     echo Deleting build folder...
     rmdir /s /q "build"
     if exist "build" (
-        echo [WARNING] Could not delete 'build' folder.
+        echo [FAILED] Could not delete 'build' folder.
         if "%CLEAN_MODE%"=="Strict" (
             echo [ERROR] Strict Mode enabled. Aborting because cleanup failed.
             echo [HINT]  Close any programs using files in 'build' (VS Code, Explorer, etc.)
             pause
             goto EXIT_SCRIPT
         )
+    ) else (
+        echo [DELETED] 'build' folder.
     )
 ) else (
-    echo Build folder not found.
+    echo [NOT FOUND] 'build' folder.
 )
 
 if exist "bin\%BUILD_TYPE%" (
     echo Deleting bin\%BUILD_TYPE% folder...
     rmdir /s /q "bin\%BUILD_TYPE%"
     if exist "bin\%BUILD_TYPE%" (
-        echo [WARNING] Could not delete 'bin\%BUILD_TYPE%' folder.
+        echo [FAILED] Could not delete 'bin\%BUILD_TYPE%' folder.
         if "%CLEAN_MODE%"=="Strict" (
             echo [ERROR] Strict Mode enabled. Aborting because cleanup failed.
             pause
             goto EXIT_SCRIPT
         )
+    ) else (
+        echo [DELETED] 'bin\%BUILD_TYPE%' folder.
     )
 ) else (
     :: Handle flat structure (MinGW) or if folder doesn't exist
     if exist "bin\GameEngine.exe" (
         echo Deleting existing executable...
         del /f /q "bin\GameEngine.exe"
+        if exist "bin\GameEngine.exe" (
+             echo [FAILED] Could not delete 'bin\GameEngine.exe'.
+        ) else (
+             echo [DELETED] 'bin\GameEngine.exe'.
+        )
+    ) else (
+        echo [NOT FOUND] 'bin\%BUILD_TYPE%' or existing executable.
     )
 )
-
 
 :: -----------------------------------------------------------------------------
 :: 4. RUN CMAKE
@@ -326,26 +336,6 @@ taskkill /F /IM link.exe >nul 2>&1
 taskkill /F /IM ninja.exe >nul 2>&1
 
 timeout /t 1 /nobreak >nul
-
-if exist "build" (
-    echo Deleting build folder...
-    rmdir /s /q "build"
-    if exist "build" (
-        echo [WARNING] Could not delete 'build' folder. Use check file locks.
-    )
-) else (
-    echo Build folder not found.
-)
-
-if exist "bin" (
-    echo Deleting bin folder...
-    rmdir /s /q "bin"
-    if exist "bin" (
-        echo [WARNING] Could not delete 'bin' folder. Use check file locks.
-    )
-) else (
-    echo Bin folder not found.
-)
 
 :: -----------------------------------------------------------------------------
 :: 4. RUN CMAKE
@@ -457,13 +447,11 @@ if exist "%EXE_PATH%" (
     
     if exist "build" (
         rmdir /s /q "build" 
-        if exist "build" echo [FAIL] Could not delete 'build'.
-        else echo [SUCCESS] Deleted 'build'.
+        if exist "build" ( echo [FAILED] Could not delete 'build'. ) else ( echo [DELETED] 'build'. )
     )
     if exist "bin" (
         rmdir /s /q "bin"
-        if exist "bin" echo [FAIL] Could not delete 'bin'.
-        else echo [SUCCESS] Deleted 'bin'.
+        if exist "bin" ( echo [FAILED] Could not delete 'bin'. ) else ( echo [DELETED] 'bin'. )
     )
 )
 

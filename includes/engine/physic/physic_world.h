@@ -18,6 +18,9 @@ public:
     btRigidBody *CreateRigidBody(float mass, const btTransform &startTransform, btCollisionShape *shape);
     void RegisterShape(btCollisionShape* shape);
     
+    void AddConstraint(btTypedConstraint* constraint, bool disableCollisionsBetweenLinkedBodies = true);
+    void RemoveConstraint(btTypedConstraint* constraint);
+    
     DebugDrawer* GetDebugDrawer() { return debugDrawer.get(); }
 
 private:

@@ -11,6 +11,7 @@ public:
 
     void PushState(std::unique_ptr<State> state);
     void PopState();
+    void Clear();
     void ChangeState(std::unique_ptr<State> state);
 
     State *GetCurrentState();

@@ -45,3 +45,24 @@ To integrate a new third-party library:
 2.  **Static Libs**: Place `.lib` files in `lib/`.
 3.  **Dynamic Libs**: Place `.dll` files in `dlls/`.
 4.  **CMake**: Update `CMakeLists.txt` to find and link the library.
+
+## 3. Scene-Based Configuration
+You can configure engine settings directly in your `.scene` file using the `CONFIG` command.
+
+### Window Settings
+```text
+CONFIG WINDOW <width> <height> [mode] [monitor_idx] [refresh_rate]
+```
+- **width/height**: Resolution.
+- **mode**: `WINDOWED` (default), `FULLSCREEN`, `BORDERLESS`.
+- **monitor_idx**: 0, 1, etc.
+- **refresh_rate**: Target Hz (useful for Fullscreen).
+
+### Graphics Settings
+```text
+CONFIG SHADOWS <0/1>           # Enable/Disable Shadows
+CONFIG VSYNC <0/1>             # Enable/Disable VSync
+CONFIG FPS <limit>             # Frame Rate Cap (0 = Unlimited)
+CONFIG CULL_FACE <0/1> [mode]  # Face Culling (mode: FRONT, BACK, FRONT_AND_BACK)
+CONFIG DEPTH_TEST <0/1> [func] # Depth Test (func: LESS, ALWAYS, etc.)
+```

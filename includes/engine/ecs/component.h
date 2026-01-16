@@ -26,7 +26,17 @@ struct TransformComponent
     glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 scale = glm::vec3(1.0f);
 
-    glm::mat4 GetTransformMatrix() const;
+    entt::entity parent = entt::null;
+    std::vector<entt::entity> children;
+
+    glm::mat4 GetLocalModelMatrix() const;
+    
+    glm::mat4 GetWorldModelMatrix(entt::registry& registry) const;
+
+    void SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry& registry, bool keepWorldTransform = false);
+    void AddChild(entt::entity thisEntity, entt::entity child, entt::registry& registry, bool keepWorldTransform = false);
+    void RemoveChild(entt::entity child);
+    bool HasParent() const { return parent != entt::null; }
 };
 
 struct MeshRendererComponent
@@ -65,6 +75,8 @@ struct MaterialComponent
 struct RigidBodyComponent
 {
     btRigidBody *body = nullptr;
+    btTypedConstraint* constraint = nullptr; // For parent attachment
+    bool isAttachedToParent = false;
 
     void SetRestitution(float restitution) {
         if (body) body->setRestitution(restitution);

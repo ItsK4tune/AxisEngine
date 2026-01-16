@@ -10,7 +10,7 @@ struct Scene
     entt::registry registry;
 
     entt::entity createEntity();
-    void destroyEntity(entt::entity entity, SceneManager* manager);
+    void destroyEntity(entt::entity entity, class SceneManager* manager = nullptr);
     
     entt::entity GetActiveCamera();
 };

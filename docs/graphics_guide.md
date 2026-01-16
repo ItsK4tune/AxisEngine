@@ -43,3 +43,16 @@ To render a skybox:
 NEW_ENTITY Sky
 SKYBOX_RENDERER <skybox_name> <shader_name>
 ```
+
+## 6. Particle System
+The engine supports GPU-instanced 2D effects.
+- **Workflow**:
+    1. Load Texture: `LOAD_PARTICLE <name> <path>`.
+    2. Create Entity: Add `PARTICLE_EMITTER`.
+    
+```text
+NEW_ENTITY FireFX
+PARTICLE_EMITTER <texture_name> <max_particles> <lifetime>
+TRANSFORM ... (Controls Emitter Position)
+```
+- Particles are simulated on CPU but rendered via Instancing for performance.

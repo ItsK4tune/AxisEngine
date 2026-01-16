@@ -19,6 +19,11 @@ void RenderSystem::InitShadows(ResourceManager &res)
     m_Shadow.SetShaderPoint(res.GetShader("shadow_point"));
 }
 
+void RenderSystem::Shutdown()
+{
+    m_Shadow.Shutdown();
+}
+
 void RenderSystem::RenderShadows(Scene &scene)
 {
     Shader *shaderDir = m_Shadow.GetShaderDir();
@@ -44,8 +49,6 @@ void RenderSystem::RenderShadows(Scene &scene)
 
     m_Shadow.BindFBO_Dir();
     glClear(GL_DEPTH_BUFFER_BIT);
-    // glCullFace(GL_FRONT); // Removed: Culling Front hides 1-sided planes from shadow map!
-
 
     shaderDir->use();
     shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
@@ -56,7 +59,7 @@ void RenderSystem::RenderShadows(Scene &scene)
         auto [trans, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
         if (renderer.model)
         {
-            shaderDir->setMat4("model", trans.GetTransformMatrix());
+            shaderDir->setMat4("model", trans.GetWorldModelMatrix(scene.registry));
             if (scene.registry.all_of<AnimationComponent>(entity))
             {
                 auto &anim = scene.registry.get<AnimationComponent>(entity);
@@ -80,7 +83,6 @@ void RenderSystem::RenderShadows(Scene &scene)
         }
     }
 
-    // glCullFace(GL_BACK); // Reset not needed
     m_Shadow.UnbindFBO();
 
     int pIdx = 0;
@@ -122,7 +124,7 @@ void RenderSystem::RenderShadows(Scene &scene)
             auto [tObj, rObj] = view.get<TransformComponent, MeshRendererComponent>(obj);
             if (rObj.model)
             {
-                shaderPoint->setMat4("model", tObj.GetTransformMatrix());
+                shaderPoint->setMat4("model", tObj.GetWorldModelMatrix(scene.registry));
                 if (scene.registry.all_of<AnimationComponent>(obj))
                 {
                     auto &anim = scene.registry.get<AnimationComponent>(obj);
@@ -265,22 +267,18 @@ void RenderSystem::Render(Scene &scene)
         if (!renderer.model || !renderer.shader)
             continue;
 
-        glm::mat4 modelMatrix = transform.GetTransformMatrix();
+        glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
 
         if (cam)
         {
             glm::vec3 min = renderer.model->AABBmin;
             glm::vec3 max = renderer.model->AABBmax;
             
-            // Transform AABB to World AABB (Axis Aligned Bounding Box of the transformed model)
-            // Center and Extents approach is faster
             glm::vec3 center = (min + max) * 0.5f;
             glm::vec3 extent = (max - min) * 0.5f;
             
             glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
             
-            // Transform extent with absolute rotation matrix to maintain AABB axis alignment
-            // mat3 of modelMatrix
             glm::mat3 rot = glm::mat3(modelMatrix);
             glm::vec3 worldExtent = glm::vec3(
                 std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
@@ -309,7 +307,7 @@ void RenderSystem::Render(Scene &scene)
                 currentShader->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
                 currentShader->setFloat("farPlanePoint", m_FarPlanePoint);
                 currentShader->setBool("u_ReceiveShadow", m_EnableShadows);
-                currentShader->setFloat("material.shininess", 32.0f); // Default shininess
+                currentShader->setFloat("material.shininess", 32.0f);
 
                 m_Shadow.BindTexture_Dir(10);
                 currentShader->setInt("shadowMapDir", 10);

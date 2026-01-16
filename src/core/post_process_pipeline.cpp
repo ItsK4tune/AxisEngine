@@ -5,11 +5,7 @@ PostProcessPipeline::PostProcessPipeline() {}
 
 PostProcessPipeline::~PostProcessPipeline()
 {
-    glDeleteFramebuffers(2, m_FBO);
-    glDeleteTextures(2, m_ColorBuffers);
-    glDeleteRenderbuffers(1, &m_RBO);
-    glDeleteVertexArrays(1, &m_QuadVAO);
-    glDeleteBuffers(1, &m_QuadVBO);
+    Shutdown();
 }
 
 void PostProcessPipeline::Init(int width, int height)
@@ -51,6 +47,15 @@ void PostProcessPipeline::InitFramebuffers()
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void PostProcessPipeline::Shutdown()
+{
+    if (m_FBO[0] != 0) { glDeleteFramebuffers(2, m_FBO); m_FBO[0] = 0; m_FBO[1] = 0; }
+    if (m_ColorBuffers[0] != 0) { glDeleteTextures(2, m_ColorBuffers); m_ColorBuffers[0] = 0; m_ColorBuffers[1] = 0; }
+    if (m_RBO != 0) { glDeleteRenderbuffers(1, &m_RBO); m_RBO = 0; }
+    if (m_QuadVAO != 0) { glDeleteVertexArrays(1, &m_QuadVAO); m_QuadVAO = 0; }
+    if (m_QuadVBO != 0) { glDeleteBuffers(1, &m_QuadVBO); m_QuadVBO = 0; }
 }
 
 void PostProcessPipeline::Resize(int width, int height)

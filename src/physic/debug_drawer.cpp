@@ -9,8 +9,8 @@ DebugDrawer::DebugDrawer()
 
 DebugDrawer::~DebugDrawer()
 {
-    if (m_VAO) glDeleteVertexArrays(1, &m_VAO);
-    if (m_VBO) glDeleteBuffers(1, &m_VBO);
+    if (m_VAO) { glDeleteVertexArrays(1, &m_VAO); m_VAO = 0; }
+    if (m_VBO) { glDeleteBuffers(1, &m_VBO); m_VBO = 0; }
 }
 
 void DebugDrawer::Init()

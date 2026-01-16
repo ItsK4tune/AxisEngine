@@ -1,4 +1,5 @@
 #include <physic/physic_world.h>
+#include <set>
 
 PhysicsWorld::PhysicsWorld()
 {
@@ -27,6 +28,14 @@ void PhysicsWorld::Update(float dt)
 
 void PhysicsWorld::Clear()
 {
+
+    for (int i = dynamicsWorld->getNumConstraints() - 1; i >= 0; i--)
+    {
+        btTypedConstraint* constraint = dynamicsWorld->getConstraint(i);
+        dynamicsWorld->removeConstraint(constraint);
+        delete constraint;
+    }
+
     for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
     {
         btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
@@ -41,9 +50,10 @@ void PhysicsWorld::Clear()
         delete obj;
     }
 
-    for (int i = 0; i < m_collisionShapes.size(); i++)
+    std::set<btCollisionShape*> uniqueShapes(m_collisionShapes.begin(), m_collisionShapes.end());
+    for (btCollisionShape* shape : uniqueShapes)
     {
-        delete m_collisionShapes[i];
+        delete shape;
     }
     m_collisionShapes.clear();
 }
@@ -72,4 +82,14 @@ void PhysicsWorld::RegisterShape(btCollisionShape* shape)
     if (shape) {
         m_collisionShapes.push_back(shape);
     }
+}
+
+void PhysicsWorld::AddConstraint(btTypedConstraint* constraint, bool disableCollisionsBetweenLinkedBodies)
+{
+    dynamicsWorld->addConstraint(constraint, disableCollisionsBetweenLinkedBodies);
+}
+
+void PhysicsWorld::RemoveConstraint(btTypedConstraint* constraint)
+{
+    dynamicsWorld->removeConstraint(constraint);
 }

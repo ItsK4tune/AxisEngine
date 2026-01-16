@@ -28,6 +28,9 @@ LOAD_SKYBOX    daylight       right.jpg left.jpg top.jpg bottom.jpg front.jpg ba
 
 # Audio
 LOAD_SOUND     bgm            audio/music.mp3
+
+# Particles
+LOAD_PARTICLE  smoke          textures/smoke.png
 ```
 
 ## 3. Loading via C++ Code

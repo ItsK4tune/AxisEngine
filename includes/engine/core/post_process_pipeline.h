@@ -16,6 +16,7 @@ public:
     ~PostProcessPipeline();
 
     void Init(int width, int height);
+    void Shutdown();
     void Resize(int width, int height);
 
     void BeginCapture();

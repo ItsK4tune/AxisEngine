@@ -18,6 +18,14 @@ void StateMachine::PopState()
     }
 }
 
+void StateMachine::Clear()
+{
+    while (!m_States.empty())
+    {
+        PopState();
+    }
+}
+
 void StateMachine::ChangeState(std::unique_ptr<State> state)
 {
     PopState();

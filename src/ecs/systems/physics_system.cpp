@@ -2,6 +2,7 @@
 #include <core/scriptable.h>
 #include <physic/physic_world.h>
 #include <iostream>
+#include <glm/gtx/matrix_decompose.hpp>
 
 void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
 {
@@ -27,6 +28,55 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
 
             transform.position = BulletGLMHelpers::convert(trans.getOrigin());
             transform.rotation = BulletGLMHelpers::convert(trans.getRotation());
+
+            if (scene.registry.valid(transform.parent)) {
+                 if(scene.registry.all_of<TransformComponent>(transform.parent)) {
+                     const auto& parentTrans = scene.registry.get<TransformComponent>(transform.parent);
+                     glm::mat4 parentWorldMatrix = parentTrans.GetWorldModelMatrix(scene.registry);
+                     glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), transform.position) * glm::mat4_cast(transform.rotation); 
+                     
+                     glm::mat4 localMatrix = glm::inverse(parentWorldMatrix) * validWorldMatrix;
+
+                     glm::vec3 s;
+                     glm::quat r;
+                     glm::vec3 t;
+                     glm::vec3 skew;
+                     glm::vec4 perspective;
+                     glm::decompose(localMatrix, s, r, t, skew, perspective);
+                     
+                     transform.position = t;
+                     transform.rotation = r;
+                 }
+            }
+        }
+    }
+
+    for (auto entity : view)
+    {
+        auto &rb = view.get<RigidBodyComponent>(entity);
+        auto &transform = view.get<TransformComponent>(entity);
+
+        if (rb.body && scene.registry.valid(transform.parent))
+        {
+            bool isDynamic = !rb.body->isStaticOrKinematicObject();
+            
+            if (!isDynamic || rb.body->isKinematicObject())
+            {
+                 glm::mat4 worldMatrix = transform.GetWorldModelMatrix(scene.registry);
+                 glm::vec3 worldPos = glm::vec3(worldMatrix[3]);
+                 glm::quat worldRot = glm::quat_cast(worldMatrix);
+
+                 btTransform tr;
+                 tr.setIdentity();
+                 tr.setOrigin(BulletGLMHelpers::convert(worldPos));
+                 tr.setRotation(BulletGLMHelpers::convert(worldRot));
+
+                 rb.body->setWorldTransform(tr);
+                 if (rb.body->getMotionState())
+                 {
+                     rb.body->getMotionState()->setWorldTransform(tr);
+                 }
+            }
         }
     }
 

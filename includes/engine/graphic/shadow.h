@@ -13,6 +13,7 @@ public:
 
     void Init(unsigned int width = 2048, unsigned int height = 2048, 
               unsigned int pointWidth = 1024, unsigned int pointHeight = 1024);
+    void Shutdown();
 
     void BindFBO_Dir();
     void BindFBO_Point(int index);

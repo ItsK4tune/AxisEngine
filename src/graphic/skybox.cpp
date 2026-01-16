@@ -10,12 +10,9 @@ Skybox::Skybox()
 
 Skybox::~Skybox()
 {
-    if (m_VAO)
-        glDeleteVertexArrays(1, &m_VAO);
-    if (m_VBO)
-        glDeleteBuffers(1, &m_VBO);
-    if (m_TextureID)
-        glDeleteTextures(1, &m_TextureID);
+    if (m_VAO) { glDeleteVertexArrays(1, &m_VAO); m_VAO = 0; }
+    if (m_VBO) { glDeleteBuffers(1, &m_VBO); m_VBO = 0; }
+    if (m_TextureID) { glDeleteTextures(1, &m_TextureID); m_TextureID = 0; }
 }
 
 void Skybox::Init()

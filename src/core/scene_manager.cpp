@@ -4,6 +4,7 @@
 #include <utils/filesystem.h>
 #include <utils/bullet_glm_helpers.h>
 #include <core/application.h>
+#include <map>
 
 SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application *app)
     : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound), m_App(app) {}
@@ -26,6 +27,7 @@ void SceneManager::LoadScene(const std::string &filePath)
     }
 
     std::vector<entt::entity> &sceneEntities = m_LoadedScenes[filePath];
+    std::map<entt::entity, std::vector<std::string>> deferredChildren;
 
     std::string line;
     while (std::getline(file, line))
@@ -386,6 +388,7 @@ void SceneManager::LoadScene(const std::string &filePath)
                 else if (nextToken == "STATIC") { bodyType = "STATIC"; }
                 else if (nextToken == "DYNAMIC") { bodyType = "DYNAMIC"; }
                 else if (nextToken == "KINEMATIC") { bodyType = "KINEMATIC"; }
+                else if (nextToken == "ATTACH_TO_PARENT") { rb.isAttachedToParent = true; }
             }
 
             // Apply Offset if needed
@@ -722,6 +725,146 @@ void SceneManager::LoadScene(const std::string &filePath)
             if (!emitterComp.emitter.texture)
             {
                 std::cerr << "[SceneManager] Particle Texture not found: " << texName << std::endl;
+            }
+        }
+        else if (command == "PARENT")
+        {
+            std::string parentName;
+            ss >> parentName;
+
+            entt::entity parentEntity = entt::null;
+            auto view = m_Scene.registry.view<InfoComponent>();
+            for (auto entity : view)
+            {
+                const auto &info = view.get<InfoComponent>(entity);
+                if (info.name == parentName)
+                {
+                    parentEntity = entity;
+                    break;
+                }
+            }
+
+            if (parentEntity != entt::null)
+            {
+                 if (m_Scene.registry.all_of<TransformComponent>(currentEntity) && 
+                     m_Scene.registry.all_of<TransformComponent>(parentEntity))
+                 {
+                     auto& transform = m_Scene.registry.get<TransformComponent>(currentEntity);
+                     transform.SetParent(currentEntity, parentEntity, m_Scene.registry, true);
+                 }
+            }
+            else
+            {
+                std::cerr << "[SceneManager] Parent not found: " << parentName << std::endl;
+            }
+        }
+        else if (command == "CHILDREN")
+        {
+            std::string childName;
+            while (ss >> childName)
+            {
+                 deferredChildren[currentEntity].push_back(childName);
+            }
+        }
+    }
+
+    if (!deferredChildren.empty())
+    {
+        auto view = m_Scene.registry.view<InfoComponent>();
+        for (const auto& [parentEntity, childNames] : deferredChildren)
+        {
+            for (const auto& childName : childNames)
+            {
+                entt::entity childEntity = entt::null;
+                for (auto entity : view)
+                {
+                    if (view.get<InfoComponent>(entity).name == childName)
+                    {
+                        childEntity = entity;
+                        break;
+                    } 
+                }
+
+                if (childEntity != entt::null)
+                {
+                    if (m_Scene.registry.all_of<TransformComponent>(childEntity) && 
+                        m_Scene.registry.all_of<TransformComponent>(parentEntity))
+                    {
+                        auto& transform = m_Scene.registry.get<TransformComponent>(childEntity);
+                        transform.SetParent(childEntity, parentEntity, m_Scene.registry, true); 
+                    }
+                }
+                else
+                {
+                   std::cerr << "[SceneManager] Child not found: " << childName << " for Parent Entity ID: " << (uint32_t)parentEntity << std::endl;
+                }
+            }
+        }
+    }
+
+    auto rbView = m_Scene.registry.view<RigidBodyComponent, TransformComponent>();
+    for (auto entity : rbView)
+    {
+        auto &rb = rbView.get<RigidBodyComponent>(entity);
+        auto &transform = rbView.get<TransformComponent>(entity);
+
+        if (rb.body)
+        {
+            glm::mat4 worldMatrix = transform.GetWorldModelMatrix(m_Scene.registry);
+            glm::vec3 position = glm::vec3(worldMatrix[3]);
+            glm::quat rotation = glm::quat_cast(worldMatrix);
+
+            btTransform tr;
+            tr.setIdentity();
+            tr.setOrigin(BulletGLMHelpers::convert(position));
+            tr.setRotation(BulletGLMHelpers::convert(rotation));
+
+            rb.body->setWorldTransform(tr);
+            if(rb.body->getMotionState())
+            {
+                rb.body->getMotionState()->setWorldTransform(tr);
+            }
+            
+            rb.body->setLinearVelocity(btVector3(0,0,0));
+            rb.body->setAngularVelocity(btVector3(0,0,0));
+            rb.body->activate();
+
+            // Handle Physics Attachment (Joints)
+            if (rb.isAttachedToParent && m_Scene.registry.valid(transform.parent))
+            {
+                if (m_Scene.registry.all_of<RigidBodyComponent>(transform.parent))
+                {
+                    auto& parentRb = m_Scene.registry.get<RigidBodyComponent>(transform.parent);
+                    if (parentRb.body)
+                    {
+                        // Calculate local transforms relative to bodies
+                        // Since we just synced the child body to world position, basic "transform diff" is enough?
+                        // btFixedConstraint uses local frames.
+                        
+                        btTransform frameInA, frameInB; // A = Parent, B = Child
+                        
+                        btTransform parentWorldTrans = parentRb.body->getWorldTransform();
+                        btTransform childWorldTrans = rb.body->getWorldTransform();
+                        
+                        // FrameA is Child's pose in Parent's space
+                        frameInA = parentWorldTrans.inverse() * childWorldTrans;
+                        
+                        // FrameB is Child's pose in Child's space (Identity)
+                        frameInB.setIdentity();
+
+                        btFixedConstraint* fixedConstraint = new btFixedConstraint(
+                            *parentRb.body,
+                            *rb.body,
+                            frameInA,
+                            frameInB
+                        );
+                        
+                        m_Physics.AddConstraint(fixedConstraint);
+                        rb.constraint = fixedConstraint;
+                        
+                        // std::cout << "Attached Physics Child " << (int)entity << " to Parent " << (int)transform.parent << "\n";
+                    }
+                }
             }
         }
     }
