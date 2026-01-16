@@ -1,8 +1,4 @@
 # Application & Build Configuration
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 ## 1. Application Configuration
 

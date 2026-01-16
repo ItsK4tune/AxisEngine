@@ -1,8 +1,4 @@
 # Scene File Format Reference
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 The scene file (`.scene`) is a text-based format used to define resources, entities, and components in the AXIS Engine. It is parsed line-by-line by the `SceneManager`.
 

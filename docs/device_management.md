@@ -1,8 +1,4 @@
 # Device Management
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 The AXIS Engine uses a unified `IDeviceManager` interface to handle hardware devices (Monitors, Audio, Inputs).
 

@@ -1,8 +1,4 @@
 # Component Reference
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 This page lists all components supported in `.scene` files for the AXIS Engine.
 

@@ -1,46 +1,78 @@
-# AXIS Engine
-![AXIS Engine Logo](assets/logo.png)
+<p align="center">
+  <br>
+  <img src="assets/logo.png" alt="AXIS Engine Logo" width="280"/>
+  <br>
+</p>
 
-**Contributor**: Duong "Caftun" Nguyen
+<h1 align="center">AXIS ENGINE</h1>
 
-Welcome to the documentation for the AXIS C++ Game Engine.
+<p align="center">
+  <strong>High-Performance C++ ECS Configuration</strong>
+  <br>
+  Developed by <a href="https://github.com/Caftun">Duong "Caftun" Nguyen</a>
+</p>
 
-## Documentation Sections
+<p align="center">
+  <a href="#quick-start">🚀 Quick Start</a> •
+  <a href="#documentation">📚 Documentation</a> •
+  <a href="#features">✨ Features</a>
+</p>
 
-### 1. Project & Config
-- [Directory Structure](docs/project_structure.md)
-- [Configuration & Build](docs/configuration.md)
-- [Device Management](docs/device_management.md)
+<div align="center">
 
-### 2. Scene System
-- [Scene File Format](docs/scene_format.md)
-- [Component Reference](docs/components_reference.md)
+![C++](https://img.shields.io/badge/C++-17-blue.svg?style=flat-square&logo=c%2B%2B) 
+![OpenGL](https://img.shields.io/badge/OpenGL-3.3+-green.svg?style=flat-square&logo=opengl) 
+![License](https://img.shields.io/badge/License-MIT-orange.svg?style=flat-square) 
+![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg?style=flat-square&logo=windows)
 
-### 3. Scripting
-- [Scripting Basics (Lifecycle)](docs/scripting_basics.md)
-- [Scripting API (Input, Physics)](docs/scripting_api.md)
+</div>
 
-### 4. Advanced Systems
-- [Asset Management](docs/asset_management.md)
-- [Graphics & Rendering](docs/graphics_guide.md)
-- [Post Processing](docs/post_processing.md)
+---
+
+## Overview
+
+**AXIS Engine** is a robust Entity-Component-System (ECS) based game engine built with modern C++ and OpenGL. It is designed for performance, flexibility, and ease of use, featuring a comprehensive Scene system, Physics integration, and an extensible Scripting API.
+
+## Features
+
+-   **ECS Architecture**: High-performance entity management using `EnTT`.
+-   **Rendering**: OpenGL 3.3+ Forward Renderer with Dynamic Lighting & Shadows.
+-   **Physics**: Integrated Bullet Physics engine for rigid body dynamics.
+-   **Scripting**: Native C++ scripting support.
+-   **Audio**: 3D Spatial Audio via `irrKlang`.
+-   **Configuration**: JSON-based runtime configuration.
 
 ---
 
 ## Quick Start
 
-1.  **Build**: Run `build_engine.bat` to Configure, Build, Run, or Clean the project.
-    - Select cleaning options (Strict/Soft) for easy rebuilding.
-2.  **Scene**: Create a `game.scene` in `scenes/` folder.
-3.  **Run**: Launch the executable. It defaults to loading `scenes/game.scene`.
-    - Check `configuration/settings.json` for startup settings.
+1.  **Build**
+    Run `build_engine.bat` to automatically configure and build the project.
+    
+2.  **Create a Scene**
+    Add a new `.scene` file in the `scenes/` directory.
+    
+3.  **Run**
+    Launch the executable from `bin/`. It will load `scenes/game.scene` by default.
 
 ---
 
-## System Overview
+## Documentation
 
--   **ECS (Entity Component System)**: Built on `EnTT`.
--   **Rendering**: OpenGL 3.3+.
--   **Physics**: Bullet Physics.
--   **Scripting**: Native C++ Classes.
--   **Audio**: irrKlang.
+### 📘 Project & Configuration
+- [**Project Structure**](docs/project_structure.md): Understanding the directory layout.
+- [**Configuration Guide**](docs/configuration.md): Setting up resolution, graphics, and inputs.
+- [**Device Management**](docs/device_management.md): Managing Monitors, Audio, and Debug tools.
+
+### 🎬 Scene & Assets
+- [**Scene Format**](docs/scene_format.md): How to write `.scene` files.
+- [**Component Reference**](docs/components_reference.md): List of all available ECS components.
+- [**Asset Management**](docs/asset_management.md): Loading Models, Textures, and Audio.
+
+### 💻 Scripting
+- [**Scripting Basics**](docs/scripting_basics.md): Lifecycle methods and creation.
+- [**Scripting API**](docs/scripting_api.md): Input, Physics, and Audio API.
+
+### 🎨 Graphics
+- [**Rendering Guide**](docs/graphics_guide.md): Lighting, Shadows, and Materials.
+- [**Post Processing**](docs/post_processing.md): Screen-space effects.

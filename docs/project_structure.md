@@ -1,25 +1,48 @@
 # Project Structure & Configuration
-![AXIS Engine Logo](../assets/logo.png)
 
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
+## Directory Layout
 
-## 1. Directory Structure
+The project follows a modular structure to separate Engine core, Game logic, and Assets.
 
-| Directory | Description |
-| :--- | :--- |
-| `src/` | **Engine Source**. Contains `.cpp` files for the AXIS Engine core. |
-| `includes/` | **Engine Headers**. Contains `.h` files for Engine and third-party libs (Bullet, EnTT). |
-| `game/src/` | **Game Source**. Contains `.cpp` files for Game logic (Scripts, States). |
-| `game/includes/` | **Game Headers**. Contains `.h` files for Game specific code. |
-| `resources/` | **Assets**. Stores Models, Shaders, Textures, Audio, Fonts. |
-| `scenes/` | **Scene Files**. `.scene` files defining the game world. |
-| `configuration/`| **Config Files**. Contains `settings.json` and other config templates. |
-| `assets/` | **Branding**. Contains Logo and Icon. |
-| `docs/` | **Documentation**. Project guides and reference manuals. |
-| `dlls/` | **Runtime Binaries**. Dynamic Link Libraries (Assimp, Freetype, etc.) needed by the executable. |
-| `lib/` | **Static Libraries**. `.lib` files for linking during build. |
-| `cmake/` | **CMake Modules**. Scripts for finding packages. |
-| `bin/` | **Output Details**. The final executable is built here. |
+```text
+GameEngine/
+├── assets/          # Branding assets (Logo, Icon)
+├── bin/             # Output binaries (Executables)
+├── cmake/           # CMake modules and scripts
+├── configuration/   # JSON Configuration files (settings.json)
+├── dlls/            # Runtime DLLs (Assimp, Freetype, irrKlang, etc.)
+├── docs/            # Project Documentation
+├── game/            # User-Land Game Code
+│   ├── includes/    # Game-specific headers
+│   └── src/         # Game-specific logic (Scripts, States)
+├── includes/        # Engine & Library Headers
+│   ├── bullet/      # Physics Library
+│   ├── engine/      # Core Engine Headers
+│   └── entt/        # ECS Library
+├── lib/             # Static Libraries (.lib)
+├── resources/       # Game Assets
+│   ├── audio/       # Sound files
+│   ├── fonts/       # TTF Fonts
+│   ├── models/      # 3D Models (FBX, OBJ)
+│   ├── shaders/     # GLSL Shaders
+│   └── textures/    # Image files
+├── scenes/          # Scene Definitions (.scene)
+└── src/             # Core Engine Source Code
+    ├── core/        # Core systems
+    ├── ecs/         # Component systems
+    ├── graphic/     # Rendering modules
+    └── utils/       # Helpers
+```
 
-> See [Configuration Guide](configuration.md) for build and app settings.
+## Key Directories
+
+### `src/` (Engine Core)
+Contains the foundation of the AXIS Engine. Modifications here affect the entire engine.
+
+### `game/` (Game Logic)
+Place your specific game logic here. This separates your game mechanics from the engine core, making upgrades easier.
+
+### `configuration/`
+Contains `settings.json` which controls the startup behavior (Window size, Title, VSync, etc.).
+
+> See [Configuration Guide](configuration.md) for details on modifying settings.

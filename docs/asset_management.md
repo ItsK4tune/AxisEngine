@@ -1,8 +1,4 @@
 # Asset Management
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 The **ResourceManager** handles loading and retrieving game assets in the AXIS Engine. In most cases, you define these in your `.scene` file, but you can also load them manually via C++.
 

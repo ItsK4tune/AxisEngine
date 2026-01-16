@@ -1,8 +1,4 @@
 # Graphics & Rendering Guide
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 The AXIS Engine uses a forward rendering pipeline with support for dynamic lighting, shadows, and post-processing.
 

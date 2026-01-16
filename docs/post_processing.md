@@ -1,8 +1,4 @@
 # Post Processing Guide
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 The AXIS Engine includes a post-processing stack that applies effects to the final rendered image before displaying it to the screen.
 

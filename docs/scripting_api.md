@@ -1,8 +1,4 @@
 # Scripting API Reference
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 Common API methods available to `Scriptable` classes in the AXIS Engine.
 

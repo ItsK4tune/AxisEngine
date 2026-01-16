@@ -1,8 +1,4 @@
 # Scripting Basics
-![AXIS Engine Logo](../assets/logo.png)
-
-**Engine**: AXIS Engine  
-**Contributor**: Duong "Caftun" Nguyen
 
 Scripting in the AXIS Engine is done using Native C++ classes. Scripts are components derived from the `Scriptable` class.
 
