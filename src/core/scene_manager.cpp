@@ -537,7 +537,7 @@ void SceneManager::LoadScene(const std::string &filePath)
             l.diffuse = l.color * diffStr;
             l.specular = glm::vec3(1.0f);
         }
-        else if (command == "RENDERER" || command == "MODEL")
+        else if (command == "UI_TRANSFORM")
         {
             float x, y, w, h;
             int z;
@@ -643,6 +643,25 @@ void SceneManager::LoadScene(const std::string &filePath)
             audio.playOnAwake = (awake != 0);
 
             m_Scene.registry.emplace<AudioSourceComponent>(currentEntity, audio);
+        }
+        else if (command == "VIDEO_PLAYER")
+        {
+            std::string path;
+            int loop = 0, playOnAwake = 1;
+            float speed = 1.0f;
+            ss >> path;
+            
+            if (!ss.eof()) ss >> loop;
+            if (!ss.eof()) ss >> speed;
+            if (!ss.eof()) ss >> playOnAwake;
+
+            VideoPlayerComponent video;
+            video.filePath = FileSystem::getPath(path);
+            video.isLooping = (loop != 0);
+            video.speed = speed;
+            video.playOnAwake = (playOnAwake != 0);
+
+            m_Scene.registry.emplace<VideoPlayerComponent>(currentEntity, video);
         }
         else if (command == "LOAD_PARTICLE")
         {

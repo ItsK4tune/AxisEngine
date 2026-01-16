@@ -11,7 +11,10 @@ LOAD_SHADER pbrLitNoShadowShader resources/shaders/pbr_lit_no_shadow.vs resource
 LOAD_SHADER pbrLitShadowShader resources/shaders/pbr_lit_shadow.vs resources/shaders/pbr_lit_shadow.fs
 LOAD_SHADER unlitShader resources/shaders/unlit.vs resources/shaders/unlit.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
+LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
 LOAD_SHADER particle resources/shaders/particle.vs resources/shaders/particle.fs
+
+LOAD_FONT time resources/fonts/time.ttf 16
 
 LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
 LOAD_STATIC_MODEL dummyModel resources/objects/dummy/dummy.fbx
@@ -48,3 +51,14 @@ TRANSFORM 0.0 20.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
 RENDERER dummyModel unlitShader
 RIGIDBODY CAPSULE 1.0 1.0 1.8 OFFSET 0.0 2.0 0.0 DYNAMIC 
 PARENT Dummy
+
+NEW_ENTITY TestButton
+UI_TRANSFORM 50 50 200 60 10
+UI_RENDERER 0.0 0.8 0.0 1.0 uiShader
+UI_TEXT "Hover Me" time 1 1 1 0.5
+SCRIPT UIButton
+
+NEW_ENTITY VideoPlayer
+VIDEO_PLAYER resources/videos/test.mp4 1 1.0 1
+UI_TRANSFORM 40 40 500 500 0
+UI_RENDERER 1 1 1 1 uiShader

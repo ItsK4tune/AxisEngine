@@ -139,3 +139,27 @@ Creates a particle emitter attached to the entities.
 - **Syntax**: `PARTICLE_EMITTER <texture_name> <max_particles> <spawn_rate> <lifetime> <start_size> <end_size> <shape>`
 - **Shapes**: `DIRECTIONAL`, `CONE`, `FIGURE8`
 - **Example**: `PARTICLE_EMITTER fireTex 1000 200.0 1.5 2.0 0.0 CONE`
+
+## Video
+
+### Video Player
+Plays an MP4 video. Note: Requires FFmpeg libraries.
+
+```text
+VIDEO_PLAYER <path> [loop] [speed] [awake]
+```
+- **path**: Path to video file (relative to executable).
+- **loop**: 1 to loop, 0 to play once (default 0).
+- **speed**: Playback speed multiplier (default 1.0).
+- **awake**: Play automatically on load (default 1).
+
+**Usage**:
+Use with `UI_RENDERER` (for 2D) or `RENDERER` (for 3D) to display the video. The system automatically overrides the texture.
+
+**Example**:
+```text
+NEW_ENTITY IntroVideo
+VIDEO_PLAYER "assets/videos/intro.mp4" 1 1.0 1
+UITRANSFORM 0 0 1920 1080 0
+UI_RENDERER 1 1 1 1 uiShader
+```

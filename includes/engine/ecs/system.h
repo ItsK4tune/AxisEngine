@@ -98,3 +98,9 @@ public:
     void Update(Scene &scene, float dt);
     void Render(Scene &scene, ResourceManager &res);
 };
+
+class VideoSystem
+{
+public:
+    void Update(Scene &scene, ResourceManager &res, float dt);
+};

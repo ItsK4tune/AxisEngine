@@ -60,6 +60,7 @@ public:
     PostProcessPipeline& GetPostProcess() { return postProcess; }
     AudioSystem& GetAudioSystem() { return audioSystem; }
     ParticleSystem& GetParticleSystem() { return particleSystem; }
+    VideoSystem& GetVideoSystem() { return videoSystem; }
 
     // Deprecated/Delegated Configuration Methods
     void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::WINDOWED, int monitorIndex = 0, int refreshRate = 0) {
@@ -101,6 +102,7 @@ private:
     SkyboxRenderSystem skyboxRenderSystem;
     AudioSystem audioSystem;
     ParticleSystem particleSystem;
+    VideoSystem videoSystem;
 
     PostProcessPipeline postProcess;
     

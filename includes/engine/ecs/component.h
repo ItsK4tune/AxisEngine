@@ -269,3 +269,24 @@ struct ParticleEmitterComponent
     ParticleEmitter emitter;
     bool isActive = true;
 };
+
+class VideoDecoder;
+
+struct VideoPlayerComponent
+{
+    std::string filePath;
+    bool isPlaying = false;
+    bool isLooping = false;
+    float speed = 1.0f;
+    bool playOnAwake = true;
+
+    // Runtime
+    VideoDecoder* decoder = nullptr;
+    bool isLoaded = false;
+
+    void Play();
+    void Pause();
+    void Stop();
+    void Replay();
+    void Seek(double time);
+};

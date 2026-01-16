@@ -15,12 +15,14 @@ find_package(GLM REQUIRED)
 find_package(Bullet REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(IrrKlang REQUIRED)
+find_package(FFMPEG REQUIRED)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/includes/bullet
     ${CMAKE_SOURCE_DIR}/includes/entt
     ${CMAKE_SOURCE_DIR}/includes/engine
+    ${FFMPEG_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/game/includes
 )
 
@@ -54,6 +56,7 @@ if (WIN32)
         ${BULLET_LIBS}
         freetype
         irrKlang
+        ${FFMPEG_LIBRARIES}
     )
 endif()
 

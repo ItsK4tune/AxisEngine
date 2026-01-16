@@ -74,5 +74,6 @@
 
 ### ⚙️ API Reference
 *   [Managers](docs/api/managers/)
-*   [Components (C++)](docs/api/components/)
-*   [Systems](docs/api/systems/)
+*   [Audio System](docs/api/systems/audio_system.md)
+*   [Video System](docs/api/systems/video_system.md)
+*   [UI System](docs/api/systems/ui_system.md)

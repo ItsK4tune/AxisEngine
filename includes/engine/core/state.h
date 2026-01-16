@@ -28,6 +28,7 @@ public:
     class ParticleSystem& GetParticleSystem();
     class SkyboxRenderSystem& GetSkyboxRenderSystem();
     class AnimationSystem& GetAnimationSystem();
+    class VideoSystem& GetVideoSystem();
 
     // Manager Accessors
     class SceneManager& GetSceneManager();

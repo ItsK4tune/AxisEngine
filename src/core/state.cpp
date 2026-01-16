@@ -10,6 +10,7 @@ ScriptableSystem& State::GetScriptSystem() { return m_App->GetScriptSystem(); }
 ParticleSystem& State::GetParticleSystem() { return m_App->GetParticleSystem(); }
 SkyboxRenderSystem& State::GetSkyboxRenderSystem() { return m_App->GetSkyboxRenderSystem(); }
 AnimationSystem& State::GetAnimationSystem() { return m_App->GetAnimationSystem(); }
+VideoSystem& State::GetVideoSystem() { return m_App->GetVideoSystem(); }
 
 SceneManager& State::GetSceneManager() { return m_App->GetSceneManager(); }
 ResourceManager& State::GetResourceManager() { return m_App->GetResourceManager(); }

@@ -3,6 +3,7 @@
 void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
 {
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE); // UI Quads might be CW/CCW, disable culling to ensure visibility
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
