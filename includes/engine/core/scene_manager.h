@@ -1,8 +1,7 @@
 #pragma once
 
 #include <string>
-#include <sstream>
-#include <fstream>
+#include <string>
 #include <vector>
 #include <unordered_map>
 
@@ -42,8 +41,6 @@ private:
     SoundManager &m_SoundManager;
     PhysicsWorld &m_Physics;
     Application* m_App = nullptr;
-
-    entt::entity currentEntity = entt::null;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
     
