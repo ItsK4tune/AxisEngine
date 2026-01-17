@@ -23,7 +23,6 @@ void Scene::destroyEntity(entt::entity entity, SceneManager* manager)
             parentTrans.RemoveChild(entity);
         }
 
-        // Orphan Children (Set their parent to null)
         // We copy the children list because modifying it while iterating might be unsafe
         std::vector<entt::entity> childrenCopy = transform->children;
         for (auto child : childrenCopy)
@@ -36,7 +35,6 @@ void Scene::destroyEntity(entt::entity entity, SceneManager* manager)
                  // Optional: Keep world transform for children when parent dies?
                  // For now, we just unlink. They will keep their local transform relative to World (0,0,0) effectively jumping.
                  // To prevent jump, we should recompute local transform.
-                 // Let's assume for now user wants simple detach.
             }
         }
     }

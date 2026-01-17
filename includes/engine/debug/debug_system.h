@@ -7,6 +7,7 @@
 #include <graphic/shader.h>
 #include <functional>
 #include <input/keyboard_manager.h>
+#include <entt/entity/entity.hpp>
 
 class Application;
 class Scene;
@@ -37,6 +38,8 @@ private:
     // Helper
     void ProcessKey(KeyboardManager& keyboard, int key, bool& pressedState, std::function<void()> action);
 
+    void ToggleDebugCamera();
+
     Application* m_App = nullptr;
 
     bool m_F1Pressed = false; // Controls
@@ -45,7 +48,7 @@ private:
     bool m_F4Pressed = false; // Entity Stats
     bool m_F5Pressed = false; // Scene Graph
     bool m_F6Pressed = false; // Wireframe
-    bool m_F7Pressed = false; // No Texture Mode (Features Pending)
+    bool m_F7Pressed = false; // No Texture Mode
     bool m_F8Pressed = false; // Physics Debug
     bool m_F9Pressed = false; // UI Toggle
     bool m_F10Pressed = false; // Stats Overlay Toggle
@@ -53,10 +56,15 @@ private:
     bool m_F12Pressed = false; // Slow Mo
 
     bool m_ShowPhysicsDebug = false;
-    bool m_ShowStatsOverlay = true; // Default ON
+    bool m_ShowStatsOverlay = true; 
     bool m_WireframeMode = false;
-    bool m_NoTextureMode = false; // F7 state
+    bool m_NoTextureMode = false;
     
+    // Debug Camera State
+    bool m_IsDebugCameraActive = false;
+    entt::entity m_LastActiveCamera = entt::null;
+    entt::entity m_DebugCamera = entt::null;
+
     // Stats
     float m_FpsTimer = 0.0f;
     int m_FrameCount = 0;

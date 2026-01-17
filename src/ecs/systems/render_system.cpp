@@ -41,11 +41,9 @@ void RenderSystem::RenderShadows(Scene &scene)
         break;
     }
 
-    // Expanded Shadow Volume to support high/distant objects
-    float orthoSize = 50.0f; // Covers a 100x100 area
+    float orthoSize = 50.0f;
     glm::mat4 lightProjection = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 1.0f, 150.0f);
     
-    // Move light camera further back to capture tall objects
     glm::vec3 lightPos = glm::vec3(0.0f) - glm::normalize(lightDir) * 75.0f; 
     
     glm::mat4 lightView = glm::lookAt(lightPos,
@@ -231,9 +229,9 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
         shader->setFloat(spotLightOut[i], light.outerCutOff);
 
         shader->setVec3(spotLightPos[i], trans.position);
-        shader->setVec3(spotLightAmb[i], light.ambient * light.intensity);   // Use stored ambient
-        shader->setVec3(spotLightDiff[i], light.diffuse * light.intensity);  // Use stored diffuse
-        shader->setVec3(spotLightSpec[i], light.specular * light.intensity); // Use stored specular
+        shader->setVec3(spotLightAmb[i], light.ambient * light.intensity);
+        shader->setVec3(spotLightDiff[i], light.diffuse * light.intensity);
+        shader->setVec3(spotLightSpec[i], light.specular * light.intensity);
         shader->setFloat(spotLightConst[i], light.constant);
         shader->setFloat(spotLightLin[i], light.linear);
         shader->setFloat(spotLightQuad[i], light.quadratic);
@@ -365,10 +363,8 @@ void RenderSystem::Render(Scene &scene)
             }
             currentShader->setFloat("material.opacity", mat.opacity);
 
-            // F7: Debug No Texture Logic
             if (m_DebugNoTexture)
             {
-                 // Create 1x1 white texture if needed
                  if (m_WhiteTextureID == 0)
                  {
                      glGenTextures(1, &m_WhiteTextureID);
@@ -379,47 +375,9 @@ void RenderSystem::Render(Scene &scene)
                      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                  }
                  
-                 // Bind white texture to all diff/spec units that might be used
                  glActiveTexture(GL_TEXTURE0);
                  glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
-                 // Assuming shader uses texture unit 0 for diffuse often, but it depends on material setup.
-                 // This is a rough override. Ideally shader should have "useTexture" uniform.
-                 // For now, overriding unit 0 might work if model uses unit 0.
-                 // Most Materials in this engine seem to use "material.diffuse" (vec3) OR texture.
-                 // If texture is bound, shader usually samples it. 
-                 // We rely on the fact that if we bind white texture, it just looks like the material color.
             } 
-            // Note: Standard rendering code binds textures here usually (if MaterialComponent stores texture IDs).
-            // But this RenderSystem implementation currently DOES NOT appear to bind Material textures? 
-            // It sets uniforms like "material.diffuse" (Color).
-            // Wait, does MeshRendererComponent have texture? 
-            // The code above (lines 271) checks: if (!renderer.model || !renderer.shader) continue;
-            // It calls renderer.model->Draw(*currentShader). 
-            // Model::Draw (Assimp) handles texture binding internally!
-            
-            // To override Assimp textures, we need to instruct Model::Draw or unbind/bind explicitly.
-            // Since Mode::Draw is reused, we can't easily change it.
-            // However, Assimp meshes check `if (textures.size() > 0)`.
-            // So we can unbind active texture? No, Draw() binds them.
-            
-            // Hack for F7: We can't easily control Model::Draw internal binding without changing Model class.
-            // BUT: We can create a "White Texture" and force binding it to unit 0, 1, 2... AFTER Model::Draw? No.
-            // BEFORE? Model::Draw overwrites it.
-            
-            // Correct approach: Pass `m_DebugNoTexture` boolean to `Model::Draw`.
-            // But that requires changing `Model` class and `Mesh` class.
-            
-            // Alternative: use a global uniform `debug_noTexture` in Shader.
-            // Check lines 300+: `currentShader` is bound.
-            currentShader->setBool("debug_noTexture", m_DebugNoTexture);
-            // This requires Shaders to support it. 
-            // User asked to "implement F7", implying full support.
-            // I should assume Shaders might NOT have it unless I add it.
-            // But adding it to ALL shaders is risky.
-            
-            // Let's assume standard PBR/Lit shaders.
-            // If I set `debug_noTexture` uniform, and shader doesn't have it, it's ignored (usually warning or nothing).
-            // This is the cleanest architecture way.
         }
         else
         {
@@ -435,7 +393,6 @@ void RenderSystem::Render(Scene &scene)
 
         if (m_DebugNoTexture)
         {
-             // Force bind white texture -> this assumes shader uses texture unit 0
              if (m_WhiteTextureID == 0)
              {
                  glGenTextures(1, &m_WhiteTextureID);

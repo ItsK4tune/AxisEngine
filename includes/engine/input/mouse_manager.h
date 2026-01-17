@@ -8,7 +8,9 @@ enum class CursorMode
     Normal,
     Hidden,
     Locked,
-    LockedCenter
+    LockedHidden,
+    LockedCenter,
+    LockedHiddenCenter
 };
 
 class MouseManager
@@ -19,6 +21,7 @@ public:
     void UpdatePosition(double xpos, double ypos);
     void UpdateScroll(double xoffset, double yoffset);
     void UpdateButton(int button, int action, int mods);
+    void Update(); // Polling update for clamping
     void EndFrame();
 
     void SetCursorMode(CursorMode mode);

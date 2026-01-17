@@ -21,6 +21,21 @@ void Scriptable::LoadScene(const std::string& path)
     m_App->GetSceneManager().QueueLoadScene(path);
 }
 
+void Scriptable::SetTimeScale(float scale)
+{
+    m_App->SetTimeScale(scale);
+}
+
+float Scriptable::GetTimeScale() const
+{
+    return m_App->GetTimeScale();
+}
+
+float Scriptable::GetRealDeltaTime() const
+{
+    return m_App->GetRealDeltaTime();
+}
+
 SoundManager& Scriptable::GetSoundManager()
 {
     return m_App->GetSoundManager();

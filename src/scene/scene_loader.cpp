@@ -147,7 +147,6 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             {
                 if (ss >> diffuseStr)
                 {
-                    // Successfully read both
                 }
             }
 
@@ -178,7 +177,6 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             {
                 if (ss >> diffStr)
                 {
-                    // Read both
                 }
             }
             l.ambient = l.color * ambStr;
@@ -209,7 +207,6 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             {
                 if (ss >> diffStr)
                 {
-                    // Read both
                 }
             }
             l.ambient = l.color * ambStr;
@@ -556,6 +553,45 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
                     }
                 }
             }
+        }
+    }
+
+    if (scene.GetActiveCamera() == entt::null)
+    {
+        std::cout << "[SceneLoader] WARNING: No Active Camera found in scene! Creating Default Spectator Camera." << std::endl;
+        
+        entt::entity camEntity = scene.createEntity();
+        loadedEntities.push_back(camEntity);
+        
+        scene.registry.emplace<InfoComponent>(camEntity, "Default Spectator Camera", "Default");
+        
+        auto& trans = scene.registry.emplace<TransformComponent>(camEntity);
+        trans.position = glm::vec3(0.0f, 2.0f, 10.0f);
+        
+        auto& cam = scene.registry.emplace<CameraComponent>(camEntity);
+        cam.isPrimary = true;
+        cam.fov = 45.0f;
+        cam.nearPlane = 0.1f;
+        cam.farPlane = 1000.0f;
+        cam.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        
+        std::string scriptName = "DefaultCameraController";
+        Scriptable* scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+        
+        if (scriptInstance)
+        {
+            auto& scriptComp = scene.registry.emplace<ScriptComponent>(camEntity);
+            scriptComp.instance = scriptInstance;
+            scriptComp.InstantiateScript = [scriptName](){ return ScriptRegistry::Instance().Create(scriptName); };
+            scriptComp.DestroyScript = [](ScriptComponent* nsc){ delete nsc->instance; nsc->instance = nullptr; };
+            
+            scriptComp.instance->Init(camEntity, &scene, app);
+            scriptComp.instance->OnCreate();
+            std::cout << "[SceneLoader] Attached 'DefaultCameraController' (Engine Fallback) to default camera." << std::endl;
+        }
+        else
+        {
+            std::cout << "[SceneLoader] 'DefaultCameraController' script not found! Make sure it is compiled." << std::endl;
         }
     }
 

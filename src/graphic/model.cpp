@@ -174,7 +174,6 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
                  data[1] = (unsigned char)(color.g * 255.0f);
                  data[2] = (unsigned char)(color.b * 255.0f);
                  data[3] = (unsigned char)(color.a * 255.0f);
-                 // ... Generate texture ...
                  unsigned int textureID;
                  glGenTextures(1, &textureID);
                  glBindTexture(GL_TEXTURE_2D, textureID);

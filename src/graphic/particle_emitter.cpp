@@ -113,9 +113,7 @@ void ParticleEmitter::Init(unsigned int maxParticles) {
     // Ah, previous file content: `layout (location = 1) in vec2 aTexCoords;`
     // I changed it to `layout (location = 1) in vec4 aInstanceColor;` -> ERRROR logic.
     // I should have kept aTexCoords.
-    // Let's assume I made a mistake in previous Edit and fix it here or there.
     // FIX: I will re-assign locations in Init and VS later if needed.
-    // Let's assume for now:
     // 0: aPos
     // 1: aTexCoords (Must be restored in VS or moved)
     // 2: aInstanceColor

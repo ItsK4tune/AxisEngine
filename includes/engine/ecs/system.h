@@ -96,7 +96,7 @@ class Application;
 class ScriptableSystem
 {
 public:
-    void Update(Scene &scene, float dt, Application *app);
+    void Update(Scene &scene, float dt, float unscaledDt, Application *app);
     void SetEnabled(bool enable) { m_Enabled = enable; }
 private:
     bool m_Enabled = true;

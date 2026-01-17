@@ -40,6 +40,7 @@ The `Scriptable` class defines several virtual methods that track the lifecycle 
 *   **`OnCreate()`**: Called once when the script instance is first created and attached to the entity. Use this for initialization.
 *   **`OnEnable()`**: Called when the script becomes enabled (initially true, or after `SetEnabled(true)`).
 *   **`OnUpdate(float dt)`**: Called every frame, but ONLY if `IsEnabled()` is true.
+    *   *Note*: By default, scripts stop when the game is paused (F11). Call `SetRunWhenPaused(true)` in `OnCreate` to override this (uses `GetRealDeltaTime()` or unscaled dt).
 *   **`OnDisable()`**: Called when the script becomes disabled (`SetEnabled(false)`).
 *   **`OnDestroy()`**: Called when the script is removed or the entity is destroyed.
 
@@ -92,6 +93,7 @@ Inside a script, you have direct access to helper methods:
 *   **Input**: `GetInputManager()`, `GetKeyboard()`, `GetMouse()`, `GetAction()`
 *   **Audio**: `GetSoundManager()`
 *   **Resources**: `GetResourceManager()`
+*   **Time**: `GetTimeScale()`, `SetTimeScale(float)`, `GetRealDeltaTime()` (Unscaled time)
 
 Basic pointers are also available if needed:
 *   `m_Entity`: The ID of the entity this script is attached to.

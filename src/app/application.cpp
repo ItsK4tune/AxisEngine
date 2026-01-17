@@ -84,7 +84,6 @@ bool Application::Init()
     physicsWorld = std::make_unique<PhysicsWorld>();
     appHandler = std::make_unique<AppHandler>(window);
 
-    // Initialize Managers first
     resourceManager = std::make_unique<ResourceManager>();
     soundManager = std::make_unique<SoundManager>();
     sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager, this);
@@ -104,11 +103,9 @@ bool Application::Init()
     renderSystem.InitShadows(*resourceManager);
     renderSystem.SetEnableShadows(config.shadowsEnabled);
 
-    // Load Shaders AFTER ResourceManager is valid
     resourceManager->LoadShader("debugLine", "resources/shaders/debug_line.vs", "resources/shaders/debug_line.fs");
 
 #ifdef ENABLE_DEBUG_SYSTEM
-    // Initialize Debug System LAST so all other systems are ready
     debugSystem = std::make_unique<DebugSystem>();
     debugSystem->Init(this);
 #endif
@@ -121,11 +118,12 @@ void Application::Run()
     while (!glfwWindowShouldClose(monitorManager.GetWindow()))
     {
         float currentFrame = (float)glfwGetTime();
-        float realDeltaTime = currentFrame - lastFrame;
+        realDeltaTime = currentFrame - lastFrame;
         deltaTime = realDeltaTime; 
         lastFrame = currentFrame;
 
         glfwPollEvents();
+        appHandler->GetMouse().Update();
 
         if (m_IsPaused)
         {
@@ -151,32 +149,28 @@ void Application::Run()
 
         while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
         {
-            physicsSystem.Update(scene, *physicsWorld, m_FixedDeltaTime); // Logic/Physics Step (Internal check enabled)
+            physicsSystem.Update(scene, *physicsWorld, m_FixedDeltaTime);
             
-            // State Fixed Update
             m_StateMachine.FixedUpdate(m_FixedDeltaTime);
 
             m_Accumulator -= m_FixedDeltaTime;
             physicsSteps++;
         }
         
-        // Prevent spiral of death discard accumulated time if we fell too far behind
         if (m_Accumulator > m_FixedDeltaTime) {
-             m_Accumulator = 0.0f; 
+            m_Accumulator = 0.0f; 
         }
 
-        // Logic Update (Internal check enabled)
-        scriptSystem.Update(scene, deltaTime, this);
+        scriptSystem.Update(scene, deltaTime, realDeltaTime, this);
         animationSystem.Update(scene, deltaTime);
         videoSystem.Update(scene, *resourceManager, deltaTime);
         uiInteractSystem.Update(scene, deltaTime, appHandler->GetMouse());
         audioSystem.Update(scene, *soundManager);
         particleSystem.Update(scene, deltaTime);
 
-        m_StateMachine.Update(deltaTime); // State specific logic
+        m_StateMachine.Update(deltaTime);
         appHandler->GetMouse().EndFrame();
         
-        // Rendering (Internal check enabled)
         renderSystem.RenderShadows(scene);
         
         glViewport(0, 0, monitorManager.GetWidth(), monitorManager.GetHeight());
@@ -184,12 +178,10 @@ void Application::Run()
         postProcess.BeginCapture();
 
         skyboxRenderSystem.Render(scene); 
-        renderSystem.Render(scene);       // Main Geometry
+        renderSystem.Render(scene);
         
-        // Render Particles (Before UI, After Geometry)
         particleSystem.Render(scene, *resourceManager);
 
-        // State Render (deprecated but kept for legacy)
         m_StateMachine.Render(); 
 
         uiRenderSystem.Render(scene, (float)monitorManager.GetWidth(), (float)monitorManager.GetHeight());

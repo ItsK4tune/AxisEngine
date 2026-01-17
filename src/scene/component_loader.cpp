@@ -37,7 +37,6 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, std::strin
     a.animator->SetUpdateRate(rate);
 }
 
-// ... Lights ...
 void ComponentLoader::LoadLightDir(Scene& scene, entt::entity entity, std::stringstream& ss)
 {
     float dx, dy, dz, r, g, b, i;
@@ -54,7 +53,6 @@ void ComponentLoader::LoadLightDir(Scene& scene, entt::entity entity, std::strin
     {
         if (ss >> diffuseStr)
         {
-            // Successfully read both
         }
     }
 
@@ -86,7 +84,6 @@ void ComponentLoader::LoadLightPoint(Scene& scene, entt::entity entity, std::str
     {
         if (ss >> diffStr)
         {
-            // Read both
         }
     }
     l.ambient = l.color * ambStr;
@@ -118,7 +115,6 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, std::stri
     {
         if (ss >> diffStr)
         {
-            // Read both
         }
     }
     l.ambient = l.color * ambStr;
@@ -126,7 +122,6 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, std::stri
     l.specular = glm::vec3(1.0f);
 }
 
-// ... UI ...
 void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, std::stringstream& ss)
 {
     float x, y, w, h;

@@ -74,6 +74,7 @@ public:
     // Time Control
     void SetTimeScale(float scale) { m_TimeScale = scale; }
     float GetTimeScale() const { return m_TimeScale; }
+    float GetRealDeltaTime() const { return realDeltaTime; }
     
     void SetPaused(bool paused) { m_IsPaused = paused; }
     bool IsPaused() const { return m_IsPaused; }
@@ -85,6 +86,7 @@ private:
     StateMachine m_StateMachine;
 
     float deltaTime = 0.0f;
+    float realDeltaTime = 0.0f;
     float lastFrame = 0.0f;
     float m_Accumulator = 0.0f;
     float m_FixedDeltaTime = 1.0f / 60.0f;

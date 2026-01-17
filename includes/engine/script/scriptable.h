@@ -37,6 +37,9 @@ public:
 
     bool IsEnabled() const { return m_Enabled; }
 
+    void SetRunWhenPaused(bool run) { m_RunWhenPaused = run; }
+    bool CanRunWhenPaused() const { return m_RunWhenPaused; }
+
     // Input Callbacks (Mouse)
     virtual void OnLeftClick() {}
     virtual void OnLeftHold(float duration) {}
@@ -88,6 +91,11 @@ public:
 
     // Scene Helper Methods
     void LoadScene(const std::string& path);
+
+    // Time API
+    void SetTimeScale(float scale);
+    float GetTimeScale() const;
+    float GetRealDeltaTime() const;
 
     // Manager Accessors
     class SoundManager& GetSoundManager();
@@ -143,6 +151,7 @@ protected:
 
 private:
     bool m_Enabled = true;
+    bool m_RunWhenPaused = false;
 
     // Internal Input State
     bool m_IsHovered = false;

@@ -1,4 +1,6 @@
 #include <debug/debug_system.h>
+#include <script/script_registry.h>
+#include <script/default_camera_controller.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -25,7 +27,7 @@ void DebugSystem::Init(Application* app)
     // Ensure UI Quad exists for Debug
     if (!res.GetUIModel("debug_sys_model"))
     {
-        res.CreateUIModel("debug_sys_model", UIType::Text); // Optimized for dynamic text
+        res.CreateUIModel("debug_sys_model", UIType::Text);
     }
 
     m_DebugFont = res.GetFont("debug_font");
@@ -95,31 +97,66 @@ void DebugSystem::OnUpdate(float dt)
 
     ProcessKey(keyboard, GLFW_KEY_F10, m_F10Pressed, [this](){ ToggleStatsOverlay(); });
 
-    // F11 Pause
-    ProcessKey(keyboard, GLFW_KEY_F11, m_F11Pressed, [this](){
-        bool paused = !m_App->IsPaused();
-        m_App->SetPaused(paused);
-        std::cout << "\n========== Pause Game (F11) ==========" << std::endl;
-        std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << std::endl;
-        std::cout << "======================================" << std::endl;
+    // F11 Pause / Debug Camera
+    ProcessKey(keyboard, GLFW_KEY_F11, m_F11Pressed, [this, &keyboard](){
+        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        if (shift)
+        {
+            ToggleDebugCamera();
+        }
+        else
+        {
+            bool paused = !m_App->IsPaused();
+            m_App->SetPaused(paused);
+            std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
+            std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << std::endl;
+            std::cout << "======================================" << std::endl;
+        }
     });
 
-    // F12 Slow Mo
-    ProcessKey(keyboard, GLFW_KEY_F12, m_F12Pressed, [this](){
-        float current = m_App->GetTimeScale();
-        float next = 1.0f;
-        // Cycle: 0.25 -> 0.5 -> 1.0 -> 1.5 -> 2.0 -> 0.25
-        if (abs(current - 0.25f) < 0.01f) next = 0.5f;
-        else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
-        else if (abs(current - 1.0f) < 0.01f) next = 1.5f;
-        else if (abs(current - 1.5f) < 0.01f) next = 2.0f;
-        else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
-        else next = 1.0f;
+    // F12 Slow Mo / Cursor Mode
+    ProcessKey(keyboard, GLFW_KEY_F12, m_F12Pressed, [this, &keyboard](){
+        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         
-        m_App->SetTimeScale(next);
-        std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
-        std::cout << "[Debug] Time Scale: " << next << "x" << std::endl;
-        std::cout << "======================================" << std::endl;
+        if (shift)
+        {
+            auto& mouse = m_App->GetMouse();
+            CursorMode current = mouse.GetCursorMode();
+            CursorMode next = CursorMode::Normal;
+            std::string modeName = "Normal";
+
+            switch (current)
+            {
+            case CursorMode::Normal: next = CursorMode::Hidden; modeName = "Hidden"; break;
+            case CursorMode::Hidden: next = CursorMode::Locked; modeName = "Locked"; break;
+            case CursorMode::Locked: next = CursorMode::LockedHidden; modeName = "LockedHidden"; break;
+            case CursorMode::LockedHidden: next = CursorMode::LockedCenter; modeName = "LockedCenter"; break;
+            case CursorMode::LockedCenter: next = CursorMode::LockedHiddenCenter; modeName = "LockedHiddenCenter"; break;
+            case CursorMode::LockedHiddenCenter: next = CursorMode::Normal; modeName = "Normal"; break;
+            }
+
+            mouse.SetCursorMode(next);
+            std::cout << "\n========== Cursor Mode (Shift+F12) ==========" << std::endl;
+            std::cout << "[Debug] Cursor Mode: " << modeName << std::endl;
+            std::cout << "============================================" << std::endl;
+        }
+        else
+        {
+            float current = m_App->GetTimeScale();
+            float next = 1.0f;
+            // Cycle: 0.25 -> 0.5 -> 1.0 -> 1.5 -> 2.0 -> 0.25
+            if (abs(current - 0.25f) < 0.01f) next = 0.5f;
+            else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
+            else if (abs(current - 1.0f) < 0.01f) next = 1.5f;
+            else if (abs(current - 1.5f) < 0.01f) next = 2.0f;
+            else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
+            else next = 1.0f;
+            
+            m_App->SetTimeScale(next);
+            std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
+            std::cout << "[Debug] Time Scale: " << next << "x" << std::endl;
+            std::cout << "======================================" << std::endl;
+        }
     });
     
     // FPS Calculation (Realtime, unaware of pause)
@@ -133,7 +170,6 @@ void DebugSystem::OnUpdate(float dt)
         m_FrameCount = 0;
     }
 }
-//...
 void DebugSystem::LogDevices()
 {
     std::cout << "\n========== DEVICE DEBUG INFO (F2) ==========" << std::endl;
@@ -157,11 +193,6 @@ void DebugSystem::LogDevices()
     logHelper("Monitors", mons.GetAllDevices(), activeMonId); 
 
     // Inputs
-    // InputManager treats all connected devices as active usually. 
-    // We mark "Default" ones (keyboard/mouse) as active if they are present.
-    // Or we just rely on isDefault flag which logHelper prints?
-    // User wants [*] for active. "Primary Keyboard" is active.
-    // We'll trust "Default" means "Primary Active".
     auto& inputs = m_App->GetInputManager();
     auto allInputs = inputs.GetAllDevices();
     std::cout << "Inputs:" << std::endl;
@@ -179,7 +210,6 @@ void DebugSystem::LogDevices()
     std::cout << "============================================" << std::endl;
 }
 
-// ... 
 
 void DebugSystem::LogSceneGraph()
 {
@@ -327,20 +357,23 @@ void DebugSystem::ToggleStatsOverlay()
 
 void DebugSystem::LogControls()
 {
-    std::cout << "\n========== DEBUG CONTROLS (F1) ==========" << std::endl;
-    std::cout << "  F1 : Show This Help" << std::endl;
-    std::cout << "  F2 : Log Devices" << std::endl;
-    std::cout << "  F3 : Log Performance Stats" << std::endl;
-    std::cout << "  F4 : Log Detailed Entity Stats" << std::endl;
-    std::cout << "  F5 : Log Scene Graph" << std::endl;
-    std::cout << "  F6 : Toggle Wireframe Mode" << std::endl;
-    std::cout << "  F7 : Toggle No-Texture Mode (Shift+F7: Toggle Shadows)" << std::endl;
-    std::cout << "  F8 : Toggle Physics Debug Draw" << std::endl;
-    std::cout << "  F9 : Toggle UI" << std::endl;
-    std::cout << "  F10: Toggle Stats Overlay" << std::endl;
-    std::cout << "  F11: Pause/Resume Game" << std::endl;
-    std::cout << "  F12: Toggle Slow Motion" << std::endl;
-    std::cout << "=========================================" << std::endl;
+    std::cout << "\n========== CONTROLS (F1) ==========" << std::endl;
+    std::cout << "F1        : Show Controls" << std::endl;
+    std::cout << "F2        : Log Devices (Monitors, Audio, Input)" << std::endl;
+    std::cout << "F3        : Log Performance Stats" << std::endl;
+    std::cout << "F4        : Log Entity Stats" << std::endl;
+    std::cout << "F5        : Dump Scene Graph" << std::endl;
+    std::cout << "F6        : Toggle Wireframe Mode" << std::endl;
+    std::cout << "F7        : Toggle No-Texture Mode" << std::endl;
+    std::cout << "Shift+F7  : Toggle Shadows" << std::endl;
+    std::cout << "F8        : Toggle Physics Debug" << std::endl;
+    std::cout << "F9        : Toggle UI System" << std::endl;
+    std::cout << "F10       : Toggle Stats Overlay" << std::endl;
+    std::cout << "F11       : Pause Game" << std::endl;
+    std::cout << "Shift+F11 : Toggle Debug Camera (Free Cam)" << std::endl;
+    std::cout << "F12       : Cycle Time Scale" << std::endl;
+    std::cout << "Shift+F12 : Cycle Cursor Mode" << std::endl;
+    std::cout << "===================================" << std::endl;
 }
 
 void DebugSystem::ProcessKey(KeyboardManager& keyboard, int key, bool& pressedState, std::function<void()> action)
@@ -381,4 +414,115 @@ void DebugSystem::LogEntityStats()
     std::cout << "================================================" << std::endl;
 }
 
+
+void DebugSystem::ToggleDebugCamera()
+{
+    auto& scene = m_App->GetScene();
+    auto& registry = scene.registry;
+
+    if (m_IsDebugCameraActive)
+    {
+        // Switch BACK to user camera
+        // Disable debug camera
+        if (registry.valid(m_DebugCamera) && registry.all_of<CameraComponent>(m_DebugCamera))
+        {
+            registry.get<CameraComponent>(m_DebugCamera).isPrimary = false;
+        }
+
+        // Re-enable user camera
+        if (registry.valid(m_LastActiveCamera) && registry.all_of<CameraComponent>(m_LastActiveCamera))
+        {
+            registry.get<CameraComponent>(m_LastActiveCamera).isPrimary = true;
+            std::cout << "[Debug] Switched to User Camera (Entity " << (uint32_t)m_LastActiveCamera << ")" << std::endl;
+        }
+        else
+        {
+            // If user camera is gone, try to find ANY camera
+            entt::entity fallback = scene.GetActiveCamera();
+            if (fallback == entt::null)
+            {
+                // Iterate to find one
+                 auto view = registry.view<CameraComponent>();
+                 for(auto entity : view) {
+                     if (entity != m_DebugCamera) {
+                         view.get<CameraComponent>(entity).isPrimary = true;
+                         std::cout << "[Debug] Original camera invalid. Switched to fallback camera (Entity " << (uint32_t)entity << ")" << std::endl;
+                         break;
+                     }
+                 }
+            }
+        }
+        
+        m_IsDebugCameraActive = false;
+        std::cout << "========== Debug Camera: OFF ==========" << std::endl;
+    }
+    else
+    {
+        // Switch TO Debug Camera
+        m_LastActiveCamera = scene.GetActiveCamera(); // Save current valid camera
+
+        // Disable current camera
+        if (registry.valid(m_LastActiveCamera))
+        {
+            if(registry.all_of<CameraComponent>(m_LastActiveCamera))
+                registry.get<CameraComponent>(m_LastActiveCamera).isPrimary = false;
+        }
+        
+        // Ensure Debug Camera exists
+        if (!registry.valid(m_DebugCamera))
+        {
+            m_DebugCamera = scene.createEntity();
+            registry.emplace<InfoComponent>(m_DebugCamera, "Debug Camera", "Debug");
+            
+            auto& trans = registry.emplace<TransformComponent>(m_DebugCamera);
+            // Copy position from last camera if possible, or use default
+            if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera)) {
+                trans.position = registry.get<TransformComponent>(m_LastActiveCamera).position;
+                // Offset slightly to avoid Z-fighting or clipping if exact same pos? Not really needed for camera.
+            } else {
+                trans.position = glm::vec3(0.0f, 5.0f, 10.0f);
+            }
+
+            auto& cam = registry.emplace<CameraComponent>(m_DebugCamera);
+            cam.isPrimary = true;
+            cam.fov = 45.0f;
+            cam.nearPlane = 0.1f;
+            cam.farPlane = 1000.0f;
+            
+            // Script
+            std::string scriptName = "DefaultCameraController";
+            Scriptable* scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+            if (scriptInstance)
+            {
+                 auto& scriptComp = registry.emplace<ScriptComponent>(m_DebugCamera);
+                 scriptComp.instance = scriptInstance;
+                 scriptComp.InstantiateScript = [scriptName](){ return ScriptRegistry::Instance().Create(scriptName); };
+                 scriptComp.DestroyScript = [](ScriptComponent* nsc){ delete nsc->instance; nsc->instance = nullptr; };
+                 scriptComp.instance->Init(m_DebugCamera, &scene, m_App);
+                 scriptComp.instance->OnCreate();
+            }
+        }
+        else
+        {
+             // Enable existing debug camera
+             if (registry.all_of<CameraComponent>(m_DebugCamera)) {
+                 registry.get<CameraComponent>(m_DebugCamera).isPrimary = true;
+                 
+                 // Smooth transition: Copy position from User Camera
+                 if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera)) {
+                    auto& userTrans = registry.get<TransformComponent>(m_LastActiveCamera);
+                    auto& debugTrans = registry.get<TransformComponent>(m_DebugCamera);
+                    debugTrans.position = userTrans.position;
+                    debugTrans.rotation = userTrans.rotation;
+                 }
+             }
+        }
+
+        m_IsDebugCameraActive = true;
+        std::cout << "========== Debug Camera: ON ==========" << std::endl;
+        std::cout << "[Debug] Switched to Free Cam (Shift+F11)" << std::endl;
+    }
+}
+
 #endif
+

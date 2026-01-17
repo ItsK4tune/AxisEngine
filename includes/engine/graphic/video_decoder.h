@@ -58,7 +58,6 @@ private:
     SwsContext* m_SwsCtx = nullptr;
     int m_VideoStreamIndex = -1;
 
-    // Texture
     unsigned int m_TextureID = 0;
     int m_Width = 0;
     int m_Height = 0;

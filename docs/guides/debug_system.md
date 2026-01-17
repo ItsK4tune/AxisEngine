@@ -13,12 +13,14 @@ The `DebugSystem` provides real-time introspection, control, and diagnostics for
 | **F5** | **Scene Dump** | Logs the hierarchy of the current Scene (Scene Graph). |
 | **F6** | **Wireframe Mode** | Toggles between Fill (Solid) and Line (Wireframe) rendering modes. |
 | **F7** | **No Texture Mode** | Toggles "Clay Mode" (White textures) for all objects. Useful for checking lighting/geometry. |
-| **Shift+F7** | **Toggle Shadows** | Globally enables or disables shadow mapping. |
 | **F8** | **Physics Debug** | Toggles visual debugging of physics colliders (Wireframes). |
 | **F9** | **Toggle UI** | Hides or Shows the UI layer (2D Overlay). |
 | **F10** | **Stats Overlay** | Toggles an on-screen overlay showing FPS and Entity Count. |
 | **F11** | **Pause Game** | Pauses logic and physics updates. Rendering continues (useful for inspecting visual states). |
 | **F12** | **Time Scale** | Cycles time dilation: `0.25x` -> `0.5x` -> `1.0x` -> `1.5x` -> `2.0x`. |
+| **Shift+F7** | **Toggle Shadows** | Globally enables or disables shadow mapping. |
+| **Shift+F11** | **Debug/Free Camera** | Toggles **Debug/Free Camera** (WASD noclip). |
+| **Shift+F12** | **Cursor Mode** | Cycles **Cursor Mode** (Normal -> Hidden -> Locked -> LockedHidden -> LockedCenter -> LockedHiddenCenter). |
 
 ## Features Detail
 

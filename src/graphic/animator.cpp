@@ -20,7 +20,6 @@ Animator::Animator(Animation *animation)
 	}
 }
 
-// ... (Previous includes)
 
 // Helper to construct matrix from TRS
 static glm::mat4 ComposeTransform(const glm::vec3& t, const glm::quat& r, const glm::vec3& s) {
@@ -187,7 +186,6 @@ void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
             nodeTransform = boneA->GetLocalTransform();
         }
     }
-    // ----------------------
 
     glm::mat4 globalTransformation = parentTransform * nodeTransform;
 

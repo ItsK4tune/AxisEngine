@@ -35,3 +35,15 @@ Scripts inherit helper methods that map string actions to inputs (defined in `se
 *   `bool GetAction(const std::string& name)`
 *   `bool GetActionDown(const std::string& name)`
 *   `bool GetActionUp(const std::string& name)`
+
+## Cursor Modes
+Access: `m_App->GetAppHandler().GetMouse().SetCursorMode(CursorMode mode)`
+
+| Mode | Description |
+| :--- | :--- |
+| `CursorMode::Normal` | Visible, free movement (System Default). |
+| `CursorMode::Hidden` | Hidden, free movement. |
+| `CursorMode::Locked` | Visible, constrained within window bounds. |
+| `CursorMode::LockedHidden` | Hidden, constrained within window bounds. |
+| `CursorMode::LockedCenter` | Visible, locked to window center. |
+| `CursorMode::LockedHiddenCenter` | Hidden, locked to window center (FPS Mode). |
