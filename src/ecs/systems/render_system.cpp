@@ -41,8 +41,14 @@ void RenderSystem::RenderShadows(Scene &scene)
         break;
     }
 
-    glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 50.0f);
-    glm::mat4 lightView = glm::lookAt(glm::vec3(10.0f) * -glm::normalize(lightDir),
+    // Expanded Shadow Volume to support high/distant objects
+    float orthoSize = 50.0f; // Covers a 100x100 area
+    glm::mat4 lightProjection = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 1.0f, 150.0f);
+    
+    // Move light camera further back to capture tall objects
+    glm::vec3 lightPos = glm::vec3(0.0f) - glm::normalize(lightDir) * 75.0f; 
+    
+    glm::mat4 lightView = glm::lookAt(lightPos,
                                       glm::vec3(0.0f),
                                       glm::vec3(0.0f, 1.0f, 0.0f));
     m_LightSpaceMatrixDir = lightProjection * lightView;
