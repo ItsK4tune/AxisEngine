@@ -1,6 +1,6 @@
-#include <core/application.h>
-#include <core/scriptable.h>
-#include <core/script_registry.h>
+#include <app/application.h>
+#include <script/scriptable.h>
+#include <script/script_registry.h>
 #include <iostream>
 #include <glm/gtx/compatibility.hpp> // For glm::lerp if needed, or just standard mix
 

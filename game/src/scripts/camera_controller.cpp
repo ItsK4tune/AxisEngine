@@ -1,7 +1,7 @@
 #include <scripts/camera_controller.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <core/application.h>
-#include <core/script_registry.h>
+#include <app/application.h>
+#include <script/script_registry.h>
 
 REGISTER_SCRIPT(CameraController)
 

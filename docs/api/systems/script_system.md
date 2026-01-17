@@ -8,6 +8,7 @@ Manages the lifecycle of C++ scripts attached to entities.
 *   **Instantiation**: Creates script instances (calls factory) if they don't exist.
 *   **Initialization**: Calls `Init()` and `OnCreate()` on new scripts.
 *   **Updates**: Calls `OnUpdate(dt)` on all enabled scripts every frame.
+*   **Input Handling**: Delegates input processing (hover, clicks, bindings) to `ScriptInputHandler`.
 *   **Cleanup**: `OnDestroy` is handled during component removal or system shutdown.
 
 ## Public API

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/scene.h>
+#include <scene/scene.h>
 #include <physic/physic_world.h>
 #include <sstream>
 #include <fstream>

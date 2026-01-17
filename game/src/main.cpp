@@ -1,4 +1,4 @@
-#include <core/application.h>
+#include <app/application.h>
 
 #include <states/game_state.h>
 #include <iostream>

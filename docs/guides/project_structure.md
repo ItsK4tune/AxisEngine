@@ -18,19 +18,30 @@ GameEngine/
 ├── includes/        # Engine & Library Headers
 │   ├── bullet/      # Physics Library
 │   ├── engine/      # Core Engine Headers
+│   │   ├── app/     # App Lifecycle & Windowing
+│   │   ├── interface/# Interfaces (IDeviceManager)
+│   │   ├── input/   # Input Management
+│   │   ├── scene/   # Scene Graph & Loading
+│   │   ├── script/  # Scripting Base
+│   │   └── ...      # Other modules (audio, resource, etc.)
 │   └── entt/        # ECS Library
 ├── lib/             # Static Libraries (.lib)
 ├── resources/       # Game Assets
-│   ├── audio/       # Sound files
-│   ├── fonts/       # TTF Fonts
-│   ├── models/      # 3D Models (FBX, OBJ)
-│   ├── shaders/     # GLSL Shaders
-│   └── textures/    # Image files
 ├── scenes/          # Scene Definitions (.scene)
 └── src/             # Core Engine Source Code
-    ├── core/        # Core systems
-    ├── ecs/         # Component systems
+    ├── app/         # Application, Window, Config
+    ├── audio/       # Sound System
+    ├── debug/       # Debug System
+    ├── ecs/         # ECS Systems & Components
+    ├── event/       # Event System
     ├── graphic/     # Rendering modules
+    ├── input/       # Input Managers (Mouse, Keyboard)
+    ├── physic/      # Physics Wrapper
+    ├── resource/    # Resource Manager
+    ├── scene/       # Scene Management
+    ├── script/      # Scripting Implementation
+    ├── state/       # State Machine
+    ├── third_party/ # Vendor Code (glad, stb_image)
     └── utils/       # Helpers
 ```
 

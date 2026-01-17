@@ -6,7 +6,7 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <core/resource_manager.h>
+#include <resource/resource_manager.h>
 
 void RenderSystem::InitShadows(ResourceManager &res)
 {

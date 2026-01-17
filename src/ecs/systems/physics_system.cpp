@@ -1,5 +1,5 @@
 #include <ecs/system.h>
-#include <core/scriptable.h>
+#include <script/scriptable.h>
 #include <physic/physic_world.h>
 #include <iostream>
 #include <glm/gtx/matrix_decompose.hpp>

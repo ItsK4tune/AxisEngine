@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/scriptable.h>
+#include <script/scriptable.h>
 
 class CameraController : public Scriptable
 {

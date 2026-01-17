@@ -20,7 +20,7 @@ LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
 LOAD_STATIC_MODEL dummyModel resources/objects/dummy/dummy.fbx
 
 NEW_ENTITY MainCamera
-TRANSFORM 0.0 2.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
+TRANSFORM 0.0 4.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
 CAMERA 1 90.0 -90.0 0.0 0.1 1000.0 
 SCRIPT CameraController
 

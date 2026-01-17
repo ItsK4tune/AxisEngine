@@ -3,15 +3,15 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include <core/scene.h>
+#include <scene/scene.h>
 #include <ecs/component.h>
 #include <utils/bullet_glm_helpers.h>
 #include <graphic/shader.h>
 #include <graphic/shadow.h>
-#include <core/keyboard_manager.h>
-#include <core/mouse_manager.h>
-#include <core/sound_manager.h>
-#include <core/resource_manager.h>
+#include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
+#include <audio/sound_manager.h>
+#include <resource/resource_manager.h>
 #include <set>
 #include <utility>
 

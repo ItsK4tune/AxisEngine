@@ -1,7 +1,7 @@
 #pragma once
 
-#include <core/state.h>
-#include <core/application.h>
+#include <state/state.h>
+#include <app/application.h>
 
 class GameState : public State
 {
