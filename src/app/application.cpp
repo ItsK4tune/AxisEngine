@@ -121,21 +121,35 @@ void Application::Run()
     while (!glfwWindowShouldClose(monitorManager.GetWindow()))
     {
         float currentFrame = (float)glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
+        float realDeltaTime = currentFrame - lastFrame;
+        deltaTime = realDeltaTime; 
         lastFrame = currentFrame;
 
         glfwPollEvents();
+
+        if (m_IsPaused)
+        {
+            deltaTime = 0.0f;
+        }
+        else
+        {
+            deltaTime *= m_TimeScale;
+        }
 
         if (resourceManager) resourceManager->Update();
 
         appHandler->ProcessInput(monitorManager.GetWindow());
 
 #ifdef ENABLE_DEBUG_SYSTEM
-        if (debugSystem) debugSystem->OnUpdate(deltaTime);
+        if (debugSystem) debugSystem->OnUpdate(realDeltaTime); 
 #endif
 
         m_Accumulator += deltaTime;
-        while (m_Accumulator >= m_FixedDeltaTime)
+        
+        int physicsSteps = 0;
+        const int MAX_PHYSICS_STEPS = 5;
+
+        while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
         {
             physicsSystem.Update(scene, *physicsWorld, m_FixedDeltaTime); // Logic/Physics Step (Internal check enabled)
             
@@ -143,6 +157,12 @@ void Application::Run()
             m_StateMachine.FixedUpdate(m_FixedDeltaTime);
 
             m_Accumulator -= m_FixedDeltaTime;
+            physicsSteps++;
+        }
+        
+        // Prevent spiral of death discard accumulated time if we fell too far behind
+        if (m_Accumulator > m_FixedDeltaTime) {
+             m_Accumulator = 0.0f; 
         }
 
         // Logic Update (Internal check enabled)

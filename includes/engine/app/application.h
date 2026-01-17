@@ -71,6 +71,13 @@ public:
     void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
 
+    // Time Control
+    void SetTimeScale(float scale) { m_TimeScale = scale; }
+    float GetTimeScale() const { return m_TimeScale; }
+    
+    void SetPaused(bool paused) { m_IsPaused = paused; }
+    bool IsPaused() const { return m_IsPaused; }
+
 private:
     MonitorManager monitorManager;
     std::unique_ptr<AppHandler> appHandler;
@@ -81,6 +88,10 @@ private:
     float lastFrame = 0.0f;
     float m_Accumulator = 0.0f;
     float m_FixedDeltaTime = 1.0f / 60.0f;
+
+    // Time Control state
+    float m_TimeScale = 1.0f;
+    bool m_IsPaused = false;
 
     std::unique_ptr<PhysicsWorld> physicsWorld;
     Scene scene;

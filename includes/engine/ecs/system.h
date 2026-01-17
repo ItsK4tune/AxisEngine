@@ -48,6 +48,7 @@ public:
     void Shutdown();
     void RenderShadows(Scene &scene);
     void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
+    bool IsShadowsEnabled() const { return m_EnableShadows; }
 
     void SetFaceCulling(bool enabled, int mode = GL_BACK);
     void SetDepthTest(bool enabled, int func = GL_LESS);
@@ -56,6 +57,7 @@ public:
     int GetRenderedCount() const { return m_RenderedCount; }
 
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
 
 private:
     void UploadLightData(Scene &scene, Shader *shader);
@@ -67,6 +69,8 @@ private:
     float m_FarPlanePoint = 25.0f;
     bool m_EnableShadows = true;
     bool m_Enabled = true;
+    bool m_DebugNoTexture = false;
+    unsigned int m_WhiteTextureID = 0; // Simple 1x1 white texture
 };
 
 class UIInteractSystem

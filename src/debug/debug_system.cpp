@@ -47,62 +47,82 @@ void DebugSystem::OnUpdate(float dt)
 
     auto& keyboard = m_App->GetKeyboard();
 
-    // F1: Physics Debug
-    if (keyboard.GetKey(GLFW_KEY_F1))
-    {
-        if (!m_F1Pressed)
-        {
-            TogglePhysicsDebug();
-            m_F1Pressed = true;
-        }
-    }
-    else { m_F1Pressed = false; }
+    ProcessKey(keyboard, GLFW_KEY_F1, m_F1Pressed, [this](){ LogControls(); });
+    ProcessKey(keyboard, GLFW_KEY_F2, m_F2Pressed, [this](){ LogDevices(); });
+    ProcessKey(keyboard, GLFW_KEY_F3, m_F3Pressed, [this](){ LogStats(); });
+    ProcessKey(keyboard, GLFW_KEY_F4, m_F4Pressed, [this](){ LogEntityStats(); });
+    ProcessKey(keyboard, GLFW_KEY_F5, m_F5Pressed, [this](){ LogSceneGraph(); });
 
-    // F2: Log Devices
-    if (keyboard.GetKey(GLFW_KEY_F2))
-    {
-        if (!m_F2Pressed)
-        {
-            LogDevices();
-            m_F2Pressed = true;
-        }
-    }
-    else { m_F2Pressed = false; }
+    // F6 Wireframe
+    ProcessKey(keyboard, GLFW_KEY_F6, m_F6Pressed, [this](){
+        m_WireframeMode = !m_WireframeMode;
+        if (m_WireframeMode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        std::cout << "\n========== Wireframe Mode (F6) ==========" << std::endl;
+        std::cout << "[Debug] Wireframe: " << (m_WireframeMode ? "ON" : "OFF") << std::endl;
+        std::cout << "=========================================" << std::endl;
+    });
 
-    // F3: Log Stats
-    if (keyboard.GetKey(GLFW_KEY_F3))
-    {
-        if (!m_F3Pressed)
-        {
-            LogStats();
-            m_F3Pressed = true;
-        }
-    }
-    else { m_F3Pressed = false; }
+    // F7 No Texture / Shadows
+    ProcessKey(keyboard, GLFW_KEY_F7, m_F7Pressed, [this, &keyboard](){
+         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+         if (shift) {
+             bool shadow = !m_App->GetRenderSystem().IsShadowsEnabled();
+             m_App->GetRenderSystem().SetEnableShadows(shadow);
+             std::cout << "\n========== Shadow Toggle (Shift+F7) ==========" << std::endl;
+             std::cout << "[Debug] Shadows: " << (shadow ? "ON" : "OFF") << std::endl;
+             std::cout << "============================================" << std::endl;
+         } else {
+             m_NoTextureMode = !m_NoTextureMode;
+             m_App->GetRenderSystem().SetDebugNoTexture(m_NoTextureMode);
+             std::cout << "\n========== No Texture Mode (F7) ==========" << std::endl;
+             std::cout << "[Debug] No Texture Mode: " << (m_NoTextureMode ? "ON" : "OFF") << std::endl;
+             std::cout << "==========================================" << std::endl;
+         }
+    });
 
-    // F4: Log Entity Stats
-    if (keyboard.GetKey(GLFW_KEY_F4))
-    {
-        if (!m_F4Pressed)
-        {
-            LogEntityStats();
-            m_F4Pressed = true;
-        }
-    }
-    else { m_F4Pressed = false; }
+    ProcessKey(keyboard, GLFW_KEY_F8, m_F8Pressed, [this](){ TogglePhysicsDebug(); });
+    
+    // F9 UI
+    ProcessKey(keyboard, GLFW_KEY_F9, m_F9Pressed, [this](){
+        static bool uiEnabled = true;
+        uiEnabled = !uiEnabled;
+        m_App->GetUIRenderSystem().SetEnabled(uiEnabled);
+        std::cout << "\n========== UI System (F9) ==========" << std::endl;
+        std::cout << "[Debug] UI System: " << (uiEnabled ? "ON" : "OFF") << std::endl;
+        std::cout << "====================================" << std::endl;
+    });
 
-    // F12: Stats Overlay
-    if (keyboard.GetKey(GLFW_KEY_F12))
-    {
-        if (!m_F12Pressed)
-        {
-            ToggleStatsOverlay();
-            m_F12Pressed = true;
-        }
-    }
-    else { m_F12Pressed = false; }
+    ProcessKey(keyboard, GLFW_KEY_F10, m_F10Pressed, [this](){ ToggleStatsOverlay(); });
 
-    // FPS Counter Update
+    // F11 Pause
+    ProcessKey(keyboard, GLFW_KEY_F11, m_F11Pressed, [this](){
+        bool paused = !m_App->IsPaused();
+        m_App->SetPaused(paused);
+        std::cout << "\n========== Pause Game (F11) ==========" << std::endl;
+        std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << std::endl;
+        std::cout << "======================================" << std::endl;
+    });
+
+    // F12 Slow Mo
+    ProcessKey(keyboard, GLFW_KEY_F12, m_F12Pressed, [this](){
+        float current = m_App->GetTimeScale();
+        float next = 1.0f;
+        // Cycle: 0.25 -> 0.5 -> 1.0 -> 1.5 -> 2.0 -> 0.25
+        if (abs(current - 0.25f) < 0.01f) next = 0.5f;
+        else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
+        else if (abs(current - 1.0f) < 0.01f) next = 1.5f;
+        else if (abs(current - 1.5f) < 0.01f) next = 2.0f;
+        else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
+        else next = 1.0f;
+        
+        m_App->SetTimeScale(next);
+        std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
+        std::cout << "[Debug] Time Scale: " << next << "x" << std::endl;
+        std::cout << "======================================" << std::endl;
+    });
+    
+    // FPS Calculation (Realtime, unaware of pause)
     m_FpsTimer += dt;
     m_FrameCount++;
     if (m_FpsTimer >= 1.0f)
@@ -113,6 +133,69 @@ void DebugSystem::OnUpdate(float dt)
         m_FrameCount = 0;
     }
 }
+//...
+void DebugSystem::LogDevices()
+{
+    std::cout << "\n========== DEVICE DEBUG INFO (F2) ==========" << std::endl;
+    std::cout << "[Hardware]" << std::endl;
+    std::cout << "  GPU: " << m_GpuName << std::endl;
+    std::cout << "  CPU: " << m_CpuName << std::endl;
+    std::cout << std::endl;
+
+    auto logHelper = [&](const std::string& category, const std::vector<DeviceInfo>& devices, const std::string& activeId) {
+        std::cout << category << ":" << std::endl;
+        for (const auto& dev : devices) {
+            // Check active based on ID
+            bool isActive = (dev.id == activeId);
+            std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
+        }
+    };
+    
+    // Monitors
+    auto& mons = m_App->GetMonitorManager();
+    std::string activeMonId = mons.GetCurrentDevice().id;
+    logHelper("Monitors", mons.GetAllDevices(), activeMonId); 
+
+    // Inputs
+    // InputManager treats all connected devices as active usually. 
+    // We mark "Default" ones (keyboard/mouse) as active if they are present.
+    // Or we just rely on isDefault flag which logHelper prints?
+    // User wants [*] for active. "Primary Keyboard" is active.
+    // We'll trust "Default" means "Primary Active".
+    auto& inputs = m_App->GetInputManager();
+    auto allInputs = inputs.GetAllDevices();
+    std::cout << "Inputs:" << std::endl;
+    for (const auto& dev : allInputs) {
+        // Assume default devices are always "Active"
+        bool isActive = dev.isDefault; 
+        std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
+    }
+
+    // Audio
+    auto& audio = m_App->GetSoundManager();
+    std::string activeAudio = audio.GetCurrentDevice().id;
+    logHelper("Audio", audio.GetAllDevices(), activeAudio);
+        
+    std::cout << "============================================" << std::endl;
+}
+
+// ... 
+
+void DebugSystem::LogSceneGraph()
+{
+    std::cout << "\n========== SCENE GRAPH DUMP (F5) ==========" << std::endl;
+    auto view = m_App->GetScene().registry.view<InfoComponent>();
+    int count = 0;
+    for(auto entity : view) {
+            const auto& info = view.get<InfoComponent>(entity);
+            std::cout << "[" << count++ << "] ID: " << (uint32_t)entity 
+                      << " | Name: " << info.name 
+                      << " | Tag: " << info.tag << std::endl;
+    }
+    std::cout << "===========================================" << std::endl;
+}
+
+
 
 void DebugSystem::Render(Scene& scene)
 {
@@ -203,7 +286,7 @@ void DebugSystem::RenderText(const std::string& text, float x, float y, float sc
              xpos + w, ypos - h,   1.0f, 0.0f
         };
 
-        m_TextQuad->DrawDynamic(*m_TextShader, ch.TextureID, glm::vec4(color, 1.0f), vertices);
+        m_TextQuad->DrawDynamic(*m_TextShader, ch.TextureID, color, vertices);
 
         x += (ch.Advance >> 6) * scale;
     }
@@ -212,47 +295,64 @@ void DebugSystem::RenderText(const std::string& text, float x, float y, float sc
 void DebugSystem::TogglePhysicsDebug()
 {
     m_ShowPhysicsDebug = !m_ShowPhysicsDebug;
+    std::cout << "\n========== Physics Debug (F8) ==========" << std::endl;
     std::cout << "[Debug] Physics Debug: " << (m_ShowPhysicsDebug ? "ON" : "OFF") << std::endl;
+    std::cout << "========================================" << std::endl;
 }
 
 void DebugSystem::ToggleStatsOverlay()
 {
     m_ShowStatsOverlay = !m_ShowStatsOverlay;
+    std::cout << "\n========== Stats Overlay (F10) ==========" << std::endl;
     std::cout << "[DebugSystem] Stats Overlay: " << (m_ShowStatsOverlay ? "ON" : "OFF") << std::endl;
+    
+    // Resource Check
+    if (m_ShowStatsOverlay)
+    {
+        bool fontOK = (m_DebugFont != nullptr);
+        bool shaderOK = (m_TextShader != nullptr);
+        bool quadOK = (m_TextQuad != nullptr);
+        
+        std::cout << "[DebugSystem] Resources Status:" << std::endl;
+        std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check resources/fonts/time.ttf)") << std::endl;
+        std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check resources/shaders/text.vs/fs)") << std::endl;
+        std::cout << "  Quad:   " << (quadOK ? "OK" : "MISSING") << std::endl;
+        
+        if (!fontOK || !shaderOK || !quadOK) {
+             std::cout << "[WARNING] Overlay will NOT render due to missing resources!" << std::endl;
+        }
+    }
+    std::cout << "=========================================" << std::endl;
 }
 
-void DebugSystem::LogDevices()
+void DebugSystem::LogControls()
 {
-    std::cout << "\n========== DEVICE DEBUG INFO (F2) ==========" << std::endl;
-    // Hardware Info
-    std::cout << "[Hardware]" << std::endl;
-    std::cout << "  GPU: " << m_GpuName << std::endl;
-    std::cout << "  CPU: " << m_CpuName << std::endl;
-    std::cout << std::endl;
+    std::cout << "\n========== DEBUG CONTROLS (F1) ==========" << std::endl;
+    std::cout << "  F1 : Show This Help" << std::endl;
+    std::cout << "  F2 : Log Devices" << std::endl;
+    std::cout << "  F3 : Log Performance Stats" << std::endl;
+    std::cout << "  F4 : Log Detailed Entity Stats" << std::endl;
+    std::cout << "  F5 : Log Scene Graph" << std::endl;
+    std::cout << "  F6 : Toggle Wireframe Mode" << std::endl;
+    std::cout << "  F7 : Toggle No-Texture Mode (Shift+F7: Toggle Shadows)" << std::endl;
+    std::cout << "  F8 : Toggle Physics Debug Draw" << std::endl;
+    std::cout << "  F9 : Toggle UI" << std::endl;
+    std::cout << "  F10: Toggle Stats Overlay" << std::endl;
+    std::cout << "  F11: Pause/Resume Game" << std::endl;
+    std::cout << "  F12: Toggle Slow Motion" << std::endl;
+    std::cout << "=========================================" << std::endl;
+}
 
-    // Devices
-    auto logHelper = [&](const std::string& category, const std::vector<DeviceInfo>& devices, const std::string& activeId) {
-        std::cout << category << ":" << std::endl;
-        for (const auto& dev : devices) {
-            bool isActive = (dev.id == activeId);
-            std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
+void DebugSystem::ProcessKey(KeyboardManager& keyboard, int key, bool& pressedState, std::function<void()> action)
+{
+    if (keyboard.GetKey(key))
+    {
+        if (!pressedState)
+        {
+            action();
+            pressedState = true;
         }
-    };
-    
-    // Monitors
-    auto& mons = m_App->GetMonitorManager();
-    logHelper("Monitors", mons.GetAllDevices(), ""); 
-
-    // Inputs
-    auto& inputs = m_App->GetInputManager();
-    logHelper("Inputs", inputs.GetAllDevices(), "");
-
-    // Audio
-    auto& audio = m_App->GetSoundManager();
-    std::string activeAudio = audio.GetCurrentDevice().id;
-    logHelper("Audio", audio.GetAllDevices(), activeAudio);
-        
-    std::cout << "============================================" << std::endl;
+    } else { pressedState = false; }
 }
 
 void DebugSystem::LogStats()
@@ -265,13 +365,20 @@ void DebugSystem::LogStats()
 
 void DebugSystem::LogEntityStats()
 {
-    size_t total = m_App->GetScene().registry.storage<entt::entity>().size();
-    int rendered = m_App->GetRenderSystem().GetRenderedCount();
+    auto& reg = m_App->GetScene().registry;
+    size_t total = reg.storage<entt::entity>().size();
+    
+    // Count specific types
+    size_t uiEntities = reg.view<UITransformComponent>().size();
+    size_t renderEntities = reg.view<MeshRendererComponent>().size();
+    size_t physEntities = reg.view<RigidBodyComponent>().size();
 
-    std::cout << "\n========== ENTITY STATS (F4) ==========" << std::endl;
-    std::cout << "Total Entities    : " << total << std::endl;
-    std::cout << "Rendered Objects  : " << rendered << std::endl;
-    std::cout << "=======================================" << std::endl;
+    std::cout << "\n========== ENTITY DETAILED STATS (F4) ==========" << std::endl;
+    std::cout << "Total Entities      : " << total << std::endl;
+    std::cout << "Renderable Objects  : " << renderEntities << std::endl;
+    std::cout << "UI Elements         : " << uiEntities << std::endl;
+    std::cout << "Physics Objects     : " << physEntities << std::endl;
+    std::cout << "================================================" << std::endl;
 }
 
 #endif

@@ -35,30 +35,7 @@ virtual bool SetActiveDevice(const std::string& deviceId) = 0;
 - Manages Keyboards, Mice, and Joysticks.
 - Currently supports listing devices.
 
-## 3. Debugging Features
+## 3. Debugging
 
-The engine includes built-in shortcuts for debugging hardware and physics.
+For information on debugging devices and using the Debug System (F1-F12 keys), please refer to default **[Debug System Guide](debug_system.md)**.
 
-### Device List (F2)
-Press **F2** while the application is running to print a list of all detected devices to the console.
-
-**Output Example:**
-```text
-========== DEVICE LIST ==========
-Monitors:
-  [0] Generic PnP Monitor (Default)
-  [1] DELL U2414H
-Inputs:
-  [keyboard_0] Primary Keyboard (Default)
-  [mouse_0] Primary Mouse (Default)
-Audio:
-  [default] Default DirectSound Device (Default)
-  [AD12345] Headphones (Realtek Audio)
-=================================
-```
-You can use the ID shown (e.g., `AD12345`) in `settings.json` to select that specific device.
-
-### Physics Debug (F1)
-Press **F1** to toggle the Physics Debug Drawer.
-- **Enabled**: Wireframes of physics colliders (green lines) are drawn over the scene.
-- **Disabled**: Standard rendering.

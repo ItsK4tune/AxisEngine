@@ -212,7 +212,7 @@ echo ==========================================
 echo           ENABLE DEBUG SYSTEM?
 echo ==========================================
 echo  1. No (Default)
-echo  2. Yes (Enables F1/F2/F3 Tools)
+echo  2. Yes (Enables Debug Tools)
 echo ==========================================
 set "debug_sys_choice="
 set /p debug_sys_choice="Enter number (Default: 1): "

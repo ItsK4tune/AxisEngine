@@ -42,6 +42,7 @@ uniform vec3 viewPos;
 uniform Material material;
 uniform vec4 tintColor;
 uniform bool u_ReceiveShadow;
+uniform bool debug_noTexture;
 
 uniform sampler2D shadowMapDir;
 
@@ -55,10 +56,25 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir);
 
 void main()
 {
-    vec3 albedo = pow(texture(material.texture_diffuse1, TexCoords).rgb, vec3(2.2)) * tintColor.rgb;
-    float metallic = texture(material.texture_metallic1, TexCoords).r * material.metallic;
-    float roughness = texture(material.texture_roughness1, TexCoords).r * material.roughness;
-    float ao = texture(material.texture_ao1, TexCoords).r * material.ao;
+    vec3 albedo;
+    float metallic;
+    float roughness;
+    float ao;
+
+    if (debug_noTexture)
+    {
+        albedo = vec3(1.0) * tintColor.rgb; // White clay
+        metallic = 0.0; // Dielectric
+        roughness = 0.8; // Matte
+        ao = 1.0;
+    }
+    else
+    {
+        albedo = pow(texture(material.texture_diffuse1, TexCoords).rgb, vec3(2.2)) * tintColor.rgb;
+        metallic = texture(material.texture_metallic1, TexCoords).r * material.metallic;
+        roughness = texture(material.texture_roughness1, TexCoords).r * material.roughness;
+        ao = texture(material.texture_ao1, TexCoords).r * material.ao;
+    }
 
     vec3 N = normalize(Normal);
     vec3 V = normalize(viewPos - FragPos);

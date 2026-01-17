@@ -5,6 +5,8 @@
 #include <graphic/font.h>
 #include <graphic/ui_model.h>
 #include <graphic/shader.h>
+#include <functional>
+#include <input/keyboard_manager.h>
 
 class Application;
 class Scene;
@@ -26,20 +28,34 @@ private:
     void LogDevices();
     void LogStats(); // F3
     void LogEntityStats(); // F4
+    void LogControls(); // F1
+    void LogSceneGraph(); // F5
 
     // Text Rendering
     void RenderText(const std::string& text, float x, float y, float scale, glm::vec3 color);
+    
+    // Helper
+    void ProcessKey(KeyboardManager& keyboard, int key, bool& pressedState, std::function<void()> action);
 
     Application* m_App = nullptr;
 
-    bool m_F1Pressed = false; // Physics Debug Toggle
-    bool m_F2Pressed = false; // Log Devices
-    bool m_F3Pressed = false; // Log Stats
-    bool m_F4Pressed = false; // Log Entity Stats
-    bool m_F12Pressed = false; // Toggle Overlay
+    bool m_F1Pressed = false; // Controls
+    bool m_F2Pressed = false; // Devices
+    bool m_F3Pressed = false; // Perf Stats
+    bool m_F4Pressed = false; // Entity Stats
+    bool m_F5Pressed = false; // Scene Graph
+    bool m_F6Pressed = false; // Wireframe
+    bool m_F7Pressed = false; // No Texture Mode (Features Pending)
+    bool m_F8Pressed = false; // Physics Debug
+    bool m_F9Pressed = false; // UI Toggle
+    bool m_F10Pressed = false; // Stats Overlay Toggle
+    bool m_F11Pressed = false; // Pause
+    bool m_F12Pressed = false; // Slow Mo
 
     bool m_ShowPhysicsDebug = false;
-    bool m_ShowStatsOverlay = false;
+    bool m_ShowStatsOverlay = true; // Default ON
+    bool m_WireframeMode = false;
+    bool m_NoTextureMode = false; // F7 state
     
     // Stats
     float m_FpsTimer = 0.0f;
