@@ -362,6 +362,10 @@ void RenderSystem::Render(Scene &scene)
                 currentShader->setVec3("material.emission", mat.emission);
             }
             currentShader->setFloat("material.opacity", mat.opacity);
+            
+            // Texture Mapping
+            currentShader->setVec2("uvScale", mat.uvScale);
+            currentShader->setVec2("uvOffset", mat.uvOffset);
 
             if (m_DebugNoTexture)
             {
@@ -389,6 +393,9 @@ void RenderSystem::Render(Scene &scene)
             
             if (m_DebugNoTexture) currentShader->setBool("debug_noTexture", true);
             else currentShader->setBool("debug_noTexture", false);
+
+            currentShader->setVec2("uvScale", glm::vec2(1.0f));
+            currentShader->setVec2("uvOffset", glm::vec2(0.0f));
         }
 
         if (m_DebugNoTexture)

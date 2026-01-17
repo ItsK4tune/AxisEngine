@@ -19,8 +19,8 @@ The `DebugSystem` provides real-time introspection, control, and diagnostics for
 | **F11** | **Pause Game** | Pauses logic and physics updates. Rendering continues (useful for inspecting visual states). |
 | **F12** | **Time Scale** | Cycles time dilation: `0.25x` -> `0.5x` -> `1.0x` -> `1.5x` -> `2.0x`. |
 | **Shift+F7** | **Toggle Shadows** | Globally enables or disables shadow mapping. |
-| **Shift+F11** | **Debug/Free Camera** | Toggles **Debug/Free Camera** (WASD noclip). |
-| **Shift+F12** | **Cursor Mode** | Cycles **Cursor Mode** (Normal -> Hidden -> Locked -> LockedHidden -> LockedCenter -> LockedHiddenCenter). |
+| **Shift+F11** | **Toggle Debug Camera** | Switches between Main Camera and Free/Debug Camera (WASD "NoClip"). |
+| **Shift+F12** | **Cycle Cursor Mode** | Cycles: Normal -> Hidden -> Locked (Clamped) -> LockedHidden -> LockedCenter -> LockedHiddenCenter. |
 
 ## Features Detail
 

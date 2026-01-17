@@ -13,11 +13,18 @@ LOAD_SHADER unlitShader resources/shaders/unlit.vs resources/shaders/unlit.fs
 LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
 LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
 LOAD_SHADER particle resources/shaders/particle.vs resources/shaders/particle.fs
+LOAD_SHADER videomapShader resources/shaders/videomap.vs resources/shaders/videomap.fs
 
 LOAD_FONT time resources/fonts/time.ttf 16
 
 LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
+LOAD_STATIC_MODEL planeVideoModel resources/objects/plane/plane.fbx
 LOAD_STATIC_MODEL dummyModel resources/objects/dummy/dummy.fbx
+
+NEW_ENTITY MainCamera
+TRANSFORM 0.0 4.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
+CAMERA 1 90.0 -90.0 0.0 0.1 1000.0 
+SCRIPT CameraController
 
 NEW_ENTITY Plane
 TRANSFORM 0.0 0.0 0.0 0.0 0.0 0.0 1 1 1
@@ -63,3 +70,9 @@ NEW_ENTITY VideoPlayer
 VIDEO_PLAYER resources/videos/test.mp4 1 1.0 1
 UI_TRANSFORM 40 40 500 500 0
 UI_RENDERER 1 1 1 1 uiShader
+
+NEW_ENTITY VideoDummy
+TRANSFORM 0.0 5.0 0.0 -90.0 0.0 0.0 0.01 0.01 0.01
+RENDERER planeVideoModel videomapShader
+VIDEO_MAP 1.0 1.0 0.0 0.0
+VIDEO_PLAYER resources/videos/test.mp4 1 1.0 1

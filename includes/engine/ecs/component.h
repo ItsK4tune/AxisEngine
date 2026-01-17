@@ -70,6 +70,10 @@ struct MaterialComponent
     // PBR
     float metallic = 0.0f;
     float ao = 1.0f;
+
+    // Mapping
+    glm::vec2 uvScale = glm::vec2(1.0f);
+    glm::vec2 uvOffset = glm::vec2(0.0f);
 };
 
 struct RigidBodyComponent

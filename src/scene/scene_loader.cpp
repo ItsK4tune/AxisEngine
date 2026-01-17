@@ -115,6 +115,16 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             t.rotation = glm::quat(glm::vec3(rx, ry, rz));
             t.scale = glm::vec3(sx, sy, sz);
         }
+        else if (command == "VIDEO_MAP")
+        {
+            // VIDEO_MAP scaleX scaleY offsetX offsetY
+            float sx = 1.0f, sy = 1.0f, ox = 0.0f, oy = 0.0f;
+            ss >> sx >> sy >> ox >> oy;
+            
+            auto &mat = scene.registry.get_or_emplace<MaterialComponent>(currentEntity);
+            mat.uvScale = glm::vec2(sx, sy);
+            mat.uvOffset = glm::vec2(ox, oy);
+        }
         else if (command == "RENDERER")
         {
             ComponentLoader::LoadRenderer(scene, currentEntity, ss, res);
@@ -354,13 +364,17 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
 
             if (typeStr == "PBR")
             {
-                mat.type = MaterialType::PBR;
-                ss >> mat.roughness >> mat.metallic >> mat.ao;
 
                 float er = 0.0f, eg = 0.0f, eb = 0.0f;
                 if (ss >> er >> eg >> eb)
                 {
                     mat.emission = glm::vec3(er, eg, eb);
+                }
+
+                float ar = 1.0f, ag = 1.0f, ab = 1.0f;
+                if (ss >> ar >> ag >> ab)
+                {
+                     mat.ambient = glm::vec3(ar, ag, ab);
                 }
             }
             else if (typeStr == "PHONG")
@@ -374,12 +388,6 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
                 if (ss >> er >> eg >> eb)
                 {
                     mat.emission = glm::vec3(er, eg, eb);
-                }
-
-                float ar = 1.0f, ag = 1.0f, ab = 1.0f;
-                if (ss >> ar >> ag >> ab)
-                {
-                    mat.ambient = glm::vec3(ar, ag, ab);
                 }
             }
             else

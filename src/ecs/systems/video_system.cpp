@@ -76,6 +76,30 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
                     uiRenderer->model->SetTexture(video.decoder->GetTextureID());
                 }
             }
+
+            // 4. Update Mesh Renderer (3D Model)
+            if (auto *renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+            {
+                if (renderer->model)
+                {
+                    // For every mesh in the model, override the texture
+                    // Note: This modifies the SHARED resource model. All entities using this model will show the video.
+                    // To avoid this, we would need to clone the model resource.
+                    for (auto &mesh : renderer->model->meshes)
+                    {
+                        // Create a texture struct wrapper
+                        Texture videoTex;
+                        videoTex.id = video.decoder->GetTextureID();
+                        videoTex.type = "texture_diffuse"; // Standard shader uniform name
+                        videoTex.path = "video_stream";
+
+                        // Replace existing textures or add if empty
+                        // Ideally we clear and set only this one to avoid conflicts
+                        mesh.textures.clear();
+                        mesh.textures.push_back(videoTex);
+                    }
+                }
+            }
         }
     }
 }
