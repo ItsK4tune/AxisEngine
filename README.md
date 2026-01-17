@@ -71,6 +71,7 @@
 *   [Asset Management](docs/guides/asset_management.md)
 *   [Graphics Guide](docs/guides/graphics_guide.md)
 *   [Post Processing](docs/guides/post_processing.md)
+*   [Debug System](docs/guides/debug_system.md)
 
 ### ⚙️ API Reference
 *   [Managers](docs/api/managers/)

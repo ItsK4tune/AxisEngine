@@ -47,17 +47,14 @@ public:
             if (video.isPlaying)
             {
                 video.Pause();
-                std::cout << "[UIButton] Paused Video (API)" << std::endl;
             }
             else
             {
                 video.Play();
-                std::cout << "[UIButton] Resumed Video (API)" << std::endl;
             }
             found = true;
         }
-        if (!found)
-            std::cout << "[UIButton] No Video Player found!" << std::endl;
+
     }
 
     void OnUpdate(float dt) override

@@ -27,16 +27,8 @@ public:
     MouseManager& GetMouse() const { return *m_MouseManager; }
     InputManager& GetInputManager() const { return *m_InputManager; }
 
-    void SetOnDebugLog(std::function<void()> callback) { m_OnDebugLog = callback; }
-    void SetOnPhysicsDebugToggle(std::function<void()> callback) { m_OnPhysicsDebugToggle = callback; }
-
 private:
     std::unique_ptr<KeyboardManager> m_KeyboardManager;
     std::unique_ptr<MouseManager> m_MouseManager;
     std::unique_ptr<InputManager> m_InputManager;
-
-    std::function<void()> m_OnDebugLog;
-    std::function<void()> m_OnPhysicsDebugToggle;
-    bool m_F2Pressed = false;
-    bool m_F1Pressed = false;
 };

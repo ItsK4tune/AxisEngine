@@ -5,6 +5,13 @@ project(GameEngine)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(ENABLE_DEBUG_SYSTEM "Enable Runtime Debug System (F1/F2/F3)" OFF)
+
+if(ENABLE_DEBUG_SYSTEM)
+    add_compile_definitions(ENABLE_DEBUG_SYSTEM)
+    message(STATUS "Debug System Enabled")
+endif()
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})

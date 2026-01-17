@@ -48,11 +48,13 @@ public:
     void SetDepthTest(bool enabled, int func = GL_LESS);
     
     Shadow& GetShadow() { return m_Shadow; }
+    int GetRenderedCount() const { return m_RenderedCount; }
 
 private:
     void UploadLightData(Scene &scene, Shader *shader);
     
     Shadow m_Shadow;
+    int m_RenderedCount = 0;
 
     glm::mat4 m_LightSpaceMatrixDir;
     float m_FarPlanePoint = 25.0f;

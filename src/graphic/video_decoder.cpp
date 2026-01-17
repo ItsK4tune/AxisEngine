@@ -17,6 +17,7 @@ bool VideoDecoder::Load(const std::string& filepath) {
     Unload();
     m_Filepath = filepath;
 
+    av_log_set_level(AV_LOG_QUIET);
     if (avformat_open_input(&m_FormatCtx, filepath.c_str(), nullptr, nullptr) != 0) {
         std::cerr << "Failed to open video file: " << filepath << std::endl;
         return false;

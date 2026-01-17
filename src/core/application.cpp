@@ -84,29 +84,7 @@ bool Application::Init()
     physicsWorld = std::make_unique<PhysicsWorld>();
     appHandler = std::make_unique<AppHandler>(window);
 
-    appHandler->SetOnDebugLog([this]() {
-        std::cout << "========== DEVICE LIST ==========" << std::endl;
-        
-        auto logDevices = [](const std::string& category, const std::vector<DeviceInfo>& devices) {
-            std::cout << category << ":" << std::endl;
-            for (const auto& dev : devices) {
-                std::cout << "  [" << dev.id << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
-            }
-        };
-
-        logDevices("Monitors", monitorManager.GetAllDevices());
-        logDevices("Inputs", appHandler->GetInputManager().GetAllDevices());
-        if (soundManager)
-            logDevices("Audio", soundManager->GetAllDevices());
-            
-        std::cout << "=================================" << std::endl;
-    });
-
-    appHandler->SetOnPhysicsDebugToggle([this]() {
-        m_ShowPhysicsDebug = !m_ShowPhysicsDebug;
-        std::cout << "Physics Debug: " << (m_ShowPhysicsDebug ? "ON" : "OFF") << std::endl;
-    });
-
+    // Initialize Managers first
     resourceManager = std::make_unique<ResourceManager>();
     soundManager = std::make_unique<SoundManager>();
     sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager, this);
@@ -126,7 +104,14 @@ bool Application::Init()
     renderSystem.InitShadows(*resourceManager);
     renderSystem.SetEnableShadows(config.shadowsEnabled);
 
+    // Load Shaders AFTER ResourceManager is valid
     resourceManager->LoadShader("debugLine", "resources/shaders/debug_line.vs", "resources/shaders/debug_line.fs");
+
+#ifdef ENABLE_DEBUG_SYSTEM
+    // Initialize Debug System LAST so all other systems are ready
+    debugSystem = std::make_unique<DebugSystem>();
+    debugSystem->Init(this);
+#endif
     
     return true;
 }
@@ -144,6 +129,10 @@ void Application::Run()
         if (resourceManager) resourceManager->Update();
 
         appHandler->ProcessInput(monitorManager.GetWindow());
+
+#ifdef ENABLE_DEBUG_SYSTEM
+        if (debugSystem) debugSystem->OnUpdate(deltaTime);
+#endif
 
         m_Accumulator += deltaTime;
         while (m_Accumulator >= m_FixedDeltaTime)
@@ -163,12 +152,9 @@ void Application::Run()
 
         m_StateMachine.Render();
 
-        if (m_ShowPhysicsDebug)
-        {
-            Shader* debugShader = resourceManager->GetShader("debugLine");
-            if (debugShader)
-                physicsSystem.RenderDebug(scene, *physicsWorld, *debugShader, monitorManager.GetWidth(), monitorManager.GetHeight());
-        }
+#ifdef ENABLE_DEBUG_SYSTEM
+        if (debugSystem) debugSystem->Render(scene);
+#endif
 
         postProcess.EndCapture();
 

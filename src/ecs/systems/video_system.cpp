@@ -21,7 +21,6 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
 
             if (video.decoder->Load(video.filePath))
             {
-                std::cout << "[VideoSystem] Loaded: " << video.filePath << std::endl;
                 video.isLoaded = true;
                 video.decoder->SetLoop(video.isLooping);
                 video.decoder->SetSpeed(video.speed);

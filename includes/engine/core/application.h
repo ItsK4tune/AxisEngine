@@ -16,6 +16,7 @@
 #include <core/post_process_pipeline.h>
 #include <core/app_handler.h>
 #include <core/monitor_manager.h>
+#include <core/debug_system.h>
 
 class Application
 {
@@ -106,5 +107,7 @@ private:
 
     PostProcessPipeline postProcess;
     
-    bool m_ShowPhysicsDebug = false;
+#ifdef ENABLE_DEBUG_SYSTEM
+    std::unique_ptr<DebugSystem> debugSystem;
+#endif
 };

@@ -58,6 +58,12 @@ UI_RENDERER 0.0 0.8 0.0 1.0 uiShader
 UI_TEXT "Hover Me" time 1 1 1 0.5
 SCRIPT UIButton
 
+NEW_ENTITY TestButton2
+UI_TRANSFORM 50 150 200 60 10
+UI_RENDERER 0.0 0.0 0.8 1.0 uiShader
+UI_TEXT "Hover Me" time 1 1 1 0.5
+SCRIPT UIButton
+
 NEW_ENTITY VideoPlayer
 VIDEO_PLAYER resources/videos/test.mp4 1 1.0 1
 UI_TRANSFORM 40 40 500 500 0

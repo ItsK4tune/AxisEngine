@@ -195,12 +195,44 @@ if "%clean_mode_choice%"=="1" set CLEAN_MODE=Strict
 if "%clean_mode_choice%"=="2" set CLEAN_MODE=Soft
 
 echo Selected Clean Mode: %CLEAN_MODE%
-goto CONFIRM_CONFIG
+goto SELECT_DEBUG_SYSTEM
 
 :RETRY_CLEAN_MODE
 echo [ERROR] Invalid selection!
 pause
 goto SELECT_CLEAN_MODE
+
+:: -----------------------------------------------------------------------------
+:: 2d. SELECT DEBUG SYSTEM
+:: -----------------------------------------------------------------------------
+:SELECT_DEBUG_SYSTEM
+cls
+echo.
+echo ==========================================
+echo           ENABLE DEBUG SYSTEM?
+echo ==========================================
+echo  1. No (Default)
+echo  2. Yes (Enables F1/F2/F3 Tools)
+echo ==========================================
+set "debug_sys_choice="
+set /p debug_sys_choice="Enter number (Default: 1): "
+
+if "%debug_sys_choice%"=="" set debug_sys_choice=1
+
+:: Validate
+echo %debug_sys_choice%| findstr /r "^[1-2]$" >nul
+if errorlevel 1 goto RETRY_DEBUG_SYSTEM
+
+set ENABLE_DEBUG_SYSTEM=OFF
+if "%debug_sys_choice%"=="2" set ENABLE_DEBUG_SYSTEM=ON
+
+goto CONFIRM_CONFIG
+
+:RETRY_DEBUG_SYSTEM
+echo [ERROR] Invalid selection!
+pause
+goto SELECT_DEBUG_SYSTEM
+
 
 :: -----------------------------------------------------------------------------
 :: 2c. CONFIRM CONFIG
@@ -218,6 +250,7 @@ if not defined GENERATOR (
 )
 echo  Build Type: %BUILD_TYPE%
 echo  Clean Mode: %CLEAN_MODE%
+echo  Debug Sys:  %ENABLE_DEBUG_SYSTEM%
 echo ==========================================
 set "confirm="
 set /p confirm="Do you want to proceed? (Y/N, M=Main Menu) [Default: Y]: "
@@ -371,9 +404,9 @@ if %ERRORLEVEL% EQU 0 (
 echo Using CMake: "!CMAKE_CMD!"
 
 if not defined GENERATOR (
-    "!CMAKE_CMD!" -B build
+    "!CMAKE_CMD!" -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM!
 ) else (
-    "!CMAKE_CMD!" -G %GENERATOR% -B build
+    "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM!
 )
 
 if %ERRORLEVEL% NEQ 0 (

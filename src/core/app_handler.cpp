@@ -16,34 +16,6 @@ void AppHandler::ProcessInput(GLFWwindow* window)
 {
     if (m_KeyboardManager->GetKey(GLFW_KEY_ESCAPE))
         glfwSetWindowShouldClose(window, true);
-    
-    // F2 Debug Logging
-    if (m_KeyboardManager->GetKey(GLFW_KEY_F2))
-    {
-        if (!m_F2Pressed) 
-        {
-            if (m_OnDebugLog) m_OnDebugLog();
-            m_F2Pressed = true;
-        }
-    }
-    else
-    {
-        m_F2Pressed = false;
-    }
-
-    // F1 Physics Toggle
-    if (m_KeyboardManager->GetKey(GLFW_KEY_F1))
-    {
-        if (!m_F1Pressed)
-        {
-            if (m_OnPhysicsDebugToggle) m_OnPhysicsDebugToggle();
-            m_F1Pressed = true;
-        }
-    }
-    else
-    {
-        m_F1Pressed = false;
-    }
 }
 
 void AppHandler::OnMouseMove(double xpos, double ypos)

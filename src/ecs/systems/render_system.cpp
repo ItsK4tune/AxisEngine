@@ -260,6 +260,8 @@ void RenderSystem::Render(Scene &scene)
     auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
     view.use<MeshRendererComponent>();
 
+    m_RenderedCount = 0;
+
     for (auto entity : view)
     {
         auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
@@ -365,6 +367,8 @@ void RenderSystem::Render(Scene &scene)
         }
 
         renderer.model->Draw(*currentShader);
+        
+        m_RenderedCount++;
     }
 }
 
