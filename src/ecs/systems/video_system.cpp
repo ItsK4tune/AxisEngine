@@ -5,6 +5,8 @@
 
 void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
 {
+    if (!m_Enabled) return;
+
     auto view = scene.registry.view<VideoPlayerComponent>();
 
     for (auto entity : view)

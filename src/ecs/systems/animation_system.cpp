@@ -1,8 +1,11 @@
 #include <ecs/system.h>
 #include <execution>
+#include <ecs/component.h>
 
 void AnimationSystem::Update(Scene &scene, float dt)
 {
+    if (!m_Enabled) return;
+
     auto view = scene.registry.view<AnimationComponent>();
 
     std::vector<entt::entity> entities(view.begin(), view.end());

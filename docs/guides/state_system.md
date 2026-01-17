@@ -4,32 +4,35 @@ The AXIS Engine uses a Stack-based State Machine to manage high-level game flow 
 
 ## 1. The State Class
 
-A `State` represents a distinct phase of the application.
+A `State` represents a distinct phase of the application (e.g., Menu, Gameplay, Pause).
 
 ### Lifecycle Methods
 Every state must implement the following lifecycle methods:
 
-*   **`OnEnter()`**: Called when the state becomes currently active (pushed or changed to). Use this to load scenes, lock cursor, or play music.
-*   **`OnUpdate(float dt)`**: Called every frame. Handle game logic, system updates (Audio, Animation, Particles) here.
-*   **`OnFixedUpdate(float fixedDt)`**: Called on a fixed interval (default 60Hz). **MUST** handle Physics updates here.
-*   **`OnRender()`**: Called after update. Render scenes and UI here.
-*   **`OnExit()`**: Called when the state is removed or switched away from. Cleanup scenes and resources here.
+*   **`OnEnter()`**: Called when the state becomes currently active. Use this to `LoadScene`, configure the cursor, or enable specific systems.
+*   **`OnUpdate(float dt)`**: Called every frame. Handle High-Level game logic here (e.g., checking for Pause key). **Note:** Systems (Script, Audio, Animation) are updated automatically by the Engine, you do NOT need to update them here.
+*   **`OnFixedUpdate(float fixedDt)`**: Called on a fixed interval.
+*   **`OnRender()`**: Called after update. **Note:** Rendering is handled automatically by the Engine. Use this only for custom, state-specific rendering if absolutely necessary.
+*   **`OnExit()`**: Called when the state is removed. Cleanup scenes and resources here.
 
-### API Accessors
-States have direct access to engine systems and managers via helper methods:
+### API Wrappers (New)
+States now have direct wrapper methods to control the engine, simplifying your code:
 
-**Systems:**
-*   `GetRenderSystem()`
-*   `GetPhysicsSystem()`
-*   `GetAudioSystem()`
-*   `GetScriptSystem()`
-*   `GetUIRenderSystem()`
+**Scene Management:**
+*   `LoadScene(path)`: Loads a scene additively.
+*   `UnloadScene(path)`: Unloads a specific scene.
+*   `ChangeScene(path)`: Unloads ALL current scenes and loads the new one.
 
-**Managers:**
-*   `GetSceneManager()`
-*   `GetResourceManager()`
-*   `GetSoundManager()`
-*   `GetInputManager()` / `GetKeyboard()` / `GetMouse()`
+**System Control:**
+*   `EnablePhysics(bool)`: Enable/Disable physics simulation.
+*   `EnableRender(bool)`: Enable/Disable rendering.
+*   `EnableAudio(bool)`: Enable/Disable audio.
+*   `EnableLogic(bool)`: Enable/Disable script updates.
+*   `SetCursorMode(mode)`: `CursorMode::Normal`, `Hidden`, or `Locked`.
+
+**Accessors:**
+*   `GetSceneManager()`, `GetResourceManager()`, `GetInputManager()`...
+*   `GetRenderSystem()`, `GetPhysicsSystem()`...
 
 ## 2. StateMachine
 
@@ -38,8 +41,7 @@ The `StateMachine` manages the stack of states.
 ### Operations
 *   **`PushState(state)`**: Pauses current state and adds new state on top.
 *   **`PopState()`**: Removes current state and resumes the previous one.
-*   **`ChangeState(state)`**: Removes current state and replaces it with the new one (Swap).
-*   **`Clear()`**: Removes all states.
+*   **`ChangeState(state)`**: Removes current state and replaces it with the new one.
 
 ### Example: Creating a GameState
 
@@ -50,25 +52,23 @@ The `StateMachine` manages the stack of states.
 class GameState : public State {
 public:
     void OnEnter() override {
-        GetSceneManager().LoadScene("scenes/level1.scene");
-        GetMouse().SetCursorMode(CursorMode::Locked);
+        // 1. Setup Scene
+        LoadScene("scenes/level1.scene");
+        SetCursorMode(CursorMode::Locked);
+
+        // 2. Enable necessary systems
+        EnablePhysics(true);
+        EnableRender(true);
+        EnableLogic(true);
     }
 
     void OnUpdate(float dt) override {
-        GetScriptSystem().Update(GetSceneManager().GetActiveScene(), dt, m_App);
+        // Systems are updated AUTOMATICALLY by Application.
+        // Only handle specific state logic here.
         
         if (GetKeyboard().GetKeyDown(GLFW_KEY_ESCAPE)) {
-            // Switch back to menu
             m_App->GetStateMachine().ChangeState(std::make_unique<MenuState>());
         }
-    }
-
-    void OnFixedUpdate(float fixedDt) override {
-        GetPhysicsSystem().Update(GetSceneManager().GetActiveScene(), m_App->GetPhysicsWorld(), fixedDt);
-    }
-
-    void OnRender() override {
-        GetRenderSystem().Render(GetSceneManager().GetActiveScene());
     }
 
     void OnExit() override {

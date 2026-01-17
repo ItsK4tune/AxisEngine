@@ -22,16 +22,21 @@ class PhysicsSystem
 public:
     void Update(Scene &scene, PhysicsWorld &physicsWorld, float dt);
     void RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
 
 private:
     using CollisionPair = std::pair<entt::entity, entt::entity>;
     std::set<CollisionPair> m_activeCollisions;
+    bool m_Enabled = true;
 };
 
 class AnimationSystem
 {
 public:
     void Update(Scene &scene, float dt);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };
 
 class RenderSystem
@@ -50,6 +55,8 @@ public:
     Shadow& GetShadow() { return m_Shadow; }
     int GetRenderedCount() const { return m_RenderedCount; }
 
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+
 private:
     void UploadLightData(Scene &scene, Shader *shader);
     
@@ -59,18 +66,25 @@ private:
     glm::mat4 m_LightSpaceMatrixDir;
     float m_FarPlanePoint = 25.0f;
     bool m_EnableShadows = true;
+    bool m_Enabled = true;
 };
 
 class UIInteractSystem
 {
 public:
     void Update(Scene &scene, float dt, const MouseManager &mouse);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };
 
 class UIRenderSystem
 {
 public:
     void Render(Scene &scene, float screenWidth, float screenHeight);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };
 
 class Application;
@@ -79,12 +93,18 @@ class ScriptableSystem
 {
 public:
     void Update(Scene &scene, float dt, Application *app);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };
 
 class SkyboxRenderSystem
 {
 public:
     void Render(Scene &scene);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };
 
 class AudioSystem
@@ -92,6 +112,9 @@ class AudioSystem
 public:
     void Update(Scene &scene, SoundManager& soundManager);
     void StopAll(Scene &scene);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };
 
 class ParticleSystem
@@ -99,10 +122,16 @@ class ParticleSystem
 public:
     void Update(Scene &scene, float dt);
     void Render(Scene &scene, ResourceManager &res);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };
 
 class VideoSystem
 {
 public:
     void Update(Scene &scene, ResourceManager &res, float dt);
+    void SetEnabled(bool enable) { m_Enabled = enable; }
+private:
+    bool m_Enabled = true;
 };

@@ -906,6 +906,12 @@ void SceneManager::UnloadScene(const std::string &filePath)
     m_LoadedScenes.erase(it);
 }
 
+void SceneManager::ChangeScene(const std::string &filePath)
+{
+    ClearAllScenes();
+    LoadScene(filePath);
+}
+
 void SceneManager::ClearAllScenes()
 {
     m_Scene.registry.clear();

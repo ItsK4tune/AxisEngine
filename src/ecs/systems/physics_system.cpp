@@ -6,6 +6,9 @@
 
 void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
 {
+    if (!m_Enabled) return;
+    
+    // Sync Physics to Transform
     physicsWorld.Update(dt);
 
     auto view = scene.registry.view<RigidBodyComponent, TransformComponent>();

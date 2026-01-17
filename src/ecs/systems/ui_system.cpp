@@ -2,6 +2,8 @@
 
 void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
 {
+    if (!m_Enabled) return;
+
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE); // UI Quads might be CW/CCW, disable culling to ensure visibility
     glEnable(GL_BLEND);
@@ -88,6 +90,8 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
 
 void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
 {
+    if (!m_Enabled) return;
+
     if (mouse.GetCursorMode() == CursorMode::Hidden)
         return;
 

@@ -10,7 +10,13 @@ Usually used internally by `Application`, but accessible if needed.
 ## Methods
 
 *   `void LoadScene(const std::string& filePath)`
-    *   Parses a text-based `.scene` file and populates the registry.
+    *   Parses a text-based `.scene` file and populates the registry (Additive).
+*   `void UnloadScene(const std::string& filePath)`
+    *   Unloads entities belonging to the specified scene file.
+*   `void ChangeScene(const std::string& filePath)`
+    *   **Clears ALL** existing scenes (entities & physics) and loads the new scene.
+*   `void ClearAllScenes()`
+    *   Removes all entities and clears physics world.
 *   `void SaveScene(const std::string& filePath)`
     *   (Not completely implemented) Serializes the current registry to a file.
 

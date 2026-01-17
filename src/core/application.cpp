@@ -137,20 +137,42 @@ void Application::Run()
         m_Accumulator += deltaTime;
         while (m_Accumulator >= m_FixedDeltaTime)
         {
+            physicsSystem.Update(scene, *physicsWorld, m_FixedDeltaTime); // Logic/Physics Step (Internal check enabled)
+            
+            // State Fixed Update
             m_StateMachine.FixedUpdate(m_FixedDeltaTime);
+
             m_Accumulator -= m_FixedDeltaTime;
         }
 
-        m_StateMachine.Update(deltaTime);
+        // Logic Update (Internal check enabled)
+        scriptSystem.Update(scene, deltaTime, this);
+        animationSystem.Update(scene, deltaTime);
+        videoSystem.Update(scene, *resourceManager, deltaTime);
+        uiInteractSystem.Update(scene, deltaTime, appHandler->GetMouse());
+        audioSystem.Update(scene, *soundManager);
+        particleSystem.Update(scene, deltaTime);
+
+        m_StateMachine.Update(deltaTime); // State specific logic
         appHandler->GetMouse().EndFrame();
         
+        // Rendering (Internal check enabled)
         renderSystem.RenderShadows(scene);
         
         glViewport(0, 0, monitorManager.GetWidth(), monitorManager.GetHeight());
         
         postProcess.BeginCapture();
 
-        m_StateMachine.Render();
+        skyboxRenderSystem.Render(scene); 
+        renderSystem.Render(scene);       // Main Geometry
+        
+        // Render Particles (Before UI, After Geometry)
+        particleSystem.Render(scene, *resourceManager);
+
+        // State Render (deprecated but kept for legacy)
+        m_StateMachine.Render(); 
+
+        uiRenderSystem.Render(scene, (float)monitorManager.GetWidth(), (float)monitorManager.GetHeight());
 
 #ifdef ENABLE_DEBUG_SYSTEM
         if (debugSystem) debugSystem->Render(scene);

@@ -4,6 +4,9 @@
 
 void AudioSystem::Update(Scene &scene, SoundManager& soundManager)
 {
+    if (!m_Enabled) return;
+
+    // Update Listener Position
     auto view = scene.registry.view<AudioSourceComponent>();
 
     for (auto entity : view)

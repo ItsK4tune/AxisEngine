@@ -239,6 +239,8 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
 
 void RenderSystem::Render(Scene &scene)
 {
+    if (!m_Enabled) return;
+
     entt::entity camEntity = scene.GetActiveCamera();
     CameraComponent *cam = nullptr;
     TransformComponent *camTrans = nullptr;

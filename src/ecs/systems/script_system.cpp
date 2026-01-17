@@ -1,9 +1,12 @@
 #include <ecs/system.h>
 #include <core/scriptable.h>
 #include <core/application.h>
+#include <ecs/component.h>
 
 void ScriptableSystem::Update(Scene &scene, float dt, Application *app)
 {
+    if (!m_Enabled) return;
+
     auto view = scene.registry.view<ScriptComponent>();
     auto& mouse = app->GetMouse();
     auto& keyboard = app->GetKeyboard();

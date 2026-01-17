@@ -4,6 +4,8 @@
 
 void ParticleSystem::Update(Scene &scene, float dt)
 {
+    if (!m_Enabled) return;
+
     auto view = scene.registry.view<ParticleEmitterComponent, TransformComponent>();
     
     for (auto entity : view) {
@@ -18,6 +20,8 @@ void ParticleSystem::Update(Scene &scene, float dt)
 
 void ParticleSystem::Render(Scene &scene, ResourceManager &res)
 {
+    if (!m_Enabled) return;
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE); 
     glDepthMask(GL_FALSE); 

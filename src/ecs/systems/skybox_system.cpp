@@ -2,6 +2,8 @@
 
 void SkyboxRenderSystem::Render(Scene &scene)
 {
+    if (!m_Enabled) return;
+
     entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;

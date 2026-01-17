@@ -25,6 +25,7 @@ public:
 
     void LoadScene(const std::string &filePath);
     void UnloadScene(const std::string &filePath);
+    void ChangeScene(const std::string &filePath);
 
     void ClearAllScenes();
 
@@ -40,13 +41,12 @@ private:
     ResourceManager &m_Resources;
     SoundManager &m_SoundManager;
     PhysicsWorld &m_Physics;
-    Application* m_App = nullptr; // [NEW]
+    Application* m_App = nullptr;
 
     entt::entity currentEntity = entt::null;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
     
-    // Deferred Loading State
     std::string m_pendingPath = "";
     bool m_isPending = false;
 };
