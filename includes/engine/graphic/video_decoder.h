@@ -38,10 +38,16 @@ public:
     int GetHeight() const { return m_Height; }
     void Seek(double timestamp);
 
+    void SetMaxDecodeSteps(int steps) { m_MaxDecodeSteps = steps; }
+    int GetMaxDecodeSteps() const { return m_MaxDecodeSteps; }
+    void SetOutputSize(int width, int height);
+
+    double GetFrameRate() const { return m_FrameRate; }
+
 private:
     void InitTexture();
-    void UpdateTexture(uint8_t* data, int width, int height);
-    bool ReadFrame();
+    bool DecodeFrame();
+    void UploadFrame();
 
     enum class State { Stopped, Playing, Paused };
 
@@ -49,6 +55,7 @@ private:
     std::string m_Filepath;
     bool m_Loop = false;
     float m_Speed = 1.0f;
+    int m_MaxDecodeSteps = 5;
 
     // FFmpeg context
     AVFormatContext* m_FormatCtx = nullptr;
@@ -59,11 +66,18 @@ private:
     int m_VideoStreamIndex = -1;
 
     unsigned int m_TextureID = 0;
+    
+    // Source Dimensions
     int m_Width = 0;
     int m_Height = 0;
+
+    // Output Dimensions
+    int m_OutputWidth = 0;
+    int m_OutputHeight = 0;
 
     // Time keeping
     double m_CurrentTime = 0.0;
     double m_LastFrameTime = 0.0;
     double m_TimeBase = 0.0;
+    double m_FrameRate = 0.0;
 };

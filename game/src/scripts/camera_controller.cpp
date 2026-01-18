@@ -16,7 +16,7 @@ void CameraController::OnUpdate(float dt)
     const auto &mouse = GetAppHandler().GetMouse();
     const auto &keyboard = GetAppHandler().GetKeyboard();
 
-    if (mouse.GetCursorMode() == CursorMode::Locked || mouse.GetCursorMode() == CursorMode::LockedCenter)
+    if (mouse.GetCursorMode() == CursorMode::LockedCenter || mouse.GetCursorMode() == CursorMode::LockedHiddenCenter)
     {
         camera.yaw += mouse.GetXOffset() * mouseSensitivity;
         camera.pitch += mouse.GetYOffset() * mouseSensitivity;

@@ -335,17 +335,20 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             std::string path;
             int loop = 0, playOnAwake = 1;
             float speed = 1.0f;
+            int maxDecodes = 5;
             ss >> path;
 
             if (!ss.eof()) ss >> loop;
             if (!ss.eof()) ss >> speed;
             if (!ss.eof()) ss >> playOnAwake;
+            if (!ss.eof()) ss >> maxDecodes;
 
             VideoPlayerComponent video;
             video.filePath = FileSystem::getPath(path);
             video.isLooping = (loop != 0);
             video.speed = speed;
             video.playOnAwake = (playOnAwake != 0);
+            video.maxDecodes = maxDecodes;
 
             scene.registry.emplace<VideoPlayerComponent>(currentEntity, video);
         }

@@ -29,70 +29,37 @@ void MouseManager::UpdatePosition(double xpos, double ypos)
     m_LastX = xpos;
     m_LastY = ypos;
 
-    if (m_Mode == CursorMode::Locked || m_Mode == CursorMode::LockedHidden)
-    {
-        int w, h;
-        glfwGetWindowSize(m_Window, &w, &h);
-        bool needsUpdate = false;
-        double newX = xpos;
-        double newY = ypos;
-
-        if (xpos < 0) { newX = 0; needsUpdate = true; }
-        if (xpos > w) { newX = w; needsUpdate = true; }
-        if (ypos < 0) { newY = 0; needsUpdate = true; }
-        if (ypos > h) { newY = h; needsUpdate = true; }
-
-        if (needsUpdate)
-        {
-            glfwSetCursorPos(m_Window, newX, newY);
-            m_LastX = newX;
-            m_LastY = newY;
-        }
-    }
-    else if (m_Mode == CursorMode::LockedCenter)
-    {
-        int w, h;
-        glfwGetWindowSize(m_Window, &w, &h);
-        double centerX = w / 2.0;
-        double centerY = h / 2.0;
-        
-        glfwSetCursorPos(m_Window, centerX, centerY);
-        m_LastX = centerX;
-        m_LastY = centerY;
-    }
+// LockedCenter is re-centered in Update() to avoid high-freq OS calls here.
+    // LockedHiddenCenter uses GLFW_CURSOR_DISABLED so no manual logic needed here.
 }
 
 void MouseManager::Update()
 {
-    // Strict Clamping for Locked modes (Polling mechanism)
-    // This catches cases where the cursor moves too fast and exits the window between frames
-    if (m_Mode == CursorMode::Locked || m_Mode == CursorMode::LockedHidden)
+    if (m_Mode == CursorMode::LockedCenter)
     {
         if (!m_Window) return;
-
-        // Verify window has focus first? Usually we only lock if focused.
-        if (!glfwGetWindowAttrib(m_Window, GLFW_FOCUSED)) return;
-
-        double x, y;
-        glfwGetCursorPos(m_Window, &x, &y);
         
-        int w, h;
-        glfwGetWindowSize(m_Window, &w, &h);
-
-        bool needsClamp = false;
-        double newX = x;
-        double newY = y;
-
-        if (x < 0) { newX = 0; needsClamp = true; }
-        if (x > w) { newX = w; needsClamp = true; }
-        if (y < 0) { newY = 0; needsClamp = true; }
-        if (y > h) { newY = h; needsClamp = true; }
-
-        if (needsClamp)
+        // Only lock if focused
+        if (glfwGetWindowAttrib(m_Window, GLFW_FOCUSED))
         {
-            glfwSetCursorPos(m_Window, newX, newY);
+             int w = m_WindowWidth;
+             int h = m_WindowHeight;
+             double centerX = w / 2.0;
+             double centerY = h / 2.0;
+
+             glfwSetCursorPos(m_Window, centerX, centerY);
+             
+             // Important: Update LastX/Y so we don't get a huge jump frame
+             m_LastX = centerX;
+             m_LastY = centerY;
         }
     }
+}
+
+void MouseManager::SetWindowSize(int width, int height)
+{
+    m_WindowWidth = width;
+    m_WindowHeight = height;
 }
 
 void MouseManager::UpdateScroll(double xoffset, double yoffset)
@@ -152,33 +119,18 @@ void MouseManager::SetCursorMode(CursorMode mode)
     case CursorMode::Hidden:
         glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
         break;
-    case CursorMode::Locked:
-        glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        break;
-    case CursorMode::LockedHidden:
-        glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-        break;
     case CursorMode::LockedCenter:
         glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        {
-            int w, h;
-            glfwGetWindowSize(m_Window, &w, &h);
-            glfwSetCursorPos(m_Window, w / 2.0, h / 2.0);
-            m_LastX = w / 2.0;
-            m_LastY = h / 2.0;
-        }
+        m_FirstMouse = true;
         break;
     case CursorMode::LockedHiddenCenter:
         glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        // Reset FirstMouse to avoid jump
+        m_FirstMouse = true;
         break;
     }
 
     m_Mode = mode;
-
-    if (mode == CursorMode::LockedHiddenCenter || mode == CursorMode::LockedCenter)
-    {
-        m_FirstMouse = true;
-    }
 }
 
 CursorMode MouseManager::GetCursorMode() const

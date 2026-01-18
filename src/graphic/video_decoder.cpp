@@ -58,22 +58,58 @@ bool VideoDecoder::Load(const std::string& filepath) {
 
     m_Width = m_CodecCtx->width;
     m_Height = m_CodecCtx->height;
+
+    // Default output size = Source size if not specified
+    if (m_OutputWidth <= 0 || m_OutputHeight <= 0) {
+        m_OutputWidth = m_Width;
+        m_OutputHeight = m_Height;
+    }
+
     m_TimeBase = av_q2d(m_FormatCtx->streams[m_VideoStreamIndex]->time_base);
 
+    if (m_FormatCtx->streams[m_VideoStreamIndex]->avg_frame_rate.den > 0)
+        m_FrameRate = av_q2d(m_FormatCtx->streams[m_VideoStreamIndex]->avg_frame_rate);
+    else
+        m_FrameRate = 30.0; // Default
+
+    // Initialize scaling context and buffers
+    SetOutputSize(m_OutputWidth, m_OutputHeight);
+    
+    return true;
+}
+
+void VideoDecoder::SetOutputSize(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        // Reset to source size if available, else ignore
+        if (m_Width > 0 && m_Height > 0) {
+            m_OutputWidth = m_Width;
+            m_OutputHeight = m_Height;
+        } else {
+            return; 
+        }
+    } else {
+        m_OutputWidth = width;
+        m_OutputHeight = height;
+    }
+
+    if (!m_CodecCtx) return; // Not loaded yet
+
+    if (m_SwsCtx) sws_freeContext(m_SwsCtx);
     m_SwsCtx = sws_getContext(
         m_Width, m_Height, m_CodecCtx->pix_fmt,
-        m_Width, m_Height, AV_PIX_FMT_RGBA,
+        m_OutputWidth, m_OutputHeight, AV_PIX_FMT_RGBA,
         SWS_BILINEAR, nullptr, nullptr, nullptr
     );
 
-    // Buffer for RGB frame
-    int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGBA, m_Width, m_Height, 1);
-    uint8_t* buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
-    av_image_fill_arrays(m_RGBFrame->data, m_RGBFrame->linesize, buffer, AV_PIX_FMT_RGBA, m_Width, m_Height, 1);
-
-    InitTexture();
+    // Re-alloc RGB frame buffer
+    if (m_RGBFrame->data[0]) av_freep(&m_RGBFrame->data[0]);
     
-    return true;
+    int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGBA, m_OutputWidth, m_OutputHeight, 1);
+    uint8_t* buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+    av_image_fill_arrays(m_RGBFrame->data, m_RGBFrame->linesize, buffer, AV_PIX_FMT_RGBA, m_OutputWidth, m_OutputHeight, 1);
+
+    // Re-init Texture
+    InitTexture();
 }
 
 void VideoDecoder::Unload() {
@@ -85,11 +121,18 @@ void VideoDecoder::Unload() {
         glDeleteTextures(1, &m_TextureID);
         m_TextureID = 0;
     }
+    
+    if (m_RGBFrame && m_RGBFrame->data[0]) {
+        av_freep(&m_RGBFrame->data[0]); // Corrected usage
+        m_RGBFrame->data[0] = nullptr;
+    }
 
     m_FormatCtx = nullptr;
     m_CodecCtx = nullptr;
     m_SwsCtx = nullptr;
     m_State = State::Stopped;
+    // Reset output size? Maybe keep it if user set it before load
+    // m_OutputWidth = 0; m_OutputHeight = 0; 
 }
 
 void VideoDecoder::InitTexture() {
@@ -99,8 +142,9 @@ void VideoDecoder::InitTexture() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_OutputWidth, m_OutputHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 }
+
 
 void VideoDecoder::Play() {
     if (m_State != State::Playing) {
@@ -122,11 +166,11 @@ void VideoDecoder::Update(float dt) {
 
     m_CurrentTime += dt * m_Speed;
 
-    // Simple synchronization: Read frames until we catch up to current time
-    // In a real player, we'd sync to Audio clock, but here we just sync to wall clock.
-    
-    while (m_LastFrameTime < m_CurrentTime) {
-        if (!ReadFrame()) {
+    bool needsUpload = false;
+    int decodedCount = 0;
+
+    while (m_LastFrameTime < m_CurrentTime && decodedCount < m_MaxDecodeSteps) {
+        if (!DecodeFrame()) {
             if (m_Loop) {
                 Seek(0);
                 m_CurrentTime = 0;
@@ -136,10 +180,16 @@ void VideoDecoder::Update(float dt) {
             }
             break;
         }
+        decodedCount++;
+        needsUpload = true;
+    }
+
+    if (needsUpload) {
+        UploadFrame();
     }
 }
 
-bool VideoDecoder::ReadFrame() {
+bool VideoDecoder::DecodeFrame() {
     AVPacket* packet = av_packet_alloc();
     bool frameRead = false;
 
@@ -147,30 +197,41 @@ bool VideoDecoder::ReadFrame() {
         if (packet->stream_index == m_VideoStreamIndex) {
             if (avcodec_send_packet(m_CodecCtx, packet) == 0) {
                 while (avcodec_receive_frame(m_CodecCtx, m_Frame) == 0) {
-                    // Start of frame processing
-                    m_LastFrameTime = m_Frame->pts * m_TimeBase;
+                    // Update timestamp
+                    if (m_Frame->pts != AV_NOPTS_VALUE)
+                        m_LastFrameTime = m_Frame->pts * m_TimeBase;
+                    else
+                        m_LastFrameTime += 1.0 / m_FrameRate; // Fallback
 
-                    // Convert to RGB
-                    sws_scale(m_SwsCtx,
-                        (const uint8_t* const*)m_Frame->data, m_Frame->linesize,
-                        0, m_Height,
-                        m_RGBFrame->data, m_RGBFrame->linesize
-                    );
-
-                    // Update Texture
-                    glBindTexture(GL_TEXTURE_2D, m_TextureID);
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_Width, m_Height, GL_RGBA, GL_UNSIGNED_BYTE, m_RGBFrame->data[0]);
-                    
                     frameRead = true;
+                    // We only want 1 frame per call to this function
+                    // The caller decides if we need more
+                    goto end_decode;
                 }
             }
         }
         av_packet_unref(packet);
-        if (frameRead) break;
     }
     
+end_decode:
+    av_packet_unref(packet); // Unref current
     av_packet_free(&packet);
     return frameRead;
+}
+
+void VideoDecoder::UploadFrame() {
+    if (!m_SwsCtx || !m_Frame || !m_RGBFrame) return;
+
+    // Convert to RGB
+    sws_scale(m_SwsCtx,
+        (const uint8_t* const*)m_Frame->data, m_Frame->linesize,
+        0, m_Height, // Source height (frame height)
+        m_RGBFrame->data, m_RGBFrame->linesize
+    );
+
+    // Update Texture
+    glBindTexture(GL_TEXTURE_2D, m_TextureID);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, GL_RGBA, GL_UNSIGNED_BYTE, m_RGBFrame->data[0]);
 }
 
 void VideoDecoder::Seek(double timestamp) {

@@ -297,6 +297,7 @@ struct VideoPlayerComponent
     bool isLooping = false;
     float speed = 1.0f;
     bool playOnAwake = true;
+    int maxDecodes = 5;
 
     // Runtime
     VideoDecoder* decoder = nullptr;

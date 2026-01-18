@@ -7,8 +7,6 @@ enum class CursorMode
 {
     Normal,
     Hidden,
-    Locked,
-    LockedHidden,
     LockedCenter,
     LockedHiddenCenter
 };
@@ -21,7 +19,7 @@ public:
     void UpdatePosition(double xpos, double ypos);
     void UpdateScroll(double xoffset, double yoffset);
     void UpdateButton(int button, int action, int mods);
-    void Update(); // Polling update for clamping
+    void Update();
     void EndFrame();
 
     void SetCursorMode(CursorMode mode);
@@ -40,10 +38,13 @@ public:
     bool IsLeftMouseClicked() const;
     bool IsRightMouseClicked() const;
 
+    void SetWindowSize(int width, int height);
     void SetLastPosition(double x, double y);
 
 private:
     GLFWwindow *m_Window = nullptr;
+    int m_WindowWidth = 800;
+    int m_WindowHeight = 600;
 
     double m_LastX;
     double m_LastY;

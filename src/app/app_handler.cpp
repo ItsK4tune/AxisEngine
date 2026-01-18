@@ -28,6 +28,11 @@ void AppHandler::OnMouseButton(int button, int action, int mods)
     m_MouseManager->UpdateButton(button, action, mods);
 }
 
+void AppHandler::OnResize(int width, int height)
+{
+    m_MouseManager->SetWindowSize(width, height);
+}
+
 void AppHandler::OnScroll(double xoffset, double yoffset)
 {
     m_MouseManager->UpdateScroll(xoffset, yoffset);

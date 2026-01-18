@@ -83,6 +83,7 @@ bool Application::Init()
 
     physicsWorld = std::make_unique<PhysicsWorld>();
     appHandler = std::make_unique<AppHandler>(window);
+    appHandler->OnResize(monitorManager.GetWidth(), monitorManager.GetHeight());
 
     resourceManager = std::make_unique<ResourceManager>();
     soundManager = std::make_unique<SoundManager>();
@@ -123,7 +124,7 @@ void Application::Run()
         lastFrame = currentFrame;
 
         glfwPollEvents();
-        appHandler->GetMouse().Update();
+        if (appHandler) appHandler->GetMouse().Update();
 
         if (m_IsPaused)
         {
@@ -220,6 +221,7 @@ void Application::OnResize(int width, int height)
 {
     monitorManager.OnResize(width, height);
     postProcess.Resize(width, height);
+    if (appHandler) appHandler->OnResize(width, height);
 }
 
 void Application::OnMouseMove(double xpos, double ypos)

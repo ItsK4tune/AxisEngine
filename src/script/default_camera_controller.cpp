@@ -26,10 +26,7 @@ void DefaultCameraController::OnUpdate(float dt)
     
     // Check for any locked/captured mode to enable camera control
     CursorMode mode = mouse.GetCursorMode();
-    bool canControl = (mode == CursorMode::Locked) || 
-                      (mode == CursorMode::LockedCenter) ||
-                      (mode == CursorMode::LockedHidden) ||
-                      (mode == CursorMode::LockedHiddenCenter);
+    bool canControl = true;
 
     if (canControl)
     {

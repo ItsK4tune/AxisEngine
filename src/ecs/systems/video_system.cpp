@@ -26,6 +26,17 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
                 video.isLoaded = true;
                 video.decoder->SetLoop(video.isLooping);
                 video.decoder->SetSpeed(video.speed);
+                video.decoder->SetMaxDecodeSteps(video.maxDecodes);
+
+                // Auto-scale optimization for UI
+                if (scene.registry.all_of<UITransformComponent>(entity)) {
+                    auto& ui = scene.registry.get<UITransformComponent>(entity);
+                    if (ui.size.x > 0 && ui.size.y > 0) {
+                        video.decoder->SetOutputSize((int)ui.size.x, (int)ui.size.y);
+                        // std::cout << "[VideoSystem] Auto-scaling video to UI size: " << ui.size.x << "x" << ui.size.y << std::endl;
+                    }
+                }
+
                 if (video.playOnAwake)
                 {
                     video.decoder->Play();
@@ -50,6 +61,9 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
             
             if (video.decoder->GetSpeed() != video.speed)
                 video.decoder->SetSpeed(video.speed);
+
+            if (video.decoder->GetMaxDecodeSteps() != video.maxDecodes)
+                video.decoder->SetMaxDecodeSteps(video.maxDecodes);
 
             video.decoder->Update(dt);
 

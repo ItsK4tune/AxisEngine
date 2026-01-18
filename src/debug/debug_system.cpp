@@ -128,9 +128,7 @@ void DebugSystem::OnUpdate(float dt)
             switch (current)
             {
             case CursorMode::Normal: next = CursorMode::Hidden; modeName = "Hidden"; break;
-            case CursorMode::Hidden: next = CursorMode::Locked; modeName = "Locked"; break;
-            case CursorMode::Locked: next = CursorMode::LockedHidden; modeName = "LockedHidden"; break;
-            case CursorMode::LockedHidden: next = CursorMode::LockedCenter; modeName = "LockedCenter"; break;
+            case CursorMode::Hidden: next = CursorMode::LockedCenter; modeName = "LockedCenter"; break;
             case CursorMode::LockedCenter: next = CursorMode::LockedHiddenCenter; modeName = "LockedHiddenCenter"; break;
             case CursorMode::LockedHiddenCenter: next = CursorMode::Normal; modeName = "Normal"; break;
             }
