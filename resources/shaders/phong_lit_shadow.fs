@@ -43,6 +43,7 @@ struct SpotLight {
 
 #define NR_POINT_LIGHTS 4
 #define NR_SPOT_LIGHTS 4
+#define NR_DIR_LIGHTS 4
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -51,9 +52,11 @@ in vec4 FragPosLightSpace;
 
 uniform vec3 viewPos;
 uniform DirLight dirLight;
+uniform DirLight dirLights[NR_DIR_LIGHTS];
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLights[NR_SPOT_LIGHTS];
 uniform Material material;
+uniform int numDirLights;
 uniform int nrPointLights;
 uniform int nrSpotLights;
 uniform vec4 tintColor;
@@ -65,6 +68,7 @@ uniform float farPlanePoint;
 uniform bool debug_noTexture;
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
+vec3 CalcDirLightWithShadow(DirLight light, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, int index);
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir);
@@ -75,7 +79,16 @@ void main()
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
 
-    vec3 result = CalcDirLight(dirLight, norm, viewDir);
+    vec3 result = vec3(0.0);
+    
+    if (numDirLights > 0) {
+        result += CalcDirLightWithShadow(dirLights[0], norm, viewDir);
+        
+        for(int i = 1; i < numDirLights && i < NR_DIR_LIGHTS; i++)
+            result += CalcDirLight(dirLights[i], norm, viewDir);
+    } else {
+        result = CalcDirLightWithShadow(dirLight, norm, viewDir);
+    }
 
     for(int i = 0; i < nrPointLights; i++)
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, i);
@@ -90,7 +103,7 @@ void main()
     FragColor = vec4(result, material.opacity) * tintColor;
 }
 
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
+vec3 CalcDirLightWithShadow(DirLight light, vec3 normal, vec3 viewDir)
 {
     vec3 lightDir = normalize(-light.direction);
     float diff = max(dot(normal, lightDir), 0.0);
@@ -138,6 +151,30 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
         shadow = 0.0;
 
     return shadow;
+}
+
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
+{
+    vec3 lightDir = normalize(-light.direction);
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    
+    if (debug_noTexture) {
+         ambient = light.ambient * vec3(1.0) * material.ambient;
+         diffuse = light.diffuse * diff * vec3(1.0);
+         specular = light.specular * spec * vec3(0.5) * material.specular;
+    } else {
+         ambient = light.ambient * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
+         diffuse = light.diffuse * diff * vec3(texture(material.texture_diffuse1, TexCoords));
+         specular = light.specular * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
+    }
+
+    return (ambient + diffuse + specular);
 }
 
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, int index)

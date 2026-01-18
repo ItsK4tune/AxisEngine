@@ -40,6 +40,7 @@ struct SpotLight {
 
 #define NR_POINT_LIGHTS 4
 #define NR_SPOT_LIGHTS 4
+#define NR_DIR_LIGHTS 4
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -47,9 +48,11 @@ in vec2 TexCoords;
 
 uniform vec3 viewPos;
 uniform DirLight dirLight;
+uniform DirLight dirLights[NR_DIR_LIGHTS];
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLights[NR_SPOT_LIGHTS];
 uniform Material material;
+uniform int numDirLights;
 uniform int nrPointLights;
 uniform int nrSpotLights;
 uniform vec4 tintColor;

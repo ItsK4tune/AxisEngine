@@ -34,8 +34,11 @@ struct PointLight {
 };
 
 #define NR_POINT_LIGHTS 4
+#define NR_DIR_LIGHTS 4
 uniform DirLight dirLight;
+uniform DirLight dirLights[NR_DIR_LIGHTS];
 uniform PointLight pointLights[NR_POINT_LIGHTS];
+uniform int numDirLights;
 uniform int nrPointLights;
 uniform vec3 viewPos;
 uniform Material material;
@@ -79,7 +82,29 @@ void main()
 
     vec3 Lo = vec3(0.0);
 
-    {
+    if (numDirLights > 0) {
+        for(int d = 0; d < numDirLights && d < NR_DIR_LIGHTS; d++) {
+            vec3 L = normalize(-dirLights[d].direction);
+            vec3 H = normalize(V + L);
+
+            vec3 radiance = dirLights[d].color;
+
+            float NDF = DistributionGGX(N, H, roughness);
+            float G   = GeometrySmith(N, V, L, roughness);
+            vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+            vec3 numerator = NDF * G * F;
+            float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+            vec3 specular = numerator / denominator;
+
+            vec3 kS = F;
+            vec3 kD = vec3(1.0) - kS;
+            kD *= 1.0 - metallic;
+
+            float NdotL = max(dot(N, L), 0.0);
+            Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        }
+    } else {
         vec3 L = normalize(-dirLight.direction);
         vec3 H = normalize(V + L);
 

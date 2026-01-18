@@ -163,6 +163,17 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             l.ambient = l.color * ambientStr;
             l.diffuse = l.color * diffuseStr;
             l.specular = glm::vec3(0.5f);
+            
+            int primaryFlag = 0;
+            int activeFlag = 1;
+            if (ss >> primaryFlag)
+            {
+                l.isPrimary = (primaryFlag != 0);
+                if (ss >> activeFlag)
+                {
+                    l.active = (activeFlag != 0);
+                }
+            }
         }
         else if (command == "LIGHT_POINT")
         {
@@ -192,6 +203,19 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             l.ambient = l.color * ambStr;
             l.diffuse = l.color * diffStr;
             l.specular = glm::vec3(1.0f);
+            
+            int primaryFlag = 0;
+            int activeFlag = 1;
+            std::string temp;
+            if (ss >> temp)
+            {
+                primaryFlag = std::stoi(temp);
+                l.isPrimary = (primaryFlag != 0);
+                if (ss >> activeFlag)
+                {
+                    l.active = (activeFlag != 0);
+                }
+            }
         }
         else if (command == "LIGHT_SPOT")
         {
@@ -222,6 +246,19 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
             l.ambient = l.color * ambStr;
             l.diffuse = l.color * diffStr;
             l.specular = glm::vec3(1.0f);
+            
+            int primaryFlag = 0;
+            int activeFlag = 1;
+            std::string temp;
+            if (ss >> temp)
+            {
+                primaryFlag = std::stoi(temp);
+                l.isPrimary = (primaryFlag != 0);
+                if (ss >> activeFlag)
+                {
+                    l.active = (activeFlag != 0);
+                }
+            }
         }
         else if (command == "UI_TRANSFORM")
         {
@@ -506,6 +543,29 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
                 }
             }
         }
+    }
+    
+    auto dirLightView = scene.registry.view<DirectionalLightComponent>();
+    bool hasPrimaryDirLight = false;
+    entt::entity lastDirLight = entt::null;
+    
+    for (auto entity : dirLightView)
+    {
+        auto& light = dirLightView.get<DirectionalLightComponent>(entity);
+        if (light.isPrimary && light.active)
+        {
+            hasPrimaryDirLight = true;
+            break;
+        }
+        if (light.active)
+            lastDirLight = entity;
+    }
+    
+    if (!hasPrimaryDirLight && lastDirLight != entt::null)
+    {
+        auto& light = scene.registry.get<DirectionalLightComponent>(lastDirLight);
+        light.isPrimary = true;
+        std::cout << "[SceneLoader] Auto-set last active directional light as primary" << std::endl;
     }
 
     auto rbView = scene.registry.view<RigidBodyComponent, TransformComponent>();
