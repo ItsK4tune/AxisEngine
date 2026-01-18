@@ -37,6 +37,20 @@ struct TransformComponent
     void AddChild(entt::entity thisEntity, entt::entity child, entt::registry& registry, bool keepWorldTransform = false);
     void RemoveChild(entt::entity child);
     bool HasParent() const { return parent != entt::null; }
+    uint32_t GetVersion() const { return m_Version; }
+
+private:
+    mutable glm::mat4 m_LocalMatrix = glm::mat4(1.0f);
+    mutable glm::mat4 m_WorldMatrix = glm::mat4(1.0f);
+    
+    mutable glm::vec3 m_LastPosition = glm::vec3(0.0f);
+    mutable glm::quat m_LastRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    mutable glm::vec3 m_LastScale = glm::vec3(1.0f);
+    
+    mutable uint32_t m_Version = 0;
+    mutable uint32_t m_LastParentVersion = 0;
+    mutable entt::entity m_LastParent = entt::null;
+    mutable uint32_t m_LastLocalVersion = 0;
 };
 
 struct MeshRendererComponent

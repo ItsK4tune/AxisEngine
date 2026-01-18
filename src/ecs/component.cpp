@@ -8,26 +8,61 @@
 
 glm::mat4 TransformComponent::GetLocalModelMatrix() const
 {
-    glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
-    glm::mat4 rot = glm::mat4_cast(rotation);
-    glm::mat4 sca = glm::scale(glm::mat4(1.0f), scale);
-    return trans * rot * sca;
+    if (position != m_LastPosition || rotation != m_LastRotation || scale != m_LastScale)
+    {
+        glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
+        glm::mat4 rot = glm::mat4_cast(rotation);
+        glm::mat4 sca = glm::scale(glm::mat4(1.0f), scale);
+        
+        m_LocalMatrix = trans * rot * sca;
+        
+        m_LastPosition = position;
+        m_LastRotation = rotation;
+        m_LastScale = scale;
+        
+        m_Version++;
+    }
+    return m_LocalMatrix;
 }
 
 glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) const
 {
-    glm::mat4 model = GetLocalModelMatrix();
+    GetLocalModelMatrix();
     
+    bool parentChanged = false;
+    if (parent != m_LastParent)
+    {
+        m_LastParent = parent;
+        parentChanged = true;
+    }
+
     if (registry.valid(parent) && parent != entt::null)
     {
         if (registry.all_of<TransformComponent>(parent))
         {
             const auto& parentTrans = registry.get<TransformComponent>(parent);
-            return parentTrans.GetWorldModelMatrix(registry) * model;
+            glm::mat4 parentWorld = parentTrans.GetWorldModelMatrix(registry); 
+            uint32_t parentVer = parentTrans.GetVersion(); 
+
+            if (parentChanged || parentVer != m_LastParentVersion || m_Version != m_LastLocalVersion)
+            {
+                m_WorldMatrix = parentWorld * m_LocalMatrix;
+                m_LastParentVersion = parentVer;
+                m_LastLocalVersion = m_Version;
+            }
+        }
+        else
+        {
+             // Parent has no transform? Treat as root.
+             m_WorldMatrix = m_LocalMatrix;
         }
     }
+    else
+    {
+        m_WorldMatrix = m_LocalMatrix;
+    }
     
-    return model;
+    return m_WorldMatrix;
 }
 
 void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry& registry, bool keepWorldTransform)

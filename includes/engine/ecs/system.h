@@ -70,7 +70,15 @@ private:
     bool m_EnableShadows = true;
     bool m_Enabled = true;
     bool m_DebugNoTexture = false;
-    unsigned int m_WhiteTextureID = 0; // Simple 1x1 white texture
+    unsigned int m_WhiteTextureID = 0;
+
+    struct RenderItem
+    {
+        entt::entity entity;
+        TransformComponent *transform;
+        MeshRendererComponent *renderer;
+    };
+    std::vector<RenderItem> m_RenderQueue;
 };
 
 class UIInteractSystem

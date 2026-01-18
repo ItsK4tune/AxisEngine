@@ -259,15 +259,9 @@ void RenderSystem::Render(Scene &scene)
     if (cam)
         frustum.Update(cam->projectionMatrix * cam->viewMatrix);
 
-    scene.registry.sort<MeshRendererComponent>([](const auto &lhs, const auto &rhs)
-                                               { return lhs.shader < rhs.shader; });
+    m_RenderQueue.clear();
 
-    Shader *currentShader = nullptr;
     auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
-    view.use<MeshRendererComponent>();
-
-    m_RenderedCount = 0;
-
     for (auto entity : view)
     {
         auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
@@ -275,10 +269,9 @@ void RenderSystem::Render(Scene &scene)
         if (!renderer.model || !renderer.shader)
             continue;
 
-        glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
-
         if (cam)
         {
+            glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
             glm::vec3 min = renderer.model->AABBmin;
             glm::vec3 max = renderer.model->AABBmax;
             
@@ -301,9 +294,50 @@ void RenderSystem::Render(Scene &scene)
                 continue;
         }
 
+        m_RenderQueue.push_back({entity, &transform, &renderer});
+    }
+
+    std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [](const RenderItem &lhs, const RenderItem &rhs) {
+        if (lhs.renderer->shader != rhs.renderer->shader)
+            return lhs.renderer->shader < rhs.renderer->shader;
+        return lhs.renderer->model < rhs.renderer->model;
+    });
+
+    // Uniform string cache
+    static std::vector<std::string> bonesUniforms;
+    if (bonesUniforms.empty()) {
+        for (int i = 0; i < 100; ++i) bonesUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
+    }
+    static std::vector<std::string> shadowPointUniforms;
+    if (shadowPointUniforms.empty()) {
+        for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i) shadowPointUniforms.push_back("shadowMapPoint[" + std::to_string(i) + "]");
+    }
+
+    Shader *currentShader = nullptr;
+    Model *currentModel = nullptr;
+    std::vector<glm::mat4> instanceBatch;
+    m_RenderedCount = 0;
+
+    auto flushBatch = [&](Shader* shader, Model* model) {
+        if (!instanceBatch.empty() && shader && model) {
+            model->DrawInstanced(*shader, instanceBatch);
+            m_RenderedCount += instanceBatch.size();
+            instanceBatch.clear();
+        }
+    };
+
+    for (const auto &item : m_RenderQueue)
+    {
+        entt::entity entity = item.entity;
+        TransformComponent &transform = *item.transform;
+        MeshRendererComponent &renderer = *item.renderer;
+        
+        // Setup shader if changed
         if (currentShader != renderer.shader)
         {
+            flushBatch(currentShader, currentModel);
             currentShader = renderer.shader;
+            currentModel = nullptr; // invalidate model to force setup
             currentShader->use();
 
             if (cam && camTrans)
@@ -323,106 +357,145 @@ void RenderSystem::Render(Scene &scene)
                 for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
                 {
                     m_Shadow.BindTexture_Point(i, 11 + i);
-                    currentShader->setInt("shadowMapPoint[" + std::to_string(i) + "]", 11 + i);
+                    currentShader->setInt(shadowPointUniforms[i], 11 + i);
                 }
             }
-
             UploadLightData(scene, currentShader);
         }
 
-        currentShader->setMat4("model", modelMatrix);
-        currentShader->setVec4("tintColor", renderer.color);
+        bool isAnimated = scene.registry.all_of<AnimationComponent>(entity) && scene.registry.get<AnimationComponent>(entity).animator;
 
-        if (scene.registry.all_of<AnimationComponent>(entity))
+        if (isAnimated)
         {
+            flushBatch(currentShader, currentModel);
+            currentModel = nullptr;
+
+            glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+            currentShader->setMat4("model", modelMatrix);
+            currentShader->setVec4("tintColor", renderer.color);
+
             auto &anim = scene.registry.get<AnimationComponent>(entity);
-            if (anim.animator)
+            auto transforms = anim.animator->GetFinalBoneMatrices();
+            for (int j = 0; j < transforms.size() && j < 100; ++j)
+                currentShader->setMat4(bonesUniforms[j], transforms[j]);
+            
+             if (scene.registry.all_of<MaterialComponent>(entity))
             {
-                auto transforms = anim.animator->GetFinalBoneMatrices();
-                for (int j = 0; j < transforms.size() && j < 100; ++j)
-                    currentShader->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
-            }
-        }
+                auto &mat = scene.registry.get<MaterialComponent>(entity);
+                if (mat.type == MaterialType::PBR)
+                {
+                    currentShader->setFloat("material.roughness", mat.roughness);
+                    currentShader->setFloat("material.metallic", mat.metallic);
+                    currentShader->setFloat("material.ao", mat.ao);
+                    currentShader->setVec3("material.emission", mat.emission);
+                }
+                else
+                {
+                    currentShader->setFloat("material.shininess", mat.shininess);
+                    currentShader->setVec3("material.specular", mat.specular);
+                    currentShader->setVec3("material.ambient", mat.ambient);
+                    currentShader->setVec3("material.emission", mat.emission);
+                }
+                currentShader->setFloat("material.opacity", mat.opacity);
+                currentShader->setVec2("uvScale", mat.uvScale);
+                currentShader->setVec2("uvOffset", mat.uvOffset);
 
-        if (scene.registry.all_of<MaterialComponent>(entity))
-        {
-            auto &mat = scene.registry.get<MaterialComponent>(entity);
-            if (mat.type == MaterialType::PBR)
-            {
-                currentShader->setFloat("material.roughness", mat.roughness);
-                currentShader->setFloat("material.metallic", mat.metallic);
-                currentShader->setFloat("material.ao", mat.ao);
-                currentShader->setVec3("material.emission", mat.emission);
+                if (m_DebugNoTexture)
+                {
+                     if (m_WhiteTextureID == 0)
+                     {
+                         glGenTextures(1, &m_WhiteTextureID);
+                         glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                         unsigned char white[] = {255, 255, 255, 255};
+                         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+                         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                     }
+                     glActiveTexture(GL_TEXTURE0);
+                     glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                } 
             }
             else
             {
-                currentShader->setFloat("material.shininess", mat.shininess);
-                currentShader->setVec3("material.specular", mat.specular);
-                currentShader->setVec3("material.ambient", mat.ambient);
-                currentShader->setVec3("material.emission", mat.emission);
+                 currentShader->setFloat("material.shininess", 32.0f); 
+                 currentShader->setVec3("material.specular", glm::vec3(0.5f));
+                 currentShader->setVec3("material.ambient", glm::vec3(1.0f));
+                 currentShader->setVec3("material.emission", glm::vec3(0.0f));
+                 currentShader->setFloat("material.opacity", 1.0f);
+                 currentShader->setVec2("uvScale", glm::vec2(1.0f));
+                 currentShader->setVec2("uvOffset", glm::vec2(0.0f));
             }
-            currentShader->setFloat("material.opacity", mat.opacity);
-            
-            // Texture Mapping
-            currentShader->setVec2("uvScale", mat.uvScale);
-            currentShader->setVec2("uvOffset", mat.uvOffset);
 
-            if (m_DebugNoTexture)
-            {
-                 if (m_WhiteTextureID == 0)
-                 {
-                     glGenTextures(1, &m_WhiteTextureID);
-                     glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
-                     unsigned char white[] = {255, 255, 255, 255};
-                     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
-                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                 }
-                 
-                 glActiveTexture(GL_TEXTURE0);
-                 glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
-            } 
-        }
-        else
-        {
-            currentShader->setFloat("material.shininess", 32.0f); 
-            currentShader->setVec3("material.specular", glm::vec3(0.5f));
-            currentShader->setVec3("material.ambient", glm::vec3(1.0f));
-            currentShader->setVec3("material.emission", glm::vec3(0.0f));
-            currentShader->setFloat("material.opacity", 1.0f);
-            
             if (m_DebugNoTexture) currentShader->setBool("debug_noTexture", true);
             else currentShader->setBool("debug_noTexture", false);
 
-            currentShader->setVec2("uvScale", glm::vec2(1.0f));
-            currentShader->setVec2("uvOffset", glm::vec2(0.0f));
-        }
-
-        if (m_DebugNoTexture)
-        {
-             if (m_WhiteTextureID == 0)
-             {
-                 glGenTextures(1, &m_WhiteTextureID);
-                 glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
-                 unsigned char white[] = {255, 255, 255, 255};
-                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
-                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-             }
-             glActiveTexture(GL_TEXTURE0);
-             glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
-             
-             currentShader->setBool("debug_noTexture", true);
+            renderer.model->Draw(*currentShader);
+            m_RenderedCount++;
         }
         else
         {
-             currentShader->setBool("debug_noTexture", false);
+            if (currentModel != renderer.model)
+            {
+                flushBatch(currentShader, currentModel);
+                currentModel = renderer.model;
+                
+                currentShader->setVec4("tintColor", renderer.color);
+                
+                 if (scene.registry.all_of<MaterialComponent>(entity))
+                {
+                    auto &mat = scene.registry.get<MaterialComponent>(entity);
+                    if (mat.type == MaterialType::PBR)
+                    {
+                        currentShader->setFloat("material.roughness", mat.roughness);
+                        currentShader->setFloat("material.metallic", mat.metallic);
+                        currentShader->setFloat("material.ao", mat.ao);
+                        currentShader->setVec3("material.emission", mat.emission);
+                    }
+                    else
+                    {
+                        currentShader->setFloat("material.shininess", mat.shininess);
+                        currentShader->setVec3("material.specular", mat.specular);
+                        currentShader->setVec3("material.ambient", mat.ambient);
+                        currentShader->setVec3("material.emission", mat.emission);
+                    }
+                    currentShader->setFloat("material.opacity", mat.opacity);
+                    currentShader->setVec2("uvScale", mat.uvScale);
+                    currentShader->setVec2("uvOffset", mat.uvOffset);
+                    
+                    if (m_DebugNoTexture)
+                    {
+                         if (m_WhiteTextureID == 0)
+                         {
+                             glGenTextures(1, &m_WhiteTextureID);
+                             glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                             unsigned char white[] = {255, 255, 255, 255};
+                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+                             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                         }
+                         glActiveTexture(GL_TEXTURE0);
+                         glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                    }
+                }
+                else
+                {
+                     currentShader->setFloat("material.shininess", 32.0f); 
+                     currentShader->setVec3("material.specular", glm::vec3(0.5f));
+                     currentShader->setVec3("material.ambient", glm::vec3(1.0f));
+                     currentShader->setVec3("material.emission", glm::vec3(0.0f));
+                     currentShader->setFloat("material.opacity", 1.0f);
+                     currentShader->setVec2("uvScale", glm::vec2(1.0f));
+                     currentShader->setVec2("uvOffset", glm::vec2(0.0f));
+                }
+                
+                if (m_DebugNoTexture) currentShader->setBool("debug_noTexture", true);
+                else currentShader->setBool("debug_noTexture", false);
+            }
+            
+            instanceBatch.push_back(transform.GetWorldModelMatrix(scene.registry));
         }
-
-        renderer.model->Draw(*currentShader);
-        
-        m_RenderedCount++;
     }
+    flushBatch(currentShader, currentModel);
 }
 
 void RenderSystem::SetFaceCulling(bool enabled, int mode)
