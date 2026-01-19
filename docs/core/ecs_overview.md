@@ -455,6 +455,6 @@ AXIS Engine's ECS provides:
 
 ## See Also
 - [Architecture Overview](architecture.md)
-- [Component Reference](components_reference.md)
-- [Scriptable API](../api/scriptable_api.md)
-- [Scene Format](scene_format.md)
+- [Component Reference](../guides/components_reference.md)
+- [Scriptable API](../scripting/scriptable_api.md)
+- [Scene Format](../guides/scene_format.md)

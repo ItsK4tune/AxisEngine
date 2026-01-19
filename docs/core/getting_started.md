@@ -442,11 +442,11 @@ void OnCollisionEnter(entt::entity other) override {
 
 ### Learn More
 
-- [Scripting Basics](scripting_basics.md) - Detailed scripting guide
-- [Scene Format Reference](scene_format.md) - All scene commands
-- [Component Reference](components_reference.md) - All available components
-- [State API](../api/state_api.md) - Complete State API
-- [Scriptable API](../api/scriptable_api.md) - Complete Scriptable API
+- [Scripting Basics](../guides/scripting_basics.md) - Detailed scripting guide  
+- [Scene Format Reference](../guides/scene_format.md) - All scene commands
+- [Component Reference](../guides/components_reference.md) - All available components
+- [State API](../state/state_api.md) - Complete State API
+- [Scriptable API](../scripting/scriptable_api.md) - Complete Scriptable API
 
 ---
 

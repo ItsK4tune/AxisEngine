@@ -437,7 +437,7 @@ AXIS Engine's architecture provides:
 - ✅ **Productivity**: High-level State and Scriptable APIs for rapid development
 
 For detailed API documentation, see:
-- [State API](../api/state_api.md)
-- [Scriptable API](../api/scriptable_api.md)
-- [Component Reference](components_reference.md)
-- [System APIs](../api/systems/)
+- [State API](../state/state_api.md)
+- [Scriptable API](../scripting/scriptable_api.md)
+- [Component Reference](../guides/components_reference.md)
+- [System APIs](../systems/)
