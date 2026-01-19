@@ -59,6 +59,9 @@ private:
     bool m_ShowStatsOverlay = true; 
     bool m_WireframeMode = false;
     bool m_NoTextureMode = false;
+    bool m_ShowAudioDebug = false;
+    bool m_ShowParticleDebug = false;
+    int m_OverlayMode = 1;
     
     // Debug Camera State
     bool m_IsDebugCameraActive = false;

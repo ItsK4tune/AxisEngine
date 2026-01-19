@@ -50,8 +50,11 @@ Application::~Application()
     appHandler.reset();
     physicsWorld.reset();
     
-    renderSystem.Shutdown();
-    postProcess.Shutdown();
+    if (systemManager)
+        systemManager->ShutdownSystems();
+    
+    systemManager.reset();
+    engineLoop.reset();
 }
 
 bool Application::Init()
@@ -99,131 +102,60 @@ bool Application::Init()
 
     resourceManager->CreateUIModel("default_rect", UIType::Color);
 
-    postProcess.Init(monitorManager.GetWidth(), monitorManager.GetHeight());
-
-    renderSystem.InitShadows(*resourceManager);
-    renderSystem.SetEnableShadows(config.shadowsEnabled);
+    // Initialize SystemManager
+    systemManager = std::make_unique<SystemManager>();
+    systemManager->InitializeSystems(*resourceManager, monitorManager.GetWidth(), monitorManager.GetHeight(), config.shadowsEnabled, this);
 
     resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 
     std::cout << "[Application] Loading default assets from src/asset/load.scene..." << std::endl;
     sceneManager->LoadScene("src/asset/load.scene");
 
-#ifdef ENABLE_DEBUG_SYSTEM
-    debugSystem = std::make_unique<DebugSystem>();
-    debugSystem->Init(this);
-#endif
+    // Initialize EngineLoop
+    engineLoop = std::make_unique<EngineLoop>(this);
     
     return true;
 }
 
 void Application::Run()
 {
-    while (!glfwWindowShouldClose(monitorManager.GetWindow()))
-    {
-        float currentFrame = (float)glfwGetTime();
-        realDeltaTime = currentFrame - lastFrame;
-        deltaTime = realDeltaTime; 
-        lastFrame = currentFrame;
-
-        glfwPollEvents();
-        if (appHandler) appHandler->GetMouse().Update();
-
-        if (m_IsPaused)
-        {
-            deltaTime = 0.0f;
-        }
-        else
-        {
-            deltaTime *= m_TimeScale;
-        }
-
-        if (resourceManager) resourceManager->Update();
-
-        appHandler->ProcessInput(monitorManager.GetWindow());
-
-#ifdef ENABLE_DEBUG_SYSTEM
-        if (debugSystem) debugSystem->OnUpdate(realDeltaTime); 
-#endif
-
-        m_Accumulator += deltaTime;
-        
-        int physicsSteps = 0;
-        const int MAX_PHYSICS_STEPS = 5;
-
-        while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
-        {
-            physicsSystem.Update(scene, *physicsWorld, m_FixedDeltaTime);
-            
-            m_StateMachine.FixedUpdate(m_FixedDeltaTime);
-
-            m_Accumulator -= m_FixedDeltaTime;
-            physicsSteps++;
-        }
-        
-        if (m_Accumulator > m_FixedDeltaTime) {
-            m_Accumulator = 0.0f; 
-        }
-
-        scriptSystem.Update(scene, deltaTime, realDeltaTime, this);
-        animationSystem.Update(scene, deltaTime);
-        videoSystem.Update(scene, *resourceManager, deltaTime);
-        uiInteractSystem.Update(scene, deltaTime, appHandler->GetMouse());
-        audioSystem.Update(scene, *soundManager);
-        particleSystem.Update(scene, deltaTime);
-
-        m_StateMachine.Update(deltaTime);
-        appHandler->GetMouse().EndFrame();
-        
-        renderSystem.RenderShadows(scene);
-        
-        glViewport(0, 0, monitorManager.GetWidth(), monitorManager.GetHeight());
-        
-        postProcess.BeginCapture();
-
-        skyboxRenderSystem.Render(scene); 
-        renderSystem.Render(scene);
-        
-        particleSystem.Render(scene, *resourceManager);
-
-        m_StateMachine.Render(); 
-
-        uiRenderSystem.Render(scene, (float)monitorManager.GetWidth(), (float)monitorManager.GetHeight());
-
-#ifdef ENABLE_DEBUG_SYSTEM
-        if (debugSystem) debugSystem->Render(scene);
-#endif
-
-        postProcess.EndCapture();
-
-        glfwSwapBuffers(monitorManager.GetWindow());
-        
-        int frameRateLimit = monitorManager.GetFrameRateLimit();
-        if (frameRateLimit > 0)
-        {
-            double targetFrameTime = 1.0 / (double)frameRateLimit;
-            double frameEnd = glfwGetTime();
-            double frameElapsed = frameEnd - currentFrame;
-            
-            while (frameElapsed < targetFrameTime)
-            {
-                frameEnd = glfwGetTime();
-                frameElapsed = frameEnd - currentFrame;
-            }
-        }
-    }
+    engineLoop->Run();
 }
 
 void Application::SetPhysicsStep(float step)
 {
-    if (step > 0.0f)
-        m_FixedDeltaTime = step;
+    engineLoop->SetPhysicsStep(step);
+}
+
+void Application::SetTimeScale(float scale)
+{
+    engineLoop->SetTimeScale(scale);
+}
+
+void Application::SetPaused(bool paused)
+{
+    engineLoop->SetPaused(paused);
+}
+
+float Application::GetTimeScale() const
+{
+    return engineLoop->GetTimeScale();
+}
+
+float Application::GetRealDeltaTime() const
+{
+    return engineLoop->GetRealDeltaTime();
+}
+
+bool Application::IsPaused() const
+{
+    return engineLoop->IsPaused();
 }
 
 void Application::OnResize(int width, int height)
 {
     monitorManager.OnResize(width, height);
-    postProcess.Resize(width, height);
+    systemManager->GetPostProcess().Resize(width, height);
     if (appHandler) appHandler->OnResize(width, height);
 }
 

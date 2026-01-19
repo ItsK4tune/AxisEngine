@@ -1,5 +1,8 @@
 #include <scene/scene.h>
 #include <scene/scene_manager.h>
+#include <scene/light_manager.h>
+#include <scene/camera_manager.h>
+#include <scene/entity_factory.h>
 #include <vector>
 #include <algorithm>
 
@@ -114,4 +117,18 @@ entt::entity Scene::GetActiveCamera()
         }
     }
     return entt::null;
+}
+
+void Scene::InitializeManagers()
+{
+    lightManager = std::make_unique<LightManager>(*this);
+    cameraManager = std::make_unique<CameraManager>(*this);
+    entityFactory = std::make_unique<EntityFactory>(*this);
+}
+
+void Scene::ShutdownManagers()
+{
+    entityFactory.reset();
+    cameraManager.reset();
+    lightManager.reset();
 }

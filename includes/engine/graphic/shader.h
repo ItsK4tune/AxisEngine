@@ -11,9 +11,14 @@ class Shader
 public:
     unsigned int ID;
 
+    Shader();
     Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr);
 
+    void load(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr);
     void use();
+
+    void setID(unsigned int id) { ID = id; }
+    unsigned int getID() const { return ID; }
 
     void setBool(const std::string &name, bool value) const;
     void setInt(const std::string &name, int value) const;

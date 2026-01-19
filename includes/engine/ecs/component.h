@@ -151,6 +151,16 @@ struct CameraComponent
 
     glm::mat4 projectionMatrix = glm::mat4(1.0f);
     glm::mat4 viewMatrix = glm::mat4(1.0f);
+
+    glm::mat4 GetViewMatrix() const
+    {
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        direction.y = sin(glm::radians(pitch));
+        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        glm::vec3 frontVec = glm::normalize(direction);
+        return glm::lookAt(glm::vec3(0), frontVec, worldUp);
+    }
 };
 
 struct UITransformComponent
@@ -236,6 +246,7 @@ struct PointLightComponent
 struct SpotLightComponent
 {
     glm::vec3 color = glm::vec3(1.0f);
+    glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
     float intensity = 1.0f;
 
     float cutOff = glm::cos(glm::radians(12.5f));
