@@ -1,0 +1,21 @@
+LOAD_SHADER phongLitNoShadowShader src/asset/shaders/phong_lit_no_shadow.vs src/asset/shaders/phong_lit_no_shadow.fs
+LOAD_SHADER phongLitShadowShader src/asset/shaders/phong_lit_shadow.vs src/asset/shaders/phong_lit_shadow.fs
+LOAD_SHADER pbrLitNoShadowShader src/asset/shaders/pbr_lit_no_shadow.vs src/asset/shaders/pbr_lit_no_shadow.fs
+LOAD_SHADER pbrLitShadowShader src/asset/shaders/pbr_lit_shadow.vs src/asset/shaders/pbr_lit_shadow.fs
+LOAD_SHADER unlitShader src/asset/shaders/unlit.vs src/asset/shaders/unlit.fs
+LOAD_SHADER uiShader src/asset/shaders/ui.vs src/asset/shaders/ui.fs
+LOAD_SHADER textShader src/asset/shaders/text.vs src/asset/shaders/text.fs
+LOAD_SHADER particle src/asset/shaders/particle.vs src/asset/shaders/particle.fs
+LOAD_SHADER videomapShader src/asset/shaders/videomap.vs src/asset/shaders/videomap.fs
+LOAD_SHADER skyboxShader src/asset/shaders/skybox.vs src/asset/shaders/skybox.fs
+
+LOAD_FONT time src/asset/fonts/time.ttf 16
+
+LOAD_STATIC_MODEL planeModel src/asset/objects/plane/plane.fbx
+LOAD_STATIC_MODEL planeVideoModel src/asset/objects/plane/plane.fbx
+LOAD_STATIC_MODEL dummyModel src/asset/objects/dummy/dummy.fbx
+
+LOAD_SKYBOX defaultSkybox src/asset/skybox/default_right.png src/asset/skybox/default_left.png src/asset/skybox/default_top.png src/asset/skybox/default_bottom.png src/asset/skybox/default_front.png src/asset/skybox/default_back.png
+
+NEW_ENTITY Skybox
+SKYBOX_RENDERER defaultSkybox skyboxShader

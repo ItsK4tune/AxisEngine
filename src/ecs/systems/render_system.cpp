@@ -12,8 +12,8 @@ void RenderSystem::InitShadows(ResourceManager &res)
 {
     m_Shadow.Init();
 
-    res.LoadShader("shadow_depth", "resources/shaders/shadow_depth.vs", "resources/shaders/shadow_depth.fs");
-    res.LoadShader("shadow_point", "resources/shaders/shadow_point.vs", "resources/shaders/shadow_point.fs", "resources/shaders/shadow_point.gs");
+    res.LoadShader("shadow_depth", "src/asset/shaders/shadow_depth.vs", "src/asset/shaders/shadow_depth.fs");
+    res.LoadShader("shadow_point", "src/asset/shaders/shadow_point.vs", "src/asset/shaders/shadow_point.fs", "src/asset/shaders/shadow_point.gs");
 
     m_Shadow.SetShaderDir(res.GetShader("shadow_depth"));
     m_Shadow.SetShaderPoint(res.GetShader("shadow_point"));

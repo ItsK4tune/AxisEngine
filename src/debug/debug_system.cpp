@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 #include <iomanip>
 #include <sstream>
+#include <intrin.h> // For __cpuid on Windows
 
 DebugSystem::DebugSystem() {}
 DebugSystem::~DebugSystem() {}
@@ -21,8 +22,8 @@ void DebugSystem::Init(Application* app)
     auto& res = m_App->GetResourceManager();
     
     // Load Debug Font (Using existing time.ttf or default if not found)
-    res.LoadFont("debug_font", "resources/fonts/time.ttf", 24); 
-    res.LoadShader("debug_text", "resources/shaders/text.vs", "resources/shaders/text.fs");
+    res.LoadFont("debug_font", "src/asset/fonts/time.ttf", 24); 
+    res.LoadShader("debug_text", "src/asset/shaders/text.vs", "src/asset/shaders/text.fs");
     
     // Ensure UI Quad exists for Debug
     if (!res.GetUIModel("debug_sys_model"))
@@ -39,8 +40,34 @@ void DebugSystem::Init(Application* app)
     if (renderer) m_GpuName = std::string((const char*)renderer);
     else m_GpuName = "Unknown GPU";
     
+    // Get CPU Info using CPUID
+    m_CpuName = "Unknown CPU";
     
-    m_CpuName = "CPU (Details Unavailable)"; 
+#ifdef _WIN32
+    // Use CPUID to get processor brand string
+    int cpuInfo[4] = {0};
+    char cpuBrandString[0x40] = {0};
+    
+    // Check if brand string is supported (EAX=0x80000000)
+    __cpuid(cpuInfo, 0x80000000);
+    unsigned int nExIds = cpuInfo[0];
+    
+    if (nExIds >= 0x80000004)
+    {
+        // Get the processor brand string (requires 3 calls)
+        __cpuid((int*)(cpuBrandString +  0), 0x80000002);
+        __cpuid((int*)(cpuBrandString + 16), 0x80000003);
+        __cpuid((int*)(cpuBrandString + 32), 0x80000004);
+        
+        m_CpuName = std::string(cpuBrandString);
+        
+        // Trim leading/trailing spaces
+        size_t start = m_CpuName.find_first_not_of(" \t");
+        size_t end = m_CpuName.find_last_not_of(" \t");
+        if (start != std::string::npos && end != std::string::npos)
+            m_CpuName = m_CpuName.substr(start, end - start + 1);
+    }
+#endif 
 }
 
 void DebugSystem::OnUpdate(float dt)
@@ -342,8 +369,8 @@ void DebugSystem::ToggleStatsOverlay()
         bool quadOK = (m_TextQuad != nullptr);
         
         std::cout << "[DebugSystem] Resources Status:" << std::endl;
-        std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check resources/fonts/time.ttf)") << std::endl;
-        std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check resources/shaders/text.vs/fs)") << std::endl;
+        std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check src/asset/fonts/time.ttf)") << std::endl;
+        std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check src/asset/shaders/text.vs/fs)") << std::endl;
         std::cout << "  Quad:   " << (quadOK ? "OK" : "MISSING") << std::endl;
         
         if (!fontOK || !shaderOK || !quadOK) {

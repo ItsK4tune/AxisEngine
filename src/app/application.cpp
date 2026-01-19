@@ -104,7 +104,10 @@ bool Application::Init()
     renderSystem.InitShadows(*resourceManager);
     renderSystem.SetEnableShadows(config.shadowsEnabled);
 
-    resourceManager->LoadShader("debugLine", "resources/shaders/debug_line.vs", "resources/shaders/debug_line.fs");
+    resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
+
+    std::cout << "[Application] Loading default assets from src/asset/load.scene..." << std::endl;
+    sceneManager->LoadScene("src/asset/load.scene");
 
 #ifdef ENABLE_DEBUG_SYSTEM
     debugSystem = std::make_unique<DebugSystem>();

@@ -5,22 +5,6 @@ CONFIG WINDOW 800 600 WINDOWED 0 0
 CONFIG VSYNC 0
 CONFIG FPS 0
 
-LOAD_SHADER phongLitNoShadowShader resources/shaders/phong_lit_no_shadow.vs resources/shaders/phong_lit_no_shadow.fs
-LOAD_SHADER phongLitShadowShader resources/shaders/phong_lit_shadow.vs resources/shaders/phong_lit_shadow.fs
-LOAD_SHADER pbrLitNoShadowShader resources/shaders/pbr_lit_no_shadow.vs resources/shaders/pbr_lit_no_shadow.fs
-LOAD_SHADER pbrLitShadowShader resources/shaders/pbr_lit_shadow.vs resources/shaders/pbr_lit_shadow.fs
-LOAD_SHADER unlitShader resources/shaders/unlit.vs resources/shaders/unlit.fs
-LOAD_SHADER uiShader resources/shaders/ui.vs resources/shaders/ui.fs
-LOAD_SHADER textShader resources/shaders/text.vs resources/shaders/text.fs
-LOAD_SHADER particle resources/shaders/particle.vs resources/shaders/particle.fs
-LOAD_SHADER videomapShader resources/shaders/videomap.vs resources/shaders/videomap.fs
-
-LOAD_FONT time resources/fonts/time.ttf 16
-
-LOAD_STATIC_MODEL planeModel resources/objects/plane/plane.fbx
-LOAD_STATIC_MODEL planeVideoModel resources/objects/plane/plane.fbx
-LOAD_STATIC_MODEL dummyModel resources/objects/dummy/dummy.fbx
-
 NEW_ENTITY MainCamera
 TRANSFORM 0.0 4.0 10.0 0.0 0.0 0.0 1.0 1.0 1.0
 CAMERA 1 90.0 -90.0 0.0 0.1 1000.0 
@@ -34,7 +18,7 @@ RIGIDBODY BOX 0.0 50.0 0.1 50.0 STATIC RESTITUTION 1.0
 
 NEW_ENTITY Dummy
 TRANSFORM 0.0 30.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
-RENDERER dummyModel phongLitShadowShader
+RENDERER dummyModel phongLitNoShadowShader
 MATERIAL PHONG 32 0.5 0.5 0.5
 RIGIDBODY CAPSULE 1.0 1.0 1.8 OFFSET 0.0 2.0 0.0 STATIC
 CHILDREN Dummy2
@@ -45,7 +29,6 @@ NEW_ENTITY Sun2
 LIGHT_DIR -0.5 -2.0 -0.5 1.0 0.95 0.8 0.8 0.1 0.3
 NEW_ENTITY Sun3
 LIGHT_DIR -0.5 -3.0 -0.5 1.0 0.95 0.8 0.8 0.1 0.3
-
 
 NEW_ENTITY Dummy2
 TRANSFORM 2.0 20.0 0.0 0.0 0.0 0.0 0.01 0.01 0.01
