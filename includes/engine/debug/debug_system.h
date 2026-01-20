@@ -63,6 +63,15 @@ private:
     bool m_ShowParticleDebug = false;
     int m_OverlayMode = 1;
     
+    // Extended Visualization
+    bool m_ShowEntityNames = false;
+    bool m_ShowTransformGizmos = false;
+    bool m_ShowLightGizmos = false;
+
+    void ToggleEntityNames() { m_ShowEntityNames = !m_ShowEntityNames; }
+    void ToggleTransformGizmos() { m_ShowTransformGizmos = !m_ShowTransformGizmos; }
+    void ToggleLightGizmos() { m_ShowLightGizmos = !m_ShowLightGizmos; }
+    
     // Debug Camera State
     bool m_IsDebugCameraActive = false;
     entt::entity m_LastActiveCamera = entt::null;
@@ -81,6 +90,16 @@ private:
     
     std::string m_GpuName;
     std::string m_CpuName;
+
+    // Entity Labels Management
+    std::unordered_map<entt::entity, entt::entity> m_EntityLabelMap;
+    void UpdateDebugLabels(Scene& scene);
+    void ClearDebugLabels(Scene& scene);
+
+    // Light Labels Management
+    std::unordered_map<entt::entity, entt::entity> m_LightLabelMap;
+    void UpdateLightLabels(Scene& scene);
+    void ClearLightLabels(Scene& scene);
 };
 
 

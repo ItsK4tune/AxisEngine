@@ -12,5 +12,6 @@
     "depthTestEnabled": true,
     "audioDevice": "default",
     "iconPath": "assets/icon.png",
-    "instanceBatchingEnabled": true
+    "instanceBatchingEnabled": true,
+    "frustumCullingEnabled": true
 }

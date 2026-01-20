@@ -39,6 +39,7 @@ Global engine settings can be configured using the `CONFIG` command.
 | `WINDOW` | `<w> <h>` | `[mode] [monitor] [hz]` | Set resolution, mode (`WINDOWED`/`FULLSCREEN`/`BORDERLESS`), monitor index, and refresh rate. |
 | `VSYNC` | `1` or `0` | - | Enable (`1`) or disable (`0`) Vertical Sync. |
 | `FPS` | `<int>` | - | Set target frame rate limit (0 for unlimited). |
+| `FRUSTUM` | `1` or `0` | - | Enable (`1`) or disable (`0`) Frustum Culling. |
 
 ### Example
 ```text

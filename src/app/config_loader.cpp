@@ -173,4 +173,12 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
             if (app) app->GetMonitorManager().SetFrameRateLimit(fps);
         }
     }
+    else if (subCmd == "FRUSTUM")
+    {
+        int enable = 0;
+        if (ss >> enable)
+        {
+            if (app) app->GetRenderSystem().SetFrustumCulling(enable != 0);
+        }
+    }
 }

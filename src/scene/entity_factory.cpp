@@ -23,7 +23,7 @@ entt::entity EntityFactory::CreateEntityWithTransform(const std::string& name, c
 {
     entt::entity entity = CreateEntity(name);
     
-    auto& transform = m_Scene.registry.emplace<TransformComponent>(entity);
+    auto& transform = m_Scene.registry.get<TransformComponent>(entity);
     transform.position = position;
     transform.rotation = glm::quat(rotation);
     transform.scale = scale;
@@ -39,28 +39,18 @@ entt::entity EntityFactory::CreateEmptyEntity(const std::string& name)
 entt::entity EntityFactory::CreateCube(const std::string& name, const glm::vec3& position)
 {
     entt::entity entity = CreateEntityWithTransform(name, position);
-    
-    // Note: Actual mesh/renderer would be added here if we had default cube mesh
-    // For now, this just creates the entity with transform
-    
     return entity;
 }
 
 entt::entity EntityFactory::CreateSphere(const std::string& name, const glm::vec3& position)
 {
     entt::entity entity = CreateEntityWithTransform(name, position);
-    
-    // Note: Actual mesh/renderer would be added here if we had default sphere mesh
-    
     return entity;
 }
 
 entt::entity EntityFactory::CreatePlane(const std::string& name, const glm::vec3& position)
 {
     entt::entity entity = CreateEntityWithTransform(name, position);
-    
-    // Note: Actual mesh/renderer would be added here if we had default plane mesh
-    
     return entity;
 }
 
@@ -92,7 +82,6 @@ void EntityFactory::DestroyEntity(entt::entity entity)
     if (!m_Scene.registry.valid(entity))
         return;
     
-    // Remove parent relationship if exists
     if (m_Scene.registry.all_of<TransformComponent>(entity))
     {
         auto& transform = m_Scene.registry.get<TransformComponent>(entity);

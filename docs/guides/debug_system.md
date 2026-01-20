@@ -18,6 +18,10 @@ The `DebugSystem` provides real-time introspection, control, and diagnostics for
 | **F10** | **Stats Overlay** | Toggles an on-screen overlay showing FPS and Entity Count. |
 | **F11** | **Pause Game** | Pauses logic and physics updates. Rendering continues (useful for inspecting visual states). |
 | **F12** | **Time Scale** | Cycles time dilation: `0.25x` -> `0.5x` -> `1.0x` -> `1.5x` -> `2.0x`. |
+| **Shift+F3** | **Entity Names** | Toggle Entity Name tags above objects. |
+| **Shift+F4** | **Transform Gizmos** | Toggle Transform Gizmos (Position/Rotation/Scale visualizers). |
+| **Shift+F5** | **Light Gizmos** | Toggle Light Gizmos (Dir/Point/Spot icons). |
+| **Shift+F6** | **Toggle Skybox** | Enable or Disable Skybox rendering. |
 | **Shift+F7** | **Toggle Shadows** | Globally enables or disables shadow mapping. |
 | **Shift+F11** | **Toggle Debug Camera** | Switches between Main Camera and Free/Debug Camera (WASD "NoClip"). |
 | **Shift+F12** | **Cycle Cursor Mode** | Cycles: Normal -> Hidden -> Locked (Clamped) -> LockedHidden -> LockedCenter -> LockedHiddenCenter. |

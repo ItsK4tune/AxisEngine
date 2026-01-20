@@ -8,7 +8,9 @@
 
 entt::entity Scene::createEntity()
 {
-    return registry.create();
+    entt::entity entity = registry.create();
+    registry.emplace<TransformComponent>(entity);
+    return entity;
 }
 
 void Scene::destroyEntity(entt::entity entity, SceneManager* manager)

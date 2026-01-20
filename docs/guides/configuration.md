@@ -43,6 +43,7 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
 - **Graphics Settings**
     - `shadowsEnabled`: Enable/Disable shadow mapping.
     - `cullFaceEnabled`: Enable/Disable back-face culling.
+    - `frustumCullingEnabled`: Enable/Disable camera frustum culling (default: `true`).
     - `depthTestEnabled`: Enable/Disable depth testing.
     - `instanceBatchingEnabled`: Enable/Disable instance batching for static meshes (default: `true`). Batching reduces draw calls but disabling can help with debugging transform issues.
 
