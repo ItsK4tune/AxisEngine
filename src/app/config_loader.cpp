@@ -60,6 +60,8 @@ AppConfig ConfigLoader::Load(const std::string& path)
         else if (key == "instanceBatchingEnabled") config.instanceBatchingEnabled = (value == "true");
         else if (key == "frustumCullingEnabled") config.frustumCullingEnabled = (value == "true");
         else if (key == "shadowProjectionSize") config.shadowProjectionSize = std::stof(value);
+        else if (key == "shadowFrustumCullingEnabled") config.shadowFrustumCullingEnabled = (value == "true");
+        else if (key == "shadowDistanceCulling") config.shadowDistanceCulling = std::stof(value);
     }
     
     return config;
@@ -190,6 +192,22 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
         if (ss >> enable)
         {
             if (app) app->GetRenderSystem().SetFrustumCulling(enable != 0);
+        }
+    }
+    else if (subCmd == "SHADOW_FRUSTUM")
+    {
+        int enable = 0;
+        if (ss >> enable)
+        {
+            if (app) app->GetRenderSystem().SetShadowFrustumCulling(enable != 0);
+        }
+    }
+    else if (subCmd == "SHADOW_DISTANCE_CULLING")
+    {
+        float dist = 0.0f;
+        if (ss >> dist)
+        {
+            if (app) app->GetRenderSystem().SetShadowDistanceCulling(dist);
         }
     }
 }

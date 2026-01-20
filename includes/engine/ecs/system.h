@@ -65,6 +65,8 @@ public:
     void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
     void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
     void SetShadowProjectionSize(float size) { m_ShadowProjectionSize = size; }
+    void SetShadowFrustumCulling(bool enable) { m_ShadowFrustumCullingEnabled = enable; }
+    void SetShadowDistanceCulling(float distance) { m_ShadowDistanceCullingSq = distance * distance; }
     
     StaticBatchManager& GetBatchManager() { return m_BatchManager; }
 
@@ -84,6 +86,9 @@ private:
     float m_ShadowProjectionSize = 20.0f;
     bool m_DebugNoTexture = false;
     unsigned int m_WhiteTextureID = 0;
+
+    bool m_ShadowFrustumCullingEnabled = true;
+    float m_ShadowDistanceCullingSq = 10000.0f; // Default 100^2
 
     struct RenderItem
     {

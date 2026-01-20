@@ -6,6 +6,7 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/norm.hpp>
 #include <resource/resource_manager.h>
 
 void RenderSystem::InitShadows(ResourceManager &res)
@@ -59,6 +60,21 @@ void RenderSystem::RenderShadows(Scene &scene)
 
     m_LightSpaceMatrixDir = lightProjection * lightView;
 
+    // Culling Setup
+    Frustum lightFrustum;
+    if (m_ShadowFrustumCullingEnabled)
+    {
+        lightFrustum.Update(m_LightSpaceMatrixDir);
+    }
+
+    glm::vec3 camPos(0.0f);
+    entt::entity camEntity = scene.GetActiveCamera();
+    if (camEntity != entt::null)
+    {
+        auto& camTrans = scene.registry.get<TransformComponent>(camEntity);
+        camPos = camTrans.position;
+    }
+
     m_Shadow.BindFBO_Dir();
     glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -71,6 +87,40 @@ void RenderSystem::RenderShadows(Scene &scene)
         auto [trans, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
         if (renderer.model)
         {
+            // Distance Culling
+            if (m_ShadowDistanceCullingSq > 0.0f)
+            {
+                float distSq = glm::length2(trans.position - camPos);
+                if (distSq > m_ShadowDistanceCullingSq)
+                    continue;
+            }
+
+            // Light Frustum Culling
+            if (m_ShadowFrustumCullingEnabled)
+            {
+                 glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
+                 glm::vec3 min = renderer.model->AABBmin;
+                 glm::vec3 max = renderer.model->AABBmax;
+                 
+                 glm::vec3 center = (min + max) * 0.5f;
+                 glm::vec3 extent = (max - min) * 0.5f;
+                 
+                 glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+                 
+                 glm::mat3 rot = glm::mat3(modelMatrix);
+                 glm::vec3 worldExtent = glm::vec3(
+                     std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                     std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                     std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z
+                 );
+                 
+                 glm::vec3 worldMin = worldCenter - worldExtent;
+                 glm::vec3 worldMax = worldCenter + worldExtent;
+
+                 if (!lightFrustum.IsBoxVisible(worldMin, worldMax))
+                     continue;
+            }
+
             shaderDir->setMat4("model", trans.GetWorldModelMatrix(scene.registry));
             if (scene.registry.all_of<AnimationComponent>(entity))
             {

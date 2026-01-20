@@ -14,5 +14,7 @@
     "iconPath": "assets/icon.png",
     "instanceBatchingEnabled": true,
     "frustumCullingEnabled": true,
-    "shadowProjectionSize": 100.0
+    "shadowProjectionSize": 100.0,
+    "shadowFrustumCullingEnabled": true,
+    "shadowDistanceCulling": 100.0
 }

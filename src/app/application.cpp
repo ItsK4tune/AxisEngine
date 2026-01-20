@@ -108,6 +108,8 @@ bool Application::Init()
     systemManager->GetRenderSystem().SetShadowProjectionSize(config.shadowProjectionSize);
     systemManager->GetRenderSystem().SetInstanceBatching(config.instanceBatchingEnabled);
     systemManager->GetRenderSystem().SetFrustumCulling(config.frustumCullingEnabled);
+    systemManager->GetRenderSystem().SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
+    systemManager->GetRenderSystem().SetShadowDistanceCulling(config.shadowDistanceCulling);
 
     resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 
