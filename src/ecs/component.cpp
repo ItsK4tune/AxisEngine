@@ -5,6 +5,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
 glm::mat4 TransformComponent::GetLocalModelMatrix() const
 {
@@ -53,13 +54,16 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
         }
         else
         {
-             // Parent has no transform? Treat as root.
              m_WorldMatrix = m_LocalMatrix;
         }
     }
     else
     {
-        m_WorldMatrix = m_LocalMatrix;
+        if (m_Version != m_LastLocalVersion)
+        {
+             m_WorldMatrix = m_LocalMatrix;
+             m_LastLocalVersion = m_Version;
+        }
     }
     
     return m_WorldMatrix;

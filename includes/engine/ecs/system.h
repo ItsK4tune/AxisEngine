@@ -8,6 +8,7 @@
 #include <utils/bullet_glm_helpers.h>
 #include <graphic/shader.h>
 #include <graphic/shadow.h>
+#include <graphic/static_batch_manager.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
 #include <audio/sound_manager.h>
@@ -58,17 +59,22 @@ public:
 
     void SetEnabled(bool enable) { m_Enabled = enable; }
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
+    void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
+    
+    StaticBatchManager& GetBatchManager() { return m_BatchManager; }
 
 private:
     void UploadLightData(Scene &scene, Shader *shader);
     
     Shadow m_Shadow;
+    StaticBatchManager m_BatchManager;
     int m_RenderedCount = 0;
 
     glm::mat4 m_LightSpaceMatrixDir;
     float m_FarPlanePoint = 25.0f;
     bool m_EnableShadows = true;
     bool m_Enabled = true;
+    bool m_InstanceBatchingEnabled = true;
     bool m_DebugNoTexture = false;
     unsigned int m_WhiteTextureID = 0;
 

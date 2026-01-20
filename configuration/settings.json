@@ -11,5 +11,6 @@
     "cullFaceEnabled": true,
     "depthTestEnabled": true,
     "audioDevice": "default",
-    "iconPath": "assets/icon.png"
+    "iconPath": "assets/icon.png",
+    "instanceBatchingEnabled": true
 }

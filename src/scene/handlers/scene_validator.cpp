@@ -83,6 +83,17 @@ namespace SceneHandlers
         if (scene.GetActiveCamera() != entt::null)
             return;
 
+        // Suppress warning for asset-only scenes (scenes with no renderable entities)
+        auto renderableView = scene.registry.view<MeshRendererComponent>();
+        bool hasRenderableEntities = false;
+        for (auto entity : renderableView) {
+            hasRenderableEntities = true;
+            break;
+        }
+        
+        if (!hasRenderableEntities)
+            return;
+
         std::cout << "[SceneValidator] WARNING: No Active Camera found in scene! Creating Default Spectator Camera." << std::endl;
 
         entt::entity camEntity = scene.createEntity();

@@ -25,6 +25,8 @@ struct AppConfig
     std::string audioDevice = "default";
 
     std::string iconPath = "";
+    
+    bool instanceBatchingEnabled = true;
 };
 
 class ConfigLoader

@@ -33,6 +33,7 @@ Global engine settings can be configured using the `CONFIG` command.
 | Argument 1 | Argument 2 | Argument 3 | Description |
 | :--- | :--- | :--- | :--- |
 | `SHADOWS` | `1` or `0` | - | Enable (`1`) or disable (`0`) shadow rendering. |
+| `INSTANCE_BATCH`| `1` or `0` | - | Enable (`1`) or disable (`0`) instance batching for static meshes (reduces draw calls). |
 | `CULL_FACE`| `1` or `0` | `BACK`, `FRONT`, `FRONT_AND_BACK` | Enable face culling with specified mode. |
 | `DEPTH_TEST`| `1` or `0` | `LESS`, `ALWAYS`, `LEQUAL`, etc. | Enable depth test with specified function. |
 | `WINDOW` | `<w> <h>` | `[mode] [monitor] [hz]` | Set resolution, mode (`WINDOWED`/`FULLSCREEN`/`BORDERLESS`), monitor index, and refresh rate. |
@@ -42,6 +43,7 @@ Global engine settings can be configured using the `CONFIG` command.
 ### Example
 ```text
 CONFIG SHADOWS 1
+CONFIG INSTANCE_BATCH 1
 CONFIG CULL_FACE 1 BACK
 CONFIG DEPTH_TEST 1 LESS
 CONFIG WINDOW 1920 1080 BORDERLESS 0

@@ -508,65 +508,129 @@ void RenderSystem::Render(Scene &scene)
         }
         else
         {
-            if (currentModel != renderer.model)
+            //STATIC MESH RENDERING (Non-animated)
+            if (m_DebugNoTexture) currentShader->setBool("debug_noTexture", true);
+            else currentShader->setBool("debug_noTexture", false);
+
+            if (!m_InstanceBatchingEnabled)
             {
-                flushBatch(currentShader, currentModel);
-                currentModel = renderer.model;
-                
-                currentShader->setVec4("tintColor", renderer.color);
-                
+                 // FORCE DIRECT DRAW (No Instancing)
+                 currentShader->setMat4("model", transform.GetWorldModelMatrix(scene.registry));
+                 currentShader->setVec4("tintColor", renderer.color);
+
                  if (scene.registry.all_of<MaterialComponent>(entity))
-                {
-                    auto &mat = scene.registry.get<MaterialComponent>(entity);
-                    if (mat.type == MaterialType::PBR)
-                    {
-                        currentShader->setFloat("material.roughness", mat.roughness);
-                        currentShader->setFloat("material.metallic", mat.metallic);
-                        currentShader->setFloat("material.ao", mat.ao);
-                        currentShader->setVec3("material.emission", mat.emission);
-                    }
-                    else
-                    {
-                        currentShader->setFloat("material.shininess", mat.shininess);
-                        currentShader->setVec3("material.specular", mat.specular);
-                        currentShader->setVec3("material.ambient", mat.ambient);
-                        currentShader->setVec3("material.emission", mat.emission);
-                    }
-                    currentShader->setFloat("material.opacity", mat.opacity);
-                    currentShader->setVec2("uvScale", mat.uvScale);
-                    currentShader->setVec2("uvOffset", mat.uvOffset);
-                    
-                    if (m_DebugNoTexture)
-                    {
-                         if (m_WhiteTextureID == 0)
-                         {
-                             glGenTextures(1, &m_WhiteTextureID);
-                             glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
-                             unsigned char white[] = {255, 255, 255, 255};
-                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
-                             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                         }
-                         glActiveTexture(GL_TEXTURE0);
-                         glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
-                    }
-                }
-                else
-                {
-                     currentShader->setFloat("material.shininess", 32.0f); 
-                     currentShader->setVec3("material.specular", glm::vec3(0.5f));
-                     currentShader->setVec3("material.ambient", glm::vec3(1.0f));
-                     currentShader->setVec3("material.emission", glm::vec3(0.0f));
-                     currentShader->setFloat("material.opacity", 1.0f);
-                     currentShader->setVec2("uvScale", glm::vec2(1.0f));
-                     currentShader->setVec2("uvOffset", glm::vec2(0.0f));
-                }
-                
-                if (m_DebugNoTexture) currentShader->setBool("debug_noTexture", true);
-                else currentShader->setBool("debug_noTexture", false);
+                 {
+                     auto &mat = scene.registry.get<MaterialComponent>(entity);
+                     if (mat.type == MaterialType::PBR)
+                     {
+                         currentShader->setFloat("material.roughness", mat.roughness);
+                         currentShader->setFloat("material.metallic", mat.metallic);
+                         currentShader->setFloat("material.ao", mat.ao);
+                         currentShader->setVec3("material.emission", mat.emission);
+                     }
+                     else
+                     {
+                         currentShader->setFloat("material.shininess", mat.shininess);
+                         currentShader->setVec3("material.specular", mat.specular);
+                         currentShader->setVec3("material.ambient", mat.ambient);
+                         currentShader->setVec3("material.emission", mat.emission);
+                     }
+                     currentShader->setFloat("material.opacity", mat.opacity);
+                     currentShader->setVec2("uvScale", mat.uvScale);
+                     currentShader->setVec2("uvOffset", mat.uvOffset);
+
+                     if (m_DebugNoTexture)
+                     {
+                          if (m_WhiteTextureID == 0)
+                          {
+                              glGenTextures(1, &m_WhiteTextureID);
+                              glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                              unsigned char white[] = {255, 255, 255, 255};
+                              glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+                              glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                              glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                          }
+                          glActiveTexture(GL_TEXTURE0);
+                          glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                     }
+                 }
+                 else
+                 {
+                      currentShader->setFloat("material.shininess", 32.0f); 
+                      currentShader->setVec3("material.specular", glm::vec3(0.5f));
+                      currentShader->setVec3("material.ambient", glm::vec3(1.0f));
+                      currentShader->setVec3("material.emission", glm::vec3(0.0f));
+                      currentShader->setFloat("material.opacity", 1.0f);
+                      currentShader->setVec2("uvScale", glm::vec2(1.0f));
+                      currentShader->setVec2("uvOffset", glm::vec2(0.0f));
+                 }
+
+                 renderer.model->Draw(*currentShader);
+                 m_RenderedCount++;
             }
-            
-            instanceBatch.push_back(transform.GetWorldModelMatrix(scene.registry));
+            else
+            {
+                 // INSTANCE BATCHING LOGIC
+                 if (currentModel != renderer.model)
+                 {
+                     flushBatch(currentShader, currentModel);
+                     currentModel = renderer.model;
+                     
+                     currentShader->setVec4("tintColor", renderer.color);
+                     
+                     if (scene.registry.all_of<MaterialComponent>(entity))
+                     {
+                         auto &mat = scene.registry.get<MaterialComponent>(entity);
+                         if (mat.type == MaterialType::PBR)
+                         {
+                             currentShader->setFloat("material.roughness", mat.roughness);
+                             currentShader->setFloat("material.metallic", mat.metallic);
+                             currentShader->setFloat("material.ao", mat.ao);
+                             currentShader->setVec3("material.emission", mat.emission);
+                         }
+                         else
+                         {
+                             currentShader->setFloat("material.shininess", mat.shininess);
+                             currentShader->setVec3("material.specular", mat.specular);
+                             currentShader->setVec3("material.ambient", mat.ambient);
+                             currentShader->setVec3("material.emission", mat.emission);
+                         }
+                         currentShader->setFloat("material.opacity", mat.opacity);
+                         currentShader->setVec2("uvScale", mat.uvScale);
+                         currentShader->setVec2("uvOffset", mat.uvOffset);
+                         
+                         if (m_DebugNoTexture)
+                         {
+                              if (m_WhiteTextureID == 0)
+                              {
+                                  glGenTextures(1, &m_WhiteTextureID);
+                                  glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                                  unsigned char white[] = {255, 255, 255, 255};
+                                  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+                                  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                                  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                              }
+                              glActiveTexture(GL_TEXTURE0);
+                              glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+                         }
+                     }
+                     else
+                     {
+                          currentShader->setFloat("material.shininess", 32.0f); 
+                          currentShader->setVec3("material.specular", glm::vec3(0.5f));
+                          currentShader->setVec3("material.ambient", glm::vec3(1.0f));
+                          currentShader->setVec3("material.emission", glm::vec3(0.0f));
+                          currentShader->setFloat("material.opacity", 1.0f);
+                          currentShader->setVec2("uvScale", glm::vec2(1.0f));
+                          currentShader->setVec2("uvOffset", glm::vec2(0.0f));
+                     }
+                     
+                     if (m_DebugNoTexture) currentShader->setBool("debug_noTexture", true);
+                     else currentShader->setBool("debug_noTexture", false);
+                 }
+                 
+                 instanceBatch.push_back(transform.GetWorldModelMatrix(scene.registry));
+            }
         }
     }
     flushBatch(currentShader, currentModel);

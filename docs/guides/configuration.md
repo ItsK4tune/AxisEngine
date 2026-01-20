@@ -20,7 +20,8 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     "cullFaceEnabled": true,
     "depthTestEnabled": true,
     "audioDevice": "default",
-    "iconPath": "assets/icon.png"
+    "iconPath": "assets/icon.png",
+    "instanceBatchingEnabled": true
 }
 ```
 
@@ -43,6 +44,7 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     - `shadowsEnabled`: Enable/Disable shadow mapping.
     - `cullFaceEnabled`: Enable/Disable back-face culling.
     - `depthTestEnabled`: Enable/Disable depth testing.
+    - `instanceBatchingEnabled`: Enable/Disable instance batching for static meshes (default: `true`). Batching reduces draw calls but disabling can help with debugging transform issues.
 
 - **Audio Settings**
     - `audioDevice`: ID or Name of the audio output device (use "default" for system default). Use F2 in-game to see available device IDs.

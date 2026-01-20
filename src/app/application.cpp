@@ -59,7 +59,7 @@ Application::~Application()
 
 bool Application::Init()
 {
-    AppConfig config = ConfigLoader::Load("configuration/settings.json");
+    AppConfig config = ConfigLoader::Load(FileSystem::getPath("configuration/settings.json"));
 
     monitorManager.SetWindowTitle(config.title);
     monitorManager.SetWindowConfiguration(config.width, config.height, (WindowMode)config.windowMode, config.monitorIndex, config.refreshRate);
@@ -105,6 +105,7 @@ bool Application::Init()
     // Initialize SystemManager
     systemManager = std::make_unique<SystemManager>();
     systemManager->InitializeSystems(*resourceManager, monitorManager.GetWidth(), monitorManager.GetHeight(), config.shadowsEnabled, this);
+    systemManager->GetRenderSystem().SetInstanceBatching(config.instanceBatchingEnabled);
 
     resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 

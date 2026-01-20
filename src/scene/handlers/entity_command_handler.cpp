@@ -28,9 +28,9 @@ namespace SceneHandlers
         float x, y, z, rx, ry, rz, sx, sy, sz;
         ss >> x >> y >> z >> rx >> ry >> rz >> sx >> sy >> sz;
         
-        auto& t = scene.registry.emplace<TransformComponent>(entity);
+        auto& t = scene.registry.get_or_emplace<TransformComponent>(entity);
         t.position = glm::vec3(x, y, z);
-        t.rotation = glm::quat(glm::vec3(rx, ry, rz));
+        t.rotation = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
         t.scale = glm::vec3(sx, sy, sz);
     }
 

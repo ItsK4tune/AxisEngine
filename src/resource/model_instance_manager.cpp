@@ -14,9 +14,9 @@ ModelInstanceManager::~ModelInstanceManager()
     m_ModelPools.clear();
 }
 
-Model* ModelInstanceManager::GetOrLoadModel(const std::string& path)
+Model* ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic)
 {
-    auto it = m_ModelPools.find(path);
+    auto it = m_ModelPools.find(name);
     
     if (it != m_ModelPools.end())
     {
@@ -24,15 +24,15 @@ Model* ModelInstanceManager::GetOrLoadModel(const std::string& path)
         return it->second.model;
     }
     
-    Model* model = new Model(path);
+    Model* model = new Model(path, isStatic);
     
     ModelPool pool;
     pool.model = model;
     pool.refCount = 1;
     
-    m_ModelPools[path] = pool;
+    m_ModelPools[name] = pool;
     
-    std::cout << "[ModelInstanceManager] Loaded model: " << path << std::endl;
+    std::cout << "[ModelInstanceManager] Loaded model '" << name << "': " << path << (isStatic ? " (STATIC)" : " (DYNAMIC)") << std::endl;
     
     return model;
 }
@@ -43,7 +43,7 @@ void ModelInstanceManager::AddInstance(const std::string& modelPath, const glm::
     
     if (it == m_ModelPools.end())
     {
-        GetOrLoadModel(modelPath);
+        GetOrLoadModel(modelPath, modelPath, false);
         it = m_ModelPools.find(modelPath);
     }
     

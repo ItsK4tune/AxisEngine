@@ -57,6 +57,7 @@ AppConfig ConfigLoader::Load(const std::string& path)
         else if (key == "depthTestEnabled") config.depthTestEnabled = (value == "true");
         else if (key == "audioDevice") config.audioDevice = value;
         else if (key == "iconPath") config.iconPath = value;
+        else if (key == "instanceBatchingEnabled") config.instanceBatchingEnabled = (value == "true");
     }
     
     return config;
@@ -75,6 +76,15 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
         if (app)
         {
             app->GetRenderSystem().SetEnableShadows(enable != 0);
+        }
+    }
+    else if (subCmd == "INSTANCE_BATCH")
+    {
+        int enable = 0;
+        ss >> enable;
+        if (app)
+        {
+            app->GetRenderSystem().SetInstanceBatching(enable != 0);
         }
     }
     else if (subCmd == "CULL_FACE")

@@ -59,6 +59,8 @@ void Mesh::Draw(Shader &shader)
         glBindTexture(GL_TEXTURE_2D, textures[i].id);
     }
 
+    shader.setBool("isInstanced", false);
+
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

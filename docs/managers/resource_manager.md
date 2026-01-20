@@ -28,5 +28,12 @@ Returns raw pointers to the loaded resources. Returns `nullptr` if not found.
 *   `Skybox* GetSkybox(const std::string& name)`
 *   `UIModel* GetUIModel(const std::string& name)`
 
+## Caching Behavior
+The ResourceManager uses **name-based caching** for resources:
+- **Models**: Each unique name loads a separate instance, even if pointing to the same file. This allows different textures/states for models sharing the same mesh data.
+- **Textures/Shaders**: Shared by path to reduce memory usage.
+
+> **Example**: Loading `plane.fbx` as both "planeModel" and "planeVideoModel" creates two independent Model instances. Modifying textures on one won't affect the other.
+
 ## Hot Reload
 The resource manager runs a background thread to check for file changes (Shaders, Textures) and reloads them automatically in Debug mode.
