@@ -40,6 +40,8 @@ Global engine settings can be configured using the `CONFIG` command.
 | `VSYNC` | `1` or `0` | - | Enable (`1`) or disable (`0`) Vertical Sync. |
 | `FPS` | `<int>` | - | Set target frame rate limit (0 for unlimited). |
 | `FRUSTUM` | `1` or `0` | - | Enable (`1`) or disable (`0`) Frustum Culling. |
+| `SHADOW_FRUSTUM` | `1` or `0` | - | Enable (`1`) or disable (`0`) Light Frustum Culling. |
+| `SHADOW_DISTANCE_CULLING` | `<float>` | - | Set maximum distance for shadow casting. |
 
 ### Example
 ```text

@@ -21,7 +21,11 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     "depthTestEnabled": true,
     "audioDevice": "default",
     "iconPath": "assets/icon.png",
-    "instanceBatchingEnabled": true
+    "instanceBatchingEnabled": true,
+    "frustumCullingEnabled": true,
+    "shadowProjectionSize": 100.0,
+    "shadowFrustumCullingEnabled": true,
+    "shadowDistanceCulling": 100.0
 }
 ```
 
@@ -46,6 +50,9 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     - `frustumCullingEnabled`: Enable/Disable camera frustum culling (default: `true`).
     - `depthTestEnabled`: Enable/Disable depth testing.
     - `instanceBatchingEnabled`: Enable/Disable instance batching for static meshes (default: `true`). Batching reduces draw calls but disabling can help with debugging transform issues.
+    - `shadowProjectionSize`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
+    - `shadowFrustumCullingEnabled`: Enable/Disable culling of objects outside the light's view frustum (default: `true`).
+    - `shadowDistanceCulling`: Maximum distance (from main camera) at which objects cast shadows (default: `100.0`). Objects further than this will not cast shadows.
 
 - **Audio Settings**
     - `audioDevice`: ID or Name of the audio output device (use "default" for system default). Use F2 in-game to see available device IDs.
