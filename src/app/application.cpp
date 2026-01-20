@@ -42,18 +42,20 @@ Application::~Application()
 {
     m_StateMachine.Clear(); 
 
-    scene.registry.clear(); 
-    
-    sceneManager.reset();
-    resourceManager.reset();
-    soundManager.reset();
-    appHandler.reset();
-    physicsWorld.reset();
-    
     if (systemManager)
         systemManager->ShutdownSystems();
     
     systemManager.reset();
+
+    scene.registry.clear(); 
+    
+    sceneManager.reset();
+    soundManager.reset();
+    appHandler.reset();
+    physicsWorld.reset();
+
+    resourceManager.reset();
+    
     engineLoop.reset();
 }
 

@@ -343,7 +343,7 @@ void RenderSystem::Render(Scene &scene)
         if (!renderer.model || !renderer.shader)
             continue;
 
-        if (cam)
+        if (cam && m_FrustumCullingEnabled)
         {
             glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
             glm::vec3 min = renderer.model->AABBmin;

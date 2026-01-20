@@ -24,6 +24,7 @@ public:
     void Update(Scene &scene, PhysicsWorld &physicsWorld, float dt);
     void RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 
 private:
     using CollisionPair = std::pair<entt::entity, entt::entity>;
@@ -36,6 +37,7 @@ class AnimationSystem
 public:
     void Update(Scene &scene, float dt);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };
@@ -58,8 +60,10 @@ public:
     int GetRenderedCount() const { return m_RenderedCount; }
 
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
     void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
+    void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
     
     StaticBatchManager& GetBatchManager() { return m_BatchManager; }
 
@@ -75,6 +79,7 @@ private:
     bool m_EnableShadows = true;
     bool m_Enabled = true;
     bool m_InstanceBatchingEnabled = true;
+    bool m_FrustumCullingEnabled = true;
     bool m_DebugNoTexture = false;
     unsigned int m_WhiteTextureID = 0;
 
@@ -92,6 +97,7 @@ class UIInteractSystem
 public:
     void Update(Scene &scene, float dt, const MouseManager &mouse);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };
@@ -101,6 +107,7 @@ class UIRenderSystem
 public:
     void Render(Scene &scene, float screenWidth, float screenHeight);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };
@@ -112,6 +119,7 @@ class ScriptableSystem
 public:
     void Update(Scene &scene, float dt, float unscaledDt, Application *app);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };
@@ -121,6 +129,7 @@ class SkyboxRenderSystem
 public:
     void Render(Scene &scene);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };
@@ -131,6 +140,7 @@ public:
     void Update(Scene &scene, SoundManager& soundManager);
     void StopAll(Scene &scene);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };
@@ -141,6 +151,7 @@ public:
     void Update(Scene &scene, float dt);
     void Render(Scene &scene, ResourceManager &res);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };
@@ -150,6 +161,7 @@ class VideoSystem
 public:
     void Update(Scene &scene, ResourceManager &res, float dt);
     void SetEnabled(bool enable) { m_Enabled = enable; }
+    bool IsEnabled() const { return m_Enabled; }
 private:
     bool m_Enabled = true;
 };

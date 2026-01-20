@@ -202,12 +202,13 @@ void DebugSystem::OnUpdate(float dt)
     ProcessKey(keyboard, GLFW_KEY_F10, m_F10Pressed, [this, &keyboard](){
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
-            m_OverlayMode = (m_OverlayMode % 3) + 1;
+            m_OverlayMode = (m_OverlayMode % 4) + 1;
             std::cout << "\n========== Overlay Mode (Shift+F10) ==========" << std::endl;
-            std::cout << "[Debug] Mode " << m_OverlayMode << "/3: ";
+            std::cout << "[Debug] Mode " << m_OverlayMode << "/4: ";
             if (m_OverlayMode == 1) std::cout << "FPS Only";
             else if (m_OverlayMode == 2) std::cout << "FPS + Entities";
             else if (m_OverlayMode == 3) std::cout << "Advanced Stats";
+            else if (m_OverlayMode == 4) std::cout << "Debug Tool Toggles";
             std::cout << std::endl;
             std::cout << "============================================" << std::endl;
         } else {
@@ -365,6 +366,11 @@ void DebugSystem::Render(Scene& scene)
         }
     }
 
+    // Force Fill Mode for Overlay
+    GLint polygonMode[2];
+    glGetIntegerv(GL_POLYGON_MODE, polygonMode);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
     // Stats Overlay (F12)
     if (m_ShowStatsOverlay && m_DebugFont && m_TextShader && m_TextQuad)
     {
@@ -387,6 +393,18 @@ void DebugSystem::Render(Scene& scene)
             ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
             ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities << "\n";
             ss << "TimeScale: " << m_App->GetTimeScale() << "x | Paused: " << (m_App->IsPaused() ? "YES" : "NO");
+        } else if (m_OverlayMode == 4) {
+            ss << "=== DEBUG TOOLS (Shift+F10 Mode 4) ===\n";
+            
+            auto boolStr = [](bool v) { return v ? "[ON]" : "[OFF]"; };
+            
+            ss << "F6: Wireframe: " << boolStr(m_WireframeMode) << " | S+F6: Skybox: " << boolStr(m_App->GetSkyboxRenderSystem().IsEnabled()) << "\n";
+            ss << "F7: NoTexture: " << boolStr(m_NoTextureMode) << " | S+F7: Shadows: " << boolStr(m_App->GetRenderSystem().IsShadowsEnabled()) << "\n";
+            ss << "F8: Physics:   " << boolStr(m_ShowPhysicsDebug) << " | S+F8: Audio:   " << boolStr(m_ShowAudioDebug) << "\n";
+            ss << "F9: UI System: " << boolStr(m_App->GetUIRenderSystem().IsEnabled()) << " | S+F9: Particle:" << boolStr(m_ShowParticleDebug) << "\n";
+            ss << "S+F3: Names:   " << boolStr(m_ShowEntityNames) << " | S+F4: Gizmos:  " << boolStr(m_ShowTransformGizmos) << "\n";
+            ss << "S+F5: Lights:  " << boolStr(m_ShowLightGizmos) << " | S+F11: Cam:    " << boolStr(m_IsDebugCameraActive) << "\n";
+            ss << "F11: Paused:   " << boolStr(m_App->IsPaused());
         }
         
         std::string fullText = ss.str();
@@ -433,6 +451,9 @@ void DebugSystem::Render(Scene& scene)
             glm::vec3 pos = transform.GetWorldModelMatrix(scene.registry)[3];
         }
     }
+
+    // Restore previous Polygon Mode (e.g., Wireframe)
+    glPolygonMode(GL_FRONT_AND_BACK, polygonMode[0]);
 }
 
 void DebugSystem::RenderText(const std::string& text, float x, float y, float scale, glm::vec3 color)
