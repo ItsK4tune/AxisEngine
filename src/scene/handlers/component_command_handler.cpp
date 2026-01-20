@@ -7,6 +7,8 @@
 #include <ecs/component.h>
 #include <iostream>
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace SceneHandlers
 {
@@ -46,6 +48,33 @@ namespace SceneHandlers
         l.direction = glm::vec3(dx, dy, dz);
         l.color = glm::vec3(r, g, b);
         l.intensity = i;
+
+        // Sync Transform Rotation
+        if (scene.registry.all_of<TransformComponent>(entity))
+        {
+            auto& trans = scene.registry.get<TransformComponent>(entity);
+            // Default forward is (0,0,-1). We want to rotate (0,0,-1) to light direction.
+            // But light direction in "LIGHT_DIR" is FROM source or TO source?
+            // "LIGHT_DIR -0.5 -1.0 -0.5" looks like direction of the light rays (downwards).
+            // So we want Local Forward (0,0,-1) to align with this direction.
+            
+            glm::vec3 direction = glm::normalize(l.direction);
+            
+            // Handle edge case where direction is exactly up or down
+            if (glm::abs(glm::dot(direction, glm::vec3(0,0,1))) > 0.999f) {
+                 // Use a different up vector if parallel to Z
+                 trans.rotation = glm::quatLookAt(direction, glm::vec3(0,1,0)); 
+            } else {
+                 // Standard lookAt. Note: quatLookAt expects direction to be "forward"
+                 // Our components use (0,0,-1) as forward.
+                 // glm::quatLookAt creates a rotation that looks in 'direction' with 'up'.
+                 // Let's verify if this matches trans.rotation * (0,0,-1).
+                 // GLM quatLookAt usually creates transform from Camera perspective (looking down -Z).
+                 // So if we pass 'direction', the resulting rotation R * (0,0,-1) = direction.
+                 // We will need a stable up vector.
+                 trans.rotation = glm::quatLookAt(direction, glm::vec3(0,1,0));
+            }
+        }
 
         float ambientStr = 0.2f;
         float diffuseStr = 0.8f;

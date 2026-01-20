@@ -90,6 +90,10 @@ private:
     bool m_ShadowFrustumCullingEnabled = true;
     float m_ShadowDistanceCullingSq = 10000.0f; // Default 100^2
 
+    unsigned int m_DirLightSSBO = 0;
+    unsigned int m_PointLightSSBO = 0;
+    unsigned int m_SpotLightSSBO = 0;
+
     struct RenderItem
     {
         entt::entity entity;

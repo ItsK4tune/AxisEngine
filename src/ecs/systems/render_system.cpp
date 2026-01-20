@@ -13,6 +13,10 @@ void RenderSystem::InitShadows(ResourceManager &res)
 {
     m_Shadow.Init();
 
+    glGenBuffers(1, &m_DirLightSSBO);
+    glGenBuffers(1, &m_PointLightSSBO);
+    glGenBuffers(1, &m_SpotLightSSBO);
+
     res.LoadShader("shadow_depth", "src/asset/shaders/shadow_depth.vs", "src/asset/shaders/shadow_depth.fs");
     res.LoadShader("shadow_point", "src/asset/shaders/shadow_point.vs", "src/asset/shaders/shadow_point.fs", "src/asset/shaders/shadow_point.gs");
 
@@ -38,6 +42,7 @@ void RenderSystem::RenderShadows(Scene &scene)
 
     auto dirLightView = scene.registry.view<DirectionalLightComponent>();
     DirectionalLightComponent* primaryLight = nullptr;
+    entt::entity primaryEntity = entt::null;
     
     for (auto entity : dirLightView)
     {
@@ -45,6 +50,7 @@ void RenderSystem::RenderShadows(Scene &scene)
         if (light.isPrimary && light.active)
         {
             primaryLight = &light;
+            primaryEntity = entity;
             break;
         }
     }
@@ -52,7 +58,13 @@ void RenderSystem::RenderShadows(Scene &scene)
     if (!primaryLight)
         return;
 
-    glm::vec3 lightDir = glm::normalize(primaryLight->direction);
+    glm::vec3 lightDir = primaryLight->direction;
+    if (primaryEntity != entt::null && scene.registry.all_of<TransformComponent>(primaryEntity))
+    {
+         auto& trans = scene.registry.get<TransformComponent>(primaryEntity);
+         lightDir = trans.rotation * glm::vec3(0, 0, -1);
+    }
+    lightDir = glm::normalize(lightDir);
     glm::vec3 lightPos = -lightDir * m_ShadowProjectionSize;
 
     glm::mat4 lightProjection = glm::ortho(-m_ShadowProjectionSize, m_ShadowProjectionSize, -m_ShadowProjectionSize, m_ShadowProjectionSize, 0.1f, 200.0f);
@@ -81,13 +93,18 @@ void RenderSystem::RenderShadows(Scene &scene)
     shaderDir->use();
     shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
 
+    // Iterate all renderers for shadow casting
     auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
     for (auto entity : view)
     {
         auto [trans, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
-        if (renderer.model)
-        {
-            // Distance Culling
+        
+        // Skip if invalid model or shadow casting disabled
+        if (!renderer.model || !renderer.castShadow)
+            continue;
+
+        // ... Culling Logic ...
+        // Distance Culling
             if (m_ShadowDistanceCullingSq > 0.0f)
             {
                 float distSq = glm::length2(trans.position - camPos);
@@ -142,10 +159,7 @@ void RenderSystem::RenderShadows(Scene &scene)
                 shaderDir->setBool("hasAnimation", false);
             }
             renderer.model->Draw(*shaderDir);
-        }
     }
-
-    m_Shadow.UnbindFBO();
 
     m_Shadow.UnbindFBO();
 
@@ -236,133 +250,171 @@ void RenderSystem::RenderShadows(Scene &scene)
     m_Shadow.UnbindFBO();
 }
 
+// GPU Light Structs (std430 alignment)
+struct GPUDirLight {
+    glm::vec3 direction; float pad0;
+    glm::vec3 color; float intensity;
+    glm::vec3 ambient; float pad1;
+    glm::vec3 diffuse; float pad2;
+    glm::vec3 specular; float pad3;
+};
+
+struct GPUPointLight {
+    glm::vec3 position; float pad0;
+    glm::vec3 color; float intensity;
+    float constant; float linear; float quadratic; float radius;
+    glm::vec3 ambient; float pad1;
+    glm::vec3 diffuse; float pad2;
+    glm::vec3 specular; float pad3;
+};
+
+struct GPUSpotLight {
+    glm::vec3 position; float pad0;
+    glm::vec3 direction; float pad1;
+    glm::vec3 color; float intensity;
+    float cutOff; float outerCutOff; float constant; float linear;
+    float quadratic; float pad2; float pad3; float pad4;
+    glm::vec3 ambient; float pad5;
+    glm::vec3 diffuse; float pad6;
+    glm::vec3 specular; float pad7;
+};
+
 void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
 {
-    auto dirLightView = scene.registry.view<DirectionalLightComponent>();
-    int dirLightCount = 0;
-    entt::entity primaryDirLightEntity = entt::null;
-    entt::entity firstActiveDirLight = entt::null;
+    // Directional Lights
+    // Directional Lights
+    std::vector<GPUDirLight> dirLights;
+    auto dirView = scene.registry.view<DirectionalLightComponent>();
     
-    for (auto entity : dirLightView)
+    // Find Primary Light first
+    entt::entity primaryEntity = entt::null;
+    for (auto entity : dirView)
     {
-        auto& dirLight = dirLightView.get<DirectionalLightComponent>(entity);
-        
-        if (!dirLight.active)
-            continue;
-        
-        if (firstActiveDirLight == entt::null)
-            firstActiveDirLight = entity;
-        
-        if (dirLight.isPrimary)
-            primaryDirLightEntity = entity;
-        
-        std::string idx = std::to_string(dirLightCount);
-        shader->setVec3("dirLights[" + idx + "].direction", dirLight.direction);
-        shader->setVec3("dirLights[" + idx + "].ambient", dirLight.ambient * dirLight.intensity);
-        shader->setVec3("dirLights[" + idx + "].diffuse", dirLight.diffuse * dirLight.intensity);
-        shader->setVec3("dirLights[" + idx + "].specular", dirLight.specular * dirLight.intensity);
-        shader->setVec3("dirLights[" + idx + "].color", dirLight.color * dirLight.intensity);
-        
-        dirLightCount++;
-        if (dirLightCount >= 4)
-            break;
+        auto& light = dirView.get<DirectionalLightComponent>(entity);
+        if (light.active && light.isPrimary)
+        {
+             primaryEntity = entity;
+             glm::vec3 dir = light.direction;
+             if (scene.registry.all_of<TransformComponent>(entity))
+             {
+                 auto& trans = scene.registry.get<TransformComponent>(entity);
+                 dir = trans.rotation * glm::vec3(0, 0, -1);
+             }
+             
+             dirLights.push_back({
+                 dir, 0.0f,
+                 light.color, light.intensity,
+                 light.ambient, 0.0f,
+                 light.diffuse, 0.0f,
+                 light.specular, 0.0f
+             });
+             break; // Only one primary light supported for shadows currently
+        }
     }
+
+    // Add remaining lights
+    for (auto entity : dirView)
+    {
+        if (entity == primaryEntity) continue; // Skip already added primary light
+
+        auto& light = dirView.get<DirectionalLightComponent>(entity);
+        if (!light.active) continue;
+
+        glm::vec3 dir = light.direction;
+        // Use Transform if available
+        if (scene.registry.all_of<TransformComponent>(entity))
+        {
+            auto& trans = scene.registry.get<TransformComponent>(entity);
+            dir = trans.rotation * glm::vec3(0, 0, -1); // Forward vector -Z
+        }
+
+        dirLights.push_back({
+            dir, 0.0f,
+            light.color, light.intensity,
+            light.ambient, 0.0f,
+            light.diffuse, 0.0f,
+            light.specular, 0.0f
+        });
+    }
+
+    // Point Lights
+    std::vector<GPUPointLight> pointLights;
+    auto pointView = scene.registry.view<PointLightComponent>();
+    for (auto entity : pointView)
+    {
+        auto& light = pointView.get<PointLightComponent>(entity);
+        if (!light.active) continue;
+
+        glm::vec3 pos = glm::vec3(0.0f);
+        if (scene.registry.all_of<TransformComponent>(entity))
+        {
+            auto& trans = scene.registry.get<TransformComponent>(entity);
+            pos = trans.position;
+        }
+
+        pointLights.push_back({
+            pos, 0.0f,
+            light.color, light.intensity,
+            light.constant, light.linear, light.quadratic, light.radius,
+            light.ambient, 0.0f,
+            light.diffuse, 0.0f,
+            light.specular, 0.0f
+        });
+    }
+
+    // Spot Lights
+    std::vector<GPUSpotLight> spotLights;
+    auto spotView = scene.registry.view<SpotLightComponent>();
+    for (auto entity : spotView)
+    {
+        auto& light = spotView.get<SpotLightComponent>(entity);
+        if (!light.active) continue;
+
+        glm::vec3 pos = glm::vec3(0.0f);
+        glm::vec3 dir = light.direction;
+        if (scene.registry.all_of<TransformComponent>(entity))
+        {
+            auto& trans = scene.registry.get<TransformComponent>(entity);
+            pos = trans.position;
+            dir = trans.rotation * glm::vec3(0, 0, -1);
+        }
+
+        spotLights.push_back({
+            pos, 0.0f,
+            dir, 0.0f,
+            light.color, light.intensity,
+            light.cutOff, light.outerCutOff, light.constant, light.linear,
+            light.quadratic, 0.0f, 0.0f, 0.0f,
+            light.ambient, 0.0f,
+            light.diffuse, 0.0f,
+            light.specular, 0.0f
+        });
+    }
+
+    // Upload to SSBOs
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_DirLightSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, dirLights.size() * sizeof(GPUDirLight), dirLights.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_DirLightSSBO);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_PointLightSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, pointLights.size() * sizeof(GPUPointLight), pointLights.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_PointLightSSBO);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_SpotLightSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, spotLights.size() * sizeof(GPUSpotLight), spotLights.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_SpotLightSSBO);
+
+    // Uniforms for Counts
+    shader->setInt("numDirLights", (int)dirLights.size());
+    shader->setInt("nrPointLights", (int)pointLights.size());
+    shader->setInt("nrSpotLights", (int)spotLights.size());
     
-    shader->setInt("numDirLights", dirLightCount);
-    
-    if (primaryDirLightEntity != entt::null)
+    // For Shadow Rendering (legacy 0th light support for now or use the first one)
+    if (!dirLights.empty())
     {
-        auto& primaryDirLight = scene.registry.get<DirectionalLightComponent>(primaryDirLightEntity);
-        shader->setVec3("dirLight.direction", primaryDirLight.direction);
-        shader->setVec3("dirLight.ambient", primaryDirLight.ambient * primaryDirLight.intensity);
-        shader->setVec3("dirLight.diffuse", primaryDirLight.diffuse * primaryDirLight.intensity);
-        shader->setVec3("dirLight.specular", primaryDirLight.specular * primaryDirLight.intensity);
-        shader->setVec3("dirLight.color", primaryDirLight.color * primaryDirLight.intensity);
+         // We might need to keep legacy uniforms if we don't update ALL logic
+         // But for now, we assume shader reads from SSBO
     }
-    else if (firstActiveDirLight != entt::null)
-    {
-        auto& firstDirLight = scene.registry.get<DirectionalLightComponent>(firstActiveDirLight);
-        shader->setVec3("dirLight.direction", firstDirLight.direction);
-        shader->setVec3("dirLight.ambient", firstDirLight.ambient * firstDirLight.intensity);
-        shader->setVec3("dirLight.diffuse", firstDirLight.diffuse * firstDirLight.intensity);
-        shader->setVec3("dirLight.specular", firstDirLight.specular * firstDirLight.intensity);
-        shader->setVec3("dirLight.color", firstDirLight.color * firstDirLight.intensity);
-    }
-
-
-    static const std::string pointLightPos[4] = {"pointLights[0].position", "pointLights[1].position", "pointLights[2].position", "pointLights[3].position"};
-    static const std::string pointLightAmb[4] = {"pointLights[0].ambient", "pointLights[1].ambient", "pointLights[2].ambient", "pointLights[3].ambient"};
-    static const std::string pointLightDiff[4] = {"pointLights[0].diffuse", "pointLights[1].diffuse", "pointLights[2].diffuse", "pointLights[3].diffuse"};
-    static const std::string pointLightSpec[4] = {"pointLights[0].specular", "pointLights[1].specular", "pointLights[2].specular", "pointLights[3].specular"};
-    static const std::string pointLightColor[4] = {"pointLights[0].color", "pointLights[1].color", "pointLights[2].color", "pointLights[3].color"};
-    static const std::string pointLightConst[4] = {"pointLights[0].constant", "pointLights[1].constant", "pointLights[2].constant", "pointLights[3].constant"};
-    static const std::string pointLightLin[4] = {"pointLights[0].linear", "pointLights[1].linear", "pointLights[2].linear", "pointLights[3].linear"};
-    static const std::string pointLightQuad[4] = {"pointLights[0].quadratic", "pointLights[1].quadratic", "pointLights[2].quadratic", "pointLights[3].quadratic"};
-
-    int i = 0;
-    auto pointLightView = scene.registry.view<PointLightComponent, TransformComponent>();
-    for (auto entity : pointLightView)
-    {
-        if (i >= 4)
-            break;
-
-        auto [light, trans] = pointLightView.get<PointLightComponent, TransformComponent>(entity);
-        
-        if (!light.active)
-            continue;
-
-        shader->setVec3(pointLightPos[i], trans.position);
-        shader->setVec3(pointLightAmb[i], light.ambient * light.intensity);
-        shader->setVec3(pointLightDiff[i], light.diffuse * light.intensity);
-        shader->setVec3(pointLightSpec[i], light.specular * light.intensity);
-        shader->setVec3(pointLightColor[i], light.color * light.intensity);
-        shader->setFloat(pointLightConst[i], light.constant);
-        shader->setFloat(pointLightLin[i], light.linear);
-        shader->setFloat(pointLightQuad[i], light.quadratic);
-        i++;
-    }
-    shader->setInt("nrPointLights", i);
-
-    static const std::string spotLightPos[4] = {"spotLights[0].position", "spotLights[1].position", "spotLights[2].position", "spotLights[3].position"};
-    static const std::string spotLightDir[4] = {"spotLights[0].direction", "spotLights[1].direction", "spotLights[2].direction", "spotLights[3].direction"};
-    static const std::string spotLightCut[4] = {"spotLights[0].cutOff", "spotLights[1].cutOff", "spotLights[2].cutOff", "spotLights[3].cutOff"};
-    static const std::string spotLightOut[4] = {"spotLights[0].outerCutOff", "spotLights[1].outerCutOff", "spotLights[2].outerCutOff", "spotLights[3].outerCutOff"};
-
-    static const std::string spotLightAmb[4] = {"spotLights[0].ambient", "spotLights[1].ambient", "spotLights[2].ambient", "spotLights[3].ambient"};
-    static const std::string spotLightDiff[4] = {"spotLights[0].diffuse", "spotLights[1].diffuse", "spotLights[2].diffuse", "spotLights[3].diffuse"};
-    static const std::string spotLightSpec[4] = {"spotLights[0].specular", "spotLights[1].specular", "spotLights[2].specular", "spotLights[3].specular"};
-    static const std::string spotLightConst[4] = {"spotLights[0].constant", "spotLights[1].constant", "spotLights[2].constant", "spotLights[3].constant"};
-    static const std::string spotLightLin[4] = {"spotLights[0].linear", "spotLights[1].linear", "spotLights[2].linear", "spotLights[3].linear"};
-    static const std::string spotLightQuad[4] = {"spotLights[0].quadratic", "spotLights[1].quadratic", "spotLights[2].quadratic", "spotLights[3].quadratic"};
-
-    i = 0;
-    auto spotLightView = scene.registry.view<SpotLightComponent, TransformComponent>();
-    for (auto entity : spotLightView)
-    {
-        if (i >= 4)
-            break;
-
-        auto [light, trans] = spotLightView.get<SpotLightComponent, TransformComponent>(entity);
-        
-        if (!light.active)
-            continue;
-
-        glm::vec3 direction = trans.rotation * glm::vec3(0, 0, -1);
-        shader->setVec3(spotLightDir[i], direction);
-        shader->setFloat(spotLightCut[i], light.cutOff);
-        shader->setFloat(spotLightOut[i], light.outerCutOff);
-
-        shader->setVec3(spotLightPos[i], trans.position);
-        shader->setVec3(spotLightAmb[i], light.ambient * light.intensity);
-        shader->setVec3(spotLightDiff[i], light.diffuse * light.intensity);
-        shader->setVec3(spotLightSpec[i], light.specular * light.intensity);
-        shader->setFloat(spotLightConst[i], light.constant);
-        shader->setFloat(spotLightLin[i], light.linear);
-        shader->setFloat(spotLightQuad[i], light.quadratic);
-
-        i++;
-    }
-    shader->setInt("nrSpotLights", i);
 }
 
 void RenderSystem::Render(Scene &scene)
