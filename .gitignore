@@ -2,4 +2,7 @@ bin/
 build/
 out/
 .vscode/
+
 build_engine.lock
+
+logs/

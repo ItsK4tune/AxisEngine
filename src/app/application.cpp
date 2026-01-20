@@ -42,20 +42,18 @@ Application::~Application()
 {
     m_StateMachine.Clear(); 
 
-    if (systemManager)
-        systemManager->ShutdownSystems();
-    
-    systemManager.reset();
-
     scene.registry.clear(); 
     
     sceneManager.reset();
+    resourceManager.reset();
     soundManager.reset();
     appHandler.reset();
     physicsWorld.reset();
 
-    resourceManager.reset();
+    if (systemManager)
+        systemManager->ShutdownSystems();
     
+    systemManager.reset();
     engineLoop.reset();
 }
 
@@ -76,7 +74,7 @@ bool Application::Init()
     
     if (!config.iconPath.empty())
     {
-        monitorManager.SetWindowIcon(config.iconPath); 
+        monitorManager.SetWindowIcon(FileSystem::getPath(config.iconPath)); 
     }
 
     GLFWwindow* window = monitorManager.GetWindow();
@@ -107,7 +105,9 @@ bool Application::Init()
     // Initialize SystemManager
     systemManager = std::make_unique<SystemManager>();
     systemManager->InitializeSystems(*resourceManager, monitorManager.GetWidth(), monitorManager.GetHeight(), config.shadowsEnabled, this);
+    systemManager->GetRenderSystem().SetShadowProjectionSize(config.shadowProjectionSize);
     systemManager->GetRenderSystem().SetInstanceBatching(config.instanceBatchingEnabled);
+    systemManager->GetRenderSystem().SetFrustumCulling(config.frustumCullingEnabled);
 
     resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 

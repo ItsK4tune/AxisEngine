@@ -58,6 +58,8 @@ AppConfig ConfigLoader::Load(const std::string& path)
         else if (key == "audioDevice") config.audioDevice = value;
         else if (key == "iconPath") config.iconPath = value;
         else if (key == "instanceBatchingEnabled") config.instanceBatchingEnabled = (value == "true");
+        else if (key == "frustumCullingEnabled") config.frustumCullingEnabled = (value == "true");
+        else if (key == "shadowProjectionSize") config.shadowProjectionSize = std::stof(value);
     }
     
     return config;
@@ -76,6 +78,15 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
         if (app)
         {
             app->GetRenderSystem().SetEnableShadows(enable != 0);
+        }
+    }
+    else if (subCmd == "SHADOW_MAP")
+    {
+        float size = 20.0f;
+        ss >> size;
+        if (app)
+        {
+            app->GetRenderSystem().SetShadowProjectionSize(size);
         }
     }
     else if (subCmd == "INSTANCE_BATCH")
@@ -173,7 +184,7 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
             if (app) app->GetMonitorManager().SetFrameRateLimit(fps);
         }
     }
-    else if (subCmd == "FRUSTUM")
+    else if (subCmd == "FRUSTUM" || subCmd == "FRUSTUM_CULLING")
     {
         int enable = 0;
         if (ss >> enable)

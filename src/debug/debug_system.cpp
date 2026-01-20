@@ -202,13 +202,12 @@ void DebugSystem::OnUpdate(float dt)
     ProcessKey(keyboard, GLFW_KEY_F10, m_F10Pressed, [this, &keyboard](){
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
-            m_OverlayMode = (m_OverlayMode % 4) + 1;
+            m_OverlayMode = (m_OverlayMode % 3) + 1;
             std::cout << "\n========== Overlay Mode (Shift+F10) ==========" << std::endl;
-            std::cout << "[Debug] Mode " << m_OverlayMode << "/4: ";
-            if (m_OverlayMode == 1) std::cout << "FPS Only";
-            else if (m_OverlayMode == 2) std::cout << "FPS + Entities";
-            else if (m_OverlayMode == 3) std::cout << "Advanced Stats";
-            else if (m_OverlayMode == 4) std::cout << "Debug Tool Toggles";
+            std::cout << "[Debug] Mode " << m_OverlayMode << "/3: ";
+            if (m_OverlayMode == 1) std::cout << "General Stats";
+            else if (m_OverlayMode == 2) std::cout << "Debug Tools";
+            else if (m_OverlayMode == 3) std::cout << "All Info";
             std::cout << std::endl;
             std::cout << "============================================" << std::endl;
         } else {
@@ -384,20 +383,16 @@ void DebugSystem::Render(Scene& scene)
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
         
-        if (m_OverlayMode == 1) {
-            ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)";
-        } else if (m_OverlayMode == 2) {
-            ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
-            ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities;
-        } else if (m_OverlayMode == 3) {
+        // Helper lambdas
+        auto appendStats = [&]() {
             ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
             ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities << "\n";
-            ss << "TimeScale: " << m_App->GetTimeScale() << "x | Paused: " << (m_App->IsPaused() ? "YES" : "NO");
-        } else if (m_OverlayMode == 4) {
-            ss << "=== DEBUG TOOLS (Shift+F10 Mode 4) ===\n";
-            
+            ss << "TimeScale: " << m_App->GetTimeScale() << "x | Paused: " << (m_App->IsPaused() ? "YES" : "NO") << "\n";
+        };
+
+        auto appendTools = [&]() {
+            ss << "=== DEBUG TOOLS ===\n";
             auto boolStr = [](bool v) { return v ? "[ON]" : "[OFF]"; };
-            
             ss << "F6: Wireframe: " << boolStr(m_WireframeMode) << " | S+F6: Skybox: " << boolStr(m_App->GetSkyboxRenderSystem().IsEnabled()) << "\n";
             ss << "F7: NoTexture: " << boolStr(m_NoTextureMode) << " | S+F7: Shadows: " << boolStr(m_App->GetRenderSystem().IsShadowsEnabled()) << "\n";
             ss << "F8: Physics:   " << boolStr(m_ShowPhysicsDebug) << " | S+F8: Audio:   " << boolStr(m_ShowAudioDebug) << "\n";
@@ -405,6 +400,16 @@ void DebugSystem::Render(Scene& scene)
             ss << "S+F3: Names:   " << boolStr(m_ShowEntityNames) << " | S+F4: Gizmos:  " << boolStr(m_ShowTransformGizmos) << "\n";
             ss << "S+F5: Lights:  " << boolStr(m_ShowLightGizmos) << " | S+F11: Cam:    " << boolStr(m_IsDebugCameraActive) << "\n";
             ss << "F11: Paused:   " << boolStr(m_App->IsPaused());
+        };
+
+        if (m_OverlayMode == 1) {
+            appendStats();
+        } else if (m_OverlayMode == 2) {
+            appendTools();
+        } else if (m_OverlayMode == 3) {
+            appendStats();
+            ss << "\n";
+            appendTools();
         }
         
         std::string fullText = ss.str();

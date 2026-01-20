@@ -52,9 +52,9 @@ void RenderSystem::RenderShadows(Scene &scene)
         return;
 
     glm::vec3 lightDir = glm::normalize(primaryLight->direction);
-    glm::vec3 lightPos = -lightDir * 20.0f;
+    glm::vec3 lightPos = -lightDir * m_ShadowProjectionSize;
 
-    glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
+    glm::mat4 lightProjection = glm::ortho(-m_ShadowProjectionSize, m_ShadowProjectionSize, -m_ShadowProjectionSize, m_ShadowProjectionSize, 0.1f, 200.0f);
     glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     m_LightSpaceMatrixDir = lightProjection * lightView;

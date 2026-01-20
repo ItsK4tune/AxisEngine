@@ -7,11 +7,12 @@
     "monitorIndex": 0,
     "refreshRate": 60,
     "frameRateLimit": 120,
-    "shadowsEnabled": true,
+    "shadowsEnabled": false,
     "cullFaceEnabled": true,
     "depthTestEnabled": true,
     "audioDevice": "default",
     "iconPath": "assets/icon.png",
     "instanceBatchingEnabled": true,
-    "frustumCullingEnabled": true
+    "frustumCullingEnabled": true,
+    "shadowProjectionSize": 100.0
 }

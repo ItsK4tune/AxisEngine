@@ -27,6 +27,8 @@ struct AppConfig
     std::string iconPath = "";
     
     bool instanceBatchingEnabled = true;
+    bool frustumCullingEnabled = true;
+    float shadowProjectionSize = 20.0f;
 };
 
 class ConfigLoader

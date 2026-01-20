@@ -64,6 +64,7 @@ public:
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
     void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
     void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
+    void SetShadowProjectionSize(float size) { m_ShadowProjectionSize = size; }
     
     StaticBatchManager& GetBatchManager() { return m_BatchManager; }
 
@@ -80,6 +81,7 @@ private:
     bool m_Enabled = true;
     bool m_InstanceBatchingEnabled = true;
     bool m_FrustumCullingEnabled = true;
+    float m_ShadowProjectionSize = 20.0f;
     bool m_DebugNoTexture = false;
     unsigned int m_WhiteTextureID = 0;
 
