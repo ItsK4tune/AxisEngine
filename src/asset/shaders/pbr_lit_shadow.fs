@@ -1,4 +1,5 @@
 #version 430 core
+out vec4 FragColor;
 
 in vec3 FragPos;
 in vec3 Normal;
