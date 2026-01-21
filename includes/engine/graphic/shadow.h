@@ -15,11 +15,11 @@ public:
               unsigned int pointWidth = 1024, unsigned int pointHeight = 1024);
     void Shutdown();
 
-    void BindFBO_Dir();
+    void BindFBO_Dir(int index);
     void BindFBO_Point(int index);
     void UnbindFBO();
 
-    void BindTexture_Dir(int unit);
+    void BindTexture_Dir(int index, int unit);
     void BindTexture_Point(int index, int unit);
 
     unsigned int GetShadowWidth() const { return SHADOW_WIDTH; }
@@ -33,14 +33,15 @@ public:
     void SetShaderDir(Shader* shader) { m_ShadowShaderDir = shader; }
     void SetShaderPoint(Shader* shader) { m_ShadowShaderPoint = shader; }
 
+    static const int MAX_DIR_LIGHTS_SHADOW = 4;
     static const int MAX_POINT_LIGHTS_SHADOW = 4;
 
 private:
     unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
     unsigned int SHADOW_POINT_WIDTH, SHADOW_POINT_HEIGHT;
 
-    unsigned int m_ShadowFBO_Dir = 0;
-    unsigned int m_ShadowMap_Dir = 0;
+    unsigned int m_ShadowFBO_Dir[MAX_DIR_LIGHTS_SHADOW];
+    unsigned int m_ShadowMap_Dir[MAX_DIR_LIGHTS_SHADOW];
 
     unsigned int m_ShadowFBO_Point[MAX_POINT_LIGHTS_SHADOW];
     unsigned int m_ShadowMap_Point[MAX_POINT_LIGHTS_SHADOW];

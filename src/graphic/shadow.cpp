@@ -3,6 +3,12 @@
 
 Shadow::Shadow()
 {
+    for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i)
+    {
+        m_ShadowFBO_Dir[i] = 0;
+        m_ShadowMap_Dir[i] = 0;
+    }
+    
     for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i)
     {
         m_ShadowFBO_Point[i] = 0;
@@ -17,15 +23,18 @@ Shadow::~Shadow()
 
 void Shadow::Shutdown()
 {
-    if (m_ShadowFBO_Dir != 0)
+    for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i)
     {
-        glDeleteFramebuffers(1, &m_ShadowFBO_Dir);
-        m_ShadowFBO_Dir = 0;
-    }
-    if (m_ShadowMap_Dir != 0)
-    {
-        glDeleteTextures(1, &m_ShadowMap_Dir);
-        m_ShadowMap_Dir = 0;
+        if (m_ShadowFBO_Dir[i] != 0)
+        {
+            glDeleteFramebuffers(1, &m_ShadowFBO_Dir[i]);
+            m_ShadowFBO_Dir[i] = 0;
+        }
+        if (m_ShadowMap_Dir[i] != 0)
+        {
+            glDeleteTextures(1, &m_ShadowMap_Dir[i]);
+            m_ShadowMap_Dir[i] = 0;
+        }
     }
 
     for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i)
@@ -50,22 +59,26 @@ void Shadow::Init(unsigned int width, unsigned int height, unsigned int pointWid
     SHADOW_POINT_WIDTH = pointWidth;
     SHADOW_POINT_HEIGHT = pointHeight;
 
-    glGenFramebuffers(1, &m_ShadowFBO_Dir);
-    glGenTextures(1, &m_ShadowMap_Dir);
-    glBindTexture(GL_TEXTURE_2D, m_ShadowMap_Dir);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    // Initialize directional shadow maps (up to 4)
+    for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i)
+    {
+        glGenFramebuffers(1, &m_ShadowFBO_Dir[i]);
+        glGenTextures(1, &m_ShadowMap_Dir[i]);
+        glBindTexture(GL_TEXTURE_2D, m_ShadowMap_Dir[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, m_ShadowFBO_Dir);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_ShadowMap_Dir, 0);
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_ShadowFBO_Dir[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_ShadowMap_Dir[i], 0);
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
 
     for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i)
     {
@@ -91,10 +104,13 @@ void Shadow::Init(unsigned int width, unsigned int height, unsigned int pointWid
     }
 }
 
-void Shadow::BindFBO_Dir()
+void Shadow::BindFBO_Dir(int index)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, m_ShadowFBO_Dir);
-    glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+    if (index >= 0 && index < MAX_DIR_LIGHTS_SHADOW)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, m_ShadowFBO_Dir[index]);
+        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+    }
 }
 
 void Shadow::BindFBO_Point(int index)
@@ -111,10 +127,13 @@ void Shadow::UnbindFBO()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Shadow::BindTexture_Dir(int unit)
+void Shadow::BindTexture_Dir(int index, int unit)
 {
-    glActiveTexture(GL_TEXTURE0 + unit);
-    glBindTexture(GL_TEXTURE_2D, m_ShadowMap_Dir);
+    if (index >= 0 && index < MAX_DIR_LIGHTS_SHADOW)
+    {
+        glActiveTexture(GL_TEXTURE0 + unit);
+        glBindTexture(GL_TEXTURE_2D, m_ShadowMap_Dir[index]);
+    }
 }
 
 void Shadow::BindTexture_Point(int index, int unit)

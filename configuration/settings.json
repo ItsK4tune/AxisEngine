@@ -1,5 +1,5 @@
 {
-    "title": "Game Engine",
+    "title": "Axis Engine",
     "width": 1280,
     "height": 720,
     "windowMode": 0,
@@ -7,7 +7,7 @@
     "monitorIndex": 0,
     "refreshRate": 60,
     "frameRateLimit": 120,
-    "shadowsEnabled": true,
+    "shadowMode": 1,
     "cullFaceEnabled": true,
     "depthTestEnabled": true,
     "audioDevice": "default",
@@ -16,5 +16,5 @@
     "frustumCullingEnabled": true,
     "shadowProjectionSize": 50.0,
     "shadowFrustumCullingEnabled": false,
-    "shadowDistanceCulling": 100.0
+    "shadowDistanceCulling": 10000.0
 }

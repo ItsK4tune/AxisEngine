@@ -16,7 +16,7 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     "monitorIndex": 0,
     "refreshRate": 60,
     "frameRateLimit": 120,
-    "shadowsEnabled": true,
+    "shadowMode": 1,
     "cullFaceEnabled": true,
     "depthTestEnabled": true,
     "audioDevice": "default",
@@ -45,7 +45,10 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     - `iconPath`: Path to the window icon image (PNG/JPG).
 
 - **Graphics Settings**
-    - `shadowsEnabled`: Enable/Disable shadow mapping.
+    - `shadowMode`: Shadow rendering mode (default: `1`).
+        - `0`: No shadows (best performance)
+        - `1`: Single directional shadow from first light with `isCastShadow` enabled (balanced)
+        - `2`: Multiple directional shadows from up to 4 lights with `isCastShadow` enabled (highest quality)
     - `cullFaceEnabled`: Enable/Disable back-face culling.
     - `frustumCullingEnabled`: Enable/Disable camera frustum culling (default: `true`).
     - `depthTestEnabled`: Enable/Disable depth testing.

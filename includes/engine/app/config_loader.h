@@ -9,7 +9,7 @@ class Application;
 
 struct AppConfig
 {
-    std::string title = "Game Engine";
+    std::string title = "Axis Engine";
     int width = 800;
     int height = 600;
     int windowMode = 0;
@@ -18,7 +18,7 @@ struct AppConfig
     int refreshRate = 0;
     int frameRateLimit = 0;
     
-    bool shadowsEnabled = true;
+    int shadowMode = 1;
     bool cullFaceEnabled = true;
     bool depthTestEnabled = true;
     

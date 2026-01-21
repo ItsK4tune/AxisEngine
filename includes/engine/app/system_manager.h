@@ -22,7 +22,7 @@ public:
     SystemManager();
     ~SystemManager();
 
-    void InitializeSystems(ResourceManager& res, int width, int height, bool shadowsEnabled, Application* app);
+    void InitializeSystems(ResourceManager& res, int width, int height, Application* app);
     void ShutdownSystems();
 
     // Update all systems

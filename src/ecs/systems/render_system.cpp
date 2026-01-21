@@ -31,6 +31,10 @@ void RenderSystem::Shutdown()
 
 void RenderSystem::RenderShadows(Scene &scene)
 {
+    // Mode 0: No shadows
+    if (m_ShadowMode == 0)
+        return;
+
     if (!m_EnableShadows)
         return;
 
@@ -40,45 +44,38 @@ void RenderSystem::RenderShadows(Scene &scene)
     if (!shaderDir)
         return;
 
+    // Collect directional lights with isCastShadow enabled
+    std::vector<entt::entity> shadowCastingLights;
     auto dirLightView = scene.registry.view<DirectionalLightComponent>();
-    DirectionalLightComponent* primaryLight = nullptr;
-    entt::entity primaryEntity = entt::null;
     
     for (auto entity : dirLightView)
     {
         auto& light = dirLightView.get<DirectionalLightComponent>(entity);
-        if (light.isPrimary && light.active)
+        if (light.isCastShadow && light.active)
         {
-            primaryLight = &light;
-            primaryEntity = entity;
-            break;
+            shadowCastingLights.push_back(entity);
         }
     }
     
-    if (!primaryLight)
+    // No shadow casting lights found
+    if (shadowCastingLights.empty())
         return;
 
-    glm::vec3 lightDir = primaryLight->direction;
-    if (primaryEntity != entt::null && scene.registry.all_of<TransformComponent>(primaryEntity))
+    // Mode 1: Render shadow from first light only
+    int numShadowsToRender = 1;
+    if (m_ShadowMode == 2)
     {
-         auto& trans = scene.registry.get<TransformComponent>(primaryEntity);
-         lightDir = trans.rotation * glm::vec3(0, 0, -1);
-    }
-    lightDir = glm::normalize(lightDir);
-    glm::vec3 lightPos = -lightDir * m_ShadowProjectionSize;
-
-    glm::mat4 lightProjection = glm::ortho(-m_ShadowProjectionSize, m_ShadowProjectionSize, -m_ShadowProjectionSize, m_ShadowProjectionSize, 0.1f, 200.0f);
-    glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-    m_LightSpaceMatrixDir = lightProjection * lightView;
-
-    // Culling Setup
-    Frustum lightFrustum;
-    if (m_ShadowFrustumCullingEnabled)
-    {
-        lightFrustum.Update(m_LightSpaceMatrixDir);
+        // Mode 2: Render shadows from all lights (max 4)
+        numShadowsToRender = std::min((int)shadowCastingLights.size(), 4);
+        
+        // Warning if more than 4 lights have isCastShadow
+        if (shadowCastingLights.size() > 4)
+        {
+            std::cout << "[RenderSystem] More than 4 lights have isCastShadow enabled. Only the first 4 will cast shadows." << std::endl;
+        }
     }
 
+    // Get camera position for distance culling
     glm::vec3 camPos(0.0f);
     entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity != entt::null)
@@ -87,24 +84,54 @@ void RenderSystem::RenderShadows(Scene &scene)
         camPos = camTrans.position;
     }
 
-    m_Shadow.BindFBO_Dir();
-    glClear(GL_DEPTH_BUFFER_BIT);
-
-    shaderDir->use();
-    shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
-
-    // Iterate all renderers for shadow casting
-    auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
-    for (auto entity : view)
+    // Render shadow maps for each shadow-casting light
+    for (int lightIdx = 0; lightIdx < numShadowsToRender; ++lightIdx)
     {
-        auto [trans, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
+        entt::entity lightEntity = shadowCastingLights[lightIdx];
+        auto& light = scene.registry.get<DirectionalLightComponent>(lightEntity);
         
-        // Skip if invalid model or shadow casting disabled
-        if (!renderer.model || !renderer.castShadow)
-            continue;
+        // Calculate light direction
+        glm::vec3 lightDir = light.direction;
+        if (scene.registry.all_of<TransformComponent>(lightEntity))
+        {
+            auto& trans = scene.registry.get<TransformComponent>(lightEntity);
+            lightDir = trans.rotation * glm::vec3(0, 0, -1);
+        }
+        lightDir = glm::normalize(lightDir);
+        glm::vec3 lightPos = -lightDir * m_ShadowProjectionSize;
 
-        // ... Culling Logic ...
-        // Distance Culling
+        // Calculate light space matrix
+        glm::mat4 lightProjection = glm::ortho(-m_ShadowProjectionSize, m_ShadowProjectionSize, 
+                                                -m_ShadowProjectionSize, m_ShadowProjectionSize, 
+                                                0.1f, 200.0f);
+        glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        m_LightSpaceMatrixDir[lightIdx] = lightProjection * lightView;
+
+        // Frustum culling setup
+        Frustum lightFrustum;
+        if (m_ShadowFrustumCullingEnabled)
+        {
+            lightFrustum.Update(m_LightSpaceMatrixDir[lightIdx]);
+        }
+
+        // Bind shadow FBO and clear
+        m_Shadow.BindFBO_Dir(lightIdx);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        shaderDir->use();
+        shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
+
+        // Render all shadow-casting objects
+        auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
+        for (auto entity : view)
+        {
+            auto [trans, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
+            
+            // Skip if invalid model or shadow casting disabled
+            if (!renderer.model || !renderer.castShadow)
+                continue;
+
+            // Distance culling
             if (m_ShadowDistanceCullingSq > 0.0f)
             {
                 float distSq = glm::length2(trans.position - camPos);
@@ -112,33 +139,35 @@ void RenderSystem::RenderShadows(Scene &scene)
                     continue;
             }
 
-            // Light Frustum Culling
+            // Light frustum culling
             if (m_ShadowFrustumCullingEnabled)
             {
-                 glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
-                 glm::vec3 min = renderer.model->AABBmin;
-                 glm::vec3 max = renderer.model->AABBmax;
-                 
-                 glm::vec3 center = (min + max) * 0.5f;
-                 glm::vec3 extent = (max - min) * 0.5f;
-                 
-                 glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-                 
-                 glm::mat3 rot = glm::mat3(modelMatrix);
-                 glm::vec3 worldExtent = glm::vec3(
-                     std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-                     std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-                     std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z
-                 );
-                 
-                 glm::vec3 worldMin = worldCenter - worldExtent;
-                 glm::vec3 worldMax = worldCenter + worldExtent;
+                glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
+                glm::vec3 min = renderer.model->AABBmin;
+                glm::vec3 max = renderer.model->AABBmax;
+                
+                glm::vec3 center = (min + max) * 0.5f;
+                glm::vec3 extent = (max - min) * 0.5f;
+                
+                glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+                
+                glm::mat3 rot = glm::mat3(modelMatrix);
+                glm::vec3 worldExtent = glm::vec3(
+                    std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                    std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                    std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z
+                );
+                
+                glm::vec3 worldMin = worldCenter - worldExtent;
+                glm::vec3 worldMax = worldCenter + worldExtent;
 
-                 if (!lightFrustum.IsBoxVisible(worldMin, worldMax))
-                     continue;
+                if (!lightFrustum.IsBoxVisible(worldMin, worldMax))
+                    continue;
             }
 
             shaderDir->setMat4("model", trans.GetWorldModelMatrix(scene.registry));
+            
+            // Handle animated models
             if (scene.registry.all_of<AnimationComponent>(entity))
             {
                 auto &anim = scene.registry.get<AnimationComponent>(entity);
@@ -158,34 +187,37 @@ void RenderSystem::RenderShadows(Scene &scene)
             {
                 shaderDir->setBool("hasAnimation", false);
             }
+            
             renderer.model->Draw(*shaderDir);
+        }
     }
 
     m_Shadow.UnbindFBO();
 
+    // Point light shadows (unchanged, but update to use isCastShadow)
     auto pointView = scene.registry.view<PointLightComponent, TransformComponent>();
     
     if (!shaderPoint)
         return;
     
-    std::vector<entt::entity> primaryPointLights;
+    std::vector<entt::entity> shadowCastingPointLights;
     for (auto entity : pointView)
     {
         auto& light = pointView.get<PointLightComponent>(entity);
-        if (light.isPrimary && light.active)
+        if (light.isCastShadow && light.active)
         {
-            primaryPointLights.push_back(entity);
-            if (primaryPointLights.size() >= 4)
+            shadowCastingPointLights.push_back(entity);
+            if (shadowCastingPointLights.size() >= 4)
                 break;
         }
     }
     
-    if (primaryPointLights.empty())
+    if (shadowCastingPointLights.empty())
         return;
 
     int pIdx = 0;
     shaderPoint->use();
-    for (auto entity : primaryPointLights)
+    for (auto entity : shadowCastingPointLights)
     {
         if (pIdx >= Shadow::MAX_POINT_LIGHTS_SHADOW)
             break;
@@ -215,6 +247,7 @@ void RenderSystem::RenderShadows(Scene &scene)
         m_Shadow.BindFBO_Point(pIdx);
         glClear(GL_DEPTH_BUFFER_BIT);
 
+        auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
         for (auto obj : view)
         {
             auto [tObj, rObj] = view.get<TransformComponent, MeshRendererComponent>(obj);
@@ -282,18 +315,17 @@ struct GPUSpotLight {
 void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
 {
     // Directional Lights
-    // Directional Lights
     std::vector<GPUDirLight> dirLights;
     auto dirView = scene.registry.view<DirectionalLightComponent>();
     
-    // Find Primary Light first
-    entt::entity primaryEntity = entt::null;
+    // Find shadow-casting light first (for compatibility)
+    entt::entity shadowCasterEntity = entt::null;
     for (auto entity : dirView)
     {
         auto& light = dirView.get<DirectionalLightComponent>(entity);
-        if (light.active && light.isPrimary)
+        if (light.active && light.isCastShadow)
         {
-             primaryEntity = entity;
+             shadowCasterEntity = entity;
              glm::vec3 dir = light.direction;
              if (scene.registry.all_of<TransformComponent>(entity))
              {
@@ -308,14 +340,14 @@ void RenderSystem::UploadLightData(Scene &scene, Shader *shader)
                  light.diffuse, 0.0f,
                  light.specular, 0.0f
              });
-             break; // Only one primary light supported for shadows currently
+             break; // First shadow-casting light
         }
     }
 
     // Add remaining lights
     for (auto entity : dirView)
     {
-        if (entity == primaryEntity) continue; // Skip already added primary light
+        if (entity == shadowCasterEntity) continue; // Skip already added shadow-caster
 
         auto& light = dirView.get<DirectionalLightComponent>(entity);
         if (!light.active) continue;
@@ -522,18 +554,30 @@ void RenderSystem::Render(Scene &scene)
                 currentShader->setMat4("view", cam->viewMatrix);
                 currentShader->setVec3("viewPos", camTrans->position);
 
-                currentShader->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir);
+                // Upload all 4 light space matrices as array
+                for (int i = 0; i < 4; ++i)
+                {
+                    std::string uniformName = "lightSpaceMatrix[" + std::to_string(i) + "]";
+                    currentShader->setMat4(uniformName, m_LightSpaceMatrixDir[i]);
+                }
+                
                 currentShader->setFloat("farPlanePoint", m_FarPlanePoint);
-                currentShader->setBool("u_ReceiveShadow", m_EnableShadows);
+                currentShader->setBool("u_ReceiveShadow", m_EnableShadows && m_ShadowMode > 0);
                 currentShader->setFloat("material.shininess", 32.0f);
 
-                m_Shadow.BindTexture_Dir(10);
-                currentShader->setInt("shadowMapDir", 10);
+                // Bind all 4 directional shadow maps
+                for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
+                {
+                    m_Shadow.BindTexture_Dir(i, 10 + i);
+                    std::string uniformName = "shadowMapDir[" + std::to_string(i) + "]";
+                    currentShader->setInt(uniformName, 10 + i);
+                }
 
+                // Bind point light shadow maps (starting from texture unit 14)
                 for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
                 {
-                    m_Shadow.BindTexture_Point(i, 11 + i);
-                    currentShader->setInt(shadowPointUniforms[i], 11 + i);
+                    m_Shadow.BindTexture_Point(i, 14 + i);
+                    currentShader->setInt(shadowPointUniforms[i], 14 + i);
                 }
             }
             UploadLightData(scene, currentShader);

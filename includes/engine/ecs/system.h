@@ -51,7 +51,9 @@ public:
     void Shutdown();
     void RenderShadows(Scene &scene);
     void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
+    void SetShadowMode(int mode) { m_ShadowMode = mode; }
     bool IsShadowsEnabled() const { return m_EnableShadows; }
+    int GetShadowMode() const { return m_ShadowMode; }
 
     void SetFaceCulling(bool enabled, int mode = GL_BACK);
     void SetDepthTest(bool enabled, int func = GL_LESS);
@@ -77,9 +79,10 @@ private:
     StaticBatchManager m_BatchManager;
     int m_RenderedCount = 0;
 
-    glm::mat4 m_LightSpaceMatrixDir;
+    glm::mat4 m_LightSpaceMatrixDir[4];
     float m_FarPlanePoint = 25.0f;
     bool m_EnableShadows = true;
+    int m_ShadowMode = 1; // 0=None, 1=Once, 2=All
     bool m_Enabled = true;
     bool m_InstanceBatchingEnabled = true;
     bool m_FrustumCullingEnabled = true;

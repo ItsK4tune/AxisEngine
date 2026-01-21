@@ -17,11 +17,10 @@ SystemManager::~SystemManager()
 {
 }
 
-void SystemManager::InitializeSystems(ResourceManager& res, int width, int height, bool shadowsEnabled, Application* app)
+void SystemManager::InitializeSystems(ResourceManager& res, int width, int height, Application* app)
 {
     postProcess.Init(width, height);
     renderSystem.InitShadows(res);
-    renderSystem.SetEnableShadows(shadowsEnabled);
 
 #ifdef ENABLE_DEBUG_SYSTEM
     debugSystem = std::make_unique<DebugSystem>();

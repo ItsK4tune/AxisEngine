@@ -29,7 +29,7 @@ exit /b
 
 :MAIN_LOGIC
 :: Set title
-title Game Engine Builder
+title Axis Engine Builder
 
 :: -----------------------------------------------------------------------------
 

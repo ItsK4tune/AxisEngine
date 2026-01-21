@@ -79,29 +79,45 @@ MATERIAL PBR <roughness> <metallic> <ao>
 
 ## Lighting
 
+All light components support shadow casting and active state control via optional parameters at the end of their command.
+
 ### Directional Light
 ```text
-LIGHT_DIR <dir_x> <dir_y> <dir_z> <r> <g> <b> <intensity> [ambient] [diffuse]
+LIGHT_DIR <dir_x> <dir_y> <dir_z> <r> <g> <b> <intensity> [ambient] [diffuse] [isCastShadow] [active]
 ```
 - **intensity**: Light intensity multiplier.
 - **ambient**: Ambient strength multiplier (optional, default 0.2).
 - **diffuse**: Diffuse strength multiplier (optional, default 0.8).
+- **isCastShadow**: Enable shadow casting for this light (optional, 0 or 1, default 0).
+- **active**: Enable/disable this light (optional, 0 or 1, default 1).
+
+> **Note**: In shadow mode 1 (Once), only the first light with `isCastShadow=1` will cast shadows. In mode 2 (All), up to 4 lights with `isCastShadow=1` will cast shadows.
+
+**Example:**
+```text
+LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8 0.1 0.3 1 1
+```
+This creates a directional light with shadow casting enabled and active.
 
 ### Point Light
 ```text
-LIGHT_POINT <r> <g> <b> <intensity> <radius> [constant] [linear] [quadratic] [ambient] [diffuse]
+LIGHT_POINT <r> <g> <b> <intensity> <radius> [constant] [linear] [quadratic] [ambient] [diffuse] [isCastShadow] [active]
 ```
 - **radius**: Approximate range of the light.
 - **attenuation**: optional constant, linear, quadratic falloff.
 - **ambient/diffuse**: optional multipliers (defaults: 0.1, 1.0).
+- **isCastShadow**: Enable shadow casting for this light (optional, 0 or 1, default 0).
+- **active**: Enable/disable this light (optional, 0 or 1, default 1).
 
 ### Spot Light
 ```text
-LIGHT_SPOT <r> <g> <b> <intensity> <cut> <outer> [constant] [linear] [quadratic] [ambient] [diffuse]
+LIGHT_SPOT <r> <g> <b> <intensity> <cut> <outer> [constant] [linear] [quadratic] [ambient] [diffuse] [isCastShadow] [active]
 ```
 - **cut/outer**: Cutoff angles in degrees.
 - **attenuation**: optional constant, linear, quadratic falloff.
 - **ambient/diffuse**: optional multipliers (defaults: 0.1, 1.0).
+- **isCastShadow**: Enable shadow casting for this light (optional, 0 or 1, default 0).
+- **active**: Enable/disable this light (optional, 0 or 1, default 1).
 
 ## Audio
 

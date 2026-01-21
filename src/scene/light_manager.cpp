@@ -18,7 +18,7 @@ entt::entity LightManager::GetPrimaryDirectionalLight() const
     for (auto entity : view)
     {
         const auto& light = view.get<DirectionalLightComponent>(entity);
-        if (light.isPrimary && light.active)
+        if (light.isCastShadow && light.active)
         {
             return entity;
         }
@@ -103,30 +103,30 @@ std::vector<entt::entity> LightManager::GetActiveLights() const
 void LightManager::EnsurePrimaryDirectionalLight()
 {
     auto dirLightView = m_Scene.registry.view<DirectionalLightComponent>();
-    bool hasPrimaryDirLight = false;
+    bool hasShadowCaster = false;
     entt::entity lastDirLight = entt::null;
     
     for (auto entity : dirLightView)
     {
         auto& light = dirLightView.get<DirectionalLightComponent>(entity);
-        if (light.isPrimary && light.active)
+        if (light.isCastShadow && light.active)
         {
-            hasPrimaryDirLight = true;
+            hasShadowCaster = true;
             break;
         }
         if (light.active)
             lastDirLight = entity;
     }
     
-    if (!hasPrimaryDirLight && lastDirLight != entt::null)
+    if (!hasShadowCaster && lastDirLight != entt::null)
     {
         auto& light = m_Scene.registry.get<DirectionalLightComponent>(lastDirLight);
-        light.isPrimary = true;
-        std::cout << "[LightManager] Auto-set last active directional light as primary" << std::endl;
+        light.isCastShadow = true;
+        std::cout << "[LightManager] Auto-set last active directional light to cast shadow" << std::endl;
     }
 }
 
-entt::entity LightManager::CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity, bool isPrimary)
+entt::entity LightManager::CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity, bool isCastShadow)
 {
     entt::entity entity = m_Scene.createEntity();
     
@@ -134,7 +134,7 @@ entt::entity LightManager::CreateDirectionalLight(const glm::vec3& direction, co
     light.direction = direction;
     light.color = color;
     light.intensity = intensity;
-    light.isPrimary = isPrimary;
+    light.isCastShadow = isCastShadow;
     light.active = true;
     
     light.ambient = color * 0.2f;
@@ -192,19 +192,19 @@ entt::entity LightManager::CreateSpotLight(const glm::vec3& position, const glm:
 
 void LightManager::SetPrimaryDirectionalLight(entt::entity entity)
 {
-    // Clear all other primary flags
+    // Clear all other shadow casting flags
     auto view = m_Scene.registry.view<DirectionalLightComponent>();
     for (auto e : view)
     {
         auto& light = view.get<DirectionalLightComponent>(e);
-        light.isPrimary = false;
+        light.isCastShadow = false;
     }
     
-    // Set new primary
+    // Set new shadow caster
     if (m_Scene.registry.valid(entity) && m_Scene.registry.all_of<DirectionalLightComponent>(entity))
     {
         auto& light = m_Scene.registry.get<DirectionalLightComponent>(entity);
-        light.isPrimary = true;
+        light.isCastShadow = true;
     }
 }
 

@@ -90,11 +90,11 @@ namespace SceneHandlers
         l.diffuse = l.color * diffuseStr;
         l.specular = glm::vec3(0.5f);
         
-        int primaryFlag = 0;
+        int castShadowFlag = 0;
         int activeFlag = 1;
-        if (ss >> primaryFlag)
+        if (ss >> castShadowFlag)
         {
-            l.isPrimary = (primaryFlag != 0);
+            l.isCastShadow = (castShadowFlag != 0);
             if (ss >> activeFlag)
             {
                 l.active = (activeFlag != 0);
@@ -131,13 +131,13 @@ namespace SceneHandlers
         l.diffuse = l.color * diffStr;
         l.specular = glm::vec3(1.0f);
         
-        int primaryFlag = 0;
+        int castShadowFlag = 0;
         int activeFlag = 1;
         std::string temp;
         if (ss >> temp)
         {
-            primaryFlag = std::stoi(temp);
-            l.isPrimary = (primaryFlag != 0);
+            castShadowFlag = std::stoi(temp);
+            l.isCastShadow = (castShadowFlag != 0);
             if (ss >> activeFlag)
             {
                 l.active = (activeFlag != 0);
@@ -175,13 +175,13 @@ namespace SceneHandlers
         l.diffuse = l.color * diffStr;
         l.specular = glm::vec3(1.0f);
         
-        int primaryFlag = 0;
+        int castShadowFlag = 0;
         int activeFlag = 1;
         std::string temp;
         if (ss >> temp)
         {
-            primaryFlag = std::stoi(temp);
-            l.isPrimary = (primaryFlag != 0);
+            castShadowFlag = std::stoi(temp);
+            l.isCastShadow = (castShadowFlag != 0);
             if (ss >> activeFlag)
             {
                 l.active = (activeFlag != 0);

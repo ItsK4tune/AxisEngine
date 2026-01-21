@@ -52,7 +52,7 @@ AppConfig ConfigLoader::Load(const std::string& path)
         else if (key == "monitorIndex") config.monitorIndex = std::stoi(value);
         else if (key == "refreshRate") config.refreshRate = std::stoi(value);
         else if (key == "frameRateLimit") config.frameRateLimit = std::stoi(value);
-        else if (key == "shadowsEnabled") config.shadowsEnabled = (value == "true");
+        else if (key == "shadowMode") config.shadowMode = std::stoi(value);
         else if (key == "cullFaceEnabled") config.cullFaceEnabled = (value == "true");
         else if (key == "depthTestEnabled") config.depthTestEnabled = (value == "true");
         else if (key == "audioDevice") config.audioDevice = value;
@@ -75,11 +75,11 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
     ss >> subCmd;
     if (subCmd == "SHADOWS")
     {
-        int enable = 0;
-        ss >> enable;
+        int mode = 1;
+        ss >> mode;
         if (app)
         {
-            app->GetRenderSystem().SetEnableShadows(enable != 0);
+            app->GetRenderSystem().SetShadowMode(mode);
         }
     }
     else if (subCmd == "SHADOW_MAP")

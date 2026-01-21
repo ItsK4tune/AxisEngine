@@ -220,7 +220,7 @@ struct DirectionalLightComponent
     glm::vec3 diffuse = glm::vec3(0.4f);
     glm::vec3 specular = glm::vec3(0.5f);
     
-    bool isPrimary = false;
+    bool isCastShadow = false;
     bool active = true;
 };
 
@@ -239,7 +239,7 @@ struct PointLightComponent
     glm::vec3 diffuse = glm::vec3(1.0f);
     glm::vec3 specular = glm::vec3(1.0f);
     
-    bool isPrimary = false;
+    bool isCastShadow = false;
     bool active = true;
 };
 
@@ -260,7 +260,7 @@ struct SpotLightComponent
     glm::vec3 diffuse = glm::vec3(1.0f);
     glm::vec3 specular = glm::vec3(1.0f);
     
-    bool isPrimary = false;
+    bool isCastShadow = false;
     bool active = true;
 };
 

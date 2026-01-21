@@ -104,7 +104,8 @@ bool Application::Init()
 
     // Initialize SystemManager
     systemManager = std::make_unique<SystemManager>();
-    systemManager->InitializeSystems(*resourceManager, monitorManager.GetWidth(), monitorManager.GetHeight(), config.shadowsEnabled, this);
+    systemManager->InitializeSystems(*resourceManager, monitorManager.GetWidth(), monitorManager.GetHeight(), this);
+    systemManager->GetRenderSystem().SetShadowMode(config.shadowMode);
     systemManager->GetRenderSystem().SetShadowProjectionSize(config.shadowProjectionSize);
     systemManager->GetRenderSystem().SetInstanceBatching(config.instanceBatchingEnabled);
     systemManager->GetRenderSystem().SetFrustumCulling(config.frustumCullingEnabled);

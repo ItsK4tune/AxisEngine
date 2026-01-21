@@ -23,7 +23,7 @@ public:
     void EnsurePrimaryDirectionalLight();
     
     // Light creation helpers
-    entt::entity CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity, bool isPrimary = false);
+    entt::entity CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity, bool isCastShadow = false);
     entt::entity CreatePointLight(const glm::vec3& position, const glm::vec3& color, float intensity, float radius);
     entt::entity CreateSpotLight(const glm::vec3& position, const glm::vec3& direction, const glm::vec3& color, float intensity, float cutOff, float outerCutOff);
 

@@ -55,26 +55,26 @@ namespace SceneHandlers
     void SceneValidator::ValidateLights(Scene& scene)
     {
         auto dirLightView = scene.registry.view<DirectionalLightComponent>();
-        bool hasPrimaryDirLight = false;
+        bool hasShadowCaster = false;
         entt::entity lastDirLight = entt::null;
 
         for (auto entity : dirLightView)
         {
             auto& light = dirLightView.get<DirectionalLightComponent>(entity);
-            if (light.isPrimary && light.active)
+            if (light.isCastShadow && light.active)
             {
-                hasPrimaryDirLight = true;
+                hasShadowCaster = true;
                 break;
             }
             if (light.active)
                 lastDirLight = entity;
         }
 
-        if (!hasPrimaryDirLight && lastDirLight != entt::null)
+        if (!hasShadowCaster && lastDirLight != entt::null)
         {
             auto& light = scene.registry.get<DirectionalLightComponent>(lastDirLight);
-            light.isPrimary = true;
-            std::cout << "[SceneValidator] Auto-set last active directional light as primary" << std::endl;
+            light.isCastShadow = true;
+            std::cout << "[SceneValidator] Auto-set last active directional light to cast shadow" << std::endl;
         }
     }
 
