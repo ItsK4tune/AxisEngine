@@ -16,5 +16,6 @@
     "frustumCullingEnabled": true,
     "shadowProjectionSize": 50.0,
     "shadowFrustumCullingEnabled": false,
-    "shadowDistanceCulling": 10000.0
+    "shadowDistanceCulling": 10000.0,
+    "distanceCulling": 0.0
 }

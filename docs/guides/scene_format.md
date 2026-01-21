@@ -32,24 +32,29 @@ Global engine settings can be configured using the `CONFIG` command.
 
 | Argument 1 | Argument 2 | Argument 3 | Description |
 | :--- | :--- | :--- | :--- |
-| `SHADOWS` | `0`, `1`, or `2` | - | Set shadow rendering mode: `0` = None, `1` = Once (single shadow), `2` = All (up to 4 shadows). |
-| `INSTANCE_BATCH`| `1` or `0` | - | Enable (`1`) or disable (`0`) instance batching for static meshes (reduces draw calls). |
-| `CULL_FACE`| `1` or `0` | `BACK`, `FRONT`, `FRONT_AND_BACK` | Enable face culling with specified mode. |
-| `DEPTH_TEST`| `1` or `0` | `LESS`, `ALWAYS`, `LEQUAL`, etc. | Enable depth test with specified function. |
-| `WINDOW` | `<w> <h>` | `[mode] [monitor] [hz]` | Set resolution, mode (`WINDOWED`/`FULLSCREEN`/`BORDERLESS`), monitor index, and refresh rate. |
-| `VSYNC` | `1` or `0` | - | Enable (`1`) or disable (`0`) Vertical Sync. |
-| `FPS` | `<int>` | - | Set target frame rate limit (0 for unlimited). |
-| `FRUSTUM` | `1` or `0` | - | Enable (`1`) or disable (`0`) Frustum Culling. |
-| `SHADOW_FRUSTUM` | `1` or `0` | - | Enable (`1`) or disable (`0`) Light Frustum Culling. |
-| `SHADOW_DISTANCE_CULLING` | `<float>` | - | Set maximum distance for shadow casting. |
+| `SHADOWS` | `0`, `1`, or `2` | - | Shadow mode: `0`=None, `1`=Once (single), `2`=All (up to 4). |
+| `SHADOW_SIZE` | `<float>` | - | Orthographic projection size for directional shadows (default: 100.0). |
+| `INSTANCING` | `1` or `0` | - | Enable/disable instance batching for static meshes. |
+| `CULL_FACE`| `1` or `0` | `BACK`, `FRONT`, `FRONT_AND_BACK` | Enable face culling with mode. |
+| `DEPTH_TEST`| `1` or `0` | `LESS`, `ALWAYS`, `LEQUAL`, etc. | Enable depth test with function. |
+| `WINDOW` | `<w> <h>` | `[mode] [monitor] [hz]` | Resolution, mode (`WINDOWED`/`FULLSCREEN`/`BORDERLESS`), monitor, refresh rate. |
+| `VSYNC` | `1` or `0` | - | Enable/disable Vertical Sync. |
+| `FPS` | `<int>` | - | Frame rate limit (0 = unlimited). |
+| `FRUSTUM` | `1` or `0` | - | Enable/disable camera frustum culling. |
+| `DISTANCE` | `<float>` | - | Max render distance from camera (0 = unlimited). |
+| `SHADOW_FRUSTUM` | `1` or `0` | - | Enable/disable light frustum culling for shadows. |
+| `SHADOW_DISTANCE` | `<float>` | - | Max distance for shadow casting. |
 
 ### Example
 ```text
 CONFIG SHADOWS 1
-CONFIG INSTANCE_BATCH 1
+CONFIG SHADOW_SIZE 100.0
+CONFIG INSTANCING 1
 CONFIG CULL_FACE 1 BACK
 CONFIG DEPTH_TEST 1 LESS
 CONFIG WINDOW 1920 1080 BORDERLESS 0
+CONFIG FRUSTUM 1
+CONFIG DISTANCE 500.0
 ```
 
 ---

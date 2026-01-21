@@ -69,6 +69,7 @@ public:
     void SetShadowProjectionSize(float size) { m_ShadowProjectionSize = size; }
     void SetShadowFrustumCulling(bool enable) { m_ShadowFrustumCullingEnabled = enable; }
     void SetShadowDistanceCulling(float distance) { m_ShadowDistanceCullingSq = distance * distance; }
+    void SetDistanceCulling(float distance) { m_DistanceCullingSq = distance * distance; }
     
     StaticBatchManager& GetBatchManager() { return m_BatchManager; }
 
@@ -92,6 +93,7 @@ private:
 
     bool m_ShadowFrustumCullingEnabled = true;
     float m_ShadowDistanceCullingSq = 10000.0f; // Default 100^2
+    float m_DistanceCullingSq = 0.0f; // 0 = disabled
 
     unsigned int m_DirLightSSBO = 0;
     unsigned int m_PointLightSSBO = 0;

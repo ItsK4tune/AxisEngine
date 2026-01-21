@@ -31,6 +31,7 @@ struct AppConfig
     float shadowProjectionSize = 100.0f; 
     bool shadowFrustumCullingEnabled = true;
     float shadowDistanceCulling = 100.0f;
+    float distanceCulling = 0.0f; // 0 = disabled
 };
 
 class ConfigLoader

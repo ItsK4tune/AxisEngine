@@ -62,6 +62,7 @@ AppConfig ConfigLoader::Load(const std::string& path)
         else if (key == "shadowProjectionSize") config.shadowProjectionSize = std::stof(value);
         else if (key == "shadowFrustumCullingEnabled") config.shadowFrustumCullingEnabled = (value == "true");
         else if (key == "shadowDistanceCulling") config.shadowDistanceCulling = std::stof(value);
+        else if (key == "distanceCulling") config.distanceCulling = std::stof(value);
     }
     
     return config;
@@ -82,7 +83,7 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
             app->GetRenderSystem().SetShadowMode(mode);
         }
     }
-    else if (subCmd == "SHADOW_MAP")
+    else if (subCmd == "SHADOW_SIZE")
     {
         float size = 20.0f;
         ss >> size;
@@ -91,7 +92,7 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
             app->GetRenderSystem().SetShadowProjectionSize(size);
         }
     }
-    else if (subCmd == "INSTANCE_BATCH")
+    else if (subCmd == "INSTANCING")
     {
         int enable = 0;
         ss >> enable;
@@ -186,7 +187,7 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
             if (app) app->GetMonitorManager().SetFrameRateLimit(fps);
         }
     }
-    else if (subCmd == "FRUSTUM" || subCmd == "FRUSTUM_CULLING")
+    else if (subCmd == "FRUSTUM")
     {
         int enable = 0;
         if (ss >> enable)
@@ -202,12 +203,20 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, Application* app)
             if (app) app->GetRenderSystem().SetShadowFrustumCulling(enable != 0);
         }
     }
-    else if (subCmd == "SHADOW_DISTANCE_CULLING")
+    else if (subCmd == "SHADOW_DISTANCE")
     {
         float dist = 0.0f;
         if (ss >> dist)
         {
             if (app) app->GetRenderSystem().SetShadowDistanceCulling(dist);
+        }
+    }
+    else if (subCmd == "DISTANCE")
+    {
+        float dist = 0.0f;
+        if (ss >> dist)
+        {
+            if (app) app->GetRenderSystem().SetDistanceCulling(dist);
         }
     }
 }

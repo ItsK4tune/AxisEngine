@@ -111,6 +111,7 @@ bool Application::Init()
     systemManager->GetRenderSystem().SetFrustumCulling(config.frustumCullingEnabled);
     systemManager->GetRenderSystem().SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
     systemManager->GetRenderSystem().SetShadowDistanceCulling(config.shadowDistanceCulling);
+    systemManager->GetRenderSystem().SetDistanceCulling(config.distanceCulling);
 
     resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 

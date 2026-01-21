@@ -51,6 +51,7 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
         - `2`: Multiple directional shadows from up to 4 lights with `isCastShadow` enabled (highest quality)
     - `cullFaceEnabled`: Enable/Disable back-face culling.
     - `frustumCullingEnabled`: Enable/Disable camera frustum culling (default: `true`).
+    - `distanceCulling`: Maximum render distance from camera in world units (default: `0.0` = unlimited). Objects beyond this distance will not be rendered.
     - `depthTestEnabled`: Enable/Disable depth testing.
     - `instanceBatchingEnabled`: Enable/Disable instance batching for static meshes (default: `true`). Batching reduces draw calls but disabling can help with debugging transform issues.
     - `shadowProjectionSize`: Size of the orthogonal projection for directional light shadows (default: `100.0`).

@@ -477,6 +477,15 @@ void RenderSystem::Render(Scene &scene)
         if (!renderer.model || !renderer.shader)
             continue;
 
+        // Distance culling
+        if (m_DistanceCullingSq > 0.0f && cam && camTrans)
+        {
+            float distSq = glm::length2(transform.position - camTrans->position);
+            if (distSq > m_DistanceCullingSq)
+                continue;
+        }
+
+        // Frustum culling
         if (cam && m_FrustumCullingEnabled)
         {
             glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
