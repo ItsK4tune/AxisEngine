@@ -117,33 +117,38 @@ void RenderSystem::RenderShadows(Scene &scene)
             if (!renderer.model || !renderer.castShadow)
                 continue;
 
+            glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
+            glm::vec3 min = renderer.model->AABBmin;
+            glm::vec3 max = renderer.model->AABBmax;
+
+            glm::vec3 center = (min + max) * 0.5f;
+            glm::vec3 extent = (max - min) * 0.5f;
+
+            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+
+            glm::mat3 rot = glm::mat3(modelMatrix);
+            glm::vec3 worldExtent = glm::vec3(
+                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
+
+            glm::vec3 worldMin = worldCenter - worldExtent;
+            glm::vec3 worldMax = worldCenter + worldExtent;
+
             if (m_ShadowDistanceCullingSq > 0.0f)
             {
-                float distSq = glm::length2(trans.position - camPos);
+                float dx = std::max(worldMin.x - camPos.x, std::max(0.0f, camPos.x - worldMax.x));
+                float dy = std::max(worldMin.y - camPos.y, std::max(0.0f, camPos.y - worldMax.y));
+                float dz = std::max(worldMin.z - camPos.z, std::max(0.0f, camPos.z - worldMax.z));
+                
+                float distSq = dx*dx + dy*dy + dz*dz;
+                
                 if (distSq > m_ShadowDistanceCullingSq)
                     continue;
             }
 
             if (m_ShadowFrustumCullingEnabled)
             {
-                glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
-                glm::vec3 min = renderer.model->AABBmin;
-                glm::vec3 max = renderer.model->AABBmax;
-
-                glm::vec3 center = (min + max) * 0.5f;
-                glm::vec3 extent = (max - min) * 0.5f;
-
-                glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-
-                glm::mat3 rot = glm::mat3(modelMatrix);
-                glm::vec3 worldExtent = glm::vec3(
-                    std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-                    std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-                    std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
-
-                glm::vec3 worldMin = worldCenter - worldExtent;
-                glm::vec3 worldMax = worldCenter + worldExtent;
-
                 if (!lightFrustum.IsBoxVisible(worldMin, worldMax))
                     continue;
             }
@@ -474,33 +479,39 @@ void RenderSystem::Render(Scene &scene)
         if (!renderer.model || !renderer.shader)
             continue;
 
+        glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+        glm::vec3 min = renderer.model->AABBmin;
+        glm::vec3 max = renderer.model->AABBmax;
+
+        glm::vec3 center = (min + max) * 0.5f;
+        glm::vec3 extent = (max - min) * 0.5f;
+
+        glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+
+        glm::mat3 rot = glm::mat3(modelMatrix);
+        glm::vec3 worldExtent = glm::vec3(
+            std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+            std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+            std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
+
+        glm::vec3 worldMin = worldCenter - worldExtent;
+        glm::vec3 worldMax = worldCenter + worldExtent;
+
         if (m_DistanceCullingSq > 0.0f && cam && camTrans)
         {
-            float distSq = glm::length2(transform.position - camTrans->position);
+            glm::vec3 cameraPos = camTrans->position;
+            float dx = std::max(worldMin.x - cameraPos.x, std::max(0.0f, cameraPos.x - worldMax.x));
+            float dy = std::max(worldMin.y - cameraPos.y, std::max(0.0f, cameraPos.y - worldMax.y));
+            float dz = std::max(worldMin.z - cameraPos.z, std::max(0.0f, cameraPos.z - worldMax.z));
+            
+            float distSq = dx*dx + dy*dy + dz*dz;
+            
             if (distSq > m_DistanceCullingSq)
                 continue;
         }
 
         if (cam && m_FrustumCullingEnabled)
         {
-            glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
-            glm::vec3 min = renderer.model->AABBmin;
-            glm::vec3 max = renderer.model->AABBmax;
-
-            glm::vec3 center = (min + max) * 0.5f;
-            glm::vec3 extent = (max - min) * 0.5f;
-
-            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-
-            glm::mat3 rot = glm::mat3(modelMatrix);
-            glm::vec3 worldExtent = glm::vec3(
-                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
-
-            glm::vec3 worldMin = worldCenter - worldExtent;
-            glm::vec3 worldMax = worldCenter + worldExtent;
-
             if (!frustum.IsBoxVisible(worldMin, worldMax))
                 continue;
         }
