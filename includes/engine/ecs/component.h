@@ -30,11 +30,11 @@ struct TransformComponent
     std::vector<entt::entity> children;
 
     glm::mat4 GetLocalModelMatrix() const;
-    
-    glm::mat4 GetWorldModelMatrix(entt::registry& registry) const;
 
-    void SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry& registry, bool keepWorldTransform = false);
-    void AddChild(entt::entity thisEntity, entt::entity child, entt::registry& registry, bool keepWorldTransform = false);
+    glm::mat4 GetWorldModelMatrix(entt::registry &registry) const;
+
+    void SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry &registry, bool keepWorldTransform = false);
+    void AddChild(entt::entity thisEntity, entt::entity child, entt::registry &registry, bool keepWorldTransform = false);
     void RemoveChild(entt::entity child);
     bool HasParent() const { return parent != entt::null; }
     uint32_t GetVersion() const { return m_Version; }
@@ -42,11 +42,11 @@ struct TransformComponent
 private:
     mutable glm::mat4 m_LocalMatrix = glm::mat4(1.0f);
     mutable glm::mat4 m_WorldMatrix = glm::mat4(1.0f);
-    
+
     mutable glm::vec3 m_LastPosition = glm::vec3(0.0f);
     mutable glm::quat m_LastRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     mutable glm::vec3 m_LastScale = glm::vec3(1.0f);
-    
+
     mutable uint32_t m_Version = 0;
     mutable uint32_t m_LastParentVersion = 0;
     mutable entt::entity m_LastParent = entt::null;
@@ -72,7 +72,7 @@ struct MaterialComponent
     MaterialType type = MaterialType::PHONG;
 
     // Common
-    float roughness = 0.5f; 
+    float roughness = 0.5f;
     float opacity = 1.0f;
     glm::vec3 emission = glm::vec3(0.0f);
 
@@ -93,34 +93,46 @@ struct MaterialComponent
 struct RigidBodyComponent
 {
     btRigidBody *body = nullptr;
-    btTypedConstraint* constraint = nullptr; // For parent attachment
+    btTypedConstraint *constraint = nullptr; // For parent attachment
     bool isAttachedToParent = false;
 
-    void SetRestitution(float restitution) {
-        if (body) body->setRestitution(restitution);
-    }
-    
-    void SetFriction(float friction) {
-        if (body) body->setFriction(friction);
+    void SetRestitution(float restitution)
+    {
+        if (body)
+            body->setRestitution(restitution);
     }
 
-    void SetLinearFactor(const glm::vec3& factor) {
-        if (body) body->setLinearFactor(btVector3(factor.x, factor.y, factor.z));
+    void SetFriction(float friction)
+    {
+        if (body)
+            body->setFriction(friction);
     }
 
-    void SetAngularFactor(const glm::vec3& factor) {
-        if (body) body->setAngularFactor(btVector3(factor.x, factor.y, factor.z));
+    void SetLinearFactor(const glm::vec3 &factor)
+    {
+        if (body)
+            body->setLinearFactor(btVector3(factor.x, factor.y, factor.z));
     }
-    
-    void SetLinearVelocity(const glm::vec3& vel) {
-        if (body) {
+
+    void SetAngularFactor(const glm::vec3 &factor)
+    {
+        if (body)
+            body->setAngularFactor(btVector3(factor.x, factor.y, factor.z));
+    }
+
+    void SetLinearVelocity(const glm::vec3 &vel)
+    {
+        if (body)
+        {
             body->setLinearVelocity(btVector3(vel.x, vel.y, vel.z));
             body->activate(true);
         }
     }
 
-    void SetAngularVelocity(const glm::vec3& vel) {
-        if (body) {
+    void SetAngularVelocity(const glm::vec3 &vel)
+    {
+        if (body)
+        {
             body->setAngularVelocity(btVector3(vel.x, vel.y, vel.z));
             body->activate(true);
         }
@@ -207,19 +219,18 @@ struct UITextComponent
     Font *font = nullptr;
     glm::vec3 color = glm::vec3(1.0f);
     float scale = 1.0f;
-    // float padding/lineHeight... (nâng cao)
+    // IMPROVE: alignment, wrapping, etc.
 };
 
 struct DirectionalLightComponent
 {
-    glm::vec3 direction = glm::vec3(-0.2f, -1.0f, -0.3f);
     glm::vec3 color = glm::vec3(1.0f);
     float intensity = 1.0f;
 
     glm::vec3 ambient = glm::vec3(0.05f);
     glm::vec3 diffuse = glm::vec3(0.4f);
     glm::vec3 specular = glm::vec3(0.5f);
-    
+
     bool isCastShadow = false;
     bool active = true;
 };
@@ -238,7 +249,7 @@ struct PointLightComponent
     glm::vec3 ambient = glm::vec3(0.05f);
     glm::vec3 diffuse = glm::vec3(1.0f);
     glm::vec3 specular = glm::vec3(1.0f);
-    
+
     bool isCastShadow = false;
     bool active = true;
 };
@@ -246,7 +257,6 @@ struct PointLightComponent
 struct SpotLightComponent
 {
     glm::vec3 color = glm::vec3(1.0f);
-    glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
     float intensity = 1.0f;
 
     float cutOff = glm::cos(glm::radians(12.5f));
@@ -259,7 +269,7 @@ struct SpotLightComponent
     glm::vec3 ambient = glm::vec3(0.05f);
     glm::vec3 diffuse = glm::vec3(1.0f);
     glm::vec3 specular = glm::vec3(1.0f);
-    
+
     bool isCastShadow = false;
     bool active = true;
 };
@@ -271,7 +281,7 @@ struct ScriptComponent
     Scriptable *instance = nullptr;
 
     std::function<Scriptable *()> InstantiateScript;
-    std::function<void(ScriptComponent *)> DestroyScript; 
+    std::function<void(ScriptComponent *)> DestroyScript;
 
     template <typename T>
     void Bind()
@@ -292,7 +302,7 @@ struct AudioSourceComponent
     bool playOnAwake = true;
     float minDistance = 1.0f;
 
-    irrklang::ISound* sound = nullptr;
+    irrklang::ISound *sound = nullptr;
     bool shouldPlay = false; // Trigger to play
 };
 
@@ -319,8 +329,7 @@ struct VideoPlayerComponent
     bool playOnAwake = true;
     int maxDecodes = 5;
 
-    // Runtime
-    VideoDecoder* decoder = nullptr;
+    VideoDecoder *decoder = nullptr;
     bool isLoaded = false;
 
     void Play();

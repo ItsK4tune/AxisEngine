@@ -8,7 +8,8 @@
 
 class Application;
 
-class State {
+class State
+{
 public:
     virtual ~State() = default;
 
@@ -18,34 +19,30 @@ public:
     virtual void OnRender() = 0;
     virtual void OnExit() = 0;
 
-    // System Accessors
-    class RenderSystem& GetRenderSystem();
-    class PhysicsSystem& GetPhysicsSystem();
-    class AudioSystem& GetAudioSystem();
-    class UIRenderSystem& GetUIRenderSystem();
-    class UIInteractSystem& GetUIInteractSystem();
-    class ScriptableSystem& GetScriptSystem();
-    class ParticleSystem& GetParticleSystem();
-    class SkyboxRenderSystem& GetSkyboxRenderSystem();
-    class AnimationSystem& GetAnimationSystem();
-    class VideoSystem& GetVideoSystem();
+    class RenderSystem &GetRenderSystem();
+    class PhysicsSystem &GetPhysicsSystem();
+    class AudioSystem &GetAudioSystem();
+    class UIRenderSystem &GetUIRenderSystem();
+    class UIInteractSystem &GetUIInteractSystem();
+    class ScriptableSystem &GetScriptSystem();
+    class ParticleSystem &GetParticleSystem();
+    class SkyboxRenderSystem &GetSkyboxRenderSystem();
+    class AnimationSystem &GetAnimationSystem();
+    class VideoSystem &GetVideoSystem();
 
-    // Manager Accessors
-    class SceneManager& GetSceneManager();
-    class ResourceManager& GetResourceManager();
-    class SoundManager& GetSoundManager();
-    class AppHandler& GetAppHandler();
-    class InputManager& GetInputManager();
-    class KeyboardManager& GetKeyboard();
-    class MouseManager& GetMouse();
+    class SceneManager &GetSceneManager();
+    class ResourceManager &GetResourceManager();
+    class SoundManager &GetSoundManager();
+    class AppHandler &GetAppHandler();
+    class InputManager &GetInputManager();
+    class KeyboardManager &GetKeyboard();
+    class MouseManager &GetMouse();
 
-    // Scene & Helper Wrappers
-    void LoadScene(const std::string& path);
-    void UnloadScene(const std::string& path);
-    void ChangeScene(const std::string& path);
+    void LoadScene(const std::string &path);
+    void UnloadScene(const std::string &path);
+    void ChangeScene(const std::string &path);
     void SetCursorMode(CursorMode mode);
 
-    // System Control Wrappers
     void EnablePhysics(bool enable);
     void EnableRender(bool enable);
     void EnableAudio(bool enable);
@@ -56,12 +53,11 @@ public:
     void EnableUIRender(bool enable);
     void EnableParticle(bool enable);
     void EnableSkybox(bool enable);
-    
-    // Group Helper
-    void EnableLogic(bool enable); // Controls Script, Animation, Video, UIInteract, Particle
 
-    void SetContext(Application* app) { m_App = app; }
+    void EnableLogic(bool enable);
+
+    void SetContext(Application *app) { m_App = app; }
 
 protected:
-    Application* m_App = nullptr;
+    Application *m_App = nullptr;
 };

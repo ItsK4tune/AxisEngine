@@ -38,6 +38,7 @@ public:
     void Update(Scene &scene, float dt);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };
@@ -47,7 +48,7 @@ class RenderSystem
 public:
     void Render(Scene &scene);
 
-    void InitShadows(class ResourceManager& res);
+    void InitShadows(class ResourceManager &res);
     void Shutdown();
     void RenderShadows(Scene &scene);
     void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
@@ -57,8 +58,8 @@ public:
 
     void SetFaceCulling(bool enabled, int mode = GL_BACK);
     void SetDepthTest(bool enabled, int func = GL_LESS);
-    
-    Shadow& GetShadow() { return m_Shadow; }
+
+    Shadow &GetShadow() { return m_Shadow; }
     int GetRenderedCount() const { return m_RenderedCount; }
 
     void SetEnabled(bool enable) { m_Enabled = enable; }
@@ -70,12 +71,12 @@ public:
     void SetShadowFrustumCulling(bool enable) { m_ShadowFrustumCullingEnabled = enable; }
     void SetShadowDistanceCulling(float distance) { m_ShadowDistanceCullingSq = distance * distance; }
     void SetDistanceCulling(float distance) { m_DistanceCullingSq = distance * distance; }
-    
-    StaticBatchManager& GetBatchManager() { return m_BatchManager; }
+
+    StaticBatchManager &GetBatchManager() { return m_BatchManager; }
 
 private:
     void UploadLightData(Scene &scene, Shader *shader);
-    
+
     Shadow m_Shadow;
     StaticBatchManager m_BatchManager;
     int m_RenderedCount = 0;
@@ -93,7 +94,7 @@ private:
 
     bool m_ShadowFrustumCullingEnabled = true;
     float m_ShadowDistanceCullingSq = 10000.0f; // Default 100^2
-    float m_DistanceCullingSq = 0.0f; // 0 = disabled
+    float m_DistanceCullingSq = 0.0f;           // 0 = disabled
 
     unsigned int m_DirLightSSBO = 0;
     unsigned int m_PointLightSSBO = 0;
@@ -114,6 +115,7 @@ public:
     void Update(Scene &scene, float dt, const MouseManager &mouse);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };
@@ -124,6 +126,7 @@ public:
     void Render(Scene &scene, float screenWidth, float screenHeight);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };
@@ -136,6 +139,7 @@ public:
     void Update(Scene &scene, float dt, float unscaledDt, Application *app);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };
@@ -146,6 +150,7 @@ public:
     void Render(Scene &scene);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };
@@ -153,10 +158,11 @@ private:
 class AudioSystem
 {
 public:
-    void Update(Scene &scene, SoundManager& soundManager);
+    void Update(Scene &scene, SoundManager &soundManager);
     void StopAll(Scene &scene);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };
@@ -168,6 +174,7 @@ public:
     void Render(Scene &scene, ResourceManager &res);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };
@@ -178,6 +185,7 @@ public:
     void Update(Scene &scene, ResourceManager &res, float dt);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
+
 private:
     bool m_Enabled = true;
 };

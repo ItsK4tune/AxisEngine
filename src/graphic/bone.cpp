@@ -44,7 +44,6 @@ Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
     }
 }
 
-// Public API for Blending
 glm::vec3 Bone::GetPosition(float animationTime) { return InterpolatePosition(animationTime); }
 glm::quat Bone::GetRotation(float animationTime) { return InterpolateRotation(animationTime); }
 glm::vec3 Bone::GetScale(float animationTime) { return InterpolateScaling(animationTime); }
@@ -63,13 +62,15 @@ int Bone::GetBoneID() { return m_ID; }
 
 int Bone::GetPositionIndex(float animationTime)
 {
-    if (m_LastPositionIndex >= m_NumPositions - 1 || animationTime < m_Positions[m_LastPositionIndex].timeStamp) {
+    if (m_LastPositionIndex >= m_NumPositions - 1 || animationTime < m_Positions[m_LastPositionIndex].timeStamp)
+    {
         m_LastPositionIndex = 0;
     }
 
     for (int index = m_LastPositionIndex; index < m_NumPositions - 1; ++index)
     {
-        if (animationTime < m_Positions[index + 1].timeStamp) {
+        if (animationTime < m_Positions[index + 1].timeStamp)
+        {
             m_LastPositionIndex = index;
             return index;
         }
@@ -79,13 +80,15 @@ int Bone::GetPositionIndex(float animationTime)
 
 int Bone::GetRotationIndex(float animationTime)
 {
-    if (m_LastRotationIndex >= m_NumRotations - 1 || animationTime < m_Rotations[m_LastRotationIndex].timeStamp) {
+    if (m_LastRotationIndex >= m_NumRotations - 1 || animationTime < m_Rotations[m_LastRotationIndex].timeStamp)
+    {
         m_LastRotationIndex = 0;
     }
 
     for (int index = m_LastRotationIndex; index < m_NumRotations - 1; ++index)
     {
-        if (animationTime < m_Rotations[index + 1].timeStamp) {
+        if (animationTime < m_Rotations[index + 1].timeStamp)
+        {
             m_LastRotationIndex = index;
             return index;
         }
@@ -95,13 +98,15 @@ int Bone::GetRotationIndex(float animationTime)
 
 int Bone::GetScaleIndex(float animationTime)
 {
-    if (m_LastScaleIndex >= m_NumScalings - 1 || animationTime < m_Scales[m_LastScaleIndex].timeStamp) {
+    if (m_LastScaleIndex >= m_NumScalings - 1 || animationTime < m_Scales[m_LastScaleIndex].timeStamp)
+    {
         m_LastScaleIndex = 0;
     }
 
     for (int index = m_LastScaleIndex; index < m_NumScalings - 1; ++index)
     {
-        if (animationTime < m_Scales[index + 1].timeStamp) {
+        if (animationTime < m_Scales[index + 1].timeStamp)
+        {
             m_LastScaleIndex = index;
             return index;
         }

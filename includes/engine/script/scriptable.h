@@ -22,17 +22,20 @@ public:
     virtual void OnCreate() {}
     virtual void OnUpdate(float dt) {}
     virtual void OnDestroy() {}
-    
-    // Lifecycle
+
     virtual void OnEnable() {}
     virtual void OnDisable() {}
     virtual void OnReset() {}
 
-    void SetEnabled(bool enabled) {
-        if (m_Enabled == enabled) return;
+    void SetEnabled(bool enabled)
+    {
+        if (m_Enabled == enabled)
+            return;
         m_Enabled = enabled;
-        if (m_Enabled) OnEnable();
-        else OnDisable();
+        if (m_Enabled)
+            OnEnable();
+        else
+            OnDisable();
     }
 
     bool IsEnabled() const { return m_Enabled; }
@@ -40,7 +43,6 @@ public:
     void SetRunWhenPaused(bool run) { m_RunWhenPaused = run; }
     bool CanRunWhenPaused() const { return m_RunWhenPaused; }
 
-    // Input Callbacks (Mouse)
     virtual void OnLeftClick() {}
     virtual void OnLeftHold(float duration) {}
     virtual void OnLeftRelease(float duration) {}
@@ -57,25 +59,29 @@ public:
     virtual void OnHoverStay() {}
     virtual void OnHoverExit() {}
 
-    // Input Binding
-    enum class InputEvent { Pressed, Held, Released };
-    struct KeyBinding {
+    enum class InputEvent
+    {
+        Pressed,
+        Held,
+        Released
+    };
+    struct KeyBinding
+    {
         int key;
         InputEvent event;
         std::function<void()> callback;
     };
 
-    void BindKey(int key, InputEvent event, std::function<void()> callback) {
+    void BindKey(int key, InputEvent event, std::function<void()> callback)
+    {
         m_KeyBindings.push_back({key, event, callback});
     }
 
-    // Input State Accessors (for Subclasses)
     bool IsHovered() const { return m_IsHovered; }
     bool IsLeftPressed() const { return m_LeftPressed; }
     bool IsRightPressed() const { return m_RightPressed; }
     bool IsMiddlePressed() const { return m_MiddlePressed; }
 
-    // Physics CallBacks
     virtual void OnCollisionEnter(entt::entity other) {}
     virtual void OnCollisionStay(entt::entity other) {}
     virtual void OnCollisionExit(entt::entity other) {}
@@ -84,27 +90,23 @@ public:
     virtual void OnTriggerStay(entt::entity other) {}
     virtual void OnTriggerExit(entt::entity other) {}
 
-    // Input Helper Methods
-    bool GetAction(const std::string& name);
-    bool GetActionDown(const std::string& name);
-    bool GetActionUp(const std::string& name);
+    bool GetAction(const std::string &name);
+    bool GetActionDown(const std::string &name);
+    bool GetActionUp(const std::string &name);
 
-    // Scene Helper Methods
-    void LoadScene(const std::string& path);
+    void LoadScene(const std::string &path);
 
-    // Time API
     void SetTimeScale(float scale);
     float GetTimeScale() const;
     float GetRealDeltaTime() const;
 
-    // Manager Accessors
-    class SoundManager& GetSoundManager();
-    class ResourceManager& GetResourceManager();
-    class AppHandler& GetAppHandler();
-    class SceneManager& GetSceneManager();
-    class InputManager& GetInputManager();
-    class KeyboardManager& GetKeyboard();
-    class MouseManager& GetMouse();
+    class SoundManager &GetSoundManager();
+    class ResourceManager &GetResourceManager();
+    class AppHandler &GetAppHandler();
+    class SceneManager &GetSceneManager();
+    class InputManager &GetInputManager();
+    class KeyboardManager &GetKeyboard();
+    class MouseManager &GetMouse();
 
     template <typename T>
     T &GetComponent()
@@ -129,20 +131,18 @@ public:
         return nullptr;
     }
 
-    // Internal Input State Modifiers (Engine Use Only)
     void SetHovered(bool hovered) { m_IsHovered = hovered; }
-    
-    // Mouse Button State Accessors (Mutable for Input Handler)
-    bool& GetLeftPressedRef() { return m_LeftPressed; }
-    float& GetLeftHoldTimeRef() { return m_LeftHoldTime; }
-    
-    bool& GetRightPressedRef() { return m_RightPressed; }
-    float& GetRightHoldTimeRef() { return m_RightHoldTime; }
 
-    bool& GetMiddlePressedRef() { return m_MiddlePressed; }
-    float& GetMiddleHoldTimeRef() { return m_MiddleHoldTime; }
+    bool &GetLeftPressedRef() { return m_LeftPressed; }
+    float &GetLeftHoldTimeRef() { return m_LeftHoldTime; }
 
-    const std::vector<KeyBinding>& GetKeyBindings() const { return m_KeyBindings; }
+    bool &GetRightPressedRef() { return m_RightPressed; }
+    float &GetRightHoldTimeRef() { return m_RightHoldTime; }
+
+    bool &GetMiddlePressedRef() { return m_MiddlePressed; }
+    float &GetMiddleHoldTimeRef() { return m_MiddleHoldTime; }
+
+    const std::vector<KeyBinding> &GetKeyBindings() const { return m_KeyBindings; }
 
 protected:
     entt::entity m_Entity;
@@ -153,9 +153,8 @@ private:
     bool m_Enabled = true;
     bool m_RunWhenPaused = false;
 
-    // Internal Input State
     bool m_IsHovered = false;
-    
+
     bool m_LeftPressed = false;
     float m_LeftHoldTime = 0.0f;
 

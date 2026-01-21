@@ -13,16 +13,16 @@
 namespace SceneHandlers
 {
     void SceneValidator::ValidateParentChildRelationships(
-        Scene& scene,
-        const std::map<entt::entity, std::vector<std::string>>& deferredChildren)
+        Scene &scene,
+        const std::map<entt::entity, std::vector<std::string>> &deferredChildren)
     {
         if (deferredChildren.empty())
             return;
 
         auto view = scene.registry.view<InfoComponent>();
-        for (const auto& [parentEntity, childNames] : deferredChildren)
+        for (const auto &[parentEntity, childNames] : deferredChildren)
         {
-            for (const auto& childName : childNames)
+            for (const auto &childName : childNames)
             {
                 entt::entity childEntity = entt::null;
                 for (auto entity : view)
@@ -39,7 +39,7 @@ namespace SceneHandlers
                     if (scene.registry.all_of<TransformComponent>(childEntity) &&
                         scene.registry.all_of<TransformComponent>(parentEntity))
                     {
-                        auto& transform = scene.registry.get<TransformComponent>(childEntity);
+                        auto &transform = scene.registry.get<TransformComponent>(childEntity);
                         transform.SetParent(childEntity, parentEntity, scene.registry, true);
                     }
                 }
@@ -52,7 +52,7 @@ namespace SceneHandlers
         }
     }
 
-    void SceneValidator::ValidateLights(Scene& scene)
+    void SceneValidator::ValidateLights(Scene &scene)
     {
         auto dirLightView = scene.registry.view<DirectionalLightComponent>();
         bool hasShadowCaster = false;
@@ -60,7 +60,7 @@ namespace SceneHandlers
 
         for (auto entity : dirLightView)
         {
-            auto& light = dirLightView.get<DirectionalLightComponent>(entity);
+            auto &light = dirLightView.get<DirectionalLightComponent>(entity);
             if (light.isCastShadow && light.active)
             {
                 hasShadowCaster = true;
@@ -72,25 +72,25 @@ namespace SceneHandlers
 
         if (!hasShadowCaster && lastDirLight != entt::null)
         {
-            auto& light = scene.registry.get<DirectionalLightComponent>(lastDirLight);
+            auto &light = scene.registry.get<DirectionalLightComponent>(lastDirLight);
             light.isCastShadow = true;
             std::cout << "[SceneValidator] Auto-set last active directional light to cast shadow" << std::endl;
         }
     }
 
-    void SceneValidator::ValidateCamera(Scene& scene, Application* app)
+    void SceneValidator::ValidateCamera(Scene &scene, Application *app)
     {
         if (scene.GetActiveCamera() != entt::null)
             return;
 
-        // Suppress warning for asset-only scenes (scenes with no renderable entities)
         auto renderableView = scene.registry.view<MeshRendererComponent>();
         bool hasRenderableEntities = false;
-        for (auto entity : renderableView) {
+        for (auto entity : renderableView)
+        {
             hasRenderableEntities = true;
             break;
         }
-        
+
         if (!hasRenderableEntities)
             return;
 
@@ -100,10 +100,10 @@ namespace SceneHandlers
 
         scene.registry.emplace<InfoComponent>(camEntity, "Default Spectator Camera", "Default");
 
-        auto& trans = scene.registry.emplace<TransformComponent>(camEntity);
+        auto &trans = scene.registry.emplace<TransformComponent>(camEntity);
         trans.position = glm::vec3(0.0f, 2.0f, 10.0f);
 
-        auto& cam = scene.registry.emplace<CameraComponent>(camEntity);
+        auto &cam = scene.registry.emplace<CameraComponent>(camEntity);
         cam.isPrimary = true;
         cam.fov = 45.0f;
         cam.nearPlane = 0.1f;
@@ -111,14 +111,16 @@ namespace SceneHandlers
         cam.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
         std::string scriptName = "DefaultCameraController";
-        Scriptable* scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+        Scriptable *scriptInstance = ScriptRegistry::Instance().Create(scriptName);
 
         if (scriptInstance)
         {
-            auto& scriptComp = scene.registry.emplace<ScriptComponent>(camEntity);
+            auto &scriptComp = scene.registry.emplace<ScriptComponent>(camEntity);
             scriptComp.instance = scriptInstance;
-            scriptComp.InstantiateScript = [scriptName]() { return ScriptRegistry::Instance().Create(scriptName); };
-            scriptComp.DestroyScript = [](ScriptComponent* nsc) { delete nsc->instance; nsc->instance = nullptr; };
+            scriptComp.InstantiateScript = [scriptName]()
+            { return ScriptRegistry::Instance().Create(scriptName); };
+            scriptComp.DestroyScript = [](ScriptComponent *nsc)
+            { delete nsc->instance; nsc->instance = nullptr; };
 
             scriptComp.instance->Init(camEntity, &scene, app);
             scriptComp.instance->OnCreate();
@@ -130,17 +132,16 @@ namespace SceneHandlers
         }
     }
 
-    void SceneValidator::ValidatePhysicsSync(Scene& scene, PhysicsWorld& phys)
+    void SceneValidator::ValidatePhysicsSync(Scene &scene, PhysicsWorld &phys)
     {
         auto rbView = scene.registry.view<RigidBodyComponent, TransformComponent>();
         for (auto entity : rbView)
         {
-            auto& rb = rbView.get<RigidBodyComponent>(entity);
-            auto& transform = rbView.get<TransformComponent>(entity);
+            auto &rb = rbView.get<RigidBodyComponent>(entity);
+            auto &transform = rbView.get<TransformComponent>(entity);
 
             if (rb.body)
             {
-                // Sync RigidBody transform from Entity transform immediately on load
                 glm::mat4 worldMatrix = transform.GetWorldModelMatrix(scene.registry);
                 glm::vec3 position = glm::vec3(worldMatrix[3]);
                 glm::quat rotation = glm::quat_cast(worldMatrix);
@@ -160,15 +161,14 @@ namespace SceneHandlers
                 rb.body->setAngularVelocity(btVector3(0, 0, 0));
                 rb.body->activate();
 
-                // Handle Physics Attachment (Joints)
                 if (rb.isAttachedToParent && scene.registry.valid(transform.parent))
                 {
                     if (scene.registry.all_of<RigidBodyComponent>(transform.parent))
                     {
-                        auto& parentRb = scene.registry.get<RigidBodyComponent>(transform.parent);
+                        auto &parentRb = scene.registry.get<RigidBodyComponent>(transform.parent);
                         if (parentRb.body)
                         {
-                            btTransform frameInA, frameInB; // A = Parent, B = Child
+                            btTransform frameInA, frameInB;
 
                             btTransform parentWorldTrans = parentRb.body->getWorldTransform();
                             btTransform childWorldTrans = rb.body->getWorldTransform();
@@ -176,7 +176,7 @@ namespace SceneHandlers
                             frameInA = parentWorldTrans.inverse() * childWorldTrans;
                             frameInB.setIdentity();
 
-                            btFixedConstraint* fixedConstraint = new btFixedConstraint(
+                            btFixedConstraint *fixedConstraint = new btFixedConstraint(
                                 *parentRb.body,
                                 *rb.body,
                                 frameInA,

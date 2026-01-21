@@ -2,14 +2,14 @@
 
 void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
 {
-    if (!m_Enabled) return;
+    if (!m_Enabled)
+        return;
 
     glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE); 
+    glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-    // [fix] Ensure UI is drawn FILLED even if Wireframe Mode (F6) is active
+
     GLint polygonMode[2];
     glGetIntegerv(GL_POLYGON_MODE, polygonMode);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -91,14 +91,14 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
 
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
-    
-    // [fix] Restore previous polygon mode
+
     glPolygonMode(GL_FRONT_AND_BACK, polygonMode[0]);
 }
 
 void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
 {
-    if (!m_Enabled) return;
+    if (!m_Enabled)
+        return;
 
     if (mouse.GetCursorMode() == CursorMode::Hidden)
         return;

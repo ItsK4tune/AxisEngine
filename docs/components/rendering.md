@@ -23,12 +23,13 @@ Defines the surface properties of the mesh.
 
 ### DirectionalLightComponent
 Global light source (Sun).
-*   `direction` (vec3)
+*   **Direction**: Defined by the entity's `TransformComponent` rotation (Forward: `(0, -1, 0)`).
 *   `color` (vec3)
 *   `intensity` (float)
 
 ### PointLightComponent
 Omni-directional light (Lamp).
+*   **Position**: Defined by the entity's `TransformComponent` position.
 *   `color` (vec3)
 *   `intensity` (float)
 *   `radius` (float)
@@ -36,6 +37,7 @@ Omni-directional light (Lamp).
 
 ### SpotLightComponent
 Cone light (Flashlight).
+*   **Position & Direction**: Defined by the entity's `TransformComponent` position and rotation.
 *   `color`, `intensity`
 *   `cutOff`, `outerCutOff`: Cone angles (in cosines).
 

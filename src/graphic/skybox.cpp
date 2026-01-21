@@ -10,9 +10,21 @@ Skybox::Skybox()
 
 Skybox::~Skybox()
 {
-    if (m_VAO) { glDeleteVertexArrays(1, &m_VAO); m_VAO = 0; }
-    if (m_VBO) { glDeleteBuffers(1, &m_VBO); m_VBO = 0; }
-    if (m_TextureID) { glDeleteTextures(1, &m_TextureID); m_TextureID = 0; }
+    if (m_VAO)
+    {
+        glDeleteVertexArrays(1, &m_VAO);
+        m_VAO = 0;
+    }
+    if (m_VBO)
+    {
+        glDeleteBuffers(1, &m_VBO);
+        m_VBO = 0;
+    }
+    if (m_TextureID)
+    {
+        glDeleteTextures(1, &m_TextureID);
+        m_TextureID = 0;
+    }
 }
 
 void Skybox::Init()
@@ -70,7 +82,6 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
         GLenum internalFormat = GL_RGB;
         GLenum dataFormat = GL_RGB;
 
-        // Load image if available
         if (i < faces.size())
         {
             data = stbi_load(faces[i].c_str(), &width, &height, &channels, 0);

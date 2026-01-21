@@ -17,13 +17,11 @@ public:
 
     void ProcessInput(GLFWwindow* window);
 
-    // Callbacks
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
 
-    // Accessors
     KeyboardManager& GetKeyboard() const { return *m_KeyboardManager; }
     MouseManager& GetMouse() const { return *m_MouseManager; }
     InputManager& GetInputManager() const { return *m_InputManager; }

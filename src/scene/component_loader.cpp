@@ -39,26 +39,27 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, std::strin
 
 void ComponentLoader::LoadLightDir(Scene& scene, entt::entity entity, std::stringstream& ss)
 {
-    float dx, dy, dz, r, g, b, i;
-    ss >> dx >> dy >> dz >> r >> g >> b >> i;
+    float r, g, b, i;
+    ss >> r >> g >> b >> i;
     auto &l = scene.registry.emplace<DirectionalLightComponent>(entity);
-    l.direction = glm::vec3(dx, dy, dz);
     l.color = glm::vec3(r, g, b);
     l.intensity = i;
 
     float ambientStr = 0.2f;
     float diffuseStr = 0.8f;
+    float specularStr = 0.5f;
 
     if (ss >> ambientStr)
     {
         if (ss >> diffuseStr)
         {
+            ss >> specularStr;
         }
     }
 
     l.ambient = l.color * ambientStr;
     l.diffuse = l.color * diffuseStr;
-    l.specular = glm::vec3(0.5f);
+    l.specular = l.color * specularStr;
 }
 
 void ComponentLoader::LoadLightPoint(Scene& scene, entt::entity entity, std::stringstream& ss)
@@ -80,15 +81,17 @@ void ComponentLoader::LoadLightPoint(Scene& scene, entt::entity entity, std::str
 
     float ambStr = 0.1f;
     float diffStr = 1.0f;
+    float specStr = 1.0f;
     if (ss >> ambStr)
     {
         if (ss >> diffStr)
         {
+            ss >> specStr;
         }
     }
     l.ambient = l.color * ambStr;
     l.diffuse = l.color * diffStr;
-    l.specular = glm::vec3(1.0f);
+    l.specular = l.color * specStr;
 }
 
 void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, std::stringstream& ss)
@@ -111,7 +114,6 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, std::stri
 
     float ambStr = 0.1f;
     float diffStr = 1.0f;
-    if (ss >> ambStr)
     {
         if (ss >> diffStr)
         {

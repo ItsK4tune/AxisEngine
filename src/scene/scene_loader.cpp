@@ -8,7 +8,6 @@
 #include <scene/component_loader.h>
 #include <app/config_loader.h>
 
-// Include handler classes
 #include <scene/handlers/resource_command_handler.h>
 #include <scene/handlers/entity_command_handler.h>
 #include <scene/handlers/component_command_handler.h>
@@ -174,14 +173,10 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
         }
     }
 
-    // Validate and auto-fix scene after loading
     SceneHandlers::SceneValidator::ValidateParentChildRelationships(scene, deferredChildren);
     SceneHandlers::SceneValidator::ValidateLights(scene);
     SceneHandlers::SceneValidator::ValidatePhysicsSync(scene, phys);
-    
-    // Note: Camera validation adds entity to scene, but we can't add to loadedEntities here
-    // as it would break the return contract. Camera validation should happen elsewhere or
-    // we accept that default camera isn't in loadedEntities list.
+
     SceneHandlers::SceneValidator::ValidateCamera(scene, app);
 
     return loadedEntities;

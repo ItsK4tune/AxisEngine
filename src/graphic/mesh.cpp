@@ -1,7 +1,5 @@
 #include <graphic/mesh.h>
-
 #include <glm/gtc/matrix_transform.hpp>
-
 #include <glad/glad.h>
 #include <algorithm>
 
@@ -157,20 +155,19 @@ void Mesh::setupMesh()
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                           (void *)offsetof(Vertex, m_Weights));
 
-    // Instance Data (Location 10-13)
     glGenBuffers(1, &instanceVBO);
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    
+
     std::size_t vec4Size = sizeof(glm::vec4);
 
-    glEnableVertexAttribArray(10); 
-    glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)0);
-    glEnableVertexAttribArray(11); 
-    glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(1 * vec4Size));
-    glEnableVertexAttribArray(12); 
-    glVertexAttribPointer(12, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
-    glEnableVertexAttribArray(13); 
-    glVertexAttribPointer(13, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
+    glEnableVertexAttribArray(10);
+    glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)0);
+    glEnableVertexAttribArray(11);
+    glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)(1 * vec4Size));
+    glEnableVertexAttribArray(12);
+    glVertexAttribPointer(12, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)(2 * vec4Size));
+    glEnableVertexAttribArray(13);
+    glVertexAttribPointer(13, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)(3 * vec4Size));
 
     glVertexAttribDivisor(10, 1);
     glVertexAttribDivisor(11, 1);

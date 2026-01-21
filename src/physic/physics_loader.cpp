@@ -3,7 +3,7 @@
 #include <utils/bullet_glm_helpers.h>
 #include <iostream>
 
-void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, std::stringstream& ss, PhysicsWorld& physics, std::ifstream& file)
+void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::stringstream &ss, PhysicsWorld &physics, std::ifstream &file)
 {
     std::string type;
     float mass;
@@ -83,7 +83,6 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, std::string
         finalShape = new btBoxShape(btVector3(x, y, z));
     }
 
-    // Offset & BodyType Parsing
     glm::vec3 centerOffset(0.0f);
     glm::vec3 rotFactor(1.0f);
     glm::vec3 posFactor(1.0f);
@@ -119,13 +118,24 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, std::string
             posFactor = glm::vec3(x, y, z);
             hasPosFactor = true;
         }
-        else if (nextToken == "STATIC") { bodyType = "STATIC"; }
-        else if (nextToken == "DYNAMIC") { bodyType = "DYNAMIC"; }
-        else if (nextToken == "KINEMATIC") { bodyType = "KINEMATIC"; }
-        else if (nextToken == "ATTACH_TO_PARENT") { rb.isAttachedToParent = true; }
+        else if (nextToken == "STATIC")
+        {
+            bodyType = "STATIC";
+        }
+        else if (nextToken == "DYNAMIC")
+        {
+            bodyType = "DYNAMIC";
+        }
+        else if (nextToken == "KINEMATIC")
+        {
+            bodyType = "KINEMATIC";
+        }
+        else if (nextToken == "ATTACH_TO_PARENT")
+        {
+            rb.isAttachedToParent = true;
+        }
     }
 
-    // Apply Offset if needed
     if (finalShape && glm::length(centerOffset) > 0.001f)
     {
         btCompoundShape *compound = new btCompoundShape();
@@ -139,15 +149,18 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, std::string
 
     if (finalShape)
     {
-        // Deduce bodyType if not found
         if (bodyType == "UNKNOWN")
         {
-            if (mass > 0.0f) bodyType = "DYNAMIC";
-            else bodyType = "STATIC";
+            if (mass > 0.0f)
+                bodyType = "DYNAMIC";
+            else
+                bodyType = "STATIC";
         }
 
-        if (bodyType == "STATIC") mass = 0.0f;
-        if (bodyType == "KINEMATIC") mass = 0.0f;
+        if (bodyType == "STATIC")
+            mass = 0.0f;
+        if (bodyType == "KINEMATIC")
+            mass = 0.0f;
 
         btTransform transform;
         transform.setIdentity();
@@ -175,7 +188,8 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, std::string
             if (hasPosFactor)
                 rb.body->setLinearFactor(BulletGLMHelpers::convert(posFactor));
 
-            if (restitution > 0.0f) {
+            if (restitution > 0.0f)
+            {
                 rb.body->setRestitution(restitution);
             }
         }

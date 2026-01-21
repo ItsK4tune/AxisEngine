@@ -59,7 +59,6 @@ void Shadow::Init(unsigned int width, unsigned int height, unsigned int pointWid
     SHADOW_POINT_WIDTH = pointWidth;
     SHADOW_POINT_HEIGHT = pointHeight;
 
-    // Initialize directional shadow maps (up to 4)
     for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i)
     {
         glGenFramebuffers(1, &m_ShadowFBO_Dir[i]);

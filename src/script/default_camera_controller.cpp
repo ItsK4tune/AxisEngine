@@ -21,10 +21,8 @@ void DefaultCameraController::OnUpdate(float dt)
     const auto &mouse = GetAppHandler().GetMouse();
     const auto &keyboard = GetAppHandler().GetKeyboard();
 
-    // Use RealDeltaTime to remain independent of TimeScale (SlowMo)
     float delta = GetRealDeltaTime();
-    
-    // Check for any locked/captured mode to enable camera control
+
     CursorMode mode = mouse.GetCursorMode();
     bool canControl = true;
 
@@ -39,7 +37,6 @@ void DefaultCameraController::OnUpdate(float dt)
             camera.pitch = -89.0f;
     }
 
-    // Zoom
     float scroll = mouse.GetScrollY();
     if (scroll != 0.0f)
     {
@@ -50,7 +47,6 @@ void DefaultCameraController::OnUpdate(float dt)
             camera.fov = 120.0f;
     }
 
-    // Vectors
     glm::vec3 front;
     front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
     front.y = sin(glm::radians(camera.pitch));
@@ -59,12 +55,12 @@ void DefaultCameraController::OnUpdate(float dt)
     camera.right = glm::normalize(glm::cross(camera.front, camera.worldUp));
     camera.up = glm::normalize(glm::cross(camera.right, camera.front));
 
-    // Movement (WASD + Space/Shift for Up/Down)
     float velocity = moveSpeed * delta;
-    
+
     float speed = velocity;
-    if (keyboard.GetKey(GLFW_KEY_LEFT_SHIFT)) speed *= 2.0f;
-    
+    if (keyboard.GetKey(GLFW_KEY_LEFT_SHIFT))
+        speed *= 2.0f;
+
     if (keyboard.GetKey(GLFW_KEY_W))
         transform.position += camera.front * speed;
     if (keyboard.GetKey(GLFW_KEY_S))
@@ -79,7 +75,6 @@ void DefaultCameraController::OnUpdate(float dt)
     if (keyboard.GetKey(GLFW_KEY_LEFT_CONTROL))
         transform.position -= camera.worldUp * speed;
 
-    // Updates
     camera.aspectRatio = (float)m_App->GetWidth() / (float)m_App->GetHeight();
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
     camera.viewMatrix = glm::lookAt(transform.position, transform.position + camera.front, camera.up);

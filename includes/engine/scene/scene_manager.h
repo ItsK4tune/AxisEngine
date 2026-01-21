@@ -11,14 +11,15 @@
 #include <physic/physic_world.h>
 #include <ecs/component.h>
 
-class Application; // Forward declaration
+class Application;
 
 class SceneManager
 {
 public:
-    SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application* app);
+    SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application *app);
 
-    void AddEntity(entt::entity entity, const std::string& sceneName) {
+    void AddEntity(entt::entity entity, const std::string &sceneName)
+    {
         m_LoadedScenes[sceneName].push_back(entity);
     }
 
@@ -28,10 +29,9 @@ public:
 
     void ClearAllScenes();
 
-    PhysicsWorld& GetPhysicsWorld() { return m_Physics; }
+    PhysicsWorld &GetPhysicsWorld() { return m_Physics; }
 
-    // Deferred Loading
-    void QueueLoadScene(const std::string& path);
+    void QueueLoadScene(const std::string &path);
     void UpdatePendingScene();
     bool HasPendingScene() const { return m_isPending; }
 
@@ -40,10 +40,10 @@ private:
     ResourceManager &m_Resources;
     SoundManager &m_SoundManager;
     PhysicsWorld &m_Physics;
-    Application* m_App = nullptr;
+    Application *m_App = nullptr;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
-    
+
     std::string m_pendingPath = "";
     bool m_isPending = false;
 };

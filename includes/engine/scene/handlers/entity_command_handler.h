@@ -6,7 +6,6 @@
 #include <map>
 #include <entt/entt.hpp>
 
-// Forward declarations
 class Scene;
 
 namespace SceneHandlers
@@ -14,13 +13,12 @@ namespace SceneHandlers
     class EntityCommandHandler
     {
     public:
-        static entt::entity HandleNewEntity(std::stringstream& ss, Scene& scene);
-        static void HandleTransform(std::stringstream& ss, Scene& scene, entt::entity entity);
-        static void HandleParent(std::stringstream& ss, Scene& scene, entt::entity entity);
+        static entt::entity HandleNewEntity(std::stringstream &ss, Scene &scene);
+        static void HandleTransform(std::stringstream &ss, Scene &scene, entt::entity entity);
+        static void HandleParent(std::stringstream &ss, Scene &scene, entt::entity entity);
         static void HandleChildren(
-            std::stringstream& ss, 
+            std::stringstream &ss,
             entt::entity entity,
-            std::map<entt::entity, std::vector<std::string>>& deferredChildren
-        );
+            std::map<entt::entity, std::vector<std::string>> &deferredChildren);
     };
 }

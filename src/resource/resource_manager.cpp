@@ -13,46 +13,44 @@ void ResourceManager::Update()
     m_ResourceWatcher.Update(0.016f);
 }
 
-void ResourceManager::ReloadShader(const std::string& name)
+void ResourceManager::ReloadShader(const std::string &name)
 {
     std::cout << "[HotReload] Reloading Shader: " << name << std::endl;
     m_ShaderCache.Reload(name);
 }
 
-void ResourceManager::ReloadTexture(const std::string& name)
+void ResourceManager::ReloadTexture(const std::string &name)
 {
     std::cout << "[HotReload] Reloading Texture: " << name << std::endl;
 }
 
-void ResourceManager::LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath, const std::string& gsPath)
+void ResourceManager::LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
 {
     std::string vShaderPath = FileSystem::getPath(vsPath);
     std::string fShaderPath = FileSystem::getPath(fsPath);
     std::string gShaderPath = gsPath.empty() ? "" : FileSystem::getPath(gsPath);
-    
+
     m_ShaderCache.GetOrCompile(name, vShaderPath, fShaderPath);
-    
-    m_ResourceWatcher.SetShaderReloadCallback([this](const std::string& n) {
-        ReloadShader(n);
-    });
+
+    m_ResourceWatcher.SetShaderReloadCallback([this](const std::string &n)
+                                              { ReloadShader(n); });
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
 }
 
-void ResourceManager::LoadTexture(const std::string& name, const std::string& path, bool async)
+void ResourceManager::LoadTexture(const std::string &name, const std::string &path, bool async)
 {
     m_TextureCache.LoadTexture(name, FileSystem::getPath(path), async);
-    
-    m_ResourceWatcher.SetTextureReloadCallback([this](const std::string& n) {
-        ReloadTexture(n);
-    });
+
+    m_ResourceWatcher.SetTextureReloadCallback([this](const std::string &n)
+                                               { ReloadTexture(n); });
     m_ResourceWatcher.Watch(name, FileSystem::getPath(path), "TEXTURE");
 }
 
-void ResourceManager::LoadModel(const std::string& name, const std::string& path, bool isStatic)
+void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
 {
     std::string fullPath = FileSystem::getPath(path);
-    
-    Model* model = m_ModelInstanceManager.GetOrLoadModel(name, fullPath, isStatic);
+
+    Model *model = m_ModelInstanceManager.GetOrLoadModel(name, fullPath, isStatic);
     if (!model)
     {
         std::cerr << "[ResourceManager] Failed to load model: " << path << std::endl;
@@ -63,12 +61,12 @@ void ResourceManager::LoadModel(const std::string& name, const std::string& path
     }
 }
 
-void ResourceManager::LoadAnimation(const std::string& name, const std::string& path, const std::string& modelName)
+void ResourceManager::LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName)
 {
     auto it = m_ModelPaths.find(modelName);
     if (it != m_ModelPaths.end())
     {
-        Model* model = m_ModelInstanceManager.GetOrLoadModel(modelName, it->second.path, it->second.isStatic);
+        Model *model = m_ModelInstanceManager.GetOrLoadModel(modelName, it->second.path, it->second.isStatic);
         if (model)
         {
             m_AnimationCache.LoadAnimation(name, path, model);
@@ -80,17 +78,17 @@ void ResourceManager::LoadAnimation(const std::string& name, const std::string& 
     }
 }
 
-void ResourceManager::LoadFont(const std::string& name, const std::string& path, unsigned int fontSize)
+void ResourceManager::LoadFont(const std::string &name, const std::string &path, unsigned int fontSize)
 {
     m_FontCache.LoadFont(name, path, fontSize);
 }
 
-void ResourceManager::LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine)
+void ResourceManager::LoadSound(const std::string &name, const std::string &path, irrklang::ISoundEngine *engine)
 {
     m_SoundCache.LoadSound(name, path, engine);
 }
 
-void ResourceManager::LoadSkybox(const std::string& name, const std::vector<std::string>& faces)
+void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
 {
     auto skybox = std::make_unique<Skybox>();
     skybox->LoadCubemap(faces);
@@ -98,77 +96,75 @@ void ResourceManager::LoadSkybox(const std::string& name, const std::vector<std:
     std::cout << "[ResourceManager] Loaded skybox: " << name << std::endl;
 }
 
-void ResourceManager::CreateUIModel(const std::string& name, UIType type)
+void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
     m_UIModels[name] = std::make_unique<UIModel>(type);
     std::cout << "[ResourceManager] Created UI Model: " << name << std::endl;
 }
 
-Shader* ResourceManager::GetShader(const std::string& name)
+Shader *ResourceManager::GetShader(const std::string &name)
 {
     return m_ShaderCache.Get(name);
 }
 
-Texture* ResourceManager::GetTexture(const std::string& name)
+Texture *ResourceManager::GetTexture(const std::string &name)
 {
     return m_TextureCache.GetTexture(name);
 }
 
-Model* ResourceManager::GetModel(const std::string& name)
+Model *ResourceManager::GetModel(const std::string &name)
 {
     auto it = m_ModelPaths.find(name);
     if (it != m_ModelPaths.end())
     {
-        // Use name as cache key, but it->second.path contains the actual file path to load
         return m_ModelInstanceManager.GetOrLoadModel(name, it->second.path, it->second.isStatic);
     }
     return nullptr;
 }
 
-Animation* ResourceManager::GetAnimation(const std::string& name)
+Animation *ResourceManager::GetAnimation(const std::string &name)
 {
     return m_AnimationCache.GetAnimation(name);
 }
 
-Font* ResourceManager::GetFont(const std::string& name)
+Font *ResourceManager::GetFont(const std::string &name)
 {
     return m_FontCache.GetFont(name);
 }
 
-irrklang::ISoundSource* ResourceManager::GetSound(const std::string& name)
+irrklang::ISoundSource *ResourceManager::GetSound(const std::string &name)
 {
     return m_SoundCache.GetSound(name);
 }
 
-Skybox* ResourceManager::GetSkybox(const std::string& name)
+Skybox *ResourceManager::GetSkybox(const std::string &name)
 {
     if (m_Skyboxes.find(name) != m_Skyboxes.end())
         return m_Skyboxes[name].get();
-    
+
     std::cerr << "[ResourceManager] Skybox not found: " << name << std::endl;
     return nullptr;
 }
 
-UIModel* ResourceManager::GetUIModel(const std::string& name)
+UIModel *ResourceManager::GetUIModel(const std::string &name)
 {
     if (m_UIModels.find(name) != m_UIModels.end())
         return m_UIModels[name].get();
-    
+
     std::cerr << "[ResourceManager] UI Model not found: " << name << std::endl;
     return nullptr;
 }
 
 void ResourceManager::ClearResource()
 {
-    // m_ShaderCache.ClearCache(); // Method removed
     m_TextureCache.Clear();
     m_FontCache.Clear();
     m_SoundCache.Clear();
     m_AnimationCache.Clear();
     m_ModelInstanceManager.Clear();
-    
+
     m_UIModels.clear();
     m_Skyboxes.clear();
-    
+
     std::cout << "[ResourceManager] All resources cleared" << std::endl;
 }

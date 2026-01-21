@@ -13,18 +13,15 @@ struct Scene
 {
     entt::registry registry;
 
-    // Legacy methods
     entt::entity createEntity();
-    void destroyEntity(entt::entity entity, SceneManager* manager = nullptr);
-    
-    entt::entity GetActiveCamera();
-    
-    // Manager accessors
-    LightManager& GetLightManager() { return *lightManager; }
-    CameraManager& GetCameraManager() { return *cameraManager; }
-    EntityFactory& GetEntityFactory() { return *entityFactory; }
+    void destroyEntity(entt::entity entity, SceneManager *manager = nullptr);
 
-    // Initialization
+    entt::entity GetActiveCamera();
+
+    LightManager &GetLightManager() { return *lightManager; }
+    CameraManager &GetCameraManager() { return *cameraManager; }
+    EntityFactory &GetEntityFactory() { return *entityFactory; }
+
     void InitializeManagers();
     void ShutdownManagers();
 

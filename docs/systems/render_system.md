@@ -20,10 +20,10 @@ The RenderSystem supports three shadow rendering modes:
 - **Mode 2 (All)**: Renders shadows from up to 4 directional lights with `isCastShadow = true`. If more than 4 lights have shadow casting enabled, only the first 4 will cast shadows and a warning will be logged.
 
 ### Shadow Casting Lights
-Lights can be configured to cast shadows using the `isCastShadow` property:
-- **DirectionalLightComponent**: Set `isCastShadow = true` to enable shadow casting
-- **PointLightComponent**: Set `isCastShadow = true` to enable shadow casting (up to 4)
-- **SpotLightComponent**: Set `isCastShadow = true` to enable shadow casting
+Lights can be configured to cast shadows using the `isCastShadow` property. The direction and position of lights are determined by their **TransformComponent**:
+- **DirectionalLightComponent**: Uses `TransformComponent` rotation (Default forward: `(0, -1, 0)`). Set `isCastShadow = true`.
+- **PointLightComponent**: Uses `TransformComponent` position. Set `isCastShadow = true` (up to 4).
+- **SpotLightComponent**: Uses `TransformComponent` position and rotation. Set `isCastShadow = true`.
 
 > **Note**: In shadow mode 1 (Once), only the first light with `isCastShadow = true` will cast shadows, regardless of how many lights have this property enabled.
 

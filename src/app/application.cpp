@@ -33,17 +33,17 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
         app->OnScroll(xoffset, yoffset);
 }
 
-Application::Application() 
-    : m_StateMachine(this) 
+Application::Application()
+    : m_StateMachine(this)
 {
 }
 
 Application::~Application()
 {
-    m_StateMachine.Clear(); 
+    m_StateMachine.Clear();
 
-    scene.registry.clear(); 
-    
+    scene.registry.clear();
+
     sceneManager.reset();
     resourceManager.reset();
     soundManager.reset();
@@ -52,7 +52,7 @@ Application::~Application()
 
     if (systemManager)
         systemManager->ShutdownSystems();
-    
+
     systemManager.reset();
     engineLoop.reset();
 }
@@ -65,19 +65,23 @@ bool Application::Init()
     monitorManager.SetWindowConfiguration(config.width, config.height, (WindowMode)config.windowMode, config.monitorIndex, config.refreshRate);
     monitorManager.SetVsync(config.vsync);
     monitorManager.SetFrameRateLimit(config.frameRateLimit);
-    
+
     if (!monitorManager.Init())
         return false;
 
-    if (!config.depthTestEnabled) glDisable(GL_DEPTH_TEST);
-    if (config.cullFaceEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
-    
+    if (!config.depthTestEnabled)
+        glDisable(GL_DEPTH_TEST);
+    if (config.cullFaceEnabled)
+        glEnable(GL_CULL_FACE);
+    else
+        glDisable(GL_CULL_FACE);
+
     if (!config.iconPath.empty())
     {
-        monitorManager.SetWindowIcon(FileSystem::getPath(config.iconPath)); 
+        monitorManager.SetWindowIcon(FileSystem::getPath(config.iconPath));
     }
 
-    GLFWwindow* window = monitorManager.GetWindow();
+    GLFWwindow *window = monitorManager.GetWindow();
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
@@ -91,18 +95,18 @@ bool Application::Init()
     resourceManager = std::make_unique<ResourceManager>();
     soundManager = std::make_unique<SoundManager>();
     sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager, this);
-    
+
     appHandler->GetMouse().SetLastPosition(monitorManager.GetWidth() / 2.0, monitorManager.GetHeight() / 2.0);
-    
+
     soundManager->Init();
 
-    if (!config.audioDevice.empty() && config.audioDevice != "default") {
+    if (!config.audioDevice.empty() && config.audioDevice != "default")
+    {
         soundManager->SetActiveDevice(config.audioDevice);
     }
 
     resourceManager->CreateUIModel("default_rect", UIType::Color);
 
-    // Initialize SystemManager
     systemManager = std::make_unique<SystemManager>();
     systemManager->InitializeSystems(*resourceManager, monitorManager.GetWidth(), monitorManager.GetHeight(), this);
     systemManager->GetRenderSystem().SetShadowMode(config.shadowMode);
@@ -118,9 +122,8 @@ bool Application::Init()
     std::cout << "[Application] Loading default assets from src/asset/load.scene..." << std::endl;
     sceneManager->LoadScene("src/asset/load.scene");
 
-    // Initialize EngineLoop
     engineLoop = std::make_unique<EngineLoop>(this);
-    
+
     return true;
 }
 
@@ -163,7 +166,8 @@ void Application::OnResize(int width, int height)
 {
     monitorManager.OnResize(width, height);
     systemManager->GetPostProcess().Resize(width, height);
-    if (appHandler) appHandler->OnResize(width, height);
+    if (appHandler)
+        appHandler->OnResize(width, height);
 }
 
 void Application::OnMouseMove(double xpos, double ypos)

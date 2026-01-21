@@ -13,38 +13,30 @@ entt::entity Scene::createEntity()
     return entity;
 }
 
-void Scene::destroyEntity(entt::entity entity, SceneManager* manager)
+void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
 {
     if (!registry.valid(entity))
         return;
 
-    // 1. Hierarchy Cleanup
-    if (auto* transform = registry.try_get<TransformComponent>(entity))
+    if (auto *transform = registry.try_get<TransformComponent>(entity))
     {
-        // Remove self from Parent
         if (registry.valid(transform->parent) && registry.all_of<TransformComponent>(transform->parent))
         {
-            auto& parentTrans = registry.get<TransformComponent>(transform->parent);
+            auto &parentTrans = registry.get<TransformComponent>(transform->parent);
             parentTrans.RemoveChild(entity);
         }
 
-        // We copy the children list because modifying it while iterating might be unsafe
         std::vector<entt::entity> childrenCopy = transform->children;
         for (auto child : childrenCopy)
         {
             if (registry.valid(child) && registry.all_of<TransformComponent>(child))
             {
-                auto& childTrans = registry.get<TransformComponent>(child);
+                auto &childTrans = registry.get<TransformComponent>(child);
                 childTrans.parent = entt::null;
-                
-                 // Optional: Keep world transform for children when parent dies?
-                 // For now, we just unlink. They will keep their local transform relative to World (0,0,0) effectively jumping.
-                 // To prevent jump, we should recompute local transform.
             }
         }
     }
 
-    // 2. Resource/Component Cleanup
     if (auto sc = registry.try_get<ScriptComponent>(entity))
     {
         if (sc->instance && sc->DestroyScript)

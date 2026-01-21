@@ -7,31 +7,31 @@
 
 using namespace irrklang;
 
-class SoundManager : public IDeviceManager {
+class SoundManager : public IDeviceManager
+{
 public:
     ~SoundManager();
 
     void Init();
-    
-    void Play2D(const char* path, bool loop = false);
-    ISound* Play2D(ISoundSource* source, bool loop = false);
-    ISound* Play3D(ISoundSource* source, glm::vec3 pos, bool loop = false);
+
+    void Play2D(const char *path, bool loop = false);
+    ISound *Play2D(ISoundSource *source, bool loop = false);
+    ISound *Play3D(ISoundSource *source, glm::vec3 pos, bool loop = false);
 
     void UpdateListener(glm::vec3 position, glm::vec3 lookDir, glm::vec3 up);
 
     void SetVolume(float volume);
-    void SetVolume(ISoundSource* source, float volume);
+    void SetVolume(ISoundSource *source, float volume);
 
-    void Stop(ISoundSource* source);
+    void Stop(ISoundSource *source);
     void StopAll();
 
-    ISoundEngine* GetEngine() const { return m_Engine; }
+    ISoundEngine *GetEngine() const { return m_Engine; }
 
-    // IDeviceManager Implementation
     std::vector<DeviceInfo> GetAllDevices() const override;
     DeviceInfo GetCurrentDevice() const override;
-    bool SetActiveDevice(const std::string& deviceId) override;
+    bool SetActiveDevice(const std::string &deviceId) override;
 
 private:
-    ISoundEngine* m_Engine = nullptr;
+    ISoundEngine *m_Engine = nullptr;
 };

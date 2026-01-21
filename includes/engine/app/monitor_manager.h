@@ -32,7 +32,6 @@ public:
     int GetHeight() const { return m_Height; }
     int GetFrameRateLimit() const { return m_FrameRateLimit; }
 
-    // IDeviceManager Implementation
     std::vector<DeviceInfo> GetAllDevices() const override;
     DeviceInfo GetCurrentDevice() const override;
     bool SetActiveDevice(const std::string& deviceId) override;
@@ -40,8 +39,7 @@ public:
 private:
     GLFWwindow* m_Window = nullptr;
     
-    // Default configuration
-    std::string m_Title = "Game Engine";
+    std::string m_Title = "Axis Engine";
     int m_Width = 800;
     int m_Height = 600;
     bool m_Vsync = false;

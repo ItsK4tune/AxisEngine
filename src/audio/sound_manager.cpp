@@ -72,11 +72,10 @@ void SoundManager::StopAll()
         m_Engine->stopAllSounds();
 }
 
-// IDeviceManager Implementation
 std::vector<DeviceInfo> SoundManager::GetAllDevices() const
 {
     std::vector<DeviceInfo> devices;
-    ISoundDeviceList* deviceList = createSoundDeviceList();
+    ISoundDeviceList *deviceList = createSoundDeviceList();
     if (deviceList)
     {
         for (int i = 0; i < deviceList->getDeviceCount(); ++i)
@@ -84,8 +83,8 @@ std::vector<DeviceInfo> SoundManager::GetAllDevices() const
             DeviceInfo info;
             info.id = deviceList->getDeviceID(i);
             info.name = deviceList->getDeviceDescription(i);
-            info.type = DeviceType::AudioOutput; // Assuming output
-            info.isDefault = (i == 0); // Is there a better way to check default?
+            info.type = DeviceType::AudioOutput;
+            info.isDefault = (i == 0);
             devices.push_back(info);
         }
         deviceList->drop();
@@ -97,15 +96,12 @@ DeviceInfo SoundManager::GetCurrentDevice() const
 {
     DeviceInfo info;
     info.type = DeviceType::AudioOutput;
-    info.name = "Current Sound Device"; 
-    // IrrKlang doesn't easily give back the ID of the active device if we used AUTO_DETECT or similar.
-    // We can track it if we set it.
-    // For now, return placeholder.
+    info.name = "Current Sound Device";
     info.name = (m_Engine) ? m_Engine->getDriverName() : "No Driver";
     return info;
 }
 
-bool SoundManager::SetActiveDevice(const std::string& deviceId)
+bool SoundManager::SetActiveDevice(const std::string &deviceId)
 {
     if (m_Engine)
     {
@@ -114,11 +110,10 @@ bool SoundManager::SetActiveDevice(const std::string& deviceId)
     }
 
     m_Engine = createIrrKlangDevice(ESOD_AUTO_DETECT, ESEO_MULTI_THREADED | ESEO_LOAD_PLUGINS | ESEO_USE_3D_BUFFERS, deviceId.c_str());
-    
+
     if (!m_Engine)
     {
         std::cerr << "[SoundManager] Failed to switch device to: " << deviceId << std::endl;
-        // fallback to default
         Init();
         return false;
     }

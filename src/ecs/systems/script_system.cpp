@@ -5,11 +5,12 @@
 
 void ScriptableSystem::Update(Scene &scene, float dt, float unscaledDt, Application *app)
 {
-    if (!m_Enabled) return;
+    if (!m_Enabled)
+        return;
 
     auto view = scene.registry.view<ScriptComponent>();
-    auto& mouse = app->GetMouse();
-    auto& keyboard = app->GetKeyboard();
+    auto &mouse = app->GetMouse();
+    auto &keyboard = app->GetKeyboard();
 
     float mx = mouse.GetLastX();
     float my = mouse.GetLastY();
@@ -28,8 +29,7 @@ void ScriptableSystem::Update(Scene &scene, float dt, float unscaledDt, Applicat
         if (script.instance->IsEnabled())
         {
             float effectiveDt = dt;
-            
-            // If Game is Paused (dt is 0), but script can run when paused, use unscaledDt
+
             if (dt == 0.0f && script.instance->CanRunWhenPaused())
             {
                 effectiveDt = unscaledDt;

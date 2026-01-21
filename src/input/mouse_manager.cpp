@@ -28,30 +28,26 @@ void MouseManager::UpdatePosition(double xpos, double ypos)
 
     m_LastX = xpos;
     m_LastY = ypos;
-
-// LockedCenter is re-centered in Update() to avoid high-freq OS calls here.
-    // LockedHiddenCenter uses GLFW_CURSOR_DISABLED so no manual logic needed here.
 }
 
 void MouseManager::Update()
 {
     if (m_Mode == CursorMode::LockedCenter)
     {
-        if (!m_Window) return;
-        
-        // Only lock if focused
+        if (!m_Window)
+            return;
+
         if (glfwGetWindowAttrib(m_Window, GLFW_FOCUSED))
         {
-             int w = m_WindowWidth;
-             int h = m_WindowHeight;
-             double centerX = w / 2.0;
-             double centerY = h / 2.0;
+            int w = m_WindowWidth;
+            int h = m_WindowHeight;
+            double centerX = w / 2.0;
+            double centerY = h / 2.0;
 
-             glfwSetCursorPos(m_Window, centerX, centerY);
-             
-             // Important: Update LastX/Y so we don't get a huge jump frame
-             m_LastX = centerX;
-             m_LastY = centerY;
+            glfwSetCursorPos(m_Window, centerX, centerY);
+
+            m_LastX = centerX;
+            m_LastY = centerY;
         }
     }
 }
@@ -125,7 +121,6 @@ void MouseManager::SetCursorMode(CursorMode mode)
         break;
     case CursorMode::LockedHiddenCenter:
         glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        // Reset FirstMouse to avoid jump
         m_FirstMouse = true;
         break;
     }
@@ -155,8 +150,6 @@ float MouseManager::GetScrollY() const
 
 float MouseManager::GetLastX() const
 {
-    // If locked to center, return the visual center so UI interaction is consistent (or disabled)
-    // If we return the raw active accumulator (which might be huge), UI might highlight random things.
     if (m_Mode == CursorMode::LockedCenter || m_Mode == CursorMode::LockedHiddenCenter)
     {
         int w, h;

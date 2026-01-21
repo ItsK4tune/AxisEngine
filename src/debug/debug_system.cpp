@@ -9,25 +9,22 @@
 #include <GLFW/glfw3.h>
 #include <iomanip>
 #include <sstream>
-#include <intrin.h> // For __cpuid on Windows
+#include <intrin.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 DebugSystem::DebugSystem() {}
 DebugSystem::~DebugSystem() {}
 
-void DebugSystem::Init(Application* app)
+void DebugSystem::Init(Application *app)
 {
     m_App = app;
 
-    // Load Resources
-    auto& res = m_App->GetResourceManager();
-    
-    // Load Debug Font (Using existing time.ttf or default if not found)
-    res.LoadFont("debug_font", "src/asset/fonts/time.ttf", 24); 
+    auto &res = m_App->GetResourceManager();
+
+    res.LoadFont("debug_font", "src/asset/fonts/time.ttf", 24);
     res.LoadShader("debug_text", "src/asset/shaders/text.vs", "src/asset/shaders/text.fs");
-    
-    // Ensure UI Quad exists for Debug
+
     if (!res.GetUIModel("debug_sys_model"))
     {
         res.CreateUIModel("debug_sys_model", UIType::Text);
@@ -37,50 +34,50 @@ void DebugSystem::Init(Application* app)
     m_TextShader = res.GetShader("debug_text");
     m_TextQuad = res.GetUIModel("debug_sys_model");
 
-    // Get GPU Info
-    const GLubyte* renderer = glGetString(GL_RENDERER);
-    if (renderer) m_GpuName = std::string((const char*)renderer);
-    else m_GpuName = "Unknown GPU";
-    
-    // Get CPU Info using CPUID
+    const GLubyte *renderer = glGetString(GL_RENDERER);
+    if (renderer)
+        m_GpuName = std::string((const char *)renderer);
+    else
+        m_GpuName = "Unknown GPU";
+
     m_CpuName = "Unknown CPU";
-    
+
 #ifdef _WIN32
-    // Use CPUID to get processor brand string
     int cpuInfo[4] = {0};
     char cpuBrandString[0x40] = {0};
-    
-    // Check if brand string is supported (EAX=0x80000000)
+
     __cpuid(cpuInfo, 0x80000000);
     unsigned int nExIds = cpuInfo[0];
-    
+
     if (nExIds >= 0x80000004)
     {
-        // Get the processor brand string (requires 3 calls)
-        __cpuid((int*)(cpuBrandString +  0), 0x80000002);
-        __cpuid((int*)(cpuBrandString + 16), 0x80000003);
-        __cpuid((int*)(cpuBrandString + 32), 0x80000004);
-        
+        __cpuid((int *)(cpuBrandString + 0), 0x80000002);
+        __cpuid((int *)(cpuBrandString + 16), 0x80000003);
+        __cpuid((int *)(cpuBrandString + 32), 0x80000004);
+
         m_CpuName = std::string(cpuBrandString);
-        
-        // Trim leading/trailing spaces
+
         size_t start = m_CpuName.find_first_not_of(" \t");
         size_t end = m_CpuName.find_last_not_of(" \t");
         if (start != std::string::npos && end != std::string::npos)
             m_CpuName = m_CpuName.substr(start, end - start + 1);
     }
-#endif 
+#endif
 }
 
 void DebugSystem::OnUpdate(float dt)
 {
-    if (!m_App) return;
+    if (!m_App)
+        return;
 
-    auto& keyboard = m_App->GetKeyboard();
+    auto &keyboard = m_App->GetKeyboard();
 
-    ProcessKey(keyboard, GLFW_KEY_F1, m_F1Pressed, [this](){ LogControls(); });
-    ProcessKey(keyboard, GLFW_KEY_F2, m_F2Pressed, [this](){ LogDevices(); });
-    ProcessKey(keyboard, GLFW_KEY_F3, m_F3Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F1, m_F1Pressed, [this]()
+               { LogControls(); });
+    ProcessKey(keyboard, GLFW_KEY_F2, m_F2Pressed, [this]()
+               { LogDevices(); });
+    ProcessKey(keyboard, GLFW_KEY_F3, m_F3Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
             ToggleEntityNames();
@@ -89,10 +86,10 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "=============================================" << std::endl;
         } else {
             LogStats();
-        }
-    });
+        } });
 
-    ProcessKey(keyboard, GLFW_KEY_F4, m_F4Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F4, m_F4Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
             ToggleTransformGizmos(); 
@@ -101,15 +98,14 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "=================================================" << std::endl;
         } else {
              LogEntityStats();
-        }
-    });
+        } });
 
-    ProcessKey(keyboard, GLFW_KEY_F5, m_F5Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F5, m_F5Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
             ToggleLightGizmos();
             
-            // Debug: Count lights to verify existence
             auto& reg = m_App->GetScene().registry;
             int p = 0; for(auto e : reg.view<PointLightComponent>()) p++;
             int s = 0; for(auto e : reg.view<SpotLightComponent>()) s++;
@@ -128,10 +124,10 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "=============================================" << std::endl;
         } else {
              LogSceneGraph();
-        }
-    });
+        } });
 
-    ProcessKey(keyboard, GLFW_KEY_F6, m_F6Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F6, m_F6Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
             static bool skyboxEnabled = true;
@@ -147,11 +143,10 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "\n========== Wireframe Mode (F6) ==========" << std::endl;
             std::cout << "[Debug] Wireframe: " << (m_WireframeMode ? "ON" : "OFF") << std::endl;
             std::cout << "=========================================" << std::endl;
-        }
-    });
+        } });
 
-    // F7 No Texture / Shadows
-    ProcessKey(keyboard, GLFW_KEY_F7, m_F7Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F7, m_F7Pressed, [this, &keyboard]()
+               {
          bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
          if (shift) {
              bool shadow = !m_App->GetRenderSystem().IsShadowsEnabled();
@@ -165,10 +160,10 @@ void DebugSystem::OnUpdate(float dt)
              std::cout << "\n========== No Texture Mode (F7) ==========" << std::endl;
              std::cout << "[Debug] No Texture Mode: " << (m_NoTextureMode ? "ON" : "OFF") << std::endl;
              std::cout << "==========================================" << std::endl;
-         }
-    });
+         } });
 
-    ProcessKey(keyboard, GLFW_KEY_F8, m_F8Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F8, m_F8Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
             m_ShowAudioDebug = !m_ShowAudioDebug;
@@ -178,10 +173,10 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "==========================================" << std::endl;
         } else {
             TogglePhysicsDebug();
-        }
-    });
-    
-    ProcessKey(keyboard, GLFW_KEY_F9, m_F9Pressed, [this, &keyboard](){
+        } });
+
+    ProcessKey(keyboard, GLFW_KEY_F9, m_F9Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
             m_ShowParticleDebug = !m_ShowParticleDebug;
@@ -196,10 +191,10 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "\n========== UI System (F9) ==========" << std::endl;
             std::cout << "[Debug] UI System: " << (uiEnabled ? "ON" : "OFF") << std::endl;
             std::cout << "====================================" << std::endl;
-        }
-    });
+        } });
 
-    ProcessKey(keyboard, GLFW_KEY_F10, m_F10Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F10, m_F10Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift) {
             m_OverlayMode = (m_OverlayMode % 3) + 1;
@@ -212,11 +207,10 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "============================================" << std::endl;
         } else {
             ToggleStatsOverlay();
-        }
-    });
+        } });
 
-    // F11 Pause / Debug Camera
-    ProcessKey(keyboard, GLFW_KEY_F11, m_F11Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F11, m_F11Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         if (shift)
         {
@@ -229,11 +223,10 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
             std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << std::endl;
             std::cout << "======================================" << std::endl;
-        }
-    });
+        } });
 
-    // F12 Slow Mo / Cursor Mode
-    ProcessKey(keyboard, GLFW_KEY_F12, m_F12Pressed, [this, &keyboard](){
+    ProcessKey(keyboard, GLFW_KEY_F12, m_F12Pressed, [this, &keyboard]()
+               {
         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
         
         if (shift)
@@ -260,7 +253,6 @@ void DebugSystem::OnUpdate(float dt)
         {
             float current = m_App->GetTimeScale();
             float next = 1.0f;
-            // Cycle: 0.25 -> 0.5 -> 1.0 -> 1.5 -> 2.0 -> 0.25
             if (abs(current - 0.25f) < 0.01f) next = 0.5f;
             else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
             else if (abs(current - 1.0f) < 0.01f) next = 1.5f;
@@ -272,14 +264,11 @@ void DebugSystem::OnUpdate(float dt)
             std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
             std::cout << "[Debug] Time Scale: " << next << "x" << std::endl;
             std::cout << "======================================" << std::endl;
-        }
-    });
-    
-    // Update Debug Labels (Sync Entities)
+        } });
+
     UpdateDebugLabels(m_App->GetScene());
     UpdateLightLabels(m_App->GetScene());
 
-    // FPS Calculation (Realtime, unaware of pause)
     m_FpsTimer += dt;
     m_FrameCount++;
     if (m_FpsTimer >= 1.0f)
@@ -298,79 +287,73 @@ void DebugSystem::LogDevices()
     std::cout << "  CPU: " << m_CpuName << std::endl;
     std::cout << std::endl;
 
-    auto logHelper = [&](const std::string& category, const std::vector<DeviceInfo>& devices, const std::string& activeId) {
+    auto logHelper = [&](const std::string &category, const std::vector<DeviceInfo> &devices, const std::string &activeId)
+    {
         std::cout << category << ":" << std::endl;
-        for (const auto& dev : devices) {
-            // Check active based on ID
+        for (const auto &dev : devices)
+        {
             bool isActive = (dev.id == activeId);
             std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
         }
     };
-    
-    // Monitors
-    auto& mons = m_App->GetMonitorManager();
-    std::string activeMonId = mons.GetCurrentDevice().id;
-    logHelper("Monitors", mons.GetAllDevices(), activeMonId); 
 
-    // Inputs
-    auto& inputs = m_App->GetInputManager();
+    auto &mons = m_App->GetMonitorManager();
+    std::string activeMonId = mons.GetCurrentDevice().id;
+    logHelper("Monitors", mons.GetAllDevices(), activeMonId);
+
+    auto &inputs = m_App->GetInputManager();
     auto allInputs = inputs.GetAllDevices();
     std::cout << "Inputs:" << std::endl;
-    for (const auto& dev : allInputs) {
-        // Assume default devices are always "Active"
-        bool isActive = dev.isDefault; 
+    for (const auto &dev : allInputs)
+    {
+        bool isActive = dev.isDefault;
         std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
     }
 
-    // Audio
-    auto& audio = m_App->GetSoundManager();
+    auto &audio = m_App->GetSoundManager();
     std::string activeAudio = audio.GetCurrentDevice().id;
     logHelper("Audio", audio.GetAllDevices(), activeAudio);
-        
+
     std::cout << "============================================" << std::endl;
 }
-
 
 void DebugSystem::LogSceneGraph()
 {
     std::cout << "\n========== SCENE GRAPH DUMP (F5) ==========" << std::endl;
     auto view = m_App->GetScene().registry.view<InfoComponent>();
     int count = 0;
-    for(auto entity : view) {
-            const auto& info = view.get<InfoComponent>(entity);
-            std::cout << "[" << count++ << "] ID: " << (uint32_t)entity 
-                      << " | Name: " << info.name 
-                      << " | Tag: " << info.tag << std::endl;
+    for (auto entity : view)
+    {
+        const auto &info = view.get<InfoComponent>(entity);
+        std::cout << "[" << count++ << "] ID: " << (uint32_t)entity
+                  << " | Name: " << info.name
+                  << " | Tag: " << info.tag << std::endl;
     }
     std::cout << "===========================================" << std::endl;
 }
 
-
-
-void DebugSystem::Render(Scene& scene)
+void DebugSystem::Render(Scene &scene)
 {
-    if (!m_App) return;
+    if (!m_App)
+        return;
 
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
 
-    // Physics Debug
     if (m_ShowPhysicsDebug)
     {
-        auto& res = m_App->GetResourceManager();
-        Shader* debugShader = res.GetShader("debugLine");
+        auto &res = m_App->GetResourceManager();
+        Shader *debugShader = res.GetShader("debugLine");
         if (debugShader)
         {
             m_App->GetPhysicsSystem().RenderDebug(scene, m_App->GetPhysicsWorld(), *debugShader, width, height);
         }
     }
 
-    // Force Fill Mode for Overlay
     GLint polygonMode[2];
     glGetIntegerv(GL_POLYGON_MODE, polygonMode);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    // Stats Overlay (F12)
     if (m_ShowStatsOverlay && m_DebugFont && m_TextShader && m_TextQuad)
     {
         glDisable(GL_DEPTH_TEST);
@@ -382,17 +365,19 @@ void DebugSystem::Render(Scene& scene)
 
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
-        
-        // Helper lambdas
-        auto appendStats = [&]() {
+
+        auto appendStats = [&]()
+        {
             ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
             ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities << "\n";
             ss << "TimeScale: " << m_App->GetTimeScale() << "x | Paused: " << (m_App->IsPaused() ? "YES" : "NO") << "\n";
         };
 
-        auto appendTools = [&]() {
+        auto appendTools = [&]()
+        {
             ss << "=== DEBUG TOOLS ===\n";
-            auto boolStr = [](bool v) { return v ? "[ON]" : "[OFF]"; };
+            auto boolStr = [](bool v)
+            { return v ? "[ON]" : "[OFF]"; };
             ss << "F6: Wireframe: " << boolStr(m_WireframeMode) << " | S+F6: Skybox: " << boolStr(m_App->GetSkyboxRenderSystem().IsEnabled()) << "\n";
             ss << "F7: NoTexture: " << boolStr(m_NoTextureMode) << " | S+F7: Shadows: " << boolStr(m_App->GetRenderSystem().IsShadowsEnabled()) << "\n";
             ss << "F8: Physics:   " << boolStr(m_ShowPhysicsDebug) << " | S+F8: Audio:   " << boolStr(m_ShowAudioDebug) << "\n";
@@ -402,31 +387,38 @@ void DebugSystem::Render(Scene& scene)
             ss << "F11: Paused:   " << boolStr(m_App->IsPaused());
         };
 
-        if (m_OverlayMode == 1) {
+        if (m_OverlayMode == 1)
+        {
             appendStats();
-        } else if (m_OverlayMode == 2) {
+        }
+        else if (m_OverlayMode == 2)
+        {
             appendTools();
-        } else if (m_OverlayMode == 3) {
+        }
+        else if (m_OverlayMode == 3)
+        {
             appendStats();
             ss << "\n";
             appendTools();
         }
-        
+
         std::string fullText = ss.str();
-        
+
         std::istringstream textStream(fullText);
         std::string line;
         float yStart = 30.0f;
         float scale = 0.5f;
-        
-        while (std::getline(textStream, line)) {
+
+        while (std::getline(textStream, line))
+        {
             float textWidth = 0.0f;
-            for (char c : line) {
-                const Character& ch = m_DebugFont->GetCharacter(c);
+            for (char c : line)
+            {
+                const Character &ch = m_DebugFont->GetCharacter(c);
                 textWidth += (ch.Advance >> 6) * scale;
             }
             float x = (float)width - textWidth - 10.0f;
-            
+
             RenderText(line, x, yStart, scale, glm::vec3(0.0f, 1.0f, 0.0f));
             yStart += 25.0f;
         }
@@ -434,34 +426,32 @@ void DebugSystem::Render(Scene& scene)
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
-    
+
     if (m_ShowAudioDebug)
     {
         auto view = scene.registry.view<AudioSourceComponent, TransformComponent>();
-        for (auto entity : view) {
-            const auto& transform = view.get<TransformComponent>(entity);
+        for (auto entity : view)
+        {
+            const auto &transform = view.get<TransformComponent>(entity);
             glm::vec3 pos = transform.GetWorldModelMatrix(scene.registry)[3];
         }
     }
-    
-
 
     if (m_ShowLightGizmos)
 
-
     {
         auto view = scene.registry.view<ParticleEmitterComponent, TransformComponent>();
-        for (auto entity : view) {
-            const auto& transform = view.get<TransformComponent>(entity);
+        for (auto entity : view)
+        {
+            const auto &transform = view.get<TransformComponent>(entity);
             glm::vec3 pos = transform.GetWorldModelMatrix(scene.registry)[3];
         }
     }
 
-    // Restore previous Polygon Mode (e.g., Wireframe)
     glPolygonMode(GL_FRONT_AND_BACK, polygonMode[0]);
 }
 
-void DebugSystem::RenderText(const std::string& text, float x, float y, float scale, glm::vec3 color)
+void DebugSystem::RenderText(const std::string &text, float x, float y, float scale, glm::vec3 color)
 {
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
@@ -473,7 +463,7 @@ void DebugSystem::RenderText(const std::string& text, float x, float y, float sc
 
     for (char c : text)
     {
-        const Character& ch = m_DebugFont->GetCharacter(c);
+        const Character &ch = m_DebugFont->GetCharacter(c);
 
         float xpos = x + ch.Bearing.x * scale;
         float ypos = y + (ch.Size.y - ch.Bearing.y) * scale;
@@ -481,14 +471,13 @@ void DebugSystem::RenderText(const std::string& text, float x, float y, float sc
         float h = ch.Size.y * scale;
 
         std::vector<float> vertices = {
-             xpos,     ypos - h,   0.0f, 0.0f,            
-             xpos,     ypos,       0.0f, 1.0f,
-             xpos + w, ypos,       1.0f, 1.0f,
+            xpos, ypos - h, 0.0f, 0.0f,
+            xpos, ypos, 0.0f, 1.0f,
+            xpos + w, ypos, 1.0f, 1.0f,
 
-             xpos,     ypos - h,   0.0f, 0.0f,
-             xpos + w, ypos,       1.0f, 1.0f,
-             xpos + w, ypos - h,   1.0f, 0.0f
-        };
+            xpos, ypos - h, 0.0f, 0.0f,
+            xpos + w, ypos, 1.0f, 1.0f,
+            xpos + w, ypos - h, 1.0f, 0.0f};
 
         m_TextQuad->DrawDynamic(*m_TextShader, ch.TextureID, color, vertices);
 
@@ -509,21 +498,21 @@ void DebugSystem::ToggleStatsOverlay()
     m_ShowStatsOverlay = !m_ShowStatsOverlay;
     std::cout << "\n========== Stats Overlay (F10) ==========" << std::endl;
     std::cout << "[DebugSystem] Stats Overlay: " << (m_ShowStatsOverlay ? "ON" : "OFF") << std::endl;
-    
-    // Resource Check
+
     if (m_ShowStatsOverlay)
     {
         bool fontOK = (m_DebugFont != nullptr);
         bool shaderOK = (m_TextShader != nullptr);
         bool quadOK = (m_TextQuad != nullptr);
-        
+
         std::cout << "[DebugSystem] Resources Status:" << std::endl;
         std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check src/asset/fonts/time.ttf)") << std::endl;
         std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check src/asset/shaders/text.vs/fs)") << std::endl;
         std::cout << "  Quad:   " << (quadOK ? "OK" : "MISSING") << std::endl;
-        
-        if (!fontOK || !shaderOK || !quadOK) {
-             std::cout << "[WARNING] Overlay will NOT render due to missing resources!" << std::endl;
+
+        if (!fontOK || !shaderOK || !quadOK)
+        {
+            std::cout << "[WARNING] Overlay will NOT render due to missing resources!" << std::endl;
         }
     }
     std::cout << "=========================================" << std::endl;
@@ -564,7 +553,7 @@ void DebugSystem::LogControls()
     std::cout << "====================================" << std::endl;
 }
 
-void DebugSystem::ProcessKey(KeyboardManager& keyboard, int key, bool& pressedState, std::function<void()> action)
+void DebugSystem::ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {
@@ -573,7 +562,11 @@ void DebugSystem::ProcessKey(KeyboardManager& keyboard, int key, bool& pressedSt
             action();
             pressedState = true;
         }
-    } else { pressedState = false; }
+    }
+    else
+    {
+        pressedState = false;
+    }
 }
 
 void DebugSystem::LogStats()
@@ -586,10 +579,9 @@ void DebugSystem::LogStats()
 
 void DebugSystem::LogEntityStats()
 {
-    auto& reg = m_App->GetScene().registry;
+    auto &reg = m_App->GetScene().registry;
     size_t total = reg.storage<entt::entity>().size();
-    
-    // Count specific types
+
     size_t uiEntities = reg.view<UITransformComponent>().size();
     size_t renderEntities = reg.view<MeshRendererComponent>().size();
     size_t physEntities = reg.view<RigidBodyComponent>().size();
@@ -602,22 +594,18 @@ void DebugSystem::LogEntityStats()
     std::cout << "================================================" << std::endl;
 }
 
-
 void DebugSystem::ToggleDebugCamera()
 {
-    auto& scene = m_App->GetScene();
-    auto& registry = scene.registry;
+    auto &scene = m_App->GetScene();
+    auto &registry = scene.registry;
 
     if (m_IsDebugCameraActive)
     {
-        // Switch BACK to user camera
-        // Disable debug camera
         if (registry.valid(m_DebugCamera) && registry.all_of<CameraComponent>(m_DebugCamera))
         {
             registry.get<CameraComponent>(m_DebugCamera).isPrimary = false;
         }
 
-        // Re-enable user camera
         if (registry.valid(m_LastActiveCamera) && registry.all_of<CameraComponent>(m_LastActiveCamera))
         {
             registry.get<CameraComponent>(m_LastActiveCamera).isPrimary = true;
@@ -625,85 +613,84 @@ void DebugSystem::ToggleDebugCamera()
         }
         else
         {
-            // If user camera is gone, try to find ANY camera
             entt::entity fallback = scene.GetActiveCamera();
             if (fallback == entt::null)
             {
-                // Iterate to find one
-                 auto view = registry.view<CameraComponent>();
-                 for(auto entity : view) {
-                     if (entity != m_DebugCamera) {
-                         view.get<CameraComponent>(entity).isPrimary = true;
-                         std::cout << "[Debug] Original camera invalid. Switched to fallback camera (Entity " << (uint32_t)entity << ")" << std::endl;
-                         break;
-                     }
-                 }
+                auto view = registry.view<CameraComponent>();
+                for (auto entity : view)
+                {
+                    if (entity != m_DebugCamera)
+                    {
+                        view.get<CameraComponent>(entity).isPrimary = true;
+                        std::cout << "[Debug] Original camera invalid. Switched to fallback camera (Entity " << (uint32_t)entity << ")" << std::endl;
+                        break;
+                    }
+                }
             }
         }
-        
+
         m_IsDebugCameraActive = false;
         std::cout << "========== Debug Camera: OFF ==========" << std::endl;
     }
     else
     {
-        // Switch TO Debug Camera
-        m_LastActiveCamera = scene.GetActiveCamera(); // Save current valid camera
+        m_LastActiveCamera = scene.GetActiveCamera();
 
-        // Disable current camera
         if (registry.valid(m_LastActiveCamera))
         {
-            if(registry.all_of<CameraComponent>(m_LastActiveCamera))
+            if (registry.all_of<CameraComponent>(m_LastActiveCamera))
                 registry.get<CameraComponent>(m_LastActiveCamera).isPrimary = false;
         }
-        
-        // Ensure Debug Camera exists
+
         if (!registry.valid(m_DebugCamera))
         {
             m_DebugCamera = scene.createEntity();
             registry.emplace<InfoComponent>(m_DebugCamera, "Debug Camera", "Debug");
-            
-            auto& trans = registry.emplace<TransformComponent>(m_DebugCamera);
-            // Copy position from last camera if possible, or use default
-            if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera)) {
+
+            auto &trans = registry.emplace<TransformComponent>(m_DebugCamera);
+            if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera))
+            {
                 trans.position = registry.get<TransformComponent>(m_LastActiveCamera).position;
-                // Offset slightly to avoid Z-fighting or clipping if exact same pos? Not really needed for camera.
-            } else {
+            }
+            else
+            {
                 trans.position = glm::vec3(0.0f, 5.0f, 10.0f);
             }
 
-            auto& cam = registry.emplace<CameraComponent>(m_DebugCamera);
+            auto &cam = registry.emplace<CameraComponent>(m_DebugCamera);
             cam.isPrimary = true;
             cam.fov = 45.0f;
             cam.nearPlane = 0.1f;
             cam.farPlane = 1000.0f;
-            
-            // Script
+
             std::string scriptName = "DefaultCameraController";
-            Scriptable* scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+            Scriptable *scriptInstance = ScriptRegistry::Instance().Create(scriptName);
             if (scriptInstance)
             {
-                 auto& scriptComp = registry.emplace<ScriptComponent>(m_DebugCamera);
-                 scriptComp.instance = scriptInstance;
-                 scriptComp.InstantiateScript = [scriptName](){ return ScriptRegistry::Instance().Create(scriptName); };
-                 scriptComp.DestroyScript = [](ScriptComponent* nsc){ delete nsc->instance; nsc->instance = nullptr; };
-                 scriptComp.instance->Init(m_DebugCamera, &scene, m_App);
-                 scriptComp.instance->OnCreate();
+                auto &scriptComp = registry.emplace<ScriptComponent>(m_DebugCamera);
+                scriptComp.instance = scriptInstance;
+                scriptComp.InstantiateScript = [scriptName]()
+                { return ScriptRegistry::Instance().Create(scriptName); };
+                scriptComp.DestroyScript = [](ScriptComponent *nsc)
+                { delete nsc->instance; nsc->instance = nullptr; };
+                scriptComp.instance->Init(m_DebugCamera, &scene, m_App);
+                scriptComp.instance->OnCreate();
             }
         }
         else
         {
-             // Enable existing debug camera
-             if (registry.all_of<CameraComponent>(m_DebugCamera)) {
-                 registry.get<CameraComponent>(m_DebugCamera).isPrimary = true;
-                 
-                 // Smooth transition: Copy position from User Camera
-                 if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera)) {
-                    auto& userTrans = registry.get<TransformComponent>(m_LastActiveCamera);
-                    auto& debugTrans = registry.get<TransformComponent>(m_DebugCamera);
+            if (registry.all_of<CameraComponent>(m_DebugCamera))
+            {
+                registry.get<CameraComponent>(m_DebugCamera).isPrimary = true;
+
+                if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera))
+                {
+                    auto &userTrans = registry.get<TransformComponent>(m_LastActiveCamera);
+                    auto &debugTrans = registry.get<TransformComponent>(m_DebugCamera);
                     debugTrans.position = userTrans.position;
                     debugTrans.rotation = userTrans.rotation;
-                 }
-             }
+                }
+            }
         }
 
         m_IsDebugCameraActive = true;
@@ -712,73 +699,76 @@ void DebugSystem::ToggleDebugCamera()
     }
 }
 
-
-void DebugSystem::ClearDebugLabels(Scene& scene)
+void DebugSystem::ClearDebugLabels(Scene &scene)
 {
-    auto& registry = scene.registry;
-    for (auto& pair : m_EntityLabelMap)
+    auto &registry = scene.registry;
+    for (auto &pair : m_EntityLabelMap)
     {
-        if (registry.valid(pair.second)) {
+        if (registry.valid(pair.second))
+        {
             registry.destroy(pair.second);
         }
     }
     m_EntityLabelMap.clear();
 }
 
-void DebugSystem::UpdateDebugLabels(Scene& scene)
+void DebugSystem::UpdateDebugLabels(Scene &scene)
 {
-    if (!m_ShowEntityNames) {
-        if (!m_EntityLabelMap.empty()) {
+    if (!m_ShowEntityNames)
+    {
+        if (!m_EntityLabelMap.empty())
+        {
             ClearDebugLabels(scene);
         }
         return;
     }
 
-    auto& registry = scene.registry;
+    auto &registry = scene.registry;
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
 
-    // Camera Info
     entt::entity camEntity = scene.GetActiveCamera();
-    if (m_IsDebugCameraActive) camEntity = m_DebugCamera;
+    if (m_IsDebugCameraActive)
+        camEntity = m_DebugCamera;
 
     glm::mat4 vp = glm::mat4(1.0f);
-    if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity)) {
-         auto& cam = registry.get<CameraComponent>(camEntity);
-         auto& camTrans = registry.get<TransformComponent>(camEntity);
-         
-         float aspect = (float)width / (float)height;
-         glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-         glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
-         vp = proj * view;
-    } else {
-        return; // No camera, no projection
+    if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity))
+    {
+        auto &cam = registry.get<CameraComponent>(camEntity);
+        auto &camTrans = registry.get<TransformComponent>(camEntity);
+
+        float aspect = (float)width / (float)height;
+        glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
+        glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
+        vp = proj * view;
+    }
+    else
+    {
+        return;
     }
 
-    // Iterate all logic entities to maintain labels
     auto view = registry.view<InfoComponent, TransformComponent>();
-    
-    // 1. Create/Update phase
+
     std::unordered_map<entt::entity, entt::entity> nextMap;
 
     for (auto entity : view)
     {
-        // Skip current camera, skip debug camera, skip labels themselves
-        if (entity == camEntity || entity == m_DebugCamera) continue;
-        
-        // Skip if this entity is a label (check by checking if it exists in current map values, or check component)
-        // Optimization: Assume labels have a specific tag "DebugLabel" stored in InfoComponent
-        auto& entityInfo = view.get<InfoComponent>(entity);
-        if (entityInfo.tag == "DebugLabel") continue;
+        if (entity == camEntity || entity == m_DebugCamera)
+            continue;
+
+        auto &entityInfo = view.get<InfoComponent>(entity);
+        if (entityInfo.tag == "DebugLabel")
+            continue;
 
         entt::entity labelEntity = entt::null;
-        if (m_EntityLabelMap.find(entity) != m_EntityLabelMap.end()) {
-             labelEntity = m_EntityLabelMap[entity];
-             if (!registry.valid(labelEntity)) labelEntity = entt::null;
+        if (m_EntityLabelMap.find(entity) != m_EntityLabelMap.end())
+        {
+            labelEntity = m_EntityLabelMap[entity];
+            if (!registry.valid(labelEntity))
+                labelEntity = entt::null;
         }
 
-        // Logic to calculate position (AABB or Scale)
-        auto& tr = view.get<TransformComponent>(entity);
+        auto &tr = view.get<TransformComponent>(entity);
 
         glm::mat4 modelMatrix = tr.GetWorldModelMatrix(registry);
         glm::vec3 labelPos;
@@ -786,227 +776,245 @@ void DebugSystem::UpdateDebugLabels(Scene& scene)
 
         if (registry.all_of<MeshRendererComponent>(entity))
         {
-             auto& mrc = registry.get<MeshRendererComponent>(entity);
-             if (mrc.model)
-             {
-                 glm::vec3 localTop = glm::vec3(
-                     (mrc.model->AABBmin.x + mrc.model->AABBmax.x) * 0.5f,
-                     mrc.model->AABBmax.y,
-                     (mrc.model->AABBmin.z + mrc.model->AABBmax.z) * 0.5f
-                 );
-                 labelPos = glm::vec3(modelMatrix * glm::vec4(localTop, 1.0f));
-                 labelPos.y += 0.2f; 
-                 usedAABB = true;
-             }
+            auto &mrc = registry.get<MeshRendererComponent>(entity);
+            if (mrc.model)
+            {
+                glm::vec3 localTop = glm::vec3(
+                    (mrc.model->AABBmin.x + mrc.model->AABBmax.x) * 0.5f,
+                    mrc.model->AABBmax.y,
+                    (mrc.model->AABBmin.z + mrc.model->AABBmax.z) * 0.5f);
+                labelPos = glm::vec3(modelMatrix * glm::vec4(localTop, 1.0f));
+                labelPos.y += 0.2f;
+                usedAABB = true;
+            }
         }
 
         if (!usedAABB)
         {
-             labelPos = glm::vec3(modelMatrix[3]);
-             labelPos.y += tr.scale.y * 0.6f + 0.5f;
+            labelPos = glm::vec3(modelMatrix[3]);
+            labelPos.y += tr.scale.y * 0.6f + 0.5f;
         }
 
-        // Project to screen
         glm::vec4 clipPos = vp * glm::vec4(labelPos, 1.0f);
         bool visible = false;
         glm::vec2 screenPos(0.0f);
 
-        if (clipPos.w > 0.1f) { 
-             glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
-             if (ndc.x >= -1.0f && ndc.x <= 1.0f && ndc.y >= -1.0f && ndc.y <= 1.0f && ndc.z < 1.0f) {
-                 screenPos.x = (ndc.x * 0.5f + 0.5f) * width;
-                 screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * height; // Inverted Y for UI
-                 visible = true;
-             }
+        if (clipPos.w > 0.1f)
+        {
+            glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+            if (ndc.x >= -1.0f && ndc.x <= 1.0f && ndc.y >= -1.0f && ndc.y <= 1.0f && ndc.z < 1.0f)
+            {
+                screenPos.x = (ndc.x * 0.5f + 0.5f) * width;
+                screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
+                visible = true;
+            }
         }
 
         if (visible)
         {
-            if (labelEntity == entt::null) {
-                // Create new label
+            if (labelEntity == entt::null)
+            {
                 labelEntity = scene.createEntity();
                 registry.emplace<InfoComponent>(labelEntity, "DebugLabel_" + entityInfo.name, "DebugLabel");
                 registry.emplace<UITransformComponent>(labelEntity);
-                auto& text = registry.emplace<UITextComponent>(labelEntity);
-                
+                auto &text = registry.emplace<UITextComponent>(labelEntity);
+
                 text.model = m_TextQuad;
                 text.shader = m_TextShader;
                 text.font = m_DebugFont;
                 text.text = entityInfo.name;
-                text.color = glm::vec3(1.0f, 1.0f, 0.0f); // Yellow
-                text.scale = 2.0f; 
+                text.color = glm::vec3(1.0f, 1.0f, 0.0f);
+                text.scale = 2.0f;
             }
-            
-            // Update Label
-            auto& uiTr = registry.get<UITransformComponent>(labelEntity);
-            auto& text = registry.get<UITextComponent>(labelEntity);
-            
-            float textW = 0.0f;
-            if (m_DebugFont) textW = (float)text.text.length() * 11.0f * text.scale; 
-            
-            uiTr.position = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.size = glm::vec2(textW, 20.0f * text.scale); 
-            uiTr.zIndex = 100; // on top
 
-            // Carry over to next map
+            auto &uiTr = registry.get<UITransformComponent>(labelEntity);
+            auto &text = registry.get<UITextComponent>(labelEntity);
+
+            float textW = 0.0f;
+            if (m_DebugFont)
+                textW = (float)text.text.length() * 11.0f * text.scale;
+
+            uiTr.position = screenPos - glm::vec2(textW / 2.0f, 0.0f);
+            uiTr.size = glm::vec2(textW, 20.0f * text.scale);
+            uiTr.zIndex = 100;
+
             nextMap[entity] = labelEntity;
         }
         else
         {
-            if (labelEntity != entt::null) {
+            if (labelEntity != entt::null)
+            {
                 registry.destroy(labelEntity);
             }
         }
     }
 
-    // Destroy orphans
-    for (auto& pair : m_EntityLabelMap) {
-        if (nextMap.find(pair.first) == nextMap.end()) {
-             if (registry.valid(pair.second)) {
-                 registry.destroy(pair.second);
-             }
+    for (auto &pair : m_EntityLabelMap)
+    {
+        if (nextMap.find(pair.first) == nextMap.end())
+        {
+            if (registry.valid(pair.second))
+            {
+                registry.destroy(pair.second);
+            }
         }
     }
 
     m_EntityLabelMap = nextMap;
 }
 
-
-void DebugSystem::ClearLightLabels(Scene& scene)
+void DebugSystem::ClearLightLabels(Scene &scene)
 {
-    auto& registry = scene.registry;
-    for (auto& pair : m_LightLabelMap)
+    auto &registry = scene.registry;
+    for (auto &pair : m_LightLabelMap)
     {
-        if (registry.valid(pair.second)) {
+        if (registry.valid(pair.second))
+        {
             registry.destroy(pair.second);
         }
     }
     m_LightLabelMap.clear();
 }
 
-void DebugSystem::UpdateLightLabels(Scene& scene)
+void DebugSystem::UpdateLightLabels(Scene &scene)
 {
-    if (!m_ShowLightGizmos) {
-        if (!m_LightLabelMap.empty()) {
+    if (!m_ShowLightGizmos)
+    {
+        if (!m_LightLabelMap.empty())
+        {
             ClearLightLabels(scene);
         }
         return;
     }
 
-    auto& registry = scene.registry;
+    auto &registry = scene.registry;
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
 
     entt::entity camEntity = scene.GetActiveCamera();
-    if (m_IsDebugCameraActive) camEntity = m_DebugCamera;
+    if (m_IsDebugCameraActive)
+        camEntity = m_DebugCamera;
 
     glm::mat4 vp = glm::mat4(1.0f);
-    if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity)) {
-         auto& cam = registry.get<CameraComponent>(camEntity);
-         auto& camTrans = registry.get<TransformComponent>(camEntity);
-         
-         float aspect = (float)width / (float)height;
-         glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-         glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
-         vp = proj * view;
-    } else {
+    if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity))
+    {
+        auto &cam = registry.get<CameraComponent>(camEntity);
+        auto &camTrans = registry.get<TransformComponent>(camEntity);
+
+        float aspect = (float)width / (float)height;
+        glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
+        glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
+        vp = proj * view;
+    }
+    else
+    {
         return;
     }
 
     std::unordered_map<entt::entity, entt::entity> nextMap;
 
-    auto processLight = [&](entt::entity entity, const glm::vec3& pos, const std::string& typeName, const glm::vec3& color)
+    auto processLight = [&](entt::entity entity, const glm::vec3 &pos, const std::string &typeName, const glm::vec3 &color)
     {
         entt::entity labelEntity = entt::null;
-        if (m_LightLabelMap.find(entity) != m_LightLabelMap.end()) {
-             labelEntity = m_LightLabelMap[entity];
-             if (!registry.valid(labelEntity)) labelEntity = entt::null;
+        if (m_LightLabelMap.find(entity) != m_LightLabelMap.end())
+        {
+            labelEntity = m_LightLabelMap[entity];
+            if (!registry.valid(labelEntity))
+                labelEntity = entt::null;
         }
 
         glm::vec4 clipPos = vp * glm::vec4(pos, 1.0f);
         bool visible = false;
         glm::vec2 screenPos(0.0f);
 
-        if (clipPos.w > 0.1f) { 
-             glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
-             if (ndc.x >= -1.0f && ndc.x <= 1.0f && ndc.y >= -1.0f && ndc.y <= 1.0f && ndc.z < 1.0f) {
-                 screenPos.x = (ndc.x * 0.5f + 0.5f) * width;
-                 screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
-                 visible = true;
-             }
+        if (clipPos.w > 0.1f)
+        {
+            glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+            if (ndc.x >= -1.0f && ndc.x <= 1.0f && ndc.y >= -1.0f && ndc.y <= 1.0f && ndc.z < 1.0f)
+            {
+                screenPos.x = (ndc.x * 0.5f + 0.5f) * width;
+                screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
+                visible = true;
+            }
         }
 
         if (visible)
         {
-            if (labelEntity == entt::null) {
+            if (labelEntity == entt::null)
+            {
                 labelEntity = scene.createEntity();
                 registry.emplace<InfoComponent>(labelEntity, "DebugLight_" + typeName, "DebugLabel");
                 registry.emplace<UITransformComponent>(labelEntity);
-                auto& text = registry.emplace<UITextComponent>(labelEntity);
-                
+                auto &text = registry.emplace<UITextComponent>(labelEntity);
+
                 text.model = m_TextQuad;
                 text.shader = m_TextShader;
                 text.font = m_DebugFont;
                 text.text = typeName;
                 text.color = color;
-                text.scale = 2.0f; // Larger size (matched with Entity Names)
+                text.scale = 2.0f;
             }
-            
-            auto& uiTr = registry.get<UITransformComponent>(labelEntity);
-            auto& text = registry.get<UITextComponent>(labelEntity);
-            
+
+            auto &uiTr = registry.get<UITransformComponent>(labelEntity);
+            auto &text = registry.get<UITextComponent>(labelEntity);
+
             float textW = 0.0f;
-            if (m_DebugFont) textW = (float)text.text.length() * 11.0f * text.scale; 
-            
+            if (m_DebugFont)
+                textW = (float)text.text.length() * 11.0f * text.scale;
+
             uiTr.position = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.size = glm::vec2(textW, 20.0f * text.scale); 
-            uiTr.zIndex = 90; // below entity names
+            uiTr.size = glm::vec2(textW, 20.0f * text.scale);
+            uiTr.zIndex = 90;
 
             nextMap[entity] = labelEntity;
         }
         else
         {
-            if (labelEntity != entt::null) {
+            if (labelEntity != entt::null)
+            {
                 registry.destroy(labelEntity);
             }
         }
     };
 
-    // Point Lights
     auto pointLights = registry.view<PointLightComponent, TransformComponent>();
-    for(auto entity : pointLights) {
-        auto& tr = pointLights.get<TransformComponent>(entity);
+    for (auto entity : pointLights)
+    {
+        auto &tr = pointLights.get<TransformComponent>(entity);
         processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), "[POINT]", glm::vec3(1.0f, 1.0f, 0.0f));
     }
 
-    // Spot Lights
     auto spotLights = registry.view<SpotLightComponent, TransformComponent>();
-    for(auto entity : spotLights) {
-        auto& tr = spotLights.get<TransformComponent>(entity);
+    for (auto entity : spotLights)
+    {
+        auto &tr = spotLights.get<TransformComponent>(entity);
         processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), "[SPOT]", glm::vec3(0.0f, 1.0f, 1.0f));
     }
 
-    // Directional Lights (Handle case where they might not have Transform)
     auto dirLights = registry.view<DirectionalLightComponent>();
-    for(auto entity : dirLights) {
+    for (auto entity : dirLights)
+    {
         glm::vec3 pos(0.0f);
-        if (registry.all_of<TransformComponent>(entity)) {
-             auto& tr = registry.get<TransformComponent>(entity);
-             pos = glm::vec3(tr.GetWorldModelMatrix(registry)[3]);
-        } else {
-             // Fallback: Position relative to camera to ensure visibility? 
-             // Or just Origin. For now Origin + Up to be visible.
-             pos = glm::vec3(0.0f, 5.0f, 0.0f); 
+        if (registry.all_of<TransformComponent>(entity))
+        {
+            auto &tr = registry.get<TransformComponent>(entity);
+            pos = glm::vec3(tr.GetWorldModelMatrix(registry)[3]);
+        }
+        else
+        {
+            pos = glm::vec3(0.0f, 5.0f, 0.0f);
         }
         processLight(entity, pos, "[DIR]", glm::vec3(1.0f, 0.5f, 0.0f));
     }
 
-    // Destroy orphans
-    for (auto& pair : m_LightLabelMap) {
-        if (nextMap.find(pair.first) == nextMap.end()) {
-             if (registry.valid(pair.second)) {
-                 registry.destroy(pair.second);
-             }
+    for (auto &pair : m_LightLabelMap)
+    {
+        if (nextMap.find(pair.first) == nextMap.end())
+        {
+            if (registry.valid(pair.second))
+            {
+                registry.destroy(pair.second);
+            }
         }
     }
 
@@ -1014,4 +1022,3 @@ void DebugSystem::UpdateLightLabels(Scene& scene)
 }
 
 #endif
-

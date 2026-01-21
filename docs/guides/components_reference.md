@@ -83,8 +83,9 @@ All light components support shadow casting and active state control via optiona
 
 ### Directional Light
 ```text
-LIGHT_DIR <dir_x> <dir_y> <dir_z> <r> <g> <b> <intensity> [ambient] [diffuse] [isCastShadow] [active]
+LIGHT_DIR <r> <g> <b> <intensity> [ambient] [diffuse] [isCastShadow] [active]
 ```
+- **Direction**: Determined by the entity's `TRANSFORM` rotation.
 - **intensity**: Light intensity multiplier.
 - **ambient**: Ambient strength multiplier (optional, default 0.2).
 - **diffuse**: Diffuse strength multiplier (optional, default 0.8).
@@ -95,7 +96,8 @@ LIGHT_DIR <dir_x> <dir_y> <dir_z> <r> <g> <b> <intensity> [ambient] [diffuse] [i
 
 **Example:**
 ```text
-LIGHT_DIR -0.5 -1.0 -0.5 1.0 0.95 0.8 0.8 0.1 0.3 1 1
+TRANSFORM 0 0 0  45 0 0  1 1 1  # Sets rotation/direction
+LIGHT_DIR 1.0 0.95 0.8 1.0 0.1 0.3 1 1
 ```
 This creates a directional light with shadow casting enabled and active.
 
@@ -113,6 +115,7 @@ LIGHT_POINT <r> <g> <b> <intensity> <radius> [constant] [linear] [quadratic] [am
 ```text
 LIGHT_SPOT <r> <g> <b> <intensity> <cut> <outer> [constant] [linear] [quadratic] [ambient] [diffuse] [isCastShadow] [active]
 ```
+- **Direction**: Determined by the entity's `TRANSFORM` rotation.
 - **cut/outer**: Cutoff angles in degrees.
 - **attenuation**: optional constant, linear, quadratic falloff.
 - **ambient/diffuse**: optional multipliers (defaults: 0.1, 1.0).
