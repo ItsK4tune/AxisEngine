@@ -11,7 +11,7 @@
     "cullFaceEnabled": true,
     "depthTestEnabled": true,
     "audioDevice": "default",
-    "iconPath": "assets/icon.png",
+    "iconPath": "src/asset/project/icon.png",
     "instanceBatchingEnabled": true,
     "frustumCullingEnabled": true,
     "shadowProjectionSize": 50.0,

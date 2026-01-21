@@ -20,7 +20,7 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     "cullFaceEnabled": true,
     "depthTestEnabled": true,
     "audioDevice": "default",
-    "iconPath": "assets/icon.png",
+    "iconPath": "src/asset/project/icon.png",
     "instanceBatchingEnabled": true,
     "frustumCullingEnabled": true,
     "shadowProjectionSize": 100.0,
@@ -42,7 +42,7 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     - `vsync`: Enable Vertical Sync (locks FPS to refresh rate).
     - `refreshRate`: Target refresh rate (Hz) for Fullscreen mode.
     - `frameRateLimit`: Maximum frames per second (0 = Unlimited).
-    - `iconPath`: Path to the window icon image (PNG/JPG).
+    - `iconPath`: Path to the application window icon (default: `src/asset/project/icon.png`).
 
 - **Graphics Settings**
     - `shadowMode`: Shadow rendering mode (default: `1`).

@@ -24,7 +24,7 @@ struct AppConfig
 
     std::string audioDevice = "default";
 
-    std::string iconPath = "";
+    std::string iconPath = "src/asset/project/icon.png";
 
     bool instanceBatchingEnabled = true;
     bool frustumCullingEnabled = true;

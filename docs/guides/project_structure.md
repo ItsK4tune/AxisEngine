@@ -6,7 +6,25 @@ The project follows a modular structure to separate Engine core, Game logic, and
 
 ```text
 GameEngine/
-├── assets/          # Branding assets (Logo, Icon)
+├── src/
+│   ├── asset/
+│   │   ├── project/       # Project specific assets (icon.png, logo.png)
+│   │   ├── shaders/       # Shader files
+│   │   └── ...            # Other asset types (textures, models, fonts)
+│   ├── app/         # Application, Window, Config
+│   ├── audio/       # Sound System
+│   ├── debug/       # Debug System
+│   ├── ecs/         # ECS Systems & Components
+│   ├── event/       # Event System
+│   ├── graphic/     # Rendering modules
+│   ├── input/       # Input Managers (Mouse, Keyboard)
+│   ├── physic/      # Physics Wrapper
+│   ├── resource/    # Resource Manager
+│   ├── scene/       # Scene Management
+│   ├── script/      # Scripting Implementation
+│   ├── state/       # State Machine
+│   ├── third_party/ # Vendor Code (glad, stb_image)
+│   └── utils/       # Helpers
 ├── bin/             # Output binaries (Executables)
 ├── cmake/           # CMake modules and scripts
 ├── configuration/   # JSON Configuration files (settings.json)
