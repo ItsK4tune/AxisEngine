@@ -32,7 +32,8 @@ docs/
 │   ├── resource_manager.md  # Asset loading
 │   ├── scene_manager.md     # Scene management
 │   ├── sound_manager.md     # Audio playback
-│   └── input_manager.md     # Input handling
+│   ├── input_manager.md     # Input handling
+│   └── physics_world.md     # Physics config & simulation
 │
 ├── systems/                 # System API references
 │   ├── render_system.md     # Rendering
@@ -173,4 +174,4 @@ When adding new documentation:
 
 ---
 
-**Last Updated**: 2026-01-19
+**Last Updated**: 2026-01-23

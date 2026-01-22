@@ -57,6 +57,10 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     - `shadowProjectionSize`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
     - `shadowFrustumCullingEnabled`: Enable/Disable culling of objects outside the light's view frustum (default: `true`).
     - `shadowDistanceCulling`: Maximum distance (from main camera) at which objects cast shadows (default: `100.0`). Objects further than this will not cast shadows.
+    - `physicsMode`: Physics simulation mode (default: `1`).
+        - `0`: FAST (30Hz, 2 iters)
+        - `1`: BALANCED (60Hz, 10 iters)
+        - `2`: ACCURATE (120Hz, 40 iters)
 
 - **Audio Settings**
     - `audioDevice`: ID or Name of the audio output device (use "default" for system default). Use F2 in-game to see available device IDs.

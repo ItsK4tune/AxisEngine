@@ -104,19 +104,27 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
         {
             ss >> restitution;
         }
-        else if (nextToken == "ROT_FACTOR")
+        else if (nextToken == "ROT_FACTOR" || nextToken == "LOCK_ANGULAR")
         {
             float x, y, z;
             ss >> x >> y >> z;
-            rotFactor = glm::vec3(x, y, z);
+            rb.angularFactor = glm::vec3(x, y, z);
             hasRotFactor = true;
         }
-        else if (nextToken == "POS_FACTOR")
+        else if (nextToken == "POS_FACTOR" || nextToken == "LOCK_LINEAR")
         {
             float x, y, z;
             ss >> x >> y >> z;
-            posFactor = glm::vec3(x, y, z);
+            rb.linearFactor = glm::vec3(x, y, z);
             hasPosFactor = true;
+        }
+        else if (nextToken == "PARENT_MATTER" || nextToken == "IS_PARENT_MATTER")
+        {
+            rb.isParentMatter = true;
+        }
+        else if (nextToken == "CHILDREN_MATTER" || nextToken == "IS_CHILDREN_MATTER")
+        {
+            rb.isChildrenMatter = true;
         }
         else if (nextToken == "STATIC")
         {
@@ -180,13 +188,14 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
             rb.body->setUserPointer((void *)(uintptr_t)entity);
 
             if (type == "CAPSULE" || type == "PLAYER")
-                rb.body->setAngularFactor(btVector3(0, 1, 0));
+            {
+                 // Default capsule lock rotation, but allow override
+                 if (!hasRotFactor)
+                    rb.angularFactor = glm::vec3(0, 1, 0);
+            }
 
-            if (hasRotFactor)
-                rb.body->setAngularFactor(BulletGLMHelpers::convert(rotFactor));
-
-            if (hasPosFactor)
-                rb.body->setLinearFactor(BulletGLMHelpers::convert(posFactor));
+            rb.body->setAngularFactor(BulletGLMHelpers::convert(rb.angularFactor));
+            rb.body->setLinearFactor(BulletGLMHelpers::convert(rb.linearFactor));
 
             if (restitution > 0.0f)
             {

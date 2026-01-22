@@ -1,7 +1,7 @@
 #include <ecs/systems/physics_system.h>
+#include <engine/ecs/cached_query.h>
 #include <script/scriptable.h>
 #include <physic/physic_world.h>
-#include <iostream>
 #include <utils/bullet_glm_helpers.h>
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -10,36 +10,51 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
     if (!m_Enabled)
         return;
 
+    if (!m_signalsConnected)
+    {
+        m_connections.push_back(scene.registry.on_construct<RigidBodyComponent>().connect<&CachedQuery<RigidBodyComponent, TransformComponent>::MarkDirty>(m_simulationQuery));
+        m_connections.push_back(scene.registry.on_destroy<RigidBodyComponent>().connect<&CachedQuery<RigidBodyComponent, TransformComponent>::MarkDirty>(m_simulationQuery));
+        m_connections.push_back(scene.registry.on_construct<TransformComponent>().connect<&CachedQuery<RigidBodyComponent, TransformComponent>::MarkDirty>(m_simulationQuery));
+        m_connections.push_back(scene.registry.on_destroy<TransformComponent>().connect<&CachedQuery<RigidBodyComponent, TransformComponent>::MarkDirty>(m_simulationQuery));
+        m_signalsConnected = true;
+    }
+
+    m_simulationQuery.Update(scene.registry);
+    m_worldMatrixCache.clear();
+
     physicsWorld.Update(dt);
 
-    auto view = scene.registry.view<RigidBodyComponent, TransformComponent>();
+    const auto &entities = m_simulationQuery.GetEntities();
 
-    for (auto entity : view)
+    for (auto entity : entities)
     {
-        auto &rb = view.get<RigidBodyComponent>(entity);
-        auto &transform = view.get<TransformComponent>(entity);
+        auto &rb = scene.registry.get<RigidBodyComponent>(entity);
+        auto &transform = scene.registry.get<TransformComponent>(entity);
 
-        if (rb.body)
+        if (!rb.body)
+            continue;
+
+        bool isDynamic = !rb.body->isStaticOrKinematicObject();
+        bool isKinematic = rb.body->isKinematicObject();
+        bool hasParent = scene.registry.valid(transform.parent);
+
+        if (isDynamic && rb.body->isActive())
         {
-            if (rb.body->isKinematicObject() || !rb.body->isActive())
-                continue;
-
             btTransform trans;
             if (rb.body->getMotionState())
                 rb.body->getMotionState()->getWorldTransform(trans);
             else
                 trans = rb.body->getWorldTransform();
 
-            transform.position = BulletGLMHelpers::convert(trans.getOrigin());
-            transform.rotation = BulletGLMHelpers::convert(trans.getRotation());
+            glm::vec3 worldPos = BulletGLMHelpers::convert(trans.getOrigin());
+            glm::quat worldRot = BulletGLMHelpers::convert(trans.getRotation());
 
-            if (scene.registry.valid(transform.parent))
+            if (hasParent && rb.isParentMatter)
             {
                 if (scene.registry.all_of<TransformComponent>(transform.parent))
                 {
-                    const auto &parentTrans = scene.registry.get<TransformComponent>(transform.parent);
-                    glm::mat4 parentWorldMatrix = parentTrans.GetWorldModelMatrix(scene.registry);
-                    glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), transform.position) * glm::mat4_cast(transform.rotation);
+                    glm::mat4 parentWorldMatrix = GetCachedWorldMatrix(transform.parent, scene.registry);
+                    glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
 
                     glm::mat4 localMatrix = glm::inverse(parentWorldMatrix) * validWorldMatrix;
 
@@ -54,34 +69,28 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
                     transform.rotation = r;
                 }
             }
-        }
-    }
-
-    for (auto entity : view)
-    {
-        auto &rb = view.get<RigidBodyComponent>(entity);
-        auto &transform = view.get<TransformComponent>(entity);
-
-        if (rb.body && scene.registry.valid(transform.parent))
-        {
-            bool isDynamic = !rb.body->isStaticOrKinematicObject();
-
-            if (!isDynamic || rb.body->isKinematicObject())
+            else
             {
-                glm::mat4 worldMatrix = transform.GetWorldModelMatrix(scene.registry);
-                glm::vec3 worldPos = glm::vec3(worldMatrix[3]);
-                glm::quat worldRot = glm::quat_cast(worldMatrix);
+                transform.position = worldPos;
+                transform.rotation = worldRot;
+            }
+        }
 
-                btTransform tr;
-                tr.setIdentity();
-                tr.setOrigin(BulletGLMHelpers::convert(worldPos));
-                tr.setRotation(BulletGLMHelpers::convert(worldRot));
+        if ((!isDynamic || isKinematic) && hasParent)
+        {
+            glm::mat4 worldMatrix = GetCachedWorldMatrix(entity, scene.registry);
+            glm::vec3 worldPos = glm::vec3(worldMatrix[3]);
+            glm::quat worldRot = glm::quat_cast(worldMatrix);
 
-                rb.body->setWorldTransform(tr);
-                if (rb.body->getMotionState())
-                {
-                    rb.body->getMotionState()->setWorldTransform(tr);
-                }
+            btTransform tr;
+            tr.setIdentity();
+            tr.setOrigin(BulletGLMHelpers::convert(worldPos));
+            tr.setRotation(BulletGLMHelpers::convert(worldRot));
+
+            rb.body->setWorldTransform(tr);
+            if (rb.body->getMotionState())
+            {
+                rb.body->getMotionState()->setWorldTransform(tr);
             }
         }
     }
@@ -89,7 +98,8 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
     btDiscreteDynamicsWorld *world = physicsWorld.GetWorld();
     int numManifolds = world->getDispatcher()->getNumManifolds();
 
-    std::set<CollisionPair> currentCollisions;
+    std::unordered_set<CollisionPair, CollisionPairHash> currentCollisions;
+    currentCollisions.reserve(numManifolds);
 
     for (int i = 0; i < numManifolds; i++)
     {
@@ -122,7 +132,7 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
                 bool isTrigger = (obA->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE) ||
                                  (obB->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE);
 
-                bool isStay = m_activeCollisions.find({eA, eB}) != m_activeCollisions.end();
+                bool isStay = m_activeCollisions.count({eA, eB}) > 0;
 
                 auto Notify = [&](entt::entity target, entt::entity other, bool trigger, bool stay)
                 {
@@ -157,7 +167,7 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
 
     for (const auto &pair : m_activeCollisions)
     {
-        if (currentCollisions.find(pair) == currentCollisions.end())
+        if (currentCollisions.count(pair) == 0)
         {
             entt::entity eA = pair.first;
             entt::entity eB = pair.second;
@@ -210,29 +220,42 @@ void PhysicsSystem::RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
 
-    auto viewCamera = scene.registry.view<CameraComponent, TransformComponent>();
-    for (auto entity : viewCamera)
+    auto &registry = scene.registry;
+    
+    if (!registry.valid(m_cachedPrimaryCamera) || 
+        !registry.all_of<CameraComponent>(m_cachedPrimaryCamera) ||
+        !registry.get<CameraComponent>(m_cachedPrimaryCamera).isPrimary)
     {
-        auto &camera = viewCamera.get<CameraComponent>(entity);
-        if (camera.isPrimary)
+        m_cachedPrimaryCamera = entt::null;
+        auto viewCamera = registry.view<CameraComponent, TransformComponent>();
+        for (auto entity : viewCamera)
         {
-            auto &transform = viewCamera.get<TransformComponent>(entity);
-
-            glm::vec3 pos = transform.position;
-            glm::vec3 front;
-            front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-            front.y = sin(glm::radians(camera.pitch));
-            front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-            front = glm::normalize(front);
-            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-
-            view = glm::lookAt(pos, pos + front, up);
-
-            float aspect = (float)screenWidth / (float)screenHeight;
-
-            projection = glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
-            break;
+            auto &camera = viewCamera.get<CameraComponent>(entity);
+            if (camera.isPrimary)
+            {
+                m_cachedPrimaryCamera = entity;
+                break;
+            }
         }
+    }
+
+    if (registry.valid(m_cachedPrimaryCamera))
+    {
+        auto &camera = registry.get<CameraComponent>(m_cachedPrimaryCamera);
+        auto &transform = registry.get<TransformComponent>(m_cachedPrimaryCamera);
+
+        glm::vec3 pos = transform.position;
+        glm::vec3 front;
+        front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+        front.y = sin(glm::radians(camera.pitch));
+        front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+        front = glm::normalize(front);
+        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+        view = glm::lookAt(pos, pos + front, up);
+
+        float aspect = (float)screenWidth / (float)screenHeight;
+        projection = glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
     }
 
     shader.use();
@@ -244,4 +267,37 @@ void PhysicsSystem::RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader
     glEnable(GL_DEPTH_TEST);
 
     drawer->FrameStart();
+}
+
+glm::mat4 PhysicsSystem::GetCachedWorldMatrix(entt::entity entity, entt::registry &registry)
+{
+    auto it = m_worldMatrixCache.find(entity);
+    if (it != m_worldMatrixCache.end())
+        return it->second;
+
+    glm::mat4 result;
+    if (registry.all_of<TransformComponent>(entity))
+    {
+        const auto &tc = registry.get<TransformComponent>(entity);
+        
+        glm::mat4 local = tc.GetLocalModelMatrix();
+        
+        if (registry.valid(tc.parent))
+        {
+            glm::mat4 parentWorld = GetCachedWorldMatrix(tc.parent, registry);
+            result = parentWorld * local;
+        }
+        else
+        {
+            result = local;
+        }
+    }
+    else
+    {
+        result = glm::mat4(1.0f);
+    }
+
+    // Cache it
+    m_worldMatrixCache[entity] = result;
+    return result;
 }

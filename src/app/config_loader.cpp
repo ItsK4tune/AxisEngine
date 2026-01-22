@@ -86,6 +86,8 @@ AppConfig ConfigLoader::Load(const std::string &path)
             config.shadowDistanceCulling = std::stof(value);
         else if (key == "distanceCulling")
             config.distanceCulling = std::stof(value);
+        else if (key == "physicsMode")
+            config.physicsMode = std::stoi(value);
     }
 
     return config;
@@ -262,6 +264,26 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         {
             if (app)
                 app->GetRenderSystem().SetDistanceCulling(dist);
+        }
+    }
+    else if (subCmd == "PHYSICS_MODE")
+    {
+        std::string modeStr;
+        int mode = 1;
+        if (ss >> modeStr)
+        {
+            if (modeStr == "FAST") mode = 0;
+            else if (modeStr == "BALANCED") mode = 1;
+            else if (modeStr == "ACCURATE") mode = 2;
+            else 
+            {
+                try { mode = std::stoi(modeStr); } catch(...) {}
+            }
+            
+            if (app)
+            {
+                app->GetPhysicsWorld().SetMode(mode);
+            }
         }
     }
 }

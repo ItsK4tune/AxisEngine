@@ -93,8 +93,14 @@ struct MaterialComponent
 struct RigidBodyComponent
 {
     btRigidBody *body = nullptr;
-    btTypedConstraint *constraint = nullptr; // For parent attachment
+    btTypedConstraint *constraint = nullptr;
     bool isAttachedToParent = false;
+    
+    bool isParentMatter = false;
+    bool isChildrenMatter = false;
+
+    glm::vec3 linearFactor = glm::vec3(1.0f);
+    glm::vec3 angularFactor = glm::vec3(1.0f);
 
     void SetRestitution(float restitution)
     {

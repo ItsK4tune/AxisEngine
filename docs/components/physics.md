@@ -7,6 +7,8 @@ Represents a physical object in the Bullet Physics world.
 
 *   `btRigidBody* body`: Pointer to the internal Bullet body.
 *   `bool isAttachedToParent`: If true, position is synced to parent transform.
+*   `bool isParentMatter`: If true, this body affects parent physics/transform (e.g. combined compound shape logic).
+*   `bool isChildrenMatter`: If true, children bodies affect this body.
 
 **Methods:**
 *   `SetLinearVelocity(vec3)`
@@ -17,3 +19,5 @@ Represents a physical object in the Bullet Physics world.
 *   `SetAngularFactor(vec3)`: Lock rotation axes.
 
 **Note:** Changes to `TransformComponent` do NOT automatically sync to `RigidBodyComponent` every frame unless manually handled (Teleporting). Usually, the Physics system moves the Transform.
+
+**Optimization:** usage of `RigidBodyComponent` is optimized via `CachedQuery` in `PhysicsSystem`. Adding/Removing this component triggers query dirty flags.

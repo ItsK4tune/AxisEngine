@@ -16,6 +16,83 @@ PhysicsWorld::PhysicsWorld()
     dynamicsWorld->setDebugDrawer(debugDrawer.get());
 }
 
+void PhysicsWorld::SetMode(int mode)
+{
+    btVector3 gravity = dynamicsWorld ? dynamicsWorld->getGravity() : btVector3(0, -9.81f, 0);
+
+    if (dynamicsWorld)
+    {
+        Clear();
+        dynamicsWorld.reset();
+        solver.reset();
+        overlappingPairCache.reset();
+        dispatcher.reset();
+        collisionConfig.reset();
+    }
+
+    collisionConfig = std::make_unique<btDefaultCollisionConfiguration>();
+    dispatcher = std::make_unique<btCollisionDispatcher>(collisionConfig.get());
+
+    if (mode == 0) // FAST
+    {
+        // Use Dbvt even for fast, because AxisSweep crashes/slows if bounds exceeded
+        overlappingPairCache = std::make_unique<btDbvtBroadphase>();
+    }
+    else // BALANCED (1) & ACCURATE (2)
+    {
+        overlappingPairCache = std::make_unique<btDbvtBroadphase>();
+    }
+
+    solver = std::make_unique<btSequentialImpulseConstraintSolver>();
+    
+    dynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
+        dispatcher.get(), overlappingPairCache.get(), solver.get(), collisionConfig.get());
+    
+    dynamicsWorld->setGravity(gravity);
+
+    if (debugDrawer)
+    {
+        dynamicsWorld->setDebugDrawer(debugDrawer.get());
+    }
+
+    auto& solverInfo = dynamicsWorld->getSolverInfo();
+
+    switch (mode)
+    {
+    case 0: // FAST
+        solverInfo.m_numIterations = 2; // Extreme optimization
+        solverInfo.m_solverMode |= SOLVER_ENABLE_FRICTION_DIRECTION_CACHING; 
+        solverInfo.m_splitImpulse = 0;
+        m_linearSleepingThreshold = 2.0f; // Sleep aggressively
+        m_angularSleepingThreshold = 2.0f;
+        m_timeStep = 1.0f / 30.0f; // Half rate updates
+        m_maxSubSteps = 2;
+        break;
+    
+    case 2: // ACCURATE
+        solverInfo.m_numIterations = 40;
+        solverInfo.m_globalCfm = 0.00001f; // Better stability
+        solverInfo.m_solverMode |= SOLVER_ENABLE_FRICTION_DIRECTION_CACHING;
+        solverInfo.m_splitImpulse = 1;
+        m_linearSleepingThreshold = 0.01f; // Sleep rarely
+        m_angularSleepingThreshold = 0.01f;
+        m_timeStep = 1.0f / 120.0f; // Double rate updates
+        m_maxSubSteps = 10;
+        break;
+
+    case 1: // BALANCED
+    default:
+        solverInfo.m_numIterations = 10;
+        solverInfo.m_solverMode |= SOLVER_ENABLE_FRICTION_DIRECTION_CACHING;
+        solverInfo.m_splitImpulse = 1;
+        m_linearSleepingThreshold = 0.2f;
+        m_angularSleepingThreshold = 0.2f;
+        m_timeStep = 1.0f / 60.0f;
+        m_maxSubSteps = 4;
+        break;
+    }
+}
+
 PhysicsWorld::~PhysicsWorld()
 {
     Clear();
@@ -23,7 +100,8 @@ PhysicsWorld::~PhysicsWorld()
 
 void PhysicsWorld::Update(float dt)
 {
-    dynamicsWorld->stepSimulation(dt, 0);
+    // Use fixed timestep for stability and performance control
+    dynamicsWorld->stepSimulation(dt, m_maxSubSteps, m_timeStep);
 }
 
 void PhysicsWorld::Clear()

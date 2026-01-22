@@ -24,8 +24,11 @@ Defines the surface properties of the mesh.
 ### DirectionalLightComponent
 Global light source (Sun).
 *   **Direction**: Defined by the entity's `TransformComponent` rotation (Forward: `(0, -1, 0)`).
-*   `color` (vec3)
-*   `intensity` (float)
+*   `color` (vec3): Base color.
+*   `intensity` (float): Brightness multiplier.
+*   `active` (bool): Enable/Disable light.
+*   `isCastShadow` (bool): Casts dynamic shadows.
+*   **Lighting**: `ambient`, `diffuse`, `specular` (vec3).
 
 ### PointLightComponent
 Omni-directional light (Lamp).
@@ -33,13 +36,19 @@ Omni-directional light (Lamp).
 *   `color` (vec3)
 *   `intensity` (float)
 *   `radius` (float)
+*   `active` (bool)
+*   `isCastShadow` (bool)
 *   `constant`, `linear`, `quadratic`: Attenuation factors.
+*   **Lighting**: `ambient`, `diffuse`, `specular` (vec3).
 
 ### SpotLightComponent
 Cone light (Flashlight).
 *   **Position & Direction**: Defined by the entity's `TransformComponent` position and rotation.
 *   `color`, `intensity`
+*   `active` (bool)
+*   `isCastShadow` (bool)
 *   `cutOff`, `outerCutOff`: Cone angles (in cosines).
+*   **Lighting**: `ambient`, `diffuse`, `specular` (vec3).
 
 ## SkyboxRenderComponent
 **Struct:** `SkyboxRenderComponent`

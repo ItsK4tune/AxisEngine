@@ -46,21 +46,8 @@ GameEngine/
 ├── lib/             # Static Libraries (.lib)
 ├── resources/       # Game Assets
 ├── scenes/          # Scene Definitions (.scene)
-└── src/             # Core Engine Source Code
-    ├── app/         # Application, Window, Config
-    ├── audio/       # Sound System
-    ├── debug/       # Debug System
-    ├── ecs/         # ECS Systems & Components
-    ├── event/       # Event System
-    ├── graphic/     # Rendering modules
-    ├── input/       # Input Managers (Mouse, Keyboard)
-    ├── physic/      # Physics Wrapper
-    ├── resource/    # Resource Manager
-    ├── scene/       # Scene Management
-    ├── script/      # Scripting Implementation
-    ├── state/       # State Machine
-    ├── third_party/ # Vendor Code (glad, stb_image)
-    └── utils/       # Helpers
+├── resources/       # Game Assets
+└── scenes/          # Scene Definitions (.scene)
 ```
 
 ## Key Directories
