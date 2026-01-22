@@ -3,7 +3,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <scene/scene.h>
-#include <graphic/static_batch_manager.h>
+#include <graphic/geometry/static_batch_manager.h>
 #include <vector>
 #include <ecs/component.h>
 #include <graphic/renderer/shadow_renderer.h>

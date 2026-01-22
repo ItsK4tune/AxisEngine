@@ -7,12 +7,12 @@
 #include <irrKlang/irrKlang.h>
 
 #include <btBulletDynamicsCommon.h>
-#include <graphic/model.h>
-#include <graphic/ui_model.h>
-#include <graphic/animator.h>
-#include <graphic/font.h>
-#include <graphic/skybox.h>
-#include <graphic/particle_emitter.h>
+#include <graphic/geometry/model.h>
+#include <graphic/renderer/ui_model.h>
+#include <graphic/geometry/animator.h>
+#include <graphic/renderer/font.h>
+#include <graphic/renderer/skybox.h>
+#include <graphic/renderer/particle_emitter.h>
 
 struct InfoComponent
 {

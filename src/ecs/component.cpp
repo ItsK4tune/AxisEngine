@@ -1,5 +1,5 @@
 #include <ecs/component.h>
-#include <graphic/video_decoder.h>
+#include <graphic/core/video_decoder.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>

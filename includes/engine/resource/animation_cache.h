@@ -1,6 +1,6 @@
 #pragma once
 
-#include <graphic/animation.h>
+#include <graphic/geometry/animation.h>
 #include <string>
 #include <map>
 #include <memory>

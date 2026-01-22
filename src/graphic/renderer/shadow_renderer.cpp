@@ -1,6 +1,6 @@
 #include <graphic/renderer/shadow_renderer.h>
 #include <resource/resource_manager.h>
-#include <graphic/model.h>
+#include <graphic/geometry/model.h>
 #include <ecs/component.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>

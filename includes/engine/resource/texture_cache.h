@@ -1,6 +1,6 @@
 #pragma once
 
-#include <graphic/mesh.h>
+#include <graphic/geometry/mesh.h>
 #include <string>
 #include <map>
 #include <vector>

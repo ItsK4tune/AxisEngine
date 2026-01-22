@@ -8,14 +8,14 @@
 #include <unordered_map>
 #include <irrKlang/irrKlang.h>
 
-#include <graphic/shader.h>
-#include <graphic/model.h>
-#include <graphic/ui_model.h>
-#include <graphic/animation.h>
-#include <graphic/font.h>
-#include <graphic/skybox.h>
-#include <graphic/mesh.h>
-#include <graphic/shader_cache.h>
+#include <graphic/core/shader.h>
+#include <graphic/geometry/model.h>
+#include <graphic/renderer/ui_model.h>
+#include <graphic/geometry/animation.h>
+#include <graphic/renderer/font.h>
+#include <graphic/renderer/skybox.h>
+#include <graphic/geometry/mesh.h>
+#include <graphic/core/shader_cache.h>
 #include <resource/model_instance_manager.h>
 #include <resource/texture_cache.h>
 #include <resource/font_cache.h>

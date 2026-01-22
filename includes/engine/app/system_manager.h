@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ecs/system.h>
-#include <graphic/post_process_pipeline.h>
+#include <graphic/core/post_process_pipeline.h>
 #include <memory>
 
 #ifdef ENABLE_DEBUG_SYSTEM

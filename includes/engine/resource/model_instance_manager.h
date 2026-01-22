@@ -1,7 +1,7 @@
 #pragma once
 
 #include <entt/entt.hpp>
-#include <graphic/model.h>
+#include <graphic/geometry/model.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <scene/scene.h>
-#include <graphic/shadow.h>
-#include <graphic/frustum.h>
+#include <graphic/renderer/shadow.h>
+#include <graphic/renderer/frustum.h>
 
 class ResourceManager;
 class Shader;

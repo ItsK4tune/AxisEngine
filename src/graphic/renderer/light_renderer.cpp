@@ -1,6 +1,6 @@
 #include <graphic/renderer/light_renderer.h>
 #include <scene/scene.h>
-#include <graphic/shader.h>
+#include <graphic/core/shader.h>
 #include <vector>
 
 void LightRenderer::Init()

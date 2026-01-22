@@ -1,5 +1,5 @@
 #include <ecs/systems/render_system.h>
-#include <graphic/frustum.h>
+#include <graphic/renderer/frustum.h>
 #include <string>
 #include <algorithm>
 #include <vector>

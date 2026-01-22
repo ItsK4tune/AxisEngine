@@ -2,9 +2,9 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <graphic/font.h>
-#include <graphic/ui_model.h>
-#include <graphic/shader.h>
+#include <graphic/renderer/font.h>
+#include <graphic/renderer/ui_model.h>
+#include <graphic/core/shader.h>
 #include <functional>
 #include <input/keyboard_manager.h>
 #include <entt/entity/entity.hpp>
@@ -95,6 +95,22 @@ private:
     std::unordered_map<entt::entity, entt::entity> m_EntityLabelMap;
     void UpdateDebugLabels(Scene &scene);
     void ClearDebugLabels(Scene &scene);
+
+    // Line Rendering (Gizmos)
+    struct DebugLineVertex
+    {
+        glm::vec3 position;
+        glm::vec3 color;
+    };
+    
+    GLuint m_LineVAO = 0;
+    GLuint m_LineVBO = 0;
+    std::vector<DebugLineVertex> m_GizmoLines;
+    
+    void InitGizmoResources();
+    void RenderTransformGizmos(Scene &scene);
+    void FlushLines(Shader& shader);
+    void AddLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color);
 
     // Light Labels Management
     std::unordered_map<entt::entity, entt::entity> m_LightLabelMap;
