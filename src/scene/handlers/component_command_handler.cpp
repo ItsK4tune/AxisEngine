@@ -39,9 +39,15 @@ namespace SceneHandlers
 
     void ComponentCommandHandler::HandleDirectionalLight(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
+        int activeFlag = 1;
+        int castShadowFlag = 0;
         float r, g, b, i;
-        ss >> r >> g >> b >> i;
+
+        ss >> activeFlag >> castShadowFlag >> r >> g >> b >> i;
+
         auto &l = scene.registry.emplace<DirectionalLightComponent>(entity);
+        l.active = (activeFlag != 0);
+        l.isCastShadow = (castShadowFlag != 0);
         l.color = glm::vec3(r, g, b);
         l.intensity = i;
 
@@ -58,29 +64,24 @@ namespace SceneHandlers
         l.ambient = l.color * ambientStr;
         l.diffuse = l.color * diffuseStr;
         l.specular = glm::vec3(0.5f);
-
-        int castShadowFlag = 0;
-        int activeFlag = 1;
-        if (ss >> castShadowFlag)
-        {
-            l.isCastShadow = (castShadowFlag != 0);
-            if (ss >> activeFlag)
-            {
-                l.active = (activeFlag != 0);
-            }
-        }
     }
 
     void ComponentCommandHandler::HandlePointLight(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
+        int activeFlag = 1;
+        int castShadowFlag = 0;
         float r, g, b, i, rad;
-        ss >> r >> g >> b >> i >> rad;
+        
+        ss >> activeFlag >> castShadowFlag >> r >> g >> b >> i >> rad;
+
         auto &l = scene.registry.emplace<PointLightComponent>(entity);
+        l.active = (activeFlag != 0);
+        l.isCastShadow = (castShadowFlag != 0);
         l.color = glm::vec3(r, g, b);
         l.intensity = i;
         l.radius = rad;
 
-        float c, lin, quad;
+        float c = 1.0f, lin = 0.09f, quad = 0.032f;
         if (ss >> c >> lin >> quad)
         {
             l.constant = c;
@@ -99,32 +100,25 @@ namespace SceneHandlers
         l.ambient = l.color * ambStr;
         l.diffuse = l.color * diffStr;
         l.specular = glm::vec3(1.0f);
-
-        int castShadowFlag = 0;
-        int activeFlag = 1;
-        std::string temp;
-        if (ss >> temp)
-        {
-            castShadowFlag = std::stoi(temp);
-            l.isCastShadow = (castShadowFlag != 0);
-            if (ss >> activeFlag)
-            {
-                l.active = (activeFlag != 0);
-            }
-        }
     }
 
     void ComponentCommandHandler::HandleSpotLight(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
+        int activeFlag = 1;
+        int castShadowFlag = 0;
         float r, g, b, i, cut, outer;
-        ss >> r >> g >> b >> i >> cut >> outer;
+        
+        ss >> activeFlag >> castShadowFlag >> r >> g >> b >> i >> cut >> outer;
+
         auto &l = scene.registry.emplace<SpotLightComponent>(entity);
+        l.active = (activeFlag != 0);
+        l.isCastShadow = (castShadowFlag != 0);
         l.color = glm::vec3(r, g, b);
         l.intensity = i;
         l.cutOff = glm::cos(glm::radians(cut));
         l.outerCutOff = glm::cos(glm::radians(outer));
 
-        float c, lin, quad;
+        float c = 1.0f, lin = 0.09f, quad = 0.032f;
         if (ss >> c >> lin >> quad)
         {
             l.constant = c;
@@ -143,19 +137,6 @@ namespace SceneHandlers
         l.ambient = l.color * ambStr;
         l.diffuse = l.color * diffStr;
         l.specular = glm::vec3(1.0f);
-
-        int castShadowFlag = 0;
-        int activeFlag = 1;
-        std::string temp;
-        if (ss >> temp)
-        {
-            castShadowFlag = std::stoi(temp);
-            l.isCastShadow = (castShadowFlag != 0);
-            if (ss >> activeFlag)
-            {
-                l.active = (activeFlag != 0);
-            }
-        }
     }
 
     // Camera

@@ -140,12 +140,15 @@ void MonitorManager::SetWindowIcon(const std::string &path)
     if (!m_Window)
         return;
 
+    std::cout << "[MonitorManager] Attempting to load icon from: " << path << std::endl;
+
     GLFWimage images[1];
     int width, height, channels;
     unsigned char *pixels = stbi_load(path.c_str(), &width, &height, &channels, 4);
 
     if (pixels)
     {
+        std::cout << "[MonitorManager] Icon loaded successfully (" << width << "x" << height << ")" << std::endl;
         images[0].width = width;
         images[0].height = height;
         images[0].pixels = pixels;

@@ -306,7 +306,7 @@ echo        CLEANING BIN AND BUILD...
 echo ==========================================
 
 :: Kill processes...
-taskkill /F /IM GameEngine.exe >nul 2>&1
+taskkill /F /IM AxisEngine.exe >nul 2>&1
 taskkill /F /IM cmake.exe >nul 2>&1
 taskkill /F /IM MSBuild.exe >nul 2>&1
 taskkill /F /IM cl.exe >nul 2>&1
@@ -348,13 +348,13 @@ if exist "bin\%BUILD_TYPE%" (
     )
 ) else (
     :: Handle flat structure (MinGW) or if folder doesn't exist
-    if exist "bin\GameEngine.exe" (
+    if exist "bin\AxisEngine.exe" (
         echo Deleting existing executable...
-        del /f /q "bin\GameEngine.exe"
-        if exist "bin\GameEngine.exe" (
-             echo [FAILED] Could not delete 'bin\GameEngine.exe'.
+        del /f /q "bin\AxisEngine.exe"
+        if exist "bin\AxisEngine.exe" (
+             echo [FAILED] Could not delete 'bin\AxisEngine.exe'.
         ) else (
-             echo [DELETED] 'bin\GameEngine.exe'.
+             echo [DELETED] 'bin\AxisEngine.exe'.
         )
     ) else (
         echo [NOT FOUND] 'bin\%BUILD_TYPE%' or existing executable.
@@ -445,15 +445,15 @@ echo ==========================================
 echo          RUNNING GAME ENGINE
 echo ==========================================
 
-set EXE_PATH=bin\%BUILD_TYPE%\GameEngine.exe
+set EXE_PATH=bin\%BUILD_TYPE%\AxisEngine.exe
 
 :: CMake with VS generators puts output in bin/Debug or bin/Release
-if exist "bin\%BUILD_TYPE%\GameEngine.exe" (
-    set EXE_PATH=bin\%BUILD_TYPE%\GameEngine.exe
+if exist "bin\%BUILD_TYPE%\AxisEngine.exe" (
+    set EXE_PATH=bin\%BUILD_TYPE%\AxisEngine.exe
 ) else (
     :: Some configs might put it directly in bin if not using multi-config generator
-    if exist "bin\GameEngine.exe" (
-        set EXE_PATH=bin\GameEngine.exe
+    if exist "bin\AxisEngine.exe" (
+        set EXE_PATH=bin\AxisEngine.exe
     )
 )
 

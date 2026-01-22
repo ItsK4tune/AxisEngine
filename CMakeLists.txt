@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(GameEngine)
+project(AxisEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -44,10 +44,12 @@ file(GLOB_RECURSE GAME_SOURCES
     ${CMAKE_SOURCE_DIR}/game/src/*.cpp
 )
 
-configure_file(configuration/root_directory.h.in configuration/root_directory.h)
-include_directories(${CMAKE_BINARY_DIR}/configuration)
+set(PROJECT_RESOURCES
+    ${CMAKE_SOURCE_DIR}/src/asset/project/app.rc
+    ${CMAKE_SOURCE_DIR}/src/asset/project/resource.h
+)
 
-add_executable(GameEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
+add_executable(AxisEngine ${ENGINE_SOURCES} ${GAME_SOURCES} ${PROJECT_RESOURCES})
 
 set(BULLET_LIBS
     BulletDynamics$<$<CONFIG:Debug>:_Debug>
@@ -56,7 +58,7 @@ set(BULLET_LIBS
 )
 
 if (WIN32)
-    target_link_libraries(GameEngine 
+    target_link_libraries(AxisEngine 
         glfw3 
         opengl32 
         assimp-vc143-mt
@@ -69,7 +71,7 @@ endif()
 
 if (UNIX)
     find_package(OpenGL REQUIRED)
-    target_link_libraries(GameEngine 
+    target_link_libraries(AxisEngine 
         assimp-vc143-mt
         glfw 
         GL 
@@ -90,10 +92,10 @@ endif()
 if (WIN32)
     file(GLOB DLLS "${CMAKE_SOURCE_DIR}/dlls/*.dll")
     foreach(DLL ${DLLS})
-        add_custom_command(TARGET GameEngine POST_BUILD
+        add_custom_command(TARGET AxisEngine POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${DLL}
-            $<TARGET_FILE_DIR:GameEngine>
+            $<TARGET_FILE_DIR:AxisEngine>
         )
     endforeach()
 endif()

@@ -69,13 +69,6 @@ namespace SceneHandlers
             if (light.active)
                 lastDirLight = entity;
         }
-
-        if (!hasShadowCaster && lastDirLight != entt::null)
-        {
-            auto &light = scene.registry.get<DirectionalLightComponent>(lastDirLight);
-            light.isCastShadow = true;
-            std::cout << "[SceneValidator] Auto-set last active directional light to cast shadow" << std::endl;
-        }
     }
 
     void SceneValidator::ValidateCamera(Scene &scene, Application *app)

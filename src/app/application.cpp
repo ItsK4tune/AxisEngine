@@ -76,11 +76,6 @@ bool Application::Init()
     else
         glDisable(GL_CULL_FACE);
 
-    if (!config.iconPath.empty())
-    {
-        monitorManager.SetWindowIcon(FileSystem::getPath(config.iconPath));
-    }
-
     GLFWwindow *window = monitorManager.GetWindow();
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -123,6 +118,11 @@ bool Application::Init()
     sceneManager->LoadScene("src/asset/load.scene");
 
     engineLoop = std::make_unique<EngineLoop>(this);
+
+    if (!config.iconPath.empty())
+    {
+        monitorManager.SetWindowIcon(FileSystem::getPath(config.iconPath));
+    }
 
     return true;
 }
