@@ -20,4 +20,23 @@ Bridges the ECS world with the Bullet Physics world.
 *   `void RenderDebug(Scene &scene, PhysicsWorld &world, Shader &shader, ...)`
 
 ## Configuration
+
+### Physics Accuracy
 Physics accuracy and performance can be tuned via `PhysicsWorld::SetMode`. See [PhysicsWorld](../managers/physics_world.md) for details.
+
+### Async Physics
+The physics system supports asynchronous simulation to improve performance:
+- **Async Mode (Default)**: Physics calculations run in a separate thread, allowing rendering to proceed in parallel. This is controlled via:
+  - `settings.json`: `"physicsAsync": true`
+  - Scene file: `CONFIG PHYSICS_ASYNC TRUE`
+  - Runtime: `PhysicsSystem::SetAsyncPhysics(bool)`
+- **Benefits**: Better frame rates on multi-core systems, as physics doesn't block the render thread.
+- **Tradeoffs**: Results are from the previous frame (1-frame lag). For most gameplay, this is imperceptible.
+- **Disable When**: Debugging physics issues, running on single-core systems, or needing deterministic single-threaded execution.
+
+## Architecture
+
+The physics system has been refactored into specialized components:
+- **PhysicsTransformSync**: Handles bidirectional transform synchronization between ECS and Bullet Physics.
+- **PhysicsCollisionDispatcher**: Manages collision event detection and callback dispatch to scripts.
+- **PhysicsSystem**: Orchestrates the overall physics pipeline (sync → simulate → sync → events).

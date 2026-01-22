@@ -15,7 +15,15 @@ Manages the physics simulation environment, including:
 
 ## Configuration Modes
 
-The world supports distinct configuration modes to balance performance vs accuracy. These can be set via `CONFIG PHYSICS_MODE <MODE>` in scene files or `physicsMode` in `settings.json`.
+The world supports distinct configuration modes to balance performance vs accuracy. These can be set via:
+- Scene files: `CONFIG PHYSICS_MODE <MODE>`
+- Settings: `physicsMode` in `settings.json`
+- Runtime: `PhysicsWorld::SetMode(int mode)`
+
+Additionally, async physics can be toggled via:
+- Scene files: `CONFIG PHYSICS_ASYNC TRUE|FALSE`
+- Settings: `physicsAsync` in `settings.json`
+- Runtime: `PhysicsSystem::SetAsyncPhysics(bool)`
 
 | Mode | ID | Hz | Iterations | Description |
 |------|----|----|------------|-------------|

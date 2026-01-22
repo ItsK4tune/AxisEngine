@@ -18,5 +18,6 @@
     "shadowFrustumCullingEnabled": false,
     "shadowDistanceCulling": 10000.0,
     "distanceCulling": 0.0,
-    "physicsMode": 1
+    "physicsMode": 1,
+    "physicsAsync": true
 }

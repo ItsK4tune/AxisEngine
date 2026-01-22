@@ -286,4 +286,16 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             }
         }
     }
+    else if (subCmd == "PHYSICS_ASYNC")
+    {
+        std::string valStr;
+        if (ss >> valStr)
+        {
+            bool async = (valStr == "TRUE" || valStr == "true" || valStr == "1");
+            if (app) 
+            {
+                app->GetPhysicsSystem().SetAsyncPhysics(async);
+            }
+        }
+    }
 }
