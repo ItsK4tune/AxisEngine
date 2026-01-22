@@ -2,7 +2,7 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <debug/modules/i_debug_module.h>
+#include <interface/debug_module.h>
 #include <graphic/renderer/font.h>
 #include <graphic/renderer/ui_model.h>
 #include <graphic/core/shader.h>
