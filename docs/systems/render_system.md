@@ -21,9 +21,9 @@ The RenderSystem supports three shadow rendering modes:
 
 ### Shadow Casting Lights
 Lights can be configured to cast shadows using the `isCastShadow` property. The direction and position of lights are determined by their **TransformComponent**:
-- **DirectionalLightComponent**: Uses `TransformComponent` rotation (Default forward: `(0, -1, 0)`). Set `isCastShadow = true`.
-- **PointLightComponent**: Uses `TransformComponent` position. Set `isCastShadow = true` (up to 4).
-- **SpotLightComponent**: Uses `TransformComponent` position and rotation. Set `isCastShadow = true`.
+- **DirectionalLightComponent**: Uses `TransformComponent` rotation (Default forward: `(0, -1, 0)`). Set `isCastShadow = true` (Max 2).
+- **PointLightComponent**: Uses `TransformComponent` position. Set `isCastShadow = true` (Max 2).
+- **SpotLightComponent**: Uses `TransformComponent` position and rotation. Set `isCastShadow = true` (Max 2).
 
 > **Note**: In shadow mode 1 (Once), only the first light with `isCastShadow = true` will cast shadows, regardless of how many lights have this property enabled.
 

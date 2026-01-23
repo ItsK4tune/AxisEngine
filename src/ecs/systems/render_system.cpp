@@ -188,16 +188,29 @@ void RenderSystem::Render(Scene &scene)
 
                    for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
                    {
-                       m_ShadowRenderer.GetShadow().BindTexture_Point(i, 14 + i);
-                       currentShader->setInt(shadowPointUniforms[i], 14 + i);
+                       m_ShadowRenderer.GetShadow().BindTexture_Point(i, 12 + i);
+                       currentShader->setInt(shadowPointUniforms[i], 12 + i);
                    }
 
+                   for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
+                   {
+                       m_ShadowRenderer.GetShadow().BindTexture_Spot(i, 14 + i);
+                       std::string uniformName = "shadowMapSpot[" + std::to_string(i) + "]";
+                       currentShader->setInt(uniformName, 14 + i);
+                   }
 
                    const glm::mat4* lightSpaceMatrices = m_ShadowRenderer.GetLightSpaceMatrices();
                    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
                    {
                         std::string uniformName = "lightSpaceMatrix[" + std::to_string(i) + "]";
                         currentShader->setMat4(uniformName, lightSpaceMatrices[i]);
+                   }
+
+                   const glm::mat4* lightSpaceMatricesSpot = m_ShadowRenderer.GetLightSpaceMatricesSpot();
+                   for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
+                   {
+                        std::string uniformName = "lightSpaceMatrixSpot[" + std::to_string(i) + "]";
+                        currentShader->setMat4(uniformName, lightSpaceMatricesSpot[i]);
                    }
                 }
                 else
@@ -206,6 +219,7 @@ void RenderSystem::Render(Scene &scene)
                 }
                 
                 currentShader->setFloat("farPlanePoint", m_ShadowRenderer.GetFarPlanePoint());
+                currentShader->setFloat("farPlaneSpot", m_ShadowRenderer.GetFarPlaneSpot());
             }
             m_LightRenderer.UploadLightData(scene, currentShader);
         }

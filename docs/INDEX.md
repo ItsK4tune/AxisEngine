@@ -102,6 +102,7 @@ Practical how-to guides:
 - **Scene Format** - .scene file syntax
 - **Asset Management** - Loading resources
 - **Graphics Guide** - Rendering techniques
+- **Shadow Guide** - Shadow system setup & limits
 - **Debug System** - F-key shortcuts and tools
 
 ---

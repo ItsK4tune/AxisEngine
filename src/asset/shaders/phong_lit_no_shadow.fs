@@ -9,7 +9,7 @@ struct Material {
 };
 
 struct DirLight {
-    vec3 direction; float pad0;
+    vec3 direction; float shadowIndex;
     vec3 color; float intensity;
     vec3 ambient; float pad1;
     vec3 diffuse; float pad2;
@@ -17,7 +17,7 @@ struct DirLight {
 };
 
 struct PointLight {
-    vec3 position; float pad0;
+    vec3 position; float shadowIndex;
     vec3 color; float intensity;
     float constant; float linear; float quadratic; float radius;
     vec3 ambient; float pad1;
@@ -27,7 +27,7 @@ struct PointLight {
 
 struct SpotLight {
     vec3 position; float pad0;
-    vec3 direction; float pad1;
+    vec3 direction; float shadowIndex;
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
     float quadratic; float pad2; float pad3; float pad4;
@@ -151,6 +151,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     float theta = dot(lightDir, normalize(-light.direction));
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+    
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
@@ -164,6 +165,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
          diffuse = light.diffuse * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
          specular = light.specular * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
     }
+    
     ambient *= attenuation * intensity;
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;

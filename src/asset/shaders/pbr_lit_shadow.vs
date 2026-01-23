@@ -8,12 +8,14 @@ layout (location = 6) in vec4 aWeights;
 out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoords;
-out vec4 FragPosLightSpace[4]; // For up to 4 Dir Light Shadows
+out vec4 FragPosLightSpace[2]; // For up to 2 Dir Light Shadows
+out vec4 FragPosLightSpaceSpot[2]; // For up to 2 Spot Light Shadows
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform mat4 lightSpaceMatrix[4]; // Array of 4 light space matrices
+uniform mat4 lightSpaceMatrix[2]; // Array of 2 dir light space matrices
+uniform mat4 lightSpaceMatrixSpot[2]; // Array of 2 spot light space matrices
 
 layout(location = 10) in mat4 instanceMatrix;
 uniform bool isInstanced;
@@ -55,10 +57,16 @@ void main()
     Normal = mat3(transpose(inverse(modelMatrix))) * totalNormal;  
     TexCoords = aTexCoords;
     
-    // Calculate light space positions for all 4 directional lights
-    for(int i = 0; i < 4; i++)
+    // Calculate light space positions for all 2 directional lights
+    for(int i = 0; i < 2; i++)
     {
         FragPosLightSpace[i] = lightSpaceMatrix[i] * vec4(FragPos, 1.0);
+    }
+
+    // Calculate light space positions for all 2 spot lights
+    for(int i = 0; i < 2; i++)
+    {
+        FragPosLightSpaceSpot[i] = lightSpaceMatrixSpot[i] * vec4(FragPos, 1.0);
     }
     
     gl_Position = projection * view * vec4(FragPos, 1.0);

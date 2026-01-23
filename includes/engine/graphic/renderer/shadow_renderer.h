@@ -25,13 +25,17 @@ public:
 
     Shadow &GetShadow() { return m_Shadow; }
     const glm::mat4* GetLightSpaceMatrices() const { return m_LightSpaceMatrixDir; }
+    const glm::mat4* GetLightSpaceMatricesSpot() const { return m_LightSpaceMatrixSpot; }
     float GetFarPlanePoint() const { return m_FarPlanePoint; }
+    float GetFarPlaneSpot() const { return m_FarPlaneSpot; }
 
 private:
     Shadow m_Shadow;
     
-    glm::mat4 m_LightSpaceMatrixDir[4];
-    float m_FarPlanePoint = 25.0f;
+    glm::mat4 m_LightSpaceMatrixDir[Shadow::MAX_DIR_LIGHTS_SHADOW];
+    glm::mat4 m_LightSpaceMatrixSpot[Shadow::MAX_SPOT_LIGHTS_SHADOW];
+    float m_FarPlanePoint = 100.0f;
+    float m_FarPlaneSpot = 100.0f;
     bool m_EnableShadows = true;
     int m_ShadowMode = 1; // 0=None, 1=Once, 2=All
     

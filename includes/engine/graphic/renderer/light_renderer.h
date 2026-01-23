@@ -11,7 +11,7 @@ class Shader;
 struct GPUDirLight
 {
     glm::vec3 direction;
-    float pad0;
+    float shadowIndex; // Was pad0
     glm::vec3 color;
     float intensity;
     glm::vec3 ambient;
@@ -25,7 +25,7 @@ struct GPUDirLight
 struct GPUPointLight
 {
     glm::vec3 position;
-    float pad0;
+    float shadowIndex; // Was pad0
     glm::vec3 color;
     float intensity;
     float constant;
@@ -45,7 +45,7 @@ struct GPUSpotLight
     glm::vec3 position;
     float pad0;
     glm::vec3 direction;
-    float pad1;
+    float shadowIndex; // Was pad1
     glm::vec3 color;
     float intensity;
     float cutOff;

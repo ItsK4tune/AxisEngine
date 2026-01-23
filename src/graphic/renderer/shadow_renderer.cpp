@@ -12,9 +12,11 @@ void ShadowRenderer::Init(ResourceManager &res)
 
     res.LoadShader("shadow_depth", "src/asset/shaders/shadow_depth.vs", "src/asset/shaders/shadow_depth.fs");
     res.LoadShader("shadow_point", "src/asset/shaders/shadow_point.vs", "src/asset/shaders/shadow_point.fs", "src/asset/shaders/shadow_point.gs");
+    res.LoadShader("shadow_spot", "src/asset/shaders/shadow_spot.vs", "src/asset/shaders/shadow_spot.fs");
 
     m_Shadow.SetShaderDir(res.GetShader("shadow_depth"));
     m_Shadow.SetShaderPoint(res.GetShader("shadow_point"));
+    m_Shadow.SetShaderSpot(res.GetShader("shadow_spot"));
 }
 
 void ShadowRenderer::Shutdown()
@@ -54,11 +56,11 @@ void ShadowRenderer::RenderShadows(Scene &scene)
     int numShadowsToRender = 1;
     if (m_ShadowMode == 2)
     {
-        numShadowsToRender = (std::min)((int)shadowCastingLights.size(), 4);
+        numShadowsToRender = (std::min)((int)shadowCastingLights.size(), Shadow::MAX_DIR_LIGHTS_SHADOW);
 
-        if (shadowCastingLights.size() > 4)
+        if (shadowCastingLights.size() > Shadow::MAX_DIR_LIGHTS_SHADOW)
         {
-            std::cout << "[ShadowRenderer] More than 4 lights have isCastShadow enabled. Only the first 4 will cast shadows." << std::endl;
+            std::cout << "[ShadowRenderer] More than " << Shadow::MAX_DIR_LIGHTS_SHADOW << " lights have isCastShadow enabled. Only the first " << Shadow::MAX_DIR_LIGHTS_SHADOW << " will cast shadows." << std::endl;
         }
     }
 
@@ -186,7 +188,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
         if (light.isCastShadow && light.active)
         {
             shadowCastingPointLights.push_back(entity);
-            if (shadowCastingPointLights.size() >= 4)
+            if (shadowCastingPointLights.size() >= Shadow::MAX_POINT_LIGHTS_SHADOW)
                 break;
         }
     }
@@ -257,6 +259,139 @@ void ShadowRenderer::RenderShadows(Scene &scene)
         }
 
         pIdx++;
+    }
+
+    m_Shadow.UnbindFBO();
+
+    Shader *shaderSpot = m_Shadow.GetShaderSpot();
+    if (!shaderSpot)
+        return;
+
+    auto spotView = scene.registry.view<SpotLightComponent, TransformComponent>();
+    std::vector<entt::entity> shadowCastingSpotLights;
+
+    for (auto entity : spotView)
+    {
+        auto &light = spotView.get<SpotLightComponent>(entity);
+        if (light.isCastShadow && light.active)
+        {
+            shadowCastingSpotLights.push_back(entity);
+            if (shadowCastingSpotLights.size() >= Shadow::MAX_SPOT_LIGHTS_SHADOW)
+                break;
+        }
+    }
+
+    if (shadowCastingSpotLights.empty())
+        return;
+
+    shaderSpot->use();
+    int sIdx = 0;
+
+    for (auto entity : shadowCastingSpotLights)
+    {
+        if (sIdx >= Shadow::MAX_SPOT_LIGHTS_SHADOW)
+            break;
+
+        auto [light, trans] = spotView.get<SpotLightComponent, TransformComponent>(entity);
+        glm::vec3 lightPos = trans.position;
+        glm::vec3 lightDir = trans.rotation * glm::vec3(0, -1, 0);
+        lightDir = glm::normalize(lightDir);
+
+        float coneAngle = glm::acos(light.cutOff);
+        float fov = coneAngle * 2.0f;
+        float aspect = 1.0f;
+        float nearPlane = 0.1f;
+        float farPlane = m_FarPlaneSpot;
+
+        glm::mat4 spotProjection = glm::perspective(fov, aspect, nearPlane, farPlane);
+        
+        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+        if (std::abs(glm::dot(lightDir, up)) > 0.99f)
+            up = glm::vec3(0.0f, 0.0f, 1.0f);
+            
+        glm::mat4 spotView = glm::lookAt(lightPos, lightPos + lightDir, up);
+        m_LightSpaceMatrixSpot[sIdx] = spotProjection * spotView;
+
+        Frustum lightFrustum;
+        if (m_ShadowFrustumCullingEnabled)
+        {
+            lightFrustum.Update(m_LightSpaceMatrixSpot[sIdx]);
+        }
+
+        m_Shadow.BindFBO_Spot(sIdx);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        shaderSpot->setMat4("lightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
+
+        auto meshView = scene.registry.view<TransformComponent, MeshRendererComponent>();
+        for (auto obj : meshView)
+        {
+            auto [tObj, rObj] = meshView.get<TransformComponent, MeshRendererComponent>(obj);
+
+            if (!rObj.model || !rObj.castShadow)
+                continue;
+
+            glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
+            glm::vec3 min = rObj.model->AABBmin;
+            glm::vec3 max = rObj.model->AABBmax;
+
+            glm::vec3 center = (min + max) * 0.5f;
+            glm::vec3 extent = (max - min) * 0.5f;
+            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+
+            glm::mat3 rot = glm::mat3(modelMatrix);
+            glm::vec3 worldExtent = glm::vec3(
+                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
+
+            glm::vec3 worldMin = worldCenter - worldExtent;
+            glm::vec3 worldMax = worldCenter + worldExtent;
+
+            if (m_ShadowDistanceCullingSq > 0.0f)
+            {
+                float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
+                float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
+                float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
+                
+                float distSq = dx*dx + dy*dy + dz*dz;
+                
+                if (distSq > m_ShadowDistanceCullingSq)
+                    continue;
+            }
+
+            if (m_ShadowFrustumCullingEnabled)
+            {
+                if (!lightFrustum.IsBoxVisible(worldMin, worldMax))
+                    continue;
+            }
+
+            shaderSpot->setMat4("model", modelMatrix);
+
+            if (scene.registry.all_of<AnimationComponent>(obj))
+            {
+                auto &anim = scene.registry.get<AnimationComponent>(obj);
+                if (anim.animator)
+                {
+                    auto transforms = anim.animator->GetFinalBoneMatrices();
+                    for (int j = 0; j < transforms.size() && j < 100; ++j)
+                        shaderSpot->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                    shaderSpot->setBool("hasAnimation", true);
+                }
+                else
+                {
+                    shaderSpot->setBool("hasAnimation", false);
+                }
+            }
+            else
+            {
+                shaderSpot->setBool("hasAnimation", false);
+            }
+
+            rObj.model->Draw(*shaderSpot);
+        }
+
+        sIdx++;
     }
 
     m_Shadow.UnbindFBO();

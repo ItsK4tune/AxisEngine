@@ -4,7 +4,8 @@ out vec4 FragColor;
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
-in vec4 FragPosLightSpace[4]; // Array for 4 directional light shadows
+in vec4 FragPosLightSpace[2]; // Array for 2 directional light shadows
+in vec4 FragPosLightSpaceSpot[2]; // Array for 2 spot light shadows
 
 struct Material {
     sampler2D texture_diffuse1;
@@ -22,7 +23,7 @@ struct Material {
 };
 
 struct DirLight {
-    vec3 direction; float pad0;
+    vec3 direction; float shadowIndex;
     vec3 color; float intensity;
     vec3 ambient; float pad1;
     vec3 diffuse; float pad2;
@@ -30,7 +31,7 @@ struct DirLight {
 };
 
 struct PointLight {
-    vec3 position; float pad0;
+    vec3 position; float shadowIndex;
     vec3 color; float intensity;
     float constant; float linear; float quadratic; float radius;
     vec3 ambient; float pad1;
@@ -48,7 +49,7 @@ layout(std430, binding = 1) buffer PointLightBuffer {
 
 struct SpotLight {
     vec3 position; float pad0;
-    vec3 direction; float pad1;
+    vec3 direction; float shadowIndex;
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
     float quadratic; float pad2; float pad3; float pad4;
@@ -61,7 +62,11 @@ layout(std430, binding = 2) buffer SpotLightBuffer {
     SpotLight spotLights[];
 };
 
-#define NR_DIR_SHADOW_MAPS 4
+#define NR_DIR_SHADOW_MAPS 2
+#define NR_POINT_LIGHTS 4
+#define NR_POINT_SHADOW_MAPS 2
+#define NR_SPOT_LIGHTS 4
+#define NR_SPOT_SHADOW_MAPS 2
 
 uniform int numDirLights;
 uniform int nrPointLights;
@@ -73,7 +78,11 @@ uniform vec4 tintColor;
 uniform bool u_ReceiveShadow;
 uniform bool debug_noTexture;
 
-uniform sampler2D shadowMapDir[NR_DIR_SHADOW_MAPS]; // Array of 4 shadow maps
+uniform sampler2D shadowMapDir[NR_DIR_SHADOW_MAPS]; // Array of 2 dir shadow maps
+uniform samplerCube shadowMapPoint[NR_POINT_SHADOW_MAPS];
+uniform sampler2D shadowMapSpot[NR_SPOT_SHADOW_MAPS]; // Array of 2 spot shadow maps
+uniform float farPlanePoint;
+uniform float farPlaneSpot;
 
 const float PI = 3.14159265359;
 
@@ -82,6 +91,7 @@ float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
 float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex);
+float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex);
 
 void main()
 {
@@ -114,16 +124,17 @@ void main()
     vec3 Lo = vec3(0.0);
     
     // Directional lights with shadows (up to 4)
-    int numShadowLights = min(numDirLights, NR_DIR_SHADOW_MAPS);
-    for(int d = 0; d < numShadowLights; d++)
+    // Directional lights
+    for(int d = 0; d < numDirLights; d++)
     {
         vec3 L = normalize(-dirLights[d].direction);
         vec3 H = normalize(V + L);
         
         float shadow = 0.0;
-        if (u_ReceiveShadow)
+        int sIdx = int(dirLights[d].shadowIndex);
+        if (u_ReceiveShadow && sIdx >= 0 && sIdx < NR_DIR_SHADOW_MAPS)
         {
-            shadow = ShadowCalculationDir(FragPosLightSpace[d], N, L, d);
+            shadow = ShadowCalculationDir(FragPosLightSpace[sIdx], N, L, sIdx);
         }
 
         if(shadow < 1.0)
@@ -148,28 +159,8 @@ void main()
     }
     
     // Remaining directional lights without shadows
-    for(int d = numShadowLights; d < numDirLights; d++)
-    {
-        vec3 L = normalize(-dirLights[d].direction);
-        vec3 H = normalize(V + L);
-        
-        vec3 radiance = dirLights[d].color * dirLights[d].intensity;
+    // Old separate Dir Light loop removed
 
-        float NDF = DistributionGGX(N, H, roughness);
-        float G   = GeometrySmith(N, V, L, roughness);
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-        vec3 numerator = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-        vec3 specular = numerator / denominator;
-
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metallic;
-
-        float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
-    }
 
     // Point lights
     for(int i = 0; i < nrPointLights; ++i)
@@ -208,6 +199,13 @@ void main()
         float epsilon = spotLights[i].cutOff - spotLights[i].outerCutOff;
         float intensity = clamp((theta - spotLights[i].outerCutOff) / epsilon, 0.0, 1.0);
         
+        float shadow = 0.0;
+        int sIdx = int(spotLights[i].shadowIndex);
+        if (u_ReceiveShadow && sIdx >= 0 && sIdx < NR_SPOT_LIGHTS)
+        {
+            shadow = ShadowCalculationSpot(FragPosLightSpaceSpot[sIdx], N, L, sIdx);
+        }
+
         vec3 radiance = spotLights[i].color * spotLights[i].intensity * attenuation * intensity;
 
         float NDF = DistributionGGX(N, H, roughness);
@@ -223,7 +221,7 @@ void main()
         kD *= 1.0 - metallic;
 
         float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL * (1.0 - shadow);
     }
 
     vec3 ambient = vec3(0.03) * albedo * ao;
@@ -255,6 +253,31 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, i
         for(int y = -1; y <= 1; ++y)
         {
             float pcfDepth = texture(shadowMapDir[shadowMapIndex], projCoords.xy + vec2(x, y) * texelSize).r;
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+        }
+    }
+    shadow /= 9.0;
+
+    if(projCoords.z > 1.0)
+        shadow = 0.0;
+
+    return shadow;
+}
+
+float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float closestDepth = texture(shadowMapSpot[shadowMapIndex], projCoords.xy).r;
+    float currentDepth = projCoords.z;
+    float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.0005);
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMapSpot[shadowMapIndex], 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadowMapSpot[shadowMapIndex], projCoords.xy + vec2(x, y) * texelSize).r;
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
