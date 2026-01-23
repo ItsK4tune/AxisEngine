@@ -10,6 +10,14 @@ Handles the 3D rendering pipeline, including shadowing, lighting, and model rend
 *   **Lights**: Uploads light data (SSBO) to shaders.
 *   **State Management**: Manages Depth Testing and Face Culling states.
 
+## Anti-Aliasing
+The RenderSystem supports multiple Anti-Aliasing techniques to reduce jagged edges:
+
+### Supported Modes
+- **NONE (0)**: No anti-aliasing.
+- **FXAA (1)**: Fast Approximate Anti-Aliasing. Low cost, effectively smooths edges but may slightly blur textures.
+- **TAA (2)**: Temporal Anti-Aliasing. High quality, resolves sub-pixel detail using jittering and history. Can cause slight ghosting on fast moving objects.
+
 ## Shadow System
 
 The RenderSystem supports three shadow rendering modes:
@@ -39,6 +47,19 @@ Lights can be configured to cast shadows using the `isCastShadow` property. The 
 *   `void SetShadowProjectionSize(float size)`: Sets orthographic projection size for directional shadows.
 *   `void SetShadowFrustumCulling(bool enable)`: Enables/disables frustum culling for shadow rendering.
 *   `void SetShadowDistanceCulling(float distance)`: Sets maximum distance for shadow casting.
+
+*   `void SetAntiAliasingMode(AntiAliasingMode mode)`: Sets AA mode (NONE, FXAA, TAA).
+
+## Configuration
+Anti-Aliasing can be configured via `settings.json` or `.scene` files:
+```
+// .scene
+CONFIG ANTIALIASING TAA
+```
+```json
+// settings.json
+"antialiasing": "TAA"
+```
 
 ## Shader Requirements
 

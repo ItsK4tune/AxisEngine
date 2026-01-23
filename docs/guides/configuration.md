@@ -27,7 +27,8 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     "shadowFrustumCullingEnabled": true,
     "shadowDistanceCulling": 100.0,
     "physicsMode": 1,
-    "physicsAsync": true
+    "physicsAsync": true,
+    "antialiasing": "TAA"
 }
 ```
 
@@ -59,6 +60,7 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     - `shadowProjectionSize`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
     - `shadowFrustumCullingEnabled`: Enable/Disable culling of objects outside the light's view frustum (default: `true`).
     - `shadowDistanceCulling`: Maximum distance (from main camera) at which objects cast shadows (default: `100.0`). Objects further than this will not cast shadows.
+    - `antialiasing`: Anti-Aliasing mode (default: `FXAA` or see code). Options: `NONE`, `FXAA`, `TAA`.
 
 - **Physics Settings**
     - `physicsMode`: Physics simulation mode (default: `1`).

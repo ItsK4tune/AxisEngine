@@ -44,6 +44,7 @@ Global engine settings can be configured using the `CONFIG` command.
 | `DISTANCE` | `<float>` | - | Max render distance from camera (0 = unlimited). |
 | `SHADOW_FRUSTUM` | `1` or `0` | - | Enable/disable light frustum culling for shadows. |
 | `SHADOW_DISTANCE` | `<float>` | - | Max distance for shadow casting. |
+| `ANTIALIASING` | `NONE/FXAA/TAA` | - | Set Anti-Aliasing mode. |
 
 ### Example
 ```text
