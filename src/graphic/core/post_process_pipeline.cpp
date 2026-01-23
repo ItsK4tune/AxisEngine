@@ -1,7 +1,7 @@
 #include <graphic/core/post_process_pipeline.h>
 #include <ecs/systems/render_system.h>
 #include <resource/resource_manager.h>
-#include <iostream>
+#include <utils/logger.h>
 
 PostProcessPipeline::PostProcessPipeline() {}
 
@@ -58,7 +58,7 @@ void PostProcessPipeline::InitFramebuffers()
         }
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            std::cout << "[PostProcessPipeline] FBO " << i << " is not complete!" << std::endl;
+            LOGGER_ERROR("PostProcess") << "FBO " << i << " is not complete!";
     }
     
     // TAA History buffer
@@ -75,7 +75,7 @@ void PostProcessPipeline::InitFramebuffers()
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_HistoryTexture, 0);
     
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "[PostProcessPipeline] History FBO is not complete!" << std::endl;
+        LOGGER_ERROR("PostProcess") << "History FBO is not complete!";
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -185,7 +185,7 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
         
     if (!shader) 
     {
-        std::cerr << "[PostProcess] [ERROR] AA Shader not found for mode " << (int)mode << "!" << std::endl;
+        LOGGER_ERROR("PostProcess") << "AA Shader not found for mode " << (int)mode << "!";
         return;
     }
 

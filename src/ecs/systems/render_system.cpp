@@ -3,7 +3,7 @@
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <iostream>
+#include <utils/logger.h>
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
@@ -11,12 +11,14 @@
 
 void RenderSystem::InitShadows(ResourceManager &res)
 {
+    LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers";
     m_ShadowRenderer.Init(res);
     m_LightRenderer.Init();
 }
 
 void RenderSystem::Shutdown()
 {
+    LOGGER_INFO("RenderSystem") << "Shutting down RenderSystem";
     m_ShadowRenderer.Shutdown();
 }
 

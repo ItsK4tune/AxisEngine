@@ -1,7 +1,7 @@
 #include <scene/entity_factory.h>
 #include <scene/scene.h>
 #include <glm/gtc/quaternion.hpp>
-#include <iostream>
+#include <utils/logger.h>
 
 EntityFactory::EntityFactory(Scene &scene)
     : m_Scene(scene)
@@ -16,6 +16,7 @@ entt::entity EntityFactory::CreateEntity(const std::string &name, const std::str
 {
     entt::entity entity = m_Scene.createEntity();
     m_Scene.registry.emplace<InfoComponent>(entity, name, tag);
+    LOGGER_DEBUG("EntityFactory") << "Created entity: " << name << " (Tag: " << tag << ")";
     return entity;
 }
 
@@ -58,13 +59,13 @@ void EntityFactory::SetParent(entt::entity child, entt::entity parent, bool keep
 {
     if (!m_Scene.registry.valid(child) || !m_Scene.registry.valid(parent))
     {
-        std::cerr << "[EntityFactory] Invalid child or parent entity" << std::endl;
+        LOGGER_ERROR("EntityFactory") << "Invalid child or parent entity";
         return;
     }
 
     if (!m_Scene.registry.all_of<TransformComponent>(child) || !m_Scene.registry.all_of<TransformComponent>(parent))
     {
-        std::cerr << "[EntityFactory] Child or parent missing TransformComponent" << std::endl;
+        LOGGER_ERROR("EntityFactory") << "Child or parent missing TransformComponent";
         return;
     }
 
@@ -92,6 +93,7 @@ void EntityFactory::DestroyEntity(entt::entity entity)
     }
 
     m_Scene.registry.destroy(entity);
+    LOGGER_DEBUG("EntityFactory") << "Destroyed entity";
 }
 
 void EntityFactory::DestroyEntityWithChildren(entt::entity entity)

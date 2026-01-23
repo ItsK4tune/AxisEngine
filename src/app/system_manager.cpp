@@ -5,6 +5,7 @@
 #include <audio/sound_manager.h>
 #include <app/application.h>
 #include <input/mouse_manager.h>
+#include <utils/logger.h>
 #include <iostream>
 
 #include <glad/glad.h>
@@ -19,6 +20,7 @@ SystemManager::~SystemManager()
 
 void SystemManager::InitializeSystems(ResourceManager& res, int width, int height, Application* app)
 {
+    LOGGER_INFO("SystemManager") << "Initializing systems...";
     postProcess.Init(width, height, res);
     renderSystem.InitShadows(res);
 
@@ -30,6 +32,7 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
 
 void SystemManager::ShutdownSystems()
 {
+    LOGGER_INFO("SystemManager") << "Shutting down systems...";
     renderSystem.Shutdown();
     postProcess.Shutdown();
 }

@@ -1,4 +1,5 @@
 #include <scene/light_manager.h>
+#include <utils/logger.h>
 #include <scene/scene.h>
 #include <iostream>
 
@@ -119,7 +120,7 @@ void LightManager::EnsurePrimaryDirectionalLight()
     {
         auto &light = m_Scene.registry.get<DirectionalLightComponent>(lastDirLight);
         light.isCastShadow = true;
-        std::cout << "[LightManager] Auto-set last active directional light to cast shadow" << std::endl;
+        LOGGER_INFO("LightManager") << "Auto-set last active directional light to cast shadow";
     }
 }
 

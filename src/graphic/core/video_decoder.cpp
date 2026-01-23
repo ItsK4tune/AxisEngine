@@ -1,5 +1,5 @@
 #include <graphic/core/video_decoder.h>
-#include <iostream>
+#include <utils/logger.h>
 #include <glad/glad.h>
 
 VideoDecoder::VideoDecoder()
@@ -23,13 +23,13 @@ bool VideoDecoder::Load(const std::string &filepath)
     av_log_set_level(AV_LOG_QUIET);
     if (avformat_open_input(&m_FormatCtx, filepath.c_str(), nullptr, nullptr) != 0)
     {
-        std::cerr << "Failed to open video file: " << filepath << std::endl;
+        LOGGER_ERROR("VideoDecoder") << "Failed to open video file: " << filepath;
         return false;
     }
 
     if (avformat_find_stream_info(m_FormatCtx, nullptr) < 0)
     {
-        std::cerr << "Failed to find stream info" << std::endl;
+        LOGGER_ERROR("VideoDecoder") << "Failed to find stream info";
         return false;
     }
 
@@ -45,7 +45,7 @@ bool VideoDecoder::Load(const std::string &filepath)
 
     if (m_VideoStreamIndex == -1)
     {
-        std::cerr << "No video stream found" << std::endl;
+        LOGGER_ERROR("VideoDecoder") << "No video stream found";
         return false;
     }
 
@@ -53,7 +53,7 @@ bool VideoDecoder::Load(const std::string &filepath)
     const AVCodec *codec = avcodec_find_decoder(codecPar->codec_id);
     if (!codec)
     {
-        std::cerr << "Unsupported codec" << std::endl;
+        LOGGER_ERROR("VideoDecoder") << "Unsupported codec";
         return false;
     }
 
@@ -62,7 +62,7 @@ bool VideoDecoder::Load(const std::string &filepath)
 
     if (avcodec_open2(m_CodecCtx, codec, nullptr) < 0)
     {
-        std::cerr << "Failed to open codec" << std::endl;
+        LOGGER_ERROR("VideoDecoder") << "Failed to open codec";
         return false;
     }
 

@@ -11,6 +11,7 @@
 #include <resource/resource_manager.h>
 #include <audio/sound_manager.h>
 #include <physic/physic_world.h>
+#include <utils/logger.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 #include <debug/debug_system.h>
@@ -29,6 +30,7 @@ EngineLoop::~EngineLoop()
 
 void EngineLoop::Run()
 {
+    LOGGER_INFO("EngineLoop") << "Starting engine loop";
     while (!glfwWindowShouldClose(m_App->GetWindow()))
     {
         ProcessFrame();
@@ -146,15 +148,20 @@ void EngineLoop::Render()
 void EngineLoop::SetPhysicsStep(float step)
 {
     if (step > 0.0f)
+    {
         m_FixedDeltaTime = step;
+        LOGGER_DEBUG("EngineLoop") << "Fixed delta time set to: " << m_FixedDeltaTime;
+    }
 }
 
 void EngineLoop::SetTimeScale(float scale)
 {
     m_TimeScale = scale;
+    LOGGER_DEBUG("EngineLoop") << "Time scale set to: " << m_TimeScale;
 }
 
 void EngineLoop::SetPaused(bool paused)
 {
     m_IsPaused = paused;
+    LOGGER_DEBUG("EngineLoop") << (m_IsPaused ? "Engine paused" : "Engine resumed");
 }

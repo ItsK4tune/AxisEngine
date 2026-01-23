@@ -1,6 +1,6 @@
 #include <resource/font_cache.h>
 #include <utils/filesystem.h>
-#include <iostream>
+#include <utils/logger.h>
 
 FontCache::FontCache()
 {
@@ -17,11 +17,11 @@ void FontCache::LoadFont(const std::string& name, const std::string& path, unsig
     if (font->Load(FileSystem::getPath(path), fontSize))
     {
         m_Fonts[name] = std::move(font);
-        std::cout << "[FontCache] Loaded font: " << name << std::endl;
+        LOGGER_INFO("FontCache") << "Loaded font: " << name;
     }
     else
     {
-        std::cout << "[FontCache] Failed to load font: " << path << std::endl;
+        LOGGER_ERROR("FontCache") << "Failed to load font: " << path;
     }
 }
 
@@ -30,7 +30,7 @@ Font* FontCache::GetFont(const std::string& name)
     if (m_Fonts.find(name) != m_Fonts.end())
         return m_Fonts[name].get();
     
-    std::cerr << "[FontCache] Font not found: " << name << std::endl;
+    LOGGER_WARN("FontCache") << "Font not found: " << name;
     return nullptr;
 }
 

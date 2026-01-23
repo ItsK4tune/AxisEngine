@@ -1,4 +1,5 @@
 #include <ecs/systems/physics_system.h>
+#include <utils/logger.h>
 #include <physic/physics_transform_sync.h>
 #include <physic/physics_collision_dispatcher.h>
 #include <engine/ecs/cached_query.h>
@@ -31,6 +32,7 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
 
     if (!m_transformSync)
     {
+        LOGGER_INFO("PhysicsSystem") << "Initializing Physics Transform Sync";
         m_transformSync = std::make_unique<PhysicsTransformSync>(scene, physicsWorld);
         m_transformSync->Init();
     }
@@ -58,6 +60,7 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
     
     if (!m_collisionDispatcher)
     {
+        LOGGER_INFO("PhysicsSystem") << "Initializing Physics Collision Dispatcher";
         m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, physicsWorld);
     }
     m_collisionDispatcher->DispatchEvents();

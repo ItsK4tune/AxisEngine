@@ -11,7 +11,7 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
-#include <iostream>
+#include <utils/logger.h>
 #include <GLFW/glfw3.h>
 
 DebugSystem::DebugSystem() {}
@@ -34,47 +34,47 @@ void DebugSystem::Init(Application *app)
     m_DebugFont = res.GetFont("debug_font");
     m_TextShader = res.GetShader("debug_text");
     m_TextQuad = res.GetUIModel("debug_sys_model");
-
-    std::cout << "[DebugSystem] Initializing debug modules..." << std::endl;
+    
+    LOGGER_INFO("DebugSystem") << "Initializing debug modules...";
 
     auto generalModule = std::make_unique<GeneralDebugModule>();
     generalModule->Init(app);
     m_Modules.push_back(std::move(generalModule));
-    std::cout << "  - GeneralDebugModule initialized" << std::endl;
+    LOGGER_INFO("DebugSystem") << "  - GeneralDebugModule initialized";
 
     auto overlayModule = std::make_unique<OverlayDebugModule>();
     overlayModule->Init(app);
     overlayModule->SetSharedResources(m_DebugFont, m_TextShader, m_TextQuad);
     m_Modules.push_back(std::move(overlayModule));
-    std::cout << "  - OverlayDebugModule initialized" << std::endl;
+    LOGGER_INFO("DebugSystem") << "  - OverlayDebugModule initialized";
 
     auto renderModule = std::make_unique<RenderDebugModule>();
     renderModule->Init(app);
     m_Modules.push_back(std::move(renderModule));
-    std::cout << "  - RenderDebugModule initialized" << std::endl;
+    LOGGER_INFO("DebugSystem") << "  - RenderDebugModule initialized";
 
     auto physicsModule = std::make_unique<PhysicsDebugModule>();
     physicsModule->Init(app);
     m_Modules.push_back(std::move(physicsModule));
-    std::cout << "  - PhysicsDebugModule initialized" << std::endl;
+    LOGGER_INFO("DebugSystem") << "  - PhysicsDebugModule initialized";
 
     auto gizmoModule = std::make_unique<GizmoDebugModule>();
     gizmoModule->Init(app);
     gizmoModule->SetSharedResources(m_DebugFont, m_TextShader, m_TextQuad);
     m_Modules.push_back(std::move(gizmoModule));
-    std::cout << "  - GizmoDebugModule initialized" << std::endl;
+    LOGGER_INFO("DebugSystem") << "  - GizmoDebugModule initialized";
 
     auto cameraModule = std::make_unique<CameraDebugModule>();
     cameraModule->Init(app);
     m_Modules.push_back(std::move(cameraModule));
-    std::cout << "  - CameraDebugModule initialized" << std::endl;
+    LOGGER_INFO("DebugSystem") << "  - CameraDebugModule initialized";
 
     auto shadowModule = std::make_unique<ShadowDebugModule>();
     shadowModule->Init(app);
     m_Modules.push_back(std::move(shadowModule));
-    std::cout << "  - ShadowDebugModule initialized (stub)" << std::endl;
+    LOGGER_INFO("DebugSystem") << "  - ShadowDebugModule initialized";
 
-    std::cout << "[DebugSystem] All " << m_Modules.size() << " modules initialized successfully!" << std::endl;
+    LOGGER_INFO("DebugSystem") << "All " << m_Modules.size() << " modules initialized successfully!";
 }
 
 void DebugSystem::OnUpdate(float dt)

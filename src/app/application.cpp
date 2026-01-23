@@ -1,5 +1,6 @@
 #include <app/application.h>
 #include <app/config_loader.h>
+#include <utils/logger.h>
 
 #include <utils/filesystem.h>
 #include <utils/bullet_glm_helpers.h>
@@ -8,8 +9,10 @@
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
-    if (app)
+    if (app) {
+        LOGGER_DEBUG("Application") << "Window resized to " << width << "x" << height;
         app->OnResize(width, height);
+    }
 }
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
@@ -55,6 +58,8 @@ Application::~Application()
 
     systemManager.reset();
     engineLoop.reset();
+
+    LOGGER_INFO("Application") << "Application shutdown completed.";
 }
 
 bool Application::Init()
@@ -66,8 +71,10 @@ bool Application::Init()
     monitorManager.SetVsync(config.vsync);
     monitorManager.SetFrameRateLimit(config.frameRateLimit);
 
-    if (!monitorManager.Init())
+    if (!monitorManager.Init()) {
+        LOGGER_ERROR("Application") << "Failed to initialize MonitorManager";
         return false;
+    }
 
     if (!config.depthTestEnabled)
         glDisable(GL_DEPTH_TEST);
@@ -116,15 +123,18 @@ bool Application::Init()
 
     resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 
-    std::cout << "[Application] Loading default assets from src/asset/load.scene..." << std::endl;
+    LOGGER_INFO("Application") << "Loading default assets from src/asset/load.scene...";
     sceneManager->LoadScene("src/asset/load.scene");
 
     engineLoop = std::make_unique<EngineLoop>(this);
 
     if (!config.iconPath.empty())
     {
+        LOGGER_DEBUG("Application") << "Setting window icon from: " << config.iconPath;
         monitorManager.SetWindowIcon(FileSystem::getPath(config.iconPath));
     }
+
+    LOGGER_INFO("Application") << "Application initialized successfully.";
 
     return true;
 }

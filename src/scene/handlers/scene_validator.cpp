@@ -1,4 +1,5 @@
 #include <scene/handlers/scene_validator.h>
+#include <utils/logger.h>
 #include <scene/scene.h>
 #include <script/script_registry.h>
 #include <app/application.h>
@@ -45,8 +46,8 @@ namespace SceneHandlers
                 }
                 else
                 {
-                    std::cerr << "[SceneValidator] Child not found: " << childName
-                              << " for Parent Entity ID: " << (uint32_t)parentEntity << std::endl;
+                    LOGGER_ERROR("SceneValidator") << "Child not found: " << childName
+                              << " for Parent Entity ID: " << (uint32_t)parentEntity;
                 }
             }
         }
@@ -87,7 +88,7 @@ namespace SceneHandlers
         if (!hasRenderableEntities)
             return;
 
-        std::cout << "[SceneValidator] WARNING: No Active Camera found in scene! Creating Default Spectator Camera." << std::endl;
+        LOGGER_WARN("SceneValidator") << "No Active Camera found in scene! Creating Default Spectator Camera.";
 
         entt::entity camEntity = scene.createEntity();
 
@@ -117,11 +118,11 @@ namespace SceneHandlers
 
             scriptComp.instance->Init(camEntity, &scene, app);
             scriptComp.instance->OnCreate();
-            std::cout << "[SceneValidator] Attached 'DefaultCameraController' (Engine Fallback) to default camera." << std::endl;
+            LOGGER_INFO("SceneValidator") << "Attached 'DefaultCameraController' (Engine Fallback) to default camera.";
         }
         else
         {
-            std::cout << "[SceneValidator] 'DefaultCameraController' script not found! Make sure it is compiled." << std::endl;
+            LOGGER_WARN("SceneValidator") << "'DefaultCameraController' script not found! Make sure it is compiled.";
         }
     }
 

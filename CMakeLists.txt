@@ -12,6 +12,23 @@ if(ENABLE_DEBUG_SYSTEM)
     message(STATUS "Debug System Enabled")
 endif()
 
+set(AXIS_LOG_LEVEL "MINIMAL" CACHE STRING "Log Level: NO, MINIMAL, FLEX, DEBUG")
+set_property(CACHE AXIS_LOG_LEVEL PROPERTY STRINGS "NO" "MINIMAL" "FLEX" "DEBUG")
+
+if(AXIS_LOG_LEVEL STREQUAL "NO")
+    add_compile_definitions(AXIS_LOG_LEVEL_DEF=0)
+elseif(AXIS_LOG_LEVEL STREQUAL "MINIMAL")
+    add_compile_definitions(AXIS_LOG_LEVEL_DEF=1)
+elseif(AXIS_LOG_LEVEL STREQUAL "FLEX")
+    add_compile_definitions(AXIS_LOG_LEVEL_DEF=2)
+elseif(AXIS_LOG_LEVEL STREQUAL "DEBUG")
+    add_compile_definitions(AXIS_LOG_LEVEL_DEF=3)
+else()
+    message(WARNING "Unknown log level '${AXIS_LOG_LEVEL}', defaulting to MINIMAL")
+    add_compile_definitions(AXIS_LOG_LEVEL_DEF=1)
+endif()
+message(STATUS "Log Level: ${AXIS_LOG_LEVEL}")
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})

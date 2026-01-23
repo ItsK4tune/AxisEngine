@@ -1,5 +1,6 @@
 #include <ecs/system.h>
 #include <ecs/component.h>
+#include <utils/logger.h>
 #include <glad/glad.h>
 
 void ParticleSystem::Update(Scene &scene, float dt)
@@ -32,7 +33,7 @@ void ParticleSystem::Render(Scene &scene, ResourceManager &res)
     auto shader = res.GetShader("particle");
     if (!shader)
     {
-        std::cerr << "[ParticleSystem] 'particle' shader not found!" << std::endl;
+        LOGGER_ERROR("ParticleSystem") << "'particle' shader not found!";
         return;
     }
 

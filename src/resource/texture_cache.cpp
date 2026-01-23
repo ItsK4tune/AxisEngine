@@ -1,4 +1,5 @@
 #include <resource/texture_cache.h>
+#include <utils/logger.h>
 #include <utils/filesystem.h>
 #include <glad/glad.h>
 #include <stb_image.h>
@@ -64,11 +65,11 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             tex.path = path;
             m_Textures[name] = tex;
             
-            std::cout << "[TextureCache] Loaded texture: " << name << std::endl;
+            LOGGER_INFO("TextureCache") << "Loaded texture: " << name;
         }
         else
         {
-            std::cout << "[TextureCache] Failed to load texture: " << path << std::endl;
+            LOGGER_ERROR("TextureCache") << "Failed to load texture: " << path;
             stbi_image_free(data);
         }
     }
@@ -121,11 +122,11 @@ void TextureCache::Update()
                 tex.path = data.path;
                 m_Textures[data.name] = tex;
 
-                std::cout << "[TextureCache] Async texture loaded: " << data.name << std::endl;
+                LOGGER_INFO("TextureCache") << "Async texture loaded: " << data.name;
             }
             else
             {
-                std::cout << "[TextureCache] Failed to async load texture: " << data.path << std::endl;
+                LOGGER_ERROR("TextureCache") << "Failed to async load texture: " << data.path;
             }
             
             it = m_AsyncLoads.erase(it);

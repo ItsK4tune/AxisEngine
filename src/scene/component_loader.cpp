@@ -1,4 +1,5 @@
 #include <scene/component_loader.h>
+#include <utils/logger.h>
 #include <script/script_registry.h>
 #include <utils/filesystem.h>
 #include <iostream>
@@ -274,7 +275,7 @@ void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, std
 
     if (!emitterComp.emitter.texture)
     {
-        std::cerr << "[ComponentLoader] Particle Texture not found: " << texName << std::endl;
+        LOGGER_ERROR("ComponentLoader") << "Particle Texture not found: " << texName;
     }
 }
 
@@ -330,7 +331,7 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, std::strin
         }
         catch (...)
         {
-            std::cout << "Invalid MATERIAL format for entity " << (int)entity << std::endl;
+            LOGGER_WARN("ComponentLoader") << "Invalid MATERIAL format for entity " << (int)entity;
         }
     }
 

@@ -1,5 +1,5 @@
 #include <graphic/geometry/static_batch_manager.h>
-#include <iostream>
+#include <utils/logger.h>
 #include <fstream>
 
 StaticBatchManager::StaticBatchManager()
@@ -16,7 +16,7 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
 {
     if (models.size() != transforms.size())
     {
-        std::cerr << "[StaticBatchManager] Model and transform count mismatch" << std::endl;
+        LOGGER_ERROR("StaticBatchManager") << "Model and transform count mismatch";
         return;
     }
     
@@ -32,9 +32,9 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
     
     m_Batches[name] = batch;
     
-    std::cout << "[StaticBatchManager] Created batch: " << name 
+    LOGGER_INFO("StaticBatchManager") << "Created batch: " << name 
               << " (" << mergedVertices.size() << " vertices, " 
-              << mergedIndices.size() << " indices)" << std::endl;
+              << mergedIndices.size() << " indices)";
 }
 
 void StaticBatchManager::MergeMeshes(const std::vector<Model*>& models,
@@ -117,7 +117,7 @@ void StaticBatchManager::RenderBatch(const std::string& name)
     auto it = m_Batches.find(name);
     if (it == m_Batches.end())
     {
-        std::cerr << "[StaticBatchManager] Batch not found: " << name << std::endl;
+        LOGGER_ERROR("StaticBatchManager") << "Batch not found: " << name;
         return;
     }
     
@@ -143,7 +143,7 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open())
     {
-        std::cerr << "[StaticBatchManager] Failed to open batch file: " << path << std::endl;
+        LOGGER_ERROR("StaticBatchManager") << "Failed to open batch file: " << path;
         return false;
     }
     
@@ -160,7 +160,7 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
     
     if (header.magic != 0x48435442)
     {
-        std::cerr << "[StaticBatchManager] Invalid batch file magic" << std::endl;
+        LOGGER_ERROR("StaticBatchManager") << "Invalid batch file magic";
         return false;
     }
     
@@ -179,7 +179,7 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
     
     m_Batches[name] = batch;
     
-    std::cout << "[StaticBatchManager] Loaded batch from file: " << name << std::endl;
+    LOGGER_INFO("StaticBatchManager") << "Loaded batch from file: " << name;
     return true;
 }
 
@@ -188,11 +188,11 @@ void StaticBatchManager::SaveBatchToFile(const std::string& name, const std::str
     auto it = m_Batches.find(name);
     if (it == m_Batches.end())
     {
-        std::cerr << "[StaticBatchManager] Batch not found: " << name << std::endl;
+        LOGGER_ERROR("StaticBatchManager") << "Batch not found: " << name;
         return;
     }
     
-    std::cout << "[StaticBatchManager] Batch saving not yet fully implemented" << std::endl;
+    LOGGER_WARN("StaticBatchManager") << "Batch saving not yet fully implemented";
 }
 
 void StaticBatchManager::Clear()

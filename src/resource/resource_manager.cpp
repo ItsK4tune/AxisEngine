@@ -1,4 +1,5 @@
 #include <resource/resource_manager.h>
+#include <utils/logger.h>
 #include <utils/filesystem.h>
 #include <iostream>
 
@@ -15,13 +16,13 @@ void ResourceManager::Update()
 
 void ResourceManager::ReloadShader(const std::string &name)
 {
-    std::cout << "[HotReload] Reloading Shader: " << name << std::endl;
+    LOGGER_INFO("HotReload") << "Reloading Shader: " << name;
     m_ShaderCache.Reload(name);
 }
 
 void ResourceManager::ReloadTexture(const std::string &name)
 {
-    std::cout << "[HotReload] Reloading Texture: " << name << std::endl;
+    LOGGER_INFO("HotReload") << "Reloading Texture: " << name;
 }
 
 void ResourceManager::LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
@@ -49,15 +50,17 @@ void ResourceManager::LoadTexture(const std::string &name, const std::string &pa
 void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
 {
     std::string fullPath = FileSystem::getPath(path);
+    LOGGER_DEBUG("ResourceManager") << "Loading model: " << name << " from " << fullPath;
 
     Model *model = m_ModelInstanceManager.GetOrLoadModel(name, fullPath, isStatic);
     if (!model)
     {
-        std::cerr << "[ResourceManager] Failed to load model: " << path << std::endl;
+        LOGGER_ERROR("ResourceManager") << "Failed to load model: " << path;
     }
     else
     {
         m_ModelPaths[name] = {name, isStatic};
+        LOGGER_INFO("ResourceManager") << "Loaded model: " << name;
     }
 }
 
@@ -69,12 +72,13 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
         Model *model = m_ModelInstanceManager.GetOrLoadModel(modelName, it->second.path, it->second.isStatic);
         if (model)
         {
+            LOGGER_DEBUG("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
             m_AnimationCache.LoadAnimation(name, path, model);
         }
     }
     else
     {
-        std::cerr << "[ResourceManager] Model not found for animation: " << modelName << std::endl;
+        LOGGER_ERROR("ResourceManager") << "Model not found for animation: " << modelName;
     }
 }
 
@@ -85,6 +89,7 @@ void ResourceManager::LoadFont(const std::string &name, const std::string &path,
 
 void ResourceManager::LoadSound(const std::string &name, const std::string &path, irrklang::ISoundEngine *engine)
 {
+    LOGGER_DEBUG("ResourceManager") << "Loading sound: " << name;
     m_SoundCache.LoadSound(name, path, engine);
 }
 
@@ -93,13 +98,13 @@ void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std:
     auto skybox = std::make_unique<Skybox>();
     skybox->LoadCubemap(faces);
     m_Skyboxes[name] = std::move(skybox);
-    std::cout << "[ResourceManager] Loaded skybox: " << name << std::endl;
+    LOGGER_INFO("ResourceManager") << "Loaded skybox: " << name;
 }
 
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
     m_UIModels[name] = std::make_unique<UIModel>(type);
-    std::cout << "[ResourceManager] Created UI Model: " << name << std::endl;
+    LOGGER_INFO("ResourceManager") << "Created UI Model: " << name;
 }
 
 Shader *ResourceManager::GetShader(const std::string &name)
@@ -119,6 +124,7 @@ Model *ResourceManager::GetModel(const std::string &name)
     {
         return m_ModelInstanceManager.GetOrLoadModel(name, it->second.path, it->second.isStatic);
     }
+    LOGGER_WARN("ResourceManager") << "Model path not found for: " << name;
     return nullptr;
 }
 
@@ -142,7 +148,7 @@ Skybox *ResourceManager::GetSkybox(const std::string &name)
     if (m_Skyboxes.find(name) != m_Skyboxes.end())
         return m_Skyboxes[name].get();
 
-    std::cerr << "[ResourceManager] Skybox not found: " << name << std::endl;
+    LOGGER_WARN("ResourceManager") << "Skybox not found: " << name;
     return nullptr;
 }
 
@@ -151,7 +157,7 @@ UIModel *ResourceManager::GetUIModel(const std::string &name)
     if (m_UIModels.find(name) != m_UIModels.end())
         return m_UIModels[name].get();
 
-    std::cerr << "[ResourceManager] UI Model not found: " << name << std::endl;
+    LOGGER_WARN("ResourceManager") << "UI Model not found: " << name;
     return nullptr;
 }
 
@@ -166,5 +172,5 @@ void ResourceManager::ClearResource()
     m_UIModels.clear();
     m_Skyboxes.clear();
 
-    std::cout << "[ResourceManager] All resources cleared" << std::endl;
+    LOGGER_INFO("ResourceManager") << "All resources cleared";
 }

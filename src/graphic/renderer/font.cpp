@@ -1,5 +1,5 @@
 #include <graphic/renderer/font.h>
-#include <iostream>
+#include <utils/logger.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -14,13 +14,13 @@ Font::~Font() {
 bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
     FT_Library ft;
     if (FT_Init_FreeType(&ft)) {
-        std::cerr << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
+        LOGGER_ERROR("Font") << "Could not init FreeType Library";
         return false;
     }
 
     FT_Face face;
     if (FT_New_Face(ft, fontPath.c_str(), 0, &face)) {
-        std::cerr << "ERROR::FREETYPE: Failed to load font: " << fontPath << std::endl;
+        LOGGER_ERROR("Font") << "Failed to load font: " << fontPath;
         FT_Done_FreeType(ft);
         return false;
     }
@@ -31,7 +31,7 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
 
     for (unsigned char c = 0; c < 128; c++) {
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-            std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
+            LOGGER_ERROR("Font") << "Failed to load Glyph";
             continue;
         }
 

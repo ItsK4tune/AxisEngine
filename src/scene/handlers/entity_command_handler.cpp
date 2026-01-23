@@ -1,7 +1,7 @@
 #include <scene/handlers/entity_command_handler.h>
 #include <scene/scene.h>
 #include <ecs/component.h>
-#include <iostream>
+#include <utils/logger.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -63,7 +63,7 @@ namespace SceneHandlers
         }
         else
         {
-            std::cerr << "[EntityCommandHandler] Parent not found: " << parentName << std::endl;
+            LOGGER_ERROR("EntityCommandHandler") << "Parent not found: " << parentName;
         }
     }
 

@@ -1,4 +1,5 @@
 #include <scene/scene_manager.h>
+#include <utils/logger.h>
 #include <scene/scene_loader.h>
 #include <script/script_registry.h>
 #include <utils/filesystem.h>
@@ -14,7 +15,7 @@ void SceneManager::LoadScene(const std::string &filePath)
 {
     if (m_LoadedScenes.find(filePath) != m_LoadedScenes.end())
     {
-        std::cout << "[SceneManager] Scene already loaded: " << filePath << std::endl;
+        LOGGER_INFO("SceneManager") << "Scene already loaded: " << filePath;
         return;
     }
 
@@ -23,6 +24,7 @@ void SceneManager::LoadScene(const std::string &filePath)
     if (!loadedEntities.empty())
     {
         m_LoadedScenes[filePath] = loadedEntities;
+        LOGGER_INFO("SceneManager") << "Scene loaded successfully: " << filePath << " (" << loadedEntities.size() << " entities)";
     }
 }
 
@@ -31,7 +33,7 @@ void SceneManager::UnloadScene(const std::string &filePath)
     auto it = m_LoadedScenes.find(filePath);
     if (it == m_LoadedScenes.end())
     {
-        std::cout << "[SceneManager] Scene not found or not loaded: " << filePath << std::endl;
+        LOGGER_WARN("SceneManager") << "Scene not found or not loaded: " << filePath;
         return;
     }
 
@@ -51,6 +53,7 @@ void SceneManager::ChangeScene(const std::string &filePath)
 
 void SceneManager::ClearAllScenes()
 {
+    LOGGER_INFO("SceneManager") << "Clearing all scenes...";
     m_Scene.registry.clear();
 
     m_Physics.Clear();
@@ -62,7 +65,7 @@ void SceneManager::QueueLoadScene(const std::string &path)
 {
     m_pendingPath = path;
     m_isPending = true;
-    std::cout << "[SceneManager] Queued load scene: " << path << std::endl;
+    LOGGER_INFO("SceneManager") << "Queued load scene: " << path;
 }
 
 void SceneManager::UpdatePendingScene()

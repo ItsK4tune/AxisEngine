@@ -1,5 +1,6 @@
 #include <ecs/system.h>
 #include <graphic/core/video_decoder.h>
+#include <utils/logger.h>
 #include <iostream>
 #include <string>
 
@@ -34,7 +35,7 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
                     if (ui.size.x > 0 && ui.size.y > 0)
                     {
                         video.decoder->SetOutputSize((int)ui.size.x, (int)ui.size.y);
-                        std::cout << "[VideoSystem] Auto-scaling video to UI size: " << ui.size.x << "x" << ui.size.y << std::endl;
+                        LOGGER_INFO("VideoSystem") << "Auto-scaling video to UI size: " << ui.size.x << "x" << ui.size.y;
                     }
                 }
 
@@ -46,7 +47,7 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
             }
             else
             {
-                std::cerr << "[VideoSystem] Failed to load: " << video.filePath << std::endl;
+                LOGGER_ERROR("VideoSystem") << "Failed to load: " << video.filePath;
                 video.isLoaded = true;
                 delete video.decoder;
                 video.decoder = nullptr;

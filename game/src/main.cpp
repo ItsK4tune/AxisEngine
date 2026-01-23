@@ -1,4 +1,5 @@
 #include <app/application.h>
+#include <utils/logger.h>
 #include <states/game_state.h>
 #include <iostream>
 #include <fstream>
@@ -65,8 +66,8 @@ void InitLogging() {
         std::cerr.rdbuf(logFile.rdbuf());
 #endif
 
-        std::cout << "[LOG] Logging started at " << std::put_time(&bt, "%Y-%m-%d %H:%M:%S") << std::endl;
-        std::cout << "[LOG] Log file: " << logPath.string() << std::endl;
+        LOGGER_INFO("Application") << "Logging started at " << std::put_time(&bt, "%Y-%m-%d %H:%M:%S");
+        LOGGER_INFO("Application") << "Log file: " << logPath.string();
     }
 }
 

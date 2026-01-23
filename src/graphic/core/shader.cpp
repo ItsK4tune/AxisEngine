@@ -2,7 +2,7 @@
 
 #include <fstream>
 #include <sstream>
-#include <iostream>
+#include <utils/logger.h>
 
 Shader::Shader()
     : ID(0)
@@ -54,7 +54,7 @@ void Shader::load(const char* vertexPath, const char* fragmentPath, const char* 
     }
     catch (std::ifstream::failure &e)
     {
-        std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ: " << e.what() << std::endl;
+        LOGGER_ERROR("Shader") << "FILE_NOT_SUCCESFULLY_READ: " << e.what();
     }
     const char *vShaderCode = vertexCode.c_str();
     const char *fShaderCode = fragmentCode.c_str();
@@ -94,6 +94,8 @@ void Shader::load(const char* vertexPath, const char* fragmentPath, const char* 
     glDeleteShader(fragment);
     if (geometryPath != nullptr)
         glDeleteShader(geometry);
+
+    LOGGER_DEBUG("Shader") << "Shader loaded successfully: " << vertexPath << " | " << fragmentPath;
 }
 
 void Shader::use()
@@ -181,8 +183,8 @@ void Shader::checkCompileErrors(GLuint shader, std::string type)
         if (!success)
         {
             glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n"
-                      << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+            LOGGER_ERROR("Shader") << "COMPILATION_ERROR of type: " << type << "\n"
+                      << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
     else
@@ -191,8 +193,8 @@ void Shader::checkCompileErrors(GLuint shader, std::string type)
         if (!success)
         {
             glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n"
-                      << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+            LOGGER_ERROR("Shader") << "LINKING_ERROR of type: " << type << "\n"
+                      << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
 }

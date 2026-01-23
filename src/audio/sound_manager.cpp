@@ -1,4 +1,5 @@
 #include <audio/sound_manager.h>
+#include <utils/logger.h>
 #include <utils/irrKlang_glm_helpers.h>
 
 SoundManager::~SoundManager()
@@ -12,7 +13,7 @@ void SoundManager::Init()
     m_Engine = createIrrKlangDevice(ESOD_AUTO_DETECT, ESEO_MULTI_THREADED | ESEO_LOAD_PLUGINS | ESEO_USE_3D_BUFFERS);
     if (!m_Engine)
     {
-        std::cerr << "[SoundManager] Could not startup irrKlang engine" << std::endl;
+        LOGGER_ERROR("SoundManager") << "Could not startup irrKlang engine";
     }
 }
 
@@ -113,7 +114,7 @@ bool SoundManager::SetActiveDevice(const std::string &deviceId)
 
     if (!m_Engine)
     {
-        std::cerr << "[SoundManager] Failed to switch device to: " << deviceId << std::endl;
+        LOGGER_ERROR("SoundManager") << "Failed to switch device to: " << deviceId;
         Init();
         return false;
     }

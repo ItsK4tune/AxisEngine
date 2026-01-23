@@ -1,4 +1,5 @@
 #include <graphic/core/shader_cache.h>
+#include <utils/logger.h>
 #include <iostream>
 
 ShaderCache::ShaderCache()
@@ -23,7 +24,7 @@ Shader* ShaderCache::GetOrCompile(const std::string& name, const std::string& ve
     
     if (vertPath.empty() || fragPath.empty())
     {
-        std::cerr << "[ShaderCache] ERROR: Empty shader paths for '" << name << "'!" << std::endl;
+        LOGGER_ERROR("ShaderCache") << "Empty shader paths for '" << name << "'!";
         return nullptr;
     }
 
@@ -31,7 +32,7 @@ Shader* ShaderCache::GetOrCompile(const std::string& name, const std::string& ve
     shader->load(vertPath.c_str(), fragPath.c_str());
     
     m_LoadedShaders[name] = shader;
-    std::cout << "[ShaderCache] Compiled and cached shader '" << name << "'" << std::endl;
+    LOGGER_INFO("ShaderCache") << "Compiled and cached shader '" << name << "'";
     
     return shader;
 }
@@ -49,7 +50,7 @@ void ShaderCache::Reload(const std::string& name)
     auto it = m_LoadedShaders.find(name);
     if (it != m_LoadedShaders.end())
     {
-        std::cout << "[ShaderCache] Reloading shader: " << name << std::endl;
+        LOGGER_INFO("ShaderCache") << "Reloading shader: " << name;
         delete it->second;
         m_LoadedShaders.erase(it);
     }

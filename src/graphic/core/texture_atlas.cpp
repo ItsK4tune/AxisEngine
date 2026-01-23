@@ -3,6 +3,7 @@
 #include <stb_image.h>
 #include <algorithm>
 #include <iostream>
+#include <utils/logger.h>
 #include <fstream>
 
 TextureAtlas::TextureAtlas()
@@ -34,7 +35,7 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
         
         if (!texData.data)
         {
-            std::cerr << "[TextureAtlas] Failed to load texture: " << path << std::endl;
+            LOGGER_ERROR("TextureAtlas") << "Failed to load texture: " << path;
             continue;
         }
         
@@ -48,7 +49,7 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
     std::vector<Rect> rects;
     if (!PackTextures(textures, rects))
     {
-        std::cerr << "[TextureAtlas] Failed to pack textures" << std::endl;
+        LOGGER_ERROR("TextureAtlas") << "Failed to pack textures";
         for (auto& tex : textures)
         {
             stbi_image_free(tex.data);
@@ -93,7 +94,7 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
         stbi_image_free(tex.data);
     }
     
-    std::cout << "[TextureAtlas] Created atlas with " << textures.size() << " textures" << std::endl;
+    LOGGER_INFO("TextureAtlas") << "Created atlas with " << textures.size() << " textures";
     return true;
 }
 
@@ -132,7 +133,7 @@ bool TextureAtlas::PackTextures(const std::vector<TextureData>& textures, std::v
         
         if (currentY + tex.height > m_Height)
         {
-            std::cerr << "[TextureAtlas] Atlas size too small for " << textures.size() << " textures" << std::endl;
+            LOGGER_ERROR("TextureAtlas") << "Atlas size too small for " << textures.size() << " textures";
             return false;
         }
         
@@ -167,6 +168,7 @@ TextureAtlas::AtlasRegion TextureAtlas::GetRegion(const std::string& textureName
     if (it != m_Regions.end())
         return it->second;
     
+    LOGGER_WARN("TextureAtlas") << "Region not found: " << textureName;
     return AtlasRegion();
 }
 
@@ -179,13 +181,13 @@ glm::vec4 TextureAtlas::TransformUV(const std::string& textureName, const glm::v
 
 bool TextureAtlas::SaveToFile(const std::string& path)
 {
-    std::cout << "[TextureAtlas] Save to file not yet implemented" << std::endl;
+    LOGGER_WARN("TextureAtlas") << "Save to file not yet implemented";
     return false;
 }
 
 bool TextureAtlas::LoadFromFile(const std::string& path)
 {
-    std::cout << "[TextureAtlas] Load from file not yet implemented" << std::endl;
+    LOGGER_WARN("TextureAtlas") << "Load from file not yet implemented";
     return false;
 }
 

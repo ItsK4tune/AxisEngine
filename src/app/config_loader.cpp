@@ -1,4 +1,5 @@
 #include <app/config_loader.h>
+#include <utils/logger.h>
 #include <app/application.h>
 #include <fstream>
 #include <sstream>
@@ -35,7 +36,7 @@ AppConfig ConfigLoader::Load(const std::string &path)
     std::ifstream file(path);
     if (!file.is_open())
     {
-        std::cerr << "[ConfigLoader] Could not open config file: " << path << ". Using defaults." << std::endl;
+        LOGGER_ERROR("ConfigLoader") << "Could not open config file: " << path << ". Using defaults.";
         return config;
     }
 
@@ -146,7 +147,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else if (modeStr == "FRONT_AND_BACK")
                 mode = GL_FRONT_AND_BACK;
             else if (modeStr != "BACK")
-                std::cerr << "[ConfigLoader] [WARNING] Invalid CULL_FACE mode: " << modeStr << ". Supported: BACK, FRONT, FRONT_AND_BACK." << std::endl;
+                LOGGER_WARN("ConfigLoader") << "Invalid CULL_FACE mode: " << modeStr << ". Supported: BACK, FRONT, FRONT_AND_BACK.";
 
             if (app)
                 app->GetRenderSystem().SetFaceCulling(true, mode);
@@ -183,7 +184,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else if (funcStr == "ALWAYS")
                 func = GL_ALWAYS;
             else 
-                std::cerr << "[ConfigLoader] [WARNING] Invalid DEPTH_TEST func: " << funcStr << ". Supported: NEVER, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS." << std::endl;
+                LOGGER_WARN("ConfigLoader") << "Invalid DEPTH_TEST func: " << funcStr << ". Supported: NEVER, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS.";
 
             if (app)
                 app->GetRenderSystem().SetDepthTest(true, func);
@@ -212,7 +213,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
                 else if (modeStr == "WINDOWED")
                     mode = WindowMode::WINDOWED;
                 else
-                    std::cerr << "[ConfigLoader] [WARNING] Invalid WINDOW mode: " << modeStr << ". Supported: WINDOWED, FULLSCREEN, BORDERLESS." << std::endl;
+                    LOGGER_WARN("ConfigLoader") << "Invalid WINDOW mode: " << modeStr << ". Supported: WINDOWED, FULLSCREEN, BORDERLESS.";
             }
 
             if (!ss.eof())
@@ -293,7 +294,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             {
                 try { mode = std::stoi(modeStr); } 
                 catch(...) { 
-                    std::cerr << "[ConfigLoader] [WARNING] Invalid PHYSICS_MODE: " << modeStr << ". Supported: FAST, BALANCED, ACCURATE (or 0, 1, 2)." << std::endl;
+                    LOGGER_WARN("ConfigLoader") << "Invalid PHYSICS_MODE: " << modeStr << ". Supported: FAST, BALANCED, ACCURATE (or 0, 1, 2).";
                 }
             }
             
@@ -325,7 +326,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else if (valStr == "TAA") mode = AntiAliasingMode::TAA;
             else if (valStr == "NONE") mode = AntiAliasingMode::NONE;
             else
-                std::cerr << "[ConfigLoader] [WARNING] Invalid ANTIALIASING mode: " << valStr << ". Supported: NONE, FXAA, TAA." << std::endl;
+                LOGGER_WARN("ConfigLoader") << "Invalid ANTIALIASING mode: " << valStr << ". Supported: NONE, FXAA, TAA.";
             
             if (app)
             {

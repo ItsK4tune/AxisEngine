@@ -1,4 +1,5 @@
 #include <app/monitor_manager.h>
+#include <utils/logger.h>
 #include <iostream>
 #include <stb_image.h>
 
@@ -22,7 +23,7 @@ bool MonitorManager::Init()
 {
     if (!glfwInit())
     {
-        std::cerr << "[MonitorManager] Failed to initialize GLFW" << std::endl;
+        LOGGER_ERROR("MonitorManager") << "Failed to initialize GLFW";
         return false;
     }
 
@@ -33,7 +34,7 @@ bool MonitorManager::Init()
     m_Window = glfwCreateWindow(m_Width, m_Height, m_Title.c_str(), NULL, NULL);
     if (m_Window == NULL)
     {
-        std::cout << "[MonitorManager] Failed to create GLFW window" << std::endl;
+        LOGGER_ERROR("MonitorManager") << "Failed to create GLFW window";
         glfwTerminate();
         return false;
     }
@@ -50,7 +51,7 @@ bool MonitorManager::Init()
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "[MonitorManager] Failed to initialize GLAD" << std::endl;
+        LOGGER_ERROR("MonitorManager") << "Failed to initialize GLAD";
         return false;
     }
     glEnable(GL_DEPTH_TEST);
@@ -140,7 +141,7 @@ void MonitorManager::SetWindowIcon(const std::string &path)
     if (!m_Window)
         return;
 
-    std::cout << "[MonitorManager] Attempting to load icon from: " << path << std::endl;
+    LOGGER_INFO("MonitorManager") << "Attempting to load icon from: " << path;
 
     GLFWimage images[1];
     int width, height, channels;
@@ -148,7 +149,7 @@ void MonitorManager::SetWindowIcon(const std::string &path)
 
     if (pixels)
     {
-        std::cout << "[MonitorManager] Icon loaded successfully (" << width << "x" << height << ")" << std::endl;
+        LOGGER_INFO("MonitorManager") << "Icon loaded successfully (" << width << "x" << height << ")";
         images[0].width = width;
         images[0].height = height;
         images[0].pixels = pixels;
@@ -159,7 +160,7 @@ void MonitorManager::SetWindowIcon(const std::string &path)
     }
     else
     {
-        std::cerr << "[MonitorManager] Failed to load icon: " << path << std::endl;
+        LOGGER_ERROR("MonitorManager") << "Failed to load icon: " << path;
     }
 }
 

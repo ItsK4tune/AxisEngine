@@ -1,4 +1,5 @@
 #include <scene/scene_loader.h>
+#include <utils/logger.h>
 #include <scene/scene.h>
 #include <app/application.h>
 #include <script/script_registry.h>
@@ -25,7 +26,7 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
 
     if (!file.is_open())
     {
-        std::cerr << "[SceneLoader] Could not open scene file: " << fullPath << std::endl;
+        LOGGER_ERROR("SceneLoader") << "Could not open scene file: " << fullPath;
         return {};
     }
 
@@ -179,5 +180,6 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
 
     SceneHandlers::SceneValidator::ValidateCamera(scene, app);
 
+    LOGGER_INFO("SceneLoader") << "Finished parsing scene file: " << fullPath << ". loaded " << loadedEntities.size() << " entities.";
     return loadedEntities;
 }

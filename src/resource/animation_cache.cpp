@@ -1,6 +1,6 @@
 #include <resource/animation_cache.h>
 #include <utils/filesystem.h>
-#include <iostream>
+#include <utils/logger.h>
 
 AnimationCache::AnimationCache()
 {
@@ -15,12 +15,12 @@ void AnimationCache::LoadAnimation(const std::string& name, const std::string& p
 {
     if (!model)
     {
-        std::cerr << "[AnimationCache] Model is null for animation: " << name << std::endl;
+        LOGGER_ERROR("AnimationCache") << "Model is null for animation: " << name;
         return;
     }
     
     m_Animations[name] = std::make_unique<Animation>(FileSystem::getPath(path), model);
-    std::cout << "[AnimationCache] Loaded animation: " << name << std::endl;
+    LOGGER_INFO("AnimationCache") << "Loaded animation: " << name;
 }
 
 Animation* AnimationCache::GetAnimation(const std::string& name)
@@ -28,7 +28,7 @@ Animation* AnimationCache::GetAnimation(const std::string& name)
     if (m_Animations.find(name) != m_Animations.end())
         return m_Animations[name].get();
     
-    std::cerr << "[AnimationCache] Animation not found: " << name << std::endl;
+    LOGGER_WARN("AnimationCache") << "Animation not found: " << name;
     return nullptr;
 }
 

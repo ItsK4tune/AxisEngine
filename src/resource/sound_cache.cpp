@@ -1,4 +1,5 @@
 #include <resource/sound_cache.h>
+#include <utils/logger.h>
 #include <utils/filesystem.h>
 #include <iostream>
 
@@ -16,7 +17,7 @@ void SoundCache::LoadSound(const std::string& name, const std::string& path, irr
 {
     if (!engine)
     {
-        std::cerr << "[SoundCache] Sound engine is null" << std::endl;
+        LOGGER_ERROR("SoundCache") << "Sound engine is null";
         return;
     }
     
@@ -28,11 +29,11 @@ void SoundCache::LoadSound(const std::string& name, const std::string& path, irr
     if (source)
     {
         m_Sounds[name] = source;
-        std::cout << "[SoundCache] Loaded sound: " << name << std::endl;
+        LOGGER_INFO("SoundCache") << "Loaded sound: " << name;
     }
     else
     {
-        std::cerr << "[SoundCache] Failed to load sound: " << fullPath << std::endl;
+        LOGGER_ERROR("SoundCache") << "Failed to load sound: " << fullPath;
     }
 }
 
@@ -41,7 +42,7 @@ irrklang::ISoundSource* SoundCache::GetSound(const std::string& name)
     if (m_Sounds.find(name) != m_Sounds.end())
         return m_Sounds[name];
     
-    std::cerr << "[SoundCache] Sound not found: " << name << std::endl;
+    LOGGER_WARN("SoundCache") << "Sound not found: " << name;
     return nullptr;
 }
 

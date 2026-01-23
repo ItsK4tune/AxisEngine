@@ -1,4 +1,5 @@
 #include <resource/resource_watcher.h>
+#include <utils/logger.h>
 #include <iostream>
 
 ResourceWatcher::ResourceWatcher()
@@ -77,7 +78,7 @@ void ResourceWatcher::Update(float dt)
                 if (currentWriteTime > watcher.lastWriteTime)
                 {
                     watcher.lastWriteTime = currentWriteTime;
-                    std::cout << "[HotReload] Detected change in: " << watcher.filePath << std::endl;
+                    LOGGER_INFO("HotReload") << "Detected change in: " << watcher.filePath;
                     
                     if (watcher.type == "SHADER")
                     {

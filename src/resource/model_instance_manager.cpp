@@ -1,5 +1,6 @@
 #include <resource/model_instance_manager.h>
-#include <iostream>
+#include <resource/model_instance_manager.h>
+#include <utils/logger.h>
 
 ModelInstanceManager::ModelInstanceManager()
 {
@@ -32,7 +33,7 @@ Model* ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::
     
     m_ModelPools[name] = pool;
     
-    std::cout << "[ModelInstanceManager] Loaded model '" << name << "': " << path << (isStatic ? " (STATIC)" : " (DYNAMIC)") << std::endl;
+    LOGGER_DEBUG("ModelInstanceManager") << "Loaded model '" << name << "': " << path << (isStatic ? " (STATIC)" : " (DYNAMIC)");
     
     return model;
 }
@@ -99,7 +100,7 @@ void ModelInstanceManager::UnloadUnusedModels()
         if (it->second.refCount <= 0 && it->second.instances.empty())
         {
             delete it->second.model;
-            std::cout << "[ModelInstanceManager] Unloaded unused model: " << it->first << std::endl;
+            LOGGER_INFO("ModelInstanceManager") << "Unloaded unused model: " << it->first;
             it = m_ModelPools.erase(it);
         }
         else

@@ -2,7 +2,7 @@
 
 #include <fstream>
 #include <sstream>
-#include <iostream>
+#include <utils/logger.h>
 
 ComputeShader::ComputeShader(const char *computePath)
 {
@@ -21,7 +21,7 @@ ComputeShader::ComputeShader(const char *computePath)
     }
     catch (std::ifstream::failure &e)
     {
-        std::cout << "[ComputeShader] ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << e.what() << std::endl;
+        LOGGER_ERROR("ComputeShader") << "FILE_NOT_SUCCESSFULLY_READ: " << e.what();
     }
     const char *cShaderCode = computeCode.c_str();
 
@@ -115,8 +115,8 @@ void ComputeShader::checkCompileErrors(GLuint shader, std::string type)
         if (!success)
         {
             glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "[ComputeShader] ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n"
-                      << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+            LOGGER_ERROR("ComputeShader") << "COMPILATION_ERROR of type: " << type << "\n"
+                      << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
     else
@@ -125,8 +125,8 @@ void ComputeShader::checkCompileErrors(GLuint shader, std::string type)
         if (!success)
         {
             glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "[ComputeShader] ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n"
-                      << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+            LOGGER_ERROR("ComputeShader") << "LINKING_ERROR of type: " << type << "\n"
+                      << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
 }
