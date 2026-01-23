@@ -32,6 +32,7 @@ struct AppConfig
     bool shadowFrustumCullingEnabled = true;
     float shadowDistanceCulling = 100.0f;
     float distanceCulling = 0.0f; // 0 = disabled
+    int antialiasing = 1; // 0: None, 1: FXAA, 2: TAA
 
     int physicsMode = 1; // 0: Fast, 1: Balanced, 2: Accurate
 };

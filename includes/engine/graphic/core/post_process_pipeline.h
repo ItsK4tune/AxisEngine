@@ -1,7 +1,11 @@
 #pragma once
 #include <glad/glad.h>
+#include <glm/glm.hpp>
 #include <vector>
 #include <graphic/core/shader.h>
+
+enum class AntiAliasingMode;
+class ResourceManager;
 
 struct PostProcessEffect
 {
@@ -16,15 +20,18 @@ public:
     PostProcessPipeline();
     ~PostProcessPipeline();
 
-    void Init(int width, int height);
+    void Init(int width, int height, ResourceManager &res);
     void Shutdown();
     void Resize(int width, int height);
 
     void BeginCapture();
     void EndCapture();
+    void ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4 &prevViewProj, const glm::mat4 &currViewProj, const glm::vec2 &jitterOffset);
 
     void AddEffect(Shader *shader);
     void AddEffect(Shader *shader, int x, int y, int w, int h);
+    
+    unsigned int GetDepthTexture() const { return m_DepthTexture; }
 
     void ClearEffects();
 
@@ -33,7 +40,13 @@ private:
 
     unsigned int m_FBO[2];
     unsigned int m_ColorBuffers[2];
-    unsigned int m_RBO;
+    unsigned int m_DepthTexture = 0;
+    
+    unsigned int m_HistoryFBO = 0;
+    unsigned int m_HistoryTexture = 0;
+    
+    Shader *m_FXAAShader = nullptr;
+    Shader *m_TAAShader = nullptr;
 
     unsigned int m_QuadVAO = 0;
     unsigned int m_QuadVBO = 0;

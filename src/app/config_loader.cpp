@@ -88,6 +88,14 @@ AppConfig ConfigLoader::Load(const std::string &path)
             config.distanceCulling = std::stof(value);
         else if (key == "physicsMode")
             config.physicsMode = std::stoi(value);
+        else if (key == "width")
+             config.width = std::stoi(value);
+        else if (key == "antialiasing")
+        {
+            if (value == "FXAA") config.antialiasing = 1;
+            else if (value == "TAA") config.antialiasing = 2;
+            else config.antialiasing = 0;
+        }
     }
 
     return config;
@@ -137,6 +145,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
                 mode = GL_FRONT;
             else if (modeStr == "FRONT_AND_BACK")
                 mode = GL_FRONT_AND_BACK;
+            else if (modeStr != "BACK")
+                std::cerr << "[ConfigLoader] [WARNING] Invalid CULL_FACE mode: " << modeStr << ". Supported: BACK, FRONT, FRONT_AND_BACK." << std::endl;
 
             if (app)
                 app->GetRenderSystem().SetFaceCulling(true, mode);
@@ -172,6 +182,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
                 func = GL_GEQUAL;
             else if (funcStr == "ALWAYS")
                 func = GL_ALWAYS;
+            else 
+                std::cerr << "[ConfigLoader] [WARNING] Invalid DEPTH_TEST func: " << funcStr << ". Supported: NEVER, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS." << std::endl;
 
             if (app)
                 app->GetRenderSystem().SetDepthTest(true, func);
@@ -199,6 +211,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
                     mode = WindowMode::BORDERLESS;
                 else if (modeStr == "WINDOWED")
                     mode = WindowMode::WINDOWED;
+                else
+                    std::cerr << "[ConfigLoader] [WARNING] Invalid WINDOW mode: " << modeStr << ". Supported: WINDOWED, FULLSCREEN, BORDERLESS." << std::endl;
             }
 
             if (!ss.eof())
@@ -277,7 +291,10 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else if (modeStr == "ACCURATE") mode = 2;
             else 
             {
-                try { mode = std::stoi(modeStr); } catch(...) {}
+                try { mode = std::stoi(modeStr); } 
+                catch(...) { 
+                    std::cerr << "[ConfigLoader] [WARNING] Invalid PHYSICS_MODE: " << modeStr << ". Supported: FAST, BALANCED, ACCURATE (or 0, 1, 2)." << std::endl;
+                }
             }
             
             if (app)
@@ -295,6 +312,24 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             if (app) 
             {
                 app->GetPhysicsSystem().SetAsyncPhysics(async);
+            }
+        }
+    }
+    else if (subCmd == "ANTIALIASING")
+    {
+        std::string valStr;
+        if (ss >> valStr)
+        {
+            AntiAliasingMode mode = AntiAliasingMode::NONE;
+            if (valStr == "FXAA") mode = AntiAliasingMode::FXAA;
+            else if (valStr == "TAA") mode = AntiAliasingMode::TAA;
+            else if (valStr == "NONE") mode = AntiAliasingMode::NONE;
+            else
+                std::cerr << "[ConfigLoader] [WARNING] Invalid ANTIALIASING mode: " << valStr << ". Supported: NONE, FXAA, TAA." << std::endl;
+            
+            if (app)
+            {
+                app->GetRenderSystem().SetAntiAliasingMode(mode);
             }
         }
     }

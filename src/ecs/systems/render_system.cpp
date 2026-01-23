@@ -51,7 +51,7 @@ void RenderSystem::SetDepthTest(bool enabled, int func)
     }
 }
 
-void RenderSystem::Render(Scene &scene)
+void RenderSystem::Render(Scene &scene, int width, int height)
 {
     if (!m_Enabled)
         return;
@@ -66,9 +66,54 @@ void RenderSystem::Render(Scene &scene)
     cam = &scene.registry.get<CameraComponent>(camEntity);
     camTrans = &scene.registry.get<TransformComponent>(camEntity);
 
+    glm::mat4 projectionMatrix = cam->projectionMatrix;
+
+    if (m_AAMode == AntiAliasingMode::TAA && cam)
+    {
+        auto HaltonSequence = [](int index, int base) -> float
+        {
+            float result = 0.0f;
+            float f = 1.0f;
+            int i = index;
+            while (i > 0)
+            {
+                f = f / base;
+                result = result + f * (i % base);
+                i = i / base;
+            }
+            return result;
+        };
+
+        const int sampleCount = 8;
+        int frameIdx = m_FrameIndex % sampleCount;
+        
+        float jitterX = HaltonSequence(frameIdx + 1, 2) - 0.5f;
+        float jitterY = HaltonSequence(frameIdx + 1, 3) - 0.5f;
+        
+        m_JitterOffset = glm::vec2(jitterX, jitterY);
+        
+        glm::mat4 jitterMatrix = glm::mat4(1.0f);
+        jitterMatrix[3][0] = jitterX * 2.0f / (float)width;
+        jitterMatrix[3][1] = jitterY * 2.0f / (float)height;
+        
+        projectionMatrix = jitterMatrix * projectionMatrix;
+        
+        m_FrameIndex++;
+    }
+    else
+    {
+        m_JitterOffset = glm::vec2(0.0f);
+    }
+    
+    m_PrevViewProj = m_CurrViewProj;
+    m_CurrViewProj = projectionMatrix * cam->viewMatrix;
+    
+    if (m_PrevViewProj[3][3] == 0.0f) 
+        m_PrevViewProj = m_CurrViewProj;
+
     Frustum frustum;
     if (cam)
-        frustum.Update(cam->projectionMatrix * cam->viewMatrix);
+        frustum.Update(m_CurrViewProj);
 
     m_RenderQueue.clear();
 
@@ -169,7 +214,7 @@ void RenderSystem::Render(Scene &scene)
 
             if (cam && camTrans)
             {
-                currentShader->setMat4("projection", cam->projectionMatrix);
+                currentShader->setMat4("projection", projectionMatrix);
                 currentShader->setMat4("view", cam->viewMatrix);
                 currentShader->setVec3("viewPos", camTrans->position);
 

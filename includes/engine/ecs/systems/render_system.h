@@ -12,10 +12,17 @@
 class ResourceManager;
 class Shader;
 
+enum class AntiAliasingMode
+{
+    NONE = 0,
+    FXAA = 1,
+    TAA = 2
+};
+
 class RenderSystem
 {
 public:
-    void Render(Scene &scene);
+    void Render(Scene &scene, int width, int height);
 
     void InitShadows(ResourceManager &res);
     void Shutdown();
@@ -42,6 +49,13 @@ public:
     void SetShadowDistanceCulling(float distance) { m_ShadowRenderer.SetShadowDistanceCulling(distance); }
     void SetDistanceCulling(float distance) { m_DistanceCullingSq = distance * distance; }
 
+    void SetAntiAliasingMode(AntiAliasingMode mode) { m_AAMode = mode; }
+    AntiAliasingMode GetAntiAliasingMode() const { return m_AAMode; }
+    glm::vec2 GetJitterOffset() const { return m_JitterOffset; }
+    
+    const glm::mat4& GetPrevViewProj() const { return m_PrevViewProj; }
+    const glm::mat4& GetCurrViewProj() const { return m_CurrViewProj; }
+
     StaticBatchManager &GetBatchManager() { return m_BatchManager; }
 
 private:
@@ -56,6 +70,13 @@ private:
     bool m_DebugNoTexture = false;
     unsigned int m_WhiteTextureID = 0;
     float m_DistanceCullingSq = 0.0f;
+
+    AntiAliasingMode m_AAMode = AntiAliasingMode::NONE;
+    glm::vec2 m_JitterOffset = glm::vec2(0.0f);
+    int m_FrameIndex = 0;
+    
+    glm::mat4 m_PrevViewProj = glm::mat4(1.0f);
+    glm::mat4 m_CurrViewProj = glm::mat4(1.0f);
 
     struct RenderItem
     {

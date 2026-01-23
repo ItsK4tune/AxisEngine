@@ -19,7 +19,7 @@ SystemManager::~SystemManager()
 
 void SystemManager::InitializeSystems(ResourceManager& res, int width, int height, Application* app)
 {
-    postProcess.Init(width, height);
+    postProcess.Init(width, height, res);
     renderSystem.InitShadows(res);
 
 #ifdef ENABLE_DEBUG_SYSTEM
@@ -62,10 +62,15 @@ void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width,
     postProcess.BeginCapture();
 
     skyboxRenderSystem.Render(scene);
-    renderSystem.Render(scene);
+    renderSystem.Render(scene, width, height);
     particleSystem.Render(scene, res);
 
     uiRenderSystem.Render(scene, (float)width, (float)height);
+
+    postProcess.ApplyAntiAliasing(renderSystem.GetAntiAliasingMode(), 
+                                  renderSystem.GetPrevViewProj(), 
+                                  renderSystem.GetCurrViewProj(), 
+                                  renderSystem.GetJitterOffset());
 
     postProcess.EndCapture();
 }
