@@ -110,6 +110,27 @@ void ModelInstanceManager::UnloadUnusedModels()
     }
 }
 
+bool ModelInstanceManager::UnloadModel(const std::string& name)
+{
+    auto it = m_ModelPools.find(name);
+    if (it != m_ModelPools.end())
+    {
+        if (it->second.refCount <= 0 && it->second.instances.empty())
+        {
+            delete it->second.model;
+            m_ModelPools.erase(it);
+            LOGGER_INFO("ModelInstanceManager") << "Unloaded model: " << name;
+            return true;
+        }
+        else
+        {
+            LOGGER_WARN("ModelInstanceManager") << "Cannot unload model '" << name << "': still in use (RefCount: " << it->second.refCount << ")";
+            return false;
+        }
+    }
+    return false;
+}
+
 size_t ModelInstanceManager::GetInstanceCount(const std::string& modelPath) const
 {
     auto it = m_ModelPools.find(modelPath);

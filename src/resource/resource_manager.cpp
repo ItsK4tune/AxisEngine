@@ -8,10 +8,20 @@ ResourceManager::~ResourceManager()
     ClearResource();
 }
 
-void ResourceManager::Update()
+void ResourceManager::Update(float dt)
 {
     m_TextureCache.Update();
-    m_ResourceWatcher.Update(0.016f);
+    m_ResourceWatcher.Update(dt);
+}
+
+void ResourceManager::UnloadTexture(const std::string &name)
+{
+    m_TextureCache.UnloadTexture(name);
+}
+
+void ResourceManager::UnloadModel(const std::string &name)
+{
+    m_ModelInstanceManager.UnloadModel(name);
 }
 
 void ResourceManager::ReloadShader(const std::string &name)

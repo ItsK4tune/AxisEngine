@@ -22,6 +22,8 @@ public:
 
     void LoadTexture(const std::string& name, const std::string& path, bool async = true);
     Texture* GetTexture(const std::string& name);
+    void UnloadTexture(const std::string& name);
+    bool IsTextureLoaded(const std::string& name) const;
     
     void Update();
     void Clear();

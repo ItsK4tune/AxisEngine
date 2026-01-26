@@ -57,6 +57,8 @@ public:
     const glm::mat4& GetCurrViewProj() const { return m_CurrViewProj; }
 
     StaticBatchManager &GetBatchManager() { return m_BatchManager; }
+    
+    void SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene);
 
 private:
     ShadowRenderer m_ShadowRenderer;

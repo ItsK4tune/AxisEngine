@@ -28,6 +28,7 @@ public:
     void ClearAllInstances();
     void Clear() { ClearAllInstances(); }
     void UnloadUnusedModels();
+    bool UnloadModel(const std::string& name);
     
     size_t GetInstanceCount(const std::string& modelPath) const;
     size_t GetTotalInstanceCount() const;

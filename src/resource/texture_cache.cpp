@@ -82,6 +82,22 @@ Texture* TextureCache::GetTexture(const std::string& name)
     return nullptr;
 }
 
+void TextureCache::UnloadTexture(const std::string& name)
+{
+    auto it = m_Textures.find(name);
+    if (it != m_Textures.end())
+    {
+        glDeleteTextures(1, &it->second.id);
+        m_Textures.erase(it);
+        LOGGER_INFO("TextureCache") << "Unloaded texture: " << name;
+    }
+}
+
+bool TextureCache::IsTextureLoaded(const std::string& name) const
+{
+    return m_Textures.find(name) != m_Textures.end();
+}
+
 void TextureCache::Update()
 {
     std::lock_guard<std::mutex> lock(m_Mutex);

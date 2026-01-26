@@ -1,5 +1,6 @@
 #include <physic/physic_world.h>
 #include <set>
+#include <utils/logger.h>
 
 PhysicsWorld::PhysicsWorld()
 {
@@ -18,42 +19,8 @@ PhysicsWorld::PhysicsWorld()
 
 void PhysicsWorld::SetMode(int mode)
 {
-    btVector3 gravity = dynamicsWorld ? dynamicsWorld->getGravity() : btVector3(0, -9.81f, 0);
-
-    if (dynamicsWorld)
-    {
-        Clear();
-        dynamicsWorld.reset();
-        solver.reset();
-        overlappingPairCache.reset();
-        dispatcher.reset();
-        collisionConfig.reset();
-    }
-
-    collisionConfig = std::make_unique<btDefaultCollisionConfiguration>();
-    dispatcher = std::make_unique<btCollisionDispatcher>(collisionConfig.get());
-
-    if (mode == 0) // FAST
-    {
-        // Use Dbvt even for fast, because AxisSweep crashes/slows if bounds exceeded
-        overlappingPairCache = std::make_unique<btDbvtBroadphase>();
-    }
-    else // BALANCED (1) & ACCURATE (2)
-    {
-        overlappingPairCache = std::make_unique<btDbvtBroadphase>();
-    }
-
-    solver = std::make_unique<btSequentialImpulseConstraintSolver>();
-    
-    dynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
-        dispatcher.get(), overlappingPairCache.get(), solver.get(), collisionConfig.get());
-    
-    dynamicsWorld->setGravity(gravity);
-
-    if (debugDrawer)
-    {
-        dynamicsWorld->setDebugDrawer(debugDrawer.get());
-    }
+    if (!dynamicsWorld)
+        return;
 
     auto& solverInfo = dynamicsWorld->getSolverInfo();
 
@@ -91,6 +58,20 @@ void PhysicsWorld::SetMode(int mode)
         m_maxSubSteps = 4;
         break;
     }
+
+    // Apply new sleeping thresholds to all existing bodies
+    int numObjects = dynamicsWorld->getNumCollisionObjects();
+    auto objectArray = dynamicsWorld->getCollisionObjectArray();
+    for (int i = 0; i < numObjects; i++)
+    {
+        btRigidBody* body = btRigidBody::upcast(objectArray[i]);
+        if (body)
+        {
+            body->setSleepingThresholds(m_linearSleepingThreshold, m_angularSleepingThreshold);
+        }
+    }
+    
+    LOGGER_INFO("PhysicsWorld") << "Set physics mode: " << mode;
 }
 
 PhysicsWorld::~PhysicsWorld()
@@ -150,6 +131,8 @@ btRigidBody *PhysicsWorld::CreateRigidBody(float mass, const btTransform &startT
     btDefaultMotionState *myMotionState = new btDefaultMotionState(startTransform);
     btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, myMotionState, shape, localInertia);
     btRigidBody *body = new btRigidBody(rbInfo);
+    
+    body->setSleepingThresholds(m_linearSleepingThreshold, m_angularSleepingThreshold);
 
     dynamicsWorld->addRigidBody(body);
     return body;

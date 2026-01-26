@@ -28,11 +28,15 @@ class ResourceManager
 public:
     ~ResourceManager();
 
-    void Update();
+    void Update(float dt);
 
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
     void LoadTexture(const std::string& name, const std::string& path, bool async = true);
+    void UnloadTexture(const std::string& name);
+    
     void LoadModel(const std::string& name, const std::string& path, bool isStatic = false);
+    void UnloadModel(const std::string& name);
+    
     void LoadAnimation(const std::string& name, const std::string& path, const std::string& modelName);
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
     void LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine);

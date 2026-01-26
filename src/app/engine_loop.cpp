@@ -56,7 +56,7 @@ void EngineLoop::ProcessFrame()
         deltaTime *= m_TimeScale;
     }
 
-    m_App->GetResourceManager().Update();
+    m_App->GetResourceManager().Update(realDeltaTime);
     m_App->GetAppHandler().ProcessInput(m_App->GetWindow());
 
 #ifdef ENABLE_DEBUG_SYSTEM
