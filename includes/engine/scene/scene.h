@@ -17,6 +17,10 @@ struct Scene
     void destroyEntity(entt::entity entity, SceneManager *manager = nullptr);
 
     entt::entity GetActiveCamera();
+    void SetActiveCamera(entt::entity entity);
+
+    entt::entity GetActiveSkybox() const;
+    void SetActiveSkybox(entt::entity entity);
 
     LightManager &GetLightManager() { return *lightManager; }
     CameraManager &GetCameraManager() { return *cameraManager; }
@@ -29,4 +33,7 @@ private:
     std::unique_ptr<LightManager> lightManager;
     std::unique_ptr<CameraManager> cameraManager;
     std::unique_ptr<EntityFactory> entityFactory;
+    
+    entt::entity m_ActiveSkybox = entt::null;
+    entt::entity m_ActiveCamera = entt::null;
 };

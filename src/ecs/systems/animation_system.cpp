@@ -8,9 +8,9 @@ void AnimationSystem::Update(Scene &scene, float dt)
 
     auto view = scene.registry.view<AnimationComponent>();
 
-    std::vector<entt::entity> entities(view.begin(), view.end());
+    m_Entities.assign(view.begin(), view.end());
 
-    std::for_each(std::execution::par, entities.begin(), entities.end(), [&scene, dt](entt::entity entity)
+    std::for_each(std::execution::par, m_Entities.begin(), m_Entities.end(), [&scene, dt](entt::entity entity)
                   {
         auto &anim = scene.registry.get<AnimationComponent>(entity);
         if (anim.animator)

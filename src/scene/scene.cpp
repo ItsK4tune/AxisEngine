@@ -101,16 +101,50 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
 
 entt::entity Scene::GetActiveCamera()
 {
+    if (registry.valid(m_ActiveCamera) && registry.all_of<CameraComponent>(m_ActiveCamera))
+    {
+        if (registry.get<CameraComponent>(m_ActiveCamera).isPrimary)
+        {
+            return m_ActiveCamera;
+        }
+    }
+
+    // Linear search fallback
     auto view = registry.view<const CameraComponent>();
     for (auto entity : view)
     {
         const auto &cam = view.get<const CameraComponent>(entity);
         if (cam.isPrimary)
         {
+            m_ActiveCamera = entity;
             return entity;
         }
     }
+    
+    m_ActiveCamera = entt::null;
     return entt::null;
+}
+
+void Scene::SetActiveCamera(entt::entity entity)
+{
+    m_ActiveCamera = entity;
+    if (cameraManager)
+        cameraManager->SetPrimaryCamera(entity);
+}
+
+entt::entity Scene::GetActiveSkybox() const
+{
+    if (registry.valid(m_ActiveSkybox) && registry.all_of<SkyboxRenderComponent>(m_ActiveSkybox))
+        return m_ActiveSkybox;
+    return entt::null;
+}
+
+void Scene::SetActiveSkybox(entt::entity entity)
+{
+    if (registry.valid(entity) && registry.all_of<SkyboxRenderComponent>(entity))
+    {
+        m_ActiveSkybox = entity;
+    }
 }
 
 void Scene::InitializeManagers()

@@ -70,17 +70,19 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
 
             if (auto *uiRenderer = scene.registry.try_get<UIRendererComponent>(entity))
             {
-                std::string uniqueName = "video_ui_" + std::to_string((uint32_t)entity);
-
-                if (!res.GetUIModel(uniqueName))
+                if (!uiRenderer->model)
                 {
-                    res.CreateUIModel(uniqueName, UIType::Texture);
-                    uiRenderer->model = res.GetUIModel(uniqueName);
-                }
+                    std::string uniqueName = "video_ui_" + std::to_string((uint32_t)entity);
 
-                if (uiRenderer->model && uiRenderer->model != res.GetUIModel(uniqueName))
-                {
-                    uiRenderer->model = res.GetUIModel(uniqueName);
+                    if (!res.GetUIModel(uniqueName))
+                    {
+                        res.CreateUIModel(uniqueName, UIType::Texture);
+                        uiRenderer->model = res.GetUIModel(uniqueName);
+                    }
+                    else
+                    {
+                         uiRenderer->model = res.GetUIModel(uniqueName);
+                    }
                 }
 
                 if (uiRenderer->model)

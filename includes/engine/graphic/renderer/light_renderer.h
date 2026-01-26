@@ -74,4 +74,8 @@ private:
     unsigned int m_DirLightSSBO = 0;
     unsigned int m_PointLightSSBO = 0;
     unsigned int m_SpotLightSSBO = 0;
+
+    std::vector<GPUDirLight> m_DirLights;
+    std::vector<GPUPointLight> m_PointLights;
+    std::vector<GPUSpotLight> m_SpotLights;
 };

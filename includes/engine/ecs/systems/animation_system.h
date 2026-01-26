@@ -11,4 +11,5 @@ public:
 
 private:
     bool m_Enabled = true;
+    std::vector<entt::entity> m_Entities;
 };

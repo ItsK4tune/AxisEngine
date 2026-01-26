@@ -12,24 +12,24 @@ void SkyboxRenderSystem::Render(Scene &scene)
 
     glDepthFunc(GL_LEQUAL);
 
-    auto view = scene.registry.view<SkyboxRenderComponent>();
-    for (auto entity : view)
+    auto activeSkybox = scene.GetActiveSkybox();
+    if (activeSkybox != entt::null)
     {
-        auto &component = view.get<SkyboxRenderComponent>(entity);
-        if (!component.skybox || !component.shader)
-            continue;
+        auto &component = scene.registry.get<SkyboxRenderComponent>(activeSkybox);
+        if (component.skybox && component.shader)
+        {
+            component.shader->use();
 
-        component.shader->use();
+            glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(camera.viewMatrix));
+            component.shader->setMat4("view", viewNoTranslation);
+            component.shader->setMat4("projection", camera.projectionMatrix);
 
-        glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(camera.viewMatrix));
-        component.shader->setMat4("view", viewNoTranslation);
-        component.shader->setMat4("projection", camera.projectionMatrix);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, component.skybox->GetTextureID());
+            component.shader->setInt("skybox", 0);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, component.skybox->GetTextureID());
-        component.shader->setInt("skybox", 0);
-
-        component.skybox->Draw(*component.shader);
+            component.skybox->Draw(*component.shader);
+        }
     }
 
     glDepthFunc(GL_LESS);

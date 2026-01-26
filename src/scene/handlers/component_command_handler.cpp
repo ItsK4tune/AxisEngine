@@ -143,6 +143,8 @@ namespace SceneHandlers
     void ComponentCommandHandler::HandleCamera(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
         ComponentLoader::LoadCamera(scene, entity, ss);
+        // Force last loaded camera to be active
+        scene.SetActiveCamera(entity);
     }
 
     // Physics
@@ -177,6 +179,8 @@ namespace SceneHandlers
     void ComponentCommandHandler::HandleSkyboxRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res)
     {
         ComponentLoader::LoadSkyboxRenderer(scene, entity, ss, res);
+        // Force last loaded skybox to be active
+        scene.SetActiveSkybox(entity);
     }
 
     void ComponentCommandHandler::HandleScript(std::stringstream &ss, Scene &scene, entt::entity entity, Application *app)
