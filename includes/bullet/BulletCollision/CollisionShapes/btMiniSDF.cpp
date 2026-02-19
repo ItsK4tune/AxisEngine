@@ -1,16 +1,16 @@
 #include "btMiniSDF.h"
 
-//
-//Based on code from DiscreGrid, https://github.com/InteractiveComputerGraphics/Discregrid
-//example:
-//GenerateSDF.exe -r "32 32 32" -d "-1.6 -1.6 -.6 1.6 1.6 .6" concave_box.obj
-//The MIT License (MIT)
-//
-//Copyright (c) 2017 Dan Koschier
-//
+
+
+
+
+
+
+
+
 
 #include <limits.h>
-#include <string.h>  //memcpy
+#include <string.h>  
 
 struct btSdfDataStream
 {
@@ -244,7 +244,7 @@ btMiniSDF::shape_function_(btVector3 const& xi, btShapeGradients* gradient) cons
 	btScalar _1my2 = 1.0 - y2;
 	btScalar _1mz2 = 1.0 - z2;
 
-	// Corner nodes.
+	
 	btScalar fac = 1.0 / 64.0 * (9.0 * (x2 + y2 + z2) - 19.0);
 	res[0] = fac * _1mxt1my * _1mz;
 	res[1] = fac * _1pxt1my * _1mz;
@@ -255,7 +255,7 @@ btMiniSDF::shape_function_(btVector3 const& xi, btShapeGradients* gradient) cons
 	res[6] = fac * _1mxt1py * _1pz;
 	res[7] = fac * _1pxt1py * _1pz;
 
-	// Edge nodes.
+	
 
 	fac = 9.0 / 64.0 * _1mx2;
 	btScalar fact1m3x = fac * _1m3x;
@@ -449,7 +449,7 @@ bool btMiniSDF::interpolate(unsigned int field_id, double& dist, btVector3 const
 	if (!m_domain.contains(x))
 		return false;
 
-	btVector3 tmpmi = ((x - m_domain.min()) * (m_inv_cell_size));  //.cast<unsigned int>().eval();
+	btVector3 tmpmi = ((x - m_domain.min()) * (m_inv_cell_size));  
 	unsigned int mi[3] = {(unsigned int)tmpmi[0], (unsigned int)tmpmi[1], (unsigned int)tmpmi[2]};
 	if (mi[0] >= m_resolution[0])
 		mi[0] = m_resolution[0] - 1;
@@ -468,7 +468,7 @@ bool btMiniSDF::interpolate(unsigned int field_id, double& dist, btVector3 const
 
 	btAlignedBox3d sd = subdomain(i);
 	i = i_;
-	btVector3 d = sd.m_max - sd.m_min;  //.diagonal().eval();
+	btVector3 d = sd.m_max - sd.m_min;  
 
 	btVector3 denom = (sd.max() - sd.min());
 	btVector3 c0 = btVector3(2.0, 2.0, 2.0) / denom;
@@ -478,7 +478,7 @@ bool btMiniSDF::interpolate(unsigned int field_id, double& dist, btVector3 const
 	btCell32 const& cell = m_cells[field_id][i];
 	if (!gradient)
 	{
-		//auto phi = m_coefficients[field_id][i].dot(shape_function_(xi, 0));
+		
 		double phi = 0.0;
 		btShapeMatrix N = shape_function_(xi, 0);
 		for (unsigned int j = 0u; j < 32u; ++j)

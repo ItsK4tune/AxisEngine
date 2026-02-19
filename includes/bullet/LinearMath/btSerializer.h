@@ -1,22 +1,9 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_SERIALIZER_H
 #define BT_SERIALIZER_H
 
-#include "btScalar.h"  // has definitions like SIMD_FORCE_INLINE
+#include "btScalar.h"  
 #include "btHashMap.h"
 
 #if !defined(__CELLOS_LV2__) && !defined(__MWERKS__)
@@ -146,13 +133,13 @@ struct btBulletSerializedArrays
 	btAlignedObjectArray<struct btCollisionObjectFloatData*> m_collisionObjectDataFloat;
 	btAlignedObjectArray<struct btTypedConstraintFloatData*> m_constraintDataFloat;
 	btAlignedObjectArray<struct btTypedConstraintDoubleData*> m_constraintDataDouble;
-	btAlignedObjectArray<struct btTypedConstraintData*> m_constraintData;  //for backwards compatibility
+	btAlignedObjectArray<struct btTypedConstraintData*> m_constraintData;  
 	btAlignedObjectArray<struct btSoftBodyFloatData*> m_softBodyFloatData;
 	btAlignedObjectArray<struct btSoftBodyDoubleData*> m_softBodyDoubleData;
 };
 
-///The btDefaultSerializer is the main Bullet serialization class.
-///The constructor takes an optional argument for backwards compatibility, it is recommended to leave this empty/zero.
+
+
 class btDefaultSerializer : public btSerializer
 {
 protected:
@@ -208,7 +195,7 @@ protected:
 
 	void initDNA(const char* bdnaOrg, int dnalen)
 	{
-		///was already initialized
+		
 		if (m_dna)
 			return;
 
@@ -225,22 +212,16 @@ protected:
 		int dataLen = 0;
 		intPtr = (int*)m_dna;
 
-		/*
-				SDNA (4 bytes) (magic number)
-				NAME (4 bytes)
-				<nr> (4 bytes) amount of names (int)
-				<string>
-				<string>
-			*/
+		
 
 		if (strncmp((const char*)m_dna, "SDNA", 4) == 0)
 		{
-			// skip ++ NAME
+			
 			intPtr++;
 			intPtr++;
 		}
 
-		// Parse names
+		
 		if (!littleEndian)
 			*intPtr = btSwapEndian(*intPtr);
 
@@ -257,12 +238,7 @@ protected:
 		}
 		cp = btAlignPointer(cp, 4);
 
-		/*
-				TYPE (4 bytes)
-				<nr> amount of types (int)
-				<string>
-				<string>
-			*/
+		
 
 		intPtr = (int*)cp;
 		btAssert(strncmp(cp, "TYPE", 4) == 0);
@@ -284,13 +260,9 @@ protected:
 
 		cp = btAlignPointer(cp, 4);
 
-		/*
-				TLEN (4 bytes)
-				<len> (short) the lengths of types
-				<len>
-			*/
+		
 
-		// Parse type lens
+		
 		intPtr = (int*)cp;
 		btAssert(strncmp(cp, "TLEN", 4) == 0);
 		intPtr++;
@@ -307,16 +279,7 @@ protected:
 
 		if (dataLen & 1) shtPtr++;
 
-		/*
-				STRC (4 bytes)
-				<nr> amount of structs (int)
-				<typenr>
-				<nr_of_elems>
-				<typenr>
-				<namenr>
-				<typenr>
-				<namenr>
-			*/
+		
 
 		intPtr = (int*)shtPtr;
 		cp = (char*)intPtr;
@@ -353,7 +316,7 @@ protected:
 			}
 		}
 
-		// build reverse lookups
+		
 		for (i = 0; i < (int)mStructs.size(); i++)
 		{
 			short* strc = mStructs.at(i);
@@ -404,7 +367,7 @@ public:
 #endif
 		}
 
-#else   //BT_INTERNAL_UPDATE_SERIALIZATION_STRUCTURES
+#else   
 		if (VOID_IS_8)
 		{
 			initDNA((const char*)sBulletDNAstr64, sBulletDNAlen64);
@@ -413,7 +376,7 @@ public:
 		{
 			initDNA((const char*)sBulletDNAstr, sBulletDNAlen);
 		}
-#endif  //BT_INTERNAL_UPDATE_SERIALIZATION_STRUCTURES
+#endif  
 	}
 
 	virtual ~btDefaultSerializer()
@@ -456,7 +419,7 @@ public:
 		memcpy(buffer, "BULLETd", 7);
 #else
 		memcpy(buffer, "BULLETf", 7);
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 		int littleEndian = 1;
 		littleEndian = ((char*)&littleEndian)[0];
@@ -498,7 +461,7 @@ public:
 	{
 		writeDNA();
 
-		//if we didn't pre-allocate a buffer, we need to create a contiguous buffer now
+		
 		if (!m_totalSize)
 		{
 			if (m_buffer)
@@ -581,8 +544,8 @@ public:
 
 		void* uniquePtr = getUniquePointer(oldPtr);
 
-		m_chunkP.insert(oldPtr, uniquePtr);  //chunk->m_oldPtr);
-		chunk->m_oldPtr = uniquePtr;         //oldPtr;
+		m_chunkP.insert(oldPtr, uniquePtr);  
+		chunk->m_oldPtr = uniquePtr;         
 	}
 
 	virtual unsigned char* internalAlloc(size_t size)
@@ -637,7 +600,7 @@ public:
 	{
 		if (name)
 		{
-			//don't serialize name twice
+			
 			if (findPointer((void*)name))
 				return;
 
@@ -648,7 +611,7 @@ public:
 				int padding = ((newLen + 3) & ~3) - newLen;
 				newLen += padding;
 
-				//serialize name string now
+				
 				btChunk* chunk = allocate(sizeof(char), newLen);
 				char* destinationName = (char*)chunk->m_oldPtr;
 				for (int i = 0; i < len; i++)
@@ -681,11 +644,11 @@ public:
 	}
 };
 
-///In general it is best to use btDefaultSerializer,
-///in particular when writing the data to disk or sending it over the network.
-///The btInMemorySerializer is experimental and only suitable in a few cases.
-///The btInMemorySerializer takes a shortcut and can be useful to create a deep-copy
-///of objects. There will be a demo on how to use the btInMemorySerializer.
+
+
+
+
+
 #ifdef ENABLE_INMEMORY_SERIALIZER
 
 struct btInMemorySerializer : public btDefaultSerializer
@@ -704,7 +667,7 @@ struct btInMemorySerializer : public btDefaultSerializer
 	virtual void startSerialization()
 	{
 		m_uid2ChunkPtr.clear();
-		//todo: m_arrays.clear();
+		
 		btDefaultSerializer::startSerialization();
 	}
 
@@ -733,7 +696,7 @@ struct btInMemorySerializer : public btDefaultSerializer
 		if (oldPtr == 0)
 			return 0;
 
-		// void* uniquePtr = getUniquePointer(oldPtr);
+		
 		btChunk* chunk = findChunkFromUniquePointer(oldPtr);
 		if (chunk)
 		{
@@ -756,8 +719,8 @@ struct btInMemorySerializer : public btDefaultSerializer
 				}
 				else
 				{
-					//If this assert hit, serialization happened in the wrong order
-					// 'getUniquePointer'
+					
+					
 					btAssert(0);
 				}
 			}
@@ -775,9 +738,9 @@ struct btInMemorySerializer : public btDefaultSerializer
 
 		chunk->m_dna_nr = getReverseType(structType);
 		chunk->m_chunkCode = chunkCode;
-		//void* uniquePtr = getUniquePointer(oldPtr);
-		m_chunkP.insert(oldPtr, oldPtr);  //chunk->m_oldPtr);
-		// chunk->m_oldPtr = uniquePtr;//oldPtr;
+		
+		m_chunkP.insert(oldPtr, oldPtr);  
+		
 
 		void* uid = findPointer(oldPtr);
 		m_uid2ChunkPtr.insert(uid, chunk);
@@ -797,9 +760,9 @@ struct btInMemorySerializer : public btDefaultSerializer
 			{
 #ifdef BT_USE_DOUBLE_PRECISION
 				m_arrays.m_collisionObjectDataDouble.push_back((btCollisionObjectDoubleData*)chunk->m_oldPtr);
-#else   //BT_USE_DOUBLE_PRECISION
+#else   
 				m_arrays.m_collisionObjectDataFloat.push_back((btCollisionObjectFloatData*)chunk->m_oldPtr);
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 				break;
 			}
 			case BT_RIGIDBODY_CODE:
@@ -808,7 +771,7 @@ struct btInMemorySerializer : public btDefaultSerializer
 				m_arrays.m_rigidBodyDataDouble.push_back((btRigidBodyDoubleData*)chunk->m_oldPtr);
 #else
 				m_arrays.m_rigidBodyDataFloat.push_back((btRigidBodyFloatData*)chunk->m_oldPtr);
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 				break;
 			};
 			case BT_CONSTRAINT_CODE:
@@ -861,6 +824,6 @@ struct btInMemorySerializer : public btDefaultSerializer
 		return *m_uid2ChunkPtr.getAtIndex(chunkIndex);
 	}
 };
-#endif  //ENABLE_INMEMORY_SERIALIZER
+#endif  
 
-#endif  //BT_SERIALIZER_H
+#endif  

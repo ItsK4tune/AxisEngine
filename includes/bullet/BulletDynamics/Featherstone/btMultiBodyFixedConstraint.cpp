@@ -1,19 +1,6 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-///This file was written by Erwin Coumans
 
 #include "btMultiBodyFixedConstraint.h"
 #include "btMultiBodyLinkCollider.h"
@@ -32,7 +19,7 @@ btMultiBodyFixedConstraint::btMultiBodyFixedConstraint(btMultiBody* body, int li
 	  m_frameInA(frameInA),
 	  m_frameInB(frameInB)
 {
-	m_data.resize(BTMBFIXEDCONSTRAINT_DIM);  //at least store the applied impulses
+	m_data.resize(BTMBFIXEDCONSTRAINT_DIM);  
 }
 
 btMultiBodyFixedConstraint::btMultiBodyFixedConstraint(btMultiBody* bodyA, int linkA, btMultiBody* bodyB, int linkB, const btVector3& pivotInA, const btVector3& pivotInB, const btMatrix3x3& frameInA, const btMatrix3x3& frameInB)
@@ -44,12 +31,12 @@ btMultiBodyFixedConstraint::btMultiBodyFixedConstraint(btMultiBody* bodyA, int l
 	  m_frameInA(frameInA),
 	  m_frameInB(frameInB)
 {
-	m_data.resize(BTMBFIXEDCONSTRAINT_DIM);  //at least store the applied impulses
+	m_data.resize(BTMBFIXEDCONSTRAINT_DIM);  
 }
 
 void btMultiBodyFixedConstraint::finalizeMultiDof()
 {
-	//not implemented yet
+	
 	btAssert(0);
 }
 
@@ -118,7 +105,7 @@ void btMultiBodyFixedConstraint::createConstraintRows(btMultiBodyConstraintArray
 		constraintRow.m_solverBodyIdA = data.m_fixedBodyId;
 		constraintRow.m_solverBodyIdB = data.m_fixedBodyId;
 
-		// Convert local points back to world
+		
 		btVector3 pivotAworld = m_pivotInA;
 		btMatrix3x3 frameAworld = m_frameInA;
 		if (m_rigidBodyA)
@@ -170,7 +157,7 @@ void btMultiBodyFixedConstraint::createConstraintRows(btMultiBodyConstraintArray
 									-m_maxAppliedImpulse, m_maxAppliedImpulse);
 		}
 		else
-		{  //i>=3
+		{  
 			constraintNormalAng = frameAworld.getColumn(i % 3);
 			posError = angleDiff[i % 3];
 			fillMultiBodyConstraint(constraintRow, data, 0, 0, constraintNormalAng,
@@ -201,7 +188,7 @@ void btMultiBodyFixedConstraint::debugDraw(class btIDebugDraw* drawer)
 	}
 	if (m_rigidBodyB)
 	{
-		// that ideally should draw the same frame
+		
 		btVector3 pivot = m_rigidBodyB->getCenterOfMassTransform() * m_pivotInB;
 		tr.setOrigin(pivot);
 		drawer->drawTransform(tr, 0.1);

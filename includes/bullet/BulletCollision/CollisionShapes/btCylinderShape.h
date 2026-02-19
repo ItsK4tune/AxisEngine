@@ -1,26 +1,13 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_CYLINDER_MINKOWSKI_H
 #define BT_CYLINDER_MINKOWSKI_H
 
 #include "btBoxShape.h"
-#include "BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"  // for the types
+#include "BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"  
 #include "LinearMath/btVector3.h"
 
-/// The btCylinderShape class implements a cylinder shape primitive, centered around the origin. Its central axis aligned with the Y axis. btCylinderShapeX is aligned with the X axis and btCylinderShapeZ around the Z axis.
+
 ATTRIBUTE_ALIGNED16(class)
 btCylinderShape : public btConvexInternalShape
 
@@ -41,7 +28,7 @@ public:
 
 	const btVector3& getHalfExtentsWithoutMargin() const
 	{
-		return m_implicitShapeDimensions;  //changed in Bullet 2.63: assume the scaling and margin are included
+		return m_implicitShapeDimensions;  
 	}
 
 	btCylinderShape(const btVector3& halfExtents);
@@ -56,7 +43,7 @@ public:
 
 	virtual void setMargin(btScalar collisionMargin)
 	{
-		//correct the m_implicitShapeDimensions for the margin
+		
 		btVector3 oldMargin(getMargin(), getMargin(), getMargin());
 		btVector3 implicitShapeDimensionsWithMargin = m_implicitShapeDimensions + oldMargin;
 
@@ -83,8 +70,8 @@ public:
 		return supVertex;
 	}
 
-	//use box inertia
-	//	virtual void	calculateLocalInertia(btScalar mass,btVector3& inertia) const;
+	
+	
 
 	int getUpAxis() const
 	{
@@ -114,7 +101,7 @@ public:
 		m_implicitShapeDimensions = (unScaledImplicitShapeDimensionsWithMargin * m_localScaling) - oldMargin;
 	}
 
-	//debugging
+	
 	virtual const char* getName() const
 	{
 		return "CylinderY";
@@ -122,7 +109,7 @@ public:
 
 	virtual int calculateSerializeBufferSize() const;
 
-	///fills the dataBuffer and returns the struct name (and 0 on failure)
+	
 	virtual const char* serialize(void* dataBuffer, btSerializer* serializer) const;
 };
 
@@ -136,7 +123,7 @@ public:
 	virtual btVector3 localGetSupportingVertexWithoutMargin(const btVector3& vec) const;
 	virtual void batchedUnitVectorGetSupportingVertexWithoutMargin(const btVector3* vectors, btVector3* supportVerticesOut, int numVectors) const;
 
-	//debugging
+	
 	virtual const char* getName() const
 	{
 		return "CylinderX";
@@ -158,7 +145,7 @@ public:
 	virtual btVector3 localGetSupportingVertexWithoutMargin(const btVector3& vec) const;
 	virtual void batchedUnitVectorGetSupportingVertexWithoutMargin(const btVector3* vectors, btVector3* supportVerticesOut, int numVectors) const;
 
-	//debugging
+	
 	virtual const char* getName() const
 	{
 		return "CylinderZ";
@@ -170,7 +157,7 @@ public:
 	}
 };
 
-///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
+
 struct btCylinderShapeData
 {
 	btConvexInternalShapeData m_convexInternalShapeData;
@@ -185,7 +172,7 @@ SIMD_FORCE_INLINE int btCylinderShape::calculateSerializeBufferSize() const
 	return sizeof(btCylinderShapeData);
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 SIMD_FORCE_INLINE const char* btCylinderShape::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btCylinderShapeData* shapeData = (btCylinderShapeData*)dataBuffer;
@@ -194,7 +181,7 @@ SIMD_FORCE_INLINE const char* btCylinderShape::serialize(void* dataBuffer, btSer
 
 	shapeData->m_upAxis = m_upAxis;
 
-	// Fill padding with zeros to appease msan.
+	
 	shapeData->m_padding[0] = 0;
 	shapeData->m_padding[1] = 0;
 	shapeData->m_padding[2] = 0;
@@ -203,4 +190,4 @@ SIMD_FORCE_INLINE const char* btCylinderShape::serialize(void* dataBuffer, btSer
 	return "btCylinderShapeData";
 }
 
-#endif  //BT_CYLINDER_MINKOWSKI_H
+#endif  

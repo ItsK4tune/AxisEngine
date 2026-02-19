@@ -1,19 +1,4 @@
-/****************************************************************************
- *
- * cffotypes.h
- *
- *   Basic OpenType/CFF object type definitions (specification).
- *
- * Copyright (C) 2017-2020 by
- * David Turner, Robert Wilhelm, and Werner Lemberg.
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef CFFOTYPES_H_
@@ -33,30 +18,16 @@ FT_BEGIN_HEADER
   typedef TT_Face  CFF_Face;
 
 
-  /**************************************************************************
-   *
-   * @type:
-   *   CFF_Size
-   *
-   * @description:
-   *   A handle to an OpenType size object.
-   */
+  
   typedef struct  CFF_SizeRec_
   {
     FT_SizeRec  root;
-    FT_ULong    strike_index;    /* 0xFFFFFFFF to indicate invalid */
+    FT_ULong    strike_index;    
 
   } CFF_SizeRec, *CFF_Size;
 
 
-  /**************************************************************************
-   *
-   * @type:
-   *   CFF_GlyphSlot
-   *
-   * @description:
-   *   A handle to an OpenType glyph slot object.
-   */
+  
   typedef struct  CFF_GlyphSlotRec_
   {
     FT_GlyphSlotRec  root;
@@ -70,14 +41,7 @@ FT_BEGIN_HEADER
   } CFF_GlyphSlotRec, *CFF_GlyphSlot;
 
 
-  /**************************************************************************
-   *
-   * @type:
-   *   CFF_Internal
-   *
-   * @description:
-   *   The interface to the 'internal' field of `FT_Size`.
-   */
+  
   typedef struct  CFF_InternalRec_
   {
     PSH_Globals  topfont;
@@ -86,15 +50,12 @@ FT_BEGIN_HEADER
   } CFF_InternalRec, *CFF_Internal;
 
 
-  /**************************************************************************
-   *
-   * Subglyph transformation record.
-   */
+  
   typedef struct  CFF_Transform_
   {
-    FT_Fixed    xx, xy;     /* transformation matrix coefficients */
+    FT_Fixed    xx, xy;     
     FT_Fixed    yx, yy;
-    FT_F26Dot6  ox, oy;     /* offsets                            */
+    FT_F26Dot6  ox, oy;     
 
   } CFF_Transform;
 
@@ -102,7 +63,7 @@ FT_BEGIN_HEADER
 FT_END_HEADER
 
 
-#endif /* CFFOTYPES_H_ */
+#endif 
 
 
-/* END */
+

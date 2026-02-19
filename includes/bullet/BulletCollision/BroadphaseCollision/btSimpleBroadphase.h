@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_SIMPLE_BROADPHASE_H
 #define BT_SIMPLE_BROADPHASE_H
@@ -22,7 +9,7 @@ struct btSimpleBroadphaseProxy : public btBroadphaseProxy
 {
 	int m_nextFree;
 
-	//	int			m_handleId;
+	
 
 	btSimpleBroadphaseProxy(){};
 
@@ -36,19 +23,19 @@ struct btSimpleBroadphaseProxy : public btBroadphaseProxy
 	SIMD_FORCE_INLINE int GetNextFree() const { return m_nextFree; }
 };
 
-///The SimpleBroadphase is just a unit-test for btAxisSweep3, bt32BitAxisSweep3, or btDbvtBroadphase, so use those classes instead.
-///It is a brute force aabb culling broadphase based on O(n^2) aabb checks
+
+
 class btSimpleBroadphase : public btBroadphaseInterface
 {
 protected:
-	int m_numHandles;  // number of active handles
-	int m_maxHandles;  // max number of handles
+	int m_numHandles;  
+	int m_maxHandles;  
 	int m_LastHandleIndex;
 
-	btSimpleBroadphaseProxy* m_pHandles;  // handles pool
+	btSimpleBroadphaseProxy* m_pHandles;  
 
 	void* m_pHandlesRawPtr;
-	int m_firstFreeHandle;  // free handles list
+	int m_firstFreeHandle;  
 
 	int allocHandle()
 	{
@@ -96,7 +83,7 @@ protected:
 		return proxy0;
 	}
 
-	///reset broadphase internal structures, to ensure determinism/reproducability
+	
 	virtual void resetPool(btDispatcher* dispatcher);
 
 	void validate();
@@ -130,8 +117,8 @@ public:
 
 	bool testAabbOverlap(btBroadphaseProxy* proxy0, btBroadphaseProxy* proxy1);
 
-	///getAabb returns the axis aligned bounding box in the 'global' coordinate frame
-	///will add some transform later
+	
+	
 	virtual void getBroadphaseAabb(btVector3& aabbMin, btVector3& aabbMax) const
 	{
 		aabbMin.setValue(-BT_LARGE_FLOAT, -BT_LARGE_FLOAT, -BT_LARGE_FLOAT);
@@ -140,9 +127,9 @@ public:
 
 	virtual void printStats()
 	{
-		//		printf("btSimpleBroadphase.h\n");
-		//		printf("numHandles = %d, maxHandles = %d\n",m_numHandles,m_maxHandles);
+		
+		
 	}
 };
 
-#endif  //BT_SIMPLE_BROADPHASE_H
+#endif  

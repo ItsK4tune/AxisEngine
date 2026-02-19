@@ -8,7 +8,7 @@
 #include <map>
 #include <vector>
 
-// Forward declarations for backend classes
+
 class IrrKlangAudioSource;
 class IrrKlangSound;
 

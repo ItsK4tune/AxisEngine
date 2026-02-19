@@ -6,7 +6,7 @@
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
 
-// OpenGL constants
+
 
 
 IBufferManager* UIModel::s_BufferManager = nullptr;

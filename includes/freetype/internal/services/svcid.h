@@ -1,19 +1,4 @@
-/****************************************************************************
- *
- * svcid.h
- *
- *   The FreeType CID font services (specification).
- *
- * Copyright (C) 2007-2020 by
- * Derek Clegg and Michael Toftdal.
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef SVCID_H_
@@ -57,13 +42,13 @@ FT_BEGIN_HEADER
     get_ros_, get_is_cid_, get_cid_from_glyph_index_                        \
   };
 
-  /* */
+  
 
 
 FT_END_HEADER
 
 
-#endif /* SVCID_H_ */
+#endif 
 
 
-/* END */
+

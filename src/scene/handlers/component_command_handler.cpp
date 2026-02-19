@@ -139,22 +139,22 @@ namespace SceneHandlers
         l.specular = glm::vec3(1.0f);
     }
 
-    // Camera
+    
     void ComponentCommandHandler::HandleCamera(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
         ComponentLoader::LoadCamera(scene, entity, ss);
-        // Force last loaded camera to be active
+        
         scene.SetActiveCamera(entity);
     }
 
-    // Physics
+    
     void ComponentCommandHandler::HandleRigidBody(std::stringstream &ss, Scene &scene, entt::entity entity,
                                                   IPhysicsWorld &phys, std::ifstream &file)
     {
         PhysicsLoader::LoadRigidBody(scene, entity, ss, phys, file);
     }
 
-    // UI
+    
     void ComponentCommandHandler::HandleUITransform(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
         ComponentLoader::LoadUITransform(scene, entity, ss);
@@ -170,11 +170,11 @@ namespace SceneHandlers
         ComponentLoader::LoadUIText(scene, entity, ss, res);
     }
 
-    // Others
+    
     void ComponentCommandHandler::HandleSkyboxRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res)
     {
         ComponentLoader::LoadSkyboxRenderer(scene, entity, ss, res);
-        // Force last loaded skybox to be active
+        
         scene.SetActiveSkybox(entity);
     }
 

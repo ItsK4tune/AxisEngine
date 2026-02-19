@@ -1,26 +1,13 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-//#define DISABLE_BVH
 
 #include "BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
 #include "BulletCollision/CollisionShapes/btOptimizedBvh.h"
 #include "LinearMath/btSerializer.h"
 
-///Bvh Concave triangle mesh is a static-triangle mesh shape with Bounding Volume Hierarchy optimization.
-///Uses an interface to access the triangles to allow for sharing graphics/physics triangles.
+
+
 btBvhTriangleMeshShape::btBvhTriangleMeshShape(btStridingMeshInterface* meshInterface, bool useQuantizedAabbCompression, bool buildBvh)
 	: btTriangleMeshShape(meshInterface),
 	  m_bvh(0),
@@ -29,7 +16,7 @@ btBvhTriangleMeshShape::btBvhTriangleMeshShape(btStridingMeshInterface* meshInte
 	  m_ownsBvh(false)
 {
 	m_shapeType = TRIANGLE_MESH_SHAPE_PROXYTYPE;
-	//construct bvh from meshInterface
+	
 #ifndef DISABLE_BVH
 
 	if (buildBvh)
@@ -37,7 +24,7 @@ btBvhTriangleMeshShape::btBvhTriangleMeshShape(btStridingMeshInterface* meshInte
 		buildOptimizedBvh();
 	}
 
-#endif  //DISABLE_BVH
+#endif  
 }
 
 btBvhTriangleMeshShape::btBvhTriangleMeshShape(btStridingMeshInterface* meshInterface, bool useQuantizedAabbCompression, const btVector3& bvhAabbMin, const btVector3& bvhAabbMax, bool buildBvh)
@@ -48,7 +35,7 @@ btBvhTriangleMeshShape::btBvhTriangleMeshShape(btStridingMeshInterface* meshInte
 	  m_ownsBvh(false)
 {
 	m_shapeType = TRIANGLE_MESH_SHAPE_PROXYTYPE;
-	//construct bvh from meshInterface
+	
 #ifndef DISABLE_BVH
 
 	if (buildBvh)
@@ -60,7 +47,7 @@ btBvhTriangleMeshShape::btBvhTriangleMeshShape(btStridingMeshInterface* meshInte
 		m_ownsBvh = true;
 	}
 
-#endif  //DISABLE_BVH
+#endif  
 }
 
 void btBvhTriangleMeshShape::partialRefitTree(const btVector3& aabbMin, const btVector3& aabbMax)
@@ -150,7 +137,7 @@ void btBvhTriangleMeshShape::performRaycast(btTriangleCallback* callback, const 
 				}
 			}
 
-			/* Perform ray vs. triangle collision here */
+			
 			m_callback->processTriangle(m_triangle, nodeSubPart, nodeTriangleIndex);
 			m_meshInterface->unLockReadOnlyVertexBase(nodeSubPart);
 		}
@@ -224,7 +211,7 @@ void btBvhTriangleMeshShape::performConvexcast(btTriangleCallback* callback, con
 				}
 			}
 
-			/* Perform ray vs. triangle collision here */
+			
 			m_callback->processTriangle(m_triangle, nodeSubPart, nodeTriangleIndex);
 			m_meshInterface->unLockReadOnlyVertexBase(nodeSubPart);
 		}
@@ -235,15 +222,15 @@ void btBvhTriangleMeshShape::performConvexcast(btTriangleCallback* callback, con
 	m_bvh->reportBoxCastOverlappingNodex(&myNodeCallback, raySource, rayTarget, aabbMin, aabbMax);
 }
 
-//perform bvh tree traversal and report overlapping triangles to 'callback'
+
 void btBvhTriangleMeshShape::processAllTriangles(btTriangleCallback* callback, const btVector3& aabbMin, const btVector3& aabbMax) const
 {
 #ifdef DISABLE_BVH
-	//brute force traverse all triangles
+	
 	btTriangleMeshShape::processAllTriangles(callback, aabbMin, aabbMax);
 #else
 
-	//first get all the nodes
+	
 
 	struct MyNodeOverlapCallback : public btNodeOverlapCallback
 	{
@@ -292,7 +279,7 @@ void btBvhTriangleMeshShape::processAllTriangles(btTriangleCallback* callback, c
 
 #ifdef DEBUG_TRIANGLE_MESH
 				printf("%d ,", graphicsindex);
-#endif  //DEBUG_TRIANGLE_MESH
+#endif  
 				if (type == PHY_FLOAT)
 				{
 					float* graphicsbase = (float*)(vertexbase + graphicsindex * stride);
@@ -313,7 +300,7 @@ void btBvhTriangleMeshShape::processAllTriangles(btTriangleCallback* callback, c
 				}
 #ifdef DEBUG_TRIANGLE_MESH
 				printf("triangle vertices:%f,%f,%f\n", triangle[j].x(), triangle[j].y(), triangle[j].z());
-#endif  //DEBUG_TRIANGLE_MESH
+#endif  
 			}
 
 			m_callback->processTriangle(m_triangle, nodeSubPart, nodeTriangleIndex);
@@ -325,7 +312,7 @@ void btBvhTriangleMeshShape::processAllTriangles(btTriangleCallback* callback, c
 
 	m_bvh->reportAabbOverlappingNodex(&myNodeCallback, aabbMin, aabbMax);
 
-#endif  //DISABLE_BVH
+#endif  
 }
 
 void btBvhTriangleMeshShape::setLocalScaling(const btVector3& scaling)
@@ -344,10 +331,10 @@ void btBvhTriangleMeshShape::buildOptimizedBvh()
 		m_bvh->~btOptimizedBvh();
 		btAlignedFree(m_bvh);
 	}
-	///m_localAabbMin/m_localAabbMax is already re-calculated in btTriangleMeshShape. We could just scale aabb, but this needs some more work
+	
 	void* mem = btAlignedAlloc(sizeof(btOptimizedBvh), 16);
 	m_bvh = new (mem) btOptimizedBvh();
-	//rebuild the bvh...
+	
 	m_bvh->build(m_meshInterface, m_useQuantizedAabbCompression, m_localAabbMin, m_localAabbMax);
 	m_ownsBvh = true;
 }
@@ -359,14 +346,14 @@ void btBvhTriangleMeshShape::setOptimizedBvh(btOptimizedBvh* bvh, const btVector
 
 	m_bvh = bvh;
 	m_ownsBvh = false;
-	// update the scaling without rebuilding the bvh
+	
 	if ((getLocalScaling() - scaling).length2() > SIMD_EPSILON)
 	{
 		btTriangleMeshShape::setLocalScaling(scaling);
 	}
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 const char* btBvhTriangleMeshShape::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btTriangleMeshShapeData* trimeshData = (btTriangleMeshShapeData*)dataBuffer;
@@ -388,7 +375,7 @@ const char* btBvhTriangleMeshShape::serialize(void* dataBuffer, btSerializer* se
 #else
 			trimeshData->m_quantizedFloatBvh = (btQuantizedBvhData*)chunk;
 			trimeshData->m_quantizedDoubleBvh = 0;
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 		}
 		else
 		{
@@ -398,7 +385,7 @@ const char* btBvhTriangleMeshShape::serialize(void* dataBuffer, btSerializer* se
 #else
 			trimeshData->m_quantizedFloatBvh = (btQuantizedBvhData*)serializer->getUniquePointer(m_bvh);
 			trimeshData->m_quantizedDoubleBvh = 0;
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 			int sz = m_bvh->calculateSerializeBufferSizeNew();
 			btChunk* chunk = serializer->allocate(sz, 1);
@@ -433,7 +420,7 @@ const char* btBvhTriangleMeshShape::serialize(void* dataBuffer, btSerializer* se
 		trimeshData->m_triangleInfoMap = 0;
 	}
 
-	// Fill padding with zeros to appease msan.
+	
 	memset(trimeshData->m_pad3, 0, sizeof(trimeshData->m_pad3));
 
 	return "btTriangleMeshShapeData";
@@ -443,7 +430,7 @@ void btBvhTriangleMeshShape::serializeSingleBvh(btSerializer* serializer) const
 {
 	if (m_bvh)
 	{
-		int len = m_bvh->calculateSerializeBufferSizeNew();  //make sure not to use calculateSerializeBufferSize because it is used for in-place
+		int len = m_bvh->calculateSerializeBufferSizeNew();  
 		btChunk* chunk = serializer->allocate(len, 1);
 		const char* structType = m_bvh->serialize(chunk->m_oldPtr, serializer);
 		serializer->finalizeChunk(chunk, structType, BT_QUANTIZED_BVH_CODE, (void*)m_bvh);

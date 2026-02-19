@@ -1,31 +1,11 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-/*
-Added by Roman Ponomarev (rponom@gmail.com)
-April 04, 2008
-
-TODO:
- - add clamping od accumulated impulse to improve stability
- - add conversion for ODE constraint solver
-*/
 
 #ifndef BT_SLIDER_CONSTRAINT_H
 #define BT_SLIDER_CONSTRAINT_H
 
-#include "LinearMath/btScalar.h"  //for BT_USE_DOUBLE_PRECISION
+#include "LinearMath/btScalar.h"  
 
 #ifdef BT_USE_DOUBLE_PRECISION
 #define btSliderConstraintData2 btSliderConstraintDoubleData
@@ -33,7 +13,7 @@ TODO:
 #else
 #define btSliderConstraintData2 btSliderConstraintData
 #define btSliderConstraintDataName "btSliderConstraintData"
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 #include "LinearMath/btVector3.h"
 #include "btJacobianEntry.h"
@@ -66,25 +46,25 @@ ATTRIBUTE_ALIGNED16(class)
 btSliderConstraint : public btTypedConstraint
 {
 protected:
-	///for backwards compatibility during the transition to 'getInfo/getInfo2'
+	
 	bool m_useSolveConstraintObsolete;
 	bool m_useOffsetForConstraintFrame;
 	btTransform m_frameInA;
 	btTransform m_frameInB;
-	// use frameA fo define limits, if true
+	
 	bool m_useLinearReferenceFrameA;
-	// linear limits
+	
 	btScalar m_lowerLinLimit;
 	btScalar m_upperLinLimit;
-	// angular limits
+	
 	btScalar m_lowerAngLimit;
 	btScalar m_upperAngLimit;
-	// softness, restitution and damping for different cases
-	// DirLin - moving inside linear limits
-	// LimLin - hitting linear limit
-	// DirAng - moving inside angular limits
-	// LimAng - hitting angular limit
-	// OrthoLin, OrthoAng - against constraint axis
+	
+	
+	
+	
+	
+	
 	btScalar m_softnessDirLin;
 	btScalar m_restitutionDirLin;
 	btScalar m_dampingDirLin;
@@ -115,7 +95,7 @@ protected:
 	btScalar m_dampingOrthoAng;
 	btScalar m_cfmOrthoAng;
 
-	// for interlal use
+	
 	bool m_solveLinLim;
 	bool m_solveAngLim;
 
@@ -155,17 +135,17 @@ protected:
 	btScalar m_maxAngMotorForce;
 	btScalar m_accumulatedAngMotorImpulse;
 
-	//------------------------
+	
 	void initParams();
 
 public:
 	BT_DECLARE_ALIGNED_ALLOCATOR();
 
-	// constructors
+	
 	btSliderConstraint(btRigidBody & rbA, btRigidBody & rbB, const btTransform& frameInA, const btTransform& frameInB, bool useLinearReferenceFrameA);
 	btSliderConstraint(btRigidBody & rbB, const btTransform& frameInB, bool useLinearReferenceFrameA);
 
-	// overrides
+	
 
 	virtual void getInfo1(btConstraintInfo1 * info);
 
@@ -175,7 +155,7 @@ public:
 
 	void getInfo2NonVirtual(btConstraintInfo2 * info, const btTransform& transA, const btTransform& transB, const btVector3& linVelA, const btVector3& linVelB, btScalar rbAinvMass, btScalar rbBinvMass);
 
-	// access
+	
 	const btRigidBody& getRigidBodyA() const { return m_rbA; }
 	const btRigidBody& getRigidBodyB() const { return m_rbB; }
 	const btTransform& getCalculatedTransformA() const { return m_calculatedTransformA; }
@@ -245,19 +225,19 @@ public:
 	btScalar getLinearPos() const { return m_linPos; }
 	btScalar getAngularPos() const { return m_angPos; }
 
-	// access for ODE solver
+	
 	bool getSolveLinLimit() { return m_solveLinLim; }
 	btScalar getLinDepth() { return m_depth[0]; }
 	bool getSolveAngLimit() { return m_solveAngLim; }
 	btScalar getAngDepth() { return m_angDepth; }
-	// shared code used by ODE solver
+	
 	void calculateTransforms(const btTransform& transA, const btTransform& transB);
 	void testLinLimits();
 	void testAngLimits();
-	// access for PE Solver
+	
 	btVector3 getAncorInA();
 	btVector3 getAncorInB();
-	// access for UseFrameOffset
+	
 	bool getUseFrameOffset() { return m_useOffsetForConstraintFrame; }
 	void setUseFrameOffset(bool frameOffsetOnOff) { m_useOffsetForConstraintFrame = frameOffsetOnOff; }
 
@@ -269,10 +249,10 @@ public:
 		buildJacobian();
 	}
 
-	///override the default global value of a parameter (such as ERP or CFM), optionally provide the axis (0..5).
-	///If no axis is provided, it uses the default axis for this constraint.
+	
+	
 	virtual void setParam(int num, btScalar value, int axis = -1);
-	///return the local value of parameter
+	
 	virtual btScalar getParam(int num, int axis = -1) const;
 
 	virtual int getFlags() const
@@ -282,16 +262,16 @@ public:
 
 	virtual int calculateSerializeBufferSize() const;
 
-	///fills the dataBuffer and returns the struct name (and 0 on failure)
+	
 	virtual const char* serialize(void* dataBuffer, btSerializer* serializer) const;
 };
 
-///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
+
 
 struct btSliderConstraintData
 {
 	btTypedConstraintData m_typeConstraintData;
-	btTransformFloatData m_rbAFrame;  // constraint axii. Assumes z is hinge axis.
+	btTransformFloatData m_rbAFrame;  
 	btTransformFloatData m_rbBFrame;
 
 	float m_linearUpperLimit;
@@ -307,7 +287,7 @@ struct btSliderConstraintData
 struct btSliderConstraintDoubleData
 {
 	btTypedConstraintDoubleData m_typeConstraintData;
-	btTransformDoubleData m_rbAFrame;  // constraint axii. Assumes z is hinge axis.
+	btTransformDoubleData m_rbAFrame;  
 	btTransformDoubleData m_rbBFrame;
 
 	double m_linearUpperLimit;
@@ -325,7 +305,7 @@ SIMD_FORCE_INLINE int btSliderConstraint::calculateSerializeBufferSize() const
 	return sizeof(btSliderConstraintData2);
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 SIMD_FORCE_INLINE const char* btSliderConstraint::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btSliderConstraintData2* sliderData = (btSliderConstraintData2*)dataBuffer;
@@ -346,4 +326,4 @@ SIMD_FORCE_INLINE const char* btSliderConstraint::serialize(void* dataBuffer, bt
 	return btSliderConstraintDataName;
 }
 
-#endif  //BT_SLIDER_CONSTRAINT_H
+#endif  

@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btContinuousConvexCollision.h"
 #include "BulletCollision/CollisionShapes/btConvexShape.h"
@@ -41,8 +28,8 @@ btContinuousConvexCollision::btContinuousConvexCollision(const btConvexShape* co
 {
 }
 
-/// This maximum should not be necessary. It allows for untested/degenerate cases in production code.
-/// You don't want your game ever to lock-up.
+
+
 #define MAX_ITERATIONS 64
 
 void btContinuousConvexCollision::computeClosestPoints(const btTransform& transA, const btTransform& transB, btPointCollector& pointCollector)
@@ -58,7 +45,7 @@ void btContinuousConvexCollision::computeClosestPoints(const btTransform& transA
 	}
 	else
 	{
-		//convex versus plane
+		
 		const btConvexShape* convexShape = m_convexA;
 		const btStaticPlaneShape* planeShape = m_planeShape;
 
@@ -94,7 +81,7 @@ bool btContinuousConvexCollision::calcTimeOfImpact(
 	const btTransform& toB,
 	CastResult& result)
 {
-	/// compute linear and angular velocity for this interval, to interpolate
+	
 	btVector3 linVelA, angVelA, linVelB, angVelB;
 	btTransformUtil::calculateVelocity(fromA, toA, btScalar(1.), linVelA, angVelA);
 	btTransformUtil::calculateVelocity(fromB, toB, btScalar(1.), linVelB, angVelB);
@@ -118,13 +105,13 @@ bool btContinuousConvexCollision::calcTimeOfImpact(
 	btVector3 c;
 
 	btScalar lastLambda = lambda;
-	//btScalar epsilon = btScalar(0.001);
+	
 
 	int numIter = 0;
-	//first solution, using GJK
+	
 
 	btScalar radius = 0.001f;
-	//	result.drawCoordSystem(sphereTr);
+	
 
 	btPointCollector pointCollector1;
 
@@ -144,7 +131,7 @@ bool btContinuousConvexCollision::calcTimeOfImpact(
 		if ((projectedLinearVelocity + maxAngularProjectedVelocity) <= SIMD_EPSILON)
 			return false;
 
-		//not close enough
+		
 		while (dist > radius)
 		{
 			if (result.m_debugDrawer)
@@ -155,7 +142,7 @@ bool btContinuousConvexCollision::calcTimeOfImpact(
 
 			projectedLinearVelocity = relLinVel.dot(n);
 
-			//don't report time of impact for motion away from the contact normal (or causes minor penetration)
+			
 			if ((projectedLinearVelocity + maxAngularProjectedVelocity) <= SIMD_EPSILON)
 				return false;
 
@@ -166,16 +153,16 @@ bool btContinuousConvexCollision::calcTimeOfImpact(
 			if (lambda > btScalar(1.) || lambda < btScalar(0.))
 				return false;
 
-			//todo: next check with relative epsilon
+			
 			if (lambda <= lastLambda)
 			{
 				return false;
-				//n.setValue(0,0,0);
-				//break;
+				
+				
 			}
 			lastLambda = lambda;
 
-			//interpolate to next lambda
+			
 			btTransform interpolatedTransA, interpolatedTransB, relativeTrans;
 
 			btTransformUtil::integrateTransform(fromA, linVelA, angVelA, lambda, interpolatedTransA);

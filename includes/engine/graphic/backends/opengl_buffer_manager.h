@@ -5,7 +5,7 @@
 class OpenGLBufferManager : public IBufferManager
 {
 private:
-    // Helpers replaced by GLTranslator
+    
 
 public:
     unsigned int CreateVertexArray() override

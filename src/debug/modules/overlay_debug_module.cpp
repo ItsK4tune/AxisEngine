@@ -33,7 +33,7 @@ void OverlayDebugModule::SetStats(float fps, float frameTime)
 
 void OverlayDebugModule::OnUpdate(float dt)
 {
-    // Stats are updated externally via SetStats
+    
 }
 
 void OverlayDebugModule::Render(Scene &scene)

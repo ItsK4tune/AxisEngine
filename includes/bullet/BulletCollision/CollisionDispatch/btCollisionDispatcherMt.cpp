@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btCollisionDispatcherMt.h"
 #include "LinearMath/btQuickprof.h"
@@ -32,12 +19,12 @@ btCollisionDispatcherMt::btCollisionDispatcherMt(btCollisionConfiguration* confi
 	m_batchReleasePtr.resize(btGetTaskScheduler()->getNumThreads());
 
 	m_batchUpdating = false;
-	m_grainSize = grainSize;  // iterations per task
+	m_grainSize = grainSize;  
 }
 
 btPersistentManifold* btCollisionDispatcherMt::getNewManifold(const btCollisionObject* body0, const btCollisionObject* body1)
 {
-	//optional relative contact breaking threshold, turned on by default (use setDispatcherFlags to switch off feature for improved performance)
+	
 
 	btScalar contactBreakingThreshold = (m_dispatcherFlags & btCollisionDispatcher::CD_USE_RELATIVE_CONTACT_BREAKING_THRESHOLD) ? btMin(body0->getCollisionShape()->getContactBreakingThreshold(gContactBreakingThreshold), body1->getCollisionShape()->getContactBreakingThreshold(gContactBreakingThreshold))
 																																: gContactBreakingThreshold;
@@ -47,7 +34,7 @@ btPersistentManifold* btCollisionDispatcherMt::getNewManifold(const btCollisionO
 	void* mem = m_persistentManifoldPoolAllocator->allocate(sizeof(btPersistentManifold));
 	if (NULL == mem)
 	{
-		//we got a pool memory overflow, by default we fallback to dynamically allocate memory. If we require a contiguous contact pool then assert.
+		
 		if ((m_dispatcherFlags & CD_DISABLE_CONTACTPOOL_DYNAMIC_ALLOCATION) == 0)
 		{
 			mem = btAlignedAlloc(sizeof(btPersistentManifold), 16);
@@ -55,16 +42,16 @@ btPersistentManifold* btCollisionDispatcherMt::getNewManifold(const btCollisionO
 		else
 		{
 			btAssert(0);
-			//make sure to increase the m_defaultMaxPersistentManifoldPoolSize in the btDefaultCollisionConstructionInfo/btDefaultCollisionConfiguration
+			
 			return 0;
 		}
 	}
 	btPersistentManifold* manifold = new (mem) btPersistentManifold(body0, body1, 0, contactBreakingThreshold, contactProcessingThreshold);
 	if (!m_batchUpdating)
 	{
-		// batch updater will update manifold pointers array after finishing, so
-		// only need to update array when not batch-updating
-		//btAssert( !btThreadsAreRunning() );
+		
+		
+		
 		manifold->m_index1a = m_manifoldsPtr.size();
 		m_manifoldsPtr.push_back(manifold);
 	}
@@ -78,13 +65,13 @@ btPersistentManifold* btCollisionDispatcherMt::getNewManifold(const btCollisionO
 
 void btCollisionDispatcherMt::releaseManifold(btPersistentManifold* manifold)
 {
-	//btAssert( !btThreadsAreRunning() );
+	
 	
 	if (!m_batchUpdating)
 	{
 		clearManifold(manifold);
-		// batch updater will update manifold pointers array after finishing, so
-		// only need to update array when not batch-updating
+		
+		
 		int findIndex = manifold->m_index1a;
 		btAssert(findIndex < m_manifoldsPtr.size());
 		m_manifoldsPtr.swap(findIndex, m_manifoldsPtr.size() - 1);
@@ -147,7 +134,7 @@ void btCollisionDispatcherMt::dispatchAllCollisionPairs(btOverlappingPairCache* 
 	btParallelFor(0, pairCount, m_grainSize, updater);
 	m_batchUpdating = false;
 
-	// merge new manifolds, if any
+	
 	for (int i = 0; i < m_batchManifoldsPtr.size(); ++i)
 	{
 		btAlignedObjectArray<btPersistentManifold*>& batchManifoldsPtr = m_batchManifoldsPtr[i];
@@ -160,7 +147,7 @@ void btCollisionDispatcherMt::dispatchAllCollisionPairs(btOverlappingPairCache* 
 		batchManifoldsPtr.resizeNoInitialize(0);
 	}
 
-	// remove batched remove manifolds.
+	
 	for (int i = 0; i < m_batchReleasePtr.size(); ++i)
 	{
 		btAlignedObjectArray<btPersistentManifold*>& batchManifoldsPtr = m_batchReleasePtr[i];
@@ -171,7 +158,7 @@ void btCollisionDispatcherMt::dispatchAllCollisionPairs(btOverlappingPairCache* 
 		batchManifoldsPtr.resizeNoInitialize(0);
 	}
 
-	// update the indices (used when releasing manifolds)
+	
 	for (int i = 0; i < m_manifoldsPtr.size(); ++i)
 	{
 		m_manifoldsPtr[i]->m_index1a = i;

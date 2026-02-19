@@ -13,25 +13,25 @@ PhysicsCollisionDispatcher::~PhysicsCollisionDispatcher()
 {
 }
 
-#include <physic/backends/bullet_physics_world.h> // Include concrete backend for now
+#include <physic/backends/bullet_physics_world.h> 
 
 void PhysicsCollisionDispatcher::DispatchEvents()
 {
-    // Casting for now until IPhysicsWorld exposes collision manifold/iterator
-    // or we move this logic to the backend
+    
+    
     BulletPhysicsWorld* bulletWorld = dynamic_cast<BulletPhysicsWorld*>(&m_Physics);
     if (!bulletWorld) return; 
 
-    // We need to access m_DynamicsWorld from BulletPhysicsWorld but it's private.
-    // I should add GetRawWorld() to BulletPhysicsWorld or friend it.
-    // Ideally IPhysicsWorld should likely have GetCollisions().
-    // For now let's assume I can get it or I will add GetRawWorld() to BulletPhysicsWorld.
     
-    // TEMPORARY FIX: GetRawWorld() in BulletPhysicsWorld needed
-    // Assuming I will add it in next step.
     
-    // Actually, I can use friend class or public getter.
-    // Let's add GetRawWorld() to BulletPhysicsWorld header first.
+    
+    
+    
+    
+    
+    
+    
+    
 
     btDiscreteDynamicsWorld *world = bulletWorld->GetRawWorld();
     if (!world) return;

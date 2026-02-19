@@ -1,21 +1,8 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btDiscreteDynamicsWorldMt.h"
 
-//collision detection
+
 #include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
 #include "BulletCollision/BroadphaseCollision/btSimpleBroadphase.h"
 #include "BulletCollision/BroadphaseCollision/btCollisionAlgorithm.h"
@@ -24,7 +11,7 @@ subject to the following restrictions:
 #include "LinearMath/btTransformUtil.h"
 #include "LinearMath/btQuickprof.h"
 
-//rigidbody & constraints
+
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletDynamics/ConstraintSolver/btContactSolverInfo.h"
@@ -46,16 +33,16 @@ subject to the following restrictions:
 
 #include "LinearMath/btSerializer.h"
 
-///
-/// btConstraintSolverPoolMt
-///
+
+
+
 
 btConstraintSolverPoolMt::ThreadSolver* btConstraintSolverPoolMt::getAndLockThreadSolver()
 {
 	int i = 0;
 #if BT_THREADSAFE
 	i = btGetCurrentThreadIndex() % m_solvers.size();
-#endif  // #if BT_THREADSAFE
+#endif  
 	while (true)
 	{
 		ThreadSolver& solver = m_solvers[i];
@@ -63,7 +50,7 @@ btConstraintSolverPoolMt::ThreadSolver* btConstraintSolverPoolMt::getAndLockThre
 		{
 			return &solver;
 		}
-		// failed, try the next one
+		
 		i = (i + 1) % m_solvers.size();
 	}
 	return NULL;
@@ -83,7 +70,7 @@ void btConstraintSolverPoolMt::init(btConstraintSolver** solvers, int numSolvers
 	}
 }
 
-// create the solvers for me
+
 btConstraintSolverPoolMt::btConstraintSolverPoolMt(int numSolvers)
 {
 	btAlignedObjectArray<btConstraintSolver*> solvers;
@@ -96,7 +83,7 @@ btConstraintSolverPoolMt::btConstraintSolverPoolMt(int numSolvers)
 	init(&solvers[0], numSolvers);
 }
 
-// pass in fully constructed solvers (destructor will delete them)
+
 btConstraintSolverPoolMt::btConstraintSolverPoolMt(btConstraintSolver** solvers, int numSolvers)
 {
 	init(solvers, numSolvers);
@@ -104,7 +91,7 @@ btConstraintSolverPoolMt::btConstraintSolverPoolMt(btConstraintSolver** solvers,
 
 btConstraintSolverPoolMt::~btConstraintSolverPoolMt()
 {
-	// delete all solvers
+	
 	for (int i = 0; i < m_solvers.size(); ++i)
 	{
 		ThreadSolver& solver = m_solvers[i];
@@ -113,7 +100,7 @@ btConstraintSolverPoolMt::~btConstraintSolverPoolMt()
 	}
 }
 
-///solve a group of constraints
+
 btScalar btConstraintSolverPoolMt::solveGroup(btCollisionObject** bodies,
 											  int numBodies,
 											  btPersistentManifold** manifolds,
@@ -141,9 +128,9 @@ void btConstraintSolverPoolMt::reset()
 	}
 }
 
-///
-/// btDiscreteDynamicsWorldMt
-///
+
+
+
 
 btDiscreteDynamicsWorldMt::btDiscreteDynamicsWorldMt(btDispatcher* dispatcher,
 													 btBroadphaseInterface* pairCache,
@@ -176,7 +163,7 @@ void btDiscreteDynamicsWorldMt::solveConstraints(btContactSolverInfo& solverInfo
 
 	m_constraintSolver->prepareSolve(getCollisionWorld()->getNumCollisionObjects(), getCollisionWorld()->getDispatcher()->getNumManifolds());
 
-	/// solve all the constraints for this island
+	
 	btSimulationIslandManagerMt* im = static_cast<btSimulationIslandManagerMt*>(m_islandManager);
 	btSimulationIslandManagerMt::SolverParams solverParams;
 	solverParams.m_solverPool = m_constraintSolver;
@@ -201,7 +188,7 @@ struct UpdaterUnconstrainedMotion : public btIParallelForBody
 			btRigidBody* body = rigidBodies[i];
 			if (!body->isStaticOrKinematicObject())
 			{
-				//don't integrate/update velocities here, it happens in the constraint solver
+				
 				body->applyDamping(timeStep);
 				body->predictIntegratedTransform(timeStep, body->getInterpolationWorldTransform());
 			}
@@ -217,7 +204,7 @@ void btDiscreteDynamicsWorldMt::predictUnconstraintMotion(btScalar timeStep)
 		UpdaterUnconstrainedMotion update;
 		update.timeStep = timeStep;
 		update.rigidBodies = &m_nonStaticRigidBodies[0];
-		int grainSize = 50;  // num of iterations per task for task scheduler
+		int grainSize = 50;  
 		btParallelFor(0, m_nonStaticRigidBodies.size(), grainSize, update);
 	}
 }
@@ -232,7 +219,7 @@ void btDiscreteDynamicsWorldMt::createPredictiveContacts(btScalar timeStep)
 		update.world = this;
 		update.timeStep = timeStep;
 		update.rigidBodies = &m_nonStaticRigidBodies[0];
-		int grainSize = 50;  // num of iterations per task for task scheduler
+		int grainSize = 50;  
 		btParallelFor(0, m_nonStaticRigidBodies.size(), grainSize, update);
 	}
 }
@@ -246,7 +233,7 @@ void btDiscreteDynamicsWorldMt::integrateTransforms(btScalar timeStep)
 		update.world = this;
 		update.timeStep = timeStep;
 		update.rigidBodies = &m_nonStaticRigidBodies[0];
-		int grainSize = 50;  // num of iterations per task for task scheduler
+		int grainSize = 50;  
 		btParallelFor(0, m_nonStaticRigidBodies.size(), grainSize, update);
 	}
 }
@@ -256,7 +243,7 @@ int btDiscreteDynamicsWorldMt::stepSimulation(btScalar timeStep, int maxSubSteps
 	int numSubSteps = btDiscreteDynamicsWorld::stepSimulation(timeStep, maxSubSteps, fixedTimeStep);
 	if (btITaskScheduler* scheduler = btGetTaskScheduler())
 	{
-		// tell Bullet's threads to sleep, so other threads can run
+		
 		scheduler->sleepWorkerThreadsHint();
 	}
 	return numSubSteps;

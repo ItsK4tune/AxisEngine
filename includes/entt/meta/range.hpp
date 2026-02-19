@@ -10,7 +10,7 @@
 
 namespace entt {
 
-/*! @cond TURN_OFF_DOXYGEN */
+
 namespace internal {
 
 struct meta_base_node;
@@ -135,17 +135,13 @@ template<typename... Args>
     return !(lhs < rhs);
 }
 
-} // namespace internal
-/*! @endcond */
+} 
 
-/**
- * @brief Iterable range to use to iterate all types of meta objects.
- * @tparam Type Type of meta objects returned.
- * @tparam It Type of forward iterator.
- */
+
+
 template<typename Type, typename It>
 using meta_range = iterable_adaptor<internal::meta_range_iterator<Type, It>>;
 
-} // namespace entt
+} 
 
 #endif

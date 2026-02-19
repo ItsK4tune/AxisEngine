@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_IDEBUG_DRAW__H
 #define BT_IDEBUG_DRAW__H
@@ -19,10 +6,10 @@ subject to the following restrictions:
 #include "btVector3.h"
 #include "btTransform.h"
 
-///The btIDebugDraw interface class allows hooking up a debug renderer to visually debug simulations.
-///Typical use case: create a debug drawer object, and assign it to a btCollisionWorld or btDynamicsWorld using setDebugDrawer and call debugDrawWorld.
-///A class that implements the btIDebugDraw interface will need to provide non-empty implementations of the the drawLine and getDebugMode methods at a minimum.
-///For color arguments the X,Y,Z components refer to Red, Green and Blue each in the range [0..1]
+
+
+
+
 class btIDebugDraw
 {
 public:
@@ -78,8 +65,8 @@ public:
 		DefaultColors colors;
 		return colors;
 	}
-	///the default implementation for setDefaultColors has no effect. A derived class can implement it and store the colors.
-	virtual void setDefaultColors(const DefaultColors& /*colors*/) {}
+	
+	virtual void setDefaultColors(const DefaultColors& ) {}
 
 	virtual void drawLine(const btVector3& from, const btVector3& to, const btVector3& color) = 0;
 
@@ -111,11 +98,11 @@ public:
 		drawSphere(radius, tr, color);
 	}
 
-	virtual void drawTriangle(const btVector3& v0, const btVector3& v1, const btVector3& v2, const btVector3& /*n0*/, const btVector3& /*n1*/, const btVector3& /*n2*/, const btVector3& color, btScalar alpha)
+	virtual void drawTriangle(const btVector3& v0, const btVector3& v1, const btVector3& v2, const btVector3& , const btVector3& , const btVector3& , const btVector3& color, btScalar alpha)
 	{
 		drawTriangle(v0, v1, v2, color, alpha);
 	}
-	virtual void drawTriangle(const btVector3& v0, const btVector3& v1, const btVector3& v2, const btVector3& color, btScalar /*alpha*/)
+	virtual void drawTriangle(const btVector3& v0, const btVector3& v1, const btVector3& v2, const btVector3& color, btScalar )
 	{
 		drawLine(v0, v1, color);
 		drawLine(v1, v2, color);
@@ -342,7 +329,7 @@ public:
 		btVector3 capEnd(0.f, 0.f, 0.f);
 		capEnd[upAxis] = halfHeight;
 
-		// Draw the ends
+		
 		{
 			btTransform childTransform = transform;
 			childTransform.getOrigin() = transform * capStart;
@@ -374,7 +361,7 @@ public:
 			}
 		}
 
-		// Draw some additional lines
+		
 		btVector3 start = transform.getOrigin();
 
 		for (int i = 0; i < 360; i += stepDegrees)
@@ -402,7 +389,7 @@ public:
 			capEnd[(upAxis + 2) % 3] = capStart[(upAxis + 2) % 3] = btCos(btScalar(i) * SIMD_RADS_PER_DEG) * radius;
 			drawLine(start + transform.getBasis() * capStart, start + transform.getBasis() * capEnd, color);
 		}
-		// Drawing top and bottom caps of the cylinder
+		
 		btVector3 yaxis(0, 0, 0);
 		yaxis[upAxis] = btScalar(1.0);
 		btVector3 xaxis(0, 0, 0);
@@ -439,7 +426,7 @@ public:
 		drawLine(start + transform.getBasis() * (offsetHeight), start + transform.getBasis() * (-offsetHeight + offset2Radius), color);
 		drawLine(start + transform.getBasis() * (offsetHeight), start + transform.getBasis() * (-offsetHeight - offset2Radius), color);
 
-		// Drawing the base of the cone
+		
 		btVector3 yaxis(0, 0, 0);
 		yaxis[upAxis] = btScalar(1.0);
 		btVector3 xaxis(0, 0, 0);
@@ -470,4 +457,4 @@ public:
 	}
 };
 
-#endif  //BT_IDEBUG_DRAW__H
+#endif  

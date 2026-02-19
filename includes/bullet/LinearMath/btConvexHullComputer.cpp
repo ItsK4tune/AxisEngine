@@ -1,16 +1,4 @@
-/*
-Copyright (c) 2011 Ole Kniemeyer, MAXON, www.maxon.net
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include <string.h>
 
@@ -33,20 +21,20 @@ typedef unsigned int uint32_t;
 typedef unsigned long long int uint64_t;
 #endif
 
-//The definition of USE_X86_64_ASM is moved into the build system. You can enable it manually by commenting out the following lines
-//#if (defined(__GNUC__) && defined(__x86_64__) && !defined(__ICL))  // || (defined(__ICL) && defined(_M_X64))   bug in Intel compiler, disable inline assembly
-//	#define USE_X86_64_ASM
-//#endif
 
-//#define DEBUG_CONVEX_HULL
-//#define SHOW_ITERATIONS
+
+
+
+
+
+
 
 #if defined(DEBUG_CONVEX_HULL) || defined(SHOW_ITERATIONS)
 #include <stdio.h>
 #endif
 
-// Convex hull implementation based on Preparata and Hong
-// Ole Kniemeyer, MAXON Computer GmbH
+
+
 class btConvexHullInternal
 {
 public:
@@ -905,7 +893,7 @@ int btConvexHullInternal::Rational64::compare(const Rational64& b) const
 		return 0;
 	}
 
-	//	return (numerator * b.denominator > b.numerator * denominator) ? sign : (numerator * b.denominator < b.numerator * denominator) ? -sign : 0;
+	
 
 #ifdef USE_X86_64_ASM
 
@@ -919,17 +907,17 @@ int btConvexHullInternal::Rational64::compare(const Rational64& b) const
 		"movq %[tn], %%rax\n\t"
 		"mulq %[bd]\n\t"
 		"subq %[tmp], %%rax\n\t"
-		"sbbq %%rbx, %%rdx\n\t"  // rdx:rax contains 128-bit-difference "numerator*b.denominator - b.numerator*denominator"
-		"setnsb %%bh\n\t"        // bh=1 if difference is non-negative, bh=0 otherwise
+		"sbbq %%rbx, %%rdx\n\t"  
+		"setnsb %%bh\n\t"        
 		"orq %%rdx, %%rax\n\t"
-		"setnzb %%bl\n\t"      // bl=1 if difference if non-zero, bl=0 if it is zero
-		"decb %%bh\n\t"        // now bx=0x0000 if difference is zero, 0xff01 if it is negative, 0x0001 if it is positive (i.e., same sign as difference)
-		"shll $16, %%ebx\n\t"  // ebx has same sign as difference
+		"setnzb %%bl\n\t"      
+		"decb %%bh\n\t"        
+		"shll $16, %%ebx\n\t"  
 		: "=&b"(result), [tmp] "=&r"(tmp), "=a"(dummy)
 		: "a"(m_denominator), [bn] "g"(b.m_numerator), [tn] "g"(m_numerator), [bd] "g"(b.m_denominator)
 		: "%rdx", "cc");
-	return result ? result ^ sign  // if sign is +1, only bit 0 of result is inverted, which does not change the sign of result (and cannot result in zero)
-								   // if sign is -1, all bits of result are inverted, which changes the sign of result (and again cannot result in zero)
+	return result ? result ^ sign  
+								   
 				  : 0;
 
 #else

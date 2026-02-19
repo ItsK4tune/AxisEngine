@@ -362,7 +362,7 @@ void processNode(aiNode* node, const aiScene* scene,
         processNode(node->mChildren[i], scene, meshes, textures_loaded, directory, boneInfoMap, boneCount);
 }
 
-} // namespace
+} 
 
 
 

@@ -40,7 +40,7 @@ private:
 
 	Animation *m_NextAnimation = nullptr;
 	float m_NextTime = 0.0f;
-	float m_BlendFactor = 0.0f; // 0.0 = Current, 1.0 = Next
+	float m_BlendFactor = 0.0f; 
 	bool m_IsCrossFading = false;
 	float m_TransitionSpeed = 0.0f;
 

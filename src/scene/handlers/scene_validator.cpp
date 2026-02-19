@@ -190,7 +190,7 @@ namespace SceneHandlers
                                     frameInB);
 
                                 bulletWorld->GetRawWorld()->addConstraint(fixedConstraint);
-                                // rb.constraint = fixedConstraint; // TODO: store this somewhere safe 
+                                
                             }
                         }
                     }

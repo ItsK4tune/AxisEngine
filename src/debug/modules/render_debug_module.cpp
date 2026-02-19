@@ -18,12 +18,12 @@ void RenderDebugModule::Init(Application *app)
 
 void RenderDebugModule::OnUpdate(float dt)
 {
-    // No per-frame updates needed
+    
 }
 
 void RenderDebugModule::Render(Scene &scene)
 {
-    // This module doesn't render anything, only toggles render states
+    
 }
 
 void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
@@ -31,17 +31,17 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
     if (!m_App || !m_Enabled)
         return;
 
-    // Include glad for GL_FRONT_AND_BACK if not already accessible? 
-    // Usually via IGraphicsContext -> ... 
-    // Let's add include if needed? 
-    // But wait, the file already misses includes.
-    // I need to include:
-    // <interface/i_graphics_context.h>
-    // <interface/i_render_state_manager.h>
-    // <interface/input_codes.h> (via Application/KeyboardManager)
+    
+    
+    
+    
+    
+    
+    
+    
 
-    // Using raw GL_FRONT_AND_BACK (0x0408) to avoid GLAD include?
-    // Or just include glad. Better to include glad for now.
+    
+    
 
     ProcessKey(keyboard, Input::Key::F6, m_F6Pressed, [this, &keyboard]()
                {
@@ -86,7 +86,7 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
-            // Particle debug - handled by PhysicsDebugModule
+            
         } else {
             static bool uiEnabled = true;
             uiEnabled = !uiEnabled;

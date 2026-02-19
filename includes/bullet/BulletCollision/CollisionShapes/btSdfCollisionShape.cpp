@@ -28,13 +28,8 @@ btSdfCollisionShape::btSdfCollisionShape()
 	m_shapeType = SDF_SHAPE_PROXYTYPE;
 	m_data = new btSdfCollisionShapeInternalData();
 
-	//"E:/develop/bullet3/data/toys/ground_hole64_64_8.cdf");//ground_cube.cdf");
-	/*unsigned int field_id=0;
-	Eigen::Vector3d x (1,10,1);
-	Eigen::Vector3d gradient;
-	double dist = m_data->m_sdf.interpolate(field_id, x, &gradient);
-	printf("dist=%g\n", dist);
-	*/
+	
+	
 }
 btSdfCollisionShape::~btSdfCollisionShape()
 {
@@ -77,7 +72,7 @@ btScalar btSdfCollisionShape::getMargin() const
 
 void btSdfCollisionShape::processAllTriangles(btTriangleCallback* callback, const btVector3& aabbMin, const btVector3& aabbMax) const
 {
-	//not yet
+	
 }
 
 bool btSdfCollisionShape::queryPoint(const btVector3& ptInSDF, btScalar& distOut, btVector3& normal)

@@ -26,7 +26,7 @@
 
 namespace entt {
 
-/*! @cond TURN_OFF_DOXYGEN */
+
 namespace internal {
 
 class basic_meta_factory {
@@ -147,60 +147,38 @@ private:
     invoke_type *invoke{};
 };
 
-} // namespace internal
-/*! @endcond */
+} 
 
-/**
- * @brief Meta factory to be used for reflection purposes.
- * @tparam Type Type for which the factory was created.
- */
+
+
 template<typename Type>
 class meta_factory: private internal::basic_meta_factory {
     using base_type = internal::basic_meta_factory;
 
 public:
-    /*! @brief Type of object for which this factory builds a meta type. */
+    
     using element_type = Type;
 
-    /*! @brief Default constructor. */
+    
     meta_factory() noexcept
         : meta_factory{locator<meta_ctx>::value_or()} {}
 
-    /**
-     * @brief Context aware constructor.
-     * @param area The context into which to construct meta types.
-     */
+    
     meta_factory(meta_ctx &area) noexcept
         : internal::basic_meta_factory{area, internal::setup_node_for<Type>()} {}
 
-    /**
-     * @brief Assigns a custom unique identifier to a meta type.
-     * @param name A custom unique identifier as a **string literal**.
-     * @return A meta factory for the given type.
-     */
+    
     meta_factory type(const char *name) noexcept {
         return type(hashed_string::value(name), name);
     }
 
-    /**
-     * @brief Assigns a custom unique identifier to a meta type.
-     * @param id A custom unique identifier.
-     * @param name An optional name for the type as a **string literal**.
-     * @return A meta factory for the given type.
-     */
+    
     meta_factory type(const id_type id, const char *name = nullptr) noexcept {
         base_type::type(id, name);
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta base to a meta type.
-     *
-     * A reflected base class must be a real base class of the reflected type.
-     *
-     * @tparam Base Type of the base class to assign to the meta type.
-     * @return A meta factory for the parent type.
-     */
+    
     template<typename Base>
     meta_factory base() noexcept {
         static_assert(!std::is_same_v<Type, Base> && std::is_base_of_v<Base, Type>, "Invalid base type");
@@ -209,18 +187,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta conversion function to a meta type.
-     *
-     * Conversion functions can be either free functions or member
-     * functions.<br/>
-     * In case of free functions, they must accept a const reference to an
-     * instance of the parent type as an argument. In case of member functions,
-     * they should have no arguments at all.
-     *
-     * @tparam Candidate The actual function to use for the conversion.
-     * @return A meta factory for the parent type.
-     */
+    
     template<auto Candidate>
     auto conv() noexcept {
         using conv_type = std::remove_const_t<std::remove_reference_t<std::invoke_result_t<decltype(Candidate), Type &>>>;
@@ -229,15 +196,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta conversion function to a meta type.
-     *
-     * The given type must be such that an instance of the reflected type can be
-     * converted to it.
-     *
-     * @tparam To Type of the conversion function to assign to the meta type.
-     * @return A meta factory for the parent type.
-     */
+    
     template<typename To>
     meta_factory conv() noexcept {
         using conv_type = std::remove_const_t<std::remove_reference_t<To>>;
@@ -246,19 +205,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta constructor to a meta type.
-     *
-     * Both member functions and free function can be assigned to meta types in
-     * the role of constructors. All that is required is that they return an
-     * instance of the underlying type.<br/>
-     * From a client's point of view, nothing changes if a constructor of a meta
-     * type is a built-in one or not.
-     *
-     * @tparam Candidate The actual function to use as a constructor.
-     * @tparam Policy Optional policy (no policy set by default).
-     * @return A meta factory for the parent type.
-     */
+    
     template<auto Candidate, typename Policy = as_value_t>
     meta_factory ctor() noexcept {
         using descriptor = meta_function_helper_t<Type, decltype(Candidate)>;
@@ -268,19 +215,10 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta constructor to a meta type.
-     *
-     * A meta constructor is uniquely identified by the types of its arguments
-     * and is such that there exists an actual constructor of the underlying
-     * type that can be invoked with parameters whose types are those given.
-     *
-     * @tparam Args Types of arguments to use to construct an instance.
-     * @return A meta factory for the parent type.
-     */
+    
     template<typename... Args>
     meta_factory ctor() noexcept {
-        // default constructor is already implicitly generated, no need for redundancy
+        
         if constexpr(sizeof...(Args) != 0u) {
             using descriptor = meta_function_helper_t<Type, Type (*)(Args...)>;
             base_type::insert_or_assign(internal::meta_ctor_node{type_id<typename descriptor::args_type>().hash(), descriptor::args_type::size, &meta_arg<typename descriptor::args_type>, &meta_construct<Type, Args...>});
@@ -289,32 +227,13 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta data to a meta type.
-     * @tparam Data The actual variable to attach to the meta type.
-     * @tparam Policy Optional policy (no policy set by default).
-     * @param name A custom unique identifier as a **string literal**.
-     * @return A meta factory for the given type.
-     */
+    
     template<auto Data, typename Policy = as_value_t>
     meta_factory data(const char *name) noexcept {
         return data<Data, Policy>(hashed_string::value(name), name);
     }
 
-    /**
-     * @brief Assigns a meta data to a meta type.
-     *
-     * Both data members and static and global variables, as well as constants
-     * of any kind, can be assigned to a meta type.<br/>
-     * From a client's point of view, all the variables associated with the
-     * reflected object will appear as if they were part of the type itself.
-     *
-     * @tparam Data The actual variable to attach to the meta type.
-     * @tparam Policy Optional policy (no policy set by default).
-     * @param id Unique identifier.
-     * @param name An optional name for the meta data as a **string literal**.
-     * @return A meta factory for the parent type.
-     */
+    
     template<auto Data, typename Policy = as_value_t>
     meta_factory data(const id_type id, const char *name = nullptr) noexcept {
         if constexpr(std::is_member_object_pointer_v<decltype(Data)>) {
@@ -325,7 +244,7 @@ public:
                 internal::meta_data_node{
                     id,
                     name,
-                    /* this is never static */
+                    
                     std::is_const_v<std::remove_reference_t<data_type>> ? internal::meta_traits::is_const : internal::meta_traits::is_none,
                     1u,
                     &internal::resolve<std::remove_const_t<std::remove_reference_t<data_type>>>,
@@ -356,41 +275,13 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta data to a meta type by means of its setter and
-     * getter.
-     * @tparam Setter The actual function to use as a setter.
-     * @tparam Getter The actual function to use as a getter.
-     * @tparam Policy Optional policy (no policy set by default).
-     * @param name A custom unique identifier as a **string literal**.
-     * @return A meta factory for the given type.
-     */
+    
     template<auto Setter, auto Getter, typename Policy = as_value_t>
     meta_factory data(const char *name) noexcept {
         return data<Setter, Getter, Policy>(hashed_string::value(name), name);
     }
 
-    /**
-     * @brief Assigns a meta data to a meta type by means of its setter and
-     * getter.
-     *
-     * Setters and getters can be either free functions, member functions or a
-     * mix of them.<br/>
-     * In case of free functions, setters and getters must accept a reference to
-     * an instance of the parent type as their first argument. A setter has then
-     * an extra argument of a type convertible to that of the parameter to
-     * set.<br/>
-     * In case of member functions, getters have no arguments at all, while
-     * setters has an argument of a type convertible to that of the parameter to
-     * set.
-     *
-     * @tparam Setter The actual function to use as a setter.
-     * @tparam Getter The actual function to use as a getter.
-     * @tparam Policy Optional policy (no policy set by default).
-     * @param id Unique identifier.
-     * @param name An optional name for the meta data as a **string literal**.
-     * @return A meta factory for the parent type.
-     */
+    
     template<auto Setter, auto Getter, typename Policy = as_value_t>
     meta_factory data(const id_type id, const char *name = nullptr) noexcept {
         using descriptor = meta_function_helper_t<Type, decltype(Getter)>;
@@ -401,7 +292,7 @@ public:
                 internal::meta_data_node{
                     id,
                     name,
-                    /* this is never static */
+                    
                     internal::meta_traits::is_const,
                     0u,
                     &internal::resolve<std::remove_const_t<std::remove_reference_t<typename descriptor::return_type>>>,
@@ -415,7 +306,7 @@ public:
                 internal::meta_data_node{
                     id,
                     name,
-                    /* this is never static nor const */
+                    
                     internal::meta_traits::is_none,
                     1u,
                     &internal::resolve<std::remove_const_t<std::remove_reference_t<typename descriptor::return_type>>>,
@@ -427,32 +318,13 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a meta function to a meta type.
-     * @tparam Candidate The actual function to attach to the meta function.
-     * @tparam Policy Optional policy (no policy set by default).
-     * @param name A custom unique identifier as a **string literal**.
-     * @return A meta factory for the given type.
-     */
+    
     template<auto Candidate, typename Policy = as_value_t>
     meta_factory func(const char *name) noexcept {
         return func<Candidate, Policy>(hashed_string::value(name), name);
     }
 
-    /**
-     * @brief Assigns a meta function to a meta type.
-     *
-     * Both member functions and free functions can be assigned to a meta
-     * type.<br/>
-     * From a client's point of view, all the functions associated with the
-     * reflected object will appear as if they were part of the type itself.
-     *
-     * @tparam Candidate The actual function to attach to the meta type.
-     * @tparam Policy Optional policy (no policy set by default).
-     * @param id Unique identifier.
-     * @param name An optional name for the function as a **string literal**.
-     * @return A meta factory for the parent type.
-     */
+    
     template<auto Candidate, typename Policy = as_value_t>
     meta_factory func(const id_type id, const char *name = nullptr) noexcept {
         using descriptor = meta_function_helper_t<Type, decltype(Candidate)>;
@@ -471,16 +343,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Sets traits on the last created meta object.
-     *
-     * The assigned value must be an enum and intended as a bitmask.
-     *
-     * @tparam Value Type of the traits value.
-     * @param value Traits value.
-     * @param unset True to unset the given traits, false otherwise.
-     * @return A meta factory for the parent type.
-     */
+    
     template<typename Value>
     meta_factory traits(const Value value, const bool unset = false) {
         static_assert(std::is_enum_v<Value>, "Invalid enum type");
@@ -488,13 +351,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Sets user defined data that will never be used by the library.
-     * @tparam Value Type of user defined data to store.
-     * @tparam Args Types of arguments to use to construct the user data.
-     * @param args Parameters to use to initialize the user data.
-     * @return A meta factory for the parent type.
-     */
+    
     template<typename Value, typename... Args>
     meta_factory custom(Args &&...args) {
         base_type::custom(internal::meta_custom_node{type_id<Value>().hash(), std::make_shared<Value>(std::forward<Args>(args)...)});
@@ -502,18 +359,7 @@ public:
     }
 };
 
-/**
- * @brief Resets a type and all its parts.
- *
- * Resets a type and all its data members, member functions and properties, as
- * well as its constructors, destructors and conversion functions if any.<br/>
- * Base classes aren't reset but the link between the two types is removed.
- *
- * The type is also removed from the set of searchable types.
- *
- * @param id Unique identifier.
- * @param ctx The context from which to reset meta types.
- */
+
 inline void meta_reset(meta_ctx &ctx, const id_type id) noexcept {
     auto &context = internal::meta_context::from(ctx);
 
@@ -526,66 +372,33 @@ inline void meta_reset(meta_ctx &ctx, const id_type id) noexcept {
     }
 }
 
-/**
- * @brief Resets a type and all its parts.
- *
- * Resets a type and all its data members, member functions and properties, as
- * well as its constructors, destructors and conversion functions if any.<br/>
- * Base classes aren't reset but the link between the two types is removed.
- *
- * The type is also removed from the set of searchable types.
- *
- * @param id Unique identifier.
- */
+
 inline void meta_reset(const id_type id) noexcept {
     meta_reset(locator<meta_ctx>::value_or(), id);
 }
 
-/**
- * @brief Resets a type and all its parts.
- *
- * @sa meta_reset
- *
- * @tparam Type Type to reset.
- * @param ctx The context from which to reset meta types.
- */
+
 template<typename Type>
 void meta_reset(meta_ctx &ctx) noexcept {
     internal::meta_context::from(ctx).value.erase(type_id<Type>().hash());
 }
 
-/**
- * @brief Resets a type and all its parts.
- *
- * @sa meta_reset
- *
- * @tparam Type Type to reset.
- */
+
 template<typename Type>
 void meta_reset() noexcept {
     meta_reset<Type>(locator<meta_ctx>::value_or());
 }
 
-/**
- * @brief Resets all meta types.
- *
- * @sa meta_reset
- *
- * @param ctx The context from which to reset meta types.
- */
+
 inline void meta_reset(meta_ctx &ctx) noexcept {
     internal::meta_context::from(ctx).value.clear();
 }
 
-/**
- * @brief Resets all meta types.
- *
- * @sa meta_reset
- */
+
 inline void meta_reset() noexcept {
     meta_reset(locator<meta_ctx>::value_or());
 }
 
-} // namespace entt
+} 
 
 #endif

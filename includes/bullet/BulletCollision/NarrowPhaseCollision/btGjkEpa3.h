@@ -1,28 +1,6 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2014 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the
-use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it
-freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not
-claim that you wrote the original software. If you use this software in a
-product, an acknowledgment in the product documentation would be appreciated
-but is not required.
-2. Altered source versions must be plainly marked as such, and must not be
-misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-/*
-Initial GJK-EPA collision solver by Nathanael Presson, 2008
-Improvements and refactoring by Erwin Coumans, 2008-2014
-*/
 #ifndef BT_GJK_EPA3_H
 #define BT_GJK_EPA3_H
 
@@ -35,10 +13,10 @@ struct btGjkEpaSolver3
 	{
 		enum eStatus
 		{
-			Separated,   /* Shapes doesnt penetrate												*/
-			Penetrating, /* Shapes are penetrating												*/
-			GJK_Failed,  /* GJK phase fail, no big issue, shapes are probably just 'touching'	*/
-			EPA_Failed   /* EPA phase fail, bigger problem, need to save parameters, and debug	*/
+			Separated,   
+			Penetrating, 
+			GJK_Failed,  
+			EPA_Failed   
 		} status;
 		btVector3 witnesses[2];
 		btVector3 normal;
@@ -47,16 +25,16 @@ struct btGjkEpaSolver3
 };
 
 #if defined(DEBUG) || defined(_DEBUG)
-#include <stdio.h>  //for debug printf
+#include <stdio.h>  
 #ifdef __SPU__
 #include <spu_printf.h>
 #define printf spu_printf
-#endif  //__SPU__
+#endif  
 #endif
 
-// Config
 
-/* GJK	*/
+
+
 #define GJK_MAX_ITERATIONS 128
 #define GJK_ACCURARY ((btScalar)0.0001)
 #define GJK_MIN_DISTANCE ((btScalar)0.0001)
@@ -65,7 +43,7 @@ struct btGjkEpaSolver3
 #define GJK_SIMPLEX3_EPS ((btScalar)0.0)
 #define GJK_SIMPLEX4_EPS ((btScalar)0.0)
 
-/* EPA	*/
+
 #define EPA_MAX_VERTICES 64
 #define EPA_MAX_FACES (EPA_MAX_VERTICES * 2)
 #define EPA_MAX_ITERATIONS 255
@@ -74,11 +52,11 @@ struct btGjkEpaSolver3
 #define EPA_PLANE_EPS ((btScalar)0.00001)
 #define EPA_INSIDE_EPS ((btScalar)0.01)
 
-// Shorthands
+
 typedef unsigned int U;
 typedef unsigned char U1;
 
-// MinkowskiDiff
+
 template <typename btConvexTemplate>
 struct MinkowskiDiff
 {
@@ -129,11 +107,11 @@ enum eGjkStatus
 	eGjkFailed
 };
 
-// GJK
+
 template <typename btConvexTemplate>
 struct GJK
 {
-	/* Types		*/
+	
 	struct sSV
 	{
 		btVector3 d, w;
@@ -145,7 +123,7 @@ struct GJK
 		U rank;
 	};
 
-	/* Fields		*/
+	
 
 	MinkowskiDiff<btConvexTemplate> m_shape;
 	btVector3 m_ray;
@@ -157,7 +135,7 @@ struct GJK
 	U m_current;
 	sSimplex* m_simplex;
 	eGjkStatus m_status;
-	/* Methods		*/
+	
 
 	GJK(const btConvexTemplate& a, const btConvexTemplate& b)
 		: m_shape(a, b)
@@ -179,7 +157,7 @@ struct GJK
 		btScalar alpha = 0;
 		btVector3 lastw[4];
 		U clastw = 0;
-		/* Initialize solver		*/
+		
 		m_free[0] = &m_store[0];
 		m_free[1] = &m_store[1];
 		m_free[2] = &m_store[2];
@@ -189,7 +167,7 @@ struct GJK
 		m_status = eGjkValid;
 		m_shape = shapearg;
 		m_distance = 0;
-		/* Initialize simplex		*/
+		
 		m_simplices[0].rank = 0;
 		m_ray = guess;
 		const btScalar sqrl = m_ray.length2();
@@ -201,20 +179,20 @@ struct GJK
 			lastw[1] =
 				lastw[2] =
 					lastw[3] = m_ray;
-		/* Loop						*/
+		
 		do
 		{
 			const U next = 1 - m_current;
 			sSimplex& cs = m_simplices[m_current];
 			sSimplex& ns = m_simplices[next];
-			/* Check zero							*/
+			
 			const btScalar rl = m_ray.length();
 			if (rl < GJK_MIN_DISTANCE)
-			{ /* Touching or inside				*/
+			{ 
 				m_status = eGjkInside;
 				break;
 			}
-			/* Append new vertice in -'v' direction	*/
+			
 			appendvertice(cs, -m_ray);
 			const btVector3& w = cs.c[cs.rank - 1]->w;
 			bool found = false;
@@ -227,23 +205,23 @@ struct GJK
 				}
 			}
 			if (found)
-			{ /* Return old simplex				*/
+			{ 
 				removevertice(m_simplices[m_current]);
 				break;
 			}
 			else
-			{ /* Update lastw					*/
+			{ 
 				lastw[clastw = (clastw + 1) & 3] = w;
 			}
-			/* Check for termination				*/
+			
 			const btScalar omega = btDot(m_ray, w) / rl;
 			alpha = btMax(omega, alpha);
 			if (((rl - alpha) - (GJK_ACCURARY * rl)) <= 0)
-			{ /* Return old simplex				*/
+			{ 
 				removevertice(m_simplices[m_current]);
 				break;
 			}
-			/* Reduce simplex						*/
+			
 			btScalar weights[4];
 			U mask = 0;
 			switch (cs.rank)
@@ -268,7 +246,7 @@ struct GJK
 					break;
 			}
 			if (sqdist >= 0)
-			{ /* Valid	*/
+			{ 
 				ns.rank = 0;
 				m_ray = btVector3(0, 0, 0);
 				m_current = next;
@@ -288,7 +266,7 @@ struct GJK
 				if (mask == 15) m_status = eGjkInside;
 			}
 			else
-			{ /* Return old simplex				*/
+			{ 
 				removevertice(m_simplices[m_current]);
 				break;
 			}
@@ -374,7 +352,7 @@ struct GJK
 		}
 		return (false);
 	}
-	/* Internals	*/
+	
 	void getsupport(const btVector3& d, sSV& sv) const
 	{
 		sv.d = d / d.length();
@@ -539,11 +517,11 @@ enum eEpaStatus
 	eEpaFailed
 };
 
-// EPA
+
 template <typename btConvexTemplate>
 struct EPA
 {
-	/* Types		*/
+	
 
 	struct sFace
 	{
@@ -569,7 +547,7 @@ struct EPA
 		sHorizon() : cf(0), ff(0), nf(0) {}
 	};
 
-	/* Fields		*/
+	
 	eEpaStatus m_status;
 	typename GJK<btConvexTemplate>::sSimplex m_result;
 	btVector3 m_normal;
@@ -579,7 +557,7 @@ struct EPA
 	U m_nextsv;
 	sList m_hull;
 	sList m_stock;
-	/* Methods		*/
+	
 	EPA()
 	{
 		Initialize();
@@ -624,7 +602,7 @@ struct EPA
 		typename GJK<btConvexTemplate>::sSimplex& simplex = *gjk.m_simplex;
 		if ((simplex.rank > 1) && gjk.EncloseOrigin())
 		{
-			/* Clean up				*/
+			
 			while (m_hull.root)
 			{
 				sFace* f = m_hull.root;
@@ -633,7 +611,7 @@ struct EPA
 			}
 			m_status = eEpaValid;
 			m_nextsv = 0;
-			/* Orient simplex		*/
+			
 			if (gjk.det(simplex.c[0]->w - simplex.c[3]->w,
 						simplex.c[1]->w - simplex.c[3]->w,
 						simplex.c[2]->w - simplex.c[3]->w) < 0)
@@ -641,7 +619,7 @@ struct EPA
 				btSwap(simplex.c[0], simplex.c[1]);
 				btSwap(simplex.p[0], simplex.p[1]);
 			}
-			/* Build initial hull	*/
+			
 			sFace* tetra[] = {newface(simplex.c[0], simplex.c[1], simplex.c[2], true),
 							  newface(simplex.c[1], simplex.c[0], simplex.c[3], true),
 							  newface(simplex.c[2], simplex.c[1], simplex.c[3], true),
@@ -726,7 +704,7 @@ struct EPA
 				return (m_status);
 			}
 		}
-		/* Fallback		*/
+		
 		m_status = eEpaFallBack;
 		m_normal = -guess;
 		const btScalar nl = m_normal.length();
@@ -743,12 +721,12 @@ struct EPA
 	bool getedgedist(sFace* face, typename GJK<btConvexTemplate>::sSV* a, typename GJK<btConvexTemplate>::sSV* b, btScalar& dist)
 	{
 		const btVector3 ba = b->w - a->w;
-		const btVector3 n_ab = btCross(ba, face->n);   // Outward facing edge normal direction, on triangle plane
-		const btScalar a_dot_nab = btDot(a->w, n_ab);  // Only care about the sign to determine inside/outside, so not normalization required
+		const btVector3 n_ab = btCross(ba, face->n);   
+		const btScalar a_dot_nab = btDot(a->w, n_ab);  
 
 		if (a_dot_nab < 0)
 		{
-			// Outside of edge a->b
+			
 
 			const btScalar ba_l2 = ba.length2();
 			const btScalar a_dot_ba = btDot(a->w, ba);
@@ -756,17 +734,17 @@ struct EPA
 
 			if (a_dot_ba > 0)
 			{
-				// Pick distance vertex a
+				
 				dist = a->w.length();
 			}
 			else if (b_dot_ba < 0)
 			{
-				// Pick distance vertex b
+				
 				dist = b->w.length();
 			}
 			else
 			{
-				// Pick distance to edge a->b
+				
 				const btScalar a_dot_b = btDot(a->w, b->w);
 				dist = btSqrt(btMax((a->w.length2() * b->w.length2() - a_dot_b * a_dot_b) / ba_l2, (btScalar)0));
 			}
@@ -797,8 +775,8 @@ struct EPA
 					  getedgedist(face, b, c, face->d) ||
 					  getedgedist(face, c, a, face->d)))
 				{
-					// Origin projects to the interior of the triangle
-					// Use distance to triangle plane
+					
+					
 					face->d = btDot(a->w, face->n) / l;
 				}
 
@@ -879,21 +857,21 @@ static void Initialize(const btConvexTemplate& a, const btConvexTemplate& b,
 					   btGjkEpaSolver3::sResults& results,
 					   MinkowskiDiff<btConvexTemplate>& shape)
 {
-	/* Results		*/
+	
 	results.witnesses[0] =
 		results.witnesses[1] = btVector3(0, 0, 0);
 	results.status = btGjkEpaSolver3::sResults::Separated;
-	/* Shape		*/
+	
 
 	shape.m_toshape1 = b.getWorldTransform().getBasis().transposeTimes(a.getWorldTransform().getBasis());
 	shape.m_toshape0 = a.getWorldTransform().inverseTimes(b.getWorldTransform());
 }
 
-//
-// Api
-//
 
-//
+
+
+
+
 template <typename btConvexTemplate>
 bool btGjkEpaSolver3_Distance(const btConvexTemplate& a, const btConvexTemplate& b,
 							  const btVector3& guess,
@@ -986,7 +964,7 @@ int	btComputeGjkEpaPenetration2(const btCollisionDescription& colDesc, btDistanc
     {
         if ((results.status==btGjkEpaSolver3::sResults::Penetrating) || results.status==GJK::eStatus::Inside)
         {
-            //normal could be 'swapped'
+            
             
             distInfo->m_distance = results.distance;
             distInfo->m_normalBtoA = results.normal;
@@ -1002,8 +980,8 @@ int	btComputeGjkEpaPenetration2(const btCollisionDescription& colDesc, btDistanc
             {
                 tmpNormalInB /= btSqrt(lenSqr);
                 btScalar distance2 = -(results.witnesses[0]-results.witnesses[1]).length();
-                //only replace valid penetrations when the result is deeper (check)
-                //if ((distance2 < results.distance))
+                
+                
                 {
                     distInfo->m_distance = distance2;
                     distInfo->m_pointOnA= results.witnesses[0];
@@ -1042,7 +1020,7 @@ int btComputeGjkDistance(const btConvexTemplate& a, const btConvexTemplate& b,
 	return -1;
 }
 
-/* Symbols cleanup		*/
+
 
 #undef GJK_MAX_ITERATIONS
 #undef GJK_ACCURARY
@@ -1060,4 +1038,4 @@ int btComputeGjkDistance(const btConvexTemplate& a, const btConvexTemplate& b,
 #undef EPA_PLANE_EPS
 #undef EPA_INSIDE_EPS
 
-#endif  //BT_GJK_EPA3_H
+#endif  

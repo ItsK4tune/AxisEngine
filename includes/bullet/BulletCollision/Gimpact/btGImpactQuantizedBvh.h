@@ -1,28 +1,8 @@
 #ifndef GIM_QUANTIZED_SET_H_INCLUDED
 #define GIM_QUANTIZED_SET_H_INCLUDED
 
-/*! \file btGImpactQuantizedBvh.h
-\author Francisco Leon Najera
-*/
-/*
-This source file is part of GIMPACT Library.
-
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
 
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btGImpactBvh.h"
 #include "btQuantization.h"
@@ -32,7 +12,7 @@ class GIM_QUANTIZED_BVH_NODE_ARRAY : public btAlignedObjectArray<BT_QUANTIZED_BV
 {
 };
 
-//! Basic Box tree structure
+
 class btQuantizedBvhTree
 {
 protected:
@@ -58,8 +38,8 @@ public:
 		m_num_nodes = 0;
 	}
 
-	//! prototype functions for box tree management
-	//!@{
+	
+	
 	void build_tree(GIM_BVH_DATA_ARRAY& primitive_boxes);
 
 	SIMD_FORCE_INLINE void quantizePoint(
@@ -81,13 +61,13 @@ public:
 		m_num_nodes = 0;
 	}
 
-	//! node count
+	
 	SIMD_FORCE_INLINE int getNodeCount() const
 	{
 		return m_num_nodes;
 	}
 
-	//! tells if the node is a leaf
+	
 	SIMD_FORCE_INLINE bool isLeafNode(int nodeindex) const
 	{
 		return m_node_array[nodeindex].isLeafNode();
@@ -145,14 +125,11 @@ public:
 		return &m_node_array[index];
 	}
 
-	//!@}
+	
 };
 
-//! Structure for containing Boxes
-/*!
-This class offers an structure for managing a box tree of primitives.
-Requires a Primitive prototype (like btPrimitiveManagerBase )
-*/
+
+
 class btGImpactQuantizedBvh
 {
 protected:
@@ -160,17 +137,17 @@ protected:
 	btPrimitiveManagerBase* m_primitive_manager;
 
 protected:
-	//stackless refit
+	
 	void refit();
 
 public:
-	//! this constructor doesn't build the tree. you must call	buildSet
+	
 	btGImpactQuantizedBvh()
 	{
 		m_primitive_manager = NULL;
 	}
 
-	//! this constructor doesn't build the tree. you must call	buildSet
+	
 	btGImpactQuantizedBvh(btPrimitiveManagerBase* primitive_manager)
 	{
 		m_primitive_manager = primitive_manager;
@@ -193,22 +170,22 @@ public:
 		return m_primitive_manager;
 	}
 
-	//! node manager prototype functions
-	///@{
+	
+	
 
-	//! this attemps to refit the box set.
+	
 	SIMD_FORCE_INLINE void update()
 	{
 		refit();
 	}
 
-	//! this rebuild the entire set
+	
 	void buildSet();
 
-	//! returns the indices of the primitives in the m_primitive_manager
+	
 	bool boxQuery(const btAABB& box, btAlignedObjectArray<int>& collided_results) const;
 
-	//! returns the indices of the primitives in the m_primitive_manager
+	
 	SIMD_FORCE_INLINE bool boxQueryTrans(const btAABB& box,
 										 const btTransform& transform, btAlignedObjectArray<int>& collided_results) const
 	{
@@ -217,30 +194,30 @@ public:
 		return boxQuery(transbox, collided_results);
 	}
 
-	//! returns the indices of the primitives in the m_primitive_manager
+	
 	bool rayQuery(
 		const btVector3& ray_dir, const btVector3& ray_origin,
 		btAlignedObjectArray<int>& collided_results) const;
 
-	//! tells if this set has hierarcht
+	
 	SIMD_FORCE_INLINE bool hasHierarchy() const
 	{
 		return true;
 	}
 
-	//! tells if this set is a trimesh
+	
 	SIMD_FORCE_INLINE bool isTrimesh() const
 	{
 		return m_primitive_manager->is_trimesh();
 	}
 
-	//! node count
+	
 	SIMD_FORCE_INLINE int getNodeCount() const
 	{
 		return m_box_tree.getNodeCount();
 	}
 
-	//! tells if the node is a leaf
+	
 	SIMD_FORCE_INLINE bool isLeafNode(int nodeindex) const
 	{
 		return m_box_tree.isLeafNode(nodeindex);
@@ -288,11 +265,11 @@ public:
 
 #ifdef TRI_COLLISION_PROFILING
 	static float getAverageTreeCollisionTime();
-#endif  //TRI_COLLISION_PROFILING
+#endif  
 
 	static void find_collision(const btGImpactQuantizedBvh* boxset1, const btTransform& trans1,
 							   const btGImpactQuantizedBvh* boxset2, const btTransform& trans2,
 							   btPairSet& collision_pairs);
 };
 
-#endif  // GIM_BOXPRUNING_H_INCLUDED
+#endif  

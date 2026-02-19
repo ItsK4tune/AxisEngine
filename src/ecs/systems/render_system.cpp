@@ -231,7 +231,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             return lhs.material < rhs.material;
         return lhs.renderer->model < rhs.renderer->model; });
 
-    // Uniform vectors are now members initialized in Init()
+    
 
     Shader *currentShader = nullptr;
     Model *currentModel = nullptr;
@@ -270,12 +270,12 @@ void RenderSystem::Render(Scene &scene, int width, int height)
                 currentShader->setMat4("view", cam->viewMatrix);
                 currentShader->setVec3("viewPos", camTrans->position);
 
-                // Pass shadow uniforms
+                
                 if (m_ShadowRenderer.IsShadowsEnabled() && m_ShadowRenderer.GetShadowMode() > 0)
                 {
-                   currentShader->setBool("u_ReceiveShadow", true); // Or use individual flags if needed
+                   currentShader->setBool("u_ReceiveShadow", true); 
 
-                   // Bind shadow maps
+                   
                    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
                    {
                        m_ShadowRenderer.GetShadow().BindTexture_Dir(i, 10 + i);

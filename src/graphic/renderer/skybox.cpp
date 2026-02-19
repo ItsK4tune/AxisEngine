@@ -8,7 +8,7 @@
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
 
-// OpenGL constants
+
 
 
 IBufferManager* Skybox::s_BufferManager = nullptr;
@@ -26,7 +26,7 @@ IBufferManager& Skybox::GetBufferManager()
 {
     if (!s_BufferManager) {
         LOGGER_ERROR("Skybox") << "BufferManager not set!";
-        // This will likely crash, but it's better than undefined behavior
+        
         throw std::runtime_error("BufferManager not set in Skybox");
     }
     return *s_BufferManager;

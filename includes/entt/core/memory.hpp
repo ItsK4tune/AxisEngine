@@ -10,12 +10,7 @@
 
 namespace entt {
 
-/**
- * @brief Unwraps fancy pointers, does nothing otherwise (waiting for C++20).
- * @tparam Type Pointer type.
- * @param ptr Fancy or raw pointer.
- * @return A raw pointer that represents the address of the original pointer.
- */
+
 template<typename Type>
 [[nodiscard]] constexpr auto to_address(Type &&ptr) noexcept {
     if constexpr(std::is_pointer_v<std::decay_t<Type>>) {
@@ -25,12 +20,7 @@ template<typename Type>
     }
 }
 
-/**
- * @brief Utility function to design allocation-aware containers.
- * @tparam Allocator Type of allocator.
- * @param lhs A valid allocator.
- * @param rhs Another valid allocator.
- */
+
 template<typename Allocator>
 constexpr void propagate_on_container_copy_assignment([[maybe_unused]] Allocator &lhs, [[maybe_unused]] Allocator &rhs) noexcept {
     if constexpr(std::allocator_traits<Allocator>::propagate_on_container_copy_assignment::value) {
@@ -38,12 +28,7 @@ constexpr void propagate_on_container_copy_assignment([[maybe_unused]] Allocator
     }
 }
 
-/**
- * @brief Utility function to design allocation-aware containers.
- * @tparam Allocator Type of allocator.
- * @param lhs A valid allocator.
- * @param rhs Another valid allocator.
- */
+
 template<typename Allocator>
 constexpr void propagate_on_container_move_assignment([[maybe_unused]] Allocator &lhs, [[maybe_unused]] Allocator &rhs) noexcept {
     if constexpr(std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value) {
@@ -51,12 +36,7 @@ constexpr void propagate_on_container_move_assignment([[maybe_unused]] Allocator
     }
 }
 
-/**
- * @brief Utility function to design allocation-aware containers.
- * @tparam Allocator Type of allocator.
- * @param lhs A valid allocator.
- * @param rhs Another valid allocator.
- */
+
 template<typename Allocator>
 constexpr void propagate_on_container_swap([[maybe_unused]] Allocator &lhs, [[maybe_unused]] Allocator &rhs) noexcept {
     if constexpr(std::allocator_traits<Allocator>::propagate_on_container_swap::value) {
@@ -67,28 +47,19 @@ constexpr void propagate_on_container_swap([[maybe_unused]] Allocator &lhs, [[ma
     }
 }
 
-/**
- * @brief Deleter for allocator-aware unique pointers (waiting for C++20).
- * @tparam Allocator Type of allocator used to manage memory and elements.
- */
+
 template<typename Allocator>
 struct allocation_deleter: private Allocator {
-    /*! @brief Allocator type. */
+    
     using allocator_type = Allocator;
-    /*! @brief Pointer type. */
+    
     using pointer = typename std::allocator_traits<Allocator>::pointer;
 
-    /**
-     * @brief Inherited constructors.
-     * @param alloc The allocator to use.
-     */
+    
     constexpr allocation_deleter(const allocator_type &alloc) noexcept(std::is_nothrow_copy_constructible_v<allocator_type>)
         : Allocator{alloc} {}
 
-    /**
-     * @brief Destroys the pointed object and deallocates its memory.
-     * @param ptr A valid pointer to an object of the given type.
-     */
+    
     constexpr void operator()(pointer ptr) noexcept(std::is_nothrow_destructible_v<typename allocator_type::value_type>) {
         using alloc_traits = std::allocator_traits<Allocator>;
         alloc_traits::destroy(*this, to_address(ptr));
@@ -96,15 +67,7 @@ struct allocation_deleter: private Allocator {
     }
 };
 
-/**
- * @brief Allows `std::unique_ptr` to use allocators (waiting for C++20).
- * @tparam Type Type of object to allocate for and to construct.
- * @tparam Allocator Type of allocator used to manage memory and elements.
- * @tparam Args Types of arguments to use to construct the object.
- * @param allocator The allocator to use.
- * @param args Parameters to use to construct the object.
- * @return A properly initialized unique pointer with a custom deleter.
- */
+
 template<typename Type, typename Allocator, typename... Args>
 ENTT_CONSTEXPR auto allocate_unique(Allocator &allocator, Args &&...args) {
     static_assert(!std::is_array_v<Type>, "Array types are not supported");
@@ -126,7 +89,7 @@ ENTT_CONSTEXPR auto allocate_unique(Allocator &allocator, Args &&...args) {
     return std::unique_ptr<Type, allocation_deleter<allocator_type>>{ptr, alloc};
 }
 
-/*! @cond TURN_OFF_DOXYGEN */
+
 namespace internal {
 
 template<typename Type>
@@ -181,64 +144,27 @@ struct uses_allocator_construction<std::pair<Type, Other>> {
     }
 };
 
-} // namespace internal
-/*! @endcond */
+} 
 
-/**
- * @brief Uses-allocator construction utility (waiting for C++20).
- *
- * Primarily intended for internal use. Prepares the argument list needed to
- * create an object of a given type by means of uses-allocator construction.
- *
- * @tparam Type Type to return arguments for.
- * @tparam Allocator Type of allocator used to manage memory and elements.
- * @tparam Args Types of arguments to use to construct the object.
- * @param allocator The allocator to use.
- * @param args Parameters to use to construct the object.
- * @return The arguments needed to create an object of the given type.
- */
+
+
 template<typename Type, typename Allocator, typename... Args>
 constexpr auto uses_allocator_construction_args(const Allocator &allocator, Args &&...args) noexcept {
     return internal::uses_allocator_construction<Type>::args(allocator, std::forward<Args>(args)...);
 }
 
-/**
- * @brief Uses-allocator construction utility (waiting for C++20).
- *
- * Primarily intended for internal use. Creates an object of a given type by
- * means of uses-allocator construction.
- *
- * @tparam Type Type of object to create.
- * @tparam Allocator Type of allocator used to manage memory and elements.
- * @tparam Args Types of arguments to use to construct the object.
- * @param allocator The allocator to use.
- * @param args Parameters to use to construct the object.
- * @return A newly created object of the given type.
- */
+
 template<typename Type, typename Allocator, typename... Args>
 constexpr Type make_obj_using_allocator(const Allocator &allocator, Args &&...args) {
     return std::make_from_tuple<Type>(internal::uses_allocator_construction<Type>::args(allocator, std::forward<Args>(args)...));
 }
 
-/**
- * @brief Uses-allocator construction utility (waiting for C++20).
- *
- * Primarily intended for internal use. Creates an object of a given type by
- * means of uses-allocator construction at an uninitialized memory location.
- *
- * @tparam Type Type of object to create.
- * @tparam Allocator Type of allocator used to manage memory and elements.
- * @tparam Args Types of arguments to use to construct the object.
- * @param value Memory location in which to place the object.
- * @param allocator The allocator to use.
- * @param args Parameters to use to construct the object.
- * @return A pointer to the newly created object of the given type.
- */
+
 template<typename Type, typename Allocator, typename... Args>
 constexpr Type *uninitialized_construct_using_allocator(Type *value, const Allocator &allocator, Args &&...args) {
     return std::apply([value](auto &&...curr) { return ::new(value) Type(std::forward<decltype(curr)>(curr)...); }, internal::uses_allocator_construction<Type>::args(allocator, std::forward<Args>(args)...));
 }
 
-} // namespace entt
+} 
 
 #endif

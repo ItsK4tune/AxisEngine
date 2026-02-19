@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btNNCGConstraintSolver.h"
 
@@ -32,7 +19,7 @@ btScalar btNNCGConstraintSolver::solveGroupCacheFriendlySetup(btCollisionObject*
 	return val;
 }
 
-btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollisionObject** /*bodies */, int /*numBodies*/, btPersistentManifold** /*manifoldPtr*/, int /*numManifolds*/, btTypedConstraint** constraints, int numConstraints, const btContactSolverInfo& infoGlobal, btIDebugDraw* /*debugDrawer*/)
+btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollisionObject** , int , btPersistentManifold** , int , btTypedConstraint** constraints, int numConstraints, const btContactSolverInfo& infoGlobal, btIDebugDraw* )
 {
 	int numNonContactPool = m_tmpSolverNonContactConstraintPool.size();
 	int numConstraintPool = m_tmpSolverContactConstraintPool.size();
@@ -40,7 +27,7 @@ btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollision
 
 	if (infoGlobal.m_solverMode & SOLVER_RANDMIZE_ORDER)
 	{
-		if (1)  // uncomment this for a bit less random ((iteration & 7) == 0)
+		if (1)  
 		{
 			for (int j = 0; j < numNonContactPool; ++j)
 			{
@@ -50,7 +37,7 @@ btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollision
 				m_orderNonContactConstraintPool[swapi] = tmp;
 			}
 
-			//contact/friction constraints are not solved more than
+			
 			if (iteration < infoGlobal.m_numIterations)
 			{
 				for (int j = 0; j < numConstraintPool; ++j)
@@ -94,7 +81,7 @@ btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollision
 		}
 		else
 		{
-			// deltaflengthsqrprev can be 0 only if the solver solved the problem exactly in the previous iteration. In this case we should have quit, but mainly for debug reason with this 'hack' it is now allowed to continue the calculation
+			
 			btScalar beta = m_deltafLengthSqrPrev > 0 ? deltaflengthsqr / m_deltafLengthSqrPrev : 2;
 			if (beta > 1)
 			{
@@ -137,7 +124,7 @@ btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollision
 				}
 			}
 
-			///solve all contact constraints
+			
 			if (infoGlobal.m_solverMode & SOLVER_INTERLEAVE_CONTACT_AND_FRICTION_CONSTRAINTS)
 			{
 				int numPoolConstraints = m_tmpSolverContactConstraintPool.size();
@@ -194,9 +181,9 @@ btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollision
 					}
 				}
 			}
-			else  //SOLVER_INTERLEAVE_CONTACT_AND_FRICTION_CONSTRAINTS
+			else  
 			{
-				//solve the friction constraints after all contact constraints, don't interleave them
+				
 				int numPoolConstraints = m_tmpSolverContactConstraintPool.size();
 				int j;
 
@@ -208,7 +195,7 @@ btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollision
 					deltaflengthsqr += deltaf * deltaf;
 				}
 
-				///solve all friction constraints
+				
 
 				int numFrictionPoolConstraints = m_tmpSolverContactFrictionConstraintPool.size();
 				for (j = 0; j < numFrictionPoolConstraints; j++)
@@ -271,7 +258,7 @@ btScalar btNNCGConstraintSolver::solveSingleIteration(int iteration, btCollision
 		}
 		else
 		{
-			// deltaflengthsqrprev can be 0 only if the solver solved the problem exactly in the previous iteration. In this case we should have quit, but mainly for debug reason with this 'hack' it is now allowed to continue the calculation
+			
 			btScalar beta = m_deltafLengthSqrPrev > 0 ? deltaflengthsqr / m_deltafLengthSqrPrev : 2;
 			if (beta > 1)
 			{

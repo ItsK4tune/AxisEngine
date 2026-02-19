@@ -24,7 +24,7 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
 
     if (&scene != m_LastScene || &physicsWorld != m_LastPhysicsWorld)
     {
-        LOGGER_INFO("PhysicsSystem") << "Scene or PhysicsWorld changed — reinitializing subsystems";
+        LOGGER_INFO("PhysicsSystem") << "Scene or PhysicsWorld changed reinitializing subsystems";
         Reset();
         m_LastScene = &scene;
         m_LastPhysicsWorld = &physicsWorld;

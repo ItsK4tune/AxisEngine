@@ -1,19 +1,4 @@
-/****************************************************************************
- *
- * tttags.h
- *
- *   Tags for TrueType and OpenType tables (specification only).
- *
- * Copyright (C) 1996-2020 by
- * David Turner, Robert Wilhelm, and Werner Lemberg.
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef TTAGS_H_
@@ -109,16 +94,16 @@ FT_BEGIN_HEADER
 #define TTAG_wOFF  FT_MAKE_TAG( 'w', 'O', 'F', 'F' )
 #define TTAG_wOF2  FT_MAKE_TAG( 'w', 'O', 'F', '2' )
 
-/* used by "Keyboard.dfont" on legacy Mac OS X */
+
 #define TTAG_0xA5kbd  FT_MAKE_TAG( 0xA5, 'k', 'b', 'd' )
 
-/* used by "LastResort.dfont" on legacy Mac OS X */
+
 #define TTAG_0xA5lst  FT_MAKE_TAG( 0xA5, 'l', 's', 't' )
 
 
 FT_END_HEADER
 
-#endif /* TTAGS_H_ */
+#endif 
 
 
-/* END */
+

@@ -31,7 +31,7 @@ bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, 
         return false;
     }
 
-    // Context is made current by IWindow::Init implementation
+    
 
 
     if (!m_Graphics->Init())
@@ -40,7 +40,7 @@ bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, 
         return false;
     }
 
-    // m_Graphics->SetVsync(vsync); // Handled by MonitorManager
+    
     m_Graphics->SetDepthTest(true);
 
     m_KeyboardManager = std::make_unique<KeyboardManager>(m_MonitorManager->GetWindow());

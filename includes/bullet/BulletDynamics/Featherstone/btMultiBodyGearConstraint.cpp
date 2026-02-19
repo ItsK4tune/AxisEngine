@@ -1,19 +1,6 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-///This file was written by Erwin Coumans
 
 #include "btMultiBodyGearConstraint.h"
 #include "btMultiBody.h"
@@ -82,28 +69,28 @@ void btMultiBodyGearConstraint::createConstraintRows(btMultiBodyConstraintArray&
 													 btMultiBodyJacobianData& data,
 													 const btContactSolverInfo& infoGlobal)
 {
-	// only positions need to be updated -- data.m_jacobians and force
-	// directions were set in the ctor and never change.
+	
+	
 
 	if (m_numDofsFinalized != m_jacSizeBoth)
 	{
 		finalizeMultiDof();
 	}
 
-	//don't crash
+	
 	if (m_numDofsFinalized != m_jacSizeBoth)
 		return;
 
 	if (m_maxAppliedImpulse == 0.f)
 		return;
 
-	// note: we rely on the fact that data.m_jacobians are
-	// always initialized to zero by the Constraint ctor
+	
+	
 	int linkDoF = 0;
 	unsigned int offsetA = 6 + (m_bodyA->getLink(m_linkA).m_dofOffset + linkDoF);
 	unsigned int offsetB = 6 + (m_bodyB->getLink(m_linkB).m_dofOffset + linkDoF);
 
-	// row 0: the lower bound
+	
 	jacobianA(0)[offsetA] = 1;
 	jacobianB(0)[offsetB] = m_gearRatio;
 
@@ -148,7 +135,7 @@ void btMultiBodyGearConstraint::createConstraintRows(btMultiBodyConstraintArray&
 		constraintRow.m_orgConstraint = this;
 		constraintRow.m_orgDofIndex = row;
 		{
-			//expect either prismatic or revolute joint type for now
+			
 			btAssert((m_bodyA->getLink(m_linkA).m_jointType == btMultibodyLink::eRevolute) || (m_bodyA->getLink(m_linkA).m_jointType == btMultibodyLink::ePrismatic));
 			switch (m_bodyA->getLink(m_linkA).m_jointType)
 			{

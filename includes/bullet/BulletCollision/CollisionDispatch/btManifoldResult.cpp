@@ -1,24 +1,11 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btManifoldResult.h"
 #include "BulletCollision/NarrowPhaseCollision/btPersistentManifold.h"
 #include "BulletCollision/CollisionDispatch/btCollisionObject.h"
 #include "BulletCollision/CollisionDispatch/btCollisionObjectWrapper.h"
 
-///This is to allow MaterialCombiner/Custom Friction/Restitution values
+
 ContactAddedCallback gContactAddedCallback = 0;
 
 CalculateCombinedCallback gCalculateCombinedRestitutionCallback = &btManifoldResult::calculateCombinedRestitution;
@@ -52,7 +39,7 @@ btScalar btManifoldResult::calculateCombinedSpinningFriction(const btCollisionOb
 	return friction;
 }
 
-///User can override this material combiner by implementing gContactAddedCallback and setting body0->m_collisionFlags |= btCollisionObject::customMaterialCallback;
+
 btScalar btManifoldResult::calculateCombinedFriction(const btCollisionObject* body0, const btCollisionObject* body1)
 {
 	btScalar friction = body0->getFriction() * body1->getFriction();
@@ -103,10 +90,10 @@ btManifoldResult::btManifoldResult(const btCollisionObjectWrapper* body0Wrap, co
 void btManifoldResult::addContactPoint(const btVector3& normalOnBInWorld, const btVector3& pointInWorld, btScalar depth)
 {
 	btAssert(m_manifoldPtr);
-	//order in manifold needs to match
+	
 
 	if (depth > m_manifoldPtr->getContactBreakingThreshold())
-		//	if (depth > m_manifoldPtr->getContactProcessingThreshold())
+		
 		return;
 
 	bool isSwapped = m_manifoldPtr->getBody0() != m_body0Wrap->getCollisionObject();
@@ -155,7 +142,7 @@ void btManifoldResult::addContactPoint(const btVector3& normalOnBInWorld, const 
 
 	btPlaneSpace1(newPt.m_normalWorldOnB, newPt.m_lateralFrictionDir1, newPt.m_lateralFrictionDir2);
 
-	//BP mod, store contact triangles.
+	
 	if (isSwapped)
 	{
 		newPt.m_partId0 = m_partId1;
@@ -170,11 +157,11 @@ void btManifoldResult::addContactPoint(const btVector3& normalOnBInWorld, const 
 		newPt.m_index0 = m_index0;
 		newPt.m_index1 = m_index1;
 	}
-	//printf("depth=%f\n",depth);
-	///@todo, check this for any side effects
+	
+	
 	if (insertIndex >= 0)
 	{
-		//const btManifoldPoint& oldPoint = m_manifoldPtr->getContactPoint(insertIndex);
+		
 		m_manifoldPtr->replaceContactPoint(newPt, insertIndex);
 	}
 	else
@@ -182,13 +169,13 @@ void btManifoldResult::addContactPoint(const btVector3& normalOnBInWorld, const 
 		insertIndex = m_manifoldPtr->addManifoldPoint(newPt);
 	}
 
-	//User can override friction and/or restitution
+	
 	if (gContactAddedCallback &&
-		//and if either of the two bodies requires custom material
+		
 		((m_body0Wrap->getCollisionObject()->getCollisionFlags() & btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK) ||
 		 (m_body1Wrap->getCollisionObject()->getCollisionFlags() & btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK)))
 	{
-		//experimental feature info, for per-triangle material etc.
+		
 		const btCollisionObjectWrapper* obj0Wrap = isSwapped ? m_body1Wrap : m_body0Wrap;
 		const btCollisionObjectWrapper* obj1Wrap = isSwapped ? m_body0Wrap : m_body1Wrap;
 		(*gContactAddedCallback)(m_manifoldPtr->getContactPoint(insertIndex), obj0Wrap, newPt.m_partId0, newPt.m_index0, obj1Wrap, newPt.m_partId1, newPt.m_index1);

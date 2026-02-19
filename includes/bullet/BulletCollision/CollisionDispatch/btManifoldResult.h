@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_MANIFOLD_RESULT_H
 #define BT_MANIFOLD_RESULT_H
@@ -31,9 +18,9 @@ class btManifoldPoint;
 typedef bool (*ContactAddedCallback)(btManifoldPoint& cp, const btCollisionObjectWrapper* colObj0Wrap, int partId0, int index0, const btCollisionObjectWrapper* colObj1Wrap, int partId1, int index1);
 extern ContactAddedCallback gContactAddedCallback;
 
-//#define DEBUG_PART_INDEX 1
 
-/// These callbacks are used to customize the algorith that combine restitution, friction, damping, Stiffness
+
+
 typedef btScalar (*CalculateCombinedCallback)(const btCollisionObject* body0, const btCollisionObject* body1);
 
 extern CalculateCombinedCallback gCalculateCombinedRestitutionCallback;
@@ -43,7 +30,7 @@ extern CalculateCombinedCallback gCalculateCombinedSpinningFrictionCallback;
 extern CalculateCombinedCallback gCalculateCombinedContactDampingCallback;
 extern CalculateCombinedCallback gCalculateCombinedContactStiffnessCallback;
 
-///btManifoldResult is a helper class to manage  contact results.
+
 class btManifoldResult : public btDiscreteCollisionDetectorInterface::Result
 {
 protected:
@@ -65,7 +52,7 @@ public:
 		  m_partId1(-1),
 		  m_index0(-1),
 		  m_index1(-1)
-#endif  //DEBUG_PART_INDEX
+#endif  
 			  m_closestPointDistanceThreshold(0)
 	{
 	}
@@ -151,7 +138,7 @@ public:
 
 	btScalar m_closestPointDistanceThreshold;
 
-	/// in the future we can let the user override the methods to combine restitution and friction
+	
 	static btScalar calculateCombinedRestitution(const btCollisionObject* body0, const btCollisionObject* body1);
 	static btScalar calculateCombinedFriction(const btCollisionObject* body0, const btCollisionObject* body1);
 	static btScalar calculateCombinedRollingFriction(const btCollisionObject* body0, const btCollisionObject* body1);
@@ -160,4 +147,4 @@ public:
 	static btScalar calculateCombinedContactStiffness(const btCollisionObject* body0, const btCollisionObject* body1);
 };
 
-#endif  //BT_MANIFOLD_RESULT_H
+#endif  

@@ -1,19 +1,4 @@
-/****************************************************************************
- *
- * svsfnt.h
- *
- *   The FreeType SFNT table loading service (specification).
- *
- * Copyright (C) 2003-2020 by
- * David Turner, Robert Wilhelm, and Werner Lemberg.
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef SVSFNT_H_
@@ -26,16 +11,12 @@
 FT_BEGIN_HEADER
 
 
-  /*
-   * SFNT table loading service.
-   */
+  
 
 #define FT_SERVICE_ID_SFNT_TABLE  "sfnt-table"
 
 
-  /*
-   * Used to implement FT_Load_Sfnt_Table().
-   */
+  
   typedef FT_Error
   (*FT_SFNT_TableLoadFunc)( FT_Face    face,
                             FT_ULong   tag,
@@ -43,17 +24,13 @@ FT_BEGIN_HEADER
                             FT_Byte*   buffer,
                             FT_ULong*  length );
 
-  /*
-   * Used to implement FT_Get_Sfnt_Table().
-   */
+  
   typedef void*
   (*FT_SFNT_TableGetFunc)( FT_Face      face,
                            FT_Sfnt_Tag  tag );
 
 
-  /*
-   * Used to implement FT_Sfnt_Table_Info().
-   */
+  
   typedef FT_Error
   (*FT_SFNT_TableInfoFunc)( FT_Face    face,
                             FT_UInt    idx,
@@ -76,13 +53,13 @@ FT_BEGIN_HEADER
     load_, get_, info_                                                 \
   };
 
-  /* */
+  
 
 
 FT_END_HEADER
 
 
-#endif /* SVSFNT_H_ */
+#endif 
 
 
-/* END */
+

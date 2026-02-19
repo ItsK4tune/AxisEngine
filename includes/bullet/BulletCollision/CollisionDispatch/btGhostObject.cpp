@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2008 Erwin Coumans  http://bulletphysics.com
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btGhostObject.h"
 #include "btCollisionWorld.h"
@@ -25,7 +12,7 @@ btGhostObject::btGhostObject()
 
 btGhostObject::~btGhostObject()
 {
-	///btGhostObject should have been removed from the world, so no overlapping objects
+	
 	btAssert(!m_overlappingObjects.size());
 }
 
@@ -33,11 +20,11 @@ void btGhostObject::addOverlappingObjectInternal(btBroadphaseProxy* otherProxy, 
 {
 	btCollisionObject* otherObject = (btCollisionObject*)otherProxy->m_clientObject;
 	btAssert(otherObject);
-	///if this linearSearch becomes too slow (too many overlapping objects) we should add a more appropriate data structure
+	
 	int index = m_overlappingObjects.findLinearSearch(otherObject);
 	if (index == m_overlappingObjects.size())
 	{
-		//not found
+		
 		m_overlappingObjects.push_back(otherObject);
 	}
 }
@@ -102,7 +89,7 @@ void btGhostObject::convexSweepTest(const btConvexShape* castShape, const btTran
 	convexFromTrans = convexFromWorld;
 	convexToTrans = convexToWorld;
 	btVector3 castShapeAabbMin, castShapeAabbMax;
-	/* Compute AABB that encompasses angular movement */
+	
 	{
 		btVector3 linVel, angVel;
 		btTransformUtil::calculateVelocity(convexFromTrans, convexToTrans, 1.0, linVel, angVel);
@@ -112,20 +99,20 @@ void btGhostObject::convexSweepTest(const btConvexShape* castShape, const btTran
 		castShape->calculateTemporalAabb(R, linVel, angVel, 1.0, castShapeAabbMin, castShapeAabbMax);
 	}
 
-	/// go over all objects, and if the ray intersects their aabb + cast shape aabb,
-	// do a ray-shape query using convexCaster (CCD)
+	
+	
 	int i;
 	for (i = 0; i < m_overlappingObjects.size(); i++)
 	{
 		btCollisionObject* collisionObject = m_overlappingObjects[i];
-		//only perform raycast if filterMask matches
+		
 		if (resultCallback.needsCollision(collisionObject->getBroadphaseHandle()))
 		{
-			//RigidcollisionObject* collisionObject = ctrl->GetRigidcollisionObject();
+			
 			btVector3 collisionObjectAabbMin, collisionObjectAabbMax;
 			collisionObject->getCollisionShape()->getAabb(collisionObject->getWorldTransform(), collisionObjectAabbMin, collisionObjectAabbMax);
 			AabbExpand(collisionObjectAabbMin, collisionObjectAabbMax, castShapeAabbMin, castShapeAabbMax);
-			btScalar hitLambda = btScalar(1.);  //could use resultCallback.m_closestHitFraction, but needs testing
+			btScalar hitLambda = btScalar(1.);  
 			btVector3 hitNormal;
 			if (btRayAabb(convexFromWorld.getOrigin(), convexToWorld.getOrigin(), collisionObjectAabbMin, collisionObjectAabbMax, hitLambda, hitNormal))
 			{
@@ -153,7 +140,7 @@ void btGhostObject::rayTest(const btVector3& rayFromWorld, const btVector3& rayT
 	for (i = 0; i < m_overlappingObjects.size(); i++)
 	{
 		btCollisionObject* collisionObject = m_overlappingObjects[i];
-		//only perform raycast if filterMask matches
+		
 		if (resultCallback.needsCollision(collisionObject->getBroadphaseHandle()))
 		{
 			btCollisionWorld::rayTestSingle(rayFromTrans, rayToTrans,

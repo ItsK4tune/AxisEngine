@@ -1,47 +1,6 @@
-/*
----------------------------------------------------------------------------
-Open Asset Import Library (assimp)
----------------------------------------------------------------------------
 
-Copyright (c) 2006-2025, assimp team
 
-All rights reserved.
 
-Redistribution and use of this software in source and binary forms,
-with or without modification, are permitted provided that the following
-conditions are met:
-
-* Redistributions of source code must retain the above
-  copyright notice, this list of conditions and the
-  following disclaimer.
-
-* Redistributions in binary form must reproduce the above
-  copyright notice, this list of conditions and the
-  following disclaimer in the documentation and/or other
-  materials provided with the distribution.
-
-* Neither the name of the assimp team, nor the names of its
-  contributors may be used to endorse or promote products
-  derived from this software without specific prior
-  written permission of the assimp team.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
----------------------------------------------------------------------------
-*/
-
-/** @file metadata.h
- *  @brief Defines the data structures for holding node meta information.
- */
 #pragma once
 #ifndef AI_METADATA_H_INC
 #define AI_METADATA_H_INC
@@ -58,11 +17,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <assimp/quaternion.h>
 
-// -------------------------------------------------------------------------------
-/**
-  * Enum used to distinguish data types
-  */
-// -------------------------------------------------------------------------------
+
+
+
 typedef enum aiMetadataType {
     AI_BOOL = 0,
     AI_INT32 = 1,
@@ -81,13 +38,9 @@ typedef enum aiMetadataType {
 #endif
 } aiMetadataType;
 
-// -------------------------------------------------------------------------------
-/**
-  * Metadata entry
-  *
-  * The type field uniquely identifies the underlying type of the data field
-  */
-// -------------------------------------------------------------------------------
+
+
+
 struct aiMetadataEntry {
     aiMetadataType mType;
     void *mData;
@@ -96,7 +49,7 @@ struct aiMetadataEntry {
     aiMetadataEntry() :
             mType(AI_META_MAX),
             mData( nullptr ) {
-        // empty
+        
     }
 #endif
 };
@@ -107,11 +60,9 @@ struct aiMetadataEntry {
 
 struct aiMetadata;
 
-// -------------------------------------------------------------------------------
-/**
-  * Helper functions to get the aiType enum entry for a type
-  */
-// -------------------------------------------------------------------------------
+
+
+
 
 inline aiMetadataType GetAiType(const bool &) {
     return AI_BOOL;
@@ -144,36 +95,29 @@ inline aiMetadataType GetAiType(const uint32_t &) {
     return AI_UINT32;
 }
 
-#endif // __cplusplus
+#endif 
 
-// -------------------------------------------------------------------------------
-/**
-  * Container for holding metadata.
-  *
-  * Metadata is a key-value store using string keys and values.
-  */
-// -------------------------------------------------------------------------------
+
+
+
 struct aiMetadata {
-    /** Length of the mKeys and mValues arrays, respectively */
+    
     unsigned int mNumProperties;
 
-    /** Arrays of keys, may not be NULL. Entries in this array may not be NULL as well. */
+    
     C_STRUCT aiString *mKeys;
 
-    /** Arrays of values, may not be NULL. Entries in this array may be NULL if the
-      * corresponding property key has no assigned value. */
+    
     C_STRUCT aiMetadataEntry *mValues;
 
 #ifdef __cplusplus
 
-    /**
-     *  @brief  The default constructor, set all members to zero by default.
-     */
+    
     aiMetadata() AI_NO_EXCEPT
             : mNumProperties(0),
               mKeys(nullptr),
               mValues(nullptr) {
-        // empty
+        
     }
 
     aiMetadata(const aiMetadata &rhs) :
@@ -252,14 +196,12 @@ struct aiMetadata {
         return *this;
     }
 
-    /**
-     *  @brief The destructor.
-     */
+    
     ~aiMetadata() {
         delete[] mKeys;
         mKeys = nullptr;
         if (mValues) {
-            // Delete each metadata entry
+            
             for (unsigned i = 0; i < mNumProperties; ++i) {
                 void *data = mValues[i].mData;
                 switch (mValues[i].mType) {
@@ -301,16 +243,13 @@ struct aiMetadata {
                 }
             }
 
-            // Delete the metadata array
+            
             delete[] mValues;
             mValues = nullptr;
         }
     }
 
-    /**
-     *  @brief Allocates property fields + keys.
-     *  @param  numProperties   Number of requested properties.
-     */
+    
     static inline aiMetadata *Alloc(unsigned int numProperties) {
         if (0 == numProperties) {
             return nullptr;
@@ -324,9 +263,7 @@ struct aiMetadata {
         return data;
     }
 
-    /**
-     *  @brief Deallocates property fields + keys.
-     */
+    
     static inline void Dealloc(aiMetadata *metadata) {
         delete metadata;
     }
@@ -354,23 +291,23 @@ struct aiMetadata {
 
     template <typename T>
     inline bool Set(unsigned index, const std::string &key, const T &value) {
-        // In range assertion
+        
         if (index >= mNumProperties) {
             return false;
         }
 
-        // Ensure that we have a valid key.
+        
         if (key.empty()) {
             return false;
         }
 
-        // Set metadata key
+        
         mKeys[index] = key;
 
-        // Set metadata type
+        
         mValues[index].mType = GetAiType(value);
 
-        // Copy the given value to the dynamic storage
+        
         if (nullptr != mValues[index].mData && AI_AIMETADATA != mValues[index].mType) {
             ::memcpy(mValues[index].mData, &value, sizeof(T));
         } else if (nullptr != mValues[index].mData && AI_AIMETADATA == mValues[index].mType) {
@@ -406,19 +343,19 @@ struct aiMetadata {
 
     template <typename T>
     inline bool Get(unsigned index, T &value) const {
-        // In range assertion
+        
         if (index >= mNumProperties) {
             return false;
         }
 
-        // Return false if the output data type does
-        // not match the found value's data type
+        
+        
         if (GetAiType(value) != mValues[index].mType) {
             return false;
         }
 
-        // Otherwise, output the found value and
-        // return true
+        
+        
         value = *static_cast<T *>(mValues[index].mData);
 
         return true;
@@ -426,7 +363,7 @@ struct aiMetadata {
 
     template <typename T>
     inline bool Get(const aiString &key, T &value) const {
-        // Search for the given key
+        
         for (unsigned int i = 0; i < mNumProperties; ++i) {
             if (mKeys[i] == key) {
                 return Get(i, value);
@@ -440,11 +377,11 @@ struct aiMetadata {
         return Get(aiString(key), value);
     }
 
-    /// Return metadata entry for analyzing it by user.
-    /// \param [in] pIndex - index of the entry.
-    /// \param [out] pKey - pointer to the key value.
-    /// \param [out] pEntry - pointer to the entry: type and value.
-    /// \return false - if pIndex is out of range, else - true.
+    
+    
+    
+    
+    
     inline bool Get(size_t index, const aiString *&key, const aiMetadataEntry *&entry) const {
         if (index >= mNumProperties) {
             return false;
@@ -456,14 +393,14 @@ struct aiMetadata {
         return true;
     }
 
-    /// Check whether there is a metadata entry for the given key.
-    /// \param [in] Key - the key value value to check for.
+    
+    
     inline bool HasKey(const char *key) const {
         if (nullptr == key) {
             return false;
         }
 
-        // Search for the given key
+        
         for (unsigned int i = 0; i < mNumProperties; ++i) {
             if (0 == strncmp(mKeys[i].C_Str(), key, mKeys[i].length)) {
                 return true;
@@ -565,7 +502,7 @@ struct aiMetadata {
         return !(lhs == rhs);
     }
 
-#endif // __cplusplus
+#endif 
 };
 
-#endif // AI_METADATA_H_INC
+#endif 

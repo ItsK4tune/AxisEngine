@@ -12,7 +12,7 @@ MonitorManager::~MonitorManager()
 
 bool MonitorManager::Init(std::unique_ptr<IWindow> window)
 {
-    // Initialize backend window
+    
     m_Window = std::move(window);
     
     if (!m_Window->Init(m_Width, m_Height, m_Title))
@@ -21,17 +21,17 @@ bool MonitorManager::Init(std::unique_ptr<IWindow> window)
         return false;
     }
 
-    // Apply initial configuration if needed? 
-    // Init handles creation. configuration like fullscreen might need to be applied after init
-    // but SetWindowConfiguration calls glfwSetWindowMonitor which works on existing window.
-    // So we should call SetWindowConfiguration here if parameters were set before Init?
-    // IOHandler calls SetWindowConfiguration BEFORE Init.
-    // But SetWindowConfiguration checks `if (!m_Window) return;`.
-    // So if called before Init (where m_Window is null), it does nothing.
-    // IOHandler call order:
-    // m_MonitorManager->SetWindowConfiguration(...) -> stores fields (m_Width, m_Mode etc)
-    // m_MonitorManager->Init(window) -> moves window, calls window->Init.
-    // we should apply configuration here.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     m_Window->SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
 
@@ -136,9 +136,9 @@ DeviceInfo MonitorManager::GetCurrentDevice() const
     
     if (m_MonitorIndex >= 0 && m_MonitorIndex < monitors.size())
     {
-        // Try to find by index
-        // NOTE: GetMonitors returns a vector, index should match if order is preserved.
-        // GLFW docs say order is preserved.
+        
+        
+        
         if (monitors[m_MonitorIndex].index == m_MonitorIndex) 
         {
              info.id = std::to_string(m_MonitorIndex);

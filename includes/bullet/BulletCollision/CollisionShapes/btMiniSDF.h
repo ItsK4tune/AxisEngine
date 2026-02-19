@@ -124,4 +124,4 @@ struct btMiniSDF
 	bool interpolate(unsigned int field_id, double& dist, btVector3 const& x, btVector3* gradient) const;
 };
 
-#endif  //MINISDF_H
+#endif  

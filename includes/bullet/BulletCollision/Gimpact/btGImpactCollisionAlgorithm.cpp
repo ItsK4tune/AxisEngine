@@ -1,27 +1,5 @@
-/*
-This source file is part of GIMPACT Library.
-
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
 
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
-/*
-Author: Francisco Leon Najera
-Concave-Concave Collision
-
-*/
 
 #include "BulletCollision/CollisionDispatch/btManifoldResult.h"
 #include "LinearMath/btIDebugDraw.h"
@@ -31,7 +9,7 @@ Concave-Concave Collision
 #include "btContactProcessing.h"
 #include "LinearMath/btQuickprof.h"
 
-//! Class for accessing the plane equation
+
 class btPlaneShape : public btStaticPlaneShape
 {
 public:
@@ -58,7 +36,7 @@ public:
 	}
 };
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+
 #ifdef TRI_COLLISION_PROFILING
 
 btClock g_triangle_clock;
@@ -76,12 +54,10 @@ void bt_end_gim02_tri_time()
 	g_accum_triangle_collision_time += g_triangle_clock.getTimeMicroseconds();
 	g_count_triangle_collision++;
 }
-#endif  //TRI_COLLISION_PROFILING
-//! Retrieving shapes shapes
-/*!
-Declared here due of insuficent space on Pool allocators
-*/
-//!@{
+#endif  
+
+
+
 class GIM_ShapeRetriever
 {
 public:
@@ -131,7 +107,7 @@ public:
 	GIM_ShapeRetriever(const btGImpactShapeInterface* gim_shape)
 	{
 		m_gim_shape = gim_shape;
-		//select retriever
+		
 		if (m_gim_shape->needsRetrieveTriangles())
 		{
 			m_current_retriever = &m_tri_retriever;
@@ -154,17 +130,17 @@ public:
 	}
 };
 
-//!@}
+
 
 #ifdef TRI_COLLISION_PROFILING
 
-//! Gets the average time in miliseconds of tree collisions
+
 float btGImpactCollisionAlgorithm::getAverageTreeCollisionTime()
 {
 	return btGImpactBoxSet::getAverageTreeCollisionTime();
 }
 
-//! Gets the average time in miliseconds of triangle collisions
+
 float btGImpactCollisionAlgorithm::getAverageTriangleCollisionTime()
 {
 	if (g_count_triangle_collision == 0) return 0;
@@ -178,7 +154,7 @@ float btGImpactCollisionAlgorithm::getAverageTriangleCollisionTime()
 	return avgtime;
 }
 
-#endif  //TRI_COLLISION_PROFILING
+#endif  
 
 btGImpactCollisionAlgorithm::btGImpactCollisionAlgorithm(const btCollisionAlgorithmConstructionInfo& ci, const btCollisionObjectWrapper* body0Wrap, const btCollisionObjectWrapper* body1Wrap)
 	: btActivatingCollisionAlgorithm(ci, body0Wrap, body1Wrap)
@@ -212,7 +188,7 @@ void btGImpactCollisionAlgorithm::shape_vs_shape_collision(
 {
 	{
 		btCollisionAlgorithm* algor = newAlgorithm(body0Wrap, body1Wrap);
-		// post :	checkManifold is called
+		
 
 		m_resultOut->setShapeIdentifiersA(m_part0, m_triface0);
 		m_resultOut->setShapeIdentifiersB(m_part1, m_triface1);
@@ -333,7 +309,7 @@ void btGImpactCollisionAlgorithm::collide_gjk_triangles(const btCollisionObjectW
 		shape0->getBulletTriangle(m_triface0, tri0);
 		shape1->getBulletTriangle(m_triface1, tri1);
 
-		//collide two convex shapes
+		
 		if (tri0.overlap_test_conservative(tri1))
 		{
 			convex_vs_convex_collision(body0Wrap, body1Wrap, &tri0, &tri1);
@@ -378,10 +354,10 @@ void btGImpactCollisionAlgorithm::collide_sat_triangles(const btCollisionObjectW
 		ptri0.applyTransform(orgtrans0);
 		ptri1.applyTransform(orgtrans1);
 
-		//build planes
+		
 		ptri0.buildTriPlane();
 		ptri1.buildTriPlane();
-		// test conservative
+		
 
 		if (ptri0.overlap_test_conservative(ptri1))
 		{
@@ -453,7 +429,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_gimpact(
 	{
 		const btGImpactMeshShapePart* shapepart0 = static_cast<const btGImpactMeshShapePart*>(shape0);
 		const btGImpactMeshShapePart* shapepart1 = static_cast<const btGImpactMeshShapePart*>(shape1);
-//specialized function
+
 #ifdef BULLET_TRIANGLE_COLLISION
 		collide_gjk_triangles(body0Wrap, body1Wrap, shapepart0, shapepart1, &pairset[0].m_index1, pairset.size());
 #else
@@ -463,7 +439,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_gimpact(
 		return;
 	}
 
-	//general function
+	
 
 	shape0->lockChildShapes();
 	shape1->lockChildShapes();
@@ -499,7 +475,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_gimpact(
 		btCollisionObjectWrapper ob0(body0Wrap, colshape0, body0Wrap->getCollisionObject(), tr0, m_part0, m_triface0);
 		btCollisionObjectWrapper ob1(body1Wrap, colshape1, body1Wrap->getCollisionObject(), tr1, m_part1, m_triface1);
 
-		//collide two convex shapes
+		
 		convex_vs_convex_collision(&ob0, &ob1, colshape0, colshape1);
 	}
 
@@ -603,7 +579,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_shape(const btCollisionObjectWrappe
 			m_resultOut->setBody1Wrap(&ob0);
 		}
 
-		//collide two shapes
+		
 		if (swapped)
 		{
 			shape_vs_shape_collision(body1Wrap, &ob0, shape1, colshape0);
@@ -652,7 +628,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_compoundshape(const btCollisionObje
 			tmp = m_resultOut->getBody1Wrap();
 			m_resultOut->setBody1Wrap(&ob1);
 		}
-		//collide child shape
+		
 		gimpact_vs_shape(body0Wrap, &ob1,
 						 shape0, colshape1, swapped);
 
@@ -680,7 +656,7 @@ void btGImpactCollisionAlgorithm::gimpacttrimeshpart_vs_plane_collision(
 	btVector4 plane;
 	planeshape->get_plane_equation_transformed(orgtrans1, plane);
 
-	//test box against plane
+	
 
 	btAABB tribox;
 	shape0->getAabb(orgtrans0, tribox.m_min, tribox.m_max);
@@ -701,7 +677,7 @@ void btGImpactCollisionAlgorithm::gimpacttrimeshpart_vs_plane_collision(
 
 		btScalar distance = vertex.dot(plane) - plane[3] - margin;
 
-		if (distance < 0.0)  //add contact
+		if (distance < 0.0)  
 		{
 			if (swapped)
 			{
@@ -782,7 +758,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_concave(
 	const btGImpactShapeInterface* shape0,
 	const btConcaveShape* shape1, bool swapped)
 {
-	//create the callback
+	
 	btGImpactTriangleCallback tricallback;
 	tricallback.algorithm = this;
 	tricallback.body0Wrap = body0Wrap;
@@ -791,7 +767,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_concave(
 	tricallback.swapped = swapped;
 	tricallback.margin = shape1->getMargin();
 
-	//getting the trimesh AABB
+	
 	btTransform gimpactInConcaveSpace;
 
 	gimpactInConcaveSpace = body1Wrap->getWorldTransform().inverse() * body0Wrap->getWorldTransform();
@@ -833,7 +809,7 @@ void btGImpactCollisionAlgorithm::processCollision(const btCollisionObjectWrappe
 		gimpact_vs_shape(body1Wrap, body0Wrap, gimpactshape1, body0Wrap->getCollisionShape(), true);
 	}
 
-	// Ensure that gContactProcessedCallback is called for concave shapes.
+	
 	if (getLastManifold())
 	{
 		m_resultOut->refreshContactPoints();
@@ -845,9 +821,9 @@ btScalar btGImpactCollisionAlgorithm::calculateTimeOfImpact(btCollisionObject* b
 	return 1.f;
 }
 
-///////////////////////////////////// REGISTERING ALGORITHM //////////////////////////////////////////////
 
-//! Use this function for register the algorithm externally
+
+
 void btGImpactCollisionAlgorithm::registerAlgorithm(btCollisionDispatcher* dispatcher)
 {
 	static btGImpactCollisionAlgorithm::CreateFunc s_gimpact_cf;

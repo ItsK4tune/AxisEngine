@@ -1,19 +1,6 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-///This file was written by Erwin Coumans
 
 #include "btMultiBodyPoint2Point.h"
 #include "btMultiBodyLinkCollider.h"
@@ -33,7 +20,7 @@ btMultiBodyPoint2Point::btMultiBodyPoint2Point(btMultiBody* body, int link, btRi
 	  m_pivotInA(pivotInA),
 	  m_pivotInB(pivotInB)
 {
-	m_data.resize(BTMBP2PCONSTRAINT_DIM);  //at least store the applied impulses
+	m_data.resize(BTMBP2PCONSTRAINT_DIM);  
 }
 
 btMultiBodyPoint2Point::btMultiBodyPoint2Point(btMultiBody* bodyA, int linkA, btMultiBody* bodyB, int linkB, const btVector3& pivotInA, const btVector3& pivotInB)
@@ -43,12 +30,12 @@ btMultiBodyPoint2Point::btMultiBodyPoint2Point(btMultiBody* bodyA, int linkA, bt
 	  m_pivotInA(pivotInA),
 	  m_pivotInB(pivotInB)
 {
-	m_data.resize(BTMBP2PCONSTRAINT_DIM);  //at least store the applied impulses
+	m_data.resize(BTMBP2PCONSTRAINT_DIM);  
 }
 
 void btMultiBodyPoint2Point::finalizeMultiDof()
 {
-	//not implemented yet
+	
 	btAssert(0);
 }
 
@@ -103,12 +90,12 @@ void btMultiBodyPoint2Point::createConstraintRows(btMultiBodyConstraintArray& co
 												  btMultiBodyJacobianData& data,
 												  const btContactSolverInfo& infoGlobal)
 {
-	//	int i=1;
+	
 	int numDim = BTMBP2PCONSTRAINT_DIM;
 	for (int i = 0; i < numDim; i++)
 	{
 		btMultiBodySolverConstraint& constraintRow = constraintRows.expandNonInitializing();
-		//memset(&constraintRow,0xffffffff,sizeof(btMultiBodySolverConstraint));
+		
 		constraintRow.m_orgConstraint = this;
 		constraintRow.m_orgDofIndex = i;
 		constraintRow.m_relpos1CrossNormal.setValue(0, 0, 0);
@@ -128,7 +115,7 @@ void btMultiBodyPoint2Point::createConstraintRows(btMultiBodyConstraintArray& co
 		contactNormalOnB[i % 3] = -1;
 #endif
 
-		// Convert local points back to world
+		
 		btVector3 pivotAworld = m_pivotInA;
 		if (m_rigidBodyA)
 		{
@@ -157,12 +144,12 @@ void btMultiBodyPoint2Point::createConstraintRows(btMultiBodyConstraintArray& co
 #ifndef BTMBP2PCONSTRAINT_BLOCK_ANGULAR_MOTION_TEST
 
 		fillMultiBodyConstraint(constraintRow, data, 0, 0, btVector3(0, 0, 0),
-								contactNormalOnB, pivotAworld, pivotBworld,  //sucks but let it be this way "for the time being"
+								contactNormalOnB, pivotAworld, pivotBworld,  
 								posError,
 								infoGlobal,
 								-m_maxAppliedImpulse, m_maxAppliedImpulse);
-		//@todo: support the case of btMultiBody versus btRigidBody,
-		//see btPoint2PointConstraint::getInfo2NonVirtual
+		
+		
 #else
 		const btVector3 dummy(0, 0, 0);
 
@@ -175,7 +162,7 @@ void btMultiBodyPoint2Point::createConstraintRows(btMultiBodyConstraintArray& co
 		m_bodyA->filConstraintJacobianMultiDof(m_linkA, pivotAworld, normalAng, normalLin, jac1, data.scratch_r, data.scratch_v, data.scratch_m);
 
 		fillMultiBodyConstraint(constraintRow, data, jac1, 0,
-								dummy, dummy, dummy,  //sucks but let it be this way "for the time being"
+								dummy, dummy, dummy,  
 								posError,
 								infoGlobal,
 								-m_maxAppliedImpulse, m_maxAppliedImpulse);
@@ -202,7 +189,7 @@ void btMultiBodyPoint2Point::debugDraw(class btIDebugDraw* drawer)
 	}
 	if (m_rigidBodyB)
 	{
-		// that ideally should draw the same frame
+		
 		btVector3 pivot = m_rigidBodyB->getCenterOfMassTransform() * m_pivotInB;
 		tr.setOrigin(pivot);
 		drawer->drawTransform(tr, 0.1);

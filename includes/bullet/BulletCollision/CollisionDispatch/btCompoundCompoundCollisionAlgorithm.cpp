@@ -1,18 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-
-*/
 
 #include "btCompoundCompoundCollisionAlgorithm.h"
 #include "LinearMath/btQuickprof.h"
@@ -24,7 +10,7 @@ subject to the following restrictions:
 #include "BulletCollision/CollisionDispatch/btManifoldResult.h"
 #include "BulletCollision/CollisionDispatch/btCollisionObjectWrapper.h"
 
-//USE_LOCAL_STACK will avoid most (often all) dynamic memory allocations due to resizing in processCollision and MycollideTT
+
 #define USE_LOCAL_STACK 1
 
 btShapePairCallback gCompoundCompoundChildShapePairCallback = 0;
@@ -131,7 +117,7 @@ struct btCompoundCompoundLeafCallback : btDbvt::ICollide
 		const btCollisionShape* childShape0 = compoundShape0->getChildShape(childIndex0);
 		const btCollisionShape* childShape1 = compoundShape1->getChildShape(childIndex1);
 
-		//backup
+		
 		btTransform orgTrans0 = m_compound0ColObjWrap->getWorldTransform();
 		const btTransform& childTrans0 = compoundShape0->getChildTransform(childIndex0);
 		btTransform newChildWorldTrans0 = orgTrans0 * childTrans0;
@@ -140,7 +126,7 @@ struct btCompoundCompoundLeafCallback : btDbvt::ICollide
 		const btTransform& childTrans1 = compoundShape1->getChildTransform(childIndex1);
 		btTransform newChildWorldTrans1 = orgTrans1 * childTrans1;
 
-		//perform an AABB check first
+		
 		btVector3 aabbMin0, aabbMax0, aabbMin1, aabbMax1;
 		childShape0->getAabb(newChildWorldTrans0, aabbMin0, aabbMax0);
 		childShape1->getAabb(newChildWorldTrans1, aabbMin1, aabbMax1);
@@ -298,19 +284,19 @@ void btCompoundCompoundCollisionAlgorithm::processCollision(const btCollisionObj
 	{
 		return btCompoundCollisionAlgorithm::processCollision(body0Wrap, body1Wrap, dispatchInfo, resultOut);
 	}
-	///btCompoundShape might have changed:
-	////make sure the internal child collision algorithm caches are still valid
+	
+	
 	if ((compoundShape0->getUpdateRevision() != m_compoundShapeRevision0) || (compoundShape1->getUpdateRevision() != m_compoundShapeRevision1))
 	{
-		///clear all
+		
 		removeChildAlgorithms();
 		m_compoundShapeRevision0 = compoundShape0->getUpdateRevision();
 		m_compoundShapeRevision1 = compoundShape1->getUpdateRevision();
 	}
 
-	///we need to refresh all contact manifolds
-	///note that we should actually recursively traverse all children, btCompoundShape can nested more then 1 level deep
-	///so we should add a 'refreshManifolds' in the btCollisionAlgorithm
+	
+	
+	
 	{
 		int i;
 		btManifoldArray manifoldArray;
@@ -344,14 +330,14 @@ void btCompoundCompoundCollisionAlgorithm::processCollision(const btCollisionObj
 	const btTransform xform = col0ObjWrap->getWorldTransform().inverse() * col1ObjWrap->getWorldTransform();
 	MycollideTT(tree0->m_root, tree1->m_root, xform, &callback, resultOut->m_closestPointDistanceThreshold);
 
-	//printf("#compound-compound child/leaf overlap =%d                      \r",callback.m_numOverlapPairs);
+	
 
-	//remove non-overlapping child pairs
+	
 
 	{
 		btAssert(m_removePairs.size() == 0);
 
-		//iterate over all children, perform an AABB check inside ProcessChildShape
+		
 		btSimplePairArray& pairs = m_childCollisionAlgorithmCache->getOverlappingPairArray();
 
 		int i;

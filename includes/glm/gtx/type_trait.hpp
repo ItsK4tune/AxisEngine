@@ -1,14 +1,14 @@
-/// @ref gtx_type_trait
-/// @file glm/gtx/type_trait.hpp
-///
-/// @see core (dependence)
-///
-/// @defgroup gtx_type_trait GLM_GTX_type_trait
-/// @ingroup gtx
-///
-/// Include <glm/gtx/type_trait.hpp> to use the features of this extension.
-///
-/// Defines traits for each type.
+
+
+
+
+
+
+
+
+
+
+
 
 #pragma once
 
@@ -16,7 +16,7 @@
 #	error "GLM: GLM_GTX_type_trait is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
 #endif
 
-// Dependency:
+
 #include "../detail/qualifier.hpp"
 #include "../gtc/quaternion.hpp"
 #include "../gtx/dual_quaternion.hpp"
@@ -27,8 +27,8 @@
 
 namespace glm
 {
-	/// @addtogroup gtx_type_trait
-	/// @{
+	
+	
 
 	template<typename T>
 	struct type
@@ -79,7 +79,7 @@ namespace glm
 		static length_t const components = 8;
 	};
 
-	/// @}
-}//namespace glm
+	
+}
 
 #include "type_trait.inl"

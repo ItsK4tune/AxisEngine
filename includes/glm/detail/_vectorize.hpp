@@ -119,5 +119,5 @@ namespace detail
 			return vec<4, T, Q>(Func(a.x, b), Func(a.y, b), Func(a.z, b), Func(a.w, b));
 		}
 	};
-}//namespace detail
-}//namespace glm
+}
+}

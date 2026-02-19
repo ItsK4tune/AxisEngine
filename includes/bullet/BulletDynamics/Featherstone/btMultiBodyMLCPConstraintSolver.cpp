@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2018 Google Inc. http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "BulletDynamics/Featherstone/btMultiBodyMLCPConstraintSolver.h"
 
@@ -26,13 +13,13 @@ static bool interleaveContactAndFriction1 = false;
 
 struct btJointNode1
 {
-	int jointIndex;          // pointer to enclosing dxJoint object
-	int otherBodyIndex;      // *other* body this joint is connected to
-	int nextJointNodeIndex;  //-1 for null
+	int jointIndex;          
+	int otherBodyIndex;      
+	int nextJointNodeIndex;  
 	int constraintRowIndex;
 };
 
-// Helper function to compute a delta velocity in the constraint space.
+
 static btScalar computeDeltaVelocityInConstraintSpace(
 	const btVector3& angularDeltaVelocity,
 	const btVector3& contactNormal,
@@ -43,8 +30,8 @@ static btScalar computeDeltaVelocityInConstraintSpace(
 	return angularDeltaVelocity.dot(angularJacobian) + contactNormal.dot(linearJacobian) * invMass;
 }
 
-// Faster version of computeDeltaVelocityInConstraintSpace that can be used when contactNormal and linearJacobian are
-// identical.
+
+
 static btScalar computeDeltaVelocityInConstraintSpace(
 	const btVector3& angularDeltaVelocity,
 	btScalar invMass,
@@ -53,7 +40,7 @@ static btScalar computeDeltaVelocityInConstraintSpace(
 	return angularDeltaVelocity.dot(angularJacobian) + invMass;
 }
 
-// Helper function to compute a delta velocity in the constraint space.
+
 static btScalar computeDeltaVelocityInConstraintSpace(const btScalar* deltaVelocity, const btScalar* jacobian, int size)
 {
 	btScalar result = 0;
@@ -127,7 +114,7 @@ static btScalar computeConstraintMatrixOffDiagElementMultiBody(
 	const btMultiBody* offDiagMultiBodyA = offDiagConstraint.m_multiBodyA;
 	const btMultiBody* offDiagMultiBodyB = offDiagConstraint.m_multiBodyB;
 
-	// Assumed at least one system is multibody
+	
 	btAssert(multiBodyA || multiBodyB);
 	btAssert(offDiagMultiBodyA || offDiagMultiBodyB);
 
@@ -268,8 +255,8 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 		}
 	}
 
-	//	btScalar* w = 0;
-	//	int nub = 0;
+	
+	
 
 	m_lo.resize(numConstraintRows);
 	m_hi.resize(numConstraintRows);
@@ -279,7 +266,7 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 
 		for (int i = 0; i < numConstraintRows; i++)
 		{
-			if (0)  //m_limitDependencies[i]>=0)
+			if (0)  
 			{
 				m_lo[i] = -BT_INFINITY;
 				m_hi[i] = BT_INFINITY;
@@ -292,7 +279,7 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 		}
 	}
 
-	//
+	
 	int m = m_allConstraintPtrArray.size();
 
 	int numBodies = m_tmpSolverBodyPool.size();
@@ -347,9 +334,9 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 			{
 				{
 					int slotA = -1;
-					//find free jointNode slot for sbA
+					
 					slotA = jointNodeArray.size();
-					jointNodeArray.expand();  //NonInitializing();
+					jointNodeArray.expand();  
 					int prevSlot = bodyJointNodeArray[sbA];
 					bodyJointNodeArray[sbA] = slotA;
 					jointNodeArray[slotA].nextJointNodeIndex = prevSlot;
@@ -383,9 +370,9 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 			{
 				{
 					int slotB = -1;
-					//find free jointNode slot for sbA
+					
 					slotB = jointNodeArray.size();
-					jointNodeArray.expand();  //NonInitializing();
+					jointNodeArray.expand();  
 					int prevSlot = bodyJointNodeArray[sbB];
 					bodyJointNodeArray[sbB] = slotB;
 					jointNodeArray[slotB].nextJointNodeIndex = prevSlot;
@@ -420,7 +407,7 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 		}
 	}
 
-	//compute JinvM = J*invM.
+	
 	const btScalar* JinvM = JinvM3.getBufferPointer();
 
 	const btScalar* Jptr = J3.getBufferPointer();
@@ -442,8 +429,8 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 			int row__ = ofs[c];
 			int sbA = m_allConstraintPtrArray[i]->m_solverBodyIdA;
 			int sbB = m_allConstraintPtrArray[i]->m_solverBodyIdB;
-			//	btRigidBody* orgBodyA = m_tmpSolverBodyPool[sbA].m_originalBody;
-			//	btRigidBody* orgBodyB = m_tmpSolverBodyPool[sbB].m_originalBody;
+			
+			
 
 			numRows = i < m_tmpSolverNonContactConstraintPool.size() ? m_tmpConstraintSizesPool[c].m_numConstraintRows : numContactRows;
 
@@ -459,7 +446,7 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 					{
 						int numRowsOther = cr0 < m_tmpSolverNonContactConstraintPool.size() ? m_tmpConstraintSizesPool[j0].m_numConstraintRows : numContactRows;
 						size_t ofsother = (m_allConstraintPtrArray[cr0]->m_solverBodyIdB == sbA) ? 8 * numRowsOther : 0;
-						//printf("%d joint i %d and j0: %d: ",count++,i,j0);
+						
 						m_A.multiplyAdd2_p8r(JinvMrow,
 											 Jptr + 2 * 8 * (size_t)ofs[j0] + ofsother, numRows, numRowsOther, row__, ofs[j0]);
 					}
@@ -488,7 +475,7 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 
 		{
 			BT_PROFILE("compute diagonal");
-			// compute diagonal blocks of m_A
+			
 
 			int row__ = 0;
 			int numJointRows = m_allConstraintPtrArray.size();
@@ -496,9 +483,9 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 			int jj = 0;
 			for (; row__ < numJointRows;)
 			{
-				//int sbA = m_allConstraintPtrArray[row__]->m_solverBodyIdA;
+				
 				int sbB = m_allConstraintPtrArray[row__]->m_solverBodyIdB;
-				//	btRigidBody* orgBodyA = m_tmpSolverBodyPool[sbA].m_originalBody;
+				
 				btRigidBody* orgBodyB = m_tmpSolverBodyPool[sbB].m_originalBody;
 
 				const unsigned int infom = row__ < m_tmpSolverNonContactConstraintPool.size() ? m_tmpConstraintSizesPool[jj].m_numConstraintRows : numContactRows;
@@ -518,14 +505,14 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastRigidBody(const btContactSol
 
 	if (1)
 	{
-		// add cfm to the diagonal of m_A
+		
 		for (int i = 0; i < m_A.rows(); ++i)
 		{
 			m_A.setElem(i, i, m_A(i, i) + infoGlobal.m_globalCfm / infoGlobal.m_timeStep);
 		}
 	}
 
-	///fill the upper triangle of the matrix, to make it symmetric
+	
 	{
 		BT_PROFILE("fill the upper triangle ");
 		m_A.copyLowerToUpperTriangle();
@@ -560,7 +547,7 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastMultiBody(const btContactSol
 	if (multiBodyNumConstraints == 0)
 		return;
 
-	// 1. Compute b
+	
 	{
 		BT_PROFILE("init b (rhs)");
 
@@ -574,14 +561,14 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastMultiBody(const btContactSol
 
 			if (!btFuzzyZero(jacDiag))
 			{
-				// Note that rhsPenetration is currently always zero because the split impulse hasn't been implemented for multibody yet.
+				
 				const btScalar rhs = constraint.m_rhs;
 				m_multiBodyB[i] = rhs / jacDiag;
 			}
 		}
 	}
 
-	// 2. Compute lo and hi
+	
 	{
 		BT_PROFILE("init lo/ho");
 
@@ -596,7 +583,7 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastMultiBody(const btContactSol
 		}
 	}
 
-	// 3. Construct A matrix by using the impulse testing
+	
 	{
 		BT_PROFILE("Compute A");
 
@@ -607,33 +594,33 @@ void btMultiBodyMLCPConstraintSolver::createMLCPFastMultiBody(const btContactSol
 
 		for (int i = 0; i < multiBodyNumConstraints; ++i)
 		{
-			// Compute the diagonal of A, which is A(i, i)
+			
 			const btMultiBodySolverConstraint& constraint = *m_multiBodyAllConstraintPtrArray[i];
 			const btScalar diagA = computeConstraintMatrixDiagElementMultiBody(m_tmpSolverBodyPool, m_data, constraint);
 			m_multiBodyA.setElem(i, i, diagA);
 
-			// Computes the off-diagonals of A:
-			//   a. The rest of i-th row of A, from A(i, i+1) to A(i, n)
-			//   b. The rest of i-th column of A, from A(i+1, i) to A(n, i)
+			
+			
+			
 			for (int j = i + 1; j < multiBodyNumConstraints; ++j)
 			{
 				const btMultiBodySolverConstraint& offDiagConstraint = *m_multiBodyAllConstraintPtrArray[j];
 				const btScalar offDiagA = computeConstraintMatrixOffDiagElementMultiBody(m_tmpSolverBodyPool, m_data, constraint, offDiagConstraint);
 
-				// Set the off-diagonal values of A. Note that A is symmetric.
+				
 				m_multiBodyA.setElem(i, j, offDiagA);
 				m_multiBodyA.setElem(j, i, offDiagA);
 			}
 		}
 	}
 
-	// Add CFM to the diagonal of m_A
+	
 	for (int i = 0; i < m_multiBodyA.rows(); ++i)
 	{
 		m_multiBodyA.setElem(i, i, m_multiBodyA(i, i) + infoGlobal.m_globalCfm / infoGlobal.m_timeStep);
 	}
 
-	// 4. Initialize x
+	
 	{
 		BT_PROFILE("resize/init x");
 
@@ -660,12 +647,12 @@ bool btMultiBodyMLCPConstraintSolver::solveMLCP(const btContactSolverInfo& infoG
 
 	if (m_A.rows() != 0)
 	{
-		// If using split impulse, we solve 2 separate (M)LCPs
+		
 		if (infoGlobal.m_splitImpulse)
 		{
 			const btMatrixXu Acopy = m_A;
 			const btAlignedObjectArray<int> limitDependenciesCopy = m_limitDependencies;
-			// TODO(JS): Do we really need these copies when solveMLCP takes them as const?
+			
 
 			result = m_solver->solveMLCP(m_A, m_b, m_x, m_lo, m_hi, m_limitDependencies, infoGlobal.m_numIterations);
 			if (result)
@@ -698,13 +685,13 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlySetup(
 	const btContactSolverInfo& infoGlobal,
 	btIDebugDraw* debugDrawer)
 {
-	// 1. Setup for rigid-bodies
+	
 	btMultiBodyConstraintSolver::solveGroupCacheFriendlySetup(
 		bodies, numBodies, manifoldPtr, numManifolds, constraints, numConstraints, infoGlobal, debugDrawer);
 
-	// 2. Setup for multi-bodies
-	//   a. Collect all different kinds of constraint as pointers into one array, m_allConstraintPtrArray
-	//   b. Set the index array for frictional contact constraints, m_limitDependencies
+	
+	
+	
 	{
 		BT_PROFILE("gather constraint data");
 
@@ -716,7 +703,7 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlySetup(
 		m_allConstraintPtrArray.resize(0);
 		m_multiBodyAllConstraintPtrArray.resize(0);
 
-		// i. Setup for rigid bodies
+		
 
 		m_limitDependencies.resize(numRigidBodyConstraints);
 
@@ -728,7 +715,7 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlySetup(
 
 		int firstContactConstraintOffset = dindex;
 
-		// The btSequentialImpulseConstraintSolver moves all friction constraints at the very end, we can also interleave them instead
+		
 		if (interleaveContactAndFriction1)
 		{
 			for (int i = 0; i < m_tmpSolverContactConstraintPool.size(); i++)
@@ -770,7 +757,7 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlySetup(
 			m_hi.resize(0);
 		}
 
-		// ii. Setup for multibodies
+		
 
 		dindex = 0;
 
@@ -784,7 +771,7 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlySetup(
 
 		firstContactConstraintOffset = dindex;
 
-		// The btSequentialImpulseConstraintSolver moves all friction constraints at the very end, we can also interleave them instead
+		
 		if (interleaveContactAndFriction1)
 		{
 			for (int i = 0; i < m_multiBodyNormalContactConstraints.size(); ++i)
@@ -834,7 +821,7 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlySetup(
 		}
 	}
 
-	// Construct MLCP terms
+	
 	{
 		BT_PROFILE("createMLCPFast");
 		createMLCPFast(infoGlobal);
@@ -851,7 +838,7 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlyIterations(btCo
 		result = solveMLCP(infoGlobal);
 	}
 
-	// Fallback to btSequentialImpulseConstraintSolver::solveGroupCacheFriendlyIterations if the solution isn't valid.
+	
 	if (!result)
 	{
 		m_fallback++;
@@ -899,10 +886,10 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlyIterations(btCo
 				const int ndofA = multiBodyA->getNumDofs() + 6;
 				applyDeltaVee(&m_data.m_deltaVelocitiesUnitImpulse[c.m_jacAindex], deltaImpulse, c.m_deltaVelAindex, ndofA);
 #ifdef DIRECTLY_UPDATE_VELOCITY_DURING_SOLVER_ITERATIONS
-				//note: update of the actual velocities (below) in the multibody does not have to happen now since m_deltaVelocities can be applied after all iterations
-				//it would make the multibody solver more like the regular one with m_deltaVelocities being equivalent to btSolverBody::m_deltaLinearVelocity/m_deltaAngularVelocity
+				
+				
 				multiBodyA->applyDeltaVeeMultiDof2(&m_data.m_deltaVelocitiesUnitImpulse[c.m_jacAindex], deltaImpulse);
-#endif  // DIRECTLY_UPDATE_VELOCITY_DURING_SOLVER_ITERATIONS
+#endif  
 			}
 			else
 			{
@@ -917,10 +904,10 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlyIterations(btCo
 				const int ndofB = multiBodyB->getNumDofs() + 6;
 				applyDeltaVee(&m_data.m_deltaVelocitiesUnitImpulse[c.m_jacBindex], deltaImpulse, c.m_deltaVelBindex, ndofB);
 #ifdef DIRECTLY_UPDATE_VELOCITY_DURING_SOLVER_ITERATIONS
-				//note: update of the actual velocities (below) in the multibody does not have to happen now since m_deltaVelocities can be applied after all iterations
-				//it would make the multibody solver more like the regular one with m_deltaVelocities being equivalent to btSolverBody::m_deltaLinearVelocity/m_deltaAngularVelocity
+				
+				
 				multiBodyB->applyDeltaVeeMultiDof2(&m_data.m_deltaVelocitiesUnitImpulse[c.m_jacBindex], deltaImpulse);
-#endif  // DIRECTLY_UPDATE_VELOCITY_DURING_SOLVER_ITERATIONS
+#endif  
 			}
 			else
 			{
@@ -937,12 +924,12 @@ btScalar btMultiBodyMLCPConstraintSolver::solveGroupCacheFriendlyIterations(btCo
 btMultiBodyMLCPConstraintSolver::btMultiBodyMLCPConstraintSolver(btMLCPSolverInterface* solver)
 	: m_solver(solver), m_fallback(0)
 {
-	// Do nothing
+	
 }
 
 btMultiBodyMLCPConstraintSolver::~btMultiBodyMLCPConstraintSolver()
 {
-	// Do nothing
+	
 }
 
 void btMultiBodyMLCPConstraintSolver::setMLCPSolver(btMLCPSolverInterface* solver)

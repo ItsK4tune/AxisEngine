@@ -1,32 +1,19 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2011 Advanced Micro Devices, Inc.  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-///This file was written by Erwin Coumans
-///Separating axis rest based on work from Pierre Terdiman, see
-///And contact clipping based on work from Simon Hobbs
+
+
 
 #include "btPolyhedralContactClipping.h"
 #include "BulletCollision/CollisionShapes/btConvexPolyhedron.h"
 
-#include <float.h>  //for FLT_MAX
+#include <float.h>  
 
 int gExpectedNbTests = 0;
 int gActualNbTests = 0;
 bool gUseInternalObject = true;
 
-// Clips a face to the back of a plane
+
 void btPolyhedralContactClipping::clipFace(const btVertexArray& pVtxIn, btVertexArray& ppVtxOut, const btVector3& planeNormalWS, btScalar planeEqWS)
 {
 	int ve;
@@ -50,12 +37,12 @@ void btPolyhedralContactClipping::clipFace(const btVertexArray& pVtxIn, btVertex
 		{
 			if (de < 0)
 			{
-				// Start < 0, end < 0, so output endVertex
+				
 				ppVtxOut.push_back(endVertex);
 			}
 			else
 			{
-				// Start < 0, end >= 0, so output intersection
+				
 				ppVtxOut.push_back(firstVertex.lerp(endVertex, btScalar(ds * 1.f / (ds - de))));
 			}
 		}
@@ -63,7 +50,7 @@ void btPolyhedralContactClipping::clipFace(const btVertexArray& pVtxIn, btVertex
 		{
 			if (de < 0)
 			{
-				// Start >= 0, end < 0 so output intersection and end
+				
 				ppVtxOut.push_back(firstVertex.lerp(endVertex, btScalar(ds * 1.f / (ds - de))));
 				ppVtxOut.push_back(endVertex);
 			}
@@ -118,10 +105,10 @@ inline bool IsAlmostZero(const btVector3& v)
 
 inline void BoxSupport(const btScalar extents[3], const btScalar sv[3], btScalar p[3])
 {
-	// This version is ~11.000 cycles (4%) faster overall in one of the tests.
-	//	IR(p[0]) = IR(extents[0])|(IR(sv[0])&SIGN_BITMASK);
-	//	IR(p[1]) = IR(extents[1])|(IR(sv[1])&SIGN_BITMASK);
-	//	IR(p[2]) = IR(extents[2])|(IR(sv[2])&SIGN_BITMASK);
+	
+	
+	
+	
 	p[0] = sv[0] < 0.0f ? -extents[0] : extents[0];
 	p[1] = sv[1] < 0.0f ? -extents[1] : extents[1];
 	p[2] = sv[2] < 0.0f ? -extents[2] : extents[2];
@@ -170,7 +157,7 @@ bool TestInternalObjects(const btTransform& trans0, const btTransform& trans1, c
 		return false;
 	return true;
 }
-#endif  //TEST_INTERNAL_OBJECTS
+#endif  
 
 SIMD_FORCE_INLINE void btSegmentsClosestPoints(
 	btVector3& ptsVector,
@@ -181,7 +168,7 @@ SIMD_FORCE_INLINE void btSegmentsClosestPoints(
 	const btVector3& dirA, btScalar hlenA,
 	const btVector3& dirB, btScalar hlenB)
 {
-	// compute the parameters of the closest points on each line segment
+	
 
 	btScalar dirA_dot_dirB = btDot(dirA, dirB);
 	btScalar dirA_dot_trans = btDot(dirA, translation);
@@ -225,7 +212,7 @@ SIMD_FORCE_INLINE void btSegmentsClosestPoints(
 			tA = hlenA;
 	}
 
-	// compute the closest points relative to segment centers.
+	
 
 	offsetA = dirA * tA;
 	offsetB = dirB * tB;
@@ -237,17 +224,17 @@ bool btPolyhedralContactClipping::findSeparatingAxis(const btConvexPolyhedron& h
 {
 	gActualSATPairTests++;
 
-	//#ifdef TEST_INTERNAL_OBJECTS
+	
 	const btVector3 c0 = transA * hullA.m_localCenter;
 	const btVector3 c1 = transB * hullB.m_localCenter;
 	const btVector3 DeltaC2 = c0 - c1;
-	//#endif
+	
 
 	btScalar dmin = FLT_MAX;
 	int curPlaneTests = 0;
 
 	int numFacesA = hullA.m_faces.size();
-	// Test normals from hullA
+	
 	for (int i = 0; i < numFacesA; i++)
 	{
 		const btVector3 Normal(hullA.m_faces[i].m_plane[0], hullA.m_faces[i].m_plane[1], hullA.m_faces[i].m_plane[2]);
@@ -276,7 +263,7 @@ bool btPolyhedralContactClipping::findSeparatingAxis(const btConvexPolyhedron& h
 	}
 
 	int numFacesB = hullB.m_faces.size();
-	// Test normals from hullB
+	
 	for (int i = 0; i < numFacesB; i++)
 	{
 		const btVector3 Normal(hullB.m_faces[i].m_plane[0], hullB.m_faces[i].m_plane[1], hullB.m_faces[i].m_plane[2]);
@@ -312,7 +299,7 @@ bool btPolyhedralContactClipping::findSeparatingAxis(const btConvexPolyhedron& h
 	btVector3 witnessPointA(0, 0, 0), witnessPointB(0, 0, 0);
 
 	int curEdgeEdge = 0;
-	// Test edges
+	
 	for (int e0 = 0; e0 < hullA.m_uniqueEdges.size(); e0++)
 	{
 		const btVector3 edge0 = hullA.m_uniqueEdges[e0];
@@ -359,8 +346,8 @@ bool btPolyhedralContactClipping::findSeparatingAxis(const btConvexPolyhedron& h
 
 	if (edgeA >= 0 && edgeB >= 0)
 	{
-		//		printf("edge-edge\n");
-		//add an edge-edge contact
+		
+		
 
 		btVector3 ptsVector;
 		btVector3 offsetA;
@@ -430,7 +417,7 @@ void btPolyhedralContactClipping::clipFaceAgainstHull(const btVector3& separatin
 
 	const btFace& polyA = hullA.m_faces[closestFaceA];
 
-	// clip polygon to back of planes of all faces of hull A that are adjacent to witness face
+	
 	int numVerticesA = polyA.m_indices.size();
 	for (int e0 = 0; e0 < numVerticesA; e0++)
 	{
@@ -440,11 +427,11 @@ void btPolyhedralContactClipping::clipFaceAgainstHull(const btVector3& separatin
 		const btVector3 WorldEdge0 = transA.getBasis() * edge0;
 		btVector3 worldPlaneAnormal1 = transA.getBasis() * btVector3(polyA.m_plane[0], polyA.m_plane[1], polyA.m_plane[2]);
 
-		btVector3 planeNormalWS1 = -WorldEdge0.cross(worldPlaneAnormal1);  //.cross(WorldEdge0);
+		btVector3 planeNormalWS1 = -WorldEdge0.cross(worldPlaneAnormal1);  
 		btVector3 worldA1 = transA * a;
 		btScalar planeEqWS1 = -worldA1.dot(planeNormalWS1);
 
-//int otherFace=0;
+
 #ifdef BLA1
 		int otherFace = polyA.m_connectedFaces[e0];
 		btVector3 localPlaneNormal(hullA.m_faces[otherFace].m_plane[0], hullA.m_faces[otherFace].m_plane[1], hullA.m_faces[otherFace].m_plane[2]);
@@ -457,18 +444,18 @@ void btPolyhedralContactClipping::clipFaceAgainstHull(const btVector3& separatin
 		btScalar planeEqWS = planeEqWS1;
 
 #endif
-		//clip face
+		
 
 		clipFace(*pVtxIn, *pVtxOut, planeNormalWS, planeEqWS);
 		btSwap(pVtxIn, pVtxOut);
 		pVtxOut->resize(0);
 	}
 
-	//#define ONLY_REPORT_DEEPEST_POINT
+	
 
 	btVector3 point;
 
-	// only keep points that are behind the witness face
+	
 	{
 		btVector3 localPlaneNormal(polyA.m_plane[0], polyA.m_plane[1], polyA.m_plane[2]);
 		btScalar localPlaneEq = polyA.m_plane[3];
@@ -480,7 +467,7 @@ void btPolyhedralContactClipping::clipFaceAgainstHull(const btVector3& separatin
 			btScalar depth = planeNormalWS.dot(vtx) + planeEqWS;
 			if (depth <= minDist)
 			{
-				//				printf("clamped: depth=%f to minDist=%f\n",depth,minDist);
+				
 				depth = minDist;
 			}
 
@@ -507,15 +494,15 @@ void btPolyhedralContactClipping::clipFaceAgainstHull(const btVector3& separatin
 	{
 		resultOut.addContactPoint(separatingNormal, point, curMaxDist);
 	}
-#endif  //ONLY_REPORT_DEEPEST_POINT
+#endif  
 }
 
 void btPolyhedralContactClipping::clipHullAgainstHull(const btVector3& separatingNormal1, const btConvexPolyhedron& hullA, const btConvexPolyhedron& hullB, const btTransform& transA, const btTransform& transB, const btScalar minDist, btScalar maxDist, btVertexArray& worldVertsB1, btVertexArray& worldVertsB2, btDiscreteCollisionDetectorInterface::Result& resultOut)
 {
 	btVector3 separatingNormal = separatingNormal1.normalized();
-	//	const btVector3 c0 = transA * hullA.m_localCenter;
-	//	const btVector3 c1 = transB * hullB.m_localCenter;
-	//const btVector3 DeltaC2 = c0 - c1;
+	
+	
+	
 
 	int closestFaceB = -1;
 	btScalar dmax = -FLT_MAX;

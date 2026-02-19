@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btStridingMeshInterface.h"
 #include "LinearMath/btSerializer.h"
@@ -37,15 +24,15 @@ void btStridingMeshInterface::InternalProcessAllTriangles(btInternalTriangleInde
 
 	btVector3 meshScaling = getScaling();
 
-	///if the number of parts is big, the performance might drop due to the innerloop switch on indextype
+	
 	for (part = 0; part < graphicssubparts; part++)
 	{
 		getLockedReadOnlyVertexIndexBase(&vertexbase, numverts, type, stride, &indexbase, indexstride, numtriangles, gfxindextype, part);
-		numtotalphysicsverts += numtriangles * 3;  //upper bound
+		numtotalphysicsverts += numtriangles * 3;  
 
-		///unlike that developers want to pass in double-precision meshes in single-precision Bullet build
-		///so disable this feature by default
-		///see patch http://code.google.com/p/bullet/issues/detail?id=213
+		
+		
+		
 
 		switch (type)
 		{
@@ -197,7 +184,7 @@ void btStridingMeshInterface::calculateAabbBruteForce(btVector3& aabbMin, btVect
 		}
 	};
 
-	//first calculate the total aabb for all triangles
+	
 	AabbCalculationCallback aabbCallback;
 	aabbMin.setValue(btScalar(-BT_LARGE_FLOAT), btScalar(-BT_LARGE_FLOAT), btScalar(-BT_LARGE_FLOAT));
 	aabbMax.setValue(btScalar(BT_LARGE_FLOAT), btScalar(BT_LARGE_FLOAT), btScalar(BT_LARGE_FLOAT));
@@ -207,14 +194,14 @@ void btStridingMeshInterface::calculateAabbBruteForce(btVector3& aabbMin, btVect
 	aabbMax = aabbCallback.m_aabbMax;
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btStridingMeshInterfaceData* trimeshData = (btStridingMeshInterfaceData*)dataBuffer;
 
 	trimeshData->m_numMeshParts = getNumSubParts();
 
-	//void* uniquePtr = 0;
+	
 
 	trimeshData->m_meshPartsPtr = 0;
 
@@ -224,7 +211,7 @@ const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* s
 		btMeshPartData* memPtr = (btMeshPartData*)chunk->m_oldPtr;
 		trimeshData->m_meshPartsPtr = (btMeshPartData*)serializer->getUniquePointer(memPtr);
 
-		//	int numtotalphysicsverts = 0;
+		
 		int part, graphicssubparts = getNumSubParts();
 		const unsigned char* vertexbase;
 		const unsigned char* indexbase;
@@ -233,15 +220,15 @@ const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* s
 		PHY_ScalarType gfxindextype;
 		int stride, numverts, numtriangles;
 		int gfxindex;
-		//	btVector3 triangle[3];
+		
 
-		//	btVector3 meshScaling = getScaling();
+		
 
-		///if the number of parts is big, the performance might drop due to the innerloop switch on indextype
+		
 		for (part = 0; part < graphicssubparts; part++, memPtr++)
 		{
 			getLockedReadOnlyVertexIndexBase(&vertexbase, numverts, type, stride, &indexbase, indexstride, numtriangles, gfxindextype, part);
-			memPtr->m_numTriangles = numtriangles;  //indices = 3*numtriangles
+			memPtr->m_numTriangles = numtriangles;  
 			memPtr->m_numVertices = numverts;
 			memPtr->m_indices16 = 0;
 			memPtr->m_indices32 = 0;
@@ -285,7 +272,7 @@ const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* s
 							tmpIndices[gfxindex].m_values[0] = tri_indices[0];
 							tmpIndices[gfxindex].m_values[1] = tri_indices[1];
 							tmpIndices[gfxindex].m_values[2] = tri_indices[2];
-							// Fill padding with zeros to appease msan.
+							
 							tmpIndices[gfxindex].m_pad[0] = 0;
 							tmpIndices[gfxindex].m_pad[1] = 0;
 						}
@@ -306,7 +293,7 @@ const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* s
 							tmpIndices[gfxindex].m_values[0] = tri_indices[0];
 							tmpIndices[gfxindex].m_values[1] = tri_indices[1];
 							tmpIndices[gfxindex].m_values[2] = tri_indices[2];
-							// Fill padding with zeros to appease msan.
+							
 							tmpIndices[gfxindex].m_pad = 0;
 						}
 						serializer->finalizeChunk(chunk, "btCharIndexTripletData", BT_ARRAY_CODE, (void*)chunk->m_oldPtr);
@@ -316,7 +303,7 @@ const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* s
 				default:
 				{
 					btAssert(0);
-					//unknown index type
+					
 				}
 			}
 
@@ -352,7 +339,7 @@ const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* s
 						memPtr->m_vertices3d = (btVector3DoubleData*)serializer->getUniquePointer(tmpVertices);
 						for (int i = 0; i < numverts; i++)
 						{
-							double* graphicsbase = (double*)(vertexbase + i * stride);  //for now convert to float, might leave it at double
+							double* graphicsbase = (double*)(vertexbase + i * stride);  
 							tmpVertices[i].m_floats[0] = graphicsbase[0];
 							tmpVertices[i].m_floats[1] = graphicsbase[1];
 							tmpVertices[i].m_floats[2] = graphicsbase[2];
@@ -372,7 +359,7 @@ const char* btStridingMeshInterface::serialize(void* dataBuffer, btSerializer* s
 		serializer->finalizeChunk(chunk, "btMeshPartData", BT_ARRAY_CODE, chunk->m_oldPtr);
 	}
 
-	// Fill padding with zeros to appease msan.
+	
 	memset(trimeshData->m_padding, 0, sizeof(trimeshData->m_padding));
 
 	m_scaling.serializeFloat(trimeshData->m_scaling);

@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_RIGIDBODY_H
 #define BT_RIGIDBODY_H
@@ -34,28 +21,28 @@ extern bool gDisableDeactivation;
 #else
 #define btRigidBodyData btRigidBodyFloatData
 #define btRigidBodyDataName "btRigidBodyFloatData"
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 enum btRigidBodyFlags
 {
 	BT_DISABLE_WORLD_GRAVITY = 1,
-	///BT_ENABLE_GYROPSCOPIC_FORCE flags is enabled by default in Bullet 2.83 and onwards.
-	///and it BT_ENABLE_GYROPSCOPIC_FORCE becomes equivalent to BT_ENABLE_GYROSCOPIC_FORCE_IMPLICIT_BODY
-	///See Demos/GyroscopicDemo and computeGyroscopicImpulseImplicit
+	
+	
+	
 	BT_ENABLE_GYROSCOPIC_FORCE_EXPLICIT = 2,
 	BT_ENABLE_GYROSCOPIC_FORCE_IMPLICIT_WORLD = 4,
 	BT_ENABLE_GYROSCOPIC_FORCE_IMPLICIT_BODY = 8,
 	BT_ENABLE_GYROPSCOPIC_FORCE = BT_ENABLE_GYROSCOPIC_FORCE_IMPLICIT_BODY,
 };
 
-///The btRigidBody is the main class for rigid body objects. It is derived from btCollisionObject, so it keeps a pointer to a btCollisionShape.
-///It is recommended for performance and memory use to share btCollisionShape objects whenever possible.
-///There are 3 types of rigid bodies:
-///- A) Dynamic rigid bodies, with positive mass. Motion is controlled by rigid body dynamics.
-///- B) Fixed objects with zero mass. They are not moving (basically collision objects)
-///- C) Kinematic objects, which are objects without mass, but the user can move them. There is one-way interaction, and Bullet calculates a velocity based on the timestep and previous and current world transform.
-///Bullet automatically deactivates dynamic rigid bodies, when the velocity is below a threshold for a given time.
-///Deactivated (sleeping) rigid bodies don't take any processing time, except a minor broadphase collision detection impact (to allow active objects to activate/wake up sleeping objects)
+
+
+
+
+
+
+
+
 class btRigidBody : public btCollisionObject
 {
 	btMatrix3x3 m_invInertiaTensorWorld;
@@ -82,10 +69,10 @@ class btRigidBody : public btCollisionObject
 	btScalar m_linearSleepingThreshold;
 	btScalar m_angularSleepingThreshold;
 
-	//m_optionalMotionState allows to automatic synchronize the world transform for active objects
+	
 	btMotionState* m_optionalMotionState;
 
-	//keep track of typed constraints referencing this rigid body, to disable collision between linked bodies
+	
 	btAlignedObjectArray<btTypedConstraint*> m_constraintRefs;
 
 	int m_rigidbodyFlags;
@@ -101,17 +88,17 @@ protected:
 	btVector3 m_turnVelocity;
 
 public:
-	///The btRigidBodyConstructionInfo structure provides information to create a rigid body. Setting mass to zero creates a fixed (non-dynamic) rigid body.
-	///For dynamic objects, you can use the collision shape to approximate the local inertia tensor, otherwise use the zero vector (default argument)
-	///You can use the motion state to synchronize the world transform between physics and graphics objects.
-	///And if the motion state is provided, the rigid body will initialize its initial world transform from the motion state,
-	///m_startWorldTransform is only used when you don't provide a motion state.
+	
+	
+	
+	
+	
 	struct btRigidBodyConstructionInfo
 	{
 		btScalar m_mass;
 
-		///When a motionState is provided, the rigid body will initialize its world transform from the motion state
-		///In this case, m_startWorldTransform is ignored.
+		
+		
 		btMotionState* m_motionState;
 		btTransform m_startWorldTransform;
 
@@ -120,21 +107,21 @@ public:
 		btScalar m_linearDamping;
 		btScalar m_angularDamping;
 
-		///best simulation results when friction is non-zero
+		
 		btScalar m_friction;
-		///the m_rollingFriction prevents rounded shapes, such as spheres, cylinders and capsules from rolling forever.
-		///See Bullet/Demos/RollingFrictionDemo for usage
+		
+		
 		btScalar m_rollingFriction;
-		btScalar m_spinningFriction;  //torsional friction around contact normal
+		btScalar m_spinningFriction;  
 
-		///best simulation results using zero restitution.
+		
 		btScalar m_restitution;
 
 		btScalar m_linearSleepingThreshold;
 		btScalar m_angularSleepingThreshold;
 
-		//Additional damping can help avoiding lowpass jitter motion, help stability for ragdolls etc.
-		//Such damping is undesirable, so once the overall simulation quality of the rigid body dynamics system has improved, this should become obsolete
+		
+		
 		bool m_additionalDamping;
 		btScalar m_additionalDampingFactor;
 		btScalar m_additionalLinearDampingThresholdSqr;
@@ -163,29 +150,29 @@ public:
 		}
 	};
 
-	///btRigidBody constructor using construction info
+	
 	btRigidBody(const btRigidBodyConstructionInfo& constructionInfo);
 
-	///btRigidBody constructor for backwards compatibility.
-	///To specify friction (etc) during rigid body construction, please use the other constructor (using btRigidBodyConstructionInfo)
+	
+	
 	btRigidBody(btScalar mass, btMotionState* motionState, btCollisionShape* collisionShape, const btVector3& localInertia = btVector3(0, 0, 0));
 
 	virtual ~btRigidBody()
 	{
-		//No constraints should point to this rigidbody
-		//Remove constraints from the dynamics world before you delete the related rigidbodies.
+		
+		
 		btAssert(m_constraintRefs.size() == 0);
 	}
 
 protected:
-	///setupRigidBody is only used internally by the constructor
+	
 	void setupRigidBody(const btRigidBodyConstructionInfo& constructionInfo);
 
 public:
 	void proceedToTransform(const btTransform& newTrans);
 
-	///to keep collision detection and dynamics separate we don't store a rigidbody pointer
-	///but a rigidbody is derived from btCollisionObject, so we can safely perform an upcast
+	
+	
 	static const btRigidBody* upcast(const btCollisionObject* colObj)
 	{
 		if (colObj->getInternalType() & btCollisionObject::CO_RIGID_BODY)
@@ -199,7 +186,7 @@ public:
 		return 0;
 	}
 
-	/// continuous collision detection needs prediction
+	
 	void predictIntegratedTransform(btScalar step, btTransform& predictedTransform);
 
 	void saveKinematicState(btScalar step);
@@ -459,16 +446,16 @@ public:
 
 	btVector3 getVelocityInLocalPoint(const btVector3& rel_pos) const
 	{
-		//we also calculate lin/ang velocity for kinematic objects
+		
 		return m_linearVelocity + m_angularVelocity.cross(rel_pos);
 
-		//for kinematic objects, we could also use use:
-		//		return 	(m_worldTransform(rel_pos) - m_interpolationWorldTransform(rel_pos)) / m_kinematicTimeStep;
+		
+		
 	}
     
     btVector3 getPushVelocityInLocalPoint(const btVector3& rel_pos) const
     {
-        //we also calculate lin/ang velocity for kinematic objects
+        
         return m_pushVelocity + m_turnVelocity.cross(rel_pos);
     }
 
@@ -518,7 +505,7 @@ public:
 		if (getActivationState() == DISABLE_DEACTIVATION)
 			return false;
 
-		//disable deactivation
+		
 		if (gDisableDeactivation || (gDeactivationTime == btScalar(0.)))
 			return false;
 
@@ -545,7 +532,7 @@ public:
 		m_broadphaseHandle = broadphaseProxy;
 	}
 
-	//btMotionState allows to automatic synchronize the world transform for active objects
+	
 	btMotionState* getMotionState()
 	{
 		return m_optionalMotionState;
@@ -561,7 +548,7 @@ public:
 			motionState->getWorldTransform(m_worldTransform);
 	}
 
-	//for experimental overriding of friction/contact solver func
+	
 	int m_contactSolverType;
 	int m_frictionSolverType;
 
@@ -581,7 +568,7 @@ public:
 		return m_angularFactor;
 	}
 
-	//is this rigidbody added to a btCollisionWorld/btDynamicsWorld/btBroadphase?
+	
 	bool isInWorld() const
 	{
 		return (getBroadphaseProxy() != 0);
@@ -610,28 +597,28 @@ public:
 		return m_rigidbodyFlags;
 	}
 
-	///perform implicit force computation in world space
+	
 	btVector3 computeGyroscopicImpulseImplicit_World(btScalar dt) const;
 
-	///perform implicit force computation in body space (inertial frame)
+	
 	btVector3 computeGyroscopicImpulseImplicit_Body(btScalar step) const;
 
-	///explicit version is best avoided, it gains energy
+	
 	btVector3 computeGyroscopicForceExplicit(btScalar maxGyroscopicForce) const;
 	btVector3 getLocalInertia() const;
 
-	///////////////////////////////////////////////
+	
 
 	virtual int calculateSerializeBufferSize() const;
 
-	///fills the dataBuffer and returns the struct name (and 0 on failure)
+	
 	virtual const char* serialize(void* dataBuffer, class btSerializer* serializer) const;
 
 	virtual void serializeSingleObject(class btSerializer* serializer) const;
 };
 
-//@todo add m_optionalMotionState and m_constraintRefs to btRigidBodyData
-///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
+
+
 struct btRigidBodyFloatData
 {
 	btCollisionObjectFloatData m_collisionObjectData;
@@ -657,7 +644,7 @@ struct btRigidBodyFloatData
 	int m_additionalDamping;
 };
 
-///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
+
 struct btRigidBodyDoubleData
 {
 	btCollisionObjectDoubleData m_collisionObjectData;
@@ -684,4 +671,4 @@ struct btRigidBodyDoubleData
 	char m_padding[4];
 };
 
-#endif  //BT_RIGIDBODY_H
+#endif  

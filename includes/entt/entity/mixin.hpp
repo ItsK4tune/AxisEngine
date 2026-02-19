@@ -12,7 +12,7 @@
 
 namespace entt {
 
-/*! @cond TURN_OFF_DOXYGEN */
+
 namespace internal {
 
 template<typename, typename, typename = void>
@@ -36,23 +36,10 @@ template<typename Type, typename Registry>
 struct has_on_destroy<Type, Registry, std::void_t<decltype(Type::on_destroy(std::declval<Registry &>(), std::declval<Registry>().create()))>>
     : std::true_type {};
 
-} // namespace internal
-/*! @endcond */
+} 
 
-/**
- * @brief Mixin type used to add signal support to storage types.
- *
- * The function type of a listener is equivalent to:
- *
- * @code{.cpp}
- * void(basic_registry<entity_type> &, entity_type);
- * @endcode
- *
- * This applies to all signals made available.
- *
- * @tparam Type Underlying storage type.
- * @tparam Registry Basic registry type.
- */
+
+
 template<typename Type, typename Registry>
 class basic_sigh_mixin final: public Type {
     using underlying_type = Type;
@@ -128,21 +115,18 @@ private:
     }
 
 public:
-    /*! @brief Allocator type. */
+    
     using allocator_type = typename underlying_type::allocator_type;
-    /*! @brief Underlying entity identifier. */
+    
     using entity_type = typename underlying_type::entity_type;
-    /*! @brief Expected registry type. */
+    
     using registry_type = owner_type;
 
-    /*! @brief Default constructor. */
+    
     basic_sigh_mixin()
         : basic_sigh_mixin{allocator_type{}} {}
 
-    /**
-     * @brief Constructs an empty storage with a given allocator.
-     * @param allocator The allocator to use.
-     */
+    
     explicit basic_sigh_mixin(const allocator_type &allocator)
         : underlying_type{allocator},
           owner{},
@@ -162,13 +146,10 @@ public:
         }
     }
 
-    /*! @brief Default copy constructor, deleted on purpose. */
+    
     basic_sigh_mixin(const basic_sigh_mixin &) = delete;
 
-    /**
-     * @brief Move constructor.
-     * @param other The instance to move from.
-     */
+    
     basic_sigh_mixin(basic_sigh_mixin &&other) noexcept
         : underlying_type{static_cast<underlying_type &&>(other)},
           owner{other.owner},
@@ -176,11 +157,7 @@ public:
           destruction{std::move(other.destruction)},
           update{std::move(other.update)} {}
 
-    /**
-     * @brief Allocator-extended move constructor.
-     * @param other The instance to move from.
-     * @param allocator The allocator to use.
-     */
+    
     basic_sigh_mixin(basic_sigh_mixin &&other, const allocator_type &allocator)
         : underlying_type{static_cast<underlying_type &&>(other), allocator},
           owner{other.owner},
@@ -188,29 +165,19 @@ public:
           destruction{std::move(other.destruction), allocator},
           update{std::move(other.update), allocator} {}
 
-    /*! @brief Default destructor. */
+    
     ~basic_sigh_mixin() override = default;
 
-    /**
-     * @brief Default copy assignment operator, deleted on purpose.
-     * @return This mixin.
-     */
+    
     basic_sigh_mixin &operator=(const basic_sigh_mixin &) = delete;
 
-    /**
-     * @brief Move assignment operator.
-     * @param other The instance to move from.
-     * @return This mixin.
-     */
+    
     basic_sigh_mixin &operator=(basic_sigh_mixin &&other) noexcept {
         swap(other);
         return *this;
     }
 
-    /**
-     * @brief Exchanges the contents with those of a given storage.
-     * @param other Storage to exchange the content with.
-     */
+    
     void swap(basic_sigh_mixin &other) noexcept {
         using std::swap;
         swap(owner, other.owner);
@@ -220,99 +187,51 @@ public:
         underlying_type::swap(other);
     }
 
-    /**
-     * @brief Returns a sink object.
-     *
-     * The sink returned by this function can be used to receive notifications
-     * whenever a new instance is created and assigned to an entity.<br/>
-     * Listeners are invoked after the object has been assigned to the entity.
-     *
-     * @sa sink
-     *
-     * @return A temporary sink object.
-     */
+    
     [[nodiscard]] auto on_construct() noexcept {
         return sink{construction};
     }
 
-    /**
-     * @brief Returns a sink object.
-     *
-     * The sink returned by this function can be used to receive notifications
-     * whenever an instance is explicitly updated.<br/>
-     * Listeners are invoked after the object has been updated.
-     *
-     * @sa sink
-     *
-     * @return A temporary sink object.
-     */
+    
     [[nodiscard]] auto on_update() noexcept {
         return sink{update};
     }
 
-    /**
-     * @brief Returns a sink object.
-     *
-     * The sink returned by this function can be used to receive notifications
-     * whenever an instance is removed from an entity and thus destroyed.<br/>
-     * Listeners are invoked before the object has been removed from the entity.
-     *
-     * @sa sink
-     *
-     * @return A temporary sink object.
-     */
+    
     [[nodiscard]] auto on_destroy() noexcept {
         return sink{destruction};
     }
 
-    /**
-     * @brief Checks if a mixin refers to a valid registry.
-     * @return True if the mixin refers to a valid registry, false otherwise.
-     */
+    
     [[nodiscard]] explicit operator bool() const noexcept {
         return (owner != nullptr);
     }
 
-    /**
-     * @brief Returns a pointer to the underlying registry, if any.
-     * @return A pointer to the underlying registry, if any.
-     */
+    
     [[nodiscard]] const registry_type &registry() const noexcept {
         return owner_or_assert();
     }
 
-    /*! @copydoc registry */
+    
     [[nodiscard]] registry_type &registry() noexcept {
         return owner_or_assert();
     }
 
-    /**
-     * @brief Creates a new identifier or recycles a destroyed one.
-     * @return A valid identifier.
-     */
+    
     auto generate() {
         const auto entt = underlying_type::generate();
         construction.publish(owner_or_assert(), entt);
         return entt;
     }
 
-    /**
-     * @brief Creates a new identifier or recycles a destroyed one.
-     * @param hint Required identifier.
-     * @return A valid identifier.
-     */
+    
     entity_type generate(const entity_type hint) {
         const auto entt = underlying_type::generate(hint);
         construction.publish(owner_or_assert(), entt);
         return entt;
     }
 
-    /**
-     * @brief Assigns each element in a range an identifier.
-     * @tparam It Type of mutable forward iterator.
-     * @param first An iterator to the first element of the range to generate.
-     * @param last An iterator past the last element of the range to generate.
-     */
+    
     template<typename It>
     void generate(It first, It last) {
         underlying_type::generate(first, last);
@@ -324,13 +243,7 @@ public:
         }
     }
 
-    /**
-     * @brief Assigns an entity to a storage and constructs its object.
-     * @tparam Args Types of arguments to forward to the underlying storage.
-     * @param entt A valid identifier.
-     * @param args Parameters to forward to the underlying storage.
-     * @return A reference to the newly created object.
-     */
+    
     template<typename... Args>
     decltype(auto) emplace(const entity_type entt, Args &&...args) {
         underlying_type::emplace(entt, std::forward<Args>(args)...);
@@ -338,13 +251,7 @@ public:
         return this->get(entt);
     }
 
-    /**
-     * @brief Updates the instance assigned to a given entity in-place.
-     * @tparam Func Types of the function objects to invoke.
-     * @param entt A valid identifier.
-     * @param func Valid function objects.
-     * @return A reference to the patched instance.
-     */
+    
     template<typename... Func>
     decltype(auto) patch(const entity_type entt, Func &&...func) {
         underlying_type::patch(entt, std::forward<Func>(func)...);
@@ -352,22 +259,14 @@ public:
         return this->get(entt);
     }
 
-    /**
-     * @brief Assigns one or more entities to a storage and constructs their
-     * objects from a given instance.
-     * @tparam It Type of input iterator.
-     * @tparam Args Types of arguments to forward to the underlying storage.
-     * @param first An iterator to the first element of the range of entities.
-     * @param last An iterator past the last element of the range of entities.
-     * @param args Parameters to use to forward to the underlying storage.
-     */
+    
     template<typename It, typename... Args>
     void insert(It first, It last, Args &&...args) {
         auto from = underlying_type::size();
         underlying_type::insert(first, last, std::forward<Args>(args)...);
 
         if(auto &reg = owner_or_assert(); !construction.empty()) {
-            // fine as long as insert passes force_back true to try_emplace
+            
             for(const auto to = underlying_type::size(); from != to; ++from) {
                 construction.publish(reg, underlying_type::operator[](from));
             }
@@ -381,11 +280,7 @@ private:
     sigh_type update;
 };
 
-/**
- * @brief Mixin type used to add _reactive_ support to storage types.
- * @tparam Type Underlying storage type.
- * @tparam Registry Basic registry type.
- */
+
 template<typename Type, typename Registry>
 class basic_reactive_mixin final: public Type {
     using underlying_type = Type;
@@ -422,77 +317,54 @@ private:
     }
 
 public:
-    /*! @brief Allocator type. */
+    
     using allocator_type = typename underlying_type::allocator_type;
-    /*! @brief Underlying entity identifier. */
+    
     using entity_type = typename underlying_type::entity_type;
-    /*! @brief Expected registry type. */
+    
     using registry_type = owner_type;
 
-    /*! @brief Default constructor. */
+    
     basic_reactive_mixin()
         : basic_reactive_mixin{allocator_type{}} {}
 
-    /**
-     * @brief Constructs an empty storage with a given allocator.
-     * @param allocator The allocator to use.
-     */
+    
     explicit basic_reactive_mixin(const allocator_type &allocator)
         : underlying_type{allocator},
           owner{},
           conn{allocator} {
     }
 
-    /*! @brief Default copy constructor, deleted on purpose. */
+    
     basic_reactive_mixin(const basic_reactive_mixin &) = delete;
 
-    /**
-     * @brief Move constructor.
-     * @param other The instance to move from.
-     */
+    
     basic_reactive_mixin(basic_reactive_mixin &&other) noexcept
         : underlying_type{static_cast<underlying_type &&>(other)},
           owner{other.owner},
           conn{std::move(other.conn)} {
     }
 
-    /**
-     * @brief Allocator-extended move constructor.
-     * @param other The instance to move from.
-     * @param allocator The allocator to use.
-     */
+    
     basic_reactive_mixin(basic_reactive_mixin &&other, const allocator_type &allocator)
         : underlying_type{static_cast<underlying_type &&>(other), allocator},
           owner{other.owner},
           conn{std::move(other.conn), allocator} {
     }
 
-    /*! @brief Default destructor. */
+    
     ~basic_reactive_mixin() override = default;
 
-    /**
-     * @brief Default copy assignment operator, deleted on purpose.
-     * @return This mixin.
-     */
+    
     basic_reactive_mixin &operator=(const basic_reactive_mixin &) = delete;
 
-    /**
-     * @brief Move assignment operator.
-     * @param other The instance to move from.
-     * @return This mixin.
-     */
+    
     basic_reactive_mixin &operator=(basic_reactive_mixin &&other) noexcept {
         underlying_type::swap(other);
         return *this;
     }
 
-    /**
-     * @brief Makes storage _react_ to creation of objects of the given type.
-     * @tparam Clazz Type of element to _react_ to.
-     * @tparam Candidate Function to use to _react_ to the event.
-     * @param id Optional name used to map the storage within the registry.
-     * @return This mixin.
-     */
+    
     template<typename Clazz, auto Candidate = &basic_reactive_mixin::emplace_element>
     basic_reactive_mixin &on_construct(const id_type id = type_hash<Clazz>::value()) {
         auto curr = owner_or_assert().template storage<Clazz>(id).on_construct().template connect<Candidate>(*this);
@@ -500,13 +372,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Makes storage _react_ to update of objects of the given type.
-     * @tparam Clazz Type of element to _react_ to.
-     * @tparam Candidate Function to use to _react_ to the event.
-     * @param id Optional name used to map the storage within the registry.
-     * @return This mixin.
-     */
+    
     template<typename Clazz, auto Candidate = &basic_reactive_mixin::emplace_element>
     basic_reactive_mixin &on_update(const id_type id = type_hash<Clazz>::value()) {
         auto curr = owner_or_assert().template storage<Clazz>(id).on_update().template connect<Candidate>(*this);
@@ -514,13 +380,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Makes storage _react_ to destruction of objects of the given type.
-     * @tparam Clazz Type of element to _react_ to.
-     * @tparam Candidate Function to use to _react_ to the event.
-     * @param id Optional name used to map the storage within the registry.
-     * @return This mixin.
-     */
+    
     template<typename Clazz, auto Candidate = &basic_reactive_mixin::emplace_element>
     basic_reactive_mixin &on_destroy(const id_type id = type_hash<Clazz>::value()) {
         auto curr = owner_or_assert().template storage<Clazz>(id).on_destroy().template connect<Candidate>(*this);
@@ -528,33 +388,22 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Checks if a mixin refers to a valid registry.
-     * @return True if the mixin refers to a valid registry, false otherwise.
-     */
+    
     [[nodiscard]] explicit operator bool() const noexcept {
         return (owner != nullptr);
     }
 
-    /**
-     * @brief Returns a pointer to the underlying registry, if any.
-     * @return A pointer to the underlying registry, if any.
-     */
+    
     [[nodiscard]] const registry_type &registry() const noexcept {
         return owner_or_assert();
     }
 
-    /*! @copydoc registry */
+    
     [[nodiscard]] registry_type &registry() noexcept {
         return owner_or_assert();
     }
 
-    /**
-     * @brief Returns a view that is filtered by the underlying storage.
-     * @tparam Get Types of elements used to construct the view.
-     * @tparam Exclude Types of elements used to filter the view.
-     * @return A newly created view.
-     */
+    
     template<typename... Get, typename... Exclude>
     [[nodiscard]] basic_view<get_t<const basic_reactive_mixin, typename basic_registry_type::template storage_for_type<const Get>...>, exclude_t<typename basic_registry_type::template storage_for_type<const Exclude>...>>
     view(exclude_t<Exclude...> = exclude_t{}) const {
@@ -564,7 +413,7 @@ public:
         return elem;
     }
 
-    /*! @copydoc view */
+    
     template<typename... Get, typename... Exclude>
     [[nodiscard]] basic_view<get_t<const basic_reactive_mixin, typename basic_registry_type::template storage_for_type<Get>...>, exclude_t<typename basic_registry_type::template storage_for_type<Exclude>...>>
     view(exclude_t<Exclude...> = exclude_t{}) {
@@ -572,7 +421,7 @@ public:
         return {*this, parent.template storage<std::remove_const_t<Get>>()..., parent.template storage<std::remove_const_t<Exclude>>()...};
     }
 
-    /*! @brief Releases all connections to the underlying registry, if any. */
+    
     void reset() {
         for(auto &&curr: conn) {
             curr.release();
@@ -586,6 +435,6 @@ private:
     container_type conn;
 };
 
-} // namespace entt
+} 
 
 #endif

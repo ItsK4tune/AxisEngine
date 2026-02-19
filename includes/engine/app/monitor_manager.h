@@ -7,7 +7,7 @@
 #include <memory>
 #include <interface/window/i_window.h>
 
-// struct GLFWwindow; // Removed forward declaration as we don't return it anymore
+
 
 
 

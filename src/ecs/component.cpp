@@ -29,9 +29,9 @@ glm::mat4 TransformComponent::GetLocalModelMatrix() const
 
 glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) const
 {
-    GetLocalModelMatrix(); // Updates m_IsWorldDirty if local changed
+    GetLocalModelMatrix(); 
     
-    // Check if parent changed
+    
     if (parent != m_LastParent)
     {
         m_LastParent = parent;
@@ -48,9 +48,9 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
             const auto& parentTrans = registry.get<TransformComponent>(parent);
             glm::mat4 parentWorld = parentTrans.GetWorldModelMatrix(registry); 
             
-            // If parent is dirty, it would have updated its world matrix and children should eventually be marked dirty too.
-            // But here we pull: if parent world changed, we are dirty. 
-            // Optimization: SetDirty propagates down, so we should trust m_IsWorldDirty unless checking against parent version.
+            
+            
+            
             
             m_WorldMatrix = parentWorld * m_LocalMatrix;
         }
@@ -72,7 +72,7 @@ void TransformComponent::SetDirty(entt::registry &registry)
 {
     m_IsWorldDirty = true;
     
-    // Propagate to children
+    
     for (auto child : children)
     {
         if (registry.valid(child) && registry.all_of<TransformComponent>(child))
@@ -105,7 +105,7 @@ void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newPare
         auto& newParentTrans = registry.get<TransformComponent>(newParent);
         newParentTrans.children.push_back(thisEntity);
         
-        SetDirty(registry); // Mark self and children dirty
+        SetDirty(registry); 
 
         if (keepWorldTransform)
         {
@@ -122,8 +122,8 @@ void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newPare
             position = t;
             rotation = r;
             scale = s;
-            GetLocalModelMatrix(); // Update local matrix
-            SetDirty(registry); // Re-mark dirty after local change
+            GetLocalModelMatrix(); 
+            SetDirty(registry); 
         }
     }
     else if (keepWorldTransform)

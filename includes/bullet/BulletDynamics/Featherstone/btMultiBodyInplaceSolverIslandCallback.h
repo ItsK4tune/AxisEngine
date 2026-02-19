@@ -1,15 +1,4 @@
-/*
- Bullet Continuous Collision Detection and Physics Library
- Copyright (c) 2019 Google Inc. http://bulletphysics.org
- This software is provided 'as-is', without any express or implied warranty.
- In no event will the authors be held liable for any damages arising from the use of this software.
- Permission is granted to anyone to use this software for any purpose,
- including commercial applications, and to alter it and redistribute it freely,
- subject to the following restrictions:
- 1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
- 2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
- 3. This notice may not be removed or altered from any source distribution.
- */
+
 
 #ifndef BT_MULTIBODY_INPLACE_SOLVER_ISLAND_CALLBACK_H
 #define BT_MULTIBODY_INPLACE_SOLVER_ISLAND_CALLBACK_H
@@ -128,7 +117,7 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
     {
         if (islandId < 0)
         {
-            ///we don't split islands, so all constraints/contact manifolds/bodies are passed into the solver regardless the island id
+            
             m_solver->solveMultiBodyGroup(bodies, numBodies, manifolds, numManifolds, m_sortedConstraints, m_numConstraints, &m_multiBodySortedConstraints[0], m_numConstraints, *m_solverInfo, m_debugDrawer, m_dispatcher);
             if (m_solverInfo->m_reportSolverAnalytics&1)
             {
@@ -138,7 +127,7 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
         }
         else
         {
-            //also add all non-contact constraints/joints for this island
+            
             btTypedConstraint** startConstraint = 0;
             btMultiBodyConstraint** startMultiBodyConstraint = 0;
             
@@ -147,7 +136,7 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
             
             int i;
             
-            //find the first constraint for this island
+            
             
             for (i = 0; i < m_numConstraints; i++)
             {
@@ -157,7 +146,7 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
                     break;
                 }
             }
-            //count the number of constraints in this island
+            
             for (; i < m_numConstraints; i++)
             {
                 if (btGetConstraintIslandId2(m_sortedConstraints[i]) == islandId)
@@ -174,7 +163,7 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
                     break;
                 }
             }
-            //count the number of multi body constraints in this island
+            
             for (; i < m_numMultiBodyConstraints; i++)
             {
                 if (btGetMultiBodyConstraintIslandId(m_multiBodySortedConstraints[i]) == islandId)
@@ -183,10 +172,10 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
                 }
             }
             
-            //if (m_solverInfo->m_minimumSolverBatchSize<=1)
-            //{
-            //    m_solver->solveGroup( bodies,numBodies,manifolds, numManifolds,startConstraint,numCurConstraints,*m_solverInfo,m_debugDrawer,m_dispatcher);
-            //} else
+            
+            
+            
+            
             {
                 for (i = 0; i < numBodies; i++)
 				{
@@ -214,7 +203,7 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
                 }
                 else
                 {
-                    //printf("deferred\n");
+                    
                 }
             }
         }
@@ -227,7 +216,7 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
         btTypedConstraint** constraints = m_constraints.size() ? &m_constraints[0] : 0;
         btMultiBodyConstraint** multiBodyConstraints = m_multiBodyConstraints.size() ? &m_multiBodyConstraints[0] : 0;
         
-        //printf("mb contacts = %d, mb constraints = %d\n", mbContacts, m_multiBodyConstraints.size());
+        
         
         m_solver->solveMultiBodyGroup(bodies, m_bodies.size(), manifold, m_manifolds.size(), constraints, m_constraints.size(), multiBodyConstraints, m_multiBodyConstraints.size(), *m_solverInfo, m_debugDrawer, m_dispatcher);
         if (m_bodies.size() && (m_solverInfo->m_reportSolverAnalytics&1))
@@ -244,4 +233,4 @@ struct MultiBodyInplaceSolverIslandCallback : public btSimulationIslandManager::
 };
 
 
-#endif /*BT_MULTIBODY_INPLACE_SOLVER_ISLAND_CALLBACK_H */
+#endif 

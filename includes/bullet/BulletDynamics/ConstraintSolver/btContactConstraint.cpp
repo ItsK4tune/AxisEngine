@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btContactConstraint.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
@@ -56,7 +43,7 @@ void btContactConstraint::buildJacobian()
 #include "LinearMath/btMinMax.h"
 #include "BulletCollision/NarrowPhaseCollision/btManifoldPoint.h"
 
-//response  between two dynamic objects without friction and no restitution, assuming 0 penetration depth
+
 btScalar resolveSingleCollision(
 	btRigidBody* body1,
 	btCollisionObject* colObj2,
@@ -82,7 +69,7 @@ btScalar resolveSingleCollision(
 	btScalar restitution = combinedRestitution * -rel_vel;
 
 	btScalar positionalError = solverInfo.m_erp * -distance / solverInfo.m_timeStep;
-	btScalar velocityError = -(1.0f + restitution) * rel_vel;  // * damping;
+	btScalar velocityError = -(1.0f + restitution) * rel_vel;  
 	btScalar denom0 = body1->computeImpulseDenominator(contactPositionWorld, normal);
 	btScalar denom1 = body2 ? body2->computeImpulseDenominator(contactPositionWorld, normal) : 0.f;
 	btScalar relaxation = 1.f;
@@ -101,7 +88,7 @@ btScalar resolveSingleCollision(
 	return normalImpulse;
 }
 
-//bilateral constraint between two dynamic objects
+
 void resolveSingleBilateral(btRigidBody& body1, const btVector3& pos1,
 							btRigidBody& body2, const btVector3& pos2,
 							btScalar distance, const btVector3& normal, btScalar& impulse, btScalar timeStep)
@@ -118,7 +105,7 @@ void resolveSingleBilateral(btRigidBody& body1, const btVector3& pos1,
 	}
 	btVector3 rel_pos1 = pos1 - body1.getCenterOfMassPosition();
 	btVector3 rel_pos2 = pos2 - body2.getCenterOfMassPosition();
-	//this jacobian entry could be re-used for all iterations
+	
 
 	btVector3 vel1 = body1.getVelocityInLocalPoint(rel_pos1);
 	btVector3 vel2 = body2.getVelocityInLocalPoint(rel_pos2);
@@ -140,7 +127,7 @@ void resolveSingleBilateral(btRigidBody& body1, const btVector3& pos1,
 
 	rel_vel = normal.dot(vel);
 
-	//todo: move this into proper structure
+	
 	btScalar contactDamping = btScalar(0.2);
 
 #ifdef ONLY_USE_LINEAR_MASS

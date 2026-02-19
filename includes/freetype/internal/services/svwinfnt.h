@@ -1,19 +1,4 @@
-/****************************************************************************
- *
- * svwinfnt.h
- *
- *   The FreeType Windows FNT/FONT service (specification).
- *
- * Copyright (C) 2003-2020 by
- * David Turner, Robert Wilhelm, and Werner Lemberg.
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef SVWINFNT_H_
@@ -38,13 +23,13 @@ FT_BEGIN_HEADER
     FT_WinFnt_GetHeaderFunc  get_header;
   };
 
-  /* */
+  
 
 
 FT_END_HEADER
 
 
-#endif /* SVWINFNT_H_ */
+#endif 
 
 
-/* END */
+

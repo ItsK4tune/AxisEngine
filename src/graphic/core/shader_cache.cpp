@@ -40,10 +40,10 @@ void ShaderCache::Reload(const std::string& name)
     if (it != m_LoadedShaders.end())
     {
         LOGGER_INFO("ShaderCache") << "Reloading shader: " << name;
-        // Logic for reload might need to be adjusted: reusing the object vs replacing it.
-        // For unique_ptr, replacing it is easiest, but invalidates pointers held by others.
-        // However, ShaderCache users typically query Get() every frame or store Shader* which *might* be dangerous if reloaded.
-        // But the previous implementation also deleted it: `delete it->second;`. So pointer invalidation was already an issue.
+        
+        
+        
+        
         m_LoadedShaders.erase(it);
     }
 }

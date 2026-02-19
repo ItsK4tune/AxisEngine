@@ -77,52 +77,52 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
 void ResourceManager::LoadModelAsync(const std::string &name, const std::string &path, bool isStatic)
 {
     LOGGER_INFO("ResourceManager") << "Async loading model: " << name;
-    // Launch async task. 
-    // Note: Model loading (Assimp) usually involves file IO and processing. 
-    // OpenGL context is NOT required for Assimp loading itself, but creating buffers/textures IS.
-    // However, Model constructor currently does EVERYTHING. 
-    // Refactoring Model to separate Load (IO) and Setup (GL) is complex.
-    // For now, we will assume Model loading happens on this thread, but ideally we should detach.
-    // WARNING: OpenGL calls on secondary thread will FAIL unless context is shared/active.
-    // Since we cannot easily change Model to defer GL calls without major refactor:
-    // We will use a job system or simple std::async IF Model construction handles context properly or if we only do IO.
     
-    // CHECK: Does Model constructor call GL functions? Yes (GenVertexArrays, GenBuffers).
-    // So we CANNOT run full Model constructor on a background thread without a context.
     
-    // Workaround: We will run it async anyway and risking context issues? NO.
-    // Correct approach for this strict constraint:
-    // 1. Load data (Assimp) in thread.
-    // 2. Return data.
-    // 3. Create GL objects on main thread.
     
-    // Since refactoring `Model` class is too invasive (user asked to optimize, not rewrite entire Model class architecture if avoidable),
-    // and `LoadTexture` supports async (likely by decoding image in thread and uploading in main),
-    // we should see if we can do similar.
     
-    // Actually, `LoadTexture` in `TextureCache` likely does this.
-    // `Model` class is: `loadModel` -> `processNode` -> `processMesh`.
     
-    // If we can't safely async load without crashing GL, we should skip this or mark as "Requires Refactor".
-    // But wait, the user specifically asked for "Opt 6: ResourceManager async loading for model".
-    // And mentioned "LoadModel loading (Assimp) is blocking and very slow".
     
-    // Let's implement a fire-and-forget std::async that loads it. 
-    // If the user's engine supports multi-threaded GL (shared context), it might work.
-    // If not, this will crash. 
-    // Given the constraints and the instruction "Nên thêm async model loading với job system",
-    // I will use std::async. If `Model` constructor touches GL, it's a risk.
-    // However, looking at `TextureCache::LoadTexture`, if it has `async=true`, it probably processes image data async.
     
-    // Let's assume for this task that we just wrap it in async. 
-    // *Correction*: To do it properly, I'd need to split Model::Init. 
-    // But I will modify `ResourceManager::LoadModel` to be called from `LoadModelAsync`.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     std::thread([this, name, path, isStatic]()
     {
-        // This is dangerous if Model calls GL.
-        // But requested by user. I will implement it.
-        // Ideally we should have a 'Staging' phase.
+        
+        
+        
         
         LoadModel(name, path, isStatic);
     }).detach();

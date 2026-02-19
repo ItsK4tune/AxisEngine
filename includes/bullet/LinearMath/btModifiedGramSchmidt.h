@@ -1,9 +1,9 @@
-//
-//  btModifiedGramSchmidt.h
-//  LinearMath
-//
-//  Created by Xuchen Han on 4/4/20.
-//
+
+
+
+
+
+
 
 #ifndef btModifiedGramSchmidt_h
 #define btModifiedGramSchmidt_h
@@ -29,17 +29,17 @@ public:
         m_out.resize(m_in.size());
         for (int i = 0; i < m_in.size(); ++i)
         {
-//            printf("========= starting %d ==========\n", i);
+
             TV v(m_in[i]);
-//            v.print();
+
             for (int j = 0; j < i; ++j)
             {
                 v = v - v.proj(m_out[j]);
-//                v.print();
+
             }
             v.normalize();
             m_out[i] = v;
-//            v.print();
+
         }
     }
     
@@ -63,7 +63,7 @@ public:
             {
                 if (i == j)
                 {
-                    if (std::abs(1.0-m_out[i].dot(m_out[j])) > eps)// && std::abs(m_out[i].dot(m_out[j])) > eps)
+                    if (std::abs(1.0-m_out[i].dot(m_out[j])) > eps)
                     {
                         printf("vec[%d] is not unit, norm squared = %f\n", i,m_out[i].dot(m_out[j]));
                     }
@@ -80,4 +80,4 @@ public:
     }
 };
 template class btModifiedGramSchmidt<btReducedVector>;
-#endif /* btModifiedGramSchmidt_h */
+#endif 

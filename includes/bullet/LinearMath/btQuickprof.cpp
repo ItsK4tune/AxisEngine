@@ -1,17 +1,7 @@
-/*
 
-***************************************************************************************************
-**
-** profile.cpp
-**
-** Real-Time Hierarchical Profiling for Game Programming Gems 3
-**
-** by Greg Hjelstrom & Byon Garrabrant
-**
-***************************************************************************************************/
 
-// Credits: The Clock class was inspired by the Timer classes in
-// Ogre (www.ogre3d.org).
+
+
 
 #include "btQuickprof.h"
 #include "btThreads.h"
@@ -40,26 +30,26 @@
 
 #ifdef _XBOX
 #include <Xtl.h>
-#else  //_XBOX
+#else  
 #include <windows.h>
 
 #if WINVER < 0x0602
 #define GetTickCount64 GetTickCount
 #endif
 
-#endif  //_XBOX
+#endif  
 
 #include <time.h>
 
-#else  //_WIN32
+#else  
 #include <sys/time.h>
 
 #ifdef BT_LINUX_REALTIME
-//required linking against rt (librt)
-#include <time.h>
-#endif  //BT_LINUX_REALTIME
 
-#endif  //_WIN32
+#include <time.h>
+#endif  
+
+#endif  
 
 #define mymin(a, b) (a > b ? a : b)
 
@@ -78,10 +68,10 @@ struct btClockData
 #endif
 	struct timeval mStartTime;
 #endif
-#endif  //__CELLOS_LV2__
+#endif  
 };
 
-///The btClock is a portable basic clock that measures accurate time in seconds, use for profiling.
+
 btClock::btClock()
 {
 	m_data = new btClockData;
@@ -108,7 +98,7 @@ btClock& btClock::operator=(const btClock& other)
 	return *this;
 }
 
-/// Resets the initial reference time.
+
 void btClock::reset()
 {
 #ifdef BT_USE_WINDOWS_TIMERS
@@ -119,7 +109,7 @@ void btClock::reset()
 
 	typedef uint64_t ClockSize;
 	ClockSize newTime;
-	//__asm __volatile__( "mftb %0" : "=r" (newTime) : : "memory");
+	
 	SYS_TIMEBASE_GET(newTime);
 	m_data->mStartTime = newTime;
 #else
@@ -131,8 +121,8 @@ void btClock::reset()
 #endif
 }
 
-/// Returns the time in ms since the last call to reset or since
-/// the btClock was created.
+
+
 unsigned long long int btClock::getTimeMilliseconds()
 {
 #ifdef BT_USE_WINDOWS_TIMERS
@@ -140,7 +130,7 @@ unsigned long long int btClock::getTimeMilliseconds()
 	QueryPerformanceCounter(&currentTime);
 	LONGLONG elapsedTime = currentTime.QuadPart -
 						   m_data->mStartTime.QuadPart;
-	// Compute the number of millisecond ticks elapsed.
+	
 	unsigned long msecTicks = (unsigned long)(1000 * elapsedTime /
 											  m_data->mClockFrequency.QuadPart);
 
@@ -153,7 +143,7 @@ unsigned long long int btClock::getTimeMilliseconds()
 	typedef uint64_t ClockSize;
 	ClockSize newTime;
 	SYS_TIMEBASE_GET(newTime);
-	//__asm __volatile__( "mftb %0" : "=r" (newTime) : : "memory");
+	
 
 	return (unsigned long int)((double(newTime - m_data->mStartTime)) / dFreq);
 #else
@@ -162,16 +152,16 @@ unsigned long long int btClock::getTimeMilliseconds()
 	gettimeofday(&currentTime, 0);
 	return (currentTime.tv_sec - m_data->mStartTime.tv_sec) * 1000 +
 		   (currentTime.tv_usec - m_data->mStartTime.tv_usec) / 1000;
-#endif  //__CELLOS_LV2__
+#endif  
 #endif
 }
 
-/// Returns the time in us since the last call to reset or since
-/// the Clock was created.
+
+
 unsigned long long int btClock::getTimeMicroseconds()
 {
 #ifdef BT_USE_WINDOWS_TIMERS
-	//see https://msdn.microsoft.com/en-us/library/windows/desktop/dn553408(v=vs.85).aspx
+	
 	LARGE_INTEGER currentTime, elapsedTime;
 
 	QueryPerformanceCounter(&currentTime);
@@ -188,7 +178,7 @@ unsigned long long int btClock::getTimeMicroseconds()
 	double dFreq = ((double)freq) / 1000000.0;
 	typedef uint64_t ClockSize;
 	ClockSize newTime;
-	//__asm __volatile__( "mftb %0" : "=r" (newTime) : : "memory");
+	
 	SYS_TIMEBASE_GET(newTime);
 
 	return (unsigned long int)((double(newTime - m_data->mStartTime)) / dFreq);
@@ -198,14 +188,14 @@ unsigned long long int btClock::getTimeMicroseconds()
 	gettimeofday(&currentTime, 0);
 	return (currentTime.tv_sec - m_data->mStartTime.tv_sec) * 1000000 +
 		   (currentTime.tv_usec - m_data->mStartTime.tv_usec);
-#endif  //__CELLOS_LV2__
+#endif  
 #endif
 }
 
 unsigned long long int btClock::getTimeNanoseconds()
 {
 #ifdef BT_USE_WINDOWS_TIMERS
-	//see https://msdn.microsoft.com/en-us/library/windows/desktop/dn553408(v=vs.85).aspx
+	
 	LARGE_INTEGER currentTime, elapsedTime;
 
 	QueryPerformanceCounter(&currentTime);
@@ -222,7 +212,7 @@ unsigned long long int btClock::getTimeNanoseconds()
 	double dFreq = ((double)freq) / 1e9;
 	typedef uint64_t ClockSize;
 	ClockSize newTime;
-	//__asm __volatile__( "mftb %0" : "=r" (newTime) : : "memory");
+	
 	SYS_TIMEBASE_GET(newTime);
 
 	return (unsigned long int)((double(newTime - m_data->mStartTime)) / dFreq);
@@ -232,7 +222,7 @@ unsigned long long int btClock::getTimeNanoseconds()
 	static long double conversion = 0.0L;
 	if (0.0L == conversion)
 	{
-		// attempt to get conversion to nanoseconds
+		
 		mach_timebase_info_data_t info;
 		int err = mach_timebase_info(&info);
 		if (err)
@@ -244,7 +234,7 @@ unsigned long long int btClock::getTimeNanoseconds()
 	}
 	return (ticks * conversion);
 
-#else  //__APPLE__
+#else  
 
 #ifdef BT_LINUX_REALTIME
 	timespec ts;
@@ -255,15 +245,15 @@ unsigned long long int btClock::getTimeNanoseconds()
 	gettimeofday(&currentTime, 0);
 	return (currentTime.tv_sec - m_data->mStartTime.tv_sec) * 1e9 +
 		   (currentTime.tv_usec - m_data->mStartTime.tv_usec) * 1000;
-#endif  //BT_LINUX_REALTIME
+#endif  
 
-#endif  //__APPLE__
-#endif  //__CELLOS_LV2__
+#endif  
+#endif  
 #endif
 }
 
-/// Returns the time in s since the last call to reset or since
-/// the Clock was created.
+
+
 btScalar btClock::getTimeSeconds()
 {
 	static const btScalar microseconds_to_seconds = btScalar(0.000001);
@@ -281,25 +271,13 @@ inline void Profile_Get_Ticks(unsigned long int* ticks)
 
 inline float Profile_Get_Tick_Rate(void)
 {
-	//	return 1000000.f;
+	
 	return 1000.f;
 }
 
-/***************************************************************************************************
-**
-** CProfileNode
-**
-***************************************************************************************************/
 
-/***********************************************************************************************
- * INPUT:                                                                                      *
- * name - pointer to a static string which is the name of this profile node                    *
- * parent - parent pointer                                                                     *
- *                                                                                             *
- * WARNINGS:                                                                                   *
- * The name is assumed to be a static pointer, only the pointer is stored and compared for     *
- * efficiency reasons.                                                                         *
- *=============================================================================================*/
+
+
 CProfileNode::CProfileNode(const char* name, CProfileNode* parent) : Name(name),
 																	 TotalCalls(0),
 																	 TotalTime(0),
@@ -326,17 +304,10 @@ CProfileNode::~CProfileNode(void)
 	CleanupMemory();
 }
 
-/***********************************************************************************************
- * INPUT:                                                                                      *
- * name - static string pointer to the name of the node we are searching for                   *
- *                                                                                             *
- * WARNINGS:                                                                                   *
- * All profile names are assumed to be static strings so this function uses pointer compares   *
- * to find the named node.                                                                     *
- *=============================================================================================*/
+
 CProfileNode* CProfileNode::Get_Sub_Node(const char* name)
 {
-	// Try to find this sub node
+	
 	CProfileNode* child = Child;
 	while (child)
 	{
@@ -347,7 +318,7 @@ CProfileNode* CProfileNode::Get_Sub_Node(const char* name)
 		child = child->Sibling;
 	}
 
-	// We didn't find it, so add it
+	
 
 	CProfileNode* node = new CProfileNode(name, this);
 	node->Sibling = Child;
@@ -392,11 +363,7 @@ bool CProfileNode::Return(void)
 	return (RecursionCounter == 0);
 }
 
-/***************************************************************************************************
-**
-** CProfileIterator
-**
-***************************************************************************************************/
+
 CProfileIterator::CProfileIterator(CProfileNode* start)
 {
 	CurrentParent = start;
@@ -443,11 +410,7 @@ void CProfileIterator::Enter_Parent(void)
 	CurrentChild = CurrentParent->Get_Child();
 }
 
-/***************************************************************************************************
-**
-** CProfileManager
-**
-***************************************************************************************************/
+
 
 CProfileNode gRoots[BT_QUICKPROF_MAX_THREAD_COUNT] = {
 	CProfileNode("Root", NULL), CProfileNode("Root", NULL), CProfileNode("Root", NULL), CProfileNode("Root", NULL),
@@ -555,19 +518,7 @@ void CProfileManager::CleanupMemory(void)
 	}
 }
 
-/***********************************************************************************************
- * CProfileManager::Start_Profile -- Begin a named profile                                    *
- *                                                                                             *
- * Steps one level deeper into the tree, if a child already exists with the specified name     *
- * then it accumulates the profiling; otherwise a new child node is added to the profile tree. *
- *                                                                                             *
- * INPUT:                                                                                      *
- * name - name of this profiling record                                                        *
- *                                                                                             *
- * WARNINGS:                                                                                   *
- * The string used is assumed to be a static string; pointer compares are used throughout      *
- * the profiling code for efficiency.                                                          *
- *=============================================================================================*/
+
 void CProfileManager::Start_Profile(const char* name)
 {
 	int threadIndex = btQuickprofGetCurrentThreadIndex2();
@@ -582,28 +533,22 @@ void CProfileManager::Start_Profile(const char* name)
 	gCurrentNodes[threadIndex]->Call();
 }
 
-/***********************************************************************************************
- * CProfileManager::Stop_Profile -- Stop timing and record the results.                       *
- *=============================================================================================*/
+
 void CProfileManager::Stop_Profile(void)
 {
 	int threadIndex = btQuickprofGetCurrentThreadIndex2();
 	if ((threadIndex < 0) || threadIndex >= BT_QUICKPROF_MAX_THREAD_COUNT)
 		return;
 
-	// Return will indicate whether we should back up to our parent (we may
-	// be profiling a recursive function)
+	
+	
 	if (gCurrentNodes[threadIndex]->Return())
 	{
 		gCurrentNodes[threadIndex] = gCurrentNodes[threadIndex]->Get_Parent();
 	}
 }
 
-/***********************************************************************************************
- * CProfileManager::Reset -- Reset the contents of the profiling system                       *
- *                                                                                             *
- *    This resets everything except for the tree structure.  All of the timing data is reset.  *
- *=============================================================================================*/
+
 void CProfileManager::Reset(void)
 {
 	gProfileClock.reset();
@@ -616,17 +561,13 @@ void CProfileManager::Reset(void)
 	Profile_Get_Ticks(&ResetTime);
 }
 
-/***********************************************************************************************
- * CProfileManager::Increment_Frame_Counter -- Increment the frame counter                    *
- *=============================================================================================*/
+
 void CProfileManager::Increment_Frame_Counter(void)
 {
 	FrameCounter++;
 }
 
-/***********************************************************************************************
- * CProfileManager::Get_Time_Since_Reset -- returns the elapsed time since last reset         *
- *=============================================================================================*/
+
 float CProfileManager::Get_Time_Since_Reset(void)
 {
 	unsigned long int time;
@@ -666,12 +607,12 @@ void CProfileManager::dumpRecursive(CProfileIterator* profileIterator, int spaci
 		}
 		printf("%d -- %s (%.2f %%) :: %.3f ms / frame (%d calls)\n", i, profileIterator->Get_Current_Name(), fraction, (current_total_time / (double)frames_since_reset), profileIterator->Get_Current_Total_Calls());
 		totalTime += current_total_time;
-		//recurse into children
+		
 	}
 
 	if (parent_time < accumulated_time)
 	{
-		//printf("what's wrong\n");
+		
 	}
 	for (i = 0; i < spacing; i++) printf(".");
 	printf("%s (%.3f %%) :: %.3f ms\n", "Unaccounted:", parent_time > SIMD_EPSILON ? ((parent_time - accumulated_time) / parent_time) * 100 : 0.f, parent_time - accumulated_time);
@@ -709,34 +650,34 @@ void btEnterProfileZoneDefault(const char* name)
 void btLeaveProfileZoneDefault()
 {
 }
-#endif  //BT_NO_PROFILE
+#endif  
 
 
-// clang-format off
+
 #if defined(_WIN32) && (defined(__MINGW32__) || defined(__MINGW64__))
   #define BT_HAVE_TLS 1
 #elif __APPLE__ && !TARGET_OS_IPHONE
-  // TODO: Modern versions of iOS support TLS now with updated version checking.
+  
   #define BT_HAVE_TLS 1
 #elif __linux__
   #define BT_HAVE_TLS 1
 #elif defined(__FreeBSD__) || defined(__NetBSD__)
-  // TODO: At the moment disabling purposely OpenBSD, albeit tls support exists but not fully functioning
+  
   #define BT_HAVE_TLS 1
 #endif
 
-// __thread is broken on Andorid clang until r12b. See
-// https://github.com/android-ndk/ndk/issues/8
+
+
 #if defined(__ANDROID__) && defined(__clang__)
   #if __has_include(<android/ndk-version.h>)
     #include <android/ndk-version.h>
-  #endif  // __has_include(<android/ndk-version.h>)
+  #endif  
   #if defined(__NDK_MAJOR__) && \
     ((__NDK_MAJOR__ < 12) || ((__NDK_MAJOR__ == 12) && (__NDK_MINOR__ < 1)))
     #undef BT_HAVE_TLS
   #endif
-#endif  // defined(__ANDROID__) && defined(__clang__)
-// clang-format on
+#endif  
+
 
 unsigned int btQuickprofGetCurrentThreadIndex2()
 {
@@ -761,7 +702,7 @@ unsigned int btQuickprofGetCurrentThreadIndex2()
 		sThreadIndex = gThreadCounter++;
 	}
 	return sThreadIndex;
-#endif  //BT_THREADSAFE
+#endif  
 }
 
 static btEnterProfileZoneFunc* bts_enterFunc = btEnterProfileZoneDefault;

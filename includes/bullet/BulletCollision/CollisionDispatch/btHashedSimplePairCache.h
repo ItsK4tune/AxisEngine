@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_HASHED_SIMPLE_PAIR_CACHE_H
 #define BT_HASHED_SIMPLE_PAIR_CACHE_H
@@ -44,7 +31,7 @@ extern int gOverlappingSimplePairs;
 extern int gRemoveSimplePairs;
 extern int gAddedSimplePairs;
 extern int gFindSimplePairs;
-#endif  //BT_DEBUG_COLLISION_PAIRS
+#endif  
 
 class btHashedSimplePairCache
 {
@@ -62,8 +49,8 @@ public:
 
 	virtual void* removeOverlappingPair(int indexA, int indexB);
 
-	// Add a pair and return the new pair. If the pair already exists,
-	// no new pair is created and the old one is returned.
+	
+	
 	virtual btSimplePair* addOverlappingPair(int indexA, int indexB)
 	{
 #ifdef BT_DEBUG_COLLISION_PAIRS
@@ -115,7 +102,7 @@ private:
 	SIMD_FORCE_INLINE unsigned int getHash(unsigned int indexA, unsigned int indexB)
 	{
 		unsigned int key = indexA | (indexB << 16);
-		// Thomas Wang's hash
+		
 
 		key += ~(key << 15);
 		key ^= (key >> 10);
@@ -146,4 +133,4 @@ private:
 	}
 };
 
-#endif  //BT_HASHED_SIMPLE_PAIR_CACHE_H
+#endif  

@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btBoxBoxCollisionAlgorithm.h"
 #include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
@@ -50,11 +37,11 @@ void btBoxBoxCollisionAlgorithm::processCollision(const btCollisionObjectWrapper
 	const btBoxShape* box0 = (btBoxShape*)body0Wrap->getCollisionShape();
 	const btBoxShape* box1 = (btBoxShape*)body1Wrap->getCollisionShape();
 
-	/// report a contact. internally this will be kept persistent, and contact reduction is done
+	
 	resultOut->setPersistentManifold(m_manifoldPtr);
 #ifndef USE_PERSISTENT_CONTACTS
 	m_manifoldPtr->clearManifold();
-#endif  //USE_PERSISTENT_CONTACTS
+#endif  
 
 	btDiscreteCollisionDetectorInterface::ClosestPointInput input;
 	input.m_maximumDistanceSquared = BT_LARGE_FLOAT;
@@ -65,16 +52,16 @@ void btBoxBoxCollisionAlgorithm::processCollision(const btCollisionObjectWrapper
 	detector.getClosestPoints(input, *resultOut, dispatchInfo.m_debugDraw);
 
 #ifdef USE_PERSISTENT_CONTACTS
-	//  refreshContactPoints is only necessary when using persistent contact points. otherwise all points are newly added
+	
 	if (m_ownManifold)
 	{
 		resultOut->refreshContactPoints();
 	}
-#endif  //USE_PERSISTENT_CONTACTS
+#endif  
 }
 
-btScalar btBoxBoxCollisionAlgorithm::calculateTimeOfImpact(btCollisionObject* /*body0*/, btCollisionObject* /*body1*/, const btDispatcherInfo& /*dispatchInfo*/, btManifoldResult* /*resultOut*/)
+btScalar btBoxBoxCollisionAlgorithm::calculateTimeOfImpact(btCollisionObject* , btCollisionObject* , const btDispatcherInfo& , btManifoldResult* )
 {
-	//not yet
+	
 	return 1.f;
 }

@@ -6,7 +6,7 @@
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
 
-// OpenGL constants
+
 
 
 IBufferManager* ParticleEmitter::s_BufferManager = nullptr;
@@ -49,8 +49,8 @@ IDrawContext& ParticleEmitter::GetDrawContext()
 
 ParticleEmitter::ParticleEmitter() : m_VAO(0), m_VBO(0), m_instanceVBO(0)
 {
-    // Seed random?
-    // std::srand(static_cast<unsigned int>(std::time(0)));
+    
+    
 }
 
 ParticleEmitter::~ParticleEmitter()

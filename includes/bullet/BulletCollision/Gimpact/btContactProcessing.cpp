@@ -1,23 +1,5 @@
 
-/*
-This source file is part of GIMPACT Library.
 
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
-
-
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 #include "btContactProcessing.h"
 
 #define MAX_COINCIDENT 8
@@ -80,17 +62,17 @@ void btContactArray::merge_contacts(
 
 	keycontacts.reserve(contacts.size());
 
-	//fill key contacts
+	
 
 	for (i = 0; i < contacts.size(); i++)
 	{
 		keycontacts.push_back(CONTACT_KEY_TOKEN(contacts[i].calc_key_contact(), i));
 	}
 
-	//sort keys
+	
 	keycontacts.quickSort(CONTACT_KEY_TOKEN_COMP());
 
-	// Merge contacts
+	
 	int coincident_count = 0;
 	btVector3 coincident_normals[MAX_COINCIDENT];
 
@@ -106,10 +88,10 @@ void btContactArray::merge_contacts(
 		key = keycontacts[i].m_key;
 		const GIM_CONTACT* scontact = &contacts[keycontacts[i].m_value];
 
-		if (last_key == key)  //same points
+		if (last_key == key)  
 		{
-			//merge contact
-			if (pcontact->m_depth - CONTACT_DIFF_EPSILON > scontact->m_depth)  //)
+			
+			if (pcontact->m_depth - CONTACT_DIFF_EPSILON > scontact->m_depth)  
 			{
 				*pcontact = *scontact;
 				coincident_count = 0;
@@ -127,7 +109,7 @@ void btContactArray::merge_contacts(
 			}
 		}
 		else
-		{  //add new contact
+		{  
 
 			if (normal_contact_average && coincident_count > 0)
 			{
@@ -162,7 +144,7 @@ void btContactArray::merge_contacts_unique(const btContactArray& contacts)
 		average_contact.m_normal += contacts[i].m_normal * contacts[i].m_depth;
 	}
 
-	//divide
+	
 	btScalar divide_average = 1.0f / ((btScalar)contacts.size());
 
 	average_contact.m_point *= divide_average;

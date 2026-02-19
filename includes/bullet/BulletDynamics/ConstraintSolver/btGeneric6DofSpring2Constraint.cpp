@@ -1,41 +1,11 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-/*
-2014 May: btGeneric6DofSpring2Constraint is created from the original (2.82.2712) btGeneric6DofConstraint by Gabor Puhr and Tamas Umenhoffer
-Pros:
-- Much more accurate and stable in a lot of situation. (Especially when a sleeping chain of RBs connected with 6dof2 is pulled)
-- Stable and accurate spring with minimal energy loss that works with all of the solvers. (latter is not true for the original 6dof spring)
-- Servo motor functionality
-- Much more accurate bouncing. 0 really means zero bouncing (not true for the original 6odf) and there is only a minimal energy loss when the value is 1 (because of the solvers' precision)
-- Rotation order for the Euler system can be set. (One axis' freedom is still limited to pi/2)
 
-Cons:
-- It is slower than the original 6dof. There is no exact ratio, but half speed is a good estimation. (with PGS)
-- At bouncing the correct velocity is calculated, but not the correct position. (it is because of the solver can correct position or velocity, but not both.)
-*/
 
-/// 2009 March: btGeneric6DofConstraint refactored by Roman Ponomarev
-/// Added support for generic constraint solver through getInfo1/getInfo2 methods
 
-/*
-2007-09-09
-btGeneric6DofConstraint Refactored by Francisco Le?n
-email: projectileman@yahoo.com
-http://gimpact.sf.net
-*/
+
+
 
 #include "btGeneric6DofSpring2Constraint.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
@@ -52,7 +22,7 @@ btGeneric6DofSpring2Constraint::btGeneric6DofSpring2Constraint(btRigidBody& rbA,
 btGeneric6DofSpring2Constraint::btGeneric6DofSpring2Constraint(btRigidBody& rbB, const btTransform& frameInB, RotateOrder rotOrder)
 	: btTypedConstraint(D6_SPRING_2_CONSTRAINT_TYPE, getFixedBody(), rbB), m_frameInB(frameInB), m_rotateOrder(rotOrder), m_flags(0)
 {
-	///not providing rigidbody A means implicitly using worldspace for body A
+	
 	m_frameInA = rbB.getCenterOfMassTransform() * m_frameInB;
 	calculateTransforms();
 }
@@ -64,13 +34,13 @@ btScalar btGeneric6DofSpring2Constraint::btGetMatrixElem(const btMatrix3x3& mat,
 	return mat[i][j];
 }
 
-// MatrixToEulerXYZ from http://www.geometrictools.com/LibFoundation/Mathematics/Wm4Matrix3.inl.html
+
 
 bool btGeneric6DofSpring2Constraint::matrixToEulerXYZ(const btMatrix3x3& mat, btVector3& xyz)
 {
-	// rot =  cy*cz          -cy*sz           sy
-	//        cz*sx*sy+cx*sz  cx*cz-sx*sy*sz -cy*sx
-	//       -cx*cz*sy+sx*sz  cz*sx+cx*sy*sz  cx*cy
+	
+	
+	
 
 	btScalar fi = btGetMatrixElem(mat, 2);
 	if (fi < btScalar(1.0f))
@@ -84,7 +54,7 @@ bool btGeneric6DofSpring2Constraint::matrixToEulerXYZ(const btMatrix3x3& mat, bt
 		}
 		else
 		{
-			// WARNING.  Not unique.  XA - ZA = -atan2(r10,r11)
+			
 			xyz[0] = -btAtan2(btGetMatrixElem(mat, 3), btGetMatrixElem(mat, 4));
 			xyz[1] = -SIMD_HALF_PI;
 			xyz[2] = btScalar(0.0);
@@ -93,7 +63,7 @@ bool btGeneric6DofSpring2Constraint::matrixToEulerXYZ(const btMatrix3x3& mat, bt
 	}
 	else
 	{
-		// WARNING.  Not unique.  XAngle + ZAngle = atan2(r10,r11)
+		
 		xyz[0] = btAtan2(btGetMatrixElem(mat, 3), btGetMatrixElem(mat, 4));
 		xyz[1] = SIMD_HALF_PI;
 		xyz[2] = 0.0;
@@ -103,9 +73,9 @@ bool btGeneric6DofSpring2Constraint::matrixToEulerXYZ(const btMatrix3x3& mat, bt
 
 bool btGeneric6DofSpring2Constraint::matrixToEulerXZY(const btMatrix3x3& mat, btVector3& xyz)
 {
-	// rot =  cy*cz          -sz           sy*cz
-	//        cy*cx*sz+sx*sy  cx*cz        sy*cx*sz-cy*sx
-	//        cy*sx*sz-cx*sy  sx*cz        sy*sx*sz+cx*cy
+	
+	
+	
 
 	btScalar fi = btGetMatrixElem(mat, 1);
 	if (fi < btScalar(1.0f))
@@ -136,9 +106,9 @@ bool btGeneric6DofSpring2Constraint::matrixToEulerXZY(const btMatrix3x3& mat, bt
 
 bool btGeneric6DofSpring2Constraint::matrixToEulerYXZ(const btMatrix3x3& mat, btVector3& xyz)
 {
-	// rot =  cy*cz+sy*sx*sz  cz*sy*sx-cy*sz  cx*sy
-	//        cx*sz           cx*cz           -sx
-	//        cy*sx*sz-cz*sy  sy*sz+cy*cz*sx  cy*cx
+	
+	
+	
 
 	btScalar fi = btGetMatrixElem(mat, 5);
 	if (fi < btScalar(1.0f))
@@ -169,9 +139,9 @@ bool btGeneric6DofSpring2Constraint::matrixToEulerYXZ(const btMatrix3x3& mat, bt
 
 bool btGeneric6DofSpring2Constraint::matrixToEulerYZX(const btMatrix3x3& mat, btVector3& xyz)
 {
-	// rot =  cy*cz   sy*sx-cy*cx*sz   cx*sy+cy*sz*sx
-	//        sz           cz*cx           -cz*sx
-	//        -cz*sy  cy*sx+cx*sy*sz   cy*cx-sy*sz*sx
+	
+	
+	
 
 	btScalar fi = btGetMatrixElem(mat, 3);
 	if (fi < btScalar(1.0f))
@@ -202,9 +172,9 @@ bool btGeneric6DofSpring2Constraint::matrixToEulerYZX(const btMatrix3x3& mat, bt
 
 bool btGeneric6DofSpring2Constraint::matrixToEulerZXY(const btMatrix3x3& mat, btVector3& xyz)
 {
-	// rot =  cz*cy-sz*sx*sy    -cx*sz   cz*sy+cy*sz*sx
-	//        cy*sz+cz*sx*sy     cz*cx   sz*sy-cz*xy*sx
-	//        -cx*sy              sx     cx*cy
+	
+	
+	
 
 	btScalar fi = btGetMatrixElem(mat, 7);
 	if (fi < btScalar(1.0f))
@@ -235,9 +205,9 @@ bool btGeneric6DofSpring2Constraint::matrixToEulerZXY(const btMatrix3x3& mat, bt
 
 bool btGeneric6DofSpring2Constraint::matrixToEulerZYX(const btMatrix3x3& mat, btVector3& xyz)
 {
-	// rot =  cz*cy   cz*sy*sx-cx*sz   sz*sx+cz*cx*sy
-	//        cy*sz   cz*cx+sz*sy*sx   cx*sz*sy-cz*sx
-	//        -sy          cy*sx         cy*cx
+	
+	
+	
 
 	btScalar fi = btGetMatrixElem(mat, 6);
 	if (fi < btScalar(1.0f))
@@ -292,41 +262,41 @@ void btGeneric6DofSpring2Constraint::calculateAngleInfo()
 		default:
 			btAssert(false);
 	}
-	// in euler angle mode we do not actually constrain the angular velocity
-	// along the axes axis[0] and axis[2] (although we do use axis[1]) :
-	//
-	//    to get			constrain w2-w1 along		...not
-	//    ------			---------------------		------
-	//    d(angle[0])/dt = 0	ax[1] x ax[2]			ax[0]
-	//    d(angle[1])/dt = 0	ax[1]
-	//    d(angle[2])/dt = 0	ax[0] x ax[1]			ax[2]
-	//
-	// constraining w2-w1 along an axis 'a' means that a'*(w2-w1)=0.
-	// to prove the result for angle[0], write the expression for angle[0] from
-	// GetInfo1 then take the derivative. to prove this for angle[2] it is
-	// easier to take the euler rate expression for d(angle[2])/dt with respect
-	// to the components of w and set that to 0.
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	switch (m_rotateOrder)
 	{
 		case RO_XYZ:
 		{
-			//Is this the "line of nodes" calculation choosing planes YZ (B coordinate system) and xy (A coordinate system)? (http://en.wikipedia.org/wiki/Euler_angles)
-			//The two planes are non-homologous, so this is a Tait Bryan angle formalism and not a proper Euler
-			//Extrinsic rotations are equal to the reversed order intrinsic rotations so the above xyz extrinsic rotations (axes are fixed) are the same as the zy'x" intrinsic rotations (axes are refreshed after each rotation)
-			//that is why xy and YZ planes are chosen (this will describe a zy'x" intrinsic rotation) (see the figure on the left at http://en.wikipedia.org/wiki/Euler_angles under Tait Bryan angles)
-			// x' = Nperp = N.cross(axis2)
-			// y' = N = axis2.cross(axis0)
-			// z' = z
-			//
-			// x" = X
-			// y" = y'
-			// z" = ??
-			//in other words:
-			//first rotate around z
-			//second rotate around y'= z.cross(X)
-			//third rotate around x" = X
-			//Original XYZ extrinsic rotation order.
-			//Planes: xy and YZ normals: z, X.  Plane intersection (N) is z.cross(X)
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
 			btVector3 axis0 = m_calculatedTransformB.getBasis().getColumn(0);
 			btVector3 axis2 = m_calculatedTransformA.getBasis().getColumn(2);
 			m_calculatedAxis[1] = axis2.cross(axis0);
@@ -336,10 +306,10 @@ void btGeneric6DofSpring2Constraint::calculateAngleInfo()
 		}
 		case RO_XZY:
 		{
-			//planes: xz,ZY normals: y, X
-			//first rotate around y
-			//second rotate around z'= y.cross(X)
-			//third rotate around x" = X
+			
+			
+			
+			
 			btVector3 axis0 = m_calculatedTransformB.getBasis().getColumn(0);
 			btVector3 axis1 = m_calculatedTransformA.getBasis().getColumn(1);
 			m_calculatedAxis[2] = axis0.cross(axis1);
@@ -349,10 +319,10 @@ void btGeneric6DofSpring2Constraint::calculateAngleInfo()
 		}
 		case RO_YXZ:
 		{
-			//planes: yx,XZ normals: z, Y
-			//first rotate around z
-			//second rotate around x'= z.cross(Y)
-			//third rotate around y" = Y
+			
+			
+			
+			
 			btVector3 axis1 = m_calculatedTransformB.getBasis().getColumn(1);
 			btVector3 axis2 = m_calculatedTransformA.getBasis().getColumn(2);
 			m_calculatedAxis[0] = axis1.cross(axis2);
@@ -362,10 +332,10 @@ void btGeneric6DofSpring2Constraint::calculateAngleInfo()
 		}
 		case RO_YZX:
 		{
-			//planes: yz,ZX normals: x, Y
-			//first rotate around x
-			//second rotate around z'= x.cross(Y)
-			//third rotate around y" = Y
+			
+			
+			
+			
 			btVector3 axis0 = m_calculatedTransformA.getBasis().getColumn(0);
 			btVector3 axis1 = m_calculatedTransformB.getBasis().getColumn(1);
 			m_calculatedAxis[2] = axis0.cross(axis1);
@@ -375,10 +345,10 @@ void btGeneric6DofSpring2Constraint::calculateAngleInfo()
 		}
 		case RO_ZXY:
 		{
-			//planes: zx,XY normals: y, Z
-			//first rotate around y
-			//second rotate around x'= y.cross(Z)
-			//third rotate around z" = Z
+			
+			
+			
+			
 			btVector3 axis1 = m_calculatedTransformA.getBasis().getColumn(1);
 			btVector3 axis2 = m_calculatedTransformB.getBasis().getColumn(2);
 			m_calculatedAxis[0] = axis1.cross(axis2);
@@ -388,10 +358,10 @@ void btGeneric6DofSpring2Constraint::calculateAngleInfo()
 		}
 		case RO_ZYX:
 		{
-			//planes: zy,YX normals: x, Z
-			//first rotate around x
-			//second rotate around y' = x.cross(Z)
-			//third rotate around z" = Z
+			
+			
+			
+			
 			btVector3 axis0 = m_calculatedTransformA.getBasis().getColumn(0);
 			btVector3 axis2 = m_calculatedTransformB.getBasis().getColumn(2);
 			m_calculatedAxis[1] = axis2.cross(axis0);
@@ -445,12 +415,12 @@ void btGeneric6DofSpring2Constraint::testAngularLimitMotor(int axis_index)
 
 void btGeneric6DofSpring2Constraint::getInfo1(btConstraintInfo1* info)
 {
-	//prepare constraint
+	
 	calculateTransforms(m_rbA.getCenterOfMassTransform(), m_rbB.getCenterOfMassTransform());
 	info->m_numConstraintRows = 0;
 	info->nub = 0;
 	int i;
-	//test linear limits
+	
 	for (i = 0; i < 3; i++)
 	{
 		if (m_linearLimits.m_currentLimit[i] == 4)
@@ -460,7 +430,7 @@ void btGeneric6DofSpring2Constraint::getInfo1(btConstraintInfo1* info)
 		if (m_linearLimits.m_enableMotor[i]) info->m_numConstraintRows += 1;
 		if (m_linearLimits.m_enableSpring[i]) info->m_numConstraintRows += 1;
 	}
-	//test angular limits
+	
 	for (i = 0; i < 3; i++)
 	{
 		testAngularLimitMotor(i);
@@ -482,19 +452,19 @@ void btGeneric6DofSpring2Constraint::getInfo2(btConstraintInfo2* info)
 	const btVector3& angVelA = m_rbA.getAngularVelocity();
 	const btVector3& angVelB = m_rbB.getAngularVelocity();
 
-	// for stability better to solve angular limits first
+	
 	int row = setAngularLimits(info, 0, transA, transB, linVelA, linVelB, angVelA, angVelB);
 	setLinearLimits(info, row, transA, transB, linVelA, linVelB, angVelA, angVelB);
 }
 
 int btGeneric6DofSpring2Constraint::setLinearLimits(btConstraintInfo2* info, int row, const btTransform& transA, const btTransform& transB, const btVector3& linVelA, const btVector3& linVelB, const btVector3& angVelA, const btVector3& angVelB)
 {
-	//solve linear limits
+	
 	btRotationalLimitMotor2 limot;
 	for (int i = 0; i < 3; i++)
 	{
 		if (m_linearLimits.m_currentLimit[i] || m_linearLimits.m_enableMotor[i] || m_linearLimits.m_enableSpring[i])
-		{  // re-use rotational motor code
+		{  
 			limot.m_bounce = m_linearLimits.m_bounce[i];
 			limot.m_currentLimit = m_linearLimits.m_currentLimit[i];
 			limot.m_currentPosition = m_linearLimits.m_currentLinearDiff[i];
@@ -520,10 +490,10 @@ int btGeneric6DofSpring2Constraint::setLinearLimits(btConstraintInfo2* info, int
 			limot.m_motorCFM = (flags & BT_6DOF_FLAGS_CFM_MOTO2) ? m_linearLimits.m_motorCFM[i] : info->cfm[0];
 			limot.m_motorERP = (flags & BT_6DOF_FLAGS_ERP_MOTO2) ? m_linearLimits.m_motorERP[i] : info->erp;
 
-			//rotAllowed is a bit of a magic from the original 6dof. The calculation of it here is something that imitates the original behavior as much as possible.
+			
 			int indx1 = (i + 1) % 3;
 			int indx2 = (i + 2) % 3;
-			int rotAllowed = 1;  // rotations around orthos to current axis (it is used only when one of the body is static)
+			int rotAllowed = 1;  
 #define D6_LIMIT_ERROR_THRESHOLD_FOR_ROTATION 1.0e-3
 			bool indx1Violated = m_angularLimits[indx1].m_currentLimit == 1 ||
 								 m_angularLimits[indx1].m_currentLimit == 2 ||
@@ -547,7 +517,7 @@ int btGeneric6DofSpring2Constraint::setAngularLimits(btConstraintInfo2* info, in
 {
 	int row = row_offset;
 
-	//order of rotational constraint rows
+	
 	int cIdx[] = {0, 1, 2};
 	switch (m_rotateOrder)
 	{
@@ -650,9 +620,9 @@ void btGeneric6DofSpring2Constraint::calculateJacobi(btRotationalLimitMotor2* li
 	if (!rotational)
 	{
 		btVector3 tmpA, tmpB, relA, relB;
-		// get vector from bodyB to frameB in WCS
+		
 		relB = m_calculatedTransformB.getOrigin() - transB.getOrigin();
-		// same for bodyA
+		
 		relA = m_calculatedTransformA.getOrigin() - transA.getOrigin();
 		tmpA = relA.cross(ax1);
 		tmpB = relB.cross(ax1);
@@ -810,13 +780,13 @@ int btGeneric6DofSpring2Constraint::get_limit_motor_info2(
 		btScalar error = limot->m_currentPosition - limot->m_equilibriumPoint;
 		calculateJacobi(limot, transA, transB, info, srow, ax1, rotational, rotAllowed);
 
-		//btScalar cfm = 1.0 / ((1.0/info->fps)*limot->m_springStiffness+ limot->m_springDamping);
-		//if(cfm > 0.99999)
-		//	cfm = 0.99999;
-		//btScalar erp = (1.0/info->fps)*limot->m_springStiffness / ((1.0/info->fps)*limot->m_springStiffness + limot->m_springDamping);
-		//info->m_constraintError[srow] = info->fps * erp * error * (rotational ? -1.0 : 1.0);
-		//info->m_lowerLimit[srow] = -SIMD_INFINITY;
-		//info->m_upperLimit[srow] = SIMD_INFINITY;
+		
+		
+		
+		
+		
+		
+		
 
 		btScalar dt = BT_ONE / info->fps;
 		btScalar kd = limot->m_springDamping;
@@ -848,12 +818,12 @@ int btGeneric6DofSpring2Constraint::get_limit_motor_info2(
 			m = mA*mB / (mA + mB);
 		btScalar angularfreq = btSqrt(ks / m);
 
-		//limit stiffness (the spring should not be sampled faster that the quarter of its angular frequency)
+		
 		if (limot->m_springStiffnessLimited && 0.25 < angularfreq * dt)
 		{
 			ks = BT_ONE / dt / dt / btScalar(16.0) * m;
 		}
-		//avoid damping that would blow up the spring
+		
 		if (limot->m_springDampingLimited && kd * dt > m)
 		{
 			kd = m / dt;
@@ -862,20 +832,20 @@ int btGeneric6DofSpring2Constraint::get_limit_motor_info2(
 		btScalar fd = -kd * (vel) * (rotational ? -1 : 1) * dt;
 		btScalar f = (fs + fd);
 
-		// after the spring force affecting the body(es) the new velocity will be
-		// vel + f / m * (rotational ? -1 : 1)
-		// so in theory this should be set here for m_constraintError
-		// (with m_constraintError we set a desired velocity for the affected body(es))
-		// however in practice any value is fine as long as it is greater than the "proper" velocity,
-		// because the m_lowerLimit and the m_upperLimit will determinate the strength of the final pulling force
-		// so it is much simpler (and more robust) just to simply use inf (with the proper sign)
-		// (Even with our best intent the "new" velocity is only an estimation. If we underestimate
-		// the "proper" velocity that will weaken the spring, however if we overestimate it, it doesn't
-		// matter, because the solver will limit it according the force limit)
-		// you may also wonder what if the current velocity (vel) so high that the pulling force will not change its direction (in this iteration)
-		// will we not request a velocity with the wrong direction ?
-		// and the answer is not, because in practice during the solving the current velocity is subtracted from the m_constraintError
-		// so the sign of the force that is really matters
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		if (m_flags & BT_6DOF_FLAGS_USE_INFINITE_ERROR)
 			info->m_constraintError[srow] = (rotational ? -1 : 1) * (f < 0 ? -SIMD_INFINITY : SIMD_INFINITY);
 		else
@@ -902,8 +872,8 @@ int btGeneric6DofSpring2Constraint::get_limit_motor_info2(
 	return count;
 }
 
-//override the default global value of a parameter (such as ERP or CFM), optionally provide the axis (0..5).
-//If no axis is provided, it uses the default axis for this constraint.
+
+
 void btGeneric6DofSpring2Constraint::setParam(int num, btScalar value, int axis)
 {
 	if ((axis >= 0) && (axis < 3))
@@ -960,7 +930,7 @@ void btGeneric6DofSpring2Constraint::setParam(int num, btScalar value, int axis)
 	}
 }
 
-//return the local value of parameter
+
 btScalar btGeneric6DofSpring2Constraint::getParam(int num, int axis) const
 {
 	btScalar retVal = 0;
@@ -1023,7 +993,7 @@ void btGeneric6DofSpring2Constraint::setAxis(const btVector3& axis1, const btVec
 {
 	btVector3 zAxis = axis1.normalized();
 	btVector3 yAxis = axis2.normalized();
-	btVector3 xAxis = yAxis.cross(zAxis);  // we want right coordinate system
+	btVector3 xAxis = yAxis.cross(zAxis);  
 
 	btTransform frameInW;
 	frameInW.setIdentity();
@@ -1031,7 +1001,7 @@ void btGeneric6DofSpring2Constraint::setAxis(const btVector3& axis1, const btVec
 								 xAxis[1], yAxis[1], zAxis[1],
 								 xAxis[2], yAxis[2], zAxis[2]);
 
-	// now get constraint frame in local coordinate systems
+	
 	m_frameInA = m_rbA.getCenterOfMassTransform().inverse() * frameInW;
 	m_frameInB = m_rbB.getCenterOfMassTransform().inverse() * frameInW;
 
@@ -1083,14 +1053,14 @@ void btGeneric6DofSpring2Constraint::setServoTarget(int index, btScalar targetOr
 	}
 	else
 	{
-		//wrap between -PI and PI, see also
-		//https://stackoverflow.com/questions/4633177/c-how-to-wrap-a-float-to-the-interval-pi-pi
+		
+		
 
 		btScalar target = targetOrg + SIMD_PI;
 		if (1)
 		{
 			btScalar m = target - SIMD_2_PI * std::floor(target / SIMD_2_PI);
-			// handle boundary cases resulted from floating-point cut off:
+			
 			{
 				if (m >= SIMD_2_PI)
 				{
@@ -1195,11 +1165,11 @@ void btGeneric6DofSpring2Constraint::setEquilibriumPoint(int index, btScalar val
 		m_angularLimits[index - 3].m_equilibriumPoint = val;
 }
 
-//////////////////////////// btRotationalLimitMotor2 ////////////////////////////////////
+
 
 void btRotationalLimitMotor2::testLimitValue(btScalar test_value)
 {
-	//we can't normalize the angles here because we would lost the sign that we use later, but it doesn't seem to be a problem
+	
 	if (m_loLimit > m_hiLimit)
 	{
 		m_currentLimit = 0;
@@ -1218,7 +1188,7 @@ void btRotationalLimitMotor2::testLimitValue(btScalar test_value)
 	}
 }
 
-//////////////////////////// btTranslationalLimitMotor2 ////////////////////////////////////
+
 
 void btTranslationalLimitMotor2::testLimitValue(int limitIndex, btScalar test_value)
 {

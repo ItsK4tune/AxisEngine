@@ -1,43 +1,4 @@
-/*
-Open Asset Import Library (assimp)
-----------------------------------------------------------------------
 
-Copyright (c) 2006-2025, assimp team
-
-All rights reserved.
-
-Redistribution and use of this software in source and binary forms,
-with or without modification, are permitted provided that the
-following conditions are met:
-
-* Redistributions of source code must retain the above
-copyright notice, this list of conditions and the
-following disclaimer.
-
-* Redistributions in binary form must reproduce the above
-copyright notice, this list of conditions and the
-following disclaimer in the documentation and/or other
-materials provided with the distribution.
-
-* Neither the name of the assimp team, nor the names of its
-contributors may be used to endorse or promote products
-derived from this software without specific prior
-written permission of the assimp team.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-----------------------------------------------------------------------
-*/
 
 #ifndef INCLUDED_AI_IRRXML_WRAPPER
 #define INCLUDED_AI_IRRXML_WRAPPER
@@ -56,16 +17,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Assimp {
 
-/// @brief  Will find a node by its name.
+
 struct find_node_by_name_predicate {
-    /// @brief The default constructor.
+    
     find_node_by_name_predicate() = default;
 
 
-    std::string mName; ///< The name to find.
+    std::string mName; 
     find_node_by_name_predicate(const std::string &name) :
             mName(name) {
-        // empty
+        
     }
 
     bool operator()(pugi::xml_node node) const {
@@ -73,8 +34,8 @@ struct find_node_by_name_predicate {
     }
 };
 
-/// @brief  Will convert an attribute to its int value.
-/// @tparam[in] TNodeType  The node type.
+
+
 template <class TNodeType>
 struct NodeConverter {
 public:
@@ -87,158 +48,158 @@ public:
 using XmlNode = pugi::xml_node;
 using XmlAttribute = pugi::xml_attribute;
 
-/// @brief The Xml-Parser class.
-///
-/// Use this parser if you have to import any kind of xml-format.
-///
-/// An example:
-/// @code
-/// TXmlParser<XmlNode> theParser;
-/// if (theParser.parse(fileStream)) {
-///     auto node = theParser.getRootNode();
-///     for ( auto currentNode : node.children()) {
-///         // Will loop over all children
-///     }
-/// }
-/// @endcode
-/// @tparam TNodeType
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 template <class TNodeType>
 class TXmlParser {
 public:
-    /// @brief The default class constructor.
+    
     TXmlParser();
 
-    ///	@brief  The class destructor.
+    
     ~TXmlParser();
 
-    ///	@brief  Will clear the parsed xml-file.
+    
     void clear();
 
-    ///	@brief  Will search for a child-node by its name
-    /// @param[in] name     The name of the child-node.
-    /// @return The node instance or nullptr, if nothing was found.
+    
+    
+    
     TNodeType *findNode(const std::string &name);
 
-    /// @brief  Will return true, if the node is a child-node.
-    /// @param[in]  name    The name of the child node to look for.
-    /// @return true, if the node is a child-node or false if not.
+    
+    
+    
     bool hasNode(const std::string &name);
 
-    /// @brief  Will parse an xml-file from a given stream.
-    /// @param[in] stream      The input stream.
-    /// @return true, if the parsing was successful, false if not.
+    
+    
+    
     bool parse(IOStream *stream);
 
-    /// @brief  Will parse an xml-file from a stringstream.
-    /// @param[in] str      The input istream (note: not "const" to match pugixml param)
-    /// @return true, if the parsing was successful, false if not.
+    
+    
+    
     bool parse(std::istream &inStream);
 
-    /// @brief  Will return true if a root node is there.
-    /// @return true in case of an existing root.
+    
+    
     bool hasRoot() const;
 
-    /// @brief  Will return the document pointer, is nullptr if no xml-file was parsed.
-    /// @return The pointer showing to the document.
+    
+    
     pugi::xml_document *getDocument() const;
 
-    /// @brief  Will return the root node, const version.
-    /// @return The root node.
+    
+    
     const TNodeType getRootNode() const;
 
-    /// @brief  Will return the root node, non-const version.
-    /// @return The root node.
+    
+    
     TNodeType getRootNode();
 
-    /// @brief Will check if a node with the given name is in.
-    /// @param[in] node     The node to look in.
-    /// @param[in] name     The name of the child-node.
-    /// @return true, if node was found, false if not.
+    
+    
+    
+    
     static inline bool hasNode(XmlNode &node, const char *name);
 
-    /// @brief Will check if an attribute is part of the XmlNode.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @return true, if the was found, false if not.
+    
+    
+    
+    
     static inline bool hasAttribute(XmlNode &xmlNode, const char *name);
 
-    /// @brief Will try to get an unsigned int attribute value.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @param[out] val     The unsigned int value from the attribute.
-    /// @return true, if the node contains an attribute with the given name and if the value is an unsigned int.
+    
+    
+    
+    
+    
     static inline bool getUIntAttribute(XmlNode &xmlNode, const char *name, unsigned int &val);
 
-    /// @brief Will try to get an int attribute value.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @param[out] val     The int value from the attribute.
-    /// @return true, if the node contains an attribute with the given name and if the value is an int.
+    
+    
+    
+    
+    
     static inline bool getIntAttribute(XmlNode &xmlNode, const char *name, int &val);
 
-    /// @brief Will try to get a real attribute value.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @param[out] val     The real value from the attribute.
-    /// @return true, if the node contains an attribute with the given name and if the value is a real.
+    
+    
+    
+    
+    
     static inline bool getRealAttribute(XmlNode &xmlNode, const char *name, ai_real &val);
 
-    /// @brief Will try to get a float attribute value.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @param[out] val     The float value from the attribute.
-    /// @return true, if the node contains an attribute with the given name and if the value is a float.
+    
+    
+    
+    
+    
     static inline bool getFloatAttribute(XmlNode &xmlNode, const char *name, float &val);
 
-    /// @brief Will try to get a double attribute value.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @param[out] val     The double value from the attribute.
-    /// @return true, if the node contains an attribute with the given name and if the value is a double.
+    
+    
+    
+    
+    
     static inline bool getDoubleAttribute(XmlNode &xmlNode, const char *name, double &val);
 
-    /// @brief Will try to get a std::string attribute value.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @param[out] val     The std::string value from the attribute.
-    /// @return true, if the node contains an attribute with the given name and if the value is a std::string.
+    
+    
+    
+    
+    
     static inline bool getStdStrAttribute(XmlNode &xmlNode, const char *name, std::string &val);
 
-    /// @brief Will try to get a bool attribute value.
-    /// @param[in] xmlNode  The node to search in.
-    /// @param[in] name     The attribute name to look for.
-    /// @param[out] val     The bool value from the attribute.
-    /// @return true, if the node contains an attribute with the given name and if the value is a bool.
+    
+    
+    
+    
+    
     static inline bool getBoolAttribute(XmlNode &xmlNode, const char *name, bool &val);
 
-    /// @brief Will try to get the value of the node as a string.
-    /// @param[in] node     The node to search in.
-    /// @param[out] text    The value as a text.
-    /// @return true, if the value can be read out.
+    
+    
+    
+    
     static inline bool getValueAsString(XmlNode &node, std::string &text);
 
-    /// @brief Will try to get the value of the node as a real.
-    /// @param[in]  node   The node to search in.
-    /// @param[out] v      The value as a ai_real.
-    /// @return true, if the value can be read out.
+    
+    
+    
+    
     static inline bool getValueAsReal(XmlNode &node, ai_real &v);
 
-    /// @brief Will try to get the value of the node as a float.
-    /// @param[in] node     The node to search in.
-    /// @param[out]v        The value as a float.
-    /// @return true, if the value can be read out.
+    
+    
+    
+    
     static inline bool getValueAsFloat(XmlNode &node, float &v);
 
-    /// @brief Will try to get the value of the node as an integer.
-    /// @param[in]  node    The node to search in.
-    /// @param[out] i       The value as a int.
-    /// @return true, if the value can be read out.
+    
+    
+    
+    
     static inline bool getValueAsInt(XmlNode &node, int &v);
 
-    /// @brief Will try to get the value of the node as an bool.
-    /// @param[in]  node    The node to search in.
-    /// @param[out] v       The value as a bool.
-    /// @return true, if the value can be read out.
+    
+    
+    
+    
     static inline bool getValueAsBool(XmlNode &node, bool &v);
 
 private:
@@ -251,7 +212,7 @@ template <class TNodeType>
 inline TXmlParser<TNodeType>::TXmlParser() :
         mDoc(nullptr),
         mData() {
-    // empty
+    
 }
 
 template <class TNodeType>
@@ -315,8 +276,8 @@ bool TXmlParser<TNodeType>::parse(IOStream *stream) {
     stream->Read(&mData[0], 1, len);
 
     mDoc = new pugi::xml_document();
-    // load_string assumes native encoding (aka always utf-8 per build options)
-    //pugi::xml_parse_result parse_result = mDoc->load_string(&mData[0], pugi::parse_full);
+    
+    
     pugi::xml_parse_result parse_result = mDoc->load_buffer(&mData[0], mData.size(), pugi::parse_full);
     if (parse_result.status == pugi::status_ok) {
         return true;
@@ -528,17 +489,17 @@ inline bool TXmlParser<TNodeType>::getValueAsBool(XmlNode &node, bool &v) {
 
 using XmlParser = TXmlParser<pugi::xml_node>;
 
-///	@brief  This class declares an iterator to loop through all children of the root node.
+
 class XmlNodeIterator {
 public:
-    /// @brief The iteration mode.
+    
     enum IterationMode {
-        PreOrderMode, ///< Pre-ordering, get the values, continue the iteration.
-        PostOrderMode ///< Post-ordering, continue the iteration, get the values.
+        PreOrderMode, 
+        PostOrderMode 
     };
-    ///	@brief  The class constructor
-    /// @param  parent      [in] The xml parent to to iterate through.
-    /// @param  mode        [in] The iteration mode.
+    
+    
+    
     explicit XmlNodeIterator(XmlNode &parent, IterationMode mode) :
             mParent(parent),
             mNodes(),
@@ -550,11 +511,11 @@ public:
         }
     }
 
-    ///	@brief  The class destructor, default implementation.
+    
     ~XmlNodeIterator() = default;
 
-    ///	@brief  Will iterate through all children in pre-order iteration.
-    /// @param  node    [in] The nod to iterate through.
+    
+    
     void collectChildrenPreOrder(XmlNode &node) {
         if (node != mParent && node.type() == pugi::node_element) {
             mNodes.push_back(node);
@@ -564,8 +525,8 @@ public:
         }
     }
 
-    ///	@brief  Will iterate through all children in post-order iteration.
-    /// @param  node    [in] The nod to iterate through.
+    
+    
     void collectChildrenPostOrder(XmlNode &node) {
         for (XmlNode currentNode = node.first_child(); currentNode; currentNode = currentNode.next_sibling()) {
             collectChildrenPostOrder(currentNode);
@@ -575,9 +536,9 @@ public:
         }
     }
 
-    ///	@brief  Will iterate through all collected nodes.
-    /// @param  next    The next node, if there is any.
-    /// @return true, if there is a node left.
+    
+    
+    
     bool getNext(XmlNode &next) {
         if (mIndex == mNodes.size()) {
             return false;
@@ -589,19 +550,19 @@ public:
         return true;
     }
 
-    ///	@brief  Will return the number of collected nodes.
-    /// @return The number of collected nodes.
+    
+    
     size_t size() const {
         return mNodes.size();
     }
 
-    ///	@brief  Returns true, if the node is empty.
-    /// @return true, if the node is empty, false if not.
+    
+    
     bool isEmpty() const {
         return mNodes.empty();
     }
 
-    ///	@brief  Will clear all collected nodes.
+    
     void clear() {
         if (mNodes.empty()) {
             return;
@@ -617,6 +578,6 @@ private:
     size_t mIndex;
 };
 
-} // namespace Assimp
+} 
 
-#endif // !! INCLUDED_AI_IRRXML_WRAPPER
+#endif 

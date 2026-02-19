@@ -1,18 +1,5 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
-///original version written by Erwin Coumans, October 2013
 
 #ifndef BT_MATRIX_X_H
 #define BT_MATRIX_X_H
@@ -21,11 +8,11 @@ subject to the following restrictions:
 #include "LinearMath/btAlignedObjectArray.h"
 #include <stdio.h>
 
-//#define BT_DEBUG_OSTREAM
+
 #ifdef BT_DEBUG_OSTREAM
 #include <iostream>
-#include <iomanip>  // std::setw
-#endif              //BT_DEBUG_OSTREAM
+#include <iomanip>  
+#endif              
 
 class btIntSortPredicate
 {
@@ -82,8 +69,7 @@ struct btVectorX
 				T scale = 0.0;
 				T ssq = 1.0;
 
-				/* The following loop is equivalent to this call to the LAPACK
-				 auxiliary routine:   CALL SLASSQ( N, X, INCX, SCALE, SSQ ) */
+				
 
 				for (int ix = 0; ix < nn; ix++)
 				{
@@ -114,9 +100,9 @@ struct btVectorX
 	{
 		if (m_storage.size())
 		{
-			//	for (int i=0;i<m_storage.size();i++)
-			//		m_storage[i]=0;
-			//memset(&m_storage[0],0,sizeof(T)*m_storage.size());
+			
+			
+			
 			btSetZero(&m_storage[0], m_storage.size());
 		}
 	}
@@ -140,13 +126,7 @@ struct btVectorX
 		return m_storage.size() ? &m_storage[0] : 0;
 	}
 };
-/*
- template <typename T>
- void setElem(btMatrixX<T>& mat, int row, int col, T val)
- {
- mat.setElem(row,col,val);
- }
- */
+
 
 template <typename T>
 struct btMatrixX
@@ -204,12 +184,8 @@ struct btMatrixX
 	{
 		return m_rows;
 	}
-	///we don't want this read/write operator(), because we cannot keep track of non-zero elements, use setElem instead
-	/*T& operator() (int row,int col)
-	{
-		return m_storage[col*m_rows+row];
-	}
-	*/
+	
+	
 
 	void addElem(int row, int col, T val)
 	{
@@ -235,7 +211,7 @@ struct btMatrixX
 	void mulElem(int row, int col, T val)
 	{
 		m_setElemOperations++;
-		//mul doesn't change sparsity info
+		
 
 		m_storage[row * m_cols + col] *= val;
 	}
@@ -251,7 +227,7 @@ struct btMatrixX
 				count++;
 			}
 		}
-		//printf("copyLowerToUpperTriangle copied %d elements out of %dx%d=%d\n", count,rows(),cols(),cols()*rows());
+		
 	}
 
 	const T& operator()(int row, int col) const
@@ -267,9 +243,9 @@ struct btMatrixX
 			{
 				btSetZero(&m_storage[0], m_storage.size());
 			}
-			//memset(&m_storage[0],0,sizeof(T)*m_storage.size());
-			//for (int i=0;i<m_storage.size();i++)
-			//			m_storage[i]=0;
+			
+			
+			
 		}
 	}
 
@@ -315,7 +291,7 @@ struct btMatrixX
 	}
 	btMatrixX transpose() const
 	{
-		//transpose is optimized for sparse matrices
+		
 		btMatrixX tr(m_cols, m_rows);
 		tr.setZero();
 		for (int i = 0; i < m_cols; i++)
@@ -332,12 +308,12 @@ struct btMatrixX
 
 	btMatrixX operator*(const btMatrixX& other)
 	{
-		//btMatrixX*btMatrixX implementation, brute force
+		
 		btAssert(cols() == other.rows());
 
 		btMatrixX res(rows(), other.cols());
 		res.setZero();
-		//		BT_PROFILE("btMatrixX mul");
+		
 		for (int i = 0; i < rows(); ++i)
 		{
 			{
@@ -366,7 +342,7 @@ struct btMatrixX
 		return res;
 	}
 
-	// this assumes the 4th and 8th rows of B and C are zero.
+	
 	void multiplyAdd2_p8r(const btScalar* B, const btScalar* C, int numRows, int numRowsOther, int row, int col)
 	{
 		const btScalar* bb = B;
@@ -475,7 +451,7 @@ template <typename T>
 std::ostream& operator<<(std::ostream& os, const btMatrixX<T>& mat)
 {
 	os << " [";
-	//printf("%s ---------------------\n",msg);
+	
 	for (int i = 0; i < mat.rows(); i++)
 	{
 		for (int j = 0; j < mat.cols(); j++)
@@ -487,7 +463,7 @@ std::ostream& operator<<(std::ostream& os, const btMatrixX<T>& mat)
 			   << "  ";
 	}
 	os << " ]";
-	//printf("\n---------------------\n");
+	
 
 	return os;
 }
@@ -495,7 +471,7 @@ template <typename T>
 std::ostream& operator<<(std::ostream& os, const btVectorX<T>& mat)
 {
 	os << " [";
-	//printf("%s ---------------------\n",msg);
+	
 	for (int i = 0; i < mat.rows(); i++)
 	{
 		os << std::setw(12) << mat[i];
@@ -504,12 +480,12 @@ std::ostream& operator<<(std::ostream& os, const btVectorX<T>& mat)
 			   << "  ";
 	}
 	os << " ]";
-	//printf("\n---------------------\n");
+	
 
 	return os;
 }
 
-#endif  //BT_DEBUG_OSTREAM
+#endif  
 
 inline void setElem(btMatrixXd& mat, int row, int col, double val)
 {
@@ -527,6 +503,6 @@ inline void setElem(btMatrixXf& mat, int row, int col, float val)
 #else
 #define btVectorXu btVectorXf
 #define btMatrixXu btMatrixXf
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
-#endif  //BT_MATRIX_H_H
+#endif  

@@ -1,41 +1,11 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-/*
-2014 May: btGeneric6DofSpring2Constraint is created from the original (2.82.2712) btGeneric6DofConstraint by Gabor Puhr and Tamas Umenhoffer
-Pros:
-- Much more accurate and stable in a lot of situation. (Especially when a sleeping chain of RBs connected with 6dof2 is pulled)
-- Stable and accurate spring with minimal energy loss that works with all of the solvers. (latter is not true for the original 6dof spring)
-- Servo motor functionality
-- Much more accurate bouncing. 0 really means zero bouncing (not true for the original 6odf) and there is only a minimal energy loss when the value is 1 (because of the solvers' precision)
-- Rotation order for the Euler system can be set. (One axis' freedom is still limited to pi/2)
 
-Cons:
-- It is slower than the original 6dof. There is no exact ratio, but half speed is a good estimation.
-- At bouncing the correct velocity is calculated, but not the correct position. (it is because of the solver can correct position or velocity, but not both.)
-*/
 
-/// 2009 March: btGeneric6DofConstraint refactored by Roman Ponomarev
-/// Added support for generic constraint solver through getInfo1/getInfo2 methods
 
-/*
-2007-09-09
-btGeneric6DofConstraint Refactored by Francisco Le?n
-email: projectileman@yahoo.com
-http://gimpact.sf.net
-*/
+
+
 
 #ifndef BT_GENERIC_6DOF_CONSTRAINT2_H
 #define BT_GENERIC_6DOF_CONSTRAINT2_H
@@ -52,7 +22,7 @@ class btRigidBody;
 #else
 #define btGeneric6DofSpring2ConstraintData2 btGeneric6DofSpring2ConstraintData
 #define btGeneric6DofSpring2ConstraintDataName "btGeneric6DofSpring2ConstraintData"
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 enum RotateOrder
 {
@@ -67,9 +37,9 @@ enum RotateOrder
 class btRotationalLimitMotor2
 {
 public:
-	// upper < lower means free
-	// upper == lower means locked
-	// upper > lower means limited
+	
+	
+	
 	btScalar m_loLimit;
 	btScalar m_hiLimit;
 	btScalar m_bounce;
@@ -160,9 +130,9 @@ public:
 class btTranslationalLimitMotor2
 {
 public:
-	// upper < lower means free
-	// upper == lower means locked
-	// upper > lower means limited
+	
+	
+	
 	btVector3 m_lowerLimit;
 	btVector3 m_upperLimit;
 	btVector3 m_bounce;
@@ -267,7 +237,7 @@ enum bt6DofFlags2
 	BT_6DOF_FLAGS_ERP_MOTO2 = 8,
 	BT_6DOF_FLAGS_USE_INFINITE_ERROR = (1<<16)
 };
-#define BT_6DOF_FLAGS_AXIS_SHIFT2 4  // bits per axis
+#define BT_6DOF_FLAGS_AXIS_SHIFT2 4  
 
 ATTRIBUTE_ALIGNED16(class)
 btGeneric6DofSpring2Constraint : public btTypedConstraint
@@ -328,13 +298,13 @@ public:
 	btRotationalLimitMotor2* getRotationalLimitMotor(int index) { return &m_angularLimits[index]; }
 	btTranslationalLimitMotor2* getTranslationalLimitMotor() { return &m_linearLimits; }
 
-	// Calculates the global transform for the joint offset for body A an B, and also calculates the angle differences between the bodies.
+	
 	void calculateTransforms(const btTransform& transA, const btTransform& transB);
 	void calculateTransforms();
 
-	// Gets the global transform of the offset for body A
+	
 	const btTransform& getCalculatedTransformA() const { return m_calculatedTransformA; }
-	// Gets the global transform of the offset for body B
+	
 	const btTransform& getCalculatedTransformB() const { return m_calculatedTransformB; }
 
 	const btTransform& getFrameOffsetA() const { return m_frameInA; }
@@ -343,13 +313,13 @@ public:
 	btTransform& getFrameOffsetA() { return m_frameInA; }
 	btTransform& getFrameOffsetB() { return m_frameInB; }
 
-	// Get the rotation axis in global coordinates ( btGeneric6DofSpring2Constraint::calculateTransforms() must be called previously )
+	
 	btVector3 getAxis(int axis_index) const { return m_calculatedAxis[axis_index]; }
 
-	// Get the relative Euler angle ( btGeneric6DofSpring2Constraint::calculateTransforms() must be called previously )
+	
 	btScalar getAngle(int axis_index) const { return m_calculatedAxisAngleDiff[axis_index]; }
 
-	// Get the relative position of the constraint pivot ( btGeneric6DofSpring2Constraint::calculateTransforms() must be called previously )
+	
 	btScalar getRelativePivotPosition(int axis_index) const { return m_calculatedLinearDiff[axis_index]; }
 
 	void setFrames(const btTransform& frameA, const btTransform& frameB);
@@ -407,7 +377,7 @@ public:
 			angularUpper[i] = -m_angularLimits[i].m_loLimit;
 	}
 
-	//first 3 are linear, next 3 are angular
+	
 
 	void setLimit(int axis, btScalar lo, btScalar hi)
 	{
@@ -458,20 +428,20 @@ public:
 	void setBounce(int index, btScalar bounce);
 
 	void enableMotor(int index, bool onOff);
-	void setServo(int index, bool onOff);  // set the type of the motor (servo or not) (the motor has to be turned on for servo also)
+	void setServo(int index, bool onOff);  
 	void setTargetVelocity(int index, btScalar velocity);
 	void setServoTarget(int index, btScalar target);
 	void setMaxMotorForce(int index, btScalar force);
 
 	void enableSpring(int index, bool onOff);
-	void setStiffness(int index, btScalar stiffness, bool limitIfNeeded = true);  // if limitIfNeeded is true the system will automatically limit the stiffness in necessary situations where otherwise the spring would move unrealistically too widely
-	void setDamping(int index, btScalar damping, bool limitIfNeeded = true);      // if limitIfNeeded is true the system will automatically limit the damping in necessary situations where otherwise the spring would blow up
-	void setEquilibriumPoint();                                                   // set the current constraint position/orientation as an equilibrium point for all DOF
-	void setEquilibriumPoint(int index);                                          // set the current constraint position/orientation as an equilibrium point for given DOF
+	void setStiffness(int index, btScalar stiffness, bool limitIfNeeded = true);  
+	void setDamping(int index, btScalar damping, bool limitIfNeeded = true);      
+	void setEquilibriumPoint();                                                   
+	void setEquilibriumPoint(int index);                                          
 	void setEquilibriumPoint(int index, btScalar val);
 
-	//override the default global value of a parameter (such as ERP or CFM), optionally provide the axis (0..5).
-	//If no axis is provided, it uses the default axis for this constraint.
+	
+	
 	virtual void setParam(int num, btScalar value, int axis = -1);
 	virtual btScalar getParam(int num, int axis = -1) const;
 
@@ -664,4 +634,4 @@ SIMD_FORCE_INLINE const char* btGeneric6DofSpring2Constraint::serialize(void* da
 	return btGeneric6DofSpring2ConstraintDataName;
 }
 
-#endif  //BT_GENERIC_6DOF_CONSTRAINT_H
+#endif  

@@ -7,10 +7,10 @@
 
 IShaderManager *Shader::s_ShaderManager = nullptr;
 
-// Shader type constants (matching GL values for backward compat)
-static constexpr unsigned int SHADER_VERTEX = 0x8B31;    // GL_VERTEX_SHADER
-static constexpr unsigned int SHADER_FRAGMENT = 0x8B30;  // GL_FRAGMENT_SHADER
-static constexpr unsigned int SHADER_GEOMETRY = 0x8DD9;  // GL_GEOMETRY_SHADER
+
+static constexpr unsigned int SHADER_VERTEX = 0x8B31;    
+static constexpr unsigned int SHADER_FRAGMENT = 0x8B30;  
+static constexpr unsigned int SHADER_GEOMETRY = 0x8DD9;  
 
 Shader::Shader()
     : ID(0)

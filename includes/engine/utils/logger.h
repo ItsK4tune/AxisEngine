@@ -76,9 +76,9 @@ private:
     #define LOGGER_ERROR(Tag)  if(true); else LogStreamer(LogType::Error, Tag)
 #endif 
 
-// Define INFO macros
+
 #define LOGGER_LOG(Tag)    if (AXIS_LOG_LEVEL_DEF < 2) ; else LogStreamer(LogType::Info, Tag)
 #define LOGGER_INFO(Tag)   if (AXIS_LOG_LEVEL_DEF < 2) ; else LogStreamer(LogType::Info, Tag)
 
-// Define DEBUG macros
+
 #define LOGGER_DEBUG(Tag)  if (AXIS_LOG_LEVEL_DEF < 3) ; else LogStreamer(LogType::Debug, Tag)

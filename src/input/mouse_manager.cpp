@@ -44,7 +44,7 @@ void MouseManager::Update()
 {
     if (m_Mode == Input::CursorMode::Locked && m_Window)
     {
-        // Enforce lock position every frame
+        
         m_Window->SetCursorPos(m_LockX, m_LockY);
     }
 }
@@ -64,12 +64,12 @@ void MouseManager::UpdateButton(Input::Mouse button, int action, int mods)
 {
     if (button == Input::Mouse::Left)
     {
-        if (action == 1) // Press
+        if (action == 1) 
         {
             m_LeftButtonPressed = true;
             m_LeftMouseClicked = true;
         }
-        else if (action == 0) // Release
+        else if (action == 0) 
         {
             m_LeftButtonPressed = false;
         }
@@ -77,12 +77,12 @@ void MouseManager::UpdateButton(Input::Mouse button, int action, int mods)
 
     else if (button == Input::Mouse::Right)
     {
-        if (action == 1) // Press
+        if (action == 1) 
         {
             m_RightButtonPressed = true;
             m_RightMouseClicked = true;
         }
-        else if (action == 0) // Release
+        else if (action == 0) 
         {
             m_RightButtonPressed = false;
         }

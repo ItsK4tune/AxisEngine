@@ -55,16 +55,16 @@ private:
     MousePositionCallback m_CursorPosCallback;
     ScrollCallback m_ScrollCallback;
 
-    // Static GLFW callbacks
+    
     static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
-    // Helpers
-    int MapInputKeyToGLFW(int key); // Might define mapping elsewhere or here? 
-                                   // Actually we need GLFW -> InputKey for the callback.
+    
+    int MapInputKeyToGLFW(int key); 
+                                   
 };
 
-#endif // GLFW_WINDOW_H
+#endif 

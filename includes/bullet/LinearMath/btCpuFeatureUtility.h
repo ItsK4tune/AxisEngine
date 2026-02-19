@@ -4,23 +4,23 @@
 
 #include "LinearMath/btScalar.h"
 
-#include <string.h>  //memset
+#include <string.h>  
 #ifdef USE_SIMD
 #include <emmintrin.h>
 #ifdef BT_ALLOW_SSE4
 #include <intrin.h>
-#endif  //BT_ALLOW_SSE4
-#endif  //USE_SIMD
+#endif  
+#endif  
 
 #if defined BT_USE_NEON
 #define ARM_NEON_GCC_COMPATIBILITY 1
 #include <arm_neon.h>
 #include <sys/types.h>
-#include <sys/sysctl.h>  //for sysctlbyname
-#endif                   //BT_USE_NEON
+#include <sys/sysctl.h>  
+#endif                   
 
-///Rudimentary btCpuFeatureUtility for CPU features: only report the features that Bullet actually uses (SSE4/FMA3, NEON_HPFP)
-///We assume SSE2 in case BT_USE_SSE2 is defined in LinearMath/btScalar.h
+
+
 class btCpuFeatureUtility
 {
 public:
@@ -48,7 +48,7 @@ public:
 			if (0 == err && hasFeature)
 				capabilities |= CPU_FEATURE_NEON_HPFP;
 		}
-#endif  //BT_USE_NEON
+#endif  
 
 #ifdef BT_ALLOW_SSE4
 		{
@@ -78,11 +78,11 @@ public:
 				capabilities |= btCpuFeatureUtility::CPU_FEATURE_SSE4_1;
 			}
 		}
-#endif  //BT_ALLOW_SSE4
+#endif  
 
 		testedCapabilities = true;
 		return capabilities;
 	}
 };
 
-#endif  //BT_CPU_UTILITY_H
+#endif  

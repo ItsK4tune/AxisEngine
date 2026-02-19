@@ -23,7 +23,7 @@ class meta_any;
 class meta_type;
 class meta_handle;
 
-/*! @cond TURN_OFF_DOXYGEN */
+
 namespace internal {
 
 enum class meta_traits : std::uint32_t {
@@ -247,15 +247,15 @@ auto setup_node_for() noexcept {
 
     if constexpr(!std::is_void_v<Type> && !std::is_function_v<Type>) {
         node.from_void = +[](const meta_ctx &ctx, void *elem, const void *celem) {
-            if(elem && celem) { // ownership construction request
+            if(elem && celem) { 
                 return meta_any{ctx, std::in_place, static_cast<std::decay_t<Type> *>(elem)};
             }
 
-            if(elem) { // non-const reference construction request
+            if(elem) { 
                 return meta_any{ctx, std::in_place_type<std::decay_t<Type> &>, *static_cast<std::decay_t<Type> *>(elem)};
             }
 
-            // const reference construction request
+            
             return meta_any{ctx, std::in_place_type<const std::decay_t<Type> &>, *static_cast<const std::decay_t<Type> *>(celem)};
         };
     }
@@ -283,9 +283,9 @@ template<typename Type>
     return (elem == nullptr) ? node : *elem;
 }
 
-} // namespace internal
-/*! @endcond */
+} 
 
-} // namespace entt
+
+} 
 
 #endif

@@ -1,37 +1,8 @@
 #ifndef GIM_TRI_COLLISION_H_INCLUDED
 #define GIM_TRI_COLLISION_H_INCLUDED
 
-/*! \file gim_tri_collision.h
-\author Francisco Leon Najera
-*/
-/*
------------------------------------------------------------------------------
-This source file is part of GIMPACT Library.
 
-For the latest info, see http://gimpact.sourceforge.net/
 
-Copyright (c) 2006 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
-
- This library is free software; you can redistribute it and/or
- modify it under the terms of EITHER:
-   (1) The GNU Lesser General Public License as published by the Free
-       Software Foundation; either version 2.1 of the License, or (at
-       your option) any later version. The text of the GNU Lesser
-       General Public License is included with this library in the
-       file GIMPACT-LICENSE-LGPL.TXT.
-   (2) The BSD-style license that is included with this library in
-       the file GIMPACT-LICENSE-BSD.TXT.
-   (3) The zlib/libpng license that is included with this library in
-       the file GIMPACT-LICENSE-ZLIB.TXT.
-
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
- GIMPACT-LICENSE-LGPL.TXT, GIMPACT-LICENSE-ZLIB.TXT and GIMPACT-LICENSE-BSD.TXT for more details.
-
------------------------------------------------------------------------------
-*/
 
 #include "gim_box_collision.h"
 #include "gim_clip_polygon.h"
@@ -40,7 +11,7 @@ email: projectileman@yahoo.com
 #define MAX_TRI_CLIPPING 16
 #endif
 
-//! Structure for collision
+
 struct GIM_TRIANGLE_CONTACT_DATA
 {
 	GREAL m_penetration_depth;
@@ -69,7 +40,7 @@ struct GIM_TRIANGLE_CONTACT_DATA
 		copy_from(other);
 	}
 
-	//! classify points that are closer
+	
 	template <typename DISTANCE_FUNC, typename CLASS_PLANE>
 	SIMD_FORCE_INLINE void mergepoints_generic(const CLASS_PLANE &plane,
 											   GREAL margin, const btVector3 *points, GUINT point_count, DISTANCE_FUNC distance_func)
@@ -107,7 +78,7 @@ struct GIM_TRIANGLE_CONTACT_DATA
 		}
 	}
 
-	//! classify points that are closer
+	
 	SIMD_FORCE_INLINE void merge_points(const btVector4 &plane, GREAL margin,
 										const btVector3 *points, GUINT point_count)
 	{
@@ -116,7 +87,7 @@ struct GIM_TRIANGLE_CONTACT_DATA
 	}
 };
 
-//! Class for colliding triangles
+
 class GIM_TRIANGLE
 {
 public:
@@ -157,13 +128,8 @@ public:
 		EDGE_PLANE(e0, e1, triangle_normal, plane);
 	}
 
-	//! Gets the relative transformation of this triangle
-	/*!
-    The transformation is oriented to the triangle normal , and aligned to the 1st edge of this triangle. The position corresponds to vertice 0:
-    - triangle normal corresponds to Z axis.
-    - 1st normalized edge corresponds to X axis,
-
-    */
+	
+	
 	SIMD_FORCE_INLINE void get_triangle_transform(btTransform &triangle_transform) const
 	{
 		btMatrix3x3 &matrix = triangle_transform.getBasis();
@@ -176,69 +142,35 @@ public:
 		VEC_NORMALIZE(xaxis);
 		MAT_SET_X(matrix, xaxis);
 
-		//y axis
+		
 		xaxis = zaxis.cross(xaxis);
 		MAT_SET_Y(matrix, xaxis);
 
 		triangle_transform.setOrigin(m_vertices[0]);
 	}
 
-	//! Test triangles by finding separating axis
-	/*!
-	\param other Triangle for collide
-	\param contact_data Structure for holding contact points, normal and penetration depth; The normal is pointing toward this triangle from the other triangle
-	*/
+	
+	
 	bool collide_triangle_hard_test(
 		const GIM_TRIANGLE &other,
 		GIM_TRIANGLE_CONTACT_DATA &contact_data) const;
 
-	//! Test boxes before doing hard test
-	/*!
-	\param other Triangle for collide
-	\param contact_data Structure for holding contact points, normal and penetration depth; The normal is pointing toward this triangle from the other triangle
-	\
-	*/
+	
+	
 	SIMD_FORCE_INLINE bool collide_triangle(
 		const GIM_TRIANGLE &other,
 		GIM_TRIANGLE_CONTACT_DATA &contact_data) const
 	{
-		//test box collisioin
+		
 		GIM_AABB boxu(m_vertices[0], m_vertices[1], m_vertices[2], m_margin);
 		GIM_AABB boxv(other.m_vertices[0], other.m_vertices[1], other.m_vertices[2], other.m_margin);
 		if (!boxu.has_collision(boxv)) return false;
 
-		//do hard test
+		
 		return collide_triangle_hard_test(other, contact_data);
 	}
 
-	/*!
-
-	Solve the System for u,v parameters:
-
-	u*axe1[i1] + v*axe2[i1] = vecproj[i1]
-	u*axe1[i2] + v*axe2[i2] = vecproj[i2]
-
-	sustitute:
-	v = (vecproj[i2] - u*axe1[i2])/axe2[i2]
-
-	then the first equation in terms of 'u':
-
-	--> u*axe1[i1] + ((vecproj[i2] - u*axe1[i2])/axe2[i2])*axe2[i1] = vecproj[i1]
-
-	--> u*axe1[i1] + vecproj[i2]*axe2[i1]/axe2[i2] - u*axe1[i2]*axe2[i1]/axe2[i2] = vecproj[i1]
-
-	--> u*(axe1[i1]  - axe1[i2]*axe2[i1]/axe2[i2]) = vecproj[i1] - vecproj[i2]*axe2[i1]/axe2[i2]
-
-	--> u*((axe1[i1]*axe2[i2]  - axe1[i2]*axe2[i1])/axe2[i2]) = (vecproj[i1]*axe2[i2] - vecproj[i2]*axe2[i1])/axe2[i2]
-
-	--> u*(axe1[i1]*axe2[i2]  - axe1[i2]*axe2[i1]) = vecproj[i1]*axe2[i2] - vecproj[i2]*axe2[i1]
-
-	--> u = (vecproj[i1]*axe2[i2] - vecproj[i2]*axe2[i1]) /(axe1[i1]*axe2[i2]  - axe1[i2]*axe2[i1])
-
-if 0.0<= u+v <=1.0 then they are inside of triangle
-
-	\return false if the point is outside of triangle.This function  doesn't take the margin
-	*/
+	
 	SIMD_FORCE_INLINE bool get_uv_parameters(
 		const btVector3 &point,
 		const btVector3 &tri_plane,
@@ -284,29 +216,27 @@ if 0.0<= u+v <=1.0 then they are inside of triangle
 		return true;
 	}
 
-	//! is point in triangle beam?
-	/*!
-	Test if point is in triangle, with m_margin tolerance
-	*/
+	
+	
 	SIMD_FORCE_INLINE bool is_point_inside(const btVector3 &point, const btVector3 &tri_normal) const
 	{
-		//Test with edge 0
+		
 		btVector4 edge_plane;
 		this->get_edge_plane(0, tri_normal, edge_plane);
 		GREAL dist = DISTANCE_PLANE_POINT(edge_plane, point);
-		if (dist - m_margin > 0.0f) return false;  // outside plane
+		if (dist - m_margin > 0.0f) return false;  
 
 		this->get_edge_plane(1, tri_normal, edge_plane);
 		dist = DISTANCE_PLANE_POINT(edge_plane, point);
-		if (dist - m_margin > 0.0f) return false;  // outside plane
+		if (dist - m_margin > 0.0f) return false;  
 
 		this->get_edge_plane(2, tri_normal, edge_plane);
 		dist = DISTANCE_PLANE_POINT(edge_plane, point);
-		if (dist - m_margin > 0.0f) return false;  // outside plane
+		if (dist - m_margin > 0.0f) return false;  
 		return true;
 	}
 
-	//! Bidireccional ray collision
+	
 	SIMD_FORCE_INLINE bool ray_collision(
 		const btVector3 &vPoint,
 		const btVector3 &vDir, btVector3 &pout, btVector3 &triangle_normal,
@@ -324,7 +254,7 @@ if 0.0<= u+v <=1.0 then they are inside of triangle
 		if (res == 0) return false;
 		if (!is_point_inside(pout, faceplane)) return false;
 
-		if (res == 2)  //invert normal
+		if (res == 2)  
 		{
 			triangle_normal.setValue(-faceplane[0], -faceplane[1], -faceplane[2]);
 		}
@@ -338,7 +268,7 @@ if 0.0<= u+v <=1.0 then they are inside of triangle
 		return true;
 	}
 
-	//! one direccion ray collision
+	
 	SIMD_FORCE_INLINE bool ray_collision_front_side(
 		const btVector3 &vPoint,
 		const btVector3 &vDir, btVector3 &pout, btVector3 &triangle_normal,
@@ -365,4 +295,4 @@ if 0.0<= u+v <=1.0 then they are inside of triangle
 	}
 };
 
-#endif  // GIM_TRI_COLLISION_H_INCLUDED
+#endif  

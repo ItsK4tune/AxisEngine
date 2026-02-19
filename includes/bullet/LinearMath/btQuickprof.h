@@ -1,14 +1,8 @@
 
-/***************************************************************************************************
-**
-** Real-Time Hierarchical Profiling for Game Programming Gems 3
-**
-** by Greg Hjelstrom & Byon Garrabrant
-**
-***************************************************************************************************/
 
-// Credits: The Clock class was inspired by the Timer classes in
-// Ogre (www.ogre3d.org).
+
+
+
 
 #ifndef BT_QUICK_PROF_H
 #define BT_QUICK_PROF_H
@@ -18,7 +12,7 @@
 
 #ifdef USE_BT_CLOCK
 
-///The btClock is a portable basic clock that measures accurate time in seconds, use for profiling.
+
 class btClock
 {
 public:
@@ -29,28 +23,28 @@ public:
 
 	~btClock();
 
-	/// Resets the initial reference time.
+	
 	void reset();
 
-	/// Returns the time in ms since the last call to reset or since
-	/// the btClock was created.
+	
+	
 	unsigned long long int getTimeMilliseconds();
 
-	/// Returns the time in us since the last call to reset or since
-	/// the Clock was created.
+	
+	
 	unsigned long long int getTimeMicroseconds();
 
 	unsigned long long int getTimeNanoseconds();
 
-	/// Returns the time in s since the last call to reset or since
-	/// the Clock was created.
+	
+	
 	btScalar getTimeSeconds();
 
 private:
 	struct btClockData* m_data;
 };
 
-#endif  //USE_BT_CLOCK
+#endif  
 
 typedef void(btEnterProfileZoneFunc)(const char* msg);
 typedef void(btLeaveProfileZoneFunc)();
@@ -63,23 +57,23 @@ void btSetCustomLeaveProfileZoneFunc(btLeaveProfileZoneFunc* leaveFunc);
 
 #ifndef BT_ENABLE_PROFILE
 #define BT_NO_PROFILE 1
-#endif  //BT_NO_PROFILE
+#endif  
 
 const unsigned int BT_QUICKPROF_MAX_THREAD_COUNT = 64;
 
-//btQuickprofGetCurrentThreadIndex will return -1 if thread index cannot be determined,
-//otherwise returns thread index in range [0..maxThreads]
+
+
 unsigned int btQuickprofGetCurrentThreadIndex2();
 
 #ifndef BT_NO_PROFILE
 
 
-#include <stdio.h>  //@todo remove this, backwards compatibility
+#include <stdio.h>  
 
 #include "btAlignedAllocator.h"
 #include <new>
 
-///A node in the Profile Hierarchy Tree
+
 class CProfileNode
 {
 public:
@@ -116,28 +110,28 @@ protected:
 	void* m_userPtr;
 };
 
-///An iterator to navigate through the tree
+
 class CProfileIterator
 {
 public:
-	// Access all the children of the current parent
+	
 	void First(void);
 	void Next(void);
 	bool Is_Done(void);
 	bool Is_Root(void) { return (CurrentParent->Get_Parent() == 0); }
 
-	void Enter_Child(int index);     // Make the given child the new parent
-	void Enter_Largest_Child(void);  // Make the largest child the new parent
-	void Enter_Parent(void);         // Make the current parent's parent the new parent
+	void Enter_Child(int index);     
+	void Enter_Largest_Child(void);  
+	void Enter_Parent(void);         
 
-	// Access the current child
+	
 	const char* Get_Current_Name(void) { return CurrentChild->Get_Name(); }
 	int Get_Current_Total_Calls(void) { return CurrentChild->Get_Total_Calls(); }
 	float Get_Current_Total_Time(void) { return CurrentChild->Get_Total_Time(); }
 
 	void* Get_Current_UserPointer(void) { return CurrentChild->GetUserPointer(); }
 	void Set_Current_UserPointer(void* ptr) { CurrentChild->SetUserPointer(ptr); }
-	// Access the current parent
+	
 	const char* Get_Current_Parent_Name(void) { return CurrentParent->Get_Name(); }
 	int Get_Current_Parent_Total_Calls(void) { return CurrentParent->Get_Total_Calls(); }
 	float Get_Current_Parent_Total_Time(void) { return CurrentParent->Get_Total_Time(); }
@@ -150,7 +144,7 @@ protected:
 	friend class CProfileManager;
 };
 
-///The Manager for the Profile system
+
 class CProfileManager
 {
 public:
@@ -158,9 +152,9 @@ public:
 	static void Stop_Profile(void);
 
 	static void CleanupMemory(void);
-	//	{
-	//		Root.CleanupMemory();
-	//	}
+	
+	
+	
 
 	static void Reset(void);
 	static void Increment_Frame_Counter(void);
@@ -168,10 +162,10 @@ public:
 	static float Get_Time_Since_Reset(void);
 
 	static CProfileIterator* Get_Iterator(void);
-	//	{
-	//
-	//		return new CProfileIterator( &Root );
-	//	}
+	
+	
+	
+	
 	static void Release_Iterator(CProfileIterator* iterator) { delete (iterator); }
 
 	static void dumpRecursive(CProfileIterator* profileIterator, int spacing);
@@ -183,10 +177,10 @@ private:
 	static unsigned long int ResetTime;
 };
 
-#endif  //#ifndef BT_NO_PROFILE
+#endif  
 
-///ProfileSampleClass is a simple way to profile a function's scope
-///Use the BT_PROFILE macro at the start of scope to time
+
+
 class CProfileSample
 {
 public:
@@ -197,4 +191,4 @@ public:
 
 #define BT_PROFILE(name) CProfileSample __profile(name)
 
-#endif  //BT_QUICK_PROF_H
+#endif  

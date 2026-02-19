@@ -1,14 +1,14 @@
-/// @ref ext_scalar_int_sized
-/// @file glm/ext/scalar_int_sized.hpp
-///
-/// @defgroup ext_scalar_int_sized GLM_EXT_scalar_int_sized
-/// @ingroup ext
-///
-/// Exposes sized signed integer scalar types.
-///
-/// Include <glm/ext/scalar_int_sized.hpp> to use the features of this extension.
-///
-/// @see ext_scalar_uint_sized
+
+
+
+
+
+
+
+
+
+
+
 
 #pragma once
 
@@ -29,7 +29,7 @@ namespace detail
 		typedef char				int8;
 		typedef short				int16;
 		typedef int					int32;
-#endif//
+#endif
 
 	template<>
 	struct is_int<int8>
@@ -48,23 +48,23 @@ namespace detail
 	{
 		enum test {value = ~0};
 	};
-}//namespace detail
+}
 
 
-	/// @addtogroup ext_scalar_int_sized
-	/// @{
+	
+	
 
-	/// 8 bit signed integer type.
+	
 	typedef detail::int8		int8;
 
-	/// 16 bit signed integer type.
+	
 	typedef detail::int16		int16;
 
-	/// 32 bit signed integer type.
+	
 	typedef detail::int32		int32;
 
-	/// 64 bit signed integer type.
+	
 	typedef detail::int64		int64;
 
-	/// @}
-}//namespace glm
+	
+}

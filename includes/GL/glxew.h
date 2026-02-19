@@ -1,80 +1,8 @@
-/*
-** The OpenGL Extension Wrangler Library
-** Copyright (C) 2002-2008, Milan Ikits <milan ikits[]ieee org>
-** Copyright (C) 2002-2008, Marcelo E. Magallon <mmagallo[]debian org>
-** Copyright (C) 2002, Lev Povalahev
-** All rights reserved.
-** 
-** Redistribution and use in source and binary forms, with or without 
-** modification, are permitted provided that the following conditions are met:
-** 
-** * Redistributions of source code must retain the above copyright notice, 
-**   this list of conditions and the following disclaimer.
-** * Redistributions in binary form must reproduce the above copyright notice, 
-**   this list of conditions and the following disclaimer in the documentation 
-**   and/or other materials provided with the distribution.
-** * The name of the author may be used to endorse or promote products 
-**   derived from this software without specific prior written permission.
-**
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-** AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-** IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-** ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-** LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-** CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-** SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-** INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-** CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-** ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-** THE POSSIBILITY OF SUCH DAMAGE.
-*/
 
-/*
- * Mesa 3-D graphics library
- * Version:  7.0
- *
- * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * BRIAN PAUL BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
- * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
 
-/*
-** Copyright (c) 2007 The Khronos Group Inc.
-** 
-** Permission is hereby granted, free of charge, to any person obtaining a
-** copy of this software and/or associated documentation files (the
-** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Materials, and to
-** permit persons to whom the Materials are furnished to do so, subject to
-** the following conditions:
-** 
-** The above copyright notice and this permission notice shall be included
-** in all copies or substantial portions of the Materials.
-** 
-** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
-*/
+
+
+
 
 #ifndef __glxew_h__
 #define __glxew_h__
@@ -103,7 +31,7 @@
 extern "C" {
 #endif
 
-/* ---------------------------- GLX_VERSION_1_0 --------------------------- */
+
 
 #ifndef GLX_VERSION_1_0
 #define GLX_VERSION_1_0 1
@@ -163,9 +91,9 @@ extern void glXUseXFont (Font font, int first, int count, int listBase);
 
 #define GLXEW_VERSION_1_0 GLXEW_GET_VAR(__GLXEW_VERSION_1_0)
 
-#endif /* GLX_VERSION_1_0 */
+#endif 
 
-/* ---------------------------- GLX_VERSION_1_1 --------------------------- */
+
 
 #ifndef GLX_VERSION_1_1
 #define GLX_VERSION_1_1
@@ -180,9 +108,9 @@ extern const char* glXQueryServerString (Display *dpy, int screen, int name);
 
 #define GLXEW_VERSION_1_1 GLXEW_GET_VAR(__GLXEW_VERSION_1_1)
 
-#endif /* GLX_VERSION_1_1 */
+#endif 
 
-/* ---------------------------- GLX_VERSION_1_2 ---------------------------- */
+
 
 #ifndef GLX_VERSION_1_2
 #define GLX_VERSION_1_2 1
@@ -193,9 +121,9 @@ typedef Display* ( * PFNGLXGETCURRENTDISPLAYPROC) (void);
 
 #define GLXEW_VERSION_1_2 GLXEW_GET_VAR(__GLXEW_VERSION_1_2)
 
-#endif /* GLX_VERSION_1_2 */
+#endif 
 
-/* ---------------------------- GLX_VERSION_1_3 ---------------------------- */
+
 
 #ifndef GLX_VERSION_1_3
 #define GLX_VERSION_1_3 1
@@ -318,9 +246,9 @@ typedef void ( * PFNGLXSELECTEVENTPROC) (Display *dpy, GLXDrawable draw, unsigne
 
 #define GLXEW_VERSION_1_3 GLXEW_GET_VAR(__GLXEW_VERSION_1_3)
 
-#endif /* GLX_VERSION_1_3 */
+#endif 
 
-/* ---------------------------- GLX_VERSION_1_4 ---------------------------- */
+
 
 #ifndef GLX_VERSION_1_4
 #define GLX_VERSION_1_4 1
@@ -332,9 +260,9 @@ extern void ( * glXGetProcAddress (const GLubyte *procName)) (void);
 
 #define GLXEW_VERSION_1_4 GLXEW_GET_VAR(__GLXEW_VERSION_1_4)
 
-#endif /* GLX_VERSION_1_4 */
+#endif 
 
-/* -------------------------- GLX_3DFX_multisample ------------------------- */
+
 
 #ifndef GLX_3DFX_multisample
 #define GLX_3DFX_multisample 1
@@ -344,9 +272,9 @@ extern void ( * glXGetProcAddress (const GLubyte *procName)) (void);
 
 #define GLXEW_3DFX_multisample GLXEW_GET_VAR(__GLXEW_3DFX_multisample)
 
-#endif /* GLX_3DFX_multisample */
+#endif 
 
-/* ------------------------ GLX_AMD_gpu_association ------------------------ */
+
 
 #ifndef GLX_AMD_gpu_association
 #define GLX_AMD_gpu_association 1
@@ -364,9 +292,9 @@ extern void ( * glXGetProcAddress (const GLubyte *procName)) (void);
 
 #define GLXEW_AMD_gpu_association GLXEW_GET_VAR(__GLXEW_AMD_gpu_association)
 
-#endif /* GLX_AMD_gpu_association */
+#endif 
 
-/* ------------------------- GLX_ARB_create_context ------------------------ */
+
 
 #ifndef GLX_ARB_create_context
 #define GLX_ARB_create_context 1
@@ -383,9 +311,9 @@ typedef GLXContext ( * PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display* dpy, GLXFBCo
 
 #define GLXEW_ARB_create_context GLXEW_GET_VAR(__GLXEW_ARB_create_context)
 
-#endif /* GLX_ARB_create_context */
+#endif 
 
-/* --------------------- GLX_ARB_create_context_profile -------------------- */
+
 
 #ifndef GLX_ARB_create_context_profile
 #define GLX_ARB_create_context_profile 1
@@ -396,9 +324,9 @@ typedef GLXContext ( * PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display* dpy, GLXFBCo
 
 #define GLXEW_ARB_create_context_profile GLXEW_GET_VAR(__GLXEW_ARB_create_context_profile)
 
-#endif /* GLX_ARB_create_context_profile */
+#endif 
 
-/* ------------------- GLX_ARB_create_context_robustness ------------------- */
+
 
 #ifndef GLX_ARB_create_context_robustness
 #define GLX_ARB_create_context_robustness 1
@@ -410,9 +338,9 @@ typedef GLXContext ( * PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display* dpy, GLXFBCo
 
 #define GLXEW_ARB_create_context_robustness GLXEW_GET_VAR(__GLXEW_ARB_create_context_robustness)
 
-#endif /* GLX_ARB_create_context_robustness */
+#endif 
 
-/* ------------------------- GLX_ARB_fbconfig_float ------------------------ */
+
 
 #ifndef GLX_ARB_fbconfig_float
 #define GLX_ARB_fbconfig_float 1
@@ -422,9 +350,9 @@ typedef GLXContext ( * PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display* dpy, GLXFBCo
 
 #define GLXEW_ARB_fbconfig_float GLXEW_GET_VAR(__GLXEW_ARB_fbconfig_float)
 
-#endif /* GLX_ARB_fbconfig_float */
+#endif 
 
-/* ------------------------ GLX_ARB_framebuffer_sRGB ----------------------- */
+
 
 #ifndef GLX_ARB_framebuffer_sRGB
 #define GLX_ARB_framebuffer_sRGB 1
@@ -433,9 +361,9 @@ typedef GLXContext ( * PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display* dpy, GLXFBCo
 
 #define GLXEW_ARB_framebuffer_sRGB GLXEW_GET_VAR(__GLXEW_ARB_framebuffer_sRGB)
 
-#endif /* GLX_ARB_framebuffer_sRGB */
+#endif 
 
-/* ------------------------ GLX_ARB_get_proc_address ----------------------- */
+
 
 #ifndef GLX_ARB_get_proc_address
 #define GLX_ARB_get_proc_address 1
@@ -444,9 +372,9 @@ extern void ( * glXGetProcAddressARB (const GLubyte *procName)) (void);
 
 #define GLXEW_ARB_get_proc_address GLXEW_GET_VAR(__GLXEW_ARB_get_proc_address)
 
-#endif /* GLX_ARB_get_proc_address */
+#endif 
 
-/* -------------------------- GLX_ARB_multisample -------------------------- */
+
 
 #ifndef GLX_ARB_multisample
 #define GLX_ARB_multisample 1
@@ -456,9 +384,9 @@ extern void ( * glXGetProcAddressARB (const GLubyte *procName)) (void);
 
 #define GLXEW_ARB_multisample GLXEW_GET_VAR(__GLXEW_ARB_multisample)
 
-#endif /* GLX_ARB_multisample */
+#endif 
 
-/* ---------------- GLX_ARB_robustness_application_isolation --------------- */
+
 
 #ifndef GLX_ARB_robustness_application_isolation
 #define GLX_ARB_robustness_application_isolation 1
@@ -467,9 +395,9 @@ extern void ( * glXGetProcAddressARB (const GLubyte *procName)) (void);
 
 #define GLXEW_ARB_robustness_application_isolation GLXEW_GET_VAR(__GLXEW_ARB_robustness_application_isolation)
 
-#endif /* GLX_ARB_robustness_application_isolation */
+#endif 
 
-/* ---------------- GLX_ARB_robustness_share_group_isolation --------------- */
+
 
 #ifndef GLX_ARB_robustness_share_group_isolation
 #define GLX_ARB_robustness_share_group_isolation 1
@@ -478,9 +406,9 @@ extern void ( * glXGetProcAddressARB (const GLubyte *procName)) (void);
 
 #define GLXEW_ARB_robustness_share_group_isolation GLXEW_GET_VAR(__GLXEW_ARB_robustness_share_group_isolation)
 
-#endif /* GLX_ARB_robustness_share_group_isolation */
+#endif 
 
-/* ---------------------- GLX_ARB_vertex_buffer_object --------------------- */
+
 
 #ifndef GLX_ARB_vertex_buffer_object
 #define GLX_ARB_vertex_buffer_object 1
@@ -489,9 +417,9 @@ extern void ( * glXGetProcAddressARB (const GLubyte *procName)) (void);
 
 #define GLXEW_ARB_vertex_buffer_object GLXEW_GET_VAR(__GLXEW_ARB_vertex_buffer_object)
 
-#endif /* GLX_ARB_vertex_buffer_object */
+#endif 
 
-/* ----------------------- GLX_ATI_pixel_format_float ---------------------- */
+
 
 #ifndef GLX_ATI_pixel_format_float
 #define GLX_ATI_pixel_format_float 1
@@ -500,9 +428,9 @@ extern void ( * glXGetProcAddressARB (const GLubyte *procName)) (void);
 
 #define GLXEW_ATI_pixel_format_float GLXEW_GET_VAR(__GLXEW_ATI_pixel_format_float)
 
-#endif /* GLX_ATI_pixel_format_float */
+#endif 
 
-/* ------------------------- GLX_ATI_render_texture ------------------------ */
+
 
 #ifndef GLX_ATI_render_texture
 #define GLX_ATI_render_texture 1
@@ -553,9 +481,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEATIPROC) (Display *dpy, GLXPbuffer pbuf, i
 
 #define GLXEW_ATI_render_texture GLXEW_GET_VAR(__GLXEW_ATI_render_texture)
 
-#endif /* GLX_ATI_render_texture */
+#endif 
 
-/* ------------------- GLX_EXT_create_context_es2_profile ------------------ */
+
 
 #ifndef GLX_EXT_create_context_es2_profile
 #define GLX_EXT_create_context_es2_profile 1
@@ -564,9 +492,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEATIPROC) (Display *dpy, GLXPbuffer pbuf, i
 
 #define GLXEW_EXT_create_context_es2_profile GLXEW_GET_VAR(__GLXEW_EXT_create_context_es2_profile)
 
-#endif /* GLX_EXT_create_context_es2_profile */
+#endif 
 
-/* ------------------- GLX_EXT_create_context_es_profile ------------------- */
+
 
 #ifndef GLX_EXT_create_context_es_profile
 #define GLX_EXT_create_context_es_profile 1
@@ -575,9 +503,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEATIPROC) (Display *dpy, GLXPbuffer pbuf, i
 
 #define GLXEW_EXT_create_context_es_profile GLXEW_GET_VAR(__GLXEW_EXT_create_context_es_profile)
 
-#endif /* GLX_EXT_create_context_es_profile */
+#endif 
 
-/* --------------------- GLX_EXT_fbconfig_packed_float --------------------- */
+
 
 #ifndef GLX_EXT_fbconfig_packed_float
 #define GLX_EXT_fbconfig_packed_float 1
@@ -587,9 +515,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEATIPROC) (Display *dpy, GLXPbuffer pbuf, i
 
 #define GLXEW_EXT_fbconfig_packed_float GLXEW_GET_VAR(__GLXEW_EXT_fbconfig_packed_float)
 
-#endif /* GLX_EXT_fbconfig_packed_float */
+#endif 
 
-/* ------------------------ GLX_EXT_framebuffer_sRGB ----------------------- */
+
 
 #ifndef GLX_EXT_framebuffer_sRGB
 #define GLX_EXT_framebuffer_sRGB 1
@@ -598,9 +526,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEATIPROC) (Display *dpy, GLXPbuffer pbuf, i
 
 #define GLXEW_EXT_framebuffer_sRGB GLXEW_GET_VAR(__GLXEW_EXT_framebuffer_sRGB)
 
-#endif /* GLX_EXT_framebuffer_sRGB */
+#endif 
 
-/* ------------------------- GLX_EXT_import_context ------------------------ */
+
 
 #ifndef GLX_EXT_import_context
 #define GLX_EXT_import_context 1
@@ -623,18 +551,18 @@ typedef int ( * PFNGLXQUERYCONTEXTINFOEXTPROC) (Display* dpy, GLXContext context
 
 #define GLXEW_EXT_import_context GLXEW_GET_VAR(__GLXEW_EXT_import_context)
 
-#endif /* GLX_EXT_import_context */
+#endif 
 
-/* -------------------------- GLX_EXT_scene_marker ------------------------- */
+
 
 #ifndef GLX_EXT_scene_marker
 #define GLX_EXT_scene_marker 1
 
 #define GLXEW_EXT_scene_marker GLXEW_GET_VAR(__GLXEW_EXT_scene_marker)
 
-#endif /* GLX_EXT_scene_marker */
+#endif 
 
-/* -------------------------- GLX_EXT_swap_control ------------------------- */
+
 
 #ifndef GLX_EXT_swap_control
 #define GLX_EXT_swap_control 1
@@ -648,9 +576,9 @@ typedef void ( * PFNGLXSWAPINTERVALEXTPROC) (Display* dpy, GLXDrawable drawable,
 
 #define GLXEW_EXT_swap_control GLXEW_GET_VAR(__GLXEW_EXT_swap_control)
 
-#endif /* GLX_EXT_swap_control */
+#endif 
 
-/* ----------------------- GLX_EXT_swap_control_tear ----------------------- */
+
 
 #ifndef GLX_EXT_swap_control_tear
 #define GLX_EXT_swap_control_tear 1
@@ -659,9 +587,9 @@ typedef void ( * PFNGLXSWAPINTERVALEXTPROC) (Display* dpy, GLXDrawable drawable,
 
 #define GLXEW_EXT_swap_control_tear GLXEW_GET_VAR(__GLXEW_EXT_swap_control_tear)
 
-#endif /* GLX_EXT_swap_control_tear */
+#endif 
 
-/* ---------------------- GLX_EXT_texture_from_pixmap ---------------------- */
+
 
 #ifndef GLX_EXT_texture_from_pixmap
 #define GLX_EXT_texture_from_pixmap 1
@@ -706,9 +634,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEEXTPROC) (Display* display, GLXDrawable dr
 
 #define GLXEW_EXT_texture_from_pixmap GLXEW_GET_VAR(__GLXEW_EXT_texture_from_pixmap)
 
-#endif /* GLX_EXT_texture_from_pixmap */
+#endif 
 
-/* -------------------------- GLX_EXT_visual_info -------------------------- */
+
 
 #ifndef GLX_EXT_visual_info
 #define GLX_EXT_visual_info 1
@@ -732,9 +660,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEEXTPROC) (Display* display, GLXDrawable dr
 
 #define GLXEW_EXT_visual_info GLXEW_GET_VAR(__GLXEW_EXT_visual_info)
 
-#endif /* GLX_EXT_visual_info */
+#endif 
 
-/* ------------------------- GLX_EXT_visual_rating ------------------------- */
+
 
 #ifndef GLX_EXT_visual_rating
 #define GLX_EXT_visual_rating 1
@@ -745,9 +673,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEEXTPROC) (Display* display, GLXDrawable dr
 
 #define GLXEW_EXT_visual_rating GLXEW_GET_VAR(__GLXEW_EXT_visual_rating)
 
-#endif /* GLX_EXT_visual_rating */
+#endif 
 
-/* -------------------------- GLX_INTEL_swap_event ------------------------- */
+
 
 #ifndef GLX_INTEL_swap_event
 #define GLX_INTEL_swap_event 1
@@ -759,9 +687,9 @@ typedef void ( * PFNGLXRELEASETEXIMAGEEXTPROC) (Display* display, GLXDrawable dr
 
 #define GLXEW_INTEL_swap_event GLXEW_GET_VAR(__GLXEW_INTEL_swap_event)
 
-#endif /* GLX_INTEL_swap_event */
+#endif 
 
-/* -------------------------- GLX_MESA_agp_offset -------------------------- */
+
 
 #ifndef GLX_MESA_agp_offset
 #define GLX_MESA_agp_offset 1
@@ -772,9 +700,9 @@ typedef unsigned int ( * PFNGLXGETAGPOFFSETMESAPROC) (const void* pointer);
 
 #define GLXEW_MESA_agp_offset GLXEW_GET_VAR(__GLXEW_MESA_agp_offset)
 
-#endif /* GLX_MESA_agp_offset */
+#endif 
 
-/* ------------------------ GLX_MESA_copy_sub_buffer ----------------------- */
+
 
 #ifndef GLX_MESA_copy_sub_buffer
 #define GLX_MESA_copy_sub_buffer 1
@@ -785,9 +713,9 @@ typedef void ( * PFNGLXCOPYSUBBUFFERMESAPROC) (Display* dpy, GLXDrawable drawabl
 
 #define GLXEW_MESA_copy_sub_buffer GLXEW_GET_VAR(__GLXEW_MESA_copy_sub_buffer)
 
-#endif /* GLX_MESA_copy_sub_buffer */
+#endif 
 
-/* ------------------------ GLX_MESA_pixmap_colormap ----------------------- */
+
 
 #ifndef GLX_MESA_pixmap_colormap
 #define GLX_MESA_pixmap_colormap 1
@@ -798,9 +726,9 @@ typedef GLXPixmap ( * PFNGLXCREATEGLXPIXMAPMESAPROC) (Display* dpy, XVisualInfo 
 
 #define GLXEW_MESA_pixmap_colormap GLXEW_GET_VAR(__GLXEW_MESA_pixmap_colormap)
 
-#endif /* GLX_MESA_pixmap_colormap */
+#endif 
 
-/* ------------------------ GLX_MESA_release_buffers ----------------------- */
+
 
 #ifndef GLX_MESA_release_buffers
 #define GLX_MESA_release_buffers 1
@@ -811,9 +739,9 @@ typedef Bool ( * PFNGLXRELEASEBUFFERSMESAPROC) (Display* dpy, GLXDrawable d);
 
 #define GLXEW_MESA_release_buffers GLXEW_GET_VAR(__GLXEW_MESA_release_buffers)
 
-#endif /* GLX_MESA_release_buffers */
+#endif 
 
-/* ------------------------- GLX_MESA_set_3dfx_mode ------------------------ */
+
 
 #ifndef GLX_MESA_set_3dfx_mode
 #define GLX_MESA_set_3dfx_mode 1
@@ -827,9 +755,9 @@ typedef GLboolean ( * PFNGLXSET3DFXMODEMESAPROC) (GLint mode);
 
 #define GLXEW_MESA_set_3dfx_mode GLXEW_GET_VAR(__GLXEW_MESA_set_3dfx_mode)
 
-#endif /* GLX_MESA_set_3dfx_mode */
+#endif 
 
-/* ------------------------- GLX_MESA_swap_control ------------------------- */
+
 
 #ifndef GLX_MESA_swap_control
 #define GLX_MESA_swap_control 1
@@ -842,9 +770,9 @@ typedef int ( * PFNGLXSWAPINTERVALMESAPROC) (unsigned int interval);
 
 #define GLXEW_MESA_swap_control GLXEW_GET_VAR(__GLXEW_MESA_swap_control)
 
-#endif /* GLX_MESA_swap_control */
+#endif 
 
-/* --------------------------- GLX_NV_copy_image --------------------------- */
+
 
 #ifndef GLX_NV_copy_image
 #define GLX_NV_copy_image 1
@@ -855,9 +783,9 @@ typedef void ( * PFNGLXCOPYIMAGESUBDATANVPROC) (Display *dpy, GLXContext srcCtx,
 
 #define GLXEW_NV_copy_image GLXEW_GET_VAR(__GLXEW_NV_copy_image)
 
-#endif /* GLX_NV_copy_image */
+#endif 
 
-/* -------------------------- GLX_NV_float_buffer -------------------------- */
+
 
 #ifndef GLX_NV_float_buffer
 #define GLX_NV_float_buffer 1
@@ -866,9 +794,9 @@ typedef void ( * PFNGLXCOPYIMAGESUBDATANVPROC) (Display *dpy, GLXContext srcCtx,
 
 #define GLXEW_NV_float_buffer GLXEW_GET_VAR(__GLXEW_NV_float_buffer)
 
-#endif /* GLX_NV_float_buffer */
+#endif 
 
-/* ---------------------- GLX_NV_multisample_coverage ---------------------- */
+
 
 #ifndef GLX_NV_multisample_coverage
 #define GLX_NV_multisample_coverage 1
@@ -878,9 +806,9 @@ typedef void ( * PFNGLXCOPYIMAGESUBDATANVPROC) (Display *dpy, GLXContext srcCtx,
 
 #define GLXEW_NV_multisample_coverage GLXEW_GET_VAR(__GLXEW_NV_multisample_coverage)
 
-#endif /* GLX_NV_multisample_coverage */
+#endif 
 
-/* -------------------------- GLX_NV_present_video ------------------------- */
+
 
 #ifndef GLX_NV_present_video
 #define GLX_NV_present_video 1
@@ -895,9 +823,9 @@ typedef unsigned int* ( * PFNGLXENUMERATEVIDEODEVICESNVPROC) (Display *dpy, int 
 
 #define GLXEW_NV_present_video GLXEW_GET_VAR(__GLXEW_NV_present_video)
 
-#endif /* GLX_NV_present_video */
+#endif 
 
-/* --------------------------- GLX_NV_swap_group --------------------------- */
+
 
 #ifndef GLX_NV_swap_group
 #define GLX_NV_swap_group 1
@@ -918,9 +846,9 @@ typedef Bool ( * PFNGLXRESETFRAMECOUNTNVPROC) (Display* dpy, int screen);
 
 #define GLXEW_NV_swap_group GLXEW_GET_VAR(__GLXEW_NV_swap_group)
 
-#endif /* GLX_NV_swap_group */
+#endif 
 
-/* ----------------------- GLX_NV_vertex_array_range ----------------------- */
+
 
 #ifndef GLX_NV_vertex_array_range
 #define GLX_NV_vertex_array_range 1
@@ -933,9 +861,9 @@ typedef void ( * PFNGLXFREEMEMORYNVPROC) (void *pointer);
 
 #define GLXEW_NV_vertex_array_range GLXEW_GET_VAR(__GLXEW_NV_vertex_array_range)
 
-#endif /* GLX_NV_vertex_array_range */
+#endif 
 
-/* -------------------------- GLX_NV_video_capture ------------------------- */
+
 
 #ifndef GLX_NV_video_capture
 #define GLX_NV_video_capture 1
@@ -960,9 +888,9 @@ typedef void ( * PFNGLXRELEASEVIDEOCAPTUREDEVICENVPROC) (Display* dpy, GLXVideoC
 
 #define GLXEW_NV_video_capture GLXEW_GET_VAR(__GLXEW_NV_video_capture)
 
-#endif /* GLX_NV_video_capture */
+#endif 
 
-/* ---------------------------- GLX_NV_video_out --------------------------- */
+
 
 #ifndef GLX_NV_video_out
 #define GLX_NV_video_out 1
@@ -994,9 +922,9 @@ typedef int ( * PFNGLXSENDPBUFFERTOVIDEONVPROC) (Display* dpy, GLXPbuffer pbuf, 
 
 #define GLXEW_NV_video_out GLXEW_GET_VAR(__GLXEW_NV_video_out)
 
-#endif /* GLX_NV_video_out */
+#endif 
 
-/* -------------------------- GLX_OML_swap_method -------------------------- */
+
 
 #ifndef GLX_OML_swap_method
 #define GLX_OML_swap_method 1
@@ -1008,9 +936,9 @@ typedef int ( * PFNGLXSENDPBUFFERTOVIDEONVPROC) (Display* dpy, GLXPbuffer pbuf, 
 
 #define GLXEW_OML_swap_method GLXEW_GET_VAR(__GLXEW_OML_swap_method)
 
-#endif /* GLX_OML_swap_method */
+#endif 
 
-/* -------------------------- GLX_OML_sync_control ------------------------- */
+
 
 #ifndef GLX_OML_sync_control
 #define GLX_OML_sync_control 1
@@ -1029,9 +957,9 @@ typedef Bool ( * PFNGLXWAITFORSBCOMLPROC) (Display* dpy, GLXDrawable drawable, i
 
 #define GLXEW_OML_sync_control GLXEW_GET_VAR(__GLXEW_OML_sync_control)
 
-#endif /* GLX_OML_sync_control */
+#endif 
 
-/* ------------------------ GLX_SGIS_blended_overlay ----------------------- */
+
 
 #ifndef GLX_SGIS_blended_overlay
 #define GLX_SGIS_blended_overlay 1
@@ -1040,9 +968,9 @@ typedef Bool ( * PFNGLXWAITFORSBCOMLPROC) (Display* dpy, GLXDrawable drawable, i
 
 #define GLXEW_SGIS_blended_overlay GLXEW_GET_VAR(__GLXEW_SGIS_blended_overlay)
 
-#endif /* GLX_SGIS_blended_overlay */
+#endif 
 
-/* -------------------------- GLX_SGIS_color_range ------------------------- */
+
 
 #ifndef GLX_SGIS_color_range
 #define GLX_SGIS_color_range 1
@@ -1059,9 +987,9 @@ typedef Bool ( * PFNGLXWAITFORSBCOMLPROC) (Display* dpy, GLXDrawable drawable, i
 
 #define GLXEW_SGIS_color_range GLXEW_GET_VAR(__GLXEW_SGIS_color_range)
 
-#endif /* GLX_SGIS_color_range */
+#endif 
 
-/* -------------------------- GLX_SGIS_multisample ------------------------- */
+
 
 #ifndef GLX_SGIS_multisample
 #define GLX_SGIS_multisample 1
@@ -1071,9 +999,9 @@ typedef Bool ( * PFNGLXWAITFORSBCOMLPROC) (Display* dpy, GLXDrawable drawable, i
 
 #define GLXEW_SGIS_multisample GLXEW_GET_VAR(__GLXEW_SGIS_multisample)
 
-#endif /* GLX_SGIS_multisample */
+#endif 
 
-/* ---------------------- GLX_SGIS_shared_multisample ---------------------- */
+
 
 #ifndef GLX_SGIS_shared_multisample
 #define GLX_SGIS_shared_multisample 1
@@ -1083,9 +1011,9 @@ typedef Bool ( * PFNGLXWAITFORSBCOMLPROC) (Display* dpy, GLXDrawable drawable, i
 
 #define GLXEW_SGIS_shared_multisample GLXEW_GET_VAR(__GLXEW_SGIS_shared_multisample)
 
-#endif /* GLX_SGIS_shared_multisample */
+#endif 
 
-/* --------------------------- GLX_SGIX_fbconfig --------------------------- */
+
 
 #ifndef GLX_SGIX_fbconfig
 #define GLX_SGIX_fbconfig 1
@@ -1121,9 +1049,9 @@ typedef XVisualInfo* ( * PFNGLXGETVISUALFROMFBCONFIGSGIXPROC) (Display *dpy, GLX
 
 #define GLXEW_SGIX_fbconfig GLXEW_GET_VAR(__GLXEW_SGIX_fbconfig)
 
-#endif /* GLX_SGIX_fbconfig */
+#endif 
 
-/* --------------------------- GLX_SGIX_hyperpipe -------------------------- */
+
 
 #ifndef GLX_SGIX_hyperpipe
 #define GLX_SGIX_hyperpipe 1
@@ -1188,9 +1116,9 @@ typedef GLXHyperpipeNetworkSGIX * ( * PFNGLXQUERYHYPERPIPENETWORKSGIXPROC) (Disp
 
 #define GLXEW_SGIX_hyperpipe GLXEW_GET_VAR(__GLXEW_SGIX_hyperpipe)
 
-#endif /* GLX_SGIX_hyperpipe */
+#endif 
 
-/* ---------------------------- GLX_SGIX_pbuffer --------------------------- */
+
 
 #ifndef GLX_SGIX_pbuffer
 #define GLX_SGIX_pbuffer 1
@@ -1238,9 +1166,9 @@ typedef void ( * PFNGLXSELECTEVENTSGIXPROC) (Display* dpy, GLXDrawable drawable,
 
 #define GLXEW_SGIX_pbuffer GLXEW_GET_VAR(__GLXEW_SGIX_pbuffer)
 
-#endif /* GLX_SGIX_pbuffer */
+#endif 
 
-/* ------------------------- GLX_SGIX_swap_barrier ------------------------- */
+
 
 #ifndef GLX_SGIX_swap_barrier
 #define GLX_SGIX_swap_barrier 1
@@ -1253,9 +1181,9 @@ typedef Bool ( * PFNGLXQUERYMAXSWAPBARRIERSSGIXPROC) (Display *dpy, int screen, 
 
 #define GLXEW_SGIX_swap_barrier GLXEW_GET_VAR(__GLXEW_SGIX_swap_barrier)
 
-#endif /* GLX_SGIX_swap_barrier */
+#endif 
 
-/* -------------------------- GLX_SGIX_swap_group -------------------------- */
+
 
 #ifndef GLX_SGIX_swap_group
 #define GLX_SGIX_swap_group 1
@@ -1266,9 +1194,9 @@ typedef void ( * PFNGLXJOINSWAPGROUPSGIXPROC) (Display *dpy, GLXDrawable drawabl
 
 #define GLXEW_SGIX_swap_group GLXEW_GET_VAR(__GLXEW_SGIX_swap_group)
 
-#endif /* GLX_SGIX_swap_group */
+#endif 
 
-/* ------------------------- GLX_SGIX_video_resize ------------------------- */
+
 
 #ifndef GLX_SGIX_video_resize
 #define GLX_SGIX_video_resize 1
@@ -1290,9 +1218,9 @@ typedef int ( * PFNGLXQUERYCHANNELRECTSGIXPROC) (Display* display, int screen, i
 
 #define GLXEW_SGIX_video_resize GLXEW_GET_VAR(__GLXEW_SGIX_video_resize)
 
-#endif /* GLX_SGIX_video_resize */
+#endif 
 
-/* ---------------------- GLX_SGIX_visual_select_group --------------------- */
+
 
 #ifndef GLX_SGIX_visual_select_group
 #define GLX_SGIX_visual_select_group 1
@@ -1301,9 +1229,9 @@ typedef int ( * PFNGLXQUERYCHANNELRECTSGIXPROC) (Display* display, int screen, i
 
 #define GLXEW_SGIX_visual_select_group GLXEW_GET_VAR(__GLXEW_SGIX_visual_select_group)
 
-#endif /* GLX_SGIX_visual_select_group */
+#endif 
 
-/* ---------------------------- GLX_SGI_cushion ---------------------------- */
+
 
 #ifndef GLX_SGI_cushion
 #define GLX_SGI_cushion 1
@@ -1314,9 +1242,9 @@ typedef void ( * PFNGLXCUSHIONSGIPROC) (Display* dpy, Window window, float cushi
 
 #define GLXEW_SGI_cushion GLXEW_GET_VAR(__GLXEW_SGI_cushion)
 
-#endif /* GLX_SGI_cushion */
+#endif 
 
-/* ----------------------- GLX_SGI_make_current_read ----------------------- */
+
 
 #ifndef GLX_SGI_make_current_read
 #define GLX_SGI_make_current_read 1
@@ -1329,9 +1257,9 @@ typedef Bool ( * PFNGLXMAKECURRENTREADSGIPROC) (Display* dpy, GLXDrawable draw, 
 
 #define GLXEW_SGI_make_current_read GLXEW_GET_VAR(__GLXEW_SGI_make_current_read)
 
-#endif /* GLX_SGI_make_current_read */
+#endif 
 
-/* -------------------------- GLX_SGI_swap_control ------------------------- */
+
 
 #ifndef GLX_SGI_swap_control
 #define GLX_SGI_swap_control 1
@@ -1342,9 +1270,9 @@ typedef int ( * PFNGLXSWAPINTERVALSGIPROC) (int interval);
 
 #define GLXEW_SGI_swap_control GLXEW_GET_VAR(__GLXEW_SGI_swap_control)
 
-#endif /* GLX_SGI_swap_control */
+#endif 
 
-/* --------------------------- GLX_SGI_video_sync -------------------------- */
+
 
 #ifndef GLX_SGI_video_sync
 #define GLX_SGI_video_sync 1
@@ -1357,9 +1285,9 @@ typedef int ( * PFNGLXWAITVIDEOSYNCSGIPROC) (int divisor, int remainder, unsigne
 
 #define GLXEW_SGI_video_sync GLXEW_GET_VAR(__GLXEW_SGI_video_sync)
 
-#endif /* GLX_SGI_video_sync */
+#endif 
 
-/* --------------------- GLX_SUN_get_transparent_index --------------------- */
+
 
 #ifndef GLX_SUN_get_transparent_index
 #define GLX_SUN_get_transparent_index 1
@@ -1370,9 +1298,9 @@ typedef Status ( * PFNGLXGETTRANSPARENTINDEXSUNPROC) (Display* dpy, Window overl
 
 #define GLXEW_SUN_get_transparent_index GLXEW_GET_VAR(__GLXEW_SUN_get_transparent_index)
 
-#endif /* GLX_SUN_get_transparent_index */
+#endif 
 
-/* -------------------------- GLX_SUN_video_resize ------------------------- */
+
 
 #ifndef GLX_SUN_video_resize
 #define GLX_SUN_video_resize 1
@@ -1388,9 +1316,9 @@ typedef int ( * PFNGLXVIDEORESIZESUNPROC) (Display* display, GLXDrawable window,
 
 #define GLXEW_SUN_video_resize GLXEW_GET_VAR(__GLXEW_SUN_video_resize)
 
-#endif /* GLX_SUN_video_resize */
+#endif 
 
-/* ------------------------------------------------------------------------- */
+
 
 #ifdef GLEW_MX
 #define GLXEW_FUN_EXPORT
@@ -1398,7 +1326,7 @@ typedef int ( * PFNGLXVIDEORESIZESUNPROC) (Display* display, GLXDrawable window,
 #else
 #define GLXEW_FUN_EXPORT GLEW_FUN_EXPORT
 #define GLXEW_VAR_EXPORT GLEW_VAR_EXPORT
-#endif /* GLEW_MX */
+#endif 
 
 GLXEW_FUN_EXPORT PFNGLXGETCURRENTDISPLAYPROC __glewXGetCurrentDisplay;
 
@@ -1534,7 +1462,7 @@ GLXEW_FUN_EXPORT PFNGLXVIDEORESIZESUNPROC __glewXVideoResizeSUN;
 #if defined(GLEW_MX)
 struct GLXEWContextStruct
 {
-#endif /* GLEW_MX */
+#endif 
 
 GLXEW_VAR_EXPORT GLboolean __GLXEW_VERSION_1_0;
 GLXEW_VAR_EXPORT GLboolean __GLXEW_VERSION_1_1;
@@ -1602,10 +1530,10 @@ GLXEW_VAR_EXPORT GLboolean __GLXEW_SUN_get_transparent_index;
 GLXEW_VAR_EXPORT GLboolean __GLXEW_SUN_video_resize;
 
 #ifdef GLEW_MX
-}; /* GLXEWContextStruct */
-#endif /* GLEW_MX */
+}; 
+#endif 
 
-/* ------------------------------------------------------------------------ */
+
 
 #ifdef GLEW_MX
 
@@ -1619,14 +1547,14 @@ GLEWAPI GLboolean GLEWAPIENTRY glxewContextIsSupported (const GLXEWContext *ctx,
 #define GLXEW_GET_VAR(x) (*(const GLboolean*)&(glxewGetContext()->x))
 #define GLXEW_GET_FUN(x) x
 
-#else /* GLEW_MX */
+#else 
 
 #define GLXEW_GET_VAR(x) (*(const GLboolean*)&x)
 #define GLXEW_GET_FUN(x) x
 
 GLEWAPI GLboolean GLEWAPIENTRY glxewIsSupported (const char *name);
 
-#endif /* GLEW_MX */
+#endif 
 
 GLEWAPI GLboolean GLEWAPIENTRY glxewGetExtension (const char *name);
 
@@ -1634,4 +1562,4 @@ GLEWAPI GLboolean GLEWAPIENTRY glxewGetExtension (const char *name);
 }
 #endif
 
-#endif /* __glxew_h__ */
+#endif 

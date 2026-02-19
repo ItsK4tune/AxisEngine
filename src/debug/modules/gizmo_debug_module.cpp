@@ -34,8 +34,8 @@ void GizmoDebugModule::OnUpdate(float dt)
 
 void GizmoDebugModule::Render(Scene &scene)
 {
-    // Labels are rendered as UI entities, so they're handled by UIRenderSystem
-    // Transform gizmos would be rendered here if implemented
+    
+    
 }
 
 void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)

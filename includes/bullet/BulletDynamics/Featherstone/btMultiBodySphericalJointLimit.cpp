@@ -1,19 +1,6 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2018 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-///This file was written by Erwin Coumans
 
 #include "btMultiBodySphericalJointLimit.h"
 #include "btMultiBody.h"
@@ -52,13 +39,13 @@ btMultiBodySphericalJointLimit::btMultiBodySphericalJointLimit(btMultiBody* body
 void btMultiBodySphericalJointLimit::finalizeMultiDof()
 {
 	allocateJacobiansMultiDof();
-	// note: we rely on the fact that data.m_jacobians are
-	// always initialized to zero by the Constraint ctor
+	
+	
 	int linkDoF = 0;
 	unsigned int offset = 6 + (m_bodyA->getLink(m_linkA).m_dofOffset + linkDoF);
 
-	// row 0: the lower bound
-	// row 0: the lower bound
+	
+	
 	jacobianA(0)[offset] = 1;
 
 	jacobianB(1)[offset] = -1;
@@ -111,15 +98,15 @@ void btMultiBodySphericalJointLimit::createConstraintRows(btMultiBodyConstraintA
 												 btMultiBodyJacobianData& data,
 												 const btContactSolverInfo& infoGlobal)
 {
-	// only positions need to be updated -- data.m_jacobians and force
-	// directions were set in the ctor and never change.
+	
+	
 
 	if (m_numDofsFinalized != m_jacSizeBoth)
 	{
 		finalizeMultiDof();
 	}
 
-	//don't crash
+	
 	if (m_numDofsFinalized != m_jacSizeBoth)
 		return;
 	
@@ -156,11 +143,11 @@ void btMultiBodySphericalJointLimit::createConstraintRows(btMultiBodyConstraintA
 	
 	btScalar limitRanges[3] = {m_swingxRange, m_swingyRange, m_twistRange};
 	
-	/// twist axis/angle
+	
 	btQuaternion qMinTwist = qABTwist;
 	btScalar twistAngle = qABTwist.getAngle();
 
-	if (twistAngle > SIMD_PI)  // long way around. flip quat and recalculate.
+	if (twistAngle > SIMD_PI)  
 	{
 		qMinTwist = -(qABTwist);
 		twistAngle = qMinTwist.getAngle();
@@ -221,8 +208,8 @@ void btMultiBodySphericalJointLimit::createConstraintRows(btMultiBodyConstraintA
 					double kp = m_use_multi_dof_params ? m_kp[row % 3] : m_kp[0];
 					posError = kp*angleDiff[row % 3];
 					double max_applied_impulse = m_use_multi_dof_params ? m_maxAppliedImpulseMultiDof[row % 3] : m_maxAppliedImpulse;
-					//should multiply by time step
-					//max_applied_impulse *= infoGlobal.m_timeStep
+					
+					
 
 					double min_applied_impulse = -max_applied_impulse;
 					
@@ -236,7 +223,7 @@ void btMultiBodySphericalJointLimit::createConstraintRows(btMultiBodyConstraintA
 					{
 						btMultiBodySolverConstraint& constraintRow = constraintRows.expandNonInitializing();
 						fillMultiBodyConstraint(constraintRow, data, 0, 0, constraintNormalAng,
-							zero, zero, zero,//pure angular, so zero out linear parts
+							zero, zero, zero,
 							posError,
 							infoGlobal,
 							min_applied_impulse, max_applied_impulse, true,

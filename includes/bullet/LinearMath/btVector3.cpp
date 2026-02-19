@@ -1,19 +1,4 @@
-/*
- Copyright (c) 2011 Apple Inc.
- https://bulletphysics.org
- 
- This software is provided 'as-is', without any express or implied warranty.
- In no event will the authors be held liable for any damages arising from the use of this software.
- Permission is granted to anyone to use this software for any purpose, 
- including commercial applications, and to alter it and redistribute it freely, 
- subject to the following restrictions:
- 
- 1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
- 2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
- 3. This notice may not be removed or altered from any source distribution.
- 
- This source version has been altered.
- */
+
 
 #if defined(_WIN32) || defined(__i386__)
 #define BT_USE_SSE_IN_API
@@ -24,7 +9,7 @@
 #if defined BT_USE_SIMD_VECTOR3
 
 #if DEBUG
-#include <string.h>  //for memset
+#include <string.h>  
 #endif
 
 #ifdef __APPLE__
@@ -33,7 +18,7 @@ typedef float float4 __attribute__((vector_size(16)));
 #else
 #define float4 __m128
 #endif
-//typedef  uint32_t uint4 __attribute__ ((vector_size(16)));
+
 
 #if defined BT_USE_SSE || defined _WIN32
 
@@ -49,8 +34,8 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 	static const unsigned char indexTable[16] = {(unsigned char)-1, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
 	float4 dotMax = btAssign128(-BT_INFINITY, -BT_INFINITY, -BT_INFINITY, -BT_INFINITY);
 	float4 vvec = _mm_loadu_ps(vec);
-	float4 vHi = btCastiTo128f(_mm_shuffle_epi32(btCastfTo128i(vvec), 0xaa));  /// zzzz
-	float4 vLo = _mm_movelh_ps(vvec, vvec);                                    /// xyxy
+	float4 vHi = btCastiTo128f(_mm_shuffle_epi32(btCastfTo128i(vvec), 0xaa));  
+	float4 vLo = _mm_movelh_ps(vvec, vvec);                                    
 
 	long maxIndex = -1L;
 
@@ -58,28 +43,28 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 	float4 stack_array[STACK_ARRAY_COUNT];
 
 #if DEBUG
-	//memset( stack_array, -1, STACK_ARRAY_COUNT * sizeof(stack_array[0]) );
+	
 #endif
 
 	size_t index;
 	float4 max;
-	// Faster loop without cleanup code for full tiles
+	
 	for (segment = 0; segment + STACK_ARRAY_COUNT * 4 <= count; segment += STACK_ARRAY_COUNT * 4)
 	{
 		max = dotMax;
 
 		for (index = 0; index < STACK_ARRAY_COUNT; index += 4)
-		{  // do four dot products at a time. Carefully avoid touching the w element.
+		{  
 			float4 v0 = vertices[0];
 			float4 v1 = vertices[1];
 			float4 v2 = vertices[2];
 			float4 v3 = vertices[3];
 			vertices += 4;
 
-			float4 lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			float4 hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			float4 lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			float4 hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			float4 lo0 = _mm_movelh_ps(v0, v1);  
+			float4 hi0 = _mm_movehl_ps(v1, v0);  
+			float4 lo1 = _mm_movelh_ps(v2, v3);  
+			float4 hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -90,7 +75,7 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -98,10 +83,10 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -112,7 +97,7 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 1] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -120,10 +105,10 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -134,7 +119,7 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 2] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -142,10 +127,10 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -156,51 +141,51 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 3] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
-			// It is too costly to keep the index of the max here. We will look for it again later.  We save a lot of work this way.
+			
 		}
 
-		// If we found a new max
+		
 		if (0xf != _mm_movemask_ps((float4)_mm_cmpeq_ps(max, dotMax)))
 		{
-			// copy the new max across all lanes of our max accumulator
+			
 			max = _mm_max_ps(max, (float4)_mm_shuffle_ps(max, max, 0x4e));
 			max = _mm_max_ps(max, (float4)_mm_shuffle_ps(max, max, 0xb1));
 
 			dotMax = max;
 
-			// find first occurrence of that max
+			
 			size_t test;
-			for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], max))); index++)  // local_count must be a multiple of 4
+			for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], max))); index++)  
 			{
 			}
-			// record where it is.
+			
 			maxIndex = 4 * index + segment + indexTable[test];
 		}
 	}
 
-	// account for work we've already done
+	
 	count -= segment;
 
-	// Deal with the last < STACK_ARRAY_COUNT vectors
+	
 	max = dotMax;
 	index = 0;
 
 	if (btUnlikely(count > 16))
 	{
 		for (; index + 4 <= count / 4; index += 4)
-		{  // do four dot products at a time. Carefully avoid touching the w element.
+		{  
 			float4 v0 = vertices[0];
 			float4 v1 = vertices[1];
 			float4 v2 = vertices[2];
 			float4 v3 = vertices[3];
 			vertices += 4;
 
-			float4 lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			float4 hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			float4 lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			float4 hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			float4 lo0 = _mm_movelh_ps(v0, v1);  
+			float4 hi0 = _mm_movehl_ps(v1, v0);  
+			float4 lo1 = _mm_movelh_ps(v2, v3);  
+			float4 hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -211,7 +196,7 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -219,10 +204,10 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -233,7 +218,7 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 1] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -241,10 +226,10 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -255,7 +240,7 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 2] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -263,10 +248,10 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -277,9 +262,9 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 3] = x;
-			max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+			max = _mm_max_ps(x, max);  
 
-			// It is too costly to keep the index of the max here. We will look for it again later.  We save a lot of work this way.
+			
 		}
 	}
 
@@ -289,9 +274,9 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 #ifdef __APPLE__
 		float4 t0, t1, t2, t3, t4;
 		float4 *sap = &stack_array[index + localCount / 4];
-		vertices += localCount;  // counter the offset
+		vertices += localCount;  
 		size_t byteIndex = -(localCount) * sizeof(float);
-		//AT&T Code style assembly
+		
 		asm volatile(
 			".align 4                                                                   \n\
              0: movaps  %[max], %[t2]                            // move max out of the way to avoid propagating NaNs in max \n\
@@ -326,17 +311,17 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 #else
 		{
 			for (unsigned int i = 0; i < localCount / 4; i++, index++)
-			{  // do four dot products at a time. Carefully avoid touching the w element.
+			{  
 				float4 v0 = vertices[0];
 				float4 v1 = vertices[1];
 				float4 v2 = vertices[2];
 				float4 v3 = vertices[3];
 				vertices += 4;
 
-				float4 lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-				float4 hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-				float4 lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-				float4 hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+				float4 lo0 = _mm_movelh_ps(v0, v1);  
+				float4 hi0 = _mm_movehl_ps(v1, v0);  
+				float4 lo1 = _mm_movelh_ps(v2, v3);  
+				float4 hi1 = _mm_movehl_ps(v3, v2);  
 
 				lo0 = lo0 * vLo;
 				lo1 = lo1 * vLo;
@@ -347,13 +332,13 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 				x = x + y;
 				x = x + z;
 				stack_array[index] = x;
-				max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+				max = _mm_max_ps(x, max);  
 			}
 		}
-#endif  //__APPLE__
+#endif  
 	}
 
-	// process the last few points
+	
 	if (count & 3)
 	{
 		float4 v0, v1, v2, x, y, z;
@@ -365,13 +350,13 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 				v1 = vertices[1];
 				v2 = vertices[2];
 
-				// Calculate 3 dot products, transpose, duplicate v2
-				float4 lo0 = _mm_movelh_ps(v0, v1);  // xyxy.lo
-				float4 hi0 = _mm_movehl_ps(v1, v0);  // z?z?.lo
+				
+				float4 lo0 = _mm_movelh_ps(v0, v1);  
+				float4 hi0 = _mm_movehl_ps(v1, v0);  
 				lo0 = lo0 * vLo;
-				z = _mm_shuffle_ps(hi0, v2, 0xa8);  // z0z1z2z2
+				z = _mm_shuffle_ps(hi0, v2, 0xa8);  
 				z = z * vHi;
-				float4 lo1 = _mm_movelh_ps(v2, v2);  // xyxy
+				float4 lo1 = _mm_movelh_ps(v2, v2);  
 				lo1 = lo1 * vLo;
 				x = _mm_shuffle_ps(lo0, lo1, 0x88);
 				y = _mm_shuffle_ps(lo0, lo1, 0xdd);
@@ -404,27 +389,27 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 		x = x + y;
 		x = x + z;
 		stack_array[index] = x;
-		max = _mm_max_ps(x, max);  // control the order here so that max is never NaN even if x is nan
+		max = _mm_max_ps(x, max);  
 		index++;
 	}
 
-	// if we found a new max.
+	
 	if (0 == segment || 0xf != _mm_movemask_ps((float4)_mm_cmpeq_ps(max, dotMax)))
-	{  // we found a new max. Search for it
-		// find max across the max vector, place in all elements of max -- big latency hit here
+	{  
+		
 		max = _mm_max_ps(max, (float4)_mm_shuffle_ps(max, max, 0x4e));
 		max = _mm_max_ps(max, (float4)_mm_shuffle_ps(max, max, 0xb1));
 
-		// It is slightly faster to do this part in scalar code when count < 8. However, the common case for
-		// this where it actually makes a difference is handled in the early out at the top of the function,
-		// so it is less than a 1% difference here. I opted for improved code size, fewer branches and reduced
-		// complexity, and removed it.
+		
+		
+		
+		
 
 		dotMax = max;
 
-		// scan for the first occurence of max in the array
+		
 		size_t test;
-		for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], max))); index++)  // local_count must be a multiple of 4
+		for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], max))); index++)  
 		{
 		}
 		maxIndex = 4 * index + segment + indexTable[test];
@@ -442,8 +427,8 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 	static const unsigned char indexTable[16] = {(unsigned char)-1, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
 	float4 dotmin = btAssign128(BT_INFINITY, BT_INFINITY, BT_INFINITY, BT_INFINITY);
 	float4 vvec = _mm_loadu_ps(vec);
-	float4 vHi = btCastiTo128f(_mm_shuffle_epi32(btCastfTo128i(vvec), 0xaa));  /// zzzz
-	float4 vLo = _mm_movelh_ps(vvec, vvec);                                    /// xyxy
+	float4 vHi = btCastiTo128f(_mm_shuffle_epi32(btCastfTo128i(vvec), 0xaa));  
+	float4 vLo = _mm_movelh_ps(vvec, vvec);                                    
 
 	long minIndex = -1L;
 
@@ -451,28 +436,28 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 	float4 stack_array[STACK_ARRAY_COUNT];
 
 #if DEBUG
-	//memset( stack_array, -1, STACK_ARRAY_COUNT * sizeof(stack_array[0]) );
+	
 #endif
 
 	size_t index;
 	float4 min;
-	// Faster loop without cleanup code for full tiles
+	
 	for (segment = 0; segment + STACK_ARRAY_COUNT * 4 <= count; segment += STACK_ARRAY_COUNT * 4)
 	{
 		min = dotmin;
 
 		for (index = 0; index < STACK_ARRAY_COUNT; index += 4)
-		{  // do four dot products at a time. Carefully avoid touching the w element.
+		{  
 			float4 v0 = vertices[0];
 			float4 v1 = vertices[1];
 			float4 v2 = vertices[2];
 			float4 v3 = vertices[3];
 			vertices += 4;
 
-			float4 lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			float4 hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			float4 lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			float4 hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			float4 lo0 = _mm_movelh_ps(v0, v1);  
+			float4 hi0 = _mm_movehl_ps(v1, v0);  
+			float4 lo1 = _mm_movelh_ps(v2, v3);  
+			float4 hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -483,7 +468,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -491,10 +476,10 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -505,7 +490,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 1] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -513,10 +498,10 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -527,7 +512,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 2] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -535,10 +520,10 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -549,51 +534,51 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 3] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
-			// It is too costly to keep the index of the min here. We will look for it again later.  We save a lot of work this way.
+			
 		}
 
-		// If we found a new min
+		
 		if (0xf != _mm_movemask_ps((float4)_mm_cmpeq_ps(min, dotmin)))
 		{
-			// copy the new min across all lanes of our min accumulator
+			
 			min = _mm_min_ps(min, (float4)_mm_shuffle_ps(min, min, 0x4e));
 			min = _mm_min_ps(min, (float4)_mm_shuffle_ps(min, min, 0xb1));
 
 			dotmin = min;
 
-			// find first occurrence of that min
+			
 			size_t test;
-			for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], min))); index++)  // local_count must be a multiple of 4
+			for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], min))); index++)  
 			{
 			}
-			// record where it is.
+			
 			minIndex = 4 * index + segment + indexTable[test];
 		}
 	}
 
-	// account for work we've already done
+	
 	count -= segment;
 
-	// Deal with the last < STACK_ARRAY_COUNT vectors
+	
 	min = dotmin;
 	index = 0;
 
 	if (btUnlikely(count > 16))
 	{
 		for (; index + 4 <= count / 4; index += 4)
-		{  // do four dot products at a time. Carefully avoid touching the w element.
+		{  
 			float4 v0 = vertices[0];
 			float4 v1 = vertices[1];
 			float4 v2 = vertices[2];
 			float4 v3 = vertices[3];
 			vertices += 4;
 
-			float4 lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			float4 hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			float4 lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			float4 hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			float4 lo0 = _mm_movelh_ps(v0, v1);  
+			float4 hi0 = _mm_movehl_ps(v1, v0);  
+			float4 lo1 = _mm_movelh_ps(v2, v3);  
+			float4 hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -604,7 +589,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -612,10 +597,10 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -626,7 +611,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 1] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -634,10 +619,10 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -648,7 +633,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 2] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
 			v0 = vertices[0];
 			v1 = vertices[1];
@@ -656,10 +641,10 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			v3 = vertices[3];
 			vertices += 4;
 
-			lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-			hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-			lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-			hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+			lo0 = _mm_movelh_ps(v0, v1);  
+			hi0 = _mm_movehl_ps(v1, v0);  
+			lo1 = _mm_movelh_ps(v2, v3);  
+			hi1 = _mm_movehl_ps(v3, v2);  
 
 			lo0 = lo0 * vLo;
 			lo1 = lo1 * vLo;
@@ -670,9 +655,9 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 			x = x + y;
 			x = x + z;
 			stack_array[index + 3] = x;
-			min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+			min = _mm_min_ps(x, min);  
 
-			// It is too costly to keep the index of the min here. We will look for it again later.  We save a lot of work this way.
+			
 		}
 	}
 
@@ -680,7 +665,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 	if (localCount)
 	{
 #ifdef __APPLE__
-		vertices += localCount;  // counter the offset
+		vertices += localCount;  
 		float4 t0, t1, t2, t3, t4;
 		size_t byteIndex = -(localCount) * sizeof(float);
 		float4 *sap = &stack_array[index + localCount / 4];
@@ -719,17 +704,17 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 #else
 		{
 			for (unsigned int i = 0; i < localCount / 4; i++, index++)
-			{  // do four dot products at a time. Carefully avoid touching the w element.
+			{  
 				float4 v0 = vertices[0];
 				float4 v1 = vertices[1];
 				float4 v2 = vertices[2];
 				float4 v3 = vertices[3];
 				vertices += 4;
 
-				float4 lo0 = _mm_movelh_ps(v0, v1);  // x0y0x1y1
-				float4 hi0 = _mm_movehl_ps(v1, v0);  // z0?0z1?1
-				float4 lo1 = _mm_movelh_ps(v2, v3);  // x2y2x3y3
-				float4 hi1 = _mm_movehl_ps(v3, v2);  // z2?2z3?3
+				float4 lo0 = _mm_movelh_ps(v0, v1);  
+				float4 hi0 = _mm_movehl_ps(v1, v0);  
+				float4 lo1 = _mm_movelh_ps(v2, v3);  
+				float4 hi1 = _mm_movehl_ps(v3, v2);  
 
 				lo0 = lo0 * vLo;
 				lo1 = lo1 * vLo;
@@ -740,14 +725,14 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 				x = x + y;
 				x = x + z;
 				stack_array[index] = x;
-				min = _mm_min_ps(x, min);  // control the order here so that max is never NaN even if x is nan
+				min = _mm_min_ps(x, min);  
 			}
 		}
 
 #endif
 	}
 
-	// process the last few points
+	
 	if (count & 3)
 	{
 		float4 v0, v1, v2, x, y, z;
@@ -759,13 +744,13 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 				v1 = vertices[1];
 				v2 = vertices[2];
 
-				// Calculate 3 dot products, transpose, duplicate v2
-				float4 lo0 = _mm_movelh_ps(v0, v1);  // xyxy.lo
-				float4 hi0 = _mm_movehl_ps(v1, v0);  // z?z?.lo
+				
+				float4 lo0 = _mm_movelh_ps(v0, v1);  
+				float4 hi0 = _mm_movehl_ps(v1, v0);  
 				lo0 = lo0 * vLo;
-				z = _mm_shuffle_ps(hi0, v2, 0xa8);  // z0z1z2z2
+				z = _mm_shuffle_ps(hi0, v2, 0xa8);  
 				z = z * vHi;
-				float4 lo1 = _mm_movelh_ps(v2, v2);  // xyxy
+				float4 lo1 = _mm_movelh_ps(v2, v2);  
 				lo1 = lo1 * vLo;
 				x = _mm_shuffle_ps(lo0, lo1, 0x88);
 				y = _mm_shuffle_ps(lo0, lo1, 0xdd);
@@ -798,27 +783,27 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 		x = x + y;
 		x = x + z;
 		stack_array[index] = x;
-		min = _mm_min_ps(x, min);  // control the order here so that min is never NaN even if x is nan
+		min = _mm_min_ps(x, min);  
 		index++;
 	}
 
-	// if we found a new min.
+	
 	if (0 == segment || 0xf != _mm_movemask_ps((float4)_mm_cmpeq_ps(min, dotmin)))
-	{  // we found a new min. Search for it
-		// find min across the min vector, place in all elements of min -- big latency hit here
+	{  
+		
 		min = _mm_min_ps(min, (float4)_mm_shuffle_ps(min, min, 0x4e));
 		min = _mm_min_ps(min, (float4)_mm_shuffle_ps(min, min, 0xb1));
 
-		// It is slightly faster to do this part in scalar code when count < 8. However, the common case for
-		// this where it actually makes a difference is handled in the early out at the top of the function,
-		// so it is less than a 1% difference here. I opted for improved code size, fewer branches and reduced
-		// complexity, and removed it.
+		
+		
+		
+		
 
 		dotmin = min;
 
-		// scan for the first occurence of min in the array
+		
 		size_t test;
-		for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], min))); index++)  // local_count must be a multiple of 4
+		for (index = 0; 0 == (test = _mm_movemask_ps(_mm_cmpeq_ps(stack_array[index], min))); index++)  
 		{
 		}
 		minIndex = 4 * index + segment + indexTable[test];
@@ -833,7 +818,7 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 #define ARM_NEON_GCC_COMPATIBILITY 1
 #include <arm_neon.h>
 #include <sys/types.h>
-#include <sys/sysctl.h>  //for sysctlbyname
+#include <sys/sysctl.h>  
 
 static long _maxdot_large_v0(const float *vv, const float *vec, unsigned long count, float *dotResult);
 static long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, float *dotResult);
@@ -886,10 +871,10 @@ static long _mindot_large_sel(const float *vv, const float *vec, unsigned long c
 }
 
 #if defined __arm__
-#define vld1q_f32_aligned_postincrement(_ptr) ({ float32x4_t _r; asm( "vld1.f32 {%0}, [%1, :128]!\n" : "=w" (_r), "+r" (_ptr) ); /*return*/ _r; })
+#define vld1q_f32_aligned_postincrement(_ptr) ({ float32x4_t _r; asm( "vld1.f32 {%0}, [%1, :128]!\n" : "=w" (_r), "+r" (_ptr) );  _r; })
 #else
-//support 64bit arm
-#define vld1q_f32_aligned_postincrement(_ptr) ({ float32x4_t _r = ((float32x4_t*)(_ptr))[0]; (_ptr) = (const float*) ((const char*)(_ptr) + 16L); /*return*/ _r; })
+
+#define vld1q_f32_aligned_postincrement(_ptr) ({ float32x4_t _r = ((float32x4_t*)(_ptr))[0]; (_ptr) = (const float*) ((const char*)(_ptr) + 16L);  _r; })
 #endif
 
 long _maxdot_large_v0(const float *vv, const float *vec, unsigned long count, float *dotResult)
@@ -1065,12 +1050,12 @@ long _maxdot_large_v0(const float *vv, const float *vec, unsigned long count, fl
 			break;
 	}
 
-	// select best answer between hi and lo results
+	
 	uint32x2_t mask = vcgt_f32(dotMaxHi, dotMaxLo);
 	dotMaxLo = vbsl_f32(mask, dotMaxHi, dotMaxLo);
 	iLo = vbsl_u32(mask, iHi, iLo);
 
-	// select best answer between even and odd results
+	
 	dotMaxHi = vdup_lane_f32(dotMaxLo, 1);
 	iHi = vdup_lane_u32(iLo, 1);
 	mask = vcgt_f32(dotMaxHi, dotMaxLo);
@@ -1099,10 +1084,10 @@ long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		float32x4_t v2 = vld1q_f32_aligned_postincrement(vv);
 		float32x4_t v3 = vld1q_f32_aligned_postincrement(vv);
 
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 		float32x4_t xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v3));
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 		float32x4_t z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v3));
 
@@ -1125,10 +1110,10 @@ long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		v2 = vld1q_f32_aligned_postincrement(vv);
 		v3 = vld1q_f32_aligned_postincrement(vv);
 
-		// the next two lines should resolve to a single vswp d, d
+		
 		xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 		xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v3));
-		// the next two lines should resolve to a single vswp d, d
+		
 		z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 		z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v3));
 
@@ -1154,10 +1139,10 @@ long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		float32x4_t v2 = vld1q_f32_aligned_postincrement(vv);
 		float32x4_t v3 = vld1q_f32_aligned_postincrement(vv);
 
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 		float32x4_t xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v3));
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 		float32x4_t z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v3));
 
@@ -1184,10 +1169,10 @@ long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 			float32x4_t v1 = vld1q_f32_aligned_postincrement(vv);
 			float32x4_t v2 = vld1q_f32_aligned_postincrement(vv);
 
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 			float32x4_t xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v2));
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 			float32x4_t z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v2));
 
@@ -1212,9 +1197,9 @@ long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 			float32x4_t v0 = vld1q_f32_aligned_postincrement(vv);
 			float32x4_t v1 = vld1q_f32_aligned_postincrement(vv);
 
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 
 			xy0 = vmulq_f32(xy0, vLo);
@@ -1236,9 +1221,9 @@ long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		{
 			float32x4_t v0 = vld1q_f32_aligned_postincrement(vv);
 
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v0));
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t z = vdupq_lane_f32(vget_high_f32(v0), 0);
 
 			xy0 = vmulq_f32(xy0, vLo);
@@ -1259,12 +1244,12 @@ long _maxdot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 			break;
 	}
 
-	// select best answer between hi and lo results
+	
 	uint32x2_t mask = vcgt_f32(vget_high_f32(maxDot), vget_low_f32(maxDot));
 	float32x2_t maxDot2 = vbsl_f32(mask, vget_high_f32(maxDot), vget_low_f32(maxDot));
 	uint32x2_t index2 = vbsl_u32(mask, vget_high_u32(index), vget_low_u32(index));
 
-	// select best answer between even and odd results
+	
 	float32x2_t maxDotO = vdup_lane_f32(maxDot2, 1);
 	uint32x2_t indexHi = vdup_lane_u32(index2, 1);
 	mask = vcgt_f32(maxDotO, maxDot2);
@@ -1447,12 +1432,12 @@ long _mindot_large_v0(const float *vv, const float *vec, unsigned long count, fl
 			break;
 	}
 
-	// select best answer between hi and lo results
+	
 	uint32x2_t mask = vclt_f32(dotMinHi, dotMinLo);
 	dotMinLo = vbsl_f32(mask, dotMinHi, dotMinLo);
 	iLo = vbsl_u32(mask, iHi, iLo);
 
-	// select best answer between even and odd results
+	
 	dotMinHi = vdup_lane_f32(dotMinLo, 1);
 	iHi = vdup_lane_u32(iLo, 1);
 	mask = vclt_f32(dotMinHi, dotMinLo);
@@ -1481,10 +1466,10 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		float32x4_t v2 = vld1q_f32_aligned_postincrement(vv);
 		float32x4_t v3 = vld1q_f32_aligned_postincrement(vv);
 
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 		float32x4_t xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v3));
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 		float32x4_t z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v3));
 
@@ -1507,10 +1492,10 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		v2 = vld1q_f32_aligned_postincrement(vv);
 		v3 = vld1q_f32_aligned_postincrement(vv);
 
-		// the next two lines should resolve to a single vswp d, d
+		
 		xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 		xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v3));
-		// the next two lines should resolve to a single vswp d, d
+		
 		z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 		z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v3));
 
@@ -1536,10 +1521,10 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		float32x4_t v2 = vld1q_f32_aligned_postincrement(vv);
 		float32x4_t v3 = vld1q_f32_aligned_postincrement(vv);
 
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 		float32x4_t xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v3));
-		// the next two lines should resolve to a single vswp d, d
+		
 		float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 		float32x4_t z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v3));
 
@@ -1566,10 +1551,10 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 			float32x4_t v1 = vld1q_f32_aligned_postincrement(vv);
 			float32x4_t v2 = vld1q_f32_aligned_postincrement(vv);
 
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
 			float32x4_t xy1 = vcombine_f32(vget_low_f32(v2), vget_low_f32(v2));
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 			float32x4_t z1 = vcombine_f32(vget_high_f32(v2), vget_high_f32(v2));
 
@@ -1594,9 +1579,9 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 			float32x4_t v0 = vld1q_f32_aligned_postincrement(vv);
 			float32x4_t v1 = vld1q_f32_aligned_postincrement(vv);
 
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v1));
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t z0 = vcombine_f32(vget_high_f32(v0), vget_high_f32(v1));
 
 			xy0 = vmulq_f32(xy0, vLo);
@@ -1618,9 +1603,9 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 		{
 			float32x4_t v0 = vld1q_f32_aligned_postincrement(vv);
 
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t xy0 = vcombine_f32(vget_low_f32(v0), vget_low_f32(v0));
-			// the next two lines should resolve to a single vswp d, d
+			
 			float32x4_t z = vdupq_lane_f32(vget_high_f32(v0), 0);
 
 			xy0 = vmulq_f32(xy0, vLo);
@@ -1641,12 +1626,12 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 			break;
 	}
 
-	// select best answer between hi and lo results
+	
 	uint32x2_t mask = vclt_f32(vget_high_f32(minDot), vget_low_f32(minDot));
 	float32x2_t minDot2 = vbsl_f32(mask, vget_high_f32(minDot), vget_low_f32(minDot));
 	uint32x2_t index2 = vbsl_u32(mask, vget_high_u32(index), vget_low_u32(index));
 
-	// select best answer between even and odd results
+	
 	float32x2_t minDotO = vdup_lane_f32(minDot2, 1);
 	uint32x2_t indexHi = vdup_lane_u32(index2, 1);
 	mask = vclt_f32(minDotO, minDot2);
@@ -1661,4 +1646,4 @@ long _mindot_large_v1(const float *vv, const float *vec, unsigned long count, fl
 #error Unhandled __APPLE__ arch
 #endif
 
-#endif /* __APPLE__ */
+#endif 

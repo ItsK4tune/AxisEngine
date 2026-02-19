@@ -1,51 +1,29 @@
 #ifndef BT_CONTACT_H_STRUCTS_INCLUDED
 #define BT_CONTACT_H_STRUCTS_INCLUDED
 
-/*! \file gim_contact.h
-\author Francisco Leon Najera
-*/
-/*
-This source file is part of GIMPACT Library.
-
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
 
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "LinearMath/btTransform.h"
 #include "LinearMath/btAlignedObjectArray.h"
 #include "btTriangleShapeEx.h"
 
-/**
-Configuration var for applying interpolation of  contact normals
-*/
+
 #define NORMAL_CONTACT_AVERAGE 1
 
 #define CONTACT_DIFF_EPSILON 0.00001f
 
-///The GIM_CONTACT is an internal GIMPACT structure, similar to btManifoldPoint.
-///@todo: remove and replace GIM_CONTACT by btManifoldPoint.
+
+
 class GIM_CONTACT
 {
 public:
 	btVector3 m_point;
 	btVector3 m_normal;
-	btScalar m_depth;     //Positive value indicates interpenetration
-	btScalar m_distance;  //Padding not for use
-	int m_feature1;       //Face number
-	int m_feature2;       //Face number
+	btScalar m_depth;     
+	btScalar m_distance;  
+	int m_feature1;       
+	int m_feature2;       
 public:
 	GIM_CONTACT()
 	{
@@ -68,7 +46,7 @@ public:
 	{
 	}
 
-	//! Calcs key for coord classification
+	
 	SIMD_FORCE_INLINE unsigned int calc_key_contact() const
 	{
 		int _coords[] = {
@@ -96,10 +74,10 @@ public:
 		btScalar vec_sum_len = vec_sum.length2();
 		if (vec_sum_len < CONTACT_DIFF_EPSILON) return;
 
-		//GIM_INV_SQRT(vec_sum_len,vec_sum_len); // 1/sqrt(vec_sum_len)
+		
 
 		m_normal = vec_sum / btSqrt(vec_sum_len);
 	}
 };
 
-#endif  // BT_CONTACT_H_STRUCTS_INCLUDED
+#endif  

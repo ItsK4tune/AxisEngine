@@ -79,6 +79,8 @@ public:
     void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
 
+    const AppConfig& GetConfig() const { return m_Config; }
+
 private:
     Scene m_Scene;
     std::unique_ptr<IPhysicsWorld> m_PhysicsWorld;

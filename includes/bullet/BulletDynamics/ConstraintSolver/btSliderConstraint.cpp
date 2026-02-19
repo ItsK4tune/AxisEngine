@@ -1,22 +1,6 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-/*
-Added by Roman Ponomarev (rponom@gmail.com)
-April 04, 2008
-*/
 
 #include "btSliderConstraint.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
@@ -90,9 +74,9 @@ btSliderConstraint::btSliderConstraint(btRigidBody& rbB, const btTransform& fram
 	  m_frameInB(frameInB),
 	  m_useLinearReferenceFrameA(useLinearReferenceFrameA)
 {
-	///not providing rigidbody A means implicitly using worldspace for body A
+	
 	m_frameInA = rbB.getCenterOfMassTransform() * m_frameInB;
-	//	m_frameInA.getOrigin() = m_rbA.getCenterOfMassTransform()(m_frameInA.getOrigin());
+	
 
 	initParams();
 }
@@ -106,20 +90,20 @@ void btSliderConstraint::getInfo1(btConstraintInfo1* info)
 	}
 	else
 	{
-		info->m_numConstraintRows = 4;  // Fixed 2 linear + 2 angular
+		info->m_numConstraintRows = 4;  
 		info->nub = 2;
-		//prepare constraint
+		
 		calculateTransforms(m_rbA.getCenterOfMassTransform(), m_rbB.getCenterOfMassTransform());
 		testAngLimits();
 		testLinLimits();
 		if (getSolveLinLimit() || getPoweredLinMotor())
 		{
-			info->m_numConstraintRows++;  // limit 3rd linear as well
+			info->m_numConstraintRows++;  
 			info->nub--;
 		}
 		if (getSolveAngLimit() || getPoweredAngMotor())
 		{
-			info->m_numConstraintRows++;  // limit 3rd angular as well
+			info->m_numConstraintRows++;  
 			info->nub--;
 		}
 	}
@@ -127,7 +111,7 @@ void btSliderConstraint::getInfo1(btConstraintInfo1* info)
 
 void btSliderConstraint::getInfo1NonVirtual(btConstraintInfo1* info)
 {
-	info->m_numConstraintRows = 6;  // Fixed 2 linear + 2 angular + 1 limit (even if not used)
+	info->m_numConstraintRows = 6;  
 	info->nub = 0;
 }
 
@@ -150,7 +134,7 @@ void btSliderConstraint::calculateTransforms(const btTransform& transA, const bt
 	}
 	m_realPivotAInW = m_calculatedTransformA.getOrigin();
 	m_realPivotBInW = m_calculatedTransformB.getOrigin();
-	m_sliderAxis = m_calculatedTransformA.getBasis().getColumn(0);  // along X
+	m_sliderAxis = m_calculatedTransformA.getBasis().getColumn(0);  
 	if (m_useLinearReferenceFrameA || m_useSolveConstraintObsolete)
 	{
 		m_delta = m_realPivotBInW - m_realPivotAInW;
@@ -162,7 +146,7 @@ void btSliderConstraint::calculateTransforms(const btTransform& transA, const bt
 	m_projPivotInW = m_realPivotAInW + m_sliderAxis.dot(m_delta) * m_sliderAxis;
 	btVector3 normalWorld;
 	int i;
-	//linear part
+	
 	for (i = 0; i < 3; i++)
 	{
 		normalWorld = m_calculatedTransformA.getBasis().getColumn(i);
@@ -206,7 +190,7 @@ void btSliderConstraint::testAngLimits(void)
 		const btVector3 axisA0 = m_calculatedTransformA.getBasis().getColumn(1);
 		const btVector3 axisA1 = m_calculatedTransformA.getBasis().getColumn(2);
 		const btVector3 axisB0 = m_calculatedTransformB.getBasis().getColumn(1);
-		//		btScalar rot = btAtan2Fast(axisB0.dot(axisA1), axisB0.dot(axisA0));
+		
 		btScalar rot = btAtan2(axisB0.dot(axisA1), axisB0.dot(axisA0));
 		rot = btAdjustAngleToLimits(rot, m_lowerAngLimit, m_upperAngLimit);
 		m_angPos = rot;
@@ -248,9 +232,9 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 
 	btScalar signFact = m_useLinearReferenceFrameA ? btScalar(1.0f) : btScalar(-1.0f);
 
-	// difference between frames in WCS
+	
 	btVector3 ofs = trB.getOrigin() - trA.getOrigin();
-	// now get weight factors depending on masses
+	
 	btScalar miA = rbAinvMass;
 	btScalar miB = rbBinvMass;
 	bool hasStaticBody = (miA < SIMD_EPSILON) || (miB < SIMD_EPSILON);
@@ -270,28 +254,28 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 	btVector3 ax1B = trB.getBasis().getColumn(0);
 	if (m_useOffsetForConstraintFrame)
 	{
-		// get the desired direction of slider axis
-		// as weighted sum of X-orthos of frameA and frameB in WCS
+		
+		
 		ax1 = ax1A * factA + ax1B * factB;
 		ax1.normalize();
-		// construct two orthos to slider axis
+		
 		btPlaneSpace1(ax1, p, q);
 	}
 	else
-	{  // old way - use frameA
+	{  
 		ax1 = trA.getBasis().getColumn(0);
-		// get 2 orthos to slider axis (Y, Z)
+		
 		p = trA.getBasis().getColumn(1);
 		q = trA.getBasis().getColumn(2);
 	}
-	// make rotations around these orthos equal
-	// the slider axis should be the only unconstrained
-	// rotational axis, the angular velocity of the two bodies perpendicular to
-	// the slider axis should be equal. thus the constraint equations are
-	//    p*w1 - p*w2 = 0
-	//    q*w1 - q*w2 = 0
-	// where p and q are unit vectors normal to the slider axis, and w1 and w2
-	// are the angular velocity vectors of the two bodies.
+	
+	
+	
+	
+	
+	
+	
+	
 	info->m_J1angularAxis[0] = p[0];
 	info->m_J1angularAxis[1] = p[1];
 	info->m_J1angularAxis[2] = p[2];
@@ -305,22 +289,22 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 	info->m_J2angularAxis[s + 0] = -q[0];
 	info->m_J2angularAxis[s + 1] = -q[1];
 	info->m_J2angularAxis[s + 2] = -q[2];
-	// compute the right hand side of the constraint equation. set relative
-	// body velocities along p and q to bring the slider back into alignment.
-	// if ax1A,ax1B are the unit length slider axes as computed from bodyA and
-	// bodyB, we need to rotate both bodies along the axis u = (ax1 x ax2).
-	// if "theta" is the angle between ax1 and ax2, we need an angular velocity
-	// along u to cover angle erp*theta in one step :
-	//   |angular_velocity| = angle/time = erp*theta / stepsize
-	//                      = (erp*fps) * theta
-	//    angular_velocity  = |angular_velocity| * (ax1 x ax2) / |ax1 x ax2|
-	//                      = (erp*fps) * theta * (ax1 x ax2) / sin(theta)
-	// ...as ax1 and ax2 are unit length. if theta is smallish,
-	// theta ~= sin(theta), so
-	//    angular_velocity  = (erp*fps) * (ax1 x ax2)
-	// ax1 x ax2 is in the plane space of ax1, so we project the angular
-	// velocity to p and q to find the right hand side.
-	//	btScalar k = info->fps * info->erp * getSoftnessOrthoAng();
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	btScalar currERP = (m_flags & BT_SLIDER_FLAGS_ERP_ORTANG) ? m_softnessOrthoAng : m_softnessOrthoAng * info->erp;
 	btScalar k = info->fps * currERP;
 
@@ -333,14 +317,14 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		info->cfm[s] = m_cfmOrthoAng;
 	}
 
-	int nrow = 1;  // last filled row
+	int nrow = 1;  
 	int srow;
 	btScalar limit_err;
 	int limit;
 
-	// next two rows.
-	// we want: velA + wA x relA == velB + wB x relB ... but this would
-	// result in three equations, so we project along two orthos to the slider axis
+	
+	
+	
 
 	btTransform bodyA_trans = transA;
 	btTransform bodyB_trans = transB;
@@ -351,24 +335,24 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 	btVector3 tmpA(0, 0, 0), tmpB(0, 0, 0), relA(0, 0, 0), relB(0, 0, 0), c(0, 0, 0);
 	if (m_useOffsetForConstraintFrame)
 	{
-		// get vector from bodyB to frameB in WCS
+		
 		relB = trB.getOrigin() - bodyB_trans.getOrigin();
-		// get its projection to slider axis
+		
 		btVector3 projB = ax1 * relB.dot(ax1);
-		// get vector directed from bodyB to slider axis (and orthogonal to it)
+		
 		btVector3 orthoB = relB - projB;
-		// same for bodyA
+		
 		relA = trA.getOrigin() - bodyA_trans.getOrigin();
 		btVector3 projA = ax1 * relA.dot(ax1);
 		btVector3 orthoA = relA - projA;
-		// get desired offset between frames A and B along slider axis
+		
 		btScalar sliderOffs = m_linPos - m_depth[0];
-		// desired vector from projection of center of bodyA to projection of center of bodyB to slider axis
+		
 		btVector3 totalDist = projA + ax1 * sliderOffs - projB;
-		// get offset vectors relA and relB
+		
 		relA = orthoA + totalDist * factA;
 		relB = orthoB - totalDist * factB;
-		// now choose average ortho to slider axis
+		
 		p = orthoB * factA + orthoA * factB;
 		btScalar len2 = p.length2();
 		if (len2 > SIMD_EPSILON)
@@ -379,9 +363,9 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		{
 			p = trA.getBasis().getColumn(1);
 		}
-		// make one more ortho
+		
 		q = ax1.cross(p);
-		// fill two rows
+		
 		tmpA = relA.cross(p);
 		tmpB = relB.cross(p);
 		for (i = 0; i < 3; i++) info->m_J1angularAxis[s2 + i] = tmpA[i];
@@ -389,8 +373,8 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		tmpA = relA.cross(q);
 		tmpB = relB.cross(q);
 		if (hasStaticBody && getSolveAngLimit())
-		{  // to make constraint between static and dynamic objects more rigid
-			// remove wA (or wB) from equation if angular limit is hit
+		{  
+			
 			tmpB *= factB;
 			tmpA *= factA;
 		}
@@ -402,8 +386,8 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		for (i = 0; i < 3; i++) info->m_J2linearAxis[s3 + i] = -q[i];
 	}
 	else
-	{  // old way - maybe incorrect if bodies are not on the slider axis
-		// see discussion "Bug in slider constraint" http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4024&start=0
+	{  
+		
 		c = bodyB_trans.getOrigin() - bodyA_trans.getOrigin();
 		btVector3 tmp = c.cross(p);
 		for (i = 0; i < 3; i++) info->m_J1angularAxis[s2 + i] = factA * tmp[i];
@@ -417,9 +401,9 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		for (i = 0; i < 3; i++) info->m_J2linearAxis[s2 + i] = -p[i];
 		for (i = 0; i < 3; i++) info->m_J2linearAxis[s3 + i] = -q[i];
 	}
-	// compute two elements of right hand side
+	
 
-	//	k = info->fps * info->erp * getSoftnessOrthoLin();
+	
 	currERP = (m_flags & BT_SLIDER_FLAGS_ERP_ORTLIN) ? m_softnessOrthoLin : m_softnessOrthoLin * info->erp;
 	k = info->fps * currERP;
 
@@ -433,7 +417,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		info->cfm[s3] = m_cfmOrthoLin;
 	}
 
-	// check linear limits
+	
 	limit_err = btScalar(0.0);
 	limit = 0;
 	if (getSolveLinLimit())
@@ -442,7 +426,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		limit = (limit_err > btScalar(0.0)) ? 2 : 1;
 	}
 	bool powered = getPoweredLinMotor();
-	// if the slider has joint limits or motor, add in the extra row
+	
 	if (limit || powered)
 	{
 		nrow++;
@@ -453,16 +437,16 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		info->m_J2linearAxis[srow + 0] = -ax1[0];
 		info->m_J2linearAxis[srow + 1] = -ax1[1];
 		info->m_J2linearAxis[srow + 2] = -ax1[2];
-		// linear torque decoupling step:
-		//
-		// we have to be careful that the linear constraint forces (+/- ax1) applied to the two bodies
-		// do not create a torque couple. in other words, the points that the
-		// constraint force is applied at must lie along the same ax1 axis.
-		// a torque couple will result in limited slider-jointed free
-		// bodies from gaining angular momentum.
+		
+		
+		
+		
+		
+		
+		
 		if (m_useOffsetForConstraintFrame)
 		{
-			// this is needed only when bodyA and bodyB are both dynamic.
+			
 			if (!hasStaticBody)
 			{
 				tmpA = relA.cross(ax1);
@@ -476,8 +460,8 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 			}
 		}
 		else
-		{                   // The old way. May be incorrect if bodies are not on the slider axis
-			btVector3 ltd;  // Linear Torque Decoupling vector (a torque)
+		{                   
+			btVector3 ltd;  
 			ltd = c.cross(ax1);
 			info->m_J1angularAxis[srow + 0] = factA * ltd[0];
 			info->m_J1angularAxis[srow + 1] = factA * ltd[1];
@@ -486,11 +470,11 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 			info->m_J2angularAxis[srow + 1] = factB * ltd[1];
 			info->m_J2angularAxis[srow + 2] = factB * ltd[2];
 		}
-		// right-hand part
+		
 		btScalar lostop = getLowerLinLimit();
 		btScalar histop = getUpperLinLimit();
 		if (limit && (lostop == histop))
-		{  // the joint motor is ineffective
+		{  
 			powered = false;
 		}
 		info->m_constraintError[srow] = 0.;
@@ -518,31 +502,31 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 				info->cfm[srow] = m_cfmLimLin;
 			}
 			if (lostop == histop)
-			{  // limited low and high simultaneously
+			{  
 				info->m_lowerLimit[srow] = -SIMD_INFINITY;
 				info->m_upperLimit[srow] = SIMD_INFINITY;
 			}
 			else if (limit == 1)
-			{  // low limit
+			{  
 				info->m_lowerLimit[srow] = -SIMD_INFINITY;
 				info->m_upperLimit[srow] = 0;
 			}
 			else
-			{  // high limit
+			{  
 				info->m_lowerLimit[srow] = 0;
 				info->m_upperLimit[srow] = SIMD_INFINITY;
 			}
-			// bounce (we'll use slider parameter abs(1.0 - m_dampingLimLin) for that)
+			
 			btScalar bounce = btFabs(btScalar(1.0) - getDampingLimLin());
 			if (bounce > btScalar(0.0))
 			{
 				btScalar vel = linVelA.dot(ax1);
 				vel -= linVelB.dot(ax1);
 				vel *= signFact;
-				// only apply bounce if the velocity is incoming, and if the
-				// resulting c[] exceeds what we already have.
+				
+				
 				if (limit == 1)
-				{  // low limit
+				{  
 					if (vel < 0)
 					{
 						btScalar newc = -bounce * vel;
@@ -553,7 +537,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 					}
 				}
 				else
-				{  // high limit - all those computations are reversed
+				{  
 					if (vel > 0)
 					{
 						btScalar newc = -bounce * vel;
@@ -565,9 +549,9 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 				}
 			}
 			info->m_constraintError[srow] *= getSoftnessLimLin();
-		}  // if(limit)
-	}      // if linear limit
-	// check angular limits
+		}  
+	}      
+	
 	limit_err = btScalar(0.0);
 	limit = 0;
 	if (getSolveAngLimit())
@@ -575,7 +559,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		limit_err = getAngDepth();
 		limit = (limit_err > btScalar(0.0)) ? 1 : 2;
 	}
-	// if the slider has joint limits, add in the extra row
+	
 	powered = getPoweredAngMotor();
 	if (limit || powered)
 	{
@@ -592,7 +576,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		btScalar lostop = getLowerAngLimit();
 		btScalar histop = getUpperAngLimit();
 		if (limit && (lostop == histop))
-		{  // the joint motor is ineffective
+		{  
 			powered = false;
 		}
 		currERP = (m_flags & BT_SLIDER_FLAGS_ERP_LIMANG) ? m_softnessLimAng : info->erp;
@@ -617,30 +601,30 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 			}
 			if (lostop == histop)
 			{
-				// limited low and high simultaneously
+				
 				info->m_lowerLimit[srow] = -SIMD_INFINITY;
 				info->m_upperLimit[srow] = SIMD_INFINITY;
 			}
 			else if (limit == 1)
-			{  // low limit
+			{  
 				info->m_lowerLimit[srow] = 0;
 				info->m_upperLimit[srow] = SIMD_INFINITY;
 			}
 			else
-			{  // high limit
+			{  
 				info->m_lowerLimit[srow] = -SIMD_INFINITY;
 				info->m_upperLimit[srow] = 0;
 			}
-			// bounce (we'll use slider parameter abs(1.0 - m_dampingLimAng) for that)
+			
 			btScalar bounce = btFabs(btScalar(1.0) - getDampingLimAng());
 			if (bounce > btScalar(0.0))
 			{
 				btScalar vel = m_rbA.getAngularVelocity().dot(ax1);
 				vel -= m_rbB.getAngularVelocity().dot(ax1);
-				// only apply bounce if the velocity is incoming, and if the
-				// resulting c[] exceeds what we already have.
+				
+				
 				if (limit == 1)
-				{  // low limit
+				{  
 					if (vel < 0)
 					{
 						btScalar newc = -bounce * vel;
@@ -651,7 +635,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 					}
 				}
 				else
-				{  // high limit - all those computations are reversed
+				{  
 					if (vel > 0)
 					{
 						btScalar newc = -bounce * vel;
@@ -663,12 +647,12 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 				}
 			}
 			info->m_constraintError[srow] *= getSoftnessLimAng();
-		}  // if(limit)
-	}      // if angular limit or powered
+		}  
+	}      
 }
 
-///override the default global value of a parameter (such as ERP or CFM), optionally provide the axis (0..5).
-///If no axis is provided, it uses the default axis for this constraint.
+
+
 void btSliderConstraint::setParam(int num, btScalar value, int axis)
 {
 	switch (num)
@@ -744,7 +728,7 @@ void btSliderConstraint::setParam(int num, btScalar value, int axis)
 	}
 }
 
-///return the local value of parameter
+
 btScalar btSliderConstraint::getParam(int num, int axis) const
 {
 	btScalar retVal(SIMD_INFINITY);

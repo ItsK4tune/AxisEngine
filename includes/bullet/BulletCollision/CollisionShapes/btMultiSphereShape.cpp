@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #if defined(_WIN32) || defined(__i386__)
 #define BT_USE_SSE_IN_API
@@ -26,7 +13,7 @@ btMultiSphereShape::btMultiSphereShape(const btVector3* positions, const btScala
 	: btConvexInternalAabbCachingShape()
 {
 	m_shapeType = MULTI_SPHERE_SHAPE_PROXYTYPE;
-	//btScalar startMargin = btScalar(BT_LARGE_FLOAT);
+	
 
 	m_localPositionArray.resize(numSpheres);
 	m_radiArray.resize(numSpheres);
@@ -125,7 +112,7 @@ void btMultiSphereShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const
 
 void btMultiSphereShape::calculateLocalInertia(btScalar mass, btVector3& inertia) const
 {
-	//as an approximation, take the inertia of the box that bounds the spheres
+	
 
 	btVector3 localAabbMin, localAabbMax;
 	getCachedLocalAabb(localAabbMin, localAabbMax);
@@ -140,7 +127,7 @@ void btMultiSphereShape::calculateLocalInertia(btScalar mass, btVector3& inertia
 					 mass / (btScalar(12.0)) * (lx * lx + ly * ly));
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 const char* btMultiSphereShape::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btMultiSphereShapeData* shapeData = (btMultiSphereShapeData*)dataBuffer;
@@ -162,7 +149,7 @@ const char* btMultiSphereShape::serialize(void* dataBuffer, btSerializer* serial
 		serializer->finalizeChunk(chunk, "btPositionAndRadius", BT_ARRAY_CODE, (void*)&m_localPositionArray[0]);
 	}
 
-	// Fill padding with zeros to appease msan.
+	
 	memset(shapeData->m_padding, 0, sizeof(shapeData->m_padding));
 
 	return "btMultiSphereShapeData";

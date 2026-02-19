@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btSimpleDynamicsWorld.h"
 #include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
@@ -21,11 +8,7 @@ subject to the following restrictions:
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletDynamics/ConstraintSolver/btContactSolverInfo.h"
 
-/*
-  Make sure this dummy function never changes so that it
-  can be used by probes that are checking whether the
-  library is actually installed.
-*/
+
 extern "C"
 {
 	void btBulletDynamicsProbe();
@@ -51,7 +34,7 @@ int btSimpleDynamicsWorld::stepSimulation(btScalar timeStep, int maxSubSteps, bt
 	(void)fixedTimeStep;
 	(void)maxSubSteps;
 
-	///apply gravity, predict motion
+	
 	predictUnconstraintMotion(timeStep);
 
 	btDispatcherInfo& dispatchInfo = getDispatchInfo();
@@ -59,10 +42,10 @@ int btSimpleDynamicsWorld::stepSimulation(btScalar timeStep, int maxSubSteps, bt
 	dispatchInfo.m_stepCount = 0;
 	dispatchInfo.m_debugDraw = getDebugDrawer();
 
-	///perform collision detection
+	
 	performDiscreteCollisionDetection();
 
-	///solve contact constraints
+	
 	int numManifolds = m_dispatcher1->getNumManifolds();
 	if (numManifolds)
 	{
@@ -75,7 +58,7 @@ int btSimpleDynamicsWorld::stepSimulation(btScalar timeStep, int maxSubSteps, bt
 		m_constraintSolver->allSolved(infoGlobal, m_debugDrawer);
 	}
 
-	///integrate transforms
+	
 	integrateTransforms(timeStep);
 
 	updateAabbs();
@@ -89,7 +72,7 @@ int btSimpleDynamicsWorld::stepSimulation(btScalar timeStep, int maxSubSteps, bt
 
 void btSimpleDynamicsWorld::clearForces()
 {
-	///@todo: iterate over awake simulation islands!
+	
 	for (int i = 0; i < m_collisionObjects.size(); i++)
 	{
 		btCollisionObject* colObj = m_collisionObjects[i];
@@ -229,7 +212,7 @@ void btSimpleDynamicsWorld::predictUnconstraintMotion(btScalar timeStep)
 
 void btSimpleDynamicsWorld::synchronizeMotionStates()
 {
-	///@todo: iterate over awake simulation islands!
+	
 	for (int i = 0; i < m_collisionObjects.size(); i++)
 	{
 		btCollisionObject* colObj = m_collisionObjects[i];

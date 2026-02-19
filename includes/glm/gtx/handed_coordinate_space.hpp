@@ -1,18 +1,18 @@
-/// @ref gtx_handed_coordinate_space
-/// @file glm/gtx/handed_coordinate_space.hpp
-///
-/// @see core (dependence)
-///
-/// @defgroup gtx_handed_coordinate_space GLM_GTX_handed_coordinate_space
-/// @ingroup gtx
-///
-/// Include <glm/gtx/handed_coordinate_system.hpp> to use the features of this extension.
-///
-/// To know if a set of three basis vectors defines a right or left-handed coordinate system.
+
+
+
+
+
+
+
+
+
+
+
 
 #pragma once
 
-// Dependency:
+
 #include "../glm.hpp"
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
@@ -25,26 +25,26 @@
 
 namespace glm
 {
-	/// @addtogroup gtx_handed_coordinate_space
-	/// @{
+	
+	
 
-	//! Return if a trihedron right handed or not.
-	//! From GLM_GTX_handed_coordinate_space extension.
+	
+	
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL bool rightHanded(
 		vec<3, T, Q> const& tangent,
 		vec<3, T, Q> const& binormal,
 		vec<3, T, Q> const& normal);
 
-	//! Return if a trihedron left handed or not.
-	//! From GLM_GTX_handed_coordinate_space extension.
+	
+	
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL bool leftHanded(
 		vec<3, T, Q> const& tangent,
 		vec<3, T, Q> const& binormal,
 		vec<3, T, Q> const& normal);
 
-	/// @}
-}// namespace glm
+	
+}
 
 #include "handed_coordinate_space.inl"

@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_OBB_BOX_MINKOWSKI_H
 #define BT_OBB_BOX_MINKOWSKI_H
@@ -22,11 +9,11 @@ subject to the following restrictions:
 #include "LinearMath/btVector3.h"
 #include "LinearMath/btMinMax.h"
 
-///The btBoxShape is a box primitive around the origin, its sides axis aligned with length specified by half extents, in local shape coordinates. When used as part of a btCollisionObject or btRigidBody it will be an oriented box in world space.
+
 ATTRIBUTE_ALIGNED16(class)
 btBoxShape : public btPolyhedralConvexShape
 {
-	//btVector3	m_boxHalfExtents1; //use m_implicitShapeDimensions instead
+	
 
 public:
 	BT_DECLARE_ALIGNED_ALLOCATOR();
@@ -41,7 +28,7 @@ public:
 
 	const btVector3& getHalfExtentsWithoutMargin() const
 	{
-		return m_implicitShapeDimensions;  //scaling is included, margin is not
+		return m_implicitShapeDimensions;  
 	}
 
 	virtual btVector3 localGetSupportingVertex(const btVector3& vec) const
@@ -81,7 +68,7 @@ public:
 
 	virtual void setMargin(btScalar collisionMargin)
 	{
-		//correct the m_implicitShapeDimensions for the margin
+		
 		btVector3 oldMargin(getMargin(), getMargin(), getMargin());
 		btVector3 implicitShapeDimensionsWithMargin = m_implicitShapeDimensions + oldMargin;
 
@@ -106,7 +93,7 @@ public:
 
 	virtual void getPlane(btVector3 & planeNormal, btVector3 & planeSupport, int i) const
 	{
-		//this plane might not be aligned...
+		
 		btVector4 plane;
 		getPlaneEquation(plane, i);
 		planeNormal = btVector3(plane.getX(), plane.getY(), plane.getZ());
@@ -168,7 +155,7 @@ public:
 	}
 
 	virtual void getEdge(int i, btVector3& pa, btVector3& pb) const
-	//virtual void getEdge(int i,Edge& edge) const
+	
 	{
 		int edgeVert0 = 0;
 		int edgeVert1 = 0;
@@ -237,7 +224,7 @@ public:
 	{
 		btVector3 halfExtents = getHalfExtentsWithoutMargin();
 
-		//btScalar minDist = 2*tolerance;
+		
 
 		bool result = (pt.x() <= (halfExtents.x() + tolerance)) &&
 					  (pt.x() >= (-halfExtents.x() - tolerance)) &&
@@ -249,7 +236,7 @@ public:
 		return result;
 	}
 
-	//debugging
+	
 	virtual const char* getName() const
 	{
 		return "Box";
@@ -288,4 +275,4 @@ public:
 	}
 };
 
-#endif  //BT_OBB_BOX_MINKOWSKI_H
+#endif  

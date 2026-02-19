@@ -1,14 +1,14 @@
-/// @ref gtx_hash
-/// @file glm/gtx/hash.hpp
-///
-/// @see core (dependence)
-///
-/// @defgroup gtx_hash GLM_GTX_hash
-/// @ingroup gtx
-///
-/// Include <glm/gtx/hash.hpp> to use the features of this extension.
-///
-/// Add std::hash support for glm types
+
+
+
+
+
+
+
+
+
+
+
 
 #pragma once
 
@@ -133,6 +133,6 @@ namespace std
 	{
 		GLM_FUNC_DECL size_t operator()(glm::mat<4, 4, T,Q> const& m) const;
 	};
-} // namespace std
+} 
 
 #include "hash.inl"

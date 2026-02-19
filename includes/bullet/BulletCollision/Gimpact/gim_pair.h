@@ -2,7 +2,7 @@
 #define GIM_PAIR_H
 
 
-//! Overlapping pair
+
 struct GIM_PAIR
 {
         int m_index1;
@@ -24,5 +24,5 @@ struct GIM_PAIR
         }
 };
 
-#endif //GIM_PAIR_H
+#endif 
 

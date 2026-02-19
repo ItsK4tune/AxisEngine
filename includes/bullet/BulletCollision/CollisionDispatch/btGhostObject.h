@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2008 Erwin Coumans  http://bulletphysics.com
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_GHOST_OBJECT_H
 #define BT_GHOST_OBJECT_H
@@ -26,10 +13,10 @@ class btConvexShape;
 
 class btDispatcher;
 
-///The btGhostObject can keep track of all objects that are overlapping
-///By default, this overlap is based on the AABB
-///This is useful for creating a character controller, collision sensors/triggers, explosions etc.
-///We plan on adding rayTest and other queries for the btGhostObject
+
+
+
+
 ATTRIBUTE_ALIGNED16(class)
 btGhostObject : public btCollisionObject
 {
@@ -45,9 +32,9 @@ public:
 
 	void rayTest(const btVector3& rayFromWorld, const btVector3& rayToWorld, btCollisionWorld::RayResultCallback& resultCallback) const;
 
-	///this method is mainly for expert/internal use only.
+	
 	virtual void addOverlappingObjectInternal(btBroadphaseProxy * otherProxy, btBroadphaseProxy* thisProxy = 0);
-	///this method is mainly for expert/internal use only.
+	
 	virtual void removeOverlappingObjectInternal(btBroadphaseProxy * otherProxy, btDispatcher * dispatcher, btBroadphaseProxy* thisProxy = 0);
 
 	int getNumOverlappingObjects() const
@@ -75,9 +62,9 @@ public:
 		return m_overlappingObjects;
 	}
 
-	//
-	// internal cast
-	//
+	
+	
+	
 
 	static const btGhostObject* upcast(const btCollisionObject* colObj)
 	{
@@ -102,7 +89,7 @@ public:
 
 	virtual ~btPairCachingGhostObject();
 
-	///this method is mainly for expert/internal use only.
+	
 	virtual void addOverlappingObjectInternal(btBroadphaseProxy* otherProxy, btBroadphaseProxy* thisProxy = 0);
 
 	virtual void removeOverlappingObjectInternal(btBroadphaseProxy* otherProxy, btDispatcher* dispatcher, btBroadphaseProxy* thisProxy = 0);
@@ -113,7 +100,7 @@ public:
 	}
 };
 
-///The btGhostPairCallback interfaces and forwards adding and removal of overlapping pairs from the btBroadphaseInterface to btGhostObject.
+
 class btGhostPairCallback : public btOverlappingPairCallback
 {
 public:
@@ -151,11 +138,11 @@ public:
 		return 0;
 	}
 
-	virtual void removeOverlappingPairsContainingProxy(btBroadphaseProxy* /*proxy0*/, btDispatcher* /*dispatcher*/)
+	virtual void removeOverlappingPairsContainingProxy(btBroadphaseProxy* , btDispatcher* )
 	{
 		btAssert(0);
-		//need to keep track of all ghost objects and call them here
-		//m_hashPairCache->removeOverlappingPairsContainingProxy(proxy0,dispatcher);
+		
+		
 	}
 };
 

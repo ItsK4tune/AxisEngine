@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #if defined(_WIN32) || defined(__i386__)
 #define BT_USE_SSE_IN_API
@@ -60,11 +47,11 @@ btVector3 btConvexHullShape::localGetSupportingVertexWithoutMargin(const btVecto
 	btVector3 supVec(btScalar(0.), btScalar(0.), btScalar(0.));
 	btScalar maxDot = btScalar(-BT_LARGE_FLOAT);
 
-	// Here we take advantage of dot(a, b*c) = dot(a*b, c).  Note: This is true mathematically, but not numerically.
+	
 	if (0 < m_unscaledPoints.size())
 	{
 		btVector3 scaled = vec * m_localScaling;
-		int index = (int)scaled.maxDot(&m_unscaledPoints[0], m_unscaledPoints.size(), maxDot);  // FIXME: may violate encapsulation of m_unscaledPoints
+		int index = (int)scaled.maxDot(&m_unscaledPoints[0], m_unscaledPoints.size(), maxDot);  
 		return m_unscaledPoints[index] * m_localScaling;
 	}
 
@@ -74,7 +61,7 @@ btVector3 btConvexHullShape::localGetSupportingVertexWithoutMargin(const btVecto
 void btConvexHullShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const btVector3* vectors, btVector3* supportVerticesOut, int numVectors) const
 {
 	btScalar newDot;
-	//use 'w' component of supportVerticesOut?
+	
 	{
 		for (int i = 0; i < numVectors; i++)
 		{
@@ -84,7 +71,7 @@ void btConvexHullShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const 
 
 	for (int j = 0; j < numVectors; j++)
 	{
-		btVector3 vec = vectors[j] * m_localScaling;  // dot(a*b,c) = dot(a,b*c)
+		btVector3 vec = vectors[j] * m_localScaling;  
 		if (0 < m_unscaledPoints.size())
 		{
 			int i = (int)vec.maxDot(&m_unscaledPoints[0], m_unscaledPoints.size(), newDot);
@@ -125,8 +112,8 @@ void btConvexHullShape::optimizeConvexHull()
 	}
 }
 
-//currently just for debugging (drawing), perhaps future support for algebraic continuous collision detection
-//Please note that you can debug-draw btConvexHullShape with the Raytracer Demo
+
+
 int btConvexHullShape::getNumVertices() const
 {
 	return m_unscaledPoints.size();
@@ -160,17 +147,17 @@ void btConvexHullShape::getPlane(btVector3&, btVector3&, int) const
 	btAssert(0);
 }
 
-//not yet
+
 bool btConvexHullShape::isInside(const btVector3&, btScalar) const
 {
 	btAssert(0);
 	return false;
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 const char* btConvexHullShape::serialize(void* dataBuffer, btSerializer* serializer) const
 {
-	//int szc = sizeof(btConvexHullShapeData);
+	
 	btConvexHullShapeData* shapeData = (btConvexHullShapeData*)dataBuffer;
 	btConvexInternalShape::serialize(&shapeData->m_convexInternalShapeData, serializer);
 
@@ -187,8 +174,8 @@ const char* btConvexHullShape::serialize(void* dataBuffer, btSerializer* seriali
 	if (numElem)
 	{
 		int sz = sizeof(btVector3Data);
-		//	int sz2 = sizeof(btVector3DoubleData);
-		//	int sz3 = sizeof(btVector3FloatData);
+		
+		
 		btChunk* chunk = serializer->allocate(sz, numElem);
 		btVector3Data* memPtr = (btVector3Data*)chunk->m_oldPtr;
 		for (int i = 0; i < numElem; i++, memPtr++)
@@ -198,7 +185,7 @@ const char* btConvexHullShape::serialize(void* dataBuffer, btSerializer* seriali
 		serializer->finalizeChunk(chunk, btVector3DataName, BT_ARRAY_CODE, (void*)&m_unscaledPoints[0]);
 	}
 
-	// Fill padding with zeros to appease msan.
+	
 	memset(shapeData->m_padding3, 0, sizeof(shapeData->m_padding3));
 
 	return "btConvexHullShapeData";

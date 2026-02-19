@@ -1,5 +1,5 @@
-/// @ref core
-/// @file glm/detail/type_mat2x2.hpp
+
+
 
 #pragma once
 
@@ -22,7 +22,7 @@ namespace glm
 		col_type value[2];
 
 	public:
-		// -- Accesses --
+		
 
 		typedef length_t length_type;
 		GLM_FUNC_DECL static GLM_CONSTEXPR length_type length() { return 2; }
@@ -30,7 +30,7 @@ namespace glm
 		GLM_FUNC_DECL col_type & operator[](length_type i);
 		GLM_FUNC_DECL GLM_CONSTEXPR col_type const& operator[](length_type i) const;
 
-		// -- Constructors --
+		
 
 		GLM_FUNC_DECL GLM_CONSTEXPR mat() GLM_DEFAULT;
 		template<qualifier P>
@@ -44,7 +44,7 @@ namespace glm
 			col_type const& v1,
 			col_type const& v2);
 
-		// -- Conversions --
+		
 
 		template<typename U, typename V, typename M, typename N>
 		GLM_FUNC_DECL GLM_CONSTEXPR mat(
@@ -56,7 +56,7 @@ namespace glm
 			vec<2, U, Q> const& v1,
 			vec<2, V, Q> const& v2);
 
-		// -- Matrix conversions --
+		
 
 		template<typename U, qualifier P>
 		GLM_FUNC_DECL GLM_EXPLICIT GLM_CONSTEXPR mat(mat<2, 2, U, P> const& m);
@@ -70,7 +70,7 @@ namespace glm
 		GLM_FUNC_DECL GLM_EXPLICIT GLM_CONSTEXPR mat(mat<3, 4, T, Q> const& x);
 		GLM_FUNC_DECL GLM_EXPLICIT GLM_CONSTEXPR mat(mat<4, 3, T, Q> const& x);
 
-		// -- Unary arithmetic operators --
+		
 
 		template<typename U>
 		GLM_FUNC_DECL mat<2, 2, T, Q> & operator=(mat<2, 2, U, Q> const& m);
@@ -91,7 +91,7 @@ namespace glm
 		template<typename U>
 		GLM_FUNC_DECL mat<2, 2, T, Q> & operator/=(mat<2, 2, U, Q> const& m);
 
-		// -- Increment and decrement operators --
+		
 
 		GLM_FUNC_DECL mat<2, 2, T, Q> & operator++ ();
 		GLM_FUNC_DECL mat<2, 2, T, Q> & operator-- ();
@@ -99,7 +99,7 @@ namespace glm
 		GLM_FUNC_DECL mat<2, 2, T, Q> operator--(int);
 	};
 
-	// -- Unary operators --
+	
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL mat<2, 2, T, Q> operator+(mat<2, 2, T, Q> const& m);
@@ -107,7 +107,7 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL mat<2, 2, T, Q> operator-(mat<2, 2, T, Q> const& m);
 
-	// -- Binary operators --
+	
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL mat<2, 2, T, Q> operator+(mat<2, 2, T, Q> const& m, T scalar);
@@ -163,14 +163,14 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL mat<2, 2, T, Q> operator/(mat<2, 2, T, Q> const& m1, mat<2, 2, T, Q> const& m2);
 
-	// -- Boolean operators --
+	
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL bool operator==(mat<2, 2, T, Q> const& m1, mat<2, 2, T, Q> const& m2);
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL bool operator!=(mat<2, 2, T, Q> const& m1, mat<2, 2, T, Q> const& m2);
-} //namespace glm
+} 
 
 #ifndef GLM_EXTERNAL_TEMPLATE
 #include "type_mat2x2.inl"

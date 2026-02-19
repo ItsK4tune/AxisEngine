@@ -19,7 +19,7 @@
 
 namespace entt {
 
-/*! @cond TURN_OFF_DOXYGEN */
+
 namespace internal {
 
 template<typename Type, typename It>
@@ -140,15 +140,10 @@ template<typename... Lhs, typename... Rhs>
     return !(lhs < rhs);
 }
 
-} // namespace internal
-/*! @endcond */
+} 
 
-/**
- * @brief Basic cache for resources of any type.
- * @tparam Type Type of resources managed by a cache.
- * @tparam Loader Type of loader used to create the resources.
- * @tparam Allocator Type of allocator used to manage memory and elements.
- */
+
+
 template<typename Type, typename Loader, typename Allocator>
 class resource_cache {
     using alloc_traits = std::allocator_traits<Allocator>;
@@ -157,161 +152,105 @@ class resource_cache {
     using container_type = dense_map<id_type, typename Loader::result_type, identity, std::equal_to<>, container_allocator>;
 
 public:
-    /*! @brief Allocator type. */
+    
     using allocator_type = Allocator;
-    /*! @brief Resource type. */
+    
     using value_type = Type;
-    /*! @brief Unsigned integer type. */
+    
     using size_type = std::size_t;
-    /*! @brief Loader type. */
+    
     using loader_type = Loader;
-    /*! @brief Input iterator type. */
+    
     using iterator = internal::resource_cache_iterator<Type, typename container_type::iterator>;
-    /*! @brief Constant input iterator type. */
+    
     using const_iterator = internal::resource_cache_iterator<const Type, typename container_type::const_iterator>;
 
-    /*! @brief Default constructor. */
+    
     resource_cache()
         : resource_cache{loader_type{}} {}
 
-    /**
-     * @brief Constructs an empty cache with a given allocator.
-     * @param allocator The allocator to use.
-     */
+    
     explicit resource_cache(const allocator_type &allocator)
         : resource_cache{loader_type{}, allocator} {}
 
-    /**
-     * @brief Constructs an empty cache with a given allocator and loader.
-     * @param callable The loader to use.
-     * @param allocator The allocator to use.
-     */
+    
     explicit resource_cache(const loader_type &callable, const allocator_type &allocator = allocator_type{})
         : pool{container_type{allocator}, callable} {}
 
-    /*! @brief Default copy constructor. */
+    
     resource_cache(const resource_cache &) = default;
 
-    /**
-     * @brief Allocator-extended copy constructor.
-     * @param other The instance to copy from.
-     * @param allocator The allocator to use.
-     */
+    
     resource_cache(const resource_cache &other, const allocator_type &allocator)
         : pool{std::piecewise_construct, std::forward_as_tuple(other.pool.first(), allocator), std::forward_as_tuple(other.pool.second())} {}
 
-    /*! @brief Default move constructor. */
+    
     resource_cache(resource_cache &&) noexcept = default;
 
-    /**
-     * @brief Allocator-extended move constructor.
-     * @param other The instance to move from.
-     * @param allocator The allocator to use.
-     */
+    
     resource_cache(resource_cache &&other, const allocator_type &allocator)
         : pool{std::piecewise_construct, std::forward_as_tuple(std::move(other.pool.first()), allocator), std::forward_as_tuple(std::move(other.pool.second()))} {}
 
-    /*! @brief Default destructor. */
+    
     ~resource_cache() = default;
 
-    /**
-     * @brief Default copy assignment operator.
-     * @return This cache.
-     */
+    
     resource_cache &operator=(const resource_cache &) = default;
 
-    /**
-     * @brief Default move assignment operator.
-     * @return This cache.
-     */
+    
     resource_cache &operator=(resource_cache &&) noexcept = default;
 
-    /**
-     * @brief Returns the associated allocator.
-     * @return The associated allocator.
-     */
+    
     [[nodiscard]] constexpr allocator_type get_allocator() const noexcept {
         return pool.first().get_allocator();
     }
 
-    /**
-     * @brief Returns an iterator to the beginning.
-     *
-     * If the cache is empty, the returned iterator will be equal to `end()`.
-     *
-     * @return An iterator to the first instance of the internal cache.
-     */
+    
     [[nodiscard]] const_iterator cbegin() const noexcept {
         return pool.first().begin();
     }
 
-    /*! @copydoc cbegin */
+    
     [[nodiscard]] const_iterator begin() const noexcept {
         return cbegin();
     }
 
-    /*! @copydoc begin */
+    
     [[nodiscard]] iterator begin() noexcept {
         return pool.first().begin();
     }
 
-    /**
-     * @brief Returns an iterator to the end.
-     * @return An iterator to the element following the last instance of the
-     * internal cache.
-     */
+    
     [[nodiscard]] const_iterator cend() const noexcept {
         return pool.first().end();
     }
 
-    /*! @copydoc cend */
+    
     [[nodiscard]] const_iterator end() const noexcept {
         return cend();
     }
 
-    /*! @copydoc end */
+    
     [[nodiscard]] iterator end() noexcept {
         return pool.first().end();
     }
 
-    /**
-     * @brief Returns true if a cache contains no resources, false otherwise.
-     * @return True if the cache contains no resources, false otherwise.
-     */
+    
     [[nodiscard]] bool empty() const noexcept {
         return pool.first().empty();
     }
 
-    /**
-     * @brief Number of resources managed by a cache.
-     * @return Number of resources currently stored.
-     */
+    
     [[nodiscard]] size_type size() const noexcept {
         return pool.first().size();
     }
 
-    /*! @brief Clears a cache. */
+    
     void clear() noexcept {
         pool.first().clear();
     }
 
-    /**
-     * @brief Loads a resource, if its identifier does not exist.
-     *
-     * Arguments are forwarded directly to the loader and _consumed_ only if the
-     * resource doesn't already exist.
-     *
-     * @warning
-     * If the resource isn't loaded correctly, the returned handle could be
-     * invalid and any use of it will result in undefined behavior.
-     *
-     * @tparam Args Types of arguments to use to load the resource if required.
-     * @param id Unique resource identifier.
-     * @param args Arguments to use to load the resource if required.
-     * @return A pair consisting of an iterator to the inserted element (or to
-     * the element that prevented the insertion) and a bool denoting whether the
-     * insertion took place.
-     */
+    
     template<typename... Args>
     std::pair<iterator, bool> load(const id_type id, Args &&...args) {
         if(auto it = pool.first().find(id); it != pool.first().end()) {
@@ -321,25 +260,13 @@ public:
         return pool.first().emplace(id, pool.second()(std::forward<Args>(args)...));
     }
 
-    /**
-     * @brief Force loads a resource, if its identifier does not exist.
-     * @copydetails load
-     */
+    
     template<typename... Args>
     std::pair<iterator, bool> force_load(const id_type id, Args &&...args) {
         return {pool.first().insert_or_assign(id, pool.second()(std::forward<Args>(args)...)).first, true};
     }
 
-    /**
-     * @brief Returns a handle for a given resource identifier.
-     *
-     * @warning
-     * There is no guarantee that the returned handle is valid.<br/>
-     * If it is not, any use will result in indefinite behavior.
-     *
-     * @param id Unique resource identifier.
-     * @return A handle for the given resource.
-     */
+    
     [[nodiscard]] resource<const value_type> operator[](const id_type id) const {
         if(auto it = pool.first().find(id); it != pool.first().cend()) {
             return resource<const value_type>{it->second};
@@ -348,7 +275,7 @@ public:
         return {};
     }
 
-    /*! @copydoc operator[] */
+    
     [[nodiscard]] resource<value_type> operator[](const id_type id) {
         if(auto it = pool.first().find(id); it != pool.first().end()) {
             return resource<value_type>{it->second};
@@ -357,49 +284,29 @@ public:
         return {};
     }
 
-    /**
-     * @brief Checks if a cache contains a given identifier.
-     * @param id Unique resource identifier.
-     * @return True if the cache contains the resource, false otherwise.
-     */
+    
     [[nodiscard]] bool contains(const id_type id) const {
         return pool.first().contains(id);
     }
 
-    /**
-     * @brief Removes an element from a given position.
-     * @param pos An iterator to the element to remove.
-     * @return An iterator following the removed element.
-     */
+    
     iterator erase(const_iterator pos) {
         const auto it = pool.first().begin();
         return pool.first().erase(it + (pos - const_iterator{it}));
     }
 
-    /**
-     * @brief Removes the given elements from a cache.
-     * @param first An iterator to the first element of the range of elements.
-     * @param last An iterator past the last element of the range of elements.
-     * @return An iterator following the last removed element.
-     */
+    
     iterator erase(const_iterator first, const_iterator last) {
         const auto it = pool.first().begin();
         return pool.first().erase(it + (first - const_iterator{it}), it + (last - const_iterator{it}));
     }
 
-    /**
-     * @brief Removes the given elements from a cache.
-     * @param id Unique resource identifier.
-     * @return Number of resources erased (either 0 or 1).
-     */
+    
     size_type erase(const id_type id) {
         return pool.first().erase(id);
     }
 
-    /**
-     * @brief Returns the loader used to create resources.
-     * @return The loader used to create resources.
-     */
+    
     [[nodiscard]] loader_type loader() const {
         return pool.second();
     }
@@ -408,6 +315,6 @@ private:
     compressed_pair<container_type, loader_type> pool;
 };
 
-} // namespace entt
+} 
 
 #endif

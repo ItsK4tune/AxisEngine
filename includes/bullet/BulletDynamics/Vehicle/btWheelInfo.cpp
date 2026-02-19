@@ -1,15 +1,6 @@
-/*
- * Copyright (c) 2005 Erwin Coumans https://bulletphysics.org
- *
- * Permission to use, copy, modify, distribute and sell this software
- * and its documentation for any purpose is hereby granted without fee,
- * provided that the above copyright notice appear in all copies.
- * Erwin Coumans makes no representations about the suitability 
- * of this software for any purpose.  
- * It is provided "as is" without express or implied warranty.
-*/
+
 #include "btWheelInfo.h"
-#include "BulletDynamics/Dynamics/btRigidBody.h"  // for pointvelocity
+#include "BulletDynamics/Dynamics/btRigidBody.h"  
 
 btScalar btWheelInfo::getSuspensionRestLength() const
 {
@@ -41,7 +32,7 @@ void btWheelInfo::updateWheel(const btRigidBody& chassis, RaycastInfo& raycastIn
 		}
 	}
 
-	else  // Not in contact : position wheel in a nice (rest length) position
+	else  
 	{
 		m_raycastInfo.m_suspensionLength = this->getSuspensionRestLength();
 		m_suspensionRelativeVelocity = btScalar(0.0);

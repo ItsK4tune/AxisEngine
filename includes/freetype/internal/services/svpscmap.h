@@ -1,19 +1,4 @@
-/****************************************************************************
- *
- * svpscmap.h
- *
- *   The FreeType PostScript charmap service (specification).
- *
- * Copyright (C) 2003-2020 by
- * David Turner, Robert Wilhelm, and Werner Lemberg.
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef SVPSCMAP_H_
@@ -28,31 +13,23 @@ FT_BEGIN_HEADER
 #define FT_SERVICE_ID_POSTSCRIPT_CMAPS  "postscript-cmaps"
 
 
-  /*
-   * Adobe glyph name to unicode value.
-   */
+  
   typedef FT_UInt32
   (*PS_Unicode_ValueFunc)( const char*  glyph_name );
 
-  /*
-   * Macintosh name id to glyph name.  `NULL` if invalid index.
-   */
+  
   typedef const char*
   (*PS_Macintosh_NameFunc)( FT_UInt  name_index );
 
-  /*
-   * Adobe standard string ID to glyph name.  `NULL` if invalid index.
-   */
+  
   typedef const char*
   (*PS_Adobe_Std_StringsFunc)( FT_UInt  string_index );
 
 
-  /*
-   * Simple unicode -> glyph index charmap built from font glyph names table.
-   */
+  
   typedef struct  PS_UniMap_
   {
-    FT_UInt32  unicode;      /* bit 31 set: is glyph variant */
+    FT_UInt32  unicode;      
     FT_UInt    glyph_index;
 
   } PS_UniMap;
@@ -69,18 +46,12 @@ FT_BEGIN_HEADER
   } PS_UnicodesRec;
 
 
-  /*
-   * A function which returns a glyph name for a given index.  Returns
-   * `NULL` if invalid index.
-   */
+  
   typedef const char*
   (*PS_GetGlyphNameFunc)( FT_Pointer  data,
                           FT_UInt     string_index );
 
-  /*
-   * A function used to release the glyph name returned by
-   * PS_GetGlyphNameFunc, when needed
-   */
+  
   typedef void
   (*PS_FreeGlyphNameFunc)( FT_Pointer  data,
                            const char*  name );
@@ -133,13 +104,13 @@ FT_BEGIN_HEADER
     adobe_std_strings_, adobe_std_encoding_, adobe_expert_encoding_         \
   };
 
-  /* */
+  
 
 
 FT_END_HEADER
 
 
-#endif /* SVPSCMAP_H_ */
+#endif 
 
 
-/* END */
+

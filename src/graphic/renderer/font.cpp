@@ -5,7 +5,7 @@
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/graphics_types.h>
 
-// OpenGL constants
+
 
 
 ITextureManager* Font::s_TextureManager = nullptr;

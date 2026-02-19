@@ -1,39 +1,8 @@
 #ifndef GIM_BASIC_GEOMETRY_OPERATIONS_H_INCLUDED
 #define GIM_BASIC_GEOMETRY_OPERATIONS_H_INCLUDED
 
-/*! \file gim_basic_geometry_operations.h
-*\author Francisco Leon Najera
-type independant geometry routines
 
-*/
-/*
------------------------------------------------------------------------------
-This source file is part of GIMPACT Library.
 
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2006 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
-
- This library is free software; you can redistribute it and/or
- modify it under the terms of EITHER:
-   (1) The GNU Lesser General Public License as published by the Free
-       Software Foundation; either version 2.1 of the License, or (at
-       your option) any later version. The text of the GNU Lesser
-       General Public License is included with this library in the
-       file GIMPACT-LICENSE-LGPL.TXT.
-   (2) The BSD-style license that is included with this library in
-       the file GIMPACT-LICENSE-BSD.TXT.
-   (3) The zlib/libpng license that is included with this library in
-       the file GIMPACT-LICENSE-ZLIB.TXT.
-
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
- GIMPACT-LICENSE-LGPL.TXT, GIMPACT-LICENSE-ZLIB.TXT and GIMPACT-LICENSE-BSD.TXT for more details.
-
------------------------------------------------------------------------------
-*/
 
 #include "gim_linear_math.h"
 
@@ -62,21 +31,21 @@ email: projectileman@yahoo.com
 		VEC_CROSS(n, _dif1, _dif2);         \
 	}
 
-/// plane is a vec4f
+
 #define TRIANGLE_PLANE(v1, v2, v3, plane)   \
 	{                                       \
 		TRIANGLE_NORMAL(v1, v2, v3, plane); \
 		plane[3] = VEC_DOT(v1, plane);      \
 	}
 
-/// plane is a vec4f
+
 #define TRIANGLE_PLANE_FAST(v1, v2, v3, plane)   \
 	{                                            \
 		TRIANGLE_NORMAL_FAST(v1, v2, v3, plane); \
 		plane[3] = VEC_DOT(v1, plane);           \
 	}
 
-/// Calc a plane from an edge an a normal. plane is a vec4f
+
 #define EDGE_PLANE(e1, e2, n, plane)   \
 	{                                  \
 		vec3f _dif;                    \
@@ -96,7 +65,7 @@ email: projectileman@yahoo.com
 		VEC_SUM(projected, projected, point);        \
 	}
 
-//! Verifies if a point is in the plane hull
+
 template <typename CLASS_POINT, typename CLASS_PLANE>
 SIMD_FORCE_INLINE bool POINT_IN_HULL(
 	const CLASS_POINT &point, const CLASS_PLANE *planes, GUINT plane_count)
@@ -140,18 +109,8 @@ enum eLINE_PLANE_INTERSECTION_TYPE
 	G_COLLIDE_PLANE_S2
 };
 
-//! Confirms if the plane intersect the edge or nor
-/*!
-intersection type must have the following values
-<ul>
-<li> 0 : Segment in front of plane, s1 closest
-<li> 1 : Segment in front of plane, s2 closest
-<li> 2 : Segment in back of plane, s1 closest
-<li> 3 : Segment in back of plane, s2 closest
-<li> 4 : Segment collides plane, s1 in back
-<li> 5 : Segment collides plane, s2 in back
-</ul>
-*/
+
+
 
 template <typename CLASS_POINT, typename CLASS_PLANE>
 SIMD_FORCE_INLINE eLINE_PLANE_INTERSECTION_TYPE PLANE_CLIP_SEGMENT2(
@@ -180,21 +139,8 @@ SIMD_FORCE_INLINE eLINE_PLANE_INTERSECTION_TYPE PLANE_CLIP_SEGMENT2(
 	return G_COLLIDE_PLANE_S2;
 }
 
-//! Confirms if the plane intersect the edge or not
-/*!
-clipped1 and clipped2 are the vertices behind the plane.
-clipped1 is the closest
 
-intersection_type must have the following values
-<ul>
-<li> 0 : Segment in front of plane, s1 closest
-<li> 1 : Segment in front of plane, s2 closest
-<li> 2 : Segment in back of plane, s1 closest
-<li> 3 : Segment in back of plane, s2 closest
-<li> 4 : Segment collides plane, s1 in back
-<li> 5 : Segment collides plane, s2 in back
-</ul>
-*/
+
 template <typename CLASS_POINT, typename CLASS_PLANE>
 SIMD_FORCE_INLINE eLINE_PLANE_INTERSECTION_TYPE PLANE_CLIP_SEGMENT_CLOSEST(
 	const CLASS_POINT &s1,
@@ -231,14 +177,11 @@ SIMD_FORCE_INLINE eLINE_PLANE_INTERSECTION_TYPE PLANE_CLIP_SEGMENT_CLOSEST(
 	return intersection_type;
 }
 
-//! Finds the 2 smallest cartesian coordinates of a plane normal
+
 #define PLANE_MINOR_AXES(plane, i0, i1) VEC_MINOR_AXES(plane, i0, i1)
 
-//! Ray plane collision in one way
-/*!
-Intersects plane in one way only. The ray must face the plane (normals must be in opossite directions).<br/>
-It uses the PLANEDIREPSILON constant.
-*/
+
+
 template <typename T, typename CLASS_POINT, typename CLASS_PLANE>
 SIMD_FORCE_INLINE bool RAY_PLANE_COLLISION(
 	const CLASS_PLANE &plane,
@@ -259,13 +202,8 @@ SIMD_FORCE_INLINE bool RAY_PLANE_COLLISION(
 	return true;
 }
 
-//! line collision
-/*!
-*\return
-	-0  if the ray never intersects
-	-1 if the ray collides in front
-	-2 if the ray collides in back
-*/
+
+
 template <typename T, typename CLASS_POINT, typename CLASS_PLANE>
 SIMD_FORCE_INLINE GUINT LINE_PLANE_COLLISION(
 	const CLASS_PLANE &plane,
@@ -302,16 +240,7 @@ SIMD_FORCE_INLINE GUINT LINE_PLANE_COLLISION(
 	return returnvalue;
 }
 
-/*! \brief Returns the Ray on which 2 planes intersect if they do.
-    Written by Rodrigo Hernandez on ODE convex collision
 
-  \param p1 Plane 1
-  \param p2 Plane 2
-  \param p Contains the origin of the ray upon returning if planes intersect
-  \param d Contains the direction of the ray upon returning if planes intersect
-  \return true if the planes intersect, 0 if paralell.
-
-*/
 template <typename CLASS_POINT, typename CLASS_PLANE>
 SIMD_FORCE_INLINE bool INTERSECT_PLANES(
 	const CLASS_PLANE &p1,
@@ -333,10 +262,9 @@ SIMD_FORCE_INLINE bool INTERSECT_PLANES(
 	return true;
 }
 
-//***************** SEGMENT and LINE FUNCTIONS **********************************///
 
-/*! Finds the closest point(cp) to (v) on a segment (e1,e2)
- */
+
+
 template <typename CLASS_POINT>
 SIMD_FORCE_INLINE void CLOSEST_POINT_ON_SEGMENT(
 	CLASS_POINT &cp, const CLASS_POINT &v,
@@ -362,17 +290,7 @@ SIMD_FORCE_INLINE void CLOSEST_POINT_ON_SEGMENT(
 	}
 }
 
-/*! \brief Finds the line params where these lines intersect.
 
-\param dir1 Direction of line 1
-\param point1 Point of line 1
-\param dir2 Direction of line 2
-\param point2 Point of line 2
-\param t1 Result Parameter for line 1
-\param t2 Result Parameter for line 2
-\param dointersect  0  if the lines won't intersect, else 1
-
-*/
 template <typename T, typename CLASS_POINT>
 SIMD_FORCE_INLINE bool LINE_INTERSECTION_PARAMS(
 	const CLASS_POINT &dir1,
@@ -396,7 +314,7 @@ SIMD_FORCE_INLINE bool LINE_INTERSECTION_PARAMS(
 	return true;
 }
 
-//! Find closest points on segments
+
 template <typename CLASS_POINT>
 SIMD_FORCE_INLINE void SEGMENT_COLLISION(
 	const CLASS_POINT &vA1,
@@ -407,14 +325,14 @@ SIMD_FORCE_INLINE void SEGMENT_COLLISION(
 	CLASS_POINT &vPointB)
 {
 	CLASS_POINT _AD, _BD, n;
-	vec4f _M;  //plane
+	vec4f _M;  
 	VEC_DIFF(_AD, vA2, vA1);
 	VEC_DIFF(_BD, vB2, vB1);
 	VEC_CROSS(n, _AD, _BD);
 	GREAL _tp = VEC_DOT(n, n);
-	if (_tp < G_EPSILON)  //ARE PARALELE
+	if (_tp < G_EPSILON)  
 	{
-		//project B over A
+		
 		bool invert_b_order = false;
 		_M[0] = VEC_DOT(vB1, _AD);
 		_M[1] = VEC_DOT(vB2, _AD);
@@ -425,7 +343,7 @@ SIMD_FORCE_INLINE void SEGMENT_COLLISION(
 		}
 		_M[2] = VEC_DOT(vA1, _AD);
 		_M[3] = VEC_DOT(vA2, _AD);
-		//mid points
+		
 		n[0] = (_M[0] + _M[1]) * 0.5f;
 		n[1] = (_M[2] + _M[3]) * 0.5f;
 
@@ -472,7 +390,7 @@ SIMD_FORCE_INLINE void SEGMENT_COLLISION(
 	_M[3] = VEC_DOT(_M, vB1);
 
 	LINE_PLANE_COLLISION(_M, _AD, vA1, vPointA, _tp, btScalar(0), btScalar(1));
-	/*Closest point on segment*/
+	
 	VEC_DIFF(vPointB, vPointA, vB1);
 	_tp = VEC_DOT(vPointB, _BD);
 	_tp /= VEC_DOT(_BD, _BD);
@@ -481,17 +399,8 @@ SIMD_FORCE_INLINE void SEGMENT_COLLISION(
 	VEC_SUM(vPointB, vPointB, vB1);
 }
 
-//! Line box intersection in one dimension
-/*!
 
-*\param pos Position of the ray
-*\param dir Projection of the Direction of the ray
-*\param bmin Minimum bound of the box
-*\param bmax Maximum bound of the box
-*\param tfirst the minimum projection. Assign to 0 at first.
-*\param tlast the maximum projection. Assign to INFINITY at first.
-*\return true if there is an intersection.
-*/
+
 template <typename T>
 SIMD_FORCE_INLINE bool BOX_AXIS_INTERSECT(T pos, T dir, T bmin, T bmax, T &tfirst, T &tlast)
 {
@@ -508,16 +417,16 @@ SIMD_FORCE_INLINE bool BOX_AXIS_INTERSECT(T pos, T dir, T bmin, T bmax, T &tfirs
 	return true;
 }
 
-//! Sorts 3 componets
+
 template <typename T>
 SIMD_FORCE_INLINE void SORT_3_INDICES(
 	const T *values,
 	GUINT *order_indices)
 {
-	//get minimum
+	
 	order_indices[0] = values[0] < values[1] ? (values[0] < values[2] ? 0 : 2) : (values[1] < values[2] ? 1 : 2);
 
-	//get second and third
+	
 	GUINT i0 = (order_indices[0] + 1) % 3;
 	GUINT i1 = (i0 + 1) % 3;
 
@@ -533,4 +442,4 @@ SIMD_FORCE_INLINE void SORT_3_INDICES(
 	}
 }
 
-#endif  // GIM_VECTOR_H_INCLUDED
+#endif  

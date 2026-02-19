@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btRigidBody.h"
 #include "BulletCollision/CollisionShapes/btConvexShape.h"
@@ -21,7 +8,7 @@ subject to the following restrictions:
 #include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
 #include "LinearMath/btSerializer.h"
 
-//'temporarily' global variables
+
 btScalar gDeactivationTime = btScalar(2.);
 bool gDisableDeactivation = false;
 static int uniqueId = 0;
@@ -75,7 +62,7 @@ void btRigidBody::setupRigidBody(const btRigidBody::btRigidBodyConstructionInfo&
 	m_interpolationLinearVelocity.setValue(0, 0, 0);
 	m_interpolationAngularVelocity.setValue(0, 0, 0);
 
-	//moved to btCollisionObject
+	
 	m_friction = constructionInfo.m_friction;
 	m_rollingFriction = constructionInfo.m_rollingFriction;
 	m_spinningFriction = constructionInfo.m_spinningFriction;
@@ -104,10 +91,10 @@ void btRigidBody::predictIntegratedTransform(btScalar timeStep, btTransform& pre
 
 void btRigidBody::saveKinematicState(btScalar timeStep)
 {
-	//todo: clamp to some (user definable) safe minimum timestep, to limit maximum angular/linear velocities
+	
 	if (timeStep != btScalar(0.))
 	{
-		//if we use motionstate to synchronize world transforms, get the new kinematic/animated world transform
+		
 		if (getMotionState())
 			getMotionState()->getWorldTransform(m_worldTransform);
 		btVector3 linVel, angVel;
@@ -116,7 +103,7 @@ void btRigidBody::saveKinematicState(btScalar timeStep)
 		m_interpolationLinearVelocity = m_linearVelocity;
 		m_interpolationAngularVelocity = m_angularVelocity;
 		m_interpolationWorldTransform = m_worldTransform;
-		//printf("angular = %f %f %f\n",m_angularVelocity.getX(),m_angularVelocity.getY(),m_angularVelocity.getZ());
+		
 	}
 }
 
@@ -145,11 +132,11 @@ void btRigidBody::setDamping(btScalar lin_damping, btScalar ang_damping)
 #endif
 }
 
-///applyDamping damps the velocity, using the given m_linearDamping and m_angularDamping
+
 void btRigidBody::applyDamping(btScalar timeStep)
 {
-	//On new damping: see discussion/issue report here: http://code.google.com/p/bullet/issues/detail?id=74
-	//todo: do some performance comparisons (but other parts of the engine are probably bottleneck anyway
+	
+	
 
 #ifdef BT_USE_OLD_DAMPING_METHOD
 	m_linearVelocity *= btMax((btScalar(1.0) - timeStep * m_linearDamping), btScalar(0.0));
@@ -161,8 +148,8 @@ void btRigidBody::applyDamping(btScalar timeStep)
 
 	if (m_additionalDamping)
 	{
-		//Additional damping can help avoiding lowpass jitter motion, help stability for ragdolls etc.
-		//Such damping is undesirable, so once the overall simulation quality of the rigid body dynamics system has improved, this should become obsolete
+		
+		
 		if ((m_angularVelocity.length2() < m_additionalAngularDampingThresholdSqr) &&
 			(m_linearVelocity.length2() < m_additionalLinearDampingThresholdSqr))
 		{
@@ -236,7 +223,7 @@ void btRigidBody::setMassProps(btScalar mass, const btVector3& inertia)
 		m_inverseMass = btScalar(1.0) / mass;
 	}
 
-	//Fg = m * a
+	
 	m_gravity = mass * m_gravity_acceleration;
 
 	m_invInertiaLocal.setValue(inertia.x() != btScalar(0.0) ? btScalar(1.0) / inertia.x() : btScalar(0.0),
@@ -300,7 +287,7 @@ btVector3 btRigidBody::computeGyroscopicImpulseImplicit_Body(btScalar step) cons
 	btVector3 omega1 = getAngularVelocity();
 	btQuaternion q = getWorldTransform().getRotation();
 
-	// Convert to body coordinates
+	
 	btVector3 omegab = quatRotate(q.inverse(), omega1);
 	btMatrix3x3 Ib;
 	Ib.setValue(idl.x(), 0, 0,
@@ -309,7 +296,7 @@ btVector3 btRigidBody::computeGyroscopicImpulseImplicit_Body(btScalar step) cons
 
 	btVector3 ibo = Ib * omegab;
 
-	// Residual vector
+	
 	btVector3 f = step * omegab.cross(ibo);
 
 	btMatrix3x3 skew0;
@@ -318,16 +305,16 @@ btVector3 btRigidBody::computeGyroscopicImpulseImplicit_Body(btScalar step) cons
 	btMatrix3x3 skew1;
 	om.getSkewSymmetricMatrix(&skew1[0], &skew1[1], &skew1[2]);
 
-	// Jacobian
+	
 	btMatrix3x3 J = Ib + (skew0 * Ib - skew1) * step;
 
-	//	btMatrix3x3 Jinv = J.inverse();
-	//	btVector3 omega_div = Jinv*f;
+	
+	
 	btVector3 omega_div = J.solve33(f);
 
-	// Single Newton-Raphson update
-	omegab = omegab - omega_div;  //Solve33(J, f);
-	// Back to world coordinates
+	
+	omegab = omegab - omega_div;  
+	
 	btVector3 omega2 = quatRotate(q, omegab);
 	btVector3 gf = omega2 - omega1;
 	return gf;
@@ -335,8 +322,8 @@ btVector3 btRigidBody::computeGyroscopicImpulseImplicit_Body(btScalar step) cons
 
 btVector3 btRigidBody::computeGyroscopicImpulseImplicit_World(btScalar step) const
 {
-	// use full newton-euler equations.  common practice to drop the wxIw term. want it for better tumbling behavior.
-	// calculate using implicit euler step so it's stable.
+	
+	
 
 	const btVector3 inertiaLocal = getLocalInertia();
 	const btVector3 w0 = getAngularVelocity();
@@ -346,21 +333,21 @@ btVector3 btRigidBody::computeGyroscopicImpulseImplicit_World(btScalar step) con
 	I = m_worldTransform.getBasis().scaled(inertiaLocal) *
 		m_worldTransform.getBasis().transpose();
 
-	// use newtons method to find implicit solution for new angular velocity (w')
-	// f(w') = -(T*step + Iw) + Iw' + w' + w'xIw'*step = 0
-	// df/dw' = I + 1xIw'*step + w'xI*step
+	
+	
+	
 
 	btVector3 w1 = w0;
 
-	// one step of newton's method
+	
 	{
 		const btVector3 fw = evalEulerEqn(w1, w0, btVector3(0, 0, 0), step, I);
 		const btMatrix3x3 dfw = evalEulerEqnDeriv(w1, w0, step, I);
 
 		btVector3 dw;
 		dw = dfw.solve33(fw);
-		//const btMatrix3x3 dfw_inv = dfw.inverse();
-		//dw = dfw_inv*fw;
+		
+		
 
 		w1 -= dw;
 	}
@@ -378,7 +365,7 @@ void btRigidBody::integrateVelocities(btScalar step)
 	m_angularVelocity += m_invInertiaTensorWorld * m_totalTorque * step;
 
 #define MAX_ANGVEL SIMD_HALF_PI
-	/// clamp angular velocity. collision calculations will fail on higher angular velocities
+	
 	btScalar angvel = m_angularVelocity.length();
 	if (angvel * step > MAX_ANGVEL)
 	{
@@ -414,11 +401,11 @@ void btRigidBody::setCenterOfMassTransform(const btTransform& xform)
 
 void btRigidBody::addConstraintRef(btTypedConstraint* c)
 {
-	///disable collision with the 'other' body
+	
 
 	int index = m_constraintRefs.findLinearSearch(c);
-	//don't add constraints that are already referenced
-	//btAssert(index == m_constraintRefs.size());
+	
+	
 	if (index == m_constraintRefs.size())
 	{
 		m_constraintRefs.push_back(c);
@@ -438,7 +425,7 @@ void btRigidBody::addConstraintRef(btTypedConstraint* c)
 void btRigidBody::removeConstraintRef(btTypedConstraint* c)
 {
 	int index = m_constraintRefs.findLinearSearch(c);
-	//don't remove constraints that are not referenced
+	
 	if (index < m_constraintRefs.size())
 	{
 		m_constraintRefs.remove(c);
@@ -461,7 +448,7 @@ int btRigidBody::calculateSerializeBufferSize() const
 	return sz;
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 const char* btRigidBody::serialize(void* dataBuffer, class btSerializer* serializer) const
 {
 	btRigidBodyData* rbd = (btRigidBodyData*)dataBuffer;
@@ -489,7 +476,7 @@ const char* btRigidBody::serialize(void* dataBuffer, class btSerializer* seriali
 	rbd->m_linearSleepingThreshold = m_linearSleepingThreshold;
 	rbd->m_angularSleepingThreshold = m_angularSleepingThreshold;
 
-	// Fill padding with zeros to appease msan.
+	
 #ifdef BT_USE_DOUBLE_PRECISION
 	memset(rbd->m_padding, 0, sizeof(rbd->m_padding));
 #endif

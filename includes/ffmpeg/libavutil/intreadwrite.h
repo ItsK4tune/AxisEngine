@@ -1,20 +1,4 @@
-/*
- * This file is part of FFmpeg.
- *
- * FFmpeg is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * FFmpeg is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with FFmpeg; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+
 
 #ifndef AVUTIL_INTREADWRITE_H
 #define AVUTIL_INTREADWRITE_H
@@ -45,20 +29,7 @@ typedef union {
     uint8_t  u8 [2];
 } av_alias av_alias16;
 
-/*
- * Arch-specific headers can provide any combination of
- * AV_[RW][BLN](16|24|32|48|64) and AV_(COPY|SWAP|ZERO)(64|128) macros.
- * Preprocessor symbols must be defined, even if these are implemented
- * as inline functions.
- *
- * R/W means read/write, B/L/N means big/little/native endianness.
- * The following macros require aligned access, compared to their
- * unaligned variants: AV_(COPY|SWAP|ZERO)(64|128), AV_[RW]N[8-64]A.
- * Incorrect usage may range from abysmal performance to crash
- * depending on the platform.
- *
- * The unaligned variants are AV_[RW][BLN][8-64] and AV_COPY*U.
- */
+
 
 #ifdef HAVE_AV_CONFIG_H
 
@@ -74,11 +45,9 @@ typedef union {
 #   include "x86/intreadwrite.h"
 #endif
 
-#endif /* HAVE_AV_CONFIG_H */
+#endif 
 
-/*
- * Map AV_RNXX <-> AV_R[BL]XX for all variants provided by per-arch headers.
- */
+
 
 #if AV_HAVE_BIGENDIAN
 
@@ -142,7 +111,7 @@ typedef union {
 #       define AV_WN64(p, v) AV_WB64(p, v)
 #   endif
 
-#else /* AV_HAVE_BIGENDIAN */
+#else 
 
 #   if    defined(AV_RN16) && !defined(AV_RL16)
 #       define AV_RL16(p) AV_RN16(p)
@@ -204,12 +173,9 @@ typedef union {
 #       define AV_WN64(p, v) AV_WL64(p, v)
 #   endif
 
-#endif /* !AV_HAVE_BIGENDIAN */
+#endif 
 
-/*
- * Define AV_[RW]N helper macros to simplify definitions not provided
- * by per-arch headers.
- */
+
 
 #if defined(__GNUC__) || defined(__clang__)
 
@@ -350,7 +316,7 @@ union unaligned_16 { uint16_t l; } __attribute__((packed)) av_alias;
 #   define AV_WN(s, p, v) AV_WL##s(p, v)
 #endif
 
-#endif /* HAVE_FAST_UNALIGNED */
+#endif 
 
 #ifndef AV_RN16
 #   define AV_RN16(p) AV_RN(16, p)
@@ -506,10 +472,7 @@ union unaligned_16 { uint16_t l; } __attribute__((packed)) av_alias;
     } while(0)
 #endif
 
-/*
- * The AV_[RW]NA macros access naturally aligned data
- * in a type-safe way.
- */
+
 
 #define AV_RNA(s, p)    (((const av_alias##s*)(p))->u##s)
 #define AV_WNA(s, p, v) (((av_alias##s*)(p))->u##s = (v))
@@ -592,10 +555,7 @@ union unaligned_16 { uint16_t l; } __attribute__((packed)) av_alias;
 #   define AV_WB64A(p, v) AV_WBA(64, p, v)
 #endif
 
-/*
- * The AV_COPYxxU macros are suitable for copying data to/from unaligned
- * memory locations.
- */
+
 
 #define AV_COPYU(n, d, s) AV_WN##n(d, AV_RN##n(s));
 
@@ -619,9 +579,7 @@ union unaligned_16 { uint16_t l; } __attribute__((packed)) av_alias;
     } while(0)
 #endif
 
-/* Parameters for AV_COPY*, AV_SWAP*, AV_ZERO* must be
- * naturally aligned.
- */
+
 
 #define AV_COPY(n, d, s) \
     (((av_alias##n*)(d))->u##n = ((const av_alias##n*)(s))->u##n)
@@ -674,4 +632,4 @@ union unaligned_16 { uint16_t l; } __attribute__((packed)) av_alias;
     } while(0)
 #endif
 
-#endif /* AVUTIL_INTREADWRITE_H */
+#endif 

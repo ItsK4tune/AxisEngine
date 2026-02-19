@@ -3,7 +3,7 @@
 
 #include "version.h"
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage)
+
 
 #if defined(__cpp_exceptions) && !defined(ENTT_NOEXCEPTION)
 #    define ENTT_CONSTEXPR
@@ -11,7 +11,7 @@
 #    define ENTT_TRY try
 #    define ENTT_CATCH catch(...)
 #else
-#    define ENTT_CONSTEXPR constexpr // use only with throwing functions (waiting for C++20)
+#    define ENTT_CONSTEXPR constexpr 
 #    define ENTT_THROW
 #    define ENTT_TRY if(true)
 #    define ENTT_CATCH if(false)
@@ -40,7 +40,7 @@
 #    include <cstdint>
 #    define ENTT_ID_TYPE std::uint32_t
 #else
-#    include <cstdint> // provides coverage for types in the std namespace
+#    include <cstdint> 
 #endif
 
 #ifndef ENTT_SPARSE_PAGE
@@ -104,7 +104,7 @@
 #        define ENTT_EXPORT __attribute__((visibility("default")))
 #        define ENTT_IMPORT __attribute__((visibility("default")))
 #        define ENTT_HIDDEN __attribute__((visibility("hidden")))
-#    else /* Unsupported compiler */
+#    else 
 #        define ENTT_EXPORT
 #        define ENTT_IMPORT
 #        define ENTT_HIDDEN
@@ -116,7 +116,7 @@
 #        define ENTT_API ENTT_EXPORT
 #    elif defined ENTT_API_IMPORT
 #        define ENTT_API ENTT_IMPORT
-#    else /* No API */
+#    else 
 #        define ENTT_API
 #    endif
 #endif
@@ -128,6 +128,6 @@
 #    pragma detect_mismatch("entt.nonstd", ENTT_XSTR(ENTT_NONSTD))
 #endif
 
-// NOLINTEND(cppcoreguidelines-macro-usage)
+
 
 #endif

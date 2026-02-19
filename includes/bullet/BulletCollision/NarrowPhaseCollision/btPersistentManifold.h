@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_PERSISTENT_MANIFOLD_H
 #define BT_PERSISTENT_MANIFOLD_H
@@ -26,7 +13,7 @@ struct btCollisionResult;
 struct btCollisionObjectDoubleData;
 struct btCollisionObjectFloatData;
 
-///maximum contact breaking and merging threshold
+
 extern btScalar gContactBreakingThreshold;
 
 #ifndef SWIG
@@ -40,9 +27,9 @@ extern ContactDestroyedCallback gContactDestroyedCallback;
 extern ContactProcessedCallback gContactProcessedCallback;
 extern ContactStartedCallback gContactStartedCallback;
 extern ContactEndedCallback gContactEndedCallback;
-#endif  //SWIG
+#endif  
 
-//the enum starts at 1024 to avoid type conflicts with btTypedConstraint
+
 enum btContactManifoldTypes
 {
 	MIN_CONTACT_MANIFOLD_TYPE = 1024,
@@ -51,21 +38,21 @@ enum btContactManifoldTypes
 
 #define MANIFOLD_CACHE_SIZE 4
 
-///btPersistentManifold is a contact point cache, it stays persistent as long as objects are overlapping in the broadphase.
-///Those contact points are created by the collision narrow phase.
-///The cache can be empty, or hold 1,2,3 or 4 points. Some collision algorithms (GJK) might only add one point at a time.
-///updates/refreshes old contact points, and throw them away if necessary (distance becomes too large)
-///reduces the cache to 4 points, when more then 4 points are added, using following rules:
-///the contact point with deepest penetration is always kept, and it tries to maximuze the area covered by the points
-///note that some pairs of objects might have more then one contact manifold.
 
-//ATTRIBUTE_ALIGNED128( class) btPersistentManifold : public btTypedObject
+
+
+
+
+
+
+
+
 ATTRIBUTE_ALIGNED16(class)
 btPersistentManifold : public btTypedObject
 {
 	btManifoldPoint m_pointCache[MANIFOLD_CACHE_SIZE];
 
-	/// this two body pointers can point to the physics rigidbody class.
+	
 	const btCollisionObject* m_body0;
 	const btCollisionObject* m_body1;
 
@@ -74,7 +61,7 @@ btPersistentManifold : public btTypedObject
 	btScalar m_contactBreakingThreshold;
 	btScalar m_contactProcessingThreshold;
 
-	/// sort cached points so most isolated points come first
+	
 	int sortCachedPoints(const btManifoldPoint& pt);
 
 	int findContactPoint(const btManifoldPoint* unUsed, int numUnused, const btManifoldPoint& pt);
@@ -115,13 +102,13 @@ public:
 
 #ifdef DEBUG_PERSISTENCY
 	void DebugPersistency();
-#endif  //
+#endif  
 
 	SIMD_FORCE_INLINE int getNumContacts() const
 	{
 		return m_cachedPoints;
 	}
-	/// the setNumContacts API is usually not used, except when you gather/fill all contacts manually
+	
 	void setNumContacts(int cachedPoints)
 	{
 		m_cachedPoints = cachedPoints;
@@ -139,7 +126,7 @@ public:
 		return m_pointCache[index];
 	}
 
-	///@todo: get this margin from the current physics / collision environment
+	
 	btScalar getContactBreakingThreshold() const;
 
 	btScalar getContactProcessingThreshold() const
@@ -166,11 +153,11 @@ public:
 		clearUserCache(m_pointCache[index]);
 
 		int lastUsedIndex = getNumContacts() - 1;
-		//		m_pointCache[index] = m_pointCache[lastUsedIndex];
+		
 		if (index != lastUsedIndex)
 		{
 			m_pointCache[index] = m_pointCache[lastUsedIndex];
-			//get rid of duplicated userPersistentData pointer
+			
 			m_pointCache[lastUsedIndex].m_userPersistentData = 0;
 			m_pointCache[lastUsedIndex].m_appliedImpulse = 0.f;
 			m_pointCache[lastUsedIndex].m_prevRHS = 0.f;
@@ -201,16 +188,16 @@ public:
 		btScalar appliedLateralImpulse2 = m_pointCache[insertIndex].m_appliedImpulseLateral2;
 
 		bool replacePoint = true;
-		///we keep existing contact points for friction anchors
-		///if the friction force is within the Coulomb friction cone
+		
+		
 		if (newPoint.m_contactPointFlags & BT_CONTACT_FLAG_FRICTION_ANCHOR)
 		{
-			//   printf("appliedImpulse=%f\n", appliedImpulse);
-			//   printf("appliedLateralImpulse1=%f\n", appliedLateralImpulse1);
-			//   printf("appliedLateralImpulse2=%f\n", appliedLateralImpulse2);
-			//   printf("mu = %f\n", m_pointCache[insertIndex].m_combinedFriction);
+			
+			
+			
+			
 			btScalar mu = m_pointCache[insertIndex].m_combinedFriction;
-			btScalar eps = 0;  //we could allow to enlarge or shrink the tolerance to check against the friction cone a bit, say 1e-7
+			btScalar eps = 0;  
 			btScalar a = appliedLateralImpulse1 * appliedLateralImpulse1 + appliedLateralImpulse2 * appliedLateralImpulse2;
 			btScalar b = eps + mu * appliedImpulse;
 			b = b * b;
@@ -242,7 +229,7 @@ public:
 	{
 		return pt.m_distance1 <= getContactBreakingThreshold();
 	}
-	/// calculated new worldspace coordinates and depth, and reject points that exceed the collision margin
+	
 	void refreshContactPoints(const btTransform& trA, const btTransform& trB);
 
 	SIMD_FORCE_INLINE void clearManifold()
@@ -266,7 +253,7 @@ public:
 	void deSerialize(const struct btPersistentManifoldFloatData* manifoldDataPtr);
 };
 
-// clang-format off
+
 
 struct btPersistentManifoldDoubleData
 {
@@ -361,7 +348,7 @@ struct btPersistentManifoldFloatData
 	btCollisionObjectFloatData *m_body1;
 };
 
-// clang-format on
+
 
 #ifdef BT_USE_DOUBLE_PRECISION
 #define btPersistentManifoldData btPersistentManifoldDoubleData
@@ -369,6 +356,6 @@ struct btPersistentManifoldFloatData
 #else
 #define btPersistentManifoldData btPersistentManifoldFloatData
 #define btPersistentManifoldDataName "btPersistentManifoldFloatData"
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
-#endif  //BT_PERSISTENT_MANIFOLD_H
+#endif  

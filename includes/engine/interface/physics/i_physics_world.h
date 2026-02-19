@@ -25,7 +25,7 @@ public:
 
     virtual void DebugDraw() = 0;
 
-    // Factory methods
+    
     virtual std::shared_ptr<IRigidBody> CreateRigidBody(float mass, const glm::vec3& startPos, const glm::quat& startRot, std::shared_ptr<ICollisionShape> shape) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateBoxShape(const glm::vec3& halfExtents) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) = 0;

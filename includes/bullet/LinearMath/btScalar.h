@@ -1,30 +1,18 @@
-/*
-Copyright (c) 2003-2009 Erwin Coumans  http://bullet.googlecode.com
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_SCALAR_H
 #define BT_SCALAR_H
 
 #ifdef BT_MANAGED_CODE
-//Aligned data types not supported in managed code
+
 #pragma unmanaged
 #endif
 
 #include <math.h>
-#include <stdlib.h>  //size_t for MSVC 6.0
+#include <stdlib.h>  
 #include <float.h>
 
-/* SVN $Revision$ on $Date$ from http://bullet.googlecode.com*/
+
 #define BT_BULLET_VERSION 326
 
 inline int btGetVersion()
@@ -42,16 +30,16 @@ inline int btIsDoublePrecision()
 }
 
 
-// The following macro "BT_NOT_EMPTY_FILE" can be put into a file
-// in order suppress the MS Visual C++ Linker warning 4221
-//
-// warning LNK4221: no public symbols found; archive member will be inaccessible
-//
-// This warning occurs on PC and XBOX when a file compiles out completely
-// has no externally visible symbols which may be dependant on configuration
-// #defines and options.
-//
-// see more https://stackoverflow.com/questions/1822887/what-is-the-best-way-to-eliminate-ms-visual-c-linker-warning-warning-lnk422
+
+
+
+
+
+
+
+
+
+
 
 #if defined(_MSC_VER)
 #define BT_NOT_EMPTY_FILE_CAT_II(p, res) res
@@ -66,14 +54,14 @@ inline int btIsDoublePrecision()
 #define BT_NOT_EMPTY_FILE
 #endif
 
-// clang and most formatting tools don't support indentation of preprocessor guards, so turn it off
-// clang-format off
+
+
 #if defined(DEBUG) || defined (_DEBUG)
 	#define BT_DEBUG
 #endif
 
 #ifdef _WIN32
-	#if  defined(__GNUC__)	// it should handle both MINGW and CYGWIN
+	#if  defined(__GNUC__)	
         	#define SIMD_FORCE_INLINE        __inline__ __attribute__((always_inline))
         	#define ATTRIBUTE_ALIGNED16(a)   a __attribute__((aligned(16)))
         	#define ATTRIBUTE_ALIGNED64(a)   a __attribute__((aligned(64)))
@@ -88,12 +76,12 @@ inline int btIsDoublePrecision()
 		#define ATTRIBUTE_ALIGNED16(a) __declspec() a
 		#define ATTRIBUTE_ALIGNED64(a) __declspec() a
 		#define ATTRIBUTE_ALIGNED128(a) __declspec () a
-	#else//__MINGW32__
-		//#define BT_HAS_ALIGNED_ALLOCATOR
-		#pragma warning(disable : 4324) // disable padding warning
-//			#pragma warning(disable:4530) // Disable the exception disable but used in MSCV Stl warning.
-		#pragma warning(disable:4996) //Turn off warnings about deprecated C routines
-//			#pragma warning(disable:4786) // Disable the "debug name too long" warning
+	#else
+		
+		#pragma warning(disable : 4324) 
+
+		#pragma warning(disable:4996) 
+
 
 		#define SIMD_FORCE_INLINE __forceinline
 		#define ATTRIBUTE_ALIGNED16(a) __declspec(align(16)) a
@@ -108,7 +96,7 @@ inline int btIsDoublePrecision()
 		#else
 
 #if defined (_M_ARM) || defined (_M_ARM64)
-            //Do not turn SSE on for ARM (may want to turn on BT_USE_NEON however)
+            
 #elif (defined (_WIN32) && (_MSC_VER) && _MSC_VER >= 1400) && (!defined (BT_USE_DOUBLE_PRECISION))
 
 #ifdef __clang__
@@ -119,46 +107,46 @@ inline int btIsDoublePrecision()
 				#define BT_USE_SIMD_VECTOR3
 			#endif
 			#define BT_USE_SSE
-#endif//__BT_DISABLE_SSE__
+#endif
 			#ifdef BT_USE_SSE
 
-#if (_MSC_FULL_VER >= 170050727)//Visual Studio 2012 can compile SSE4/FMA3 (but SSE4/FMA3 is not enabled by default)
+#if (_MSC_FULL_VER >= 170050727)
 			#define BT_ALLOW_SSE4
-#endif //(_MSC_FULL_VER >= 160040219)
+#endif 
 
-			//BT_USE_SSE_IN_API is disabled under Windows by default, because 
-			//it makes it harder to integrate Bullet into your application under Windows 
-			//(structured embedding Bullet structs/classes need to be 16-byte aligned)
-			//with relatively little performance gain
-			//If you are not embedded Bullet data in your classes, or make sure that you align those classes on 16-byte boundaries
-			//you can manually enable this line or set it in the build system for a bit of performance gain (a few percent, dependent on usage)
-			//#define BT_USE_SSE_IN_API
-			#endif //BT_USE_SSE
+			
+			
+			
+			
+			
+			
+			
+			#endif 
 			#include <emmintrin.h>
 #endif
 
-		#endif//_XBOX
+		#endif
 
-	#endif //__MINGW32__
+	#endif 
 
 	#ifdef BT_DEBUG
 		#ifdef _MSC_VER
 			#include <stdio.h>
 			#define btAssert(x) { if(!(x)){printf("Assert " __FILE__ ":%u (%s)\n", __LINE__, #x);__debugbreak();	}}
-		#else//_MSC_VER
+		#else
 			#include <assert.h>
 			#define btAssert assert
-		#endif//_MSC_VER
+		#endif
 	#else
 		#define btAssert(x)
 	#endif
-		//btFullAssert is optional, slows down a lot
+		
 		#define btFullAssert(x)
 
 		#define btLikely(_c)  _c
 		#define btUnlikely(_c) _c
 
-#else//_WIN32
+#else
 	
 	#if defined	(__CELLOS_LV2__)
 		#define SIMD_FORCE_INLINE inline __attribute__((always_inline))
@@ -177,16 +165,16 @@ inline int btIsDoublePrecision()
 				#define btAssert assert
 			#endif
 	
-		#else//BT_DEBUG
+		#else
 				#define btAssert(x)
-		#endif//BT_DEBUG
-		//btFullAssert is optional, slows down a lot
+		#endif
+		
 		#define btFullAssert(x)
 
 		#define btLikely(_c)  _c
 		#define btUnlikely(_c) _c
 
-	#else//defined	(__CELLOS_LV2__)
+	#else
 
 		#ifdef USE_LIBSPE2
 
@@ -202,7 +190,7 @@ inline int btIsDoublePrecision()
 	#else
 			#define btAssert(x)
 	#endif
-			//btFullAssert is optional, slows down a lot
+			
 			#define btFullAssert(x)
 
 
@@ -210,18 +198,18 @@ inline int btIsDoublePrecision()
 			#define btUnlikely(_c) __builtin_expect((_c), 0)
 		
 
-		#else//USE_LIBSPE2
-	//non-windows systems
+		#else
+	
 
 			#if (defined (__APPLE__) && (!defined (BT_USE_DOUBLE_PRECISION)))
 				#if defined (__i386__) || defined (__x86_64__)
 					#define BT_USE_SIMD_VECTOR3
 					#define BT_USE_SSE
-					//BT_USE_SSE_IN_API is enabled on Mac OSX by default, because memory is automatically aligned on 16-byte boundaries
-					//if apps run into issues, we will disable the next line
+					
+					
 					#define BT_USE_SSE_IN_API
 					#ifdef BT_USE_SSE
-						// include appropriate SSE level
+						
 						#if defined (__SSE4_1__)
 							#include <smmintrin.h>
 						#elif defined (__SSSE3__)
@@ -231,7 +219,7 @@ inline int btIsDoublePrecision()
 						#else
 							#include <emmintrin.h>
 						#endif
-					#endif //BT_USE_SSE
+					#endif 
 				#elif defined( __ARM_NEON__ )
 					#ifdef __clang__
 						#define BT_USE_NEON 1
@@ -239,12 +227,12 @@ inline int btIsDoublePrecision()
 		
 						#if defined BT_USE_NEON && defined (__clang__)
 							#include <arm_neon.h>
-						#endif//BT_USE_NEON
-				   #endif //__clang__
-				#endif//__arm__
+						#endif
+				   #endif 
+				#endif
 
 				#define SIMD_FORCE_INLINE inline __attribute__ ((always_inline))
-			///@todo: check out alignment methods for other platforms/compilers
+			
 				#define ATTRIBUTE_ALIGNED16(a) a __attribute__ ((aligned (16)))
 				#define ATTRIBUTE_ALIGNED64(a) a __attribute__ ((aligned (64)))
 				#define ATTRIBUTE_ALIGNED128(a) a __attribute__ ((aligned (128)))
@@ -263,25 +251,25 @@ inline int btIsDoublePrecision()
 					asm volatile ("int3");\
 				}\
 				}
-				#else//defined (__i386__) || defined (__x86_64__)
+				#else
 					#define btAssert assert
-				#endif//defined (__i386__) || defined (__x86_64__)
-				#else//defined(DEBUG) || defined (_DEBUG)
+				#endif
+				#else
 					#define btAssert(x)
-				#endif//defined(DEBUG) || defined (_DEBUG)
+				#endif
 
-				//btFullAssert is optional, slows down a lot
+				
 				#define btFullAssert(x)
 				#define btLikely(_c)  _c
 				#define btUnlikely(_c) _c
 
-			#else//__APPLE__
+			#else
 
 				#define SIMD_FORCE_INLINE inline
-				///@todo: check out alignment methods for other platforms/compilers
-				///#define ATTRIBUTE_ALIGNED16(a) a __attribute__ ((aligned (16)))
-				///#define ATTRIBUTE_ALIGNED64(a) a __attribute__ ((aligned (64)))
-				///#define ATTRIBUTE_ALIGNED128(a) a __attribute__ ((aligned (128)))
+				
+				
+				
+				
 				#define ATTRIBUTE_ALIGNED16(a) a
 				#define ATTRIBUTE_ALIGNED64(a) a
 				#define ATTRIBUTE_ALIGNED128(a) a
@@ -295,33 +283,33 @@ inline int btIsDoublePrecision()
 					#define btAssert(x)
 				#endif
 
-				//btFullAssert is optional, slows down a lot
+				
 				#define btFullAssert(x)
 				#define btLikely(_c)  _c
 				#define btUnlikely(_c) _c
-			#endif //__APPLE__ 
-		#endif // LIBSPE2
-	#endif	//__CELLOS_LV2__
-#endif//_WIN32
+			#endif 
+		#endif 
+	#endif	
+#endif
 
 
-///The btScalar type abstracts floating point numbers, to easily switch between double and single floating point precision.
+
 #if defined(BT_USE_DOUBLE_PRECISION)
 	typedef double btScalar;
-	//this number could be bigger in double precision
+	
 	#define BT_LARGE_FLOAT 1e30
 #else
 	typedef float btScalar;
-	//keep BT_LARGE_FLOAT*BT_LARGE_FLOAT < FLT_MAX
+	
 	#define BT_LARGE_FLOAT 1e18f
 #endif
 
 #ifdef BT_USE_SSE
 	typedef __m128 btSimdFloat4;
-#endif  //BT_USE_SSE
+#endif  
 
 #if defined(BT_USE_SSE)
-	//#if defined BT_USE_SSE_IN_API && defined (BT_USE_SSE)
+	
 	#ifdef _WIN32
 
 		#ifndef BT_NAN
@@ -332,7 +320,7 @@ inline int btIsDoublePrecision()
 		#ifndef BT_INFINITY
 			static int btInfinityMask = 0x7F800000;
 			#define BT_INFINITY (*(float *)&btInfinityMask)
-			inline int btGetInfinityMask()  //suppress stupid compiler warning
+			inline int btGetInfinityMask()  
 			{
 				return btInfinityMask;
 			}
@@ -340,7 +328,7 @@ inline int btIsDoublePrecision()
 
 
 
-	//use this, in case there are clashes (such as xnamath.h)
+	
 	#ifndef BT_NO_SIMD_OPERATOR_OVERLOADS
 	inline __m128 operator+(const __m128 A, const __m128 B)
 	{
@@ -356,7 +344,7 @@ inline int btIsDoublePrecision()
 	{
 		return _mm_mul_ps(A, B);
 	}
-	#endif  //BT_NO_SIMD_OPERATOR_OVERLOADS
+	#endif  
 
 	#define btCastfTo128i(a) (_mm_castps_si128(a))
 	#define btCastfTo128d(a) (_mm_castps_pd(a))
@@ -365,7 +353,7 @@ inline int btIsDoublePrecision()
 	#define btCastdTo128i(a) (_mm_castpd_si128(a))
 	#define btAssign128(r0, r1, r2, r3) _mm_setr_ps(r0, r1, r2, r3)
 
-	#else  //_WIN32
+	#else  
 
 		#define btCastfTo128i(a) ((__m128i)(a))
 		#define btCastfTo128d(a) ((__m128d)(a))
@@ -376,8 +364,8 @@ inline int btIsDoublePrecision()
 			(__m128) { r0, r1, r2, r3 }
 		#define BT_INFINITY INFINITY
 		#define BT_NAN NAN
-	#endif  //_WIN32
-#else//BT_USE_SSE
+	#endif  
+#else
 
 	#ifdef BT_USE_NEON
 	#include <arm_neon.h>
@@ -387,7 +375,7 @@ inline int btIsDoublePrecision()
 	#define BT_NAN NAN
 	#define btAssign128(r0, r1, r2, r3) \
 		(float32x4_t) { r0, r1, r2, r3 }
-	#else  //BT_USE_NEON
+	#else  
 
 	#ifndef BT_INFINITY
 	struct btInfMaskConverter
@@ -403,14 +391,14 @@ inline int btIsDoublePrecision()
 	};
 	static btInfMaskConverter btInfinityMask = 0x7F800000;
 	#define BT_INFINITY (btInfinityMask.mask)
-	inline int btGetInfinityMask()  //suppress stupid compiler warning
+	inline int btGetInfinityMask()  
 	{
 		return btInfinityMask.intmask;
 	}
 	#endif
-	#endif  //BT_USE_NEON
+	#endif  
 
-#endif  //BT_USE_SSE
+#endif  
 
 #ifdef BT_USE_NEON
 	#include <arm_neon.h>
@@ -420,7 +408,7 @@ inline int btIsDoublePrecision()
 	#define BT_NAN NAN
 	#define btAssign128(r0, r1, r2, r3) \
 		(float32x4_t) { r0, r1, r2, r3 }
-#endif//BT_USE_NEON
+#endif
 
 #define BT_DECLARE_ALIGNED_ALLOCATOR()                                                                     \
 	SIMD_FORCE_INLINE void *operator new(size_t sizeInBytes) { return btAlignedAlloc(sizeInBytes, 16); }   \
@@ -461,7 +449,7 @@ inline int btIsDoublePrecision()
 	SIMD_FORCE_INLINE btScalar btPow(btScalar x, btScalar y) { return pow(x, y); }
 	SIMD_FORCE_INLINE btScalar btFmod(btScalar x, btScalar y) { return fmod(x, y); }
 
-#else//BT_USE_DOUBLE_PRECISION
+#else
 
 	SIMD_FORCE_INLINE btScalar btSqrt(btScalar y)
 	{
@@ -480,10 +468,10 @@ inline int btIsDoublePrecision()
 		double x, z, tempf;
 		unsigned long *tfptr = ((unsigned long *)&tempf) + 1;
 		tempf = y;
-		*tfptr = (0xbfcdd90a - *tfptr) >> 1; /* estimate of 1/sqrt(y) */
+		*tfptr = (0xbfcdd90a - *tfptr) >> 1; 
 		x = tempf;
 		z = y * btScalar(0.5);
-		x = (btScalar(1.5) * x) - (x * x) * (x * z); /* iteration formula     */
+		x = (btScalar(1.5) * x) - (x * x) * (x * z); 
 		x = (btScalar(1.5) * x) - (x * x) * (x * z);
 		x = (btScalar(1.5) * x) - (x * x) * (x * z);
 		x = (btScalar(1.5) * x) - (x * x) * (x * z);
@@ -521,7 +509,7 @@ inline int btIsDoublePrecision()
 	SIMD_FORCE_INLINE btScalar btPow(btScalar x, btScalar y) { return powf(x, y); }
 	SIMD_FORCE_INLINE btScalar btFmod(btScalar x, btScalar y) { return fmodf(x, y); }
 
-#endif//BT_USE_DOUBLE_PRECISION
+#endif
 
 #define SIMD_PI btScalar(3.1415926535897932384626433832795029)
 #define SIMD_2_PI (btScalar(2.0) * SIMD_PI)
@@ -529,7 +517,7 @@ inline int btIsDoublePrecision()
 #define SIMD_RADS_PER_DEG (SIMD_2_PI / btScalar(360.0))
 #define SIMD_DEGS_PER_RAD (btScalar(360.0) / SIMD_2_PI)
 #define SIMDSQRT12 btScalar(0.7071067811865475244008443621048490)
-#define btRecipSqrt(x) ((btScalar)(btScalar(1.0) / btSqrt(btScalar(x)))) /* reciprocal square root */
+#define btRecipSqrt(x) ((btScalar)(btScalar(1.0) / btSqrt(btScalar(x)))) 
 #define btRecip(x) (btScalar(1.0) / btScalar(x))
 
 #ifdef BT_USE_DOUBLE_PRECISION
@@ -548,7 +536,7 @@ inline int btIsDoublePrecision()
 	#define BT_HALF 0.5f
 #endif
 
-// clang-format on
+
 
 SIMD_FORCE_INLINE btScalar btAtan2Fast(btScalar y, btScalar x)
 {
@@ -606,20 +594,20 @@ SIMD_FORCE_INLINE bool btMachineIsLittleEndian()
 {
 	long int i = 1;
 	const char *p = (const char *)&i;
-	if (p[0] == 1)  // Lowest address contains the least significant byte
+	if (p[0] == 1)  
 		return true;
 	else
 		return false;
 }
 
-///btSelect avoids branches, which makes performance much better for consoles like Playstation 3 and XBox 360
-///Thanks Phil Knight. See also http://www.cellperformance.com/articles/2006/04/more_techniques_for_eliminatin_1.html
+
+
 SIMD_FORCE_INLINE unsigned btSelect(unsigned condition, unsigned valueIfConditionNonZero, unsigned valueIfConditionZero)
 {
-	// Set testNz to 0xFFFFFFFF if condition is nonzero, 0x00000000 if condition is zero
-	// Rely on positive value or'ed with its negative having sign bit on
-	// and zero value or'ed with its negative (which is still zero) having sign bit off
-	// Use arithmetic shift right, shifting the sign bit through all 32 bits
+	
+	
+	
+	
 	unsigned testNz = (unsigned)(((int)condition | -(int)condition) >> 31);
 	unsigned testEqz = ~testNz;
 	return ((valueIfConditionNonZero & testNz) | (valueIfConditionZero & testEqz));
@@ -647,7 +635,7 @@ SIMD_FORCE_INLINE void btSwap(T &a, T &b)
 	b = tmp;
 }
 
-//PCK: endian swapping functions
+
 SIMD_FORCE_INLINE unsigned btSwapEndian(unsigned val)
 {
 	return (((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >> 8) | ((val & 0x0000ff00) << 8) | ((val & 0x000000ff) << 24));
@@ -668,12 +656,12 @@ SIMD_FORCE_INLINE unsigned short btSwapEndian(short val)
 	return btSwapEndian((unsigned short)val);
 }
 
-///btSwapFloat uses using char pointers to swap the endianness
-////btSwapFloat/btSwapDouble will NOT return a float, because the machine might 'correct' invalid floating point values
-///Not all values of sign/exponent/mantissa are valid floating point numbers according to IEEE 754.
-///When a floating point unit is faced with an invalid value, it may actually change the value, or worse, throw an exception.
-///In most systems, running user mode code, you wouldn't get an exception, but instead the hardware/os/runtime will 'fix' the number for you.
-///so instead of returning a float/double, we return integer/long long integer
+
+
+
+
+
+
 SIMD_FORCE_INLINE unsigned int btSwapEndianFloat(float d)
 {
 	unsigned int a = 0;
@@ -687,7 +675,7 @@ SIMD_FORCE_INLINE unsigned int btSwapEndianFloat(float d)
 	return a;
 }
 
-// unswap using char pointers
+
 SIMD_FORCE_INLINE float btUnswapEndianFloat(unsigned int a)
 {
 	float d = 0.0f;
@@ -702,7 +690,7 @@ SIMD_FORCE_INLINE float btUnswapEndianFloat(unsigned int a)
 	return d;
 }
 
-// swap using char pointers
+
 SIMD_FORCE_INLINE void btSwapEndianDouble(double d, unsigned char *dst)
 {
 	unsigned char *src = (unsigned char *)&d;
@@ -717,7 +705,7 @@ SIMD_FORCE_INLINE void btSwapEndianDouble(double d, unsigned char *dst)
 	dst[7] = src[0];
 }
 
-// unswap using char pointers
+
 SIMD_FORCE_INLINE double btUnswapEndianDouble(const unsigned char *src)
 {
 	double d = 0.0;
@@ -777,7 +765,7 @@ SIMD_FORCE_INLINE btScalar btLargeDot(const btScalar *a, const btScalar *b, int 
 	return sum;
 }
 
-// returns normalized value in range [-SIMD_PI, SIMD_PI]
+
 SIMD_FORCE_INLINE btScalar btNormalizeAngle(btScalar angleInRadians)
 {
 	angleInRadians = btFmod(angleInRadians, SIMD_2_PI);
@@ -795,7 +783,7 @@ SIMD_FORCE_INLINE btScalar btNormalizeAngle(btScalar angleInRadians)
 	}
 }
 
-///rudimentary class to provide type info
+
 struct btTypedObject
 {
 	btTypedObject(int objectType)
@@ -809,7 +797,7 @@ struct btTypedObject
 	}
 };
 
-///align a pointer to the provided alignment, upwards
+
 template <typename T>
 T *btAlignPointer(T *unalignedPtr, size_t alignment)
 {
@@ -829,4 +817,4 @@ T *btAlignPointer(T *unalignedPtr, size_t alignment)
 	return converter.ptr;
 }
 
-#endif  //BT_SCALAR_H
+#endif  

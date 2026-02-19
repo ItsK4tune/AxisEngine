@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btConvexTriangleMeshShape.h"
 #include "BulletCollision/CollisionShapes/btCollisionMargin.h"
@@ -27,8 +14,8 @@ btConvexTriangleMeshShape ::btConvexTriangleMeshShape(btStridingMeshInterface* m
 		recalcLocalAabb();
 }
 
-///It's not nice to have all this virtual function overhead, so perhaps we can also gather the points once
-///but then we are duplicating
+
+
 class LocalSupportVertexCallback : public btInternalTriangleIndexCallback
 {
 	btVector3 m_supportVertexLocal;
@@ -92,7 +79,7 @@ btVector3 btConvexTriangleMeshShape::localGetSupportingVertexWithoutMargin(const
 
 void btConvexTriangleMeshShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const btVector3* vectors, btVector3* supportVerticesOut, int numVectors) const
 {
-	//use 'w' component of supportVerticesOut?
+	
 	{
 		for (int i = 0; i < numVectors; i++)
 		{
@@ -100,7 +87,7 @@ void btConvexTriangleMeshShape::batchedUnitVectorGetSupportingVertexWithoutMargi
 		}
 	}
 
-	///@todo: could do the batch inside the callback!
+	
 
 	for (int j = 0; j < numVectors; j++)
 	{
@@ -129,11 +116,11 @@ btVector3 btConvexTriangleMeshShape::localGetSupportingVertex(const btVector3& v
 	return supVertex;
 }
 
-//currently just for debugging (drawing), perhaps future support for algebraic continuous collision detection
-//Please note that you can debug-draw btConvexTriangleMeshShape with the Raytracer Demo
+
+
 int btConvexTriangleMeshShape::getNumVertices() const
 {
-	//cache this?
+	
 	return 0;
 }
 
@@ -162,7 +149,7 @@ void btConvexTriangleMeshShape::getPlane(btVector3&, btVector3&, int) const
 	btAssert(0);
 }
 
-//not yet
+
 bool btConvexTriangleMeshShape::isInside(const btVector3&, btScalar) const
 {
 	btAssert(0);

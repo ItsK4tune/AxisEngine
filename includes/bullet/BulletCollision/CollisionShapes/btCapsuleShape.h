@@ -1,27 +1,14 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_CAPSULE_SHAPE_H
 #define BT_CAPSULE_SHAPE_H
 
 #include "btConvexInternalShape.h"
-#include "BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"  // for the types
+#include "BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"  
 
-///The btCapsuleShape represents a capsule around the Y axis, there is also the btCapsuleShapeX aligned around the X axis and btCapsuleShapeZ around the Z axis.
-///The total height is height+2*radius, so the height is just the height between the center of each 'sphere' of the capsule caps.
-///The btCapsuleShape is a convex hull of two spheres. The btMultiSphereShape is a more general collision shape that takes the convex hull of multiple sphere, so it can also represent a capsule when just using two spheres.
+
+
+
 ATTRIBUTE_ALIGNED16(class)
 btCapsuleShape : public btConvexInternalShape
 {
@@ -29,7 +16,7 @@ protected:
 	int m_upAxis;
 
 protected:
-	///only used for btCapsuleShapeZ and btCapsuleShapeX subclasses.
+	
 	btCapsuleShape() : btConvexInternalShape() { m_shapeType = CAPSULE_SHAPE_PROXYTYPE; };
 
 public:
@@ -37,17 +24,17 @@ public:
 
 	btCapsuleShape(btScalar radius, btScalar height);
 
-	///CollisionShape Interface
+	
 	virtual void calculateLocalInertia(btScalar mass, btVector3 & inertia) const;
 
-	/// btConvexShape Interface
+	
 	virtual btVector3 localGetSupportingVertexWithoutMargin(const btVector3& vec) const;
 
 	virtual void batchedUnitVectorGetSupportingVertexWithoutMargin(const btVector3* vectors, btVector3* supportVerticesOut, int numVectors) const;
 
 	virtual void setMargin(btScalar collisionMargin)
 	{
-		//don't override the margin for capsules, their entire radius == margin
+		
 		(void)collisionMargin;
 	}
 
@@ -89,7 +76,7 @@ public:
 		btVector3 unScaledImplicitShapeDimensions = m_implicitShapeDimensions / m_localScaling;
 		btConvexInternalShape::setLocalScaling(scaling);
 		m_implicitShapeDimensions = (unScaledImplicitShapeDimensions * scaling);
-		//update m_collisionMargin, since entire radius==margin
+		
 		int radiusAxis = (m_upAxis + 2) % 3;
 		m_collisionMargin = m_implicitShapeDimensions[radiusAxis];
 	}
@@ -103,41 +90,41 @@ public:
 
 	virtual int calculateSerializeBufferSize() const;
 
-	///fills the dataBuffer and returns the struct name (and 0 on failure)
+	
 	virtual const char* serialize(void* dataBuffer, btSerializer* serializer) const;
 
 	SIMD_FORCE_INLINE void deSerializeFloat(struct btCapsuleShapeData * dataBuffer);
 };
 
-///btCapsuleShapeX represents a capsule around the Z axis
-///the total height is height+2*radius, so the height is just the height between the center of each 'sphere' of the capsule caps.
+
+
 class btCapsuleShapeX : public btCapsuleShape
 {
 public:
 	btCapsuleShapeX(btScalar radius, btScalar height);
 
-	//debugging
+	
 	virtual const char* getName() const
 	{
 		return "CapsuleX";
 	}
 };
 
-///btCapsuleShapeZ represents a capsule around the Z axis
-///the total height is height+2*radius, so the height is just the height between the center of each 'sphere' of the capsule caps.
+
+
 class btCapsuleShapeZ : public btCapsuleShape
 {
 public:
 	btCapsuleShapeZ(btScalar radius, btScalar height);
 
-	//debugging
+	
 	virtual const char* getName() const
 	{
 		return "CapsuleZ";
 	}
 };
 
-///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
+
 struct btCapsuleShapeData
 {
 	btConvexInternalShapeData m_convexInternalShapeData;
@@ -152,7 +139,7 @@ SIMD_FORCE_INLINE int btCapsuleShape::calculateSerializeBufferSize() const
 	return sizeof(btCapsuleShapeData);
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 SIMD_FORCE_INLINE const char* btCapsuleShape::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btCapsuleShapeData* shapeData = (btCapsuleShapeData*)dataBuffer;
@@ -161,7 +148,7 @@ SIMD_FORCE_INLINE const char* btCapsuleShape::serialize(void* dataBuffer, btSeri
 
 	shapeData->m_upAxis = m_upAxis;
 
-	// Fill padding with zeros to appease msan.
+	
 	shapeData->m_padding[0] = 0;
 	shapeData->m_padding[1] = 0;
 	shapeData->m_padding[2] = 0;
@@ -175,8 +162,8 @@ SIMD_FORCE_INLINE void btCapsuleShape::deSerializeFloat(btCapsuleShapeData* data
 	m_implicitShapeDimensions.deSerializeFloat(dataBuffer->m_convexInternalShapeData.m_implicitShapeDimensions);
 	m_collisionMargin = dataBuffer->m_convexInternalShapeData.m_collisionMargin;
 	m_localScaling.deSerializeFloat(dataBuffer->m_convexInternalShapeData.m_localScaling);
-	//it is best to already pre-allocate the matching btCapsuleShape*(X/Z) version to match m_upAxis
+	
 	m_upAxis = dataBuffer->m_upAxis;
 }
 
-#endif  //BT_CAPSULE_SHAPE_H
+#endif  

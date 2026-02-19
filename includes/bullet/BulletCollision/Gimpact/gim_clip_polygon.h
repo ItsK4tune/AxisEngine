@@ -1,39 +1,10 @@
 #ifndef GIM_CLIP_POLYGON_H_INCLUDED
 #define GIM_CLIP_POLYGON_H_INCLUDED
 
-/*! \file gim_tri_collision.h
-\author Francisco Leon Najera
-*/
-/*
------------------------------------------------------------------------------
-This source file is part of GIMPACT Library.
 
-For the latest info, see http://gimpact.sourceforge.net/
 
-Copyright (c) 2006 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
 
- This library is free software; you can redistribute it and/or
- modify it under the terms of EITHER:
-   (1) The GNU Lesser General Public License as published by the Free
-       Software Foundation; either version 2.1 of the License, or (at
-       your option) any later version. The text of the GNU Lesser
-       General Public License is included with this library in the
-       file GIMPACT-LICENSE-LGPL.TXT.
-   (2) The BSD-style license that is included with this library in
-       the file GIMPACT-LICENSE-BSD.TXT.
-   (3) The zlib/libpng license that is included with this library in
-       the file GIMPACT-LICENSE-ZLIB.TXT.
 
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
- GIMPACT-LICENSE-LGPL.TXT, GIMPACT-LICENSE-ZLIB.TXT and GIMPACT-LICENSE-BSD.TXT for more details.
-
------------------------------------------------------------------------------
-*/
-
-//! This function calcs the distance from a 3D plane
 class DISTANCE_PLANE_3D_FUNC
 {
 public:
@@ -68,10 +39,8 @@ SIMD_FORCE_INLINE void PLANE_CLIP_POLYGON_COLLECT(
 	}
 }
 
-//! Clips a polygon by a plane
-/*!
-*\return The count of the clipped counts
-*/
+
+
 template <typename CLASS_POINT, typename CLASS_PLANE, typename DISTANCE_PLANE_FUNC>
 SIMD_FORCE_INLINE GUINT PLANE_CLIP_POLYGON_GENERIC(
 	const CLASS_PLANE& plane,
@@ -81,7 +50,7 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_POLYGON_GENERIC(
 {
 	GUINT clipped_count = 0;
 
-	//clip first point
+	
 	GREAL firstdist = distance_func(plane, polygon_points[0]);
 	;
 	if (!(firstdist > G_EPSILON))
@@ -105,7 +74,7 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_POLYGON_GENERIC(
 		olddist = dist;
 	}
 
-	//RETURN TO FIRST  point
+	
 
 	PLANE_CLIP_POLYGON_COLLECT(
 		polygon_points[polygon_point_count - 1], polygon_points[0],
@@ -117,10 +86,8 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_POLYGON_GENERIC(
 	return clipped_count;
 }
 
-//! Clips a polygon by a plane
-/*!
-*\return The count of the clipped counts
-*/
+
+
 template <typename CLASS_POINT, typename CLASS_PLANE, typename DISTANCE_PLANE_FUNC>
 SIMD_FORCE_INLINE GUINT PLANE_CLIP_TRIANGLE_GENERIC(
 	const CLASS_PLANE& plane,
@@ -131,7 +98,7 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_TRIANGLE_GENERIC(
 {
 	GUINT clipped_count = 0;
 
-	//clip first point
+	
 	GREAL firstdist = distance_func(plane, point0);
 	;
 	if (!(firstdist > G_EPSILON))
@@ -140,7 +107,7 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_TRIANGLE_GENERIC(
 		clipped_count++;
 	}
 
-	// point 1
+	
 	GREAL olddist = firstdist;
 	GREAL dist = distance_func(plane, point1);
 
@@ -153,7 +120,7 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_TRIANGLE_GENERIC(
 
 	olddist = dist;
 
-	// point 2
+	
 	dist = distance_func(plane, point2);
 
 	PLANE_CLIP_POLYGON_COLLECT(
@@ -164,7 +131,7 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_TRIANGLE_GENERIC(
 		clipped_count);
 	olddist = dist;
 
-	//RETURN TO FIRST  point
+	
 	PLANE_CLIP_POLYGON_COLLECT(
 		point2, point0,
 		olddist,
@@ -196,4 +163,4 @@ SIMD_FORCE_INLINE GUINT PLANE_CLIP_TRIANGLE3D(
 	return PLANE_CLIP_TRIANGLE_GENERIC<CLASS_POINT, CLASS_PLANE>(plane, point0, point1, point2, clipped, DISTANCE_PLANE_3D_FUNC());
 }
 
-#endif  // GIM_TRI_COLLISION_H_INCLUDED
+#endif  

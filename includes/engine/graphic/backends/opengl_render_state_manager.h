@@ -41,7 +41,7 @@ public:
     {
         GLint mode;
         glGetIntegerv(GL_POLYGON_MODE, &mode);
-        // Assuming GL_FRONT_AND_BACK or just getting the value
+        
         if (mode == GL_POINT) return Graphics::PolygonMode::Point;
         if (mode == GL_LINE) return Graphics::PolygonMode::Line;
         return Graphics::PolygonMode::Fill;

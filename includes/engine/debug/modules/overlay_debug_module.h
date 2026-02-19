@@ -43,7 +43,7 @@ private:
 
     bool m_F10Pressed = false;
     bool m_ShowStatsOverlay = true;
-    int m_OverlayMode = 1; // 1=Stats, 2=Tools, 3=All
+    int m_OverlayMode = 1; 
 
     float m_CurrentFps = 0.0f;
     float m_CurrentFrameTime = 0.0f;

@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "LinearMath/btScalar.h"
 #include "SphereTriangleDetector.h"
@@ -34,8 +21,8 @@ void SphereTriangleDetector::getClosestPoints(const ClosestPointInput& input, Re
 	btVector3 point, normal;
 	btScalar timeOfImpact = btScalar(1.);
 	btScalar depth = btScalar(0.);
-	//	output.m_distance = btScalar(BT_LARGE_FLOAT);
-	//move sphere into triangle space
+	
+	
 	btTransform sphereInTr = transformB.inverseTimes(transformA);
 
 	if (collide(sphereInTr.getOrigin(), point, normal, depth, timeOfImpact, m_contactBreakingThreshold))
@@ -54,8 +41,8 @@ void SphereTriangleDetector::getClosestPoints(const ClosestPointInput& input, Re
 	}
 }
 
-// See also geometrictools.com
-// Basic idea: D = |p - (lo + t0*lv)| where t0 = lv . (p - lo) / lv . lv
+
+
 btScalar SegmentSqrDistance(const btVector3& from, const btVector3& to, const btVector3& p, btVector3& nearest);
 
 btScalar SegmentSqrDistance(const btVector3& from, const btVector3& to, const btVector3& p, btVector3& nearest)
@@ -115,26 +102,26 @@ bool SphereTriangleDetector::collide(const btVector3& sphereCenter, btVector3& p
 
 		if (distanceFromPlane < btScalar(0.))
 		{
-			//triangle facing the other way
+			
 			distanceFromPlane *= btScalar(-1.);
 			normal *= btScalar(-1.);
 		}
 
 		bool isInsideContactPlane = distanceFromPlane < radiusWithThreshold;
 
-		// Check for contact / intersection
+		
 
 		if (isInsideContactPlane)
 		{
 			if (facecontains(sphereCenter, vertices, normal))
 			{
-				// Inside the contact wedge - touches a point on the shell plane
+				
 				hasContact = true;
 				contactPoint = sphereCenter - normal * distanceFromPlane;
 			}
 			else
 			{
-				// Could be inside one of the contact capsules
+				
 				btScalar contactCapsuleRadiusSqr = radiusWithThreshold * radiusWithThreshold;
 				btScalar minDistSqr = contactCapsuleRadiusSqr;
 				btVector3 nearestOnEdge;
@@ -148,7 +135,7 @@ bool SphereTriangleDetector::collide(const btVector3& sphereCenter, btVector3& p
 					btScalar distanceSqr = SegmentSqrDistance(pa, pb, sphereCenter, nearestOnEdge);
 					if (distanceSqr < minDistSqr)
 					{
-						// Yep, we're inside a capsule, and record the capsule with smallest distance
+						
 						minDistSqr = distanceSqr;
 						hasContact = true;
 						contactPoint = nearestOnEdge;

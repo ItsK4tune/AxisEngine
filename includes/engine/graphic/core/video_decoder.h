@@ -70,7 +70,7 @@ private:
     double m_FrameRate = 0.0;
     double m_CurrentTime = 0.0;
     double m_LastFrameTime = 0.0;
-    double m_Limit = 0.0; // Placeholder if needed, maintaining line count isn't critical but good practice. Actually just remove it.
+    double m_Limit = 0.0; 
     double m_Speed = 1.0;
     bool m_Loop = true;
 
@@ -79,9 +79,9 @@ private:
 
     std::string m_Filepath;
 
-    // Decoding thread
-    // For simplicity, doing single threaded decode in update first
-    // std::thread m_DecodeThread;
+    
+    
+    
     
     int m_MaxDecodeSteps = 5;
 

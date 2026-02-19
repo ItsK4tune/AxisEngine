@@ -1,19 +1,4 @@
-/****************************************************************************
- *
- * ftgloadr.h
- *
- *   The FreeType glyph loader (specification).
- *
- * Copyright (C) 2002-2020 by
- * David Turner, Robert Wilhelm, and Werner Lemberg
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef FTGLOADR_H_
@@ -27,15 +12,7 @@
 FT_BEGIN_HEADER
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   FT_GlyphLoader
-   *
-   * @description:
-   *   The glyph loader is an internal object used to load several glyphs
-   *   together (for example, in the case of composites).
-   */
+  
   typedef struct  FT_SubGlyphRec_
   {
     FT_Int     index;
@@ -49,11 +26,11 @@ FT_BEGIN_HEADER
 
   typedef struct  FT_GlyphLoadRec_
   {
-    FT_Outline   outline;       /* outline                   */
-    FT_Vector*   extra_points;  /* extra points table        */
-    FT_Vector*   extra_points2; /* second extra points table */
-    FT_UInt      num_subglyphs; /* number of subglyphs       */
-    FT_SubGlyph  subglyphs;     /* subglyphs                 */
+    FT_Outline   outline;       
+    FT_Vector*   extra_points;  
+    FT_Vector*   extra_points2; 
+    FT_UInt      num_subglyphs; 
+    FT_SubGlyph  subglyphs;     
 
   } FT_GlyphLoadRec, *FT_GlyphLoad;
 
@@ -69,34 +46,34 @@ FT_BEGIN_HEADER
     FT_GlyphLoadRec  base;
     FT_GlyphLoadRec  current;
 
-    void*            other;            /* for possible future extension? */
+    void*            other;            
 
   } FT_GlyphLoaderRec, *FT_GlyphLoader;
 
 
-  /* create new empty glyph loader */
+  
   FT_BASE( FT_Error )
   FT_GlyphLoader_New( FT_Memory        memory,
                       FT_GlyphLoader  *aloader );
 
-  /* add an extra points table to a glyph loader */
+  
   FT_BASE( FT_Error )
   FT_GlyphLoader_CreateExtra( FT_GlyphLoader  loader );
 
-  /* destroy a glyph loader */
+  
   FT_BASE( void )
   FT_GlyphLoader_Done( FT_GlyphLoader  loader );
 
-  /* reset a glyph loader (frees everything int it) */
+  
   FT_BASE( void )
   FT_GlyphLoader_Reset( FT_GlyphLoader  loader );
 
-  /* rewind a glyph loader */
+  
   FT_BASE( void )
   FT_GlyphLoader_Rewind( FT_GlyphLoader  loader );
 
-  /* check that there is enough space to add `n_points' and `n_contours' */
-  /* to the glyph loader                                                 */
+  
+  
   FT_BASE( FT_Error )
   FT_GlyphLoader_CheckPoints( FT_GlyphLoader  loader,
                               FT_UInt         n_points,
@@ -124,26 +101,26 @@ FT_BEGIN_HEADER
                                   (FT_UInt)(_contours) ) )
 
 
-  /* check that there is enough space to add `n_subs' sub-glyphs to */
-  /* a glyph loader                                                 */
+  
+  
   FT_BASE( FT_Error )
   FT_GlyphLoader_CheckSubGlyphs( FT_GlyphLoader  loader,
                                  FT_UInt         n_subs );
 
-  /* prepare a glyph loader, i.e. empty the current glyph */
+  
   FT_BASE( void )
   FT_GlyphLoader_Prepare( FT_GlyphLoader  loader );
 
-  /* add the current glyph to the base glyph */
+  
   FT_BASE( void )
   FT_GlyphLoader_Add( FT_GlyphLoader  loader );
 
- /* */
+ 
 
 
 FT_END_HEADER
 
-#endif /* FTGLOADR_H_ */
+#endif 
 
 
-/* END */
+

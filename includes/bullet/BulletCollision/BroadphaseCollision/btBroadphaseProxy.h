@@ -1,32 +1,19 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_BROADPHASE_PROXY_H
 #define BT_BROADPHASE_PROXY_H
 
-#include "LinearMath/btScalar.h"  //for SIMD_FORCE_INLINE
+#include "LinearMath/btScalar.h"  
 #include "LinearMath/btVector3.h"
 #include "LinearMath/btAlignedAllocator.h"
 
-/// btDispatcher uses these types
-/// IMPORTANT NOTE:The types are ordered polyhedral, implicit convex and concave
-/// to facilitate type checking
-/// CUSTOM_POLYHEDRAL_SHAPE_TYPE,CUSTOM_CONVEX_SHAPE_TYPE and CUSTOM_CONCAVE_SHAPE_TYPE can be used to extend Bullet without modifying source code
+
+
+
+
 enum BroadphaseNativeTypes
 {
-	// polyhedral convex shapes
+	
 	BOX_SHAPE_PROXYTYPE,
 	TRIANGLE_SHAPE_PROXYTYPE,
 	TETRAHEDRAL_SHAPE_PROXYTYPE,
@@ -34,7 +21,7 @@ enum BroadphaseNativeTypes
 	CONVEX_HULL_SHAPE_PROXYTYPE,
 	CONVEX_POINT_CLOUD_SHAPE_PROXYTYPE,
 	CUSTOM_POLYHEDRAL_SHAPE_TYPE,
-	//implicit convex shapes
+	
 	IMPLICIT_CONVEX_SHAPES_START_HERE,
 	SPHERE_SHAPE_PROXYTYPE,
 	MULTI_SPHERE_SHAPE_PROXYTYPE,
@@ -48,18 +35,18 @@ enum BroadphaseNativeTypes
 	BOX_2D_SHAPE_PROXYTYPE,
 	CONVEX_2D_SHAPE_PROXYTYPE,
 	CUSTOM_CONVEX_SHAPE_TYPE,
-	//concave shapes
+	
 	CONCAVE_SHAPES_START_HERE,
-	//keep all the convex shapetype below here, for the check IsConvexShape in broadphase proxy!
+	
 	TRIANGLE_MESH_SHAPE_PROXYTYPE,
 	SCALED_TRIANGLE_MESH_SHAPE_PROXYTYPE,
-	///used for demo integration FAST/Swift collision library and Bullet
+	
 	FAST_CONCAVE_MESH_PROXYTYPE,
-	//terrain
+	
 	TERRAIN_SHAPE_PROXYTYPE,
-	///Used for GIMPACT Trimesh integration
+	
 	GIMPACT_SHAPE_PROXYTYPE,
-	///Multimaterial mesh
+	
 	MULTIMATERIAL_TRIANGLE_MESH_PROXYTYPE,
 
 	EMPTY_SHAPE_PROXYTYPE,
@@ -79,14 +66,14 @@ enum BroadphaseNativeTypes
 
 };
 
-///The btBroadphaseProxy is the main class that can be used with the Bullet broadphases.
-///It stores collision shape type information, collision filter information and a client object, typically a btCollisionObject or btRigidBody.
+
+
 ATTRIBUTE_ALIGNED16(struct)
 btBroadphaseProxy
 {
 	BT_DECLARE_ALIGNED_ALLOCATOR();
 
-	///optional filtering to cull potential collisions
+	
 	enum CollisionFilterGroups
 	{
 		DefaultFilter = 1,
@@ -95,15 +82,15 @@ btBroadphaseProxy
 		DebrisFilter = 8,
 		SensorTrigger = 16,
 		CharacterFilter = 32,
-		AllFilter = -1  //all bits sets: DefaultFilter | StaticFilter | KinematicFilter | DebrisFilter | SensorTrigger
+		AllFilter = -1  
 	};
 
-	//Usually the client btCollisionObject or Rigidbody class
+	
 	void* m_clientObject;
 	int m_collisionFilterGroup;
 	int m_collisionFilterMask;
 
-	int m_uniqueId;  //m_uniqueId is introduced for paircache. could get rid of this, by calculating the address offset etc.
+	int m_uniqueId;  
 
 	btVector3 m_aabbMin;
 	btVector3 m_aabbMax;
@@ -113,7 +100,7 @@ btBroadphaseProxy
 		return m_uniqueId;
 	}
 
-	//used for memory pools
+	
 	btBroadphaseProxy() : m_clientObject(0)
 	{
 	}
@@ -172,8 +159,8 @@ class btCollisionAlgorithm;
 
 struct btBroadphaseProxy;
 
-///The btBroadphasePair class contains a pair of aabb-overlapping objects.
-///A btDispatcher can search a btCollisionAlgorithm that performs exact/narrowphase collision detection on the actual collision shapes.
+
+
 ATTRIBUTE_ALIGNED16(struct)
 btBroadphasePair
 {
@@ -189,7 +176,7 @@ btBroadphasePair
 
 	btBroadphasePair(btBroadphaseProxy & proxy0, btBroadphaseProxy & proxy1)
 	{
-		//keep them sorted, so the std::set operations work
+		
 		if (proxy0.m_uniqueId < proxy1.m_uniqueId)
 		{
 			m_pProxy0 = &proxy0;
@@ -212,17 +199,10 @@ btBroadphasePair
 	union {
 		void* m_internalInfo1;
 		int m_internalTmpValue;
-	};  //don't use this data, it will be removed in future version.
+	};  
 };
 
-/*
-//comparison for set operation, see Solid DT_Encounter
-SIMD_FORCE_INLINE bool operator<(const btBroadphasePair& a, const btBroadphasePair& b) 
-{ 
-    return a.m_pProxy0 < b.m_pProxy0 || 
-        (a.m_pProxy0 == b.m_pProxy0 && a.m_pProxy1 < b.m_pProxy1); 
-}
-*/
+
 
 class btBroadphasePairSortPredicate
 {
@@ -245,4 +225,4 @@ SIMD_FORCE_INLINE bool operator==(const btBroadphasePair& a, const btBroadphaseP
 	return (a.m_pProxy0 == b.m_pProxy0) && (a.m_pProxy1 == b.m_pProxy1);
 }
 
-#endif  //BT_BROADPHASE_PROXY_H
+#endif  

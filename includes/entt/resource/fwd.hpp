@@ -14,6 +14,6 @@ class resource_cache;
 template<typename>
 class resource;
 
-} // namespace entt
+} 
 
 #endif

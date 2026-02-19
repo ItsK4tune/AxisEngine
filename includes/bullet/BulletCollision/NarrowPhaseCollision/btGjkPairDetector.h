@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_GJK_PAIR_DETECTOR_H
 #define BT_GJK_PAIR_DETECTOR_H
@@ -23,7 +10,7 @@ class btConvexShape;
 #include "btSimplexSolverInterface.h"
 class btConvexPenetrationDepthSolver;
 
-/// btGjkPairDetector uses GJK to implement the btDiscreteCollisionDetectorInterface
+
 class btGjkPairDetector : public btDiscreteCollisionDetectorInterface
 {
 	btVector3 m_cachedSeparatingAxis;
@@ -40,7 +27,7 @@ class btGjkPairDetector : public btDiscreteCollisionDetectorInterface
 	btScalar m_cachedSeparatingDistance;
 
 public:
-	//some debugging to fix degeneracy problems
+	
 	int m_lastUsedMethod;
 	int m_curIter;
 	int m_degenerateSimplex;
@@ -83,11 +70,11 @@ public:
 		m_penetrationDepthSolver = penetrationDepthSolver;
 	}
 
-	///don't use setIgnoreMargin, it's for Bullet's internal use
+	
 	void setIgnoreMargin(bool ignoreMargin)
 	{
 		m_ignoreMargin = ignoreMargin;
 	}
 };
 
-#endif  //BT_GJK_PAIR_DETECTOR_H
+#endif  

@@ -6,13 +6,7 @@
 
 namespace entt {
 
-/**
- * @brief Dynamic identifier generator.
- *
- * Utility class template that can be used to assign unique identifiers to types
- * at runtime. Use different specializations to create separate sets of
- * identifiers.
- */
+
 template<typename...>
 class family {
     static auto identifier() noexcept {
@@ -21,15 +15,15 @@ class family {
     }
 
 public:
-    /*! @brief Unsigned integer type. */
+    
     using value_type = id_type;
 
-    /*! @brief Statically generated unique identifier for the given type. */
+    
     template<typename... Type>
-    // at the time I'm writing, clang crashes during compilation if auto is used instead of family_type
+    
     inline static const value_type value = identifier();
 };
 
-} // namespace entt
+} 
 
 #endif

@@ -6,7 +6,7 @@
 
 #include <string>
 
-// Forward declarations
+
 class KeyboardManager;
 class MouseManager;
 class InputManager;

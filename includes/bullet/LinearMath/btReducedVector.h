@@ -1,9 +1,9 @@
-//
-//  btReducedVectors.h
-//  BulletLinearMath
-//
-//  Created by Xuchen Han on 4/4/20.
-//
+
+
+
+
+
+
 #ifndef btReducedVectors_h
 #define btReducedVectors_h
 #include "btVector3.h"
@@ -22,13 +22,13 @@ inline bool operator<(const TwoInts& A, const TwoInts& B)
 }
 
 
-// A helper vector type used for CG projections
+
 class btReducedVector
 {
 public:
     btAlignedObjectArray<int> m_indices;
     btAlignedObjectArray<btVector3> m_vecs;
-    int m_sz; // all m_indices value < m_sz
+    int m_sz; 
 public:
 	btReducedVector():m_sz(0)
 	{
@@ -208,7 +208,7 @@ public:
             if (j < other.m_indices.size() && other.m_indices[j] == m_indices[i])
             {
                 ret += m_vecs[i].dot(other.m_vecs[j]);
-//                ++j;
+
             }
         }
         return ret;
@@ -231,7 +231,7 @@ public:
 	
 	void normalize();
     
-    // returns the projection of this onto other
+    
     btReducedVector proj(const btReducedVector& other) const;
     
     bool testAdd() const;
@@ -317,4 +317,4 @@ SIMD_FORCE_INLINE btReducedVector& operator-=(btReducedVector& v1, const btReduc
 	return v1;
 }
 
-#endif /* btReducedVectors_h */
+#endif 

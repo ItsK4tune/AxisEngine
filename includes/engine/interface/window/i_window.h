@@ -5,8 +5,8 @@
 #include <functional>
 
 namespace Input {
-    // Forward declare to avoid circular dependency if needed, or include input_codes.h
-    // Since enums are small, we can include input_codes.h or just use int/enums if defined there
+    
+    
 }
 #include "input_codes.h"
 
@@ -37,7 +37,7 @@ public:
     virtual void SetTitle(const std::string& title) = 0;
     virtual void SetIcon(int width, int height, unsigned char* pixels) = 0;
     virtual void SetVsync(bool enabled) = 0;
-    virtual void Update() = 0; // Poll events and swap buffers usually
+    virtual void Update() = 0; 
     virtual void Shutdown() = 0;
 
     virtual bool ShouldClose() const = 0;
@@ -56,16 +56,16 @@ public:
     
     virtual void* GetNativeWindow() const = 0;
     
-    // Input Polling
+    
     virtual bool GetKey(Input::Key key) const = 0;
     virtual bool GetMouseButton(Input::Mouse button) const = 0;
     virtual void GetCursorPos(double& x, double& y) const = 0;
     virtual void SetCursorPos(double x, double y) = 0;
 
-    // Callbacks
+    
     using ResizeCallback = std::function<void(int, int)>;
-    using KeyCallback = std::function<void(int, int, int, int)>; // key, scancode, action, mods
-    using MouseButtonCallback = std::function<void(int, int, int)>; // button, action, mods
+    using KeyCallback = std::function<void(int, int, int, int)>; 
+    using MouseButtonCallback = std::function<void(int, int, int)>; 
     using MousePositionCallback = std::function<void(double, double)>;
     using ScrollCallback = std::function<void(double, double)>;
 
@@ -76,4 +76,4 @@ public:
     virtual void SetScrollCallback(const ScrollCallback& callback) = 0;
 };
 
-#endif // I_WINDOW_H
+#endif 

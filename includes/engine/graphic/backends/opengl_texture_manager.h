@@ -6,7 +6,7 @@ class OpenGLTextureManager : public ITextureManager
 {
 public:
 private:
-    // Helpers replaced by GLTranslator
+    
 
 
 public:

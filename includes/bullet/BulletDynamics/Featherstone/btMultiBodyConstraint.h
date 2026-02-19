@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_MULTIBODY_CONSTRAINT_H
 #define BT_MULTIBODY_CONSTRAINT_H
@@ -21,7 +8,7 @@ subject to the following restrictions:
 #include "btMultiBody.h"
 
 
-//Don't change any of the existing enum values, so add enum types at the end for serialization compatibility
+
 enum btTypedMultiBodyConstraintType
 {
 	MULTIBODY_CONSTRAINT_LIMIT=3,
@@ -43,8 +30,8 @@ struct btSolverInfo;
 struct btMultiBodyJacobianData
 {
 	btAlignedObjectArray<btScalar> m_jacobians;
-	btAlignedObjectArray<btScalar> m_deltaVelocitiesUnitImpulse;  //holds the joint-space response of the corresp. tree to the test impulse in each constraint space dimension
-	btAlignedObjectArray<btScalar> m_deltaVelocities;             //holds joint-space vectors of all the constrained trees accumulating the effect of corrective impulses applied in SI
+	btAlignedObjectArray<btScalar> m_deltaVelocitiesUnitImpulse;  
+	btAlignedObjectArray<btScalar> m_deltaVelocities;             
 	btAlignedObjectArray<btScalar> scratch_r;
 	btAlignedObjectArray<btVector3> scratch_v;
 	btAlignedObjectArray<btMatrix3x3> scratch_m;
@@ -61,7 +48,7 @@ protected:
 	int m_linkA;
 	int m_linkB;
 
-	int m_type; //btTypedMultiBodyConstraintType
+	int m_type; 
 
 	int m_numRows;
 	int m_jacSizeA;
@@ -72,11 +59,11 @@ protected:
 	int m_numDofsFinalized;
 	btScalar m_maxAppliedImpulse;
 
-	// warning: the data block lay out is not consistent for all constraints
-	// data block laid out as follows:
-	// cached impulses. (one per row.)
-	// jacobians. (interleaved, row1 body1 then row1 body2 then row2 body 1 etc)
-	// positions. (one per row.)
+	
+	
+	
+	
+	
 	btAlignedObjectArray<btScalar> m_data;
 
 	void applyDeltaVee(btMultiBodyJacobianData & data, btScalar * delta_vee, btScalar impulse, int velocityIndex, int ndof);
@@ -109,7 +96,7 @@ public:
 	{
 		return m_type;
 	}
-	//many constraints have setFrameInB/setPivotInB. Will use 'getConstraintType' later.
+	
 	virtual void setFrameInB(const btMatrix3x3& frameInB) {}
 	virtual void setPivotInB(const btVector3& pivotInB) {}
 
@@ -157,9 +144,9 @@ public:
 		btAssert(dof < getNumRows());
 		return m_data[dof];
 	}
-	// current constraint position
-	// constraint is pos >= 0 for unilateral, or pos = 0 for bilateral
-	// NOTE: ignored position for friction rows.
+	
+	
+	
 	btScalar getPosition(int row) const
 	{
 		return m_data[m_posOffset + row];
@@ -175,9 +162,9 @@ public:
 		return m_isUnilateral;
 	}
 
-	// jacobian blocks.
-	// each of size 6 + num_links. (jacobian2 is null if no body2.)
-	// format: 3 'omega' coefficients, 3 'v' coefficients, then the 'qdot' coefficients.
+	
+	
+	
 	btScalar* jacobianA(int row)
 	{
 		return &m_data[m_numRows + row * m_jacSizeBoth];
@@ -212,4 +199,4 @@ public:
 	virtual void setErp(btScalar erp) {}
 };
 
-#endif  //BT_MULTIBODY_CONSTRAINT_H
+#endif  

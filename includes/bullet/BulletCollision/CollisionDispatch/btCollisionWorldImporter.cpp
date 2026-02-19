@@ -1,25 +1,12 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2014 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btCollisionWorldImporter.h"
 #include "btBulletCollisionCommon.h"
-#include "LinearMath/btSerializer.h"  //for btBulletSerializedArrays definition
+#include "LinearMath/btSerializer.h"  
 
 #ifdef SUPPORT_GIMPACT_SHAPE_IMPORT
 #include "BulletCollision/Gimpact/btGImpactShape.h"
-#endif  //SUPPORT_GIMPACT_SHAPE_IMPORT
+#endif  
 
 btCollisionWorldImporter::btCollisionWorldImporter(btCollisionWorld* world)
 	: m_collisionWorld(world),
@@ -59,7 +46,7 @@ bool btCollisionWorldImporter::convertAllObjects(btBulletSerializedArrays* array
 		btCollisionShape* shape = convertCollisionShape(shapeData);
 		if (shape)
 		{
-			//		printf("shapeMap.insert(%x,%x)\n",shapeData,shape);
+			
 			m_shapeMap.insert(shapeData, shape);
 		}
 
@@ -95,7 +82,7 @@ bool btCollisionWorldImporter::convertAllObjects(btBulletSerializedArrays* array
 					body->setCollisionFlags(body->getCollisionFlags() | btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
 				}
 			}
-#endif  //USE_INTERNAL_EDGE_UTILITY
+#endif  
 			m_bodyMap.insert(colObjData, body);
 		}
 		else
@@ -125,7 +112,7 @@ bool btCollisionWorldImporter::convertAllObjects(btBulletSerializedArrays* array
 					body->setCollisionFlags(body->getCollisionFlags() | btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
 				}
 			}
-#endif  //USE_INTERNAL_EDGE_UTILITY
+#endif  
 			m_bodyMap.insert(colObjData, body);
 		}
 		else
@@ -292,9 +279,9 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 			}
 			break;
 		}
-#endif  //SUPPORT_GIMPACT_SHAPE_IMPORT
-		//The btCapsuleShape* API has issue passing the margin/scaling/halfextents unmodified through the API
-		//so deal with this
+#endif  
+		
+		
 		case CAPSULE_SHAPE_PROXYTYPE:
 		{
 			btCapsuleShapeData* capData = (btCapsuleShapeData*)shapeData;
@@ -346,7 +333,7 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 				case BOX_SHAPE_PROXYTYPE:
 				{
 					btBoxShape* box = (btBoxShape*)createBoxShape(implicitShapeDimensions / localScaling + margin);
-					//box->initializePolyhedralFeatures();
+					
 					shape = box;
 
 					break;
@@ -389,7 +376,7 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 				case CONE_SHAPE_PROXYTYPE:
 				{
 					btConeShapeData* conData = (btConeShapeData*)shapeData;
-					btVector3 halfExtents = implicitShapeDimensions;  //+margin;
+					btVector3 halfExtents = implicitShapeDimensions;  
 					switch (conData->m_upIndex)
 					{
 						case 0:
@@ -435,9 +422,9 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 				}
 				case CONVEX_HULL_SHAPE_PROXYTYPE:
 				{
-					//	int sz = sizeof(btConvexHullShapeData);
-					//	int sz2 = sizeof(btConvexInternalShapeData);
-					//	int sz3 = sizeof(btCollisionShapeData);
+					
+					
+					
 					btConvexHullShapeData* convexData = (btConvexHullShapeData*)bsd;
 					int numPoints = convexData->m_numUnscaledPoints;
 
@@ -456,7 +443,7 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 							tmpPoints[i].deSerialize(convexData->m_unscaledPointsFloatPtr[i]);
 						if (convexData->m_unscaledPointsDoublePtr)
 							tmpPoints[i].deSerializeDouble(convexData->m_unscaledPointsDoublePtr[i]);
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 					}
 					btConvexHullShape* hullShape = createConvexHullShape();
 					for (i = 0; i < numPoints; i++)
@@ -464,7 +451,7 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 						hullShape->addPoint(tmpPoints[i]);
 					}
 					hullShape->setMargin(bsd->m_collisionMargin);
-					//hullShape->initializePolyhedralFeatures();
+					
 					shape = hullShape;
 					break;
 				}
@@ -540,10 +527,10 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 
 #ifdef USE_INTERNAL_EDGE_UTILITY
 				gContactAddedCallback = btAdjustInternalEdgeContactsCallback;
-#endif  //USE_INTERNAL_EDGE_UTILITY
+#endif  
 			}
 
-			//printf("trimesh->m_collisionMargin=%f\n",trimesh->m_collisionMargin);
+			
 			break;
 		}
 		case COMPOUND_SHAPE_PROXYTYPE:
@@ -551,12 +538,12 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 			btCompoundShapeData* compoundData = (btCompoundShapeData*)shapeData;
 			btCompoundShape* compoundShape = createCompoundShape();
 
-			//btCompoundShapeChildData* childShapeDataArray = &compoundData->m_childShapePtr[0];
+			
 
 			btAlignedObjectArray<btCollisionShape*> childShapes;
 			for (int i = 0; i < compoundData->m_numChildShapes; i++)
 			{
-				//btCompoundShapeChildData* ptr = &compoundData->m_childShapePtr[i];
+				
 
 				btCollisionShapeData* cd = compoundData->m_childShapePtr[i].m_childShape;
 
@@ -634,7 +621,7 @@ btTriangleIndexVertexArray* btCollisionWorldImporter::createMeshInterface(btStri
 			if (meshData.m_meshPartsPtr[i].m_3indices16)
 			{
 				meshPart.m_indexType = PHY_SHORT;
-				meshPart.m_triangleIndexStride = sizeof(short int) * 3;  //sizeof(btShortIntIndexTripletData);
+				meshPart.m_triangleIndexStride = sizeof(short int) * 3;  
 
 				short int* indexArray = (short int*)btAlignedAlloc(sizeof(short int) * 3 * meshPart.m_numTriangles, 16);
 				m_shortIndexArrays.push_back(indexArray);
@@ -726,7 +713,7 @@ btTriangleIndexVertexArray* btCollisionWorldImporter::createMeshInterface(btStri
 
 btStridingMeshInterfaceData* btCollisionWorldImporter::createStridingMeshInterfaceData(btStridingMeshInterfaceData* interfaceData)
 {
-	//create a new btStridingMeshInterfaceData that is an exact copy of shapedata and store it in the WorldImporter
+	
 	btStridingMeshInterfaceData* newData = new btStridingMeshInterfaceData;
 
 	newData->m_scaling = interfaceData->m_scaling;
@@ -758,8 +745,8 @@ btStridingMeshInterfaceData* btCollisionWorldImporter::createStridingMeshInterfa
 			curNewPart->m_vertices3d = NULL;
 
 		int numIndices = curNewPart->m_numTriangles * 3;
-		///the m_3indices8 was not initialized in some Bullet versions, this can cause crashes at loading time
-		///we catch it by only dealing with m_3indices8 if none of the other indices are initialized
+		
+		
 		bool uninitialized3indices8Workaround = false;
 
 		if (curPart->m_indices32)
@@ -809,38 +796,13 @@ extern ContactAddedCallback gContactAddedCallback;
 static bool btAdjustInternalEdgeContactsCallback(btManifoldPoint& cp, const btCollisionObject* colObj0, int partId0, int index0, const btCollisionObject* colObj1, int partId1, int index1)
 {
 	btAdjustInternalEdgeContacts(cp, colObj1, colObj0, partId1, index1);
-	//btAdjustInternalEdgeContacts(cp,colObj1,colObj0, partId1,index1, BT_TRIANGLE_CONVEX_BACKFACE_MODE);
-	//btAdjustInternalEdgeContacts(cp,colObj1,colObj0, partId1,index1, BT_TRIANGLE_CONVEX_DOUBLE_SIDED+BT_TRIANGLE_CONCAVE_DOUBLE_SIDED);
+	
+	
 	return true;
 }
-#endif  //USE_INTERNAL_EDGE_UTILITY
+#endif  
 
-/*
-btRigidBody*  btWorldImporter::createRigidBody(bool isDynamic, btScalar mass, const btTransform& startTransform,btCollisionShape* shape,const char* bodyName)
-{
-	btVector3 localInertia;
-	localInertia.setZero();
 
-	if (mass)
-		shape->calculateLocalInertia(mass,localInertia);
-
-	btRigidBody* body = new btRigidBody(mass,0,shape,localInertia);
-	body->setWorldTransform(startTransform);
-
-	if (m_dynamicsWorld)
-		m_dynamicsWorld->addRigidBody(body);
-
-	if (bodyName)
-	{
-		char* newname = duplicateName(bodyName);
-		m_objectNameMap.insert(body,newname);
-		m_nameBodyMap.insert(newname,body);
-	}
-	m_allocatedRigidBodies.push_back(body);
-	return body;
-
-}
-*/
 
 btCollisionObject* btCollisionWorldImporter::getCollisionObjectByName(const char* name)
 {
@@ -857,7 +819,7 @@ btCollisionObject* btCollisionWorldImporter::createCollisionObject(const btTrans
 	btCollisionObject* colObj = new btCollisionObject();
 	colObj->setWorldTransform(startTransform);
 	colObj->setCollisionShape(shape);
-	m_collisionWorld->addCollisionObject(colObj);  //todo: flags etc
+	m_collisionWorld->addCollisionObject(colObj);  
 
 	if (bodyName)
 	{
@@ -998,7 +960,7 @@ btGImpactMeshShape* btCollisionWorldImporter::createGimpactShape(btStridingMeshI
 	m_allocatedCollisionShapes.push_back(shape);
 	return shape;
 }
-#endif  //SUPPORT_GIMPACT_SHAPE_IMPORT
+#endif  
 
 btConvexHullShape* btCollisionWorldImporter::createConvexHullShape()
 {
@@ -1028,7 +990,7 @@ btMultiSphereShape* btCollisionWorldImporter::createMultiSphereShape(const btVec
 	return shape;
 }
 
-// query for data
+
 int btCollisionWorldImporter::getNumCollisionShapes() const
 {
 	return m_allocatedCollisionShapes.size();

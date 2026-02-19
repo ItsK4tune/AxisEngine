@@ -7,14 +7,7 @@
 
 namespace entt {
 
-/**
- * @brief Outputs a graph in dot format.
- * @tparam Graph Graph type, valid as long as it exposes edges and vertices.
- * @tparam Writer Vertex decorator type.
- * @param out A standard output stream.
- * @param graph The graph to output.
- * @param writer Vertex decorator object.
- */
+
 template<typename Graph, typename Writer>
 void dot(std::ostream &out, const Graph &graph, Writer writer) {
     static_assert(std::is_base_of_v<directed_tag, typename Graph::graph_category>, "Invalid graph category");
@@ -42,17 +35,12 @@ void dot(std::ostream &out, const Graph &graph, Writer writer) {
     out << "}";
 }
 
-/**
- * @brief Outputs a graph in dot format.
- * @tparam Graph Graph type, valid as long as it exposes edges and vertices.
- * @param out A standard output stream.
- * @param graph The graph to output.
- */
+
 template<typename Graph>
 void dot(std::ostream &out, const Graph &graph) {
     return dot(out, graph, [](auto &&...) {});
 }
 
-} // namespace entt
+} 
 
 #endif

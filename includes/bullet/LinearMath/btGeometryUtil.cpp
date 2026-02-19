@@ -1,24 +1,8 @@
-/*
-Copyright (c) 2003-2006 Gino van den Bergen / Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btGeometryUtil.h"
 
-/*
-  Make sure this dummy function never changes so that it
-  can be used by probes that are checking whether the
-  library is actually installed.
-*/
+
 extern "C"
 {
 	void btBulletMathProbe();
@@ -75,7 +59,7 @@ bool notExist(const btVector3& planeEquation, const btAlignedObjectArray<btVecto
 void btGeometryUtil::getPlaneEquationsFromVertices(btAlignedObjectArray<btVector3>& vertices, btAlignedObjectArray<btVector3>& planeEquationsOut)
 {
 	const int numvertices = vertices.size();
-	// brute force:
+	
 	for (int i = 0; i < numvertices; i++)
 	{
 		const btVector3& N1 = vertices[i];
@@ -102,7 +86,7 @@ void btGeometryUtil::getPlaneEquationsFromVertices(btAlignedObjectArray<btVector
 						{
 							planeEquation[3] = -planeEquation.dot(N1);
 
-							//check if inside, and replace supportingVertexOut if needed
+							
 							if (areVerticesBehindPlane(planeEquation, vertices, btScalar(0.01)))
 							{
 								planeEquationsOut.push_back(planeEquation);
@@ -119,7 +103,7 @@ void btGeometryUtil::getPlaneEquationsFromVertices(btAlignedObjectArray<btVector
 void btGeometryUtil::getVerticesFromPlaneEquations(const btAlignedObjectArray<btVector3>& planeEquations, btAlignedObjectArray<btVector3>& verticesOut)
 {
 	const int numbrushes = planeEquations.size();
-	// brute force:
+	
 	for (int i = 0; i < numbrushes; i++)
 	{
 		const btVector3& N1 = planeEquations[i];
@@ -143,11 +127,11 @@ void btGeometryUtil::getVerticesFromPlaneEquations(const btAlignedObjectArray<bt
 					(n3n1.length2() > btScalar(0.0001)) &&
 					(n1n2.length2() > btScalar(0.0001)))
 				{
-					//point P out of 3 plane equations:
+					
 
-					//	d1 ( N2 * N3 ) + d2 ( N3 * N1 ) + d3 ( N1 * N2 )
-					//P =  -------------------------------------------------------------------------
-					//   N1 . ( N2 * N3 )
+					
+					
+					
 
 					btScalar quotient = (N1.dot(n2n3));
 					if (btFabs(quotient) > btScalar(0.000001))
@@ -161,7 +145,7 @@ void btGeometryUtil::getVerticesFromPlaneEquations(const btAlignedObjectArray<bt
 						potentialVertex += n1n2;
 						potentialVertex *= quotient;
 
-						//check if inside, and replace supportingVertexOut if needed
+						
 						if (isPointInsidePlanes(planeEquations, potentialVertex, btScalar(0.01)))
 						{
 							verticesOut.push_back(potentialVertex);

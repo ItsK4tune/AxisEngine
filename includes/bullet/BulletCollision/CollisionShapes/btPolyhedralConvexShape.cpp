@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 #if defined(_WIN32) || defined(__i386__)
 #define BT_USE_SSE_IN_API
 #endif
@@ -80,7 +67,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 		for (int p = 0; p < planeEquations.size(); p++)
 		{
 			btVector3 plane = planeEquations[p];
-			//	   btScalar margin = getMargin();
+			
 			plane[3] -= getMargin();
 			shiftedPlaneEquations.push_back(plane);
 		}
@@ -125,7 +112,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 			if (numEdges < 2)
 				edges[numEdges++] = newEdge;
 
-			//face->addIndex(v1);
+			
 			combinedFace.m_indices.push_back(v1);
 			edge = edge->getNextEdgeOfFace();
 			prevVertex = v1;
@@ -156,7 +143,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 		m_polyhedron->m_faces.push_back(combinedFace);
 	}
 
-#else  //BT_RECONSTRUCT_FACES
+#else  
 
 	btAlignedObjectArray<btVector3> faceNormals;
 	int numFaces = conv.faces.size();
@@ -176,13 +163,13 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 	for (int i = 0; i < numFaces; i++)
 	{
 		int face = convexUtil->faces[i];
-		//printf("face=%d\n",face);
+		
 		const btConvexHullComputer::Edge* firstEdge = &convexUtil->edges[face];
 		const btConvexHullComputer::Edge* edge = firstEdge;
 
 		btVector3 edges[3];
 		int numEdges = 0;
-		//compute face normals
+		
 
 		do
 		{
@@ -213,7 +200,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 		}
 		else
 		{
-			btAssert(0);  //degenerate?
+			btAssert(0);  
 			faceNormals[i].setZero();
 		}
 
@@ -228,7 +215,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 		tmpFaces[i].m_plane[3] = -planeEq;
 	}
 
-	//merge coplanar faces and copy them to m_polyhedron
+	
 
 	btScalar faceWeldThreshold = 0.999f;
 	btAlignedObjectArray<int> todoFaces;
@@ -260,14 +247,14 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 		bool did_merge = false;
 		if (coplanarFaceGroup.size() > 1)
 		{
-			//do the merge: use Graham Scan 2d convex hull
+			
 
 			btAlignedObjectArray<GrahamVector3> orgpoints;
 			btVector3 averageFaceNormal(0, 0, 0);
 
 			for (int i = 0; i < coplanarFaceGroup.size(); i++)
 			{
-				//				m_polyhedron->m_faces.push_back(tmpFaces[coplanarFaceGroup[i]]);
+				
 
 				btFace& face = tmpFaces[coplanarFaceGroup[i]];
 				btVector3 faceNormal(face.m_plane[0], face.m_plane[1], face.m_plane[2]);
@@ -281,7 +268,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 
 					for (int i = 0; i < orgpoints.size(); i++)
 					{
-						//if ((orgpoints[i].m_orgIndex == orgIndex) || ((rotatedPt-orgpoints[i]).length2()<0.0001))
+						
 						if (orgpoints[i].m_orgIndex == orgIndex)
 						{
 							found = true;
@@ -309,24 +296,24 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 				{
 					if (orgpoints[k].m_orgIndex == hull[i].m_orgIndex)
 					{
-						orgpoints[k].m_orgIndex = -1;  // invalidate...
+						orgpoints[k].m_orgIndex = -1;  
 						break;
 					}
 				}
 			}
 
-			// are there rejected vertices?
+			
 			bool reject_merge = false;
 
 			for (int i = 0; i < orgpoints.size(); i++)
 			{
 				if (orgpoints[i].m_orgIndex == -1)
-					continue;  // this is in the hull...
-				// this vertex is rejected -- is anybody else using this vertex?
+					continue;  
+				
 				for (int j = 0; j < tmpFaces.size(); j++)
 				{
 					btFace& face = tmpFaces[j];
-					// is this a face of the current coplanar group?
+					
 					bool is_in_current_group = false;
 					for (int k = 0; k < coplanarFaceGroup.size(); k++)
 					{
@@ -336,14 +323,14 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 							break;
 						}
 					}
-					if (is_in_current_group)  // ignore this face...
+					if (is_in_current_group)  
 						continue;
-					// does this face use this rejected vertex?
+					
 					for (int v = 0; v < face.m_indices.size(); v++)
 					{
 						if (face.m_indices[v] == orgpoints[i].m_orgIndex)
 						{
-							// this rejected vertex is used in another face -- reject merge
+							
 							reject_merge = true;
 							break;
 						}
@@ -357,7 +344,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 
 			if (!reject_merge)
 			{
-				// do this merge!
+				
 				did_merge = true;
 				m_polyhedron->m_faces.push_back(combinedFace);
 			}
@@ -372,7 +359,7 @@ bool btPolyhedralConvexShape::initializePolyhedralFeatures(int shiftVerticesByMa
 		}
 	}
 
-#endif  //BT_RECONSTRUCT_FACES
+#endif  
 
 	m_polyhedron->initialize();
 
@@ -419,7 +406,7 @@ btVector3 btPolyhedralConvexShape::localGetSupportingVertexWithoutMargin(const b
 		}
 	}
 
-#endif  //__SPU__
+#endif  
 	return supVec;
 }
 
@@ -455,13 +442,13 @@ void btPolyhedralConvexShape::batchedUnitVectorGetSupportingVertexWithoutMargin(
 		}
 	}
 
-#endif  //__SPU__
+#endif  
 }
 
 void btPolyhedralConvexShape::calculateLocalInertia(btScalar mass, btVector3& inertia) const
 {
 #ifndef __SPU__
-	//not yet, return box inertia
+	
 
 	btScalar margin = getMargin();
 
@@ -480,7 +467,7 @@ void btPolyhedralConvexShape::calculateLocalInertia(btScalar mass, btVector3& in
 	const btScalar scaledmass = mass * btScalar(0.08333333);
 
 	inertia = scaledmass * (btVector3(y2 + z2, x2 + z2, x2 + y2));
-#endif  //__SPU__
+#endif  
 }
 
 void btPolyhedralConvexAabbCachingShape::setLocalScaling(const btVector3& scaling)

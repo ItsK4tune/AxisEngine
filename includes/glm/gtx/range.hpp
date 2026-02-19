@@ -1,18 +1,18 @@
-/// @ref gtx_range
-/// @file glm/gtx/range.hpp
-/// @author Joshua Moerman
-///
-/// @defgroup gtx_range GLM_GTX_range
-/// @ingroup gtx
-///
-/// Include <glm/gtx/range.hpp> to use the features of this extension.
-///
-/// Defines begin and end for vectors and matrices. Useful for range-based for loop.
-/// The range is defined over the elements, not over columns or rows (e.g. mat4 has 16 elements).
+
+
+
+
+
+
+
+
+
+
+
 
 #pragma once
 
-// Dependencies
+
 #include "../detail/setup.hpp"
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
@@ -28,12 +28,12 @@
 
 namespace glm
 {
-	/// @addtogroup gtx_range
-	/// @{
+	
+	
 
 #	if GLM_COMPILER & GLM_COMPILER_VC
 #		pragma warning(push)
-#		pragma warning(disable : 4100) // unreferenced formal parameter
+#		pragma warning(disable : 4100) 
 #	endif
 
 	template<typename T, qualifier Q>
@@ -94,5 +94,5 @@ namespace glm
 #		pragma warning(pop)
 #	endif
 
-	/// @}
-}//namespace glm
+	
+}

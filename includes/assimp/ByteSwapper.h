@@ -1,46 +1,6 @@
-/*
-Open Asset Import Library (assimp)
-----------------------------------------------------------------------
 
-Copyright (c) 2006-2025, assimp team
 
-All rights reserved.
 
-Redistribution and use of this software in source and binary forms,
-with or without modification, are permitted provided that the
-following conditions are met:
-
-* Redistributions of source code must retain the above
-  copyright notice, this list of conditions and the
-  following disclaimer.
-
-* Redistributions in binary form must reproduce the above
-  copyright notice, this list of conditions and the
-  following disclaimer in the documentation and/or other
-  materials provided with the distribution.
-
-* Neither the name of the assimp team, nor the names of its
-  contributors may be used to endorse or promote products
-  derived from this software without specific prior
-  written permission of the assimp team.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-----------------------------------------------------------------------
-*/
-
-/** @file Helper class tp perform various byte order swappings
-   (e.g. little to big endian) */
 #pragma once
 #ifndef AI_BYTESWAPPER_H_INC
 #define AI_BYTESWAPPER_H_INC
@@ -58,20 +18,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 namespace Assimp {
-// --------------------------------------------------------------------------------------
-/** Defines some useful byte order swap routines.
- *
- * This is required to read big-endian model formats on little-endian machines,
- * and vice versa. Direct use of this class is DEPRECATED. Use #StreamReader instead. */
-// --------------------------------------------------------------------------------------
+
+
+
 class ByteSwap {
     ByteSwap() AI_NO_EXCEPT = default;
     ~ByteSwap() = default;
 
 public:
-    // ----------------------------------------------------------------------
-    /** Swap two bytes of data
-     *  @param[inout] _szOut A void* to save the reintcasts for the caller. */
+    
+    
     static inline void Swap2(void* _szOut)
     {
         ai_assert(_szOut);
@@ -85,9 +41,8 @@ public:
 #endif
     }
 
-    // ----------------------------------------------------------------------
-    /** Swap four bytes of data
-     *  @param[inout] _szOut A void* to save the reintcasts for the caller. */
+    
+    
     static inline void Swap4(void* _szOut) {
         ai_assert(_szOut);
 
@@ -101,9 +56,8 @@ public:
 #endif
     }
 
-    // ----------------------------------------------------------------------
-    /** Swap eight bytes of data
-     *  @param[inout] _szOut A void* to save the reintcasts for the caller. */
+    
+    
     static inline void Swap8(void* _szOut)
     {
     ai_assert(_szOut);
@@ -120,24 +74,21 @@ public:
 #endif
     }
 
-    // ----------------------------------------------------------------------
-    /** ByteSwap a float. Not a joke.
-     *  @param[inout] fOut ehm. .. */
+    
+    
     static inline void Swap(float* fOut) {
         Swap4(fOut);
     }
 
-    // ----------------------------------------------------------------------
-    /** ByteSwap a double. Not a joke.
-     *  @param[inout] fOut ehm. .. */
+    
+    
     static inline void Swap(double* fOut) {
         Swap8(fOut);
     }
 
 
-    // ----------------------------------------------------------------------
-    /** ByteSwap an int16t. Not a joke.
-     *  @param[inout] fOut ehm. .. */
+    
+    
     static inline void Swap(int16_t* fOut) {
         Swap2(fOut);
     }
@@ -146,9 +97,8 @@ public:
         Swap2(fOut);
     }
 
-    // ----------------------------------------------------------------------
-    /** ByteSwap an int32t. Not a joke.
-     *  @param[inout] fOut ehm. .. */
+    
+    
     static inline void Swap(int32_t* fOut){
         Swap4(fOut);
     }
@@ -157,9 +107,8 @@ public:
         Swap4(fOut);
     }
 
-    // ----------------------------------------------------------------------
-    /** ByteSwap an int64t. Not a joke.
-     *  @param[inout] fOut ehm. .. */
+    
+    
     static inline void Swap(int64_t* fOut) {
         Swap8(fOut);
     }
@@ -168,9 +117,9 @@ public:
         Swap8(fOut);
     }
 
-    // ----------------------------------------------------------------------
-    //! Templatized ByteSwap
-    //! \returns param tOut as swapped
+    
+    
+    
     template<typename Type>
     static inline Type Swapped(Type tOut)
     {
@@ -204,9 +153,9 @@ template <typename T> struct ByteSwap::_swapper<T,8> {
 };
 
 
-// --------------------------------------------------------------------------------------
-// ByteSwap macros for BigEndian/LittleEndian support
-// --------------------------------------------------------------------------------------
+
+
+
 #if (defined AI_BUILD_BIG_ENDIAN)
 #   define AI_LE(t) (t)
 #   define AI_BE(t) Assimp::ByteSwap::Swapped(t)
@@ -246,7 +195,7 @@ template <typename T> struct ByteSwap::_swapper<T,8> {
 
 namespace Intern {
 
-// --------------------------------------------------------------------------------------------
+
 template <typename T, bool doit>
 struct ByteSwapper  {
     void operator() (T* inout) {
@@ -260,7 +209,7 @@ struct ByteSwapper<T,false> {
     }
 };
 
-// --------------------------------------------------------------------------------------------
+
 template <bool SwapEndianness, typename T, bool RuntimeSwitch>
 struct Getter {
     void operator() (T* inout, bool le) {
@@ -279,12 +228,12 @@ struct Getter {
 template <bool SwapEndianness, typename T>
 struct Getter<SwapEndianness,T,false> {
 
-    void operator() (T* inout, bool /*le*/) {
-        // static branch
+    void operator() (T* inout, bool ) {
+        
         ByteSwapper<T,(SwapEndianness && sizeof(T)>1)> () (inout);
     }
 };
-} // end Intern
-} // end Assimp
+} 
+} 
 
-#endif //!! AI_BYTESWAPPER_H_INC
+#endif 

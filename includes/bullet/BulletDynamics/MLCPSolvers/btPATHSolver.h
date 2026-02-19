@@ -1,23 +1,10 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
-///original version written by Erwin Coumans, October 2013
 
 #ifndef BT_PATH_SOLVER_H
 #define BT_PATH_SOLVER_H
 
-//#define BT_USE_PATH
+
 #ifdef BT_USE_PATH
 
 extern "C"
@@ -60,15 +47,7 @@ public:
 		if (0 == numVariables)
 			return true;
 
-		/*	 - variables - the number of variables in the problem
-			- m_nnz - the number of nonzeros in the M matrix
-			- m_i - a vector of size m_nnz containing the row indices for M
-			- m_j - a vector of size m_nnz containing the column indices for M
-			- m_ij - a vector of size m_nnz containing the data for M
-			- q - a vector of size variables
-			- lb - a vector of size variables containing the lower bounds on x
-			- ub - a vector of size variables containing the upper bounds on x
-			*/
+		
 		btAlignedObjectArray<double> values;
 		btAlignedObjectArray<int> rowIndices;
 		btAlignedObjectArray<int> colIndices;
@@ -79,7 +58,7 @@ public:
 			{
 				if (A(i, j) != 0.f)
 				{
-					//add 1, because Path starts at 1, instead of 0
+					
 					rowIndices.push_back(i + 1);
 					colIndices.push_back(j + 1);
 					values.push_back(A(i, j));
@@ -118,7 +97,7 @@ public:
 				"MCP_LicenseError: License could not be found",
 				"MCP_OK"};
 
-			printf("ERROR: The PATH MCP solver failed: %s\n", gReturnMsgs[(unsigned int)status]);  // << std::endl;
+			printf("ERROR: The PATH MCP solver failed: %s\n", gReturnMsgs[(unsigned int)status]);  
 			printf("using Projected Gauss Seidel fallback\n");
 
 			return false;
@@ -128,7 +107,7 @@ public:
 			for (int i = 0; i < numVariables; i++)
 			{
 				x[i] = zResult[i];
-				//check for #NAN
+				
 				if (x[i] != zResult[i])
 					return false;
 			}
@@ -137,6 +116,6 @@ public:
 	}
 };
 
-#endif  //BT_USE_PATH
+#endif  
 
-#endif  //BT_PATH_SOLVER_H
+#endif  

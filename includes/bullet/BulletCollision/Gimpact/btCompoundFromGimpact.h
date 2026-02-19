@@ -13,7 +13,7 @@ public:
 
 	virtual ~btCompoundFromGimpactShape()
 	{
-		/*delete all the btBU_Simplex1to4 ChildShapes*/
+		
 		for (int i = 0; i < m_children.size(); i++)
 		{
 			delete m_children[i].m_childShape;
@@ -75,9 +75,9 @@ struct MyInternalTriangleIndexCallback : public btInternalTriangleIndexCallback
 		if (cb.m_hitFraction < 1)
 		{
 			rayTo.setInterpolate3(cb.m_from, cb.m_to, cb.m_hitFraction);
-			//rayTo = cb.m_from;
-			//rayTo = rayTo.lerp(cb.m_to,cb.m_hitFraction);
-			//gDebugDraw.drawLine(tr(centroid),tr(centroid+normal),btVector3(1,0,0));
+			
+			
+			
 		}
 
 		btBU_Simplex1to4* tet = new btBU_Simplex1to4(v0, v1, v2, rayTo);
@@ -102,4 +102,4 @@ btCompoundShape* btCreateCompoundFromGimpactShape(const btGImpactMeshShape* gimp
 	return colShape;
 }
 
-#endif  //BT_COMPOUND_FROM_GIMPACT
+#endif  

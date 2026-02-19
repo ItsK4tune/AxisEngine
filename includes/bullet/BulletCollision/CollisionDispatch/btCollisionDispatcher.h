@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_COLLISION__DISPATCHER_H
 #define BT_COLLISION__DISPATCHER_H
@@ -34,11 +21,11 @@ class btCollisionConfiguration;
 #define USE_DISPATCH_REGISTRY_ARRAY 1
 
 class btCollisionDispatcher;
-///user can override this nearcallback for collision filtering and more finegrained control over collision detection
+
 typedef void (*btNearCallback)(btBroadphasePair& collisionPair, btCollisionDispatcher& dispatcher, const btDispatcherInfo& dispatchInfo);
 
-///btCollisionDispatcher supports algorithms that handle ConvexConvex and ConvexConcave collision pairs.
-///Time of Impact, Closest Points and Penetration Depth.
+
+
 class btCollisionDispatcher : public btDispatcher
 {
 protected:
@@ -76,7 +63,7 @@ public:
 		m_dispatcherFlags = flags;
 	}
 
-	///registerCollisionCreateFunc allows registration of custom/alternative collision create functions
+	
 	void registerCollisionCreateFunc(int proxyType0, int proxyType1, btCollisionAlgorithmCreateFunc* createFunc);
 
 	void registerClosestPointsCreateFunc(int proxyType0, int proxyType1, btCollisionAlgorithmCreateFunc* createFunc);
@@ -133,7 +120,7 @@ public:
 		return m_nearCallback;
 	}
 
-	//by default, Bullet will use this near callback
+	
 	static void defaultNearCallback(btBroadphasePair& collisionPair, btCollisionDispatcher& dispatcher, const btDispatcherInfo& dispatchInfo);
 
 	virtual void* allocateCollisionAlgorithm(int size);
@@ -166,4 +153,4 @@ public:
 	}
 };
 
-#endif  //BT_COLLISION__DISPATCHER_H
+#endif  

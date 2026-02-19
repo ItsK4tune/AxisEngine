@@ -1,17 +1,4 @@
-/*
-Stan Melax Convex Hull Computation
-Copyright (c) 2003-2006 Stan Melax http://www.melax.com/
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include <string.h>
 
@@ -20,7 +7,7 @@ subject to the following restrictions:
 #include "btMinMax.h"
 #include "btVector3.h"
 
-//----------------------------------
+
 
 class int3
 {
@@ -37,13 +24,13 @@ public:
 	int &operator[](int i) { return (&x)[i]; }
 };
 
-//------- btPlane ----------
+
 
 inline btPlane PlaneFlip(const btPlane &plane) { return btPlane(-plane.normal, -plane.dist); }
 inline int operator==(const btPlane &a, const btPlane &b) { return (a.normal == b.normal && a.dist == b.dist); }
 inline int coplanar(const btPlane &a, const btPlane &b) { return (a == b || a == PlaneFlip(b)); }
 
-//--------- Utility Functions ------
+
 
 btVector3 PlaneLineIntersection(const btPlane &plane, const btVector3 &p0, const btVector3 &p1);
 btVector3 PlaneProject(const btPlane &plane, const btVector3 &point);
@@ -85,7 +72,7 @@ btVector3 NormalOf(const btVector3 *vert, const int n);
 
 btVector3 PlaneLineIntersection(const btPlane &plane, const btVector3 &p0, const btVector3 &p1)
 {
-	// returns the point where the line p0-p1 intersects the plane n&d
+	
 	btVector3 dif;
 	dif = p1 - p0;
 	btScalar dn = btDot(plane.normal, dif);
@@ -100,8 +87,8 @@ btVector3 PlaneProject(const btPlane &plane, const btVector3 &point)
 
 btVector3 TriNormal(const btVector3 &v0, const btVector3 &v1, const btVector3 &v2)
 {
-	// return the normal of the triangle
-	// inscribed by v0, v1, and v2
+	
+	
 	btVector3 cp = btCross(v1 - v0, v2 - v1);
 	btScalar m = cp.length();
 	if (m == 0) return btVector3(1, 0, 0);
@@ -250,7 +237,7 @@ int maxdirsterid(const T *p, int count, const T &dir, btAlignedObjectArray<int> 
 				allow[m] = 3;
 				return m;
 			}
-			if (ma != -1 && ma != mb)  // Yuck - this is really ugly
+			if (ma != -1 && ma != mb)  
 			{
 				int mc = ma;
 				for (btScalar xx = x - btScalar(40.0); xx <= x; xx += btScalar(5.0))
@@ -289,7 +276,7 @@ int above(btVector3 *vertices, const int3 &t, const btVector3 &p, btScalar epsil
 int above(btVector3 *vertices, const int3 &t, const btVector3 &p, btScalar epsilon)
 {
 	btVector3 n = TriNormal(vertices[t[0]], vertices[t[1]], vertices[t[2]]);
-	return (btDot(n, p - vertices[t[0]]) > epsilon);  // EPSILON???
+	return (btDot(n, p - vertices[t[0]]) > epsilon);  
 }
 int hasedge(const int3 &t, int a, int b);
 int hasedge(const int3 &t, int a, int b)
@@ -389,7 +376,7 @@ void HullLibrary::checkit(btHullTriangle *t)
 		int a = (*t)[i1];
 		int b = (*t)[i2];
 
-		// release compile fix
+		
 		(void)i1;
 		(void)i2;
 		(void)a;
@@ -517,9 +504,9 @@ int HullLibrary::calchullgen(btVector3 *verts, int verts_count, int vlimit)
 	btAssert(epsilon != 0.0);
 
 	int4 p = FindSimplex(verts, verts_count, allow);
-	if (p.x == -1) return 0;  // simplex failed
+	if (p.x == -1) return 0;  
 
-	btVector3 center = (verts[p[0]] + verts[p[1]] + verts[p[2]] + verts[p[3]]) / btScalar(4.0);  // a valid interior point
+	btVector3 center = (verts[p[0]] + verts[p[1]] + verts[p[2]] + verts[p[3]]) / btScalar(4.0);  
 	btHullTriangle *t0 = allocateTriangle(p[2], p[3], p[1]);
 	t0->n = int3(2, 3, 1);
 	btHullTriangle *t1 = allocateTriangle(p[3], p[2], p[0]);
@@ -547,12 +534,12 @@ int HullLibrary::calchullgen(btVector3 *verts, int verts_count, int vlimit)
 	vlimit -= 4;
 	while (vlimit > 0 && ((te = extrudable(epsilon)) != 0))
 	{
-		//int3 ti=*te;
+		
 		int v = te->vmax;
 		btAssert(v != -1);
-		btAssert(!isextreme[v]);  // wtf we've already done this vertex
+		btAssert(!isextreme[v]);  
 		isextreme[v] = 1;
-		//if(v==p0 || v==p1 || v==p2 || v==p3) continue; // done these already
+		
 		j = m_tris.size();
 		while (j--)
 		{
@@ -563,7 +550,7 @@ int HullLibrary::calchullgen(btVector3 *verts, int verts_count, int vlimit)
 				extrude(m_tris[j], v);
 			}
 		}
-		// now check for those degenerate cases where we have a flipped triangle or a really skinny triangle
+		
 		j = m_tris.size();
 		while (j--)
 		{
@@ -590,7 +577,7 @@ int HullLibrary::calchullgen(btVector3 *verts, int verts_count, int vlimit)
 			t->vmax = maxdirsterid(verts, verts_count, n, allow);
 			if (isextreme[t->vmax])
 			{
-				t->vmax = -1;  // already done that vertex - algorithm needs to be able to terminate.
+				t->vmax = -1;  
 			}
 			else
 			{
@@ -655,20 +642,20 @@ void ReleaseHull(PHullResult &result)
 	result.mVertices = 0;
 }
 
-//*********************************************************************
-//*********************************************************************
-//********  HullLib header
-//*********************************************************************
-//*********************************************************************
 
-//*********************************************************************
-//*********************************************************************
-//********  HullLib implementation
-//*********************************************************************
-//*********************************************************************
 
-HullError HullLibrary::CreateConvexHull(const HullDesc &desc,  // describes the input request
-										HullResult &result)    // contains the resulst
+
+
+
+
+
+
+
+
+
+
+HullError HullLibrary::CreateConvexHull(const HullDesc &desc,  
+										HullResult &result)    
 {
 	HullError ret = QE_FAIL;
 
@@ -686,11 +673,11 @@ HullError HullLibrary::CreateConvexHull(const HullDesc &desc,  // describes the 
 
 	unsigned int ovcount;
 
-	bool ok = CleanupVertices(desc.mVcount, desc.mVertices, desc.mVertexStride, ovcount, &vertexSource[0], desc.mNormalEpsilon, scale);  // normalize point cloud, remove duplicates!
+	bool ok = CleanupVertices(desc.mVcount, desc.mVertices, desc.mVertexStride, ovcount, &vertexSource[0], desc.mNormalEpsilon, scale);  
 
 	if (ok)
 	{
-		//		if ( 1 ) // scale vertices back to their original size.
+		
 		{
 			for (unsigned int i = 0; i < ovcount; i++)
 			{
@@ -705,7 +692,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc &desc,  // describes the 
 
 		if (ok)
 		{
-			// re-index triangle mesh so it refers to only used vertices, rebuild a new vertex table.
+			
 			btAlignedObjectArray<btVector3> vertexScratch;
 			vertexScratch.resize(static_cast<int>(hr.mVcount));
 
@@ -713,7 +700,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc &desc,  // describes the 
 
 			ret = QE_OK;
 
-			if (desc.HasHullFlag(QF_TRIANGLES))  // if he wants the results as triangle!
+			if (desc.HasHullFlag(QF_TRIANGLES))  
 			{
 				result.mPolygons = false;
 				result.mNumOutputVertices = ovcount;
@@ -754,7 +741,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc &desc,  // describes the 
 				result.m_Indices.resize(static_cast<int>(result.mNumIndices));
 				memcpy(&result.m_OutputVertices[0], &vertexScratch[0], sizeof(btVector3) * ovcount);
 
-				//				if ( 1 )
+				
 				{
 					const unsigned int *source = &hr.m_Indices[0];
 					unsigned int *dest = &result.m_Indices[0];
@@ -786,7 +773,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc &desc,  // describes the 
 	return ret;
 }
 
-HullError HullLibrary::ReleaseResult(HullResult &result)  // release memory allocated for this result, we are done with it.
+HullError HullLibrary::ReleaseResult(HullResult &result)  
 {
 	if (result.m_OutputVertices.size())
 	{
@@ -803,7 +790,7 @@ HullError HullLibrary::ReleaseResult(HullResult &result)  // release memory allo
 
 static void addPoint(unsigned int &vcount, btVector3 *p, btScalar x, btScalar y, btScalar z)
 {
-	// XXX, might be broken
+	
 	btVector3 &dest = p[vcount];
 	dest[0] = x;
 	dest[1] = y;
@@ -824,8 +811,8 @@ btScalar GetDist(btScalar px, btScalar py, btScalar pz, const btScalar *p2)
 bool HullLibrary::CleanupVertices(unsigned int svcount,
 								  const btVector3 *svertices,
 								  unsigned int stride,
-								  unsigned int &vcount,  // output number of vertices
-								  btVector3 *vertices,   // location to store the results.
+								  unsigned int &vcount,  
+								  btVector3 *vertices,   
 								  btScalar normalepsilon,
 								  btVector3 &scale)
 {
@@ -833,7 +820,7 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 
 	m_vertexIndexMapping.resize(0);
 
-#define EPSILON btScalar(0.000001) /* close enough to consider two btScalaring point numbers to be 'the same'. */
+#define EPSILON btScalar(0.000001) 
 
 	vcount = 0;
 
@@ -851,7 +838,7 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 
 	const char *vtx = (const char *)svertices;
 
-	//	if ( 1 )
+	
 	{
 		for (unsigned int i = 0; i < svcount; i++)
 		{
@@ -887,11 +874,11 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 
 		if (len == FLT_MAX)
 		{
-			dx = dy = dz = btScalar(0.01);  // one centimeter
+			dx = dy = dz = btScalar(0.01);  
 		}
 		else
 		{
-			if (dx < EPSILON) dx = len * btScalar(0.05);  // 1/5th the shortest non-zero edge.
+			if (dx < EPSILON) dx = len * btScalar(0.05);  
 			if (dy < EPSILON) dy = len * btScalar(0.05);
 			if (dz < EPSILON) dz = len * btScalar(0.05);
 		}
@@ -914,7 +901,7 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 		addPoint(vcount, vertices, x2, y2, z2);
 		addPoint(vcount, vertices, x1, y2, z2);
 
-		return true;  // return cube
+		return true;  
 	}
 	else
 	{
@@ -947,18 +934,18 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 
 		if (scale)
 		{
-			px = px * recip[0];  // normalize
-			py = py * recip[1];  // normalize
-			pz = pz * recip[2];  // normalize
+			px = px * recip[0];  
+			py = py * recip[1];  
+			pz = pz * recip[2];  
 		}
 
-		//		if ( 1 )
+		
 		{
 			unsigned int j;
 
 			for (j = 0; j < vcount; j++)
 			{
-				/// XXX might be broken
+				
 				btVector3 &v = vertices[j];
 
 				btScalar x = v[0];
@@ -971,9 +958,9 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 
 				if (dx < normalepsilon && dy < normalepsilon && dz < normalepsilon)
 				{
-					// ok, it is close enough to the old one
-					// now let us see if it is further from the center of the point cloud than the one we already recorded.
-					// in which case we keep this one instead.
+					
+					
+					
 
 					btScalar dist1 = GetDist(px, py, pz, center);
 					btScalar dist2 = GetDist(v[0], v[1], v[2], center);
@@ -1001,8 +988,8 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 		}
 	}
 
-	// ok..now make sure we didn't prune so many vertices it is now invalid.
-	//	if ( 1 )
+	
+	
 	{
 		btScalar bmin[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
 		btScalar bmax[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
@@ -1035,11 +1022,11 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 
 			if (len == FLT_MAX)
 			{
-				dx = dy = dz = btScalar(0.01);  // one centimeter
+				dx = dy = dz = btScalar(0.01);  
 			}
 			else
 			{
-				if (dx < EPSILON) dx = len * btScalar(0.05);  // 1/5th the shortest non-zero edge.
+				if (dx < EPSILON) dx = len * btScalar(0.05);  
 				if (dy < EPSILON) dy = len * btScalar(0.05);
 				if (dz < EPSILON) dz = len * btScalar(0.05);
 			}
@@ -1053,7 +1040,7 @@ bool HullLibrary::CleanupVertices(unsigned int svcount,
 			btScalar z1 = cz - dz;
 			btScalar z2 = cz + dz;
 
-			vcount = 0;  // add box
+			vcount = 0;  
 
 			addPoint(vcount, vertices, x1, y1, z1);
 			addPoint(vcount, vertices, x2, y1, z1);
@@ -1090,19 +1077,19 @@ void HullLibrary::BringOutYourDead(const btVector3 *verts, unsigned int vcount, 
 
 	for (i = 0; i < int(indexcount); i++)
 	{
-		unsigned int v = indices[i];  // original array index
+		unsigned int v = indices[i];  
 
 		btAssert(v >= 0 && v < vcount);
 
-		if (usedIndices[static_cast<int>(v)])  // if already remapped
+		if (usedIndices[static_cast<int>(v)])  
 		{
-			indices[i] = usedIndices[static_cast<int>(v)] - 1;  // index to new array
+			indices[i] = usedIndices[static_cast<int>(v)] - 1;  
 		}
 		else
 		{
-			indices[i] = ocount;  // new index mapping
+			indices[i] = ocount;  
 
-			overts[ocount][0] = verts[v][0];  // copy old vert to new vert array
+			overts[ocount][0] = verts[v][0];  
 			overts[ocount][1] = verts[v][1];
 			overts[ocount][2] = verts[v][2];
 
@@ -1112,11 +1099,11 @@ void HullLibrary::BringOutYourDead(const btVector3 *verts, unsigned int vcount, 
 					m_vertexIndexMapping[k] = ocount;
 			}
 
-			ocount++;  // increment output vert count
+			ocount++;  
 
 			btAssert(ocount >= 0 && ocount <= vcount);
 
-			usedIndices[static_cast<int>(v)] = ocount;  // assign new index remapping
+			usedIndices[static_cast<int>(v)] = ocount;  
 		}
 	}
 }

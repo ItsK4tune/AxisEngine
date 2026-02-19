@@ -1,6 +1,6 @@
-/// @file glm/ext.hpp
-///
-/// @ref core (Dependence)
+
+
+
 
 #include "detail/setup.hpp"
 
@@ -11,7 +11,7 @@
 #if GLM_MESSAGES == GLM_ENABLE && !defined(GLM_MESSAGE_EXT_INCLUDED_DISPLAYED)
 #	define GLM_MESSAGE_EXT_INCLUDED_DISPLAYED
 #	pragma message("GLM: All extensions included (not recommended)")
-#endif//GLM_MESSAGES
+#endif
 
 #include "./ext/matrix_double2x2.hpp"
 #include "./ext/matrix_double2x2_precision.hpp"
@@ -193,4 +193,4 @@
 #if GLM_HAS_RANGE_FOR
 #	include "./gtx/range.hpp"
 #endif
-#endif//GLM_ENABLE_EXPERIMENTAL
+#endif

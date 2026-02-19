@@ -51,7 +51,7 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
         {
             if (manager)
                 manager->GetPhysicsWorld().RemoveRigidBody(rb->body.get());
-            // shared_ptr handles deletion
+            
             rb->body = nullptr;
         }
     }
@@ -64,7 +64,7 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
 
     if (auto anim = registry.try_get<AnimationComponent>(entity))
     {
-        // Animator is now a unique_ptr, automatic cleanup
+        
         anim->animator = nullptr;
     }
 
@@ -100,7 +100,7 @@ entt::entity Scene::GetActiveCamera()
         }
     }
 
-    // Linear search fallback
+    
     auto view = registry.view<const CameraComponent>();
     for (auto entity : view)
     {

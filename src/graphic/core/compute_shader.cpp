@@ -4,7 +4,7 @@
 #include <utils/logger.h>
 #include <interface/graphic/i_shader_manager.h>
 
-// OpenGL constants
+
 static constexpr unsigned int COMPUTE_SHADER = 0x91B9;
 static constexpr unsigned int FALSE = 0;
 

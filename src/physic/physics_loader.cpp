@@ -175,7 +175,7 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
 
             if (type == "CAPSULE" || type == "PLAYER")
             {
-                 // Default capsule lock rotation, but allow override
+                 
                  if (!hasRotFactor)
                     rb.angularFactor = glm::vec3(0, 1, 0);
             }

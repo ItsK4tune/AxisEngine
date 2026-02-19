@@ -2,7 +2,7 @@
 #include <interface/window/input_codes.h>
 #include <string>
 #include <iostream>
-#include <GLFW/glfw3.h> // For GLFW constants and joystick support
+#include <GLFW/glfw3.h> 
 
 InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse)
     : m_Keyboard(keyboard), m_Mouse(mouse)

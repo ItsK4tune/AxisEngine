@@ -1,18 +1,5 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2007 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
-///btDbvt implementation by Nathanael Presson
 
 #ifndef BT_DYNAMIC_BOUNDING_VOLUME_TREE_H
 #define BT_DYNAMIC_BOUNDING_VOLUME_TREE_H
@@ -21,15 +8,15 @@ subject to the following restrictions:
 #include "LinearMath/btVector3.h"
 #include "LinearMath/btTransform.h"
 #include "LinearMath/btAabbUtil2.h"
-//
-// Compile time configuration
-//
 
-// Implementation profiles
-#define DBVT_IMPL_GENERIC 0  // Generic implementation
-#define DBVT_IMPL_SSE 1      // SSE
 
-// Template implementation of ICollide
+
+
+
+#define DBVT_IMPL_GENERIC 0  
+#define DBVT_IMPL_SSE 1      
+
+
 #ifdef _WIN32
 #if (defined(_MSC_VER) && _MSC_VER >= 1400)
 #define DBVT_USE_TEMPLATE 1
@@ -40,22 +27,22 @@ subject to the following restrictions:
 #define DBVT_USE_TEMPLATE 0
 #endif
 
-// Use only intrinsics instead of inline asm
+
 #define DBVT_USE_INTRINSIC_SSE 1
 
-// Using memmov for collideOCL
+
 #define DBVT_USE_MEMMOVE 1
 
-// Enable benchmarking code
+
 #define DBVT_ENABLE_BENCHMARK 0
 
-// Inlining
+
 #define DBVT_INLINE SIMD_FORCE_INLINE
 
-// Specific methods implementation
 
-//SSE gives errors on a MSVC 7.1
-#if defined(BT_USE_SSE)  //&& defined (_WIN32)
+
+
+#if defined(BT_USE_SSE)  
 #define DBVT_SELECT_IMPL DBVT_IMPL_SSE
 #define DBVT_MERGE_IMPL DBVT_IMPL_SSE
 #define DBVT_INT0_IMPL DBVT_IMPL_SSE
@@ -71,9 +58,9 @@ subject to the following restrictions:
 #include <emmintrin.h>
 #endif
 
-//
-// Auto config and checks
-//
+
+
+
 
 #if DBVT_USE_TEMPLATE
 #define DBVT_VIRTUAL
@@ -123,11 +110,11 @@ subject to the following restrictions:
 #error "DBVT_INT0_IMPL undefined"
 #endif
 
-//
-// Defaults volumes
-//
 
-/* btDbvtAabbMm			*/
+
+
+
+
 struct btDbvtAabbMm
 {
     DBVT_INLINE btDbvtAabbMm(){}
@@ -173,10 +160,10 @@ private:
 	btVector3 mi, mx;
 };
 
-// Types
+
 typedef btDbvtAabbMm btDbvtVolume;
 
-/* btDbvtNode				*/
+
 struct btDbvtNode
 {
 	btDbvtVolume volume;
@@ -190,7 +177,7 @@ struct btDbvtNode
 	};
 };
 
-/* btDbv(normal)tNode                */
+
 struct btDbvntNode
 {
     btDbvtVolume volume;
@@ -222,12 +209,12 @@ struct btDbvntNode
 
 typedef btAlignedObjectArray<const btDbvtNode*> btNodeStack;
 
-///The btDbvt class implements a fast dynamic bounding volume tree based on axis aligned bounding boxes (aabb tree).
-///This btDbvt is used for soft body collision detection and for the btDbvtBroadphase. It has a fast insert, remove and update of nodes.
-///Unlike the btQuantizedBvh, nodes can be dynamically moved around, which allows for change in topology of the underlying data structure.
+
+
+
 struct btDbvt
 {
-	/* Stack element	*/
+	
 	struct sStkNN
 	{
 		const btDbvtNode* a;
@@ -263,9 +250,9 @@ struct btDbvt
         sStknNN() {}
         sStknNN(const btDbvntNode* na, const btDbvntNode* nb) : a(na), b(nb) {}
     };
-	// Policies/Interfaces
+	
 
-	/* ICollide	*/
+	
 	struct ICollide
 	{
 		DBVT_VIRTUAL_DTOR(ICollide)
@@ -276,7 +263,7 @@ struct btDbvt
 		DBVT_VIRTUAL bool Descent(const btDbvtNode*) { return (true); }
 		DBVT_VIRTUAL bool AllLeaves(const btDbvtNode*) { return (true); }
 	};
-	/* IWriter	*/
+	
 	struct IWriter
 	{
 		virtual ~IWriter() {}
@@ -284,21 +271,21 @@ struct btDbvt
 		virtual void WriteNode(const btDbvtNode*, int index, int parent, int child0, int child1) = 0;
 		virtual void WriteLeaf(const btDbvtNode*, int index, int parent) = 0;
 	};
-	/* IClone	*/
+	
 	struct IClone
 	{
 		virtual ~IClone() {}
 		virtual void CloneLeaf(btDbvtNode*) {}
 	};
 
-	// Constants
+	
 	enum
 	{
 		SIMPLE_STACKSIZE = 64,
 		DOUBLE_STACKSIZE = SIMPLE_STACKSIZE * 2
 	};
 
-	// Fields
+	
 	btDbvtNode* m_root;
 	btDbvtNode* m_free;
 	int m_lkhd;
@@ -307,7 +294,7 @@ struct btDbvt
 
 	btAlignedObjectArray<sStkNN> m_stkStack;
 
-	// Methods
+	
 	btDbvt();
 	~btDbvt();
 	void clear();
@@ -334,7 +321,7 @@ struct btDbvt
 	{
 	}
 #endif
-	// DBVT_IPOLICY must support ICollide policy/interface
+	
 	DBVT_PREFIX
 	static void enumNodes(const btDbvtNode* root,
 						  DBVT_IPOLICY);
@@ -381,15 +368,15 @@ struct btDbvt
 							   btNodeStack& stack,
 							   DBVT_IPOLICY) const;
 
-	///rayTest is a re-entrant ray test, and can be called in parallel as long as the btAlignedAlloc is thread-safe (uses locking etc)
-	///rayTest is slower than rayTestInternal, because it builds a local stack, using memory allocations, and it recomputes signs/rayDirectionInverses each time
+	
+	
 	DBVT_PREFIX
 	static void rayTest(const btDbvtNode* root,
 						const btVector3& rayFrom,
 						const btVector3& rayTo,
 						DBVT_IPOLICY);
-	///rayTestInternal is faster than rayTest, because it uses a persistent stack (to reduce dynamic memory allocations to a minimum) and it uses precomputed signs/rayInverseDirections
-	///rayTestInternal is used by btDbvtBroadphase to accelerate world ray casts
+	
+	
 	DBVT_PREFIX
 	void rayTestInternal(const btDbvtNode* root,
 						 const btVector3& rayFrom,
@@ -419,7 +406,7 @@ struct btDbvt
 	DBVT_PREFIX
 	static void collideTU(const btDbvtNode* root,
 						  DBVT_IPOLICY);
-	// Helpers
+	
 	static DBVT_INLINE int nearest(const int* i, const btDbvt::sStkNPS* a, btScalar v, int l, int h)
 	{
 		int m = 0;
@@ -451,16 +438,16 @@ struct btDbvt
 		}
 		return (i);
 	}
-	//
+	
 private:
 	btDbvt(const btDbvt&) {}
 };
 
-//
-// Inline's
-//
 
-//
+
+
+
+
 inline btDbvtAabbMm btDbvtAabbMm::FromCE(const btVector3& c, const btVector3& e)
 {
 	btDbvtAabbMm box;
@@ -469,13 +456,13 @@ inline btDbvtAabbMm btDbvtAabbMm::FromCE(const btVector3& c, const btVector3& e)
 	return (box);
 }
 
-//
+
 inline btDbvtAabbMm btDbvtAabbMm::FromCR(const btVector3& c, btScalar r)
 {
 	return (FromCE(c, btVector3(r, r, r)));
 }
 
-//
+
 inline btDbvtAabbMm btDbvtAabbMm::FromMM(const btVector3& mi, const btVector3& mx)
 {
 	btDbvtAabbMm box;
@@ -484,7 +471,7 @@ inline btDbvtAabbMm btDbvtAabbMm::FromMM(const btVector3& mi, const btVector3& m
 	return (box);
 }
 
-//
+
 inline btDbvtAabbMm btDbvtAabbMm::FromPoints(const btVector3* pts, int n)
 {
 	btDbvtAabbMm box;
@@ -497,7 +484,7 @@ inline btDbvtAabbMm btDbvtAabbMm::FromPoints(const btVector3* pts, int n)
 	return (box);
 }
 
-//
+
 inline btDbvtAabbMm btDbvtAabbMm::FromPoints(const btVector3** ppts, int n)
 {
 	btDbvtAabbMm box;
@@ -510,14 +497,14 @@ inline btDbvtAabbMm btDbvtAabbMm::FromPoints(const btVector3** ppts, int n)
 	return (box);
 }
 
-//
+
 DBVT_INLINE void btDbvtAabbMm::Expand(const btVector3& e)
 {
 	mi -= e;
 	mx += e;
 }
 
-//
+
 DBVT_INLINE void btDbvtAabbMm::SignedExpand(const btVector3& e)
 {
 	if (e.x() > 0)
@@ -534,7 +521,7 @@ DBVT_INLINE void btDbvtAabbMm::SignedExpand(const btVector3& e)
 		mi.setZ(mi.z() + e[2]);
 }
 
-//
+
 DBVT_INLINE bool btDbvtAabbMm::Contain(const btDbvtAabbMm& a) const
 {
 	return ((mi.x() <= a.mi.x()) &&
@@ -545,7 +532,7 @@ DBVT_INLINE bool btDbvtAabbMm::Contain(const btDbvtAabbMm& a) const
 			(mx.z() >= a.mx.z()));
 }
 
-//
+
 DBVT_INLINE int btDbvtAabbMm::Classify(const btVector3& n, btScalar o, int s) const
 {
 	btVector3 pi, px;
@@ -589,7 +576,7 @@ DBVT_INLINE int btDbvtAabbMm::Classify(const btVector3& n, btScalar o, int s) co
 	return (0);
 }
 
-//
+
 DBVT_INLINE btScalar btDbvtAabbMm::ProjectMinimum(const btVector3& v, unsigned signs) const
 {
 	const btVector3* b[] = {&mx, &mi};
@@ -599,7 +586,7 @@ DBVT_INLINE btScalar btDbvtAabbMm::ProjectMinimum(const btVector3& v, unsigned s
 	return (btDot(p, v));
 }
 
-//
+
 DBVT_INLINE void btDbvtAabbMm::AddSpan(const btVector3& d, btScalar& smi, btScalar& smx) const
 {
 	for (int i = 0; i < 3; ++i)
@@ -617,7 +604,7 @@ DBVT_INLINE void btDbvtAabbMm::AddSpan(const btVector3& d, btScalar& smi, btScal
 	}
 }
 
-//
+
 DBVT_INLINE bool Intersect(const btDbvtAabbMm& a,
 						   const btDbvtAabbMm& b)
 {
@@ -640,7 +627,7 @@ DBVT_INLINE bool Intersect(const btDbvtAabbMm& a,
 #endif
 }
 
-//
+
 DBVT_INLINE bool Intersect(const btDbvtAabbMm& a,
 						   const btVector3& b)
 {
@@ -652,9 +639,9 @@ DBVT_INLINE bool Intersect(const btDbvtAabbMm& a,
 			(b.z() <= a.mx.z()));
 }
 
-//////////////////////////////////////
 
-//
+
+
 DBVT_INLINE btScalar Proximity(const btDbvtAabbMm& a,
 							   const btDbvtAabbMm& b)
 {
@@ -662,7 +649,7 @@ DBVT_INLINE btScalar Proximity(const btDbvtAabbMm& a,
 	return (btFabs(d.x()) + btFabs(d.y()) + btFabs(d.z()));
 }
 
-//
+
 DBVT_INLINE int Select(const btDbvtAabbMm& o,
 					   const btDbvtAabbMm& a,
 					   const btDbvtAabbMm& b)
@@ -672,12 +659,12 @@ DBVT_INLINE int Select(const btDbvtAabbMm& o,
 #if defined(_WIN32)
 	static ATTRIBUTE_ALIGNED16(const unsigned __int32) mask[] = {0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff};
 #else
-	static ATTRIBUTE_ALIGNED16(const unsigned int) mask[] = {0x7fffffff, 0x7fffffff, 0x7fffffff, 0x00000000 /*0x7fffffff*/};
+	static ATTRIBUTE_ALIGNED16(const unsigned int) mask[] = {0x7fffffff, 0x7fffffff, 0x7fffffff, 0x00000000 };
 #endif
-	///@todo: the intrinsic version is 11% slower
+	
 #if DBVT_USE_INTRINSIC_SSE
 
-	union btSSEUnion  ///NOTE: if we use more intrinsics, move btSSEUnion into the LinearMath directory
+	union btSSEUnion  
 	{
 		__m128 ssereg;
 		float floats[4];
@@ -741,7 +728,7 @@ DBVT_INLINE int Select(const btDbvtAabbMm& o,
 #endif
 }
 
-//
+
 DBVT_INLINE void Merge(const btDbvtAabbMm& a,
 					   const btDbvtAabbMm& b,
 					   btDbvtAabbMm& r)
@@ -770,7 +757,7 @@ DBVT_INLINE void Merge(const btDbvtAabbMm& a,
 #endif
 }
 
-//
+
 DBVT_INLINE bool NotEqual(const btDbvtAabbMm& a,
 						  const btDbvtAabbMm& b)
 {
@@ -782,11 +769,11 @@ DBVT_INLINE bool NotEqual(const btDbvtAabbMm& a,
 			(a.mx.z() != b.mx.z()));
 }
 
-//
-// Inline's
-//
 
-//
+
+
+
+
 DBVT_PREFIX
 inline void btDbvt::enumNodes(const btDbvtNode* root,
 							  DBVT_IPOLICY)
@@ -800,7 +787,7 @@ inline void btDbvt::enumNodes(const btDbvtNode* root,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::enumLeaves(const btDbvtNode* root,
 							   DBVT_IPOLICY)
@@ -817,7 +804,7 @@ inline void btDbvt::enumLeaves(const btDbvtNode* root,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::collideTT(const btDbvtNode* root0,
 							  const btDbvtNode* root1,
@@ -882,7 +869,7 @@ inline void btDbvt::collideTT(const btDbvtNode* root0,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::selfCollideT(const btDbvntNode* root,
                               DBVT_IPOLICY)
@@ -946,7 +933,7 @@ inline void btDbvt::selfCollideT(const btDbvntNode* root,
     }
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::selfCollideTT(const btDbvtNode* root,
                                  DBVT_IPOLICY)
@@ -1076,7 +1063,7 @@ inline void btDbvt::collideTTpersistentStack(const btDbvtNode* root0,
 }
 
 #if 0
-//
+
 DBVT_PREFIX
 inline void		btDbvt::collideTT(	const btDbvtNode* root0,
 								  const btDbvtNode* root1,
@@ -1131,7 +1118,7 @@ inline void		btDbvt::collideTT(	const btDbvtNode* root0,
 			} while(depth);
 		}
 }
-//
+
 DBVT_PREFIX
 inline void		btDbvt::collideTT(	const btDbvtNode* root0,
 								  const btTransform& xform0,
@@ -1161,7 +1148,7 @@ inline void btDbvt::collideTV(const btDbvtNode* root,
 		stack.initializeFromBuffer(tempmemory, 0, SIMPLE_STACKSIZE);
 #else
 		stack.reserve(SIMPLE_STACKSIZE);
-#endif  //BT_DISABLE_STACK_TEMP_MEMORY
+#endif  
 
 		stack.push_back(root);
 		do
@@ -1184,7 +1171,7 @@ inline void btDbvt::collideTV(const btDbvtNode* root,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::collideTVNoStackAlloc(const btDbvtNode* root,
 										  const btDbvtVolume& vol,
@@ -1271,7 +1258,7 @@ inline void btDbvt::rayTestInternal(const btDbvtNode* root,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::rayTest(const btDbvtNode* root,
 							const btVector3& rayFrom,
@@ -1284,7 +1271,7 @@ inline void btDbvt::rayTest(const btDbvtNode* root,
 		btVector3 rayDir = (rayTo - rayFrom);
 		rayDir.normalize();
 
-		///what about division by zero? --> just set rayDirection[i] to INF/BT_LARGE_FLOAT
+		
 		btVector3 rayDirectionInverse;
 		rayDirectionInverse[0] = rayDir[0] == btScalar(0.0) ? btScalar(BT_LARGE_FLOAT) : btScalar(1.0) / rayDir[0];
 		rayDirectionInverse[1] = rayDir[1] == btScalar(0.0) ? btScalar(BT_LARGE_FLOAT) : btScalar(1.0) / rayDir[1];
@@ -1303,9 +1290,9 @@ inline void btDbvt::rayTest(const btDbvtNode* root,
 		char tempmemory[DOUBLE_STACKSIZE * sizeof(const btDbvtNode*)];
 #ifndef BT_DISABLE_STACK_TEMP_MEMORY
 		stack.initializeFromBuffer(tempmemory, DOUBLE_STACKSIZE, DOUBLE_STACKSIZE);
-#else   //BT_DISABLE_STACK_TEMP_MEMORY
+#else   
 		stack.resize(DOUBLE_STACKSIZE);
-#endif  //BT_DISABLE_STACK_TEMP_MEMORY
+#endif  
 		stack[0] = root;
 		btVector3 bounds[2];
 		do
@@ -1322,7 +1309,7 @@ inline void btDbvt::rayTest(const btDbvtNode* root,
 			btScalar param = 1.f;
 			bool result2 = btRayAabb(rayFrom, rayTo, node->volume.Mins(), node->volume.Maxs(), param, resultNormal);
 			btAssert(result1 == result2);
-#endif  //TEST_BTRAY_AABB2
+#endif  
 
 			if (result1)
 			{
@@ -1345,7 +1332,7 @@ inline void btDbvt::rayTest(const btDbvtNode* root,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::collideKDOP(const btDbvtNode* root,
 								const btVector3* normals,
@@ -1405,7 +1392,7 @@ inline void btDbvt::collideKDOP(const btDbvtNode* root,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::collideOCL(const btDbvtNode* root,
 							   const btVector3* normals,
@@ -1475,11 +1462,11 @@ inline void btDbvt::collideOCL(const btDbvtNode* root,
 					int j = stack.size();
 					if (fsort && (j > 0))
 					{
-						/* Insert 0	*/
+						
 						j = nearest(&stack[0], &stock[0], nes[q].value, 0, stack.size());
 						stack.push_back(0);
 
-						//void * memmove ( void * destination, const void * source, size_t num );
+						
 
 #if DBVT_USE_MEMMOVE
 						{
@@ -1494,7 +1481,7 @@ inline void btDbvt::collideOCL(const btDbvtNode* root,
 						}
 #endif
 						stack[j] = allocate(ifree, stock, nes[q]);
-						/* Insert 1	*/
+						
 						j = nearest(&stack[0], &stock[0], nes[1 - q].value, j, stack.size());
 						stack.push_back(0);
 #if DBVT_USE_MEMMOVE
@@ -1526,7 +1513,7 @@ inline void btDbvt::collideOCL(const btDbvtNode* root,
 	}
 }
 
-//
+
 DBVT_PREFIX
 inline void btDbvt::collideTU(const btDbvtNode* root,
 							  DBVT_IPOLICY)
@@ -1557,9 +1544,9 @@ inline void btDbvt::collideTU(const btDbvtNode* root,
 	}
 }
 
-//
-// PP Cleanup
-//
+
+
+
 
 #undef DBVT_USE_MEMMOVE
 #undef DBVT_USE_TEMPLATE

@@ -25,7 +25,6 @@
 #include <utils/filesystem.h>
 
 
-
 Application::Application()
 {
 }
@@ -35,25 +34,25 @@ Application::~Application()
     if (m_RuntimeCore)
         m_RuntimeCore->GetStateMachine().Clear();
 
-    // 1. Shutdown systems first (they might use resources/physics)
+    
     if (m_SystemManager)
         m_SystemManager->ShutdownSystems();
     m_SystemManager.reset();
     
-    // 2. Clear scene registry (components might hold references)
+    
     m_Scene.registry.clear();
 
-    // 3. Destroy higher-level managers
+    
     m_ContentService.reset();
     m_SceneManager.reset();
     m_RuntimeCore.reset();
 
-    // 4. Destroy core resources
+    
     m_SoundPlayer.reset();
     m_ResourceManager.reset();
     m_PhysicsWorld.reset();
 
-    // 5. Destroy IO/Context last
+    
     m_IOHandler.reset();
 
     LOGGER_INFO("Application") << "Application shutdown completed.";
@@ -63,8 +62,31 @@ bool Application::Init(const AppConfig& config)
 {
     m_Config = config;
 
-    auto graphicsContext = std::make_unique<OpenGLContext>();
-    auto audioEngine = std::make_unique<IrrKlangAudioEngine>();
+    std::unique_ptr<IGraphicsContext> graphicsContext;
+    if (m_Config.graphicsBackend == "OPENGL")
+    {
+        graphicsContext = std::make_unique<OpenGLContext>();
+        LOGGER_INFO("Application") << "Initializing Graphics Backend: OpenGL";
+    }
+    else
+    {
+        
+        LOGGER_ERROR("Application") << "Unsupported Graphics Backend: " << m_Config.graphicsBackend << ". Defaulting to OpenGL.";
+        graphicsContext = std::make_unique<OpenGLContext>();
+    }
+
+    
+    std::unique_ptr<IAudioEngine> audioEngine;
+    if (m_Config.audioBackend == "IRRKLANG")
+    {
+        audioEngine = std::make_unique<IrrKlangAudioEngine>();
+        LOGGER_INFO("Application") << "Initializing Audio Backend: IrrKlang";
+    }
+    else
+    {
+        LOGGER_ERROR("Application") << "Unsupported Audio Backend: " << m_Config.audioBackend << ". Defaulting to IrrKlang.";
+        audioEngine = std::make_unique<IrrKlangAudioEngine>();
+    }
     
     m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext), std::move(audioEngine));
 
@@ -130,7 +152,17 @@ bool Application::Init(const AppConfig& config)
         m_IOHandler->GetAudioManager().SetActiveDevice(m_Config.audioDevice);
     }
 
-    m_PhysicsWorld = std::make_unique<BulletPhysicsWorld>();
+    // 3. Physics Backend
+    if (m_Config.physicsBackend == "BULLET")
+    {
+        m_PhysicsWorld = std::make_unique<BulletPhysicsWorld>();
+        LOGGER_INFO("Application") << "Initializing Physics Backend: BulletPhysics";
+    }
+    else
+    {
+        LOGGER_ERROR("Application") << "Unsupported Physics Backend: " << m_Config.physicsBackend << ". Defaulting to BulletPhysics.";
+        m_PhysicsWorld = std::make_unique<BulletPhysicsWorld>();
+    }
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
     m_SceneManager = std::make_unique<SceneManager>(m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, this);

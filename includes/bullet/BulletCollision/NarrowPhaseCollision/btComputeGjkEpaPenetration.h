@@ -1,22 +1,9 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2014 Erwin Coumans http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_GJK_EPA_PENETATION_CONVEX_COLLISION_H
 #define BT_GJK_EPA_PENETATION_CONVEX_COLLISION_H
 
-#include "LinearMath/btTransform.h"  // Note that btVector3 might be double precision...
+#include "LinearMath/btTransform.h"  
 #include "btGjkEpa3.h"
 #include "btGjkCollisionDescription.h"
 #include "BulletCollision/NarrowPhaseCollision/btVoronoiSimplexSolver.h"
@@ -28,17 +15,17 @@ bool btGjkEpaCalcPenDepth(const btConvexTemplate& a, const btConvexTemplate& b,
 {
 	(void)v;
 
-	//	const btScalar				radialmargin(btScalar(0.));
+	
 
-	btVector3 guessVector(b.getWorldTransform().getOrigin() - a.getWorldTransform().getOrigin());  //?? why not use the GJK input?
+	btVector3 guessVector(b.getWorldTransform().getOrigin() - a.getWorldTransform().getOrigin());  
 
 	btGjkEpaSolver3::sResults results;
 
 	if (btGjkEpaSolver3_Penetration(a, b, guessVector, results))
 
 	{
-		//	debugDraw->drawLine(results.witnesses[1],results.witnesses[1]+results.normal,btVector3(255,0,0));
-		//resultOut->addContactPoint(results.normal,results.witnesses[1],-results.depth);
+		
+		
 		wWitnessOnA = results.witnesses[0];
 		wWitnessOnB = results.witnesses[1];
 		v = results.normal;
@@ -74,7 +61,7 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 	btScalar marginB = b.getMargin();
 
 	int m_curIter = 0;
-	int gGjkMaxIter = colDesc.m_maxGjkIterations;  //this is to catch invalid input, perhaps check for #NaN?
+	int gGjkMaxIter = colDesc.m_maxGjkIterations;  
 	btVector3 m_cachedSeparatingAxis = colDesc.m_firstDir;
 
 	bool isValid = false;
@@ -93,7 +80,7 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 		simplexSolver.reset();
 
 		for (;;)
-		//while (true)
+		
 		{
 			btVector3 separatingAxisInA = (-m_cachedSeparatingAxis) * localTransA.getBasis();
 			btVector3 separatingAxisInB = m_cachedSeparatingAxis * localTransB.getBasis();
@@ -107,23 +94,23 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 			btVector3 w = pWorld - qWorld;
 			delta = m_cachedSeparatingAxis.dot(w);
 
-			// potential exit, they don't overlap
+			
 			if ((delta > btScalar(0.0)) && (delta * delta > squaredDistance * colDesc.m_maximumDistanceSquared))
 			{
 				m_degenerateSimplex = 10;
 				checkSimplex = true;
-				//checkPenetration = false;
+				
 				break;
 			}
 
-			//exit 0: the new point is already in the simplex, or we didn't come any closer
+			
 			if (simplexSolver.inSimplex(w))
 			{
 				m_degenerateSimplex = 1;
 				checkSimplex = true;
 				break;
 			}
-			// are we getting any closer ?
+			
 			btScalar f0 = squaredDistance - delta;
 			btScalar f1 = squaredDistance * colDesc.m_gjkRelError2;
 
@@ -141,11 +128,11 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 				break;
 			}
 
-			//add current vertex to simplex
+			
 			simplexSolver.addVertex(w, pWorld, qWorld);
 			btVector3 newCachedSeparatingAxis;
 
-			//calculate the closest point to the origin (update vector v)
+			
 			if (!simplexSolver.closest(newCachedSeparatingAxis))
 			{
 				m_degenerateSimplex = 3;
@@ -164,7 +151,7 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 			btScalar previousSquaredDistance = squaredDistance;
 			squaredDistance = newCachedSeparatingAxis.length2();
 #if 0
-            ///warning: this termination condition leads to some problems in 2d test case see Bullet/Demos/Box2dDemo
+            
             if (squaredDistance>previousSquaredDistance)
             {
                 m_degenerateSimplex = 7;
@@ -172,14 +159,14 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
                 checkSimplex = false;
                 break;
             }
-#endif  //
+#endif  
 
-			//redundant m_simplexSolver->compute_points(pointOnA, pointOnB);
+			
 
-			//are we getting any closer ?
+			
 			if (previousSquaredDistance - squaredDistance <= SIMD_EPSILON * previousSquaredDistance)
 			{
-				//				m_simplexSolver->backup_closest(m_cachedSeparatingAxis);
+				
 				checkSimplex = true;
 				m_degenerateSimplex = 12;
 
@@ -188,7 +175,7 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 
 			m_cachedSeparatingAxis = newCachedSeparatingAxis;
 
-			//degeneracy, this is typically due to invalid/uninitialized worldtransforms for a btCollisionObject
+			
 			if (m_curIter++ > gGjkMaxIter)
 			{
 #if defined(DEBUG) || defined(_DEBUG)
@@ -205,12 +192,12 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 			}
 
 			bool check = (!simplexSolver.fullSimplex());
-			//bool check = (!m_simplexSolver->fullSimplex() && squaredDistance > SIMD_EPSILON * m_simplexSolver->maxVertex());
+			
 
 			if (!check)
 			{
-				//do we need this backup_closest here ?
-				//				m_simplexSolver->backup_closest(m_cachedSeparatingAxis);
+				
+				
 				m_degenerateSimplex = 13;
 				break;
 			}
@@ -223,7 +210,7 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 
 			btScalar lenSqr = m_cachedSeparatingAxis.length2();
 
-			//valid normal
+			
 			if (lenSqr < 0.0001)
 			{
 				m_degenerateSimplex = 5;
@@ -231,7 +218,7 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 			if (lenSqr > SIMD_EPSILON * SIMD_EPSILON)
 			{
 				btScalar rlen = btScalar(1.) / btSqrt(lenSqr);
-				normalInB *= rlen;  //normalize
+				normalInB *= rlen;  
 
 				btScalar s = btSqrt(squaredDistance);
 
@@ -252,14 +239,14 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 		bool catchDegeneratePenetrationCase =
 			(m_catchDegeneracies && m_degenerateSimplex && ((distance + margin) < 0.01));
 
-		//if (checkPenetration && !isValid)
+		
 		if (checkPenetration && (!isValid || catchDegeneratePenetrationCase))
 		{
-			//penetration case
+			
 
-			//if there is no way to handle penetrations, bail out
+			
 
-			// Penetration depth case.
+			
 			btVector3 tmpPointOnA, tmpPointOnB;
 
 			m_cachedSeparatingAxis.setZero();
@@ -282,7 +269,7 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 				{
 					tmpNormalInB /= btSqrt(lenSqr);
 					btScalar distance2 = -(tmpPointOnA - tmpPointOnB).length();
-					//only replace valid penetrations when the result is deeper (check)
+					
 					if (!isValid || (distance2 < distance))
 					{
 						distance = distance2;
@@ -306,16 +293,16 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 			else
 
 			{
-				///this is another degenerate case, where the initial GJK calculation reports a degenerate case
-				///EPA reports no penetration, and the second GJK (using the supporting vector without margin)
-				///reports a valid positive distance. Use the results of the second GJK instead of failing.
-				///thanks to Jacob.Langford for the reproduction case
-				///http://code.google.com/p/bullet/issues/detail?id=250
+				
+				
+				
+				
+				
 
 				if (m_cachedSeparatingAxis.length2() > btScalar(0.))
 				{
 					btScalar distance2 = (tmpPointOnA - tmpPointOnB).length() - margin;
-					//only replace valid distances when the distance is less
+					
 					if (!isValid || (distance2 < distance))
 					{
 						distance = distance2;
@@ -351,4 +338,4 @@ int btComputeGjkEpaPenetration(const btConvexTemplate& a, const btConvexTemplate
 	return -m_lastUsedMethod;
 }
 
-#endif  //BT_GJK_EPA_PENETATION_CONVEX_COLLISION_H
+#endif  

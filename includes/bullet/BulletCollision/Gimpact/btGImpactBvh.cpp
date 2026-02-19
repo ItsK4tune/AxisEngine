@@ -1,25 +1,5 @@
-/*! \file gim_box_set.h
-\author Francisco Leon Najera
-*/
-/*
-This source file is part of GIMPACT Library.
-
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
 
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 #include "btGImpactBvh.h"
 #include "LinearMath/btQuickprof.h"
 
@@ -41,7 +21,7 @@ void bt_end_gim02_tree_time()
 	g_count_traversing++;
 }
 
-//! Gets the average time in miliseconds of tree collisions
+
 float btGImpactBvh::getAverageTreeCollisionTime()
 {
 	if (g_count_traversing == 0) return 0;
@@ -53,14 +33,14 @@ float btGImpactBvh::getAverageTreeCollisionTime()
 	g_count_traversing = 0;
 	return avgtime;
 
-	//	float avgtime = g_count_traversing;
-	//	g_count_traversing = 0;
-	//	return avgtime;
+	
+	
+	
 }
 
-#endif  //TRI_COLLISION_PROFILING
+#endif  
 
-/////////////////////// btBvhTree /////////////////////////////////
+
 
 int btBvhTree::_calc_splitting_axis(
 	GIM_BVH_DATA_ARRAY& primitive_boxes, int startIndex, int endIndex)
@@ -100,7 +80,7 @@ int btBvhTree::_sort_and_calc_splitting_index(
 	int splitIndex = startIndex;
 	int numIndices = endIndex - startIndex;
 
-	// average of centers
+	
 	btScalar splitValue = 0.0f;
 
 	btVector3 means(btScalar(0.), btScalar(0.), btScalar(0.));
@@ -114,29 +94,29 @@ int btBvhTree::_sort_and_calc_splitting_index(
 
 	splitValue = means[splitAxis];
 
-	//sort leafNodes so all values larger then splitValue comes first, and smaller values start from 'splitIndex'.
+	
 	for (i = startIndex; i < endIndex; i++)
 	{
 		btVector3 center = btScalar(0.5) * (primitive_boxes[i].m_bound.m_max +
 											primitive_boxes[i].m_bound.m_min);
 		if (center[splitAxis] > splitValue)
 		{
-			//swap
+			
 			primitive_boxes.swap(i, splitIndex);
-			//swapLeafNodes(i,splitIndex);
+			
 			splitIndex++;
 		}
 	}
 
-	//if the splitIndex causes unbalanced trees, fix this by using the center in between startIndex and endIndex
-	//otherwise the tree-building might fail due to stack-overflows in certain cases.
-	//unbalanced1 is unsafe: it can cause stack overflows
-	//bool unbalanced1 = ((splitIndex==startIndex) || (splitIndex == (endIndex-1)));
+	
+	
+	
+	
 
-	//unbalanced2 should work too: always use center (perfect balanced trees)
-	//bool unbalanced2 = true;
+	
+	
 
-	//this should be safe too:
+	
 	int rangeBalancedIndices = numIndices / 3;
 	bool unbalanced = ((splitIndex <= (startIndex + rangeBalancedIndices)) || (splitIndex >= (endIndex - 1 - rangeBalancedIndices)));
 
@@ -159,23 +139,23 @@ void btBvhTree::_build_sub_tree(GIM_BVH_DATA_ARRAY& primitive_boxes, int startIn
 
 	if ((endIndex - startIndex) == 1)
 	{
-		//We have a leaf node
+		
 		setNodeBound(curIndex, primitive_boxes[startIndex].m_bound);
 		m_node_array[curIndex].setDataIndex(primitive_boxes[startIndex].m_data);
 
 		return;
 	}
-	//calculate Best Splitting Axis and where to split it. Sort the incoming 'leafNodes' array within range 'startIndex/endIndex'.
+	
 
-	//split axis
+	
 	int splitIndex = _calc_splitting_axis(primitive_boxes, startIndex, endIndex);
 
 	splitIndex = _sort_and_calc_splitting_index(
 		primitive_boxes, startIndex, endIndex,
-		splitIndex  //split axis
+		splitIndex  
 	);
 
-	//calc this node bounding box
+	
 
 	btAABB node_bound;
 	node_bound.invalidate();
@@ -187,28 +167,28 @@ void btBvhTree::_build_sub_tree(GIM_BVH_DATA_ARRAY& primitive_boxes, int startIn
 
 	setNodeBound(curIndex, node_bound);
 
-	//build left branch
+	
 	_build_sub_tree(primitive_boxes, startIndex, splitIndex);
 
-	//build right branch
+	
 	_build_sub_tree(primitive_boxes, splitIndex, endIndex);
 
 	m_node_array[curIndex].setEscapeIndex(m_num_nodes - curIndex);
 }
 
-//! stackless build tree
+
 void btBvhTree::build_tree(
 	GIM_BVH_DATA_ARRAY& primitive_boxes)
 {
-	// initialize node count to 0
+	
 	m_num_nodes = 0;
-	// allocate nodes
+	
 	m_node_array.resize(primitive_boxes.size() * 2);
 
 	_build_sub_tree(primitive_boxes, 0, primitive_boxes.size());
 }
 
-////////////////////////////////////class btGImpactBvh
+
 
 void btGImpactBvh::refit()
 {
@@ -223,8 +203,8 @@ void btGImpactBvh::refit()
 		}
 		else
 		{
-			//const GIM_BVH_TREE_NODE * nodepointer = get_node_pointer(nodecount);
-			//get left bound
+			
+			
 			btAABB bound;
 			bound.invalidate();
 
@@ -249,10 +229,10 @@ void btGImpactBvh::refit()
 	}
 }
 
-//! this rebuild the entire set
+
 void btGImpactBvh::buildSet()
 {
-	//obtain primitive boxes
+	
 	GIM_BVH_DATA_ARRAY primitive_boxes;
 	primitive_boxes.resize(m_primitive_manager->get_primitive_count());
 
@@ -265,7 +245,7 @@ void btGImpactBvh::buildSet()
 	m_box_tree.build_tree(primitive_boxes);
 }
 
-//! returns the indices of the primitives in the m_primitive_manager
+
 bool btGImpactBvh::boxQuery(const btAABB& box, btAlignedObjectArray<int>& collided_results) const
 {
 	int curIndex = 0;
@@ -276,7 +256,7 @@ bool btGImpactBvh::boxQuery(const btAABB& box, btAlignedObjectArray<int>& collid
 		btAABB bound;
 		getNodeBound(curIndex, bound);
 
-		//catch bugs in tree data
+		
 
 		bool aabbOverlap = bound.has_collision(box);
 		bool isleafnode = isLeafNode(curIndex);
@@ -288,12 +268,12 @@ bool btGImpactBvh::boxQuery(const btAABB& box, btAlignedObjectArray<int>& collid
 
 		if (aabbOverlap || isleafnode)
 		{
-			//next subnode
+			
 			curIndex++;
 		}
 		else
 		{
-			//skip node
+			
 			curIndex += getEscapeNodeIndex(curIndex);
 		}
 	}
@@ -301,7 +281,7 @@ bool btGImpactBvh::boxQuery(const btAABB& box, btAlignedObjectArray<int>& collid
 	return false;
 }
 
-//! returns the indices of the primitives in the m_primitive_manager
+
 bool btGImpactBvh::rayQuery(
 	const btVector3& ray_dir, const btVector3& ray_origin,
 	btAlignedObjectArray<int>& collided_results) const
@@ -314,7 +294,7 @@ bool btGImpactBvh::rayQuery(
 		btAABB bound;
 		getNodeBound(curIndex, bound);
 
-		//catch bugs in tree data
+		
 
 		bool aabbOverlap = bound.collide_ray(ray_origin, ray_dir);
 		bool isleafnode = isLeafNode(curIndex);
@@ -326,12 +306,12 @@ bool btGImpactBvh::rayQuery(
 
 		if (aabbOverlap || isleafnode)
 		{
-			//next subnode
+			
 			curIndex++;
 		}
 		else
 		{
-			//skip node
+			
 			curIndex += getEscapeNodeIndex(curIndex);
 		}
 	}
@@ -350,11 +330,11 @@ SIMD_FORCE_INLINE bool _node_collision(
 	boxset1->getNodeBound(node1, box1);
 
 	return box0.overlapping_trans_cache(box1, trans_cache_1to0, complete_primitive_tests);
-	//	box1.appy_transform_trans_cache(trans_cache_1to0);
-	//	return box0.has_collision(box1);
+	
+	
 }
 
-//stackless recursive collision routine
+
 static void _find_collision_pairs_recursive(
 	btGImpactBvh* boxset0, btGImpactBvh* boxset1,
 	btPairSet* collision_pairs,
@@ -363,27 +343,27 @@ static void _find_collision_pairs_recursive(
 {
 	if (_node_collision(
 			boxset0, boxset1, trans_cache_1to0,
-			node0, node1, complete_primitive_tests) == false) return;  //avoid colliding internal nodes
+			node0, node1, complete_primitive_tests) == false) return;  
 
 	if (boxset0->isLeafNode(node0))
 	{
 		if (boxset1->isLeafNode(node1))
 		{
-			// collision result
+			
 			collision_pairs->push_pair(
 				boxset0->getNodeData(node0), boxset1->getNodeData(node1));
 			return;
 		}
 		else
 		{
-			//collide left recursive
+			
 
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
 				collision_pairs, trans_cache_1to0,
 				node0, boxset1->getLeftNode(node1), false);
 
-			//collide right recursive
+			
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
 				collision_pairs, trans_cache_1to0,
@@ -394,13 +374,13 @@ static void _find_collision_pairs_recursive(
 	{
 		if (boxset1->isLeafNode(node1))
 		{
-			//collide left recursive
+			
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
 				collision_pairs, trans_cache_1to0,
 				boxset0->getLeftNode(node0), node1, false);
 
-			//collide right recursive
+			
 
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
@@ -409,36 +389,36 @@ static void _find_collision_pairs_recursive(
 		}
 		else
 		{
-			//collide left0 left1
+			
 
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
 				collision_pairs, trans_cache_1to0,
 				boxset0->getLeftNode(node0), boxset1->getLeftNode(node1), false);
 
-			//collide left0 right1
+			
 
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
 				collision_pairs, trans_cache_1to0,
 				boxset0->getLeftNode(node0), boxset1->getRightNode(node1), false);
 
-			//collide right0 left1
+			
 
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
 				collision_pairs, trans_cache_1to0,
 				boxset0->getRightNode(node0), boxset1->getLeftNode(node1), false);
 
-			//collide right0 right1
+			
 
 			_find_collision_pairs_recursive(
 				boxset0, boxset1,
 				collision_pairs, trans_cache_1to0,
 				boxset0->getRightNode(node0), boxset1->getRightNode(node1), false);
 
-		}  // else if node1 is not a leaf
-	}      // else if node0 is not a leaf
+		}  
+	}      
 }
 
 void btGImpactBvh::find_collision(btGImpactBvh* boxset0, const btTransform& trans0,
@@ -453,12 +433,12 @@ void btGImpactBvh::find_collision(btGImpactBvh* boxset0, const btTransform& tran
 
 #ifdef TRI_COLLISION_PROFILING
 	bt_begin_gim02_tree_time();
-#endif  //TRI_COLLISION_PROFILING
+#endif  
 
 	_find_collision_pairs_recursive(
 		boxset0, boxset1,
 		&collision_pairs, trans_cache_1to0, 0, 0, true);
 #ifdef TRI_COLLISION_PROFILING
 	bt_end_gim02_tree_time();
-#endif  //TRI_COLLISION_PROFILING
+#endif  
 }

@@ -1,14 +1,14 @@
-//
-//  btReducedVector.cpp
-//  LinearMath
-//
-//  Created by Xuchen Han on 4/4/20.
-//
+
+
+
+
+
+
 #include <stdio.h>
 #include "btReducedVector.h"
 #include <cmath>
 
-// returns the projection of this onto other
+
 btReducedVector btReducedVector::proj(const btReducedVector& other) const
 {
     btReducedVector ret(m_sz);

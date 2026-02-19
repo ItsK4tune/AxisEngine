@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_BATCHED_CONSTRAINTS_H
 #define BT_BATCHED_CONSTRAINTS_H
@@ -41,10 +28,10 @@ struct btBatchedConstraints
 	};
 
 	btAlignedObjectArray<int> m_constraintIndices;
-	btAlignedObjectArray<Range> m_batches;        // each batch is a range of indices in the m_constraintIndices array
-	btAlignedObjectArray<Range> m_phases;         // each phase is range of indices in the m_batches array
-	btAlignedObjectArray<char> m_phaseGrainSize;  // max grain size for each phase
-	btAlignedObjectArray<int> m_phaseOrder;       // phases can be done in any order, so we can randomize the order here
+	btAlignedObjectArray<Range> m_batches;        
+	btAlignedObjectArray<Range> m_phases;         
+	btAlignedObjectArray<char> m_phaseGrainSize;  
+	btAlignedObjectArray<int> m_phaseOrder;       
 	btIDebugDraw* m_debugDrawer;
 
 	static bool s_debugDrawBatches;
@@ -59,4 +46,4 @@ struct btBatchedConstraints
 	bool validate(btConstraintArray* constraints, const btAlignedObjectArray<btSolverBody>& bodies) const;
 };
 
-#endif  // BT_BATCHED_CONSTRAINTS_H
+#endif  

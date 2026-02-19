@@ -17,7 +17,7 @@ public:
         }
     }
 
-    // ... (rest of methods)
+    
 
 
 
@@ -154,7 +154,7 @@ public:
 
     void SetStatic(bool isStatic) override
     {
-        // Bullet handles static based on mass (0) usually, but we can force flags if needed
+        
         if (!m_Body) return;
         if (isStatic)
             m_Body->setCollisionFlags(m_Body->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
@@ -168,7 +168,7 @@ public:
         if (alwaysActive)
             m_Body->setActivationState(DISABLE_DEACTIVATION);
         else
-            m_Body->setActivationState(ACTIVE_TAG); // Or WANTS_DEACTIVATION
+            m_Body->setActivationState(ACTIVE_TAG); 
     }
 
     void SetUserPointer(void* ptr) override

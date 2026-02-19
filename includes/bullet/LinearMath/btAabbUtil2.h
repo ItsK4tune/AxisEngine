@@ -1,16 +1,4 @@
-/*
-Copyright (c) 2003-2006 Gino van den Bergen / Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_AABB_UTIL2
 #define BT_AABB_UTIL2
@@ -28,7 +16,7 @@ SIMD_FORCE_INLINE void AabbExpand(btVector3& aabbMin,
 	aabbMax = aabbMax + expansionMax;
 }
 
-/// conservative test for overlap between two aabbs
+
 SIMD_FORCE_INLINE bool TestPointAgainstAabb2(const btVector3& aabbMin1, const btVector3& aabbMax1,
 											 const btVector3& point)
 {
@@ -39,7 +27,7 @@ SIMD_FORCE_INLINE bool TestPointAgainstAabb2(const btVector3& aabbMin1, const bt
 	return overlap;
 }
 
-/// conservative test for overlap between two aabbs
+
 SIMD_FORCE_INLINE bool TestAabbAgainstAabb2(const btVector3& aabbMin1, const btVector3& aabbMax1,
 											const btVector3& aabbMin2, const btVector3& aabbMax2)
 {
@@ -50,7 +38,7 @@ SIMD_FORCE_INLINE bool TestAabbAgainstAabb2(const btVector3& aabbMin1, const btV
 	return overlap;
 }
 
-/// conservative test for overlap between triangle and aabb
+
 SIMD_FORCE_INLINE bool TestTriangleAgainstAabb2(const btVector3* vertices,
 												const btVector3& aabbMin, const btVector3& aabbMax)
 {
@@ -197,7 +185,7 @@ SIMD_FORCE_INLINE void btTransformAabb(const btVector3& localAabbMin, const btVe
 
 #define USE_BANCHLESS 1
 #ifdef USE_BANCHLESS
-//This block replaces the block below and uses no branches, and replaces the 8 bit return with a 32 bit return for improved performance (~3x on XBox 360)
+
 SIMD_FORCE_INLINE unsigned testQuantizedAabbAgainstQuantizedAabb(const unsigned short int* aabbMin1, const unsigned short int* aabbMax1, const unsigned short int* aabbMin2, const unsigned short int* aabbMax2)
 {
 	return static_cast<unsigned int>(btSelect((unsigned)((aabbMin1[0] <= aabbMax2[0]) & (aabbMax1[0] >= aabbMin2[0]) & (aabbMin1[2] <= aabbMax2[2]) & (aabbMax1[2] >= aabbMin2[2]) & (aabbMin1[1] <= aabbMax2[1]) & (aabbMax1[1] >= aabbMin2[1])),
@@ -212,6 +200,6 @@ SIMD_FORCE_INLINE bool testQuantizedAabbAgainstQuantizedAabb(const unsigned shor
 	overlap = (aabbMin1[1] > aabbMax2[1] || aabbMax1[1] < aabbMin2[1]) ? false : overlap;
 	return overlap;
 }
-#endif  //USE_BANCHLESS
+#endif  
 
-#endif  //BT_AABB_UTIL2
+#endif  

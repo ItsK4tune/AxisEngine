@@ -1,25 +1,5 @@
-/*! \file btGImpactShape.h
-\author Francisco Leon Najera
-*/
-/*
-This source file is part of GIMPACT Library.
-
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
 
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_GIMPACT_BVH_CONCAVE_COLLISION_ALGORITHM_H
 #define BT_GIMPACT_BVH_CONCAVE_COLLISION_ALGORITHM_H
@@ -42,14 +22,8 @@ class btDispatcher;
 #include "LinearMath/btIDebugDraw.h"
 #include "BulletCollision/CollisionDispatch/btCollisionObjectWrapper.h"
 
-//! Collision Algorithm for GImpact Shapes
-/*!
-For register this algorithm in Bullet, proceed as following:
- \code
-btCollisionDispatcher * dispatcher = static_cast<btCollisionDispatcher *>(m_dynamicsWorld ->getDispatcher());
-btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher);
- \endcode
-*/
+
+
 class btGImpactCollisionAlgorithm : public btActivatingCollisionAlgorithm
 {
 protected:
@@ -62,7 +36,7 @@ protected:
 	int m_triface1;
 	int m_part1;
 
-	//! Creates a new contact point
+	
 	SIMD_FORCE_INLINE btPersistentManifold* newContactManifold(const btCollisionObject* body0, const btCollisionObject* body1)
 	{
 		m_manifoldPtr = m_dispatcher->getNewManifold(body0, body1);
@@ -102,7 +76,7 @@ protected:
 		return m_manifoldPtr;
 	}
 
-	// Call before process collision
+	
 	SIMD_FORCE_INLINE void checkManifold(const btCollisionObjectWrapper* body0Wrap, const btCollisionObjectWrapper* body1Wrap)
 	{
 		if (getLastManifold() == 0)
@@ -113,7 +87,7 @@ protected:
 		m_resultOut->setPersistentManifold(getLastManifold());
 	}
 
-	// Call before process collision
+	
 	SIMD_FORCE_INLINE btCollisionAlgorithm* newAlgorithm(const btCollisionObjectWrapper* body0Wrap, const btCollisionObjectWrapper* body1Wrap)
 	{
 		checkManifold(body0Wrap, body1Wrap);
@@ -123,7 +97,7 @@ protected:
 		return convex_algorithm;
 	}
 
-	// Call before process collision
+	
 	SIMD_FORCE_INLINE void checkConvexAlgorithm(const btCollisionObjectWrapper* body0Wrap, const btCollisionObjectWrapper* body1Wrap)
 	{
 		if (m_convex_algorithm) return;
@@ -136,8 +110,8 @@ protected:
 						 const btVector3& normal,
 						 btScalar distance);
 
-	//! Collision routines
-	//!@{
+	
+	
 
 	void collide_gjk_triangles(const btCollisionObjectWrapper* body0Wrap,
 							   const btCollisionObjectWrapper* body1Wrap,
@@ -210,20 +184,18 @@ public:
 		}
 	};
 
-	//! Use this function for register the algorithm externally
+	
 	static void registerAlgorithm(btCollisionDispatcher* dispatcher);
 #ifdef TRI_COLLISION_PROFILING
-	//! Gets the average time in miliseconds of tree collisions
+	
 	static float getAverageTreeCollisionTime();
 
-	//! Gets the average time in miliseconds of triangle collisions
+	
 	static float getAverageTriangleCollisionTime();
-#endif  //TRI_COLLISION_PROFILING
+#endif  
 
-	//! Collides two gimpact shapes
-	/*!
-	\pre shape0 and shape1 couldn't be btGImpactMeshShape objects
-	*/
+	
+	
 
 	void gimpact_vs_gimpact(const btCollisionObjectWrapper* body0Wrap,
 							const btCollisionObjectWrapper* body1Wrap,
@@ -246,7 +218,7 @@ public:
 		const btGImpactShapeInterface* shape0,
 		const btConcaveShape* shape1, bool swapped);
 
-	/// Accessor/Mutator pairs for Part and triangleID
+	
 	void setFace0(int value)
 	{
 		m_triface0 = value;
@@ -281,8 +253,8 @@ public:
 	}
 };
 
-//algorithm details
-//#define BULLET_TRIANGLE_COLLISION 1
+
+
 #define GIMPACT_VS_PLANE_COLLISION 1
 
-#endif  //BT_GIMPACT_BVH_CONCAVE_COLLISION_ALGORITHM_H
+#endif  

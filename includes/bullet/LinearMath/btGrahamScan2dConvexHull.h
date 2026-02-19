@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2011 Advanced Micro Devices, Inc.  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef GRAHAM_SCAN_2D_CONVEX_HULL_H
 #define GRAHAM_SCAN_2D_CONVEX_HULL_H
@@ -66,11 +53,11 @@ inline void GrahamScanConvexHull2D(btAlignedObjectArray<GrahamVector3>& original
 			hull.push_back(originalPoints[0]);
 		return;
 	}
-	//step1 : find anchor point with smallest projection on axis0 and move it to first location
+	
 	for (int i = 0; i < originalPoints.size(); i++)
 	{
-		//		const btVector3& left = originalPoints[i];
-		//		const btVector3& right = originalPoints[0];
+		
+		
 		btScalar projL = originalPoints[i].dot(axis0);
 		btScalar projR = originalPoints[0].dot(axis0);
 		if (projL < projR)
@@ -79,7 +66,7 @@ inline void GrahamScanConvexHull2D(btAlignedObjectArray<GrahamVector3>& original
 		}
 	}
 
-	//also precompute angles
+	
 	originalPoints[0].m_angle = -1e30f;
 	for (int i = 1; i < originalPoints.size(); i++)
 	{
@@ -96,7 +83,7 @@ inline void GrahamScanConvexHull2D(btAlignedObjectArray<GrahamVector3>& original
 		}
 	}
 
-	//step 2: sort all points, based on 'angle' with this anchor
+	
 	btAngleCompareFunc comp(originalPoints[0]);
 	originalPoints.quickSortInternal(comp, 1, originalPoints.size() - 1);
 
@@ -104,7 +91,7 @@ inline void GrahamScanConvexHull2D(btAlignedObjectArray<GrahamVector3>& original
 	for (i = 0; i < 2; i++)
 		hull.push_back(originalPoints[i]);
 
-	//step 3: keep all 'convex' points and discard concave points (using back tracking)
+	
 	for (; i != originalPoints.size(); i++)
 	{
 		bool isConvex = false;
@@ -126,4 +113,4 @@ inline void GrahamScanConvexHull2D(btAlignedObjectArray<GrahamVector3>& original
 	}
 }
 
-#endif  //GRAHAM_SCAN_2D_CONVEX_HULL_H
+#endif  

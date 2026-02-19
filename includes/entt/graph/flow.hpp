@@ -21,10 +21,7 @@
 
 namespace entt {
 
-/**
- * @brief Utility class for creating task graphs.
- * @tparam Allocator Type of allocator used to manage memory and elements.
- */
+
 template<typename Allocator>
 class basic_flow {
     using alloc_traits = std::allocator_traits<Allocator>;
@@ -51,7 +48,7 @@ class basic_flow {
 
             while(it != last) {
                 if(it->second) {
-                    // rw item
+                    
                     if(auto curr = it++; it != last) {
                         if(it->second) {
                             matrix.insert(curr->first, it->first);
@@ -67,7 +64,7 @@ class basic_flow {
                         }
                     }
                 } else {
-                    // ro item (first iteration only)
+                    
                     if(const auto next = std::find_if(it, last, [](const auto &value) { return value.second; }); next != last) {
                         for(; it != next; ++it) {
                             matrix.insert(it->first, next->first);
@@ -115,75 +112,55 @@ class basic_flow {
     }
 
 public:
-    /*! @brief Allocator type. */
+    
     using allocator_type = Allocator;
-    /*! @brief Unsigned integer type. */
+    
     using size_type = std::size_t;
-    /*! @brief Iterable task list. */
+    
     using iterable = iterable_adaptor<typename task_container_type::const_iterator>;
-    /*! @brief Adjacency matrix type. */
+    
     using graph_type = adjacency_matrix_type;
 
-    /*! @brief Default constructor. */
+    
     basic_flow()
         : basic_flow{allocator_type{}} {}
 
-    /**
-     * @brief Constructs a flow builder with a given allocator.
-     * @param allocator The allocator to use.
-     */
+    
     explicit basic_flow(const allocator_type &allocator)
         : index{0u, allocator},
           vertices{allocator},
           deps{allocator} {}
 
-    /*! @brief Default copy constructor. */
+    
     basic_flow(const basic_flow &) = default;
 
-    /**
-     * @brief Allocator-extended copy constructor.
-     * @param other The instance to copy from.
-     * @param allocator The allocator to use.
-     */
+    
     basic_flow(const basic_flow &other, const allocator_type &allocator)
         : index{other.index.first(), allocator},
           vertices{other.vertices, allocator},
           deps{other.deps, allocator},
           sync_on{other.sync_on} {}
 
-    /*! @brief Default move constructor. */
+    
     basic_flow(basic_flow &&) noexcept = default;
 
-    /**
-     * @brief Allocator-extended move constructor.
-     * @param other The instance to move from.
-     * @param allocator The allocator to use.
-     */
+    
     basic_flow(basic_flow &&other, const allocator_type &allocator)
         : index{other.index.first(), allocator},
           vertices{std::move(other.vertices), allocator},
           deps{std::move(other.deps), allocator},
           sync_on{other.sync_on} {}
 
-    /*! @brief Default destructor. */
+    
     ~basic_flow() = default;
 
-    /**
-     * @brief Default copy assignment operator.
-     * @return This flow builder.
-     */
+    
     basic_flow &operator=(const basic_flow &) = default;
 
-    /**
-     * @brief Default move assignment operator.
-     * @return This flow builder.
-     */
+    
     basic_flow &operator=(basic_flow &&) noexcept = default;
 
-    /**
-     * @brief Exchanges the contents with those of a given flow builder.
-     * @param other Flow builder to exchange the content with.
-     */
+    
     void swap(basic_flow &other) noexcept {
         using std::swap;
         std::swap(index, other.index);
@@ -192,24 +169,17 @@ public:
         std::swap(sync_on, other.sync_on);
     }
 
-    /**
-     * @brief Returns the associated allocator.
-     * @return The associated allocator.
-     */
+    
     [[nodiscard]] constexpr allocator_type get_allocator() const noexcept {
         return allocator_type{index.second()};
     }
 
-    /**
-     * @brief Returns the identifier at specified location.
-     * @param pos Position of the identifier to return.
-     * @return The requested identifier.
-     */
+    
     [[nodiscard]] id_type operator[](const size_type pos) const {
         return vertices.cbegin()[static_cast<typename task_container_type::difference_type>(pos)];
     }
 
-    /*! @brief Clears the flow builder. */
+    
     void clear() noexcept {
         index.first() = {};
         vertices.clear();
@@ -217,27 +187,17 @@ public:
         sync_on = {};
     }
 
-    /**
-     * @brief Returns true if a flow builder contains no tasks, false otherwise.
-     * @return True if the flow builder contains no tasks, false otherwise.
-     */
+    
     [[nodiscard]] bool empty() const noexcept {
         return vertices.empty();
     }
 
-    /**
-     * @brief Returns the number of tasks.
-     * @return The number of tasks.
-     */
+    
     [[nodiscard]] size_type size() const noexcept {
         return vertices.size();
     }
 
-    /**
-     * @brief Binds a task to a flow builder.
-     * @param value Task identifier.
-     * @return This flow builder.
-     */
+    
     basic_flow &bind(const id_type value) {
         sync_on += (sync_on == vertices.size());
         const auto it = vertices.emplace(value).first;
@@ -245,10 +205,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Turns the current task into a sync point.
-     * @return This flow builder.
-     */
+    
     basic_flow &sync() {
         ENTT_ASSERT(index.first() < vertices.size(), "Invalid node");
         sync_on = index.first();
@@ -260,34 +217,19 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a resource to the current task with a given access mode.
-     * @param res Resource identifier.
-     * @param is_rw Access mode.
-     * @return This flow builder.
-     */
+    
     basic_flow &set(const id_type res, bool is_rw = false) {
         emplace(res, is_rw);
         return *this;
     }
 
-    /**
-     * @brief Assigns a read-only resource to the current task.
-     * @param res Resource identifier.
-     * @return This flow builder.
-     */
+    
     basic_flow &ro(const id_type res) {
         emplace(res, false);
         return *this;
     }
 
-    /**
-     * @brief Assigns a range of read-only resources to the current task.
-     * @tparam It Type of input iterator.
-     * @param first An iterator to the first element of the range of elements.
-     * @param last An iterator past the last element of the range of elements.
-     * @return This flow builder.
-     */
+    
     template<typename It>
     std::enable_if_t<std::is_same_v<std::remove_const_t<typename std::iterator_traits<It>::value_type>, id_type>, basic_flow &>
     ro(It first, It last) {
@@ -298,23 +240,13 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Assigns a writable resource to the current task.
-     * @param res Resource identifier.
-     * @return This flow builder.
-     */
+    
     basic_flow &rw(const id_type res) {
         emplace(res, true);
         return *this;
     }
 
-    /**
-     * @brief Assigns a range of writable resources to the current task.
-     * @tparam It Type of input iterator.
-     * @param first An iterator to the first element of the range of elements.
-     * @param last An iterator past the last element of the range of elements.
-     * @return This flow builder.
-     */
+    
     template<typename It>
     std::enable_if_t<std::is_same_v<std::remove_const_t<typename std::iterator_traits<It>::value_type>, id_type>, basic_flow &>
     rw(It first, It last) {
@@ -325,10 +257,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Generates a task graph for the current content.
-     * @return The adjacency matrix of the task graph.
-     */
+    
     [[nodiscard]] graph_type graph() const {
         graph_type matrix{vertices.size(), get_allocator()};
 
@@ -346,6 +275,6 @@ private:
     size_type sync_on{};
 };
 
-} // namespace entt
+} 
 
 #endif

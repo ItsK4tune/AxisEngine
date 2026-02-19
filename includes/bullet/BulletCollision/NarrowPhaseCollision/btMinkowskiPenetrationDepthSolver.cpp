@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btMinkowskiPenetrationDepthSolver.h"
 #include "BulletCollision/NarrowPhaseCollision/btSubSimplexConvexCast.h"
@@ -61,7 +48,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 		}
 	};
 
-	//just take fixed number of orientation, and sample the penetration depth in that direction
+	
 	btScalar minProj = btScalar(BT_LARGE_FLOAT);
 	btVector3 minNorm(btScalar(0.), btScalar(0.), btScalar(0.));
 	btVector3 minA, minB;
@@ -150,7 +137,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 
 			w = qWorld - pWorld;
 			btScalar delta = norm.dot(w);
-			//find smallest delta
+			
 			if (delta < minProj)
 			{
 				minProj = delta;
@@ -194,7 +181,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 			}
 		}
 	}
-#endif  // __SPU__
+#endif  
 
 	for (int i = 0; i < numSampleDirections; i++)
 	{
@@ -207,7 +194,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 		qWorld = transB(qInB);
 		w = qWorld - pWorld;
 		btScalar delta = norm.dot(w);
-		//find smallest delta
+		
 		if (delta < minProj)
 		{
 			minProj = delta;
@@ -216,20 +203,20 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 			minB = qWorld;
 		}
 	}
-#endif  //USE_BATCHED_SUPPORT
+#endif  
 
-	//add the margins
+	
 
 	minA += minNorm * convexA->getMarginNonVirtual();
 	minB -= minNorm * convexB->getMarginNonVirtual();
-	//no penetration
+	
 	if (minProj < btScalar(0.))
 		return false;
 
-	btScalar extraSeparation = 0.5f;  ///scale dependent
+	btScalar extraSeparation = 0.5f;  
 	minProj += extraSeparation + (convexA->getMarginNonVirtual() + convexB->getMarginNonVirtual());
 
-//#define DEBUG_DRAW 1
+
 #ifdef DEBUG_DRAW
 	if (debugDraw)
 	{
@@ -240,7 +227,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 		btScalar prj2 = minNorm.dot(vec);
 		debugDraw->drawLine(minA, minA + (minNorm * minProj), color);
 	}
-#endif  //DEBUG_DRAW
+#endif  
 
 	btGjkPairDetector gjkdet(convexA, convexB, &simplexSolver, 0);
 
@@ -256,7 +243,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 
 	input.m_transformA = displacedTrans;
 	input.m_transformB = transB;
-	input.m_maximumDistanceSquared = btScalar(BT_LARGE_FLOAT);  //minProj;
+	input.m_maximumDistanceSquared = btScalar(BT_LARGE_FLOAT);  
 
 	btIntermediateResult res;
 	gjkdet.setCachedSeparatingAxis(-minNorm);
@@ -264,7 +251,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 
 	btScalar correctedMinNorm = minProj - res.m_depth;
 
-	//the penetration depth is over-estimated, relax it
+	
 	btScalar penetration_relaxation = btScalar(1.);
 	minNorm *= penetration_relaxation;
 
@@ -280,7 +267,7 @@ bool btMinkowskiPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& s
 			btVector3 color(1, 0, 0);
 			debugDraw->drawLine(pa, pb, color);
 		}
-#endif  //DEBUG_DRAW
+#endif  
 	}
 	return res.m_hasResult;
 }

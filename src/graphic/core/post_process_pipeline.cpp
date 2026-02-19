@@ -26,7 +26,7 @@ void PostProcessPipeline::Init(IGraphicsContext& context, int width, int height,
     InitQuad();
     InitFramebuffers();
     
-    // Load AA shaders
+    
     res.LoadShader("fxaa", "src/asset/shaders/fxaa.vs", "src/asset/shaders/fxaa.fs");
     res.LoadShader("taa", "src/asset/shaders/taa.vs", "src/asset/shaders/taa.fs");
     
@@ -45,7 +45,7 @@ void PostProcessPipeline::InitFramebuffers()
     m_ColorBuffers[1] = tm.GenTexture();
     m_DepthTexture = tm.GenTexture();
 
-    // Create depth texture
+    
     tm.BindTexture(Graphics::TextureType::Texture2D, m_DepthTexture);
     tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::DepthComponent24, m_Width, m_Height, 0, Graphics::TextureFormat::DepthComponent, Graphics::DataType::Float, NULL);
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
@@ -71,11 +71,11 @@ void PostProcessPipeline::InitFramebuffers()
             rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Depth, Graphics::TextureType::Texture2D, m_DepthTexture, 0); 
         }
 
-        if (rtm.CheckFramebufferStatus(Graphics::FramebufferTarget::Framebuffer) != Graphics::FramebufferStatus::Complete) // FRAMEBUFFER_COMPLETE
+        if (rtm.CheckFramebufferStatus(Graphics::FramebufferTarget::Framebuffer) != Graphics::FramebufferStatus::Complete) 
             LOGGER_ERROR("PostProcess") << "FBO " << i << " is not complete!";
     }
     
-    // TAA History buffer
+    
     m_HistoryFBO = rtm.GenFramebuffer();
     m_HistoryTexture = tm.GenTexture();
     
@@ -88,7 +88,7 @@ void PostProcessPipeline::InitFramebuffers()
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(Graphics::TextureWrap::ClampToEdge));
     rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Color0, Graphics::TextureType::Texture2D, m_HistoryTexture, 0);
     
-    if (rtm.CheckFramebufferStatus(Graphics::FramebufferTarget::Framebuffer) != Graphics::FramebufferStatus::Complete) // FRAMEBUFFER_COMPLETE
+    if (rtm.CheckFramebufferStatus(Graphics::FramebufferTarget::Framebuffer) != Graphics::FramebufferStatus::Complete) 
         LOGGER_ERROR("PostProcess") << "History FBO is not complete!";
 
     rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, 0);

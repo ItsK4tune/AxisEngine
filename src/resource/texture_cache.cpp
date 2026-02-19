@@ -45,7 +45,7 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
 
             if (nrComponents == 1) {
                 format = Graphics::TextureFormat::Red;
-                const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8; // Approximation
+                const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8; 
             } else if (nrComponents == 3) {
                 format = Graphics::TextureFormat::RGB;
                 const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8;
@@ -55,19 +55,19 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             }
 
             tm.BindTexture(Graphics::TextureType::Texture2D, textureID);
-            // internalFormat selection logic in OpenGLTextureManager might need tweaking or we map carefully here.
-            // For now, let's use the explicit conversion or logic.
-            // TextureCache uses simple format mapping. Use InternalFormat same as Format logic for now if possible?
-            // Wait, TextureCache previously passed 'format' (RGBA/RGB) as both internalFormat and format.
-            // My Interface requires explicit InternalFormat and TextureFormat.
             
-            // Re-evaluating: GetGLTextureFormat maps RGBA -> GL_RGBA.
-            // GetGLInternalFormat maps RGB8 -> GL_RGB8.
-            // Original code: glTexImage2D(..., format, ..., format, ...); where format was GL_RGBA.
-            // GL_RGBA as internal format is valid in old GL, but sized is better.
+            
+            
+            
+            
+            
+            
+            
+            
+            
             
             Graphics::InternalFormat iFormat = Graphics::InternalFormat::RGBA8;
-            if (nrComponents == 1) iFormat = Graphics::InternalFormat::RGB8; // Red isn't in InternalFormat? I added RGB8.
+            if (nrComponents == 1) iFormat = Graphics::InternalFormat::RGB8; 
             else if (nrComponents == 3) iFormat = Graphics::InternalFormat::RGB8;
             else if (nrComponents == 4) iFormat = Graphics::InternalFormat::RGBA8;
 

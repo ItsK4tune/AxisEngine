@@ -122,7 +122,7 @@ public:
 
     static GLenum ToGL(Graphics::CullMode m) {
         switch (m) {
-            case Graphics::CullMode::None: return 0; // Or GL_NONE if exists, but usually disabled via enable/disable
+            case Graphics::CullMode::None: return 0; 
             case Graphics::CullMode::Front: return GL_FRONT;
             case Graphics::CullMode::Back: return GL_BACK;
             case Graphics::CullMode::FrontAndBack: return GL_FRONT_AND_BACK;
@@ -179,9 +179,9 @@ public:
     }
 
     static GLenum ToGL(Graphics::TextureUnit u) {
-        // Assuming consecutive. Or switch. Enum values in GraphicsTypes will be 0, 1, 2...
-        // GL_TEXTURE0 is 0x84C0.
-        // If u is 0, return GL_TEXTURE0.
+        
+        
+        
         return GL_TEXTURE0 + static_cast<int>(u); 
     }
 
@@ -210,7 +210,7 @@ public:
             case Graphics::ServerCapability::StencilTest: return GL_STENCIL_TEST;
             case Graphics::ServerCapability::ScissorTest: return GL_SCISSOR_TEST;
             case Graphics::ServerCapability::Multisample: return GL_MULTISAMPLE;
-            // FramebufferSRGB might be needed later
+            
             default: return 0;
         }
     }

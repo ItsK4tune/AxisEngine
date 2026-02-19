@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btConvexPlaneCollisionAlgorithm.h"
 
@@ -21,7 +8,7 @@ subject to the following restrictions:
 #include "BulletCollision/CollisionShapes/btStaticPlaneShape.h"
 #include "BulletCollision/CollisionDispatch/btCollisionObjectWrapper.h"
 
-//#include <stdio.h>
+
 
 btConvexPlaneCollisionAlgorithm::btConvexPlaneCollisionAlgorithm(btPersistentManifold* mf, const btCollisionAlgorithmConstructionInfo& ci, const btCollisionObjectWrapper* col0Wrap, const btCollisionObjectWrapper* col1Wrap, bool isSwapped, int numPerturbationIterations, int minimumPointsPerturbationThreshold)
 	: btCollisionAlgorithm(ci),
@@ -65,7 +52,7 @@ void btConvexPlaneCollisionAlgorithm::collideSingleContact(const btQuaternion& p
 	btTransform convexWorldTransform = convexObjWrap->getWorldTransform();
 	btTransform convexInPlaneTrans;
 	convexInPlaneTrans = planeObjWrap->getWorldTransform().inverse() * convexWorldTransform;
-	//now perturbe the convex-world transform
+	
 	convexWorldTransform.getBasis() *= btMatrix3x3(perturbeRot);
 	btTransform planeInConvex;
 	planeInConvex = convexWorldTransform.inverse() * planeObjWrap->getWorldTransform();
@@ -82,7 +69,7 @@ void btConvexPlaneCollisionAlgorithm::collideSingleContact(const btQuaternion& p
 	resultOut->setPersistentManifold(m_manifoldPtr);
 	if (hasCollision)
 	{
-		/// report a contact. internally this will be kept persistent, and contact reduction is done
+		
 		btVector3 normalOnSurfaceB = planeObjWrap->getWorldTransform().getBasis() * planeNormal;
 		btVector3 pOnB = vtxInPlaneWorld;
 		resultOut->addContactPoint(normalOnSurfaceB, pOnB, distance);
@@ -120,20 +107,20 @@ void btConvexPlaneCollisionAlgorithm::processCollision(const btCollisionObjectWr
 	resultOut->setPersistentManifold(m_manifoldPtr);
 	if (hasCollision)
 	{
-		/// report a contact. internally this will be kept persistent, and contact reduction is done
+		
 		btVector3 normalOnSurfaceB = planeObjWrap->getWorldTransform().getBasis() * planeNormal;
 		btVector3 pOnB = vtxInPlaneWorld;
 		resultOut->addContactPoint(normalOnSurfaceB, pOnB, distance);
 	}
 
-	//the perturbation algorithm doesn't work well with implicit surfaces such as spheres, cylinder and cones:
-	//they keep on rolling forever because of the additional off-center contact points
-	//so only enable the feature for polyhedral shapes (btBoxShape, btConvexHullShape etc)
+	
+	
+	
 	if (convexShape->isPolyhedral() && resultOut->getPersistentManifold()->getNumContacts() < m_minimumPointsPerturbationThreshold)
 	{
 		btVector3 v0, v1;
 		btPlaneSpace1(planeNormal, v0, v1);
-		//now perform 'm_numPerturbationIterations' collision queries with the perturbated collision objects
+		
 
 		const btScalar angleLimit = 0.125f * SIMD_PI;
 		btScalar perturbeAngle;
@@ -167,6 +154,6 @@ btScalar btConvexPlaneCollisionAlgorithm::calculateTimeOfImpact(btCollisionObjec
 	(void)col0;
 	(void)col1;
 
-	//not yet
+	
 	return btScalar(1.);
 }

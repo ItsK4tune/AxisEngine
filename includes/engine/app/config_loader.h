@@ -31,14 +31,19 @@ struct AppConfig
     float shadowProjectionSize = 100.0f;
     bool shadowFrustumCullingEnabled = true;
     float shadowDistanceCulling = 100.0f;
-    float distanceCulling = 0.0f; // 0 = disabled
-    int antialiasing = 1; // 0: None, 1: FXAA, 2: TAA
+    float distanceCulling = 0.0f; 
+    int antialiasing = 1; 
 
-    int physicsMode = 1; // 0: Fast, 1: Balanced, 2: Accurate
+    int physicsMode = 1; 
+
+    std::string graphicsBackend = "OPENGL";
+    std::string physicsBackend = "BULLET";
+    std::string audioBackend = "IRRKLANG";
 };
 
 class ConfigLoader
 {
 public:
     static void LoadConfig(std::stringstream &ss, Application *app);
+    static void LoadConfig(std::stringstream &ss, AppConfig &config);
 };

@@ -268,7 +268,7 @@ public:
             case GLFW_MOUSE_BUTTON_6: return Input::Mouse::Button6;
             case GLFW_MOUSE_BUTTON_7: return Input::Mouse::Button7;
             case GLFW_MOUSE_BUTTON_8: return Input::Mouse::Button8;
-            default: return Input::Mouse::Left; // Fallback? 
+            default: return Input::Mouse::Left; 
         }
     }
 

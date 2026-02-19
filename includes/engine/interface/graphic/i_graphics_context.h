@@ -2,7 +2,7 @@
 #include <interface/graphic/graphics_types.h>
 #include <string>
 
-// Forward declarations
+
 class IBufferManager;
 class ITextureManager;
 class IShaderManager;

@@ -1,51 +1,33 @@
-/*
-This source file is part of GIMPACT Library.
 
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
-
-
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btGImpactShape.h"
 #include "btGImpactMassUtil.h"
 
 btGImpactMeshShapePart::btGImpactMeshShapePart(btStridingMeshInterface* meshInterface, int part)
 {
-	// moved from .h to .cpp because of conditional compilation
-	// (The setting of BT_THREADSAFE may differ between various cpp files, so it is best to
-	// avoid using it in h files)
+	
+	
+	
 	m_primitive_manager.m_meshInterface = meshInterface;
 	m_primitive_manager.m_part = part;
 	m_box_set.setPrimitiveManager(&m_primitive_manager);
 #if BT_THREADSAFE
-	// If threadsafe is requested, this object uses a different lock/unlock
-	//  model with the btStridingMeshInterface -- lock once when the object is constructed
-	//  and unlock once in the destructor.
-	// The other way of locking and unlocking for each collision check in the narrowphase
-	// is not threadsafe.  Note these are not thread-locks, they are calls to the meshInterface's
-	// getLockedReadOnlyVertexIndexBase virtual function, which by default just returns a couple of
-	// pointers.  In theory a client could override the lock function to do all sorts of
-	// things like reading data from GPU memory, or decompressing data on the fly, but such things
-	// do not seem all that likely or useful, given the performance cost.
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	m_primitive_manager.lock();
 #endif
 }
 
 btGImpactMeshShapePart::~btGImpactMeshShapePart()
 {
-	// moved from .h to .cpp because of conditional compilation
+	
 #if BT_THREADSAFE
 	m_primitive_manager.unlock();
 #endif
@@ -53,9 +35,9 @@ btGImpactMeshShapePart::~btGImpactMeshShapePart()
 
 void btGImpactMeshShapePart::lockChildShapes() const
 {
-	// moved from .h to .cpp because of conditional compilation
+	
 #if !BT_THREADSAFE
-	// called in the narrowphase -- not threadsafe!
+	
 	void* dummy = (void*)(m_box_set.getPrimitiveManager());
 	TrimeshPrimitiveManager* dummymanager = static_cast<TrimeshPrimitiveManager*>(dummy);
 	dummymanager->lock();
@@ -64,9 +46,9 @@ void btGImpactMeshShapePart::lockChildShapes() const
 
 void btGImpactMeshShapePart::unlockChildShapes() const
 {
-	// moved from .h to .cpp because of conditional compilation
+	
 #if !BT_THREADSAFE
-	// called in the narrowphase -- not threadsafe!
+	
 	void* dummy = (void*)(m_box_set.getPrimitiveManager());
 	TrimeshPrimitiveManager* dummymanager = static_cast<TrimeshPrimitiveManager*>(dummy);
 	dummymanager->unlock();
@@ -100,7 +82,7 @@ void btGImpactCompoundShape::calculateLocalInertia(btScalar mass, btVector3& ine
 
 #else
 
-	// Calc box inertia
+	
 
 	btScalar lx = m_localAABB.m_max[0] - m_localAABB.m_min[0];
 	btScalar ly = m_localAABB.m_max[1] - m_localAABB.m_min[1];
@@ -136,7 +118,7 @@ void btGImpactMeshShapePart::calculateLocalInertia(btScalar mass, btVector3& ine
 
 #else
 
-	// Calc box inertia
+	
 
 	btScalar lx = m_localAABB.m_max[0] - m_localAABB.m_min[0];
 	btScalar ly = m_localAABB.m_max[1] - m_localAABB.m_min[1];
@@ -170,7 +152,7 @@ void btGImpactMeshShape::calculateLocalInertia(btScalar mass, btVector3& inertia
 
 #else
 
-	// Calc box inertia
+	
 
 	btScalar lx = m_localAABB.m_max[0] - m_localAABB.m_min[0];
 	btScalar ly = m_localAABB.m_max[1] - m_localAABB.m_min[1];
@@ -260,7 +242,7 @@ void btGImpactMeshShape::processAllTrianglesRay(btTriangleCallback* callback, co
 	}
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 const char* btGImpactMeshShape::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btGImpactMeshShapeData* trimeshData = (btGImpactMeshShapeData*)dataBuffer;

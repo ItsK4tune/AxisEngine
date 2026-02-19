@@ -1,33 +1,16 @@
-/*! \file btGenericPoolAllocator.cpp
-\author Francisco Leon Najera. email projectileman@yahoo.com
 
-General purpose allocator class
-*/
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btGenericPoolAllocator.h"
 
-/// *************** btGenericMemoryPool ******************///////////
+
 
 size_t btGenericMemoryPool::allocate_from_free_nodes(size_t num_elements)
 {
 	size_t ptr = BT_UINT_MAX;
 
 	if (m_free_nodes_count == 0) return BT_UINT_MAX;
-	// find an avaliable free node with the correct size
+	
 	size_t revindex = m_free_nodes_count;
 
 	while (revindex-- && ptr == BT_UINT_MAX)
@@ -37,27 +20,27 @@ size_t btGenericMemoryPool::allocate_from_free_nodes(size_t num_elements)
 			ptr = revindex;
 		}
 	}
-	if (ptr == BT_UINT_MAX) return BT_UINT_MAX;  // not found
+	if (ptr == BT_UINT_MAX) return BT_UINT_MAX;  
 
 	revindex = ptr;
 	ptr = m_free_nodes[revindex];
-	// post: ptr contains the node index, and revindex the index in m_free_nodes
+	
 
 	size_t finalsize = m_allocated_sizes[ptr];
 	finalsize -= num_elements;
 
 	m_allocated_sizes[ptr] = num_elements;
 
-	// post: finalsize>=0, m_allocated_sizes[ptr] has the requested size
+	
 
-	if (finalsize > 0)  // preserve free node, there are some free memory
+	if (finalsize > 0)  
 	{
 		m_free_nodes[revindex] = ptr + num_elements;
 		m_allocated_sizes[ptr + num_elements] = finalsize;
 	}
-	else  // delete free node
+	else  
 	{
-		// swap with end
+		
 		m_free_nodes[revindex] = m_free_nodes[m_free_nodes_count - 1];
 		m_free_nodes_count--;
 	}
@@ -104,10 +87,8 @@ void btGenericMemoryPool::end_pool()
 	m_free_nodes_count = 0;
 }
 
-//! Allocates memory in pool
-/*!
-\param size_bytes size in bytes of the buffer
-*/
+
+
 void *btGenericMemoryPool::allocate(size_t size_bytes)
 {
 	size_t module = size_bytes % m_element_size;
@@ -115,15 +96,15 @@ void *btGenericMemoryPool::allocate(size_t size_bytes)
 	if (module > 0) element_count++;
 
 	size_t alloc_pos = allocate_from_free_nodes(element_count);
-	// a free node is found
+	
 	if (alloc_pos != BT_UINT_MAX)
 	{
 		return get_element_data(alloc_pos);
 	}
-	// allocate directly on pool
+	
 	alloc_pos = allocate_from_pool(element_count);
 
-	if (alloc_pos == BT_UINT_MAX) return NULL;  // not space
+	if (alloc_pos == BT_UINT_MAX) return NULL;  
 	return get_element_data(alloc_pos);
 }
 
@@ -131,22 +112,22 @@ bool btGenericMemoryPool::freeMemory(void *pointer)
 {
 	unsigned char *pointer_pos = (unsigned char *)pointer;
 	unsigned char *pool_pos = (unsigned char *)m_pool;
-	// calc offset
-	if (pointer_pos < pool_pos) return false;  //other pool
+	
+	if (pointer_pos < pool_pos) return false;  
 	size_t offset = size_t(pointer_pos - pool_pos);
-	if (offset >= get_pool_capacity()) return false;  // far away
+	if (offset >= get_pool_capacity()) return false;  
 
-	// find free position
+	
 	m_free_nodes[m_free_nodes_count] = offset / m_element_size;
 	m_free_nodes_count++;
 	return true;
 }
 
-/// *******************! btGenericPoolAllocator *******************!///
+
 
 btGenericPoolAllocator::~btGenericPoolAllocator()
 {
-	// destroy pools
+	
 	size_t i;
 	for (i = 0; i < m_pool_count; i++)
 	{
@@ -155,7 +136,7 @@ btGenericPoolAllocator::~btGenericPoolAllocator()
 	}
 }
 
-// creates a pool
+
 btGenericMemoryPool *btGenericPoolAllocator::push_new_pool()
 {
 	if (m_pool_count >= BT_DEFAULT_MAX_POOLS) return NULL;
@@ -179,7 +160,7 @@ void *btGenericPoolAllocator::failback_alloc(size_t size_bytes)
 		pool = push_new_pool();
 	}
 
-	if (pool == NULL)  // failback
+	if (pool == NULL)  
 	{
 		return btAlignedAlloc(size_bytes, 16);
 	}
@@ -193,10 +174,8 @@ bool btGenericPoolAllocator::failback_free(void *pointer)
 	return true;
 }
 
-//! Allocates memory in pool
-/*!
-\param size_bytes size in bytes of the buffer
-*/
+
+
 void *btGenericPoolAllocator::allocate(size_t size_bytes)
 {
 	void *ptr = NULL;
@@ -229,12 +208,12 @@ bool btGenericPoolAllocator::freeMemory(void *pointer)
 	return failback_free(pointer);
 }
 
-/// ************** STANDARD ALLOCATOR ***************************///
+
 
 #define BT_DEFAULT_POOL_SIZE 32768
 #define BT_DEFAULT_POOL_ELEMENT_SIZE 8
 
-// main allocator
+
 class GIM_STANDARD_ALLOCATOR : public btGenericPoolAllocator
 {
 public:
@@ -243,7 +222,7 @@ public:
 	}
 };
 
-// global allocator
+
 GIM_STANDARD_ALLOCATOR g_main_allocator;
 
 void *btPoolAlloc(size_t size)

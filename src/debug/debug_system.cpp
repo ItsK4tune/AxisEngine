@@ -128,7 +128,7 @@ void DebugSystem::Render(Scene &scene)
     auto& rsm = m_App->GetGraphicsContext().GetRenderStateManager();
     auto oldMode = rsm.GetPolygonMode();
 
-    rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill); // GL_FRONT_AND_BACK = 0x0408
+    rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill); 
 
     for (auto &module : m_Modules)
     {

@@ -1,25 +1,5 @@
-/*! \file btGImpactTriangleShape.h
-\author Francisco Leon Najera
-*/
-/*
-This source file is part of GIMPACT Library.
-
-For the latest info, see http://gimpact.sourceforge.net/
-
-Copyright (c) 2007 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
 
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btTriangleShapeEx.h"
 
@@ -59,11 +39,11 @@ void GIM_TRIANGLE_CONTACT::merge_points(const btVector4& plane,
 	}
 }
 
-///class btPrimitiveTriangle
+
 bool btPrimitiveTriangle::overlap_test_conservative(const btPrimitiveTriangle& other)
 {
 	btScalar total_margin = m_margin + other.m_margin;
-	// classify points on other triangle
+	
 	btScalar dis0 = bt_distance_point_plane(m_plane, other.m_vertices[0]) - total_margin;
 
 	btScalar dis1 = bt_distance_point_plane(m_plane, other.m_vertices[1]) - total_margin;
@@ -72,7 +52,7 @@ bool btPrimitiveTriangle::overlap_test_conservative(const btPrimitiveTriangle& o
 
 	if (dis0 > 0.0f && dis1 > 0.0f && dis2 > 0.0f) return false;
 
-	// classify points on this triangle
+	
 	dis0 = bt_distance_point_plane(other.m_plane, m_vertices[0]) - total_margin;
 
 	dis1 = bt_distance_point_plane(other.m_plane, m_vertices[1]) - total_margin;
@@ -86,7 +66,7 @@ bool btPrimitiveTriangle::overlap_test_conservative(const btPrimitiveTriangle& o
 
 int btPrimitiveTriangle::clip_triangle(btPrimitiveTriangle& other, btVector3* clipped_points)
 {
-	// edge 0
+	
 
 	btVector3 temp_points[MAX_TRI_CLIPPING];
 
@@ -101,14 +81,14 @@ int btPrimitiveTriangle::clip_triangle(btPrimitiveTriangle& other, btVector3* cl
 
 	btVector3 temp_points1[MAX_TRI_CLIPPING];
 
-	// edge 1
+	
 	get_edge_plane(1, edgeplane);
 
 	clipped_count = bt_plane_clip_polygon(edgeplane, temp_points, clipped_count, temp_points1);
 
 	if (clipped_count == 0) return 0;
 
-	// edge 2
+	
 	get_edge_plane(2, edgeplane);
 
 	clipped_count = bt_plane_clip_polygon(
@@ -123,8 +103,8 @@ bool btPrimitiveTriangle::find_triangle_collision_clip_method(btPrimitiveTriangl
 
 	btVector3 clipped_points[MAX_TRI_CLIPPING];
 	int clipped_count;
-	//create planes
-	// plane v vs U points
+	
+	
 
 	GIM_TRIANGLE_CONTACT contacts1;
 
@@ -134,16 +114,16 @@ bool btPrimitiveTriangle::find_triangle_collision_clip_method(btPrimitiveTriangl
 
 	if (clipped_count == 0)
 	{
-		return false;  //Reject
+		return false;  
 	}
 
-	//find most deep interval face1
+	
 	contacts1.merge_points(contacts1.m_separating_normal, margin, clipped_points, clipped_count);
-	if (contacts1.m_point_count == 0) return false;  // too far
-	//Normal pointing to this triangle
+	if (contacts1.m_point_count == 0) return false;  
+	
 	contacts1.m_separating_normal *= -1.f;
 
-	//Clip tri1 by tri2 edges
+	
 	GIM_TRIANGLE_CONTACT contacts2;
 	contacts2.m_separating_normal = other.m_plane;
 
@@ -151,14 +131,14 @@ bool btPrimitiveTriangle::find_triangle_collision_clip_method(btPrimitiveTriangl
 
 	if (clipped_count == 0)
 	{
-		return false;  //Reject
+		return false;  
 	}
 
-	//find most deep interval face1
+	
 	contacts2.merge_points(contacts2.m_separating_normal, margin, clipped_points, clipped_count);
-	if (contacts2.m_point_count == 0) return false;  // too far
+	if (contacts2.m_point_count == 0) return false;  
 
-	////check most dir for contacts
+	
 	if (contacts2.m_penetration_depth < contacts1.m_penetration_depth)
 	{
 		contacts.copy_from(contacts2);
@@ -170,7 +150,7 @@ bool btPrimitiveTriangle::find_triangle_collision_clip_method(btPrimitiveTriangl
 	return true;
 }
 
-///class btTriangleShapeEx: public btTriangleShape
+
 
 bool btTriangleShapeEx::overlap_test_conservative(const btTriangleShapeEx& other)
 {
@@ -181,7 +161,7 @@ bool btTriangleShapeEx::overlap_test_conservative(const btTriangleShapeEx& other
 	btVector4 plane1;
 	other.buildTriPlane(plane1);
 
-	// classify points on other triangle
+	
 	btScalar dis0 = bt_distance_point_plane(plane0, other.m_vertices1[0]) - total_margin;
 
 	btScalar dis1 = bt_distance_point_plane(plane0, other.m_vertices1[1]) - total_margin;
@@ -190,7 +170,7 @@ bool btTriangleShapeEx::overlap_test_conservative(const btTriangleShapeEx& other
 
 	if (dis0 > 0.0f && dis1 > 0.0f && dis2 > 0.0f) return false;
 
-	// classify points on this triangle
+	
 	dis0 = bt_distance_point_plane(plane1, m_vertices1[0]) - total_margin;
 
 	dis1 = bt_distance_point_plane(plane1, m_vertices1[1]) - total_margin;

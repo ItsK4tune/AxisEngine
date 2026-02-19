@@ -87,7 +87,7 @@ void GeneralDebugModule::OnUpdate(float dt)
 
 void GeneralDebugModule::Render(Scene &scene)
 {
-    // This module doesn't render anything, only logs to console
+    
 }
 
 void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)

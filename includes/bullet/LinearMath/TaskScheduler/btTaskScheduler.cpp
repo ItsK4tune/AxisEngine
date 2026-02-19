@@ -43,16 +43,16 @@ ATTRIBUTE_ALIGNED64(class)
 WorkerThreadDirectives
 {
 	static const int kMaxThreadCount = BT_MAX_THREAD_COUNT;
-	// directives for all worker threads packed into a single cacheline
+	
 	char m_threadDirs[kMaxThreadCount];
 
 public:
 	enum Type
 	{
 		kInvalid,
-		kGoToSleep,         // go to sleep
-		kStayAwakeButIdle,  // wait for not checking job queue
-		kScanForJobs,       // actively scan job queue for jobs
+		kGoToSleep,         
+		kStayAwakeButIdle,  
+		kScanForJobs,       
 	};
 	WorkerThreadDirectives()
 	{
@@ -118,7 +118,7 @@ public:
 	{
 		BT_PROFILE("executeJob");
 
-		// call the functor body to do the work
+		
 		m_body->forLoop(m_begin, m_end);
 	}
 };
@@ -142,12 +142,12 @@ public:
 	{
 		BT_PROFILE("executeJob");
 
-		// call the functor body to do the work
+		
 		btScalar val = m_body->sumLoop(m_begin, m_end);
 #if BT_PARALLEL_SUM_DETERMINISTISM
-		// by truncating bits of the result, we can make the parallelSum deterministic (at the expense of precision)
+		
 		const float TRUNC_SCALE = float(1 << 19);
-		val = floor(val * TRUNC_SCALE + 0.5f) / TRUNC_SCALE;  // truncate some bits
+		val = floor(val * TRUNC_SCALE + 0.5f) / TRUNC_SCALE;  
 #endif
 		m_threadLocalStoreArray[threadId].m_sumResult += val;
 	}
@@ -169,13 +169,13 @@ JobQueue
 	int m_allocSize;
 	bool m_useSpinMutex;
 	btAlignedObjectArray<JobQueue*> m_neighborContexts;
-	char m_cachePadding[kCacheLineSize];  // prevent false sharing
+	char m_cachePadding[kCacheLineSize];  
 
 	void freeJobMem()
 	{
 		if (m_jobMem)
 		{
-			// free old
+			
 			btAlignedFree(m_jobMem);
 			m_jobMem = NULL;
 		}
@@ -283,12 +283,12 @@ public:
 		m_allocSize = 0;
 		m_queueIsEmpty = true;
 		int jobBufSize = jobSize * jobCount;
-		// make sure we have enough memory allocated to store jobs
+		
 		if (jobBufSize > m_jobMemSize)
 		{
 			resizeJobMem(jobBufSize);
 		}
-		// make sure job queue is big enough
+		
 		if (jobCount > m_jobQueue.capacity())
 		{
 			m_jobQueue.reserve(jobCount);
@@ -316,7 +316,7 @@ public:
 	{
 		if (m_queueIsEmpty)
 		{
-			// lock free path. even if this is taken erroneously it isn't harmful
+			
 			return NULL;
 		}
 		IJob* job = NULL;
@@ -339,7 +339,7 @@ public:
 		{
 			return job;
 		}
-		// own queue is empty, try to steal from neighbor
+		
 		for (int i = 0; i < m_neighborContexts.size(); ++i)
 		{
 			JobQueue* otherContext = m_neighborContexts[i];
@@ -362,7 +362,7 @@ static void WorkerThreadFunc(void* userPtr)
 	int threadId = localStorage->m_threadId;
 	while (!shouldSleep)
 	{
-		// do work
+		
 		localStorage->m_mutex.lock();
 		while (IJob* job = jobQueue->consumeJob())
 		{
@@ -373,20 +373,20 @@ static void WorkerThreadFunc(void* userPtr)
 		localStorage->m_status = WorkerThreadStatus::kWaitingForWork;
 		localStorage->m_mutex.unlock();
 		btU64 clockStart = localStorage->m_clock->getTimeMicroseconds();
-		// while queue is empty,
+		
 		while (jobQueue->isQueueEmpty())
 		{
-			// todo: spin wait a bit to avoid hammering the empty queue
+			
 			btSpinPause();
 			if (localStorage->m_directive->getDirective(threadId) == WorkerThreadDirectives::kGoToSleep)
 			{
 				shouldSleep = true;
 				break;
 			}
-			// if jobs are incoming,
+			
 			if (localStorage->m_directive->getDirective(threadId) == WorkerThreadDirectives::kScanForJobs)
 			{
-				clockStart = localStorage->m_clock->getTimeMicroseconds();  // reset clock
+				clockStart = localStorage->m_clock->getTimeMicroseconds();  
 			}
 			else
 			{
@@ -401,7 +401,7 @@ static void WorkerThreadFunc(void* userPtr)
 						break;
 					}
 				}
-				// if no jobs incoming and queue has been empty for the cooldown time, sleep
+				
 				btU64 timeElapsed = localStorage->m_clock->getTimeMicroseconds() - clockStart;
 				if (timeElapsed > localStorage->m_cooldownTime)
 				{
@@ -413,7 +413,7 @@ static void WorkerThreadFunc(void* userPtr)
 	}
 	{
 		BT_PROFILE("sleep");
-		// go sleep
+		
 		localStorage->m_mutex.lock();
 		localStorage->m_status = WorkerThreadStatus::kSleeping;
 		localStorage->m_mutex.unlock();
@@ -427,7 +427,7 @@ class btTaskSchedulerDefault : public btITaskScheduler
 	btAlignedObjectArray<JobQueue> m_jobQueues;
 	btAlignedObjectArray<JobQueue*> m_perThreadJobQueues;
 	btAlignedObjectArray<ThreadLocalStorage> m_threadLocalStorage;
-	btSpinMutex m_antiNestingLock;  // prevent nested parallel-for
+	btSpinMutex m_antiNestingLock;  
 	btClock m_clock;
 	int m_numThreads;
 	int m_numWorkerThreads;
@@ -473,7 +473,7 @@ public:
 		m_numWorkerThreads = m_threadSupport->getNumWorkerThreads();
 		m_maxNumThreads = m_threadSupport->getNumWorkerThreads() + 1;
 		m_numThreads = m_maxNumThreads;
-		// ideal to have one job queue for each physical processor (except for the main thread which needs no queue)
+		
 		int numThreadsPerQueue = m_threadSupport->getLogicalToPhysicalCoreRatio();
 		int numJobQueues = (numThreadsPerQueue == 1) ? (m_maxNumThreads - 1) : (m_maxNumThreads / numThreadsPerQueue);
 		m_jobQueues.resize(numJobQueues);
@@ -486,17 +486,17 @@ public:
 		for (int i = 0; i < m_numThreads; i++)
 		{
 			JobQueue* jq = NULL;
-			// only worker threads get a job queue
+			
 			if (i > 0)
 			{
 				if (numThreadsPerQueue == 1)
 				{
-					// one queue per worker thread
+					
 					jq = &m_jobQueues[i - kFirstWorkerThreadId];
 				}
 				else
 				{
-					// 2 threads share each queue
+					
 					jq = &m_jobQueues[i / numThreadsPerQueue];
 				}
 			}
@@ -509,11 +509,11 @@ public:
 			storage.m_threadId = i;
 			storage.m_directive = m_workerDirective;
 			storage.m_status = WorkerThreadStatus::kSleeping;
-			storage.m_cooldownTime = 100;  // 100 microseconds, threads go to sleep after this long if they have nothing to do
+			storage.m_cooldownTime = 100;  
 			storage.m_clock = &m_clock;
 			storage.m_queue = m_perThreadJobQueues[i];
 		}
-		setWorkerDirectives(WorkerThreadDirectives::kGoToSleep);  // no work for them yet
+		setWorkerDirectives(WorkerThreadDirectives::kGoToSleep);  
 		setNumThreads(m_threadSupport->getCacheFriendlyNumThreads());
 	}
 
@@ -537,10 +537,10 @@ public:
 		m_numThreads = btMax(btMin(numThreads, int(m_maxNumThreads)), 1);
 		m_numWorkerThreads = m_numThreads - 1;
 		m_numActiveJobQueues = 0;
-		// if there is at least 1 worker,
+		
 		if (m_numWorkerThreads > 0)
 		{
-			// re-setup job stealing between queues to avoid attempting to steal from an inactive job queue
+			
 			JobQueue* lastActiveContext = m_perThreadJobQueues[m_numThreads - 1];
 			int iLastActiveContext = lastActiveContext - &m_jobQueues[0];
 			m_numActiveJobQueues = iLastActiveContext + 1;
@@ -555,7 +555,7 @@ public:
 	void waitJobs()
 	{
 		BT_PROFILE("waitJobs");
-		// have the main thread work until the job queues are empty
+		
 		int numMainThreadJobsFinished = 0;
 		for (int i = 0; i < m_numActiveJobQueues; ++i)
 		{
@@ -566,11 +566,11 @@ public:
 			}
 		}
 
-		// done with jobs for now, tell workers to rest (but not sleep)
+		
 		setWorkerDirectives(WorkerThreadDirectives::kStayAwakeButIdle);
 
 		btU64 clockStart = m_clock.getTimeMicroseconds();
-		// wait for workers to finish any jobs in progress
+		
 		while (true)
 		{
 			int numWorkerJobsFinished = 0;
@@ -603,8 +603,8 @@ public:
 		int numActiveWorkers = 0;
 		for (int iWorker = 0; iWorker < m_numWorkerThreads; ++iWorker)
 		{
-			// note this count of active workers is not necessarily totally reliable, because a worker thread could be
-			// just about to put itself to sleep. So we may on occasion fail to wake up all the workers. It should be rare.
+			
+			
 			ThreadLocalStorage& storage = m_threadLocalStorage[kFirstWorkerThreadId + iWorker];
 			if (storage.m_status != WorkerThreadStatus::kSleeping)
 			{
@@ -637,7 +637,7 @@ public:
 	virtual void sleepWorkerThreadsHint() BT_OVERRIDE
 	{
 		BT_PROFILE("sleepWorkerThreadsHint");
-		// hint the task scheduler that we may not be using these threads for a little while
+		
 		setWorkerDirectives(WorkerThreadDirectives::kGoToSleep);
 	}
 
@@ -664,18 +664,18 @@ public:
 			typedef ParallelForJob JobType;
 			int jobCount = (iterationCount + grainSize - 1) / grainSize;
 			m_numJobs = jobCount;
-			btAssert(jobCount >= 2);  // need more than one job for multithreading
+			btAssert(jobCount >= 2);  
 			int jobSize = sizeof(JobType);
 
 			for (int i = 0; i < m_numActiveJobQueues; ++i)
 			{
 				m_jobQueues[i].clearQueue(jobCount, jobSize);
 			}
-			// prepare worker threads for incoming work
+			
 			prepareWorkerThreads();
-			// submit all of the jobs
+			
 			int iJob = 0;
-			int iThread = kFirstWorkerThreadId;  // first worker thread
+			int iThread = kFirstWorkerThreadId;  
 			for (int i = iBegin; i < iEnd; i += grainSize)
 			{
 				btAssert(iJob < jobCount);
@@ -684,25 +684,25 @@ public:
 				btAssert(jq);
 				btAssert((jq - &m_jobQueues[0]) < m_numActiveJobQueues);
 				void* jobMem = jq->allocJobMem(jobSize);
-				JobType* job = new (jobMem) ParallelForJob(i, iE, body);  // placement new
+				JobType* job = new (jobMem) ParallelForJob(i, iE, body);  
 				jq->submitJob(job);
 				iJob++;
 				iThread++;
 				if (iThread >= m_numThreads)
 				{
-					iThread = kFirstWorkerThreadId;  // first worker thread
+					iThread = kFirstWorkerThreadId;  
 				}
 			}
 			wakeWorkers(jobCount - 1);
 
-			// put the main thread to work on emptying the job queue and then wait for all workers to finish
+			
 			waitJobs();
 			m_antiNestingLock.unlock();
 		}
 		else
 		{
 			BT_PROFILE("parallelFor_mainThread");
-			// just run on main thread
+			
 			body.forLoop(iBegin, iEnd);
 		}
 	}
@@ -717,24 +717,24 @@ public:
 			typedef ParallelSumJob JobType;
 			int jobCount = (iterationCount + grainSize - 1) / grainSize;
 			m_numJobs = jobCount;
-			btAssert(jobCount >= 2);  // need more than one job for multithreading
+			btAssert(jobCount >= 2);  
 			int jobSize = sizeof(JobType);
 			for (int i = 0; i < m_numActiveJobQueues; ++i)
 			{
 				m_jobQueues[i].clearQueue(jobCount, jobSize);
 			}
 
-			// initialize summation
+			
 			for (int iThread = 0; iThread < m_numThreads; ++iThread)
 			{
 				m_threadLocalStorage[iThread].m_sumResult = btScalar(0);
 			}
 
-			// prepare worker threads for incoming work
+			
 			prepareWorkerThreads();
-			// submit all of the jobs
+			
 			int iJob = 0;
-			int iThread = kFirstWorkerThreadId;  // first worker thread
+			int iThread = kFirstWorkerThreadId;  
 			for (int i = iBegin; i < iEnd; i += grainSize)
 			{
 				btAssert(iJob < jobCount);
@@ -743,21 +743,21 @@ public:
 				btAssert(jq);
 				btAssert((jq - &m_jobQueues[0]) < m_numActiveJobQueues);
 				void* jobMem = jq->allocJobMem(jobSize);
-				JobType* job = new (jobMem) ParallelSumJob(i, iE, body, &m_threadLocalStorage[0]);  // placement new
+				JobType* job = new (jobMem) ParallelSumJob(i, iE, body, &m_threadLocalStorage[0]);  
 				jq->submitJob(job);
 				iJob++;
 				iThread++;
 				if (iThread >= m_numThreads)
 				{
-					iThread = kFirstWorkerThreadId;  // first worker thread
+					iThread = kFirstWorkerThreadId;  
 				}
 			}
 			wakeWorkers(jobCount - 1);
 
-			// put the main thread to work on emptying the job queue and then wait for all workers to finish
+			
 			waitJobs();
 
-			// add up all the thread sums
+			
 			btScalar sum = btScalar(0);
 			for (int iThread = 0; iThread < m_numThreads; ++iThread)
 			{
@@ -769,7 +769,7 @@ public:
 		else
 		{
 			BT_PROFILE("parallelSum_mainThread");
-			// just run on main thread
+			
 			return body.sumLoop(iBegin, iEnd);
 		}
 	}
@@ -782,11 +782,11 @@ btITaskScheduler* btCreateDefaultTaskScheduler()
 	return ts;
 }
 
-#else  // #if BT_THREADSAFE
+#else  
 
 btITaskScheduler* btCreateDefaultTaskScheduler()
 {
 	return NULL;
 }
 
-#endif  // #else // #if BT_THREADSAFE
+#endif  

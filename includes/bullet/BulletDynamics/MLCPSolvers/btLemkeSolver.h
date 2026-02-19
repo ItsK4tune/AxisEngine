@@ -1,18 +1,5 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
-///original version written by Erwin Coumans, October 2013
 
 #ifndef BT_LEMKE_SOLVER_H
 #define BT_LEMKE_SOLVER_H
@@ -20,9 +7,9 @@ subject to the following restrictions:
 #include "btMLCPSolverInterface.h"
 #include "btLemkeAlgorithm.h"
 
-///The btLemkeSolver is based on "Fast Implementation of Lemke’s Algorithm for Rigid Body Contact Simulation (John E. Lloyd) "
-///It is a slower but more accurate solver. Increase the m_maxLoops for better convergence, at the cost of more CPU time.
-///The original implementation of the btLemkeAlgorithm was done by Kilian Grundl from the MBSim team
+
+
+
 class btLemkeSolver : public btMLCPSolverInterface
 {
 protected:
@@ -58,16 +45,16 @@ public:
 				q1[row] = -b[row];
 			}
 
-			//		cout << "A" << endl;
-			//		cout << A << endl;
+			
+			
 
-			/////////////////////////////////////
+			
 
-			//slow matrix inversion, replace with LU decomposition
+			
 			btMatrixXu A1;
 			btMatrixXu B(n, n);
 			{
-				//BT_PROFILE("inverse(slow)");
+				
 				A1.resize(A.rows(), A.cols());
 				for (int row = 0; row < A.rows(); row++)
 				{
@@ -158,7 +145,7 @@ public:
 			}
 
 			btMatrixXu Bb1 = B * b1;
-			//		q = [ (-B*b1 - lo)'   (hi + B*b1)' ]'
+			
 
 			btVectorXu qq;
 			qq.resize(n * 2);
@@ -174,7 +161,7 @@ public:
 			y1.resize(n, 1);
 			btLemkeAlgorithm lemke(M, qq, m_debugLevel);
 			{
-				//BT_PROFILE("lemke.solve");
+				
 				lemke.setSystem(M, qq);
 				z1 = lemke.solve(m_maxLoops);
 			}
@@ -194,7 +181,7 @@ public:
 
 			for (int row = 0; row < n; row++)
 			{
-				solution[row] = x1(row, 0);  //n];
+				solution[row] = x1(row, 0);  
 			}
 
 			int errorIndexMax = -1;
@@ -208,13 +195,13 @@ public:
 				volatile btScalar check = x[i];
 				if (x[i] != check)
 				{
-					//printf("Lemke result is #NAN\n");
+					
 					x.setZero();
 					return false;
 				}
 
-				//this is some hack/safety mechanism, to discard invalid solutions from the Lemke solver
-				//we need to figure out why it happens, and fix it, or detect it properly)
+				
+				
 				if (x[i] > m_maxValue)
 				{
 					if (x[i] > errorValueMax)
@@ -223,7 +210,7 @@ public:
 						errorIndexMax = i;
 						errorValueMax = x[i];
 					}
-					////printf("x[i] = %f,",x[i]);
+					
 				}
 				if (x[i] < -m_maxValue)
 				{
@@ -232,7 +219,7 @@ public:
 						errorIndexMin = i;
 						errorValueMin = x[i];
 						fail = true;
-						//printf("x[i] = %f,",x[i]);
+						
 					}
 				}
 			}
@@ -244,7 +231,7 @@ public:
 				if (errorIndexMax < 0)
 					errorValueMax = 0.f;
 				m_errorCountTimes++;
-				//	printf("Error (x[%d] = %f, x[%d] = %f), resetting %d times\n", errorIndexMin,errorValueMin, errorIndexMax, errorValueMax, errorCountTimes++);
+				
 				for (int i = 0; i < n; i++)
 				{
 					x[i] = 0.f;
@@ -259,7 +246,7 @@ public:
 			if (0 == dimension)
 				return true;
 
-			//		printf("================ solving using Lemke/Newton/Fixpoint\n");
+			
 
 			btVectorXu q;
 			q.resize(dimension);
@@ -274,7 +261,7 @@ public:
 
 			btVectorXu solution = lemke.solve(m_maxLoops);
 
-			//check solution
+			
 
 			bool fail = false;
 			int errorIndexMax = -1;
@@ -292,8 +279,8 @@ public:
 					return false;
 				}
 
-				//this is some hack/safety mechanism, to discard invalid solutions from the Lemke solver
-				//we need to figure out why it happens, and fix it, or detect it properly)
+				
+				
 				if (x[i] > m_maxValue)
 				{
 					if (x[i] > errorValueMax)
@@ -302,7 +289,7 @@ public:
 						errorIndexMax = i;
 						errorValueMax = x[i];
 					}
-					////printf("x[i] = %f,",x[i]);
+					
 				}
 				if (x[i] < -m_maxValue)
 				{
@@ -311,7 +298,7 @@ public:
 						errorIndexMin = i;
 						errorValueMin = x[i];
 						fail = true;
-						//printf("x[i] = %f,",x[i]);
+						
 					}
 				}
 			}
@@ -335,4 +322,4 @@ public:
 	}
 };
 
-#endif  //BT_LEMKE_SOLVER_H
+#endif  

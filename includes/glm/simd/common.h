@@ -1,5 +1,5 @@
-/// @ref simd
-/// @file glm/simd/common.h
+
+
 
 #pragma once
 
@@ -134,14 +134,9 @@ GLM_FUNC_QUALIFIER glm_vec4 glm_vec4_floor(glm_vec4 x)
 #	endif
 }
 
-/* trunc TODO
-GLM_FUNC_QUALIFIER glm_vec4 glm_vec4_trunc(glm_vec4 x)
-{
-	return glm_vec4();
-}
-*/
 
-//roundEven
+
+
 GLM_FUNC_QUALIFIER glm_vec4 glm_vec4_roundEven(glm_vec4 x)
 {
 	glm_vec4 const sgn0 = _mm_castsi128_ps(_mm_set1_epi32(int(0x80000000)));
@@ -215,26 +210,26 @@ GLM_FUNC_QUALIFIER glm_vec4 glm_vec4_smoothstep(glm_vec4 edge0, glm_vec4 edge1, 
 	return mul2;
 }
 
-// Agner Fog method
+
 GLM_FUNC_QUALIFIER glm_vec4 glm_vec4_nan(glm_vec4 x)
 {
-	glm_ivec4 const t1 = _mm_castps_si128(x);						// reinterpret as 32-bit integer
-	glm_ivec4 const t2 = _mm_sll_epi32(t1, _mm_cvtsi32_si128(1));	// shift out sign bit
-	glm_ivec4 const t3 = _mm_set1_epi32(int(0xFF000000));				// exponent mask
-	glm_ivec4 const t4 = _mm_and_si128(t2, t3);						// exponent
-	glm_ivec4 const t5 = _mm_andnot_si128(t3, t2);					// fraction
+	glm_ivec4 const t1 = _mm_castps_si128(x);						
+	glm_ivec4 const t2 = _mm_sll_epi32(t1, _mm_cvtsi32_si128(1));	
+	glm_ivec4 const t3 = _mm_set1_epi32(int(0xFF000000));				
+	glm_ivec4 const t4 = _mm_and_si128(t2, t3);						
+	glm_ivec4 const t5 = _mm_andnot_si128(t3, t2);					
 	glm_ivec4 const Equal = _mm_cmpeq_epi32(t3, t4);
 	glm_ivec4 const Nequal = _mm_cmpeq_epi32(t5, _mm_setzero_si128());
 	glm_ivec4 const And = _mm_and_si128(Equal, Nequal);
-	return _mm_castsi128_ps(And);									// exponent = all 1s and fraction != 0
+	return _mm_castsi128_ps(And);									
 }
 
-// Agner Fog method
+
 GLM_FUNC_QUALIFIER glm_vec4 glm_vec4_inf(glm_vec4 x)
 {
-	glm_ivec4 const t1 = _mm_castps_si128(x);										// reinterpret as 32-bit integer
-	glm_ivec4 const t2 = _mm_sll_epi32(t1, _mm_cvtsi32_si128(1));					// shift out sign bit
-	return _mm_castsi128_ps(_mm_cmpeq_epi32(t2, _mm_set1_epi32(int(0xFF000000))));		// exponent is all 1s, fraction is 0
+	glm_ivec4 const t1 = _mm_castps_si128(x);										
+	glm_ivec4 const t2 = _mm_sll_epi32(t1, _mm_cvtsi32_si128(1));					
+	return _mm_castsi128_ps(_mm_cmpeq_epi32(t2, _mm_set1_epi32(int(0xFF000000))));		
 }
 
-#endif//GLM_ARCH & GLM_ARCH_SSE2_BIT
+#endif

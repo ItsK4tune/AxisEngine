@@ -1,44 +1,23 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2008 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the
-use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it
-freely,
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not
-claim that you wrote the original software. If you use this software in a
-product, an acknowledgment in the product documentation would be appreciated
-but is not required.
-2. Altered source versions must be plainly marked as such, and must not be
-misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
-/*
-GJK-EPA collision solver by Nathanael Presson, 2008
-*/
 #include "BulletCollision/CollisionShapes/btConvexInternalShape.h"
 #include "BulletCollision/CollisionShapes/btSphereShape.h"
 #include "btGjkEpa2.h"
 
 #if defined(DEBUG) || defined(_DEBUG)
-#include <stdio.h>  //for debug printf
+#include <stdio.h>  
 #ifdef __SPU__
 #include <spu_printf.h>
 #define printf spu_printf
-#endif  //__SPU__
+#endif  
 #endif
 
 namespace gjkepa2_impl
 {
-// Config
 
-/* GJK	*/
+
+
 #define GJK_MAX_ITERATIONS 128
 
 #ifdef BT_USE_DOUBLE_PRECISION
@@ -49,13 +28,13 @@ namespace gjkepa2_impl
 #define GJK_ACCURACY ((btScalar)0.0001)
 #define GJK_MIN_DISTANCE ((btScalar)0.0001)
 #define GJK_DUPLICATED_EPS ((btScalar)0.0001)
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 #define GJK_SIMPLEX2_EPS ((btScalar)0.0)
 #define GJK_SIMPLEX3_EPS ((btScalar)0.0)
 #define GJK_SIMPLEX4_EPS ((btScalar)0.0)
 
-/* EPA	*/
+
 #define EPA_MAX_VERTICES 128
 #define EPA_MAX_ITERATIONS 255
 
@@ -72,11 +51,11 @@ namespace gjkepa2_impl
 #define EPA_FALLBACK (10 * EPA_ACCURACY)
 #define EPA_MAX_FACES (EPA_MAX_VERTICES * 2)
 
-// Shorthands
+
 typedef unsigned int U;
 typedef unsigned char U1;
 
-// MinkowskiDiff
+
 struct MinkowskiDiff
 {
 	const btConvexShape* m_shapes[2];
@@ -86,7 +65,7 @@ struct MinkowskiDiff
 	bool m_enableMargin;
 #else
 	btVector3 (btConvexShape::*Ls)(const btVector3&) const;
-#endif  //__SPU__
+#endif  
 
 	MinkowskiDiff()
 	{
@@ -134,7 +113,7 @@ struct MinkowskiDiff
 	{
 		return (m_toshape0 * ((m_shapes[1])->*(Ls))(m_toshape1 * d));
 	}
-#endif  //__SPU__
+#endif  
 
 	inline btVector3 Support(const btVector3& d) const
 	{
@@ -151,10 +130,10 @@ struct MinkowskiDiff
 
 typedef MinkowskiDiff tShape;
 
-// GJK
+
 struct GJK
 {
-	/* Types		*/
+	
 	struct sSV
 	{
 		btVector3 d, w;
@@ -174,7 +153,7 @@ struct GJK
 			Failed
 		};
 	};
-	/* Fields		*/
+	
 	tShape m_shape;
 	btVector3 m_ray;
 	btScalar m_distance;
@@ -185,7 +164,7 @@ struct GJK
 	U m_current;
 	sSimplex* m_simplex;
 	eStatus::_ m_status;
-	/* Methods		*/
+	
 	GJK()
 	{
 		Initialize();
@@ -205,7 +184,7 @@ struct GJK
 		btScalar alpha = 0;
 		btVector3 lastw[4];
 		U clastw = 0;
-		/* Initialize solver		*/
+		
 		m_free[0] = &m_store[0];
 		m_free[1] = &m_store[1];
 		m_free[2] = &m_store[2];
@@ -215,7 +194,7 @@ struct GJK
 		m_status = eStatus::Valid;
 		m_shape = shapearg;
 		m_distance = 0;
-		/* Initialize simplex		*/
+		
 		m_simplices[0].rank = 0;
 		m_ray = guess;
 		const btScalar sqrl = m_ray.length2();
@@ -227,20 +206,20 @@ struct GJK
 			lastw[1] =
 				lastw[2] =
 					lastw[3] = m_ray;
-		/* Loop						*/
+		
 		do
 		{
 			const U next = 1 - m_current;
 			sSimplex& cs = m_simplices[m_current];
 			sSimplex& ns = m_simplices[next];
-			/* Check zero							*/
+			
 			const btScalar rl = m_ray.length();
 			if (rl < GJK_MIN_DISTANCE)
-			{ /* Touching or inside				*/
+			{ 
 				m_status = eStatus::Inside;
 				break;
 			}
-			/* Append new vertice in -'v' direction	*/
+			
 			appendvertice(cs, -m_ray);
 			const btVector3& w = cs.c[cs.rank - 1]->w;
 			bool found = false;
@@ -253,23 +232,23 @@ struct GJK
 				}
 			}
 			if (found)
-			{ /* Return old simplex				*/
+			{ 
 				removevertice(m_simplices[m_current]);
 				break;
 			}
 			else
-			{ /* Update lastw					*/
+			{ 
 				lastw[clastw = (clastw + 1) & 3] = w;
 			}
-			/* Check for termination				*/
+			
 			const btScalar omega = btDot(m_ray, w) / rl;
 			alpha = btMax(omega, alpha);
 			if (((rl - alpha) - (GJK_ACCURACY * rl)) <= 0)
-			{ /* Return old simplex				*/
+			{ 
 				removevertice(m_simplices[m_current]);
 				break;
 			}
-			/* Reduce simplex						*/
+			
 			btScalar weights[4];
 			U mask = 0;
 			switch (cs.rank)
@@ -294,7 +273,7 @@ struct GJK
 					break;
 			}
 			if (sqdist >= 0)
-			{ /* Valid	*/
+			{ 
 				ns.rank = 0;
 				m_ray = btVector3(0, 0, 0);
 				m_current = next;
@@ -314,7 +293,7 @@ struct GJK
 				if (mask == 15) m_status = eStatus::Inside;
 			}
 			else
-			{ /* Return old simplex				*/
+			{ 
 				removevertice(m_simplices[m_current]);
 				break;
 			}
@@ -400,7 +379,7 @@ struct GJK
 		}
 		return (false);
 	}
-	/* Internals	*/
+	
 	void getsupport(const btVector3& d, sSV& sv) const
 	{
 		sv.d = d / d.length();
@@ -551,10 +530,10 @@ struct GJK
 	}
 };
 
-// EPA
+
 struct EPA
 {
-	/* Types		*/
+	
 	typedef GJK::sSV sSV;
 	struct sFace
 	{
@@ -595,7 +574,7 @@ struct EPA
 			Failed
 		};
 	};
-	/* Fields		*/
+	
 	eStatus::_ m_status;
 	GJK::sSimplex m_result;
 	btVector3 m_normal;
@@ -605,7 +584,7 @@ struct EPA
 	U m_nextsv;
 	sList m_hull;
 	sList m_stock;
-	/* Methods		*/
+	
 	EPA()
 	{
 		Initialize();
@@ -650,7 +629,7 @@ struct EPA
 		GJK::sSimplex& simplex = *gjk.m_simplex;
 		if ((simplex.rank > 1) && gjk.EncloseOrigin())
 		{
-			/* Clean up				*/
+			
 			while (m_hull.root)
 			{
 				sFace* f = m_hull.root;
@@ -659,7 +638,7 @@ struct EPA
 			}
 			m_status = eStatus::Valid;
 			m_nextsv = 0;
-			/* Orient simplex		*/
+			
 			if (gjk.det(simplex.c[0]->w - simplex.c[3]->w,
 						simplex.c[1]->w - simplex.c[3]->w,
 						simplex.c[2]->w - simplex.c[3]->w) < 0)
@@ -667,7 +646,7 @@ struct EPA
 				btSwap(simplex.c[0], simplex.c[1]);
 				btSwap(simplex.p[0], simplex.p[1]);
 			}
-			/* Build initial hull	*/
+			
 			sFace* tetra[] = {newface(simplex.c[0], simplex.c[1], simplex.c[2], true),
 							  newface(simplex.c[1], simplex.c[0], simplex.c[3], true),
 							  newface(simplex.c[2], simplex.c[1], simplex.c[3], true),
@@ -752,7 +731,7 @@ struct EPA
 				return (m_status);
 			}
 		}
-		/* Fallback		*/
+		
 		m_status = eStatus::FallBack;
 		m_normal = -guess;
 		const btScalar nl = m_normal.length();
@@ -769,12 +748,12 @@ struct EPA
 	bool getedgedist(sFace* face, sSV* a, sSV* b, btScalar& dist)
 	{
 		const btVector3 ba = b->w - a->w;
-		const btVector3 n_ab = btCross(ba, face->n);   // Outward facing edge normal direction, on triangle plane
-		const btScalar a_dot_nab = btDot(a->w, n_ab);  // Only care about the sign to determine inside/outside, so not normalization required
+		const btVector3 n_ab = btCross(ba, face->n);   
+		const btScalar a_dot_nab = btDot(a->w, n_ab);  
 
 		if (a_dot_nab < 0)
 		{
-			// Outside of edge a->b
+			
 
 			const btScalar ba_l2 = ba.length2();
 			const btScalar a_dot_ba = btDot(a->w, ba);
@@ -782,17 +761,17 @@ struct EPA
 
 			if (a_dot_ba > 0)
 			{
-				// Pick distance vertex a
+				
 				dist = a->w.length();
 			}
 			else if (b_dot_ba < 0)
 			{
-				// Pick distance vertex b
+				
 				dist = b->w.length();
 			}
 			else
 			{
-				// Pick distance to edge a->b
+				
 				const btScalar a_dot_b = btDot(a->w, b->w);
 				dist = btSqrt(btMax((a->w.length2() * b->w.length2() - a_dot_b * a_dot_b) / ba_l2, (btScalar)0));
 			}
@@ -823,8 +802,8 @@ struct EPA
 					  getedgedist(face, b, c, face->d) ||
 					  getedgedist(face, c, a, face->d)))
 				{
-					// Origin projects to the interior of the triangle
-					// Use distance to triangle plane
+					
+					
 					face->d = btDot(a->w, face->n) / l;
 				}
 
@@ -900,18 +879,18 @@ struct EPA
 	}
 };
 
-//
+
 static void Initialize(const btConvexShape* shape0, const btTransform& wtrs0,
 					   const btConvexShape* shape1, const btTransform& wtrs1,
 					   btGjkEpaSolver2::sResults& results,
 					   tShape& shape,
 					   bool withmargins)
 {
-	/* Results		*/
+	
 	results.witnesses[0] =
 		results.witnesses[1] = btVector3(0, 0, 0);
 	results.status = btGjkEpaSolver2::sResults::Separated;
-	/* Shape		*/
+	
 	shape.m_shapes[0] = shape0;
 	shape.m_shapes[1] = shape1;
 	shape.m_toshape1 = wtrs1.getBasis().transposeTimes(wtrs0.getBasis());
@@ -919,21 +898,21 @@ static void Initialize(const btConvexShape* shape0, const btTransform& wtrs0,
 	shape.EnableMargin(withmargins);
 }
 
-}  // namespace gjkepa2_impl
+}  
 
-//
-// Api
-//
+
+
+
 
 using namespace gjkepa2_impl;
 
-//
+
 int btGjkEpaSolver2::StackSizeRequirement()
 {
 	return (sizeof(GJK) + sizeof(EPA));
 }
 
-//
+
 bool btGjkEpaSolver2::Distance(const btConvexShape* shape0,
 							   const btTransform& wtrs0,
 							   const btConvexShape* shape1,
@@ -969,7 +948,7 @@ bool btGjkEpaSolver2::Distance(const btConvexShape* shape0,
 	}
 }
 
-//
+
 bool btGjkEpaSolver2::Penetration(const btConvexShape* shape0,
 								  const btTransform& wtrs0,
 								  const btConvexShape* shape1,
@@ -1017,7 +996,7 @@ bool btGjkEpaSolver2::Penetration(const btConvexShape* shape0,
 }
 
 #ifndef __SPU__
-//
+
 btScalar btGjkEpaSolver2::SignedDistance(const btVector3& position,
 										 btScalar margin,
 										 const btConvexShape* shape0,
@@ -1070,7 +1049,7 @@ btScalar btGjkEpaSolver2::SignedDistance(const btVector3& position,
 	return (SIMD_INFINITY);
 }
 
-//
+
 bool btGjkEpaSolver2::SignedDistance(const btConvexShape* shape0,
 									 const btTransform& wtrs0,
 									 const btConvexShape* shape1,
@@ -1083,9 +1062,9 @@ bool btGjkEpaSolver2::SignedDistance(const btConvexShape* shape0,
 	else
 		return (true);
 }
-#endif  //__SPU__
+#endif  
 
-/* Symbols cleanup		*/
+
 
 #undef GJK_MAX_ITERATIONS
 #undef GJK_ACCURACY

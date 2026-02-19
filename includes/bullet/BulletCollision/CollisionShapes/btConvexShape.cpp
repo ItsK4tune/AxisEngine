@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #if defined(_WIN32) || defined(__i386__)
 #define BT_USE_SSE_IN_API
@@ -26,7 +13,7 @@ subject to the following restrictions:
 #include "btConvexHullShape.h"
 #include "btConvexPointCloudShape.h"
 
-///not supported on IBM SDK, until we fix the alignment of btVector3
+
 #if defined(__CELLOS_LV2__) && defined(__SPU__)
 #include <spu_intrinsics.h>
 static inline vec_float4 vec_dot3(vec_float4 vec0, vec_float4 vec1)
@@ -36,7 +23,7 @@ static inline vec_float4 vec_dot3(vec_float4 vec0, vec_float4 vec1)
 	result = spu_madd(spu_rlqwbyte(vec0, 4), spu_rlqwbyte(vec1, 4), result);
 	return spu_madd(spu_rlqwbyte(vec0, 8), spu_rlqwbyte(vec1, 8), result);
 }
-#endif  //__SPU__
+#endif  
 
 btConvexShape::btConvexShape()
 {
@@ -125,7 +112,7 @@ static btVector3 convexHullSupport(const btVector3& localDirOrg, const btVector3
 	}
 	btVector3 supVec = points[ptIndex] * localScaling;
 	return supVec;
-#endif  //__SPU__
+#endif  
 }
 
 btVector3 btConvexShape::localGetSupportVertexWithoutMarginNonVirtual(const btVector3& localDir) const
@@ -167,7 +154,7 @@ btVector3 btConvexShape::localGetSupportVertexWithoutMarginNonVirtual(const btVe
 		case CYLINDER_SHAPE_PROXYTYPE:
 		{
 			btCylinderShape* cylShape = (btCylinderShape*)this;
-			//mapping of halfextents/dimension onto radius/height depends on how cylinder local orientation is (upAxis)
+			
 
 			btVector3 halfExtents = cylShape->getImplicitShapeDimensions();
 			btVector3 v(localDir.getX(), localDir.getY(), localDir.getZ());
@@ -299,7 +286,7 @@ btVector3 btConvexShape::localGetSupportVertexWithoutMarginNonVirtual(const btVe
 #endif
 	}
 
-	// should never reach here
+	
 	btAssert(0);
 	return btVector3(btScalar(0.0f), btScalar(0.0f), btScalar(0.0f));
 }
@@ -316,7 +303,7 @@ btVector3 btConvexShape::localGetSupportVertexNonVirtual(const btVector3& localD
 	return localGetSupportVertexWithoutMarginNonVirtual(localDirNorm) + getMarginNonVirtual() * localDirNorm;
 }
 
-/* TODO: This should be bumped up to btCollisionShape () */
+
 btScalar btConvexShape::getMarginNonVirtual() const
 {
 	switch (m_shapeType)
@@ -352,7 +339,7 @@ btScalar btConvexShape::getMarginNonVirtual() const
 			return capsuleShape->getMarginNV();
 		}
 		case CONVEX_POINT_CLOUD_SHAPE_PROXYTYPE:
-		/* fall through */
+		
 		case CONVEX_HULL_SHAPE_PROXYTYPE:
 		{
 			btPolyhedralConvexShape* convexHullShape = (btPolyhedralConvexShape*)this;
@@ -366,7 +353,7 @@ btScalar btConvexShape::getMarginNonVirtual() const
 #endif
 	}
 
-	// should never reach here
+	
 	btAssert(0);
 	return btScalar(0.0f);
 }
@@ -378,7 +365,7 @@ void btConvexShape::getAabbNonVirtual(const btTransform& t, btVector3& aabbMin, 
 		case SPHERE_SHAPE_PROXYTYPE:
 		{
 			btSphereShape* sphereShape = (btSphereShape*)this;
-			btScalar radius = sphereShape->getImplicitShapeDimensions().getX();  // * convexShape->getLocalScaling().getX();
+			btScalar radius = sphereShape->getImplicitShapeDimensions().getX();  
 			btScalar margin = radius + sphereShape->getMarginNonVirtual();
 			const btVector3& center = t.getOrigin();
 			btVector3 extent(margin, margin, margin);
@@ -387,7 +374,7 @@ void btConvexShape::getAabbNonVirtual(const btTransform& t, btVector3& aabbMin, 
 		}
 		break;
 		case CYLINDER_SHAPE_PROXYTYPE:
-		/* fall through */
+		
 		case BOX_SHAPE_PROXYTYPE:
 		{
 			btBoxShape* convexShape = (btBoxShape*)this;
@@ -451,8 +438,8 @@ void btConvexShape::getAabbNonVirtual(const btTransform& t, btVector3& aabbMin, 
 			break;
 	}
 
-	// should never reach here
+	
 	btAssert(0);
 }
 
-#endif  //__SPU__
+#endif  

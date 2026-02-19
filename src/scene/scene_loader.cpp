@@ -40,17 +40,41 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
     using HandlerFunc = std::function<void(std::stringstream&)>;
     std::unordered_map<std::string, HandlerFunc> dispatchMap;
 
-    // Resource loading commands
+    
     dispatchMap["LOAD_SHADER"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadShader(ss, res); };
     dispatchMap["LOAD_MODEL"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadModel(ss, res, false); };
     dispatchMap["LOAD_STATIC_MODEL"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadModel(ss, res, true); };
     dispatchMap["LOAD_ANIMATION"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadAnimation(ss, res); };
     dispatchMap["LOAD_FONT"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadFont(ss, res); };
     dispatchMap["LOAD_SOUND"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadSound(ss, res, sound); };
+    dispatchMap["LOAD_SOUND"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadSound(ss, res, sound); };
     dispatchMap["LOAD_SKYBOX"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadSkybox(ss, res); };
+
+    
+    dispatchMap["GRAPHICS_API"] = [&](std::stringstream& ss) { 
+        std::string req; 
+        if (ss >> req && app) {
+            if (app->GetConfig().graphicsBackend != req)
+                LOGGER_WARN("SceneLoader") << "Scene requires GRAPHICS_API '" << req << "' but engine is running '" << app->GetConfig().graphicsBackend << "'. Visuals may be incorrect.";
+        }
+    };
+    dispatchMap["PHYSICS_ENGINE"] = [&](std::stringstream& ss) { 
+        std::string req; 
+        if (ss >> req && app) {
+            if (app->GetConfig().physicsBackend != req)
+                LOGGER_WARN("SceneLoader") << "Scene requires PHYSICS_ENGINE '" << req << "' but engine is running '" << app->GetConfig().physicsBackend << "'. Physics interactions may be incorrect.";
+        }
+    };
+    dispatchMap["AUDIO_ENGINE"] = [&](std::stringstream& ss) { 
+        std::string req; 
+        if (ss >> req && app) {
+            if (app->GetConfig().audioBackend != req)
+                LOGGER_WARN("SceneLoader") << "Scene requires AUDIO_ENGINE '" << req << "' but engine is running '" << app->GetConfig().audioBackend << "'. Audio may be silent.";
+        }
+    };
     dispatchMap["LOAD_PARTICLE"] = [&](std::stringstream& ss) { SceneHandlers::ResourceCommandHandler::HandleLoadParticle(ss, res); };
 
-    // Entity commands
+    
     dispatchMap["NEW_ENTITY"] = [&](std::stringstream& ss) { 
         currentEntity = SceneHandlers::EntityCommandHandler::HandleNewEntity(ss, scene);
         loadedEntities.push_back(currentEntity);
@@ -59,7 +83,7 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
     dispatchMap["PARENT"] = [&](std::stringstream& ss) { SceneHandlers::EntityCommandHandler::HandleParent(ss, scene, currentEntity); };
     dispatchMap["CHILDREN"] = [&](std::stringstream& ss) { SceneHandlers::EntityCommandHandler::HandleChildren(ss, currentEntity, deferredChildren); };
 
-    // Component commands
+    
     dispatchMap["RENDERER"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleRenderer(ss, scene, currentEntity, res); };
     dispatchMap["ANIMATOR"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleAnimator(ss, scene, currentEntity, res); };
     dispatchMap["MATERIAL"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleMaterial(ss, scene, currentEntity); };

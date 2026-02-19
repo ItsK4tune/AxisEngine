@@ -1,18 +1,5 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2013 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
-///original version written by Erwin Coumans, October 2013
 
 #include "btMLCPSolver.h"
 #include "LinearMath/btMatrixX.h"
@@ -41,11 +28,11 @@ btScalar btMLCPSolver::solveGroupCacheFriendlySetup(btCollisionObject** bodies, 
 
 		int numFrictionPerContact = m_tmpSolverContactConstraintPool.size() == m_tmpSolverContactFrictionConstraintPool.size() ? 1 : 2;
 
-		//	int numBodies = m_tmpSolverBodyPool.size();
+		
 		m_allConstraintPtrArray.resize(0);
 		m_limitDependencies.resize(m_tmpSolverNonContactConstraintPool.size() + m_tmpSolverContactConstraintPool.size() + m_tmpSolverContactFrictionConstraintPool.size());
 		btAssert(m_limitDependencies.size() == m_tmpSolverNonContactConstraintPool.size() + m_tmpSolverContactConstraintPool.size() + m_tmpSolverContactFrictionConstraintPool.size());
-		//	printf("m_limitDependencies.size() = %d\n",m_limitDependencies.size());
+		
 
 		int dindex = 0;
 		for (int i = 0; i < m_tmpSolverNonContactConstraintPool.size(); i++)
@@ -54,7 +41,7 @@ btScalar btMLCPSolver::solveGroupCacheFriendlySetup(btCollisionObject** bodies, 
 			m_limitDependencies[dindex++] = -1;
 		}
 
-		///The btSequentialImpulseConstraintSolver moves all friction constraints at the very end, we can also interleave them instead
+		
 
 		int firstContactConstraintOffset = dindex;
 
@@ -120,12 +107,12 @@ bool btMLCPSolver::solveMLCP(const btContactSolverInfo& infoGlobal)
 	if (m_A.rows() == 0)
 		return true;
 
-	//if using split impulse, we solve 2 separate (M)LCPs
+	
 	if (infoGlobal.m_splitImpulse)
 	{
 		btMatrixXu Acopy = m_A;
 		btAlignedObjectArray<int> limitDependenciesCopy = m_limitDependencies;
-		//		printf("solve first LCP\n");
+		
 		result = m_solver->solveMLCP(m_A, m_b, m_x, m_lo, m_hi, m_limitDependencies, infoGlobal.m_numIterations);
 		if (result)
 			result = m_solver->solveMLCP(Acopy, m_bSplit, m_xSplit, m_lo, m_hi, limitDependenciesCopy, infoGlobal.m_numIterations);
@@ -139,9 +126,9 @@ bool btMLCPSolver::solveMLCP(const btContactSolverInfo& infoGlobal)
 
 struct btJointNode
 {
-	int jointIndex;          // pointer to enclosing dxJoint object
-	int otherBodyIndex;      // *other* body this joint is connected to
-	int nextJointNodeIndex;  //-1 for null
+	int jointIndex;          
+	int otherBodyIndex;      
+	int nextJointNodeIndex;  
 	int constraintRowIndex;
 };
 
@@ -170,8 +157,8 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 		}
 	}
 
-	//	btScalar* w = 0;
-	//	int nub = 0;
+	
+	
 
 	m_lo.resize(numConstraintRows);
 	m_hi.resize(numConstraintRows);
@@ -181,7 +168,7 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 
 		for (int i = 0; i < numConstraintRows; i++)
 		{
-			if (0)  //m_limitDependencies[i]>=0)
+			if (0)  
 			{
 				m_lo[i] = -BT_INFINITY;
 				m_hi[i] = BT_INFINITY;
@@ -194,7 +181,7 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 		}
 	}
 
-	//
+	
 	int m = m_allConstraintPtrArray.size();
 
 	int numBodies = m_tmpSolverBodyPool.size();
@@ -249,9 +236,9 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 			{
 				{
 					int slotA = -1;
-					//find free jointNode slot for sbA
+					
 					slotA = jointNodeArray.size();
-					jointNodeArray.expand();  //NonInitializing();
+					jointNodeArray.expand();  
 					int prevSlot = bodyJointNodeArray[sbA];
 					bodyJointNodeArray[sbA] = slotA;
 					jointNodeArray[slotA].nextJointNodeIndex = prevSlot;
@@ -285,9 +272,9 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 			{
 				{
 					int slotB = -1;
-					//find free jointNode slot for sbA
+					
 					slotB = jointNodeArray.size();
-					jointNodeArray.expand();  //NonInitializing();
+					jointNodeArray.expand();  
 					int prevSlot = bodyJointNodeArray[sbB];
 					bodyJointNodeArray[sbB] = slotB;
 					jointNodeArray[slotB].nextJointNodeIndex = prevSlot;
@@ -322,7 +309,7 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 		}
 	}
 
-	//compute JinvM = J*invM.
+	
 	const btScalar* JinvM = JinvM3.getBufferPointer();
 
 	const btScalar* Jptr = J3.getBufferPointer();
@@ -344,8 +331,8 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 			int row__ = ofs[c];
 			int sbA = m_allConstraintPtrArray[i]->m_solverBodyIdA;
 			int sbB = m_allConstraintPtrArray[i]->m_solverBodyIdB;
-			//	btRigidBody* orgBodyA = m_tmpSolverBodyPool[sbA].m_originalBody;
-			//	btRigidBody* orgBodyB = m_tmpSolverBodyPool[sbB].m_originalBody;
+			
+			
 
 			numRows = i < m_tmpSolverNonContactConstraintPool.size() ? m_tmpConstraintSizesPool[c].m_numConstraintRows : numContactRows;
 
@@ -361,7 +348,7 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 					{
 						int numRowsOther = cr0 < m_tmpSolverNonContactConstraintPool.size() ? m_tmpConstraintSizesPool[j0].m_numConstraintRows : numContactRows;
 						size_t ofsother = (m_allConstraintPtrArray[cr0]->m_solverBodyIdB == sbA) ? 8 * numRowsOther : 0;
-						//printf("%d joint i %d and j0: %d: ",count++,i,j0);
+						
 						m_A.multiplyAdd2_p8r(JinvMrow,
 											 Jptr + 2 * 8 * (size_t)ofs[j0] + ofsother, numRows, numRowsOther, row__, ofs[j0]);
 					}
@@ -390,7 +377,7 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 
 		{
 			BT_PROFILE("compute diagonal");
-			// compute diagonal blocks of m_A
+			
 
 			int row__ = 0;
 			int numJointRows = m_allConstraintPtrArray.size();
@@ -398,9 +385,9 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 			int jj = 0;
 			for (; row__ < numJointRows;)
 			{
-				//int sbA = m_allConstraintPtrArray[row__]->m_solverBodyIdA;
+				
 				int sbB = m_allConstraintPtrArray[row__]->m_solverBodyIdB;
-				//	btRigidBody* orgBodyA = m_tmpSolverBodyPool[sbA].m_originalBody;
+				
 				btRigidBody* orgBodyB = m_tmpSolverBodyPool[sbB].m_originalBody;
 
 				const unsigned int infom = row__ < m_tmpSolverNonContactConstraintPool.size() ? m_tmpConstraintSizesPool[jj].m_numConstraintRows : numContactRows;
@@ -420,14 +407,14 @@ void btMLCPSolver::createMLCPFast(const btContactSolverInfo& infoGlobal)
 
 	if (1)
 	{
-		// add cfm to the diagonal of m_A
+		
 		for (int i = 0; i < m_A.rows(); ++i)
 		{
 			m_A.setElem(i, i, m_A(i, i) + infoGlobal.m_globalCfm / infoGlobal.m_timeStep);
 		}
 	}
 
-	///fill the upper triangle of the matrix, to make it symmetric
+	
 	{
 		BT_PROFILE("fill the upper triangle ");
 		m_A.copyLowerToUpperTriangle();
@@ -532,7 +519,7 @@ void btMLCPSolver::createMLCP(const btContactSolverInfo& infoGlobal)
 	J_transpose = J.transpose();
 
 	btMatrixXu& tmp = m_scratchTmp;
-	//Minv.printMatrix("Minv=");
+	
 	{
 		{
 			BT_PROFILE("J*Minv");
@@ -543,10 +530,10 @@ void btMLCPSolver::createMLCP(const btContactSolverInfo& infoGlobal)
 			m_A = tmp * J_transpose;
 		}
 	}
-	//J.printMatrix("J");
+	
 	if (1)
 	{
-		// add cfm to the diagonal of m_A
+		
 		for (int i = 0; i < m_A.rows(); ++i)
 		{
 			m_A.setElem(i, i, m_A(i, i) + infoGlobal.m_globalCfm / infoGlobal.m_timeStep);
@@ -556,7 +543,7 @@ void btMLCPSolver::createMLCP(const btContactSolverInfo& infoGlobal)
 	m_x.resize(numConstraintRows);
 	if (infoGlobal.m_splitImpulse)
 		m_xSplit.resize(numConstraintRows);
-	//	m_x.setZero();
+	
 
 	for (int i = 0; i < m_allConstraintPtrArray.size(); i++)
 	{
@@ -572,11 +559,11 @@ btScalar btMLCPSolver::solveGroupCacheFriendlyIterations(btCollisionObject** bod
 	bool result = true;
 	{
 		BT_PROFILE("solveMLCP");
-		//		printf("m_A(%d,%d)\n", m_A.rows(),m_A.cols());
+		
 		result = solveMLCP(infoGlobal);
 	}
 
-	//check if solution is valid, and otherwise fallback to btSequentialImpulseConstraintSolver::solveGroupCacheFriendlyIterations
+	
 	if (result)
 	{
 		BT_PROFILE("process MLCP results");
@@ -586,8 +573,8 @@ btScalar btMLCPSolver::solveGroupCacheFriendlyIterations(btCollisionObject** bod
 				btSolverConstraint& c = *m_allConstraintPtrArray[i];
 				int sbA = c.m_solverBodyIdA;
 				int sbB = c.m_solverBodyIdB;
-				//btRigidBody* orgBodyA = m_tmpSolverBodyPool[sbA].m_originalBody;
-				//	btRigidBody* orgBodyB = m_tmpSolverBodyPool[sbB].m_originalBody;
+				
+				
 
 				btSolverBody& solverBodyA = m_tmpSolverBodyPool[sbA];
 				btSolverBody& solverBodyB = m_tmpSolverBodyPool[sbB];
@@ -611,7 +598,7 @@ btScalar btMLCPSolver::solveGroupCacheFriendlyIterations(btCollisionObject** bod
 	}
 	else
 	{
-		//	printf("m_fallback = %d\n",m_fallback);
+		
 		m_fallback++;
 		btSequentialImpulseConstraintSolver::solveGroupCacheFriendlyIterations(bodies, numBodies, manifoldPtr, numManifolds, constraints, numConstraints, infoGlobal, debugDrawer);
 	}

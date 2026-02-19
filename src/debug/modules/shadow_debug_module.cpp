@@ -14,17 +14,17 @@ void ShadowDebugModule::Init(Application *app)
 
 void ShadowDebugModule::OnUpdate(float dt)
 {
-    // Reserved for future implementation
+    
 }
 
 void ShadowDebugModule::Render(Scene &scene)
 {
-    // Reserved for future implementation
+    
 }
 
 void ShadowDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    // Reserved for future implementation
+    
 }
 
 #endif

@@ -3,19 +3,19 @@
 #include <utils/logger.h>
 #include <iostream>
 
-// Helper to map GLFW keys to Input::Key
-// We cast implementation detail to int because the callback interface uses int (for now, to avoid circular dependency issues if not handled carefully, 
-// though we usually just cast back to enum).
-// Actually, IWindow defines KeyCallback as (int, int, int, int). It should probably use Input::Key enum.
-// But keeping it int for flexibility allows raw codes too. I will pass the raw GLFW key as scancode? 
-// No, the callback usually expects abstract keys. 
-// But wait, the standard usually is converting AT the source.
-// Let's implement conversion here.
+
+
+
+
+
+
+
+
 
 
 
 namespace {
-    // Helper functions removed, replaced by GLFWTranslator
+    
 }
 
 GLFWWindow::GLFWWindow() {}
@@ -44,7 +44,7 @@ bool GLFWWindow::Init(int width, int height, const std::string& title) {
     glfwMakeContextCurrent(m_Window);
     glfwSetWindowUserPointer(m_Window, this);
 
-    // Set callbacks
+    
     glfwSetFramebufferSizeCallback(m_Window, framebuffer_size_callback);
     glfwSetKeyCallback(m_Window, key_callback);
     glfwSetMouseButtonCallback(m_Window, mouse_button_callback);
@@ -202,7 +202,7 @@ void GLFWWindow::SetCursorPos(double x, double y) {
     if (m_Window) glfwSetCursorPos(m_Window, x, y);
 }
 
-// Static callbacks
+
 void GLFWWindow::framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self) {
@@ -215,7 +215,7 @@ void GLFWWindow::framebuffer_size_callback(GLFWwindow* window, int width, int he
 void GLFWWindow::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self && self->m_KeyCallback) {
-        // Convert GLFW key to int (Input::Key)
+        
         self->m_KeyCallback((int)GLFWTranslator::ToInputKey(key), scancode, action, mods);
     }
 }

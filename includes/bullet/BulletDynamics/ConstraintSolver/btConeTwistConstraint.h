@@ -1,33 +1,6 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-btConeTwistConstraint is Copyright (c) 2007 Starbreeze Studios
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
 
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
 
-Written by: Marcus Hennix
-*/
-
-/*
-Overview:
-
-btConeTwistConstraint can be used to simulate ragdoll joints (upper arm, leg etc).
-It is a fixed translation, 3 degree-of-freedom (DOF) rotational "joint".
-It divides the 3 rotational DOFs into swing (movement within a cone) and twist.
-Swing is divided into swing1 and swing2 which can have different limits, giving an elliptical shape.
-(Note: the cone's base isn't flat, so this ellipse is "embedded" on the surface of a sphere.)
-
-In the contraint's frame of reference:
-twist is along the x-axis,
-and swing 1 and 2 are along the z and y axes respectively.
-*/
 
 #ifndef BT_CONETWISTCONSTRAINT_H
 #define BT_CONETWISTCONSTRAINT_H
@@ -42,7 +15,7 @@ and swing 1 and 2 are along the z and y axes respectively.
 #else
 #define btConeTwistConstraintData2 btConeTwistConstraintData
 #define btConeTwistConstraintDataName "btConeTwistConstraintData"
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 class btRigidBody;
 
@@ -53,14 +26,14 @@ enum btConeTwistFlags
 	BT_CONETWIST_FLAGS_ANG_CFM = 4
 };
 
-///btConeTwistConstraint can be used to simulate ragdoll joints (upper arm, leg etc)
+
 ATTRIBUTE_ALIGNED16(class)
 btConeTwistConstraint : public btTypedConstraint
 {
 #ifdef IN_PARALLELL_SOLVER
 public:
 #endif
-	btJacobianEntry m_jac[3];  //3 orthogonal linear constraints
+	btJacobianEntry m_jac[3];  
 
 	btTransform m_rbAFrame;
 	btTransform m_rbBFrame;
@@ -98,19 +71,19 @@ public:
 
 	bool m_useSolveConstraintObsolete;
 
-	// not yet used...
+	
 	btScalar m_swingLimitRatio;
 	btScalar m_twistLimitRatio;
 	btVector3 m_twistAxisA;
 
-	// motor
+	
 	bool m_bMotorEnabled;
 	bool m_bNormalizedMotorStrength;
 	btQuaternion m_qTarget;
 	btScalar m_maxMotorImpulse;
 	btVector3 m_accMotorImpulse;
 
-	// parameters
+	
 	int m_flags;
 	btScalar m_linCFM;
 	btScalar m_linERP;
@@ -119,11 +92,11 @@ public:
 protected:
 	void init();
 
-	void computeConeLimitInfo(const btQuaternion& qCone,                                           // in
-							  btScalar& swingAngle, btVector3& vSwingAxis, btScalar& swingLimit);  // all outs
+	void computeConeLimitInfo(const btQuaternion& qCone,                                           
+							  btScalar& swingAngle, btVector3& vSwingAxis, btScalar& swingLimit);  
 
-	void computeTwistLimitInfo(const btQuaternion& qTwist,                    // in
-							   btScalar& twistAngle, btVector3& vTwistAxis);  // all outs
+	void computeTwistLimitInfo(const btQuaternion& qTwist,                    
+							   btScalar& twistAngle, btVector3& vTwistAxis);  
 
 	void adjustSwingAxisToUseEllipseNormal(btVector3 & vSwingAxis) const;
 
@@ -219,17 +192,17 @@ public:
 		};
 	}
 
-	// setLimit(), a few notes:
-	// _softness:
-	//		0->1, recommend ~0.8->1.
-	//		describes % of limits where movement is free.
-	//		beyond this softness %, the limit is gradually enforced until the "hard" (1.0) limit is reached.
-	// _biasFactor:
-	//		0->1?, recommend 0.3 +/-0.3 or so.
-	//		strength with which constraint resists zeroth order (angular, not angular velocity) limit violation.
-	// __relaxationFactor:
-	//		0->1, recommend to stay near 1.
-	//		the lower the value, the less the constraint will fight velocities which violate the angular limits.
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	void setLimit(btScalar _swingSpan1, btScalar _swingSpan2, btScalar _twistSpan, btScalar _softness = 1.f, btScalar _biasFactor = 0.3f, btScalar _relaxationFactor = 1.0f)
 	{
 		m_swingSpan1 = _swingSpan1;
@@ -313,20 +286,20 @@ public:
 	btScalar getFixThresh() { return m_fixThresh; }
 	void setFixThresh(btScalar fixThresh) { m_fixThresh = fixThresh; }
 
-	// setMotorTarget:
-	// q: the desired rotation of bodyA wrt bodyB.
-	// note: if q violates the joint limits, the internal target is clamped to avoid conflicting impulses (very bad for stability)
-	// note: don't forget to enableMotor()
+	
+	
+	
+	
 	void setMotorTarget(const btQuaternion& q);
 	const btQuaternion& getMotorTarget() const { return m_qTarget; }
 
-	// same as above, but q is the desired rotation of frameA wrt frameB in constraint space
+	
 	void setMotorTargetInConstraintSpace(const btQuaternion& q);
 
 	btVector3 GetPointForAngle(btScalar fAngleInRadians, btScalar fLength) const;
 
-	///override the default global value of a parameter (such as ERP or CFM), optionally provide the axis (0..5).
-	///If no axis is provided, it uses the default axis for this constraint.
+	
+	
 	virtual void setParam(int num, btScalar value, int axis = -1);
 
 	virtual void setFrames(const btTransform& frameA, const btTransform& frameB);
@@ -341,7 +314,7 @@ public:
 		return m_rbBFrame;
 	}
 
-	///return the local value of parameter
+	
 	virtual btScalar getParam(int num, int axis = -1) const;
 
 	int getFlags() const
@@ -351,7 +324,7 @@ public:
 
 	virtual int calculateSerializeBufferSize() const;
 
-	///fills the dataBuffer and returns the struct name (and 0 on failure)
+	
 	virtual const char* serialize(void* dataBuffer, btSerializer* serializer) const;
 };
 
@@ -361,7 +334,7 @@ struct btConeTwistConstraintDoubleData
 	btTransformDoubleData m_rbAFrame;
 	btTransformDoubleData m_rbBFrame;
 
-	//limits
+	
 	double m_swingSpan1;
 	double m_swingSpan2;
 	double m_twistSpan;
@@ -373,14 +346,14 @@ struct btConeTwistConstraintDoubleData
 };
 
 #ifdef BT_BACKWARDS_COMPATIBLE_SERIALIZATION
-///this structure is not used, except for loading pre-2.82 .bullet files
+
 struct btConeTwistConstraintData
 {
 	btTypedConstraintData m_typeConstraintData;
 	btTransformFloatData m_rbAFrame;
 	btTransformFloatData m_rbBFrame;
 
-	//limits
+	
 	float m_swingSpan1;
 	float m_swingSpan2;
 	float m_twistSpan;
@@ -392,15 +365,15 @@ struct btConeTwistConstraintData
 
 	char m_pad[4];
 };
-#endif  //BT_BACKWARDS_COMPATIBLE_SERIALIZATION
-//
+#endif  
+
 
 SIMD_FORCE_INLINE int btConeTwistConstraint::calculateSerializeBufferSize() const
 {
 	return sizeof(btConeTwistConstraintData2);
 }
 
-///fills the dataBuffer and returns the struct name (and 0 on failure)
+
 SIMD_FORCE_INLINE const char* btConeTwistConstraint::serialize(void* dataBuffer, btSerializer* serializer) const
 {
 	btConeTwistConstraintData2* cone = (btConeTwistConstraintData2*)dataBuffer;
@@ -420,4 +393,4 @@ SIMD_FORCE_INLINE const char* btConeTwistConstraint::serialize(void* dataBuffer,
 	return btConeTwistConstraintDataName;
 }
 
-#endif  //BT_CONETWISTCONSTRAINT_H
+#endif  

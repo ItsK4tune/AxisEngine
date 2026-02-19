@@ -26,7 +26,7 @@ namespace glm
 	typedef detail::uint64			uint64;
 #endif
 
-	// Scalar int
+	
 
 	typedef int8					lowp_i8;
 	typedef int8					mediump_i8;
@@ -84,7 +84,7 @@ namespace glm
 	typedef int64					highp_int64_t;
 	typedef int64					int64_t;
 
-	// Scalar uint
+	
 
 	typedef uint8					lowp_u8;
 	typedef uint8					mediump_u8;
@@ -142,7 +142,7 @@ namespace glm
 	typedef uint64					highp_uint64_t;
 	typedef uint64					uint64_t;
 
-	// Scalar float
+	
 
 	typedef float					lowp_f32;
 	typedef float					mediump_f32;
@@ -175,7 +175,7 @@ namespace glm
 	typedef double					highp_float64_t;
 	typedef double					float64_t;
 
-	// Vector bool
+	
 
 	typedef vec<1, bool, lowp>		lowp_bvec1;
 	typedef vec<2, bool, lowp>		lowp_bvec2;
@@ -197,7 +197,7 @@ namespace glm
 	typedef vec<3, bool, defaultp>	bvec3;
 	typedef vec<4, bool, defaultp>	bvec4;
 
-	// Vector int
+	
 
 	typedef vec<1, i32, lowp>		lowp_ivec1;
 	typedef vec<2, i32, lowp>		lowp_ivec2;
@@ -299,7 +299,7 @@ namespace glm
 	typedef vec<3, i64, defaultp>	i64vec3;
 	typedef vec<4, i64, defaultp>	i64vec4;
 
-	// Vector uint
+	
 
 	typedef vec<1, u32, lowp>		lowp_uvec1;
 	typedef vec<2, u32, lowp>		lowp_uvec2;
@@ -401,7 +401,7 @@ namespace glm
 	typedef vec<3, u64, defaultp>	u64vec3;
 	typedef vec<4, u64, defaultp>	u64vec4;
 
-	// Vector float
+	
 
 	typedef vec<1, float, lowp>			lowp_vec1;
 	typedef vec<2, float, lowp>			lowp_vec2;
@@ -503,7 +503,7 @@ namespace glm
 	typedef vec<3, f64, defaultp>		f64vec3;
 	typedef vec<4, f64, defaultp>		f64vec4;
 
-	// Matrix NxN
+	
 
 	typedef mat<2, 2, f32, lowp>		lowp_mat2;
 	typedef mat<3, 3, f32, lowp>		lowp_mat3;
@@ -585,7 +585,7 @@ namespace glm
 	typedef mat<3, 3, f64, defaultp>	f64mat3;
 	typedef mat<4, 4, f64, defaultp>	f64mat4;
 
-	// Matrix MxN
+	
 
 	typedef mat<2, 2, f32, lowp>		lowp_mat2x2;
 	typedef mat<2, 3, f32, lowp>		lowp_mat2x3;
@@ -787,7 +787,7 @@ namespace glm
 	typedef mat<3, 4, f64, defaultp>	f64mat3x4;
 	typedef mat<4, 4, f64, defaultp>	f64mat4x4;
 
-	// Quaternion
+	
 
 	typedef qua<float, lowp>			lowp_quat;
 	typedef qua<float, mediump>			mediump_quat;
@@ -813,6 +813,6 @@ namespace glm
 	typedef qua<f64, mediump>			mediump_f64quat;
 	typedef qua<f64, highp>				highp_f64quat;
 	typedef qua<f64, defaultp>			f64quat;
-}//namespace glm
+}
 
 

@@ -1,13 +1,4 @@
-/*
- * Copyright (c) 2005 Erwin Coumans https://bulletphysics.org
- *
- * Permission to use, copy, modify, distribute and sell this software
- * and its documentation for any purpose is hereby granted without fee,
- * provided that the above copyright notice appear in all copies.
- * Erwin Coumans makes no representations about the suitability 
- * of this software for any purpose.  
- * It is provided "as is" without express or implied warranty.
-*/
+
 #ifndef BT_RAYCASTVEHICLE_H
 #define BT_RAYCASTVEHICLE_H
 
@@ -19,9 +10,9 @@ class btDynamicsWorld;
 #include "btWheelInfo.h"
 #include "BulletDynamics/Dynamics/btActionInterface.h"
 
-//class btVehicleTuning;
 
-///rayCast vehicle, very special constraint that turn a rigidbody into a vehicle.
+
+
 class btRaycastVehicle : public btActionInterface
 {
 	btAlignedObjectArray<btVector3> m_forwardWS;
@@ -29,7 +20,7 @@ class btRaycastVehicle : public btActionInterface
 	btAlignedObjectArray<btScalar> m_forwardImpulse;
 	btAlignedObjectArray<btScalar> m_sideImpulse;
 
-	///backwards compatibility
+	
 	int m_userConstraintType;
 	int m_userConstraintId;
 
@@ -69,19 +60,19 @@ private:
 	void defaultInit(const btVehicleTuning& tuning);
 
 public:
-	//constructor to create a car from an existing rigidbody
+	
 	btRaycastVehicle(const btVehicleTuning& tuning, btRigidBody* chassis, btVehicleRaycaster* raycaster);
 
 	virtual ~btRaycastVehicle();
 
-	///btActionInterface interface
+	
 	virtual void updateAction(btCollisionWorld* collisionWorld, btScalar step)
 	{
 		(void)collisionWorld;
 		updateVehicle(step);
 	}
 
-	///btActionInterface interface
+	
 	void debugDraw(btIDebugDraw* debugDrawer);
 
 	const btTransform& getChassisWorldTransform() const;
@@ -102,7 +93,7 @@ public:
 
 	void updateWheelTransform(int wheelIndex, bool interpolatedTransform = true);
 
-	//	void	setRaycastWheelInfo( int wheelIndex , bool isInContact, const btVector3& hitPoint, const btVector3& hitNormal,btScalar depth);
+	
 
 	btWheelInfo& addWheel(const btVector3& connectionPointCS0, const btVector3& wheelDirectionCS0, const btVector3& wheelAxleCS, btScalar suspensionRestLength, btScalar wheelRadius, const btVehicleTuning& tuning, bool isFrontWheel);
 
@@ -154,7 +145,7 @@ public:
 		return m_indexForwardAxis;
 	}
 
-	///Worldspace forward vector
+	
 	btVector3 getForwardVector() const
 	{
 		const btTransform& chassisTrans = getChassisWorldTransform();
@@ -167,7 +158,7 @@ public:
 		return forwardW;
 	}
 
-	///Velocity of vehicle (positive if velocity vector has same direction as foward vector)
+	
 	btScalar getCurrentSpeedKmHour() const
 	{
 		return m_currentVehicleSpeedKmHour;
@@ -180,7 +171,7 @@ public:
 		m_indexForwardAxis = forwardIndex;
 	}
 
-	///backwards compatibility
+	
 	int getUserConstraintType() const
 	{
 		return m_userConstraintType;
@@ -215,4 +206,4 @@ public:
 	virtual void* castRay(const btVector3& from, const btVector3& to, btVehicleRaycasterResult& result);
 };
 
-#endif  //BT_RAYCASTVEHICLE_H
+#endif  

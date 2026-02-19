@@ -18,12 +18,12 @@ void CameraDebugModule::Init(Application *app)
 
 void CameraDebugModule::OnUpdate(float dt)
 {
-    // No per-frame updates needed
+    
 }
 
 void CameraDebugModule::Render(Scene &scene)
 {
-    // This module doesn't render anything
+    
 }
 
 void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)

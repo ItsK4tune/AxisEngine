@@ -27,7 +27,7 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
             if (audio.sound)
             {
                 audio.sound->Stop();
-                // Smart pointers handle cleanup, but we might want to forcefully stop.
+                
                 audio.sound = nullptr;
             }
 
@@ -41,14 +41,14 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
                 if (source)
                 {
                     source->SetDefaultMinDistance(audio.minDistance);
-                    // Use Play3D with filename, as we updated the source properties.
-                    // Or if we need to ensure we play THAT source, we rely on the filename being the key.
+                    
+                    
                     audio.sound = soundPlayer.Play3D(audio.filePath, pos, audio.loop);
                 }
             }
             else
             {
-                audio.sound = soundPlayer.GetEngine()->Play2D(audio.filePath, audio.loop, false /* startPaused */);
+                audio.sound = soundPlayer.GetEngine()->Play2D(audio.filePath, audio.loop, false );
             }
 
             if (audio.sound)

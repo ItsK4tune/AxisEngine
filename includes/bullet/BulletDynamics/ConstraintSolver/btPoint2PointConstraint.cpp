@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btPoint2PointConstraint.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
@@ -29,7 +16,7 @@ btPoint2PointConstraint::btPoint2PointConstraint(btRigidBody& rbA, const btVecto
 
 void btPoint2PointConstraint::buildJacobian()
 {
-	///we need it for both methods
+	
 	{
 		m_appliedImpulse = btScalar(0.);
 
@@ -81,11 +68,11 @@ void btPoint2PointConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const 
 {
 	btAssert(!m_useSolveConstraintObsolete);
 
-	//retrieve matrices
+	
 
-	// anchor points in global coordinates with respect to body PORs.
+	
 
-	// set jacobian
+	
 	info->m_J1linearAxis[0] = 1;
 	info->m_J1linearAxis[info->rowskip + 1] = 1;
 	info->m_J1linearAxis[2 * info->rowskip + 2] = 1;
@@ -106,21 +93,21 @@ void btPoint2PointConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const 
 	btVector3 a2 = body1_trans.getBasis() * getPivotInB();
 
 	{
-		//	btVector3 a2n = -a2;
+		
 		btVector3* angular0 = (btVector3*)(info->m_J2angularAxis);
 		btVector3* angular1 = (btVector3*)(info->m_J2angularAxis + info->rowskip);
 		btVector3* angular2 = (btVector3*)(info->m_J2angularAxis + 2 * info->rowskip);
 		a2.getSkewSymmetricMatrix(angular0, angular1, angular2);
 	}
 
-	// set right hand side
+	
 	btScalar currERP = (m_flags & BT_P2P_FLAGS_ERP) ? m_erp : info->erp;
 	btScalar k = info->fps * currERP;
 	int j;
 	for (j = 0; j < 3; j++)
 	{
 		info->m_constraintError[j * info->rowskip] = k * (a2[j] + body1_trans.getOrigin()[j] - a1[j] - body0_trans.getOrigin()[j]);
-		//printf("info->m_constraintError[%d]=%f\n",j,info->m_constraintError[j]);
+		
 	}
 	if (m_flags & BT_P2P_FLAGS_CFM)
 	{
@@ -130,7 +117,7 @@ void btPoint2PointConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const 
 		}
 	}
 
-	btScalar impulseClamp = m_setting.m_impulseClamp;  //
+	btScalar impulseClamp = m_setting.m_impulseClamp;  
 	for (j = 0; j < 3; j++)
 	{
 		if (m_setting.m_impulseClamp > 0)
@@ -147,8 +134,8 @@ void btPoint2PointConstraint::updateRHS(btScalar timeStep)
 	(void)timeStep;
 }
 
-///override the default global value of a parameter (such as ERP or CFM), optionally provide the axis (0..5).
-///If no axis is provided, it uses the default axis for this constraint.
+
+
 void btPoint2PointConstraint::setParam(int num, btScalar value, int axis)
 {
 	if (axis != -1)
@@ -175,7 +162,7 @@ void btPoint2PointConstraint::setParam(int num, btScalar value, int axis)
 	}
 }
 
-///return the local value of parameter
+
 btScalar btPoint2PointConstraint::getParam(int num, int axis) const
 {
 	btScalar retVal(SIMD_INFINITY);

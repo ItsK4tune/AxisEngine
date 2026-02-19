@@ -2,7 +2,7 @@
 #include <script/scriptable.h>
 #include <script/script_registry.h>
 #include <iostream>
-#include <glm/gtx/compatibility.hpp> // For glm::lerp if needed, or just standard mix
+#include <glm/gtx/compatibility.hpp> 
 
 class UIButton : public Scriptable
 {
@@ -15,7 +15,7 @@ public:
 
     void OnCreate() override
     {
-        // Example: Bind 'K' to pause/resume video
+        
         BindKey(75, InputEvent::Pressed, [this]()
                 { ToggleVideo(); });
     }
@@ -24,17 +24,17 @@ public:
     {
         ToggleVideo();
 
-        // Visual Feedback
+        
         if (HasComponent<UITransformComponent>())
         {
             auto &transform = GetComponent<UITransformComponent>();
-            transform.size = originalSize * 0.9f; // Snap shrink
+            transform.size = originalSize * 0.9f; 
         }
     }
 
     void OnLeftRelease(float duration) override
     {
-        // Return to normal (handled by Update animation)
+        
     }
 
     void ToggleVideo()
@@ -67,7 +67,7 @@ public:
         auto &transform = GetComponent<UITransformComponent>();
         auto &renderer = GetComponent<UIRendererComponent>();
 
-        // Init initial state
+        
         if (!isInit)
         {
             normalColor = renderer.color;
@@ -75,13 +75,13 @@ public:
             isInit = true;
         }
 
-        // Visual Logic based on State (set by ScriptSystem)
+        
         glm::vec4 targetColor = normalColor;
         glm::vec2 targetSize = originalSize;
 
         if (IsHovered())
         {
-            if (IsLeftPressed()) // Internal state from Scriptable
+            if (IsLeftPressed()) 
             {
                 targetColor = clickColor;
                 targetSize = originalSize * 0.95f;
@@ -93,7 +93,7 @@ public:
             }
         }
 
-        // Animated Transition
+        
         renderer.color = glm::mix(renderer.color, targetColor, dt * 15.0f);
         transform.size = glm::mix(transform.size, targetSize, dt * 15.0f);
     }

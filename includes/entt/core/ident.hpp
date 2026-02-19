@@ -9,10 +9,7 @@
 
 namespace entt {
 
-/**
- * @brief Type integral identifiers.
- * @tparam Type List of types for which to generate identifiers.
- */
+
 template<typename... Type>
 class ident {
     template<typename Curr, std::size_t... Index>
@@ -22,14 +19,14 @@ class ident {
     }
 
 public:
-    /*! @brief Unsigned integer type. */
+    
     using value_type = id_type;
 
-    /*! @brief Statically generated unique identifier for the given type. */
+    
     template<typename Curr>
     static constexpr value_type value = get<std::decay_t<Curr>>(std::index_sequence_for<Type...>{});
 };
 
-} // namespace entt
+} 
 
 #endif

@@ -1,20 +1,4 @@
-/****************************************************************************
- *
- * psaux.h
- *
- *   Auxiliary functions and data structures related to PostScript fonts
- *   (specification).
- *
- * Copyright (C) 1996-2020 by
- * David Turner, Robert Wilhelm, and Werner Lemberg.
- *
- * This file is part of the FreeType project, and may only be used,
- * modified, and distributed under the terms of the FreeType project
- * license, LICENSE.TXT.  By continuing to use, modify, or distribute
- * this file you indicate that you have read the license and
- * understand and accept it fully.
- *
- */
+
 
 
 #ifndef PSAUX_H_
@@ -35,10 +19,7 @@
 FT_BEGIN_HEADER
 
 
-  /**************************************************************************
-   *
-   * PostScript modules driver class.
-   */
+  
   typedef struct  PS_DriverRec_
   {
     FT_DriverRec  root;
@@ -51,40 +32,20 @@ FT_BEGIN_HEADER
   } PS_DriverRec, *PS_Driver;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                             T1_TABLE                          *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 
   typedef struct PS_TableRec_*              PS_Table;
   typedef const struct PS_Table_FuncsRec_*  PS_Table_Funcs;
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   PS_Table_FuncsRec
-   *
-   * @description:
-   *   A set of function pointers to manage PS_Table objects.
-   *
-   * @fields:
-   *   table_init ::
-   *     Used to initialize a table.
-   *
-   *   table_done ::
-   *     Finalizes resp. destroy a given table.
-   *
-   *   table_add ::
-   *     Adds a new object to a table.
-   *
-   *   table_release ::
-   *     Releases table data, then finalizes it.
-   */
+  
   typedef struct  PS_Table_FuncsRec_
   {
     FT_Error
@@ -107,58 +68,18 @@ FT_BEGIN_HEADER
   } PS_Table_FuncsRec;
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   PS_TableRec
-   *
-   * @description:
-   *   A PS_Table is a simple object used to store an array of objects in a
-   *   single memory block.
-   *
-   * @fields:
-   *   block ::
-   *     The address in memory of the growheap's block.  This can change
-   *     between two object adds, due to reallocation.
-   *
-   *   cursor ::
-   *     The current top of the grow heap within its block.
-   *
-   *   capacity ::
-   *     The current size of the heap block.  Increments by 1kByte chunks.
-   *
-   *   init ::
-   *     Set to 0xDEADBEEF if 'elements' and 'lengths' have been allocated.
-   *
-   *   max_elems ::
-   *     The maximum number of elements in table.
-   *
-   *   num_elems ::
-   *     The current number of elements in table.
-   *
-   *   elements ::
-   *     A table of element addresses within the block.
-   *
-   *   lengths ::
-   *     A table of element sizes within the block.
-   *
-   *   memory ::
-   *     The object used for memory operations (alloc/realloc).
-   *
-   *   funcs ::
-   *     A table of method pointers for this object.
-   */
+  
   typedef struct  PS_TableRec_
   {
-    FT_Byte*           block;          /* current memory block           */
-    FT_Offset          cursor;         /* current cursor in memory block */
-    FT_Offset          capacity;       /* current size of memory block   */
+    FT_Byte*           block;          
+    FT_Offset          cursor;         
+    FT_Offset          capacity;       
     FT_ULong           init;
 
     FT_Int             max_elems;
     FT_Int             num_elems;
-    FT_Byte**          elements;       /* addresses of table elements */
-    FT_UInt*           lengths;        /* lengths of table elements   */
+    FT_Byte**          elements;       
+    FT_UInt*           lengths;        
 
     FT_Memory          memory;
     PS_Table_FuncsRec  funcs;
@@ -166,13 +87,13 @@ FT_BEGIN_HEADER
   } PS_TableRec;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                       T1 FIELDS & TOKENS                      *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
   typedef struct PS_ParserRec_*  PS_Parser;
 
@@ -181,32 +102,32 @@ FT_BEGIN_HEADER
   typedef struct T1_FieldRec_*   T1_Field;
 
 
-  /* simple enumeration type used to identify token types */
+  
   typedef enum  T1_TokenType_
   {
     T1_TOKEN_TYPE_NONE = 0,
     T1_TOKEN_TYPE_ANY,
     T1_TOKEN_TYPE_STRING,
     T1_TOKEN_TYPE_ARRAY,
-    T1_TOKEN_TYPE_KEY, /* aka `name' */
+    T1_TOKEN_TYPE_KEY, 
 
-    /* do not remove */
+    
     T1_TOKEN_TYPE_MAX
 
   } T1_TokenType;
 
 
-  /* a simple structure used to identify tokens */
+  
   typedef struct  T1_TokenRec_
   {
-    FT_Byte*      start;   /* first character of token in input stream */
-    FT_Byte*      limit;   /* first character after the token          */
-    T1_TokenType  type;    /* type of token                            */
+    FT_Byte*      start;   
+    FT_Byte*      limit;   
+    T1_TokenType  type;    
 
   } T1_TokenRec;
 
 
-  /* enumeration type used to identify object fields */
+  
   typedef enum  T1_FieldType_
   {
     T1_FIELD_TYPE_NONE = 0,
@@ -222,7 +143,7 @@ FT_BEGIN_HEADER
     T1_FIELD_TYPE_FIXED_ARRAY,
     T1_FIELD_TYPE_CALLBACK,
 
-    /* do not remove */
+    
     T1_FIELD_TYPE_MAX
 
   } T1_FieldType;
@@ -240,7 +161,7 @@ FT_BEGIN_HEADER
     T1_FIELD_LOCATION_FACE,
     T1_FIELD_LOCATION_BLEND,
 
-    /* do not remove */
+    
     T1_FIELD_LOCATION_MAX
 
   } T1_FieldLocation;
@@ -251,27 +172,27 @@ FT_BEGIN_HEADER
                          FT_Pointer  parser );
 
 
-  /* structure type used to model object fields */
+  
   typedef struct  T1_FieldRec_
   {
-    const char*         ident;        /* field identifier               */
+    const char*         ident;        
     T1_FieldLocation    location;
-    T1_FieldType        type;         /* type of field                  */
+    T1_FieldType        type;         
     T1_Field_ParseFunc  reader;
-    FT_UInt             offset;       /* offset of field in object      */
-    FT_Byte             size;         /* size of field in bytes         */
-    FT_UInt             array_max;    /* maximum number of elements for */
-                                      /* array                          */
-    FT_UInt             count_offset; /* offset of element count for    */
-                                      /* arrays; must not be zero if in */
-                                      /* use -- in other words, a       */
-                                      /* `num_FOO' element must not     */
-                                      /* start the used structure if we */
-                                      /* parse a `FOO' array            */
-    FT_UInt             dict;         /* where we expect it             */
+    FT_UInt             offset;       
+    FT_Byte             size;         
+    FT_UInt             array_max;    
+                                      
+    FT_UInt             count_offset; 
+                                      
+                                      
+                                      
+                                      
+                                      
+    FT_UInt             dict;         
   } T1_FieldRec;
 
-#define T1_FIELD_DICT_FONTDICT ( 1 << 0 ) /* also FontInfo and FDArray */
+#define T1_FIELD_DICT_FONTDICT ( 1 << 0 ) 
 #define T1_FIELD_DICT_PRIVATE  ( 1 << 1 )
 
 
@@ -360,13 +281,13 @@ FT_BEGIN_HEADER
           T1_NEW_CALLBACK_FIELD( _ident, _name, _dict )
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                            T1 PARSER                          *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
   typedef const struct PS_Parser_FuncsRec_*  PS_Parser_Funcs;
 
@@ -435,33 +356,7 @@ FT_BEGIN_HEADER
   } PS_Parser_FuncsRec;
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   PS_ParserRec
-   *
-   * @description:
-   *   A PS_Parser is an object used to parse a Type 1 font very quickly.
-   *
-   * @fields:
-   *   cursor ::
-   *     The current position in the text.
-   *
-   *   base ::
-   *     Start of the processed text.
-   *
-   *   limit ::
-   *     End of the processed text.
-   *
-   *   error ::
-   *     The last error returned.
-   *
-   *   memory ::
-   *     The object used for memory operations (alloc/realloc).
-   *
-   *   funcs ::
-   *     A table of functions for the parser.
-   */
+  
   typedef struct  PS_ParserRec_
   {
     FT_Byte*   cursor;
@@ -475,13 +370,13 @@ FT_BEGIN_HEADER
   } PS_ParserRec;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                         PS BUILDER                            *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 
   typedef struct PS_Builder_  PS_Builder;
@@ -500,67 +395,7 @@ FT_BEGIN_HEADER
   } PS_Builder_FuncsRec;
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   PS_Builder
-   *
-   * @description:
-   *    A structure used during glyph loading to store its outline.
-   *
-   * @fields:
-   *   memory ::
-   *     The current memory object.
-   *
-   *   face ::
-   *     The current face object.
-   *
-   *   glyph ::
-   *     The current glyph slot.
-   *
-   *   loader ::
-   *     XXX
-   *
-   *   base ::
-   *     The base glyph outline.
-   *
-   *   current ::
-   *     The current glyph outline.
-   *
-   *   pos_x ::
-   *     The horizontal translation (if composite glyph).
-   *
-   *   pos_y ::
-   *     The vertical translation (if composite glyph).
-   *
-   *   left_bearing ::
-   *     The left side bearing point.
-   *
-   *   advance ::
-   *     The horizontal advance vector.
-   *
-   *   bbox ::
-   *     Unused.
-   *
-   *   path_begun ::
-   *     A flag which indicates that a new path has begun.
-   *
-   *   load_points ::
-   *     If this flag is not set, no points are loaded.
-   *
-   *   no_recurse ::
-   *     Set but not used.
-   *
-   *   metrics_only ::
-   *     A boolean indicating that we only want to compute the metrics of a
-   *     given glyph, not load all of its points.
-   *
-   *   is_t1 ::
-   *     Set if current font type is Type 1.
-   *
-   *   funcs ::
-   *     An array of function pointers for the builder.
-   */
+  
   struct  PS_Builder_
   {
     FT_Memory       memory;
@@ -576,7 +411,7 @@ FT_BEGIN_HEADER
     FT_Vector*  left_bearing;
     FT_Vector*  advance;
 
-    FT_BBox*  bbox;          /* bounding box */
+    FT_BBox*  bbox;          
     FT_Bool   path_begun;
     FT_Bool   load_points;
     FT_Bool   no_recurse;
@@ -589,23 +424,23 @@ FT_BEGIN_HEADER
   };
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                            PS DECODER                         *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 #define PS_MAX_OPERANDS        48
-#define PS_MAX_SUBRS_CALLS     16   /* maximum subroutine nesting;         */
-                                    /* only 10 are allowed but there exist */
-                                    /* fonts like `HiraKakuProN-W3.ttf'    */
-                                    /* (Hiragino Kaku Gothic ProN W3;      */
-                                    /* 8.2d6e1; 2014-12-19) that exceed    */
-                                    /* this limit                          */
+#define PS_MAX_SUBRS_CALLS     16   
+                                    
+                                    
+                                    
+                                    
+                                    
 
-  /* execution context charstring zone */
+  
 
   typedef struct  PS_Decoder_Zone_
   {
@@ -643,7 +478,7 @@ FT_BEGIN_HEADER
     FT_Vector  flex_vectors[7];
 
     CFF_Font     cff;
-    CFF_SubFont  current_subfont; /* for current glyph_index */
+    CFF_SubFont  current_subfont; 
     FT_Generic*  cf2_instance;
 
     FT_Pos*  glyph_width;
@@ -659,8 +494,8 @@ FT_BEGIN_HEADER
     FT_Byte**  locals;
     FT_Byte**  globals;
 
-    FT_Byte**  glyph_names;   /* for pure CFF fonts only  */
-    FT_UInt    num_glyphs;    /* number of glyphs in font */
+    FT_Byte**  glyph_names;   
+    FT_UInt    num_glyphs;    
 
     FT_Render_Mode  hint_mode;
 
@@ -669,17 +504,17 @@ FT_BEGIN_HEADER
     CFF_Decoder_Get_Glyph_Callback   get_glyph_callback;
     CFF_Decoder_Free_Glyph_Callback  free_glyph_callback;
 
-    /* Type 1 stuff */
-    FT_Service_PsCMaps  psnames;      /* for seac */
+    
+    FT_Service_PsCMaps  psnames;      
 
-    FT_Int    lenIV;         /* internal for sub routine calls   */
-    FT_UInt*  locals_len;    /* array of subrs length (optional) */
-    FT_Hash   locals_hash;   /* used if `num_subrs' was massaged */
+    FT_Int    lenIV;         
+    FT_UInt*  locals_len;    
+    FT_Hash   locals_hash;   
 
     FT_Matrix  font_matrix;
     FT_Vector  font_offset;
 
-    PS_Blend  blend;         /* for multiple master support */
+    PS_Blend  blend;         
 
     FT_Long*  buildchar;
     FT_UInt   len_buildchar;
@@ -687,13 +522,13 @@ FT_BEGIN_HEADER
   } PS_Decoder;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                         T1 BUILDER                            *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 
   typedef struct T1_BuilderRec_*  T1_Builder;
@@ -750,7 +585,7 @@ FT_BEGIN_HEADER
   } T1_Builder_FuncsRec;
 
 
-  /* an enumeration type to handle charstring parsing states */
+  
   typedef enum  T1_ParseState_
   {
     T1_Parse_Start,
@@ -761,70 +596,7 @@ FT_BEGIN_HEADER
   } T1_ParseState;
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   T1_BuilderRec
-   *
-   * @description:
-   *    A structure used during glyph loading to store its outline.
-   *
-   * @fields:
-   *   memory ::
-   *     The current memory object.
-   *
-   *   face ::
-   *     The current face object.
-   *
-   *   glyph ::
-   *     The current glyph slot.
-   *
-   *   loader ::
-   *     XXX
-   *
-   *   base ::
-   *     The base glyph outline.
-   *
-   *   current ::
-   *     The current glyph outline.
-   *
-   *   max_points ::
-   *     maximum points in builder outline
-   *
-   *   max_contours ::
-   *     Maximum number of contours in builder outline.
-   *
-   *   pos_x ::
-   *     The horizontal translation (if composite glyph).
-   *
-   *   pos_y ::
-   *     The vertical translation (if composite glyph).
-   *
-   *   left_bearing ::
-   *     The left side bearing point.
-   *
-   *   advance ::
-   *     The horizontal advance vector.
-   *
-   *   bbox ::
-   *     Unused.
-   *
-   *   parse_state ::
-   *     An enumeration which controls the charstring parsing state.
-   *
-   *   load_points ::
-   *     If this flag is not set, no points are loaded.
-   *
-   *   no_recurse ::
-   *     Set but not used.
-   *
-   *   metrics_only ::
-   *     A boolean indicating that we only want to compute the metrics of a
-   *     given glyph, not load all of its points.
-   *
-   *   funcs ::
-   *     An array of function pointers for the builder.
-   */
+  
   typedef struct  T1_BuilderRec_
   {
     FT_Memory       memory;
@@ -840,47 +612,39 @@ FT_BEGIN_HEADER
     FT_Vector       left_bearing;
     FT_Vector       advance;
 
-    FT_BBox         bbox;          /* bounding box */
+    FT_BBox         bbox;          
     T1_ParseState   parse_state;
     FT_Bool         load_points;
     FT_Bool         no_recurse;
 
     FT_Bool         metrics_only;
 
-    void*           hints_funcs;    /* hinter-specific */
-    void*           hints_globals;  /* hinter-specific */
+    void*           hints_funcs;    
+    void*           hints_globals;  
 
     T1_Builder_FuncsRec  funcs;
 
   } T1_BuilderRec;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                         T1 DECODER                            *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 #if 0
 
-  /**************************************************************************
-   *
-   * T1_MAX_SUBRS_CALLS details the maximum number of nested sub-routine
-   * calls during glyph loading.
-   */
+  
 #define T1_MAX_SUBRS_CALLS  8
 
 
-  /**************************************************************************
-   *
-   * T1_MAX_CHARSTRING_OPERANDS is the charstring stack's capacity.  A
-   * minimum of 16 is required.
-   */
+  
 #define T1_MAX_CHARSTRINGS_OPERANDS  32
 
-#endif /* 0 */
+#endif 
 
 
   typedef struct  T1_Decoder_ZoneRec_
@@ -948,15 +712,15 @@ FT_BEGIN_HEADER
     T1_Decoder_ZoneRec   zones[T1_MAX_SUBRS_CALLS + 1];
     T1_Decoder_Zone      zone;
 
-    FT_Service_PsCMaps   psnames;      /* for seac */
+    FT_Service_PsCMaps   psnames;      
     FT_UInt              num_glyphs;
     FT_Byte**            glyph_names;
 
-    FT_Int               lenIV;        /* internal for sub routine calls */
+    FT_Int               lenIV;        
     FT_Int               num_subrs;
     FT_Byte**            subrs;
-    FT_UInt*             subrs_len;    /* array of subrs length (optional) */
-    FT_Hash              subrs_hash;   /* used if `num_subrs' was massaged */
+    FT_UInt*             subrs_len;    
+    FT_Hash              subrs_hash;   
 
     FT_Matrix            font_matrix;
     FT_Vector            font_offset;
@@ -965,7 +729,7 @@ FT_BEGIN_HEADER
     FT_Int               num_flex_vectors;
     FT_Vector            flex_vectors[7];
 
-    PS_Blend             blend;       /* for multiple master support */
+    PS_Blend             blend;       
 
     FT_Render_Mode       hint_mode;
 
@@ -982,13 +746,13 @@ FT_BEGIN_HEADER
   } T1_DecoderRec;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                        CFF BUILDER                            *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 
   typedef struct CFF_Builder_  CFF_Builder;
@@ -1041,70 +805,7 @@ FT_BEGIN_HEADER
   } CFF_Builder_FuncsRec;
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   CFF_Builder
-   *
-   * @description:
-   *    A structure used during glyph loading to store its outline.
-   *
-   * @fields:
-   *   memory ::
-   *     The current memory object.
-   *
-   *   face ::
-   *     The current face object.
-   *
-   *   glyph ::
-   *     The current glyph slot.
-   *
-   *   loader ::
-   *     The current glyph loader.
-   *
-   *   base ::
-   *     The base glyph outline.
-   *
-   *   current ::
-   *     The current glyph outline.
-   *
-   *   pos_x ::
-   *     The horizontal translation (if composite glyph).
-   *
-   *   pos_y ::
-   *     The vertical translation (if composite glyph).
-   *
-   *   left_bearing ::
-   *     The left side bearing point.
-   *
-   *   advance ::
-   *     The horizontal advance vector.
-   *
-   *   bbox ::
-   *     Unused.
-   *
-   *   path_begun ::
-   *     A flag which indicates that a new path has begun.
-   *
-   *   load_points ::
-   *     If this flag is not set, no points are loaded.
-   *
-   *   no_recurse ::
-   *     Set but not used.
-   *
-   *   metrics_only ::
-   *     A boolean indicating that we only want to compute the metrics of a
-   *     given glyph, not load all of its points.
-   *
-   *   hints_funcs ::
-   *     Auxiliary pointer for hinting.
-   *
-   *   hints_globals ::
-   *     Auxiliary pointer for hinting.
-   *
-   *   funcs ::
-   *     A table of method pointers for this object.
-   */
+  
   struct  CFF_Builder_
   {
     FT_Memory       memory;
@@ -1120,7 +821,7 @@ FT_BEGIN_HEADER
     FT_Vector  left_bearing;
     FT_Vector  advance;
 
-    FT_BBox  bbox;          /* bounding box */
+    FT_BBox  bbox;          
 
     FT_Bool  path_begun;
     FT_Bool  load_points;
@@ -1128,32 +829,32 @@ FT_BEGIN_HEADER
 
     FT_Bool  metrics_only;
 
-    void*  hints_funcs;     /* hinter-specific */
-    void*  hints_globals;   /* hinter-specific */
+    void*  hints_funcs;     
+    void*  hints_globals;   
 
     CFF_Builder_FuncsRec  funcs;
   };
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                        CFF DECODER                            *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 
 #define CFF_MAX_OPERANDS        48
-#define CFF_MAX_SUBRS_CALLS     16  /* maximum subroutine nesting;         */
-                                    /* only 10 are allowed but there exist */
-                                    /* fonts like `HiraKakuProN-W3.ttf'    */
-                                    /* (Hiragino Kaku Gothic ProN W3;      */
-                                    /* 8.2d6e1; 2014-12-19) that exceed    */
-                                    /* this limit                          */
+#define CFF_MAX_SUBRS_CALLS     16  
+                                    
+                                    
+                                    
+                                    
+                                    
 #define CFF_MAX_TRANS_ELEMENTS  32
 
-  /* execution context charstring zone */
+  
 
   typedef struct  CFF_Decoder_Zone_
   {
@@ -1196,14 +897,14 @@ FT_BEGIN_HEADER
     FT_Byte**  locals;
     FT_Byte**  globals;
 
-    FT_Byte**  glyph_names;   /* for pure CFF fonts only  */
-    FT_UInt    num_glyphs;    /* number of glyphs in font */
+    FT_Byte**  glyph_names;   
+    FT_UInt    num_glyphs;    
 
     FT_Render_Mode  hint_mode;
 
     FT_Bool  seac;
 
-    CFF_SubFont  current_subfont; /* for current glyph_index */
+    CFF_SubFont  current_subfont; 
 
     CFF_Decoder_Get_Glyph_Callback   get_glyph_callback;
     CFF_Decoder_Free_Glyph_Callback  free_glyph_callback;
@@ -1246,13 +947,13 @@ FT_BEGIN_HEADER
   } CFF_Decoder_FuncsRec;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                            AFM PARSER                         *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
   typedef struct AFM_ParserRec_*  AFM_Parser;
 
@@ -1276,27 +977,7 @@ FT_BEGIN_HEADER
   typedef struct AFM_StreamRec_*  AFM_Stream;
 
 
-  /**************************************************************************
-   *
-   * @struct:
-   *   AFM_ParserRec
-   *
-   * @description:
-   *   An AFM_Parser is a parser for the AFM files.
-   *
-   * @fields:
-   *   memory ::
-   *     The object used for memory operations (alloc and realloc).
-   *
-   *   stream ::
-   *     This is an opaque object.
-   *
-   *   FontInfo ::
-   *     The result will be stored here.
-   *
-   *   get_index ::
-   *     A user provided function to get a glyph index by its name.
-   */
+  
   typedef struct  AFM_ParserRec_
   {
     FT_Memory     memory;
@@ -1314,13 +995,13 @@ FT_BEGIN_HEADER
   } AFM_ParserRec;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                     TYPE1 CHARMAPS                            *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
   typedef const struct T1_CMap_ClassesRec_*  T1_CMap_Classes;
 
@@ -1334,17 +1015,17 @@ FT_BEGIN_HEADER
   } T1_CMap_ClassesRec;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                        PSAux Module Interface                 *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
   typedef struct  PSAux_ServiceRec_
   {
-    /* don't use `PS_Table_Funcs' and friends to avoid compiler warnings */
+    
     const PS_Table_FuncsRec*    ps_table_funcs;
     const PS_Parser_FuncsRec*   ps_parser_funcs;
     const T1_Builder_FuncsRec*  t1_builder_funcs;
@@ -1370,24 +1051,24 @@ FT_BEGIN_HEADER
 
     T1_CMap_Classes  t1_cmap_classes;
 
-    /* fields after this comment line were added after version 2.1.10 */
+    
     const AFM_Parser_FuncsRec*  afm_parser_funcs;
 
     const CFF_Decoder_FuncsRec*  cff_decoder_funcs;
 
   } PSAux_ServiceRec, *PSAux_Service;
 
-  /* backward compatible type definition */
+  
   typedef PSAux_ServiceRec   PSAux_Interface;
 
 
-  /*************************************************************************/
-  /*************************************************************************/
-  /*****                                                               *****/
-  /*****                 Some convenience functions                    *****/
-  /*****                                                               *****/
-  /*************************************************************************/
-  /*************************************************************************/
+  
+  
+  
+  
+  
+  
+  
 
 #define IS_PS_NEWLINE( ch ) \
   ( (ch) == '\r' ||         \
@@ -1433,7 +1114,7 @@ FT_BEGIN_HEADER
 
 FT_END_HEADER
 
-#endif /* PSAUX_H_ */
+#endif 
 
 
-/* END */
+

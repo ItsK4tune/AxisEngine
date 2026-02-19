@@ -1,16 +1,4 @@
-/*
-Copyright (c) 2003-2006 Gino van den Bergen / Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_TRANSFORM_UTIL_H
 #define BT_TRANSFORM_UTIL_H
@@ -25,21 +13,21 @@ SIMD_FORCE_INLINE btVector3 btAabbSupport(const btVector3& halfExtents, const bt
 					 supportDir.z() < btScalar(0.0) ? -halfExtents.z() : halfExtents.z());
 }
 
-/// Utils related to temporal transforms
+
 class btTransformUtil
 {
 public:
 	static void integrateTransform(const btTransform& curTrans, const btVector3& linvel, const btVector3& angvel, btScalar timeStep, btTransform& predictedTransform)
 	{
 		predictedTransform.setOrigin(curTrans.getOrigin() + linvel * timeStep);
-		//	#define QUATERNION_DERIVATIVE
+		
 #ifdef QUATERNION_DERIVATIVE
 		btQuaternion predictedOrn = curTrans.getRotation();
 		predictedOrn += (angvel * predictedOrn) * (timeStep * btScalar(0.5));
 		predictedOrn.safeNormalize();
 #else
-		//Exponential map
-		//google for "Practical Parameterization of Rotations Using the Exponential Map", F. Sebastian Grassia
+		
+		
 
 		btVector3 axis;
 		btScalar fAngle2 = angvel.length2();
@@ -49,7 +37,7 @@ public:
 			fAngle = btSqrt(fAngle2);
 		}
 
-		//limit the angular motion
+		
 		if (fAngle * timeStep > ANGULAR_MOTION_THRESHOLD)
 		{
 			fAngle = ANGULAR_MOTION_THRESHOLD / timeStep;
@@ -57,12 +45,12 @@ public:
 
 		if (fAngle < btScalar(0.001))
 		{
-			// use Taylor's expansions of sync function
+			
 			axis = angvel * (btScalar(0.5) * timeStep - (timeStep * timeStep * timeStep) * (btScalar(0.020833333333)) * fAngle * fAngle);
 		}
 		else
 		{
-			// sync(fAngle) = sin(c*fAngle)/t
+			
 			axis = angvel * (btSin(btScalar(0.5) * fAngle * timeStep) / fAngle);
 		}
 		btQuaternion dorn(axis.x(), axis.y(), axis.z(), btCos(fAngle * timeStep * btScalar(0.5)));
@@ -104,7 +92,7 @@ public:
 		angle = dorn.getAngle();
 		axis = btVector3(dorn.x(), dorn.y(), dorn.z());
 		axis[3] = btScalar(0.);
-		//check for axis length
+		
 		btScalar len = axis.length2();
 		if (len < SIMD_EPSILON * SIMD_EPSILON)
 			axis = btVector3(btScalar(1.), btScalar(0.), btScalar(0.));
@@ -127,13 +115,13 @@ public:
 		btQuaternion dorn;
 		dmat.getRotation(dorn);
 
-		///floating point inaccuracy can lead to w component > 1..., which breaks
+		
 		dorn.normalize();
 
 		angle = dorn.getAngle();
 		axis = btVector3(dorn.x(), dorn.y(), dorn.z());
 		axis[3] = btScalar(0.);
-		//check for axis length
+		
 		btScalar len = axis.length2();
 		if (len < SIMD_EPSILON * SIMD_EPSILON)
 			axis = btVector3(btScalar(1.), btScalar(0.), btScalar(0.));
@@ -142,8 +130,8 @@ public:
 	}
 };
 
-///The btConvexSeparatingDistanceUtil can help speed up convex collision detection
-///by conservatively updating a cached separating distance/vector instead of re-calculating the closest distance
+
+
 class btConvexSeparatingDistanceUtil
 {
 	btQuaternion m_ornA;
@@ -220,4 +208,4 @@ public:
 	}
 };
 
-#endif  //BT_TRANSFORM_UTIL_H
+#endif  

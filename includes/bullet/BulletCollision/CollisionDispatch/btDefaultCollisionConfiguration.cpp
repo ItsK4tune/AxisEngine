@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btDefaultCollisionConfiguration.h"
 
@@ -26,7 +13,7 @@ subject to the following restrictions:
 #include "BulletCollision/CollisionDispatch/btSphereSphereCollisionAlgorithm.h"
 #ifdef USE_BUGGY_SPHERE_BOX_ALGORITHM
 #include "BulletCollision/CollisionDispatch/btSphereBoxCollisionAlgorithm.h"
-#endif  //USE_BUGGY_SPHERE_BOX_ALGORITHM
+#endif  
 #include "BulletCollision/CollisionDispatch/btSphereTriangleCollisionAlgorithm.h"
 #include "BulletCollision/NarrowPhaseCollision/btGjkEpaPenetrationDepthSolver.h"
 #include "BulletCollision/NarrowPhaseCollision/btMinkowskiPenetrationDepthSolver.h"
@@ -35,7 +22,7 @@ subject to the following restrictions:
 #include "LinearMath/btPoolAllocator.h"
 
 btDefaultCollisionConfiguration::btDefaultCollisionConfiguration(const btDefaultCollisionConstructionInfo& constructionInfo)
-//btDefaultCollisionConfiguration::btDefaultCollisionConfiguration(btStackAlloc*	stackAlloc,btPoolAllocator*	persistentManifoldPool,btPoolAllocator*	collisionAlgorithmPool)
+
 {
 	void* mem = NULL;
 	if (constructionInfo.m_useEpaPenetrationAlgorithm)
@@ -49,7 +36,7 @@ btDefaultCollisionConfiguration::btDefaultCollisionConfiguration(const btDefault
 		m_pdSolver = new (mem) btMinkowskiPenetrationDepthSolver;
 	}
 
-	//default CreationFunctions, filling the m_doubleDispatch table
+	
 	mem = btAlignedAlloc(sizeof(btConvexConvexAlgorithm::CreateFunc), 16);
 	m_convexConvexCreateFunc = new (mem) btConvexConvexAlgorithm::CreateFunc(m_pdSolver);
 	mem = btAlignedAlloc(sizeof(btConvexConcaveCollisionAlgorithm::CreateFunc), 16);
@@ -75,7 +62,7 @@ btDefaultCollisionConfiguration::btDefaultCollisionConfiguration(const btDefault
 	mem = btAlignedAlloc(sizeof(btSphereBoxCollisionAlgorithm::CreateFunc), 16);
 	m_boxSphereCF = new (mem) btSphereBoxCollisionAlgorithm::CreateFunc;
 	m_boxSphereCF->m_swapped = true;
-#endif  //USE_BUGGY_SPHERE_BOX_ALGORITHM
+#endif  
 
 	mem = btAlignedAlloc(sizeof(btSphereTriangleCollisionAlgorithm::CreateFunc), 16);
 	m_sphereTriangleCF = new (mem) btSphereTriangleCollisionAlgorithm::CreateFunc;
@@ -86,14 +73,14 @@ btDefaultCollisionConfiguration::btDefaultCollisionConfiguration(const btDefault
 	mem = btAlignedAlloc(sizeof(btBoxBoxCollisionAlgorithm::CreateFunc), 16);
 	m_boxBoxCF = new (mem) btBoxBoxCollisionAlgorithm::CreateFunc;
 
-	//convex versus plane
+	
 	mem = btAlignedAlloc(sizeof(btConvexPlaneCollisionAlgorithm::CreateFunc), 16);
 	m_convexPlaneCF = new (mem) btConvexPlaneCollisionAlgorithm::CreateFunc;
 	mem = btAlignedAlloc(sizeof(btConvexPlaneCollisionAlgorithm::CreateFunc), 16);
 	m_planeConvexCF = new (mem) btConvexPlaneCollisionAlgorithm::CreateFunc;
 	m_planeConvexCF->m_swapped = true;
 
-	///calculate maximum element size, big enough to fit any collision algorithm in the memory pool
+	
 	int maxSize = sizeof(btConvexConvexAlgorithm);
 	int maxSize2 = sizeof(btConvexConcaveCollisionAlgorithm);
 	int maxSize3 = sizeof(btCompoundCollisionAlgorithm);
@@ -171,7 +158,7 @@ btDefaultCollisionConfiguration::~btDefaultCollisionConfiguration()
 	btAlignedFree(m_sphereBoxCF);
 	m_boxSphereCF->~btCollisionAlgorithmCreateFunc();
 	btAlignedFree(m_boxSphereCF);
-#endif  //USE_BUGGY_SPHERE_BOX_ALGORITHM
+#endif  
 
 	m_sphereTriangleCF->~btCollisionAlgorithmCreateFunc();
 	btAlignedFree(m_sphereTriangleCF);
@@ -206,7 +193,7 @@ btCollisionAlgorithmCreateFunc* btDefaultCollisionConfiguration::getClosestPoint
 	{
 		return m_boxSphereCF;
 	}
-#endif  //USE_BUGGY_SPHERE_BOX_ALGORITHM
+#endif  
 
 	if ((proxyType0 == SPHERE_SHAPE_PROXYTYPE) && (proxyType1 == TRIANGLE_SHAPE_PROXYTYPE))
 	{
@@ -260,7 +247,7 @@ btCollisionAlgorithmCreateFunc* btDefaultCollisionConfiguration::getClosestPoint
 		}
 	}
 
-	//failed to find an algorithm
+	
 	return m_emptyCreateFunc;
 }
 
@@ -280,7 +267,7 @@ btCollisionAlgorithmCreateFunc* btDefaultCollisionConfiguration::getCollisionAlg
 	{
 		return m_boxSphereCF;
 	}
-#endif  //USE_BUGGY_SPHERE_BOX_ALGORITHM
+#endif  
 
 	if ((proxyType0 == SPHERE_SHAPE_PROXYTYPE) && (proxyType1 == TRIANGLE_SHAPE_PROXYTYPE))
 	{
@@ -339,7 +326,7 @@ btCollisionAlgorithmCreateFunc* btDefaultCollisionConfiguration::getCollisionAlg
 		}
 	}
 
-	//failed to find an algorithm
+	
 	return m_emptyCreateFunc;
 }
 

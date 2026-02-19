@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btBatchedConstraints.h"
 
@@ -20,7 +7,7 @@ subject to the following restrictions:
 #include "LinearMath/btStackAlloc.h"
 #include "LinearMath/btQuickprof.h"
 
-#include <string.h>  //for memset
+#include <string.h>  
 
 #include <cmath>
 
@@ -45,9 +32,9 @@ struct btBatchInfo
 
 bool btBatchedConstraints::validate(btConstraintArray* constraints, const btAlignedObjectArray<btSolverBody>& bodies) const
 {
-	//
-	// validate: for debugging only. Verify coloring of bodies, that no body is touched by more than one batch in any given phase
-	//
+	
+	
+	
 	int errors = 0;
 	const int kUnassignedBatch = -1;
 
@@ -187,7 +174,7 @@ static void initBatchedBodyDynamicFlags(btAlignedObjectArray<bool>* outBodyDynam
 static int runLengthEncodeConstraintInfo(btBatchedConstraintInfo* outConInfos, int numConstraints)
 {
 	BT_PROFILE("runLengthEncodeConstraintInfo");
-	// detect and run-length encode constraint rows that repeat the same bodies
+	
 	int iDest = 0;
 	int iSrc = 0;
 	while (iSrc < numConstraints)
@@ -267,7 +254,7 @@ static void expandConstraintRowsInPlace(int* constraintBatchIds, const btBatched
 	BT_PROFILE("expandConstraintRowsInPlace");
 	if (numConstraintRows > numConstraints)
 	{
-		// we walk the array in reverse to avoid overwriteing
+		
 		for (int iCon = numConstraints - 1; iCon >= 0; --iCon)
 		{
 			const btBatchedConstraintInfo& conInfo = conInfos[iCon];
@@ -360,17 +347,17 @@ static void mergeSmallBatches(btBatchInfo* batches, int iBeginBatch, int iEndBat
 			}
 		}
 	}
-	// flatten mergeIndexes
-	// e.g. in case where A was merged into B and then B was merged into C, we need A to point to C instead of B
-	// Note: loop goes forward through batches because batches always merge from higher indexes to lower,
-	//     so by going from low to high it reduces the amount of trail-following
+	
+	
+	
+	
 	for (int iBatch = iBeginBatch; iBatch < iEndBatch; ++iBatch)
 	{
 		btBatchInfo& batch = batches[iBatch];
 		if (batch.mergeIndex != kNoMerge)
 		{
 			int iMergeDest = batches[batch.mergeIndex].mergeIndex;
-			// follow trail of merges to the end
+			
 			while (iMergeDest != kNoMerge)
 			{
 				int iNext = batches[iMergeDest].mergeIndex;
@@ -388,15 +375,15 @@ static void mergeSmallBatches(btBatchInfo* batches, int iBeginBatch, int iEndBat
 static void updateConstraintBatchIdsForMerges(int* constraintBatchIds, int numConstraints, const btBatchInfo* batches, int numBatches)
 {
 	BT_PROFILE("updateConstraintBatchIdsForMerges");
-	// update batchIds to account for merges
+	
 	for (int i = 0; i < numConstraints; ++i)
 	{
 		int iBatch = constraintBatchIds[i];
 		btAssert(iBatch < numBatches);
-		// if this constraint references a batch that was merged into another batch
+		
 		if (batches[iBatch].mergeIndex != kNoMerge)
 		{
-			// update batchId
+			
 			constraintBatchIds[i] = batches[iBatch].mergeIndex;
 		}
 	}
@@ -541,9 +528,9 @@ static void writeOutBatches(btBatchedConstraints* bc,
 	bc->m_batches.resizeNoInitialize(0);
 	bc->m_phases.resizeNoInitialize(0);
 
-	//int maxNumBatches = numPhases * maxNumBatchesPerPhase;
+	
 	{
-		int* constraintIdPerBatch = batchWork;  // for each batch, keep an index into the next available slot in the m_constraintIndices array
+		int* constraintIdPerBatch = batchWork;  
 		int iConstraint = 0;
 		for (int iPhase = 0; iPhase < numPhases; ++iPhase)
 		{
@@ -554,7 +541,7 @@ static void writeOutBatches(btBatchedConstraints* bc,
 			{
 				const btBatchInfo& batch = batches[i];
 				int curBatchBegin = iConstraint;
-				constraintIdPerBatch[i] = curBatchBegin;  // record the start of each batch in m_constraintIndices array
+				constraintIdPerBatch[i] = curBatchBegin;  
 				int numConstraints = batch.numConstraints;
 				iConstraint += numConstraints;
 				if (numConstraints > 0)
@@ -562,10 +549,10 @@ static void writeOutBatches(btBatchedConstraints* bc,
 					bc->m_batches.push_back(Range(curBatchBegin, iConstraint));
 				}
 			}
-			// if any batches were emitted this phase,
+			
 			if (bc->m_batches.size() > curPhaseBegin)
 			{
-				// output phase
+				
 				bc->m_phases.push_back(Range(curPhaseBegin, bc->m_batches.size()));
 			}
 		}
@@ -574,10 +561,10 @@ static void writeOutBatches(btBatchedConstraints* bc,
 		bc->m_constraintIndices.resizeNoInitialize(numConstraints);
 		writeOutConstraintIndicesMt(bc, constraintBatchIds, numConstraints, constraintIdPerBatch, maxNumBatchesPerPhase, numPhases);
 	}
-	// for each phase
+	
 	for (int iPhase = 0; iPhase < bc->m_phases.size(); ++iPhase)
 	{
-		// sort the batches from largest to smallest (can be helpful to some task schedulers)
+		
 		const Range& curBatches = bc->m_phases[iPhase];
 		bc->m_batches.quickSortInternal(BatchCompare, curBatches.begin, curBatches.end - 1);
 	}
@@ -589,21 +576,21 @@ static void writeOutBatches(btBatchedConstraints* bc,
 	writeGrainSizes(bc);
 }
 
-//
-// PreallocatedMemoryHelper -- helper object for allocating a number of chunks of memory in a single contiguous block.
-//                             It is generally more efficient to do a single larger allocation than many smaller allocations.
-//
-// Example Usage:
-//
-//  btVector3* bodyPositions = NULL;
-//  btBatchedConstraintInfo* conInfos = NULL;
-//  {
-//    PreallocatedMemoryHelper<8> memHelper;
-//    memHelper.addChunk( (void**) &bodyPositions, sizeof( btVector3 ) * bodies.size() );
-//    memHelper.addChunk( (void**) &conInfos, sizeof( btBatchedConstraintInfo ) * numConstraints );
-//    void* memPtr = malloc( memHelper.getSizeToAllocate() );  // allocate the memory
-//    memHelper.setChunkPointers( memPtr );  // update pointers to chunks
-//  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 template <int N>
 class PreallocatedMemoryHelper
 {
@@ -666,7 +653,7 @@ static btVector3 findMaxDynamicConstraintExtent(
 		int iBody1 = con.bodyIds[1];
 		btAssert(iBody0 >= 0 && iBody0 < numBodies);
 		btAssert(iBody1 >= 0 && iBody1 < numBodies);
-		// is it a dynamic constraint?
+		
 		if (bodyDynamicFlags[iBody0] && bodyDynamicFlags[iBody1])
 		{
 			btVector3 delta = bodyPositions[iBody1] - bodyPositions[iBody0];
@@ -705,21 +692,21 @@ struct AssignConstraintsToGridBatchesParams
 static void assignConstraintsToGridBatches(const AssignConstraintsToGridBatchesParams& params, int iConBegin, int iConEnd)
 {
 	BT_PROFILE("assignConstraintsToGridBatches");
-	// (can be done in parallel)
+	
 	for (int iCon = iConBegin; iCon < iConEnd; ++iCon)
 	{
 		const btBatchedConstraintInfo& con = params.conInfos[iCon];
 		int iBody0 = con.bodyIds[0];
 		int iBody1 = con.bodyIds[1];
-		int iPhase = iCon;  //iBody0; // pseudorandom choice to distribute evenly amongst phases
+		int iPhase = iCon;  
 		iPhase &= params.phaseMask;
 		int gridCoord[3];
-		// is it a dynamic constraint?
+		
 		if (params.bodyDynamicFlags[iBody0] && params.bodyDynamicFlags[iBody1])
 		{
 			const btIntVec3& body0Coords = params.bodyGridCoords[iBody0];
 			const btIntVec3& body1Coords = params.bodyGridCoords[iBody1];
-			// for each dimension x,y,z,
+			
 			for (int i = 0; i < 3; ++i)
 			{
 				int coordMin = btMin(body0Coords.m_ints[i], body1Coords.m_ints[i]);
@@ -729,11 +716,11 @@ static void assignConstraintsToGridBatches(const AssignConstraintsToGridBatchesP
 					btAssert(coordMax == coordMin + 1);
 					if ((coordMin & 1) == 0)
 					{
-						iPhase &= ~(1 << i);  // force bit off
+						iPhase &= ~(1 << i);  
 					}
 					else
 					{
-						iPhase |= (1 << i);  // force bit on
+						iPhase |= (1 << i);  
 						iPhase &= params.phaseMask;
 					}
 				}
@@ -748,16 +735,16 @@ static void assignConstraintsToGridBatches(const AssignConstraintsToGridBatchesP
 			}
 			btAssert(params.bodyDynamicFlags[iBody0]);
 			const btIntVec3& body0Coords = params.bodyGridCoords[iBody0];
-			// for each dimension x,y,z,
+			
 			for (int i = 0; i < 3; ++i)
 			{
 				gridCoord[i] = body0Coords.m_ints[i];
 			}
 		}
-		// calculate chunk coordinates
+		
 		int chunkCoord[3];
 		btIntVec3 gridChunkDim = params.gridChunkDim;
-		// for each dimension x,y,z,
+		
 		for (int i = 0; i < 3; ++i)
 		{
 			int coordOffset = (iPhase >> i) & 1;
@@ -785,34 +772,11 @@ struct AssignConstraintsToGridBatchesLoop : public btIParallelForBody
 	}
 };
 
-//
-// setupSpatialGridBatchesMt -- generate batches using a uniform 3D grid
-//
-/*
 
-Bodies are treated as 3D points at their center of mass. We only consider dynamic bodies at this stage,
-because only dynamic bodies are mutated when a constraint is solved, thus subject to race conditions.
 
-1. Compute a bounding box around all dynamic bodies
-2. Compute the maximum extent of all dynamic constraints. Each dynamic constraint is treated as a line segment, and we need the size of
-   box that will fully enclose any single dynamic constraint
 
-3. Establish the cell size of our grid, the cell size in each dimension must be at least as large as the dynamic constraints max-extent,
-   so that no dynamic constraint can span more than 2 cells of our grid on any axis of the grid. The cell size should be adjusted
-   larger in order to keep the total number of cells from being excessively high
 
-Key idea: Given that each constraint spans 1 or 2 grid cells in each dimension, we can handle all constraints by processing
-          in chunks of 2x2x2 cells with 8 different 1-cell offsets ((0,0,0),(0,0,1),(0,1,0),(0,1,1),(1,0,0)...).
-          For each of the 8 offsets, we create a phase, and for each 2x2x2 chunk with dynamic constraints becomes a batch in that phase.
 
-4. Once the grid is established, we can calculate for each constraint which phase and batch it belongs in.
-
-5. Do a merge small batches on the batches of each phase separately, to try to even out the sizes of batches
-
-Optionally, we can "collapse" one dimension of our 3D grid to turn it into a 2D grid, which reduces the number of phases
-to 4. With fewer phases, there are more constraints per phase and this makes it easier to create batches of a useful size.
-*/
-//
 static void setupSpatialGridBatchesMt(
 	btBatchedConstraints* batchedConstraints,
 	btAlignedObjectArray<char>* scratchMemory,
@@ -851,10 +815,10 @@ static void setupSpatialGridBatchesMt(
 		memHelper.addChunk((void**)&constraintBatchIds, sizeof(int) * numConstraints);
 		memHelper.addChunk((void**)&constraintRowBatchIds, sizeof(int) * numConstraintRows);
 		size_t scratchSize = memHelper.getSizeToAllocate();
-		// if we need to reallocate
+		
 		if (static_cast<size_t>(scratchMemory->capacity()) < scratchSize)
 		{
-			// allocate 6.25% extra to avoid repeated reallocs
+			
 			scratchMemory->reserve(scratchSize + scratchSize / 16);
 		}
 		scratchMemory->resizeNoInitialize(scratchSize);
@@ -864,11 +828,11 @@ static void setupSpatialGridBatchesMt(
 
 	numConstraints = initBatchedConstraintInfo(conInfos, constraints);
 
-	// compute bounding box around all dynamic bodies
-	// (could be done in parallel)
+	
+	
 	btVector3 bboxMin(BT_LARGE_FLOAT, BT_LARGE_FLOAT, BT_LARGE_FLOAT);
 	btVector3 bboxMax = -bboxMin;
-	//int dynamicBodyCount = 0;
+	
 	for (int i = 0; i < bodies.size(); ++i)
 	{
 		const btSolverBody& body = bodies[i];
@@ -878,14 +842,14 @@ static void setupSpatialGridBatchesMt(
 		bodyDynamicFlags[i] = isDynamic;
 		if (isDynamic)
 		{
-			//dynamicBodyCount++;
+			
 			bboxMin.setMin(bodyPos);
 			bboxMax.setMax(bodyPos);
 		}
 	}
 
-	// find max extent of all dynamic constraints
-	// (could be done in parallel)
+	
+	
 	btVector3 consExtent = findMaxDynamicConstraintExtent(bodyPositions, bodyDynamicFlags, conInfos, numConstraints, bodies.size());
 
 	btVector3 gridExtent = bboxMax - bboxMin;
@@ -898,15 +862,15 @@ static void setupSpatialGridBatchesMt(
 	gridDim[1] = int(1.0 + gridExtent.y() / gridCellSize.y());
 	gridDim[2] = int(1.0 + gridExtent.z() / gridCellSize.z());
 
-	// if we can collapse an axis, it will cut our number of phases in half which could be more efficient
+	
 	int phaseMask = 7;
 	bool collapseAxis = use2DGrid;
 	if (collapseAxis)
 	{
-		// pick the smallest axis to collapse, leaving us with the greatest number of cells in our grid
+		
 		int iAxisToCollapse = 0;
 		int axisDim = gridDim[iAxisToCollapse];
-		//for each dimension
+		
 		for (int i = 0; i < 3; ++i)
 		{
 			if (gridDim[i] < axisDim)
@@ -915,13 +879,13 @@ static void setupSpatialGridBatchesMt(
 				axisDim = gridDim[i];
 			}
 		}
-		// collapse it
+		
 		gridCellSize[iAxisToCollapse] = gridExtent[iAxisToCollapse] * 2.0f;
 		phaseMask &= ~(1 << iAxisToCollapse);
 	}
 
 	int numGridChunks = 0;
-	btIntVec3 gridChunkDim;  // each chunk is 2x2x2 group of cells
+	btIntVec3 gridChunkDim;  
 	while (true)
 	{
 		gridDim[0] = int(1.0 + gridExtent.x() / gridCellSize.x());
@@ -931,19 +895,19 @@ static void setupSpatialGridBatchesMt(
 		gridChunkDim[1] = btMax(1, (gridDim[1] + 0) / 2);
 		gridChunkDim[2] = btMax(1, (gridDim[2] + 0) / 2);
 		numGridChunks = gridChunkDim[0] * gridChunkDim[1] * gridChunkDim[2];
-		float nChunks = float(gridChunkDim[0]) * float(gridChunkDim[1]) * float(gridChunkDim[2]);  // suceptible to integer overflow
+		float nChunks = float(gridChunkDim[0]) * float(gridChunkDim[1]) * float(gridChunkDim[2]);  
 		if (numGridChunks <= maxGridChunkCount && nChunks <= maxGridChunkCount)
 		{
 			break;
 		}
-		gridCellSize *= 1.25;  // should roughly cut numCells in half
+		gridCellSize *= 1.25;  
 	}
 	btAssert(numGridChunks <= maxGridChunkCount);
 	int maxNumBatchesPerPhase = numGridChunks;
 
-	// for each dynamic body, compute grid coords
+	
 	btVector3 invGridCellSize = btVector3(1, 1, 1) / gridCellSize;
-	// (can be done in parallel)
+	
 	for (int iBody = 0; iBody < bodies.size(); ++iBody)
 	{
 		btIntVec3& coords = bodyGridCoords[iBody];
@@ -1009,7 +973,7 @@ static void setupSpatialGridBatchesMt(
 
 	for (int iPhase = 0; iPhase < numPhases; ++iPhase)
 	{
-		// if phase is legit,
+		
 		if (iPhase == (iPhase & phaseMask))
 		{
 			int iBeginBatch = iPhase * maxNumBatchesPerPhase;
@@ -1017,7 +981,7 @@ static void setupSpatialGridBatchesMt(
 			mergeSmallBatches(batches, iBeginBatch, iEndBatch, minBatchSize, maxBatchSize);
 		}
 	}
-	// all constraints have been assigned a batchId
+	
 	updateConstraintBatchIdsForMergesMt(constraintBatchIds, numConstraints, batches, maxNumBatchesPerPhase * numPhases);
 
 	if (numConstraintRows > numConstraints)

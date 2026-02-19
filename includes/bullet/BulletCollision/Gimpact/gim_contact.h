@@ -1,44 +1,13 @@
 #ifndef GIM_CONTACT_H_INCLUDED
 #define GIM_CONTACT_H_INCLUDED
 
-/*! \file gim_contact.h
-\author Francisco Leon Najera
-*/
-/*
------------------------------------------------------------------------------
-This source file is part of GIMPACT Library.
 
-For the latest info, see http://gimpact.sourceforge.net/
 
-Copyright (c) 2006 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
-
- This library is free software; you can redistribute it and/or
- modify it under the terms of EITHER:
-   (1) The GNU Lesser General Public License as published by the Free
-       Software Foundation; either version 2.1 of the License, or (at
-       your option) any later version. The text of the GNU Lesser
-       General Public License is included with this library in the
-       file GIMPACT-LICENSE-LGPL.TXT.
-   (2) The BSD-style license that is included with this library in
-       the file GIMPACT-LICENSE-BSD.TXT.
-   (3) The zlib/libpng license that is included with this library in
-       the file GIMPACT-LICENSE-ZLIB.TXT.
-
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
- GIMPACT-LICENSE-LGPL.TXT, GIMPACT-LICENSE-ZLIB.TXT and GIMPACT-LICENSE-BSD.TXT for more details.
-
------------------------------------------------------------------------------
-*/
 #include "gim_geometry.h"
 #include "gim_radixsort.h"
 #include "gim_array.h"
 
-/**
-Configuration var for applying interpolation of  contact normals
-*/
+
 #ifndef NORMAL_CONTACT_AVERAGE
 #define NORMAL_CONTACT_AVERAGE 1
 #endif
@@ -49,20 +18,20 @@ Configuration var for applying interpolation of  contact normals
 
 #ifndef BT_CONTACT_H_STRUCTS_INCLUDED
 
-/// Structure for collision results
-///Functions for managing and sorting contacts resulting from a collision query.
-///Contact lists must be create by calling \ref GIM_CREATE_CONTACT_LIST
-///After querys, contact lists must be destroy by calling \ref GIM_DYNARRAY_DESTROY
-///Contacts can be merge for avoid duplicate results by calling \ref gim_merge_contacts
+
+
+
+
+
 class GIM_CONTACT
 {
 public:
 	btVector3 m_point;
 	btVector3 m_normal;
-	GREAL m_depth;     //Positive value indicates interpenetration
-	GREAL m_distance;  //Padding not for use
-	GUINT m_feature1;  //Face number
-	GUINT m_feature2;  //Face number
+	GREAL m_depth;     
+	GREAL m_distance;  
+	GUINT m_feature1;  
+	GUINT m_feature2;  
 public:
 	GIM_CONTACT()
 	{
@@ -90,7 +59,7 @@ public:
 	{
 	}
 
-	//! Calcs key for coord classification
+	
 	SIMD_FORCE_INLINE GUINT calc_key_contact() const
 	{
 		GINT _coords[] = {
@@ -118,7 +87,7 @@ public:
 		GREAL vec_sum_len = vec_sum.length2();
 		if (vec_sum_len < CONTACT_DIFF_EPSILON) return;
 
-		GIM_INV_SQRT(vec_sum_len, vec_sum_len);  // 1/sqrt(vec_sum_len)
+		GIM_INV_SQRT(vec_sum_len, vec_sum_len);  
 
 		m_normal = vec_sum * vec_sum_len;
 	}
@@ -165,4 +134,4 @@ public:
 	void merge_contacts_unique(const gim_contact_array &contacts);
 };
 
-#endif  // GIM_CONTACT_H_INCLUDED
+#endif  

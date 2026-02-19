@@ -1,55 +1,26 @@
 #ifndef GIM_ARRAY_H_INCLUDED
 #define GIM_ARRAY_H_INCLUDED
-/*! \file gim_array.h
-\author Francisco Leon Najera
-*/
-/*
------------------------------------------------------------------------------
-This source file is part of GIMPACT Library.
 
-For the latest info, see http://gimpact.sourceforge.net/
 
-Copyright (c) 2006 Francisco Leon Najera. C.C. 80087371.
-email: projectileman@yahoo.com
-
- This library is free software; you can redistribute it and/or
- modify it under the terms of EITHER:
-   (1) The GNU Lesser General Public License as published by the Free
-       Software Foundation; either version 2.1 of the License, or (at
-       your option) any later version. The text of the GNU Lesser
-       General Public License is included with this library in the
-       file GIMPACT-LICENSE-LGPL.TXT.
-   (2) The BSD-style license that is included with this library in
-       the file GIMPACT-LICENSE-BSD.TXT.
-   (3) The zlib/libpng license that is included with this library in
-       the file GIMPACT-LICENSE-ZLIB.TXT.
-
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
- GIMPACT-LICENSE-LGPL.TXT, GIMPACT-LICENSE-ZLIB.TXT and GIMPACT-LICENSE-BSD.TXT for more details.
-
------------------------------------------------------------------------------
-*/
 
 #include "gim_memory.h"
 
 #define GIM_ARRAY_GROW_INCREMENT 2
 #define GIM_ARRAY_GROW_FACTOR 2
 
-//!	Very simple array container with fast access and simd memory
+
 template <typename T>
 class gim_array
 {
 public:
-	//! properties
-	//!@{
+	
+	
 	T* m_data;
 	GUINT m_size;
 	GUINT m_allocated_size;
-	//!@}
-	//! protected operations
-	//!@{
+	
+	
+	
 
 	inline void destroyData()
 	{
@@ -90,9 +61,9 @@ public:
 		return true;
 	}
 
-	//!@}
-	//! public operations
-	//!@{
+	
+	
+	
 	inline bool reserve(GUINT size)
 	{
 		if (m_allocated_size >= size) return false;
@@ -217,7 +188,7 @@ public:
 		m_size++;
 	}
 
-	//!Simply increase the m_size, doesn't call the new element constructor
+	
 	inline void push_back_mem()
 	{
 		this->growingCheck();
@@ -237,13 +208,13 @@ public:
 		m_data[m_size].~T();
 	}
 
-	//!Simply decrease the m_size, doesn't call the deleted element destructor
+	
 	inline void pop_back_mem()
 	{
 		m_size--;
 	}
 
-	//! fast erase
+	
 	inline void erase(GUINT index)
 	{
 		if (index < m_size - 1)
@@ -315,4 +286,4 @@ public:
 	}
 };
 
-#endif  // GIM_CONTAINERS_H_INCLUDED
+#endif  

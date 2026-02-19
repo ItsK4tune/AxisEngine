@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btSimpleBroadphase.h"
 #include "BulletCollision/BroadphaseCollision/btDispatcher.h"
@@ -47,7 +34,7 @@ btSimpleBroadphase::btSimpleBroadphase(int maxProxies, btOverlappingPairCache* o
 		m_ownsPairCache = true;
 	}
 
-	// allocate handles buffer and put all handles on free list
+	
 	m_pHandlesRawPtr = btAlignedAlloc(sizeof(btSimpleBroadphaseProxy) * maxProxies, 16);
 	m_pHandles = new (m_pHandlesRawPtr) btSimpleBroadphaseProxy[maxProxies];
 	m_maxHandles = maxProxies;
@@ -59,7 +46,7 @@ btSimpleBroadphase::btSimpleBroadphase(int maxProxies, btOverlappingPairCache* o
 		for (int i = m_firstFreeHandle; i < maxProxies; i++)
 		{
 			m_pHandles[i].SetNextFree(i + 1);
-			m_pHandles[i].m_uniqueId = i + 2;  //any UID will do, we just avoid too trivial values (0,1) for debugging purposes
+			m_pHandles[i].m_uniqueId = i + 2;  
 		}
 		m_pHandles[maxProxies - 1].SetNextFree(0);
 	}
@@ -76,12 +63,12 @@ btSimpleBroadphase::~btSimpleBroadphase()
 	}
 }
 
-btBroadphaseProxy* btSimpleBroadphase::createProxy(const btVector3& aabbMin, const btVector3& aabbMax, int shapeType, void* userPtr, int collisionFilterGroup, int collisionFilterMask, btDispatcher* /*dispatcher*/)
+btBroadphaseProxy* btSimpleBroadphase::createProxy(const btVector3& aabbMin, const btVector3& aabbMax, int shapeType, void* userPtr, int collisionFilterGroup, int collisionFilterMask, btDispatcher* )
 {
 	if (m_numHandles >= m_maxHandles)
 	{
 		btAssert(0);
-		return 0;  //should never happen, but don't let the game crash ;-)
+		return 0;  
 	}
 	btAssert(aabbMin[0] <= aabbMax[0] && aabbMin[1] <= aabbMax[1] && aabbMin[2] <= aabbMax[2]);
 
@@ -128,7 +115,7 @@ void btSimpleBroadphase::destroyProxy(btBroadphaseProxy* proxyOrg, btDispatcher*
 	btSimpleBroadphaseProxy* proxy0 = static_cast<btSimpleBroadphaseProxy*>(proxyOrg);
 	freeHandle(proxy0);
 
-	//validate();
+	
 }
 
 void btSimpleBroadphase::getAabb(btBroadphaseProxy* proxy, btVector3& aabbMin, btVector3& aabbMax) const
@@ -138,7 +125,7 @@ void btSimpleBroadphase::getAabb(btBroadphaseProxy* proxy, btVector3& aabbMin, b
 	aabbMax = sbp->m_aabbMax;
 }
 
-void btSimpleBroadphase::setAabb(btBroadphaseProxy* proxy, const btVector3& aabbMin, const btVector3& aabbMax, btDispatcher* /*dispatcher*/)
+void btSimpleBroadphase::setAabb(btBroadphaseProxy* proxy, const btVector3& aabbMin, const btVector3& aabbMax, btDispatcher* )
 {
 	btSimpleBroadphaseProxy* sbp = getSimpleProxyFromProxy(proxy);
 	sbp->m_aabbMin = aabbMin;
@@ -181,7 +168,7 @@ bool btSimpleBroadphase::aabbOverlap(btSimpleBroadphaseProxy* proxy0, btSimpleBr
 		   proxy0->m_aabbMin[2] <= proxy1->m_aabbMax[2] && proxy1->m_aabbMin[2] <= proxy0->m_aabbMax[2];
 }
 
-//then remove non-overlapping ones
+
 class CheckOverlapCallback : public btOverlapCallback
 {
 public:
@@ -193,7 +180,7 @@ public:
 
 void btSimpleBroadphase::calculateOverlappingPairs(btDispatcher* dispatcher)
 {
-	//first check for new overlapping pairs
+	
 	int i, j;
 	if (m_numHandles >= 0)
 	{
@@ -244,7 +231,7 @@ void btSimpleBroadphase::calculateOverlappingPairs(btDispatcher* dispatcher)
 		{
 			btBroadphasePairArray& overlappingPairArray = m_pairCache->getOverlappingPairArray();
 
-			//perform a sort, to find duplicates and to sort 'invalid' pairs to the end
+			
 			overlappingPairArray.quickSort(btBroadphasePairSortPredicate());
 
 			overlappingPairArray.resize(overlappingPairArray.size() - m_invalidPair);
@@ -271,7 +258,7 @@ void btSimpleBroadphase::calculateOverlappingPairs(btDispatcher* dispatcher)
 
 					if (hasOverlap)
 					{
-						needsRemoval = false;  //callback->processOverlap(pair);
+						needsRemoval = false;  
 					}
 					else
 					{
@@ -280,9 +267,9 @@ void btSimpleBroadphase::calculateOverlappingPairs(btDispatcher* dispatcher)
 				}
 				else
 				{
-					//remove duplicate
+					
 					needsRemoval = true;
-					//should have no algorithm
+					
 					btAssert(!pair.m_algorithm);
 				}
 
@@ -290,24 +277,24 @@ void btSimpleBroadphase::calculateOverlappingPairs(btDispatcher* dispatcher)
 				{
 					m_pairCache->cleanOverlappingPair(pair, dispatcher);
 
-					//		m_overlappingPairArray.swap(i,m_overlappingPairArray.size()-1);
-					//		m_overlappingPairArray.pop_back();
+					
+					
 					pair.m_pProxy0 = 0;
 					pair.m_pProxy1 = 0;
 					m_invalidPair++;
 				}
 			}
 
-			///if you don't like to skip the invalid pairs in the array, execute following code:
+			
 #define CLEAN_INVALID_PAIRS 1
 #ifdef CLEAN_INVALID_PAIRS
 
-			//perform a sort, to sort 'invalid' pairs to the end
+			
 			overlappingPairArray.quickSort(btBroadphasePairSortPredicate());
 
 			overlappingPairArray.resize(overlappingPairArray.size() - m_invalidPair);
 			m_invalidPair = 0;
-#endif  //CLEAN_INVALID_PAIRS
+#endif  
 		}
 	}
 }
@@ -321,5 +308,5 @@ bool btSimpleBroadphase::testAabbOverlap(btBroadphaseProxy* proxy0, btBroadphase
 
 void btSimpleBroadphase::resetPool(btDispatcher* dispatcher)
 {
-	//not yet
+	
 }

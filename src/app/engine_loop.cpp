@@ -99,13 +99,13 @@ void EngineLoop::ProcessFrame()
             double sleepTime = targetFrameTime - frameElapsed;
             if (sleepTime > 0.0)
             {
-                // Hybrid sleep: sleep for most of the time, then spin for precision
-                if (sleepTime > 0.002) // If more than 2ms, sleep
+                
+                if (sleepTime > 0.002) 
                 {
                     std::this_thread::sleep_for(std::chrono::duration<double>(sleepTime - 0.001));
                 }
                 
-                // Spin for the remaining time
+                
                 while (std::chrono::duration<double>(std::chrono::steady_clock::now() - now).count() < targetFrameTime)
                 {
                     std::this_thread::yield();

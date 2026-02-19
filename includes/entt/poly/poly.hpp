@@ -13,36 +13,22 @@
 
 namespace entt {
 
-/*! @brief Inspector class used to infer the type of the virtual table. */
+
 struct poly_inspector {
-    /**
-     * @brief Generic conversion operator (definition only).
-     * @tparam Type Type to which conversion is requested.
-     */
+    
     template<typename Type>
     operator Type &&() const;
 
-    /**
-     * @brief Dummy invocation function (definition only).
-     * @tparam Member Index of the function to invoke.
-     * @tparam Args Types of arguments to pass to the function.
-     * @param args The arguments to pass to the function.
-     * @return A poly inspector convertible to any type.
-     */
+    
     template<std::size_t Member, typename... Args>
     [[nodiscard]] poly_inspector invoke(Args &&...args) const;
 
-    /*! @copydoc invoke */
+    
     template<std::size_t Member, typename... Args>
     [[nodiscard]] poly_inspector invoke(Args &&...args);
 };
 
-/**
- * @brief Static virtual table factory.
- * @tparam Concept Concept descriptor.
- * @tparam Len Size of the storage reserved for the small buffer optimization.
- * @tparam Align Alignment requirement.
- */
+
 template<typename Concept, std::size_t Len, std::size_t Align>
 class poly_vtable {
     using inspector = typename Concept::template type<poly_inspector>;
@@ -100,14 +86,10 @@ class poly_vtable {
     static constexpr bool is_mono = std::tuple_size_v<vtable_type> == 1u;
 
 public:
-    /*! @brief Virtual table type. */
+    
     using type = std::conditional_t<is_mono, std::tuple_element_t<0u, vtable_type>, const vtable_type *>;
 
-    /**
-     * @brief Returns a static virtual table for a specific concept and type.
-     * @tparam Type The type for which to generate the virtual table.
-     * @return A static virtual table for the given concept and type.
-     */
+    
     template<typename Type>
     [[nodiscard]] static type instance() noexcept {
         static_assert(std::is_same_v<Type, std::decay_t<Type>>, "Type differs from its decayed form");
@@ -121,20 +103,10 @@ public:
     }
 };
 
-/**
- * @brief Poly base class used to inject functionalities into concepts.
- * @tparam Poly The outermost poly class.
- */
+
 template<typename Poly>
 struct poly_base {
-    /**
-     * @brief Invokes a function from the static virtual table.
-     * @tparam Member Index of the function to invoke.
-     * @tparam Args Types of arguments to pass to the function.
-     * @param self A reference to the poly object that made the call.
-     * @param args The arguments to pass to the function.
-     * @return The return value of the invoked function, if any.
-     */
+    
     template<std::size_t Member, typename... Args>
     [[nodiscard]] decltype(auto) invoke(const poly_base &self, Args &&...args) const {
         const auto &poly = static_cast<const Poly &>(self);
@@ -146,7 +118,7 @@ struct poly_base {
         }
     }
 
-    /*! @copydoc invoke */
+    
     template<std::size_t Member, typename... Args>
     [[nodiscard]] decltype(auto) invoke(poly_base &self, Args &&...args) {
         auto &poly = static_cast<Poly &>(self);
@@ -160,137 +132,86 @@ struct poly_base {
     }
 };
 
-/**
- * @brief Shortcut for calling `poly_base<Type>::invoke`.
- * @tparam Member Index of the function to invoke.
- * @tparam Poly A fully defined poly object.
- * @tparam Args Types of arguments to pass to the function.
- * @param self A reference to the poly object that made the call.
- * @param args The arguments to pass to the function.
- * @return The return value of the invoked function, if any.
- */
+
 template<std::size_t Member, typename Poly, typename... Args>
 decltype(auto) poly_call(Poly &&self, Args &&...args) {
     return std::forward<Poly>(self).template invoke<Member>(self, std::forward<Args>(args)...);
 }
 
-/**
- * @brief Static polymorphism made simple and within everyone's reach.
- *
- * Static polymorphism is a very powerful tool in C++, albeit sometimes
- * cumbersome to obtain.<br/>
- * This class aims to make it simple and easy to use.
- *
- * @note
- * Both deduced and defined static virtual tables are supported.<br/>
- * Moreover, the `poly` class template also works with unmanaged objects.
- *
- * @tparam Concept Concept descriptor.
- * @tparam Len Size of the storage reserved for the small buffer optimization.
- * @tparam Align Optional alignment requirement.
- */
+
 template<typename Concept, std::size_t Len, std::size_t Align>
 class basic_poly: private Concept::template type<poly_base<basic_poly<Concept, Len, Align>>> {
     friend struct poly_base<basic_poly>;
 
 public:
-    /*! @brief Concept type. */
+    
     using concept_type = typename Concept::template type<poly_base<basic_poly>>;
-    /*! @brief Virtual table type. */
+    
     using vtable_type = typename poly_vtable<Concept, Len, Align>::type;
 
-    /*! @brief Default constructor. */
+    
     basic_poly() noexcept = default;
 
-    /**
-     * @brief Constructs a poly by directly initializing the new object.
-     * @tparam Type Type of object to use to initialize the poly.
-     * @tparam Args Types of arguments to use to construct the new instance.
-     * @param args Parameters to use to construct the instance.
-     */
+    
     template<typename Type, typename... Args>
     explicit basic_poly(std::in_place_type_t<Type>, Args &&...args)
         : storage{std::in_place_type<Type>, std::forward<Args>(args)...},
           vtable{poly_vtable<Concept, Len, Align>::template instance<std::remove_const_t<std::remove_reference_t<Type>>>()} {}
 
-    /**
-     * @brief Constructs a poly from a given value.
-     * @tparam Type Type of object to use to initialize the poly.
-     * @param value An instance of an object to use to initialize the poly.
-     */
+    
     template<typename Type, typename = std::enable_if_t<!std::is_same_v<std::remove_const_t<std::remove_reference_t<Type>>, basic_poly>>>
     basic_poly(Type &&value) noexcept
         : basic_poly{std::in_place_type<std::remove_const_t<std::remove_reference_t<Type>>>, std::forward<Type>(value)} {}
 
-    /**
-     * @brief Returns the object type info if any, `type_id<void>()` otherwise.
-     * @return The object type info if any, `type_id<void>()` otherwise.
-     */
+    
     [[nodiscard]] const type_info &info() const noexcept {
         return storage.info();
     }
 
-    /*! @copydoc info */
+    
     [[deprecated("use ::info instead")]] [[nodiscard]] const type_info &type() const noexcept {
         return info();
     }
 
-    /**
-     * @brief Returns an opaque pointer to the contained instance.
-     * @return An opaque pointer the contained instance, if any.
-     */
+    
     [[nodiscard]] const void *data() const noexcept {
         return storage.data();
     }
 
-    /*! @copydoc data */
+    
     [[nodiscard]] void *data() noexcept {
         return storage.data();
     }
 
-    /**
-     * @brief Replaces the contained object by creating a new instance directly.
-     * @tparam Type Type of object to use to initialize the poly.
-     * @tparam Args Types of arguments to use to construct the new instance.
-     * @param args Parameters to use to construct the instance.
-     */
+    
     template<typename Type, typename... Args>
     void emplace(Args &&...args) {
         storage.template emplace<Type>(std::forward<Args>(args)...);
         vtable = poly_vtable<Concept, Len, Align>::template instance<std::remove_const_t<std::remove_reference_t<Type>>>();
     }
 
-    /*! @brief Destroys contained object */
+    
     void reset() {
         storage.reset();
         vtable = {};
     }
 
-    /**
-     * @brief Returns false if a poly is empty, true otherwise.
-     * @return False if the poly is empty, true otherwise.
-     */
+    
     [[nodiscard]] explicit operator bool() const noexcept {
         return static_cast<bool>(storage);
     }
 
-    /**
-     * @brief Returns a pointer to the underlying concept.
-     * @return A pointer to the underlying concept.
-     */
+    
     [[nodiscard]] concept_type *operator->() noexcept {
         return this;
     }
 
-    /*! @copydoc operator-> */
+    
     [[nodiscard]] const concept_type *operator->() const noexcept {
         return this;
     }
 
-    /**
-     * @brief Aliasing constructor.
-     * @return A poly that shares a reference to an unmanaged object.
-     */
+    
     [[nodiscard]] basic_poly as_ref() noexcept {
         basic_poly ref{};
         ref.storage = storage.as_ref();
@@ -298,7 +219,7 @@ public:
         return ref;
     }
 
-    /*! @copydoc as_ref */
+    
     [[nodiscard]] basic_poly as_ref() const noexcept {
         basic_poly ref{};
         ref.storage = storage.as_ref();
@@ -311,6 +232,6 @@ private:
     vtable_type vtable{};
 };
 
-} // namespace entt
+} 
 
 #endif

@@ -15,7 +15,7 @@
 
 namespace entt {
 
-/*! @cond TURN_OFF_DOXYGEN */
+
 namespace internal {
 
 template<typename>
@@ -102,20 +102,10 @@ resource_traits<Registry, type_list<std::remove_reference_t<Args>...>, type_list
 template<typename Registry, typename... Req, typename Ret, typename Class, typename... Args>
 resource_traits<Registry, type_list<std::remove_reference_t<Args>...>, type_list<Req...>> constrained_function_to_resource_traits(Ret (Class::*)(Args...) const);
 
-} // namespace internal
-/*! @endcond */
+} 
 
-/**
- * @brief Utility class for creating a static task graph.
- *
- * This class offers minimal support (but sufficient in many cases) for creating
- * an execution graph from functions and their requirements on resources.<br/>
- * Note that the resulting tasks aren't executed in any case. This isn't the
- * goal of the tool. Instead, they are returned to the user in the form of a
- * graph that allows for safe execution.
- *
- * @tparam Registry Basic registry type.
- */
+
+
 template<typename Registry>
 class basic_organizer final {
     using callback_type = void(const void *, Registry &);
@@ -156,12 +146,12 @@ class basic_organizer final {
         if constexpr(sizeof...(Type) == 0u) {
             return {};
         } else {
-            // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+            
             const type_info *info[]{&type_id<Type>()...};
             const auto length = count < sizeof...(Type) ? count : sizeof...(Type);
 
             for(std::size_t pos{}; pos < length; ++pos) {
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                
                 buffer[pos] = info[pos];
             }
 
@@ -178,127 +168,79 @@ class basic_organizer final {
     }
 
 public:
-    /*! Basic registry type. */
+    
     using registry_type = Registry;
-    /*! @brief Underlying entity identifier. */
+    
     using entity_type = typename registry_type::entity_type;
-    /*! @brief Unsigned integer type. */
+    
     using size_type = std::size_t;
-    /*! @brief Raw task function type. */
+    
     using function_type = callback_type;
 
-    /*! @brief Vertex type of a task graph defined as an adjacency list. */
+    
     struct vertex {
-        /**
-         * @brief Constructs a vertex of the task graph.
-         * @param data The data associated with the vertex.
-         * @param from List of in-edges of the vertex.
-         * @param to List of out-edges of the vertex.
-         */
+        
         vertex(vertex_data data, std::vector<std::size_t> from, std::vector<std::size_t> to)
             : node{std::move(data)},
               in{std::move(from)},
               out{std::move(to)} {}
 
-        /**
-         * @brief Fills a buffer with the type info objects for the writable
-         * resources of a vertex.
-         * @param buffer A buffer pre-allocated by the user.
-         * @param length The length of the user-supplied buffer.
-         * @return The number of type info objects written to the buffer.
-         */
+        
         [[nodiscard]] size_type ro_dependency(const type_info **buffer, const std::size_t length) const noexcept {
             return node.dependency(false, buffer, length);
         }
 
-        /**
-         * @brief Fills a buffer with the type info objects for the read-only
-         * resources of a vertex.
-         * @param buffer A buffer pre-allocated by the user.
-         * @param length The length of the user-supplied buffer.
-         * @return The number of type info objects written to the buffer.
-         */
+        
         [[nodiscard]] size_type rw_dependency(const type_info **buffer, const std::size_t length) const noexcept {
             return node.dependency(true, buffer, length);
         }
 
-        /**
-         * @brief Returns the number of read-only resources of a vertex.
-         * @return The number of read-only resources of the vertex.
-         */
+        
         [[nodiscard]] size_type ro_count() const noexcept {
             return node.ro_count;
         }
 
-        /**
-         * @brief Returns the number of writable resources of a vertex.
-         * @return The number of writable resources of the vertex.
-         */
+        
         [[nodiscard]] size_type rw_count() const noexcept {
             return node.rw_count;
         }
 
-        /**
-         * @brief Checks if a vertex is also a top-level one.
-         * @return True if the vertex is a top-level one, false otherwise.
-         */
+        
         [[nodiscard]] bool top_level() const noexcept {
             return in.empty();
         }
 
-        /**
-         * @brief Returns a type info object associated with a vertex.
-         * @return A properly initialized type info object.
-         */
+        
         [[nodiscard]] const type_info &info() const noexcept {
             return *node.info;
         }
 
-        /**
-         * @brief Returns a user defined name associated with a vertex, if any.
-         * @return The user defined name associated with the vertex, if any.
-         */
+        
         [[nodiscard]] const char *name() const noexcept {
             return node.name;
         }
 
-        /**
-         * @brief Returns the function associated with a vertex.
-         * @return The function associated with the vertex.
-         */
+        
         [[nodiscard]] function_type *callback() const noexcept {
             return node.callback;
         }
 
-        /**
-         * @brief Returns the payload associated with a vertex, if any.
-         * @return The payload associated with the vertex, if any.
-         */
+        
         [[nodiscard]] const void *data() const noexcept {
             return node.payload;
         }
 
-        /**
-         * @brief Returns the list of in-edges of a vertex.
-         * @return The list of in-edges of a vertex.
-         */
+        
         [[nodiscard]] const std::vector<std::size_t> &in_edges() const noexcept {
             return in;
         }
 
-        /**
-         * @brief Returns the list of out-edges of a vertex.
-         * @return The list of out-edges of a vertex.
-         */
+        
         [[nodiscard]] const std::vector<std::size_t> &out_edges() const noexcept {
             return out;
         }
 
-        /**
-         * @brief Prepares a registry and assures that all required resources
-         * are properly instantiated before using them.
-         * @param reg A valid registry.
-         */
+        
         void prepare(registry_type &reg) const {
             node.prepare ? node.prepare(reg) : void();
         }
@@ -309,12 +251,7 @@ public:
         std::vector<std::size_t> out;
     };
 
-    /**
-     * @brief Adds a free function to the task list.
-     * @tparam Candidate Function to add to the task list.
-     * @tparam Req Additional requirements and/or override resource access mode.
-     * @param name Optional name to associate with the task.
-     */
+    
     template<auto Candidate, typename... Req>
     void emplace(const char *name = nullptr) {
         using resource_type = decltype(internal::free_function_to_resource_traits<registry_type, Req...>(Candidate));
@@ -337,15 +274,7 @@ public:
         vertices.push_back(std::move(vdata));
     }
 
-    /**
-     * @brief Adds a free function with payload or a member function with an
-     * instance to the task list.
-     * @tparam Candidate Function or member to add to the task list.
-     * @tparam Req Additional requirements and/or override resource access mode.
-     * @tparam Type Type of class or type of payload.
-     * @param value_or_instance A valid object that fits the purpose.
-     * @param name Optional name to associate with the task.
-     */
+    
     template<auto Candidate, typename... Req, typename Type>
     void emplace(Type &value_or_instance, const char *name = nullptr) {
         using resource_type = decltype(internal::constrained_function_to_resource_traits<registry_type, Req...>(Candidate));
@@ -369,14 +298,7 @@ public:
         vertices.push_back(std::move(vdata));
     }
 
-    /**
-     * @brief Adds an user defined function with optional payload to the task
-     * list.
-     * @tparam Req Additional requirements and/or override resource access mode.
-     * @param func Function to add to the task list.
-     * @param payload User defined arbitrary data.
-     * @param name Optional name to associate with the task.
-     */
+    
     template<typename... Req>
     void emplace(function_type *func, const void *payload = nullptr, const char *name = nullptr) {
         using resource_type = internal::resource_traits<registry_type, type_list<>, type_list<Req...>>;
@@ -395,10 +317,7 @@ public:
         vertices.push_back(std::move(vdata));
     }
 
-    /**
-     * @brief Generates a task graph for the current content.
-     * @return The adjacency list of the task graph.
-     */
+    
     [[nodiscard]] std::vector<vertex> graph() const {
         std::vector<vertex> adjacency_list{};
         adjacency_list.reserve(vertices.size());
@@ -422,7 +341,7 @@ public:
         return adjacency_list;
     }
 
-    /*! @brief Erases all elements from a container. */
+    
     void clear() {
         builder.clear();
         vertices.clear();
@@ -433,6 +352,6 @@ private:
     flow builder;
 };
 
-} // namespace entt
+} 
 
 #endif

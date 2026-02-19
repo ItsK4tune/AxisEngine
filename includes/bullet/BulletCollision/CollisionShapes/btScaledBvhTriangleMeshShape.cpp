@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2009 Erwin Coumans  http://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #include "btScaledBvhTriangleMeshShape.h"
 
@@ -55,7 +42,7 @@ void btScaledBvhTriangleMeshShape::processAllTriangles(btTriangleCallback* callb
 	btVector3 invLocalScaling(1.f / m_localScaling.getX(), 1.f / m_localScaling.getY(), 1.f / m_localScaling.getZ());
 	btVector3 scaledAabbMin, scaledAabbMax;
 
-	///support negative scaling
+	
 	scaledAabbMin[0] = m_localScaling.getX() >= 0. ? aabbMin[0] * invLocalScaling[0] : aabbMax[0] * invLocalScaling[0];
 	scaledAabbMin[1] = m_localScaling.getY() >= 0. ? aabbMin[1] * invLocalScaling[1] : aabbMax[1] * invLocalScaling[1];
 	scaledAabbMin[2] = m_localScaling.getZ() >= 0. ? aabbMin[2] * invLocalScaling[2] : aabbMax[2] * invLocalScaling[2];
@@ -110,6 +97,6 @@ const btVector3& btScaledBvhTriangleMeshShape::getLocalScaling() const
 
 void btScaledBvhTriangleMeshShape::calculateLocalInertia(btScalar mass, btVector3& inertia) const
 {
-	///don't make this a movable object!
-	//	btAssert(0);
+	
+	
 }

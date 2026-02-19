@@ -37,10 +37,10 @@ private:
     float m_FarPlanePoint = 100.0f;
     float m_FarPlaneSpot = 100.0f;
     bool m_EnableShadows = true;
-    int m_ShadowMode = 1; // 0=None, 1=Once, 2=All
+    int m_ShadowMode = 1; 
     
     float m_ShadowProjectionSize = 20.0f;
     bool m_ShadowFrustumCullingEnabled = true;
-    float m_ShadowDistanceCullingSq = 10000.0f; // Default 100^2
+    float m_ShadowDistanceCullingSq = 10000.0f; 
     bool m_DirLightLimitWarned = false;
 };

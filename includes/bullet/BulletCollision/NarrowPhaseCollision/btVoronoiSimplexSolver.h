@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_VORONOI_SIMPLEX_SOLVER_H
 #define BT_VORONOI_SIMPLEX_SOLVER_H
@@ -20,14 +7,14 @@ subject to the following restrictions:
 
 #define VORONOI_SIMPLEX_MAX_VERTS 5
 
-///disable next define, or use defaultCollisionConfiguration->getSimplexSolver()->setEqualVertexThreshold(0.f) to disable/configure
+
 #define BT_USE_EQUAL_VERTEX_THRESHOLD
 
 #ifdef BT_USE_DOUBLE_PRECISION
 #define VORONOI_DEFAULT_EQUAL_VERTEX_THRESHOLD 1e-12f
 #else
 #define VORONOI_DEFAULT_EQUAL_VERTEX_THRESHOLD 0.0001f
-#endif  //BT_USE_DOUBLE_PRECISION
+#endif  
 
 struct btUsageBitfield
 {
@@ -56,9 +43,9 @@ struct btUsageBitfield
 struct btSubSimplexClosestResult
 {
 	btVector3 m_closestPointOnSimplex;
-	//MASK for m_usedVertices
-	//stores the simplex vertex-usage, using the MASK,
-	// if m_usedVertices & MASK then the related vertex is used
+	
+	
+	
 	btUsageBitfield m_usedVertices;
 	btScalar m_barycentricCoords[4];
 	bool m_degenerate;
@@ -87,8 +74,8 @@ struct btSubSimplexClosestResult
 	}
 };
 
-/// btVoronoiSimplexSolver is an implementation of the closest point distance algorithm from a 1-4 points simplex to the origin.
-/// Can be used with GJK, as an alternative to Johnson distance algorithm.
+
+
 #ifdef NO_VIRTUAL_INTERFACE
 ATTRIBUTE_ALIGNED16(class)
 btVoronoiSimplexSolver
@@ -170,4 +157,4 @@ public:
 	}
 };
 
-#endif  //BT_VORONOI_SIMPLEX_SOLVER_H
+#endif  

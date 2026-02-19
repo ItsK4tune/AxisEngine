@@ -1,5 +1,5 @@
-/// @ref simd
-/// @file glm/simd/geometric.h
+
+
 
 #pragma once
 
@@ -121,4 +121,4 @@ GLM_FUNC_QUALIFIER __m128 glm_vec4_refract(glm_vec4 I, glm_vec4 N, glm_vec4 eta)
 	return sub2;
 }
 
-#endif//GLM_ARCH & GLM_ARCH_SSE2_BIT
+#endif

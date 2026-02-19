@@ -145,35 +145,35 @@ void Mesh::setupMesh()
     bm.BindBuffer(Graphics::BufferType::ElementArrayBuffer, EBO);
     bm.BufferData(Graphics::BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), Graphics::BufferUsage::StaticDraw);
 
-    // vertex positions
+    
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Position));
 
-    // vertex normals
+    
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Normal));
 
-    // vertex texture coords
+    
     bm.EnableVertexAttribArray(2);
     bm.VertexAttribPointer(2, 2, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, TexCoords));
 
-    // vertex tangent
+    
     bm.EnableVertexAttribArray(3);
     bm.VertexAttribPointer(3, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Tangent));
 
-    // vertex bitangent
+    
     bm.EnableVertexAttribArray(4);
     bm.VertexAttribPointer(4, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Bitangent));
 
-    // bone ids
+    
     bm.EnableVertexAttribArray(5);
     bm.VertexAttribIPointer(5, 4, Graphics::DataType::Int, sizeof(Vertex), (void *)offsetof(Vertex, m_BoneIDs));
 
-    // weights
+    
     bm.EnableVertexAttribArray(6);
     bm.VertexAttribPointer(6, 4, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, m_Weights));
 
-    // instance matrix
+    
     instanceVBO = bm.CreateBuffer();
     bm.BindBuffer(Graphics::BufferType::ArrayBuffer, instanceVBO);
 

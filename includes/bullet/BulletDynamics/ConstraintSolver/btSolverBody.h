@@ -1,17 +1,4 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  https://bulletphysics.org
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
 
 #ifndef BT_SOLVER_BODY_H
 #define BT_SOLVER_BODY_H
@@ -23,10 +10,10 @@ class btRigidBody;
 #include "LinearMath/btAlignedAllocator.h"
 #include "LinearMath/btTransformUtil.h"
 
-///Until we get other contributions, only use SIMD on Windows, when using Visual Studio 2008 or later, and not double precision
+
 #ifdef BT_USE_SSE
 #define USE_SIMD 1
-#endif  //
+#endif  
 
 #ifdef USE_SIMD
 
@@ -81,14 +68,14 @@ struct btSimdScalar
 	}
 };
 
-///@brief Return the elementwise product of two btSimdScalar
+
 SIMD_FORCE_INLINE btSimdScalar
 operator*(const btSimdScalar& v1, const btSimdScalar& v2)
 {
 	return btSimdScalar(_mm_mul_ps(v1.get128(), v2.get128()));
 }
 
-///@brief Return the elementwise product of two btSimdScalar
+
 SIMD_FORCE_INLINE btSimdScalar
 operator+(const btSimdScalar& v1, const btSimdScalar& v2)
 {
@@ -99,7 +86,7 @@ operator+(const btSimdScalar& v1, const btSimdScalar& v2)
 #define btSimdScalar btScalar
 #endif
 
-///The btSolverBody is an internal datastructure for the constraint solver. Only necessary data is packed to increase cache coherence/performance.
+
 ATTRIBUTE_ALIGNED16(struct)
 btSolverBody
 {
@@ -152,7 +139,7 @@ btSolverBody
 			angVel.setValue(0, 0, 0);
 	}
 
-	//Optimization for the iterative solver: avoid calculating constant terms involving inertia, normal, relative position
+	
 	SIMD_FORCE_INLINE void applyImpulse(const btVector3& linearComponent, const btVector3& angularComponent, const btScalar impulseMagnitude)
 	{
 		if (m_originalBody)
@@ -191,8 +178,8 @@ btSolverBody
 		return m_turnVelocity;
 	}
 
-	////////////////////////////////////////////////
-	///some internal methods, don't use them
+	
+	
 
 	btVector3& internalGetDeltaLinearVelocity()
 	{
@@ -239,7 +226,7 @@ btSolverBody
 		angVel = m_angularVelocity + m_deltaAngularVelocity;
 	}
 
-	//Optimization for the iterative solver: avoid calculating constant terms involving inertia, normal, relative position
+	
 	SIMD_FORCE_INLINE void internalApplyImpulse(const btVector3& linearComponent, const btVector3& angularComponent, const btScalar impulseMagnitude)
 	{
 		if (m_originalBody)
@@ -256,7 +243,7 @@ btSolverBody
 			m_linearVelocity += m_deltaLinearVelocity;
 			m_angularVelocity += m_deltaAngularVelocity;
 
-			//m_originalBody->setCompanionId(-1);
+			
 		}
 	}
 
@@ -268,18 +255,18 @@ btSolverBody
 			m_linearVelocity += m_deltaLinearVelocity;
 			m_angularVelocity += m_deltaAngularVelocity;
 
-			//correct the position/orientation based on push/turn recovery
+			
 			btTransform newTransform;
 			if (m_pushVelocity[0] != 0.f || m_pushVelocity[1] != 0 || m_pushVelocity[2] != 0 || m_turnVelocity[0] != 0.f || m_turnVelocity[1] != 0 || m_turnVelocity[2] != 0)
 			{
-				//	btQuaternion orn = m_worldTransform.getRotation();
+				
 				btTransformUtil::integrateTransform(m_worldTransform, m_pushVelocity, m_turnVelocity * splitImpulseTurnErp, timeStep, newTransform);
 				m_worldTransform = newTransform;
 			}
-			//m_worldTransform.setRotation(orn);
-			//m_originalBody->setCompanionId(-1);
+			
+			
 		}
 	}
 };
 
-#endif  //BT_SOLVER_BODY_H
+#endif  
