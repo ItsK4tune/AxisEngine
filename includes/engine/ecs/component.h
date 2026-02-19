@@ -201,28 +201,6 @@ struct UIRendererComponent
     glm::vec4 color = glm::vec4(1.0f);
 };
 
-struct UIInteractiveComponent
-{
-    bool isHovered = false;
-    bool isPressed = false;
-
-    std::function<void(entt::entity)> onClick;
-    std::function<void(entt::entity)> onHoverEnter;
-    std::function<void(entt::entity)> onHoverExit;
-};
-
-struct UIAnimationComponent
-{
-    bool isAnimating = false;
-
-    float targetScale = 1.0f;
-    float currentScale = 1.0f;
-    float speed = 5.0f;
-
-    glm::vec4 hoverColor = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
-    glm::vec4 normalColor = glm::vec4(1.0f);
-};
-
 struct UITextComponent
 {
     UIModel *model = nullptr;

@@ -1,4 +1,3 @@
-
 #include <ecs/system.h>
 #include <interface/window/input_codes.h>
 
@@ -94,80 +93,4 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
     renderState.Disable(Graphics::ServerCapability::Blend);
 
     renderState.PolygonMode(Graphics::CullMode::FrontAndBack, previousPolygonMode);
-}
-
-void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
-{
-    if (!m_Enabled)
-        return;
-
-    if (mouse.GetCursorMode() == Input::CursorMode::Hidden)
-        return;
-
-    float mx = mouse.GetLastX();
-    float my = mouse.GetLastY();
-    bool isMouseDown = mouse.IsLeftButtonPressed();
-
-    auto view = scene.registry.view<UITransformComponent, UIInteractiveComponent>();
-
-    for (auto entity : view)
-    {
-        auto &transform = view.get<UITransformComponent>(entity);
-        auto &interact = view.get<UIInteractiveComponent>(entity);
-
-        bool hit = (mx >= transform.position.x && mx <= transform.position.x + transform.size.x &&
-                    my >= transform.position.y && my <= transform.position.y + transform.size.y);
-
-        if (hit)
-        {
-            if (!interact.isHovered)
-            {
-                interact.isHovered = true;
-                if (interact.onHoverEnter)
-                    interact.onHoverEnter(entity);
-            }
-        }
-        else
-        {
-            if (interact.isHovered)
-            {
-                interact.isHovered = false;
-                if (interact.onHoverExit)
-                    interact.onHoverExit(entity);
-            }
-        }
-
-        if (hit && isMouseDown)
-        {
-            if (!interact.isPressed)
-            {
-                interact.isPressed = true;
-                if (interact.onClick)
-                    interact.onClick(entity);
-            }
-        }
-        else if (!isMouseDown)
-        {
-            interact.isPressed = false;
-        }
-
-        if (scene.registry.all_of<UIAnimationComponent>(entity))
-        {
-            auto &anim = scene.registry.get<UIAnimationComponent>(entity);
-            auto &img = scene.registry.get_or_emplace<UIRendererComponent>(entity);
-
-            if (interact.isHovered)
-            {
-                img.color = glm::mix(img.color, anim.hoverColor, dt * anim.speed);
-                anim.targetScale = 1.2f;
-            }
-            else
-            {
-                img.color = glm::mix(img.color, anim.normalColor, dt * anim.speed);
-                anim.targetScale = 1.0f;
-            }
-
-            anim.currentScale += (anim.targetScale - anim.currentScale) * dt * anim.speed;
-        }
-    }
 }

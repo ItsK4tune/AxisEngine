@@ -45,7 +45,6 @@ public:
     RenderSystem &GetRenderSystem() { return renderSystem; }
     UIRenderSystem &GetUIRenderSystem() { return uiRenderSystem; }
     SkyboxRenderSystem &GetSkyboxRenderSystem() { return skyboxRenderSystem; }
-    UIInteractSystem &GetUIInteractSystem() { return uiInteractSystem; }
     PhysicsSystem &GetPhysicsSystem() { return physicsSystem; }
     AnimationSystem &GetAnimationSystem() { return animationSystem; }
     ScriptableSystem &GetScriptSystem() { return scriptSystem; }
@@ -58,7 +57,6 @@ private:
     PhysicsSystem physicsSystem;
     RenderSystem renderSystem;
     AnimationSystem animationSystem;
-    UIInteractSystem uiInteractSystem;
     UIRenderSystem uiRenderSystem;
     ScriptableSystem scriptSystem;
     SkyboxRenderSystem skyboxRenderSystem;

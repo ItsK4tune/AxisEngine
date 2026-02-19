@@ -72,7 +72,6 @@ std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &
     dispatchMap["UI_TRANSFORM"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleUITransform(ss, scene, currentEntity); };
     dispatchMap["UI_RENDERER"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleUIRenderer(ss, scene, currentEntity, res); };
     dispatchMap["UI_TEXT"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleUIText(ss, scene, currentEntity, res); };
-    dispatchMap["UI_ANIMATION"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleUIAnimation(ss, scene, currentEntity); };
     dispatchMap["SKYBOX_RENDERER"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleSkyboxRenderer(ss, scene, currentEntity, res); };
     dispatchMap["SCRIPT"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleScript(ss, scene, currentEntity, app); };
     dispatchMap["AUDIO_SOURCE"] = [&](std::stringstream& ss) { SceneHandlers::ComponentCommandHandler::HandleAudioSource(ss, scene, currentEntity); };

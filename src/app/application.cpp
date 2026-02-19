@@ -176,7 +176,6 @@ RenderSystem& Application::GetRenderSystem() { return m_SystemManager->GetRender
 PhysicsSystem& Application::GetPhysicsSystem() { return m_SystemManager->GetPhysicsSystem(); }
 AudioSystem& Application::GetAudioSystem() { return m_SystemManager->GetAudioSystem(); }
 UIRenderSystem& Application::GetUIRenderSystem() { return m_SystemManager->GetUIRenderSystem(); }
-UIInteractSystem& Application::GetUIInteractSystem() { return m_SystemManager->GetUIInteractSystem(); }
 ScriptableSystem& Application::GetScriptSystem() { return m_SystemManager->GetScriptSystem(); }
 ParticleSystem& Application::GetParticleSystem() { return m_SystemManager->GetParticleSystem(); }
 SkyboxRenderSystem& Application::GetSkyboxRenderSystem() { return m_SystemManager->GetSkyboxRenderSystem(); }

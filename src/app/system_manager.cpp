@@ -60,7 +60,6 @@ void SystemManager::FixedUpdateSystems(Scene& scene, IPhysicsWorld& phys, float 
 
 void SystemManager::UpdateLogic(Scene& scene, float deltaTime, float realDeltaTime, Application* app, MouseManager& mouse)
 {
-    uiInteractSystem.Update(scene, deltaTime, mouse);
     scriptSystem.Update(scene, deltaTime, realDeltaTime, app);
 }
 

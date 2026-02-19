@@ -170,11 +170,6 @@ namespace SceneHandlers
         ComponentLoader::LoadUIText(scene, entity, ss, res);
     }
 
-    void ComponentCommandHandler::HandleUIAnimation(std::stringstream &ss, Scene &scene, entt::entity entity)
-    {
-        ComponentLoader::LoadUIAnimation(scene, entity, ss);
-    }
-
     // Others
     void ComponentCommandHandler::HandleSkyboxRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res)
     {

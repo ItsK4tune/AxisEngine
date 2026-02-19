@@ -32,7 +32,6 @@ namespace SceneHandlers
         static void HandleUITransform(std::stringstream &ss, Scene &scene, entt::entity entity);
         static void HandleUIRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res);
         static void HandleUIText(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res);
-        static void HandleUIAnimation(std::stringstream &ss, Scene &scene, entt::entity entity);
 
         static void HandleSkyboxRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res);
         static void HandleScript(std::stringstream &ss, Scene &scene, entt::entity entity, Application *app);

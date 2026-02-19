@@ -61,7 +61,6 @@ public:
     class PhysicsSystem& GetPhysicsSystem();
     class AudioSystem& GetAudioSystem();
     class UIRenderSystem& GetUIRenderSystem();
-    class UIInteractSystem& GetUIInteractSystem();
     class ScriptableSystem& GetScriptSystem();
     class ParticleSystem& GetParticleSystem();
     class SkyboxRenderSystem& GetSkyboxRenderSystem();

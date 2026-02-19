@@ -81,13 +81,6 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
         text->font = nullptr;
     }
 
-    if (auto interactive = registry.try_get<UIInteractiveComponent>(entity))
-    {
-        interactive->onClick = nullptr;
-        interactive->onHoverEnter = nullptr;
-        interactive->onHoverExit = nullptr;
-    }
-
     if (auto sky = registry.try_get<SkyboxRenderComponent>(entity))
     {
         sky->skybox = nullptr;

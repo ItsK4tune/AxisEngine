@@ -179,17 +179,6 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, std::strings
     txt.shader = res.GetShader("textShader");
 }
 
-void ComponentLoader::LoadUIAnimation(Scene& scene, entt::entity entity, std::stringstream& ss)
-{
-    float hr, hg, hb, ha;
-    ss >> hr >> hg >> hb >> ha;
-    auto &anim = scene.registry.emplace<UIAnimationComponent>(entity);
-    anim.hoverColor = glm::vec4(hr, hg, hb, ha);
-
-    auto &ui = scene.registry.get<UIRendererComponent>(entity);
-    anim.normalColor = ui.color;
-}
-
 void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, std::stringstream& ss, ResourceManager& res)
 {
     std::string skyboxName, shaderName;

@@ -22,7 +22,6 @@ public:
     class PhysicsSystem &GetPhysicsSystem();
     class AudioSystem &GetAudioSystem();
     class UIRenderSystem &GetUIRenderSystem();
-    class UIInteractSystem &GetUIInteractSystem();
     class ScriptableSystem &GetScriptSystem();
     class ParticleSystem &GetParticleSystem();
     class SkyboxRenderSystem &GetSkyboxRenderSystem();
@@ -48,7 +47,6 @@ public:
     void EnableScript(bool enable);
     void EnableAnimation(bool enable);
     void EnableVideo(bool enable);
-    void EnableUIInteract(bool enable);
     void EnableUIRender(bool enable);
     void EnableParticle(bool enable);
     void EnableSkybox(bool enable);

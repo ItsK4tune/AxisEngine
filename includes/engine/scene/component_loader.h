@@ -18,7 +18,6 @@ public:
     static void LoadUITransform(Scene &scene, entt::entity entity, std::stringstream &ss);
     static void LoadUIRenderer(Scene &scene, entt::entity entity, std::stringstream &ss, ResourceManager &res);
     static void LoadUIText(Scene &scene, entt::entity entity, std::stringstream &ss, ResourceManager &res);
-    static void LoadUIAnimation(Scene &scene, entt::entity entity, std::stringstream &ss);
 
     static void LoadSkyboxRenderer(Scene &scene, entt::entity entity, std::stringstream &ss, ResourceManager &res);
     static void LoadScript(Scene &scene, entt::entity entity, std::stringstream &ss, Application *app);

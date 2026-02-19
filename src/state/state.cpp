@@ -5,7 +5,6 @@ RenderSystem& State::GetRenderSystem() { return m_App->GetRenderSystem(); }
 PhysicsSystem& State::GetPhysicsSystem() { return m_App->GetPhysicsSystem(); }
 AudioSystem& State::GetAudioSystem() { return m_App->GetAudioSystem(); }
 UIRenderSystem& State::GetUIRenderSystem() { return m_App->GetUIRenderSystem(); }
-UIInteractSystem& State::GetUIInteractSystem() { return m_App->GetUIInteractSystem(); }
 ScriptableSystem& State::GetScriptSystem() { return m_App->GetScriptSystem(); }
 ParticleSystem& State::GetParticleSystem() { return m_App->GetParticleSystem(); }
 SkyboxRenderSystem& State::GetSkyboxRenderSystem() { return m_App->GetSkyboxRenderSystem(); }
@@ -32,7 +31,6 @@ void State::EnableAudio(bool enable) { GetAudioSystem().SetEnabled(enable); }
 void State::EnableScript(bool enable) { GetScriptSystem().SetEnabled(enable); }
 void State::EnableAnimation(bool enable) { GetAnimationSystem().SetEnabled(enable); }
 void State::EnableVideo(bool enable) { GetVideoSystem().SetEnabled(enable); }
-void State::EnableUIInteract(bool enable) { GetUIInteractSystem().SetEnabled(enable); }
 void State::EnableUIRender(bool enable) { GetUIRenderSystem().SetEnabled(enable); }
 void State::EnableParticle(bool enable) { GetParticleSystem().SetEnabled(enable); }
 void State::EnableSkybox(bool enable) { GetSkyboxRenderSystem().SetEnabled(enable); }
@@ -41,6 +39,5 @@ void State::EnableLogic(bool enable) {
     EnableScript(enable);
     EnableAnimation(enable);
     EnableVideo(enable);
-    EnableUIInteract(enable);
     EnableParticle(enable);
 }
