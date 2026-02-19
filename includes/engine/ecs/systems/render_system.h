@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <scene/scene.h>
 #include <graphic/geometry/static_batch_manager.h>
@@ -8,9 +7,11 @@
 #include <ecs/component.h>
 #include <graphic/renderer/shadow_renderer.h>
 #include <graphic/renderer/light_renderer.h>
+#include <interface/graphic/graphics_types.h>
 
 class ResourceManager;
 class Shader;
+class IGraphicsContext;
 
 enum class AntiAliasingMode
 {
@@ -19,12 +20,20 @@ enum class AntiAliasingMode
     TAA = 2
 };
 
+struct RenderItem
+{
+    entt::entity entity;
+    TransformComponent *transform;
+    MeshRendererComponent *renderer;
+    MaterialComponent *material;
+};
+
 class RenderSystem
 {
 public:
     void Render(Scene &scene, int width, int height);
 
-    void InitShadows(ResourceManager &res);
+    void Init(IGraphicsContext& context, ResourceManager &res);
     void Shutdown();
     void RenderShadows(Scene &scene);
     void SetEnableShadows(bool enable) { m_ShadowRenderer.SetEnableShadows(enable); }
@@ -32,8 +41,8 @@ public:
     bool IsShadowsEnabled() const { return m_ShadowRenderer.IsShadowsEnabled(); }
     int GetShadowMode() const { return m_ShadowRenderer.GetShadowMode(); }
 
-    void SetFaceCulling(bool enabled, int mode = GL_BACK);
-    void SetDepthTest(bool enabled, int func = GL_LESS);
+    void SetFaceCulling(bool enabled, Graphics::CullMode mode = Graphics::CullMode::Back);
+    void SetDepthTest(bool enabled, Graphics::CompareFunc func = Graphics::CompareFunc::Less);
 
     Shadow &GetShadow() { return m_ShadowRenderer.GetShadow(); }
     int GetRenderedCount() const { return m_RenderedCount; }
@@ -60,7 +69,10 @@ public:
     
     void SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene);
 
+    IGraphicsContext* GetContext() const { return m_Context; }
+
 private:
+    IGraphicsContext* m_Context = nullptr;
     ShadowRenderer m_ShadowRenderer;
     LightRenderer m_LightRenderer;
     StaticBatchManager m_BatchManager;
@@ -80,11 +92,12 @@ private:
     glm::mat4 m_PrevViewProj = glm::mat4(1.0f);
     glm::mat4 m_CurrViewProj = glm::mat4(1.0f);
 
-    struct RenderItem
-    {
-        entt::entity entity;
-        TransformComponent *transform;
-        MeshRendererComponent *renderer;
-    };
     std::vector<RenderItem> m_RenderQueue;
+
+    std::vector<std::string> m_BonesUniforms;
+    std::vector<std::string> m_ShadowPointUniforms;
+    std::vector<std::string> m_ShadowDirUniforms;
+    std::vector<std::string> m_ShadowSpotUniforms;
+    std::vector<std::string> m_LightSpaceMatrixUniforms;
+    std::vector<std::string> m_LightSpaceMatrixSpotUniforms;
 };

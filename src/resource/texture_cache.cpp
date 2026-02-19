@@ -1,13 +1,12 @@
 #include <resource/texture_cache.h>
+#include <interface/graphic/graphics_types.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>
-#include <glad/glad.h>
+#include <interface/graphic/i_texture_manager.h>
 #include <stb_image.h>
 #include <iostream>
 
-TextureCache::TextureCache()
-{
-}
+ITextureManager* TextureCache::s_TextureManager = nullptr;
 
 TextureCache::~TextureCache()
 {
@@ -31,8 +30,8 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
     }
     else
     {
-        unsigned int textureID;
-        glGenTextures(1, &textureID);
+        auto& tm = GetTextureManager();
+        unsigned int textureID = tm.GenTexture();
         
         int width, height, nrComponents;
         stbi_set_flip_vertically_on_load(true);
@@ -40,22 +39,45 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
         
         if (data)
         {
-            GLenum format = GL_RGBA;
-            if (nrComponents == 1)
-                format = GL_RED;
-            else if (nrComponents == 3)
-                format = GL_RGB;
-            else if (nrComponents == 4)
-                format = GL_RGBA;
 
-            glBindTexture(GL_TEXTURE_2D, textureID);
-            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
+            Graphics::TextureFormat format = Graphics::TextureFormat::RGBA;
+            Graphics::InternalFormat internalFormat = Graphics::InternalFormat::RGBA8;
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            if (nrComponents == 1) {
+                format = Graphics::TextureFormat::Red;
+                const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8; // Approximation
+            } else if (nrComponents == 3) {
+                format = Graphics::TextureFormat::RGB;
+                const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8;
+            } else if (nrComponents == 4) {
+                format = Graphics::TextureFormat::RGBA;
+                const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGBA8;
+            }
+
+            tm.BindTexture(Graphics::TextureType::Texture2D, textureID);
+            // internalFormat selection logic in OpenGLTextureManager might need tweaking or we map carefully here.
+            // For now, let's use the explicit conversion or logic.
+            // TextureCache uses simple format mapping. Use InternalFormat same as Format logic for now if possible?
+            // Wait, TextureCache previously passed 'format' (RGBA/RGB) as both internalFormat and format.
+            // My Interface requires explicit InternalFormat and TextureFormat.
+            
+            // Re-evaluating: GetGLTextureFormat maps RGBA -> GL_RGBA.
+            // GetGLInternalFormat maps RGB8 -> GL_RGB8.
+            // Original code: glTexImage2D(..., format, ..., format, ...); where format was GL_RGBA.
+            // GL_RGBA as internal format is valid in old GL, but sized is better.
+            
+            Graphics::InternalFormat iFormat = Graphics::InternalFormat::RGBA8;
+            if (nrComponents == 1) iFormat = Graphics::InternalFormat::RGB8; // Red isn't in InternalFormat? I added RGB8.
+            else if (nrComponents == 3) iFormat = Graphics::InternalFormat::RGB8;
+            else if (nrComponents == 4) iFormat = Graphics::InternalFormat::RGBA8;
+
+            tm.TexImage2D(Graphics::TextureType::Texture2D, 0, iFormat, width, height, 0, format, Graphics::DataType::UnsignedByte, data);
+            tm.GenerateMipmap(Graphics::TextureType::Texture2D);
+
+            tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(format == Graphics::TextureFormat::RGBA ? Graphics::TextureWrap::ClampToEdge : Graphics::TextureWrap::Repeat));
+            tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(format == Graphics::TextureFormat::RGBA ? Graphics::TextureWrap::ClampToEdge : Graphics::TextureWrap::Repeat));
+            tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::LinearMipmapLinear));
+            tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
 
             stbi_image_free(data);
             
@@ -87,7 +109,7 @@ void TextureCache::UnloadTexture(const std::string& name)
     auto it = m_Textures.find(name);
     if (it != m_Textures.end())
     {
-        glDeleteTextures(1, &it->second.id);
+        GetTextureManager().DeleteTextures(1, &it->second.id);
         m_Textures.erase(it);
         LOGGER_INFO("TextureCache") << "Unloaded texture: " << name;
     }
@@ -110,25 +132,31 @@ void TextureCache::Update()
             TextureData data = it->get();
             if (data.data)
             {
-                unsigned int textureID;
-                glGenTextures(1, &textureID);
+                auto& tm = GetTextureManager();
+                unsigned int textureID = tm.GenTexture();
 
-                GLenum format = GL_RGBA;
-                if (data.nrComponents == 1)
-                    format = GL_RED;
-                else if (data.nrComponents == 3)
-                    format = GL_RGB;
-                else if (data.nrComponents == 4)
-                    format = GL_RGBA;
+                Graphics::TextureFormat format = Graphics::TextureFormat::RGBA;
+                Graphics::InternalFormat iFormat = Graphics::InternalFormat::RGBA8;
 
-                glBindTexture(GL_TEXTURE_2D, textureID);
-                glTexImage2D(GL_TEXTURE_2D, 0, format, data.width, data.height, 0, format, GL_UNSIGNED_BYTE, data.data);
-                glGenerateMipmap(GL_TEXTURE_2D);
+                if (data.nrComponents == 1) {
+                    format = Graphics::TextureFormat::Red;
+                    iFormat = Graphics::InternalFormat::RGB8;
+                } else if (data.nrComponents == 3) {
+                    format = Graphics::TextureFormat::RGB;
+                    iFormat = Graphics::InternalFormat::RGB8;
+                } else if (data.nrComponents == 4) {
+                    format = Graphics::TextureFormat::RGBA;
+                    iFormat = Graphics::InternalFormat::RGBA8;
+                }
 
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                tm.BindTexture(Graphics::TextureType::Texture2D, textureID);
+                tm.TexImage2D(Graphics::TextureType::Texture2D, 0, iFormat, data.width, data.height, 0, format, Graphics::DataType::UnsignedByte, data.data);
+                tm.GenerateMipmap(Graphics::TextureType::Texture2D);
+
+                tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(format == Graphics::TextureFormat::RGBA ? Graphics::TextureWrap::ClampToEdge : Graphics::TextureWrap::Repeat));
+                tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(format == Graphics::TextureFormat::RGBA ? Graphics::TextureWrap::ClampToEdge : Graphics::TextureWrap::Repeat));
+                tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::LinearMipmapLinear));
+                tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
 
                 stbi_image_free(data.data);
 
@@ -158,7 +186,7 @@ void TextureCache::Clear()
 {
     for (auto& pair : m_Textures)
     {
-        glDeleteTextures(1, &pair.second.id);
+        GetTextureManager().DeleteTextures(1, &pair.second.id);
     }
     m_Textures.clear();
     m_AsyncLoads.clear();

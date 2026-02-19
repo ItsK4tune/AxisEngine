@@ -11,6 +11,7 @@ class Animator
 {
 public:
 	Animator(Animation *animation);
+	~Animator() = default;
 
 	void UpdateAnimation(float dt);
 	void AddAnimation(const std::string &name, Animation *animation);

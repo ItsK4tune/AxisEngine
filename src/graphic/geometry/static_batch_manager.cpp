@@ -1,6 +1,37 @@
 #include <graphic/geometry/static_batch_manager.h>
 #include <utils/logger.h>
 #include <fstream>
+#include <interface/graphic/i_buffer_manager.h>
+#include <interface/graphic/i_draw_context.h>
+
+
+
+IBufferManager* StaticBatchManager::s_BufferManager = nullptr;
+IDrawContext* StaticBatchManager::s_DrawContext = nullptr;
+
+void StaticBatchManager::SetManagers(IBufferManager& bufferManager, IDrawContext& drawContext)
+{
+    s_BufferManager = &bufferManager;
+    s_DrawContext = &drawContext;
+}
+
+IBufferManager& StaticBatchManager::GetBufferManager()
+{
+    if (!s_BufferManager) {
+        LOGGER_ERROR("StaticBatchManager") << "BufferManager not set!";
+        throw std::runtime_error("BufferManager not set in StaticBatchManager");
+    }
+    return *s_BufferManager;
+}
+
+IDrawContext& StaticBatchManager::GetDrawContext()
+{
+    if (!s_DrawContext) {
+        LOGGER_ERROR("StaticBatchManager") << "DrawContext not set!";
+        throw std::runtime_error("DrawContext not set in StaticBatchManager");
+    }
+    return *s_DrawContext;
+}
 
 StaticBatchManager::StaticBatchManager()
 {
@@ -11,7 +42,7 @@ StaticBatchManager::~StaticBatchManager()
     Clear();
 }
 
-void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<Model*>& models,
+void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<std::shared_ptr<Model>>& models,
                                      const std::vector<glm::mat4>& transforms)
 {
     if (models.size() != transforms.size())
@@ -37,7 +68,7 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
               << mergedIndices.size() << " indices)";
 }
 
-void StaticBatchManager::MergeMeshes(const std::vector<Model*>& models,
+void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& models,
                                      const std::vector<glm::mat4>& transforms,
                                      std::vector<Vertex>& outVertices,
                                      std::vector<unsigned int>& outIndices)
@@ -47,7 +78,7 @@ void StaticBatchManager::MergeMeshes(const std::vector<Model*>& models,
     for (size_t i = 0; i < models.size(); i++)
     {
         const glm::mat4& transform = transforms[i];
-        Model* model = models[i];
+        std::shared_ptr<Model> model = models[i];
         
         for (const auto& mesh : model->meshes)
         {
@@ -79,41 +110,46 @@ void StaticBatchManager::MergeMeshes(const std::vector<Model*>& models,
 void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<Vertex>& vertices,
                                          const std::vector<unsigned int>& indices)
 {
+    if (!s_BufferManager) return;
+    auto& bm = GetBufferManager();
+
     batch.vertexCount = vertices.size();
     batch.indexCount = indices.size();
     
-    glGenVertexArrays(1, &batch.vao);
-    glGenBuffers(1, &batch.vbo);
-    glGenBuffers(1, &batch.ebo);
+    batch.vao = bm.GenVertexArray();
+    batch.vbo = bm.GenBuffer();
+    batch.ebo = bm.GenBuffer();
     
-    glBindVertexArray(batch.vao);
+    bm.BindVertexArray(batch.vao);
     
-    glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, batch.vbo);
+    bm.BufferData(Graphics::BufferType::ArrayBuffer, vertices.size() * sizeof(Vertex), vertices.data(), Graphics::BufferUsage::StaticDraw);
     
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    bm.BindBuffer(Graphics::BufferType::ElementArrayBuffer, batch.ebo);
+    bm.BufferData(Graphics::BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), Graphics::BufferUsage::StaticDraw);
     
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)0);
     
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+    bm.EnableVertexAttribArray(1);
+    bm.VertexAttribPointer(1, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
     
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+    bm.EnableVertexAttribArray(2);
+    bm.VertexAttribPointer(2, 2, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
     
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+    bm.EnableVertexAttribArray(3);
+    bm.VertexAttribPointer(3, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
     
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+    bm.EnableVertexAttribArray(4);
+    bm.VertexAttribPointer(4, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
     
-    glBindVertexArray(0);
+    bm.BindVertexArray(0);
 }
 
 void StaticBatchManager::RenderBatch(const std::string& name)
 {
+    if (!s_BufferManager || !s_DrawContext) return;
+
     auto it = m_Batches.find(name);
     if (it == m_Batches.end())
     {
@@ -123,19 +159,20 @@ void StaticBatchManager::RenderBatch(const std::string& name)
     
     const BatchData& batch = it->second;
     
-    glBindVertexArray(batch.vao);
-    glDrawElements(GL_TRIANGLES, batch.indexCount, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    GetBufferManager().BindVertexArray(batch.vao);
+    GetDrawContext().DrawElements(Graphics::Primitive::Triangles, static_cast<unsigned int>(batch.indexCount), Graphics::DataType::UnsignedInt, 0);
+    GetBufferManager().BindVertexArray(0);
 }
 
 void StaticBatchManager::RenderAllBatches()
 {
+    if (!s_BufferManager || !s_DrawContext) return;
     for (const auto& [name, batch] : m_Batches)
     {
-        glBindVertexArray(batch.vao);
-        glDrawElements(GL_TRIANGLES, batch.indexCount, GL_UNSIGNED_INT, 0);
+        GetBufferManager().BindVertexArray(batch.vao);
+        GetDrawContext().DrawElements(Graphics::Primitive::Triangles, static_cast<unsigned int>(batch.indexCount), Graphics::DataType::UnsignedInt, 0);
     }
-    glBindVertexArray(0);
+    GetBufferManager().BindVertexArray(0);
 }
 
 bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::string& path)
@@ -197,11 +234,14 @@ void StaticBatchManager::SaveBatchToFile(const std::string& name, const std::str
 
 void StaticBatchManager::Clear()
 {
-    for (auto& [name, batch] : m_Batches)
+    if (s_BufferManager)
     {
-        glDeleteVertexArrays(1, &batch.vao);
-        glDeleteBuffers(1, &batch.vbo);
-        glDeleteBuffers(1, &batch.ebo);
+        for (auto& [name, batch] : m_Batches)
+        {
+            s_BufferManager->DeleteVertexArrays(1, &batch.vao);
+            s_BufferManager->DeleteBuffers(1, &batch.vbo);
+            s_BufferManager->DeleteBuffers(1, &batch.ebo);
+        }
     }
     m_Batches.clear();
 }

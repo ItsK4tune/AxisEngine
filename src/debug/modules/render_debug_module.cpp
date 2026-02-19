@@ -4,7 +4,9 @@
 
 #include <app/application.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
+#include <interface/graphic/i_graphics_context.h>
+#include <interface/graphic/i_render_state_manager.h>
+#include <input/keyboard_manager.h>
 
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}
@@ -29,9 +31,21 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
     if (!m_App || !m_Enabled)
         return;
 
-    ProcessKey(keyboard, GLFW_KEY_F6, m_F6Pressed, [this, &keyboard]()
+    // Include glad for GL_FRONT_AND_BACK if not already accessible? 
+    // Usually via IGraphicsContext -> ... 
+    // Let's add include if needed? 
+    // But wait, the file already misses includes.
+    // I need to include:
+    // <interface/i_graphics_context.h>
+    // <interface/i_render_state_manager.h>
+    // <interface/input_codes.h> (via Application/KeyboardManager)
+
+    // Using raw GL_FRONT_AND_BACK (0x0408) to avoid GLAD include?
+    // Or just include glad. Better to include glad for now.
+
+    ProcessKey(keyboard, Input::Key::F6, m_F6Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             static bool skyboxEnabled = true;
             skyboxEnabled = !skyboxEnabled;
@@ -41,16 +55,19 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
             std::cout << "==============================================" << std::endl;
         } else {
             m_WireframeMode = !m_WireframeMode;
-            if (m_WireframeMode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            if (m_WireframeMode) 
+                m_App->GetGraphicsContext().GetRenderStateManager().PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Line);
+            else 
+                m_App->GetGraphicsContext().GetRenderStateManager().PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill);
+            
             std::cout << "\n========== Wireframe Mode (F6) ==========" << std::endl;
             std::cout << "[Debug] Wireframe: " << (m_WireframeMode ? "ON" : "OFF") << std::endl;
             std::cout << "=========================================" << std::endl;
         } });
 
-    ProcessKey(keyboard, GLFW_KEY_F7, m_F7Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F7, m_F7Pressed, [this, &keyboard]()
                {
-         bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+         bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
          if (shift) {
              bool shadow = !m_App->GetRenderSystem().IsShadowsEnabled();
              m_App->GetRenderSystem().SetEnableShadows(shadow);
@@ -65,9 +82,9 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
              std::cout << "==========================================" << std::endl;
          } });
 
-    ProcessKey(keyboard, GLFW_KEY_F9, m_F9Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F9, m_F9Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             // Particle debug - handled by PhysicsDebugModule
         } else {
@@ -80,7 +97,7 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
         } });
 }
 
-void RenderDebugModule::ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action)
+void RenderDebugModule::ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

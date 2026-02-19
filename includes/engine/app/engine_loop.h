@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GLFW/glfw3.h>
+#include <chrono>
 
 class Application;
 class SystemManager;
@@ -32,7 +32,7 @@ private:
 
     float deltaTime = 0.0f;
     float realDeltaTime = 0.0f;
-    float lastFrame = 0.0f;
+    std::chrono::steady_clock::time_point m_LastFrameTime;
     float m_Accumulator = 0.0f;
     float m_FixedDeltaTime = 1.0f / 60.0f;
 

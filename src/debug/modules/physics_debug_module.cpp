@@ -4,8 +4,10 @@
 
 #include <app/application.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
+#include <GLFW/glfw3.h> 
 #include <glm/glm.hpp>
+#include <interface/graphic/i_graphics_context.h>
+#include <interface/graphic/i_render_state_manager.h>
 
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}
@@ -17,7 +19,6 @@ void PhysicsDebugModule::Init(Application *app)
 
 void PhysicsDebugModule::OnUpdate(float dt)
 {
-    // No per-frame updates needed
 }
 
 void PhysicsDebugModule::Render(Scene &scene)
@@ -34,7 +35,7 @@ void PhysicsDebugModule::Render(Scene &scene)
         Shader *debugShader = res.GetShader("debugLine");
         if (debugShader)
         {
-            m_App->GetPhysicsSystem().RenderDebug(scene, m_App->GetPhysicsWorld(), *debugShader, width, height);
+            m_App->GetPhysicsSystem().RenderDebug(scene, m_App->GetPhysicsWorld(), *debugShader, width, height, m_App->GetGraphicsContext().GetRenderStateManager());
         }
     }
 
@@ -45,7 +46,6 @@ void PhysicsDebugModule::Render(Scene &scene)
         {
             const auto &transform = view.get<TransformComponent>(entity);
             glm::vec3 pos = transform.GetWorldModelMatrix(scene.registry)[3];
-            // TODO: Render audio source gizmo at pos
         }
     }
 
@@ -56,7 +56,6 @@ void PhysicsDebugModule::Render(Scene &scene)
         {
             const auto &transform = view.get<TransformComponent>(entity);
             glm::vec3 pos = transform.GetWorldModelMatrix(scene.registry)[3];
-            // TODO: Render particle emitter boundary at pos
         }
     }
 }
@@ -66,9 +65,9 @@ void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
     if (!m_App || !m_Enabled)
         return;
 
-    ProcessKey(keyboard, GLFW_KEY_F8, m_F8Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F8, m_F8Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             m_ShowAudioDebug = !m_ShowAudioDebug;
             std::cout << "\n========== Audio Debug (Shift+F8) ==========" << std::endl;
@@ -79,9 +78,9 @@ void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
             TogglePhysicsDebug();
         } });
 
-    ProcessKey(keyboard, GLFW_KEY_F9, m_F9Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F9, m_F9Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             m_ShowParticleDebug = !m_ShowParticleDebug;
             std::cout << "\n========== Particle Debug (Shift+F9) ==========" << std::endl;
@@ -99,7 +98,7 @@ void PhysicsDebugModule::TogglePhysicsDebug()
     std::cout << "========================================" << std::endl;
 }
 
-void PhysicsDebugModule::ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action)
+void PhysicsDebugModule::ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

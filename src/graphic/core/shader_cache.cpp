@@ -2,24 +2,11 @@
 #include <utils/logger.h>
 #include <iostream>
 
-ShaderCache::ShaderCache()
-{
-}
-
-ShaderCache::~ShaderCache()
-{
-    for (auto& pair : m_LoadedShaders)
-    {
-        delete pair.second;
-    }
-    m_LoadedShaders.clear();
-}
-
 Shader* ShaderCache::GetOrCompile(const std::string& name, const std::string& vertPath, const std::string& fragPath)
 {
     if (m_LoadedShaders.find(name) != m_LoadedShaders.end())
     {
-        return m_LoadedShaders[name];
+        return m_LoadedShaders[name].get();
     }
     
     if (vertPath.empty() || fragPath.empty())
@@ -28,20 +15,22 @@ Shader* ShaderCache::GetOrCompile(const std::string& name, const std::string& ve
         return nullptr;
     }
 
-    Shader* shader = new Shader();
+    auto shader = std::make_unique<Shader>();
     shader->load(vertPath.c_str(), fragPath.c_str());
     
-    m_LoadedShaders[name] = shader;
+    Shader* rawPtr = shader.get();
+    m_LoadedShaders[name] = std::move(shader);
+    
     LOGGER_INFO("ShaderCache") << "Compiled and cached shader '" << name << "'";
     
-    return shader;
+    return rawPtr;
 }
 
 Shader* ShaderCache::Get(const std::string& name)
 {
     auto it = m_LoadedShaders.find(name);
     if (it != m_LoadedShaders.end())
-        return it->second;
+        return it->second.get();
     return nullptr;
 }
 
@@ -51,7 +40,10 @@ void ShaderCache::Reload(const std::string& name)
     if (it != m_LoadedShaders.end())
     {
         LOGGER_INFO("ShaderCache") << "Reloading shader: " << name;
-        delete it->second;
+        // Logic for reload might need to be adjusted: reusing the object vs replacing it.
+        // For unique_ptr, replacing it is easiest, but invalidates pointers held by others.
+        // However, ShaderCache users typically query Get() every frame or store Shader* which *might* be dangerous if reloaded.
+        // But the previous implementation also deleted it: `delete it->second;`. So pointer invalidation was already an issue.
         m_LoadedShaders.erase(it);
     }
 }

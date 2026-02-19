@@ -4,7 +4,6 @@
 #include <resource/resource_manager.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
-#include <physic/physic_world.h>
 
 class Application;
 
@@ -32,8 +31,8 @@ public:
 
     class SceneManager &GetSceneManager();
     class ResourceManager &GetResourceManager();
-    class SoundManager &GetSoundManager();
-    class AppHandler &GetAppHandler();
+    class SoundPlayer &GetSoundPlayer();
+    class IOHandler &GetIOHandler();
     class InputManager &GetInputManager();
     class KeyboardManager &GetKeyboard();
     class MouseManager &GetMouse();
@@ -41,7 +40,7 @@ public:
     void LoadScene(const std::string &path);
     void UnloadScene(const std::string &path);
     void ChangeScene(const std::string &path);
-    void SetCursorMode(CursorMode mode);
+    void SetCursorMode(Input::CursorMode mode);
 
     void EnablePhysics(bool enable);
     void EnableRender(bool enable);

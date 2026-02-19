@@ -1,9 +1,6 @@
 #include <app/monitor_manager.h>
 #include <utils/logger.h>
-#include <iostream>
 #include <stb_image.h>
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
 MonitorManager::MonitorManager()
 {
@@ -11,50 +8,32 @@ MonitorManager::MonitorManager()
 
 MonitorManager::~MonitorManager()
 {
-    if (m_Window)
-    {
-        glfwDestroyWindow(m_Window);
-        m_Window = nullptr;
-    }
-    glfwTerminate();
 }
 
-bool MonitorManager::Init()
+bool MonitorManager::Init(std::unique_ptr<IWindow> window)
 {
-    if (!glfwInit())
+    // Initialize backend window
+    m_Window = std::move(window);
+    
+    if (!m_Window->Init(m_Width, m_Height, m_Title))
     {
-        LOGGER_ERROR("MonitorManager") << "Failed to initialize GLFW";
+        LOGGER_ERROR("MonitorManager") << "Failed to initialize window";
         return false;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    m_Window = glfwCreateWindow(m_Width, m_Height, m_Title.c_str(), NULL, NULL);
-    if (m_Window == NULL)
-    {
-        LOGGER_ERROR("MonitorManager") << "Failed to create GLFW window";
-        glfwTerminate();
-        return false;
-    }
-    glfwMakeContextCurrent(m_Window);
-
-    if (m_Vsync)
-    {
-        glfwSwapInterval(1);
-    }
-    else
-    {
-        glfwSwapInterval(0);
-    }
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        LOGGER_ERROR("MonitorManager") << "Failed to initialize GLAD";
-        return false;
-    }
-    glEnable(GL_DEPTH_TEST);
+    // Apply initial configuration if needed? 
+    // Init handles creation. configuration like fullscreen might need to be applied after init
+    // but SetWindowConfiguration calls glfwSetWindowMonitor which works on existing window.
+    // So we should call SetWindowConfiguration here if parameters were set before Init?
+    // IOHandler calls SetWindowConfiguration BEFORE Init.
+    // But SetWindowConfiguration checks `if (!m_Window) return;`.
+    // So if called before Init (where m_Window is null), it does nothing.
+    // IOHandler call order:
+    // m_MonitorManager->SetWindowConfiguration(...) -> stores fields (m_Width, m_Mode etc)
+    // m_MonitorManager->Init(window) -> moves window, calls window->Init.
+    // we should apply configuration here.
+    
+    m_Window->SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
 
     return true;
 }
@@ -67,59 +46,10 @@ void MonitorManager::SetWindowConfiguration(int width, int height, WindowMode mo
     m_MonitorIndex = monitorIndex;
     m_RefreshRate = refreshRate;
 
-    int count;
-    GLFWmonitor **monitors = glfwGetMonitors(&count);
-    GLFWmonitor *targetMonitor = nullptr;
-
-    if (monitorIndex >= 0 && monitorIndex < count)
-        targetMonitor = monitors[monitorIndex];
-    else if (count > 0)
-        targetMonitor = monitors[0];
-
-    if (!targetMonitor)
-        targetMonitor = glfwGetPrimaryMonitor();
-
-    const GLFWvidmode *videoMode = glfwGetVideoMode(targetMonitor);
-    if (!videoMode)
-        return;
-
-    int targetRefreshRate = (refreshRate > 0) ? refreshRate : videoMode->refreshRate;
-
-    if (mode == WindowMode::FULLSCREEN)
+    if (m_Window)
     {
-        glfwSetWindowMonitor(m_Window, targetMonitor, 0, 0, width, height, targetRefreshRate);
+        m_Window->SetWindowConfiguration(width, height, mode, monitorIndex, refreshRate);
     }
-    else if (mode == WindowMode::BORDERLESS)
-    {
-        glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_FALSE);
-
-        int xpos = 0, ypos = 0;
-        glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
-
-        m_Width = videoMode->width;
-        m_Height = videoMode->height;
-
-        glfwSetWindowMonitor(m_Window, nullptr, xpos, ypos, videoMode->width, videoMode->height, targetRefreshRate);
-    }
-    else
-    {
-        glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_TRUE);
-
-        int xpos = 0, ypos = 0;
-        glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
-        int cx = xpos + (videoMode->width - width) / 2;
-        int cy = ypos + (videoMode->height - height) / 2;
-
-        glfwSetWindowMonitor(m_Window, nullptr, cx, cy, width, height, targetRefreshRate);
-    }
-
-    glViewport(0, 0, m_Width, m_Height);
-}
-
-void MonitorManager::SetVsync(bool enable)
-{
-    m_Vsync = enable;
-    glfwSwapInterval(enable ? 1 : 0);
 }
 
 void MonitorManager::SetFrameRateLimit(int limit)
@@ -127,35 +57,33 @@ void MonitorManager::SetFrameRateLimit(int limit)
     m_FrameRateLimit = limit;
 }
 
-void MonitorManager::SetWindowTitle(const std::string &title)
+void MonitorManager::SetWindowTitle(const std::string& title)
 {
     m_Title = title;
     if (m_Window)
-    {
-        glfwSetWindowTitle(m_Window, m_Title.c_str());
-    }
+        m_Window->SetTitle(m_Title);
 }
 
-void MonitorManager::SetWindowIcon(const std::string &path)
+void MonitorManager::SetVsync(bool vsync)
+{
+    if (m_Window)
+        m_Window->SetVsync(vsync);
+}
+
+void MonitorManager::SetWindowIcon(const std::string& path)
 {
     if (!m_Window)
         return;
 
     LOGGER_INFO("MonitorManager") << "Attempting to load icon from: " << path;
 
-    GLFWimage images[1];
     int width, height, channels;
-    unsigned char *pixels = stbi_load(path.c_str(), &width, &height, &channels, 4);
+    unsigned char* pixels = stbi_load(path.c_str(), &width, &height, &channels, 4);
 
     if (pixels)
     {
         LOGGER_INFO("MonitorManager") << "Icon loaded successfully (" << width << "x" << height << ")";
-        images[0].width = width;
-        images[0].height = height;
-        images[0].pixels = pixels;
-
-        glfwSetWindowIcon(m_Window, 1, images);
-
+        m_Window->SetIcon(width, height, pixels);
         stbi_image_free(pixels);
     }
     else
@@ -168,26 +96,24 @@ void MonitorManager::OnResize(int width, int height)
 {
     if (width == 0 || height == 0)
         return;
-
     m_Width = width;
     m_Height = height;
-    glViewport(0, 0, width, height);
 }
 
 std::vector<DeviceInfo> MonitorManager::GetAllDevices() const
 {
     std::vector<DeviceInfo> devices;
-    int count;
-    GLFWmonitor **monitors = glfwGetMonitors(&count);
-
-    for (int i = 0; i < count; i++)
+    if (!m_Window) return devices;
+    
+    std::vector<MonitorInfo> monitors = m_Window->GetMonitors();
+    
+    for (const auto& monitor : monitors)
     {
         DeviceInfo info;
-        info.id = std::to_string(i);
-        const char *name = glfwGetMonitorName(monitors[i]);
-        info.name = name ? name : "Unknown Monitor";
+        info.id = std::to_string(monitor.index);
+        info.name = monitor.name;
         info.type = DeviceType::Monitor;
-        info.isDefault = (i == 0);
+        info.isDefault = monitor.isPrimary;
         devices.push_back(info);
     }
     return devices;
@@ -195,40 +121,45 @@ std::vector<DeviceInfo> MonitorManager::GetAllDevices() const
 
 DeviceInfo MonitorManager::GetCurrentDevice() const
 {
-    int count;
-    GLFWmonitor **monitors = glfwGetMonitors(&count);
-
     DeviceInfo info;
     info.type = DeviceType::Monitor;
     info.isDefault = false;
-
-    if (m_MonitorIndex >= 0 && m_MonitorIndex < count)
-    {
-        info.id = std::to_string(m_MonitorIndex);
-        const char *name = glfwGetMonitorName(monitors[m_MonitorIndex]);
-        info.name = name ? name : "Unknown Monitor";
-    }
-    else
+    
+    if (!m_Window) 
     {
         info.id = "-1";
         info.name = "Unknown";
+        return info;
     }
+
+    std::vector<MonitorInfo> monitors = m_Window->GetMonitors();
+    
+    if (m_MonitorIndex >= 0 && m_MonitorIndex < monitors.size())
+    {
+        // Try to find by index
+        // NOTE: GetMonitors returns a vector, index should match if order is preserved.
+        // GLFW docs say order is preserved.
+        if (monitors[m_MonitorIndex].index == m_MonitorIndex) 
+        {
+             info.id = std::to_string(m_MonitorIndex);
+             info.name = monitors[m_MonitorIndex].name;
+             return info;
+        }
+    }
+    
+    info.id = std::to_string(m_MonitorIndex);
+    info.name = "Monitor " + std::to_string(m_MonitorIndex);
     return info;
 }
 
-bool MonitorManager::SetActiveDevice(const std::string &deviceId)
+bool MonitorManager::SetActiveDevice(const std::string& deviceId)
 {
     try
     {
         int index = std::stoi(deviceId);
-        int count;
-        glfwGetMonitors(&count);
-        if (index >= 0 && index < count)
-        {
-            m_MonitorIndex = index;
-            SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
-            return true;
-        }
+        m_MonitorIndex = index;
+        SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
+        return true;
     }
     catch (...)
     {

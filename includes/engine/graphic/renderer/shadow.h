@@ -1,10 +1,13 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>
 #include <graphic/core/shader.h>
+
+class IRenderTargetManager;
+class ITextureManager;
+class IDrawContext;
 
 class Shadow {
 public:
@@ -37,6 +40,11 @@ public:
     void SetShaderPoint(Shader* shader) { m_ShadowShaderPoint = shader; }
     void SetShaderSpot(Shader* shader) { m_ShadowShaderSpot = shader; }
 
+    static void SetManagers(IRenderTargetManager* rtm, ITextureManager* tm, IDrawContext* dc);
+    static IRenderTargetManager& GetRenderTargetManager() { return *s_RenderTargetManager; }
+    static ITextureManager& GetTextureManager() { return *s_TextureManager; }
+    static IDrawContext& GetDrawContext() { return *s_DrawContext; }
+
     static const int MAX_DIR_LIGHTS_SHADOW = 2;
     static const int MAX_POINT_LIGHTS_SHADOW = 2;
     static const int MAX_SPOT_LIGHTS_SHADOW = 2;
@@ -57,4 +65,8 @@ private:
     Shader* m_ShadowShaderDir = nullptr;
     Shader* m_ShadowShaderPoint = nullptr;
     Shader* m_ShadowShaderSpot = nullptr;
+
+    static IRenderTargetManager* s_RenderTargetManager;
+    static ITextureManager* s_TextureManager;
+    static IDrawContext* s_DrawContext;
 };

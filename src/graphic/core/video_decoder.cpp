@@ -1,6 +1,24 @@
 #include <graphic/core/video_decoder.h>
 #include <utils/logger.h>
-#include <glad/glad.h>
+#include <interface/graphic/i_texture_manager.h>
+
+
+
+ITextureManager* VideoDecoder::s_TextureManager = nullptr;
+
+void VideoDecoder::SetTextureManager(ITextureManager& textureManager)
+{
+    s_TextureManager = &textureManager;
+}
+
+ITextureManager& VideoDecoder::GetTextureManager()
+{
+    if (!s_TextureManager) {
+        LOGGER_ERROR("VideoDecoder") << "TextureManager not set!";
+        throw std::runtime_error("TextureManager not set in VideoDecoder");
+    }
+    return *s_TextureManager;
+}
 
 VideoDecoder::VideoDecoder()
 {
@@ -136,9 +154,9 @@ void VideoDecoder::Unload()
     if (m_SwsCtx)
         sws_freeContext(m_SwsCtx);
 
-    if (m_TextureID != 0)
+    if (m_TextureID != 0 && s_TextureManager)
     {
-        glDeleteTextures(1, &m_TextureID);
+        GetTextureManager().DeleteTextures(1, &m_TextureID);
         m_TextureID = 0;
     }
 
@@ -156,14 +174,17 @@ void VideoDecoder::Unload()
 
 void VideoDecoder::InitTexture()
 {
+    if (!s_TextureManager) return;
+    auto& tm = GetTextureManager();
+
     if (m_TextureID == 0)
-        glGenTextures(1, &m_TextureID);
-    glBindTexture(GL_TEXTURE_2D, m_TextureID);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_OutputWidth, m_OutputHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        m_TextureID = tm.GenTexture();
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_TextureID);
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(Graphics::TextureWrap::Repeat));
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(Graphics::TextureWrap::Repeat));
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Linear));
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
+    tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA8, m_OutputWidth, m_OutputHeight, 0, Graphics::TextureFormat::RGBA, Graphics::DataType::UnsignedByte, nullptr);
 }
 
 void VideoDecoder::Play()
@@ -255,7 +276,7 @@ end_decode:
 
 void VideoDecoder::UploadFrame()
 {
-    if (!m_SwsCtx || !m_Frame || !m_RGBFrame)
+    if (!m_SwsCtx || !m_Frame || !m_RGBFrame || !s_TextureManager)
         return;
 
     sws_scale(m_SwsCtx,
@@ -263,8 +284,9 @@ void VideoDecoder::UploadFrame()
               0, m_Height,
               m_RGBFrame->data, m_RGBFrame->linesize);
 
-    glBindTexture(GL_TEXTURE_2D, m_TextureID);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, GL_RGBA, GL_UNSIGNED_BYTE, m_RGBFrame->data[0]);
+    auto& tm = GetTextureManager();
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_TextureID);
+    tm.TexSubImage2D(Graphics::TextureType::Texture2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, Graphics::TextureFormat::RGBA, Graphics::DataType::UnsignedByte, m_RGBFrame->data[0]);
 }
 
 void VideoDecoder::Seek(double timestamp)

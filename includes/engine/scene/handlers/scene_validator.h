@@ -6,7 +6,7 @@
 #include <entt/entt.hpp>
 
 class Scene;
-class PhysicsWorld;
+class IPhysicsWorld;
 class Application;
 
 namespace SceneHandlers
@@ -16,7 +16,7 @@ namespace SceneHandlers
     public:
         static void ValidateLights(Scene &scene);
         static void ValidateCamera(Scene &scene, Application *app);
-        static void ValidatePhysicsSync(Scene &scene, PhysicsWorld &phys);
+        static void ValidatePhysicsSync(Scene &scene, IPhysicsWorld &phys);
         static void ValidateParentChildRelationships(
             Scene &scene,
             const std::map<entt::entity, std::vector<std::string>> &deferredChildren);

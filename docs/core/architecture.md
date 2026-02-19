@@ -193,7 +193,7 @@ class GameState : public State {
         LoadScene("scenes/game.scene");
         EnablePhysics(true);
         EnableRender(true);
-        SetCursorMode(CursorMode::LockedHiddenCenter);
+        SetCursorMode(CursorMode::LockedHidden);
     }
     
     void OnUpdate(float dt) override {

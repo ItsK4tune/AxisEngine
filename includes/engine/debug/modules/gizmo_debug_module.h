@@ -2,12 +2,13 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <interface/debug_module.h>
+#include <interface/debug/i_debug_module.h>
 #include <graphic/renderer/font.h>
 #include <graphic/renderer/ui_model.h>
 #include <graphic/core/shader.h>
 #include <entt/entity/entity.hpp>
 #include <functional>
+#include <interface/window/input_codes.h>
 #include <unordered_map>
 #include <vector>
 #include <glm/glm.hpp>
@@ -46,7 +47,7 @@ private:
     void UpdateLightLabels(Scene &scene);
     void ClearLightLabels(Scene &scene);
 
-    void ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action);
+    void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
 
     Application *m_App = nullptr;
     bool m_Enabled = true;
@@ -72,8 +73,8 @@ private:
         glm::vec3 color;
     };
 
-    GLuint m_LineVAO = 0;
-    GLuint m_LineVBO = 0;
+    unsigned int m_LineVAO = 0;
+    unsigned int m_LineVBO = 0;
     std::vector<DebugLineVertex> m_GizmoLines;
 };
 

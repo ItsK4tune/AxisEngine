@@ -3,7 +3,7 @@
 #include <utils/bullet_glm_helpers.h>
 #include <iostream>
 
-void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::stringstream &ss, PhysicsWorld &physics, std::ifstream &file)
+void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::stringstream &ss, IPhysicsWorld &physics, std::ifstream &file)
 {
     std::string type;
     float mass;
@@ -12,10 +12,11 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
     auto &trans = scene.registry.get<TransformComponent>(entity);
     auto &rb = scene.registry.emplace<RigidBodyComponent>(entity);
 
-    btCollisionShape *finalShape = nullptr;
+    std::shared_ptr<ICollisionShape> finalShape = nullptr;
+
     if (type == "COMPOUND")
     {
-        btCompoundShape *compound = new btCompoundShape();
+        auto compound = physics.CreateCompoundShape();
         std::string subLine;
 
         while (std::getline(file, subLine))
@@ -33,38 +34,33 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
                 float lx, ly, lz, lrx, lry, lrz;
                 subSS >> shapeType >> lx >> ly >> lz >> lrx >> lry >> lrz;
 
-                btTransform localTrans;
-                localTrans.setIdentity();
-                localTrans.setOrigin(btVector3(lx, ly, lz));
-                btQuaternion localRot;
-                localRot.setEuler(glm::radians(lry), glm::radians(lrx), glm::radians(lrz));
-                localTrans.setRotation(localRot);
+                glm::vec3 localPos(lx, ly, lz);
+                glm::quat localRot = glm::quat(glm::vec3(glm::radians(lrx), glm::radians(lry), glm::radians(lrz)));
 
-                btCollisionShape *childShape = nullptr;
+                std::shared_ptr<ICollisionShape> childShape = nullptr;
 
                 if (shapeType == "BOX")
                 {
                     float x, y, z;
                     subSS >> x >> y >> z;
-                    childShape = new btBoxShape(btVector3(x, y, z));
+                    childShape = physics.CreateBoxShape(glm::vec3(x, y, z));
                 }
                 else if (shapeType == "SPHERE")
                 {
                     float r;
                     subSS >> r;
-                    childShape = new btSphereShape(r);
+                    childShape = physics.CreateSphereShape(r);
                 }
                 else if (shapeType == "CAPSULE")
                 {
                     float r, h;
                     subSS >> r >> h;
-                    childShape = new btCapsuleShape(r, h);
+                    childShape = physics.CreateCapsuleShape(r, h);
                 }
 
                 if (childShape)
                 {
-                    compound->addChildShape(localTrans, childShape);
-                    physics.RegisterShape(childShape);
+                    physics.AddChildShape(compound.get(), childShape.get(), localPos, localRot);
                 }
             }
         }
@@ -74,13 +70,13 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
     {
         float r, h;
         ss >> r >> h;
-        finalShape = new btCapsuleShape(r, h);
+        finalShape = physics.CreateCapsuleShape(r, h);
     }
     else if (type == "BOX")
     {
         float x, y, z;
         ss >> x >> y >> z;
-        finalShape = new btBoxShape(btVector3(x, y, z));
+        finalShape = physics.CreateBoxShape(glm::vec3(x, y, z));
     }
 
     glm::vec3 centerOffset(0.0f);
@@ -146,13 +142,9 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
 
     if (finalShape && glm::length(centerOffset) > 0.001f)
     {
-        btCompoundShape *compound = new btCompoundShape();
-        btTransform localTrans;
-        localTrans.setIdentity();
-        localTrans.setOrigin(BulletGLMHelpers::convert(centerOffset));
-        compound->addChildShape(localTrans, finalShape);
+        auto compound = physics.CreateCompoundShape();
+        physics.AddChildShape(compound.get(), finalShape.get(), centerOffset, glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         finalShape = compound;
-        physics.RegisterShape(finalShape);
     }
 
     if (finalShape)
@@ -170,22 +162,16 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
         if (bodyType == "KINEMATIC")
             mass = 0.0f;
 
-        btTransform transform;
-        transform.setIdentity();
-        transform.setOrigin(BulletGLMHelpers::convert(trans.position));
-        transform.setRotation(BulletGLMHelpers::convert(trans.rotation));
-
-        rb.body = physics.CreateRigidBody(mass, transform, finalShape);
+        rb.body = physics.CreateRigidBody(mass, trans.position, trans.rotation, finalShape);
 
         if (rb.body)
         {
             if (bodyType == "KINEMATIC")
             {
-                rb.body->setCollisionFlags(rb.body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
-                rb.body->setActivationState(DISABLE_DEACTIVATION);
+                rb.body->SetKinematic(true);
             }
 
-            rb.body->setUserPointer((void *)(uintptr_t)entity);
+            rb.body->SetUserPointer((void *)(uintptr_t)entity);
 
             if (type == "CAPSULE" || type == "PLAYER")
             {
@@ -194,13 +180,15 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
                     rb.angularFactor = glm::vec3(0, 1, 0);
             }
 
-            rb.body->setAngularFactor(BulletGLMHelpers::convert(rb.angularFactor));
-            rb.body->setLinearFactor(BulletGLMHelpers::convert(rb.linearFactor));
+            rb.body->SetAngularFactor(rb.angularFactor);
+            rb.body->SetLinearFactor(rb.linearFactor);
 
             if (restitution > 0.0f)
             {
-                rb.body->setRestitution(restitution);
+                rb.body->SetRestitution(restitution);
             }
+            
+            physics.AddRigidBody(rb.body.get());
         }
     }
 }

@@ -1,8 +1,9 @@
 #include <ecs/system.h>
 #include <ecs/component.h>
-#include <utils/irrKlang_glm_helpers.h>
 
-void AudioSystem::Update(Scene &scene, SoundManager &soundManager)
+#include <audio/sound_player.h>
+
+void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
 {
     if (!m_Enabled)
         return;
@@ -25,8 +26,8 @@ void AudioSystem::Update(Scene &scene, SoundManager &soundManager)
 
             if (audio.sound)
             {
-                audio.sound->stop();
-                audio.sound->drop();
+                audio.sound->Stop();
+                // Smart pointers handle cleanup, but we might want to forcefully stop.
                 audio.sound = nullptr;
             }
 
@@ -35,39 +36,38 @@ void AudioSystem::Update(Scene &scene, SoundManager &soundManager)
                 TransformComponent *transform = scene.registry.try_get<TransformComponent>(entity);
                 glm::vec3 pos = transform ? transform->position : glm::vec3(0.0f);
 
-                irrklang::ISoundSource *source = soundManager.GetEngine()->getSoundSource(audio.filePath.c_str());
-                if (!source)
-                    source = soundManager.GetEngine()->addSoundSourceFromFile(audio.filePath.c_str());
-
+                auto source = soundPlayer.GetEngine()->AddSoundSourceFromFile(audio.filePath);
+                
                 if (source)
                 {
-                    source->setDefaultMinDistance(audio.minDistance);
-                    audio.sound = soundManager.Play3D(source, pos, audio.loop);
+                    source->SetDefaultMinDistance(audio.minDistance);
+                    // Use Play3D with filename, as we updated the source properties.
+                    // Or if we need to ensure we play THAT source, we rely on the filename being the key.
+                    audio.sound = soundPlayer.Play3D(audio.filePath, pos, audio.loop);
                 }
             }
             else
             {
-                audio.sound = soundManager.GetEngine()->play2D(audio.filePath.c_str(), audio.loop, false, true);
+                audio.sound = soundPlayer.GetEngine()->Play2D(audio.filePath, audio.loop, false /* startPaused */);
             }
 
             if (audio.sound)
             {
-                audio.sound->setVolume(audio.volume);
+                audio.sound->SetVolume(audio.volume);
             }
         }
 
-        if (audio.is3D && audio.sound && !audio.sound->isFinished())
+        if (audio.is3D && audio.sound && !audio.sound->IsFinished())
         {
             TransformComponent *transform = scene.registry.try_get<TransformComponent>(entity);
             if (transform)
             {
-                audio.sound->setPosition(IrrKlangGLMHelpers::convert(transform->position));
+                audio.sound->SetPosition(transform->position);
             }
         }
 
-        if (audio.sound && audio.sound->isFinished())
+        if (audio.sound && audio.sound->IsFinished())
         {
-            audio.sound->drop();
             audio.sound = nullptr;
         }
     }
@@ -81,8 +81,7 @@ void AudioSystem::StopAll(Scene &scene)
         auto &audio = view.get<AudioSourceComponent>(entity);
         if (audio.sound)
         {
-            audio.sound->stop();
-            audio.sound->drop();
+            audio.sound->Stop();
             audio.sound = nullptr;
         }
     }

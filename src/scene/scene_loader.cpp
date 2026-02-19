@@ -1,11 +1,12 @@
+#include <utils/filesystem.h>
 #include <scene/scene_loader.h>
 #include <utils/logger.h>
 #include <scene/scene.h>
 #include <app/application.h>
 #include <script/script_registry.h>
-#include <utils/filesystem.h>
 #include <utils/bullet_glm_helpers.h>
 #include <physic/physics_loader.h>
+#include <interface/physics/i_physics_world.h>
 #include <scene/component_loader.h>
 #include <app/config_loader.h>
 
@@ -21,7 +22,7 @@
 #include <unordered_map>
 #include <functional>
 
-std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application *app)
+std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
 {
     std::string fullPath = FileSystem::getPath(filePath);
     std::ifstream file(fullPath);

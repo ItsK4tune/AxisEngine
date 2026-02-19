@@ -2,16 +2,42 @@
 #include <utils/logger.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <interface/graphic/i_texture_manager.h>
+#include <interface/graphic/graphics_types.h>
+
+// OpenGL constants
+
+
+ITextureManager* Font::s_TextureManager = nullptr;
+
+void Font::SetTextureManager(ITextureManager& textureManager)
+{
+    s_TextureManager = &textureManager;
+}
+
+ITextureManager& Font::GetTextureManager()
+{
+    if (!s_TextureManager) {
+        LOGGER_ERROR("Font") << "TextureManager not set!";
+        throw std::runtime_error("TextureManager not set in Font");
+    }
+    return *s_TextureManager;
+}
 
 Font::Font() {}
 
 Font::~Font() {
-    for (auto const& [key, ch] : Characters) {
-        glDeleteTextures(1, &ch.TextureID);
+    if (s_TextureManager) {
+        for (auto const& [key, ch] : Characters) {
+            s_TextureManager->DeleteTextures(1, &ch.TextureID);
+        }
     }
 }
 
 bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
+    if (!s_TextureManager) return false;
+    auto& tm = GetTextureManager();
+
     FT_Library ft;
     if (FT_Init_FreeType(&ft)) {
         LOGGER_ERROR("Font") << "Could not init FreeType Library";
@@ -27,7 +53,7 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
 
     FT_Set_Pixel_Sizes(face, 0, fontSize);
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    tm.PixelStorei(Graphics::PixelStoreParam::UnpackAlignment, 1);
 
     for (unsigned char c = 0; c < 128; c++) {
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
@@ -35,25 +61,24 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
             continue;
         }
 
-        unsigned int texture;
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(
-            GL_TEXTURE_2D,
+        unsigned int texture = tm.GenTexture();
+        tm.BindTexture(Graphics::TextureType::Texture2D, texture);
+        tm.TexImage2D(
+            Graphics::TextureType::Texture2D,
             0,
-            GL_RED,
+            Graphics::InternalFormat::R8,
             face->glyph->bitmap.width,
             face->glyph->bitmap.rows,
             0,
-            GL_RED,
-            GL_UNSIGNED_BYTE,
+            Graphics::TextureFormat::Red,
+            Graphics::DataType::UnsignedByte,
             face->glyph->bitmap.buffer
         );
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(Graphics::TextureWrap::ClampToEdge));
+        tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(Graphics::TextureWrap::ClampToEdge));
+        tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Linear));
+        tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
 
         Character character = {
             texture,

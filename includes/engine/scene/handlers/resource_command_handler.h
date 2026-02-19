@@ -4,19 +4,19 @@
 #include <string>
 
 class ResourceManager;
-class SoundManager;
+class SoundPlayer;
 
 namespace SceneHandlers
 {
-    class ResourceCommandHandler
-    {
-    public:
-        static void HandleLoadShader(std::stringstream &ss, ResourceManager &res);
-        static void HandleLoadModel(std::stringstream &ss, ResourceManager &res, bool isStatic);
-        static void HandleLoadAnimation(std::stringstream &ss, ResourceManager &res);
-        static void HandleLoadFont(std::stringstream &ss, ResourceManager &res);
-        static void HandleLoadSound(std::stringstream &ss, ResourceManager &res, SoundManager &sound);
-        static void HandleLoadSkybox(std::stringstream &ss, ResourceManager &res);
-        static void HandleLoadParticle(std::stringstream &ss, ResourceManager &res);
-    };
+namespace ResourceCommandHandler
+{
+    void HandleLoadShader(std::stringstream &ss, ResourceManager &res);
+    void HandleLoadTexture(std::stringstream &ss, ResourceManager &res);
+    void HandleLoadModel(std::stringstream &ss, ResourceManager &res, bool isStatic = false);
+    void HandleLoadAnimation(std::stringstream &ss, ResourceManager &res);
+    void HandleLoadFont(std::stringstream &ss, ResourceManager &res);
+    void HandleLoadSound(std::stringstream &ss, ResourceManager &res, SoundPlayer &sound);
+    void HandleLoadSkybox(std::stringstream &ss, ResourceManager &res);
+    void HandleLoadParticle(std::stringstream &ss, ResourceManager &res);
+}
 }

@@ -5,6 +5,10 @@
 #include <graphic/core/shader.h>
 #include <graphic/geometry/mesh.h>
 
+class IBufferManager;
+class ITextureManager;
+class IDrawContext;
+
 struct Particle
 {
     glm::vec3 Position;
@@ -65,6 +69,8 @@ public:
 
     Texture *texture = nullptr;
 
+    static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
+
 private:
     std::vector<Particle> m_Particles;
     unsigned int m_MaxParticles;
@@ -74,6 +80,14 @@ private:
     unsigned int m_VAO, m_VBO;
     unsigned int m_instanceVBO;
 
+    static IBufferManager* s_BufferManager;
+    static ITextureManager* s_TextureManager;
+    static IDrawContext* s_DrawContext;
+
     unsigned int FirstUnusedParticle();
     void RespawnParticle(Particle &particle, const glm::vec3 &offset);
+    
+    static IBufferManager& GetBufferManager();
+    static ITextureManager& GetTextureManager();
+    static IDrawContext& GetDrawContext();
 };

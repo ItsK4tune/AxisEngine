@@ -100,9 +100,9 @@ public:
     float GetTimeScale() const;
     float GetRealDeltaTime() const;
 
-    class SoundManager &GetSoundManager();
+    class SoundPlayer &GetSoundPlayer();
     class ResourceManager &GetResourceManager();
-    class AppHandler &GetAppHandler();
+    class IOHandler &GetIOHandler();
     class SceneManager &GetSceneManager();
     class InputManager &GetInputManager();
     class KeyboardManager &GetKeyboard();

@@ -2,9 +2,10 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <interface/debug_module.h>
+#include <interface/debug/i_debug_module.h>
 #include <functional>
 #include <string>
+#include <interface/window/input_codes.h>
 
 class Application;
 
@@ -29,7 +30,7 @@ private:
     void LogControls();
     void LogStats();
     void LogEntityStats();
-    void ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action);
+    void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
 
     Application *m_App = nullptr;
     bool m_Enabled = true;

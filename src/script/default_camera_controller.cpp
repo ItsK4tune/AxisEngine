@@ -18,12 +18,12 @@ void DefaultCameraController::OnUpdate(float dt)
     auto &transform = GetComponent<TransformComponent>();
     auto &camera = GetComponent<CameraComponent>();
 
-    const auto &mouse = GetAppHandler().GetMouse();
-    const auto &keyboard = GetAppHandler().GetKeyboard();
+    const auto &mouse = GetIOHandler().GetMouse();
+    const auto &keyboard = GetIOHandler().GetKeyboard();
 
     float delta = GetRealDeltaTime();
 
-    CursorMode mode = mouse.GetCursorMode();
+    Input::CursorMode mode = mouse.GetCursorMode();
     bool canControl = true;
 
     if (canControl)
@@ -58,21 +58,21 @@ void DefaultCameraController::OnUpdate(float dt)
     float velocity = moveSpeed * delta;
 
     float speed = velocity;
-    if (keyboard.GetKey(GLFW_KEY_LEFT_SHIFT))
+    if (keyboard.GetKey(Input::Key::LeftShift))
         speed *= 2.0f;
 
-    if (keyboard.GetKey(GLFW_KEY_W))
+    if (keyboard.GetKey(Input::Key::W))
         transform.position += camera.front * speed;
-    if (keyboard.GetKey(GLFW_KEY_S))
+    if (keyboard.GetKey(Input::Key::S))
         transform.position -= camera.front * speed;
-    if (keyboard.GetKey(GLFW_KEY_A))
+    if (keyboard.GetKey(Input::Key::A))
         transform.position -= camera.right * speed;
-    if (keyboard.GetKey(GLFW_KEY_D))
+    if (keyboard.GetKey(Input::Key::D))
         transform.position += camera.right * speed;
 
-    if (keyboard.GetKey(GLFW_KEY_SPACE))
+    if (keyboard.GetKey(Input::Key::Space))
         transform.position += camera.worldUp * speed;
-    if (keyboard.GetKey(GLFW_KEY_LEFT_CONTROL))
+    if (keyboard.GetKey(Input::Key::LeftControl))
         transform.position -= camera.worldUp * speed;
 
     camera.aspectRatio = (float)m_App->GetWidth() / (float)m_App->GetHeight();

@@ -1,11 +1,11 @@
 #pragma once
 
 #include <scene/scene.h>
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <vector>
 
 class Shader;
+class IBufferManager;
 
 // GPU Light Structs (std430 alignment)
 struct GPUDirLight
@@ -67,7 +67,7 @@ struct GPUSpotLight
 class LightRenderer
 {
 public:
-    void Init();
+    void Init(IBufferManager& bufferManager);
     void UploadLightData(Scene &scene, Shader *shader);
 
 private:
@@ -78,4 +78,6 @@ private:
     std::vector<GPUDirLight> m_DirLights;
     std::vector<GPUPointLight> m_PointLights;
     std::vector<GPUSpotLight> m_SpotLights;
+
+    IBufferManager* m_BufferManager = nullptr;
 };

@@ -1,7 +1,21 @@
 #include <graphic/geometry/mesh.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glad/glad.h>
 #include <algorithm>
+#include <interface/graphic/i_buffer_manager.h>
+#include <interface/graphic/i_texture_manager.h>
+#include <interface/graphic/i_draw_context.h>
+#include <interface/graphic/graphics_types.h>
+
+IBufferManager* Mesh::s_BufferManager = nullptr;
+ITextureManager* Mesh::s_TextureManager = nullptr;
+IDrawContext* Mesh::s_DrawContext = nullptr;
+
+void Mesh::SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* draw)
+{
+    s_BufferManager = buf;
+    s_TextureManager = tex;
+    s_DrawContext = draw;
+}
 
 Mesh::Mesh(std::vector<Vertex> vertices,
            std::vector<unsigned int> indices,
@@ -37,9 +51,13 @@ void Mesh::Draw(Shader &shader)
     unsigned int normalNr = 1;
     unsigned int heightNr = 1;
 
+    auto& tm = GetTextureManager();
+    auto& dm = GetDrawContext();
+    auto& bm = GetBufferManager();
+
     for (unsigned int i = 0; i < textures.size(); i++)
     {
-        glActiveTexture(GL_TEXTURE0 + i);
+        tm.ActiveTexture(static_cast<Graphics::TextureUnit>(i));
 
         std::string number;
         std::string name = textures[i].type;
@@ -53,17 +71,17 @@ void Mesh::Draw(Shader &shader)
         else if (name == "texture_height")
             number = std::to_string(heightNr++);
 
-        glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
-        glBindTexture(GL_TEXTURE_2D, textures[i].id);
+        shader.setInt((name + number).c_str(), i);
+        tm.BindTexture(Graphics::TextureType::Texture2D, textures[i].id);
     }
 
     shader.setBool("isInstanced", false);
 
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    bm.BindVertexArray(VAO);
+    dm.DrawElements(Graphics::Primitive::Triangles, static_cast<int>(indices.size()), Graphics::DataType::UnsignedInt, 0);
+    bm.BindVertexArray(0);
 
-    glActiveTexture(GL_TEXTURE0);
+    tm.ActiveTexture(Graphics::TextureUnit::Texture0);
 }
 
 void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
@@ -73,9 +91,13 @@ void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
     unsigned int normalNr = 1;
     unsigned int heightNr = 1;
 
+    auto& tm = GetTextureManager();
+    auto& dm = GetDrawContext();
+    auto& bm = GetBufferManager();
+
     for (unsigned int i = 0; i < textures.size(); i++)
     {
-        glActiveTexture(GL_TEXTURE0 + i);
+        tm.ActiveTexture(static_cast<Graphics::TextureUnit>(i));
 
         std::string number;
         std::string name = textures[i].type;
@@ -89,90 +111,87 @@ void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
         else if (name == "texture_height")
             number = std::to_string(heightNr++);
 
-        glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
-        glBindTexture(GL_TEXTURE_2D, textures[i].id);
+        shader.setInt((name + number).c_str(), i);
+        tm.BindTexture(Graphics::TextureType::Texture2D, textures[i].id);
     }
 
     shader.setBool("isInstanced", true);
 
-    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    glBufferData(GL_ARRAY_BUFFER, models.size() * sizeof(glm::mat4), models.data(), GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, instanceVBO);
+    bm.BufferData(Graphics::BufferType::ArrayBuffer, models.size() * sizeof(glm::mat4), models.data(), Graphics::BufferUsage::DynamicDraw);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, 0);
 
-    glBindVertexArray(VAO);
-    glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0, static_cast<GLsizei>(models.size()));
-    glBindVertexArray(0);
+    bm.BindVertexArray(VAO);
+    dm.DrawElementsInstanced(Graphics::Primitive::Triangles, static_cast<int>(indices.size()), Graphics::DataType::UnsignedInt, 0, static_cast<int>(models.size()));
+    bm.BindVertexArray(0);
 
     shader.setBool("isInstanced", false);
-    glActiveTexture(GL_TEXTURE0);
+    tm.ActiveTexture(Graphics::TextureUnit::Texture0);
 }
 
 void Mesh::setupMesh()
 {
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    auto& bm = GetBufferManager();
 
-    glBindVertexArray(VAO);
+    VAO = bm.CreateVertexArray();
+    VBO = bm.CreateBuffer();
+    EBO = bm.CreateBuffer();
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER,
-                 vertices.size() * sizeof(Vertex),
-                 vertices.data(),
-                 GL_STATIC_DRAW);
+    bm.BindVertexArray(VAO);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 indices.size() * sizeof(unsigned int),
-                 indices.data(),
-                 GL_STATIC_DRAW);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, VBO);
+    bm.BufferData(Graphics::BufferType::ArrayBuffer, vertices.size() * sizeof(Vertex), vertices.data(), Graphics::BufferUsage::StaticDraw);
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                          (void *)offsetof(Vertex, Position));
+    bm.BindBuffer(Graphics::BufferType::ElementArrayBuffer, EBO);
+    bm.BufferData(Graphics::BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), Graphics::BufferUsage::StaticDraw);
 
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                          (void *)offsetof(Vertex, Normal));
+    // vertex positions
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Position));
 
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                          (void *)offsetof(Vertex, TexCoords));
+    // vertex normals
+    bm.EnableVertexAttribArray(1);
+    bm.VertexAttribPointer(1, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Normal));
 
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                          (void *)offsetof(Vertex, Tangent));
+    // vertex texture coords
+    bm.EnableVertexAttribArray(2);
+    bm.VertexAttribPointer(2, 2, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, TexCoords));
 
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                          (void *)offsetof(Vertex, Bitangent));
+    // vertex tangent
+    bm.EnableVertexAttribArray(3);
+    bm.VertexAttribPointer(3, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Tangent));
 
-    glEnableVertexAttribArray(5);
-    glVertexAttribIPointer(5, 4, GL_INT, sizeof(Vertex),
-                           (void *)offsetof(Vertex, m_BoneIDs));
+    // vertex bitangent
+    bm.EnableVertexAttribArray(4);
+    bm.VertexAttribPointer(4, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Bitangent));
 
-    glEnableVertexAttribArray(6);
-    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                          (void *)offsetof(Vertex, m_Weights));
+    // bone ids
+    bm.EnableVertexAttribArray(5);
+    bm.VertexAttribIPointer(5, 4, Graphics::DataType::Int, sizeof(Vertex), (void *)offsetof(Vertex, m_BoneIDs));
 
-    glGenBuffers(1, &instanceVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    // weights
+    bm.EnableVertexAttribArray(6);
+    bm.VertexAttribPointer(6, 4, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, m_Weights));
+
+    // instance matrix
+    instanceVBO = bm.CreateBuffer();
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, instanceVBO);
 
     std::size_t vec4Size = sizeof(glm::vec4);
 
-    glEnableVertexAttribArray(10);
-    glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)0);
-    glEnableVertexAttribArray(11);
-    glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)(1 * vec4Size));
-    glEnableVertexAttribArray(12);
-    glVertexAttribPointer(12, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)(2 * vec4Size));
-    glEnableVertexAttribArray(13);
-    glVertexAttribPointer(13, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)(3 * vec4Size));
+    bm.EnableVertexAttribArray(10);
+    bm.VertexAttribPointer(10, 4, Graphics::DataType::Float, false, 4 * vec4Size, (void *)0);
+    bm.EnableVertexAttribArray(11);
+    bm.VertexAttribPointer(11, 4, Graphics::DataType::Float, false, 4 * vec4Size, (void *)(1 * vec4Size));
+    bm.EnableVertexAttribArray(12);
+    bm.VertexAttribPointer(12, 4, Graphics::DataType::Float, false, 4 * vec4Size, (void *)(2 * vec4Size));
+    bm.EnableVertexAttribArray(13);
+    bm.VertexAttribPointer(13, 4, Graphics::DataType::Float, false, 4 * vec4Size, (void *)(3 * vec4Size));
 
-    glVertexAttribDivisor(10, 1);
-    glVertexAttribDivisor(11, 1);
-    glVertexAttribDivisor(12, 1);
-    glVertexAttribDivisor(13, 1);
+    bm.VertexAttribDivisor(10, 1);
+    bm.VertexAttribDivisor(11, 1);
+    bm.VertexAttribDivisor(12, 1);
+    bm.VertexAttribDivisor(13, 1);
 
-    glBindVertexArray(0);
+    bm.BindVertexArray(0);
 }

@@ -13,10 +13,10 @@ void CameraController::OnUpdate(float dt)
     auto &transform = GetComponent<TransformComponent>();
     auto &camera = GetComponent<CameraComponent>();
 
-    const auto &mouse = GetAppHandler().GetMouse();
-    const auto &keyboard = GetAppHandler().GetKeyboard();
+    const auto &mouse = GetIOHandler().GetMouse();
+    const auto &keyboard = GetIOHandler().GetKeyboard();
 
-    if (mouse.GetCursorMode() == CursorMode::LockedCenter || mouse.GetCursorMode() == CursorMode::LockedHiddenCenter)
+    if (mouse.GetCursorMode() == Input::CursorMode::Locked || mouse.GetCursorMode() == Input::CursorMode::LockedHidden)
     {
         camera.yaw += mouse.GetXOffset() * mouseSensitivity;
         camera.pitch += mouse.GetYOffset() * mouseSensitivity;
@@ -46,18 +46,18 @@ void CameraController::OnUpdate(float dt)
     camera.up = glm::normalize(glm::cross(camera.right, camera.front));
 
     float velocity = moveSpeed * dt;
-    if (keyboard.GetKey(GLFW_KEY_W))
+    if (keyboard.GetKey(Input::Key::W))
         transform.position += camera.front * velocity;
-    if (keyboard.GetKey(GLFW_KEY_S))
+    if (keyboard.GetKey(Input::Key::S))
         transform.position -= camera.front * velocity;
-    if (keyboard.GetKey(GLFW_KEY_A))
+    if (keyboard.GetKey(Input::Key::A))
         transform.position -= camera.right * velocity;
-    if (keyboard.GetKey(GLFW_KEY_D))
+    if (keyboard.GetKey(Input::Key::D))
         transform.position += camera.right * velocity;
 
-    if (keyboard.GetKey(GLFW_KEY_SPACE))
+    if (keyboard.GetKey(Input::Key::Space))
         transform.position += camera.worldUp * velocity;
-    if (keyboard.GetKey(GLFW_KEY_LEFT_SHIFT))
+    if (keyboard.GetKey(Input::Key::LeftShift))
         transform.position -= camera.worldUp * velocity;
 
     camera.aspectRatio = (float)m_App->GetWidth() / (float)m_App->GetHeight();

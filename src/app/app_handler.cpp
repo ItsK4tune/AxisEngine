@@ -1,7 +1,11 @@
 #include <app/app_handler.h>
+#include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
+#include <input/input_manager.h>
+#include <interface/window/i_window.h>
 #include <iostream>
 
-AppHandler::AppHandler(GLFWwindow* window)
+AppHandler::AppHandler(IWindow* window)
 {
     m_KeyboardManager = std::make_unique<KeyboardManager>(window);
     m_MouseManager = std::make_unique<MouseManager>(window);
@@ -12,10 +16,10 @@ AppHandler::~AppHandler()
 {
 }
 
-void AppHandler::ProcessInput(GLFWwindow* window)
+void AppHandler::ProcessInput(IWindow* window)
 {
-    if (m_KeyboardManager->GetKey(GLFW_KEY_ESCAPE))
-        glfwSetWindowShouldClose(window, true);
+    if (m_KeyboardManager->GetKey(Input::Key::Escape))
+        window->SetShouldClose(true);
 }
 
 void AppHandler::OnMouseMove(double xpos, double ypos)
@@ -25,7 +29,7 @@ void AppHandler::OnMouseMove(double xpos, double ypos)
 
 void AppHandler::OnMouseButton(int button, int action, int mods)
 {
-    m_MouseManager->UpdateButton(button, action, mods);
+    m_MouseManager->UpdateButton(static_cast<Input::Mouse>(button), action, mods);
 }
 
 void AppHandler::OnResize(int width, int height)

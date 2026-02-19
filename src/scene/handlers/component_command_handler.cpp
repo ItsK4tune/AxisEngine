@@ -149,7 +149,7 @@ namespace SceneHandlers
 
     // Physics
     void ComponentCommandHandler::HandleRigidBody(std::stringstream &ss, Scene &scene, entt::entity entity,
-                                                  PhysicsWorld &phys, std::ifstream &file)
+                                                  IPhysicsWorld &phys, std::ifstream &file)
     {
         PhysicsLoader::LoadRigidBody(scene, entity, ss, phys, file);
     }

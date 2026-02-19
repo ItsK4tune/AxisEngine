@@ -1,7 +1,18 @@
-#include <ecs/system.h>
+#include <ecs/systems/particle_system.h>
+#include <execution>
+#include <vector>
+#include <algorithm>
 #include <ecs/component.h>
 #include <utils/logger.h>
-#include <glad/glad.h>
+#include <interface/graphic/i_graphics_context.h>
+#include <interface/graphic/i_render_state_manager.h>
+
+
+
+void ParticleSystem::Init(IGraphicsContext& context)
+{
+    m_Context = &context;
+}
 
 void ParticleSystem::Update(Scene &scene, float dt)
 {
@@ -9,26 +20,29 @@ void ParticleSystem::Update(Scene &scene, float dt)
         return;
 
     auto view = scene.registry.view<ParticleEmitterComponent, TransformComponent>();
+    
+    std::vector<entt::entity> entities(view.begin(), view.end());
 
-    for (auto entity : view)
-    {
+    std::for_each(std::execution::par, entities.begin(), entities.end(), [&view, dt](entt::entity entity) {
         auto [emitterComp, transform] = view.get<ParticleEmitterComponent, TransformComponent>(entity);
 
-        if (!emitterComp.isActive)
-            continue;
-
-        emitterComp.emitter.Update(dt, transform.position);
-    }
+        if (emitterComp.isActive)
+        {
+            emitterComp.emitter.Update(dt, transform.position);
+        }
+    });
 }
 
 void ParticleSystem::Render(Scene &scene, ResourceManager &res)
 {
-    if (!m_Enabled)
+    if (!m_Enabled || !m_Context)
         return;
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-    glDepthMask(GL_FALSE);
+    auto& rsm = m_Context->GetRenderStateManager();
+
+    rsm.Enable(Graphics::ServerCapability::Blend);
+    rsm.BlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::One);
+    rsm.DepthMask(false);
 
     auto shader = res.GetShader("particle");
     if (!shader)
@@ -57,7 +71,7 @@ void ParticleSystem::Render(Scene &scene, ResourceManager &res)
         }
     }
 
-    glDepthMask(GL_TRUE);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_BLEND);
+    rsm.DepthMask(true);
+    rsm.BlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
+    rsm.Disable(Graphics::ServerCapability::Blend);
 }

@@ -2,20 +2,22 @@
 
 #include <memory>
 #include <functional>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <interface/window/i_window.h>
 
-#include <input/keyboard_manager.h>
-#include <input/mouse_manager.h>
-#include <input/input_manager.h>
+#include <string>
+
+// Forward declarations
+class KeyboardManager;
+class MouseManager;
+class InputManager;
 
 class AppHandler
 {
 public:
-    AppHandler(GLFWwindow* window);
+    AppHandler(IWindow* window);
     ~AppHandler();
 
-    void ProcessInput(GLFWwindow* window);
+    void ProcessInput(IWindow* window);
 
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);

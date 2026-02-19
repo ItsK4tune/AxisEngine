@@ -1,11 +1,12 @@
 #pragma once
 
 #include <graphic/geometry/mesh.h>
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
 #include <map>
+
+class ITextureManager;
 
 class TextureAtlas
 {
@@ -26,7 +27,7 @@ public:
     bool CreateAtlas(const std::vector<std::string>& texturePaths,
                      int atlasWidth = 2048, int atlasHeight = 2048);
     
-    GLuint GetAtlasTexture() const { return m_AtlasID; }
+    unsigned int GetAtlasTexture() const { return m_AtlasID; }
     AtlasRegion GetRegion(const std::string& textureName) const;
     
     glm::vec4 TransformUV(const std::string& textureName, const glm::vec2& uv);
@@ -37,8 +38,10 @@ public:
     void Clear();
     bool HasTexture(const std::string& name) const;
 
+    static void SetTextureManager(ITextureManager& textureManager);
+
 private:
-    GLuint m_AtlasID;
+    unsigned int m_AtlasID;
     int m_Width, m_Height;
     std::map<std::string, AtlasRegion> m_Regions;
     
@@ -57,4 +60,7 @@ private:
                      std::vector<Rect>& outRects);
     
     void BlitTexture(unsigned char* atlasData, const TextureData& texture, const Rect& rect);
+
+    static ITextureManager* s_TextureManager;
+    static ITextureManager& GetTextureManager();
 };

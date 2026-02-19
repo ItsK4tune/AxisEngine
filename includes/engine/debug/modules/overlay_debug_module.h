@@ -2,13 +2,16 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <interface/debug_module.h>
-#include <graphic/renderer/font.h>
+#include <interface/debug/i_debug_module.h>
+#include <vector>
+#include <string>
+#include <interface/window/input_codes.h>
 #include <graphic/renderer/ui_model.h>
 #include <graphic/core/shader.h>
 #include <functional>
 #include <string>
 
+class Font;
 class Application;
 
 class OverlayDebugModule : public IDebugModule
@@ -33,7 +36,7 @@ public:
 private:
     void ToggleStatsOverlay();
     void RenderText(const std::string &text, float x, float y, float scale, glm::vec3 color);
-    void ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action);
+    void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
 
     Application *m_App = nullptr;
     bool m_Enabled = true;

@@ -1,4 +1,8 @@
 #include <input/input_manager.h>
+#include <interface/window/input_codes.h>
+#include <string>
+#include <iostream>
+#include <GLFW/glfw3.h> // For GLFW constants and joystick support
 
 InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse)
     : m_Keyboard(keyboard), m_Mouse(mouse)
@@ -22,13 +26,13 @@ bool InputManager::GetAction(const std::string &actionName) const
     {
         if (it->second.type == InputType::Key)
         {
-            return m_Keyboard.GetKey(it->second.code);
+            return m_Keyboard.GetKey(static_cast<Input::Key>(it->second.code));
         }
         else if (it->second.type == InputType::MouseButton)
         {
-            if (it->second.code == GLFW_MOUSE_BUTTON_LEFT)
+            if (it->second.code == (int)Input::Mouse::Left)
                 return m_Mouse.IsLeftButtonPressed();
-            if (it->second.code == GLFW_MOUSE_BUTTON_RIGHT)
+            if (it->second.code == (int)Input::Mouse::Right)
                 return m_Mouse.IsRightButtonPressed();
         }
     }
@@ -42,13 +46,13 @@ bool InputManager::GetActionDown(const std::string &actionName) const
     {
         if (it->second.type == InputType::Key)
         {
-            return const_cast<KeyboardManager &>(m_Keyboard).IsKeyDown(it->second.code);
+            return const_cast<KeyboardManager &>(m_Keyboard).IsKeyDown(static_cast<Input::Key>(it->second.code));
         }
         else if (it->second.type == InputType::MouseButton)
         {
-            if (it->second.code == GLFW_MOUSE_BUTTON_LEFT)
+            if (it->second.code == (int)Input::Mouse::Left)
                 return m_Mouse.IsLeftMouseClicked();
-            if (it->second.code == GLFW_MOUSE_BUTTON_RIGHT)
+            if (it->second.code == (int)Input::Mouse::Right)
                 return m_Mouse.IsRightMouseClicked();
         }
     }
@@ -62,7 +66,7 @@ bool InputManager::GetActionUp(const std::string &actionName) const
     {
         if (it->second.type == InputType::Key)
         {
-            return m_Keyboard.GetKeyUp(it->second.code);
+            return m_Keyboard.GetKeyUp(static_cast<Input::Key>(it->second.code));
         }
         else if (it->second.type == InputType::MouseButton)
         {

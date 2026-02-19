@@ -86,7 +86,7 @@ public:
         EnableLogic(true);  // Scripts, animation, particles, etc.
         
         // Configure input
-        SetCursorMode(CursorMode::LockedHiddenCenter);
+        SetCursorMode(CursorMode::LockedHidden);
     }
     
     void OnUpdate(float dt) override {
@@ -399,7 +399,7 @@ class GameplayState : public State {
         EnableAudio(true);
         EnableLogic(true);
         
-        SetCursorMode(CursorMode::LockedHiddenCenter);
+        SetCursorMode(CursorMode::LockedHidden);
     }
     
     void OnUpdate(float dt) override {
@@ -449,7 +449,7 @@ class PauseState : public State {
         // Resume game
         EnablePhysics(true);
         EnableLogic(true);
-        SetCursorMode(CursorMode::LockedHiddenCenter);
+        SetCursorMode(CursorMode::LockedHidden);
     }
 };
 ```

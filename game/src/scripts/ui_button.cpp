@@ -16,7 +16,7 @@ public:
     void OnCreate() override
     {
         // Example: Bind 'K' to pause/resume video
-        BindKey(GLFW_KEY_K, InputEvent::Pressed, [this]()
+        BindKey(75, InputEvent::Pressed, [this]()
                 { ToggleVideo(); });
     }
 

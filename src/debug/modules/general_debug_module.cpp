@@ -3,11 +3,19 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
+#include <input/input_manager.h>
+#include <audio/audio_manager.h>
+#include <interface/window/input_codes.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
 #include <iomanip>
 #include <sstream>
 #include <intrin.h>
+
+#ifdef _WIN32
+#include <dxgi.h>
+#include <wrl/client.h>
+#pragma comment(lib, "dxgi.lib")
+#endif
 
 GeneralDebugModule::GeneralDebugModule() {}
 GeneralDebugModule::~GeneralDebugModule() {}
@@ -16,11 +24,25 @@ void GeneralDebugModule::Init(Application *app)
 {
     m_App = app;
 
-    const GLubyte *renderer = glGetString(GL_RENDERER);
-    if (renderer)
-        m_GpuName = std::string((const char *)renderer);
-    else
-        m_GpuName = "Unknown GPU";
+    m_GpuName = "Unknown GPU";
+
+#ifdef _WIN32
+    Microsoft::WRL::ComPtr<IDXGIFactory> factory;
+    if (SUCCEEDED(CreateDXGIFactory(__uuidof(IDXGIFactory), (void **)factory.GetAddressOf())))
+    {
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+        if (SUCCEEDED(factory->EnumAdapters(0, adapter.GetAddressOf())))
+        {
+            DXGI_ADAPTER_DESC desc;
+            if (SUCCEEDED(adapter->GetDesc(&desc)))
+            {
+                char buf[128] = {};
+                WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, buf, sizeof(buf), nullptr, nullptr);
+                m_GpuName = std::string(buf);
+            }
+        }
+    }
+#endif
 
     m_CpuName = "Unknown CPU";
 
@@ -73,22 +95,22 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
     if (!m_App || !m_Enabled)
         return;
 
-    ProcessKey(keyboard, GLFW_KEY_F1, m_F1Pressed, [this]()
+    ProcessKey(keyboard, Input::Key::F1, m_F1Pressed, [this]()
                { LogControls(); });
 
-    ProcessKey(keyboard, GLFW_KEY_F2, m_F2Pressed, [this]()
+    ProcessKey(keyboard, Input::Key::F2, m_F2Pressed, [this]()
                { LogDevices(); });
 
-    ProcessKey(keyboard, GLFW_KEY_F3, m_F3Pressed, [this]()
+    ProcessKey(keyboard, Input::Key::F3, m_F3Pressed, [this]()
                { LogStats(); });
 
-    ProcessKey(keyboard, GLFW_KEY_F4, m_F4Pressed, [this]()
+    ProcessKey(keyboard, Input::Key::F4, m_F4Pressed, [this]()
                { LogEntityStats(); });
 
-    ProcessKey(keyboard, GLFW_KEY_F5, m_F5Pressed, [this]()
+    ProcessKey(keyboard, Input::Key::F5, m_F5Pressed, [this]()
                { LogSceneGraph(); });
 
-    ProcessKey(keyboard, GLFW_KEY_F11, m_F11Pressed, [this]()
+    ProcessKey(keyboard, Input::Key::F11, m_F11Pressed, [this]()
                {
         bool paused = !m_App->IsPaused();
         m_App->SetPaused(paused);
@@ -96,23 +118,24 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
         std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << std::endl;
         std::cout << "======================================" << std::endl; });
 
-    ProcessKey(keyboard, GLFW_KEY_F12, m_F12Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F12, m_F12Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         
         if (shift)
         {
             auto& mouse = m_App->GetMouse();
-            CursorMode current = mouse.GetCursorMode();
-            CursorMode next = CursorMode::Normal;
+            Input::CursorMode current = mouse.GetCursorMode();
+            Input::CursorMode next = Input::CursorMode::Normal;
             std::string modeName = "Normal";
 
             switch (current)
             {
-            case CursorMode::Normal: next = CursorMode::Hidden; modeName = "Hidden"; break;
-            case CursorMode::Hidden: next = CursorMode::LockedCenter; modeName = "LockedCenter"; break;
-            case CursorMode::LockedCenter: next = CursorMode::LockedHiddenCenter; modeName = "LockedHiddenCenter"; break;
-            case CursorMode::LockedHiddenCenter: next = CursorMode::Normal; modeName = "Normal"; break;
+            case Input::CursorMode::Normal: next = Input::CursorMode::Hidden; modeName = "Hidden"; break;
+            case Input::CursorMode::Hidden: next = Input::CursorMode::Locked; modeName = "Locked"; break;
+            case Input::CursorMode::Locked: next = Input::CursorMode::LockedHidden; modeName = "LockedHidden"; break;
+            case Input::CursorMode::LockedHidden: next = Input::CursorMode::Normal; modeName = "Normal"; break;
+            default: next = Input::CursorMode::Normal; modeName = "Normal"; break;
             }
 
             mouse.SetCursorMode(next);
@@ -169,7 +192,7 @@ void GeneralDebugModule::LogDevices()
         std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
     }
 
-    auto &audio = m_App->GetSoundManager();
+    auto &audio = m_App->GetIOHandler().GetAudioManager();
     std::string activeAudio = audio.GetCurrentDevice().id;
     logHelper("Audio", audio.GetAllDevices(), activeAudio);
 
@@ -252,7 +275,7 @@ void GeneralDebugModule::LogEntityStats()
     std::cout << "================================================" << std::endl;
 }
 
-void GeneralDebugModule::ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action)
+void GeneralDebugModule::ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

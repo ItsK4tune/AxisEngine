@@ -1,0 +1,35 @@
+#pragma once
+#include <interface/graphic/graphics_types.h>
+#include <string>
+
+// Forward declarations
+class IBufferManager;
+class ITextureManager;
+class IShaderManager;
+class IRenderTargetManager;
+class IRenderStateManager;
+class IDrawContext;
+
+class IGraphicsContext
+{
+public:
+    virtual ~IGraphicsContext() = default;
+
+    virtual bool Init() = 0;
+    virtual void Shutdown() = 0;
+
+    virtual void SetViewport(int x, int y, int width, int height) = 0;
+    virtual void SetDepthTest(bool enabled) = 0;
+    virtual void SetCullFace(bool enabled) = 0;
+
+    virtual void Clear(Graphics::BufferBit flags) = 0;
+
+    virtual IBufferManager &GetBufferManager() = 0;
+    virtual ITextureManager &GetTextureManager() = 0;
+    virtual IShaderManager &GetShaderManager() = 0;
+    virtual IRenderTargetManager &GetRenderTargetManager() = 0;
+    virtual IRenderStateManager &GetRenderStateManager() = 0;
+    virtual IDrawContext &GetDrawContext() = 0;
+
+    virtual std::string GetName() const = 0;
+};

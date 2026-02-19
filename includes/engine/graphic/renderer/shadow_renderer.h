@@ -42,4 +42,5 @@ private:
     float m_ShadowProjectionSize = 20.0f;
     bool m_ShadowFrustumCullingEnabled = true;
     float m_ShadowDistanceCullingSq = 10000.0f; // Default 100^2
+    bool m_DirLightLimitWarned = false;
 };

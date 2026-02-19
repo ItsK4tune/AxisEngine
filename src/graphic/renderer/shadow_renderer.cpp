@@ -1,4 +1,6 @@
+#include <utils/logger.h>
 #include <graphic/renderer/shadow_renderer.h>
+#include <interface/graphic/i_draw_context.h>
 #include <resource/resource_manager.h>
 #include <graphic/geometry/model.h>
 #include <ecs/component.h>
@@ -60,7 +62,11 @@ void ShadowRenderer::RenderShadows(Scene &scene)
 
         if (shadowCastingLights.size() > Shadow::MAX_DIR_LIGHTS_SHADOW)
         {
-            std::cout << "[ShadowRenderer] More than " << Shadow::MAX_DIR_LIGHTS_SHADOW << " lights have isCastShadow enabled. Only the first " << Shadow::MAX_DIR_LIGHTS_SHADOW << " will cast shadows." << std::endl;
+            if (!m_DirLightLimitWarned)
+            {
+                LOGGER_WARN("ShadowRenderer") << "More than " << Shadow::MAX_DIR_LIGHTS_SHADOW << " lights have isCastShadow enabled. Only the first " << Shadow::MAX_DIR_LIGHTS_SHADOW << " will cast shadows.";
+                m_DirLightLimitWarned = true;
+            }
         }
     }
 
@@ -99,7 +105,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
         }
 
         m_Shadow.BindFBO_Dir(lightIdx);
-        glClear(GL_DEPTH_BUFFER_BIT);
+        m_Shadow.GetDrawContext().Clear(Graphics::BufferBit::Depth);
 
         shaderDir->use();
         shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
@@ -226,7 +232,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
         shaderPoint->setVec3("lightPos", lightPos);
 
         m_Shadow.BindFBO_Point(pIdx);
-        glClear(GL_DEPTH_BUFFER_BIT);
+        m_Shadow.GetDrawContext().Clear(Graphics::BufferBit::Depth);
 
         auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
         for (auto obj : view)
@@ -319,7 +325,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
         }
 
         m_Shadow.BindFBO_Spot(sIdx);
-        glClear(GL_DEPTH_BUFFER_BIT);
+        m_Shadow.GetDrawContext().Clear(Graphics::BufferBit::Depth);
 
         shaderSpot->setMat4("lightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
 

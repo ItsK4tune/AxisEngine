@@ -5,7 +5,7 @@
 #include <vector>
 
 class Scene;
-class PhysicsWorld;
+class IPhysicsWorld;
 
 struct CollisionPair
 {
@@ -29,14 +29,14 @@ struct CollisionPairHash
 class PhysicsCollisionDispatcher
 {
 public:
-    PhysicsCollisionDispatcher(Scene& scene, PhysicsWorld& physics);
+    PhysicsCollisionDispatcher(Scene& scene, IPhysicsWorld& physics);
     ~PhysicsCollisionDispatcher();
 
     void DispatchEvents();
 
 private:
     Scene& m_Scene;
-    PhysicsWorld& m_Physics;
+    IPhysicsWorld& m_Physics;
 
     std::unordered_set<CollisionPair, CollisionPairHash> m_activeCollisions;
 };

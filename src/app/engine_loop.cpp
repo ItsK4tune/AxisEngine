@@ -1,5 +1,5 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <chrono>
+#include <thread>
 
 #include <app/engine_loop.h>
 #include <app/application.h>
@@ -7,10 +7,10 @@
 #include <state/state_machine.h>
 #include <scene/scene.h>
 #include <app/monitor_manager.h>
-#include <app/app_handler.h>
+#include <interface/graphic/i_graphics_context.h>
 #include <resource/resource_manager.h>
-#include <audio/sound_manager.h>
-#include <physic/physic_world.h>
+
+
 #include <utils/logger.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
@@ -21,6 +21,7 @@
 
 EngineLoop::EngineLoop(Application* app)
     : m_App(app)
+    , m_LastFrameTime(std::chrono::steady_clock::now())
 {
 }
 
@@ -31,7 +32,7 @@ EngineLoop::~EngineLoop()
 void EngineLoop::Run()
 {
     LOGGER_INFO("EngineLoop") << "Starting engine loop";
-    while (!glfwWindowShouldClose(m_App->GetWindow()))
+    while (!m_App->GetWindow()->ShouldClose())
     {
         ProcessFrame();
     }
@@ -39,12 +40,12 @@ void EngineLoop::Run()
 
 void EngineLoop::ProcessFrame()
 {
-    float currentFrame = (float)glfwGetTime();
-    realDeltaTime = currentFrame - lastFrame;
+    auto now = std::chrono::steady_clock::now();
+    realDeltaTime = std::chrono::duration<float>(now - m_LastFrameTime).count();
     deltaTime = realDeltaTime;
-    lastFrame = currentFrame;
+    m_LastFrameTime = now;
 
-    glfwPollEvents();
+    m_App->GetWindow()->PollEvents();
     m_App->GetMouse().Update();
 
     if (m_IsPaused)
@@ -57,29 +58,59 @@ void EngineLoop::ProcessFrame()
     }
 
     m_App->GetResourceManager().Update(realDeltaTime);
-    m_App->GetAppHandler().ProcessInput(m_App->GetWindow());
+    m_App->GetIOHandler().ProcessInput();
 
 #ifdef ENABLE_DEBUG_SYSTEM
     m_App->GetSystemManager().UpdateDebugSystem(realDeltaTime);
 #endif
 
+    m_App->GetSystemManager().UpdateLogic(
+        m_App->GetScene(),
+        deltaTime,
+        realDeltaTime,
+        m_App,
+        m_App->GetMouse()
+    );
+
+    m_App->GetStateMachine().Update(deltaTime);
+    m_App->GetMouse().EndFrame();
+
     FixedUpdate();
-    Update();
+
+    m_App->GetSystemManager().UpdateVisuals(
+        m_App->GetScene(),
+        deltaTime,
+        m_App->GetResourceManager(),
+        m_App->GetSoundPlayer()
+    );
+    
     Render();
 
-    glfwSwapBuffers(m_App->GetWindow());
+    m_App->GetWindow()->SwapBuffers();
 
     int frameRateLimit = m_App->GetMonitorManager().GetFrameRateLimit();
     if (frameRateLimit > 0)
     {
         double targetFrameTime = 1.0 / (double)frameRateLimit;
-        double frameEnd = glfwGetTime();
-        double frameElapsed = frameEnd - currentFrame;
-
-        while (frameElapsed < targetFrameTime)
+        auto frameEnd = std::chrono::steady_clock::now();
+        double frameElapsed = std::chrono::duration<double>(frameEnd - now).count();
+        if (frameElapsed < targetFrameTime)
         {
-            frameEnd = glfwGetTime();
-            frameElapsed = frameEnd - currentFrame;
+            double sleepTime = targetFrameTime - frameElapsed;
+            if (sleepTime > 0.0)
+            {
+                // Hybrid sleep: sleep for most of the time, then spin for precision
+                if (sleepTime > 0.002) // If more than 2ms, sleep
+                {
+                    std::this_thread::sleep_for(std::chrono::duration<double>(sleepTime - 0.001));
+                }
+                
+                // Spin for the remaining time
+                while (std::chrono::duration<double>(std::chrono::steady_clock::now() - now).count() < targetFrameTime)
+                {
+                    std::this_thread::yield();
+                }
+            }
         }
     }
 }
@@ -117,7 +148,7 @@ void EngineLoop::Update()
         realDeltaTime,
         m_App,
         m_App->GetResourceManager(),
-        m_App->GetSoundManager(),
+        m_App->GetSoundPlayer(),
         m_App->GetMouse()
     );
 

@@ -1,6 +1,7 @@
 #include <scene/handlers/resource_command_handler.h>
 #include <resource/resource_manager.h>
-#include <audio/sound_manager.h>
+#include <interface/audio/i_sound.h>
+#include <audio/sound_player.h>
 #include <utils/filesystem.h>
 #include <iostream>
 #include <vector>
@@ -36,7 +37,7 @@ namespace SceneHandlers
         res.LoadFont(name, path, size);
     }
 
-    void ResourceCommandHandler::HandleLoadSound(std::stringstream& ss, ResourceManager& res, SoundManager& sound)
+    void ResourceCommandHandler::HandleLoadSound(std::stringstream& ss, ResourceManager& res, SoundPlayer& sound)
     {
         std::string name, path;
         ss >> name >> path;

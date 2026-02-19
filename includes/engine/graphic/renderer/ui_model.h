@@ -1,9 +1,12 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <vector>
 #include <glm/glm.hpp>
 #include <graphic/core/shader.h>
+
+class IBufferManager;
+class ITextureManager;
+class IDrawContext;
 
 enum class UIType {
     Color,
@@ -24,6 +27,8 @@ public:
 
     UIType GetType() const { return m_Type; }
 
+    static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
+
 private:
     unsigned int VAO = 0, VBO = 0;
     UIType m_Type;
@@ -31,4 +36,12 @@ private:
 
     void InitQuad();
     void InitDynamic();
+
+    static IBufferManager* s_BufferManager;
+    static ITextureManager* s_TextureManager;
+    static IDrawContext* s_DrawContext;
+
+    static IBufferManager& GetBufferManager();
+    static ITextureManager& GetTextureManager();
+    static IDrawContext& GetDrawContext();
 };

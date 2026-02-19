@@ -7,7 +7,7 @@
 
 class Scene;
 class ResourceManager;
-class PhysicsWorld;
+class IPhysicsWorld;
 class Application;
 
 namespace SceneHandlers
@@ -27,7 +27,7 @@ namespace SceneHandlers
         static void HandleCamera(std::stringstream &ss, Scene &scene, entt::entity entity);
 
         static void HandleRigidBody(std::stringstream &ss, Scene &scene, entt::entity entity,
-                                    PhysicsWorld &phys, std::ifstream &file);
+                                    IPhysicsWorld &phys, std::ifstream &file);
 
         static void HandleUITransform(std::stringstream &ss, Scene &scene, entt::entity entity);
         static void HandleUIRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res);

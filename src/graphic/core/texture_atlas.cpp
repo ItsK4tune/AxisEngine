@@ -5,6 +5,25 @@
 #include <iostream>
 #include <utils/logger.h>
 #include <fstream>
+#include <interface/graphic/i_texture_manager.h>
+
+
+
+ITextureManager* TextureAtlas::s_TextureManager = nullptr;
+
+void TextureAtlas::SetTextureManager(ITextureManager& textureManager)
+{
+    s_TextureManager = &textureManager;
+}
+
+ITextureManager& TextureAtlas::GetTextureManager()
+{
+    if (!s_TextureManager) {
+        LOGGER_ERROR("TextureAtlas") << "TextureManager not set!";
+        throw std::runtime_error("TextureManager not set in TextureAtlas");
+    }
+    return *s_TextureManager;
+}
 
 TextureAtlas::TextureAtlas()
     : m_AtlasID(0), m_Width(0), m_Height(0)
@@ -19,6 +38,9 @@ TextureAtlas::~TextureAtlas()
 bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
                                int atlasWidth, int atlasHeight)
 {
+    if (!s_TextureManager) return false;
+    auto& tm = GetTextureManager();
+
     m_Width = atlasWidth;
     m_Height = atlasHeight;
     
@@ -76,18 +98,18 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
         m_Regions[textureNames[i]] = region;
     }
     
-    glGenTextures(1, &m_AtlasID);
-    glBindTexture(GL_TEXTURE_2D, m_AtlasID);
+    m_AtlasID = tm.GenTexture();
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_AtlasID);
     
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, atlasData.data());
-    glGenerateMipmap(GL_TEXTURE_2D);
+    tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA8, m_Width, m_Height, 0, Graphics::TextureFormat::RGBA, Graphics::DataType::UnsignedByte, atlasData.data());
+    tm.GenerateMipmap(Graphics::TextureType::Texture2D);
     
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(Graphics::TextureWrap::Repeat));
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(Graphics::TextureWrap::Repeat));
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::LinearMipmapLinear));
+    tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
     
-    glBindTexture(GL_TEXTURE_2D, 0);
+    tm.BindTexture(Graphics::TextureType::Texture2D, 0);
     
     for (auto& tex : textures)
     {
@@ -193,9 +215,9 @@ bool TextureAtlas::LoadFromFile(const std::string& path)
 
 void TextureAtlas::Clear()
 {
-    if (m_AtlasID != 0)
+    if (m_AtlasID != 0 && s_TextureManager)
     {
-        glDeleteTextures(1, &m_AtlasID);
+        GetTextureManager().DeleteTextures(1, &m_AtlasID);
         m_AtlasID = 0;
     }
     m_Regions.clear();

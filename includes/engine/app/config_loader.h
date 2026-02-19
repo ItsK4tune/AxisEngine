@@ -40,6 +40,5 @@ struct AppConfig
 class ConfigLoader
 {
 public:
-    static AppConfig Load(const std::string &path);
     static void LoadConfig(std::stringstream &ss, Application *app);
 };

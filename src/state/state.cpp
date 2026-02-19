@@ -14,16 +14,16 @@ VideoSystem& State::GetVideoSystem() { return m_App->GetVideoSystem(); }
 
 SceneManager& State::GetSceneManager() { return m_App->GetSceneManager(); }
 ResourceManager& State::GetResourceManager() { return m_App->GetResourceManager(); }
-SoundManager& State::GetSoundManager() { return m_App->GetSoundManager(); }
-AppHandler& State::GetAppHandler() { return m_App->GetAppHandler(); }
-InputManager& State::GetInputManager() { return GetAppHandler().GetInputManager(); }
-KeyboardManager& State::GetKeyboard() { return GetAppHandler().GetKeyboard(); }
-MouseManager& State::GetMouse() { return GetAppHandler().GetMouse(); }
+SoundPlayer& State::GetSoundPlayer() { return m_App->GetSoundPlayer(); }
+IOHandler& State::GetIOHandler() { return m_App->GetIOHandler(); }
+InputManager& State::GetInputManager() { return GetIOHandler().GetInputManager(); }
+KeyboardManager& State::GetKeyboard() { return GetIOHandler().GetKeyboard(); }
+MouseManager& State::GetMouse() { return GetIOHandler().GetMouse(); }
 
 void State::LoadScene(const std::string& path) { GetSceneManager().LoadScene(path); }
 void State::UnloadScene(const std::string& path) { GetSceneManager().UnloadScene(path); }
 void State::ChangeScene(const std::string& path) { GetSceneManager().ChangeScene(path); }
-void State::SetCursorMode(CursorMode mode) { GetMouse().SetCursorMode(mode); }
+void State::SetCursorMode(Input::CursorMode mode) { GetMouse().SetCursorMode(mode); }
 
 void State::EnablePhysics(bool enable) { GetPhysicsSystem().SetEnabled(enable); }
 void State::EnableRender(bool enable) { GetRenderSystem().SetEnabled(enable); }

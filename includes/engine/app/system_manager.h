@@ -10,8 +10,8 @@
 
 class Scene;
 class ResourceManager;
-class PhysicsWorld;
-class SoundManager;
+class IPhysicsWorld;
+class SoundPlayer;
 class Application;
 class MouseManager;
 
@@ -24,10 +24,14 @@ public:
     void InitializeSystems(ResourceManager &res, int width, int height, Application *app);
     void ShutdownSystems();
 
-    void FixedUpdateSystems(Scene &scene, PhysicsWorld &phys, float fixedDt);
+    void FixedUpdateSystems(Scene &scene, IPhysicsWorld &phys, float fixedDt);
+
+    void UpdateLogic(Scene &scene, float deltaTime, float realDeltaTime, Application *app, MouseManager &mouse);
+    void UpdateVisuals(Scene &scene, float deltaTime, ResourceManager &res, SoundPlayer &sound);
+
     void UpdateSystems(Scene &scene, float deltaTime, float realDeltaTime,
                        Application *app, ResourceManager &res,
-                       SoundManager &sound, MouseManager &mouse);
+                       SoundPlayer &sound, MouseManager &mouse);
 
     void RenderShadows(Scene &scene);
     void RenderSystems(Scene &scene, ResourceManager &res, int width, int height);

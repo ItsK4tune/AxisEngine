@@ -6,10 +6,11 @@
 #include <utility>
 #include <entt/entt.hpp>
 #include <engine/ecs/cached_query.h>
-#include <future>
+#include <memory>
 
-class PhysicsWorld;
-class Shader;
+#include <interface/graphic/i_render_state_manager.h>
+
+class IPhysicsWorld;
 class PhysicsTransformSync;
 class PhysicsCollisionDispatcher;
 
@@ -19,11 +20,11 @@ public:
     PhysicsSystem();
     ~PhysicsSystem();
 
-    void Update(Scene &scene, PhysicsWorld &physicsWorld, float dt);
-    void RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight);
+    void Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt);
+    void RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
-    void SetAsyncPhysics(bool async) { m_AsyncPhysics = async; }
+    void Reset();
 
 private:
     using CollisionPair = std::pair<entt::entity, entt::entity>;
@@ -35,15 +36,16 @@ private:
         }
     };
     
-    void WaitAsyncPhysics();
+
 
 private:
     std::unique_ptr<PhysicsTransformSync> m_transformSync;
     std::unique_ptr<PhysicsCollisionDispatcher> m_collisionDispatcher;
 
-    std::future<void> m_physicsFuture;
-    bool m_AsyncPhysics = true;
     bool m_Enabled = true;
+
+    Scene *m_LastScene = nullptr;
+    IPhysicsWorld *m_LastPhysicsWorld = nullptr;
 
     mutable entt::entity m_cachedPrimaryCamera = entt::null;
 };

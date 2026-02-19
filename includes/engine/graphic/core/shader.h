@@ -1,10 +1,11 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 
 #include <string>
 #include <unordered_map>
+
+class IShaderManager;
 
 class Shader
 {
@@ -12,9 +13,9 @@ public:
     unsigned int ID;
 
     Shader();
-    Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr);
+    Shader(const char *vertexPath, const char *fragmentPath, const char *geometryPath = nullptr);
 
-    void load(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr);
+    void load(const char *vertexPath, const char *fragmentPath, const char *geometryPath = nullptr);
     void use();
 
     void setID(unsigned int id) { ID = id; }
@@ -35,7 +36,12 @@ public:
 
     int GetUniformLocation(const std::string &name) const;
 
+    static void SetShaderManager(IShaderManager *mgr) { s_ShaderManager = mgr; }
+    static IShaderManager &GetShaderManager() { return *s_ShaderManager; }
+
 private:
-    void checkCompileErrors(GLuint shader, std::string type);
+    void checkCompileErrors(unsigned int shader, std::string type);
     mutable std::unordered_map<std::string, int> uniformLocations;
+
+    static IShaderManager *s_ShaderManager;
 };

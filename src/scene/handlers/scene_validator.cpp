@@ -4,7 +4,8 @@
 #include <script/script_registry.h>
 #include <app/application.h>
 #include <ecs/component.h>
-#include <physic/physic_world.h>
+#include <physic/backends/bullet_physics_world.h>
+#include <physic/backends/bullet_rigid_body.h>
 #include <utils/bullet_glm_helpers.h>
 #include <iostream>
 #include <glm/glm.hpp>
@@ -126,8 +127,14 @@ namespace SceneHandlers
         }
     }
 
-    void SceneValidator::ValidatePhysicsSync(Scene &scene, PhysicsWorld &phys)
+    void SceneValidator::ValidatePhysicsSync(Scene &scene, IPhysicsWorld &phys)
     {
+        BulletPhysicsWorld* bulletWorld = dynamic_cast<BulletPhysicsWorld*>(&phys);
+        if (!bulletWorld) {
+             LOGGER_ERROR("SceneValidator") << "Physics world is not BulletPhysicsWorld, ignoring validation.";
+             return;
+        }
+
         auto rbView = scene.registry.view<RigidBodyComponent, TransformComponent>();
         for (auto entity : rbView)
         {
@@ -136,6 +143,9 @@ namespace SceneHandlers
 
             if (rb.body)
             {
+                BulletRigidBody* bulletBody = dynamic_cast<BulletRigidBody*>(rb.body.get());
+                if (!bulletBody) continue;
+
                 glm::mat4 worldMatrix = transform.GetWorldModelMatrix(scene.registry);
                 glm::vec3 position = glm::vec3(worldMatrix[3]);
                 glm::quat rotation = glm::quat_cast(worldMatrix);
@@ -145,15 +155,15 @@ namespace SceneHandlers
                 tr.setOrigin(BulletGLMHelpers::convert(position));
                 tr.setRotation(BulletGLMHelpers::convert(rotation));
 
-                rb.body->setWorldTransform(tr);
-                if (rb.body->getMotionState())
+                bulletBody->GetRaw()->setWorldTransform(tr);
+                if (bulletBody->GetRaw()->getMotionState())
                 {
-                    rb.body->getMotionState()->setWorldTransform(tr);
+                    bulletBody->GetRaw()->getMotionState()->setWorldTransform(tr);
                 }
 
-                rb.body->setLinearVelocity(btVector3(0, 0, 0));
-                rb.body->setAngularVelocity(btVector3(0, 0, 0));
-                rb.body->activate();
+                bulletBody->GetRaw()->setLinearVelocity(btVector3(0, 0, 0));
+                bulletBody->GetRaw()->setAngularVelocity(btVector3(0, 0, 0));
+                bulletBody->GetRaw()->activate();
 
                 if (rb.isAttachedToParent && scene.registry.valid(transform.parent))
                 {
@@ -162,22 +172,26 @@ namespace SceneHandlers
                         auto &parentRb = scene.registry.get<RigidBodyComponent>(transform.parent);
                         if (parentRb.body)
                         {
-                            btTransform frameInA, frameInB;
+                            BulletRigidBody* parentBulletBody = dynamic_cast<BulletRigidBody*>(parentRb.body.get());
+                            if (parentBulletBody)
+                            {
+                                btTransform frameInA, frameInB;
 
-                            btTransform parentWorldTrans = parentRb.body->getWorldTransform();
-                            btTransform childWorldTrans = rb.body->getWorldTransform();
+                                btTransform parentWorldTrans = parentBulletBody->GetRaw()->getWorldTransform();
+                                btTransform childWorldTrans = bulletBody->GetRaw()->getWorldTransform();
 
-                            frameInA = parentWorldTrans.inverse() * childWorldTrans;
-                            frameInB.setIdentity();
+                                frameInA = parentWorldTrans.inverse() * childWorldTrans;
+                                frameInB.setIdentity();
 
-                            btFixedConstraint *fixedConstraint = new btFixedConstraint(
-                                *parentRb.body,
-                                *rb.body,
-                                frameInA,
-                                frameInB);
+                                btFixedConstraint *fixedConstraint = new btFixedConstraint(
+                                    *parentBulletBody->GetRaw(),
+                                    *bulletBody->GetRaw(),
+                                    frameInA,
+                                    frameInB);
 
-                            phys.AddConstraint(fixedConstraint);
-                            rb.constraint = fixedConstraint;
+                                bulletWorld->GetRawWorld()->addConstraint(fixedConstraint);
+                                // rb.constraint = fixedConstraint; // TODO: store this somewhere safe 
+                            }
                         }
                     }
                 }

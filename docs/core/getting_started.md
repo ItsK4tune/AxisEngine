@@ -300,7 +300,7 @@ void GameState::OnEnter() {
     EnableLogic(true);
     
     // Hide and lock cursor for FPS-style control
-    SetCursorMode(CursorMode::LockedHiddenCenter);
+    SetCursorMode(CursorMode::LockedHidden);
 }
 
 void GameState::OnUpdate(float dt) {

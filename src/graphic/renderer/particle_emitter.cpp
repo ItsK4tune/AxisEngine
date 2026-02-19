@@ -1,7 +1,51 @@
 #include <graphic/renderer/particle_emitter.h>
-#include <glad/glad.h>
-#include <cstdlib>
-#include <ctime>
+
+#include <interface/graphic/i_buffer_manager.h>
+#include <interface/graphic/i_texture_manager.h>
+#include <interface/graphic/i_draw_context.h>
+#include <utils/logger.h>
+#include <interface/graphic/graphics_types.h>
+
+// OpenGL constants
+
+
+IBufferManager* ParticleEmitter::s_BufferManager = nullptr;
+ITextureManager* ParticleEmitter::s_TextureManager = nullptr;
+IDrawContext* ParticleEmitter::s_DrawContext = nullptr;
+
+void ParticleEmitter::SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext)
+{
+    s_BufferManager = &bufferManager;
+    s_TextureManager = &textureManager;
+    s_DrawContext = &drawContext;
+}
+
+IBufferManager& ParticleEmitter::GetBufferManager()
+{
+    if (!s_BufferManager) {
+        LOGGER_ERROR("ParticleEmitter") << "BufferManager not set!";
+        throw std::runtime_error("BufferManager not set in ParticleEmitter");
+    }
+    return *s_BufferManager;
+}
+
+ITextureManager& ParticleEmitter::GetTextureManager()
+{
+    if (!s_TextureManager) {
+        LOGGER_ERROR("ParticleEmitter") << "TextureManager not set!";
+        throw std::runtime_error("TextureManager not set in ParticleEmitter");
+    }
+    return *s_TextureManager;
+}
+
+IDrawContext& ParticleEmitter::GetDrawContext()
+{
+    if (!s_DrawContext) {
+        LOGGER_ERROR("ParticleEmitter") << "DrawContext not set!";
+        throw std::runtime_error("DrawContext not set in ParticleEmitter");
+    }
+    return *s_DrawContext;
+}
 
 ParticleEmitter::ParticleEmitter() : m_VAO(0), m_VBO(0), m_instanceVBO(0)
 {
@@ -11,12 +55,12 @@ ParticleEmitter::ParticleEmitter() : m_VAO(0), m_VBO(0), m_instanceVBO(0)
 
 ParticleEmitter::~ParticleEmitter()
 {
-    if (m_VAO != 0)
-        glDeleteVertexArrays(1, &m_VAO);
-    if (m_VBO != 0)
-        glDeleteBuffers(1, &m_VBO);
-    if (m_instanceVBO != 0)
-        glDeleteBuffers(1, &m_instanceVBO);
+    if (s_BufferManager)
+    {
+        if (m_VAO != 0) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+        if (m_VBO != 0) s_BufferManager->DeleteBuffers(1, &m_VBO);
+        if (m_instanceVBO != 0) s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
+    }
 }
 
 ParticleEmitter::ParticleEmitter(ParticleEmitter &&other) noexcept
@@ -49,12 +93,12 @@ ParticleEmitter &ParticleEmitter::operator=(ParticleEmitter &&other) noexcept
 {
     if (this != &other)
     {
-        if (m_VAO != 0)
-            glDeleteVertexArrays(1, &m_VAO);
-        if (m_VBO != 0)
-            glDeleteBuffers(1, &m_VBO);
-        if (m_instanceVBO != 0)
-            glDeleteBuffers(1, &m_instanceVBO);
+        if (s_BufferManager)
+        {
+            if (m_VAO != 0) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+            if (m_VBO != 0) s_BufferManager->DeleteBuffers(1, &m_VBO);
+            if (m_instanceVBO != 0) s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
+        }
 
         m_Particles = std::move(other.m_Particles);
         m_MaxParticles = other.m_MaxParticles;
@@ -86,8 +130,11 @@ ParticleEmitter &ParticleEmitter::operator=(ParticleEmitter &&other) noexcept
 
 void ParticleEmitter::Init(unsigned int maxParticles)
 {
+    if (!s_BufferManager) return;
     m_MaxParticles = maxParticles;
     m_Particles.resize(m_MaxParticles);
+
+    auto& bm = GetBufferManager();
 
     float quadVertices[] = {
         -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
@@ -97,47 +144,53 @@ void ParticleEmitter::Init(unsigned int maxParticles)
         -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
         0.5f, 0.5f, 0.0f, 1.0f, 1.0f};
 
-    glGenVertexArrays(1, &m_VAO);
-    glGenBuffers(1, &m_VBO);
-    glGenBuffers(1, &m_instanceVBO);
+    m_VAO = bm.GenVertexArray();
+    m_VBO = bm.GenBuffer();
+    m_instanceVBO = bm.GenBuffer();
 
-    glBindVertexArray(m_VAO);
+    bm.BindVertexArray(m_VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, m_VBO);
+    bm.BufferData(Graphics::BufferType::ArrayBuffer, sizeof(quadVertices), quadVertices, Graphics::BufferUsage::StaticDraw);
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(1);
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, Graphics::DataType::Float, false, 5 * sizeof(float), (void *)0);
+    bm.EnableVertexAttribArray(1);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+    bm.VertexAttribPointer(1, 2, Graphics::DataType::Float, false, 5 * sizeof(float), (void *)(3 * sizeof(float)));
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_instanceVBO);
-    glBufferData(GL_ARRAY_BUFFER, m_MaxParticles * sizeof(ParticleInstanceData), nullptr, GL_STREAM_DRAW);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, m_instanceVBO);
+    bm.BufferData(Graphics::BufferType::ArrayBuffer, m_MaxParticles * sizeof(ParticleInstanceData), nullptr, Graphics::BufferUsage::StreamDraw);
 
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, color));
-    glVertexAttribDivisor(2, 1);
+    bm.EnableVertexAttribArray(2);
+    bm.VertexAttribPointer(2, 4, Graphics::DataType::Float, false, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, color));
+    bm.VertexAttribDivisor(2, 1);
 
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, offset));
-    glVertexAttribDivisor(3, 1);
+    bm.EnableVertexAttribArray(3);
+    bm.VertexAttribPointer(3, 3, Graphics::DataType::Float, false, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, offset));
+    bm.VertexAttribDivisor(3, 1);
 
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, scale));
-    glVertexAttribDivisor(4, 1);
+    bm.EnableVertexAttribArray(4);
+    bm.VertexAttribPointer(4, 1, Graphics::DataType::Float, false, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, scale));
+    bm.VertexAttribDivisor(4, 1);
 
-    glBindVertexArray(0);
+    bm.BindVertexArray(0);
 }
+
+#include <random>
 
 float RandomFloat()
 {
-    return (float)rand() / (float)RAND_MAX;
+    thread_local std::mt19937 generator(std::random_device{}());
+    std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
+    return distribution(generator);
 }
 
 float RandomFloat(float min, float max)
 {
-    return min + RandomFloat() * (max - min);
+    thread_local std::mt19937 generator(std::random_device{}());
+    std::uniform_real_distribution<float> distribution(min, max);
+    return distribution(generator);
 }
 
 void ParticleEmitter::Update(float dt, const glm::vec3 &offset)
@@ -169,10 +222,15 @@ void ParticleEmitter::Update(float dt, const glm::vec3 &offset)
 
 void ParticleEmitter::Render(Shader *shader)
 {
+    if (!s_TextureManager || !s_BufferManager || !s_DrawContext) return;
+    auto& tm = GetTextureManager();
+    auto& bm = GetBufferManager();
+    auto& dc = GetDrawContext();
+
     if (texture)
     {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture->id);
+        tm.ActiveTexture(Graphics::TextureUnit::Texture0);
+        tm.BindTexture(Graphics::TextureType::Texture2D, texture->id);
         shader->setInt("sprite", 0);
     }
 
@@ -194,13 +252,13 @@ void ParticleEmitter::Render(Shader *shader)
     if (instanceData.empty())
         return;
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_instanceVBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, instanceData.size() * sizeof(ParticleInstanceData), instanceData.data());
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, m_instanceVBO);
+    bm.BufferSubData(Graphics::BufferType::ArrayBuffer, 0, instanceData.size() * sizeof(ParticleInstanceData), instanceData.data());
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, 0);
 
-    glBindVertexArray(m_VAO);
-    glDrawArraysInstanced(GL_TRIANGLES, 0, 6, static_cast<GLsizei>(instanceData.size()));
-    glBindVertexArray(0);
+    bm.BindVertexArray(m_VAO);
+    dc.DrawArraysInstanced(Graphics::Primitive::Triangles, 0, 6, static_cast<unsigned int>(instanceData.size()));
+    bm.BindVertexArray(0);
 }
 
 unsigned int ParticleEmitter::FirstUnusedParticle()

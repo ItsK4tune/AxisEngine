@@ -4,15 +4,25 @@
 #include <glm/gtc/quaternion.hpp>
 #include <entt/entt.hpp>
 #include <functional>
-#include <irrKlang/irrKlang.h>
+#include <interface/audio/i_sound.h>
 
-#include <btBulletDynamicsCommon.h>
+#include <interface/physics/i_rigid_body.h>
 #include <graphic/geometry/model.h>
 #include <graphic/renderer/ui_model.h>
 #include <graphic/geometry/animator.h>
 #include <graphic/renderer/font.h>
 #include <graphic/renderer/skybox.h>
 #include <graphic/renderer/particle_emitter.h>
+
+#ifdef near
+#undef near
+#endif
+#ifdef far
+#undef far
+#endif
+#ifdef constant
+#undef constant
+#endif
 
 struct InfoComponent
 {
@@ -39,6 +49,8 @@ struct TransformComponent
     bool HasParent() const { return parent != entt::null; }
     uint32_t GetVersion() const { return m_Version; }
 
+    void SetDirty(entt::registry &registry);
+
 private:
     mutable glm::mat4 m_LocalMatrix = glm::mat4(1.0f);
     mutable glm::mat4 m_WorldMatrix = glm::mat4(1.0f);
@@ -51,11 +63,15 @@ private:
     mutable uint32_t m_LastParentVersion = 0;
     mutable entt::entity m_LastParent = entt::null;
     mutable uint32_t m_LastLocalVersion = 0;
+
+    mutable bool m_IsWorldDirty = true;
 };
+
+#include <memory>
 
 struct MeshRendererComponent
 {
-    Model *model = nullptr;
+    std::shared_ptr<Model> model = nullptr;
     Shader *shader = nullptr;
     bool castShadow = true;
     glm::vec4 color = glm::vec4(1.0f);
@@ -92,8 +108,8 @@ struct MaterialComponent
 
 struct RigidBodyComponent
 {
-    btRigidBody *body = nullptr;
-    btTypedConstraint *constraint = nullptr;
+    std::shared_ptr<IRigidBody> body = nullptr;
+    // btTypedConstraint *constraint = nullptr; // TODO: Abstract constraints later
     bool isAttachedToParent = false;
     
     bool isParentMatter = false;
@@ -105,33 +121,33 @@ struct RigidBodyComponent
     void SetRestitution(float restitution)
     {
         if (body)
-            body->setRestitution(restitution);
+            body->SetRestitution(restitution);
     }
 
     void SetFriction(float friction)
     {
         if (body)
-            body->setFriction(friction);
+            body->SetFriction(friction);
     }
 
     void SetLinearFactor(const glm::vec3 &factor)
     {
         if (body)
-            body->setLinearFactor(btVector3(factor.x, factor.y, factor.z));
+            body->SetLinearFactor(factor);
     }
 
     void SetAngularFactor(const glm::vec3 &factor)
     {
         if (body)
-            body->setAngularFactor(btVector3(factor.x, factor.y, factor.z));
+            body->SetAngularFactor(factor);
     }
 
     void SetLinearVelocity(const glm::vec3 &vel)
     {
         if (body)
         {
-            body->setLinearVelocity(btVector3(vel.x, vel.y, vel.z));
-            body->activate(true);
+            body->SetLinearVelocity(vel);
+            body->Activate(true);
         }
     }
 
@@ -139,15 +155,15 @@ struct RigidBodyComponent
     {
         if (body)
         {
-            body->setAngularVelocity(btVector3(vel.x, vel.y, vel.z));
-            body->activate(true);
+            body->SetAngularVelocity(vel);
+            body->Activate(true);
         }
     }
 };
 
 struct AnimationComponent
 {
-    Animator *animator = nullptr;
+    std::unique_ptr<Animator> animator = nullptr;
 };
 
 struct CameraComponent
@@ -169,16 +185,6 @@ struct CameraComponent
 
     glm::mat4 projectionMatrix = glm::mat4(1.0f);
     glm::mat4 viewMatrix = glm::mat4(1.0f);
-
-    glm::mat4 GetViewMatrix() const
-    {
-        glm::vec3 direction;
-        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        direction.y = sin(glm::radians(pitch));
-        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        glm::vec3 frontVec = glm::normalize(direction);
-        return glm::lookAt(glm::vec3(0), frontVec, worldUp);
-    }
 };
 
 struct UITransformComponent
@@ -308,14 +314,14 @@ struct AudioSourceComponent
     bool playOnAwake = true;
     float minDistance = 1.0f;
 
-    irrklang::ISound *sound = nullptr;
+    std::shared_ptr<ISound> sound = nullptr;
     bool shouldPlay = false; // Trigger to play
 };
 
 struct SkyboxRenderComponent
 {
-    Skybox *skybox;
-    Shader *shader;
+    Skybox *skybox = nullptr;
+    Shader *shader = nullptr;
 };
 
 struct ParticleEmitterComponent
@@ -335,7 +341,7 @@ struct VideoPlayerComponent
     bool playOnAwake = true;
     int maxDecodes = 5;
 
-    VideoDecoder *decoder = nullptr;
+    VideoDecoder *decoder = nullptr; // Non-owning. Owned and managed by VideoSystem.
     bool isLoaded = false;
 
     void Play();

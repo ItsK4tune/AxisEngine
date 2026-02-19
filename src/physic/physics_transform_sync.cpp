@@ -1,12 +1,12 @@
 #include <physic/physics_transform_sync.h>
 #include <scene/scene.h>
-#include <physic/physic_world.h>
+#include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
 #include <utils/bullet_glm_helpers.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 
-PhysicsTransformSync::PhysicsTransformSync(Scene &scene, PhysicsWorld &physics)
+PhysicsTransformSync::PhysicsTransformSync(Scene &scene, IPhysicsWorld &physics)
     : m_Scene(scene), m_Physics(physics)
 {
 }
@@ -70,27 +70,24 @@ void PhysicsTransformSync::SyncToPhysics()
         if (!rb.body)
             continue;
 
-        bool isDynamic = !rb.body->isStaticOrKinematicObject();
-        bool isKinematic = rb.body->isKinematicObject();
+        uint32_t currentVersion = transform.GetVersion();
+        if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() && 
+            m_LastSyncedVersions[entity] == currentVersion)
+        {
+            continue;
+        }
+
+        bool isDynamic = !rb.body->IsStatic() && !rb.body->IsKinematic();
+        bool isKinematic = rb.body->IsKinematic();
         bool hasParent = m_Scene.registry.valid(transform.parent);
 
-        if ((!isDynamic || isKinematic) && hasParent)
-        {
-            glm::mat4 worldMatrix = GetCachedWorldMatrix(entity);
-            glm::vec3 worldPos = glm::vec3(worldMatrix[3]);
-            glm::quat worldRot = glm::quat_cast(worldMatrix);
+        glm::mat4 worldMatrix = GetCachedWorldMatrix(entity);
+        glm::vec3 worldPos = glm::vec3(worldMatrix[3]);
+        glm::quat worldRot = glm::quat_cast(worldMatrix);
 
-            btTransform tr;
-            tr.setIdentity();
-            tr.setOrigin(BulletGLMHelpers::convert(worldPos));
-            tr.setRotation(BulletGLMHelpers::convert(worldRot));
-
-            rb.body->setWorldTransform(tr);
-            if (rb.body->getMotionState())
-            {
-                rb.body->getMotionState()->setWorldTransform(tr);
-            }
-        }
+        rb.body->SetWorldTransform(worldPos, worldRot);
+        
+        m_LastSyncedVersions[entity] = currentVersion;
     }
 }
 
@@ -106,19 +103,14 @@ void PhysicsTransformSync::SyncFromPhysics()
         if (!rb.body)
             continue;
 
-        bool isDynamic = !rb.body->isStaticOrKinematicObject();
+        bool isDynamic = !rb.body->IsStatic() && !rb.body->IsKinematic();
         bool hasParent = m_Scene.registry.valid(transform.parent);
 
-        if (isDynamic && rb.body->isActive())
+        if (isDynamic && rb.body->IsActive())
         {
-            btTransform trans;
-            if (rb.body->getMotionState())
-                rb.body->getMotionState()->getWorldTransform(trans);
-            else
-                trans = rb.body->getWorldTransform();
-
-            glm::vec3 worldPos = BulletGLMHelpers::convert(trans.getOrigin());
-            glm::quat worldRot = BulletGLMHelpers::convert(trans.getRotation());
+            glm::vec3 worldPos;
+            glm::quat worldRot;
+            rb.body->GetWorldTransform(worldPos, worldRot);
 
             if (hasParent && rb.isParentMatter)
             {
@@ -142,6 +134,9 @@ void PhysicsTransformSync::SyncFromPhysics()
                 transform.position = worldPos;
                 transform.rotation = worldRot;
             }
+            
+            transform.GetLocalModelMatrix(); 
+            m_LastSyncedVersions[entity] = transform.GetVersion();
         }
     }
 }
@@ -164,21 +159,13 @@ void PhysicsTransformSync::SyncTransformToPhysics(entt::entity entity)
     glm::vec3 position = glm::vec3(worldMatrix[3]);
     glm::quat rotation = glm::quat_cast(worldMatrix);
 
-    btTransform tr;
-    tr.setIdentity();
-    tr.setOrigin(BulletGLMHelpers::convert(position));
-    tr.setRotation(BulletGLMHelpers::convert(rotation));
+    rb.body->SetWorldTransform(position, rotation);
 
-    rb.body->setWorldTransform(tr);
-    if (rb.body->getMotionState())
-    {
-        rb.body->getMotionState()->setWorldTransform(tr);
-    }
-
-    rb.body->setLinearVelocity(btVector3(0, 0, 0));
-    rb.body->setAngularVelocity(btVector3(0, 0, 0));
-    rb.body->activate();
+    rb.body->SetLinearVelocity(glm::vec3(0, 0, 0));
+    rb.body->SetAngularVelocity(glm::vec3(0, 0, 0));
+    rb.body->Activate();
 }
+
 void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
 {
     if (!m_Scene.registry.valid(entity))
@@ -193,17 +180,12 @@ void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
     if (!rb.body)
         return;
 
-    if (rb.body->isStaticObject())
+    if (rb.body->IsStatic())
         return;
 
-    btTransform physicsTransform;
-    if (rb.body->getMotionState())
-        rb.body->getMotionState()->getWorldTransform(physicsTransform);
-    else
-        physicsTransform = rb.body->getWorldTransform();
-
-    glm::vec3 position = BulletGLMHelpers::convert(physicsTransform.getOrigin());
-    glm::quat rotation = BulletGLMHelpers::convert(physicsTransform.getRotation());
+    glm::vec3 position;
+    glm::quat rotation;
+    rb.body->GetWorldTransform(position, rotation);
 
     if (m_Scene.registry.valid(transform.parent))
     {

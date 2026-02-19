@@ -7,6 +7,8 @@
 #include <vector>
 #include <glm/glm.hpp>
 
+#include <memory> 
+
 struct ModelInstance
 {
     glm::mat4 transform;
@@ -16,10 +18,10 @@ struct ModelInstance
 class ModelInstanceManager
 {
 public:
-    ModelInstanceManager();
-    ~ModelInstanceManager();
+    ModelInstanceManager() = default;
+    ~ModelInstanceManager() = default;
 
-    Model* GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic = false);
+    std::shared_ptr<Model> GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic = false);
     void AddInstance(const std::string& modelPath, const glm::mat4& transform, entt::entity entity);
     void RemoveInstance(const std::string& modelPath, entt::entity entity);
     
@@ -37,9 +39,8 @@ public:
 private:
     struct ModelPool
     {
-        Model* model;
+        std::shared_ptr<Model> model;
         std::vector<ModelInstance> instances;
-        int refCount;
     };
 
     std::unordered_map<std::string, ModelPool> m_ModelPools;

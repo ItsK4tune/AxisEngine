@@ -24,7 +24,7 @@ The `DebugSystem` provides real-time introspection, control, and diagnostics for
 | **Shift+F6** | **Toggle Skybox** | Enable or Disable Skybox rendering. |
 | **Shift+F7** | **Toggle Shadows** | Globally enables or disables shadow mapping. |
 | **Shift+F11** | **Toggle Debug Camera** | Switches between Main Camera and Free/Debug Camera (WASD "NoClip"). |
-| **Shift+F12** | **Cycle Cursor Mode** | Cycles: Normal -> Hidden -> Locked (Clamped) -> LockedHidden -> LockedCenter -> LockedHiddenCenter. |
+| **Shift+F12** | **Cycle Cursor Mode** | Cycles: Normal -> Hidden -> Locked -> LockedHidden. |
 
 ## Features Detail
 

@@ -1,20 +1,22 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <interface/window/i_window.h>
+#include <interface/window/input_codes.h>
 
 #include <unordered_map>
 
 class KeyboardManager
 {
 public:
-    KeyboardManager(GLFWwindow *Window);
+    KeyboardManager(IWindow *Window);
 
-    bool GetKey(int key) const;
-    bool GetKeyUp(int key) const;
-    bool IsKeyDown(int key);
+    void SetWindow(IWindow* window) { m_Window = window; }
+
+    bool GetKey(Input::Key key) const;
+    bool GetKeyUp(Input::Key key) const;
+    bool IsKeyDown(Input::Key key);
 
 private:
-    GLFWwindow *m_Window = nullptr;
-    std::unordered_map<int, bool> m_PreviousState;
+    IWindow *m_Window = nullptr;
+    std::unordered_map<Input::Key, bool> m_PreviousState;
 };

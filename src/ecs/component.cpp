@@ -22,20 +22,24 @@ glm::mat4 TransformComponent::GetLocalModelMatrix() const
         m_LastScale = scale;
         
         m_Version++;
+        m_IsWorldDirty = true;
     }
     return m_LocalMatrix;
 }
 
 glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) const
 {
-    GetLocalModelMatrix();
+    GetLocalModelMatrix(); // Updates m_IsWorldDirty if local changed
     
-    bool parentChanged = false;
+    // Check if parent changed
     if (parent != m_LastParent)
     {
         m_LastParent = parent;
-        parentChanged = true;
+        m_IsWorldDirty = true;
     }
+
+    if (!m_IsWorldDirty)
+        return m_WorldMatrix;
 
     if (registry.valid(parent) && parent != entt::null)
     {
@@ -43,14 +47,12 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
         {
             const auto& parentTrans = registry.get<TransformComponent>(parent);
             glm::mat4 parentWorld = parentTrans.GetWorldModelMatrix(registry); 
-            uint32_t parentVer = parentTrans.GetVersion(); 
-
-            if (parentChanged || parentVer != m_LastParentVersion || m_Version != m_LastLocalVersion)
-            {
-                m_WorldMatrix = parentWorld * m_LocalMatrix;
-                m_LastParentVersion = parentVer;
-                m_LastLocalVersion = m_Version;
-            }
+            
+            // If parent is dirty, it would have updated its world matrix and children should eventually be marked dirty too.
+            // But here we pull: if parent world changed, we are dirty. 
+            // Optimization: SetDirty propagates down, so we should trust m_IsWorldDirty unless checking against parent version.
+            
+            m_WorldMatrix = parentWorld * m_LocalMatrix;
         }
         else
         {
@@ -59,14 +61,25 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
     }
     else
     {
-        if (m_Version != m_LastLocalVersion)
-        {
-             m_WorldMatrix = m_LocalMatrix;
-             m_LastLocalVersion = m_Version;
-        }
+        m_WorldMatrix = m_LocalMatrix;
     }
     
+    m_IsWorldDirty = false;
     return m_WorldMatrix;
+}
+
+void TransformComponent::SetDirty(entt::registry &registry) 
+{
+    m_IsWorldDirty = true;
+    
+    // Propagate to children
+    for (auto child : children)
+    {
+        if (registry.valid(child) && registry.all_of<TransformComponent>(child))
+        {
+            registry.get<TransformComponent>(child).SetDirty(registry);
+        }
+    }
 }
 
 void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry& registry, bool keepWorldTransform)
@@ -91,6 +104,8 @@ void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newPare
     {
         auto& newParentTrans = registry.get<TransformComponent>(newParent);
         newParentTrans.children.push_back(thisEntity);
+        
+        SetDirty(registry); // Mark self and children dirty
 
         if (keepWorldTransform)
         {
@@ -107,6 +122,8 @@ void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newPare
             position = t;
             rotation = r;
             scale = s;
+            GetLocalModelMatrix(); // Update local matrix
+            SetDirty(registry); // Re-mark dirty after local change
         }
     }
     else if (keepWorldTransform)

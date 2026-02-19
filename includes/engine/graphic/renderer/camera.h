@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 
 enum Camera_Movement
@@ -26,8 +25,8 @@ public:
     glm::vec3 Right;
     glm::vec3 WorldUp;
 
-    float Yaw;
-    float Pitch;
+    float m_Yaw;
+    float m_Pitch;
 
     float MovementSpeed;
     float MouseSensitivity;
@@ -39,7 +38,7 @@ public:
     glm::mat4 GetViewMatrix();
 
     void ProcessKeyboard(Camera_Movement direction, float deltaTime);
-    void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true);
+    void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true);
     void ProcessMouseScroll(float yoffset);
 
 private:

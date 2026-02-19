@@ -1,13 +1,13 @@
 #include <graphic/renderer/camera.h>
-
+#include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
 
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
 {
     Position = position;
     WorldUp = up;
-    Yaw = yaw;
-    Pitch = pitch;
+    m_Yaw = yaw;
+    m_Pitch = pitch;
     updateCameraVectors();
 }
 
@@ -15,8 +15,8 @@ Camera::Camera(float posX, float posY, float posZ, float upX, float upY, float u
 {
     Position = glm::vec3(posX, posY, posZ);
     WorldUp = glm::vec3(upX, upY, upZ);
-    Yaw = yaw;
-    Pitch = pitch;
+    m_Yaw = yaw;
+    m_Pitch = pitch;
     updateCameraVectors();
 }
 
@@ -38,20 +38,20 @@ void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
         Position += Right * velocity;
 }
 
-void Camera::ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch)
+void Camera::ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch)
 {
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
 
-    Yaw += xoffset;
-    Pitch += yoffset;
+    m_Yaw += xoffset;
+    m_Pitch += yoffset;
 
     if (constrainPitch)
     {
-        if (Pitch > 89.0f)
-            Pitch = 89.0f;
-        if (Pitch < -89.0f)
-            Pitch = -89.0f;
+        if (m_Pitch > 89.0f)
+            m_Pitch = 89.0f;
+        if (m_Pitch < -89.0f)
+            m_Pitch = -89.0f;
     }
 
     updateCameraVectors();
@@ -69,9 +69,9 @@ void Camera::ProcessMouseScroll(float yoffset)
 void Camera::updateCameraVectors()
 {
     glm::vec3 front;
-    front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    front.y = sin(glm::radians(Pitch));
-    front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+    front.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+    front.y = sin(glm::radians(m_Pitch));
+    front.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
     Front = glm::normalize(front);
 
     Right = glm::normalize(glm::cross(Front, WorldUp));

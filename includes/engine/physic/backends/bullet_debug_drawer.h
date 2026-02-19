@@ -1,15 +1,17 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <vector>
 #include <LinearMath/btIDebugDraw.h>
 
-class DebugDrawer : public btIDebugDraw
+class IBufferManager;
+class IDrawContext;
+
+class BulletDebugDrawer : public btIDebugDraw
 {
 public:
-    DebugDrawer();
-    virtual ~DebugDrawer();
+    BulletDebugDrawer();
+    virtual ~BulletDebugDrawer();
 
     void Init();
     void FrameStart();
@@ -22,6 +24,8 @@ public:
     virtual void setDebugMode(int debugMode) override;
     virtual int getDebugMode() const override;
 
+    static void SetManagers(IBufferManager& bufferManager, IDrawContext& drawContext);
+
 private:
     struct LineVertex
     {
@@ -30,6 +34,12 @@ private:
     };
 
     std::vector<LineVertex> m_Lines;
-    GLuint m_VAO, m_VBO;
+    unsigned int m_VAO, m_VBO;
     int m_DebugMode;
+
+    static IBufferManager* s_BufferManager;
+    static IDrawContext* s_DrawContext;
+
+    static IBufferManager& GetBufferManager();
+    static IDrawContext& GetDrawContext();
 };

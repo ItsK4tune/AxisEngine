@@ -4,7 +4,7 @@
 void GameState::OnEnter()
 {
     LoadScene("scenes/game.scene");
-    SetCursorMode(CursorMode::Normal);
+    SetCursorMode(Input::CursorMode::Normal);
 
     EnablePhysics(true);
     EnableRender(true);

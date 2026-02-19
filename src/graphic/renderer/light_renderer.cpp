@@ -3,12 +3,18 @@
 #include <graphic/core/shader.h>
 #include <graphic/renderer/shadow.h>
 #include <vector>
+#include <interface/graphic/i_buffer_manager.h>
+#include <utils/logger.h>
 
-void LightRenderer::Init()
+
+
+void LightRenderer::Init(IBufferManager& bufferManager)
 {
-    glGenBuffers(1, &m_DirLightSSBO);
-    glGenBuffers(1, &m_PointLightSSBO);
-    glGenBuffers(1, &m_SpotLightSSBO);
+    m_BufferManager = &bufferManager;
+
+    m_DirLightSSBO = m_BufferManager->CreateBuffer();
+    m_PointLightSSBO = m_BufferManager->CreateBuffer();
+    m_SpotLightSSBO = m_BufferManager->CreateBuffer();
     
     m_DirLights.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
     m_PointLights.reserve(Shadow::MAX_POINT_LIGHTS_SHADOW * 2);
@@ -17,6 +23,8 @@ void LightRenderer::Init()
 
 void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
 {
+    if (!m_BufferManager) return;
+
     m_DirLights.clear();
     auto dirView = scene.registry.view<DirectionalLightComponent>();
 
@@ -116,17 +124,17 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
                               light.specular, 0.0f});
     }
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_DirLightSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, m_DirLights.size() * sizeof(GPUDirLight), m_DirLights.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_DirLightSSBO);
+    m_BufferManager->BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_DirLightSSBO);
+    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, m_DirLights.size() * sizeof(GPUDirLight), m_DirLights.data(), Graphics::BufferUsage::DynamicDraw);
+    m_BufferManager->BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 0, m_DirLightSSBO);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_PointLightSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, m_PointLights.size() * sizeof(GPUPointLight), m_PointLights.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_PointLightSSBO);
+    m_BufferManager->BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_PointLightSSBO);
+    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, m_PointLights.size() * sizeof(GPUPointLight), m_PointLights.data(), Graphics::BufferUsage::DynamicDraw);
+    m_BufferManager->BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 1, m_PointLightSSBO);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_SpotLightSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, m_SpotLights.size() * sizeof(GPUSpotLight), m_SpotLights.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_SpotLightSSBO);
+    m_BufferManager->BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_SpotLightSSBO);
+    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, m_SpotLights.size() * sizeof(GPUSpotLight), m_SpotLights.data(), Graphics::BufferUsage::DynamicDraw);
+    m_BufferManager->BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 2, m_SpotLightSSBO);
 
     shader->setInt("numDirLights", (int)m_DirLights.size());
     shader->setInt("nrPointLights", (int)m_PointLights.size());

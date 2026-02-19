@@ -1,4 +1,5 @@
 #include <scene/scene.h>
+#include <interface/physics/i_physics_world.h>
 #include <scene/scene_manager.h>
 #include <scene/light_manager.h>
 #include <scene/camera_manager.h>
@@ -49,8 +50,8 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
         if (rb->body)
         {
             if (manager)
-                manager->GetPhysicsWorld().GetWorld()->removeRigidBody(rb->body);
-            delete rb->body;
+                manager->GetPhysicsWorld().RemoveRigidBody(rb->body.get());
+            // shared_ptr handles deletion
             rb->body = nullptr;
         }
     }
@@ -63,11 +64,8 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
 
     if (auto anim = registry.try_get<AnimationComponent>(entity))
     {
-        if (anim->animator)
-        {
-            delete anim->animator;
-            anim->animator = nullptr;
-        }
+        // Animator is now a unique_ptr, automatic cleanup
+        anim->animator = nullptr;
     }
 
     if (auto ui = registry.try_get<UIRendererComponent>(entity))

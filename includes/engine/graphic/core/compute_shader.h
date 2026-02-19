@@ -1,9 +1,9 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
-
 #include <string>
+
+class IShaderManager;
 
 class ComputeShader
 {
@@ -11,6 +11,7 @@ public:
     unsigned int ID;
 
     ComputeShader(const char *computePath);
+    ~ComputeShader();
 
     void use();
 
@@ -27,6 +28,11 @@ public:
     void setMat3(const std::string &name, const glm::mat3 &mat) const;
     void setMat4(const std::string &name, const glm::mat4 &mat) const;
 
+    static void SetShaderManager(IShaderManager& shaderManager);
+
 private:
-    void checkCompileErrors(GLuint shader, std::string type);
+    void checkCompileErrors(unsigned int shader, std::string type);
+
+    static IShaderManager* s_ShaderManager;
+    static IShaderManager& GetShaderManager();
 };

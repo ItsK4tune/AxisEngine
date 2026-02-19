@@ -4,11 +4,13 @@
 #include <string>
 #include <unordered_map>
 
+#include <memory>
+
 class ShaderCache
 {
 public:
-    ShaderCache();
-    ~ShaderCache();
+    ShaderCache() = default;
+    ~ShaderCache() = default;
 
     Shader* GetOrCompile(const std::string& name, const std::string& vertPath, const std::string& fragPath);
     Shader* Get(const std::string& name);
@@ -16,5 +18,5 @@ public:
     void Reload(const std::string& name);
 
 private:
-    std::unordered_map<std::string, Shader*> m_LoadedShaders;
+    std::unordered_map<std::string, std::unique_ptr<Shader>> m_LoadedShaders;
 };

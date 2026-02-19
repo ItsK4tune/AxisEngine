@@ -1,18 +1,19 @@
-#include <ecs/system.h>
 
-void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
+#include <ecs/system.h>
+#include <interface/window/input_codes.h>
+
+void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState)
 {
     if (!m_Enabled)
         return;
 
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    renderState.Disable(Graphics::ServerCapability::DepthTest);
+    renderState.Disable(Graphics::ServerCapability::CullFace);
+    renderState.Enable(Graphics::ServerCapability::Blend);
+    renderState.BlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
 
-    GLint polygonMode[2];
-    glGetIntegerv(GL_POLYGON_MODE, polygonMode);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    Graphics::PolygonMode previousPolygonMode = renderState.GetPolygonMode();
+    renderState.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill);
 
     scene.registry.sort<UITransformComponent>([](const auto &lhs, const auto &rhs)
                                               { return lhs.zIndex < rhs.zIndex; });
@@ -89,10 +90,10 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight)
         }
     }
 
-    glEnable(GL_DEPTH_TEST);
-    glDisable(GL_BLEND);
+    renderState.Enable(Graphics::ServerCapability::DepthTest);
+    renderState.Disable(Graphics::ServerCapability::Blend);
 
-    glPolygonMode(GL_FRONT_AND_BACK, polygonMode[0]);
+    renderState.PolygonMode(Graphics::CullMode::FrontAndBack, previousPolygonMode);
 }
 
 void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
@@ -100,7 +101,7 @@ void UIInteractSystem::Update(Scene &scene, float dt, const MouseManager &mouse)
     if (!m_Enabled)
         return;
 
-    if (mouse.GetCursorMode() == CursorMode::Hidden)
+    if (mouse.GetCursorMode() == Input::CursorMode::Hidden)
         return;
 
     float mx = mouse.GetLastX();

@@ -8,8 +8,8 @@
 #include <app/application.h>
 #include <map>
 
-SceneManager::SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application *app)
-    : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundManager(sound), m_App(app) {}
+SceneManager::SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
+    : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundPlayer(sound), m_App(app) {}
 
 void SceneManager::LoadScene(const std::string &filePath)
 {
@@ -19,7 +19,7 @@ void SceneManager::LoadScene(const std::string &filePath)
         return;
     }
 
-    std::vector<entt::entity> loadedEntities = SceneLoader::Load(filePath, m_Scene, m_Resources, m_Physics, m_SoundManager, m_App);
+    std::vector<entt::entity> loadedEntities = SceneLoader::Load(filePath, m_Scene, m_Resources, m_Physics, m_SoundPlayer, m_App);
     
     if (!loadedEntities.empty())
     {

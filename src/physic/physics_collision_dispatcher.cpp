@@ -1,10 +1,10 @@
 #include <physic/physics_collision_dispatcher.h>
 #include <scene/scene.h>
-#include <physic/physic_world.h>
+#include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
 #include <script/scriptable.h>
 
-PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene& scene, PhysicsWorld& physics)
+PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene& scene, IPhysicsWorld& physics)
     : m_Scene(scene), m_Physics(physics)
 {
 }
@@ -13,9 +13,27 @@ PhysicsCollisionDispatcher::~PhysicsCollisionDispatcher()
 {
 }
 
+#include <physic/backends/bullet_physics_world.h> // Include concrete backend for now
+
 void PhysicsCollisionDispatcher::DispatchEvents()
 {
-    btDiscreteDynamicsWorld *world = m_Physics.GetWorld();
+    // Casting for now until IPhysicsWorld exposes collision manifold/iterator
+    // or we move this logic to the backend
+    BulletPhysicsWorld* bulletWorld = dynamic_cast<BulletPhysicsWorld*>(&m_Physics);
+    if (!bulletWorld) return; 
+
+    // We need to access m_DynamicsWorld from BulletPhysicsWorld but it's private.
+    // I should add GetRawWorld() to BulletPhysicsWorld or friend it.
+    // Ideally IPhysicsWorld should likely have GetCollisions().
+    // For now let's assume I can get it or I will add GetRawWorld() to BulletPhysicsWorld.
+    
+    // TEMPORARY FIX: GetRawWorld() in BulletPhysicsWorld needed
+    // Assuming I will add it in next step.
+    
+    // Actually, I can use friend class or public getter.
+    // Let's add GetRawWorld() to BulletPhysicsWorld header first.
+
+    btDiscreteDynamicsWorld *world = bulletWorld->GetRawWorld();
     if (!world) return;
 
     int numManifolds = world->getDispatcher()->getNumManifolds();
@@ -97,14 +115,14 @@ void PhysicsCollisionDispatcher::DispatchEvents()
             bool isTrigger = false;
             if (m_Scene.registry.valid(eA) && m_Scene.registry.all_of<RigidBodyComponent>(eA))
             {
-                if (auto *body = m_Scene.registry.get<RigidBodyComponent>(eA).body)
-                    if (body->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE)
+                if (auto body = m_Scene.registry.get<RigidBodyComponent>(eA).body)
+                    if (body->IsTrigger())
                         isTrigger = true;
             }
             if (!isTrigger && m_Scene.registry.valid(eB) && m_Scene.registry.all_of<RigidBodyComponent>(eB))
             {
-                if (auto *body = m_Scene.registry.get<RigidBodyComponent>(eB).body)
-                    if (body->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE)
+                if (auto body = m_Scene.registry.get<RigidBodyComponent>(eB).body)
+                    if (body->IsTrigger())
                         isTrigger = true;
             }
 

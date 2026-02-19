@@ -19,7 +19,7 @@ void AnimationCache::LoadAnimation(const std::string& name, const std::string& p
         return;
     }
     
-    m_Animations[name] = std::make_unique<Animation>(FileSystem::getPath(path), model);
+    m_Animations[name] = std::make_unique<Animation>(FileSystem::getPath(path), *model);
     LOGGER_INFO("AnimationCache") << "Loaded animation: " << name;
 }
 

@@ -4,26 +4,60 @@
 #include <algorithm>
 #include <vector>
 #include <utils/logger.h>
-#include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
 #include <resource/resource_manager.h>
+#include <interface/graphic/i_graphics_context.h>
+#include <interface/graphic/i_texture_manager.h>
+#include <interface/graphic/i_render_state_manager.h>
 
-void RenderSystem::InitShadows(ResourceManager &res)
+
+
+void RenderSystem::Init(IGraphicsContext& context, ResourceManager &res)
 {
+    m_Context = &context;
+    
     LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers";
     m_ShadowRenderer.Init(res);
-    m_LightRenderer.Init();
+    m_LightRenderer.Init(m_Context->GetBufferManager());
     
     if (m_WhiteTextureID == 0)
     {
-        glGenTextures(1, &m_WhiteTextureID);
-        glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+        auto& tm = m_Context->GetTextureManager();
+        m_WhiteTextureID = tm.GenTexture();
+        tm.BindTexture(Graphics::TextureType::Texture2D, m_WhiteTextureID);
         unsigned char white[] = {255, 255, 255, 255};
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        
+        tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA8, 1, 1, 0, 
+                      Graphics::TextureFormat::RGBA, Graphics::DataType::UnsignedByte, white);
+                      
+        tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
+        tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
     }
+
+    m_BonesUniforms.reserve(100);
+    for (int i = 0; i < 100; ++i)
+        m_BonesUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
+
+    m_ShadowPointUniforms.reserve(Shadow::MAX_POINT_LIGHTS_SHADOW);
+    for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
+        m_ShadowPointUniforms.push_back("shadowMapPoint[" + std::to_string(i) + "]");
+
+    m_ShadowDirUniforms.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
+    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
+        m_ShadowDirUniforms.push_back("shadowMapDir[" + std::to_string(i) + "]");
+
+    m_ShadowSpotUniforms.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW);
+    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
+        m_ShadowSpotUniforms.push_back("shadowMapSpot[" + std::to_string(i) + "]");
+
+    m_LightSpaceMatrixUniforms.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
+    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
+        m_LightSpaceMatrixUniforms.push_back("lightSpaceMatrix[" + std::to_string(i) + "]");
+
+    m_LightSpaceMatrixSpotUniforms.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW);
+    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
+        m_LightSpaceMatrixSpotUniforms.push_back("lightSpaceMatrixSpot[" + std::to_string(i) + "]");
 }
 
 void RenderSystem::Shutdown()
@@ -37,35 +71,41 @@ void RenderSystem::RenderShadows(Scene &scene)
     m_ShadowRenderer.RenderShadows(scene);
 }
 
-void RenderSystem::SetFaceCulling(bool enabled, int mode)
+void RenderSystem::SetFaceCulling(bool enabled, Graphics::CullMode mode)
 {
+    if (!m_Context) return;
+    auto& rsm = m_Context->GetRenderStateManager();
+
     if (enabled)
     {
-        glEnable(GL_CULL_FACE);
-        glCullFace(mode);
+        rsm.Enable(Graphics::ServerCapability::CullFace);
+        rsm.CullFace(mode);
     }
     else
     {
-        glDisable(GL_CULL_FACE);
+        rsm.Disable(Graphics::ServerCapability::CullFace);
     }
 }
 
-void RenderSystem::SetDepthTest(bool enabled, int func)
+void RenderSystem::SetDepthTest(bool enabled, Graphics::CompareFunc func)
 {
+    if (!m_Context) return;
+    auto& rsm = m_Context->GetRenderStateManager();
+
     if (enabled)
     {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(func);
+        rsm.Enable(Graphics::ServerCapability::DepthTest);
+        rsm.DepthFunc(func);
     }
     else
     {
-        glDisable(GL_DEPTH_TEST);
+        rsm.Disable(Graphics::ServerCapability::DepthTest);
     }
 }
 
 void RenderSystem::Render(Scene &scene, int width, int height)
 {
-    if (!m_Enabled)
+    if (!m_Enabled || !m_Context)
         return;
 
     entt::entity camEntity = scene.GetActiveCamera();
@@ -174,60 +214,28 @@ void RenderSystem::Render(Scene &scene, int width, int height)
                 continue;
         }
 
-        m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer});
+        MaterialComponent *mat = nullptr;
+        if (scene.registry.all_of<MaterialComponent>(entity))
+        {
+            mat = &scene.registry.get<MaterialComponent>(entity);
+        }
+
+        m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat});
     }
 
     std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [](const RenderItem &lhs, const RenderItem &rhs)
               {
-        if (lhs.renderer->shader != rhs.renderer->shader)
-            return lhs.renderer->shader < rhs.renderer->shader;
+        if (lhs.renderer->shader->getID() != rhs.renderer->shader->getID())
+            return lhs.renderer->shader->getID() < rhs.renderer->shader->getID();
+        if (lhs.material != rhs.material)
+            return lhs.material < rhs.material;
         return lhs.renderer->model < rhs.renderer->model; });
 
-    static std::vector<std::string> bonesUniforms;
-    if (bonesUniforms.empty())
-    {
-        bonesUniforms.reserve(100);
-        for (int i = 0; i < 100; ++i)
-            bonesUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
-    }
-    static std::vector<std::string> shadowPointUniforms;
-    if (shadowPointUniforms.empty())
-    {
-        shadowPointUniforms.reserve(Shadow::MAX_POINT_LIGHTS_SHADOW);
-        for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
-            shadowPointUniforms.push_back("shadowMapPoint[" + std::to_string(i) + "]");
-    }
-    static std::vector<std::string> shadowDirUniforms;
-    if (shadowDirUniforms.empty())
-    {
-        shadowDirUniforms.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
-        for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
-            shadowDirUniforms.push_back("shadowMapDir[" + std::to_string(i) + "]");
-    }
-    static std::vector<std::string> shadowSpotUniforms;
-    if (shadowSpotUniforms.empty())
-    {
-        shadowSpotUniforms.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW);
-        for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
-           shadowSpotUniforms.push_back("shadowMapSpot[" + std::to_string(i) + "]");
-    }
-    static std::vector<std::string> lightSpaceMatrixUniforms;
-    if (lightSpaceMatrixUniforms.empty())
-    {
-         lightSpaceMatrixUniforms.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
-         for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
-             lightSpaceMatrixUniforms.push_back("lightSpaceMatrix[" + std::to_string(i) + "]");
-    }
-    static std::vector<std::string> lightSpaceMatrixSpotUniforms;
-    if (lightSpaceMatrixSpotUniforms.empty())
-    {
-         lightSpaceMatrixSpotUniforms.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW);
-         for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
-             lightSpaceMatrixSpotUniforms.push_back("lightSpaceMatrixSpot[" + std::to_string(i) + "]");
-    }
+    // Uniform vectors are now members initialized in Init()
 
     Shader *currentShader = nullptr;
     Model *currentModel = nullptr;
+    MaterialComponent *currentMaterial = nullptr;
     std::vector<glm::mat4> instanceBatch;
     m_RenderedCount = 0;
 
@@ -246,12 +254,14 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         entt::entity entity = item.entity;
         TransformComponent &transform = *item.transform;
         MeshRendererComponent &renderer = *item.renderer;
+        MaterialComponent *material = item.material;
 
         if (currentShader != renderer.shader)
         {
             flushBatch(currentShader, currentModel);
             currentShader = renderer.shader;
             currentModel = nullptr;
+            currentMaterial = nullptr;
             currentShader->use();
 
             if (cam && camTrans)
@@ -269,31 +279,31 @@ void RenderSystem::Render(Scene &scene, int width, int height)
                    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
                    {
                        m_ShadowRenderer.GetShadow().BindTexture_Dir(i, 10 + i);
-                       currentShader->setInt(shadowDirUniforms[i], 10 + i);
+                       currentShader->setInt(m_ShadowDirUniforms[i], 10 + i);
                    }
 
                    for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
                    {
                        m_ShadowRenderer.GetShadow().BindTexture_Point(i, 12 + i);
-                       currentShader->setInt(shadowPointUniforms[i], 12 + i);
+                       currentShader->setInt(m_ShadowPointUniforms[i], 12 + i);
                    }
 
                    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
                    {
                        m_ShadowRenderer.GetShadow().BindTexture_Spot(i, 14 + i);
-                       currentShader->setInt(shadowSpotUniforms[i], 14 + i);
+                       currentShader->setInt(m_ShadowSpotUniforms[i], 14 + i);
                    }
 
                    const glm::mat4* lightSpaceMatrices = m_ShadowRenderer.GetLightSpaceMatrices();
                    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
                    {
-                        currentShader->setMat4(lightSpaceMatrixUniforms[i], lightSpaceMatrices[i]);
+                        currentShader->setMat4(m_LightSpaceMatrixUniforms[i], lightSpaceMatrices[i]);
                    }
 
                    const glm::mat4* lightSpaceMatricesSpot = m_ShadowRenderer.GetLightSpaceMatricesSpot();
                    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
                    {
-                        currentShader->setMat4(lightSpaceMatrixSpotUniforms[i], lightSpaceMatricesSpot[i]);
+                        currentShader->setMat4(m_LightSpaceMatrixSpotUniforms[i], lightSpaceMatricesSpot[i]);
                    }
                 }
                 else
@@ -313,6 +323,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         {
             flushBatch(currentShader, currentModel);
             currentModel = nullptr;
+            currentMaterial = nullptr;
 
             glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
             currentShader->setMat4("model", modelMatrix);
@@ -321,7 +332,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             auto &anim = scene.registry.get<AnimationComponent>(entity);
             auto transforms = anim.animator->GetFinalBoneMatrices();
             for (int j = 0; j < transforms.size() && j < 100; ++j)
-                currentShader->setMat4(bonesUniforms[j], transforms[j]);
+                currentShader->setMat4(m_BonesUniforms[j], transforms[j]);
 
             SetupMaterialUniforms(currentShader, entity, scene);
 
@@ -347,10 +358,11 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             }
             else
             {
-                if (currentModel != renderer.model)
+                if (currentModel != renderer.model.get() || currentMaterial != material)
                 {
                     flushBatch(currentShader, currentModel);
-                    currentModel = renderer.model;
+                    currentModel = renderer.model.get();
+                    currentMaterial = material;
 
                     currentShader->setVec4("tintColor", renderer.color);
 
@@ -389,8 +401,8 @@ void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Sc
 
         if (m_DebugNoTexture)
         {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, m_WhiteTextureID);
+            m_Context->GetTextureManager().ActiveTexture(Graphics::TextureUnit::Texture0);
+            m_Context->GetTextureManager().BindTexture(Graphics::TextureType::Texture2D, m_WhiteTextureID);
         }
     }
     else
@@ -409,3 +421,5 @@ void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Sc
     else
         shader->setBool("debug_noTexture", false);
 }
+
+

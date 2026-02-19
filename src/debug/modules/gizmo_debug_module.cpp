@@ -43,9 +43,9 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
     if (!m_App || !m_Enabled)
         return;
 
-    ProcessKey(keyboard, GLFW_KEY_F3, m_F3Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F3, m_F3Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             ToggleEntityNames();
             std::cout << "\n========== Entity Names (Shift+F3) ==========" << std::endl;
@@ -53,9 +53,9 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
             std::cout << "=============================================" << std::endl;
         } });
 
-    ProcessKey(keyboard, GLFW_KEY_F4, m_F4Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F4, m_F4Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             ToggleTransformGizmos(); 
             std::cout << "\n========== Transform Gizmos (Shift+F4) ==========" << std::endl;
@@ -63,9 +63,9 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
             std::cout << "=================================================" << std::endl;
         } });
 
-    ProcessKey(keyboard, GLFW_KEY_F5, m_F5Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F5, m_F5Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             ToggleLightGizmos();
             
@@ -406,7 +406,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     m_LightLabelMap = nextMap;
 }
 
-void GizmoDebugModule::ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action)
+void GizmoDebugModule::ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

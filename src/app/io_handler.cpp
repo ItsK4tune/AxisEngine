@@ -1,0 +1,99 @@
+#include <app/io_handler.h>
+#include <interface/graphic/i_graphics_context.h>
+
+#include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
+#include <input/input_manager.h>
+#include <app/monitor_manager.h>
+#include <audio/audio_manager.h>
+#include <utils/logger.h>
+
+IOHandler::IOHandler(std::unique_ptr<IGraphicsContext> graphics, std::unique_ptr<IAudioEngine> audioEngine)
+    : m_Graphics(std::move(graphics))
+{
+    m_MonitorManager = std::make_unique<MonitorManager>();
+    m_AudioManager = std::make_unique<AudioManager>(std::move(audioEngine));
+}
+
+IOHandler::~IOHandler()
+{
+}
+
+bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, int width, int height, int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit)
+{
+    m_MonitorManager->SetWindowTitle(title);
+    m_MonitorManager->SetWindowConfiguration(width, height, (WindowMode)windowMode, monitorIndex, refreshRate);
+    m_MonitorManager->SetFrameRateLimit(frameRateLimit);
+
+    if (!m_MonitorManager->Init(std::move(window)))
+    {
+        LOGGER_ERROR("IOHandler") << "Failed to initialize MonitorManager";
+        return false;
+    }
+
+    // Context is made current by IWindow::Init implementation
+
+
+    if (!m_Graphics->Init())
+    {
+        LOGGER_ERROR("IOHandler") << "Failed to initialize graphics context";
+        return false;
+    }
+
+    // m_Graphics->SetVsync(vsync); // Handled by MonitorManager
+    m_Graphics->SetDepthTest(true);
+
+    m_KeyboardManager = std::make_unique<KeyboardManager>(m_MonitorManager->GetWindow());
+    m_MouseManager = std::make_unique<MouseManager>(m_MonitorManager->GetWindow());
+    m_InputManager = std::make_unique<InputManager>(*m_KeyboardManager, *m_MouseManager);
+
+    m_MouseManager->SetLastPosition(width / 2.0, height / 2.0);
+    m_MouseManager->SetWindowSize(width, height);
+
+    if (!m_AudioManager->Init())
+    {
+        LOGGER_WARN("IOHandler") << "Audio initialization failed, continuing without audio";
+    }
+
+    return true;
+}
+
+void IOHandler::SetWindow(IWindow* window)
+{
+    if (m_KeyboardManager)
+        m_KeyboardManager->SetWindow(window);
+    if (m_MouseManager)
+        m_MouseManager->SetWindow(window);
+}
+
+void IOHandler::ProcessInput()
+{
+    if (m_KeyboardManager->GetKey(Input::Key::Escape))
+        m_MonitorManager->GetWindow()->SetShouldClose(true);
+}
+
+void IOHandler::OnResize(int width, int height)
+{
+    m_MonitorManager->OnResize(width, height);
+    m_Graphics->SetViewport(0, 0, width, height);
+    if (m_MouseManager)
+        m_MouseManager->SetWindowSize(width, height);
+}
+
+void IOHandler::OnMouseMove(double xpos, double ypos)
+{
+    if (m_MouseManager)
+        m_MouseManager->UpdatePosition(xpos, ypos);
+}
+
+void IOHandler::OnMouseButton(int button, int action, int mods)
+{
+    if (m_MouseManager)
+        m_MouseManager->UpdateButton(static_cast<Input::Mouse>(button), action, mods);
+}
+
+void IOHandler::OnScroll(double xoffset, double yoffset)
+{
+    if (m_MouseManager)
+        m_MouseManager->UpdateScroll(xoffset, yoffset);
+}

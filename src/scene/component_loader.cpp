@@ -1,7 +1,7 @@
+#include <utils/filesystem.h>
 #include <scene/component_loader.h>
 #include <utils/logger.h>
 #include <script/script_registry.h>
-#include <utils/filesystem.h>
 #include <iostream>
 
 void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, std::stringstream& ss, ResourceManager& res)
@@ -32,7 +32,7 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, std::strin
 
     auto &a = scene.registry.emplace<AnimationComponent>(entity);
 
-    a.animator = new Animator(res.GetAnimation(animName));
+    a.animator = std::make_unique<Animator>(res.GetAnimation(animName));
     a.animator->SetSpeed(speed);
     a.animator->SetTime(startTime);
     a.animator->SetUpdateRate(rate);

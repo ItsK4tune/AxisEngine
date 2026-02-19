@@ -2,7 +2,7 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <interface/debug_module.h>
+#include <interface/debug/i_debug_module.h>
 #include <string>
 
 class Application;

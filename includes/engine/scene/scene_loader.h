@@ -6,12 +6,12 @@
 
 class Scene;
 class ResourceManager;
-class PhysicsWorld;
-class SoundManager;
+class IPhysicsWorld;
+class SoundPlayer;
 class Application;
 
 class SceneLoader
 {
 public:
-    static std::vector<entt::entity> Load(const std::string& path, Scene& scene, ResourceManager& res, PhysicsWorld& phys, SoundManager& sound, Application* app);
+    static std::vector<entt::entity> Load(const std::string& path, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, Application* app);
 };

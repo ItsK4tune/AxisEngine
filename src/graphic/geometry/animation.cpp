@@ -5,9 +5,9 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
-Animation::Animation() = default;
 
-Animation::Animation(const std::string &animationPath, Model *model)
+
+Animation::Animation(const std::string &animationPath, Model &model)
 {
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
@@ -19,14 +19,12 @@ Animation::Animation(const std::string &animationPath, Model *model)
     globalTransformation = globalTransformation.Inverse();
 
     ReadHierarchyData(m_RootNode, scene->mRootNode);
-    ReadMissingBones(animation, *model);
+    ReadMissingBones(animation, model);
 
     BindNodesToBones(m_RootNode);
 }
 
-Animation::~Animation()
-{
-}
+
 
 Bone *Animation::FindBone(const std::string &name)
 {

@@ -45,5 +45,3 @@ Access: `m_App->GetAppHandler().GetMouse().SetCursorMode(CursorMode mode)`
 | `CursorMode::Hidden` | Hidden, free movement. |
 | `CursorMode::Locked` | Visible, constrained within window bounds. |
 | `CursorMode::LockedHidden` | Hidden, constrained within window bounds. |
-| `CursorMode::LockedCenter` | Visible, locked to window center. |
-| `CursorMode::LockedHiddenCenter` | Hidden, locked to window center (FPS Mode). |

@@ -7,8 +7,8 @@
 
 #include <scene/scene.h>
 #include <resource/resource_manager.h>
-#include <audio/sound_manager.h>
-#include <physic/physic_world.h>
+#include <audio/sound_player.h>
+#include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
 
 class Application;
@@ -16,7 +16,7 @@ class Application;
 class SceneManager
 {
 public:
-    SceneManager(Scene &scene, ResourceManager &res, PhysicsWorld &phys, SoundManager &sound, Application *app);
+    SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app);
 
     void AddEntity(entt::entity entity, const std::string &sceneName)
     {
@@ -29,7 +29,7 @@ public:
 
     void ClearAllScenes();
 
-    PhysicsWorld &GetPhysicsWorld() { return m_Physics; }
+    IPhysicsWorld &GetPhysicsWorld() { return m_Physics; }
 
     void QueueLoadScene(const std::string &path);
     void UpdatePendingScene();
@@ -38,8 +38,8 @@ public:
 private:
     Scene &m_Scene;
     ResourceManager &m_Resources;
-    SoundManager &m_SoundManager;
-    PhysicsWorld &m_Physics;
+    SoundPlayer &m_SoundPlayer;
+    IPhysicsWorld &m_Physics;
     Application *m_App = nullptr;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;

@@ -6,7 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
-#include <irrKlang/irrKlang.h>
+#include <interface/audio/i_audio_engine.h>
 
 #include <graphic/core/shader.h>
 #include <graphic/geometry/model.h>
@@ -23,6 +23,9 @@
 #include <resource/animation_cache.h>
 #include <resource/resource_watcher.h>
 
+#include <future>
+#include <thread>
+
 class ResourceManager
 {
 public:
@@ -35,20 +38,21 @@ public:
     void UnloadTexture(const std::string& name);
     
     void LoadModel(const std::string& name, const std::string& path, bool isStatic = false);
+    void LoadModelAsync(const std::string& name, const std::string& path, bool isStatic = false);
     void UnloadModel(const std::string& name);
     
     void LoadAnimation(const std::string& name, const std::string& path, const std::string& modelName);
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
-    void LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine);
+    void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine);
     void LoadSkybox(const std::string& name, const std::vector<std::string>& faces);
     void CreateUIModel(const std::string& name, UIType type);
 
     Shader* GetShader(const std::string& name);
     Texture* GetTexture(const std::string& name);
-    Model* GetModel(const std::string& name);
+    std::shared_ptr<Model> GetModel(const std::string& name);
     Animation* GetAnimation(const std::string& name);
     Font* GetFont(const std::string& name);
-    irrklang::ISoundSource* GetSound(const std::string& name);
+    std::shared_ptr<IAudioSource> GetSound(const std::string& name);
     Skybox* GetSkybox(const std::string& name);
     UIModel* GetUIModel(const std::string& name);
 
@@ -74,6 +78,6 @@ private:
         bool isStatic;
     };
     std::unordered_map<std::string, ModelInfo> m_ModelPaths;
-    std::map<std::string, std::unique_ptr<UIModel>> m_UIModels;
-    std::map<std::string, std::unique_ptr<Skybox>> m_Skyboxes;
+    std::unordered_map<std::string, std::unique_ptr<UIModel>> m_UIModels;
+    std::unordered_map<std::string, std::unique_ptr<Skybox>> m_Skyboxes;
 };

@@ -13,7 +13,7 @@ SoundCache::~SoundCache()
     Clear();
 }
 
-void SoundCache::LoadSound(const std::string& name, const std::string& path, irrklang::ISoundEngine* engine)
+void SoundCache::LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine)
 {
     if (!engine)
     {
@@ -24,7 +24,7 @@ void SoundCache::LoadSound(const std::string& name, const std::string& path, irr
     m_SoundEngine = engine;
     std::string fullPath = FileSystem::getPath(path);
     
-    irrklang::ISoundSource* source = engine->addSoundSourceFromFile(fullPath.c_str());
+    std::shared_ptr<IAudioSource> source = engine->AddSoundSourceFromFile(fullPath);
     
     if (source)
     {
@@ -37,7 +37,7 @@ void SoundCache::LoadSound(const std::string& name, const std::string& path, irr
     }
 }
 
-irrklang::ISoundSource* SoundCache::GetSound(const std::string& name)
+std::shared_ptr<IAudioSource> SoundCache::GetSound(const std::string& name)
 {
     if (m_Sounds.find(name) != m_Sounds.end())
         return m_Sounds[name];

@@ -1,106 +1,12 @@
 #include <app/config_loader.h>
 #include <utils/logger.h>
+#include <interface/graphic/graphics_types.h>
+#include <interface/window/i_window.h>
 #include <app/application.h>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-
-static std::string Trim(const std::string &str)
-{
-    size_t first = str.find_first_not_of(" \t\n\r\",{}");
-    if (std::string::npos == first)
-        return str;
-    size_t last = str.find_last_not_of(" \t\n\r\",{}");
-    return str.substr(first, (last - first + 1));
-}
-
-static std::string ExtractValue(const std::string &line)
-{
-    size_t colonPos = line.find(':');
-    if (colonPos == std::string::npos)
-        return "";
-    return Trim(line.substr(colonPos + 1));
-}
-
-static std::string ExtractKey(const std::string &line)
-{
-    size_t colonPos = line.find(':');
-    if (colonPos == std::string::npos)
-        return "";
-    return Trim(line.substr(0, colonPos));
-}
-
-AppConfig ConfigLoader::Load(const std::string &path)
-{
-    AppConfig config;
-    std::ifstream file(path);
-    if (!file.is_open())
-    {
-        LOGGER_ERROR("ConfigLoader") << "Could not open config file: " << path << ". Using defaults.";
-        return config;
-    }
-
-    std::string line;
-    while (std::getline(file, line))
-    {
-        std::string key = ExtractKey(line);
-        std::string value = ExtractValue(line);
-
-        if (key.empty())
-            continue;
-
-        if (key == "title")
-            config.title = value;
-        else if (key == "width")
-            config.width = std::stoi(value);
-        else if (key == "height")
-            config.height = std::stoi(value);
-        else if (key == "windowMode")
-            config.windowMode = std::stoi(value);
-        else if (key == "vsync")
-            config.vsync = (value == "true");
-        else if (key == "monitorIndex")
-            config.monitorIndex = std::stoi(value);
-        else if (key == "refreshRate")
-            config.refreshRate = std::stoi(value);
-        else if (key == "frameRateLimit")
-            config.frameRateLimit = std::stoi(value);
-        else if (key == "shadowMode")
-            config.shadowMode = std::stoi(value);
-        else if (key == "cullFaceEnabled")
-            config.cullFaceEnabled = (value == "true");
-        else if (key == "depthTestEnabled")
-            config.depthTestEnabled = (value == "true");
-        else if (key == "audioDevice")
-            config.audioDevice = value;
-        else if (key == "iconPath")
-            config.iconPath = value;
-        else if (key == "instanceBatchingEnabled")
-            config.instanceBatchingEnabled = (value == "true");
-        else if (key == "frustumCullingEnabled")
-            config.frustumCullingEnabled = (value == "true");
-        else if (key == "shadowProjectionSize")
-            config.shadowProjectionSize = std::stof(value);
-        else if (key == "shadowFrustumCullingEnabled")
-            config.shadowFrustumCullingEnabled = (value == "true");
-        else if (key == "shadowDistanceCulling")
-            config.shadowDistanceCulling = std::stof(value);
-        else if (key == "distanceCulling")
-            config.distanceCulling = std::stof(value);
-        else if (key == "physicsMode")
-            config.physicsMode = std::stoi(value);
-        else if (key == "width")
-             config.width = std::stoi(value);
-        else if (key == "antialiasing")
-        {
-            if (value == "FXAA") config.antialiasing = 1;
-            else if (value == "TAA") config.antialiasing = 2;
-            else config.antialiasing = 0;
-        }
-    }
-
-    return config;
-}
+#include <string>
 
 void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
 {
@@ -141,11 +47,11 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         if (enable)
         {
             ss >> modeStr;
-            int mode = GL_BACK;
+            Graphics::CullMode mode = Graphics::CullMode::Back; 
             if (modeStr == "FRONT")
-                mode = GL_FRONT;
+                mode = Graphics::CullMode::Front;
             else if (modeStr == "FRONT_AND_BACK")
-                mode = GL_FRONT_AND_BACK;
+                mode = Graphics::CullMode::FrontAndBack;
             else if (modeStr != "BACK")
                 LOGGER_WARN("ConfigLoader") << "Invalid CULL_FACE mode: " << modeStr << ". Supported: BACK, FRONT, FRONT_AND_BACK.";
 
@@ -166,23 +72,23 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         if (enable)
         {
             ss >> funcStr;
-            int func = GL_LESS;
+            Graphics::CompareFunc func = Graphics::CompareFunc::Less; 
             if (funcStr == "NEVER")
-                func = GL_NEVER;
+                func = Graphics::CompareFunc::Never;
             else if (funcStr == "LESS")
-                func = GL_LESS;
+                func = Graphics::CompareFunc::Less;
             else if (funcStr == "EQUAL")
-                func = GL_EQUAL;
+                func = Graphics::CompareFunc::Equal;
             else if (funcStr == "LEQUAL")
-                func = GL_LEQUAL;
+                func = Graphics::CompareFunc::Lequal;
             else if (funcStr == "GREATER")
-                func = GL_GREATER;
+                func = Graphics::CompareFunc::Greater;
             else if (funcStr == "NOTEQUAL")
-                func = GL_NOTEQUAL;
+                func = Graphics::CompareFunc::NotEqual;
             else if (funcStr == "GEQUAL")
-                func = GL_GEQUAL;
+                func = Graphics::CompareFunc::Gequal;
             else if (funcStr == "ALWAYS")
-                func = GL_ALWAYS;
+                func = Graphics::CompareFunc::Always;
             else 
                 LOGGER_WARN("ConfigLoader") << "Invalid DEPTH_TEST func: " << funcStr << ". Supported: NEVER, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS.";
 
@@ -202,16 +108,16 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         {
             std::string modeStr;
             int monitorIdx = 0;
-            WindowMode mode = WindowMode::WINDOWED;
+            WindowMode mode = WindowMode::Windowed;
 
             if (ss >> modeStr)
             {
                 if (modeStr == "FULLSCREEN")
-                    mode = WindowMode::FULLSCREEN;
+                    mode = WindowMode::Fullscreen;
                 else if (modeStr == "BORDERLESS")
-                    mode = WindowMode::BORDERLESS;
+                    mode = WindowMode::Borderless;
                 else if (modeStr == "WINDOWED")
-                    mode = WindowMode::WINDOWED;
+                    mode = WindowMode::Windowed;
                 else
                     LOGGER_WARN("ConfigLoader") << "Invalid WINDOW mode: " << modeStr << ". Supported: WINDOWED, FULLSCREEN, BORDERLESS.";
             }
@@ -301,18 +207,6 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             if (app)
             {
                 app->GetPhysicsWorld().SetMode(mode);
-            }
-        }
-    }
-    else if (subCmd == "PHYSICS_ASYNC")
-    {
-        std::string valStr;
-        if (ss >> valStr)
-        {
-            bool async = (valStr == "TRUE" || valStr == "true" || valStr == "1");
-            if (app) 
-            {
-                app->GetPhysicsSystem().SetAsyncPhysics(async);
             }
         }
     }

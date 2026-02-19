@@ -1,9 +1,10 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <map>
 #include <string>
+
+class ITextureManager;
 
 struct Character {
     unsigned int TextureID;
@@ -20,6 +21,10 @@ public:
     bool Load(const std::string& fontPath, unsigned int fontSize);
     const Character& GetCharacter(char c) const;
 
+    static void SetTextureManager(ITextureManager& textureManager);
+
 private:
     std::map<char, Character> Characters;
+    static ITextureManager* s_TextureManager;
+    static ITextureManager& GetTextureManager();
 };

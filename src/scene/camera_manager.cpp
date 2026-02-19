@@ -123,7 +123,7 @@ glm::mat4 CameraManager::GetViewMatrix(entt::entity camera) const
         return glm::mat4(1.0f);
 
     const auto &cam = m_Scene.registry.get<CameraComponent>(camera);
-    return cam.GetViewMatrix();
+    return cam.viewMatrix;
 }
 
 glm::mat4 CameraManager::GetProjectionMatrix(entt::entity camera, float aspectRatio) const

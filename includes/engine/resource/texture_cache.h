@@ -2,10 +2,12 @@
 
 #include <graphic/geometry/mesh.h>
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <future>
 #include <mutex>
+
+class ITextureManager;
 
 struct TextureData {
     std::string name;
@@ -17,7 +19,7 @@ struct TextureData {
 class TextureCache
 {
 public:
-    TextureCache();
+    TextureCache() = default;
     ~TextureCache();
 
     void LoadTexture(const std::string& name, const std::string& path, bool async = true);
@@ -28,8 +30,13 @@ public:
     void Update();
     void Clear();
 
+    static void SetTextureManager(ITextureManager* manager) { s_TextureManager = manager; }
+    static ITextureManager& GetTextureManager() { return *s_TextureManager; }
+
 private:
-    std::map<std::string, Texture> m_Textures;
+    std::unordered_map<std::string, Texture> m_Textures;
     std::vector<std::future<TextureData>> m_AsyncLoads;
     std::mutex m_Mutex;
+    
+    static ITextureManager* s_TextureManager;
 };

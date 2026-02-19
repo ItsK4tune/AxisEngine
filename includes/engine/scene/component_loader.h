@@ -2,7 +2,7 @@
 
 #include <scene/scene.h>
 #include <resource/resource_manager.h>
-#include <audio/sound_manager.h>
+#include <interface/audio/i_sound.h>
 #include <app/application.h>
 #include <sstream>
 

@@ -123,9 +123,9 @@ void OverlayDebugModule::ProcessInput(KeyboardManager &keyboard)
     if (!m_App || !m_Enabled)
         return;
 
-    ProcessKey(keyboard, GLFW_KEY_F10, m_F10Pressed, [this, &keyboard]()
+    ProcessKey(keyboard, Input::Key::F10, m_F10Pressed, [this, &keyboard]()
                {
-        bool shift = keyboard.GetKey(GLFW_KEY_LEFT_SHIFT) || keyboard.GetKey(GLFW_KEY_RIGHT_SHIFT);
+        bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             m_OverlayMode = (m_OverlayMode % 3) + 1;
             std::cout << "\n========== Overlay Mode (Shift+F10) ==========" << std::endl;
@@ -199,7 +199,7 @@ void OverlayDebugModule::RenderText(const std::string &text, float x, float y, f
     }
 }
 
-void OverlayDebugModule::ProcessKey(KeyboardManager &keyboard, int key, bool &pressedState, std::function<void()> action)
+void OverlayDebugModule::ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

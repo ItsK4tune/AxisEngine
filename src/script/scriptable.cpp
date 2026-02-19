@@ -1,5 +1,6 @@
 #include <script/scriptable.h>
 #include <app/application.h>
+#include <input/input_manager.h>
 
 bool Scriptable::GetAction(const std::string& name)
 {
@@ -36,9 +37,9 @@ float Scriptable::GetRealDeltaTime() const
     return m_App->GetRealDeltaTime();
 }
 
-SoundManager& Scriptable::GetSoundManager()
+SoundPlayer& Scriptable::GetSoundPlayer()
 {
-    return m_App->GetSoundManager();
+    return m_App->GetSoundPlayer();
 }
 
 ResourceManager& Scriptable::GetResourceManager()
@@ -46,9 +47,9 @@ ResourceManager& Scriptable::GetResourceManager()
     return m_App->GetResourceManager();
 }
 
-AppHandler& Scriptable::GetAppHandler()
+IOHandler& Scriptable::GetIOHandler()
 {
-    return m_App->GetAppHandler();
+    return m_App->GetIOHandler();
 }
 
 SceneManager& Scriptable::GetSceneManager()
@@ -56,6 +57,6 @@ SceneManager& Scriptable::GetSceneManager()
     return m_App->GetSceneManager();
 }
 
-InputManager& Scriptable::GetInputManager() { return GetAppHandler().GetInputManager(); }
-KeyboardManager& Scriptable::GetKeyboard() { return GetAppHandler().GetKeyboard(); }
-MouseManager& Scriptable::GetMouse() { return GetAppHandler().GetMouse(); }
+InputManager& Scriptable::GetInputManager() { return GetIOHandler().GetInputManager(); }
+KeyboardManager& Scriptable::GetKeyboard() { return GetIOHandler().GetKeyboard(); }
+MouseManager& Scriptable::GetMouse() { return GetIOHandler().GetMouse(); }

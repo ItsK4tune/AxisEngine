@@ -23,9 +23,9 @@ struct AssimpNodeData
 class Animation
 {
 public:
-	Animation();
-	Animation(const std::string &animationPath, Model *model);
-	~Animation();
+	Animation() = default;
+	Animation(const std::string &animationPath, Model &model);
+	~Animation() = default;
 
 	Bone *FindBone(const std::string &name);
 

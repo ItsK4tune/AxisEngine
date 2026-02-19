@@ -4,7 +4,8 @@
 #include <physic/physics_collision_dispatcher.h>
 #include <engine/ecs/cached_query.h>
 #include <script/scriptable.h>
-#include <physic/physic_world.h>
+
+#include <interface/physics/i_physics_world.h>
 #include <utils/bullet_glm_helpers.h>
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -14,21 +15,20 @@ PhysicsSystem::PhysicsSystem()
 
 PhysicsSystem::~PhysicsSystem()
 {
-    WaitAsyncPhysics();
 }
 
-void PhysicsSystem::WaitAsyncPhysics()
-{
-    if (m_physicsFuture.valid())
-    {
-        m_physicsFuture.wait();
-    }
-}
-
-void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
+void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
 {
     if (!m_Enabled)
         return;
+
+    if (&scene != m_LastScene || &physicsWorld != m_LastPhysicsWorld)
+    {
+        LOGGER_INFO("PhysicsSystem") << "Scene or PhysicsWorld changed — reinitializing subsystems";
+        Reset();
+        m_LastScene = &scene;
+        m_LastPhysicsWorld = &physicsWorld;
+    }
 
     if (!m_transformSync)
     {
@@ -39,25 +39,10 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
 
     m_transformSync->SyncToPhysics();
 
-    if (m_AsyncPhysics)
-    {
-        WaitAsyncPhysics();
-
-        m_physicsFuture = std::async(std::launch::async, [&physicsWorld, dt]()
-                                     { physicsWorld.Update(dt); });
-    }
-    else
-    {
-        physicsWorld.Update(dt);
-    }
-
-    if (m_AsyncPhysics)
-    {
-        WaitAsyncPhysics();
-    }
+    physicsWorld.Update(dt);
 
     m_transformSync->SyncFromPhysics();
-    
+
     if (!m_collisionDispatcher)
     {
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Collision Dispatcher";
@@ -66,14 +51,16 @@ void PhysicsSystem::Update(Scene &scene, PhysicsWorld &physicsWorld, float dt)
     m_collisionDispatcher->DispatchEvents();
 }
 
-void PhysicsSystem::RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight)
+void PhysicsSystem::Reset()
 {
-    DebugDrawer *drawer = physicsWorld.GetDebugDrawer();
-    if (!drawer)
-        return;
+    m_transformSync.reset();
+    m_collisionDispatcher.reset();
+    m_LastScene = nullptr;
+    m_LastPhysicsWorld = nullptr;
+}
 
-    physicsWorld.GetWorld()->debugDrawWorld();
-
+void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState)
+{
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
 
@@ -119,9 +106,7 @@ void PhysicsSystem::RenderDebug(Scene &scene, PhysicsWorld &physicsWorld, Shader
     shader.setMat4("view", view);
     shader.setMat4("projection", projection);
 
-    glDisable(GL_DEPTH_TEST);
-    drawer->Flush();
-    glEnable(GL_DEPTH_TEST);
-
-    drawer->FrameStart();
+    renderState.Disable(Graphics::ServerCapability::DepthTest);
+    physicsWorld.DebugDraw(); 
+    renderState.Enable(Graphics::ServerCapability::DepthTest);
 }

@@ -1,5 +1,5 @@
 #include <debug/debug_system.h>
-#include <interface/debug_module.h>
+#include <interface/debug/i_debug_module.h>
 #include <debug/modules/general_debug_module.h>
 #include <debug/modules/overlay_debug_module.h>
 #include <debug/modules/render_debug_module.h>
@@ -12,7 +12,9 @@
 
 #include <app/application.h>
 #include <utils/logger.h>
-#include <GLFW/glfw3.h>
+#include <input/keyboard_manager.h>
+#include <interface/graphic/i_graphics_context.h>
+#include <interface/graphic/i_render_state_manager.h>
 
 DebugSystem::DebugSystem() {}
 DebugSystem::~DebugSystem() {}
@@ -123,9 +125,10 @@ void DebugSystem::Render(Scene &scene)
     if (!m_App)
         return;
 
-    GLint polygonMode[2];
-    glGetIntegerv(GL_POLYGON_MODE, polygonMode);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    auto& rsm = m_App->GetGraphicsContext().GetRenderStateManager();
+    auto oldMode = rsm.GetPolygonMode();
+
+    rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill); // GL_FRONT_AND_BACK = 0x0408
 
     for (auto &module : m_Modules)
     {
@@ -135,7 +138,7 @@ void DebugSystem::Render(Scene &scene)
         }
     }
 
-    glPolygonMode(GL_FRONT_AND_BACK, polygonMode[0]);
+    rsm.PolygonMode(Graphics::CullMode::FrontAndBack, oldMode);
 }
 
 #endif

@@ -1,11 +1,12 @@
 #pragma once
-#include <glad/glad.h>
+
 #include <glm/glm.hpp>
 #include <vector>
 #include <graphic/core/shader.h>
 
 enum class AntiAliasingMode;
 class ResourceManager;
+class IGraphicsContext;
 
 struct PostProcessEffect
 {
@@ -20,7 +21,7 @@ public:
     PostProcessPipeline();
     ~PostProcessPipeline();
 
-    void Init(int width, int height, ResourceManager &res);
+    void Init(IGraphicsContext& context, int width, int height, ResourceManager &res);
     void Shutdown();
     void Resize(int width, int height);
 
@@ -36,6 +37,7 @@ public:
     void ClearEffects();
 
 private:
+    IGraphicsContext* m_Context = nullptr;
     int m_Width = 0, m_Height = 0;
 
     unsigned int m_FBO[2];

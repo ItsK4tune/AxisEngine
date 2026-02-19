@@ -1,11 +1,13 @@
 #pragma once
 
 #include <glm/glm.hpp>
-
 #include <graphic/core/shader.h>
-
 #include <string>
 #include <vector>
+
+class IBufferManager;
+class ITextureManager;
+class IDrawContext;
 
 #define MAX_BONE_INFLUENCE 4
 
@@ -41,7 +43,16 @@ public:
     void Draw(Shader &shader);
     void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models);
 
+    static void SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* draw);
+    static IBufferManager& GetBufferManager() { return *s_BufferManager; }
+    static ITextureManager& GetTextureManager() { return *s_TextureManager; }
+    static IDrawContext& GetDrawContext() { return *s_DrawContext; }
+
 private:
     unsigned int VBO, EBO, instanceVBO;
     void setupMesh();
+
+    static IBufferManager* s_BufferManager;
+    static ITextureManager* s_TextureManager;
+    static IDrawContext* s_DrawContext;
 };

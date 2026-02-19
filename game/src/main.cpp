@@ -1,3 +1,7 @@
+#ifndef ENABLE_DEBUG_SYSTEM
+#include <Windows.h>
+#endif
+
 #include <app/application.h>
 #include <utils/logger.h>
 #include <states/game_state.h>
@@ -71,9 +75,11 @@ void InitLogging() {
     }
 }
 
-#ifndef ENABLE_DEBUG_SYSTEM
-#include <Windows.h>
-#endif
+// Force High-Performance GPU on laptops with hybrid graphics
+extern "C" {
+    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
 
 int main() {
 #ifndef ENABLE_DEBUG_SYSTEM
@@ -84,7 +90,16 @@ int main() {
 
     Application app;
 
-    if (app.Init()) {
+    AppConfig config;
+    config.title = "Axis Engine - Code Config";
+    config.width = 1280;
+    config.height = 720;
+    config.windowMode = 0;
+    config.vsync = true;
+    config.physicsMode = 1; // Balanced
+    // Customize other settings as needed...
+
+    if (app.Init(config)) {
         app.PushState<GameState>();
         app.Run();
     }

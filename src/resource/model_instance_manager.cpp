@@ -2,34 +2,21 @@
 #include <resource/model_instance_manager.h>
 #include <utils/logger.h>
 
-ModelInstanceManager::ModelInstanceManager()
-{
-}
 
-ModelInstanceManager::~ModelInstanceManager()
-{
-    for (auto& pair : m_ModelPools)
-    {
-        delete pair.second.model;
-    }
-    m_ModelPools.clear();
-}
 
-Model* ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic)
+std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic)
 {
     auto it = m_ModelPools.find(name);
     
     if (it != m_ModelPools.end())
     {
-        it->second.refCount++;
         return it->second.model;
     }
     
-    Model* model = new Model(path, isStatic);
+    std::shared_ptr<Model> model = std::make_shared<Model>(path, isStatic);
     
     ModelPool pool;
     pool.model = model;
-    pool.refCount = 1;
     
     m_ModelPools[name] = pool;
     
@@ -68,8 +55,6 @@ void ModelInstanceManager::RemoveInstance(const std::string& modelPath, entt::en
             [entity](const ModelInstance& inst) { return inst.entity == entity; }),
         instances.end()
     );
-    
-    it->second.refCount--;
 }
 
 const std::vector<ModelInstance>& ModelInstanceManager::GetInstances(const std::string& modelPath)
@@ -88,7 +73,6 @@ void ModelInstanceManager::ClearAllInstances()
     for (auto& pair : m_ModelPools)
     {
         pair.second.instances.clear();
-        pair.second.refCount = 0;
     }
 }
 
@@ -97,9 +81,8 @@ void ModelInstanceManager::UnloadUnusedModels()
     auto it = m_ModelPools.begin();
     while (it != m_ModelPools.end())
     {
-        if (it->second.refCount <= 0 && it->second.instances.empty())
+        if (it->second.model.use_count() == 1 && it->second.instances.empty())
         {
-            delete it->second.model;
             LOGGER_INFO("ModelInstanceManager") << "Unloaded unused model: " << it->first;
             it = m_ModelPools.erase(it);
         }
@@ -115,16 +98,15 @@ bool ModelInstanceManager::UnloadModel(const std::string& name)
     auto it = m_ModelPools.find(name);
     if (it != m_ModelPools.end())
     {
-        if (it->second.refCount <= 0 && it->second.instances.empty())
+        if (it->second.model.use_count() == 1 && it->second.instances.empty())
         {
-            delete it->second.model;
             m_ModelPools.erase(it);
             LOGGER_INFO("ModelInstanceManager") << "Unloaded model: " << name;
             return true;
         }
         else
         {
-            LOGGER_WARN("ModelInstanceManager") << "Cannot unload model '" << name << "': still in use (RefCount: " << it->second.refCount << ")";
+            LOGGER_WARN("ModelInstanceManager") << "Cannot unload model '" << name << "': still in use (UseCount: " << it->second.model.use_count() << ", Instances: " << it->second.instances.size() << ")";
             return false;
         }
     }

@@ -1,137 +1,165 @@
+#include <glad/glad.h>
 #include <app/application.h>
-#include <app/config_loader.h>
+
+#include <app/backends/glfw_window.h>
+#include <graphic/backends/opengl_context.h>
+#include <audio/backends/irrklang_audio_engine.h>
+#include <audio/audio_manager.h>
+#include <physic/backends/bullet_physics_world.h>
+#include <interface/graphic/i_graphics_context.h>
+#include <graphic/core/shader.h>
+#include <graphic/geometry/mesh.h>
+#include <resource/texture_cache.h>
+#include <graphic/renderer/shadow.h>
+#include <graphic/core/video_decoder.h>
+#include <graphic/renderer/skybox.h>
+#include <graphic/renderer/particle_emitter.h>
+#include <graphic/renderer/font.h>
+#include <graphic/core/compute_shader.h>
+#include <graphic/core/texture_atlas.h>
+#include <graphic/renderer/ui_model.h>
+#include <graphic/geometry/static_batch_manager.h>
+#include <physic/backends/bullet_debug_drawer.h>
+
 #include <utils/logger.h>
-
 #include <utils/filesystem.h>
-#include <utils/bullet_glm_helpers.h>
-#include <iostream>
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
-    if (app) {
-        LOGGER_DEBUG("Application") << "Window resized to " << width << "x" << height;
-        app->OnResize(width, height);
-    }
-}
 
-void mouse_callback(GLFWwindow *window, double xpos, double ypos)
-{
-    auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
-    if (app)
-        app->OnMouseMove(xpos, ypos);
-}
-
-void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
-{
-    auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
-    if (app)
-        app->OnMouseButton(button, action, mods);
-}
-
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
-{
-    auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
-    if (app)
-        app->OnScroll(xoffset, yoffset);
-}
 
 Application::Application()
-    : m_StateMachine(this)
 {
 }
 
 Application::~Application()
 {
-    m_StateMachine.Clear();
+    if (m_RuntimeCore)
+        m_RuntimeCore->GetStateMachine().Clear();
 
-    scene.registry.clear();
+    // 1. Shutdown systems first (they might use resources/physics)
+    if (m_SystemManager)
+        m_SystemManager->ShutdownSystems();
+    m_SystemManager.reset();
+    
+    // 2. Clear scene registry (components might hold references)
+    m_Scene.registry.clear();
 
-    sceneManager.reset();
-    resourceManager.reset();
-    soundManager.reset();
-    appHandler.reset();
-    physicsWorld.reset();
+    // 3. Destroy higher-level managers
+    m_ContentService.reset();
+    m_SceneManager.reset();
+    m_RuntimeCore.reset();
 
-    if (systemManager)
-        systemManager->ShutdownSystems();
+    // 4. Destroy core resources
+    m_SoundPlayer.reset();
+    m_ResourceManager.reset();
+    m_PhysicsWorld.reset();
 
-    systemManager.reset();
-    engineLoop.reset();
+    // 5. Destroy IO/Context last
+    m_IOHandler.reset();
 
     LOGGER_INFO("Application") << "Application shutdown completed.";
 }
 
-bool Application::Init()
+bool Application::Init(const AppConfig& config)
 {
-    AppConfig config = ConfigLoader::Load(FileSystem::getPath("configuration/settings.json"));
+    m_Config = config;
 
-    monitorManager.SetWindowTitle(config.title);
-    monitorManager.SetWindowConfiguration(config.width, config.height, (WindowMode)config.windowMode, config.monitorIndex, config.refreshRate);
-    monitorManager.SetVsync(config.vsync);
-    monitorManager.SetFrameRateLimit(config.frameRateLimit);
+    auto graphicsContext = std::make_unique<OpenGLContext>();
+    auto audioEngine = std::make_unique<IrrKlangAudioEngine>();
+    
+    m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext), std::move(audioEngine));
 
-    if (!monitorManager.Init()) {
-        LOGGER_ERROR("Application") << "Failed to initialize MonitorManager";
+    auto window = std::make_unique<GLFWWindow>();
+    if (!m_IOHandler->Init(std::move(window), m_Config.title, m_Config.width, m_Config.height, m_Config.windowMode, 
+                           m_Config.monitorIndex, m_Config.refreshRate, m_Config.vsync, m_Config.frameRateLimit))
+    {
+        LOGGER_ERROR("Application") << "Failed to initialize IOHandler";
         return false;
     }
 
-    if (!config.depthTestEnabled)
-        glDisable(GL_DEPTH_TEST);
-    if (config.cullFaceEnabled)
-        glEnable(GL_CULL_FACE);
+    Shader::SetShaderManager(&m_IOHandler->GetGraphicsContext().GetShaderManager());
+    Mesh::SetManagers(&m_IOHandler->GetGraphicsContext().GetBufferManager(),
+                      &m_IOHandler->GetGraphicsContext().GetTextureManager(),
+                      &m_IOHandler->GetGraphicsContext().GetDrawContext());
+
+    TextureCache::SetTextureManager(&m_IOHandler->GetGraphicsContext().GetTextureManager());
+    Shadow::SetManagers(&m_IOHandler->GetGraphicsContext().GetRenderTargetManager(),
+                        &m_IOHandler->GetGraphicsContext().GetTextureManager(),
+                        &m_IOHandler->GetGraphicsContext().GetDrawContext());
+    Skybox::SetManagers(m_IOHandler->GetGraphicsContext().GetBufferManager(),
+                        m_IOHandler->GetGraphicsContext().GetTextureManager(),
+                        m_IOHandler->GetGraphicsContext().GetDrawContext());
+    VideoDecoder::SetTextureManager(m_IOHandler->GetGraphicsContext().GetTextureManager());
+    ParticleEmitter::SetManagers(m_IOHandler->GetGraphicsContext().GetBufferManager(),
+                                 m_IOHandler->GetGraphicsContext().GetTextureManager(),
+                                 m_IOHandler->GetGraphicsContext().GetDrawContext());
+    Font::SetTextureManager(m_IOHandler->GetGraphicsContext().GetTextureManager());
+    ComputeShader::SetShaderManager(m_IOHandler->GetGraphicsContext().GetShaderManager());
+    TextureAtlas::SetTextureManager(m_IOHandler->GetGraphicsContext().GetTextureManager());
+    UIModel::SetManagers(m_IOHandler->GetGraphicsContext().GetBufferManager(),
+                         m_IOHandler->GetGraphicsContext().GetTextureManager(),
+                         m_IOHandler->GetGraphicsContext().GetDrawContext());
+    StaticBatchManager::SetManagers(m_IOHandler->GetGraphicsContext().GetBufferManager(),
+                                    m_IOHandler->GetGraphicsContext().GetDrawContext());
+    BulletDebugDrawer::SetManagers(m_IOHandler->GetGraphicsContext().GetBufferManager(),
+                             m_IOHandler->GetGraphicsContext().GetDrawContext());
+                             
+    if (!m_Config.depthTestEnabled)
+        m_IOHandler->GetGraphicsContext().SetDepthTest(false);
+    if (m_Config.cullFaceEnabled)
+        m_IOHandler->GetGraphicsContext().SetCullFace(true);
     else
-        glDisable(GL_CULL_FACE);
+        m_IOHandler->GetGraphicsContext().SetCullFace(false);
 
-    GLFWwindow *window = monitorManager.GetWindow();
-    glfwSetWindowUserPointer(window, this);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+    IWindow *appWindow = GetWindow();
+    appWindow->SetResizeCallback([this](int width, int height) {
+        LOGGER_DEBUG("Application") << "Window resized to " << width << "x" << height;
+        OnResize(width, height);
+    });
+    appWindow->SetCursorPosCallback([this](double x, double y) {
+        OnMouseMove(x, y);
+    });
+    appWindow->SetMouseButtonCallback([this](int button, int action, int mods) {
+        OnMouseButton(button, action, mods);
+    });
+    appWindow->SetScrollCallback([this](double x, double y) {
+        OnScroll(x, y);
+    });
 
-    physicsWorld = std::make_unique<PhysicsWorld>();
-    appHandler = std::make_unique<AppHandler>(window);
-    appHandler->OnResize(monitorManager.GetWidth(), monitorManager.GetHeight());
-
-    resourceManager = std::make_unique<ResourceManager>();
-    soundManager = std::make_unique<SoundManager>();
-    sceneManager = std::make_unique<SceneManager>(scene, *resourceManager, *physicsWorld, *soundManager, this);
-
-    appHandler->GetMouse().SetLastPosition(monitorManager.GetWidth() / 2.0, monitorManager.GetHeight() / 2.0);
-
-    soundManager->Init();
-
-    if (!config.audioDevice.empty() && config.audioDevice != "default")
+    if (!m_Config.audioDevice.empty() && m_Config.audioDevice != "default")
     {
-        soundManager->SetActiveDevice(config.audioDevice);
+        m_IOHandler->GetAudioManager().SetActiveDevice(m_Config.audioDevice);
     }
 
-    resourceManager->CreateUIModel("default_rect", UIType::Color);
+    m_PhysicsWorld = std::make_unique<BulletPhysicsWorld>();
+    m_ResourceManager = std::make_unique<ResourceManager>();
+    m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
+    m_SceneManager = std::make_unique<SceneManager>(m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, this);
 
-    systemManager = std::make_unique<SystemManager>();
-    systemManager->InitializeSystems(*resourceManager, monitorManager.GetWidth(), monitorManager.GetHeight(), this);
-    systemManager->GetRenderSystem().SetShadowMode(config.shadowMode);
-    systemManager->GetRenderSystem().SetShadowProjectionSize(config.shadowProjectionSize);
-    systemManager->GetRenderSystem().SetInstanceBatching(config.instanceBatchingEnabled);
-    systemManager->GetRenderSystem().SetFrustumCulling(config.frustumCullingEnabled);
-    systemManager->GetRenderSystem().SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
-    systemManager->GetRenderSystem().SetShadowDistanceCulling(config.shadowDistanceCulling);
-    systemManager->GetRenderSystem().SetDistanceCulling(config.distanceCulling);
-    
-    systemManager->GetRenderSystem().SetAntiAliasingMode((AntiAliasingMode)config.antialiasing);
+    m_ContentService = std::make_unique<ContentService>(*m_ResourceManager, *m_SceneManager, *m_SoundPlayer);
+    m_RuntimeCore = std::make_unique<RuntimeCore>(this);
 
-    resourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
+    m_ResourceManager->CreateUIModel("default_rect", UIType::Color);
+
+    m_SystemManager = std::make_unique<SystemManager>();
+    m_SystemManager->InitializeSystems(*m_ResourceManager, GetWidth(), GetHeight(), this);
+    m_SystemManager->GetRenderSystem().SetShadowMode(m_Config.shadowMode);
+    m_SystemManager->GetRenderSystem().SetShadowProjectionSize(m_Config.shadowProjectionSize);
+    m_SystemManager->GetRenderSystem().SetInstanceBatching(m_Config.instanceBatchingEnabled);
+    m_SystemManager->GetRenderSystem().SetFrustumCulling(m_Config.frustumCullingEnabled);
+    m_SystemManager->GetRenderSystem().SetShadowFrustumCulling(m_Config.shadowFrustumCullingEnabled);
+    m_SystemManager->GetRenderSystem().SetShadowDistanceCulling(m_Config.shadowDistanceCulling);
+    m_SystemManager->GetRenderSystem().SetDistanceCulling(m_Config.distanceCulling);
+    m_SystemManager->GetRenderSystem().SetAntiAliasingMode((AntiAliasingMode)m_Config.antialiasing);
+
+    m_ResourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 
     LOGGER_INFO("Application") << "Loading default assets from src/asset/load.scene...";
-    sceneManager->LoadScene("src/asset/load.scene");
+    m_SceneManager->LoadScene("src/asset/load.scene");
 
-    engineLoop = std::make_unique<EngineLoop>(this);
-
-    if (!config.iconPath.empty())
+    if (!m_Config.iconPath.empty())
     {
-        LOGGER_DEBUG("Application") << "Setting window icon from: " << config.iconPath;
-        monitorManager.SetWindowIcon(FileSystem::getPath(config.iconPath));
+        LOGGER_DEBUG("Application") << "Setting window icon from: " << m_Config.iconPath;
+        m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(m_Config.iconPath));
     }
 
     LOGGER_INFO("Application") << "Application initialized successfully.";
@@ -141,58 +169,44 @@ bool Application::Init()
 
 void Application::Run()
 {
-    engineLoop->Run();
+    m_RuntimeCore->Run();
 }
 
-void Application::SetPhysicsStep(float step)
-{
-    engineLoop->SetPhysicsStep(step);
-}
+RenderSystem& Application::GetRenderSystem() { return m_SystemManager->GetRenderSystem(); }
+PhysicsSystem& Application::GetPhysicsSystem() { return m_SystemManager->GetPhysicsSystem(); }
+AudioSystem& Application::GetAudioSystem() { return m_SystemManager->GetAudioSystem(); }
+UIRenderSystem& Application::GetUIRenderSystem() { return m_SystemManager->GetUIRenderSystem(); }
+UIInteractSystem& Application::GetUIInteractSystem() { return m_SystemManager->GetUIInteractSystem(); }
+ScriptableSystem& Application::GetScriptSystem() { return m_SystemManager->GetScriptSystem(); }
+ParticleSystem& Application::GetParticleSystem() { return m_SystemManager->GetParticleSystem(); }
+SkyboxRenderSystem& Application::GetSkyboxRenderSystem() { return m_SystemManager->GetSkyboxRenderSystem(); }
+AnimationSystem& Application::GetAnimationSystem() { return m_SystemManager->GetAnimationSystem(); }
+VideoSystem& Application::GetVideoSystem() { return m_SystemManager->GetVideoSystem(); }
+PostProcessPipeline& Application::GetPostProcess() { return m_SystemManager->GetPostProcess(); }
 
-void Application::SetTimeScale(float scale)
-{
-    engineLoop->SetTimeScale(scale);
-}
-
-void Application::SetPaused(bool paused)
-{
-    engineLoop->SetPaused(paused);
-}
-
-float Application::GetTimeScale() const
-{
-    return engineLoop->GetTimeScale();
-}
-
-float Application::GetRealDeltaTime() const
-{
-    return engineLoop->GetRealDeltaTime();
-}
-
-bool Application::IsPaused() const
-{
-    return engineLoop->IsPaused();
-}
+float Application::GetTimeScale() const { return m_RuntimeCore->GetTimeScale(); }
+void Application::SetTimeScale(float timeScale) { m_RuntimeCore->SetTimeScale(timeScale); }
+float Application::GetRealDeltaTime() const { return m_RuntimeCore->GetRealDeltaTime(); }
+bool Application::IsPaused() const { return m_RuntimeCore->IsPaused(); }
+void Application::SetPaused(bool paused) { m_RuntimeCore->SetPaused(paused); }
 
 void Application::OnResize(int width, int height)
 {
-    monitorManager.OnResize(width, height);
-    systemManager->GetPostProcess().Resize(width, height);
-    if (appHandler)
-        appHandler->OnResize(width, height);
+    m_IOHandler->OnResize(width, height);
+    m_SystemManager->GetPostProcess().Resize(width, height);
 }
 
 void Application::OnMouseMove(double xpos, double ypos)
 {
-    appHandler->OnMouseMove(xpos, ypos);
+    m_IOHandler->OnMouseMove(xpos, ypos);
 }
 
 void Application::OnMouseButton(int button, int action, int mods)
 {
-    appHandler->OnMouseButton(button, action, mods);
+    m_IOHandler->OnMouseButton(button, action, mods);
 }
 
 void Application::OnScroll(double xoffset, double yoffset)
 {
-    appHandler->OnScroll(xoffset, yoffset);
+    m_IOHandler->OnScroll(xoffset, yoffset);
 }

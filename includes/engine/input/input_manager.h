@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
-#include <interface/device_manager.h>
+#include <interface/window/i_device_manager.h>
 
 enum class InputType
 {
