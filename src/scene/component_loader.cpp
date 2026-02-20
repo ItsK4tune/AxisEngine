@@ -1,4 +1,4 @@
-#include <utils/filesystem.h>
+﻿#include <utils/filesystem.h>
 #include <scene/component_loader.h>
 #include <utils/logger.h>
 #include <script/script_registry.h>
@@ -234,7 +234,7 @@ void ComponentLoader::LoadVideoPlayer(Scene& scene, entt::entity entity, std::st
     int loop = 0, playOnAwake = 1;
     float speed = 1.0f;
     ss >> path;
-    
+
     if (!ss.eof()) ss >> loop;
     if (!ss.eof()) ss >> speed;
     if (!ss.eof()) ss >> playOnAwake;

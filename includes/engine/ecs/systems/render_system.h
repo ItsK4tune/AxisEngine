@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 #include <scene/scene.h>
@@ -52,7 +52,7 @@ public:
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
     void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
     void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
-    
+
     void SetShadowProjectionSize(float size) { m_ShadowRenderer.SetShadowProjectionSize(size); }
     void SetShadowFrustumCulling(bool enable) { m_ShadowRenderer.SetShadowFrustumCulling(enable); }
     void SetShadowDistanceCulling(float distance) { m_ShadowRenderer.SetShadowDistanceCulling(distance); }
@@ -61,12 +61,12 @@ public:
     void SetAntiAliasingMode(AntiAliasingMode mode) { m_AAMode = mode; }
     AntiAliasingMode GetAntiAliasingMode() const { return m_AAMode; }
     glm::vec2 GetJitterOffset() const { return m_JitterOffset; }
-    
+
     const glm::mat4& GetPrevViewProj() const { return m_PrevViewProj; }
     const glm::mat4& GetCurrViewProj() const { return m_CurrViewProj; }
 
     StaticBatchManager &GetBatchManager() { return m_BatchManager; }
-    
+
     void SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene);
 
     IGraphicsContext* GetContext() const { return m_Context; }
@@ -88,7 +88,7 @@ private:
     AntiAliasingMode m_AAMode = AntiAliasingMode::NONE;
     glm::vec2 m_JitterOffset = glm::vec2(0.0f);
     int m_FrameIndex = 0;
-    
+
     glm::mat4 m_PrevViewProj = glm::mat4(1.0f);
     glm::mat4 m_CurrViewProj = glm::mat4(1.0f);
 

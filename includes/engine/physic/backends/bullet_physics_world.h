@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/physics/i_physics_world.h>
 #include <physic/backends/bullet_rigid_body.h>
@@ -20,7 +20,7 @@ public:
 
     void SetGravity(const glm::vec3& gravity) override;
     void SetMode(int mode) override;
-    
+
     void AddRigidBody(IRigidBody* body) override;
     void RemoveRigidBody(IRigidBody* body) override;
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <graphic/core/shader.h>
 #include <string>
@@ -14,7 +14,7 @@ public:
 
     Shader* GetOrCompile(const std::string& name, const std::string& vertPath, const std::string& fragPath);
     Shader* Get(const std::string& name);
-    
+
     void Reload(const std::string& name);
 
 private:

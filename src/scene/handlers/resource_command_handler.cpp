@@ -1,4 +1,4 @@
-#include <scene/handlers/resource_command_handler.h>
+﻿#include <scene/handlers/resource_command_handler.h>
 #include <resource/resource_manager.h>
 #include <interface/audio/i_sound.h>
 #include <audio/sound_player.h>

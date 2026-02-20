@@ -1,4 +1,4 @@
-#include <state/state.h>
+﻿#include <state/state.h>
 #include <app/application.h>
 
 RenderSystem& State::GetRenderSystem() { return m_App->GetRenderSystem(); }
@@ -35,7 +35,7 @@ void State::EnableUIRender(bool enable) { GetUIRenderSystem().SetEnabled(enable)
 void State::EnableParticle(bool enable) { GetParticleSystem().SetEnabled(enable); }
 void State::EnableSkybox(bool enable) { GetSkyboxRenderSystem().SetEnabled(enable); }
 
-void State::EnableLogic(bool enable) { 
+void State::EnableLogic(bool enable) {
     EnableScript(enable);
     EnableAnimation(enable);
     EnableVideo(enable);

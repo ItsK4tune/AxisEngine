@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <glad/glad.h>
 #include <interface/graphic/graphics_types.h>
@@ -122,7 +122,7 @@ public:
 
     static GLenum ToGL(Graphics::CullMode m) {
         switch (m) {
-            case Graphics::CullMode::None: return 0; 
+            case Graphics::CullMode::None: return 0;
             case Graphics::CullMode::Front: return GL_FRONT;
             case Graphics::CullMode::Back: return GL_BACK;
             case Graphics::CullMode::FrontAndBack: return GL_FRONT_AND_BACK;
@@ -179,10 +179,8 @@ public:
     }
 
     static GLenum ToGL(Graphics::TextureUnit u) {
-        
-        
-        
-        return GL_TEXTURE0 + static_cast<int>(u); 
+
+        return GL_TEXTURE0 + static_cast<int>(u);
     }
 
     static GLenum ToGL(Graphics::PolygonMode m) {
@@ -210,7 +208,7 @@ public:
             case Graphics::ServerCapability::StencilTest: return GL_STENCIL_TEST;
             case Graphics::ServerCapability::ScissorTest: return GL_SCISSOR_TEST;
             case Graphics::ServerCapability::Multisample: return GL_MULTISAMPLE;
-            
+
             default: return 0;
         }
     }

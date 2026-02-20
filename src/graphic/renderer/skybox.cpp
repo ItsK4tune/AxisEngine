@@ -1,4 +1,4 @@
-#include <graphic/renderer/skybox.h>
+﻿#include <graphic/renderer/skybox.h>
 #include <graphic/core/shader.h>
 #include <iostream>
 #include <stb_image.h>
@@ -7,9 +7,6 @@
 #include <interface/graphic/i_draw_context.h>
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
-
-
-
 
 IBufferManager* Skybox::s_BufferManager = nullptr;
 ITextureManager* Skybox::s_TextureManager = nullptr;
@@ -26,7 +23,7 @@ IBufferManager& Skybox::GetBufferManager()
 {
     if (!s_BufferManager) {
         LOGGER_ERROR("Skybox") << "BufferManager not set!";
-        
+
         throw std::runtime_error("BufferManager not set in Skybox");
     }
     return *s_BufferManager;
@@ -62,7 +59,7 @@ Skybox::~Skybox()
         if (m_VAO) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
         if (m_VBO) s_BufferManager->DeleteBuffers(1, &m_VBO);
     }
-    
+
     if (s_TextureManager)
     {
         if (m_TextureID) s_TextureManager->DeleteTextures(1, &m_TextureID);

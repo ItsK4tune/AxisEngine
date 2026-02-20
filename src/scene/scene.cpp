@@ -1,4 +1,4 @@
-#include <scene/scene.h>
+﻿#include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>
 #include <scene/scene_manager.h>
 #include <scene/light_manager.h>
@@ -51,7 +51,7 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
         {
             if (manager)
                 manager->GetPhysicsWorld().RemoveRigidBody(rb->body.get());
-            
+
             rb->body = nullptr;
         }
     }
@@ -64,7 +64,7 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
 
     if (auto anim = registry.try_get<AnimationComponent>(entity))
     {
-        
+
         anim->animator = nullptr;
     }
 
@@ -100,7 +100,6 @@ entt::entity Scene::GetActiveCamera()
         }
     }
 
-    
     auto view = registry.view<const CameraComponent>();
     for (auto entity : view)
     {
@@ -111,7 +110,7 @@ entt::entity Scene::GetActiveCamera()
             return entity;
         }
     }
-    
+
     m_ActiveCamera = entt::null;
     return entt::null;
 }

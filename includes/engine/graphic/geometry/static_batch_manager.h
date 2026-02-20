@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <graphic/geometry/model.h>
 #include <graphic/core/shader.h>
@@ -28,13 +28,13 @@ public:
 
     void CreateBatch(const std::string& name, const std::vector<std::shared_ptr<Model>>& models,
                      const std::vector<glm::mat4>& transforms);
-    
+
     void RenderBatch(const std::string& name);
     void RenderAllBatches();
-    
+
     bool LoadBatchFromFile(const std::string& name, const std::string& path);
     void SaveBatchToFile(const std::string& name, const std::string& path);
-    
+
     void Clear();
     bool HasBatch(const std::string& name) const;
 
@@ -42,12 +42,12 @@ public:
 
 private:
     std::map<std::string, BatchData> m_Batches;
-    
+
     void MergeMeshes(const std::vector<std::shared_ptr<Model>>& models,
                      const std::vector<glm::mat4>& transforms,
                      std::vector<Vertex>& outVertices,
                      std::vector<unsigned int>& outIndices);
-    
+
     void CreateGPUBuffers(BatchData& batch, const std::vector<Vertex>& vertices,
                          const std::vector<unsigned int>& indices);
 

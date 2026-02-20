@@ -1,4 +1,4 @@
-#include <resource/font_cache.h>
+﻿#include <resource/font_cache.h>
 #include <utils/filesystem.h>
 #include <utils/logger.h>
 
@@ -29,7 +29,7 @@ Font* FontCache::GetFont(const std::string& name)
 {
     if (m_Fonts.find(name) != m_Fonts.end())
         return m_Fonts[name].get();
-    
+
     LOGGER_WARN("FontCache") << "Font not found: " << name;
     return nullptr;
 }

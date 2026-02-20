@@ -1,4 +1,4 @@
-#include <graphic/core/texture_atlas.h>
+﻿#include <graphic/core/texture_atlas.h>
 #include <utils/filesystem.h>
 #include <stb_image.h>
 #include <algorithm>
@@ -6,8 +6,6 @@
 #include <utils/logger.h>
 #include <fstream>
 #include <interface/graphic/i_texture_manager.h>
-
-
 
 ITextureManager* TextureAtlas::s_TextureManager = nullptr;
 
@@ -43,31 +41,31 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
 
     m_Width = atlasWidth;
     m_Height = atlasHeight;
-    
+
     std::vector<TextureData> textures;
     std::vector<std::string> textureNames;
-    
+
     for (const auto& path : texturePaths)
     {
         TextureData texData;
         std::string fullPath = FileSystem::getPath(path);
-        
+
         stbi_set_flip_vertically_on_load(false);
         texData.data = stbi_load(fullPath.c_str(), &texData.width, &texData.height, &texData.channels, 4);
-        
+
         if (!texData.data)
         {
             LOGGER_ERROR("TextureAtlas") << "Failed to load texture: " << path;
             continue;
         }
-        
+
         textures.push_back(texData);
-        
+
         size_t lastSlash = path.find_last_of("/\\");
         std::string name = (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;
         textureNames.push_back(name);
     }
-    
+
     std::vector<Rect> rects;
     if (!PackTextures(textures, rects))
     {
@@ -78,13 +76,13 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
         }
         return false;
     }
-    
+
     std::vector<unsigned char> atlasData(m_Width * m_Height * 4, 0);
-    
+
     for (size_t i = 0; i < textures.size(); i++)
     {
         BlitTexture(atlasData.data(), textures[i], rects[i]);
-        
+
         AtlasRegion region;
         region.name = textureNames[i];
         region.uvMin = glm::vec2((float)rects[i].x / m_Width, (float)rects[i].y / m_Height);
@@ -94,28 +92,28 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
         region.uvOffset = region.uvMin;
         region.width = rects[i].width;
         region.height = rects[i].height;
-        
+
         m_Regions[textureNames[i]] = region;
     }
-    
+
     m_AtlasID = tm.GenTexture();
     tm.BindTexture(Graphics::TextureType::Texture2D, m_AtlasID);
-    
+
     tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA8, m_Width, m_Height, 0, Graphics::TextureFormat::RGBA, Graphics::DataType::UnsignedByte, atlasData.data());
     tm.GenerateMipmap(Graphics::TextureType::Texture2D);
-    
+
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(Graphics::TextureWrap::Repeat));
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(Graphics::TextureWrap::Repeat));
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::LinearMipmapLinear));
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
-    
+
     tm.BindTexture(Graphics::TextureType::Texture2D, 0);
-    
+
     for (auto& tex : textures)
     {
         stbi_image_free(tex.data);
     }
-    
+
     LOGGER_INFO("TextureAtlas") << "Created atlas with " << textures.size() << " textures";
     return true;
 }
@@ -127,23 +125,23 @@ bool TextureAtlas::PackTextures(const std::vector<TextureData>& textures, std::v
         int index;
         int width, height;
     };
-    
+
     std::vector<IndexedTexture> indexed;
     for (size_t i = 0; i < textures.size(); i++)
     {
         indexed.push_back({ (int)i, textures[i].width, textures[i].height });
     }
-    
+
     std::sort(indexed.begin(), indexed.end(), [](const IndexedTexture& a, const IndexedTexture& b) {
         return a.height > b.height;
     });
-    
+
     outRects.resize(textures.size());
-    
+
     int currentY = 0;
     int currentX = 0;
     int shelfHeight = 0;
-    
+
     for (const auto& tex : indexed)
     {
         if (currentX + tex.width > m_Width)
@@ -152,18 +150,18 @@ bool TextureAtlas::PackTextures(const std::vector<TextureData>& textures, std::v
             currentX = 0;
             shelfHeight = 0;
         }
-        
+
         if (currentY + tex.height > m_Height)
         {
             LOGGER_ERROR("TextureAtlas") << "Atlas size too small for " << textures.size() << " textures";
             return false;
         }
-        
+
         outRects[tex.index] = { currentX, currentY, tex.width, tex.height };
         currentX += tex.width;
         shelfHeight = (std::max)(shelfHeight, tex.height);
     }
-    
+
     return true;
 }
 
@@ -175,7 +173,7 @@ void TextureAtlas::BlitTexture(unsigned char* atlasData, const TextureData& text
         {
             int atlasIndex = ((rect.y + y) * m_Width + (rect.x + x)) * 4;
             int texIndex = (y * texture.width + x) * 4;
-            
+
             atlasData[atlasIndex + 0] = texture.data[texIndex + 0];
             atlasData[atlasIndex + 1] = texture.data[texIndex + 1];
             atlasData[atlasIndex + 2] = texture.data[texIndex + 2];
@@ -189,7 +187,7 @@ TextureAtlas::AtlasRegion TextureAtlas::GetRegion(const std::string& textureName
     auto it = m_Regions.find(textureName);
     if (it != m_Regions.end())
         return it->second;
-    
+
     LOGGER_WARN("TextureAtlas") << "Region not found: " << textureName;
     return AtlasRegion();
 }

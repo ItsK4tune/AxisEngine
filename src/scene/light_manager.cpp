@@ -1,4 +1,4 @@
-#include <scene/light_manager.h>
+﻿#include <scene/light_manager.h>
 #include <utils/logger.h>
 #include <scene/scene.h>
 #include <iostream>

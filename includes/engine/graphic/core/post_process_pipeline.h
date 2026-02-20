@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -31,7 +31,7 @@ public:
 
     void AddEffect(Shader *shader);
     void AddEffect(Shader *shader, int x, int y, int w, int h);
-    
+
     unsigned int GetDepthTexture() const { return m_DepthTexture; }
 
     void ClearEffects();
@@ -43,10 +43,10 @@ private:
     unsigned int m_FBO[2];
     unsigned int m_ColorBuffers[2];
     unsigned int m_DepthTexture = 0;
-    
+
     unsigned int m_HistoryFBO = 0;
     unsigned int m_HistoryTexture = 0;
-    
+
     Shader *m_FXAAShader = nullptr;
     Shader *m_TAAShader = nullptr;
 

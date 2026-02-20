@@ -1,4 +1,4 @@
-#include <app/app_handler.h>
+﻿#include <app/app_handler.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
 #include <input/input_manager.h>
@@ -9,7 +9,7 @@ AppHandler::AppHandler(IWindow* window)
 {
     m_KeyboardManager = std::make_unique<KeyboardManager>(window);
     m_MouseManager = std::make_unique<MouseManager>(window);
-    m_InputManager = std::make_unique<InputManager>(*m_KeyboardManager, *m_MouseManager);
+    m_InputManager = std::make_unique<InputManager>(*m_KeyboardManager, *m_MouseManager, *window);
 }
 
 AppHandler::~AppHandler()

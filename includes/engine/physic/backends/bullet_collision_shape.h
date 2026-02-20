@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/physics/i_collision_shape.h>
 #include <btBulletDynamicsCommon.h>
@@ -8,9 +8,9 @@ class BulletCollisionShape : public ICollisionShape
 public:
     BulletCollisionShape(btCollisionShape* shape, CollisionShapeType type)
         : m_Shape(shape), m_Type(type) {}
-    
-    ~BulletCollisionShape() { 
-        if(m_Shape) delete m_Shape; 
+
+    ~BulletCollisionShape() {
+        if(m_Shape) delete m_Shape;
     }
 
     CollisionShapeType GetType() const override { return m_Type; }

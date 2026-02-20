@@ -1,9 +1,8 @@
-#include <graphic/core/compute_shader.h>
+﻿#include <graphic/core/compute_shader.h>
 #include <fstream>
 #include <sstream>
 #include <utils/logger.h>
 #include <interface/graphic/i_shader_manager.h>
-
 
 static constexpr unsigned int COMPUTE_SHADER = 0x91B9;
 static constexpr unsigned int FALSE = 0;
@@ -152,7 +151,7 @@ void ComputeShader::checkCompileErrors(unsigned int shader, std::string type)
 {
     if (!s_ShaderManager) return;
     auto& sm = GetShaderManager();
-    
+
     bool success;
     if (type != "PROGRAM")
     {

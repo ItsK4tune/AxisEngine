@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <graphic/geometry/mesh.h>
 #include <string>
@@ -26,7 +26,7 @@ public:
     Texture* GetTexture(const std::string& name);
     void UnloadTexture(const std::string& name);
     bool IsTextureLoaded(const std::string& name) const;
-    
+
     void Update();
     void Clear();
 
@@ -37,6 +37,6 @@ private:
     std::unordered_map<std::string, Texture> m_Textures;
     std::vector<std::future<TextureData>> m_AsyncLoads;
     std::mutex m_Mutex;
-    
+
     static ITextureManager* s_TextureManager;
 };

@@ -1,4 +1,4 @@
-#include <resource/resource_watcher.h>
+﻿#include <resource/resource_watcher.h>
 #include <utils/logger.h>
 #include <iostream>
 
@@ -22,14 +22,14 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
             break;
         }
     }
-    
+
     if (!alreadyWatched)
     {
         WatchEntry entry;
         entry.name = name;
         entry.filePath = path;
         entry.type = type;
-        
+
         try
         {
             entry.lastWriteTime = std::filesystem::last_write_time(path);
@@ -37,7 +37,7 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
         catch (...)
         {
         }
-        
+
         m_Watchers.push_back(entry);
     }
 }
@@ -52,7 +52,7 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
     entry.vsPath = vsPath;
     entry.fsPath = fsPath;
     entry.gsPath = gsPath;
-    
+
     try
     {
         entry.lastWriteTime = std::filesystem::last_write_time(path);
@@ -60,14 +60,14 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
     catch (...)
     {
     }
-    
+
     m_Watchers.push_back(entry);
 }
 
 void ResourceWatcher::Update(float dt)
 {
     m_HotReloadTimer += dt;
-    
+
     if (m_HotReloadTimer > 1.0f)
     {
         for (auto& watcher : m_Watchers)
@@ -79,7 +79,7 @@ void ResourceWatcher::Update(float dt)
                 {
                     watcher.lastWriteTime = currentWriteTime;
                     LOGGER_INFO("HotReload") << "Detected change in: " << watcher.filePath;
-                    
+
                     if (watcher.type == "SHADER")
                     {
                         if (m_OnShaderReload)
@@ -96,7 +96,7 @@ void ResourceWatcher::Update(float dt)
             {
             }
         }
-        
+
         m_HotReloadTimer = 0.0f;
     }
 }

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <graphic/renderer/font.h>
 #include <string>
@@ -13,7 +13,7 @@ public:
 
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
     Font* GetFont(const std::string& name);
-    
+
     void Clear();
 
 private:

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <scene/scene.h>
 #include <app/application.h>

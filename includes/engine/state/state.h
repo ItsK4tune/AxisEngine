@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <scene/scene_manager.h>
 #include <resource/resource_manager.h>

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <atomic>
@@ -43,10 +43,10 @@ public:
 
     void SetLoop(bool loop) { m_Loop = loop; }
     bool IsLooping() const { return m_Loop; }
-    
+
     float GetSpeed() const { return (float)m_Speed; }
     void SetSpeed(float speed) { m_Speed = speed; }
-    
+
     int GetMaxDecodeSteps() const { return m_MaxDecodeSteps; }
     void SetMaxDecodeSteps(int steps) { m_MaxDecodeSteps = steps; }
 
@@ -70,7 +70,7 @@ private:
     double m_FrameRate = 0.0;
     double m_CurrentTime = 0.0;
     double m_LastFrameTime = 0.0;
-    double m_Limit = 0.0; 
+    double m_Limit = 0.0;
     double m_Speed = 1.0;
     bool m_Loop = true;
 
@@ -79,10 +79,6 @@ private:
 
     std::string m_Filepath;
 
-    
-    
-    
-    
     int m_MaxDecodeSteps = 5;
 
     static ITextureManager* s_TextureManager;

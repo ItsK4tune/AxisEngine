@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace Graphics {
 
@@ -62,7 +62,7 @@ namespace Graphics {
         DepthComponent,
         DepthStencil
     };
-    
+
     enum class InternalFormat {
         R8,
         RGB8,
@@ -128,7 +128,7 @@ namespace Graphics {
         Gequal,
         Always
     };
-    
+
     enum class StencilOp {
         Keep,
         Zero,

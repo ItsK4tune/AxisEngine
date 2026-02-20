@@ -1,4 +1,4 @@
-#include <graphic/backends/opengl_context.h>
+﻿#include <graphic/backends/opengl_context.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <utils/logger.h>
@@ -40,7 +40,18 @@ void OpenGLContext::SetCullFace(bool enable)
         glDisable(GL_CULL_FACE);
 }
 
+void OpenGLContext::SetBlending(bool enable)
+{
+    if (enable)
+        glEnable(GL_BLEND);
+    else
+        glDisable(GL_BLEND);
+}
 
+void OpenGLContext::SetBlendFunc(Graphics::BlendFactor src, Graphics::BlendFactor dst)
+{
+    glBlendFunc(GLTranslator::ToGL(src), GLTranslator::ToGL(dst));
+}
 
 #include <graphic/backends/opengl_translator.h>
 

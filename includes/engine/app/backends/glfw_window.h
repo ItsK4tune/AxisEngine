@@ -1,4 +1,4 @@
-#ifndef GLFW_WINDOW_H
+﻿#ifndef GLFW_WINDOW_H
 #define GLFW_WINDOW_H
 
 #include <interface/window/i_window.h>
@@ -28,7 +28,9 @@ public:
 
     void SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex, int refreshRate) override;
     std::vector<MonitorInfo> GetMonitors() const override;
-    
+
+    std::vector<DeviceInfo> GetConnectedDevices() const override;
+
     void SetCursorMode(Input::CursorMode mode) override;
 
     void* GetNativeWindow() const override;
@@ -55,16 +57,14 @@ private:
     MousePositionCallback m_CursorPosCallback;
     ScrollCallback m_ScrollCallback;
 
-    
     static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
-    
-    int MapInputKeyToGLFW(int key); 
-                                   
+    int MapInputKeyToGLFW(int key);
+
 };
 
-#endif 
+#endif

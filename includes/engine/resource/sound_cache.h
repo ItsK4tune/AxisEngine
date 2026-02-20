@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/audio/i_audio_engine.h>
 #include <interface/audio/i_audio_source.h>
@@ -14,7 +14,7 @@ public:
 
     void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine);
     std::shared_ptr<IAudioSource> GetSound(const std::string& name);
-    
+
     void Clear();
 
 private:

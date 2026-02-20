@@ -1,4 +1,4 @@
-#include <physic/physics_transform_sync.h>
+﻿#include <physic/physics_transform_sync.h>
 #include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
@@ -71,7 +71,7 @@ void PhysicsTransformSync::SyncToPhysics()
             continue;
 
         uint32_t currentVersion = transform.GetVersion();
-        if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() && 
+        if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
             m_LastSyncedVersions[entity] == currentVersion)
         {
             continue;
@@ -86,7 +86,7 @@ void PhysicsTransformSync::SyncToPhysics()
         glm::quat worldRot = glm::quat_cast(worldMatrix);
 
         rb.body->SetWorldTransform(worldPos, worldRot);
-        
+
         m_LastSyncedVersions[entity] = currentVersion;
     }
 }
@@ -134,8 +134,8 @@ void PhysicsTransformSync::SyncFromPhysics()
                 transform.position = worldPos;
                 transform.rotation = worldRot;
             }
-            
-            transform.GetLocalModelMatrix(); 
+
+            transform.GetLocalModelMatrix();
             m_LastSyncedVersions[entity] = transform.GetVersion();
         }
     }

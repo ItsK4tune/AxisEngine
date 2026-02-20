@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 
@@ -27,13 +27,12 @@ public:
     std::unordered_map<std::string, BoneInfo> &GetBoneInfoMap();
     int &GetBoneCount();
 
-	void AddTexture(const Texture& tex) { textures_loaded.push_back(tex); }
+    void AddTexture(const Texture& tex) { textures_loaded.push_back(tex); }
 
 private:
     std::vector<Texture> textures_loaded;
-	std::unordered_map<std::string, BoneInfo> m_BoneInfoMap;
-	int m_BoneCounter = 0;
+    std::unordered_map<std::string, BoneInfo> m_BoneInfoMap;
+    int m_BoneCounter = 0;
 
-	void loadModel(std::string const &path, bool isStatic);
+    void loadModel(std::string const &path, bool isStatic);
 };
-

@@ -1,11 +1,11 @@
-#include <input/input_manager.h>
+﻿#include <input/input_manager.h>
+#include <interface/window/i_window.h>
 #include <interface/window/input_codes.h>
 #include <string>
 #include <iostream>
-#include <GLFW/glfw3.h> 
 
-InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse)
-    : m_Keyboard(keyboard), m_Mouse(mouse)
+InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse, const IWindow &window)
+    : m_Keyboard(keyboard), m_Mouse(mouse), m_Window(window)
 {
 }
 
@@ -78,37 +78,7 @@ bool InputManager::GetActionUp(const std::string &actionName) const
 
 std::vector<DeviceInfo> InputManager::GetAllDevices() const
 {
-    std::vector<DeviceInfo> devices;
-
-    DeviceInfo kbdInfo;
-    kbdInfo.id = "keyboard_0";
-    kbdInfo.name = "Primary Keyboard";
-    kbdInfo.type = DeviceType::Keyboard;
-    kbdInfo.isDefault = true;
-    devices.push_back(kbdInfo);
-
-    DeviceInfo mouseInfo;
-    mouseInfo.id = "mouse_0";
-    mouseInfo.name = "Primary Mouse";
-    mouseInfo.type = DeviceType::Mouse;
-    mouseInfo.isDefault = true;
-    devices.push_back(mouseInfo);
-
-    for (int i = 0; i <= GLFW_JOYSTICK_LAST; i++)
-    {
-        if (glfwJoystickPresent(i))
-        {
-            DeviceInfo joyInfo;
-            joyInfo.id = std::to_string(i);
-            const char *name = glfwGetJoystickName(i);
-            joyInfo.name = name ? name : "Unknown Joystick";
-            joyInfo.type = DeviceType::Joystick;
-            joyInfo.isDefault = false;
-            devices.push_back(joyInfo);
-        }
-    }
-
-    return devices;
+    return m_Window.GetConnectedDevices();
 }
 
 DeviceInfo InputManager::GetCurrentDevice() const
@@ -116,7 +86,7 @@ DeviceInfo InputManager::GetCurrentDevice() const
     DeviceInfo info;
     info.id = "merged_input";
     info.name = "Keyboard & Mouse";
-    info.type = DeviceType::Keyboard;
+    info.type = AxisDeviceType::Keyboard;
     info.isDefault = true;
     return info;
 }

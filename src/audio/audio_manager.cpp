@@ -1,4 +1,4 @@
-#include <audio/audio_manager.h>
+﻿#include <audio/audio_manager.h>
 #include <utils/logger.h>
 
 AudioManager::AudioManager(std::unique_ptr<IAudioEngine> engine)
@@ -26,4 +26,3 @@ void AudioManager::Shutdown()
     if (m_Engine)
         m_Engine->Shutdown();
 }
-

@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 
 struct BoneInfo
 {
-	int id;
-	glm::mat4 offset;
+    int id;
+    glm::mat4 offset;
 };

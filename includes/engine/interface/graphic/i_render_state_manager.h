@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/graphic/graphics_types.h>
 

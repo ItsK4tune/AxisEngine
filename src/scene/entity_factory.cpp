@@ -1,4 +1,4 @@
-#include <scene/entity_factory.h>
+﻿#include <scene/entity_factory.h>
 #include <scene/scene.h>
 #include <glm/gtc/quaternion.hpp>
 #include <utils/logger.h>

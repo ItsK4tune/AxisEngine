@@ -1,4 +1,4 @@
-#include <ecs/systems/particle_system.h>
+﻿#include <ecs/systems/particle_system.h>
 #include <execution>
 #include <vector>
 #include <algorithm>
@@ -6,8 +6,6 @@
 #include <utils/logger.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
-
-
 
 void ParticleSystem::Init(IGraphicsContext& context)
 {
@@ -20,7 +18,7 @@ void ParticleSystem::Update(Scene &scene, float dt)
         return;
 
     auto view = scene.registry.view<ParticleEmitterComponent, TransformComponent>();
-    
+
     std::vector<entt::entity> entities(view.begin(), view.end());
 
     std::for_each(std::execution::par, entities.begin(), entities.end(), [&view, dt](entt::entity entity) {

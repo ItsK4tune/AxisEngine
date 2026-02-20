@@ -1,4 +1,4 @@
-#include <resource/texture_cache.h>
+﻿#include <resource/texture_cache.h>
 #include <interface/graphic/graphics_types.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>
@@ -16,7 +16,7 @@ TextureCache::~TextureCache()
 void TextureCache::LoadTexture(const std::string& name, const std::string& path, bool async)
 {
     std::string fullPath = FileSystem::getPath(path);
-    
+
     if (async)
     {
         m_AsyncLoads.push_back(std::async(std::launch::async, [name, fullPath]() -> TextureData {
@@ -32,11 +32,11 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
     {
         auto& tm = GetTextureManager();
         unsigned int textureID = tm.GenTexture();
-        
+
         int width, height, nrComponents;
         stbi_set_flip_vertically_on_load(true);
         unsigned char* data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, 0);
-        
+
         if (data)
         {
 
@@ -45,7 +45,7 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
 
             if (nrComponents == 1) {
                 format = Graphics::TextureFormat::Red;
-                const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8; 
+                const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8;
             } else if (nrComponents == 3) {
                 format = Graphics::TextureFormat::RGB;
                 const_cast<Graphics::InternalFormat&>(internalFormat) = Graphics::InternalFormat::RGB8;
@@ -55,19 +55,9 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             }
 
             tm.BindTexture(Graphics::TextureType::Texture2D, textureID);
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             Graphics::InternalFormat iFormat = Graphics::InternalFormat::RGBA8;
-            if (nrComponents == 1) iFormat = Graphics::InternalFormat::RGB8; 
+            if (nrComponents == 1) iFormat = Graphics::InternalFormat::RGB8;
             else if (nrComponents == 3) iFormat = Graphics::InternalFormat::RGB8;
             else if (nrComponents == 4) iFormat = Graphics::InternalFormat::RGBA8;
 
@@ -80,13 +70,13 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
 
             stbi_image_free(data);
-            
+
             Texture tex;
             tex.id = textureID;
             tex.type = "texture_diffuse";
             tex.path = path;
             m_Textures[name] = tex;
-            
+
             LOGGER_INFO("TextureCache") << "Loaded texture: " << name;
         }
         else
@@ -123,7 +113,7 @@ bool TextureCache::IsTextureLoaded(const std::string& name) const
 void TextureCache::Update()
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
-    
+
     auto it = m_AsyncLoads.begin();
     while (it != m_AsyncLoads.end())
     {
@@ -172,7 +162,7 @@ void TextureCache::Update()
             {
                 LOGGER_ERROR("TextureCache") << "Failed to async load texture: " << data.path;
             }
-            
+
             it = m_AsyncLoads.erase(it);
         }
         else

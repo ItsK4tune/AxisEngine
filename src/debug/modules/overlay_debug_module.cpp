@@ -1,10 +1,11 @@
-#include <debug/modules/overlay_debug_module.h>
+﻿#include <debug/modules/overlay_debug_module.h>
+#include <interface/graphic/i_graphics_context.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
+
 #include <sstream>
 #include <iomanip>
 #include <glm/glm.hpp>
@@ -33,7 +34,7 @@ void OverlayDebugModule::SetStats(float fps, float frameTime)
 
 void OverlayDebugModule::OnUpdate(float dt)
 {
-    
+
 }
 
 void OverlayDebugModule::Render(Scene &scene)
@@ -47,9 +48,9 @@ void OverlayDebugModule::Render(Scene &scene)
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
 
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    m_App->GetGraphicsContext().SetDepthTest(false);
+    m_App->GetGraphicsContext().SetBlending(true);
+    m_App->GetGraphicsContext().SetBlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
 
     size_t totalEntities = scene.registry.storage<entt::entity>().size();
     int renderedEntities = m_App->GetRenderSystem().GetRenderedCount();
@@ -114,8 +115,8 @@ void OverlayDebugModule::Render(Scene &scene)
         yStart += 25.0f;
     }
 
-    glDisable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
+    m_App->GetGraphicsContext().SetBlending(false);
+    m_App->GetGraphicsContext().SetDepthTest(true);
 }
 
 void OverlayDebugModule::ProcessInput(KeyboardManager &keyboard)

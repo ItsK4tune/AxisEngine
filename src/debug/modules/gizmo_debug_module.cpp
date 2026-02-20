@@ -1,10 +1,10 @@
-#include <debug/modules/gizmo_debug_module.h>
+﻿#include <debug/modules/gizmo_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -34,8 +34,7 @@ void GizmoDebugModule::OnUpdate(float dt)
 
 void GizmoDebugModule::Render(Scene &scene)
 {
-    
-    
+
 }
 
 void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
@@ -57,7 +56,7 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
-            ToggleTransformGizmos(); 
+            ToggleTransformGizmos();
             std::cout << "\n========== Transform Gizmos (Shift+F4) ==========" << std::endl;
             std::cout << "[Debug] Transform Gizmos: " << (m_ShowTransformGizmos ? "ON" : "OFF") << std::endl;
             std::cout << "=================================================" << std::endl;
@@ -68,12 +67,12 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
         bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
             ToggleLightGizmos();
-            
+
             auto& reg = m_App->GetScene().registry;
             int p = 0; for(auto e : reg.view<PointLightComponent>()) p++;
             int s = 0; for(auto e : reg.view<SpotLightComponent>()) s++;
-            
-            int d_total = 0; 
+
+            int d_total = 0;
             int d_transform = 0;
             for(auto e : reg.view<DirectionalLightComponent>()) {
                 d_total++;

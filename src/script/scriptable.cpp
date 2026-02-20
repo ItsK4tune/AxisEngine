@@ -1,4 +1,4 @@
-#include <script/scriptable.h>
+﻿#include <script/scriptable.h>
 #include <app/application.h>
 #include <input/input_manager.h>
 

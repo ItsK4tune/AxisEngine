@@ -1,4 +1,4 @@
-#ifndef ENABLE_DEBUG_SYSTEM
+﻿#ifndef ENABLE_DEBUG_SYSTEM
 #include <Windows.h>
 #endif
 
@@ -59,7 +59,7 @@ void InitLogging() {
 #ifdef ENABLE_DEBUG_SYSTEM
         static TeeBuf tOut(std::cout.rdbuf(), logFile.rdbuf());
         static TeeBuf tErr(std::cerr.rdbuf(), logFile.rdbuf());
-        
+
         teeBufOut = &tOut;
         teeBufErr = &tErr;
 
@@ -75,7 +75,10 @@ void InitLogging() {
     }
 }
 
-
+extern "C" {
+    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
 
 int main() {
 #ifndef ENABLE_DEBUG_SYSTEM
@@ -92,13 +95,12 @@ int main() {
     config.height = 720;
     config.windowMode = 0;
     config.vsync = true;
-    config.physicsMode = 1; // Balanced
-    // Customize other settings as needed...
+    config.physicsMode = 1;
 
     if (app.Init(config)) {
         app.PushState<GameState>();
         app.Run();
     }
-    
+
     return 0;
 }

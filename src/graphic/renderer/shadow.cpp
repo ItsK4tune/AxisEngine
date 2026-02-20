@@ -1,4 +1,4 @@
-#include <graphic/renderer/shadow.h>
+﻿#include <graphic/renderer/shadow.h>
 #include <iostream>
 #include <interface/graphic/i_render_target_manager.h>
 #include <interface/graphic/i_texture_manager.h>
@@ -22,7 +22,7 @@ Shadow::Shadow()
         m_ShadowFBO_Dir[i] = 0;
         m_ShadowMap_Dir[i] = 0;
     }
-    
+
     for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i)
     {
         m_ShadowFBO_Point[i] = 0;
@@ -103,7 +103,7 @@ void Shadow::Init(unsigned int width, unsigned int height, unsigned int pointWid
     {
         m_ShadowFBO_Dir[i] = rtm.GenFramebuffer();
         m_ShadowMap_Dir[i] = tm.GenTexture();
-        
+
         tm.BindTexture(Graphics::TextureType::Texture2D, m_ShadowMap_Dir[i]);
         tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::DepthComponent24, SHADOW_WIDTH, SHADOW_HEIGHT, 0, Graphics::TextureFormat::DepthComponent, Graphics::DataType::Float, NULL);
         tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
@@ -124,7 +124,7 @@ void Shadow::Init(unsigned int width, unsigned int height, unsigned int pointWid
     {
         m_ShadowFBO_Point[i] = rtm.GenFramebuffer();
         m_ShadowMap_Point[i] = tm.GenTexture();
-        
+
         tm.BindTexture(Graphics::TextureType::TextureCubeMap, m_ShadowMap_Point[i]);
         for (unsigned int j = 0; j < 6; ++j)
         {
@@ -148,7 +148,7 @@ void Shadow::Init(unsigned int width, unsigned int height, unsigned int pointWid
     {
         m_ShadowFBO_Spot[i] = rtm.GenFramebuffer();
         m_ShadowMap_Spot[i] = tm.GenTexture();
-        
+
         tm.BindTexture(Graphics::TextureType::Texture2D, m_ShadowMap_Spot[i]);
         tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::DepthComponent24, SHADOW_WIDTH, SHADOW_HEIGHT, 0, Graphics::TextureFormat::DepthComponent, Graphics::DataType::Float, NULL);
         tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Nearest));

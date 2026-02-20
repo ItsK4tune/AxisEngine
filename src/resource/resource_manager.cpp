@@ -1,4 +1,4 @@
-#include <resource/resource_manager.h>
+﻿#include <resource/resource_manager.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>
 #include <iostream>
@@ -77,53 +77,10 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
 void ResourceManager::LoadModelAsync(const std::string &name, const std::string &path, bool isStatic)
 {
     LOGGER_INFO("ResourceManager") << "Async loading model: " << name;
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     std::thread([this, name, path, isStatic]()
     {
-        
-        
-        
-        
+
         LoadModel(name, path, isStatic);
     }).detach();
 }

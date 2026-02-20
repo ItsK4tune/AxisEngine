@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -87,21 +87,17 @@ struct MaterialComponent
 {
     MaterialType type = MaterialType::PHONG;
 
-    
     float roughness = 0.5f;
     float opacity = 1.0f;
     glm::vec3 emission = glm::vec3(0.0f);
 
-    
     float shininess = 32.0f;
     glm::vec3 specular = glm::vec3(0.5f);
     glm::vec3 ambient = glm::vec3(1.0f);
 
-    
     float metallic = 0.0f;
     float ao = 1.0f;
 
-    
     glm::vec2 uvScale = glm::vec2(1.0f);
     glm::vec2 uvOffset = glm::vec2(0.0f);
 };
@@ -109,9 +105,9 @@ struct MaterialComponent
 struct RigidBodyComponent
 {
     std::shared_ptr<IRigidBody> body = nullptr;
-    
+
     bool isAttachedToParent = false;
-    
+
     bool isParentMatter = false;
     bool isChildrenMatter = false;
 
@@ -209,7 +205,7 @@ struct UITextComponent
     Font *font = nullptr;
     glm::vec3 color = glm::vec3(1.0f);
     float scale = 1.0f;
-    
+
 };
 
 struct DirectionalLightComponent
@@ -293,7 +289,7 @@ struct AudioSourceComponent
     float minDistance = 1.0f;
 
     std::shared_ptr<ISound> sound = nullptr;
-    bool shouldPlay = false; 
+    bool shouldPlay = false;
 };
 
 struct SkyboxRenderComponent
@@ -319,7 +315,7 @@ struct VideoPlayerComponent
     bool playOnAwake = true;
     int maxDecodes = 5;
 
-    VideoDecoder *decoder = nullptr; 
+    VideoDecoder *decoder = nullptr;
     bool isLoaded = false;
 
     void Play();

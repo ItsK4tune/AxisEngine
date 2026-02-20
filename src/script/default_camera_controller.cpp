@@ -1,4 +1,4 @@
-#include <script/default_camera_controller.h>
+﻿#include <script/default_camera_controller.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <app/application.h>
 #include <script/script_registry.h>

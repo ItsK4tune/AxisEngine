@@ -1,13 +1,10 @@
-#include <graphic/renderer/particle_emitter.h>
+﻿#include <graphic/renderer/particle_emitter.h>
 
 #include <interface/graphic/i_buffer_manager.h>
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/i_draw_context.h>
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
-
-
-
 
 IBufferManager* ParticleEmitter::s_BufferManager = nullptr;
 ITextureManager* ParticleEmitter::s_TextureManager = nullptr;
@@ -49,8 +46,7 @@ IDrawContext& ParticleEmitter::GetDrawContext()
 
 ParticleEmitter::ParticleEmitter() : m_VAO(0), m_VBO(0), m_instanceVBO(0)
 {
-    
-    
+
 }
 
 ParticleEmitter::~ParticleEmitter()

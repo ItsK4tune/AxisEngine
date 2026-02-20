@@ -1,9 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <interface/graphic/graphics_types.h>
-
-
 
 class IDrawContext
 {

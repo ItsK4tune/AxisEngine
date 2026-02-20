@@ -1,4 +1,4 @@
-#include <scene/handlers/scene_validator.h>
+﻿#include <scene/handlers/scene_validator.h>
 #include <utils/logger.h>
 #include <scene/scene.h>
 #include <script/script_registry.h>
@@ -190,7 +190,7 @@ namespace SceneHandlers
                                     frameInB);
 
                                 bulletWorld->GetRawWorld()->addConstraint(fixedConstraint);
-                                
+
                             }
                         }
                     }

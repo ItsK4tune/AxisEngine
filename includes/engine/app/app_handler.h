@@ -1,11 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include <memory>
 #include <functional>
 #include <interface/window/i_window.h>
 
 #include <string>
-
 
 class KeyboardManager;
 class MouseManager;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <scene/scene.h>
 #include <unordered_set>
@@ -28,15 +28,13 @@ public:
 
 private:
     using CollisionPair = std::pair<entt::entity, entt::entity>;
-    
+
     struct CollisionPairHash {
         std::size_t operator()(const CollisionPair& p) const {
-            return std::hash<uint32_t>()((uint32_t)p.first) ^ 
+            return std::hash<uint32_t>()((uint32_t)p.first) ^
                    (std::hash<uint32_t>()((uint32_t)p.second) << 1);
         }
     };
-    
-
 
 private:
     std::unique_ptr<PhysicsTransformSync> m_transformSync;

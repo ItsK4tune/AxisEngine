@@ -1,4 +1,4 @@
-#include <ecs/systems/render_system.h>
+﻿#include <ecs/systems/render_system.h>
 #include <graphic/renderer/frustum.h>
 #include <string>
 #include <algorithm>
@@ -11,26 +11,24 @@
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/i_render_state_manager.h>
 
-
-
 void RenderSystem::Init(IGraphicsContext& context, ResourceManager &res)
 {
     m_Context = &context;
-    
+
     LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers";
     m_ShadowRenderer.Init(res);
     m_LightRenderer.Init(m_Context->GetBufferManager());
-    
+
     if (m_WhiteTextureID == 0)
     {
         auto& tm = m_Context->GetTextureManager();
         m_WhiteTextureID = tm.GenTexture();
         tm.BindTexture(Graphics::TextureType::Texture2D, m_WhiteTextureID);
         unsigned char white[] = {255, 255, 255, 255};
-        
-        tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA8, 1, 1, 0, 
+
+        tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA8, 1, 1, 0,
                       Graphics::TextureFormat::RGBA, Graphics::DataType::UnsignedByte, white);
-                      
+
         tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
         tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
     }
@@ -138,29 +136,29 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
         const int sampleCount = 8;
         int frameIdx = m_FrameIndex % sampleCount;
-        
+
         float jitterX = HaltonSequence(frameIdx + 1, 2) - 0.5f;
         float jitterY = HaltonSequence(frameIdx + 1, 3) - 0.5f;
-        
+
         m_JitterOffset = glm::vec2(jitterX, jitterY);
-        
+
         glm::mat4 jitterMatrix = glm::mat4(1.0f);
         jitterMatrix[3][0] = jitterX * 2.0f / (float)width;
         jitterMatrix[3][1] = jitterY * 2.0f / (float)height;
-        
+
         projectionMatrix = jitterMatrix * projectionMatrix;
-        
+
         m_FrameIndex++;
     }
     else
     {
         m_JitterOffset = glm::vec2(0.0f);
     }
-    
+
     m_PrevViewProj = m_CurrViewProj;
     m_CurrViewProj = projectionMatrix * cam->viewMatrix;
-    
-    if (m_PrevViewProj[3][3] == 0.0f) 
+
+    if (m_PrevViewProj[3][3] == 0.0f)
         m_PrevViewProj = m_CurrViewProj;
 
     Frustum frustum;
@@ -201,9 +199,9 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             float dx = (std::max)(worldMin.x - cameraPos.x, (std::max)(0.0f, cameraPos.x - worldMax.x));
             float dy = (std::max)(worldMin.y - cameraPos.y, (std::max)(0.0f, cameraPos.y - worldMax.y));
             float dz = (std::max)(worldMin.z - cameraPos.z, (std::max)(0.0f, cameraPos.z - worldMax.z));
-            
+
             float distSq = dx*dx + dy*dy + dz*dz;
-            
+
             if (distSq > m_DistanceCullingSq)
                 continue;
         }
@@ -230,8 +228,6 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         if (lhs.material != rhs.material)
             return lhs.material < rhs.material;
         return lhs.renderer->model < rhs.renderer->model; });
-
-    
 
     Shader *currentShader = nullptr;
     Model *currentModel = nullptr;
@@ -270,12 +266,10 @@ void RenderSystem::Render(Scene &scene, int width, int height)
                 currentShader->setMat4("view", cam->viewMatrix);
                 currentShader->setVec3("viewPos", camTrans->position);
 
-                
                 if (m_ShadowRenderer.IsShadowsEnabled() && m_ShadowRenderer.GetShadowMode() > 0)
                 {
-                   currentShader->setBool("u_ReceiveShadow", true); 
+                   currentShader->setBool("u_ReceiveShadow", true);
 
-                   
                    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
                    {
                        m_ShadowRenderer.GetShadow().BindTexture_Dir(i, 10 + i);
@@ -310,7 +304,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
                 {
                     currentShader->setBool("u_ReceiveShadow", false);
                 }
-                
+
                 currentShader->setFloat("farPlanePoint", m_ShadowRenderer.GetFarPlanePoint());
                 currentShader->setFloat("farPlaneSpot", m_ShadowRenderer.GetFarPlaneSpot());
             }
@@ -421,5 +415,3 @@ void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Sc
     else
         shader->setBool("debug_noTexture", false);
 }
-
-

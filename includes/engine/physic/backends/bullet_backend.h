@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/physics/i_physics_backend.h>
 #include <btBulletDynamicsCommon.h>

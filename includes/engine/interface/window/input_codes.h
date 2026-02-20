@@ -1,4 +1,4 @@
-#ifndef INPUT_CODES_H
+﻿#ifndef INPUT_CODES_H
 #define INPUT_CODES_H
 
 namespace Input {
@@ -146,7 +146,7 @@ namespace Input {
         Press = 1,
         Repeat = 2
     };
-    
+
     enum class CursorMode {
         Normal,
         Hidden,
@@ -156,5 +156,4 @@ namespace Input {
     };
 }
 
-#endif 
-
+#endif

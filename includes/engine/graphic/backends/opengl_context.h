@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <memory>
 #include <interface/graphic/i_graphics_context.h>
@@ -18,6 +18,8 @@ public:
     void SetViewport(int x, int y, int width, int height) override;
     void SetDepthTest(bool enabled) override;
     void SetCullFace(bool enabled) override;
+    void SetBlending(bool enabled) override;
+    void SetBlendFunc(Graphics::BlendFactor src, Graphics::BlendFactor dst) override;
 
     void Clear(Graphics::BufferBit flags) override;
 

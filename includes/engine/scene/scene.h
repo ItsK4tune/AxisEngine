@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <entt/entt.hpp>
 #include <ecs/component.h>
@@ -33,7 +33,7 @@ private:
     std::unique_ptr<LightManager> lightManager;
     std::unique_ptr<CameraManager> cameraManager;
     std::unique_ptr<EntityFactory> entityFactory;
-    
+
     entt::entity m_ActiveSkybox = entt::null;
     entt::entity m_ActiveCamera = entt::null;
 };

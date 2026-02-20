@@ -1,4 +1,4 @@
-#include <scene/camera_manager.h>
+﻿#include <scene/camera_manager.h>
 #include <scene/scene.h>
 #include <app/application.h>
 #include <script/script_registry.h>

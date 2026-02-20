@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 
@@ -10,6 +10,6 @@ public:
     virtual void SetDefaultVolume(float volume) = 0;
     virtual void SetDefaultMinDistance(float minDist) = 0;
     virtual void SetDefaultMaxDistance(float maxDist) = 0;
-    
+
     virtual std::string GetName() const = 0;
 };

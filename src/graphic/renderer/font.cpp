@@ -1,12 +1,9 @@
-#include <graphic/renderer/font.h>
+﻿#include <graphic/renderer/font.h>
 #include <utils/logger.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/graphics_types.h>
-
-
-
 
 ITextureManager* Font::s_TextureManager = nullptr;
 

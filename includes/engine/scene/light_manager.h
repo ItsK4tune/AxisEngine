@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <entt/entt.hpp>
 #include <ecs/component.h>
@@ -19,7 +19,7 @@ public:
     std::vector<entt::entity> GetActiveLights() const;
 
     void EnsurePrimaryDirectionalLight();
-    
+
     entt::entity CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity, bool isCastShadow = false);
     entt::entity CreatePointLight(const glm::vec3& position, const glm::vec3& color, float intensity, float radius);
     entt::entity CreateSpotLight(const glm::vec3& position, const glm::vec3& direction, const glm::vec3& color, float intensity, float cutOff, float outerCutOff);

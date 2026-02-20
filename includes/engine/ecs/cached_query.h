@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <entt/entt.hpp>
 #include <vector>
@@ -21,13 +21,13 @@ public:
             return;
 
         m_CachedEntities.clear();
-        
+
         auto view = registry.view<Components...>();
         for (auto entity : view)
         {
             m_CachedEntities.push_back(entity);
         }
-        
+
         m_Dirty = false;
     }
 

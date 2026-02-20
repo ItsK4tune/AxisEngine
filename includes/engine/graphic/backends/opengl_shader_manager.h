@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/graphic/i_shader_manager.h>
 #include <graphic/backends/opengl_translator.h>

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <iostream>
 #include <string>
@@ -45,7 +45,7 @@ private:
 
 class LogStreamer {
 public:
-    LogStreamer(LogType type, const std::string& tag) 
+    LogStreamer(LogType type, const std::string& tag)
         : m_Type(type), m_Tag(tag) {}
 
     ~LogStreamer() {
@@ -74,11 +74,9 @@ private:
 #else
     #define LOGGER_WARN(Tag)   if(true); else LogStreamer(LogType::Warning, Tag)
     #define LOGGER_ERROR(Tag)  if(true); else LogStreamer(LogType::Error, Tag)
-#endif 
-
+#endif
 
 #define LOGGER_LOG(Tag)    if (AXIS_LOG_LEVEL_DEF < 2) ; else LogStreamer(LogType::Info, Tag)
 #define LOGGER_INFO(Tag)   if (AXIS_LOG_LEVEL_DEF < 2) ; else LogStreamer(LogType::Info, Tag)
-
 
 #define LOGGER_DEBUG(Tag)  if (AXIS_LOG_LEVEL_DEF < 3) ; else LogStreamer(LogType::Debug, Tag)

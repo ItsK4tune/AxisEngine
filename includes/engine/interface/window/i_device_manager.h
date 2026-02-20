@@ -1,25 +1,9 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <vector>
 
-enum class DeviceType
-{
-    Monitor,
-    Keyboard,
-    Mouse,
-    Joystick,
-    AudioOutput,
-    AudioInput
-};
-
-struct DeviceInfo
-{
-    std::string id;
-    std::string name;
-    DeviceType type;
-    bool isDefault = false;
-};
+#include <interface/window/i_window.h>
 
 class IDeviceManager
 {

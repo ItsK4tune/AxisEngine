@@ -1,4 +1,4 @@
-#include <graphic/geometry/model.h>
+﻿#include <graphic/geometry/model.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <stb_image.h>
@@ -362,9 +362,7 @@ void processNode(aiNode* node, const aiScene* scene,
         processNode(node->mChildren[i], scene, meshes, textures_loaded, directory, boneInfoMap, boneCount);
 }
 
-} 
-
-
+}
 
 Model::Model(std::string const &path, bool isStatic, bool gamma) : gammaCorrection(gamma)
 {
@@ -425,4 +423,3 @@ void Model::loadModel(std::string const &path, bool isStatic)
     directory = path.substr(0, path.find_last_of('/'));
     processNode(scene->mRootNode, scene, meshes, textures_loaded, directory, m_BoneInfoMap, m_BoneCounter);
 }
-

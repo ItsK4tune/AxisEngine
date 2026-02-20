@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <vector>
 #include <string>
@@ -30,7 +30,7 @@ private:
     static IDrawContext* s_DrawContext;
 
     void Init();
-    
+
     static IBufferManager& GetBufferManager();
     static ITextureManager& GetTextureManager();
     static IDrawContext& GetDrawContext();

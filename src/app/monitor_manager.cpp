@@ -1,4 +1,5 @@
-#include <app/monitor_manager.h>
+﻿#include <app/monitor_manager.h>
+#include <interface/window/i_window.h>
 #include <utils/logger.h>
 #include <stb_image.h>
 
@@ -12,27 +13,15 @@ MonitorManager::~MonitorManager()
 
 bool MonitorManager::Init(std::unique_ptr<IWindow> window)
 {
-    
+
     m_Window = std::move(window);
-    
+
     if (!m_Window->Init(m_Width, m_Height, m_Title))
     {
         LOGGER_ERROR("MonitorManager") << "Failed to initialize window";
         return false;
     }
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     m_Window->SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
 
     return true;
@@ -104,15 +93,15 @@ std::vector<DeviceInfo> MonitorManager::GetAllDevices() const
 {
     std::vector<DeviceInfo> devices;
     if (!m_Window) return devices;
-    
+
     std::vector<MonitorInfo> monitors = m_Window->GetMonitors();
-    
+
     for (const auto& monitor : monitors)
     {
         DeviceInfo info;
         info.id = std::to_string(monitor.index);
         info.name = monitor.name;
-        info.type = DeviceType::Monitor;
+        info.type = AxisDeviceType::Monitor;
         info.isDefault = monitor.isPrimary;
         devices.push_back(info);
     }
@@ -122,10 +111,10 @@ std::vector<DeviceInfo> MonitorManager::GetAllDevices() const
 DeviceInfo MonitorManager::GetCurrentDevice() const
 {
     DeviceInfo info;
-    info.type = DeviceType::Monitor;
+    info.type = AxisDeviceType::Monitor;
     info.isDefault = false;
-    
-    if (!m_Window) 
+
+    if (!m_Window)
     {
         info.id = "-1";
         info.name = "Unknown";
@@ -133,20 +122,18 @@ DeviceInfo MonitorManager::GetCurrentDevice() const
     }
 
     std::vector<MonitorInfo> monitors = m_Window->GetMonitors();
-    
+
     if (m_MonitorIndex >= 0 && m_MonitorIndex < monitors.size())
     {
-        
-        
-        
-        if (monitors[m_MonitorIndex].index == m_MonitorIndex) 
+
+        if (monitors[m_MonitorIndex].index == m_MonitorIndex)
         {
              info.id = std::to_string(m_MonitorIndex);
              info.name = monitors[m_MonitorIndex].name;
              return info;
         }
     }
-    
+
     info.id = std::to_string(m_MonitorIndex);
     info.name = "Monitor " + std::to_string(m_MonitorIndex);
     return info;

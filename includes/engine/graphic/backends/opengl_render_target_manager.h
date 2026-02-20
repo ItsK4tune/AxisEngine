@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/graphic/i_render_target_manager.h>
 #include <graphic/backends/opengl_translator.h>
@@ -42,7 +42,7 @@ public:
     {
         glFramebufferTexture2D(GLTranslator::ToGL(target), GLTranslator::ToGL(attachment), GLTranslator::ToGL(textarget), texture, level);
     }
-    
+
     void BlitFramebuffer(int srcX0, int srcY0, int srcX1, int srcY1,
                          int dstX0, int dstY0, int dstX1, int dstY1,
                          Graphics::BufferBit mask, Graphics::TextureFilter filter) override
@@ -84,15 +84,15 @@ public:
 
     void DrawBuffer(Graphics::FramebufferAttachment buf) override { glDrawBuffer(GLTranslator::ToGL(buf)); }
     void ReadBuffer(Graphics::FramebufferAttachment buf) override { glReadBuffer(GLTranslator::ToGL(buf)); }
-    
-    void DrawBuffers(int n, const Graphics::FramebufferAttachment *bufs) override 
-    { 
+
+    void DrawBuffers(int n, const Graphics::FramebufferAttachment *bufs) override
+    {
         if (n <= 0) return;
         std::vector<GLenum> glBufs(n);
         for(int i = 0; i < n; ++i) {
             glBufs[i] = GLTranslator::ToGL(bufs[i]);
         }
-        glDrawBuffers(n, glBufs.data()); 
+        glDrawBuffers(n, glBufs.data());
     }
 
     const char *GetBackendName() const override { return "OpenGL"; }

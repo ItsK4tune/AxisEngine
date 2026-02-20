@@ -1,4 +1,4 @@
-#include <chrono>
+﻿#include <chrono>
 #include <thread>
 
 #include <app/engine_loop.h>
@@ -9,7 +9,6 @@
 #include <app/monitor_manager.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <resource/resource_manager.h>
-
 
 #include <utils/logger.h>
 
@@ -83,7 +82,7 @@ void EngineLoop::ProcessFrame()
         m_App->GetResourceManager(),
         m_App->GetSoundPlayer()
     );
-    
+
     Render();
 
     m_App->GetWindow()->SwapBuffers();
@@ -99,13 +98,12 @@ void EngineLoop::ProcessFrame()
             double sleepTime = targetFrameTime - frameElapsed;
             if (sleepTime > 0.0)
             {
-                
-                if (sleepTime > 0.002) 
+
+                if (sleepTime > 0.002)
                 {
                     std::this_thread::sleep_for(std::chrono::duration<double>(sleepTime - 0.001));
                 }
-                
-                
+
                 while (std::chrono::duration<double>(std::chrono::steady_clock::now() - now).count() < targetFrameTime)
                 {
                     std::this_thread::yield();
@@ -141,7 +139,7 @@ void EngineLoop::FixedUpdate()
 void EngineLoop::Update()
 {
     auto& systemMgr = m_App->GetSystemManager();
-    
+
     systemMgr.UpdateSystems(
         m_App->GetScene(),
         deltaTime,

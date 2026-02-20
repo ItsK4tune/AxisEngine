@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>

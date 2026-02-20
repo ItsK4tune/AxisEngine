@@ -1,12 +1,10 @@
-#include <graphic/renderer/light_renderer.h>
+﻿#include <graphic/renderer/light_renderer.h>
 #include <scene/scene.h>
 #include <graphic/core/shader.h>
 #include <graphic/renderer/shadow.h>
 #include <vector>
 #include <interface/graphic/i_buffer_manager.h>
 #include <utils/logger.h>
-
-
 
 void LightRenderer::Init(IBufferManager& bufferManager)
 {
@@ -15,7 +13,7 @@ void LightRenderer::Init(IBufferManager& bufferManager)
     m_DirLightSSBO = m_BufferManager->CreateBuffer();
     m_PointLightSSBO = m_BufferManager->CreateBuffer();
     m_SpotLightSSBO = m_BufferManager->CreateBuffer();
-    
+
     m_DirLights.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
     m_PointLights.reserve(Shadow::MAX_POINT_LIGHTS_SHADOW * 2);
     m_SpotLights.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW * 2);

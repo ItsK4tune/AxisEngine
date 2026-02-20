@@ -1,4 +1,4 @@
-#include <scene/handlers/component_command_handler.h>
+﻿#include <scene/handlers/component_command_handler.h>
 #include <scene/scene.h>
 #include <scene/component_loader.h>
 #include <physic/physics_loader.h>
@@ -71,7 +71,7 @@ namespace SceneHandlers
         int activeFlag = 1;
         int castShadowFlag = 0;
         float r, g, b, i, rad;
-        
+
         ss >> activeFlag >> castShadowFlag >> r >> g >> b >> i >> rad;
 
         auto &l = scene.registry.emplace<PointLightComponent>(entity);
@@ -107,7 +107,7 @@ namespace SceneHandlers
         int activeFlag = 1;
         int castShadowFlag = 0;
         float r, g, b, i, cut, outer;
-        
+
         ss >> activeFlag >> castShadowFlag >> r >> g >> b >> i >> cut >> outer;
 
         auto &l = scene.registry.emplace<SpotLightComponent>(entity);
@@ -139,22 +139,19 @@ namespace SceneHandlers
         l.specular = glm::vec3(1.0f);
     }
 
-    
     void ComponentCommandHandler::HandleCamera(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
         ComponentLoader::LoadCamera(scene, entity, ss);
-        
+
         scene.SetActiveCamera(entity);
     }
 
-    
     void ComponentCommandHandler::HandleRigidBody(std::stringstream &ss, Scene &scene, entt::entity entity,
                                                   IPhysicsWorld &phys, std::ifstream &file)
     {
         PhysicsLoader::LoadRigidBody(scene, entity, ss, phys, file);
     }
 
-    
     void ComponentCommandHandler::HandleUITransform(std::stringstream &ss, Scene &scene, entt::entity entity)
     {
         ComponentLoader::LoadUITransform(scene, entity, ss);
@@ -170,11 +167,10 @@ namespace SceneHandlers
         ComponentLoader::LoadUIText(scene, entity, ss, res);
     }
 
-    
     void ComponentCommandHandler::HandleSkyboxRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res)
     {
         ComponentLoader::LoadSkyboxRenderer(scene, entity, ss, res);
-        
+
         scene.SetActiveSkybox(entity);
     }
 

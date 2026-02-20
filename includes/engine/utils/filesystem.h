@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <algorithm>
@@ -18,13 +18,13 @@ public:
     static std::string getPath(const std::string &path)
     {
         std::string root = getRoot();
-        
+
         if (!root.empty() && path.find(root) == 0)
             return path;
-            
+
         if (!root.empty())
             return root + "/" + path;
-            
+
         return path;
     }
 
@@ -33,12 +33,12 @@ private:
     {
         static std::string cachedRoot;
         static bool initialized = false;
-        
+
         if (initialized)
             return cachedRoot;
-            
+
         initialized = true;
-        
+
 #ifdef _WIN32
         char exePath[MAX_PATH];
         DWORD len = GetModuleFileNameA(NULL, exePath, MAX_PATH);
@@ -46,7 +46,7 @@ private:
         {
             std::string path(exePath);
             std::replace(path.begin(), path.end(), '\\', '/');
-            
+
             size_t binPos = path.rfind("/bin/");
             if (binPos != std::string::npos)
             {
@@ -61,7 +61,7 @@ private:
         {
             exePath[len] = '\0';
             std::string path(exePath);
-            
+
             size_t binPos = path.rfind("/bin/");
             if (binPos != std::string::npos)
             {

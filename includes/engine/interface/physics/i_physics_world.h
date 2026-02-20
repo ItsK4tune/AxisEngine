@@ -1,11 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 #include <memory>
 
 class ICollisionShape;
 class IRigidBody;
-
 
 class IPhysicsWorld
 {
@@ -18,14 +17,12 @@ public:
 
     virtual void SetGravity(const glm::vec3& gravity) = 0;
     virtual void SetMode(int mode) = 0;
-    
+
     virtual void AddRigidBody(IRigidBody* body) = 0;
     virtual void RemoveRigidBody(IRigidBody* body) = 0;
 
-
     virtual void DebugDraw() = 0;
 
-    
     virtual std::shared_ptr<IRigidBody> CreateRigidBody(float mass, const glm::vec3& startPos, const glm::quat& startRot, std::shared_ptr<ICollisionShape> shape) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateBoxShape(const glm::vec3& halfExtents) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) = 0;

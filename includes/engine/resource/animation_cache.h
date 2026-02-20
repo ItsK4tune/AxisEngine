@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <graphic/geometry/animation.h>
 #include <string>
@@ -13,7 +13,7 @@ public:
 
     void LoadAnimation(const std::string& name, const std::string& path, Model* model);
     Animation* GetAnimation(const std::string& name);
-    
+
     void Clear();
 
 private:

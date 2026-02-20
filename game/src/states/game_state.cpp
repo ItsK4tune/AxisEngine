@@ -1,4 +1,4 @@
-#include <states/game_state.h>
+﻿#include <states/game_state.h>
 #include <scripts/camera_controller.h>
 
 void GameState::OnEnter()
@@ -14,17 +14,17 @@ void GameState::OnEnter()
 
 void GameState::OnUpdate(float dt)
 {
-    
+
 }
 
 void GameState::OnFixedUpdate(float fixedDt)
 {
-    
+
 }
 
 void GameState::OnRender()
 {
-    
+
 }
 
 void GameState::OnExit()

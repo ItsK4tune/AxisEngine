@@ -1,4 +1,4 @@
-#include <unordered_map>
+﻿#include <unordered_map>
 #include <engine/ecs/cached_query.h>
 #include <engine/ecs/component.h>
 #include <glm/glm.hpp>
@@ -15,7 +15,7 @@ public:
     void Init();
     void SyncToPhysics();
     void SyncFromPhysics();
-    
+
     void SyncTransformToPhysics(entt::entity entity);
     void SyncPhysicsToTransform(entt::entity entity);
 

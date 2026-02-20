@@ -1,4 +1,4 @@
-#include <app/io_handler.h>
+﻿#include <app/io_handler.h>
 #include <interface/graphic/i_graphics_context.h>
 
 #include <input/keyboard_manager.h>
@@ -31,21 +31,17 @@ bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, 
         return false;
     }
 
-    
-
-
     if (!m_Graphics->Init())
     {
         LOGGER_ERROR("IOHandler") << "Failed to initialize graphics context";
         return false;
     }
 
-    
     m_Graphics->SetDepthTest(true);
 
     m_KeyboardManager = std::make_unique<KeyboardManager>(m_MonitorManager->GetWindow());
     m_MouseManager = std::make_unique<MouseManager>(m_MonitorManager->GetWindow());
-    m_InputManager = std::make_unique<InputManager>(*m_KeyboardManager, *m_MouseManager);
+    m_InputManager = std::make_unique<InputManager>(*m_KeyboardManager, *m_MouseManager, *m_MonitorManager->GetWindow());
 
     m_MouseManager->SetLastPosition(width / 2.0, height / 2.0);
     m_MouseManager->SetWindowSize(width, height);

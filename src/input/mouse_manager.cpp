@@ -1,4 +1,4 @@
-#include "engine/input/mouse_manager.h"
+﻿#include "engine/input/mouse_manager.h"
 
 MouseManager::MouseManager(IWindow *window)
     : m_Window(window),
@@ -27,7 +27,7 @@ void MouseManager::UpdatePosition(double xpos, double ypos)
     {
         m_XOffset += static_cast<float>(xpos - m_LockX);
         m_YOffset += static_cast<float>(m_LockY - ypos);
-        
+
         m_LastX = m_LockX;
         m_LastY = m_LockY;
     }
@@ -44,7 +44,7 @@ void MouseManager::Update()
 {
     if (m_Mode == Input::CursorMode::Locked && m_Window)
     {
-        
+
         m_Window->SetCursorPos(m_LockX, m_LockY);
     }
 }
@@ -64,12 +64,12 @@ void MouseManager::UpdateButton(Input::Mouse button, int action, int mods)
 {
     if (button == Input::Mouse::Left)
     {
-        if (action == 1) 
+        if (action == 1)
         {
             m_LeftButtonPressed = true;
             m_LeftMouseClicked = true;
         }
-        else if (action == 0) 
+        else if (action == 0)
         {
             m_LeftButtonPressed = false;
         }
@@ -77,12 +77,12 @@ void MouseManager::UpdateButton(Input::Mouse button, int action, int mods)
 
     else if (button == Input::Mouse::Right)
     {
-        if (action == 1) 
+        if (action == 1)
         {
             m_RightButtonPressed = true;
             m_RightMouseClicked = true;
         }
-        else if (action == 0) 
+        else if (action == 0)
         {
             m_RightButtonPressed = false;
         }
@@ -112,8 +112,8 @@ void MouseManager::SetCursorMode(Input::CursorMode mode)
 
     m_Window->SetCursorMode(mode);
     m_Mode = mode;
-    
-    if (mode == Input::CursorMode::Locked || mode == Input::CursorMode::LockedHidden || mode == Input::CursorMode::Disabled) 
+
+    if (mode == Input::CursorMode::Locked || mode == Input::CursorMode::LockedHidden || mode == Input::CursorMode::Disabled)
         m_FirstMouse = true;
 }
 

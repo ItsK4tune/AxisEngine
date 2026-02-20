@@ -1,4 +1,4 @@
-#include <physic/physics_loader.h>
+﻿#include <physic/physics_loader.h>
 #include <ecs/component.h>
 #include <utils/bullet_glm_helpers.h>
 #include <iostream>
@@ -175,7 +175,7 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
 
             if (type == "CAPSULE" || type == "PLAYER")
             {
-                 
+
                  if (!hasRotFactor)
                     rb.angularFactor = glm::vec3(0, 1, 0);
             }
@@ -187,7 +187,7 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, std::string
             {
                 rb.body->SetRestitution(restitution);
             }
-            
+
             physics.AddRigidBody(rb.body.get());
         }
     }

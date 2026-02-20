@@ -1,4 +1,4 @@
-#include <debug/modules/render_debug_module.h>
+﻿#include <debug/modules/render_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -18,30 +18,18 @@ void RenderDebugModule::Init(Application *app)
 
 void RenderDebugModule::OnUpdate(float dt)
 {
-    
+
 }
 
 void RenderDebugModule::Render(Scene &scene)
 {
-    
+
 }
 
 void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
     if (!m_App || !m_Enabled)
         return;
-
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
-    
 
     ProcessKey(keyboard, Input::Key::F6, m_F6Pressed, [this, &keyboard]()
                {
@@ -55,11 +43,11 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
             std::cout << "==============================================" << std::endl;
         } else {
             m_WireframeMode = !m_WireframeMode;
-            if (m_WireframeMode) 
+            if (m_WireframeMode)
                 m_App->GetGraphicsContext().GetRenderStateManager().PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Line);
-            else 
+            else
                 m_App->GetGraphicsContext().GetRenderStateManager().PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill);
-            
+
             std::cout << "\n========== Wireframe Mode (F6) ==========" << std::endl;
             std::cout << "[Debug] Wireframe: " << (m_WireframeMode ? "ON" : "OFF") << std::endl;
             std::cout << "=========================================" << std::endl;
@@ -86,7 +74,7 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
-            
+
         } else {
             static bool uiEnabled = true;
             uiEnabled = !uiEnabled;

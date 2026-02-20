@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <ecs/system.h>
 #include <graphic/core/post_process_pipeline.h>

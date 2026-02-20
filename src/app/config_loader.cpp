@@ -1,4 +1,4 @@
-#include <app/config_loader.h>
+﻿#include <app/config_loader.h>
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
 #include <interface/window/i_window.h>
@@ -7,8 +7,6 @@
 #include <sstream>
 #include <algorithm>
 #include <string>
-
-
 
 void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
 {
@@ -73,7 +71,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
             }
         }
     }
-    
+
     else if (subCmd == "SHADOWS")
     {
         int mode = 1;
@@ -97,7 +95,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         int enable = 0;
         ss >> enable;
         config.cullFaceEnabled = (enable != 0);
-        
+
     }
     else if (subCmd == "DEPTH_TEST")
     {
@@ -115,8 +113,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
 
             std::string modeStr;
             int monitorIdx = 0;
-            
-            config.windowMode = 0; 
+
+            config.windowMode = 0;
 
             if (ss >> modeStr)
             {
@@ -173,9 +171,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
             if (modeStr == "FAST") config.physicsMode = 0;
             else if (modeStr == "BALANCED") config.physicsMode = 1;
             else if (modeStr == "ACCURATE") config.physicsMode = 2;
-            else 
+            else
             {
-                try { config.physicsMode = std::stoi(modeStr); } 
+                try { config.physicsMode = std::stoi(modeStr); }
                 catch(...) { config.physicsMode = 1; }
             }
         }
@@ -194,15 +192,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
 
 void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
 {
-    
-    
-    
-    
+
     std::string subCmd;
-    
-    
-    
-    
+
     ss >> subCmd;
     if (subCmd == "SHADOWS")
     {
@@ -216,7 +208,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         ss >> size;
         if (app) app->GetRenderSystem().SetShadowProjectionSize(size);
     }
-    
+
     else if (subCmd == "INSTANCING")
     {
         int enable = 0;
@@ -234,7 +226,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         if (enable)
         {
             ss >> modeStr;
-            Graphics::CullMode mode = Graphics::CullMode::Back; 
+            Graphics::CullMode mode = Graphics::CullMode::Back;
             if (modeStr == "FRONT")
                 mode = Graphics::CullMode::Front;
             else if (modeStr == "FRONT_AND_BACK")
@@ -259,7 +251,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         if (enable)
         {
             ss >> funcStr;
-            Graphics::CompareFunc func = Graphics::CompareFunc::Less; 
+            Graphics::CompareFunc func = Graphics::CompareFunc::Less;
             if (funcStr == "NEVER")
                 func = Graphics::CompareFunc::Never;
             else if (funcStr == "LESS")
@@ -276,7 +268,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
                 func = Graphics::CompareFunc::Gequal;
             else if (funcStr == "ALWAYS")
                 func = Graphics::CompareFunc::Always;
-            else 
+            else
                 LOGGER_WARN("ConfigLoader") << "Invalid DEPTH_TEST func: " << funcStr << ". Supported: NEVER, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS.";
 
             if (app)
@@ -383,14 +375,14 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             if (modeStr == "FAST") mode = 0;
             else if (modeStr == "BALANCED") mode = 1;
             else if (modeStr == "ACCURATE") mode = 2;
-            else 
+            else
             {
-                try { mode = std::stoi(modeStr); } 
-                catch(...) { 
+                try { mode = std::stoi(modeStr); }
+                catch(...) {
                     LOGGER_WARN("ConfigLoader") << "Invalid PHYSICS_MODE: " << modeStr << ". Supported: FAST, BALANCED, ACCURATE (or 0, 1, 2).";
                 }
             }
-            
+
             if (app)
             {
                 app->GetPhysicsWorld().SetMode(mode);
@@ -408,12 +400,12 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else if (valStr == "NONE") mode = AntiAliasingMode::NONE;
             else
                 LOGGER_WARN("ConfigLoader") << "Invalid ANTIALIASING mode: " << valStr << ". Supported: NONE, FXAA, TAA.";
-            
+
             if (app)
             {
                 app->GetRenderSystem().SetAntiAliasingMode(mode);
             }
         }
     }
-    
+
 }

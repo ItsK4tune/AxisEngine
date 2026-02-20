@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <memory>
 #include <string>
@@ -37,7 +37,7 @@ public:
 
     Scene& GetScene() { return m_Scene; }
     IPhysicsWorld& GetPhysicsWorld() { return *m_PhysicsWorld; }
-    
+
     IOHandler& GetIOHandler() { return *m_IOHandler; }
     ContentService& GetContentService() { return *m_ContentService; }
     RuntimeCore& GetRuntimeCore() { return *m_RuntimeCore; }
@@ -52,7 +52,7 @@ public:
     MouseManager& GetMouse() const { return m_IOHandler->GetMouse(); }
     InputManager& GetInputManager() const { return m_IOHandler->GetInputManager(); }
     IGraphicsContext& GetGraphicsContext() const { return m_IOHandler->GetGraphicsContext(); }
-    
+
     IWindow* GetWindow() const { return m_IOHandler->GetMonitorManager().GetWindow(); }
     int GetWidth() const { return m_IOHandler->GetMonitorManager().GetWidth(); }
     int GetHeight() const { return m_IOHandler->GetMonitorManager().GetHeight(); }
@@ -87,11 +87,11 @@ private:
     std::unique_ptr<ResourceManager> m_ResourceManager;
     std::unique_ptr<SoundPlayer> m_SoundPlayer;
     std::unique_ptr<SceneManager> m_SceneManager;
-    
+
     std::unique_ptr<IOHandler> m_IOHandler;
     std::unique_ptr<ContentService> m_ContentService;
     std::unique_ptr<RuntimeCore> m_RuntimeCore;
     std::unique_ptr<SystemManager> m_SystemManager;
-    
+
     AppConfig m_Config;
 };

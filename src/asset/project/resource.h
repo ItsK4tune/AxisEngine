@@ -1,9 +1,5 @@
-
-
-
+﻿
 #define IDI_APP_ICON                    101
-
-
 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS

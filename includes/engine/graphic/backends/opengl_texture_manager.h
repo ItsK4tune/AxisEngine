@@ -1,4 +1,4 @@
-#include <interface/graphic/i_texture_manager.h>
+﻿#include <interface/graphic/i_texture_manager.h>
 #include <graphic/backends/opengl_translator.h>
 #include <glad/glad.h>
 
@@ -6,11 +6,8 @@ class OpenGLTextureManager : public ITextureManager
 {
 public:
 private:
-    
-
 
 public:
-
 
     unsigned int CreateTexture() override
     {

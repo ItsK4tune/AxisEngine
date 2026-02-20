@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <iostream>
@@ -31,10 +31,10 @@ struct AppConfig
     float shadowProjectionSize = 100.0f;
     bool shadowFrustumCullingEnabled = true;
     float shadowDistanceCulling = 100.0f;
-    float distanceCulling = 0.0f; 
-    int antialiasing = 1; 
+    float distanceCulling = 0.0f;
+    int antialiasing = 1;
 
-    int physicsMode = 1; 
+    int physicsMode = 1;
 
     std::string graphicsBackend = "OPENGL";
     std::string physicsBackend = "BULLET";

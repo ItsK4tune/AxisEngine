@@ -1,8 +1,8 @@
-#include <app/application.h>
+﻿#include <app/application.h>
 #include <script/scriptable.h>
 #include <script/script_registry.h>
 #include <iostream>
-#include <glm/gtx/compatibility.hpp> 
+#include <glm/gtx/compatibility.hpp>
 
 class UIButton : public Scriptable
 {
@@ -15,7 +15,7 @@ public:
 
     void OnCreate() override
     {
-        
+
         BindKey(75, InputEvent::Pressed, [this]()
                 { ToggleVideo(); });
     }
@@ -24,17 +24,16 @@ public:
     {
         ToggleVideo();
 
-        
         if (HasComponent<UITransformComponent>())
         {
             auto &transform = GetComponent<UITransformComponent>();
-            transform.size = originalSize * 0.9f; 
+            transform.size = originalSize * 0.9f;
         }
     }
 
     void OnLeftRelease(float duration) override
     {
-        
+
     }
 
     void ToggleVideo()
@@ -67,7 +66,6 @@ public:
         auto &transform = GetComponent<UITransformComponent>();
         auto &renderer = GetComponent<UIRendererComponent>();
 
-        
         if (!isInit)
         {
             normalColor = renderer.color;
@@ -75,13 +73,12 @@ public:
             isInit = true;
         }
 
-        
         glm::vec4 targetColor = normalColor;
         glm::vec2 targetSize = originalSize;
 
         if (IsHovered())
         {
-            if (IsLeftPressed()) 
+            if (IsLeftPressed())
             {
                 targetColor = clickColor;
                 targetSize = originalSize * 0.95f;
@@ -93,7 +90,6 @@ public:
             }
         }
 
-        
         renderer.color = glm::mix(renderer.color, targetColor, dt * 15.0f);
         transform.size = glm::mix(transform.size, targetSize, dt * 15.0f);
     }

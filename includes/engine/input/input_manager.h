@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <unordered_map>
@@ -21,7 +21,7 @@ struct InputBinding
 class InputManager : public IDeviceManager
 {
 public:
-    InputManager(const KeyboardManager &keyboard, const MouseManager &mouse);
+    InputManager(const KeyboardManager &keyboard, const MouseManager &mouse, const IWindow& window);
 
     void BindAction(const std::string &actionName, InputType type, int code);
     void UnbindAction(const std::string &actionName);
@@ -37,5 +37,6 @@ public:
 private:
     const KeyboardManager &m_Keyboard;
     const MouseManager &m_Mouse;
+    const IWindow &m_Window;
     std::unordered_map<std::string, InputBinding> m_ActionMap;
 };

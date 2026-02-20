@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/audio/i_audio_engine.h>
 #include <interface/audio/i_audio_source.h>
@@ -7,7 +7,6 @@
 #include <memory>
 #include <map>
 #include <vector>
-
 
 class IrrKlangAudioSource;
 class IrrKlangSound;
@@ -29,7 +28,7 @@ public:
     std::shared_ptr<ISound> Play3D(const std::string& filename, const glm::vec3& pos, bool loop = false, bool startPaused = false) override;
 
     std::shared_ptr<IAudioSource> AddSoundSourceFromFile(const std::string& filename) override;
-    
+
     void StopAllSounds() override;
 
 private:

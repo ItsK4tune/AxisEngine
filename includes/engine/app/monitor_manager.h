@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <vector>
@@ -6,10 +6,6 @@
 
 #include <memory>
 #include <interface/window/i_window.h>
-
-
-
-
 
 class MonitorManager : public IDeviceManager
 {
@@ -36,7 +32,7 @@ public:
 
 private:
     std::unique_ptr<IWindow> m_Window;
-    
+
     std::string m_Title = "Axis Engine";
     int m_Width = 800;
     int m_Height = 600;

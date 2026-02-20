@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <scene/scene.h>
 #include <glm/glm.hpp>
@@ -7,11 +7,10 @@
 class Shader;
 class IBufferManager;
 
-
 struct GPUDirLight
 {
     glm::vec3 direction;
-    float shadowIndex; 
+    float shadowIndex;
     glm::vec3 color;
     float intensity;
     glm::vec3 ambient;
@@ -25,7 +24,7 @@ struct GPUDirLight
 struct GPUPointLight
 {
     glm::vec3 position;
-    float shadowIndex; 
+    float shadowIndex;
     glm::vec3 color;
     float intensity;
     float constant;
@@ -45,7 +44,7 @@ struct GPUSpotLight
     glm::vec3 position;
     float pad0;
     glm::vec3 direction;
-    float shadowIndex; 
+    float shadowIndex;
     glm::vec3 color;
     float intensity;
     float cutOff;

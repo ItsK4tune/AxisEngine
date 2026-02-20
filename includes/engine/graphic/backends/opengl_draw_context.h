@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/graphic/i_draw_context.h>
 #include <graphic/backends/opengl_translator.h>

@@ -1,10 +1,10 @@
-#include <debug/modules/physics_debug_module.h>
+﻿#include <debug/modules/physics_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
 #include <iostream>
-#include <GLFW/glfw3.h> 
+
 #include <glm/glm.hpp>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>

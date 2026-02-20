@@ -1,54 +1,52 @@
-#include <resource/model_instance_manager.h>
+﻿#include <resource/model_instance_manager.h>
 #include <resource/model_instance_manager.h>
 #include <utils/logger.h>
-
-
 
 std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic)
 {
     auto it = m_ModelPools.find(name);
-    
+
     if (it != m_ModelPools.end())
     {
         return it->second.model;
     }
-    
+
     std::shared_ptr<Model> model = std::make_shared<Model>(path, isStatic);
-    
+
     ModelPool pool;
     pool.model = model;
-    
+
     m_ModelPools[name] = pool;
-    
+
     LOGGER_DEBUG("ModelInstanceManager") << "Loaded model '" << name << "': " << path << (isStatic ? " (STATIC)" : " (DYNAMIC)");
-    
+
     return model;
 }
 
 void ModelInstanceManager::AddInstance(const std::string& modelPath, const glm::mat4& transform, entt::entity entity)
 {
     auto it = m_ModelPools.find(modelPath);
-    
+
     if (it == m_ModelPools.end())
     {
         GetOrLoadModel(modelPath, modelPath, false);
         it = m_ModelPools.find(modelPath);
     }
-    
+
     ModelInstance instance;
     instance.transform = transform;
     instance.entity = entity;
-    
+
     it->second.instances.push_back(instance);
 }
 
 void ModelInstanceManager::RemoveInstance(const std::string& modelPath, entt::entity entity)
 {
     auto it = m_ModelPools.find(modelPath);
-    
+
     if (it == m_ModelPools.end())
         return;
-    
+
     auto& instances = it->second.instances;
     instances.erase(
         std::remove_if(instances.begin(), instances.end(),
@@ -60,11 +58,11 @@ void ModelInstanceManager::RemoveInstance(const std::string& modelPath, entt::en
 const std::vector<ModelInstance>& ModelInstanceManager::GetInstances(const std::string& modelPath)
 {
     static std::vector<ModelInstance> empty;
-    
+
     auto it = m_ModelPools.find(modelPath);
     if (it == m_ModelPools.end())
         return empty;
-    
+
     return it->second.instances;
 }
 
@@ -118,7 +116,7 @@ size_t ModelInstanceManager::GetInstanceCount(const std::string& modelPath) cons
     auto it = m_ModelPools.find(modelPath);
     if (it == m_ModelPools.end())
         return 0;
-    
+
     return it->second.instances.size();
 }
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <memory>
@@ -23,6 +23,6 @@ public:
     virtual std::shared_ptr<ISound> Play3D(const std::string& filename, const glm::vec3& pos, bool loop = false, bool startPaused = false) = 0;
 
     virtual std::shared_ptr<IAudioSource> AddSoundSourceFromFile(const std::string& filename) = 0;
-    
+
     virtual void StopAllSounds() = 0;
 };

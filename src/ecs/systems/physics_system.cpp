@@ -1,4 +1,4 @@
-#include <ecs/systems/physics_system.h>
+﻿#include <ecs/systems/physics_system.h>
 #include <utils/logger.h>
 #include <physic/physics_transform_sync.h>
 #include <physic/physics_collision_dispatcher.h>
@@ -107,6 +107,6 @@ void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shade
     shader.setMat4("projection", projection);
 
     renderState.Disable(Graphics::ServerCapability::DepthTest);
-    physicsWorld.DebugDraw(); 
+    physicsWorld.DebugDraw();
     renderState.Enable(Graphics::ServerCapability::DepthTest);
 }

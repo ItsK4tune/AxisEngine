@@ -1,4 +1,4 @@
-#include <scene/scene_manager.h>
+﻿#include <scene/scene_manager.h>
 #include <utils/logger.h>
 #include <scene/scene_loader.h>
 #include <script/script_registry.h>
@@ -20,7 +20,7 @@ void SceneManager::LoadScene(const std::string &filePath)
     }
 
     std::vector<entt::entity> loadedEntities = SceneLoader::Load(filePath, m_Scene, m_Resources, m_Physics, m_SoundPlayer, m_App);
-    
+
     if (!loadedEntities.empty())
     {
         m_LoadedScenes[filePath] = loadedEntities;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/audio/i_audio_engine.h>
 #include <interface/audio/i_audio_source.h>
@@ -19,7 +19,7 @@ public:
     void UpdateListener(glm::vec3 position, glm::vec3 lookDir);
 
     void SetGlobalVolume(float volume);
-    
+
     std::shared_ptr<ISound> Play2D(std::shared_ptr<IAudioSource> source, bool loop = false);
 
     void StopAll();

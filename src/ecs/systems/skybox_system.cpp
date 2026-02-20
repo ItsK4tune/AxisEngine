@@ -1,11 +1,9 @@
-#include <ecs/systems/skybox_system.h>
+﻿#include <ecs/systems/skybox_system.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
 #include <interface/graphic/i_texture_manager.h>
 #include <graphic/core/shader.h>
-#include <graphic/renderer/skybox.h> 
-
-
+#include <graphic/renderer/skybox.h>
 
 void SkyboxRenderSystem::Init(IGraphicsContext& context)
 {
@@ -21,7 +19,7 @@ void SkyboxRenderSystem::Render(Scene &scene)
         return;
 
     auto &camera = scene.registry.get<CameraComponent>(camEntity);
-    
+
     auto& rsm = m_Context->GetRenderStateManager();
     auto& tm = m_Context->GetTextureManager();
 

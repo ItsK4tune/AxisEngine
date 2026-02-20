@@ -1,4 +1,4 @@
-#include <ecs/system.h>
+﻿#include <ecs/system.h>
 #include <interface/window/input_codes.h>
 
 void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState)

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <ecs/systems/physics_system.h>
 #include <ecs/systems/animation_system.h>

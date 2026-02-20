@@ -1,4 +1,4 @@
-#include <graphic/geometry/mesh.h>
+﻿#include <graphic/geometry/mesh.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <interface/graphic/i_buffer_manager.h>
@@ -145,35 +145,27 @@ void Mesh::setupMesh()
     bm.BindBuffer(Graphics::BufferType::ElementArrayBuffer, EBO);
     bm.BufferData(Graphics::BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), Graphics::BufferUsage::StaticDraw);
 
-    
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Position));
 
-    
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Normal));
 
-    
     bm.EnableVertexAttribArray(2);
     bm.VertexAttribPointer(2, 2, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, TexCoords));
 
-    
     bm.EnableVertexAttribArray(3);
     bm.VertexAttribPointer(3, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Tangent));
 
-    
     bm.EnableVertexAttribArray(4);
     bm.VertexAttribPointer(4, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Bitangent));
 
-    
     bm.EnableVertexAttribArray(5);
     bm.VertexAttribIPointer(5, 4, Graphics::DataType::Int, sizeof(Vertex), (void *)offsetof(Vertex, m_BoneIDs));
 
-    
     bm.EnableVertexAttribArray(6);
     bm.VertexAttribPointer(6, 4, Graphics::DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, m_Weights));
 
-    
     instanceVBO = bm.CreateBuffer();
     bm.BindBuffer(Graphics::BufferType::ArrayBuffer, instanceVBO);
 

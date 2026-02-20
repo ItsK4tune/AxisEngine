@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -43,7 +43,7 @@ private:
 
     bool m_F10Pressed = false;
     bool m_ShowStatsOverlay = true;
-    int m_OverlayMode = 1; 
+    int m_OverlayMode = 1;
 
     float m_CurrentFps = 0.0f;
     float m_CurrentFrameTime = 0.0f;

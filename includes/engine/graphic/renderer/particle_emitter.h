@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <vector>
 #include <glm/glm.hpp>
@@ -86,7 +86,7 @@ private:
 
     unsigned int FirstUnusedParticle();
     void RespawnParticle(Particle &particle, const glm::vec3 &offset);
-    
+
     static IBufferManager& GetBufferManager();
     static ITextureManager& GetTextureManager();
     static IDrawContext& GetDrawContext();

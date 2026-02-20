@@ -1,7 +1,6 @@
-#pragma once
+﻿#pragma once
 #include <interface/graphic/graphics_types.h>
 #include <string>
-
 
 class IBufferManager;
 class ITextureManager;
@@ -21,6 +20,8 @@ public:
     virtual void SetViewport(int x, int y, int width, int height) = 0;
     virtual void SetDepthTest(bool enabled) = 0;
     virtual void SetCullFace(bool enabled) = 0;
+    virtual void SetBlending(bool enabled) = 0;
+    virtual void SetBlendFunc(Graphics::BlendFactor src, Graphics::BlendFactor dst) = 0;
 
     virtual void Clear(Graphics::BufferBit flags) = 0;
 

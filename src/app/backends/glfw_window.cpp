@@ -1,21 +1,10 @@
-#include <engine/app/backends/glfw_window.h>
+﻿#include <engine/app/backends/glfw_window.h>
 #include <app/backends/glfw_translator.h>
 #include <utils/logger.h>
 #include <iostream>
 
-
-
-
-
-
-
-
-
-
-
-
 namespace {
-    
+
 }
 
 GLFWWindow::GLFWWindow() {}
@@ -44,7 +33,6 @@ bool GLFWWindow::Init(int width, int height, const std::string& title) {
     glfwMakeContextCurrent(m_Window);
     glfwSetWindowUserPointer(m_Window, this);
 
-    
     glfwSetFramebufferSizeCallback(m_Window, framebuffer_size_callback);
     glfwSetKeyCallback(m_Window, key_callback);
     glfwSetMouseButtonCallback(m_Window, mouse_button_callback);
@@ -53,7 +41,7 @@ bool GLFWWindow::Init(int width, int height, const std::string& title) {
 
     m_Width = width;
     m_Height = height;
-    
+
     return true;
 }
 
@@ -123,12 +111,12 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         targetMonitor = monitors[monitorIndex];
     else if (count > 0)
         targetMonitor = monitors[0];
-    
+
     if (!targetMonitor) targetMonitor = glfwGetPrimaryMonitor();
 
     const GLFWvidmode* videoMode = glfwGetVideoMode(targetMonitor);
     if (!videoMode) return;
-    
+
     int targetRefreshRate = (refreshRate > 0) ? refreshRate : videoMode->refreshRate;
 
     if (mode == WindowMode::Fullscreen) {
@@ -179,6 +167,39 @@ std::vector<MonitorInfo> GLFWWindow::GetMonitors() const {
     return monitors;
 }
 
+std::vector<DeviceInfo> GLFWWindow::GetConnectedDevices() const {
+    std::vector<DeviceInfo> devices;
+
+    // Default Keyboard & Mouse
+    DeviceInfo kbdInfo;
+    kbdInfo.id = "keyboard_0";
+    kbdInfo.name = "Primary Keyboard";
+    kbdInfo.type = AxisDeviceType::Keyboard;
+    kbdInfo.isDefault = true;
+    devices.push_back(kbdInfo);
+
+    DeviceInfo mouseInfo;
+    mouseInfo.id = "mouse_0";
+    mouseInfo.name = "Primary Mouse";
+    mouseInfo.type = AxisDeviceType::Mouse;
+    mouseInfo.isDefault = true;
+    devices.push_back(mouseInfo);
+
+    // Joysticks
+    for (int i = 0; i <= GLFW_JOYSTICK_LAST; i++) {
+        if (glfwJoystickPresent(i)) {
+            DeviceInfo joyInfo;
+            joyInfo.id = std::to_string(i);
+            const char* name = glfwGetJoystickName(i);
+            joyInfo.name = name ? name : "Unknown Joystick";
+            joyInfo.type = AxisDeviceType::Joystick;
+            joyInfo.isDefault = false;
+            devices.push_back(joyInfo);
+        }
+    }
+    return devices;
+}
+
 void* GLFWWindow::GetNativeWindow() const {
     return m_Window;
 }
@@ -202,7 +223,6 @@ void GLFWWindow::SetCursorPos(double x, double y) {
     if (m_Window) glfwSetCursorPos(m_Window, x, y);
 }
 
-
 void GLFWWindow::framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self) {
@@ -215,7 +235,7 @@ void GLFWWindow::framebuffer_size_callback(GLFWwindow* window, int width, int he
 void GLFWWindow::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self && self->m_KeyCallback) {
-        
+
         self->m_KeyCallback((int)GLFWTranslator::ToInputKey(key), scancode, action, mods);
     }
 }

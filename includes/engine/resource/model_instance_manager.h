@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <entt/entt.hpp>
 #include <graphic/geometry/model.h>
@@ -7,7 +7,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 
-#include <memory> 
+#include <memory>
 
 struct ModelInstance
 {
@@ -24,14 +24,14 @@ public:
     std::shared_ptr<Model> GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic = false);
     void AddInstance(const std::string& modelPath, const glm::mat4& transform, entt::entity entity);
     void RemoveInstance(const std::string& modelPath, entt::entity entity);
-    
+
     const std::vector<ModelInstance>& GetInstances(const std::string& modelPath);
-    
+
     void ClearAllInstances();
     void Clear() { ClearAllInstances(); }
     void UnloadUnusedModels();
     bool UnloadModel(const std::string& name);
-    
+
     size_t GetInstanceCount(const std::string& modelPath) const;
     size_t GetTotalInstanceCount() const;
     size_t GetLoadedModelCount() const;

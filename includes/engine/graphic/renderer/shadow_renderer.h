@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <scene/scene.h>
 #include <graphic/renderer/shadow.h>
@@ -18,7 +18,7 @@ public:
     void SetShadowMode(int mode) { m_ShadowMode = mode; }
     bool IsShadowsEnabled() const { return m_EnableShadows; }
     int GetShadowMode() const { return m_ShadowMode; }
-    
+
     void SetShadowProjectionSize(float size) { m_ShadowProjectionSize = size; }
     void SetShadowFrustumCulling(bool enable) { m_ShadowFrustumCullingEnabled = enable; }
     void SetShadowDistanceCulling(float distance) { m_ShadowDistanceCullingSq = distance * distance; }
@@ -31,16 +31,16 @@ public:
 
 private:
     Shadow m_Shadow;
-    
+
     glm::mat4 m_LightSpaceMatrixDir[Shadow::MAX_DIR_LIGHTS_SHADOW];
     glm::mat4 m_LightSpaceMatrixSpot[Shadow::MAX_SPOT_LIGHTS_SHADOW];
     float m_FarPlanePoint = 100.0f;
     float m_FarPlaneSpot = 100.0f;
     bool m_EnableShadows = true;
-    int m_ShadowMode = 1; 
-    
+    int m_ShadowMode = 1;
+
     float m_ShadowProjectionSize = 20.0f;
     bool m_ShadowFrustumCullingEnabled = true;
-    float m_ShadowDistanceCullingSq = 10000.0f; 
+    float m_ShadowDistanceCullingSq = 10000.0f;
     bool m_DirLightLimitWarned = false;
 };

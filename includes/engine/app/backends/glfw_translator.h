@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <GLFW/glfw3.h>
 #include <interface/window/input_codes.h>
@@ -268,7 +268,7 @@ public:
             case GLFW_MOUSE_BUTTON_6: return Input::Mouse::Button6;
             case GLFW_MOUSE_BUTTON_7: return Input::Mouse::Button7;
             case GLFW_MOUSE_BUTTON_8: return Input::Mouse::Button8;
-            default: return Input::Mouse::Left; 
+            default: return Input::Mouse::Left;
         }
     }
 
@@ -291,7 +291,7 @@ public:
             case Input::CursorMode::Normal: return GLFW_CURSOR_NORMAL;
             case Input::CursorMode::Hidden: return GLFW_CURSOR_HIDDEN;
             case Input::CursorMode::Disabled: return GLFW_CURSOR_DISABLED;
-            case Input::CursorMode::LockedHidden: return GLFW_CURSOR_DISABLED; 
+            case Input::CursorMode::LockedHidden: return GLFW_CURSOR_DISABLED;
             case Input::CursorMode::Locked: return GLFW_CURSOR_NORMAL;
             default: return GLFW_CURSOR_NORMAL;
         }

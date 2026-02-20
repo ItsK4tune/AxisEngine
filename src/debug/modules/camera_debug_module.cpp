@@ -1,4 +1,4 @@
-#include <debug/modules/camera_debug_module.h>
+﻿#include <debug/modules/camera_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -6,7 +6,7 @@
 #include <script/script_registry.h>
 #include <script/default_camera_controller.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
+
 
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
@@ -18,12 +18,12 @@ void CameraDebugModule::Init(Application *app)
 
 void CameraDebugModule::OnUpdate(float dt)
 {
-    
+
 }
 
 void CameraDebugModule::Render(Scene &scene)
 {
-    
+
 }
 
 void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)

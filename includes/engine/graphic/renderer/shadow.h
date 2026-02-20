@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -14,7 +14,7 @@ public:
     Shadow();
     ~Shadow();
 
-    void Init(unsigned int width = 2048, unsigned int height = 2048, 
+    void Init(unsigned int width = 2048, unsigned int height = 2048,
               unsigned int pointWidth = 1024, unsigned int pointHeight = 1024);
     void Shutdown();
 

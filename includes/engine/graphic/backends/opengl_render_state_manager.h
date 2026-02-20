@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/graphic/i_render_state_manager.h>
 #include <graphic/backends/opengl_translator.h>
@@ -10,19 +10,19 @@ public:
     void Enable(Graphics::ServerCapability cap) override { glEnable(GLTranslator::ToGL(cap)); }
     void Disable(Graphics::ServerCapability cap) override { glDisable(GLTranslator::ToGL(cap)); }
 
-    void BlendFunc(Graphics::BlendFactor sfactor, Graphics::BlendFactor dfactor) override { 
-        glBlendFunc(GLTranslator::ToGL(sfactor), GLTranslator::ToGL(dfactor)); 
+    void BlendFunc(Graphics::BlendFactor sfactor, Graphics::BlendFactor dfactor) override {
+        glBlendFunc(GLTranslator::ToGL(sfactor), GLTranslator::ToGL(dfactor));
     }
     void BlendEquation(Graphics::BlendEquation mode) override { glBlendEquation(GLTranslator::ToGL(mode)); }
 
     void DepthFunc(Graphics::CompareFunc func) override { glDepthFunc(GLTranslator::ToGL(func)); }
     void DepthMask(bool flag) override { glDepthMask(flag ? GL_TRUE : GL_FALSE); }
 
-    void StencilFunc(Graphics::CompareFunc func, int ref, unsigned int mask) override { 
-        glStencilFunc(GLTranslator::ToGL(func), ref, mask); 
+    void StencilFunc(Graphics::CompareFunc func, int ref, unsigned int mask) override {
+        glStencilFunc(GLTranslator::ToGL(func), ref, mask);
     }
-    void StencilOp(Graphics::StencilOp sfail, Graphics::StencilOp dpfail, Graphics::StencilOp dppass) override { 
-        glStencilOp(GLTranslator::ToGL(sfail), GLTranslator::ToGL(dpfail), GLTranslator::ToGL(dppass)); 
+    void StencilOp(Graphics::StencilOp sfail, Graphics::StencilOp dpfail, Graphics::StencilOp dppass) override {
+        glStencilOp(GLTranslator::ToGL(sfail), GLTranslator::ToGL(dpfail), GLTranslator::ToGL(dppass));
     }
     void StencilMask(unsigned int mask) override { glStencilMask(mask); }
 
@@ -41,7 +41,7 @@ public:
     {
         GLint mode;
         glGetIntegerv(GL_POLYGON_MODE, &mode);
-        
+
         if (mode == GL_POINT) return Graphics::PolygonMode::Point;
         if (mode == GL_LINE) return Graphics::PolygonMode::Line;
         return Graphics::PolygonMode::Fill;

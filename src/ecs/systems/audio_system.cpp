@@ -1,4 +1,4 @@
-#include <ecs/system.h>
+﻿#include <ecs/system.h>
 #include <ecs/component.h>
 
 #include <audio/sound_player.h>
@@ -27,7 +27,7 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
             if (audio.sound)
             {
                 audio.sound->Stop();
-                
+
                 audio.sound = nullptr;
             }
 
@@ -37,12 +37,11 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
                 glm::vec3 pos = transform ? transform->position : glm::vec3(0.0f);
 
                 auto source = soundPlayer.GetEngine()->AddSoundSourceFromFile(audio.filePath);
-                
+
                 if (source)
                 {
                     source->SetDefaultMinDistance(audio.minDistance);
-                    
-                    
+
                     audio.sound = soundPlayer.Play3D(audio.filePath, pos, audio.loop);
                 }
             }

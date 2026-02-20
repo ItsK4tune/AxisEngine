@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <script/scriptable.h>
 #include <ecs/component.h>

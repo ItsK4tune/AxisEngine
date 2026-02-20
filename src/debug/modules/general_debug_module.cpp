@@ -1,4 +1,4 @@
-#include <debug/modules/general_debug_module.h>
+﻿#include <debug/modules/general_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -87,7 +87,7 @@ void GeneralDebugModule::OnUpdate(float dt)
 
 void GeneralDebugModule::Render(Scene &scene)
 {
-    
+
 }
 
 void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
@@ -121,7 +121,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
     ProcessKey(keyboard, Input::Key::F12, m_F12Pressed, [this, &keyboard]()
                {
         bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
-        
+
         if (shift)
         {
             auto& mouse = m_App->GetMouse();
@@ -153,7 +153,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
             else if (abs(current - 1.5f) < 0.01f) next = 2.0f;
             else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
             else next = 1.0f;
-            
+
             m_App->SetTimeScale(next);
             std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
             std::cout << "[Debug] Time Scale: " << next << "x" << std::endl;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <chrono>
 
@@ -17,7 +17,7 @@ public:
     void SetPhysicsStep(float step);
     void SetTimeScale(float scale);
     void SetPaused(bool paused);
-    
+
     float GetTimeScale() const { return m_TimeScale; }
     float GetRealDeltaTime() const { return realDeltaTime; }
     bool IsPaused() const { return m_IsPaused; }

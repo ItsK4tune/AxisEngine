@@ -1,4 +1,4 @@
-#include <physic/backends/bullet_physics_world.h>
+﻿#include <physic/backends/bullet_physics_world.h>
 #include <physic/backends/bullet_debug_drawer.h>
 #include <utils/logger.h>
 
@@ -19,7 +19,7 @@ void BulletPhysicsWorld::Init()
     m_Solver = std::make_unique<btSequentialImpulseConstraintSolver>();
     m_DynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
         m_Dispatcher.get(), m_OverlappingPairCache.get(), m_Solver.get(), m_CollisionConfig.get());
-    
+
     m_DynamicsWorld->setGravity(btVector3(0, -9.81f, 0));
 
     m_OwnedDebugDrawer = std::make_unique<BulletDebugDrawer>();
@@ -64,7 +64,7 @@ void BulletPhysicsWorld::SetMode(int mode)
 void BulletPhysicsWorld::AddRigidBody(IRigidBody* body)
 {
     if (!m_DynamicsWorld || !body) return;
-    
+
     BulletRigidBody* bBody = static_cast<BulletRigidBody*>(body);
     if (bBody->GetRaw())
     {
@@ -75,15 +75,13 @@ void BulletPhysicsWorld::AddRigidBody(IRigidBody* body)
 void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
 {
     if (!m_DynamicsWorld || !body) return;
-    
+
     BulletRigidBody* bBody = static_cast<BulletRigidBody*>(body);
     if (bBody->GetRaw())
     {
         m_DynamicsWorld->removeRigidBody(bBody->GetRaw());
     }
 }
-
-
 
 void BulletPhysicsWorld::DebugDraw()
 {
@@ -100,9 +98,9 @@ void BulletPhysicsWorld::DebugDraw()
 std::shared_ptr<IRigidBody> BulletPhysicsWorld::CreateRigidBody(float mass, const glm::vec3& startPos, const glm::quat& startRot, std::shared_ptr<ICollisionShape> shape)
 {
     if (!shape) return nullptr;
-    
+
     BulletCollisionShape* bShape = static_cast<BulletCollisionShape*>(shape.get());
-    
+
     btTransform startTransform;
     startTransform.setIdentity();
     startTransform.setOrigin(btVector3(startPos.x, startPos.y, startPos.z));
@@ -141,25 +139,25 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCapsuleShape(float ra
 std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCompoundShape()
 {
     btCompoundShape* shape = new btCompoundShape();
-    return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::CompoundHull); 
+    return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::CompoundHull);
 }
 
 void BulletPhysicsWorld::AddChildShape(ICollisionShape* parent, ICollisionShape* child, const glm::vec3& pos, const glm::quat& rot)
 {
     if (!parent || !child) return;
-    
+
     BulletCollisionShape* bParent = static_cast<BulletCollisionShape*>(parent);
     BulletCollisionShape* bChild = static_cast<BulletCollisionShape*>(child);
-    
+
     if (bParent->GetRaw() && bChild->GetRaw() && bParent->GetRaw()->getShapeType() == COMPOUND_SHAPE_PROXYTYPE)
     {
         btCompoundShape* compound = static_cast<btCompoundShape*>(bParent->GetRaw());
-        
+
         btTransform localTrans;
         localTrans.setIdentity();
         localTrans.setOrigin(btVector3(pos.x, pos.y, pos.z));
         localTrans.setRotation(btQuaternion(rot.x, rot.y, rot.z, rot.w));
-        
+
         compound->addChildShape(localTrans, bChild->GetRaw());
     }
 }

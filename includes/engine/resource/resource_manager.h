@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <map>
 #include <string>
@@ -36,11 +36,11 @@ public:
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
     void LoadTexture(const std::string& name, const std::string& path, bool async = true);
     void UnloadTexture(const std::string& name);
-    
+
     void LoadModel(const std::string& name, const std::string& path, bool isStatic = false);
     void LoadModelAsync(const std::string& name, const std::string& path, bool isStatic = false);
     void UnloadModel(const std::string& name);
-    
+
     void LoadAnimation(const std::string& name, const std::string& path, const std::string& modelName);
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
     void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine);
@@ -57,7 +57,7 @@ public:
     UIModel* GetUIModel(const std::string& name);
 
     void ClearResource();
-    
+
     ShaderCache& GetShaderCache() { return m_ShaderCache; }
     ModelInstanceManager& GetModelInstanceManager() { return m_ModelInstanceManager; }
 
@@ -72,7 +72,7 @@ private:
     SoundCache m_SoundCache;
     AnimationCache m_AnimationCache;
     ResourceWatcher m_ResourceWatcher;
-    
+
     struct ModelInfo {
         std::string path;
         bool isStatic;

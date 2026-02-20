@@ -1,8 +1,8 @@
-#include <glad/glad.h>
+﻿
 #include <app/application.h>
 
-#include <app/backends/glfw_window.h>
 #include <graphic/backends/opengl_context.h>
+#include <app/backends/glfw_window.h>
 #include <audio/backends/irrklang_audio_engine.h>
 #include <audio/audio_manager.h>
 #include <physic/backends/bullet_physics_world.h>
@@ -24,7 +24,6 @@
 #include <utils/logger.h>
 #include <utils/filesystem.h>
 
-
 Application::Application()
 {
 }
@@ -34,25 +33,20 @@ Application::~Application()
     if (m_RuntimeCore)
         m_RuntimeCore->GetStateMachine().Clear();
 
-    
     if (m_SystemManager)
         m_SystemManager->ShutdownSystems();
     m_SystemManager.reset();
-    
-    
+
     m_Scene.registry.clear();
 
-    
     m_ContentService.reset();
     m_SceneManager.reset();
     m_RuntimeCore.reset();
 
-    
     m_SoundPlayer.reset();
     m_ResourceManager.reset();
     m_PhysicsWorld.reset();
 
-    
     m_IOHandler.reset();
 
     LOGGER_INFO("Application") << "Application shutdown completed.";
@@ -70,12 +64,11 @@ bool Application::Init(const AppConfig& config)
     }
     else
     {
-        
+
         LOGGER_ERROR("Application") << "Unsupported Graphics Backend: " << m_Config.graphicsBackend << ". Defaulting to OpenGL.";
         graphicsContext = std::make_unique<OpenGLContext>();
     }
 
-    
     std::unique_ptr<IAudioEngine> audioEngine;
     if (m_Config.audioBackend == "IRRKLANG")
     {
@@ -87,11 +80,11 @@ bool Application::Init(const AppConfig& config)
         LOGGER_ERROR("Application") << "Unsupported Audio Backend: " << m_Config.audioBackend << ". Defaulting to IrrKlang.";
         audioEngine = std::make_unique<IrrKlangAudioEngine>();
     }
-    
+
     m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext), std::move(audioEngine));
 
     auto window = std::make_unique<GLFWWindow>();
-    if (!m_IOHandler->Init(std::move(window), m_Config.title, m_Config.width, m_Config.height, m_Config.windowMode, 
+    if (!m_IOHandler->Init(std::move(window), m_Config.title, m_Config.width, m_Config.height, m_Config.windowMode,
                            m_Config.monitorIndex, m_Config.refreshRate, m_Config.vsync, m_Config.frameRateLimit))
     {
         LOGGER_ERROR("Application") << "Failed to initialize IOHandler";
@@ -124,7 +117,7 @@ bool Application::Init(const AppConfig& config)
                                     m_IOHandler->GetGraphicsContext().GetDrawContext());
     BulletDebugDrawer::SetManagers(m_IOHandler->GetGraphicsContext().GetBufferManager(),
                              m_IOHandler->GetGraphicsContext().GetDrawContext());
-                             
+
     if (!m_Config.depthTestEnabled)
         m_IOHandler->GetGraphicsContext().SetDepthTest(false);
     if (m_Config.cullFaceEnabled)
@@ -152,7 +145,6 @@ bool Application::Init(const AppConfig& config)
         m_IOHandler->GetAudioManager().SetActiveDevice(m_Config.audioDevice);
     }
 
-    // 3. Physics Backend
     if (m_Config.physicsBackend == "BULLET")
     {
         m_PhysicsWorld = std::make_unique<BulletPhysicsWorld>();

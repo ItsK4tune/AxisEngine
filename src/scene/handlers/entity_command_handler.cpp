@@ -1,4 +1,4 @@
-#include <scene/handlers/entity_command_handler.h>
+﻿#include <scene/handlers/entity_command_handler.h>
 #include <scene/scene.h>
 #include <ecs/component.h>
 #include <utils/logger.h>
@@ -10,15 +10,15 @@ namespace SceneHandlers
     entt::entity EntityCommandHandler::HandleNewEntity(std::stringstream& ss, Scene& scene)
     {
         entt::entity entity = scene.createEntity();
-        
+
         std::string entityName = "unnamed";
         std::string entityTag = "default";
-        
+
         if (ss >> entityName)
         {
             ss >> entityTag;
         }
-        
+
         scene.registry.emplace<InfoComponent>(entity, entityName, entityTag);
         return entity;
     }
@@ -27,7 +27,7 @@ namespace SceneHandlers
     {
         float x, y, z, rx, ry, rz, sx, sy, sz;
         ss >> x >> y >> z >> rx >> ry >> rz >> sx >> sy >> sz;
-        
+
         auto& t = scene.registry.get_or_emplace<TransformComponent>(entity);
         t.position = glm::vec3(x, y, z);
         t.rotation = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
@@ -41,7 +41,7 @@ namespace SceneHandlers
 
         entt::entity parentEntity = entt::null;
         auto view = scene.registry.view<InfoComponent>();
-        
+
         for (auto e : view)
         {
             const auto& info = view.get<InfoComponent>(e);
@@ -54,7 +54,7 @@ namespace SceneHandlers
 
         if (parentEntity != entt::null)
         {
-            if (scene.registry.all_of<TransformComponent>(entity) && 
+            if (scene.registry.all_of<TransformComponent>(entity) &&
                 scene.registry.all_of<TransformComponent>(parentEntity))
             {
                 auto& transform = scene.registry.get<TransformComponent>(entity);
@@ -68,7 +68,7 @@ namespace SceneHandlers
     }
 
     void EntityCommandHandler::HandleChildren(
-        std::stringstream& ss, 
+        std::stringstream& ss,
         entt::entity entity,
         std::map<entt::entity, std::vector<std::string>>& deferredChildren)
     {

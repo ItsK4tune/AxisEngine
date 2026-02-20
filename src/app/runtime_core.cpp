@@ -1,4 +1,4 @@
-#include <app/runtime_core.h>
+﻿#include <app/runtime_core.h>
 
 RuntimeCore::RuntimeCore(Application* app)
     : m_EngineLoop(app)

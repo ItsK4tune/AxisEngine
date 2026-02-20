@@ -1,11 +1,9 @@
-#include <graphic/geometry/animation.h>
+﻿#include <graphic/geometry/animation.h>
 #include <graphic/geometry/model.h>
 #include <utils/assimp_glm_helpers.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
-
-
 
 Animation::Animation(const std::string &animationPath, Model &model)
 {
@@ -24,8 +22,6 @@ Animation::Animation(const std::string &animationPath, Model &model)
     BindNodesToBones(m_RootNode);
 }
 
-
-
 Bone *Animation::FindBone(const std::string &name)
 {
     if (m_BoneMap.find(name) != m_BoneMap.end()) {
@@ -38,10 +34,10 @@ void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
 {
     int size = animation->mNumChannels;
 
-    std::unordered_map<std::string, BoneInfo> &boneInfoMap = model.GetBoneInfoMap(); 
-    int &boneCount = model.GetBoneCount();      
+    std::unordered_map<std::string, BoneInfo> &boneInfoMap = model.GetBoneInfoMap();
+    int &boneCount = model.GetBoneCount();
 
-    m_Bones.reserve(size); 
+    m_Bones.reserve(size);
 
     for (int i = 0; i < size; i++)
     {
@@ -53,7 +49,7 @@ void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
             boneInfoMap[boneName].id = boneCount;
             boneCount++;
         }
-        
+
         m_Bones.push_back(Bone(channel->mNodeName.data,
                                boneInfoMap[channel->mNodeName.data].id, channel));
     }

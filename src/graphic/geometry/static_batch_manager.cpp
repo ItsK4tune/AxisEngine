@@ -1,10 +1,8 @@
-#include <graphic/geometry/static_batch_manager.h>
+﻿#include <graphic/geometry/static_batch_manager.h>
 #include <utils/logger.h>
 #include <fstream>
 #include <interface/graphic/i_buffer_manager.h>
 #include <interface/graphic/i_draw_context.h>
-
-
 
 IBufferManager* StaticBatchManager::s_BufferManager = nullptr;
 IDrawContext* StaticBatchManager::s_DrawContext = nullptr;
@@ -50,21 +48,21 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
         LOGGER_ERROR("StaticBatchManager") << "Model and transform count mismatch";
         return;
     }
-    
+
     std::vector<Vertex> mergedVertices;
     std::vector<unsigned int> mergedIndices;
-    
+
     MergeMeshes(models, transforms, mergedVertices, mergedIndices);
-    
+
     BatchData batch;
     CreateGPUBuffers(batch, mergedVertices, mergedIndices);
     batch.shader = nullptr;
     batch.materialName = "";
-    
+
     m_Batches[name] = batch;
-    
-    LOGGER_INFO("StaticBatchManager") << "Created batch: " << name 
-              << " (" << mergedVertices.size() << " vertices, " 
+
+    LOGGER_INFO("StaticBatchManager") << "Created batch: " << name
+              << " (" << mergedVertices.size() << " vertices, "
               << mergedIndices.size() << " indices)";
 }
 
@@ -74,34 +72,34 @@ void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& 
                                      std::vector<unsigned int>& outIndices)
 {
     unsigned int indexOffset = 0;
-    
+
     for (size_t i = 0; i < models.size(); i++)
     {
         const glm::mat4& transform = transforms[i];
         std::shared_ptr<Model> model = models[i];
-        
+
         for (const auto& mesh : model->meshes)
         {
             for (const auto& vertex : mesh.vertices)
             {
                 Vertex transformedVertex = vertex;
-                
+
                 glm::vec4 transformedPos = transform * glm::vec4(vertex.Position, 1.0f);
                 transformedVertex.Position = glm::vec3(transformedPos);
-                
+
                 glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
                 transformedVertex.Normal = normalMatrix * vertex.Normal;
                 transformedVertex.Tangent = normalMatrix * vertex.Tangent;
                 transformedVertex.Bitangent = normalMatrix * vertex.Bitangent;
-                
+
                 outVertices.push_back(transformedVertex);
             }
-            
+
             for (unsigned int index : mesh.indices)
             {
                 outIndices.push_back(index + indexOffset);
             }
-            
+
             indexOffset += mesh.vertices.size();
         }
     }
@@ -115,34 +113,34 @@ void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<Ve
 
     batch.vertexCount = vertices.size();
     batch.indexCount = indices.size();
-    
+
     batch.vao = bm.GenVertexArray();
     batch.vbo = bm.GenBuffer();
     batch.ebo = bm.GenBuffer();
-    
+
     bm.BindVertexArray(batch.vao);
-    
+
     bm.BindBuffer(Graphics::BufferType::ArrayBuffer, batch.vbo);
     bm.BufferData(Graphics::BufferType::ArrayBuffer, vertices.size() * sizeof(Vertex), vertices.data(), Graphics::BufferUsage::StaticDraw);
-    
+
     bm.BindBuffer(Graphics::BufferType::ElementArrayBuffer, batch.ebo);
     bm.BufferData(Graphics::BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), Graphics::BufferUsage::StaticDraw);
-    
+
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)0);
-    
+
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
-    
+
     bm.EnableVertexAttribArray(2);
     bm.VertexAttribPointer(2, 2, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-    
+
     bm.EnableVertexAttribArray(3);
     bm.VertexAttribPointer(3, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-    
+
     bm.EnableVertexAttribArray(4);
     bm.VertexAttribPointer(4, 3, Graphics::DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
-    
+
     bm.BindVertexArray(0);
 }
 
@@ -156,9 +154,9 @@ void StaticBatchManager::RenderBatch(const std::string& name)
         LOGGER_ERROR("StaticBatchManager") << "Batch not found: " << name;
         return;
     }
-    
+
     const BatchData& batch = it->second;
-    
+
     GetBufferManager().BindVertexArray(batch.vao);
     GetDrawContext().DrawElements(Graphics::Primitive::Triangles, static_cast<unsigned int>(batch.indexCount), Graphics::DataType::UnsignedInt, 0);
     GetBufferManager().BindVertexArray(0);
@@ -183,7 +181,7 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
         LOGGER_ERROR("StaticBatchManager") << "Failed to open batch file: " << path;
         return false;
     }
-    
+
     struct BatchFileHeader
     {
         uint32_t magic;
@@ -191,31 +189,31 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
         uint32_t vertexCount;
         uint32_t indexCount;
     };
-    
+
     BatchFileHeader header;
     file.read(reinterpret_cast<char*>(&header), sizeof(BatchFileHeader));
-    
+
     if (header.magic != 0x48435442)
     {
         LOGGER_ERROR("StaticBatchManager") << "Invalid batch file magic";
         return false;
     }
-    
+
     std::vector<Vertex> vertices(header.vertexCount);
     std::vector<unsigned int> indices(header.indexCount);
-    
+
     file.read(reinterpret_cast<char*>(vertices.data()), vertices.size() * sizeof(Vertex));
     file.read(reinterpret_cast<char*>(indices.data()), indices.size() * sizeof(unsigned int));
-    
+
     file.close();
-    
+
     BatchData batch;
     CreateGPUBuffers(batch, vertices, indices);
     batch.shader = nullptr;
     batch.materialName = "";
-    
+
     m_Batches[name] = batch;
-    
+
     LOGGER_INFO("StaticBatchManager") << "Loaded batch from file: " << name;
     return true;
 }
@@ -228,7 +226,7 @@ void StaticBatchManager::SaveBatchToFile(const std::string& name, const std::str
         LOGGER_ERROR("StaticBatchManager") << "Batch not found: " << name;
         return;
     }
-    
+
     LOGGER_WARN("StaticBatchManager") << "Batch saving not yet fully implemented";
 }
 

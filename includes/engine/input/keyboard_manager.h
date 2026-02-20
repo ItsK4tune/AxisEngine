@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/window/i_window.h>
 #include <interface/window/input_codes.h>

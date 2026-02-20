@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <glm/glm.hpp>
 
@@ -12,7 +12,7 @@ public:
 
     virtual void SetPan(float pan) = 0;
     virtual float GetPan() = 0;
-    
+
     virtual void SetPitch(float pitch) = 0;
     virtual float GetPitch() = 0;
 
@@ -20,13 +20,13 @@ public:
     virtual void Pause() = 0;
     virtual void Resume() = 0;
     virtual bool IsFinished() = 0;
-    
+
     virtual void SetPosition(const glm::vec3& pos) = 0;
     virtual void SetVelocity(const glm::vec3& vel) = 0;
-    
+
     virtual void SetMinDistance(float minDist) = 0;
     virtual void SetMaxDistance(float maxDist) = 0;
-    
+
     virtual void SetIsLooped(bool looped) = 0;
     virtual bool IsLooped() = 0;
 };

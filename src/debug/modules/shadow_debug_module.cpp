@@ -1,4 +1,4 @@
-#include <debug/modules/shadow_debug_module.h>
+﻿#include <debug/modules/shadow_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -14,17 +14,17 @@ void ShadowDebugModule::Init(Application *app)
 
 void ShadowDebugModule::OnUpdate(float dt)
 {
-    
+
 }
 
 void ShadowDebugModule::Render(Scene &scene)
 {
-    
+
 }
 
 void ShadowDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    
+
 }
 
 #endif

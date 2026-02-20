@@ -1,4 +1,4 @@
-#include <physic/physics_collision_dispatcher.h>
+﻿#include <physic/physics_collision_dispatcher.h>
 #include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
@@ -13,25 +13,13 @@ PhysicsCollisionDispatcher::~PhysicsCollisionDispatcher()
 {
 }
 
-#include <physic/backends/bullet_physics_world.h> 
+#include <physic/backends/bullet_physics_world.h>
 
 void PhysicsCollisionDispatcher::DispatchEvents()
 {
-    
-    
-    BulletPhysicsWorld* bulletWorld = dynamic_cast<BulletPhysicsWorld*>(&m_Physics);
-    if (!bulletWorld) return; 
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    BulletPhysicsWorld* bulletWorld = dynamic_cast<BulletPhysicsWorld*>(&m_Physics);
+    if (!bulletWorld) return;
 
     btDiscreteDynamicsWorld *world = bulletWorld->GetRawWorld();
     if (!world) return;

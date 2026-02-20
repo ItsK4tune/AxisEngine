@@ -1,11 +1,10 @@
-#include <interface/graphic/i_buffer_manager.h>
+﻿#include <interface/graphic/i_buffer_manager.h>
 #include <graphic/backends/opengl_translator.h>
 #include <glad/glad.h>
 
 class OpenGLBufferManager : public IBufferManager
 {
 private:
-    
 
 public:
     unsigned int CreateVertexArray() override

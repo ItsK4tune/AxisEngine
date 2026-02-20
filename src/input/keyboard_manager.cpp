@@ -1,4 +1,4 @@
-#include <input/keyboard_manager.h>
+﻿#include <input/keyboard_manager.h>
 
 KeyboardManager::KeyboardManager(IWindow *window)
 {
@@ -14,12 +14,8 @@ bool KeyboardManager::GetKey(Input::Key key) const
 bool KeyboardManager::GetKeyUp(Input::Key key) const
 {
     if (!m_Window) return false;
-    return !m_Window->GetKey(key); 
-    
-    
-    
-    
-    
+    return !m_Window->GetKey(key);
+
 }
 
 bool KeyboardManager::IsKeyDown(Input::Key key)

@@ -1,13 +1,10 @@
-#include <engine/graphic/renderer/ui_model.h>
+﻿#include <engine/graphic/renderer/ui_model.h>
 #include <iostream>
 #include <interface/graphic/i_buffer_manager.h>
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/i_draw_context.h>
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
-
-
-
 
 IBufferManager* UIModel::s_BufferManager = nullptr;
 ITextureManager* UIModel::s_TextureManager = nullptr;
@@ -123,7 +120,7 @@ void UIModel::Draw(Shader &shader, const glm::vec4 &color)
 {
     if (m_Type == UIType::Transparent || !s_TextureManager || !s_DrawContext || !s_BufferManager)
         return;
-    
+
     auto& tm = GetTextureManager();
     auto& dc = GetDrawContext();
     auto& bm = GetBufferManager();

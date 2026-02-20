@@ -1,4 +1,4 @@
-#include <utils/logger.h>
+﻿#include <utils/logger.h>
 #include <app/system_manager.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
@@ -28,7 +28,7 @@ SystemManager::~SystemManager()
 void SystemManager::InitializeSystems(ResourceManager& res, int width, int height, Application* app)
 {
     LOGGER_INFO("SystemManager") << "Initializing systems...";
-    
+
     if (app) {
         auto& ioHandler = app->GetIOHandler();
         auto& context = ioHandler.GetGraphicsContext();
@@ -96,9 +96,9 @@ void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width,
 
     uiRenderSystem.Render(scene, (float)width, (float)height, renderSystem.GetContext()->GetRenderStateManager());
 
-    postProcess.ApplyAntiAliasing(renderSystem.GetAntiAliasingMode(), 
-                                  renderSystem.GetPrevViewProj(), 
-                                  renderSystem.GetCurrViewProj(), 
+    postProcess.ApplyAntiAliasing(renderSystem.GetAntiAliasingMode(),
+                                  renderSystem.GetPrevViewProj(),
+                                  renderSystem.GetCurrViewProj(),
                                   renderSystem.GetJitterOffset());
 
     postProcess.EndCapture();

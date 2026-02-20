@@ -1,4 +1,4 @@
-#include <ecs/component.h>
+﻿#include <ecs/component.h>
 #include <graphic/core/video_decoder.h>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -14,13 +14,13 @@ glm::mat4 TransformComponent::GetLocalModelMatrix() const
         glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
         glm::mat4 rot = glm::mat4_cast(rotation);
         glm::mat4 sca = glm::scale(glm::mat4(1.0f), scale);
-        
+
         m_LocalMatrix = trans * rot * sca;
-        
+
         m_LastPosition = position;
         m_LastRotation = rotation;
         m_LastScale = scale;
-        
+
         m_Version++;
         m_IsWorldDirty = true;
     }
@@ -29,9 +29,8 @@ glm::mat4 TransformComponent::GetLocalModelMatrix() const
 
 glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) const
 {
-    GetLocalModelMatrix(); 
-    
-    
+    GetLocalModelMatrix();
+
     if (parent != m_LastParent)
     {
         m_LastParent = parent;
@@ -46,12 +45,8 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
         if (registry.all_of<TransformComponent>(parent))
         {
             const auto& parentTrans = registry.get<TransformComponent>(parent);
-            glm::mat4 parentWorld = parentTrans.GetWorldModelMatrix(registry); 
-            
-            
-            
-            
-            
+            glm::mat4 parentWorld = parentTrans.GetWorldModelMatrix(registry);
+
             m_WorldMatrix = parentWorld * m_LocalMatrix;
         }
         else
@@ -63,16 +58,15 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
     {
         m_WorldMatrix = m_LocalMatrix;
     }
-    
+
     m_IsWorldDirty = false;
     return m_WorldMatrix;
 }
 
-void TransformComponent::SetDirty(entt::registry &registry) 
+void TransformComponent::SetDirty(entt::registry &registry)
 {
     m_IsWorldDirty = true;
-    
-    
+
     for (auto child : children)
     {
         if (registry.valid(child) && registry.all_of<TransformComponent>(child))
@@ -104,8 +98,8 @@ void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newPare
     {
         auto& newParentTrans = registry.get<TransformComponent>(newParent);
         newParentTrans.children.push_back(thisEntity);
-        
-        SetDirty(registry); 
+
+        SetDirty(registry);
 
         if (keepWorldTransform)
         {
@@ -122,8 +116,8 @@ void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newPare
             position = t;
             rotation = r;
             scale = s;
-            GetLocalModelMatrix(); 
-            SetDirty(registry); 
+            GetLocalModelMatrix();
+            SetDirty(registry);
         }
     }
     else if (keepWorldTransform)

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <interface/physics/i_rigid_body.h>
 #include <btBulletDynamicsCommon.h>
@@ -6,7 +6,7 @@
 class BulletRigidBody : public IRigidBody
 {
 public:
-    BulletRigidBody(btRigidBody* body, std::shared_ptr<ICollisionShape> shape) 
+    BulletRigidBody(btRigidBody* body, std::shared_ptr<ICollisionShape> shape)
         : m_Body(body), m_Shape(shape) {}
     ~BulletRigidBody()
     {
@@ -16,12 +16,6 @@ public:
             delete m_Body;
         }
     }
-
-    
-
-
-
-
 
     void SetLinearVelocity(const glm::vec3& vel) override
     {
@@ -116,7 +110,7 @@ public:
         if (m_Body)
             m_Body->activate(forceActivation);
     }
-    
+
     bool IsActive() const override
     {
         return m_Body ? m_Body->isActive() : false;
@@ -154,7 +148,7 @@ public:
 
     void SetStatic(bool isStatic) override
     {
-        
+
         if (!m_Body) return;
         if (isStatic)
             m_Body->setCollisionFlags(m_Body->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
@@ -168,7 +162,7 @@ public:
         if (alwaysActive)
             m_Body->setActivationState(DISABLE_DEACTIVATION);
         else
-            m_Body->setActivationState(ACTIVE_TAG); 
+            m_Body->setActivationState(ACTIVE_TAG);
     }
 
     void SetUserPointer(void* ptr) override

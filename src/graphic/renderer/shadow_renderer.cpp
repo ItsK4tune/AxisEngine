@@ -1,4 +1,4 @@
-#include <utils/logger.h>
+﻿#include <utils/logger.h>
 #include <graphic/renderer/shadow_renderer.h>
 #include <interface/graphic/i_draw_context.h>
 #include <resource/resource_manager.h>
@@ -141,9 +141,9 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
                 float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
                 float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
-                
+
                 float distSq = dx*dx + dy*dy + dz*dz;
-                
+
                 if (distSq > m_ShadowDistanceCullingSq)
                     continue;
             }
@@ -310,11 +310,11 @@ void ShadowRenderer::RenderShadows(Scene &scene)
         float farPlane = m_FarPlaneSpot;
 
         glm::mat4 spotProjection = glm::perspective(fov, aspect, nearPlane, farPlane);
-        
+
         glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
         if (std::abs(glm::dot(lightDir, up)) > 0.99f)
             up = glm::vec3(0.0f, 0.0f, 1.0f);
-            
+
         glm::mat4 spotView = glm::lookAt(lightPos, lightPos + lightDir, up);
         m_LightSpaceMatrixSpot[sIdx] = spotProjection * spotView;
 
@@ -359,9 +359,9 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
                 float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
                 float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
-                
+
                 float distSq = dx*dx + dy*dy + dz*dz;
-                
+
                 if (distSq > m_ShadowDistanceCullingSq)
                     continue;
             }

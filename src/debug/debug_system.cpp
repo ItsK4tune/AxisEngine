@@ -1,4 +1,4 @@
-#include <debug/debug_system.h>
+﻿#include <debug/debug_system.h>
 #include <interface/debug/i_debug_module.h>
 #include <debug/modules/general_debug_module.h>
 #include <debug/modules/overlay_debug_module.h>
@@ -36,7 +36,7 @@ void DebugSystem::Init(Application *app)
     m_DebugFont = res.GetFont("debug_font");
     m_TextShader = res.GetShader("debug_text");
     m_TextQuad = res.GetUIModel("debug_sys_model");
-    
+
     LOGGER_INFO("DebugSystem") << "Initializing debug modules...";
 
     auto generalModule = std::make_unique<GeneralDebugModule>();
@@ -128,7 +128,7 @@ void DebugSystem::Render(Scene &scene)
     auto& rsm = m_App->GetGraphicsContext().GetRenderStateManager();
     auto oldMode = rsm.GetPolygonMode();
 
-    rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill); 
+    rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill);
 
     for (auto &module : m_Modules)
     {

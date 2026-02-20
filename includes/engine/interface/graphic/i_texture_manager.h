@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstddef>
 #include <interface/graphic/graphics_types.h>
@@ -9,7 +9,7 @@ public:
     virtual ~ITextureManager() = default;
 
     virtual unsigned int CreateTexture() = 0;
-    virtual unsigned int GenTexture() = 0; 
+    virtual unsigned int GenTexture() = 0;
     virtual void BindTexture(Graphics::TextureType target, unsigned int texture) = 0;
     virtual void DeleteTexture(unsigned int texture) = 0;
     virtual void DeleteTextures(int n, const unsigned int* textures) = 0;
