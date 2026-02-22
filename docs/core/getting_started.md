@@ -258,7 +258,7 @@ If `SetCollisionEnabled(false)` is called, the entity operates like a ghost (no 
 If you need a system-wide manager (like an Achievement System) to listen to collisions without inheriting from `Scriptable`, you can subscribe to `EntityCollisionEvent` or `EntityTriggerEvent`:
 
 ```cpp
-#include <physic/physics_events.h>
+#include <event/physics_events.h>
 #include <event/event_system.h>
 
 void SystemInit() {
@@ -274,7 +274,7 @@ void SystemInit() {
 Instead of polling `GetKeyboard().GetKeyDown(...)` every frame, AXIS Engine supports an **Event-Driven / Observer** model. You can subscribe to Input Events like `KeyPressedEvent`, `InputActionPressedEvent`, or `MouseMovedEvent`.
 
 ```cpp
-#include <input/input_events.h>
+#include <event/input_events.h>
 #include <event/event_system.h>
 
 void PlayerController::OnCreate() {

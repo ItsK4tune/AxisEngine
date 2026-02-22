@@ -3,7 +3,7 @@
 #include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
 #include <script/scriptable.h>
-#include <physic/physics_events.h>
+#include <event/physics_events.h>
 #include <event/event_system.h>
 
 PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene& scene, IPhysicsWorld& physics)

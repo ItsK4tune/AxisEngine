@@ -4,6 +4,10 @@
 #include <vector>
 #include <functional>
 #include <filesystem>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <event/resource_events.h>
 
 class ResourceWatcher
 {
@@ -19,9 +23,6 @@ public:
 
     void Update(float dt);
 
-    void SetShaderReloadCallback(ReloadCallback cb) { m_OnShaderReload = cb; }
-    void SetTextureReloadCallback(ReloadCallback cb) { m_OnTextureReload = cb; }
-
 private:
     struct WatchEntry
     {
@@ -35,8 +36,11 @@ private:
     };
 
     std::vector<WatchEntry> m_Watchers;
-    float m_HotReloadTimer;
+    std::vector<ResourceReloadEvent> m_PendingReloads;
 
-    ReloadCallback m_OnShaderReload;
-    ReloadCallback m_OnTextureReload;
+    std::thread m_WatcherThread;
+    std::mutex m_Mutex;
+    std::atomic<bool> m_Running;
+
+    void WatcherLoop();
 };

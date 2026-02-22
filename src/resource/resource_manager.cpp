@@ -2,9 +2,23 @@
 #include <utils/logger.h>
 #include <utils/filesystem.h>
 #include <iostream>
+#include <event/event_system.h>
+#include <event/resource_events.h>
+
+ResourceManager::ResourceManager()
+{
+    m_ReloadListenerId = EventSystem::Instance().Subscribe<ResourceReloadEvent>([this](const ResourceReloadEvent& e) {
+        if (e.type == "SHADER") {
+            ReloadShader(e.name);
+        } else if (e.type == "TEXTURE") {
+            ReloadTexture(e.name);
+        }
+    });
+}
 
 ResourceManager::~ResourceManager()
 {
+    EventSystem::Instance().Unsubscribe<ResourceReloadEvent>(m_ReloadListenerId);
     ClearResource();
 }
 
@@ -44,8 +58,6 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
 
     m_ShaderCache.GetOrCompile(name, vShaderPath, fShaderPath);
 
-    m_ResourceWatcher.SetShaderReloadCallback([this](const std::string &n)
-                                              { ReloadShader(n); });
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
 }
 
@@ -53,8 +65,6 @@ void ResourceManager::LoadTexture(const std::string &name, const std::string &pa
 {
     m_TextureCache.LoadTexture(name, FileSystem::getPath(path), async);
 
-    m_ResourceWatcher.SetTextureReloadCallback([this](const std::string &n)
-                                               { ReloadTexture(n); });
     m_ResourceWatcher.Watch(name, FileSystem::getPath(path), "TEXTURE");
 }
 

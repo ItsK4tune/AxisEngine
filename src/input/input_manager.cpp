@@ -3,7 +3,7 @@
 #include <interface/window/input_codes.h>
 #include <string>
 #include <iostream>
-#include <input/input_events.h>
+#include <event/input_events.h>
 #include <event/event_system.h>
 
 InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse, const IWindow &window)

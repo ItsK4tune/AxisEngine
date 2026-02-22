@@ -29,6 +29,7 @@
 class ResourceManager
 {
 public:
+    ResourceManager();
     ~ResourceManager();
 
     void Update(float dt);
@@ -90,4 +91,6 @@ private:
     std::vector<PendingModel> m_PendingModels;
     std::vector<std::future<void>> m_ActiveFutures;
     std::mutex m_PendingMutex;
+
+    int m_ReloadListenerId = -1;
 };

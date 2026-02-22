@@ -1,14 +1,22 @@
 ﻿#include <resource/resource_watcher.h>
 #include <utils/logger.h>
 #include <iostream>
+#include <chrono>
+#include <event/event_system.h>
 
 ResourceWatcher::ResourceWatcher()
-    : m_HotReloadTimer(0.0f)
+    : m_Running(true)
 {
+    m_WatcherThread = std::thread(&ResourceWatcher::WatcherLoop, this);
 }
 
 ResourceWatcher::~ResourceWatcher()
 {
+    m_Running = false;
+    if (m_WatcherThread.joinable())
+    {
+        m_WatcherThread.join();
+    }
 }
 
 void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type)
@@ -64,39 +72,56 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
     m_Watchers.push_back(entry);
 }
 
-void ResourceWatcher::Update(float dt)
+void ResourceWatcher::WatcherLoop()
 {
-    m_HotReloadTimer += dt;
-
-    if (m_HotReloadTimer > 1.0f)
+    while (m_Running)
     {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        std::lock_guard<std::mutex> lock(m_Mutex);
         for (auto& watcher : m_Watchers)
         {
             try
             {
+                if (!std::filesystem::exists(watcher.filePath)) continue;
+
                 auto currentWriteTime = std::filesystem::last_write_time(watcher.filePath);
                 if (currentWriteTime > watcher.lastWriteTime)
                 {
                     watcher.lastWriteTime = currentWriteTime;
                     LOGGER_INFO("HotReload") << "Detected change in: " << watcher.filePath;
 
-                    if (watcher.type == "SHADER")
-                    {
-                        if (m_OnShaderReload)
-                            m_OnShaderReload(watcher.name);
-                    }
-                    else if (watcher.type == "TEXTURE")
-                    {
-                        if (m_OnTextureReload)
-                            m_OnTextureReload(watcher.name);
-                    }
+                    ResourceReloadEvent e;
+                    e.name = watcher.name;
+                    e.type = watcher.type;
+                    e.filePath = watcher.filePath;
+                    
+                    m_PendingReloads.push_back(e);
                 }
             }
             catch (const std::filesystem::filesystem_error&)
             {
+                // Ignore transient file locking issues
             }
         }
+    }
+}
 
-        m_HotReloadTimer = 0.0f;
+void ResourceWatcher::Update(float dt)
+{
+    std::vector<ResourceReloadEvent> eventsToProcess;
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        if (!m_PendingReloads.empty())
+        {
+            eventsToProcess = std::move(m_PendingReloads);
+            m_PendingReloads.clear();
+        }
+    }
+
+    // Publish all pending events on the main thread
+    for (const auto& event : eventsToProcess)
+    {
+        EventSystem::Instance().Publish(event);
     }
 }

@@ -1,7 +1,7 @@
 #include <app/application.h>
 #include <app/app_builder.h>
 #include <graphic/renderer_initializer.h>
-#include <input/input_events.h>
+#include <event/input_events.h>
 #include <event/event_system.h>
 
 #include <interface/graphic/i_graphics_context.h>
