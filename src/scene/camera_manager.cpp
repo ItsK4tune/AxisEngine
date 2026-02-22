@@ -59,7 +59,7 @@ std::vector<entt::entity> CameraManager::GetAllCameras() const
     return cameras;
 }
 
-void CameraManager::EnsurePrimaryCamera(Application *app)
+void CameraManager::EnsurePrimaryCamera(std::shared_ptr<Application> app)
 {
     if (GetPrimaryCamera() != entt::null)
         return;
@@ -87,7 +87,7 @@ entt::entity CameraManager::CreateCamera(const glm::vec3 &position, float fov, f
     return entity;
 }
 
-entt::entity CameraManager::CreateDefaultSpectatorCamera(Application *app)
+entt::entity CameraManager::CreateDefaultSpectatorCamera(std::shared_ptr<Application> app)
 {
     entt::entity camEntity = CreateCamera(glm::vec3(0.0f, 2.0f, 10.0f), 45.0f, -90.0f, 0.0f, true);
 

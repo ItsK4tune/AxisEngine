@@ -14,12 +14,12 @@
 OverlayDebugModule::OverlayDebugModule() {}
 OverlayDebugModule::~OverlayDebugModule() {}
 
-void OverlayDebugModule::Init(Application *app)
+void OverlayDebugModule::Init(std::shared_ptr<Application> app)
 {
     m_App = app;
 }
 
-void OverlayDebugModule::SetSharedResources(Font *font, Shader *shader, UIModel *quad)
+void OverlayDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
 {
     m_DebugFont = font;
     m_TextShader = shader;

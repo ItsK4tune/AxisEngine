@@ -36,13 +36,13 @@ void PostProcessPipeline::InitFramebuffers()
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& tm = m_Context->GetTextureManager();
 
-    m_FBO[0] = rtm.GenFramebuffer();
-    m_FBO[1] = rtm.GenFramebuffer();
-    m_ColorBuffers[0] = tm.GenTexture();
-    m_ColorBuffers[1] = tm.GenTexture();
-    m_DepthTexture = tm.GenTexture();
+    m_FBO[0].id = rtm.GenFramebuffer();
+    m_FBO[1].id = rtm.GenFramebuffer();
+    m_ColorBuffers[0].id = tm.GenTexture();
+    m_ColorBuffers[1].id = tm.GenTexture();
+    m_DepthTexture.id = tm.GenTexture();
 
-    tm.BindTexture(Graphics::TextureType::Texture2D, m_DepthTexture);
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_DepthTexture.id);
     tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::DepthComponent24, m_Width, m_Height, 0, Graphics::TextureFormat::DepthComponent, Graphics::DataType::Float, NULL);
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Nearest));
@@ -51,8 +51,8 @@ void PostProcessPipeline::InitFramebuffers()
 
     for (unsigned int i = 0; i < 2; i++)
     {
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[i]);
-        tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[i]);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[i].id);
+        tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[i].id);
 
         tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA16F, m_Width, m_Height, 0, Graphics::TextureFormat::RGBA, Graphics::DataType::Float, NULL);
         tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Linear));
@@ -60,28 +60,28 @@ void PostProcessPipeline::InitFramebuffers()
         tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(Graphics::TextureWrap::ClampToEdge));
         tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(Graphics::TextureWrap::ClampToEdge));
 
-        rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Color0, Graphics::TextureType::Texture2D, m_ColorBuffers[i], 0);
+        rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Color0, Graphics::TextureType::Texture2D, m_ColorBuffers[i].id, 0);
 
         if (i == 0)
         {
-            rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Depth, Graphics::TextureType::Texture2D, m_DepthTexture, 0);
+            rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Depth, Graphics::TextureType::Texture2D, m_DepthTexture.id, 0);
         }
 
         if (rtm.CheckFramebufferStatus(Graphics::FramebufferTarget::Framebuffer) != Graphics::FramebufferStatus::Complete)
             LOGGER_ERROR("PostProcess") << "FBO " << i << " is not complete!";
     }
 
-    m_HistoryFBO = rtm.GenFramebuffer();
-    m_HistoryTexture = tm.GenTexture();
+    m_HistoryFBO.id = rtm.GenFramebuffer();
+    m_HistoryTexture.id = tm.GenTexture();
 
-    rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_HistoryFBO);
-    tm.BindTexture(Graphics::TextureType::Texture2D, m_HistoryTexture);
+    rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_HistoryFBO.id);
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_HistoryTexture.id);
     tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA16F, m_Width, m_Height, 0, Graphics::TextureFormat::RGBA, Graphics::DataType::Float, NULL);
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MinFilter, static_cast<int>(Graphics::TextureFilter::Linear));
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::MagFilter, static_cast<int>(Graphics::TextureFilter::Linear));
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapS, static_cast<int>(Graphics::TextureWrap::ClampToEdge));
     tm.TexParameteri(Graphics::TextureType::Texture2D, Graphics::TextureParameter::WrapT, static_cast<int>(Graphics::TextureWrap::ClampToEdge));
-    rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Color0, Graphics::TextureType::Texture2D, m_HistoryTexture, 0);
+    rtm.FramebufferTexture2D(Graphics::FramebufferTarget::Framebuffer, Graphics::FramebufferAttachment::Color0, Graphics::TextureType::Texture2D, m_HistoryTexture.id, 0);
 
     if (rtm.CheckFramebufferStatus(Graphics::FramebufferTarget::Framebuffer) != Graphics::FramebufferStatus::Complete)
         LOGGER_ERROR("PostProcess") << "History FBO is not complete!";
@@ -96,13 +96,13 @@ void PostProcessPipeline::Shutdown()
     auto& tm = m_Context->GetTextureManager();
     auto& bm = m_Context->GetBufferManager();
 
-    if (m_FBO[0] != 0) { rtm.DeleteFramebuffers(2, m_FBO); m_FBO[0] = 0; m_FBO[1] = 0; }
-    if (m_ColorBuffers[0] != 0) { tm.DeleteTextures(2, m_ColorBuffers); m_ColorBuffers[0] = 0; m_ColorBuffers[1] = 0; }
-    if (m_DepthTexture != 0) { tm.DeleteTextures(1, &m_DepthTexture); m_DepthTexture = 0; }
-    if (m_HistoryFBO != 0) { rtm.DeleteFramebuffers(1, &m_HistoryFBO); m_HistoryFBO = 0; }
-    if (m_HistoryTexture != 0) { tm.DeleteTextures(1, &m_HistoryTexture); m_HistoryTexture = 0; }
-    if (m_QuadVAO != 0) { bm.DeleteVertexArrays(1, &m_QuadVAO); m_QuadVAO = 0; }
-    if (m_QuadVBO != 0) { bm.DeleteBuffers(1, &m_QuadVBO); m_QuadVBO = 0; }
+    if (m_FBO[0].IsValid()) { rtm.DeleteFramebuffers(2, &m_FBO[0].id); m_FBO[0].Reset(); m_FBO[1].Reset(); }
+    if (m_ColorBuffers[0].IsValid()) { tm.DeleteTextures(2, &m_ColorBuffers[0].id); m_ColorBuffers[0].Reset(); m_ColorBuffers[1].Reset(); }
+    if (m_DepthTexture.IsValid()) { tm.DeleteTextures(1, &m_DepthTexture.id); m_DepthTexture.Reset(); }
+    if (m_HistoryFBO.IsValid()) { rtm.DeleteFramebuffers(1, &m_HistoryFBO.id); m_HistoryFBO.Reset(); }
+    if (m_HistoryTexture.IsValid()) { tm.DeleteTextures(1, &m_HistoryTexture.id); m_HistoryTexture.Reset(); }
+    if (m_QuadVAO.IsValid()) { bm.DeleteVertexArrays(1, &m_QuadVAO.id); m_QuadVAO.Reset(); }
+    if (m_QuadVBO.IsValid()) { bm.DeleteBuffers(1, &m_QuadVBO.id); m_QuadVBO.Reset(); }
 }
 
 void PostProcessPipeline::Resize(int width, int height)
@@ -114,14 +114,14 @@ void PostProcessPipeline::Resize(int width, int height)
 
     for (unsigned int i = 0; i < 2; i++)
     {
-        tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[i]);
+        tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[i].id);
         tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA16F, width, height, 0, Graphics::TextureFormat::RGBA, Graphics::DataType::Float, NULL);
     }
 
-    tm.BindTexture(Graphics::TextureType::Texture2D, m_DepthTexture);
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_DepthTexture.id);
     tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::DepthComponent24, width, height, 0, Graphics::TextureFormat::DepthComponent, Graphics::DataType::Float, NULL);
 
-    tm.BindTexture(Graphics::TextureType::Texture2D, m_HistoryTexture);
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_HistoryTexture.id);
     tm.TexImage2D(Graphics::TextureType::Texture2D, 0, Graphics::InternalFormat::RGBA16F, width, height, 0, Graphics::TextureFormat::RGBA, Graphics::DataType::Float, NULL);
 }
 
@@ -132,7 +132,7 @@ void PostProcessPipeline::BeginCapture()
     auto& rsm = m_Context->GetRenderStateManager();
     auto& dc = m_Context->GetDrawContext();
 
-    rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[0]);
+    rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[0].id);
     rsm.Enable(Graphics::ServerCapability::DepthTest);
     dc.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     dc.Clear(Graphics::BufferBit::Color | Graphics::BufferBit::Depth);
@@ -157,19 +157,19 @@ void PostProcessPipeline::EndCapture()
         if (!effect.shader)
             continue;
 
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[readIdx]);
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_FBO[writeIdx]);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[readIdx].id);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_FBO[writeIdx].id);
         rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, Graphics::BufferBit::Color, Graphics::TextureFilter::Nearest);
 
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[writeIdx]);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[writeIdx].id);
 
         effect.shader->use();
         effect.shader->setInt("screenTexture", 0);
 
         tm.ActiveTexture(Graphics::TextureUnit::Texture0);
-        tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[readIdx]);
+        tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[readIdx].id);
 
-        bm.BindVertexArray(m_QuadVAO);
+        bm.BindVertexArray(m_QuadVAO.id);
 
         if (effect.width > 0 && effect.height > 0)
         {
@@ -188,7 +188,7 @@ void PostProcessPipeline::EndCapture()
         writeIdx = 1 - readIdx;
     }
 
-    rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[readIdx]);
+    rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[readIdx].id);
     rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, 0);
 
     dc.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -211,7 +211,7 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
     auto& bm = m_Context->GetBufferManager();
     auto& dc = m_Context->GetDrawContext();
 
-    Shader* shader = nullptr;
+    std::shared_ptr<Shader> shader;
     if (mode == AntiAliasingMode::FXAA)
         shader = m_FXAAShader;
     else if (mode == AntiAliasingMode::TAA)
@@ -227,49 +227,49 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
 
     shader->use();
     tm.ActiveTexture(Graphics::TextureUnit::Texture0);
-    tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[0]);
+    tm.BindTexture(Graphics::TextureType::Texture2D, m_ColorBuffers[0].id);
     shader->setInt("screenTexture", 0);
 
     if (mode == AntiAliasingMode::TAA)
     {
         shader->setInt("depthTexture", 1);
         tm.ActiveTexture(Graphics::TextureUnit::Texture1);
-        tm.BindTexture(Graphics::TextureType::Texture2D, m_DepthTexture);
+        tm.BindTexture(Graphics::TextureType::Texture2D, m_DepthTexture.id);
 
         shader->setInt("historyTexture", 2);
         tm.ActiveTexture(Graphics::TextureUnit::Texture2);
-        tm.BindTexture(Graphics::TextureType::Texture2D, m_HistoryTexture);
+        tm.BindTexture(Graphics::TextureType::Texture2D, m_HistoryTexture.id);
 
         shader->setMat4("invViewProj", glm::inverse(currViewProj));
         shader->setMat4("prevViewProj", prevViewProj);
         shader->setVec2("jitterOffset", jitterOffset);
 
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[1]);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[1].id);
         dc.Clear(Graphics::BufferBit::Color);
 
-        bm.BindVertexArray(m_QuadVAO);
+        bm.BindVertexArray(m_QuadVAO.id);
         dc.DrawArrays(Graphics::Primitive::Triangles, 0, 6);
 
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[1]);
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_HistoryFBO);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[1].id);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_HistoryFBO.id);
         rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, Graphics::BufferBit::Color, Graphics::TextureFilter::Nearest);
 
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[1]);
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_FBO[0]);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[1].id);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_FBO[0].id);
         rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, Graphics::BufferBit::Color, Graphics::TextureFilter::Nearest);
     }
     else if (mode == AntiAliasingMode::FXAA)
     {
         shader->setVec2("inverseScreenSize", glm::vec2(1.0f / m_Width, 1.0f / m_Height));
 
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[1]);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, m_FBO[1].id);
         dc.Clear(Graphics::BufferBit::Color);
 
-        bm.BindVertexArray(m_QuadVAO);
+        bm.BindVertexArray(m_QuadVAO.id);
         dc.DrawArrays(Graphics::Primitive::Triangles, 0, 6);
 
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[1]);
-        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_FBO[0]);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::ReadFramebuffer, m_FBO[1].id);
+        rtm.BindFramebuffer(Graphics::FramebufferTarget::DrawFramebuffer, m_FBO[0].id);
         rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, Graphics::BufferBit::Color, Graphics::TextureFilter::Nearest);
     }
 
@@ -278,7 +278,7 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
     rtm.BindFramebuffer(Graphics::FramebufferTarget::Framebuffer, 0);
 }
 
-void PostProcessPipeline::AddEffect(Shader *shader)
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader)
 {
     if (shader)
     {
@@ -286,7 +286,7 @@ void PostProcessPipeline::AddEffect(Shader *shader)
     }
 }
 
-void PostProcessPipeline::AddEffect(Shader *shader, int x, int y, int w, int h)
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h)
 {
     if (shader)
     {
@@ -313,11 +313,11 @@ void PostProcessPipeline::InitQuad()
         1.0f, -1.0f, 1.0f, 0.0f,
         1.0f, 1.0f, 1.0f, 1.0f};
 
-    m_QuadVAO = bm.GenVertexArray();
-    m_QuadVBO = bm.GenBuffer();
+    m_QuadVAO.id = bm.GenVertexArray();
+    m_QuadVBO.id = bm.GenBuffer();
 
-    bm.BindVertexArray(m_QuadVAO);
-    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, m_QuadVBO);
+    bm.BindVertexArray(m_QuadVAO.id);
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, m_QuadVBO.id);
     bm.BufferData(Graphics::BufferType::ArrayBuffer, sizeof(quadVertices), &quadVertices, Graphics::BufferUsage::StaticDraw);
 
     bm.EnableVertexAttribArray(0);

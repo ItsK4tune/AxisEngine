@@ -30,9 +30,10 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
         {
             if (renderer->model && renderer->shader)
             {
-                if (currentShader != renderer->shader)
+                Shader* shaderPtr = renderer->shader.get();
+                if (currentShader != shaderPtr)
                 {
-                    currentShader = renderer->shader;
+                    currentShader = shaderPtr;
                     currentShader->use();
                     currentShader->setMat4("projection", projection);
                     currentShader->setInt("image", 0);
@@ -51,9 +52,10 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
         {
             if (textComp->model && textComp->shader && textComp->font)
             {
-                if (currentShader != textComp->shader)
+                Shader* shaderPtr = textComp->shader.get();
+                if (currentShader != shaderPtr)
                 {
-                    currentShader = textComp->shader;
+                    currentShader = shaderPtr;
                     currentShader->use();
                     currentShader->setMat4("projection", projection);
                     currentShader->setInt("text", 0);

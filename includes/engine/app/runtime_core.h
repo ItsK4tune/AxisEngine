@@ -7,7 +7,7 @@
 class RuntimeCore
 {
 public:
-    RuntimeCore(Application* app);
+    RuntimeCore(std::shared_ptr<Application> app);
 
     void Run();
 

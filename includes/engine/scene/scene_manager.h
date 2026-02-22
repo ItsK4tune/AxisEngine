@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <string>
-#include <string>
+#include <memory>
 #include <vector>
 #include <unordered_map>
 
@@ -16,7 +16,7 @@ class Application;
 class SceneManager
 {
 public:
-    SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app);
+    SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, std::shared_ptr<Application> app);
 
     void AddEntity(entt::entity entity, const std::string &sceneName)
     {
@@ -40,7 +40,7 @@ private:
     ResourceManager &m_Resources;
     SoundPlayer &m_SoundPlayer;
     IPhysicsWorld &m_Physics;
-    Application *m_App = nullptr;
+    std::shared_ptr<Application> m_App = nullptr;
 
     std::map<std::string, std::vector<entt::entity>> m_LoadedScenes;
 

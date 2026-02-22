@@ -1,6 +1,6 @@
 ﻿#include <app/runtime_core.h>
 
-RuntimeCore::RuntimeCore(Application* app)
+RuntimeCore::RuntimeCore(std::shared_ptr<Application> app)
     : m_EngineLoop(app)
     , m_StateMachine(app)
 {

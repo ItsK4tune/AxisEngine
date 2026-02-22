@@ -1,6 +1,6 @@
 ﻿#include <state/state_machine.h>
 
-StateMachine::StateMachine(Application *app) : m_App(app) {}
+StateMachine::StateMachine(std::shared_ptr<Application> app) : m_App(app) {}
 
 void StateMachine::PushState(std::unique_ptr<State> state)
 {

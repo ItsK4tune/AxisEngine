@@ -23,7 +23,7 @@ public:
     ~TextureCache();
 
     void LoadTexture(const std::string& name, const std::string& path, bool async = true);
-    Texture* GetTexture(const std::string& name);
+    std::shared_ptr<Texture> GetTexture(const std::string& name);
     void UnloadTexture(const std::string& name);
     bool IsTextureLoaded(const std::string& name) const;
 
@@ -34,7 +34,7 @@ public:
     static ITextureManager& GetTextureManager() { return *s_TextureManager; }
 
 private:
-    std::unordered_map<std::string, Texture> m_Textures;
+    std::unordered_map<std::string, std::shared_ptr<Texture>> m_Textures;
     std::vector<std::future<TextureData>> m_AsyncLoads;
     std::mutex m_Mutex;
 

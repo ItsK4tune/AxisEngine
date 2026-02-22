@@ -8,7 +8,7 @@
 #include <app/application.h>
 #include <map>
 
-SceneManager::SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
+SceneManager::SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, std::shared_ptr<Application> app)
     : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundPlayer(sound), m_App(app) {}
 
 void SceneManager::LoadScene(const std::string &filePath)

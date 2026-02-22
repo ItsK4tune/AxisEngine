@@ -172,7 +172,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
     {
         auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
 
-        if (!renderer.model || !renderer.shader)
+        if (!renderer.model || renderer.shader.expired())
             continue;
 
         glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
@@ -223,8 +223,12 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
     std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [](const RenderItem &lhs, const RenderItem &rhs)
               {
-        if (lhs.renderer->shader->getID() != rhs.renderer->shader->getID())
-            return lhs.renderer->shader->getID() < rhs.renderer->shader->getID();
+        auto lShader = lhs.renderer->shader.lock();
+        auto rShader = rhs.renderer->shader.lock();
+        unsigned int lID = lShader ? lShader->getID() : 0;
+        unsigned int rID = rShader ? rShader->getID() : 0;
+        if (lID != rID)
+            return lID < rID;
         if (lhs.material != rhs.material)
             return lhs.material < rhs.material;
         return lhs.renderer->model < rhs.renderer->model; });
@@ -252,10 +256,15 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         MeshRendererComponent &renderer = *item.renderer;
         MaterialComponent *material = item.material;
 
-        if (currentShader != renderer.shader)
+        auto lockedShader = renderer.shader.lock();
+        if (!lockedShader)
+            continue;
+        Shader* itemShader = lockedShader.get();
+
+        if (currentShader != itemShader)
         {
             flushBatch(currentShader, currentModel);
-            currentShader = renderer.shader;
+            currentShader = itemShader;
             currentModel = nullptr;
             currentMaterial = nullptr;
             currentShader->use();

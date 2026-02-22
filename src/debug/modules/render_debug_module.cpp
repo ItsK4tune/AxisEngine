@@ -11,7 +11,7 @@
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}
 
-void RenderDebugModule::Init(Application *app)
+void RenderDebugModule::Init(std::shared_ptr<Application> app)
 {
     m_App = app;
 }

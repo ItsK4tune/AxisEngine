@@ -6,6 +6,7 @@
 #include <graphic/renderer/font.h>
 #include <graphic/renderer/ui_model.h>
 #include <graphic/core/shader.h>
+#include <memory>
 #include <entt/entity/entity.hpp>
 #include <functional>
 #include <interface/window/input_codes.h>
@@ -22,7 +23,7 @@ public:
     GizmoDebugModule();
     ~GizmoDebugModule() override;
 
-    void Init(Application *app) override;
+    void Init(std::shared_ptr<Application> app) override;
     void OnUpdate(float dt) override;
     void Render(Scene &scene) override;
     void ProcessInput(KeyboardManager &keyboard) override;
@@ -31,7 +32,7 @@ public:
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
     std::string GetModuleName() const override { return "GizmoDebugModule"; }
 
-    void SetSharedResources(Font *font, Shader *shader, UIModel *quad);
+    void SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad);
 
     bool IsEntityNamesEnabled() const { return m_ShowEntityNames; }
     bool IsTransformGizmosEnabled() const { return m_ShowTransformGizmos; }
@@ -49,7 +50,7 @@ private:
 
     void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
 
-    Application *m_App = nullptr;
+    std::shared_ptr<Application> m_App = nullptr;
     bool m_Enabled = true;
 
     bool m_F3Pressed = false;
@@ -63,9 +64,9 @@ private:
     std::unordered_map<entt::entity, entt::entity> m_EntityLabelMap;
     std::unordered_map<entt::entity, entt::entity> m_LightLabelMap;
 
-    Font *m_DebugFont = nullptr;
-    Shader *m_TextShader = nullptr;
-    UIModel *m_TextQuad = nullptr;
+    std::shared_ptr<Font> m_DebugFont = nullptr;
+    std::shared_ptr<Shader> m_TextShader = nullptr;
+    std::shared_ptr<UIModel> m_TextQuad = nullptr;
 
     struct DebugLineVertex
     {

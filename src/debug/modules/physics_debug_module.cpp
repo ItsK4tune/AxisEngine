@@ -12,7 +12,7 @@
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}
 
-void PhysicsDebugModule::Init(Application *app)
+void PhysicsDebugModule::Init(std::shared_ptr<Application> app)
 {
     m_App = app;
 }
@@ -32,7 +32,7 @@ void PhysicsDebugModule::Render(Scene &scene)
     if (m_ShowPhysicsDebug)
     {
         auto &res = m_App->GetResourceManager();
-        Shader *debugShader = res.GetShader("debugLine");
+        auto debugShader = res.GetShader("debugLine");
         if (debugShader)
         {
             m_App->GetPhysicsSystem().RenderDebug(scene, m_App->GetPhysicsWorld(), *debugShader, width, height, m_App->GetGraphicsContext().GetRenderStateManager());

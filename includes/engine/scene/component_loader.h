@@ -20,7 +20,7 @@ public:
     static void LoadUIText(Scene &scene, entt::entity entity, std::stringstream &ss, ResourceManager &res);
 
     static void LoadSkyboxRenderer(Scene &scene, entt::entity entity, std::stringstream &ss, ResourceManager &res);
-    static void LoadScript(Scene &scene, entt::entity entity, std::stringstream &ss, Application *app);
+    static void LoadScript(Scene &scene, entt::entity entity, std::stringstream &ss, std::shared_ptr<Application> app);
 
     static void LoadAudioSource(Scene &scene, entt::entity entity, std::stringstream &ss);
     static void LoadVideoPlayer(Scene &scene, entt::entity entity, std::stringstream &ss);

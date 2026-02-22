@@ -29,19 +29,20 @@ void SkyboxRenderSystem::Render(Scene &scene)
     if (activeSkybox != entt::null)
     {
         auto &component = scene.registry.get<SkyboxRenderComponent>(activeSkybox);
-        if (component.skybox && component.shader)
+        auto lockedShader = component.shader.lock();
+        if (component.skybox && lockedShader)
         {
-            component.shader->use();
+            lockedShader->use();
 
             glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(camera.viewMatrix));
-            component.shader->setMat4("view", viewNoTranslation);
-            component.shader->setMat4("projection", camera.projectionMatrix);
+            lockedShader->setMat4("view", viewNoTranslation);
+            lockedShader->setMat4("projection", camera.projectionMatrix);
 
             tm.ActiveTexture(Graphics::TextureUnit::Texture0);
             tm.BindTexture(Graphics::TextureType::TextureCubeMap, component.skybox->GetTextureID());
-            component.shader->setInt("skybox", 0);
+            lockedShader->setInt("skybox", 0);
 
-            component.skybox->Draw(*component.shader);
+            component.skybox->Draw(*lockedShader);
         }
     }
 

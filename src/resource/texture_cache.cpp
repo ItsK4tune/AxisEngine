@@ -71,10 +71,10 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
 
             stbi_image_free(data);
 
-            Texture tex;
-            tex.id = textureID;
-            tex.type = "texture_diffuse";
-            tex.path = path;
+            auto tex = std::make_shared<Texture>();
+            tex->id = textureID;
+            tex->type = "texture_diffuse";
+            tex->path = path;
             m_Textures[name] = tex;
 
             LOGGER_INFO("TextureCache") << "Loaded texture: " << name;
@@ -87,10 +87,10 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
     }
 }
 
-Texture* TextureCache::GetTexture(const std::string& name)
+std::shared_ptr<Texture> TextureCache::GetTexture(const std::string& name)
 {
     if (m_Textures.find(name) != m_Textures.end())
-        return &m_Textures[name];
+        return m_Textures[name];
     return nullptr;
 }
 
@@ -99,7 +99,7 @@ void TextureCache::UnloadTexture(const std::string& name)
     auto it = m_Textures.find(name);
     if (it != m_Textures.end())
     {
-        GetTextureManager().DeleteTextures(1, &it->second.id);
+        GetTextureManager().DeleteTextures(1, &it->second->id);
         m_Textures.erase(it);
         LOGGER_INFO("TextureCache") << "Unloaded texture: " << name;
     }
@@ -150,10 +150,10 @@ void TextureCache::Update()
 
                 stbi_image_free(data.data);
 
-                Texture tex;
-                tex.id = textureID;
-                tex.type = "texture_diffuse";
-                tex.path = data.path;
+                auto tex = std::make_shared<Texture>();
+                tex->id = textureID;
+                tex->type = "texture_diffuse";
+                tex->path = data.path;
                 m_Textures[data.name] = tex;
 
                 LOGGER_INFO("TextureCache") << "Async texture loaded: " << data.name;
@@ -176,7 +176,7 @@ void TextureCache::Clear()
 {
     for (auto& pair : m_Textures)
     {
-        GetTextureManager().DeleteTextures(1, &pair.second.id);
+        GetTextureManager().DeleteTextures(1, &pair.second->id);
     }
     m_Textures.clear();
     m_AsyncLoads.clear();

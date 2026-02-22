@@ -22,7 +22,7 @@
 #include <unordered_map>
 #include <functional>
 
-std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
+std::vector<entt::entity> SceneLoader::Load(const std::string &filePath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, std::shared_ptr<Application> app)
 {
     std::string fullPath = FileSystem::getPath(filePath);
     std::ifstream file(fullPath);

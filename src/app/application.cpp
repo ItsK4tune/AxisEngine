@@ -1,4 +1,4 @@
-﻿
+
 #include <app/application.h>
 
 #include <graphic/backends/opengl_context.h>
@@ -157,15 +157,15 @@ bool Application::Init(const AppConfig& config)
     }
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
-    m_SceneManager = std::make_unique<SceneManager>(m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, this);
+    m_SceneManager = std::make_unique<SceneManager>(m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, shared_from_this());
 
     m_ContentService = std::make_unique<ContentService>(*m_ResourceManager, *m_SceneManager, *m_SoundPlayer);
-    m_RuntimeCore = std::make_unique<RuntimeCore>(this);
+    m_RuntimeCore = std::make_unique<RuntimeCore>(shared_from_this());
 
     m_ResourceManager->CreateUIModel("default_rect", UIType::Color);
 
     m_SystemManager = std::make_unique<SystemManager>();
-    m_SystemManager->InitializeSystems(*m_ResourceManager, GetWidth(), GetHeight(), this);
+    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, shared_from_this());
     m_SystemManager->GetRenderSystem().SetShadowMode(m_Config.shadowMode);
     m_SystemManager->GetRenderSystem().SetShadowProjectionSize(m_Config.shadowProjectionSize);
     m_SystemManager->GetRenderSystem().SetInstanceBatching(m_Config.instanceBatchingEnabled);
@@ -233,3 +233,4 @@ void Application::OnScroll(double xoffset, double yoffset)
 {
     m_IOHandler->OnScroll(xoffset, yoffset);
 }
+

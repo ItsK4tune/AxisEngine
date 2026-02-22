@@ -2,12 +2,11 @@
 #include <utils/logger.h>
 #include <iostream>
 
-Shader* ShaderCache::GetOrCompile(const std::string& name, const std::string& vertPath, const std::string& fragPath)
+std::shared_ptr<Shader> ShaderCache::GetOrCompile(const std::string& name, const std::string& vertPath, const std::string& fragPath)
 {
-    if (m_LoadedShaders.find(name) != m_LoadedShaders.end())
-    {
-        return m_LoadedShaders[name].get();
-    }
+    auto it = m_LoadedShaders.find(name);
+    if (it != m_LoadedShaders.end())
+        return it->second;
 
     if (vertPath.empty() || fragPath.empty())
     {
@@ -15,15 +14,22 @@ Shader* ShaderCache::GetOrCompile(const std::string& name, const std::string& ve
         return nullptr;
     }
 
-    auto shader = std::make_unique<Shader>();
+    auto shader = std::make_shared<Shader>();
     shader->load(vertPath.c_str(), fragPath.c_str());
 
-    Shader* rawPtr = shader.get();
-    m_LoadedShaders[name] = std::move(shader);
+    m_LoadedShaders[name] = shader;
 
     LOGGER_INFO("ShaderCache") << "Compiled and cached shader '" << name << "'";
 
-    return rawPtr;
+    return shader;
+}
+
+std::shared_ptr<Shader> ShaderCache::GetShared(const std::string& name)
+{
+    auto it = m_LoadedShaders.find(name);
+    if (it != m_LoadedShaders.end())
+        return it->second;
+    return nullptr;
 }
 
 Shader* ShaderCache::Get(const std::string& name)
@@ -40,7 +46,6 @@ void ShaderCache::Reload(const std::string& name)
     if (it != m_LoadedShaders.end())
     {
         LOGGER_INFO("ShaderCache") << "Reloading shader: " << name;
-
         m_LoadedShaders.erase(it);
     }
 }

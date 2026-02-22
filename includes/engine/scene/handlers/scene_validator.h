@@ -15,7 +15,7 @@ namespace SceneHandlers
     {
     public:
         static void ValidateLights(Scene &scene);
-        static void ValidateCamera(Scene &scene, Application *app);
+        static void ValidateCamera(Scene &scene, std::shared_ptr<Application> app);
         static void ValidatePhysicsSync(Scene &scene, IPhysicsWorld &phys);
         static void ValidateParentChildRelationships(
             Scene &scene,

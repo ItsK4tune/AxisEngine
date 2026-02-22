@@ -15,7 +15,7 @@ public:
     GeneralDebugModule();
     ~GeneralDebugModule() override;
 
-    void Init(Application *app) override;
+    virtual void Init(std::shared_ptr<Application> app) override;
     void OnUpdate(float dt) override;
     void Render(Scene &scene) override;
     void ProcessInput(KeyboardManager &keyboard) override;
@@ -32,7 +32,7 @@ private:
     void LogEntityStats();
     void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
 
-    Application *m_App = nullptr;
+    std::shared_ptr<Application> m_App = nullptr;
     bool m_Enabled = true;
 
     bool m_F1Pressed = false;

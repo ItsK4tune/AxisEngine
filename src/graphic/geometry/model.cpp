@@ -367,7 +367,20 @@ void processNode(aiNode* node, const aiScene* scene,
 Model::Model(std::string const &path, bool isStatic, bool gamma) : gammaCorrection(gamma)
 {
     loadModel(path, isStatic);
+    ComputeAABB();
+    m_ReadyToRender = true;
+}
 
+void Model::LoadCPU(std::string const &path, bool isStatic, bool gamma)
+{
+    gammaCorrection = gamma;
+    loadModel(path, isStatic);
+    ComputeAABB();
+    m_ReadyToRender = true;
+}
+
+void Model::ComputeAABB()
+{
     if (!meshes.empty())
     {
         AABBmin = meshes[0].AABBmin;

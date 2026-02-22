@@ -7,5 +7,5 @@
 class ScriptInputHandler
 {
 public:
-    static void HandleInput(ScriptComponent& script, Scene& scene, Application* app, float dt, entt::entity entity);
+    static void HandleInput(ScriptComponent& script, Scene& scene, std::shared_ptr<Application> app, float dt, entt::entity entity);
 };

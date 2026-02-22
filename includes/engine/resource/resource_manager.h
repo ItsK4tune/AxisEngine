@@ -6,6 +6,9 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <future>
+#include <thread>
+#include <mutex>
 #include <interface/audio/i_audio_engine.h>
 
 #include <graphic/core/shader.h>
@@ -22,9 +25,6 @@
 #include <resource/sound_cache.h>
 #include <resource/animation_cache.h>
 #include <resource/resource_watcher.h>
-
-#include <future>
-#include <thread>
 
 class ResourceManager
 {
@@ -47,14 +47,14 @@ public:
     void LoadSkybox(const std::string& name, const std::vector<std::string>& faces);
     void CreateUIModel(const std::string& name, UIType type);
 
-    Shader* GetShader(const std::string& name);
-    Texture* GetTexture(const std::string& name);
+    std::shared_ptr<Shader> GetShader(const std::string& name);
+    std::shared_ptr<Texture> GetTexture(const std::string& name);
     std::shared_ptr<Model> GetModel(const std::string& name);
-    Animation* GetAnimation(const std::string& name);
-    Font* GetFont(const std::string& name);
+    std::shared_ptr<Animation> GetAnimation(const std::string& name);
+    std::shared_ptr<Font> GetFont(const std::string& name);
     std::shared_ptr<IAudioSource> GetSound(const std::string& name);
-    Skybox* GetSkybox(const std::string& name);
-    UIModel* GetUIModel(const std::string& name);
+    std::shared_ptr<Skybox> GetSkybox(const std::string& name);
+    std::shared_ptr<UIModel> GetUIModel(const std::string& name);
 
     void ClearResource();
 
@@ -64,6 +64,12 @@ public:
 private:
     void ReloadShader(const std::string& name);
     void ReloadTexture(const std::string& name);
+    void FlushPendingModels();
+
+    struct PendingModel {
+        std::string name;
+        std::shared_ptr<Model> model;
+    };
 
     ShaderCache m_ShaderCache;
     ModelInstanceManager m_ModelInstanceManager;
@@ -78,6 +84,10 @@ private:
         bool isStatic;
     };
     std::unordered_map<std::string, ModelInfo> m_ModelPaths;
-    std::unordered_map<std::string, std::unique_ptr<UIModel>> m_UIModels;
-    std::unordered_map<std::string, std::unique_ptr<Skybox>> m_Skyboxes;
+    std::unordered_map<std::string, std::shared_ptr<UIModel>> m_UIModels;
+    std::unordered_map<std::string, std::shared_ptr<Skybox>> m_Skyboxes;
+
+    std::vector<PendingModel> m_PendingModels;
+    std::vector<std::future<void>> m_ActiveFutures;
+    std::mutex m_PendingMutex;
 };

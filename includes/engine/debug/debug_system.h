@@ -18,16 +18,16 @@ public:
     DebugSystem();
     ~DebugSystem();
 
-    void Init(Application *app);
+    void Init(std::shared_ptr<Application> app);
     void OnUpdate(float dt);
     void Render(Scene &scene);
 
 private:
-    Application *m_App = nullptr;
+    std::shared_ptr<Application> m_App = nullptr;
 
-    Font *m_DebugFont = nullptr;
-    Shader *m_TextShader = nullptr;
-    UIModel *m_TextQuad = nullptr;
+    std::shared_ptr<Font> m_DebugFont = nullptr;
+    std::shared_ptr<Shader> m_TextShader = nullptr;
+    std::shared_ptr<UIModel> m_TextQuad = nullptr;
 
     float m_FpsTimer = 0.0f;
     int m_FrameCount = 0;

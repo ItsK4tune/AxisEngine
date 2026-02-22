@@ -11,12 +11,12 @@
 GizmoDebugModule::GizmoDebugModule() {}
 GizmoDebugModule::~GizmoDebugModule() {}
 
-void GizmoDebugModule::Init(Application *app)
+void GizmoDebugModule::Init(std::shared_ptr<Application> app)
 {
     m_App = app;
 }
 
-void GizmoDebugModule::SetSharedResources(Font *font, Shader *shader, UIModel *quad)
+void GizmoDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
 {
     m_DebugFont = font;
     m_TextShader = shader;

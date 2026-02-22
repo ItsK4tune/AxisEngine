@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <vector>
+#include <memory>
 #include <glm/glm.hpp>
 #include <graphic/core/shader.h>
 #include <graphic/geometry/mesh.h>
@@ -67,7 +68,7 @@ public:
     float SpawnRate = 10.0f;
     EmissionShape Shape = EmissionShape::DIRECTIONAL;
 
-    Texture *texture = nullptr;
+    std::shared_ptr<Texture> texture = nullptr;
 
     static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
 

@@ -25,7 +25,7 @@ SystemManager::~SystemManager()
 {
 }
 
-void SystemManager::InitializeSystems(ResourceManager& res, int width, int height, Application* app)
+void SystemManager::InitializeSystems(ResourceManager& res, int width, int height, std::shared_ptr<Application> app)
 {
     LOGGER_INFO("SystemManager") << "Initializing systems...";
 
@@ -58,7 +58,7 @@ void SystemManager::FixedUpdateSystems(Scene& scene, IPhysicsWorld& phys, float 
     physicsSystem.Update(scene, phys, fixedDt);
 }
 
-void SystemManager::UpdateLogic(Scene& scene, float deltaTime, float realDeltaTime, Application* app, MouseManager& mouse)
+void SystemManager::UpdateLogic(Scene& scene, float deltaTime, float realDeltaTime, std::shared_ptr<Application> app, MouseManager& mouse)
 {
     scriptSystem.Update(scene, deltaTime, realDeltaTime, app);
 }
@@ -72,7 +72,7 @@ void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager
 }
 
 void SystemManager::UpdateSystems(Scene& scene, float deltaTime, float realDeltaTime,
-                                  Application* app, ResourceManager& res,
+                                  std::shared_ptr<Application> app, ResourceManager& res,
                                   SoundPlayer& sound, MouseManager& mouse)
 {
     UpdateLogic(scene, deltaTime, realDeltaTime, app, mouse);

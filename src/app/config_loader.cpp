@@ -190,7 +190,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
     }
 }
 
-void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
+void ConfigLoader::LoadConfig(std::stringstream &ss, std::shared_ptr<Application> app)
 {
 
     std::string subCmd;

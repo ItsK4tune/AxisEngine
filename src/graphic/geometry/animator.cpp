@@ -6,7 +6,7 @@
 
 #include <graphic/geometry/bone.h>
 
-Animator::Animator(Animation *animation)
+Animator::Animator(std::shared_ptr<Animation> animation)
 {
     m_CurrentTime = 0.0;
     m_CurrentAnimation = animation;
@@ -73,7 +73,7 @@ void Animator::UpdateAnimation(float dt)
     }
 }
 
-void Animator::AddAnimation(const std::string &name, Animation *animation)
+void Animator::AddAnimation(const std::string &name, std::shared_ptr<Animation> animation)
 {
     if (animation)
     {
@@ -81,7 +81,7 @@ void Animator::AddAnimation(const std::string &name, Animation *animation)
     }
 }
 
-void Animator::PlayAnimation(Animation *pAnimation)
+void Animator::PlayAnimation(std::shared_ptr<Animation> pAnimation)
 {
     m_CurrentAnimation = pAnimation;
     m_CurrentTime = 0.0f;
@@ -91,7 +91,7 @@ void Animator::PlayAnimation(const std::string &name)
 {
     if (m_AnimationsMap.find(name) != m_AnimationsMap.end())
     {
-        Animation *targetAnim = m_AnimationsMap[name];
+        std::shared_ptr<Animation> targetAnim = m_AnimationsMap[name];
 
         if (m_CurrentAnimation != targetAnim)
         {
@@ -113,7 +113,7 @@ void Animator::CrossFade(const std::string &name, float transitionDuration)
         return;
     }
 
-    Animation *target = m_AnimationsMap[name];
+    std::shared_ptr<Animation> target = m_AnimationsMap[name];
     if (target == m_CurrentAnimation && !m_IsCrossFading)
         return;
     if (target == m_NextAnimation && m_IsCrossFading)

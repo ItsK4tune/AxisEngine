@@ -13,7 +13,7 @@ FontCache::~FontCache()
 
 void FontCache::LoadFont(const std::string& name, const std::string& path, unsigned int fontSize)
 {
-    auto font = std::make_unique<Font>();
+    auto font = std::make_shared<Font>();
     if (font->Load(FileSystem::getPath(path), fontSize))
     {
         m_Fonts[name] = std::move(font);
@@ -25,10 +25,10 @@ void FontCache::LoadFont(const std::string& name, const std::string& path, unsig
     }
 }
 
-Font* FontCache::GetFont(const std::string& name)
+std::shared_ptr<Font> FontCache::GetFont(const std::string& name)
 {
     if (m_Fonts.find(name) != m_Fonts.end())
-        return m_Fonts[name].get();
+        return m_Fonts[name];
 
     LOGGER_WARN("FontCache") << "Font not found: " << name;
     return nullptr;

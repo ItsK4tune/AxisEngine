@@ -18,7 +18,7 @@
 
 #include <iostream>
 
-EngineLoop::EngineLoop(Application* app)
+EngineLoop::EngineLoop(std::shared_ptr<Application> app)
     : m_App(app)
     , m_LastFrameTime(std::chrono::steady_clock::now())
 {

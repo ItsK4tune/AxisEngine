@@ -53,8 +53,8 @@ public:
 
     void EnableLogic(bool enable);
 
-    void SetContext(Application *app) { m_App = app; }
+    void SetContext(std::shared_ptr<Application> app) { m_App = app; }
 
 protected:
-    Application *m_App = nullptr;
+    std::shared_ptr<Application> m_App = nullptr;
 };

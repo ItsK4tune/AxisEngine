@@ -3,6 +3,7 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <string>
+#include <memory>
 
 class Application;
 class Scene;
@@ -12,7 +13,7 @@ class IDebugModule
 {
 public:
     virtual ~IDebugModule() = default;
-    virtual void Init(Application *app) = 0;
+    virtual void Init(std::shared_ptr<Application> app) = 0;
 
     virtual void OnUpdate(float dt) = 0;
     virtual void Render(Scene &scene) = 0;

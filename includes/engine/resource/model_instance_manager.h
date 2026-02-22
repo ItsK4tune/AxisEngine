@@ -22,6 +22,7 @@ public:
     ~ModelInstanceManager() = default;
 
     std::shared_ptr<Model> GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic = false);
+    void RegisterModel(const std::string& name, std::shared_ptr<Model> model);
     void AddInstance(const std::string& modelPath, const glm::mat4& transform, entt::entity entity);
     void RemoveInstance(const std::string& modelPath, entt::entity entity);
 

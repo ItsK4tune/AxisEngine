@@ -87,7 +87,7 @@ int main() {
 
     InitLogging();
 
-    Application app;
+    std::shared_ptr<Application> app = std::make_shared<Application>();
 
     AppConfig config;
     config.title = "Axis Engine - Code Config";
@@ -97,9 +97,9 @@ int main() {
     config.vsync = true;
     config.physicsMode = 1;
 
-    if (app.Init(config)) {
-        app.PushState<GameState>();
-        app.Run();
+    if (app->Init(config)) {
+        app->PushState<GameState>();
+        app->Run();
     }
 
     return 0;

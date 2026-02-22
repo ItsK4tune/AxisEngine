@@ -7,7 +7,7 @@
 ShadowDebugModule::ShadowDebugModule() {}
 ShadowDebugModule::~ShadowDebugModule() {}
 
-void ShadowDebugModule::Init(Application *app)
+void ShadowDebugModule::Init(std::shared_ptr<Application> app)
 {
     m_App = app;
 }

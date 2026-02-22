@@ -20,7 +20,7 @@
 class IGraphicsContext;
 class State;
 
-class Application
+class Application : public std::enable_shared_from_this<Application>
 {
 public:
     Application();

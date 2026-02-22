@@ -19,14 +19,14 @@ void AnimationCache::LoadAnimation(const std::string& name, const std::string& p
         return;
     }
 
-    m_Animations[name] = std::make_unique<Animation>(FileSystem::getPath(path), *model);
+    m_Animations[name] = std::make_shared<Animation>(FileSystem::getPath(path), *model);
     LOGGER_INFO("AnimationCache") << "Loaded animation: " << name;
 }
 
-Animation* AnimationCache::GetAnimation(const std::string& name)
+std::shared_ptr<Animation> AnimationCache::GetAnimation(const std::string& name)
 {
     if (m_Animations.find(name) != m_Animations.end())
-        return m_Animations[name].get();
+        return m_Animations[name];
 
     LOGGER_WARN("AnimationCache") << "Animation not found: " << name;
     return nullptr;

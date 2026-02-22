@@ -59,7 +59,7 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
     if (auto mesh = registry.try_get<MeshRendererComponent>(entity))
     {
         mesh->model = nullptr;
-        mesh->shader = nullptr;
+        mesh->shader.reset();
     }
 
     if (auto anim = registry.try_get<AnimationComponent>(entity))
@@ -84,7 +84,7 @@ void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
     if (auto sky = registry.try_get<SkyboxRenderComponent>(entity))
     {
         sky->skybox = nullptr;
-        sky->shader = nullptr;
+        sky->shader.reset();
     }
 
     registry.destroy(entity);

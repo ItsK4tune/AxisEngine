@@ -19,7 +19,7 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
         {
             if (!video.decoder)
             {
-                video.decoder = new VideoDecoder();
+                video.decoder = std::make_shared<VideoDecoder>();
             }
 
             if (video.decoder->Load(video.filePath))
@@ -49,8 +49,7 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
             {
                 LOGGER_ERROR("VideoSystem") << "Failed to load: " << video.filePath;
                 video.isLoaded = true;
-                delete video.decoder;
-                video.decoder = nullptr;
+                video.decoder.reset();
                 continue;
             }
         }
@@ -77,12 +76,8 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
                     if (!res.GetUIModel(uniqueName))
                     {
                         res.CreateUIModel(uniqueName, UIType::Texture);
-                        uiRenderer->model = res.GetUIModel(uniqueName);
                     }
-                    else
-                    {
-                         uiRenderer->model = res.GetUIModel(uniqueName);
-                    }
+                    uiRenderer->model = res.GetUIModel(uniqueName);
                 }
 
                 if (uiRenderer->model)

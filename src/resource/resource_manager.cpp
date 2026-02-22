@@ -10,6 +10,7 @@ ResourceManager::~ResourceManager()
 
 void ResourceManager::Update(float dt)
 {
+    FlushPendingModels();
     m_TextureCache.Update();
     m_ResourceWatcher.Update(dt);
 }
@@ -76,13 +77,25 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
 
 void ResourceManager::LoadModelAsync(const std::string &name, const std::string &path, bool isStatic)
 {
+    std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Async loading model: " << name;
 
-    std::thread([this, name, path, isStatic]()
     {
+        std::lock_guard<std::mutex> lock(m_PendingMutex);
+        m_ModelPaths[name] = {name, isStatic};
+    }
 
-        LoadModel(name, path, isStatic);
-    }).detach();
+    auto future = std::async(std::launch::async, [this, name, fullPath, isStatic]()
+    {
+        auto model = std::make_shared<Model>();
+        model->LoadCPU(fullPath, isStatic);
+
+        std::lock_guard<std::mutex> lock(m_PendingMutex);
+        m_PendingModels.push_back({name, std::move(model)});
+    });
+
+    std::lock_guard<std::mutex> lock(m_PendingMutex);
+    m_ActiveFutures.push_back(std::move(future));
 }
 
 void ResourceManager::LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName)
@@ -116,24 +129,24 @@ void ResourceManager::LoadSound(const std::string &name, const std::string &path
 
 void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
 {
-    auto skybox = std::make_unique<Skybox>();
+    auto skybox = std::make_shared<Skybox>();
     skybox->LoadCubemap(faces);
-    m_Skyboxes[name] = std::move(skybox);
+    m_Skyboxes[name] = skybox;
     LOGGER_INFO("ResourceManager") << "Loaded skybox: " << name;
 }
 
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
-    m_UIModels[name] = std::make_unique<UIModel>(type);
+    m_UIModels[name] = std::make_shared<UIModel>(type);
     LOGGER_INFO("ResourceManager") << "Created UI Model: " << name;
 }
 
-Shader *ResourceManager::GetShader(const std::string &name)
+std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name)
 {
-    return m_ShaderCache.Get(name);
+    return m_ShaderCache.GetShared(name);
 }
 
-Texture *ResourceManager::GetTexture(const std::string &name)
+std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name)
 {
     return m_TextureCache.GetTexture(name);
 }
@@ -149,12 +162,12 @@ std::shared_ptr<Model> ResourceManager::GetModel(const std::string &name)
     return nullptr;
 }
 
-Animation *ResourceManager::GetAnimation(const std::string &name)
+std::shared_ptr<Animation> ResourceManager::GetAnimation(const std::string &name)
 {
     return m_AnimationCache.GetAnimation(name);
 }
 
-Font *ResourceManager::GetFont(const std::string &name)
+std::shared_ptr<Font> ResourceManager::GetFont(const std::string &name)
 {
     return m_FontCache.GetFont(name);
 }
@@ -164,19 +177,19 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name)
     return m_SoundCache.GetSound(name);
 }
 
-Skybox *ResourceManager::GetSkybox(const std::string &name)
+std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name)
 {
     if (m_Skyboxes.find(name) != m_Skyboxes.end())
-        return m_Skyboxes[name].get();
+        return m_Skyboxes[name];
 
     LOGGER_WARN("ResourceManager") << "Skybox not found: " << name;
     return nullptr;
 }
 
-UIModel *ResourceManager::GetUIModel(const std::string &name)
+std::shared_ptr<UIModel> ResourceManager::GetUIModel(const std::string &name)
 {
     if (m_UIModels.find(name) != m_UIModels.end())
-        return m_UIModels[name].get();
+        return m_UIModels[name];
 
     LOGGER_WARN("ResourceManager") << "UI Model not found: " << name;
     return nullptr;
@@ -195,3 +208,26 @@ void ResourceManager::ClearResource()
 
     LOGGER_INFO("ResourceManager") << "All resources cleared";
 }
+
+void ResourceManager::FlushPendingModels()
+{
+    std::lock_guard<std::mutex> lock(m_PendingMutex);
+
+    m_ActiveFutures.erase(
+        std::remove_if(m_ActiveFutures.begin(), m_ActiveFutures.end(),
+            [](std::future<void>& f) {
+                return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+            }),
+        m_ActiveFutures.end());
+
+    for (auto& pending : m_PendingModels)
+    {
+        if (pending.model && pending.model->IsReadyToRender())
+        {
+            m_ModelInstanceManager.RegisterModel(pending.name, std::move(pending.model));
+            LOGGER_INFO("ResourceManager") << "Async model registered: " << pending.name;
+        }
+    }
+    m_PendingModels.clear();
+}
+

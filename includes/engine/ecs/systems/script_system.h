@@ -7,7 +7,7 @@ class Application;
 class ScriptableSystem
 {
 public:
-    void Update(Scene &scene, float dt, float unscaledDt, Application *app);
+    void Update(Scene &scene, float dt, float unscaledDt, std::shared_ptr<Application> app);
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
 

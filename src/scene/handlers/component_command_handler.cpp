@@ -174,7 +174,7 @@ namespace SceneHandlers
         scene.SetActiveSkybox(entity);
     }
 
-    void ComponentCommandHandler::HandleScript(std::stringstream &ss, Scene &scene, entt::entity entity, Application *app)
+    void ComponentCommandHandler::HandleScript(std::stringstream &ss, Scene &scene, entt::entity entity, std::shared_ptr<Application> app)
     {
         ComponentLoader::LoadScript(scene, entity, ss, app);
     }

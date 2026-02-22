@@ -73,7 +73,7 @@ namespace SceneHandlers
         }
     }
 
-    void SceneValidator::ValidateCamera(Scene &scene, Application *app)
+    void SceneValidator::ValidateCamera(Scene &scene, std::shared_ptr<Application> app)
     {
         if (scene.GetActiveCamera() != entt::null)
             return;

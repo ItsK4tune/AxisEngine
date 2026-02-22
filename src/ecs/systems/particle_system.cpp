@@ -65,7 +65,7 @@ void ParticleSystem::Render(Scene &scene, ResourceManager &res)
         auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
         if (emitterComp.isActive)
         {
-            emitterComp.emitter.Render(shader);
+            emitterComp.emitter.Render(shader.get());
         }
     }
 

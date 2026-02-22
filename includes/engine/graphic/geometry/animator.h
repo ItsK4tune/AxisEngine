@@ -10,12 +10,12 @@
 class Animator
 {
 public:
-    Animator(Animation *animation);
+    Animator(std::shared_ptr<Animation> animation);
     ~Animator() = default;
 
     void UpdateAnimation(float dt);
-    void AddAnimation(const std::string &name, Animation *animation);
-    void PlayAnimation(Animation *pAnimation);
+    void AddAnimation(const std::string &name, std::shared_ptr<Animation> animation);
+    void PlayAnimation(std::shared_ptr<Animation> pAnimation);
     void PlayAnimation(const std::string &name);
 
     void CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform);
@@ -35,10 +35,10 @@ private:
 
 private:
     std::vector<glm::mat4> m_FinalBoneMatrices;
-    Animation *m_CurrentAnimation;
+    std::shared_ptr<Animation> m_CurrentAnimation;
     float m_CurrentTime;
 
-    Animation *m_NextAnimation = nullptr;
+    std::shared_ptr<Animation> m_NextAnimation = nullptr;
     float m_NextTime = 0.0f;
     float m_BlendFactor = 0.0f;
     bool m_IsCrossFading = false;
@@ -49,5 +49,5 @@ private:
     float m_UpdateRate = 0.0f;
     float m_TimeSinceLastUpdate = 0.0f;
 
-    std::unordered_map<std::string, Animation *> m_AnimationsMap;
+    std::unordered_map<std::string, std::shared_ptr<Animation>> m_AnimationsMap;
 };

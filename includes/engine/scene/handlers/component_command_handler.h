@@ -34,7 +34,7 @@ namespace SceneHandlers
         static void HandleUIText(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res);
 
         static void HandleSkyboxRenderer(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res);
-        static void HandleScript(std::stringstream &ss, Scene &scene, entt::entity entity, Application *app);
+        static void HandleScript(std::stringstream &ss, Scene &scene, entt::entity entity, std::shared_ptr<Application> app);
         static void HandleAudioSource(std::stringstream &ss, Scene &scene, entt::entity entity);
         static void HandleVideoPlayer(std::stringstream &ss, Scene &scene, entt::entity entity);
         static void HandleParticleEmitter(std::stringstream &ss, Scene &scene, entt::entity entity, ResourceManager &res);

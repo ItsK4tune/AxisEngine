@@ -13,7 +13,7 @@ public:
     ShadowDebugModule();
     ~ShadowDebugModule() override;
 
-    void Init(Application *app) override;
+    void Init(std::shared_ptr<Application> app) override;
     void OnUpdate(float dt) override;
     void Render(Scene &scene) override;
     void ProcessInput(KeyboardManager &keyboard) override;
@@ -23,7 +23,7 @@ public:
     std::string GetModuleName() const override { return "ShadowDebugModule"; }
 
 private:
-    Application *m_App = nullptr;
+    std::shared_ptr<Application> m_App = nullptr;
     bool m_Enabled = true;
 };
 

@@ -19,10 +19,10 @@ public:
 
     std::vector<entt::entity> GetAllCameras() const;
 
-    void EnsurePrimaryCamera(Application *app);
+    void EnsurePrimaryCamera(std::shared_ptr<Application> app);
 
     entt::entity CreateCamera(const glm::vec3 &position, float fov = 45.0f, float yaw = -90.0f, float pitch = 0.0f, bool isPrimary = false);
-    entt::entity CreateDefaultSpectatorCamera(Application *app);
+    entt::entity CreateDefaultSpectatorCamera(std::shared_ptr<Application> app);
 
     glm::mat4 GetViewMatrix(entt::entity camera) const;
     glm::mat4 GetProjectionMatrix(entt::entity camera, float aspectRatio) const;

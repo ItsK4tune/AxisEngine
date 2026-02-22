@@ -16,9 +16,9 @@ void ShadowRenderer::Init(ResourceManager &res)
     res.LoadShader("shadow_point", "src/asset/shaders/shadow_point.vs", "src/asset/shaders/shadow_point.fs", "src/asset/shaders/shadow_point.gs");
     res.LoadShader("shadow_spot", "src/asset/shaders/shadow_spot.vs", "src/asset/shaders/shadow_spot.fs");
 
-    m_Shadow.SetShaderDir(res.GetShader("shadow_depth"));
-    m_Shadow.SetShaderPoint(res.GetShader("shadow_point"));
-    m_Shadow.SetShaderSpot(res.GetShader("shadow_spot"));
+    m_Shadow.SetShaderDir(res.GetShader("shadow_depth").get());
+    m_Shadow.SetShaderPoint(res.GetShader("shadow_point").get());
+    m_Shadow.SetShaderSpot(res.GetShader("shadow_spot").get());
 }
 
 void ShadowRenderer::Shutdown()

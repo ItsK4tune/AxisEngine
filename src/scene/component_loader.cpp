@@ -130,7 +130,10 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, std::st
     float x, y, w, h;
     int z;
     ss >> x >> y >> w >> h >> z;
-    scene.registry.emplace<UITransformComponent>(entity, glm::vec2(x, y), glm::vec2(w, h), z);
+    auto& ui = scene.registry.emplace<UITransformComponent>(entity);
+    ui.position = glm::vec2(x, y);
+    ui.size = glm::vec2(w, h);
+    ui.zOrder = z;
 }
 
 void ComponentLoader::LoadUIRenderer(Scene& scene, entt::entity entity, std::stringstream& ss, ResourceManager& res)
@@ -189,7 +192,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, std:
     comp.shader = res.GetShader(shaderName);
 }
 
-void ComponentLoader::LoadScript(Scene& scene, entt::entity entity, std::stringstream& ss, Application* app)
+void ComponentLoader::LoadScript(Scene& scene, entt::entity entity, std::stringstream& ss, std::shared_ptr<Application> app)
 {
     std::string className;
     ss >> className;

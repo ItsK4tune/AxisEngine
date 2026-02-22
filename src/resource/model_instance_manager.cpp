@@ -23,6 +23,18 @@ std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& n
     return model;
 }
 
+void ModelInstanceManager::RegisterModel(const std::string& name, std::shared_ptr<Model> model)
+{
+    if (m_ModelPools.find(name) != m_ModelPools.end())
+        return;
+
+    ModelPool pool;
+    pool.model = std::move(model);
+    m_ModelPools[name] = std::move(pool);
+
+    LOGGER_DEBUG("ModelInstanceManager") << "Registered async model '" << name << "'";
+}
+
 void ModelInstanceManager::AddInstance(const std::string& modelPath, const glm::mat4& transform, entt::entity entity)
 {
     auto it = m_ModelPools.find(modelPath);
