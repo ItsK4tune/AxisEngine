@@ -8,6 +8,7 @@
 
 class ICollisionShape;
 class IRigidBody;
+class IConstraint;
 
 class IPhysicsWorld
 {
@@ -24,6 +25,9 @@ public:
     virtual void AddRigidBody(IRigidBody* body) = 0;
     virtual void RemoveRigidBody(IRigidBody* body) = 0;
 
+    virtual void AddConstraint(std::shared_ptr<IConstraint> constraint) = 0;
+    virtual void RemoveConstraint(std::shared_ptr<IConstraint> constraint) = 0;
+
     virtual void DebugDraw() = 0;
 
     using CollisionFilterCallback = std::function<bool(entt::entity, entt::entity)>;
@@ -34,5 +38,9 @@ public:
     virtual std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateCapsuleShape(float radius, float height) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateCompoundShape() = 0;
+    virtual std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) = 0;
     virtual void AddChildShape(ICollisionShape* parent, ICollisionShape* child, const glm::vec3& pos, const glm::quat& rot) = 0;
+
+    virtual std::shared_ptr<IConstraint> CreatePoint2PointConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB) = 0;
+    virtual std::shared_ptr<IConstraint> CreateHingeConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::vec3& axisInA, const glm::vec3& axisInB) = 0;
 };

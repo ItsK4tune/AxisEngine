@@ -1,5 +1,6 @@
 ﻿#include <physic/backends/bullet_physics_world.h>
 #include <physic/backends/bullet_debug_drawer.h>
+#include <physic/backends/bullet_constraint.h>
 #include <utils/logger.h>
 
 BulletPhysicsWorld::BulletPhysicsWorld()
@@ -150,6 +151,28 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCompoundShape()
     return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::CompoundHull);
 }
 
+std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices)
+{
+    if (vertices.empty() || indices.empty()) return nullptr;
+
+    std::vector<float> vs = vertices;
+    std::vector<uint32_t> is = indices;
+
+    btTriangleIndexVertexArray* meshInterface = new btTriangleIndexVertexArray(
+        is.size() / 3,
+        (int*)is.data(),
+        3 * sizeof(uint32_t),
+        vs.size() / 3,
+        (float*)vs.data(),
+        3 * sizeof(float)
+    );
+
+    bool useQuantizedAabbCompression = true;
+    btBvhTriangleMeshShape* bvhShape = new btBvhTriangleMeshShape(meshInterface, useQuantizedAabbCompression);
+
+    return std::make_shared<BulletMeshCollisionShape>(bvhShape, meshInterface, std::move(vs), std::move(is));
+}
+
 void BulletPhysicsWorld::AddChildShape(ICollisionShape* parent, ICollisionShape* child, const glm::vec3& pos, const glm::quat& rot)
 {
     if (!parent || !child) return;
@@ -168,4 +191,58 @@ void BulletPhysicsWorld::AddChildShape(ICollisionShape* parent, ICollisionShape*
 
         compound->addChildShape(localTrans, bChild->GetRaw());
     }
+}
+
+void BulletPhysicsWorld::AddConstraint(std::shared_ptr<IConstraint> constraint)
+{
+    if (!m_DynamicsWorld || !constraint) return;
+    BulletConstraint* bConst = static_cast<BulletConstraint*>(constraint.get());
+    if (bConst->GetRaw())
+    {
+        m_DynamicsWorld->addConstraint(bConst->GetRaw());
+    }
+}
+
+void BulletPhysicsWorld::RemoveConstraint(std::shared_ptr<IConstraint> constraint)
+{
+    if (!m_DynamicsWorld || !constraint) return;
+    BulletConstraint* bConst = static_cast<BulletConstraint*>(constraint.get());
+    if (bConst->GetRaw())
+    {
+        m_DynamicsWorld->removeConstraint(bConst->GetRaw());
+    }
+}
+
+std::shared_ptr<IConstraint> BulletPhysicsWorld::CreatePoint2PointConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB)
+{
+    if (!rbA || !rbB) return nullptr;
+    BulletRigidBody* bA = static_cast<BulletRigidBody*>(rbA.get());
+    BulletRigidBody* bB = static_cast<BulletRigidBody*>(rbB.get());
+    if (!bA->GetRaw() || !bB->GetRaw()) return nullptr;
+
+    btPoint2PointConstraint* p2p = new btPoint2PointConstraint(
+        *bA->GetRaw(), 
+        *bB->GetRaw(), 
+        btVector3(pivotInA.x, pivotInA.y, pivotInA.z), 
+        btVector3(pivotInB.x, pivotInB.y, pivotInB.z)
+    );
+    return std::make_shared<BulletConstraint>(p2p);
+}
+
+std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateHingeConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::vec3& axisInA, const glm::vec3& axisInB)
+{
+    if (!rbA || !rbB) return nullptr;
+    BulletRigidBody* bA = static_cast<BulletRigidBody*>(rbA.get());
+    BulletRigidBody* bB = static_cast<BulletRigidBody*>(rbB.get());
+    if (!bA->GetRaw() || !bB->GetRaw()) return nullptr;
+
+    btHingeConstraint* hinge = new btHingeConstraint(
+        *bA->GetRaw(),
+        *bB->GetRaw(),
+        btVector3(pivotInA.x, pivotInA.y, pivotInA.z),
+        btVector3(pivotInB.x, pivotInB.y, pivotInB.z),
+        btVector3(axisInA.x, axisInA.y, axisInA.z),
+        btVector3(axisInB.x, axisInB.y, axisInB.z)
+    );
+    return std::make_shared<BulletConstraint>(hinge);
 }

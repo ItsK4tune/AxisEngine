@@ -37,3 +37,27 @@ private:
     btCollisionShape* m_Shape = nullptr;
     CollisionShapeType m_Type;
 };
+
+class BulletMeshCollisionShape : public BulletCollisionShape
+{
+public:
+    BulletMeshCollisionShape(btCollisionShape* shape, btTriangleIndexVertexArray* indexVertexArray, std::vector<float>&& vertices, std::vector<uint32_t>&& indices)
+        : BulletCollisionShape(shape, CollisionShapeType::Mesh), 
+          m_IndexVertexArray(indexVertexArray),
+          m_Vertices(std::move(vertices)),
+          m_Indices(std::move(indices)) {}
+
+    ~BulletMeshCollisionShape()
+    {
+        if (m_IndexVertexArray)
+        {
+            delete m_IndexVertexArray;
+            m_IndexVertexArray = nullptr;
+        }
+    }
+
+private:
+    btTriangleIndexVertexArray* m_IndexVertexArray = nullptr;
+    std::vector<float> m_Vertices;
+    std::vector<uint32_t> m_Indices;
+};

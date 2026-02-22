@@ -66,7 +66,13 @@ public:
     std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) override;
     std::shared_ptr<ICollisionShape> CreateCapsuleShape(float radius, float height) override;
     std::shared_ptr<ICollisionShape> CreateCompoundShape() override;
+    std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) override;
     void AddChildShape(ICollisionShape* parent, ICollisionShape* child, const glm::vec3& pos, const glm::quat& rot) override;
+
+    void AddConstraint(std::shared_ptr<IConstraint> constraint) override;
+    void RemoveConstraint(std::shared_ptr<IConstraint> constraint) override;
+    std::shared_ptr<IConstraint> CreatePoint2PointConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB) override;
+    std::shared_ptr<IConstraint> CreateHingeConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::vec3& axisInA, const glm::vec3& axisInB) override;
 
 private:
     std::unique_ptr<btDefaultCollisionConfiguration> m_CollisionConfig;

@@ -2,7 +2,9 @@
 
 #include <glm/glm.hpp>
 #include <memory>
+#include <vector>
 #include <interface/physics/i_rigid_body.h>
+#include <interface/physics/i_constraint.h>
 
 struct RigidBodyComponent
 {
@@ -14,6 +16,8 @@ struct RigidBodyComponent
     bool isChildrenMatter = false;
 
     bool isCollisionEnabled = true;
+
+    std::vector<std::shared_ptr<IConstraint>> constraints;
 
     glm::vec3 linearFactor = glm::vec3(1.0f);
     glm::vec3 angularFactor = glm::vec3(1.0f);
