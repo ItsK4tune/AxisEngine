@@ -3,6 +3,7 @@
 #include <ecs/system.h>
 #include <graphic/core/post_process_pipeline.h>
 #include <memory>
+#include <app/config_loader.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 #include <debug/debug_system.h>
@@ -22,6 +23,7 @@ public:
     ~SystemManager();
 
     void InitializeSystems(ResourceManager &res, int width, int height, std::shared_ptr<Application> app);
+    void ApplyConfig(const AppConfig &config);
     void ShutdownSystems();
 
     void FixedUpdateSystems(Scene &scene, IPhysicsWorld &phys, float fixedDt);

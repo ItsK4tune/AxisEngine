@@ -28,6 +28,14 @@ AXIS Engine is built on **data-oriented design** principles with a focus on cach
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      APPLICATION                         │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │             AppBuilder (Initialization)            │  │
+│  │  - Creates Graphics, Audio, Physics, Window        │  │
+│  │  - Isolated from strict backend APIs               │  │
+│  └────────────────────────────────────────────────────┘  │
+│                           │                              │
+│                           ▼                              │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │             State Machine                          │  │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐         │  │
@@ -66,7 +74,7 @@ AXIS Engine is built on **data-oriented design** principles with a focus on cach
 │  │                                                    │  │
 │  │  ResourceManager  │  SoundManager                  │  │
 │  │  InputManager     │  MonitorManager                │  │
-│  │  AppHandler       │  PhysicsWorld                  │  │
+│  │  IOHandler        │  PhysicsWorld                  │  │
 │  │                                                    │  │
 │  └────────────────────────────────────────────────────┘  │
 │                                                          │
@@ -234,7 +242,7 @@ class GameState : public State {
 class Scriptable {
 public:
     // Lifecycle
-    void Init(entt::entity entity, Scene* scene, Application* app);
+    void Init(entt::entity entity, Scene* scene, std::shared_ptr<Application> app);
     virtual void OnCreate() {}
     virtual void OnUpdate(float dt) {}
     virtual void OnDestroy() {}
@@ -265,7 +273,7 @@ public:
 protected:
     entt::entity m_Entity;
     Scene* m_Scene;
-    Application* m_App;
+    std::shared_ptr<Application> m_App;
 };
 ```
 
@@ -329,6 +337,9 @@ class PlayerController : public Scriptable {
 ### Frame Update Flow
 ```
 Application::Run() {
+    // Initialization Phase (via AppBuilder) -> Build config into specific context + engines
+    // Initialize Systems & global config limits (SystemManager::ApplyConfig)
+
     while (running) {
         1. glfwPollEvents()  // Input events
         2. MouseManager::Update()

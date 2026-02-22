@@ -321,7 +321,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [FreeType](https://www.freetype.org/) - Font rendering
 - [irrKlang](https://www.ambiera.com/irrklang/) - Audio engine
 - [FFmpeg](https://ffmpeg.org/) - Video decoding
-- [JSON for Modern C++](https://github.com/nlohmann/json) - JSON parsing
 
 ---
 

@@ -53,6 +53,18 @@ void SystemManager::ShutdownSystems()
     postProcess.Shutdown();
 }
 
+void SystemManager::ApplyConfig(const AppConfig &config)
+{
+    renderSystem.SetShadowMode(config.shadowMode);
+    renderSystem.SetShadowProjectionSize(config.shadowProjectionSize);
+    renderSystem.SetInstanceBatching(config.instanceBatchingEnabled);
+    renderSystem.SetFrustumCulling(config.frustumCullingEnabled);
+    renderSystem.SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
+    renderSystem.SetShadowDistanceCulling(config.shadowDistanceCulling);
+    renderSystem.SetDistanceCulling(config.distanceCulling);
+    renderSystem.SetAntiAliasingMode((AntiAliasingMode)config.antialiasing);
+}
+
 void SystemManager::FixedUpdateSystems(Scene& scene, IPhysicsWorld& phys, float fixedDt)
 {
     physicsSystem.Update(scene, phys, fixedDt);
