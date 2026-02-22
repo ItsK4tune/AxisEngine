@@ -14,7 +14,7 @@ BulletPhysicsWorld::~BulletPhysicsWorld()
 void BulletPhysicsWorld::Init()
 {
     m_CollisionConfig = std::make_unique<btDefaultCollisionConfiguration>();
-    m_Dispatcher = std::make_unique<btCollisionDispatcher>(m_CollisionConfig.get());
+    m_Dispatcher = std::make_unique<CustomCollisionDispatcher>(m_CollisionConfig.get());
     m_OverlappingPairCache = std::make_unique<btDbvtBroadphase>();
     m_Solver = std::make_unique<btSequentialImpulseConstraintSolver>();
     m_DynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
@@ -93,6 +93,14 @@ void BulletPhysicsWorld::DebugDraw()
 
     if (m_CurrentDebugDrawer)
         m_CurrentDebugDrawer->Flush();
+}
+
+void BulletPhysicsWorld::SetCollisionFilter(CollisionFilterCallback callback)
+{
+    if (m_Dispatcher)
+    {
+        m_Dispatcher->SetFilterCallback(callback);
+    }
 }
 
 std::shared_ptr<IRigidBody> BulletPhysicsWorld::CreateRigidBody(float mass, const glm::vec3& startPos, const glm::quat& startRot, std::shared_ptr<ICollisionShape> shape)

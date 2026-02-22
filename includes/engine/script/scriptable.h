@@ -4,6 +4,7 @@
 #include <ecs/component.h>
 #include <vector>
 #include <functional>
+#include <string>
 
 class Application;
 
@@ -89,6 +90,16 @@ public:
     virtual void OnTriggerEnter(entt::entity other) {}
     virtual void OnTriggerStay(entt::entity other) {}
     virtual void OnTriggerExit(entt::entity other) {}
+
+    bool CompareTag(entt::entity entity, const std::string& tag) const;
+    bool CompareName(entt::entity entity, const std::string& name) const;
+    std::string GetTag(entt::entity entity) const;
+    std::string GetName(entt::entity entity) const;
+
+    void SetCollisionEnabled(bool enabled);
+    bool IsCollisionEnabled() const;
+    void IgnoreTagCollision(const std::string& tag1, const std::string& tag2);
+    void IgnoreNameCollision(const std::string& name1, const std::string& name2);
 
     bool GetAction(const std::string &name);
     bool GetActionDown(const std::string &name);

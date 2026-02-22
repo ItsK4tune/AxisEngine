@@ -13,6 +13,8 @@ struct RigidBodyComponent
     bool isParentMatter = false;
     bool isChildrenMatter = false;
 
+    bool isCollisionEnabled = true;
+
     glm::vec3 linearFactor = glm::vec3(1.0f);
     glm::vec3 angularFactor = glm::vec3(1.0f);
 

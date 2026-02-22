@@ -1,6 +1,9 @@
 ﻿#include <script/scriptable.h>
 #include <app/application.h>
 #include <input/input_manager.h>
+#include <ecs/components/info_component.h>
+#include <ecs/components/physics_components.h>
+#include <physic/collision_matrix.h>
 
 bool Scriptable::GetAction(const std::string& name)
 {
@@ -60,3 +63,66 @@ SceneManager& Scriptable::GetSceneManager()
 InputManager& Scriptable::GetInputManager() { return GetIOHandler().GetInputManager(); }
 KeyboardManager& Scriptable::GetKeyboard() { return GetIOHandler().GetKeyboard(); }
 MouseManager& Scriptable::GetMouse() { return GetIOHandler().GetMouse(); }
+
+bool Scriptable::CompareTag(entt::entity entity, const std::string& tag) const
+{
+    if (m_Scene->registry.valid(entity) && m_Scene->registry.all_of<InfoComponent>(entity))
+    {
+        return m_Scene->registry.get<InfoComponent>(entity).tag == tag;
+    }
+    return false;
+}
+
+bool Scriptable::CompareName(entt::entity entity, const std::string& name) const
+{
+    if (m_Scene->registry.valid(entity) && m_Scene->registry.all_of<InfoComponent>(entity))
+    {
+        return m_Scene->registry.get<InfoComponent>(entity).name == name;
+    }
+    return false;
+}
+
+std::string Scriptable::GetTag(entt::entity entity) const
+{
+    if (m_Scene->registry.valid(entity) && m_Scene->registry.all_of<InfoComponent>(entity))
+    {
+        return m_Scene->registry.get<InfoComponent>(entity).tag;
+    }
+    return "";
+}
+
+std::string Scriptable::GetName(entt::entity entity) const
+{
+    if (m_Scene->registry.valid(entity) && m_Scene->registry.all_of<InfoComponent>(entity))
+    {
+        return m_Scene->registry.get<InfoComponent>(entity).name;
+    }
+    return "";
+}
+
+void Scriptable::SetCollisionEnabled(bool enabled)
+{
+    if (m_Scene->registry.valid(m_Entity) && m_Scene->registry.all_of<RigidBodyComponent>(m_Entity))
+    {
+        m_Scene->registry.get<RigidBodyComponent>(m_Entity).isCollisionEnabled = enabled;
+    }
+}
+
+bool Scriptable::IsCollisionEnabled() const
+{
+    if (m_Scene->registry.valid(m_Entity) && m_Scene->registry.all_of<RigidBodyComponent>(m_Entity))
+    {
+        return m_Scene->registry.get<RigidBodyComponent>(m_Entity).isCollisionEnabled;
+    }
+    return false;
+}
+
+void Scriptable::IgnoreTagCollision(const std::string& tag1, const std::string& tag2)
+{
+    CollisionMatrix::Instance().IgnoreTagCollision(tag1, tag2);
+}
+
+void Scriptable::IgnoreNameCollision(const std::string& name1, const std::string& name2)
+{
+    CollisionMatrix::Instance().IgnoreNameCollision(name1, name2);
+}

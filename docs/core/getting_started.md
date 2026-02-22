@@ -232,6 +232,62 @@ void PlayerController::OnCollisionEnter(entt::entity other) {
 }
 ```
 
+#### Collision Filtering and Toggling
+AXIS Engine makes it easy to filter collisions by entity `Tag` or `Name`. You can also configure a global **Collision Matrix** or toggle collisions dynamically:
+
+```cpp
+void PlayerController::OnCreate() {
+    // Player and Bullets will never trigger OnCollision and will pass right through each other physically
+    IgnoreTagCollision("Player", "Bullet");
+}
+
+void PlayerController::OnCollisionEnter(entt::entity other) {
+    // Easily check what we hit
+    if (CompareTag(other, "Enemy")) {
+        TakeDamage();
+        
+        // Turn off our own physics temporarily (invincibility frames)
+        SetCollisionEnabled(false);
+    }
+}
+```
+
+If `SetCollisionEnabled(false)` is called, the entity operates like a ghost (no physics resolution and no events fired) until set back to `true`.
+
+#### Collision Event Alternative (Advanced)
+If you need a system-wide manager (like an Achievement System) to listen to collisions without inheriting from `Scriptable`, you can subscribe to `EntityCollisionEvent` or `EntityTriggerEvent`:
+
+```cpp
+#include <physic/physics_events.h>
+#include <event/event_system.h>
+
+void SystemInit() {
+    EventSystem::Instance().Subscribe<EntityCollisionEvent>([](const auto& e) {
+        if (e.type == CollisionEventType::Enter) {
+            // Check if e.entityA or e.entityB is the player...
+        }
+    });
+}
+```
+
+#### Event-Driven Input Alternative (Advanced)
+Instead of polling `GetKeyboard().GetKeyDown(...)` every frame, AXIS Engine supports an **Event-Driven / Observer** model. You can subscribe to Input Events like `KeyPressedEvent`, `InputActionPressedEvent`, or `MouseMovedEvent`.
+
+```cpp
+#include <input/input_events.h>
+#include <event/event_system.h>
+
+void PlayerController::OnCreate() {
+    // Other init...
+    EventSystem::Instance().Subscribe<KeyPressedEvent>([this](const auto& e) {
+        if (e.key == GLFW_KEY_SPACE && e.mods == 0) {
+            HandleJumpEvent();
+        }
+    });
+}
+```
+This avoids per-frame overhead and fires exactly when the OS reports a key press!
+
 ### Step 3: Register Script
 
 In `game/src/main.cpp` or create `game/src/register_scripts.cpp`:

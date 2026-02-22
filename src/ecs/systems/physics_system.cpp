@@ -4,6 +4,8 @@
 #include <physic/physics_collision_dispatcher.h>
 #include <engine/ecs/cached_query.h>
 #include <script/scriptable.h>
+#include <physic/collision_matrix.h>
+#include <ecs/components/info_component.h>
 
 #include <interface/physics/i_physics_world.h>
 #include <utils/bullet_glm_helpers.h>
@@ -38,6 +40,38 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
     }
 
     m_transformSync->SyncToPhysics();
+
+    physicsWorld.SetCollisionFilter([&scene](entt::entity eA, entt::entity eB) -> bool {
+        if (!scene.registry.valid(eA) || !scene.registry.valid(eB))
+            return false;
+
+        if (scene.registry.all_of<RigidBodyComponent>(eA)) {
+            if (!scene.registry.get<RigidBodyComponent>(eA).isCollisionEnabled)
+                return false;
+        }
+
+        if (scene.registry.all_of<RigidBodyComponent>(eB)) {
+            if (!scene.registry.get<RigidBodyComponent>(eB).isCollisionEnabled)
+                return false;
+        }
+
+        std::string tagA = "", nameA = "";
+        std::string tagB = "", nameB = "";
+
+        if (scene.registry.all_of<InfoComponent>(eA)) {
+            auto& info = scene.registry.get<InfoComponent>(eA);
+            tagA = info.tag;
+            nameA = info.name;
+        }
+        
+        if (scene.registry.all_of<InfoComponent>(eB)) {
+            auto& info = scene.registry.get<InfoComponent>(eB);
+            tagB = info.tag;
+            nameB = info.name;
+        }
+
+        return CollisionMatrix::Instance().CanCollide(tagA, tagB, nameA, nameB);
+    });
 
     physicsWorld.Update(dt);
 

@@ -3,6 +3,8 @@
 #include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
 #include <script/scriptable.h>
+#include <physic/physics_events.h>
+#include <event/event_system.h>
 
 PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene& scene, IPhysicsWorld& physics)
     : m_Scene(scene), m_Physics(physics)
@@ -85,6 +87,12 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                             }
                         }
                     }
+
+                    if (trigger) {
+                        EventSystem::Instance().Publish(EntityTriggerEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    } else {
+                        EventSystem::Instance().Publish(EntityCollisionEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    }
                 };
 
                 Notify(eA, eB, isTrigger, isStay);
@@ -126,6 +134,12 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                         else
                             s.instance->OnCollisionExit(other);
                     }
+                }
+
+                if (trigger) {
+                    EventSystem::Instance().Publish(EntityTriggerEvent{target, other, CollisionEventType::Exit});
+                } else {
+                    EventSystem::Instance().Publish(EntityCollisionEvent{target, other, CollisionEventType::Exit});
                 }
             };
 

@@ -1,6 +1,8 @@
 #include <app/application.h>
 #include <app/app_builder.h>
 #include <graphic/renderer_initializer.h>
+#include <input/input_events.h>
+#include <event/event_system.h>
 
 #include <interface/graphic/i_graphics_context.h>
 #include <audio/audio_manager.h>
@@ -64,9 +66,23 @@ bool Application::Init(const AppConfig &config)
         LOGGER_DEBUG("Application") << "Window resized to " << width << "x" << height;
         OnResize(width, height);
     });
-    appWindow->SetCursorPosCallback([this](double x, double y) { OnMouseMove(x, y); });
-    appWindow->SetMouseButtonCallback([this](int button, int action, int mods) { OnMouseButton(button, action, mods); });
-    appWindow->SetScrollCallback([this](double x, double y) { OnScroll(x, y); });
+    appWindow->SetCursorPosCallback([this](double x, double y) { 
+        OnMouseMove(x, y); 
+        EventSystem::Instance().Publish(MouseMovedEvent{x, y});
+    });
+    appWindow->SetMouseButtonCallback([this](int button, int action, int mods) { 
+        OnMouseButton(button, action, mods); 
+        if (action == 1) EventSystem::Instance().Publish(MouseButtonPressedEvent{button, mods});
+        else if (action == 0) EventSystem::Instance().Publish(MouseButtonReleasedEvent{button, mods});
+    });
+    appWindow->SetScrollCallback([this](double x, double y) { 
+        OnScroll(x, y); 
+        EventSystem::Instance().Publish(MouseScrolledEvent{x, y});
+    });
+    appWindow->SetKeyCallback([this](int key, int scancode, int action, int mods) {
+        if (action == 1) EventSystem::Instance().Publish(KeyPressedEvent{key, mods});
+        else if (action == 0) EventSystem::Instance().Publish(KeyReleasedEvent{key, mods});
+    });
 
     if (!m_Config.audioDevice.empty() && m_Config.audioDevice != "default")
         m_IOHandler->GetAudioManager().SetActiveDevice(m_Config.audioDevice);

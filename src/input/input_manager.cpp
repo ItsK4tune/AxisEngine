@@ -3,6 +3,8 @@
 #include <interface/window/input_codes.h>
 #include <string>
 #include <iostream>
+#include <input/input_events.h>
+#include <event/event_system.h>
 
 InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse, const IWindow &window)
     : m_Keyboard(keyboard), m_Mouse(mouse), m_Window(window)
@@ -17,6 +19,28 @@ void InputManager::BindAction(const std::string &actionName, InputType type, int
 void InputManager::UnbindAction(const std::string &actionName)
 {
     m_ActionMap.erase(actionName);
+    m_PreviousState.erase(actionName);
+}
+
+void InputManager::Update()
+{
+    for (const auto& [actionName, binding] : m_ActionMap)
+    {
+        bool currentState = GetAction(actionName);
+        bool previousState = m_PreviousState[actionName];
+
+        if (currentState && !previousState) {
+            EventSystem::Instance().Publish(InputActionPressedEvent{actionName});
+        }
+        else if (!currentState && previousState) {
+            EventSystem::Instance().Publish(InputActionReleasedEvent{actionName});
+        }
+        else if (currentState && previousState) {
+            EventSystem::Instance().Publish(InputActionHeldEvent{actionName});
+        }
+
+        m_PreviousState[actionName] = currentState;
+    }
 }
 
 bool InputManager::GetAction(const std::string &actionName) const

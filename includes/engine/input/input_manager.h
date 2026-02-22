@@ -26,6 +26,8 @@ public:
     void BindAction(const std::string &actionName, InputType type, int code);
     void UnbindAction(const std::string &actionName);
 
+    void Update();
+
     bool GetAction(const std::string &actionName) const;
     bool GetActionDown(const std::string &actionName) const;
     bool GetActionUp(const std::string &actionName) const;
@@ -39,4 +41,5 @@ private:
     const MouseManager &m_Mouse;
     const IWindow &m_Window;
     std::unordered_map<std::string, InputBinding> m_ActionMap;
+    std::unordered_map<std::string, bool> m_PreviousState;
 };

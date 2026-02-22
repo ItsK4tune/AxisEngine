@@ -11,7 +11,7 @@ class IGraphicsContext;
 class AudioManager;
 class KeyboardManager;
 class MouseManager;
-class InputManager;
+#include <input/input_manager.h>
 
 class IOHandler
 {

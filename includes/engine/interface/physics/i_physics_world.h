@@ -3,6 +3,9 @@
 #include <glm/glm.hpp>
 #include <memory>
 
+#include <functional>
+#include <entt/entt.hpp>
+
 class ICollisionShape;
 class IRigidBody;
 
@@ -22,6 +25,9 @@ public:
     virtual void RemoveRigidBody(IRigidBody* body) = 0;
 
     virtual void DebugDraw() = 0;
+
+    using CollisionFilterCallback = std::function<bool(entt::entity, entt::entity)>;
+    virtual void SetCollisionFilter(CollisionFilterCallback callback) = 0;
 
     virtual std::shared_ptr<IRigidBody> CreateRigidBody(float mass, const glm::vec3& startPos, const glm::quat& startRot, std::shared_ptr<ICollisionShape> shape) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateBoxShape(const glm::vec3& halfExtents) = 0;
