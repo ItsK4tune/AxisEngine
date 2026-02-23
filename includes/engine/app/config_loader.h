@@ -28,6 +28,7 @@ struct AppConfig
 
     bool instanceBatchingEnabled = true;
     bool frustumCullingEnabled = true;
+    bool occlusionCullingEnabled = false;
     float shadowProjectionSize = 100.0f;
     bool shadowFrustumCullingEnabled = true;
     float shadowDistanceCulling = 100.0f;

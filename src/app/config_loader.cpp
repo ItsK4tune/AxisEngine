@@ -97,6 +97,12 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         config.cullFaceEnabled = (enable != 0);
 
     }
+    else if (subCmd == "OCCLUSION_CULLING")
+    {
+        int enable = 0;
+        ss >> enable;
+        config.occlusionCullingEnabled = (enable != 0);
+    }
     else if (subCmd == "DEPTH_TEST")
     {
         int enable = 0;

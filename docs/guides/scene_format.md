@@ -185,6 +185,10 @@ All lights share these base properties:
 
 *(Shape-specific size parameters (`Size`, `Radius`, `Height`) map to their collision hulls)*
 
+### Occlusion
+Hardware-based culling component. Testing objects against the depth buffer using t-1 frame visibility results.
+- No direct parameters required in `.axs`, the system generates query IDs automatically.
+
 ### UI Components
 **UITransform**
 - `Position`: Vector2 (Default: `0 0`)

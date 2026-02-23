@@ -23,7 +23,7 @@ This guide will walk you through creating your first game with AXIS Engine. We'l
 **Prerequisites:**
 - AXIS Engine built and ready (see [Build Guide](build_guide.md))
 - Basic C++ knowledge
-- Text editor for `.scene` files
+- Text editor for `.axs` files
 
 ---
 

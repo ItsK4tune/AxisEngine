@@ -4,6 +4,7 @@ axis_scene:
     SHADOW_SIZE: 100.0
     INSTANCING: 1
     CULL_FACE: 1 BACK
+    OCCLUSION_CULLING: 1
     DEPTH_TEST: 1 LESS
     ANTIALIASING: TAA
     FRUSTUM: 1
@@ -85,7 +86,7 @@ axis_scene:
         Rotation: 0.0 0.0 0.0
         Scale: 0.01 0.01 0.01
       Component: Renderer
-        Model: capsuleModel
+        Model: capsuleSmoothModel
         Shader: phongLitNoShadowShader
       Component: Material
         Type: PHONG

@@ -51,22 +51,34 @@ axis_scene:
       Path: includes/engine/asset/objects/plane/plane.fbx
       Static: 1
     Model:
-      Name: planeVideoModel
-      Path: includes/engine/asset/objects/plane/plane.fbx
+      Name: capsuleModel
+      Path: includes/engine/asset/objects/capsule/capsule.fbx
       Static: 1
     Model:
-      Name: capsuleModel
-      Path: includes/engine/asset/objects/dummy/dummy.fbx
+      Name: capsuleSmoothModel
+      Path: includes/engine/asset/objects/capsule/capsule_smooth.fbx
+      Static: 1
+    Model:
+      Name: cubeModel
+      Path: includes/engine/asset/objects/cube/cube.fbx
+      Static: 1
+    Model:
+      Name: cylinderModel
+      Path: includes/engine/asset/objects/cylinder/cylinder.fbx
+      Static: 1
+    Model:
+      Name: sphereModel
+      Path: includes/engine/asset/objects/sphere/sphere.fbx
       Static: 1
 
     Skybox:
       Name: defaultSkybox
-      Right: includes/engine/asset/skybox/default_right.png
-      Left: includes/engine/asset/skybox/default_left.png
-      Top: includes/engine/asset/skybox/default_top.png
-      Bottom: includes/engine/asset/skybox/default_bottom.png
-      Front: includes/engine/asset/skybox/default_front.png
-      Back: includes/engine/asset/skybox/default_back.png
+      Right: includes/engine/asset/skyboxs/default_right.png
+      Left: includes/engine/asset/skyboxs/default_left.png
+      Top: includes/engine/asset/skyboxs/default_top.png
+      Bottom: includes/engine/asset/skyboxs/default_bottom.png
+      Front: includes/engine/asset/skyboxs/default_front.png
+      Back: includes/engine/asset/skyboxs/default_back.png
 
   Entities:
     Skybox:

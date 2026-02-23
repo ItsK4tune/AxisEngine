@@ -4,7 +4,7 @@ This document serves as a high-level summary of the technologies, architectural 
 
 ## Core Technologies
 *   **Language:** C++17
-*   **Graphics API:** OpenGL 3.3+ (Abstracted via backend interfaces `IGraphicsContext`, `IRenderTargetManager`, allowing future Vulkan/DirectX expansion).
+*   **Graphics API:** OpenGL 4.5+ (Abstracted via backend interfaces `IGraphicsContext`, `IRenderTargetManager`, allowing future Vulkan/DirectX expansion).
 *   **Windowing & Input:** GLFW (Window creation, OS-level input capture).
 *   **Math Library:** GLM (Vectors, Matrices, Quaternions).
 *   **ECS Framework:** EnTT (Entity-Component-System architecture for memory-efficient and fast entity data management).
@@ -40,7 +40,10 @@ This document serves as a high-level summary of the technologies, architectural 
 ### Rendering Pipeline
 *   **Forward Rendering Pipeline:** Fast and simple structure.
 *   **Frustum Culling:** Checks AABBs of models against the camera's view frustum to drop off-screen renders early.
-*   **Instance Batching:** Auto-groups static meshes with the same model/shader and renders them using `glDrawElementsInstanced` (drastically reducing draw calls).
+*   **Distance Culling:** Skips rendering objects beyond a certain distance threshold to save processing time.
+*   **Occlusion Culling:** Hardware-based occlusion query (`GL_ANY_SAMPLES_PASSED`) that tests object bounding boxes against the depth buffer from the previous frame to skip objects hidden behind walls or large geometry.
+*   **Level of Detail (LOD) System:** Dynamically swaps high-detail models for lower-detail versions (or billboard/plane proxies) based on camera distance to optimize geometry throughput.
+*   **Instance Batching:** Auto-groups static meshes with the same model/shader and renders them using `glDrawElementsInstanced` (drastically reducing draw calls). Sorting is stabilized using Shader IDs.
 *   **Deferred Shadows:** Renders depth maps for up to 4 lights (Directional, Point, Spot) into a texture atlas before the main pass.
 *   **Post-Processing & Bloom:** Uses ping-pong FBOs to extract bright areas, blur them, and additively blend them over the final frame.
 *   **Particle System:** CPU-simulated but GPU-rendered using instanced quads.

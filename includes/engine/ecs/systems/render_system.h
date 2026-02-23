@@ -53,6 +53,8 @@ public:
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
     void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
     void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
+    void SetOcclusionCulling(bool enable) { m_OcclusionCullingEnabled = enable; }
+    bool IsOcclusionCullingEnabled() const { return m_OcclusionCullingEnabled; }
 
     void SetShadowProjectionSize(float size) { m_ShadowRenderer.SetShadowProjectionSize(size); }
     void SetShadowFrustumCulling(bool enable) { m_ShadowRenderer.SetShadowFrustumCulling(enable); }
@@ -82,6 +84,7 @@ private:
     bool m_Enabled = true;
     bool m_InstanceBatchingEnabled = true;
     bool m_FrustumCullingEnabled = true;
+    bool m_OcclusionCullingEnabled = false;
     bool m_DebugNoTexture = false;
     unsigned int m_WhiteTextureID = 0;
     float m_DistanceCullingSq = 0.0f;

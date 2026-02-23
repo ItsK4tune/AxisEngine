@@ -2,34 +2,34 @@
 
 ## 1. Application Configuration
 
-The AXIS Engine is configured via a JSON file located at `configuration/settings.json`. This file is loaded at startup.
+The AXIS Engine is configured via the `Config` block located at the top of your scene files (`.axs`). This allows per-scene configuration of graphics, physics, and window settings.
 
-### `settings.json` Structure
+### `.axs` Configuration Structure
 
-```json
-{
-    "title": "AXIS Engine",
-    "WINDOW_WIDTH": 1280,
-    "WINDOW_HEIGHT": 720,
-    "WINDOW_MODE": "WINDOWED",
-    "vsync": true,
-    "WINDOW_MONITOR": 0,
-    "WINDOW_REFRESH_RATE": 60,
-    "frameRateLimit": 120,
-    "shadowMode": 1,
-    "cullFaceEnabled": true,
-    "depthTestEnabled": true,
-    "audioDevice": "default",
-    "iconPath": "includes/engine/asset/project/icon.png",
-    "instanceBatchingEnabled": true,
-    "frustumCullingEnabled": true,
-    "shadowProjectionSize": 100.0,
-    "shadowFrustumCullingEnabled": true,
-    "shadowDistanceCulling": 100.0,
-    "physicsMode": 1,
-    "physicsAsync": true,
-    "antialiasing": "TAA"
-}
+```yaml
+axis_scene:
+  Config:
+    title: AXIS Engine
+    WINDOW_WIDTH: 1280
+    WINDOW_HEIGHT: 720
+    WINDOW_MODE: WINDOWED
+    WINDOW_MONITOR: 0
+    WINDOW_REFRESH_RATE: 60
+    VSYNC: 1
+    FPS: 120
+    SHADOWS: 1
+    CULL_FACE: 1 BACK
+    DEPTH_TEST: 1 LESS
+    ANTIALIASING: TAA
+    FRUSTUM: 1
+    DISTANCE: 0.0
+    INSTANCING: 1
+    OCCLUSION_CULLING: 0
+    SHADOW_SIZE: 100.0
+    SHADOW_FRUSTUM: 1
+    SHADOW_DISTANCE: 100.0
+    PHYSICS_MODE: 1
+    PHYSICS_ASYNC: TRUE
 ```
 
 ### Parameters
@@ -39,27 +39,28 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
     - `WINDOW_MODE`: Window display mode (`WINDOWED`, `FULLSCREEN`, or `BORDERLESS`).
     - `WINDOW_MONITOR`: Index of the monitor to display on (0 = Primary, 1 = Secondary, etc.).
     - `WINDOW_REFRESH_RATE`: Target refresh rate (Hz) for Fullscreen mode (0 = Desktop rate).
-    - `vsync`: Enable Vertical Sync (locks FPS to refresh rate).
-    - `frameRateLimit`: Maximum frames per second (0 = Unlimited).
-    - `iconPath`: Path to the application window icon (default: `includes/engine/asset/project/icon.png`).
+    - `VSYNC`: Enable Vertical Sync (`1` or `0`).
+    - `FPS`: Maximum frames per second (0 = Unlimited).
+    - `iconPath`: Path to the application window icon.
 
 - **Graphics Settings**
-    - `shadowMode`: Shadow rendering mode (default: `1`).
-        - `0`: No shadows (best performance)
-        - `1`: Single directional shadow from first light with `isCastShadow` enabled (balanced)
-        - `2`: Multiple directional shadows from up to 4 lights with `isCastShadow` enabled (highest quality)
-    - `cullFaceEnabled`: Enable/Disable back-face culling.
-    - `frustumCullingEnabled`: Enable/Disable camera frustum culling (default: `true`).
-    - `distanceCulling`: Maximum render distance from camera in world units (default: `0.0` = unlimited). Objects beyond this distance will not be rendered.
-    - `depthTestEnabled`: Enable/Disable depth testing.
-    - `instanceBatchingEnabled`: Enable/Disable instance batching for static meshes (default: `true`). Batching reduces draw calls but disabling can help with debugging transform issues.
-    - `shadowProjectionSize`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
-    - `shadowFrustumCullingEnabled`: Enable/Disable culling of objects outside the light's view frustum (default: `true`).
-    - `shadowDistanceCulling`: Maximum distance (from main camera) at which objects cast shadows (default: `100.0`). Objects further than this will not cast shadows.
-    - `antialiasing`: Anti-Aliasing mode (default: `FXAA` or see code). Options: `NONE`, `FXAA`, `TAA`.
+    - `SHADOWS`: Shadow rendering mode (default: `1`).
+        - `0`: No shadows
+        - `1`: Single directional shadow
+        - `2`: Multiple directional shadows
+    - `CULL_FACE`: Enable/Disable back-face culling (`1 BACK`, `1 FRONT`, or `0`).
+    - `FRUSTUM`: Enable/Disable camera frustum culling (`1` or `0`).
+    - `OCCLUSION_CULLING`: Enable/Disable hardware occlusion culling (`1` or `0`). Requires `Occlusion` component on entities to be tested.
+    - `DISTANCE`: Maximum render distance from camera in world units (default: `0.0` = unlimited). Objects beyond this distance will not be rendered.
+    - `DEPTH_TEST`: Enable/Disable depth testing (`1 LESS`, `1 LEQUAL`, etc.).
+    - `INSTANCING`: Enable/Disable instance batching for static meshes (`1` or `0`). Batching reduces draw calls but disabling can help with debugging transform issues.
+    - `SHADOW_SIZE`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
+    - `SHADOW_FRUSTUM`: Enable/Disable culling of objects outside the light's view frustum (default: `1`).
+    - `SHADOW_DISTANCE`: Maximum distance (from main camera) at which objects cast shadows (default: `100.0`). Objects further than this will not cast shadows.
+    - `ANTIALIASING`: Anti-Aliasing mode (default: `TAA`). Options: `NONE`, `FXAA`, `TAA`.
 
 - **Physics Settings**
-    - `physicsMode`: Physics simulation mode (default: `1`).
+    - `PHYSICS_MODE`: Physics simulation mode (default: `1`).
         - `0`: FAST (30Hz, 2 iters)
         - `1`: BALANCED (60Hz, 10 iters)
         - `2`: ACCURATE (120Hz, 40 iters)

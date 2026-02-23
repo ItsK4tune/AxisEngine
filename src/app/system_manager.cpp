@@ -59,6 +59,7 @@ void SystemManager::ApplyConfig(const AppConfig &config)
     renderSystem.SetShadowProjectionSize(config.shadowProjectionSize);
     renderSystem.SetInstanceBatching(config.instanceBatchingEnabled);
     renderSystem.SetFrustumCulling(config.frustumCullingEnabled);
+    renderSystem.SetOcclusionCulling(config.occlusionCullingEnabled);
     renderSystem.SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
     renderSystem.SetShadowDistanceCulling(config.shadowDistanceCulling);
     renderSystem.SetDistanceCulling(config.distanceCulling);
