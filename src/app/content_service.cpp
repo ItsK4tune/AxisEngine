@@ -1,4 +1,4 @@
-﻿#include <app/content_service.h>
+#include <app/content_service.h>
 
 ContentService::ContentService(ResourceManager& resources, SceneManager& sceneManager, SoundPlayer& soundPlayer)
     : m_Resources(resources)

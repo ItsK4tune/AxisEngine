@@ -1,4 +1,4 @@
-﻿#include <debug/modules/shadow_debug_module.h>
+#include <debug/modules/shadow_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 

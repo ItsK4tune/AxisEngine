@@ -59,14 +59,12 @@ file(GLOB_RECURSE ENGINE_SOURCES
 
 file(GLOB_RECURSE GAME_SOURCES
     ${CMAKE_SOURCE_DIR}/game/src/*.cpp
+    # Windows resource files containing the app icon
+    ${CMAKE_SOURCE_DIR}/includes/engine/asset/project/app.rc
+    ${CMAKE_SOURCE_DIR}/includes/engine/asset/project/resource.h
 )
 
-set(PROJECT_RESOURCES
-    ${CMAKE_SOURCE_DIR}/src/asset/project/app.rc
-    ${CMAKE_SOURCE_DIR}/src/asset/project/resource.h
-)
-
-add_executable(AxisEngine ${ENGINE_SOURCES} ${GAME_SOURCES} ${PROJECT_RESOURCES})
+add_executable(AxisEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
 
 set(BULLET_LIBS
     BulletDynamics$<$<CONFIG:Debug>:_Debug>

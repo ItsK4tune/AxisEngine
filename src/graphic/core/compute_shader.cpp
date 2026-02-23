@@ -1,4 +1,4 @@
-﻿#include <graphic/core/compute_shader.h>
+#include <graphic/core/compute_shader.h>
 #include <fstream>
 #include <sstream>
 #include <utils/logger.h>

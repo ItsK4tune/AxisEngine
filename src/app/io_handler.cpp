@@ -1,4 +1,4 @@
-﻿#include <app/io_handler.h>
+#include <app/io_handler.h>
 #include <interface/graphic/i_graphics_context.h>
 
 #include <input/keyboard_manager.h>

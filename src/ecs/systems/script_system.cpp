@@ -1,4 +1,4 @@
-﻿#include <script/scriptable.h>
+#include <script/scriptable.h>
 #include <app/application.h>
 #include <ecs/component.h>
 #include <input/script_input_handler.h>

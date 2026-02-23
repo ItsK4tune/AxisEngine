@@ -1,4 +1,4 @@
-﻿#include <graphic/backends/opengl_context.h>
+#include <graphic/backends/opengl_context.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <utils/logger.h>

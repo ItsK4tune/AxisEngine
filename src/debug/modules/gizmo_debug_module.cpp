@@ -1,4 +1,4 @@
-﻿#include <debug/modules/gizmo_debug_module.h>
+#include <debug/modules/gizmo_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 

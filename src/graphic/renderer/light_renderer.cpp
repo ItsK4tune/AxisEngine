@@ -1,4 +1,4 @@
-﻿#include <graphic/renderer/light_renderer.h>
+#include <graphic/renderer/light_renderer.h>
 #include <scene/scene.h>
 #include <graphic/core/shader.h>
 #include <graphic/renderer/shadow.h>

@@ -1,4 +1,4 @@
-﻿#include <scene/scene_manager.h>
+#include <scene/scene_manager.h>
 #include <utils/logger.h>
 #include <scene/scene_serializer.h>
 #include <script/script_registry.h>

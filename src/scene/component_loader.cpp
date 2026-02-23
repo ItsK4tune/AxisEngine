@@ -1,4 +1,4 @@
-﻿#include <utils/filesystem.h>
+#include <utils/filesystem.h>
 #include <scene/component_loader.h>
 #include <utils/logger.h>
 #include <script/script_registry.h>

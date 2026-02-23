@@ -1,4 +1,4 @@
-﻿#include <debug/modules/physics_debug_module.h>
+#include <debug/modules/physics_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 

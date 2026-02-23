@@ -43,13 +43,13 @@ GameEngine/
 │       └── states/
 │       └── scripts/
 ├── scenes/                    # Your scene files
-├── src/asset/                # Default assets (shaders, fonts, models)
+├── includes/engine/asset/                # Default assets (shaders, fonts, models)
 └── bin/Release/              # Built executable
 ```
 
 ### Default Assets
 
-The engine automatically loads default assets from `src/asset/load.axs` at startup:
+The engine automatically loads default assets from `includes/engine/asset/load.axs` at startup:
 - Shaders (Phong, PBR, Unlit, UI, Text, Skybox, Particle, VideoMap)
 - Fonts (`time.ttf`)
 - Models (plane, dummy)
@@ -546,7 +546,7 @@ ERROR: Model not found: playerModel
 ```
 ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ
 ```
-**Solution:** Verify shader paths point to `src/asset/shaders/...` not `resources/shaders/...`.
+**Solution:** Verify shader paths point to `includes/engine/asset/shaders/...` not `resources/shaders/...`.
 
 ### Physics Not Working
 ```

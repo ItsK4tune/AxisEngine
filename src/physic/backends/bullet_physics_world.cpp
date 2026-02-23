@@ -1,4 +1,4 @@
-﻿#include <physic/backends/bullet_physics_world.h>
+#include <physic/backends/bullet_physics_world.h>
 #include <physic/backends/bullet_debug_drawer.h>
 #include <physic/backends/bullet_constraint.h>
 #include <utils/logger.h>

@@ -1,4 +1,4 @@
-﻿#include <resource/sound_cache.h>
+#include <resource/sound_cache.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>
 #include <iostream>

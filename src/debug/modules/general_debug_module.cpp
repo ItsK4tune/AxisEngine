@@ -1,4 +1,4 @@
-﻿#include <debug/modules/general_debug_module.h>
+#include <debug/modules/general_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 

@@ -1,4 +1,4 @@
-﻿#include <audio/sound_player.h>
+#include <audio/sound_player.h>
 #include <utils/logger.h>
 
 SoundPlayer::SoundPlayer(IAudioEngine* engine)

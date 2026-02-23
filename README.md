@@ -1,6 +1,6 @@
 <p align="center">
   <br>
-  <img src="src/asset/project/logo.png" alt="Axis Engine Logo"/>
+  <img src="includes/engine/asset/project/logo.png" alt="Axis Engine Logo"/>
   <br>
 </p>
 
@@ -246,9 +246,9 @@ Create a file `scenes/my_scene.scene`:
 
 ```
 # Load essential resources
-LOAD_SHADER myShader src/asset/shaders/phong_lit_shadow.vs src/asset/shaders/phong_lit_shadow.fs
-LOAD_STATIC_MODEL cubeModel src/asset/objects/cube/cube.fbx
-LOAD_FONT arial src/asset/fonts/arial.ttf 24
+LOAD_SHADER myShader includes/engine/asset/shaders/phong_lit_shadow.vs includes/engine/asset/shaders/phong_lit_shadow.fs
+LOAD_STATIC_MODEL cubeModel includes/engine/asset/objects/cube/cube.fbx
+LOAD_FONT arial includes/engine/asset/fonts/arial.ttf 24
 
 # Create a camera
 NEW_ENTITY MainCamera

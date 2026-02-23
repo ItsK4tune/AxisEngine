@@ -1,4 +1,4 @@
-﻿#include <resource/font_cache.h>
+#include <resource/font_cache.h>
 #include <utils/filesystem.h>
 #include <utils/logger.h>
 

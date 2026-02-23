@@ -1,4 +1,4 @@
-﻿#include <resource/resource_manager.h>
+#include <resource/resource_manager.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>
 #include <iostream>

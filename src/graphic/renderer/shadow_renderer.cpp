@@ -1,4 +1,4 @@
-﻿#include <utils/logger.h>
+#include <utils/logger.h>
 #include <graphic/renderer/shadow_renderer.h>
 #include <interface/graphic/i_draw_context.h>
 #include <resource/resource_manager.h>
@@ -12,9 +12,9 @@ void ShadowRenderer::Init(ResourceManager &res)
 {
     m_Shadow.Init();
 
-    res.LoadShader("shadow_depth", "src/asset/shaders/shadow_depth.vs", "src/asset/shaders/shadow_depth.fs");
-    res.LoadShader("shadow_point", "src/asset/shaders/shadow_point.vs", "src/asset/shaders/shadow_point.fs", "src/asset/shaders/shadow_point.gs");
-    res.LoadShader("shadow_spot", "src/asset/shaders/shadow_spot.vs", "src/asset/shaders/shadow_spot.fs");
+    res.LoadShader("shadow_depth", "includes/engine/asset/shaders/shadow_depth.vs", "includes/engine/asset/shaders/shadow_depth.fs");
+    res.LoadShader("shadow_point", "includes/engine/asset/shaders/shadow_point.vs", "includes/engine/asset/shaders/shadow_point.fs", "includes/engine/asset/shaders/shadow_point.gs");
+    res.LoadShader("shadow_spot", "includes/engine/asset/shaders/shadow_spot.vs", "includes/engine/asset/shaders/shadow_spot.fs");
 
     m_Shadow.SetShaderDir(res.GetShader("shadow_depth").get());
     m_Shadow.SetShaderPoint(res.GetShader("shadow_point").get());

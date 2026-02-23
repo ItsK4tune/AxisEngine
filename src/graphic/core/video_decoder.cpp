@@ -1,4 +1,4 @@
-﻿#include <graphic/core/video_decoder.h>
+#include <graphic/core/video_decoder.h>
 #include <utils/logger.h>
 #include <interface/graphic/i_texture_manager.h>
 

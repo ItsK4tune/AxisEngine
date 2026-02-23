@@ -1,4 +1,4 @@
-﻿#include <resource/animation_cache.h>
+#include <resource/animation_cache.h>
 #include <utils/filesystem.h>
 #include <utils/logger.h>
 

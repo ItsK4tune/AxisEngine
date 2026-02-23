@@ -1,4 +1,4 @@
-﻿#include <physic/physics_loader.h>
+#include <physic/physics_loader.h>
 #include <ecs/component.h>
 #include <utils/bullet_glm_helpers.h>
 #include <iostream>

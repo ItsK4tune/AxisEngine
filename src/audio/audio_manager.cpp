@@ -1,4 +1,4 @@
-﻿#include <audio/audio_manager.h>
+#include <audio/audio_manager.h>
 #include <utils/logger.h>
 
 AudioManager::AudioManager(std::unique_ptr<IAudioEngine> engine)

@@ -101,10 +101,10 @@ bool Application::Init(const AppConfig &config)
     m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, shared_from_this());
     m_SystemManager->ApplyConfig(m_Config);
 
-    m_ResourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
+    m_ResourceManager->LoadShader("debugLine", "includes/engine/asset/shaders/debug_line.vs", "includes/engine/asset/shaders/debug_line.fs");
 
-    LOGGER_INFO("Application") << "Loading default assets from src/asset/load.axs...";
-    m_SceneManager->LoadScene("src/asset/load.axs");
+    LOGGER_INFO("Application") << "Loading default assets from includes/engine/asset/load.axs...";
+    m_SceneManager->LoadScene("includes/engine/asset/load.axs");
 
     if (!m_Config.iconPath.empty())
     {

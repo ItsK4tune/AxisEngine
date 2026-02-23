@@ -1,4 +1,4 @@
-﻿#include <ecs/systems/particle_system.h>
+#include <ecs/systems/particle_system.h>
 #include <execution>
 #include <vector>
 #include <algorithm>

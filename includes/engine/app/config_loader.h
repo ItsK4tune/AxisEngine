@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <string>
 #include <iostream>
@@ -24,7 +24,7 @@ struct AppConfig
 
     std::string audioDevice = "default";
 
-    std::string iconPath = "src/asset/project/icon.png";
+    std::string iconPath = "includes/engine/asset/project/icon.png";
 
     bool instanceBatchingEnabled = true;
     bool frustumCullingEnabled = true;

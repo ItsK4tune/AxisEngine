@@ -1,4 +1,4 @@
-﻿#include <debug/debug_system.h>
+#include <debug/debug_system.h>
 #include <interface/debug/i_debug_module.h>
 #include <debug/modules/general_debug_module.h>
 #include <debug/modules/overlay_debug_module.h>
@@ -25,8 +25,8 @@ void DebugSystem::Init(std::shared_ptr<Application> app)
 
     auto &res = m_App->GetResourceManager();
 
-    res.LoadFont("debug_font", "src/asset/fonts/time.ttf", 24);
-    res.LoadShader("debug_text", "src/asset/shaders/text.vs", "src/asset/shaders/text.fs");
+    res.LoadFont("debug_font", "includes/engine/asset/fonts/time.ttf", 24);
+    res.LoadShader("debug_text", "includes/engine/asset/shaders/text.vs", "includes/engine/asset/shaders/text.fs");
 
     if (!res.GetUIModel("debug_sys_model"))
     {

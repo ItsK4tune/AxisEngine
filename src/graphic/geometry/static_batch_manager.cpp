@@ -1,4 +1,4 @@
-﻿#include <graphic/geometry/static_batch_manager.h>
+#include <graphic/geometry/static_batch_manager.h>
 #include <utils/logger.h>
 #include <fstream>
 #include <interface/graphic/i_buffer_manager.h>

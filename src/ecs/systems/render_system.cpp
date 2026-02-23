@@ -1,4 +1,4 @@
-﻿#include <ecs/systems/render_system.h>
+#include <ecs/systems/render_system.h>
 #include <graphic/renderer/frustum.h>
 #include <string>
 #include <algorithm>

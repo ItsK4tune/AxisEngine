@@ -1,4 +1,4 @@
-﻿#include <graphic/geometry/animation.h>
+#include <graphic/geometry/animation.h>
 #include <graphic/geometry/model.h>
 #include <utils/assimp_glm_helpers.h>
 

@@ -1,4 +1,4 @@
-﻿#include <ecs/systems/skybox_system.h>
+#include <ecs/systems/skybox_system.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
 #include <interface/graphic/i_texture_manager.h>

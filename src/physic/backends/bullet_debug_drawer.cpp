@@ -1,4 +1,4 @@
-﻿#include <physic/backends/bullet_debug_drawer.h>
+#include <physic/backends/bullet_debug_drawer.h>
 #include <utils/logger.h>
 #include <utils/bullet_glm_helpers.h>
 #include <interface/graphic/i_buffer_manager.h>

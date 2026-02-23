@@ -1,4 +1,4 @@
-﻿#include <resource/model_instance_manager.h>
+#include <resource/model_instance_manager.h>
 #include <resource/model_instance_manager.h>
 #include <utils/logger.h>
 

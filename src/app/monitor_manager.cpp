@@ -1,4 +1,4 @@
-﻿#include <app/monitor_manager.h>
+#include <app/monitor_manager.h>
 #include <interface/window/i_window.h>
 #include <utils/logger.h>
 #include <stb_image.h>

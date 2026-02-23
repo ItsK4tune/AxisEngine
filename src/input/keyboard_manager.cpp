@@ -1,4 +1,4 @@
-﻿#include <input/keyboard_manager.h>
+#include <input/keyboard_manager.h>
 
 KeyboardManager::KeyboardManager(IWindow *window)
 {

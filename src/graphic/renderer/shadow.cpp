@@ -1,4 +1,4 @@
-﻿#include <graphic/renderer/shadow.h>
+#include <graphic/renderer/shadow.h>
 #include <iostream>
 #include <interface/graphic/i_render_target_manager.h>
 #include <interface/graphic/i_texture_manager.h>

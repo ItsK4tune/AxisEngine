@@ -1,4 +1,4 @@
-﻿#include <resource/texture_cache.h>
+#include <resource/texture_cache.h>
 #include <interface/graphic/graphics_types.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>

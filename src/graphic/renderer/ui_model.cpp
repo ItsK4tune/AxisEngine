@@ -1,4 +1,4 @@
-﻿#include <engine/graphic/renderer/ui_model.h>
+#include <engine/graphic/renderer/ui_model.h>
 #include <iostream>
 #include <interface/graphic/i_buffer_manager.h>
 #include <interface/graphic/i_texture_manager.h>

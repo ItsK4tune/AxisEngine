@@ -1,4 +1,4 @@
-﻿#include "engine/input/mouse_manager.h"
+#include "engine/input/mouse_manager.h"
 
 MouseManager::MouseManager(IWindow *window)
     : m_Window(window),

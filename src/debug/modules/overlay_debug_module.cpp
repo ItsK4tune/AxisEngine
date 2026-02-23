@@ -1,4 +1,4 @@
-﻿#include <debug/modules/overlay_debug_module.h>
+#include <debug/modules/overlay_debug_module.h>
 #include <interface/graphic/i_graphics_context.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
@@ -154,8 +154,8 @@ void OverlayDebugModule::ToggleStatsOverlay()
         bool quadOK = (m_TextQuad != nullptr);
 
         std::cout << "[DebugSystem] Resources Status:" << std::endl;
-        std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check src/asset/fonts/time.ttf)") << std::endl;
-        std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check src/asset/shaders/text.vs/fs)") << std::endl;
+        std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check includes/engine/asset/fonts/time.ttf)") << std::endl;
+        std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check includes/engine/asset/shaders/text.vs/fs)") << std::endl;
         std::cout << "  Quad:   " << (quadOK ? "OK" : "MISSING") << std::endl;
 
         if (!fontOK || !shaderOK || !quadOK)

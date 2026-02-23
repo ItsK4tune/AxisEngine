@@ -1,4 +1,4 @@
-﻿#include <graphic/renderer/particle_emitter.h>
+#include <graphic/renderer/particle_emitter.h>
 
 #include <interface/graphic/i_buffer_manager.h>
 #include <interface/graphic/i_texture_manager.h>

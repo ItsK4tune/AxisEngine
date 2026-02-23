@@ -1,4 +1,4 @@
-﻿#include <graphic/core/post_process_pipeline.h>
+#include <graphic/core/post_process_pipeline.h>
 #include <ecs/systems/render_system.h>
 #include <resource/resource_manager.h>
 #include <utils/logger.h>
@@ -24,8 +24,8 @@ void PostProcessPipeline::Init(IGraphicsContext& context, int width, int height,
     InitQuad();
     InitFramebuffers();
 
-    res.LoadShader("fxaa", "src/asset/shaders/fxaa.vs", "src/asset/shaders/fxaa.fs");
-    res.LoadShader("taa", "src/asset/shaders/taa.vs", "src/asset/shaders/taa.fs");
+    res.LoadShader("fxaa", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/fxaa.fs");
+    res.LoadShader("taa", "includes/engine/asset/shaders/taa.vs", "includes/engine/asset/shaders/taa.fs");
 
     m_FXAAShader = res.GetShader("fxaa");
     m_TAAShader = res.GetShader("taa");

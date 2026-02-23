@@ -1,4 +1,4 @@
-﻿#include <graphic/geometry/mesh.h>
+#include <graphic/geometry/mesh.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <interface/graphic/i_buffer_manager.h>

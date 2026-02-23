@@ -1,4 +1,4 @@
-﻿#include <app/config_loader.h>
+#include <app/config_loader.h>
 #include <utils/logger.h>
 #include <interface/graphic/graphics_types.h>
 #include <interface/window/i_window.h>

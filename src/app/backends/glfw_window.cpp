@@ -1,4 +1,4 @@
-﻿#include <engine/app/backends/glfw_window.h>
+#include <engine/app/backends/glfw_window.h>
 #include <app/backends/glfw_translator.h>
 #include <utils/logger.h>
 #include <iostream>

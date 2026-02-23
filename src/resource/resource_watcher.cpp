@@ -1,4 +1,4 @@
-﻿#include <resource/resource_watcher.h>
+#include <resource/resource_watcher.h>
 #include <utils/logger.h>
 #include <iostream>
 #include <chrono>

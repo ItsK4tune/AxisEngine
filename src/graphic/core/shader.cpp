@@ -1,4 +1,4 @@
-﻿#include <graphic/core/shader.h>
+#include <graphic/core/shader.h>
 #include <interface/graphic/i_shader_manager.h>
 
 #include <fstream>

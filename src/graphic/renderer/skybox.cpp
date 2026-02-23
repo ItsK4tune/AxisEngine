@@ -1,4 +1,4 @@
-﻿#include <graphic/renderer/skybox.h>
+#include <graphic/renderer/skybox.h>
 #include <graphic/core/shader.h>
 #include <iostream>
 #include <stb_image.h>

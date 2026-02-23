@@ -1,4 +1,4 @@
-﻿#include <ecs/systems/physics_system.h>
+#include <ecs/systems/physics_system.h>
 #include <utils/logger.h>
 #include <physic/physics_transform_sync.h>
 #include <physic/physics_collision_dispatcher.h>

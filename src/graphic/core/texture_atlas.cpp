@@ -1,4 +1,4 @@
-﻿#include <graphic/core/texture_atlas.h>
+#include <graphic/core/texture_atlas.h>
 #include <utils/filesystem.h>
 #include <stb_image.h>
 #include <algorithm>

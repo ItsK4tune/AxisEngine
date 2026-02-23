@@ -1,4 +1,4 @@
-﻿#include <scene/scene.h>
+#include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>
 #include <scene/scene_manager.h>
 #include <scene/light_manager.h>

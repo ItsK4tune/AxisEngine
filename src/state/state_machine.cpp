@@ -1,4 +1,4 @@
-﻿#include <state/state_machine.h>
+#include <state/state_machine.h>
 
 StateMachine::StateMachine(std::shared_ptr<Application> app) : m_App(app) {}
 

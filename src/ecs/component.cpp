@@ -1,4 +1,4 @@
-﻿#include <ecs/component.h>
+#include <ecs/component.h>
 #include <graphic/core/video_decoder.h>
 
 #include <glm/gtc/matrix_transform.hpp>

@@ -1,4 +1,4 @@
-﻿#include <app/app_handler.h>
+#include <app/app_handler.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
 #include <input/input_manager.h>

@@ -1,4 +1,4 @@
-﻿#include <graphic/renderer/frustum.h>
+#include <graphic/renderer/frustum.h>
 
 void Frustum::Update(const glm::mat4 &vp)
 {

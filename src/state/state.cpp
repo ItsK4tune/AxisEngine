@@ -1,4 +1,4 @@
-﻿#include <state/state.h>
+#include <state/state.h>
 #include <app/application.h>
 
 RenderSystem& State::GetRenderSystem() { return m_App->GetRenderSystem(); }

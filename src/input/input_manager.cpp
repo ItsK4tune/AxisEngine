@@ -1,4 +1,4 @@
-﻿#include <input/input_manager.h>
+#include <input/input_manager.h>
 #include <interface/window/i_window.h>
 #include <interface/window/input_codes.h>
 #include <string>

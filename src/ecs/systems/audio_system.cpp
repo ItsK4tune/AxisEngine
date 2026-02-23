@@ -1,4 +1,4 @@
-﻿#include <ecs/system.h>
+#include <ecs/system.h>
 #include <ecs/component.h>
 
 #include <audio/sound_player.h>

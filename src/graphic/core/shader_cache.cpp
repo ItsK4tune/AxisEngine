@@ -1,4 +1,4 @@
-﻿#include <graphic/core/shader_cache.h>
+#include <graphic/core/shader_cache.h>
 #include <utils/logger.h>
 #include <iostream>
 

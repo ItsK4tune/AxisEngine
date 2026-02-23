@@ -1,4 +1,4 @@
-﻿#include <physic/physics_transform_sync.h>
+#include <physic/physics_transform_sync.h>
 #include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>

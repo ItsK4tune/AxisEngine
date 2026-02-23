@@ -1,4 +1,4 @@
-﻿#include <input/script_input_handler.h>
+#include <input/script_input_handler.h>
 #include <script/scriptable.h>
 #include <app/application.h>
 #include <functional>

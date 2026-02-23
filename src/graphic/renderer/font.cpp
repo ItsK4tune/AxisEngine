@@ -1,4 +1,4 @@
-﻿#include <graphic/renderer/font.h>
+#include <graphic/renderer/font.h>
 #include <utils/logger.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
