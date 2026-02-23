@@ -121,12 +121,17 @@ void RegisterGameScripts() {
 
 ### Attaching Scripts to Entities
 
-**In .scene file:**
-```
-NEW_ENTITY Player
-TRANSFORM 0 0 0  0 0 0  1 1 1
-RENDERER playerModel playerShader
-SCRIPT PlayerController
+**In .axs file:**
+```yaml
+axis_scene:
+  Entities:
+    Player:
+      Component: Transform
+      Component: Renderer
+        Model: playerModel
+        Shader: playerShader
+      Component: Script
+        Class: PlayerController
 ```
 
 **At runtime:**

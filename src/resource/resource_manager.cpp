@@ -140,7 +140,11 @@ void ResourceManager::LoadSound(const std::string &name, const std::string &path
 void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
 {
     auto skybox = std::make_shared<Skybox>();
-    skybox->LoadCubemap(faces);
+    std::vector<std::string> fullFaces;
+    for (const auto& face : faces) {
+        fullFaces.push_back(FileSystem::getPath(face));
+    }
+    skybox->LoadCubemap(fullFaces);
     m_Skyboxes[name] = skybox;
     LOGGER_INFO("ResourceManager") << "Loaded skybox: " << name;
 }

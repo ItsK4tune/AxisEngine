@@ -1,6 +1,6 @@
 ﻿#include <scene/scene_manager.h>
 #include <utils/logger.h>
-#include <scene/scene_loader.h>
+#include <scene/scene_serializer.h>
 #include <script/script_registry.h>
 #include <utils/filesystem.h>
 #include <utils/filesystem.h>
@@ -19,7 +19,7 @@ void SceneManager::LoadScene(const std::string &filePath)
         return;
     }
 
-    std::vector<entt::entity> loadedEntities = SceneLoader::Load(filePath, m_Scene, m_Resources, m_Physics, m_SoundPlayer, m_App);
+    std::vector<entt::entity> loadedEntities = SceneSerializer::Deserialize(filePath, m_Scene, m_Resources, m_Physics, m_SoundPlayer, m_App);
 
     if (!loadedEntities.empty())
     {

@@ -49,7 +49,7 @@ GameEngine/
 
 ### Default Assets
 
-The engine automatically loads default assets from `src/asset/load.scene` at startup:
+The engine automatically loads default assets from `src/asset/load.axs` at startup:
 - Shaders (Phong, PBR, Unlit, UI, Text, Skybox, Particle, VideoMap)
 - Fonts (`time.ttf`)
 - Models (plane, dummy)
@@ -65,80 +65,102 @@ Let's create a simple scene with a player, ground plane, and a light.
 
 ### Step 1: Create Scene File
 
-Create `scenes/my_first_level.scene`:
+Create `scenes/my_first_level.axs`:
 
-```
-# Configuration
-CONFIG SHADOWS 1
-CONFIG DEPTH_TEST 1 LESS
-CONFIG VSYNC 1
+```yaml
+axis_scene:
+  Config:
+    SHADOWS: 1
+    DEPTH_TEST: 1 LESS
+    VSYNC: 1
 
-# Create Main Camera
-NEW_ENTITY MainCamera
-TRANSFORM 0 5 10  0 0 0  1 1 1
-CAMERA 1 45.0 -90.0 0.0 0.1 1000.0
-SCRIPT CameraController
+  Entities:
+    MainCamera:
+      Tag: MainCamera
+      Component: Transform
+        Position: 0 5 10
+      Component: Camera
+        Primary: 1
+        FOV: 45.0
+        Yaw: -90.0
+        Pitch: 0.0
+      Component: Script
+        Class: CameraController
 
-# Create Ground Plane
-NEW_ENTITY Ground
-TRANSFORM 0 0 0  0 0 0  10 1 10
-RENDERER planeModel phongLitShadowShader
-MATERIAL PHONG 32 0.5 0.5 0.5
-RIGIDBODY BOX 0.0 100 0.1 100 STATIC
+    Ground:
+      Tag: default
+      Component: Transform
+        Scale: 10 1 10
+      Component: Renderer
+        Model: planeModel
+        Shader: phongLitShadowShader
+      Component: Material
+        Type: PHONG
+        Shininess: 32
+        Specular: 0.5 0.5 0.5
+      Component: RigidBody
+        Type: BOX
+        Size: 100 0.1 100
+        Mass: 0.0
+        BodyType: STATIC
 
-# Create Player
-NEW_ENTITY Player
-TRANSFORM 0 2 0  0 0 0  1 1 1
-RENDERER dummyModel phongLitShadowShader
-MATERIAL PHONG 32 0.8 0.2 0.2
-RIGIDBODY CAPSULE 1.0 1.0 1.8 DYNAMIC
-SCRIPT PlayerController
+    Player:
+      Tag: Player
+      Component: Transform
+        Position: 0 2 0
+      Component: Renderer
+        Model: dummyModel
+        Shader: phongLitShadowShader
+      Component: Material
+        Type: PHONG
+      Component: RigidBody
+        Type: CAPSULE
+        Radius: 1.0
+        Height: 1.8
+        Mass: 1.0
+        BodyType: DYNAMIC
+      Component: Script
+        Class: PlayerController
 
-# Add Sunlight
-NEW_ENTITY Sun
-LIGHT_DIR -0.5 -1.0 -0.3 1.0 1.0 1.0 1.0 0.1 0.8
+    Sun:
+      Tag: default
+      Component: Transform
+        Rotation: -45 -30 0
+      Component: LightDir
+        Color: 1.0 1.0 1.0
 
-# Add UI FPS Counter
-NEW_ENTITY FPSText
-UI_TRANSFORM 10 10 200 40 100
-UI_TEXT "FPS: 60" time 0 1 0 1.0
+    FPSText:
+      Tag: UI
+      Component: UITransform
+        Position: 10 10
+        Size: 200 40
+      Component: UIText
+        Text: "FPS: 60"
+        Font: time
+        Color: 0 1 0
 ```
 
 ### Scene Syntax Explanation
 
-**NEW_ENTITY** - Creates a new entity with a name
+Scenes use a YAML-like hierarchy.
 
-**TRANSFORM** - Position (x y z), Rotation (rx ry rz), Scale (sx sy sz)
-- `0 5 10` means position at (0, 5, 10)
-- `0 0 0` means no rotation
-- `1 1 1` means scale of 1 (original size)
+**Entities** - Groups components under a unique name (e.g., `MainCamera`).
 
-**CAMERA** - isPrimary (1/0), FOV, Yaw, Pitch, Near, Far
-- `1` makes this the active camera
-- `45.0` field of view
-- `-90.0 0.0` initial looking direction
+**Transform** - Defines Position, Rotation, and Scale. Omitted values default to 0 (or 1 for scale).
 
-**RENDERER** - modelName shaderName
-- Uses models/shaders loaded in `load.scene`
+**Camera** - Marks an entity as a viewpoint. `Primary: 1` sets the active camera.
 
-**MATERIAL** - Type (PHONG/PBR), Shininess, Specular RGB
-- `PHONG 32 0.5 0.5 0.5` = Phong material, medium shininess, gray specular
+**Renderer** - Uses `Model` and `Shader` keys to reference loaded assets.
 
-**RIGIDBODY** - Shape, Mass, Dimensions, Type
-- `BOX 0.0 100 0.1 100 STATIC` = Static box collider (mass 0 = infinite)
-- `CAPSULE 1.0 1.0 1.8 DYNAMIC` = Dynamic capsule (mass 1, radius 1, height 1.8)
+**Material** - Configures shading properties like `Shininess` and `Type`.
 
-**SCRIPT** - ClassName
-- Attaches a script (must be registered)
+**RigidBody** - Sets physical properties. `Type: BOX` with `Mass: 0.0` creates a static floor.
 
-**LIGHT_DIR** - Direction (x y z), Color (r g b), Intensity, Ambient, Diffuse
-- `-0.5 -1.0 -0.3` rays pointing down and slightly forward
+**Script** - Attaches C++ logic using the `Class` name.
 
-**UI_TEXT** - "Text", fontName, r g b, scale
-- `"FPS: 60"` text content
-- `time` font (from load.scene)
-- `0 1 0` green color
-- `1.0` scale
+**LightDir** - Adds sunlight. The direction comes from the entity's `Transform` rotation.
+
+**UIText** - Renders 2D text elements on the screen.
 
 ---
 

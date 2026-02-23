@@ -1,184 +1,185 @@
 # Component Reference
 
-This page lists all components supported in `.scene` files for the AXIS Engine.
+This page lists all components supported in `.axs` Axis Scene files for the AXIS Engine.
 
 ## General
 
 ### Transform
-```text
-TRANSFORM <x> <y> <z> <rot_x> <rot_y> <rot_z> <scale_x> <scale_y> <scale_z>
+```yaml
+      Component: Transform
+        Position: 0.0 0.0 0.0
+        Rotation: 0.0 0.0 0.0
+        Scale: 1.0 1.0 1.0
 ```
 
 ### Renderer
-```text
-RENDERER <model_name> <shader_name>
+```yaml
+      Component: Renderer
+        Model: unityChan
+        Shader: defaultShader
 ```
 
 ### Script
-```text
-SCRIPT <Class_Name>
+```yaml
+      Component: Script
+        Class: PlayerController
 ```
 
 ### Camera
-```text
-CAMERA <isPrimary> <fov> <yaw> <pitch> [near] [far]
+```yaml
+      Component: Camera
+        Primary: 1
+        FOV: 90.0
+        Yaw: -90.0
+        Pitch: 0.0
+        Near: 0.1
+        Far: 1000.0
 ```
-- **near**: Near plane distance (optional, default 0.1).
-- **far**: Far plane distance (optional, default 1000.0).
 
 ## Physics
 
-### `RigidBodyComponent` / `RIGIDBODY`
+### RigidBody
 Adds a physics body to the entity.
 
 **Syntax**:
-```text
-RIGIDBODY <SHAPE> <mass> [shape_params] [OPTIONS...]
+```yaml
+      Component: RigidBody
+        Type: BOX          # Options: BOX, SPHERE, CAPSULE, COMPOUND
+        Mass: 1.0          # >0.0 is DYNAMIC, 0.0 is STATIC
+        Size: 1.0 1.0 1.0  # Used for BOX
+        Radius: 0.5        # Used for SPHERE, CAPSULE
+        Height: 1.0        # Used for CAPSULE
+        Offset: 0.0 0.5 0.0
+        Restitution: 0.8
+        AngularFactor: 0 1 0
+        LinearFactor: 1 1 1
+        BodyType: DYNAMIC  # Options: STATIC, DYNAMIC, KINEMATIC
+        AttachToParent: false
 ```
-- **SHAPE**: `BOX`, `SPHERE`, `CAPSULE`, `COMPOUND`.
-- **mass**: Float value (0.0 = STATIC, >0.0 = DYNAMIC).
-- **shape_params**:
-    - `BOX`: width height depth
-    - `SPHERE`: radius
-    - `CAPSULE`: radius height
-- **OPTIONS** (Can be in any order):
-    - `OFFSET x y z`: Offset of the collider center.
-    - `RESTITUTION val`: Bounciness (0.0 - 1.0).
-    - `ROT_FACTOR x y z`: Lockdown rotation axes (1=Enable, 0=Lock).
-    - `POS_FACTOR x y z`: Lockdown movement axes (1=Enable, 0=Lock).
-    - `STATIC` / `DYNAMIC` / `KINEMATIC`: Body type override.
-    - `ATTACH_TO_PARENT`: Creates a Fixed Joint to the parent entity's body.
-
-**Component Data (C++)**:
-- `body` (btRigidBody*): Pointer to Bullet body.
-- `constraint` (btTypedConstraint*): Pointer to joint.
-- `isAttachedToParent` (bool): Flag. 
-
-**Examples:**
-- Static Floor: `RIGIDBODY BOX 0.0 50.0 0.1 50.0 STATIC`
-- Offset Collider: `RIGIDBODY BOX 1.0 1.0 1.0 1.0 OFFSET 0.0 0.5 0.0`
-- Bouncy Ball: `RIGIDBODY SPHERE 1.0 0.5 RESTITUTION 0.8 DYNAMIC`
-
 
 ## Material
 
-**Phong (Legacy/Cartoonish)**
-```text
-MATERIAL PHONG <shininess> <spec_r> <spec_g> <spec_b>
+### Phong (Legacy/Cartoonish)
+```yaml
+      Component: Material
+        Type: PHONG
+        Shininess: 32.0
+        Specular: 0.5 0.5 0.5
+        Emission: 0.0 0.0 0.0
+        Ambient: 1.0 1.0 1.0
 ```
-- **shininess**: Specular exponent.
-- **spec_rgb**: Specular Color Color.
 
-**PBR (Realistic)**
-```text
-MATERIAL PBR <roughness> <metallic> <ao>
+### PBR (Realistic)
+```yaml
+      Component: Material
+        Type: PBR
+        Roughness: 0.5
+        Metallic: 0.0
+        AO: 1.0
+        Emission: 0.0 0.0 0.0
 ```
-- **roughness**: Surface irregularity (0.0 = Smooth, 1.0 = Rough).
-- **metallic**: Metalness (0.0 = Dielectric/Plastic, 1.0 = Metal).
-- **ao**: Ambient Occlusion factor (0.0 - 1.0).
 
 ## Lighting
 
-All light components support shadow casting and active state control via optional parameters at the end of their command.
+All light components support color and intensity.
 
 ### Directional Light
-```text
-LIGHT_DIR <r> <g> <b> <intensity> [ambient] [diffuse] [isCastShadow] [active]
+```yaml
+      Component: LightDir
+        Color: 1.0 0.95 0.8
+        Intensity: 1.0
+        AmbientStr: 0.2
+        DiffuseStr: 0.8
+        SpecularStr: 0.5
 ```
-- **Direction**: Determined by the entity's `TRANSFORM` rotation.
-- **intensity**: Light intensity multiplier.
-- **ambient**: Ambient strength multiplier (optional, default 0.2).
-- **diffuse**: Diffuse strength multiplier (optional, default 0.8).
-- **isCastShadow**: Enable shadow casting for this light (optional, 0 or 1, default 0).
-- **active**: Enable/disable this light (optional, 0 or 1, default 1).
-
-> **Note**: In shadow mode 1 (Once), only the first light with `isCastShadow=1` will cast shadows. In mode 2 (All), up to 4 lights with `isCastShadow=1` will cast shadows.
-
-**Example:**
-```text
-TRANSFORM 0 0 0  45 0 0  1 1 1  # Sets rotation/direction
-LIGHT_DIR 1.0 0.95 0.8 1.0 0.1 0.3 1 1
-```
-This creates a directional light with shadow casting enabled and active.
+- **Direction**: Determined by the entity's `Transform` rotation.
 
 ### Point Light
-```text
-LIGHT_POINT <r> <g> <b> <intensity> <radius> [constant] [linear] [quadratic] [ambient] [diffuse] [isCastShadow] [active]
+```yaml
+      Component: LightPoint
+        Color: 1.0 0.0 0.0
+        Intensity: 1.0
+        Radius: 10.0
+        Constant: 1.0
+        Linear: 0.09
+        Quadratic: 0.032
+        AmbientStr: 0.1
+        DiffuseStr: 1.0
+        SpecularStr: 1.0
 ```
-- **radius**: Approximate range of the light.
-- **attenuation**: optional constant, linear, quadratic falloff.
-- **ambient/diffuse**: optional multipliers (defaults: 0.1, 1.0).
-- **isCastShadow**: Enable shadow casting for this light (optional, 0 or 1, default 0).
-- **active**: Enable/disable this light (optional, 0 or 1, default 1).
 
 ### Spot Light
-```text
-LIGHT_SPOT <r> <g> <b> <intensity> <cut> <outer> [constant] [linear] [quadratic] [ambient] [diffuse] [isCastShadow] [active]
+```yaml
+      Component: LightSpot
+        Color: 1.0 1.0 1.0
+        Intensity: 1.0
+        CutOff: 12.5
+        OuterCutOff: 17.5
+        Constant: 1.0
+        Linear: 0.09
+        Quadratic: 0.032
+        AmbientStr: 0.1
+        DiffuseStr: 1.0
 ```
-- **Direction**: Determined by the entity's `TRANSFORM` rotation.
-- **cut/outer**: Cutoff angles in degrees.
-- **attenuation**: optional constant, linear, quadratic falloff.
-- **ambient/diffuse**: optional multipliers (defaults: 0.1, 1.0).
-- **isCastShadow**: Enable shadow casting for this light (optional, 0 or 1, default 0).
-- **active**: Enable/disable this light (optional, 0 or 1, default 1).
 
 ## Audio
 
 ### Audio Source
-```text
-AUDIO_SOURCE <path> <vol> <loop> <3d> <dist> <awake>
+```yaml
+      Component: AudioSource
+        Path: resources/audio/jump.wav
+        Volume: 1.0
+        Loop: false
+        Is3D: true
+        MinDistance: 1.0
+        PlayOnAwake: true
 ```
 
 ## User Interface (UI)
 
 ### UI Transform
-```text
-UI_TRANSFORM <x> <y> <w> <h> <z>
+```yaml
+      Component: UITransform
+        Position: 0 0
+        Size: 100 100
+        ZOrder: 0
 ```
 
 ### UI Renderer
-```text
-UI_RENDERER <r> <g> <b> <a> <shader>
+```yaml
+      Component: UIRenderer
+        Color: 1.0 1.0 1.0 1.0
+        Shader: uiShader
 ```
 
 ### UI Text
-```text
-UI_TEXT "String" <font> <r> <g> <b> <scale>
+```yaml
+      Component: UIText
+        Text: "Hello World"
+        Font: arial
+        Color: 1.0 1.0 1.0
+        Scale: 1.0
 ```
 
 ## Particle System
 
-### `LOAD_PARTICLE`
-Loads a particle texture into the resource manager.
-- **Syntax**: `LOAD_PARTICLE <name> <path>`
-- **Example**: `LOAD_PARTICLE fireTex resources/textures/fire.png`
-
-### `PARTICLE_EMITTER`
-Creates a particle emitter attached to the entities.
-- **Syntax**: `PARTICLE_EMITTER <texture_name> <max_particles> <spawn_rate> <lifetime> <start_size> <end_size> <shape>`
-- **Shapes**: `DIRECTIONAL`, `CONE`, `FIGURE8`
-- **Example**: `PARTICLE_EMITTER fireTex 1000 200.0 1.5 2.0 0.0 CONE`
+### Particle Emitter
+```yaml
+      Component: ParticleEmitter
+        Texture: fireTex
+        MaxParticles: 1000
+        Life: 1.5
+```
 
 ## Video
 
 ### Video Player
 Plays an MP4 video. Note: Requires FFmpeg libraries.
 
-```text
-VIDEO_PLAYER <path> [loop] [speed] [awake]
-```
-- **path**: Path to video file (relative to executable).
-- **loop**: 1 to loop, 0 to play once (default 0).
-- **speed**: Playback speed multiplier (default 1.0).
-- **awake**: Play automatically on load (default 1).
-
-**Usage**:
-Use with `UI_RENDERER` (for 2D) or `RENDERER` (for 3D) to display the video. The system automatically overrides the texture.
-
-**Example**:
-```text
-NEW_ENTITY IntroVideo
-VIDEO_PLAYER "assets/videos/intro.mp4" 1 1.0 1
-UITRANSFORM 0 0 1920 1080 0
-UI_RENDERER 1 1 1 1 uiShader
+```yaml
+      Component: VideoPlayer
+        Path: assets/videos/intro.mp4
+        Loop: true
+        Speed: 1.0
+        PlayOnAwake: true
 ```

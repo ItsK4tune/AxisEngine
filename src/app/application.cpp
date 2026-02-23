@@ -103,8 +103,8 @@ bool Application::Init(const AppConfig &config)
 
     m_ResourceManager->LoadShader("debugLine", "src/asset/shaders/debug_line.vs", "src/asset/shaders/debug_line.fs");
 
-    LOGGER_INFO("Application") << "Loading default assets from src/asset/load.scene...";
-    m_SceneManager->LoadScene("src/asset/load.scene");
+    LOGGER_INFO("Application") << "Loading default assets from src/asset/load.axs...";
+    m_SceneManager->LoadScene("src/asset/load.axs");
 
     if (!m_Config.iconPath.empty())
     {

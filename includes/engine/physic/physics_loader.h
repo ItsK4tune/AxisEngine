@@ -2,11 +2,10 @@
 
 #include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>
-#include <sstream>
-#include <fstream>
+#include <scene/scene_serializer.h>
 
 class PhysicsLoader
 {
 public:
-    static void LoadRigidBody(Scene& scene, entt::entity entity, std::stringstream& ss, IPhysicsWorld& physics, std::ifstream& file);
+    static void LoadRigidBody(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld& physics);
 };

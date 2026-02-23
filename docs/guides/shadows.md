@@ -36,30 +36,57 @@ CONFIG SHADOW_DISTANCE 100.0 // Max distance to render shadows
 
 #### Directional Light
 Direction (0, -1, 0) is rotated by Transform.
-```
-NEW_ENTITY Sun
-TRANSFORM 0 10 0 -45 -30 0 1 1 1
-LIGHT_DIR 1 1 1.0 1.0 1.0 1.0
-//        ^ ^-- Cast Shadow (0=No, 1=Yes)
-//        ^---- Active
+```yaml
+  Entities:
+    Sun:
+      Component: Transform
+        Position: 0 10 0
+        Rotation: -45 -30 0
+        Scale: 1 1 1
+      Component: LightDir
+        Color: 1 1 1.0
+        Intensity: 1.0
+        AmbientStr: 1.0
+        DiffuseStr: 1.0
+        # Cast Shadow (0=No, 1=Yes)
+        # Active
 ```
 
 #### Spot Light
 Cone direction follows Transform rotation.
-```
-NEW_ENTITY SpotLamp
-TRANSFORM 0 5 0 -90 0 0 1 1 1
-LIGHT_SPOT 1 1 1.0 1.0 1.0 2.0 25.0 30.0
-//         ^ ^-- Cast Shadow
+```yaml
+  Entities:
+    SpotLamp:
+      Component: Transform
+        Position: 0 5 0
+        Rotation: -90 0 0
+        Scale: 1 1 1
+      Component: LightSpot
+        Color: 1 1 1.0
+        Intensity: 1.0
+        Constant: 1.0
+        Linear: 2.0
+        CutOff: 25.0
+        OuterCutOff: 30.0
+        # Cast Shadow
 ```
 
 #### Point Light
 Omnidirectional shadow (most expensive).
-```
-NEW_ENTITY Bulb
-TRANSFORM 0 2 0 0 0 0 1 1 1
-LIGHT_POINT 1 1 1.0 1.0 0.0 2.0 10.0
-//          ^ ^-- Cast Shadow
+```yaml
+  Entities:
+    Bulb:
+      Component: Transform
+        Position: 0 2 0
+        Rotation: 0 0 0
+        Scale: 1 1 1
+      Component: LightPoint
+        Color: 1 1 1.0
+        Intensity: 1.0
+        Constant: 0.0
+        Linear: 2.0
+        Radius: 10.0
+        # Cast Shadow
 ```
 
 ## Troubleshooting

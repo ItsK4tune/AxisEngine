@@ -39,9 +39,12 @@ To render a skybox:
 1. Load it in the Scene (`LOAD_SKYBOX`).
 2. Add a `SKYBOX_RENDERER` component to an entity.
 
-```text
-NEW_ENTITY Sky
-SKYBOX_RENDERER <skybox_name> <shader_name>
+```yaml
+  Entities:
+    Sky:
+      Component: SkyboxRenderer
+        Texture: <skybox_name>
+        Shader: <shader_name>
 ```
 
 ## 6. Particle System
@@ -50,9 +53,14 @@ The engine supports GPU-instanced 2D effects.
     1. Load Texture: `LOAD_PARTICLE <name> <path>`.
     2. Create Entity: Add `PARTICLE_EMITTER`.
     
-```text
-NEW_ENTITY FireFX
-PARTICLE_EMITTER <texture_name> <max_particles> <lifetime>
-TRANSFORM ... (Controls Emitter Position)
+```yaml
+  Entities:
+    FireFX:
+      Component: Transform
+        Position: 0 0 0
+      Component: ParticleEmitter
+        Texture: <texture_name>
+        MaxParticles: <max_particles>
+        Life: <lifetime>
 ```
 - Particles are simulated on CPU but rendered via Instancing for performance.

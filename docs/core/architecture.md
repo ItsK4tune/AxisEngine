@@ -322,12 +322,11 @@ class PlayerController : public Scriptable {
        ↓
 3. SceneLoader::Load(path, scene, resources, ...)
        ↓
-4. Parse .scene file line by line
-   - LOAD_SHADER → ResourceManager::LoadShader()
-   - LOAD_MODEL → ResourceManager::LoadModel()
-   - NEW_ENTITY → scene.createEntity()
-   - TRANSFORM → scene.registry.emplace<TransformComponent>()
-   - RENDERER → scene.registry.emplace<MeshRendererComponent>()
+4. Parse .axs file structure (YAML format)
+   - SceneSerializer extracts entity roots
+   - Root nodes -> scene.createEntity()
+   - Transform node -> scene.registry.emplace<TransformComponent>()
+   - Renderer node -> scene.registry.emplace<MeshRendererComponent>()
    - SCRIPT → ScriptRegistry::Create() + script->OnCreate()
    - etc.
        ↓
