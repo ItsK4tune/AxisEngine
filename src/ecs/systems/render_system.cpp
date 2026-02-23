@@ -193,16 +193,18 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         glm::vec3 worldMin = worldCenter - worldExtent;
         glm::vec3 worldMax = worldCenter + worldExtent;
 
-        if (m_DistanceCullingSq > 0.0f && cam && camTrans)
+        float distSq = 0.0f;
+
+        if (cam && camTrans)
         {
             glm::vec3 cameraPos = camTrans->position;
             float dx = (std::max)(worldMin.x - cameraPos.x, (std::max)(0.0f, cameraPos.x - worldMax.x));
             float dy = (std::max)(worldMin.y - cameraPos.y, (std::max)(0.0f, cameraPos.y - worldMax.y));
             float dz = (std::max)(worldMin.z - cameraPos.z, (std::max)(0.0f, cameraPos.z - worldMax.z));
 
-            float distSq = dx*dx + dy*dy + dz*dz;
+            distSq = dx*dx + dy*dy + dz*dz;
 
-            if (distSq > m_DistanceCullingSq)
+            if (m_DistanceCullingSq > 0.0f && distSq > m_DistanceCullingSq)
                 continue;
         }
 
@@ -218,7 +220,20 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             mat = &scene.registry.get<MaterialComponent>(entity);
         }
 
-        m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat});
+        Model *activeModel = renderer.model.get();
+        if (scene.registry.all_of<LODComponent>(entity))
+        {
+            auto& lod = scene.registry.get<LODComponent>(entity);
+            for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
+                if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
+                    activeModel = lod.lodModels[i].get();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat, activeModel});
     }
 
     std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [](const RenderItem &lhs, const RenderItem &rhs)
@@ -231,7 +246,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             return lID < rID;
         if (lhs.material != rhs.material)
             return lhs.material < rhs.material;
-        return lhs.renderer->model < rhs.renderer->model; });
+        return lhs.activeModel < rhs.activeModel; });
 
     Shader *currentShader = nullptr;
     Model *currentModel = nullptr;
@@ -339,7 +354,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
             SetupMaterialUniforms(currentShader, entity, scene);
 
-            renderer.model->Draw(*currentShader);
+            item.activeModel->Draw(*currentShader);
             m_RenderedCount++;
         }
         else
@@ -356,15 +371,15 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
                 SetupMaterialUniforms(currentShader, entity, scene);
 
-                renderer.model->Draw(*currentShader);
+                item.activeModel->Draw(*currentShader);
                 m_RenderedCount++;
             }
             else
             {
-                if (currentModel != renderer.model.get() || currentMaterial != material)
+                if (currentModel != item.activeModel || currentMaterial != material)
                 {
                     flushBatch(currentShader, currentModel);
-                    currentModel = renderer.model.get();
+                    currentModel = item.activeModel;
                     currentMaterial = material;
 
                     currentShader->setVec4("tintColor", renderer.color);

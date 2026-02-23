@@ -106,6 +106,11 @@ The `.axs` format assigns default values if a property is missing. Keys are case
 - `Model`: String (Required, Name of loaded Model resource)
 - `Shader`: String (Required, Name of loaded Shader resource)
 
+### LOD
+Level of Detail component swapped dynamically based on distance to the camera (squared). Requires a base `MeshRenderer` component.
+- `Models`: String List (Space-separated names of loaded Model resources for LOD1, LOD2, etc.)
+- `Distances`: Float List (Space-separated distance thresholds for each LOD level.)
+
 ### Lights (LightDir, LightPoint, LightSpot)
 All lights share these base properties:
 - `Active`: Boolean (Default: `1`)

@@ -136,22 +136,35 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             glm::vec3 worldMin = worldCenter - worldExtent;
             glm::vec3 worldMax = worldCenter + worldExtent;
 
-            if (m_ShadowDistanceCullingSq > 0.0f)
+            float distSq = 0.0f;
+            float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
+            float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
+            float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
+
+            distSq = dx*dx + dy*dy + dz*dz;
+
+            if (m_ShadowDistanceCullingSq > 0.0f && distSq > m_ShadowDistanceCullingSq)
             {
-                float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
-                float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
-                float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
-
-                float distSq = dx*dx + dy*dy + dz*dz;
-
-                if (distSq > m_ShadowDistanceCullingSq)
-                    continue;
+                continue;
             }
 
             if (m_ShadowFrustumCullingEnabled)
             {
                 if (!lightFrustum.IsBoxVisible(worldMin, worldMax))
                     continue;
+            }
+
+            Model* activeModel = renderer.model.get();
+            if (scene.registry.all_of<LODComponent>(entity))
+            {
+                auto& lod = scene.registry.get<LODComponent>(entity);
+                for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
+                    if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
+                        activeModel = lod.lodModels[i].get();
+                    } else {
+                        break;
+                    }
+                }
             }
 
             shaderDir->setMat4("model", trans.GetWorldModelMatrix(scene.registry));
@@ -176,7 +189,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 shaderDir->setBool("hasAnimation", false);
             }
 
-            renderer.model->Draw(*shaderDir);
+            activeModel->Draw(*shaderDir);
         }
     }
 
@@ -240,7 +253,46 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             auto [tObj, rObj] = view.get<TransformComponent, MeshRendererComponent>(obj);
             if (rObj.model)
             {
-                shaderPoint->setMat4("model", tObj.GetWorldModelMatrix(scene.registry));
+                glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
+                glm::vec3 min = rObj.model->AABBmin;
+                glm::vec3 max = rObj.model->AABBmax;
+
+                glm::vec3 center = (min + max) * 0.5f;
+                glm::vec3 extent = (max - min) * 0.5f;
+                glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+
+                glm::mat3 rot = glm::mat3(modelMatrix);
+                glm::vec3 worldExtent = glm::vec3(
+                    std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                    std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                    std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
+
+                glm::vec3 worldMin = worldCenter - worldExtent;
+                glm::vec3 worldMax = worldCenter + worldExtent;
+
+                float distSq = 0.0f;
+                float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
+                float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
+                float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
+                distSq = dx*dx + dy*dy + dz*dz;
+
+                if (m_ShadowDistanceCullingSq > 0.0f && distSq > m_ShadowDistanceCullingSq)
+                    continue;
+
+                Model* activeModel = rObj.model.get();
+                if (scene.registry.all_of<LODComponent>(obj))
+                {
+                    auto& lod = scene.registry.get<LODComponent>(obj);
+                    for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
+                        if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
+                            activeModel = lod.lodModels[i].get();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                shaderPoint->setMat4("model", modelMatrix);
                 if (scene.registry.all_of<AnimationComponent>(obj))
                 {
                     auto &anim = scene.registry.get<AnimationComponent>(obj);
@@ -260,7 +312,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 {
                     shaderPoint->setBool("hasAnimation", false);
                 }
-                rObj.model->Draw(*shaderPoint);
+                activeModel->Draw(*shaderPoint);
             }
         }
 
@@ -354,22 +406,35 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             glm::vec3 worldMin = worldCenter - worldExtent;
             glm::vec3 worldMax = worldCenter + worldExtent;
 
-            if (m_ShadowDistanceCullingSq > 0.0f)
+            float distSq = 0.0f;
+            float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
+            float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
+            float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
+
+            distSq = dx*dx + dy*dy + dz*dz;
+
+            if (m_ShadowDistanceCullingSq > 0.0f && distSq > m_ShadowDistanceCullingSq)
             {
-                float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
-                float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
-                float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
-
-                float distSq = dx*dx + dy*dy + dz*dz;
-
-                if (distSq > m_ShadowDistanceCullingSq)
-                    continue;
+                continue;
             }
 
             if (m_ShadowFrustumCullingEnabled)
             {
                 if (!lightFrustum.IsBoxVisible(worldMin, worldMax))
                     continue;
+            }
+
+            Model* activeModel = rObj.model.get();
+            if (scene.registry.all_of<LODComponent>(obj))
+            {
+                auto& lod = scene.registry.get<LODComponent>(obj);
+                for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
+                    if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
+                        activeModel = lod.lodModels[i].get();
+                    } else {
+                        break;
+                    }
+                }
             }
 
             shaderSpot->setMat4("model", modelMatrix);
@@ -394,7 +459,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 shaderSpot->setBool("hasAnimation", false);
             }
 
-            rObj.model->Draw(*shaderSpot);
+            activeModel->Draw(*shaderSpot);
         }
 
         sIdx++;

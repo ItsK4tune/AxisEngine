@@ -243,6 +243,50 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
     txt.shader = res.GetShader("textShader");
 }
 
+void ComponentLoader::LoadLOD(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
+{
+    ValidateKeys(node, {"Models", "Distances"}, "LOD");
+
+    std::string modelsStr = node.GetChildValue("Models");
+    std::string distancesStr = node.GetChildValue("Distances");
+
+    if (modelsStr.empty() || distancesStr.empty())
+    {
+        LOGGER_WARN("ComponentLoader") << "LOD component missing 'Models' or 'Distances' field";
+        return;
+    }
+
+    auto& lod = scene.registry.emplace<LODComponent>(entity);
+
+    std::stringstream modelSS(modelsStr);
+    std::string modelName;
+    while (modelSS >> modelName)
+    {
+        auto model = res.GetModel(modelName);
+        if (!model) {
+            LOGGER_WARN("ComponentLoader") << "LOD Model not found: " << modelName;
+        }
+        lod.lodModels.push_back(model);
+    }
+
+    std::stringstream distSS(distancesStr);
+    float distance;
+    while (distSS >> distance)
+    {
+        if (distance < 0) {
+            LOGGER_WARN("ComponentLoader") << "LOD Distance cannot be negative: " << distance;
+            distance = 0.0f;
+        }
+        lod.lodDistancesSq.push_back(distance * distance);
+    }
+
+    if (lod.lodModels.size() != lod.lodDistancesSq.size())
+    {
+        LOGGER_WARN("ComponentLoader") << "LOD component models count (" << lod.lodModels.size() 
+                                       << ") does not match distances count (" << lod.lodDistancesSq.size() << ")";
+    }
+}
+
 void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     ValidateKeys(node, {"Skybox", "Shader"}, "SkyboxRenderer");

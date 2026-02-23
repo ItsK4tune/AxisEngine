@@ -109,7 +109,7 @@ axis_scene:
       Component: Transform
         Position: 0 2 0
       Component: Renderer
-        Model: dummyModel
+        Model: capsuleModel
         Shader: phongLitShadowShader
       Component: Material
         Type: PHONG

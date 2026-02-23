@@ -55,3 +55,9 @@ struct SkyboxRenderComponent
     std::shared_ptr<Skybox> skybox = nullptr;
     std::weak_ptr<Shader> shader;
 };
+
+struct LODComponent
+{
+    std::vector<std::shared_ptr<Model>> lodModels;
+    std::vector<float> lodDistancesSq;
+};

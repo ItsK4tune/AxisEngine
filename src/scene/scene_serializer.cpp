@@ -237,6 +237,7 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
                     else if (compType == "VideoPlayer") ComponentLoader::LoadVideoPlayer(scene, currentEntity, compNode);
                     else if (compType == "ParticleEmitter") ComponentLoader::LoadParticleEmitter(scene, currentEntity, compNode, res);
                     else if (compType == "Material") ComponentLoader::LoadMaterial(scene, currentEntity, compNode);
+                    else if (compType == "LOD") ComponentLoader::LoadLOD(scene, currentEntity, compNode, res);
                     else if (compType == "Camera") ComponentLoader::LoadCamera(scene, currentEntity, compNode);
                     else if (compType == "RigidBody") PhysicsLoader::LoadRigidBody(scene, currentEntity, compNode, phys);
                 }

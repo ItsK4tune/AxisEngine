@@ -64,12 +64,36 @@ axis_scene:
         Rotation: 0.0 0.0 0.0
         Scale: 0.01 0.01 0.01
       Component: Renderer
-        Model: dummyModel
+        Model: capsuleModel
         Shader: phongLitNoShadowShader
       Component: Material
         Type: PHONG
         Shininess: 32
         Specular: 0.5 0.5 0.5
+      Component: RigidBody
+        Type: CAPSULE
+        Radius: 1.0
+        Height: 1.8
+        Mass: 1.0
+        BodyType: STATIC
+        Offset: 0.0 2.0 0.0
+
+    Dummy2:
+      Tag: default
+      Component: Transform
+        Position: 4.0 10.0 0.0
+        Rotation: 0.0 0.0 0.0
+        Scale: 0.01 0.01 0.01
+      Component: Renderer
+        Model: capsuleModel
+        Shader: phongLitNoShadowShader
+      Component: Material
+        Type: PHONG
+        Shininess: 32
+        Specular: 0.5 0.5 0.5
+      Component: LOD
+        Models: capsuleModel planeModel
+        Distances: 20.0 40.0
       Component: RigidBody
         Type: CAPSULE
         Radius: 1.0

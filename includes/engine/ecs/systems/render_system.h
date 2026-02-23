@@ -26,6 +26,7 @@ struct RenderItem
     TransformComponent *transform;
     MeshRendererComponent *renderer;
     MaterialComponent *material;
+    Model *activeModel;
 };
 
 class RenderSystem

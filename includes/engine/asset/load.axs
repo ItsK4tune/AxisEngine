@@ -55,7 +55,7 @@ axis_scene:
       Path: includes/engine/asset/objects/plane/plane.fbx
       Static: 1
     Model:
-      Name: dummyModel
+      Name: capsuleModel
       Path: includes/engine/asset/objects/dummy/dummy.fbx
       Static: 1
 
