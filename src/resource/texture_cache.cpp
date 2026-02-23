@@ -5,6 +5,7 @@
 #include <interface/graphic/i_texture_manager.h>
 #include <stb_image.h>
 #include <iostream>
+#include <core/job_system.h>
 
 ITextureManager* TextureCache::s_TextureManager = nullptr;
 
@@ -19,14 +20,17 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
 
     if (async)
     {
-        m_AsyncLoads.push_back(std::async(std::launch::async, [name, fullPath]() -> TextureData {
+        auto promise = std::make_shared<std::promise<TextureData>>();
+        m_AsyncLoads.push_back(promise->get_future());
+
+        JobSystem::Instance().Execute([promise, name, fullPath]() {
             TextureData data;
             data.name = name;
             data.path = fullPath;
             stbi_set_flip_vertically_on_load(true);
             data.data = stbi_load(fullPath.c_str(), &data.width, &data.height, &data.nrComponents, 0);
-            return data;
-        }));
+            promise->set_value(data);
+        });
     }
     else
     {

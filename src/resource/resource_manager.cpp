@@ -4,6 +4,7 @@
 #include <iostream>
 #include <event/event_system.h>
 #include <event/resource_events.h>
+#include <core/job_system.h>
 
 ResourceManager::ResourceManager()
 {
@@ -95,13 +96,17 @@ void ResourceManager::LoadModelAsync(const std::string &name, const std::string 
         m_ModelPaths[name] = {name, isStatic};
     }
 
-    auto future = std::async(std::launch::async, [this, name, fullPath, isStatic]()
+    auto promise = std::make_shared<std::promise<void>>();
+    auto future = promise->get_future();
+
+    JobSystem::Instance().Execute([this, promise, name, fullPath, isStatic]()
     {
         auto model = std::make_shared<Model>();
         model->LoadCPU(fullPath, isStatic);
 
         std::lock_guard<std::mutex> lock(m_PendingMutex);
         m_PendingModels.push_back({name, std::move(model)});
+        promise->set_value();
     });
 
     std::lock_guard<std::mutex> lock(m_PendingMutex);

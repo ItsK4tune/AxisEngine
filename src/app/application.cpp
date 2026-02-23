@@ -3,6 +3,7 @@
 #include <graphic/renderer_initializer.h>
 #include <event/input_events.h>
 #include <event/event_system.h>
+#include <core/job_system.h>
 
 #include <interface/graphic/i_graphics_context.h>
 #include <audio/audio_manager.h>
@@ -17,6 +18,8 @@ Application::~Application()
 {
     if (m_RuntimeCore)
         m_RuntimeCore->GetStateMachine().Clear();
+
+    JobSystem::Instance().Shutdown();
 
     if (m_SystemManager)
         m_SystemManager->ShutdownSystems();
@@ -40,6 +43,8 @@ Application::~Application()
 bool Application::Init(const AppConfig &config)
 {
     m_Config = config;
+
+    JobSystem::Instance().Initialize();
 
     auto graphicsContext = AppBuilder::CreateGraphicsContext(m_Config);
     auto audioEngine = AppBuilder::CreateAudioEngine(m_Config);

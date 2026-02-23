@@ -37,8 +37,6 @@ private:
 
     std::vector<WatchEntry> m_Watchers;
     std::vector<ResourceReloadEvent> m_PendingReloads;
-
-    std::thread m_WatcherThread;
     std::mutex m_Mutex;
     std::atomic<bool> m_Running;
 

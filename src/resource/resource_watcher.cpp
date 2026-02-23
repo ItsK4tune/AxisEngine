@@ -3,20 +3,17 @@
 #include <iostream>
 #include <chrono>
 #include <event/event_system.h>
+#include <core/job_system.h>
 
 ResourceWatcher::ResourceWatcher()
     : m_Running(true)
 {
-    m_WatcherThread = std::thread(&ResourceWatcher::WatcherLoop, this);
+    JobSystem::Instance().Execute([this]() { WatcherLoop(); });
 }
 
 ResourceWatcher::~ResourceWatcher()
 {
     m_Running = false;
-    if (m_WatcherThread.joinable())
-    {
-        m_WatcherThread.join();
-    }
 }
 
 void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type)
