@@ -60,3 +60,8 @@ This document serves as a high-level summary of the technologies, architectural 
 
 ### Application Lifecycle
 *   **Fixed Timestep / Catchup Loop:** The engine measures exact delta time but runs the Physics simulation at strict intervals (`fixedDt`). If rendering lags behind, physics steps multiple times to maintain deterministic collisions, preventing "tunneling" logic errors.
+*   **AppBuilder Initialization:** The `Application` utilizes an `AppBuilder` pattern to construct abstract backends (`IPhysicsWorld`, `IAudioBackend`, `IGraphicsContext`) dynamically based on OS or configuration before the first frame runs.
+
+### Debug System
+*   **Global Overlays:** `DebugConfig` tracks global development flags (e.g. F8 Physics Wireframes, F6 Polygon Mode, F10 On-screen FPS and State Overlays).
+*   **Gizmo Tools:** Interactive bounding boxes, transform axes (Shift+F4), and light placement constraints (Shift+F5) rendered via `DebugModule` pipelines to visualize hidden ECS data during gameplay testing.

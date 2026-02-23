@@ -2,11 +2,24 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <app/application.h>
 #include <iostream>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <glad/glad.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <app/application.h>
+#include <scene/scene.h>
+#include <ecs/components/render_components.h>
+#include <ecs/components/camera_component.h>
+#include <ecs/components/light_components.h>
+#include <ecs/components/info_component.h>
+#include <interface/graphic/i_graphics_context.h>
+#include <interface/graphic/i_render_state_manager.h>
+#include <debug/debug_config.h>
 
 GizmoDebugModule::GizmoDebugModule() {}
 GizmoDebugModule::~GizmoDebugModule() {}
@@ -34,7 +47,78 @@ void GizmoDebugModule::OnUpdate(float dt)
 
 void GizmoDebugModule::Render(Scene &scene)
 {
+    if (!m_App || !m_Enabled || !DebugConfig::ShowGizmos)
+        return;
 
+    int width = m_App->GetWidth();
+    int height = m_App->GetHeight();
+
+    auto debugShader = m_App->GetResourceManager().GetShader("debugLine");
+    if (!debugShader) return;
+
+    entt::entity camEntity = scene.GetActiveCamera();
+    if (camEntity == entt::null) return;
+
+    auto& cam = scene.registry.get<CameraComponent>(camEntity);
+    auto& camTrans = scene.registry.get<TransformComponent>(camEntity);
+
+    float aspect = (float)width / (float)height;
+    glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
+    glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
+
+    debugShader->use();
+    debugShader->setMat4("projection", proj);
+    debugShader->setMat4("view", view);
+    debugShader->setMat4("model", glm::mat4(1.0f));
+
+    auto viewEntities = scene.registry.view<TransformComponent>();
+
+    std::vector<float> lineVertices;
+    auto addLine = [&](const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) {
+        lineVertices.push_back(start.x); lineVertices.push_back(start.y); lineVertices.push_back(start.z);
+        lineVertices.push_back(color.r); lineVertices.push_back(color.g); lineVertices.push_back(color.b);
+        lineVertices.push_back(end.x); lineVertices.push_back(end.y); lineVertices.push_back(end.z);
+        lineVertices.push_back(color.r); lineVertices.push_back(color.g); lineVertices.push_back(color.b);
+    };
+
+    for (auto entity : viewEntities)
+    {
+        auto& tr = viewEntities.get<TransformComponent>(entity);
+        glm::mat4 modelMatrix = tr.GetWorldModelMatrix(scene.registry);
+
+        glm::vec3 pos = glm::vec3(modelMatrix[3]);
+        glm::vec3 right = glm::normalize(glm::vec3(modelMatrix[0]));
+        glm::vec3 up = glm::normalize(glm::vec3(modelMatrix[1]));
+        glm::vec3 forward = glm::normalize(glm::vec3(modelMatrix[2]));
+
+        float length = 1.0f;
+        addLine(pos, pos + right * length, glm::vec3(1.0f, 0.0f, 0.0f));
+        addLine(pos, pos + up * length, glm::vec3(0.0f, 1.0f, 0.0f));
+        addLine(pos, pos + forward * length, glm::vec3(0.0f, 0.0f, 1.0f));
+    }
+
+    if (lineVertices.empty()) return;
+
+    unsigned int vao, vbo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(float), lineVertices.data(), GL_STREAM_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    m_App->GetGraphicsContext().GetRenderStateManager().Disable(Graphics::ServerCapability::DepthTest);
+    glDrawArrays(GL_LINES, 0, lineVertices.size() / 6);
+    m_App->GetGraphicsContext().GetRenderStateManager().Enable(Graphics::ServerCapability::DepthTest);
+
+    glBindVertexArray(0);
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
 }
 
 void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
@@ -56,9 +140,9 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
         if (shift) {
-            ToggleTransformGizmos();
+            DebugConfig::ShowGizmos = !DebugConfig::ShowGizmos;
             std::cout << "\n========== Transform Gizmos (Shift+F4) ==========" << std::endl;
-            std::cout << "[Debug] Transform Gizmos: " << (m_ShowTransformGizmos ? "ON" : "OFF") << std::endl;
+            std::cout << "[Debug] Transform Gizmos: " << (DebugConfig::ShowGizmos ? "ON" : "OFF") << std::endl;
             std::cout << "=================================================" << std::endl;
         } });
 
@@ -344,10 +428,20 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
 
             float textW = 0.0f;
             if (m_DebugFont)
-                textW = (float)text.text.length() * 11.0f * text.scale;
+            {
+                std::istringstream textStream(typeName);
+                std::string line;
+                float maxW = 0.0f;
+                while (std::getline(textStream, line))
+                {
+                    float w = (float)line.length() * 11.0f * text.scale;
+                    if (w > maxW) maxW = w;
+                }
+                textW = maxW;
+            }
 
             uiTr.position = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.size = glm::vec2(textW, 20.0f * text.scale);
+            uiTr.size = glm::vec2(textW, 20.0f * text.scale); // UITextComponent handles multiline internally if supported, otherwise lines will overlap or need custom logic. Update: AxisEngine UITextComponent handles \n.
             uiTr.zIndex = 90;
 
             nextMap[entity] = labelEntity;
@@ -364,20 +458,27 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     auto pointLights = registry.view<PointLightComponent, TransformComponent>();
     for (auto entity : pointLights)
     {
-        auto &tr = pointLights.get<TransformComponent>(entity);
-        processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), "[POINT]", glm::vec3(1.0f, 1.0f, 0.0f));
+        auto [pl, tr] = pointLights.get<PointLightComponent, TransformComponent>(entity);
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1);
+        ss << "[POINT]\nInt: " << pl.intensity << "\nCol: " << pl.diffuse.r << "," << pl.diffuse.g << "," << pl.diffuse.b;
+        processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), ss.str(), glm::vec3(1.0f, 1.0f, 0.0f));
     }
 
     auto spotLights = registry.view<SpotLightComponent, TransformComponent>();
     for (auto entity : spotLights)
     {
-        auto &tr = spotLights.get<TransformComponent>(entity);
-        processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), "[SPOT]", glm::vec3(0.0f, 1.0f, 1.0f));
+        auto [sl, tr] = spotLights.get<SpotLightComponent, TransformComponent>(entity);
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1);
+        ss << "[SPOT]\nInt: " << sl.intensity << "\nCol: " << sl.diffuse.r << "," << sl.diffuse.g << "," << sl.diffuse.b;
+        processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), ss.str(), glm::vec3(0.0f, 1.0f, 1.0f));
     }
 
     auto dirLights = registry.view<DirectionalLightComponent>();
     for (auto entity : dirLights)
     {
+        auto& dl = registry.get<DirectionalLightComponent>(entity);
         glm::vec3 pos(0.0f);
         if (registry.all_of<TransformComponent>(entity))
         {
@@ -388,7 +489,10 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         {
             pos = glm::vec3(0.0f, 5.0f, 0.0f);
         }
-        processLight(entity, pos, "[DIR]", glm::vec3(1.0f, 0.5f, 0.0f));
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1);
+        ss << "[DIR]\nInt: " << dl.intensity << "\nCol: " << dl.diffuse.r << "," << dl.diffuse.g << "," << dl.diffuse.b;
+        processLight(entity, pos, ss.str(), glm::vec3(1.0f, 0.5f, 0.0f));
     }
 
     for (auto &pair : m_LightLabelMap)

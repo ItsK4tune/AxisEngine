@@ -7,7 +7,6 @@
 #include <script/default_camera_controller.h>
 #include <iostream>
 
-
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
 

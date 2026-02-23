@@ -47,7 +47,7 @@ docs/
     ├── build_guide.md       # Build instructions
     ├── project_structure.md # Codebase layout
     ├── configuration.md     # Configuration options
-    ├── scene_format.md      # Scene file syntax
+    ├── scene_format.md      # Scene file syntax (.axs)
     ├── components_reference.md  # Component quick reference
     ├── asset_management.md  # Asset loading guide
     ├── graphics_guide.md    # Graphics & rendering
@@ -99,7 +99,7 @@ Detailed API documentation with examples:
 ### Guides
 Practical how-to guides:
 - **Build Guide** - Compilation and setup
-- **Scene Format** - .scene file syntax
+- **Scene Format** - .axs file syntax
 - **Asset Management** - Loading resources
 - **Graphics Guide** - Rendering techniques
 - **Shadow Guide** - Shadow system setup & limits

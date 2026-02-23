@@ -32,7 +32,8 @@ AXIS Engine is built on **data-oriented design** principles with a focus on cach
 │  ┌────────────────────────────────────────────────────┐  │
 │  │             AppBuilder (Initialization)            │  │
 │  │  - Creates Graphics, Audio, Physics, Window        │  │
-│  │  - Isolated from strict backend APIs               │  │
+│  │  - Interacts via Interfaces (IGraphicsContext,     │  │
+│  │    IPhysicsWorld, IAudioBackend)                   │  │
 │  └────────────────────────────────────────────────────┘  │
 │                           │                              │
 │                           ▼                              │

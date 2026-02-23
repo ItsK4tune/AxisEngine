@@ -11,6 +11,10 @@
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/i_render_state_manager.h>
 
+#ifdef ENABLE_DEBUG_SYSTEM
+#include <debug/debug_config.h>
+#endif
+
 void RenderSystem::Init(IGraphicsContext& context, ResourceManager &res)
 {
     m_Context = &context;
@@ -233,11 +237,38 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             }
         }
 
-        m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat, activeModel});
+        uint32_t layer = 1;
+        int renderOrder = renderer.order;
+
+        if (scene.registry.all_of<InfoComponent>(entity))
+        {
+            auto& info = scene.registry.get<InfoComponent>(entity);
+            layer = info.layer;
+        }
+
+        if ((m_FilterLayerMask & layer) == 0)
+        {
+            continue; // Clipped by global filter layer mask
+        }
+
+        if (cam && (cam->cullingMask & layer) == 0)
+        {
+            continue; // Clipped by camera's culling mask
+        }
+
+        m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat, activeModel, layer, renderOrder});
     }
 
-    std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [](const RenderItem &lhs, const RenderItem &rhs)
-              {
+    std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [this](const RenderItem &lhs, const RenderItem &rhs)
+    {
+        if (m_RenderOrderEnabled)
+        {
+            if (lhs.layer != rhs.layer)
+                return lhs.layer < rhs.layer;
+            if (lhs.renderOrder != rhs.renderOrder)
+                return lhs.renderOrder < rhs.renderOrder;
+        }
+
         auto lShader = lhs.renderer->shader.lock();
         auto rShader = rhs.renderer->shader.lock();
         unsigned int lID = lShader ? lShader->getID() : 0;
@@ -246,13 +277,24 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             return lID < rID;
         if (lhs.material != rhs.material)
             return lhs.material < rhs.material;
-        return lhs.activeModel < rhs.activeModel; });
+        return lhs.activeModel < rhs.activeModel; 
+    });
 
     Shader *currentShader = nullptr;
     Model *currentModel = nullptr;
     MaterialComponent *currentMaterial = nullptr;
     std::vector<glm::mat4> instanceBatch;
     m_RenderedCount = 0;
+
+    auto& rsm = m_Context->GetRenderStateManager();
+    Graphics::PolygonMode prevMode = rsm.GetPolygonMode();
+
+#ifdef ENABLE_DEBUG_SYSTEM
+    if (DebugConfig::ShowWireframe)
+    {
+        rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Line);
+    }
+#endif
 
     auto flushBatch = [&](Shader *shader, Model *model)
     {
@@ -392,6 +434,13 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         }
     }
     flushBatch(currentShader, currentModel);
+
+#ifdef ENABLE_DEBUG_SYSTEM
+    if (DebugConfig::ShowWireframe)
+    {
+        rsm.PolygonMode(Graphics::CullMode::FrontAndBack, prevMode);
+    }
+#endif
 }
 
 void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene)

@@ -24,7 +24,15 @@ axis_scene:
 ---
 
 ## 2. Configuration
-Global engine settings are typically stored in `configuration/settings.json`. However, you can also inject Config loader blocks into scenes as needed (handled automatically by `ConfigLoader` parsing).
+Global engine settings are defined directly in the `.axs` file under the `Config:` block. The `ConfigLoader` seamlessly injects these into `Application` before loading the `Entities` block.
+
+```yaml
+  Config:
+    WINDOW_WIDTH: 1280
+    WINDOW_HEIGHT: 720
+    VSYNC: 1
+    ANTIALIASING: TAA
+```
 
 ---
 

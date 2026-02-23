@@ -130,12 +130,21 @@ void DebugSystem::Render(Scene &scene)
 
     rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill);
 
-    for (auto &module : m_Modules)
-    {
-        if (module->IsEnabled())
-        {
-            module->Render(scene);
+    // Sort modules by render order before rendering
+    std::vector<IDebugModule*> sortedModules;
+    for (auto& module : m_Modules) {
+        if (module->IsEnabled()) {
+            sortedModules.push_back(module.get());
         }
+    }
+
+    std::sort(sortedModules.begin(), sortedModules.end(), [](IDebugModule* a, IDebugModule* b) {
+        return a->GetRenderOrder() < b->GetRenderOrder();
+    });
+
+    for (auto module : sortedModules)
+    {
+        module->Render(scene);
     }
 
     rsm.PolygonMode(Graphics::CullMode::FrontAndBack, oldMode);

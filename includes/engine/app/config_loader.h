@@ -22,6 +22,9 @@ struct AppConfig
     bool cullFaceEnabled = true;
     bool depthTestEnabled = true;
 
+    bool renderOrderEnabled = true;
+    uint32_t filterLayerMask = 0xFFFFFFFF;
+
     std::string audioDevice = "default";
 
     std::string iconPath = "includes/engine/asset/project/icon.png";

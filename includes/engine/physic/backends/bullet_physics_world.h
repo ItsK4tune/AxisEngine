@@ -67,7 +67,7 @@ public:
     std::shared_ptr<ICollisionShape> CreateCapsuleShape(float radius, float height) override;
     std::shared_ptr<ICollisionShape> CreateCompoundShape() override;
     std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) override;
-    void AddChildShape(ICollisionShape* parent, ICollisionShape* child, const glm::vec3& pos, const glm::quat& rot) override;
+    void AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child, const glm::vec3& pos, const glm::quat& rot) override;
 
     void AddConstraint(std::shared_ptr<IConstraint> constraint) override;
     void RemoveConstraint(std::shared_ptr<IConstraint> constraint) override;

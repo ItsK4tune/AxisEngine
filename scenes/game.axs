@@ -67,6 +67,7 @@ axis_scene:
       Component: Renderer
         Model: capsuleModel
         Shader: phongLitNoShadowShader
+        Order: 1
       Component: Material
         Type: PHONG
         Shininess: 32
@@ -74,10 +75,10 @@ axis_scene:
       Component: RigidBody
         Type: CAPSULE
         Radius: 1.0
-        Height: 1.8
+        Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
-        Offset: 0.0 2.0 0.0
+        BodyType: DYNAMIC
+        Offset: 0.0 0.0 0.0
 
     Dummy2:
       Tag: default
@@ -88,6 +89,7 @@ axis_scene:
       Component: Renderer
         Model: capsuleSmoothModel
         Shader: phongLitNoShadowShader
+        Order: 2
       Component: Material
         Type: PHONG
         Shininess: 32

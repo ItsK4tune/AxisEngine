@@ -369,7 +369,7 @@ Create `game/src/states/game_state.cpp`:
 
 void GameState::OnEnter() {
     // Load our scene
-    LoadScene("scenes/my_first_level.scene");
+    LoadScene("scenes/my_first_level.axs");
     
     // Enable all systems
     EnablePhysics(true);
@@ -540,7 +540,7 @@ void OnCollisionEnter(entt::entity other) override {
 ```
 ERROR: Model not found: playerModel
 ```
-**Solution:** Check that the model is loaded in `load.scene` or your scene file with `LOAD_STATIC_MODEL`.
+**Solution:** Check that the model is loaded in `load.axs` or your scene file Resources block.
 
 ### Shader Errors
 ```

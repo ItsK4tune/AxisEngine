@@ -4,6 +4,7 @@
 #include <script/script_registry.h>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
+#include <utils/logger.h>
 
 CameraManager::CameraManager(Scene &scene)
     : m_Scene(scene)
@@ -64,7 +65,7 @@ void CameraManager::EnsurePrimaryCamera(std::shared_ptr<Application> app)
     if (GetPrimaryCamera() != entt::null)
         return;
 
-    std::cout << "[CameraManager] WARNING: No Active Camera found in scene! Creating Default Spectator Camera." << std::endl;
+    LOGGER_WARN("CameraManager") << "WARNING: No Active Camera found in scene! Creating Default Spectator Camera.";
     CreateDefaultSpectatorCamera(app);
 }
 
@@ -107,11 +108,11 @@ entt::entity CameraManager::CreateDefaultSpectatorCamera(std::shared_ptr<Applica
 
         scriptComp.instance->Init(camEntity, &m_Scene, app);
         scriptComp.instance->OnCreate();
-        std::cout << "[CameraManager] Attached 'DefaultCameraController' (Engine Fallback) to default camera." << std::endl;
+        LOGGER_INFO("CameraManager") << "Attached 'DefaultCameraController' (Engine Fallback) to default camera.";
     }
     else
     {
-        std::cout << "[CameraManager] 'DefaultCameraController' script not found! Make sure it is compiled." << std::endl;
+        LOGGER_ERROR("CameraManager") << "'DefaultCameraController' script not found! Make sure it is compiled.";
     }
 
     return camEntity;

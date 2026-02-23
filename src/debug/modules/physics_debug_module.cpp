@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
+#include <debug/debug_config.h>
 
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}
@@ -29,7 +30,7 @@ void PhysicsDebugModule::Render(Scene &scene)
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
 
-    if (m_ShowPhysicsDebug)
+    if (DebugConfig::ShowPhysics)
     {
         auto &res = m_App->GetResourceManager();
         auto debugShader = res.GetShader("debugLine");
@@ -92,9 +93,9 @@ void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
 
 void PhysicsDebugModule::TogglePhysicsDebug()
 {
-    m_ShowPhysicsDebug = !m_ShowPhysicsDebug;
+    DebugConfig::ShowPhysics = !DebugConfig::ShowPhysics;
     std::cout << "\n========== Physics Debug (F8) ==========" << std::endl;
-    std::cout << "[Debug] Physics Debug: " << (m_ShowPhysicsDebug ? "ON" : "OFF") << std::endl;
+    std::cout << "[Debug] Physics Debug: " << (DebugConfig::ShowPhysics ? "ON" : "OFF") << std::endl;
     std::cout << "========================================" << std::endl;
 }
 

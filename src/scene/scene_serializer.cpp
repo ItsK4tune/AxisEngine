@@ -186,7 +186,10 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
                 entt::entity currentEntity = scene.createEntity();
                 std::string entityName = entNode.key;
                 std::string entityTag = entNode.GetChildValue("Tag", "default");
-                scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
+                uint32_t layer = std::stoul(entNode.GetChildValue("Layer", "1"));
+                
+                auto& info = scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
+                info.layer = layer;
                 loadedEntities.push_back(currentEntity);
 
                 YAMLNode* tNode = nullptr;

@@ -139,8 +139,7 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
             {
                 if (width != height)
                 {
-                    std::cout << "[Skybox] Warning: cubemap face not square: "
-                              << faces[i] << ", using fallback color.\n";
+                    LOGGER_WARN("Skybox") << "Warning: cubemap face not square: " << faces[i] << ", using fallback color.";
                     stbi_image_free(data);
                     data = nullptr;
                 }
@@ -171,8 +170,7 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
             }
             else
             {
-                std::cout << "[Skybox] Failed to load cubemap face: "
-                          << faces[i] << ", using fallback color.\n";
+                LOGGER_ERROR("Skybox") << "Failed to load cubemap face: " << faces[i] << ", using fallback color.";
             }
         }
 

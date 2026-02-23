@@ -23,6 +23,7 @@ public:
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
     std::string GetModuleName() const override { return "PhysicsDebugModule"; }
+    int GetRenderOrder() const override { return 10; }
 
     bool IsPhysicsDebugEnabled() const { return m_ShowPhysicsDebug; }
 

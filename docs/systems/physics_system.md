@@ -24,15 +24,8 @@ Bridges the ECS world with the Bullet Physics world.
 ### Physics Accuracy
 Physics accuracy and performance can be tuned via `PhysicsWorld::SetMode`. See [PhysicsWorld](../managers/physics_world.md) for details.
 
-### Async Physics
-The physics system supports asynchronous simulation to improve performance:
-- **Async Mode (Default)**: Physics calculations run in a separate thread, allowing rendering to proceed in parallel. This is controlled via:
-  - `settings.json`: `"physicsAsync": true`
-  - Scene file: `CONFIG PHYSICS_ASYNC TRUE`
-  - Runtime: `PhysicsSystem::SetAsyncPhysics(bool)`
-- **Benefits**: Better frame rates on multi-core systems, as physics doesn't block the render thread.
-- **Tradeoffs**: Results are from the previous frame (1-frame lag). For most gameplay, this is imperceptible.
-- **Disable When**: Debugging physics issues, running on single-core systems, or needing deterministic single-threaded execution.
+### Synchronous Physics
+The physics system is now strictly synchronous, evaluated sequentially during the fixed timestep loop (`OnFixedUpdate`). This ensures deterministic collision reporting across all attached Scriptables, preventing tunneling and multi-threading race conditions that previously occurred between rendering and collision callbacks.
 
 ## Architecture
 

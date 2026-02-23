@@ -5,6 +5,7 @@
 #include <utils/bullet_glm_helpers.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
+#include <utils/logger.h>
 
 PhysicsTransformSync::PhysicsTransformSync(Scene &scene, IPhysicsWorld &physics)
     : m_Scene(scene), m_Physics(physics)
@@ -69,6 +70,8 @@ void PhysicsTransformSync::SyncToPhysics()
 
         if (!rb.body)
             continue;
+
+        rb.body->SetUserPointer((void*)(uintptr_t)entity);
 
         uint32_t currentVersion = transform.GetVersion();
         if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&

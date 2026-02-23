@@ -67,7 +67,7 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
 
                 if (childShape)
                 {
-                    physics.AddChildShape(compound.get(), childShape.get(), localPos, localRot);
+                    physics.AddChildShape(compound, childShape, localPos, localRot);
                 }
             }
         }
@@ -120,7 +120,7 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
     if (finalShape && glm::length(centerOffset) > 0.001f)
     {
         auto compound = physics.CreateCompoundShape();
-        physics.AddChildShape(compound.get(), finalShape.get(), centerOffset, glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        physics.AddChildShape(compound, finalShape, centerOffset, glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         finalShape = compound;
     }
 

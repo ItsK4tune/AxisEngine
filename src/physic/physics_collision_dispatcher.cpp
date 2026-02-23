@@ -66,6 +66,8 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 auto Notify = [&](entt::entity target, entt::entity other, bool trigger, bool stay)
                 {
+                    if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other)) return;
+
                     if (m_Scene.registry.all_of<ScriptComponent>(target))
                     {
                         auto &s = m_Scene.registry.get<ScriptComponent>(target);
@@ -108,14 +110,17 @@ void PhysicsCollisionDispatcher::DispatchEvents()
             entt::entity eA = pair.a;
             entt::entity eB = pair.b;
 
+            if (!m_Scene.registry.valid(eA) || !m_Scene.registry.valid(eB))
+                continue;
+
             bool isTrigger = false;
-            if (m_Scene.registry.valid(eA) && m_Scene.registry.all_of<RigidBodyComponent>(eA))
+            if (m_Scene.registry.all_of<RigidBodyComponent>(eA))
             {
                 if (auto body = m_Scene.registry.get<RigidBodyComponent>(eA).body)
                     if (body->IsTrigger())
                         isTrigger = true;
             }
-            if (!isTrigger && m_Scene.registry.valid(eB) && m_Scene.registry.all_of<RigidBodyComponent>(eB))
+            if (!isTrigger && m_Scene.registry.all_of<RigidBodyComponent>(eB))
             {
                 if (auto body = m_Scene.registry.get<RigidBodyComponent>(eB).body)
                     if (body->IsTrigger())
@@ -124,7 +129,9 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
             auto NotifyExit = [&](entt::entity target, entt::entity other, bool trigger)
             {
-                if (m_Scene.registry.valid(target) && m_Scene.registry.all_of<ScriptComponent>(target))
+                if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other)) return;
+
+                if (m_Scene.registry.all_of<ScriptComponent>(target))
                 {
                     auto &s = m_Scene.registry.get<ScriptComponent>(target);
                     if (s.instance)

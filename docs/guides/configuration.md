@@ -2,7 +2,7 @@
 
 ## 1. Application Configuration
 
-The AXIS Engine is configured via the `Config` block located at the top of your scene files (`.axs`). This allows per-scene configuration of graphics, physics, and window settings.
+The AXIS Engine is configured via the `Config` block located at the top of your scene files (`.axs`). This allows per-scene configuration of graphics, physics, and window settings seamlessly applied via `ConfigLoader`.
 
 ### `.axs` Configuration Structure
 

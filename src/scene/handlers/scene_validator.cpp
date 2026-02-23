@@ -164,6 +164,7 @@ namespace SceneHandlers
                 bulletBody->GetRaw()->setLinearVelocity(btVector3(0, 0, 0));
                 bulletBody->GetRaw()->setAngularVelocity(btVector3(0, 0, 0));
                 bulletBody->GetRaw()->activate();
+                bulletBody->SetUserPointer((void*)(uintptr_t)entity);
 
                 if (rb.isAttachedToParent && scene.registry.valid(transform.parent))
                 {

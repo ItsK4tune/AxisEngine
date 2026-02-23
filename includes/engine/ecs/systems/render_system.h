@@ -27,6 +27,8 @@ struct RenderItem
     MeshRendererComponent *renderer;
     MaterialComponent *material;
     Model *activeModel;
+    uint32_t layer;
+    int renderOrder;
 };
 
 class RenderSystem
@@ -51,10 +53,17 @@ public:
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
+    bool IsDebugNoTexture() const { return m_DebugNoTexture; }
     void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
     void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
     void SetOcclusionCulling(bool enable) { m_OcclusionCullingEnabled = enable; }
     bool IsOcclusionCullingEnabled() const { return m_OcclusionCullingEnabled; }
+    
+    void SetRenderOrderEnabled(bool enable) { m_RenderOrderEnabled = enable; }
+    bool IsRenderOrderEnabled() const { return m_RenderOrderEnabled; }
+    
+    void SetFilterLayerMask(uint32_t mask) { m_FilterLayerMask = mask; }
+    uint32_t GetFilterLayerMask() const { return m_FilterLayerMask; }
 
     void SetShadowProjectionSize(float size) { m_ShadowRenderer.SetShadowProjectionSize(size); }
     void SetShadowFrustumCulling(bool enable) { m_ShadowRenderer.SetShadowFrustumCulling(enable); }
@@ -86,6 +95,8 @@ private:
     bool m_FrustumCullingEnabled = true;
     bool m_OcclusionCullingEnabled = false;
     bool m_DebugNoTexture = false;
+    bool m_RenderOrderEnabled = true;
+    uint32_t m_FilterLayerMask = 0xFFFFFFFF;
     unsigned int m_WhiteTextureID = 0;
     float m_DistanceCullingSq = 0.0f;
 

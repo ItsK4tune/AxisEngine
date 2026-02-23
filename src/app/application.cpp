@@ -88,6 +88,7 @@ bool Application::Init(const AppConfig &config)
         m_IOHandler->GetAudioManager().SetActiveDevice(m_Config.audioDevice);
 
     m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(m_Config);
+    m_PhysicsWorld->Init();
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
     m_SceneManager = std::make_unique<SceneManager>(m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, shared_from_this());

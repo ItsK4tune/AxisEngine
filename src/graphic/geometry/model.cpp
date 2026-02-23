@@ -16,6 +16,7 @@
 
 #include <utils/assimp_glm_helpers.h>
 #include <interface/graphic/i_texture_manager.h>
+#include <utils/logger.h>
 
 namespace {
 
@@ -120,8 +121,7 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     else
     {
         std::string fullPath = directory_sanitized + '/' + pureFilename;
-        std::cout << "[Model] Texture failed to load: " << pureFilename
-                  << " (Tried: " << fullPath << ")" << std::endl;
+        LOGGER_WARN("Model") << "Texture failed to load: " << pureFilename << " (Tried: " << fullPath << ")";
         return 0;
     }
     return textureID;
@@ -288,7 +288,7 @@ Mesh processMesh(aiMesh* mesh, const aiScene* scene,
                 }
                 else
                 {
-                    unsigned char data[4] = { 255, 255, 255, 255 };
+                    unsigned char data[4] = { 255, 0, 255, 255 }; // Magenta fallback
                     auto& tm = Mesh::GetTextureManager();
                     unsigned int textureID = tm.GenTexture();
                     tm.BindTexture(Graphics::TextureType::Texture2D, textureID);
@@ -308,7 +308,7 @@ Mesh processMesh(aiMesh* mesh, const aiScene* scene,
         std::vector<Texture> specularMaps = loadMaterialTextures(textures_loaded, material, aiTextureType_SPECULAR, "texture_specular", directory, scene);
         if (specularMaps.empty())
         {
-            unsigned char data[4] = {255, 255, 255, 255};
+            unsigned char data[4] = { 255, 0, 255, 255 }; // Magenta fallback
             auto& tm = Mesh::GetTextureManager();
             unsigned int textureID = tm.GenTexture();
             tm.BindTexture(Graphics::TextureType::Texture2D, textureID);
@@ -429,7 +429,7 @@ void Model::loadModel(std::string const &path, bool isStatic)
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
-        std::cout << "[Model] ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
+        LOGGER_WARN("Model") << "ERROR::ASSIMP:: " << importer.GetErrorString();
         return;
     }
 

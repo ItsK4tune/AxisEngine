@@ -10,6 +10,7 @@ struct CameraComponent
     float nearPlane = 0.1f;
     float farPlane = 100.0f;
     float aspectRatio = 1.0f;
+    uint32_t cullingMask = 0xFFFFFFFF;
 
     float yaw = -90.0f;
     float pitch = 0.0f;

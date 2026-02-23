@@ -5,6 +5,7 @@
 #include <assimp/Importer.hpp>
 
 #include <graphic/geometry/bone.h>
+#include <utils/logger.h>
 
 Animator::Animator(std::shared_ptr<Animation> animation)
 {
@@ -101,7 +102,7 @@ void Animator::PlayAnimation(const std::string &name)
     }
     else
     {
-        std::cout << "[Animator] Animation not found: " << name << std::endl;
+        LOGGER_ERROR("Animator") << "Animation not found: " << name;
     }
 }
 
@@ -109,7 +110,7 @@ void Animator::CrossFade(const std::string &name, float transitionDuration)
 {
     if (m_AnimationsMap.find(name) == m_AnimationsMap.end())
     {
-        std::cout << "[Animator] CrossFade: Animation not found: " << name << std::endl;
+        LOGGER_ERROR("Animator") << "CrossFade: Animation not found: " << name;
         return;
     }
 

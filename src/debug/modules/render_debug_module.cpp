@@ -7,6 +7,7 @@
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
 #include <input/keyboard_manager.h>
+#include <debug/debug_config.h>
 
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}
@@ -42,14 +43,10 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
             std::cout << "[Debug] Skybox: " << (skyboxEnabled ? "ON" : "OFF") << std::endl;
             std::cout << "==============================================" << std::endl;
         } else {
-            m_WireframeMode = !m_WireframeMode;
-            if (m_WireframeMode)
-                m_App->GetGraphicsContext().GetRenderStateManager().PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Line);
-            else
-                m_App->GetGraphicsContext().GetRenderStateManager().PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill);
+            DebugConfig::ShowWireframe = !DebugConfig::ShowWireframe;
 
             std::cout << "\n========== Wireframe Mode (F6) ==========" << std::endl;
-            std::cout << "[Debug] Wireframe: " << (m_WireframeMode ? "ON" : "OFF") << std::endl;
+            std::cout << "[Debug] Wireframe: " << (DebugConfig::ShowWireframe ? "ON" : "OFF") << std::endl;
             std::cout << "=========================================" << std::endl;
         } });
 

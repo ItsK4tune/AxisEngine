@@ -242,42 +242,86 @@ See [Architecture Documentation](docs/core/architecture.md) for details.
 
 ## 🎯 Example: Creating a Simple Scene
 
-Create a file `scenes/my_scene.scene`:
+Create a file `scenes/my_scene.axs`:
 
-```
-# Load essential resources
-LOAD_SHADER myShader includes/engine/asset/shaders/phong_lit_shadow.vs includes/engine/asset/shaders/phong_lit_shadow.fs
-LOAD_STATIC_MODEL cubeModel includes/engine/asset/objects/cube/cube.fbx
-LOAD_FONT arial includes/engine/asset/fonts/arial.ttf 24
+```yaml
+axis_scene:
+  Config:
+    SHADOWS: 2
+    SHADOW_SIZE: 100.0
+    INSTANCING: 1
+    CULL_FACE: 1 BACK
+    OCCLUSION_CULLING: 1
+    DEPTH_TEST: 1 LESS
 
-# Create a camera
-NEW_ENTITY MainCamera
-TRANSFORM 0 5 10  0 0 0  1 1 1
-CAMERA 1 45.0 -90.0 0.0 0.1 1000.0
-SCRIPT CameraController
+  Entities:
+    MainCamera:
+      Tag: MainCamera
+      Component: Transform
+        Position: 0.0 5.0 10.0
+        Rotation: 0.0 0.0 0.0
+        Scale: 1.0 1.0 1.0
+      Component: Camera
+        Primary: 1
+        FOV: 45.0
+        Yaw: -90.0
+        Pitch: 0.0
+        Near: 0.1
+        Far: 1000.0
+      Component: Script
+        Class: CameraController
 
-# Create a lit cube
-NEW_ENTITY Cube
-TRANSFORM 0 2 0  0 0 0  1 1 1
-RENDERER cubeModel myShader
-MATERIAL PHONG 32 0.5 0.5 0.5
-RIGIDBODY BOX 1.0 1 1 1 DYNAMIC
+    Cube:
+      Tag: default
+      Component: Transform
+        Position: 0.0 2.0 0.0
+        Rotation: 0.0 0.0 0.0
+        Scale: 1.0 1.0 1.0
+      Component: Renderer
+        Model: cubeModel
+        Shader: phongLitShadowShader
+      Component: Material
+        Type: PHONG
+        Shininess: 32
+        Specular: 0.5 0.5 0.5
+      Component: RigidBody
+        Type: BOX
+        Size: 1.0 1.0 1.0
+        Mass: 1.0
+        BodyType: DYNAMIC
 
-# Add lighting
-NEW_ENTITY Sun
-LIGHT_DIR -0.5 -1.0 -0.3 1.0 1.0 1.0 1.0
+    Sun:
+      Tag: default
+      Component: Transform
+        Position: 0.0 10.0 0.0
+        Rotation: -45.0 -30.0 0.0
+        Scale: 1.0 1.0 1.0
+      Component: LightDir
+        CastShadow: 1
+        Color: 1.0 1.0 1.0
+        Intensity: 1.0
+        AmbientStr: 0.1
+        DiffuseStr: 0.5
+        SpecularStr: 0.5
 
-# Add UI text
-NEW_ENTITY FPSCounter
-UI_TRANSFORM 10 10 200 50 100
-UI_TEXT "FPS: 60" arial 1 1 1 1.0
+    FPSCounter:
+      Tag: UI
+      Component: UITransform
+        Position: 10.0 10.0
+        Size: 200.0 50.0
+        ZIndex: 100
+      Component: UIText
+        Text: "FPS: 60"
+        Font: arial
+        Color: 1.0 1.0 1.0
+        Scale: 1.0
 ```
 
 Load it from a game state:
 ```cpp
 class MyGameState : public State {
     void OnEnter() override {
-        LoadScene("scenes/my_scene.scene");
+        m_App->GetSceneManager().LoadScene("scenes/my_scene.axs");
         EnablePhysics(true);
         EnableRender(true);
     }

@@ -5,6 +5,7 @@
 #include <functional>
 #include <iostream>
 #include <script/scriptable.h>
+#include <utils/logger.h>
 
 class ScriptRegistry
 {
@@ -24,7 +25,7 @@ public:
         {
             m_FactoryMap[name] = []() -> Scriptable *
             { return new T(); };
-            std::cout << "[ScriptRegistry] Registered script: " << name << std::endl;
+            LOGGER_INFO("ScriptRegistry") << "Registered script: " << name;
         }
     }
 
@@ -34,7 +35,7 @@ public:
         {
             return m_FactoryMap[name]();
         }
-        std::cerr << "[ScriptRegistry] Script not found: " << name << std::endl;
+        LOGGER_ERROR("ScriptRegistry") << "Script not found: " << name;
         return nullptr;
     }
 

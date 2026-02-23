@@ -21,6 +21,7 @@ struct MeshRendererComponent
 {
     std::shared_ptr<Model> model = nullptr;
     std::weak_ptr<Shader> shader;
+    int order = 0;
     bool castShadow = true;
     glm::vec4 color = glm::vec4(1.0f);
 };

@@ -48,8 +48,6 @@ void BulletPhysicsWorld::Clear()
             m_DynamicsWorld->removeCollisionObject(obj);
         }
     }
-    m_OwnedDebugDrawer.reset();
-    m_CurrentDebugDrawer = nullptr;
 }
 
 void BulletPhysicsWorld::SetGravity(const glm::vec3& gravity)
@@ -173,12 +171,12 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateMeshShape(const std::
     return std::make_shared<BulletMeshCollisionShape>(bvhShape, meshInterface, std::move(vs), std::move(is));
 }
 
-void BulletPhysicsWorld::AddChildShape(ICollisionShape* parent, ICollisionShape* child, const glm::vec3& pos, const glm::quat& rot)
+void BulletPhysicsWorld::AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child, const glm::vec3& pos, const glm::quat& rot)
 {
     if (!parent || !child) return;
 
-    BulletCollisionShape* bParent = static_cast<BulletCollisionShape*>(parent);
-    BulletCollisionShape* bChild = static_cast<BulletCollisionShape*>(child);
+    BulletCollisionShape* bParent = static_cast<BulletCollisionShape*>(parent.get());
+    BulletCollisionShape* bChild = static_cast<BulletCollisionShape*>(child.get());
 
     if (bParent->GetRaw() && bChild->GetRaw() && bParent->GetRaw()->getShapeType() == COMPOUND_SHAPE_PROXYTYPE)
     {
@@ -190,6 +188,7 @@ void BulletPhysicsWorld::AddChildShape(ICollisionShape* parent, ICollisionShape*
         localTrans.setRotation(btQuaternion(rot.x, rot.y, rot.z, rot.w));
 
         compound->addChildShape(localTrans, bChild->GetRaw());
+        parent->AddChild(child);
     }
 }
 

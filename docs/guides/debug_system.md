@@ -29,10 +29,14 @@ The `DebugSystem` provides real-time introspection, control, and diagnostics for
 ## Features Detail
 
 ### 1. Visual Debugging (F6, F7, F8)
-*   **Wireframe (F6)**: Uses `glPolygonMode` to see mesh topology.
+*   **Wireframe (F6)**: Uses `glPolygonMode` to see mesh topology without relying on post-processing hacks. Controlled globally via `DebugConfig::GetInstance().ShowWireframe`.
 *   **No Texture (F7)**: Replaces all material textures with a 1x1 white texture. This works on PBR, Phong, and Unlit shaders.
     *   **Shadow Toggle (Shift+F7)**: Globally enables/disables shadow mapping.
-*   **Physics Draw (F8)**: Renders the internal Bullet Physics collision shapes. Green = Static, Red = Dynamic (usually).
+*   **Physics Draw (F8)**: Renders the internal Bullet Physics collision shapes. Green = Static, Red = Dynamic (usually). Driven by `BulletDebugDrawer`.
+
+### 2. Gizmos (Shift+F4, Shift+F5)
+*   **Transform Gizmo (Shift+F4)**: Renders colored 3D axis lines (X=Red, Y=Green, Z=Blue) at the origin of entities possessing a `TransformComponent`.
+*   **Light Gizmo (Shift+F5)**: Renders wireframe spheres (Point/Spot) or bounding boxes (Directional) to visualize the exact bounds and ranges of unseen light sources in the scene.
 
 ### 2. Time Control (F11, F12)
 *   **Pause (F11)**: Freezes `deltaTime` for logic/physics systems. Camera movement may still work if independent of game time.
@@ -43,7 +47,7 @@ The `DebugSystem` provides real-time introspection, control, and diagnostics for
 *   Use these keys to dump information to the console window.
 *   **F2** is particularly useful for verifying which Monitor or Audio Device is currently selected by the configuration.
 
-### 4. On-Screen Overlay (F10)
-*   Displays real-time stats in the top-right corner.
+### 5. On-Screen Overlay (F10)
+*   Displays real-time stats and active debug modes in the top-right corner.
 *   Requires `resources/fonts/time.ttf` and valid UI shaders.
-*   Includes: FPS, Frame Time, Total Entities, Rendered Count.
+*   Includes: FPS, Frame Time, Total Entities, Rendered Count, and the current On/Off status of Physics Wireframes (F8) and Gizmos (Shift+F4 / Shift+F5).

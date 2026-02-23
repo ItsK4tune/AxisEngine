@@ -12,7 +12,6 @@ struct UITransformComponent
     glm::vec2 position = glm::vec2(0.0f);
     glm::vec2 size = glm::vec2(100.0f, 100.0f);
     float rotation = 0.0f;
-    int zOrder = 0;
     int zIndex = 0;
 };
 

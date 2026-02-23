@@ -6,4 +6,6 @@ struct InfoComponent
 {
     std::string name = "Entity";
     std::string tag = "Default";
+    uint32_t layer = 1;
+    int renderOrder = 0;
 };

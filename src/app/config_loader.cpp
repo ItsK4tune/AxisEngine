@@ -147,6 +147,18 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         ss >> enable;
         config.frustumCullingEnabled = (enable != 0);
     }
+    else if (subCmd == "RENDER_ORDER")
+    {
+        int enable = 0;
+        ss >> enable;
+        config.renderOrderEnabled = (enable != 0);
+    }
+    else if (subCmd == "FILTER_LAYER")
+    {
+        uint32_t mask = 0xFFFFFFFF;
+        ss >> mask;
+        config.filterLayerMask = mask;
+    }
     else if (subCmd == "SHADOW_FRUSTUM")
     {
         int enable = 0;
@@ -312,6 +324,24 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, std::shared_ptr<Application
         {
             if (app)
                 app->GetRenderSystem().SetFrustumCulling(enable != 0);
+        }
+    }
+    else if (subCmd == "RENDER_ORDER")
+    {
+        int enable = 0;
+        if (ss >> enable)
+        {
+            if (app)
+                app->GetRenderSystem().SetRenderOrderEnabled(enable != 0);
+        }
+    }
+    else if (subCmd == "FILTER_LAYER")
+    {
+        uint32_t mask = 0xFFFFFFFF;
+        if (ss >> mask)
+        {
+            if (app)
+                app->GetRenderSystem().SetFilterLayerMask(mask);
         }
     }
     else if (subCmd == "SHADOW_FRUSTUM")

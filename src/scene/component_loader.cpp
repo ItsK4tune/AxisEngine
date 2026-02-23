@@ -18,10 +18,11 @@ void ComponentLoader::ValidateKeys(const YAMLNode& node, const std::vector<std::
 
 void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
-    ValidateKeys(node, {"Model", "Shader"}, "Renderer");
+    ValidateKeys(node, {"Model", "Shader", "Order"}, "Renderer");
 
     std::string modelName = node.GetChildValue("Model");
     std::string shaderName = node.GetChildValue("Shader");
+    int order = std::stoi(node.GetChildValue("Order", "0"));
     
     if (modelName.empty() || shaderName.empty())
     {
@@ -31,6 +32,7 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     auto &r = scene.registry.emplace<MeshRendererComponent>(entity);
     r.model = res.GetModel(modelName);
     r.shader = res.GetShader(shaderName);
+    r.order = order;
     
     if (!r.model) LOGGER_WARN("ComponentLoader") << "Renderer model not found: " << modelName;
     if (r.shader.expired()) LOGGER_WARN("ComponentLoader") << "Renderer shader not found: " << shaderName;
@@ -193,7 +195,7 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
 
     if (w < 0.0f || h < 0.0f) LOGGER_WARN("ComponentLoader") << "UITransform Size should not be negative: " << w << "x" << h;
     
-    ui.zOrder = std::stoi(node.GetChildValue("ZOrder", "0"));
+    ui.zIndex = std::stoi(node.GetChildValue("ZOrder", "0"));
 }
 
 void ComponentLoader::LoadUIRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)

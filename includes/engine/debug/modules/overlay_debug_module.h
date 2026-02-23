@@ -29,6 +29,7 @@ public:
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
     std::string GetModuleName() const override { return "OverlayDebugModule"; }
+    int GetRenderOrder() const override { return 100; }
 
     void SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad);
 

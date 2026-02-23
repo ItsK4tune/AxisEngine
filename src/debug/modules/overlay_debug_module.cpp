@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <debug/debug_config.h>
 
 OverlayDebugModule::OverlayDebugModule() {}
 OverlayDebugModule::~OverlayDebugModule() {}
@@ -70,12 +71,12 @@ void OverlayDebugModule::Render(Scene &scene)
         ss << "=== DEBUG TOOLS ===\n";
         auto boolStr = [](bool v)
         { return v ? "[ON]" : "[OFF]"; };
-        ss << "F6: Wireframe  | S+F6: Skybox: " << boolStr(m_App->GetSkyboxRenderSystem().IsEnabled()) << "\n";
-        ss << "F7: NoTexture  | S+F7: Shadows: " << boolStr(m_App->GetRenderSystem().IsShadowsEnabled()) << "\n";
-        ss << "F8: Physics    | S+F8: Audio\n";
-        ss << "F9: UI System: " << boolStr(m_App->GetUIRenderSystem().IsEnabled()) << " | S+F9: Particle\n";
-        ss << "S+F3: Names    | S+F4: Gizmos\n";
-        ss << "S+F5: Lights   | S+F11: Cam\n";
+        ss << "F6: Wireframe: " << boolStr(DebugConfig::ShowWireframe) << "  | S+F6: Skybox: " << boolStr(m_App->GetSkyboxRenderSystem().IsEnabled()) << "\n";
+        ss << "F7: NoTexture: " << boolStr(m_App->GetRenderSystem().IsDebugNoTexture()) << "  | S+F7: Shadows: " << boolStr(m_App->GetRenderSystem().IsShadowsEnabled()) << "\n";
+        ss << "F8: Physics: " << boolStr(DebugConfig::ShowPhysics) << "    | S+F8: Audio: [NYI]\n";
+        ss << "F9: UI System: " << boolStr(m_App->GetUIRenderSystem().IsEnabled()) << " | S+F9: Particle: [NYI]\n";
+        ss << "S+F3: Names: " << boolStr(false) << "    | S+F4: Gizmos: " << boolStr(DebugConfig::ShowGizmos) << "\n";
+        ss << "S+F5: Lights: " << boolStr(false) << "   | S+F11: Cam\n";
         ss << "F11: Paused:   " << boolStr(m_App->IsPaused());
     };
 

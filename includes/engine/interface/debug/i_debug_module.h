@@ -21,6 +21,9 @@ public:
     virtual bool IsEnabled() const = 0;
     virtual void SetEnabled(bool enabled) = 0;
     virtual std::string GetModuleName() const = 0;
+
+    virtual int GetRenderOrder() const { return 0; }
+    virtual void SetRenderOrder(int order) {}
 };
 
 #endif
