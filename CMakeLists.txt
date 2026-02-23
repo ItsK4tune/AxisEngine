@@ -5,6 +5,10 @@ project(AxisEngine)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (NOT WIN32)
+    message(FATAL_ERROR "AxisEngine currently only supports Windows.")
+endif()
+
 option(ENABLE_DEBUG_SYSTEM "Enable Runtime Debug System (F1/F2/F3)" OFF)
 
 if(ENABLE_DEBUG_SYSTEM)
@@ -72,45 +76,21 @@ set(BULLET_LIBS
     LinearMath$<$<CONFIG:Debug>:_Debug>
 )
 
-if (WIN32)
-    target_link_libraries(AxisEngine 
-        glfw3 
-        opengl32 
-        assimp-vc143-mt
-        ${BULLET_LIBS}
-        freetype
-        irrKlang
-        ${FFMPEG_LIBRARIES}
-    )
-endif()
+target_link_libraries(AxisEngine 
+    glfw3 
+    opengl32 
+    assimp-vc143-mt
+    ${BULLET_LIBS}
+    freetype
+    irrKlang
+    ${FFMPEG_LIBRARIES}
+)
 
-if (UNIX)
-    find_package(OpenGL REQUIRED)
-    target_link_libraries(AxisEngine 
-        assimp-vc143-mt
-        glfw 
-        GL 
-        dl 
-        pthread 
-        X11 
-        Xrandr 
-        Xi 
-        Xxf86vm 
-        Xinerama 
-        Xcursor
-        ${BULLET_LIBS}
-        freetype
-        irrKlang
+file(GLOB DLLS "${CMAKE_SOURCE_DIR}/dlls/*.dll")
+foreach(DLL ${DLLS})
+    add_custom_command(TARGET AxisEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${DLL}
+        $<TARGET_FILE_DIR:AxisEngine>
     )
-endif()
-
-if (WIN32)
-    file(GLOB DLLS "${CMAKE_SOURCE_DIR}/dlls/*.dll")
-    foreach(DLL ${DLLS})
-        add_custom_command(TARGET AxisEngine POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${DLL}
-            $<TARGET_FILE_DIR:AxisEngine>
-        )
-    endforeach()
-endif()
+endforeach()

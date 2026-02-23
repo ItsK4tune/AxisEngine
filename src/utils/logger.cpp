@@ -1,6 +1,7 @@
 #include "utils/logger.h"
 #include <iostream>
 #include <iomanip>
+#include <stdexcept>
 
 #ifdef AXIS_LOG_LEVEL_DEF
     #if AXIS_LOG_LEVEL_DEF == 0
@@ -51,4 +52,8 @@ void Logger::Log(LogType type, const std::string& tag, const std::string& messag
     }
 
     (*outStream) << "[" << levelStr << "] [" << tag << "] " << message << std::endl;
+
+    if (type == LogType::Error) {
+        throw std::runtime_error("[" + tag + "] " + message);
+    }
 }

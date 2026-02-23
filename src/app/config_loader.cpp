@@ -103,29 +103,25 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         ss >> enable;
         config.depthTestEnabled = (enable != 0);
     }
-    else if (subCmd == "WINDOW")
-    {
-        int w, h;
-        if (ss >> w >> h)
-        {
-            config.width = w;
-            config.height = h;
-
-            std::string modeStr;
-            int monitorIdx = 0;
-
-            config.windowMode = 0;
-
-            if (ss >> modeStr)
-            {
-                if (modeStr == "FULLSCREEN") config.windowMode = 1;
-                else if (modeStr == "BORDERLESS") config.windowMode = 2;
-                else config.windowMode = 0;
-            }
-
-            if (!ss.eof()) ss >> config.monitorIndex;
-            if (!ss.eof()) ss >> config.refreshRate;
+    else if (subCmd == "WINDOW_WIDTH") {
+        int w = 800; ss >> w; config.width = w;
+    }
+    else if (subCmd == "WINDOW_HEIGHT") {
+        int h = 600; ss >> h; config.height = h;
+    }
+    else if (subCmd == "WINDOW_MODE") {
+        std::string modeStr;
+        if (ss >> modeStr) {
+            if (modeStr == "FULLSCREEN") config.windowMode = 1;
+            else if (modeStr == "BORDERLESS") config.windowMode = 2;
+            else config.windowMode = 0;
         }
+    }
+    else if (subCmd == "WINDOW_MONITOR") {
+        int monitorIdx = 0; ss >> monitorIdx; config.monitorIndex = monitorIdx;
+    }
+    else if (subCmd == "WINDOW_REFRESH_RATE") {
+        int rate = 0; ss >> rate; config.refreshRate = rate;
     }
     else if (subCmd == "VSYNC")
     {
@@ -280,37 +276,10 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, std::shared_ptr<Application
                 app->GetRenderSystem().SetDepthTest(false);
         }
     }
-    else if (subCmd == "WINDOW")
+    else if (subCmd.find("WINDOW") != std::string::npos)
     {
-        int w, h;
-        if (ss >> w >> h)
-        {
-            std::string modeStr;
-            int monitorIdx = 0;
-            WindowMode mode = WindowMode::Windowed;
-
-            if (ss >> modeStr)
-            {
-                if (modeStr == "FULLSCREEN")
-                    mode = WindowMode::Fullscreen;
-                else if (modeStr == "BORDERLESS")
-                    mode = WindowMode::Borderless;
-                else if (modeStr == "WINDOWED")
-                    mode = WindowMode::Windowed;
-                else
-                    LOGGER_WARN("ConfigLoader") << "Invalid WINDOW mode: " << modeStr << ". Supported: WINDOWED, FULLSCREEN, BORDERLESS.";
-            }
-
-            if (!ss.eof())
-                ss >> monitorIdx;
-
-            int refreshRate = 0;
-            if (!ss.eof())
-                ss >> refreshRate;
-
-            if (app)
-                app->GetMonitorManager().SetWindowConfiguration(w, h, mode, monitorIdx, refreshRate);
-        }
+        // Window configurations are applied in batch by the SceneSerializer
+        // to avoid recreating the window multiple times during parsing.
     }
     else if (subCmd == "VSYNC")
     {

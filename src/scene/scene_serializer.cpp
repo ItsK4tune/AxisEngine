@@ -117,10 +117,28 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
 
     for (auto& root : activeRoots) {
         if (root.key == "Config") {
+            AppConfig tempConfig = app ? app->GetConfig() : AppConfig{};
+            bool applyWindow = false;
+
             for (auto& cfgNode : root.children) {
-                std::stringstream ss;
-                ss << cfgNode.key << " " << cfgNode.value;
-                ConfigLoader::LoadConfig(ss, app);
+                if (cfgNode.key.find("WINDOW") != std::string::npos) {
+                    applyWindow = true;
+                }
+
+                std::stringstream ss1;
+                ss1 << cfgNode.key << " " << cfgNode.value;
+                ConfigLoader::LoadConfig(ss1, tempConfig);
+
+                std::stringstream ss2;
+                ss2 << cfgNode.key << " " << cfgNode.value;
+                ConfigLoader::LoadConfig(ss2, app);
+            }
+
+            if (applyWindow && app) {
+                app->GetMonitorManager().SetWindowConfiguration(
+                    tempConfig.width, tempConfig.height, 
+                    (WindowMode)tempConfig.windowMode, 
+                    tempConfig.monitorIndex, tempConfig.refreshRate);
             }
         }
         else if (root.key == "Resources") {

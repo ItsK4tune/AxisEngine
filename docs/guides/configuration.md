@@ -9,12 +9,12 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
 ```json
 {
     "title": "AXIS Engine",
-    "width": 1280,
-    "height": 720,
-    "windowMode": 0,
+    "WINDOW_WIDTH": 1280,
+    "WINDOW_HEIGHT": 720,
+    "WINDOW_MODE": "WINDOWED",
     "vsync": true,
-    "monitorIndex": 0,
-    "refreshRate": 60,
+    "WINDOW_MONITOR": 0,
+    "WINDOW_REFRESH_RATE": 60,
     "frameRateLimit": 120,
     "shadowMode": 1,
     "cullFaceEnabled": true,
@@ -35,15 +35,11 @@ The AXIS Engine is configured via a JSON file located at `configuration/settings
 ### Parameters
 
 - **Window Settings**
-    - `title`: Text displayed in the window title bar.
-    - `width`, `height`: Initial resolution of the window.
-    - `windowMode`: Window display mode.
-        - `0`: Windowed
-        - `1`: Fullscreen
-        - `2`: Borderless Windowed
-    - `monitorIndex`: Index of the monitor to display on (0 = Primary, 1 = Secondary, etc.).
+    - `WINDOW_WIDTH`, `WINDOW_HEIGHT`: Initial resolution of the window.
+    - `WINDOW_MODE`: Window display mode (`WINDOWED`, `FULLSCREEN`, or `BORDERLESS`).
+    - `WINDOW_MONITOR`: Index of the monitor to display on (0 = Primary, 1 = Secondary, etc.).
+    - `WINDOW_REFRESH_RATE`: Target refresh rate (Hz) for Fullscreen mode (0 = Desktop rate).
     - `vsync`: Enable Vertical Sync (locks FPS to refresh rate).
-    - `refreshRate`: Target refresh rate (Hz) for Fullscreen mode.
     - `frameRateLimit`: Maximum frames per second (0 = Unlimited).
     - `iconPath`: Path to the application window icon (default: `includes/engine/asset/project/icon.png`).
 
