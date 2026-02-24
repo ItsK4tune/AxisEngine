@@ -84,13 +84,6 @@ void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager
     particleSystem.Update(scene, deltaTime);
 }
 
-void SystemManager::UpdateSystems(Scene& scene, float deltaTime, float realDeltaTime,
-                                  std::shared_ptr<Application> app, ResourceManager& res,
-                                  SoundPlayer& sound, MouseManager& mouse)
-{
-    UpdateLogic(scene, deltaTime, realDeltaTime, app, mouse);
-    UpdateVisuals(scene, deltaTime, res, sound);
-}
 
 void SystemManager::RenderShadows(Scene& scene)
 {

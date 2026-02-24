@@ -31,10 +31,6 @@ public:
     void UpdateLogic(Scene &scene, float deltaTime, float realDeltaTime, std::shared_ptr<Application> app, MouseManager &mouse);
     void UpdateVisuals(Scene &scene, float deltaTime, ResourceManager &res, SoundPlayer &sound);
 
-    void UpdateSystems(Scene &scene, float deltaTime, float realDeltaTime,
-                       std::shared_ptr<Application> app, ResourceManager &res,
-                       SoundPlayer &sound, MouseManager &mouse);
-
     void RenderShadows(Scene &scene);
     void RenderSystems(Scene &scene, ResourceManager &res, int width, int height);
 

@@ -25,7 +25,6 @@ public:
 private:
     void ProcessFrame();
     void FixedUpdate();
-    void Update();
     void Render();
 
     std::shared_ptr<Application> m_App;

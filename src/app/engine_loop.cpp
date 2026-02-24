@@ -139,24 +139,6 @@ void EngineLoop::FixedUpdate()
     }
 }
 
-void EngineLoop::Update()
-{
-    auto& systemMgr = m_App->GetSystemManager();
-
-    systemMgr.UpdateSystems(
-        m_App->GetScene(),
-        deltaTime,
-        realDeltaTime,
-        m_App,
-        m_App->GetResourceManager(),
-        m_App->GetSoundPlayer(),
-        m_App->GetMouse()
-    );
-
-    m_App->GetStateMachine().Update(deltaTime);
-    m_App->GetMouse().EndFrame();
-}
-
 void EngineLoop::Render()
 {
     auto& systemMgr = m_App->GetSystemManager();
