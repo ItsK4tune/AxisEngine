@@ -4,6 +4,11 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
+#include <input/keyboard_manager.h>
+#include <scene/scene.h>
+#include <ecs/systems/render_system.h>
+#include <ecs/systems/skybox_system.h>
+#include <ecs/systems/ui_system.h>
 #include <iostream>
 
 #include <sstream>

@@ -2,7 +2,9 @@
 
 #include <stack>
 #include <memory>
-#include "state.h"
+#include <state/state.h>
+
+class Application;
 
 class StateMachine
 {

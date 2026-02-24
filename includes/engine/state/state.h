@@ -1,10 +1,9 @@
 ﻿#pragma once
 
-#include <scene/scene_manager.h>
-#include <resource/resource_manager.h>
-#include <input/keyboard_manager.h>
-#include <input/mouse_manager.h>
+#include <memory>
+#include <string>
 
+namespace Input { enum class CursorMode; }
 class Application;
 
 class State
@@ -18,23 +17,24 @@ public:
     virtual void OnRender() = 0;
     virtual void OnExit() = 0;
 
-    class RenderSystem &GetRenderSystem();
-    class PhysicsSystem &GetPhysicsSystem();
-    class AudioSystem &GetAudioSystem();
-    class UIRenderSystem &GetUIRenderSystem();
-    class ScriptableSystem &GetScriptSystem();
-    class ParticleSystem &GetParticleSystem();
-    class SkyboxRenderSystem &GetSkyboxRenderSystem();
-    class AnimationSystem &GetAnimationSystem();
-    class VideoSystem &GetVideoSystem();
+    class RenderSystem&       GetRenderSystem();
+    class PhysicsSystem&      GetPhysicsSystem();
+    class AudioSystem&        GetAudioSystem();
+    class UIRenderSystem&     GetUIRenderSystem();
+    class ScriptableSystem&   GetScriptSystem();
+    class ParticleSystem&     GetParticleSystem();
+    class SkyboxRenderSystem& GetSkyboxRenderSystem();
+    class AnimationSystem&    GetAnimationSystem();
+    class VideoSystem&        GetVideoSystem();
 
-    class SceneManager &GetSceneManager();
-    class ResourceManager &GetResourceManager();
-    class SoundPlayer &GetSoundPlayer();
-    class IOHandler &GetIOHandler();
-    class InputManager &GetInputManager();
-    class KeyboardManager &GetKeyboard();
-    class MouseManager &GetMouse();
+    class Scene&           GetScene();
+    class SceneManager&    GetSceneManager();
+    class ResourceManager& GetResourceManager();
+    class SoundPlayer&     GetSoundPlayer();
+    class IOHandler&       GetIOHandler();
+    class InputManager&    GetInputManager();
+    class KeyboardManager& GetKeyboard();
+    class MouseManager&    GetMouse();
 
     void LoadScene(const std::string &path);
     void UnloadScene(const std::string &path);
@@ -50,7 +50,6 @@ public:
     void EnableUIRender(bool enable);
     void EnableParticle(bool enable);
     void EnableSkybox(bool enable);
-
     void EnableLogic(bool enable);
 
     void SetContext(std::shared_ptr<Application> app) { m_App = app; }

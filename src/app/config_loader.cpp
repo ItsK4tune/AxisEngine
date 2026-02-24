@@ -3,6 +3,10 @@
 #include <interface/graphic/graphics_types.h>
 #include <interface/window/i_window.h>
 #include <app/application.h>
+#include <app/monitor_manager.h>
+#include <ecs/systems/render_system.h>
+#include <interface/physics/i_physics_world.h>
+#include <graphic/core/post_process_pipeline.h>
 #include <fstream>
 #include <sstream>
 #include <algorithm>

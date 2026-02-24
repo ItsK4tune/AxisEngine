@@ -4,11 +4,13 @@
 #include <app/engine_loop.h>
 #include <app/application.h>
 #include <app/system_manager.h>
+#include <app/io_handler.h>
 #include <state/state_machine.h>
 #include <scene/scene.h>
 #include <app/monitor_manager.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <resource/resource_manager.h>
+#include <input/input_manager.h>
 
 #include <utils/logger.h>
 

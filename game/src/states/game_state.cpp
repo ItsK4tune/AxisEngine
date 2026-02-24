@@ -1,5 +1,8 @@
 ﻿#include <states/game_state.h>
 #include <scripts/camera_controller.h>
+#include <input/mouse_manager.h>
+#include <scene/scene_manager.h>
+
 
 void GameState::OnEnter()
 {

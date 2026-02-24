@@ -3,6 +3,8 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
+#include <input/keyboard_manager.h>
+#include <scene/scene.h>
 
 ShadowDebugModule::ShadowDebugModule() {}
 ShadowDebugModule::~ShadowDebugModule() {}

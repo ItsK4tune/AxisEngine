@@ -1,6 +1,10 @@
 #include <script/scriptable.h>
 #include <app/application.h>
+#include <app/io_handler.h>
+#include <scene/scene_manager.h>
 #include <input/input_manager.h>
+#include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
 #include <ecs/components/info_component.h>
 #include <ecs/components/physics_components.h>
 #include <physic/collision_matrix.h>

@@ -3,10 +3,13 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
+#include <input/keyboard_manager.h>
+#include <ecs/systems/render_system.h>
+#include <ecs/systems/skybox_system.h>
+#include <ecs/systems/ui_system.h>
 #include <iostream>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
-#include <input/keyboard_manager.h>
 #include <debug/debug_config.h>
 
 RenderDebugModule::RenderDebugModule() {}

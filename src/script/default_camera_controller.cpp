@@ -1,6 +1,9 @@
 #include <script/default_camera_controller.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <app/application.h>
+#include <app/io_handler.h>
+#include <input/mouse_manager.h>
+#include <input/keyboard_manager.h>
 #include <script/script_registry.h>
 
 REGISTER_SCRIPT(DefaultCameraController)

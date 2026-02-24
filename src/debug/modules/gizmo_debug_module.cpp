@@ -12,6 +12,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <app/application.h>
+#include <input/keyboard_manager.h>
+#include <resource/resource_manager.h>
 #include <scene/scene.h>
 #include <ecs/components/render_components.h>
 #include <ecs/components/camera_component.h>

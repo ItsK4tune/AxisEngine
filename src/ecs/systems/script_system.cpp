@@ -1,5 +1,8 @@
+#include <ecs/systems/script_system.h>
 #include <script/scriptable.h>
 #include <app/application.h>
+#include <input/mouse_manager.h>
+#include <input/keyboard_manager.h>
 #include <ecs/component.h>
 #include <input/script_input_handler.h>
 

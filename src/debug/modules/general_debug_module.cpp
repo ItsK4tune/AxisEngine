@@ -3,8 +3,17 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
+#include <app/io_handler.h>
+#include <app/monitor_manager.h>
 #include <input/input_manager.h>
+#include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
 #include <audio/audio_manager.h>
+#include <scene/scene.h>
+#include <ecs/components/info_component.h>
+#include <ecs/components/render_components.h>
+#include <ecs/components/ui_components.h>
+#include <ecs/components/physics_components.h>
 #include <interface/window/input_codes.h>
 #include <iostream>
 #include <iomanip>

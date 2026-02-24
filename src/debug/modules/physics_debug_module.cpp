@@ -3,6 +3,13 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
+#include <input/keyboard_manager.h>
+#include <resource/resource_manager.h>
+#include <ecs/systems/physics_system.h>
+#include <scene/scene.h>
+#include <ecs/components/physics_components.h>
+#include <ecs/components/audio_component.h>
+#include <ecs/components/particle_component.h>
 #include <iostream>
 
 #include <glm/glm.hpp>

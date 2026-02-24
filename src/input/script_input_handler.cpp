@@ -1,6 +1,8 @@
 #include <input/script_input_handler.h>
 #include <script/scriptable.h>
 #include <app/application.h>
+#include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
 #include <functional>
 
 void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, std::shared_ptr<Application> app, float dt, entt::entity entity)

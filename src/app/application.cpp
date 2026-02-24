@@ -1,16 +1,42 @@
 #include <app/application.h>
 #include <app/app_builder.h>
+#include <app/io_handler.h>
+#include <app/content_service.h>
+#include <app/system_manager.h>
+#include <app/monitor_manager.h>
+#include <audio/audio_manager.h>
+#include <scene/scene.h>
+#include <scene/scene_manager.h>
+#include <resource/resource_manager.h>
+#include <audio/sound_player.h>
+#include <interface/physics/i_physics_world.h>
+#include <interface/graphic/i_graphics_context.h>
+#include <interface/window/i_window.h>
+#include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
+#include <input/input_manager.h>
+#include <ecs/systems/render_system.h>
+#include <ecs/systems/physics_system.h>
+#include <ecs/systems/audio_system.h>
+#include <ecs/systems/ui_system.h>
+#include <ecs/systems/script_system.h>
+#include <ecs/systems/particle_system.h>
+#include <ecs/systems/skybox_system.h>
+#include <ecs/systems/animation_system.h>
+#include <ecs/systems/video_system.h>
+#include <graphic/core/post_process_pipeline.h>
+#include <app/io_context.h>
+#include <app/world_context.h>
+#include <app/system_context.h>
 #include <graphic/renderer_initializer.h>
 #include <event/input_events.h>
 #include <event/event_system.h>
 #include <core/job_system.h>
-
-#include <interface/graphic/i_graphics_context.h>
-#include <audio/audio_manager.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>
 
 Application::Application()
+    : m_Scene(std::make_unique<Scene>())
 {
 }
 
@@ -25,7 +51,7 @@ Application::~Application()
         m_SystemManager->ShutdownSystems();
     m_SystemManager.reset();
 
-    m_Scene.registry.clear();
+    m_Scene->registry.clear();
 
     m_ContentService.reset();
     m_SceneManager.reset();
@@ -71,17 +97,17 @@ bool Application::Init(const AppConfig &config)
         LOGGER_DEBUG("Application") << "Window resized to " << width << "x" << height;
         OnResize(width, height);
     });
-    appWindow->SetCursorPosCallback([this](double x, double y) { 
-        OnMouseMove(x, y); 
+    appWindow->SetCursorPosCallback([this](double x, double y) {
+        OnMouseMove(x, y);
         EventSystem::Instance().Publish(MouseMovedEvent{x, y});
     });
-    appWindow->SetMouseButtonCallback([this](int button, int action, int mods) { 
-        OnMouseButton(button, action, mods); 
+    appWindow->SetMouseButtonCallback([this](int button, int action, int mods) {
+        OnMouseButton(button, action, mods);
         if (action == 1) EventSystem::Instance().Publish(MouseButtonPressedEvent{button, mods});
         else if (action == 0) EventSystem::Instance().Publish(MouseButtonReleasedEvent{button, mods});
     });
-    appWindow->SetScrollCallback([this](double x, double y) { 
-        OnScroll(x, y); 
+    appWindow->SetScrollCallback([this](double x, double y) {
+        OnScroll(x, y);
         EventSystem::Instance().Publish(MouseScrolledEvent{x, y});
     });
     appWindow->SetKeyCallback([this](int key, int scancode, int action, int mods) {
@@ -96,7 +122,7 @@ bool Application::Init(const AppConfig &config)
     m_PhysicsWorld->Init();
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
-    m_SceneManager = std::make_unique<SceneManager>(m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, shared_from_this());
+    m_SceneManager = std::make_unique<SceneManager>(*m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, shared_from_this());
 
     m_ContentService = std::make_unique<ContentService>(*m_ResourceManager, *m_SceneManager, *m_SoundPlayer);
     m_RuntimeCore = std::make_unique<RuntimeCore>(shared_from_this());
@@ -127,40 +153,93 @@ void Application::Run()
     m_RuntimeCore->Run();
 }
 
-RenderSystem &Application::GetRenderSystem() { return m_SystemManager->GetRenderSystem(); }
-PhysicsSystem &Application::GetPhysicsSystem() { return m_SystemManager->GetPhysicsSystem(); }
-AudioSystem &Application::GetAudioSystem() { return m_SystemManager->GetAudioSystem(); }
-UIRenderSystem &Application::GetUIRenderSystem() { return m_SystemManager->GetUIRenderSystem(); }
-ScriptableSystem &Application::GetScriptSystem() { return m_SystemManager->GetScriptSystem(); }
-ParticleSystem &Application::GetParticleSystem() { return m_SystemManager->GetParticleSystem(); }
-SkyboxRenderSystem &Application::GetSkyboxRenderSystem() { return m_SystemManager->GetSkyboxRenderSystem(); }
-AnimationSystem &Application::GetAnimationSystem() { return m_SystemManager->GetAnimationSystem(); }
-VideoSystem &Application::GetVideoSystem() { return m_SystemManager->GetVideoSystem(); }
-PostProcessPipeline &Application::GetPostProcess() { return m_SystemManager->GetPostProcess(); }
+// --- Scene / World ---
+Scene&           Application::GetScene()          { return *m_Scene; }
+IPhysicsWorld&   Application::GetPhysicsWorld()   { return *m_PhysicsWorld; }
+ResourceManager& Application::GetResourceManager(){ return *m_ResourceManager; }
+SceneManager&    Application::GetSceneManager()   { return *m_SceneManager; }
+SoundPlayer&     Application::GetSoundPlayer()    { return *m_SoundPlayer; }
 
-float Application::GetTimeScale() const { return m_RuntimeCore->GetTimeScale(); }
-void Application::SetTimeScale(float timeScale) { m_RuntimeCore->SetTimeScale(timeScale); }
-float Application::GetRealDeltaTime() const { return m_RuntimeCore->GetRealDeltaTime(); }
-bool Application::IsPaused() const { return m_RuntimeCore->IsPaused(); }
-void Application::SetPaused(bool paused) { m_RuntimeCore->SetPaused(paused); }
+// --- IO ---
+IOHandler&       Application::GetIOHandler()      { return *m_IOHandler; }
+ContentService&  Application::GetContentService() { return *m_ContentService; }
+MonitorManager&  Application::GetMonitorManager() { return m_IOHandler->GetMonitorManager(); }
+KeyboardManager& Application::GetKeyboard() const { return m_IOHandler->GetKeyboard(); }
+MouseManager&    Application::GetMouse() const    { return m_IOHandler->GetMouse(); }
+InputManager&    Application::GetInputManager() const { return m_IOHandler->GetInputManager(); }
+IGraphicsContext& Application::GetGraphicsContext() const { return m_IOHandler->GetGraphicsContext(); }
+IWindow*         Application::GetWindow() const   { return m_IOHandler->GetMonitorManager().GetWindow(); }
+int              Application::GetWidth() const    { return m_IOHandler->GetMonitorManager().GetWidth(); }
+int              Application::GetHeight() const   { return m_IOHandler->GetMonitorManager().GetHeight(); }
 
+// --- Runtime ---
+RuntimeCore&     Application::GetRuntimeCore()    { return *m_RuntimeCore; }
+StateMachine&    Application::GetStateMachine()   { return m_RuntimeCore->GetStateMachine(); }
+SystemManager&   Application::GetSystemManager()  { return *m_SystemManager; }
+
+// --- Systems ---
+RenderSystem&        Application::GetRenderSystem()       { return m_SystemManager->GetRenderSystem(); }
+PhysicsSystem&       Application::GetPhysicsSystem()      { return m_SystemManager->GetPhysicsSystem(); }
+AudioSystem&         Application::GetAudioSystem()        { return m_SystemManager->GetAudioSystem(); }
+UIRenderSystem&      Application::GetUIRenderSystem()     { return m_SystemManager->GetUIRenderSystem(); }
+ScriptableSystem&    Application::GetScriptSystem()       { return m_SystemManager->GetScriptSystem(); }
+ParticleSystem&      Application::GetParticleSystem()     { return m_SystemManager->GetParticleSystem(); }
+SkyboxRenderSystem&  Application::GetSkyboxRenderSystem() { return m_SystemManager->GetSkyboxRenderSystem(); }
+AnimationSystem&     Application::GetAnimationSystem()    { return m_SystemManager->GetAnimationSystem(); }
+VideoSystem&         Application::GetVideoSystem()        { return m_SystemManager->GetVideoSystem(); }
+PostProcessPipeline& Application::GetPostProcess()        { return m_SystemManager->GetPostProcess(); }
+
+// --- Config ---
+const AppConfig& Application::GetConfig() const { return m_Config; }
+
+// --- Time ---
+float Application::GetTimeScale() const      { return m_RuntimeCore->GetTimeScale(); }
+void  Application::SetTimeScale(float ts)    { m_RuntimeCore->SetTimeScale(ts); }
+float Application::GetRealDeltaTime() const  { return m_RuntimeCore->GetRealDeltaTime(); }
+bool  Application::IsPaused() const          { return m_RuntimeCore->IsPaused(); }
+void  Application::SetPaused(bool paused)    { m_RuntimeCore->SetPaused(paused); }
+
+// --- Callbacks ---
 void Application::OnResize(int width, int height)
 {
     m_IOHandler->OnResize(width, height);
     m_SystemManager->GetPostProcess().Resize(width, height);
 }
+void Application::OnMouseMove(double xpos, double ypos)   { m_IOHandler->OnMouseMove(xpos, ypos); }
+void Application::OnMouseButton(int button, int action, int mods) { m_IOHandler->OnMouseButton(button, action, mods); }
+void Application::OnScroll(double xoffset, double yoffset) { m_IOHandler->OnScroll(xoffset, yoffset); }
 
-void Application::OnMouseMove(double xpos, double ypos)
+// --- Context getters ---
+WorldContext Application::GetWorldContext()
 {
-    m_IOHandler->OnMouseMove(xpos, ypos);
+    return { *m_Scene, *m_PhysicsWorld, *m_SceneManager, *m_ResourceManager, *m_SoundPlayer };
 }
 
-void Application::OnMouseButton(int button, int action, int mods)
+IOContext Application::GetIOContext()
 {
-    m_IOHandler->OnMouseButton(button, action, mods);
+    return {
+        *m_IOHandler->GetMonitorManager().GetWindow(),
+        m_IOHandler->GetKeyboard(),
+        m_IOHandler->GetMouse(),
+        m_IOHandler->GetInputManager(),
+        m_IOHandler->GetMonitorManager(),
+        m_IOHandler->GetGraphicsContext(),
+        *m_IOHandler
+    };
 }
 
-void Application::OnScroll(double xoffset, double yoffset)
+SystemContext Application::GetSystemContext()
 {
-    m_IOHandler->OnScroll(xoffset, yoffset);
+    return {
+        m_SystemManager->GetRenderSystem(),
+        m_SystemManager->GetPhysicsSystem(),
+        m_SystemManager->GetAudioSystem(),
+        m_SystemManager->GetUIRenderSystem(),
+        m_SystemManager->GetScriptSystem(),
+        m_SystemManager->GetParticleSystem(),
+        m_SystemManager->GetSkyboxRenderSystem(),
+        m_SystemManager->GetAnimationSystem(),
+        m_SystemManager->GetVideoSystem(),
+        m_SystemManager->GetPostProcess()
+    };
 }

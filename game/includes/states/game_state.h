@@ -1,9 +1,9 @@
 #pragma once
 
 #include <state/state.h>
-#include <app/application.h>
 
 class GameState : public State
+
 {
 public:
     void OnEnter() override;

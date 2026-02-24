@@ -3,6 +3,7 @@
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
+#include <input/keyboard_manager.h>
 #include <script/script_registry.h>
 #include <script/default_camera_controller.h>
 #include <iostream>

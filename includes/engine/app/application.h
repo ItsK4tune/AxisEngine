@@ -2,23 +2,39 @@
 
 #include <memory>
 #include <string>
-#include <interface/physics/i_physics_world.h>
-
-#include <app/io_handler.h>
-#include <app/content_service.h>
-#include <app/runtime_core.h>
-#include <app/system_manager.h>
-#include <scene/scene.h>
-
-#include <resource/resource_manager.h>
-#include <scene/scene_manager.h>
-#include <audio/sound_player.h>
-
-#include <interface/window/i_window.h>
 #include <app/config_loader.h>
+#include <app/runtime_core.h>
 
+class IOHandler;
+class ContentService;
+class SystemManager;
+class ResourceManager;
+class SceneManager;
+class SoundPlayer;
+class Scene;
+class IPhysicsWorld;
+class IWindow;
 class IGraphicsContext;
+class MonitorManager;
+class KeyboardManager;
+class MouseManager;
+class InputManager;
+class StateMachine;
+class RenderSystem;
+class PhysicsSystem;
+class AudioSystem;
+class UIRenderSystem;
+class ScriptableSystem;
+class ParticleSystem;
+class SkyboxRenderSystem;
+class AnimationSystem;
+class VideoSystem;
+class PostProcessPipeline;
 class State;
+
+struct WorldContext;
+struct IOContext;
+struct SystemContext;
 
 class Application : public std::enable_shared_from_this<Application>
 {
@@ -35,63 +51,65 @@ public:
         m_RuntimeCore->PushState(std::make_unique<T>(std::forward<Args>(args)...));
     }
 
-    Scene& GetScene() { return m_Scene; }
-    IPhysicsWorld& GetPhysicsWorld() { return *m_PhysicsWorld; }
+    Scene&           GetScene();
+    IPhysicsWorld&   GetPhysicsWorld();
+    IOHandler&       GetIOHandler();
+    ContentService&  GetContentService();
+    RuntimeCore&     GetRuntimeCore();
+    StateMachine&    GetStateMachine();
+    SystemManager&   GetSystemManager();
+    ResourceManager& GetResourceManager();
+    SceneManager&    GetSceneManager();
+    SoundPlayer&     GetSoundPlayer();
+    MonitorManager&  GetMonitorManager();
+    KeyboardManager& GetKeyboard() const;
+    MouseManager&    GetMouse() const;
+    InputManager&    GetInputManager() const;
+    IGraphicsContext& GetGraphicsContext() const;
+    IWindow*         GetWindow() const;
+    int              GetWidth() const;
+    int              GetHeight() const;
 
-    IOHandler& GetIOHandler() { return *m_IOHandler; }
-    ContentService& GetContentService() { return *m_ContentService; }
-    RuntimeCore& GetRuntimeCore() { return *m_RuntimeCore; }
-    StateMachine& GetStateMachine() { return m_RuntimeCore->GetStateMachine(); }
-    SystemManager& GetSystemManager() { return *m_SystemManager; }
+    RenderSystem&        GetRenderSystem();
+    PhysicsSystem&       GetPhysicsSystem();
+    AudioSystem&         GetAudioSystem();
+    UIRenderSystem&      GetUIRenderSystem();
+    ScriptableSystem&    GetScriptSystem();
+    ParticleSystem&      GetParticleSystem();
+    SkyboxRenderSystem&  GetSkyboxRenderSystem();
+    AnimationSystem&     GetAnimationSystem();
+    VideoSystem&         GetVideoSystem();
+    PostProcessPipeline& GetPostProcess();
 
-    ResourceManager& GetResourceManager() { return *m_ResourceManager; }
-    SceneManager& GetSceneManager() { return *m_SceneManager; }
-    SoundPlayer& GetSoundPlayer() { return *m_SoundPlayer; }
-    MonitorManager& GetMonitorManager() { return m_IOHandler->GetMonitorManager(); }
-    KeyboardManager& GetKeyboard() const { return m_IOHandler->GetKeyboard(); }
-    MouseManager& GetMouse() const { return m_IOHandler->GetMouse(); }
-    InputManager& GetInputManager() const { return m_IOHandler->GetInputManager(); }
-    IGraphicsContext& GetGraphicsContext() const { return m_IOHandler->GetGraphicsContext(); }
-
-    IWindow* GetWindow() const { return m_IOHandler->GetMonitorManager().GetWindow(); }
-    int GetWidth() const { return m_IOHandler->GetMonitorManager().GetWidth(); }
-    int GetHeight() const { return m_IOHandler->GetMonitorManager().GetHeight(); }
-
-    class RenderSystem& GetRenderSystem();
-    class PhysicsSystem& GetPhysicsSystem();
-    class AudioSystem& GetAudioSystem();
-    class UIRenderSystem& GetUIRenderSystem();
-    class ScriptableSystem& GetScriptSystem();
-    class ParticleSystem& GetParticleSystem();
-    class SkyboxRenderSystem& GetSkyboxRenderSystem();
-    class AnimationSystem& GetAnimationSystem();
-    class VideoSystem& GetVideoSystem();
-    class PostProcessPipeline& GetPostProcess();
+    WorldContext  GetWorldContext();
+    IOContext     GetIOContext();
+    SystemContext GetSystemContext();
 
     float GetTimeScale() const;
-    void SetTimeScale(float timeScale);
+    void  SetTimeScale(float timeScale);
     float GetRealDeltaTime() const;
-    bool IsPaused() const;
-    void SetPaused(bool paused);
+    bool  IsPaused() const;
+    void  SetPaused(bool paused);
 
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
 
-    const AppConfig& GetConfig() const { return m_Config; }
+    const AppConfig& GetConfig() const;
 
 private:
-    Scene m_Scene;
-    std::unique_ptr<IPhysicsWorld> m_PhysicsWorld;
+    // Scene stored as unique_ptr so Scene type can be forward-declared in this header
+    std::unique_ptr<Scene>           m_Scene;
+    std::unique_ptr<IPhysicsWorld>   m_PhysicsWorld;
     std::unique_ptr<ResourceManager> m_ResourceManager;
-    std::unique_ptr<SoundPlayer> m_SoundPlayer;
-    std::unique_ptr<SceneManager> m_SceneManager;
+    std::unique_ptr<SoundPlayer>     m_SoundPlayer;
+    std::unique_ptr<SceneManager>    m_SceneManager;
 
-    std::unique_ptr<IOHandler> m_IOHandler;
-    std::unique_ptr<ContentService> m_ContentService;
-    std::unique_ptr<RuntimeCore> m_RuntimeCore;
-    std::unique_ptr<SystemManager> m_SystemManager;
+    std::unique_ptr<IOHandler>       m_IOHandler;
+    std::unique_ptr<ContentService>  m_ContentService;
+    std::unique_ptr<RuntimeCore>     m_RuntimeCore;
+    std::unique_ptr<SystemManager>   m_SystemManager;
 
     AppConfig m_Config;
 };

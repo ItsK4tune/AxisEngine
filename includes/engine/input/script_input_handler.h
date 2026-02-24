@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <scene/scene.h>
-#include <app/application.h>
+class Application;
 #include <ecs/component.h>
 
 class ScriptInputHandler
