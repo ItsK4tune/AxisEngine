@@ -1,8 +1,5 @@
 ﻿#include <states/game_state.h>
-#include <scripts/camera_controller.h>
-#include <input/mouse_manager.h>
-#include <scene/scene_manager.h>
-
+#include <axis/axis_script.h>
 
 void GameState::OnEnter()
 {
@@ -17,17 +14,27 @@ void GameState::OnEnter()
 
 void GameState::OnUpdate(float dt)
 {
+    auto& kb = GetKeyboard();
 
+    static bool pLast = false;
+    bool pNow = kb.GetKey(Input::Key::P) || kb.IsKeyDown(Input::Key::P);
+    if (pNow && !pLast)
+        QueueLoadScene("scenes/game2.axs");
+    pLast = pNow;
+
+    static bool oLast = false;
+    bool oNow = kb.GetKey(Input::Key::O) || kb.IsKeyDown(Input::Key::O);
+    if (oNow && !oLast)
+        QueuePopScene();
+    oLast = oNow;
 }
 
 void GameState::OnFixedUpdate(float fixedDt)
 {
-
 }
 
 void GameState::OnRender()
 {
-
 }
 
 void GameState::OnExit()

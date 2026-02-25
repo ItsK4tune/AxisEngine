@@ -160,6 +160,31 @@ void ResourceManager::CreateUIModel(const std::string &name, UIType type)
     LOGGER_INFO("ResourceManager") << "Created UI Model: " << name;
 }
 
+void ResourceManager::UnloadShader(const std::string& name)
+{
+    m_ShaderCache.Remove(name);
+}
+
+void ResourceManager::UnloadFont(const std::string& name)
+{
+    m_FontCache.Remove(name);
+}
+
+void ResourceManager::UnloadSound(const std::string& name)
+{
+    m_SoundCache.Remove(name);
+}
+
+void ResourceManager::UnloadSkybox(const std::string& name)
+{
+    m_Skyboxes.erase(name);
+}
+
+void ResourceManager::UnloadAnimation(const std::string& name)
+{
+    m_AnimationCache.Remove(name);
+}
+
 std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name)
 {
     return m_ShaderCache.GetShared(name);

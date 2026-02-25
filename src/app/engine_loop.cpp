@@ -11,6 +11,7 @@
 #include <interface/graphic/i_graphics_context.h>
 #include <resource/resource_manager.h>
 #include <input/input_manager.h>
+#include <scene/scene_manager.h>
 
 #include <utils/logger.h>
 
@@ -113,6 +114,11 @@ void EngineLoop::ProcessFrame()
                 }
             }
         }
+    }
+
+    if (m_App->GetSceneManager().HasPendingScene())
+    {
+        m_App->GetSceneManager().UpdatePendingScene();
     }
 }
 

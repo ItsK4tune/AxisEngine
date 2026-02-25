@@ -14,7 +14,7 @@ public:
 
     void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine);
     std::shared_ptr<IAudioSource> GetSound(const std::string& name);
-
+    void Remove(const std::string& name) { m_Sounds.erase(name); }
     void Clear();
 
 private:

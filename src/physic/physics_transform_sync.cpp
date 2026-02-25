@@ -14,6 +14,12 @@ PhysicsTransformSync::PhysicsTransformSync(Scene &scene, IPhysicsWorld &physics)
 
 PhysicsTransformSync::~PhysicsTransformSync()
 {
+    if (m_initialized) {
+        m_Scene.registry.on_construct<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+        m_Scene.registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+        m_Scene.registry.on_construct<TransformComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+        m_Scene.registry.on_destroy<TransformComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+    }
 }
 
 void PhysicsTransformSync::Init()
@@ -21,8 +27,18 @@ void PhysicsTransformSync::Init()
     if (m_initialized)
         return;
 
+    m_Scene.registry.on_construct<RigidBodyComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+    m_Scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+    m_Scene.registry.on_construct<TransformComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+    m_Scene.registry.on_destroy<TransformComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+
     m_simulationQuery.Update(m_Scene.registry);
     m_initialized = true;
+}
+
+void PhysicsTransformSync::OnComponentChanged(entt::registry& registry, entt::entity entity)
+{
+    m_simulationQuery.MarkDirty();
 }
 
 glm::mat4 PhysicsTransformSync::GetCachedWorldMatrix(entt::entity entity)

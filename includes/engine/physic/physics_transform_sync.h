@@ -20,6 +20,8 @@ public:
     void SyncPhysicsToTransform(entt::entity entity);
 
 private:
+    void OnComponentChanged(entt::registry& registry, entt::entity entity);
+
     glm::mat4 GetCachedWorldMatrix(entt::entity entity);
 
     Scene& m_Scene;

@@ -48,6 +48,12 @@ public:
     void LoadSkybox(const std::string& name, const std::vector<std::string>& faces);
     void CreateUIModel(const std::string& name, UIType type);
 
+    void UnloadShader(const std::string& name);
+    void UnloadFont(const std::string& name);
+    void UnloadSound(const std::string& name);
+    void UnloadSkybox(const std::string& name);
+    void UnloadAnimation(const std::string& name);
+
     std::shared_ptr<Shader> GetShader(const std::string& name);
     std::shared_ptr<Texture> GetTexture(const std::string& name);
     std::shared_ptr<Model> GetModel(const std::string& name);

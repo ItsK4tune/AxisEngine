@@ -13,7 +13,7 @@ public:
 
     void LoadAnimation(const std::string& name, const std::string& path, Model* model);
     std::shared_ptr<Animation> GetAnimation(const std::string& name);
-
+    void Remove(const std::string& name) { m_Animations.erase(name); }
     void Clear();
 
 private:

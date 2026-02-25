@@ -37,7 +37,7 @@ std::vector<YAMLNode> SceneSerializer::ParseAXS(const std::string& filepath)
         if (line.empty()) continue;
         
         int indent = 0;
-        while (indent < line.length() && (line[indent] == ' ' || line[indent] == '\t')) {
+        while (indent < (int)line.length() && (line[indent] == ' ' || line[indent] == '\t')) {
             indent++;
         }
         
@@ -82,34 +82,24 @@ std::vector<YAMLNode> SceneSerializer::ParseAXS(const std::string& filepath)
     return roots;
 }
 
-void SceneSerializer::WriteAXS(std::ofstream& out, const YAMLNode& node, int indent)
+SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, Application* app)
 {
-    for (int i = 0; i < indent; ++i) out << "  ";
-    out << node.key << ":";
-    if (!node.value.empty()) out << " " << node.value;
-    out << "\n";
-    
-    for (const auto& child : node.children) {
-        WriteAXS(out, child, indent + 1);
-    }
-}
-
-void SceneSerializer::Serialize(Scene& scene, const std::string& filepath)
-{
-    std::ofstream out(filepath);
-    out << "axis_scene:\n";
-}
-
-std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, Application* app)
-{
+    SceneLoadResult result;
     std::string fullPath = FileSystem::getPath(filepath);
     auto roots = ParseAXS(fullPath);
     if (roots.empty()) {
         LOGGER_ERROR("SceneSerializer") << "Failed to parse AXS file or file is empty: " << fullPath;
-        return {};
+        return result;
     }
 
-    std::vector<entt::entity> loadedEntities;
+    std::string sceneName = filepath;
+    size_t slash = sceneName.find_last_of("/\\");
+    if (slash != std::string::npos) sceneName = sceneName.substr(slash + 1);
+
+    // Remove extension
+    auto dotPos = sceneName.rfind('.');
+    if (dotPos != std::string::npos) sceneName = sceneName.substr(0, dotPos);
+
     std::map<entt::entity, std::vector<std::string>> deferredChildren;
 
     std::vector<YAMLNode> activeRoots = roots;
@@ -142,6 +132,9 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
                     (WindowMode)tempConfig.windowMode, 
                     tempConfig.monitorIndex, tempConfig.refreshRate);
             }
+
+            result.hasConfig = true;
+            result.appliedConfig = tempConfig;
         }
         else if (root.key == "Resources") {
             for (auto& resNode : root.children) {
@@ -151,23 +144,27 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
                     std::string fs = resNode.GetChildValue("FS");
                     std::string gs = resNode.GetChildValue("GS");
                     res.LoadShader(name, vs, fs, gs);
+                    result.loadedShaders.push_back(name);
                 }
                 else if (resNode.key == "Model") {
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     bool isStatic = resNode.GetChildValue("Static") == "1" || resNode.GetChildValue("Static") == "true";
                     res.LoadModel(name, path, isStatic);
+                    result.loadedModels.push_back(name);
                 }
                 else if (resNode.key == "Texture") {
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     res.LoadTexture(name, path);
+                    result.loadedTextures.push_back(name);
                 }
                 else if (resNode.key == "Font") {
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     unsigned int size = std::stoul(resNode.GetChildValue("Size", "16"));
                     res.LoadFont(name, path, size);
+                    result.loadedFonts.push_back(name);
                 }
                 else if (resNode.key == "Skybox") {
                     std::string name = resNode.GetChildValue("Name");
@@ -180,19 +177,49 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
                         resNode.GetChildValue("Back")
                     };
                     res.LoadSkybox(name, faces);
+                    result.loadedSkyboxes.push_back(name);
+                }
+                else if (resNode.key == "Animation") {
+                    std::string name = resNode.GetChildValue("Name");
+                    std::string path = resNode.GetChildValue("Path");
+                    std::string model = resNode.GetChildValue("Model");
+                    res.LoadAnimation(name, path, model);
+                    result.loadedAnimations.push_back(name);
+                }
+                else if (resNode.key == "Sound") {
+                    std::string name = resNode.GetChildValue("Name");
+                    std::string path = resNode.GetChildValue("Path");
+                    if (app) res.LoadSound(name, path, nullptr);
+                    result.loadedSounds.push_back(name);
                 }
             }
         }
         else if (root.key == "Entities") {
             for (auto& entNode : root.children) {
-                entt::entity currentEntity = scene.createEntity();
                 std::string entityName = entNode.key;
-                std::string entityTag = entNode.GetChildValue("Tag", "default");
+                std::string entityTag  = entNode.GetChildValue("Tag", "default");
+
+                // Duplicate guard: warn and skip if same name+tag+sceneName already exists
+                bool duplicate = false;
+                auto view = scene.registry.view<InfoComponent>();
+                for (auto e : view) {
+                    auto& info = view.get<InfoComponent>(e);
+                    if (info.name == entityName && info.tag == entityTag && info.sceneName == sceneName) {
+                        LOGGER_WARN("SceneSerializer") << "Duplicate entity skipped: name='" << entityName
+                            << "' tag='" << entityTag << "' scene='" << sceneName << "'";
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (duplicate) continue;
+
+                entt::entity currentEntity = scene.createEntity();
                 uint32_t layer = std::stoul(entNode.GetChildValue("Layer", "1"));
-                
+
                 auto& info = scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
+                info.sceneName = sceneName;
                 info.layer = layer;
-                loadedEntities.push_back(currentEntity);
+                result.entities.push_back(currentEntity);
 
                 YAMLNode* tNode = nullptr;
                 for (auto& child : entNode.children) {
@@ -224,27 +251,23 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
                     if (compNode.key != "Component") continue;
                     std::string compType = compNode.value;
 
-                    if (compType == "Transform") { // Handled above, but if we strictly use Component: Transform
-                        // Can skip or re-implement if user writes Component: Transform
-                    }
-                    else if (compType == "Renderer") ComponentLoader::LoadRenderer(scene, currentEntity, compNode, res);
-                    else if (compType == "Animator") ComponentLoader::LoadAnimator(scene, currentEntity, compNode, res);
-                    else if (compType == "Camera") ComponentLoader::LoadCamera(scene, currentEntity, compNode);
-                    else if (compType == "LightDir") ComponentLoader::LoadLightDir(scene, currentEntity, compNode);
-                    else if (compType == "LightPoint") ComponentLoader::LoadLightPoint(scene, currentEntity, compNode);
-                    else if (compType == "LightSpot") ComponentLoader::LoadLightSpot(scene, currentEntity, compNode);
-                    else if (compType == "UITransform") ComponentLoader::LoadUITransform(scene, currentEntity, compNode);
-                    else if (compType == "UIRenderer") ComponentLoader::LoadUIRenderer(scene, currentEntity, compNode, res);
-                    else if (compType == "UIText") ComponentLoader::LoadUIText(scene, currentEntity, compNode, res);
+                    if      (compType == "Renderer")       ComponentLoader::LoadRenderer(scene, currentEntity, compNode, res);
+                    else if (compType == "Animator")       ComponentLoader::LoadAnimator(scene, currentEntity, compNode, res);
+                    else if (compType == "Camera")         ComponentLoader::LoadCamera(scene, currentEntity, compNode);
+                    else if (compType == "LightDir")       ComponentLoader::LoadLightDir(scene, currentEntity, compNode);
+                    else if (compType == "LightPoint")     ComponentLoader::LoadLightPoint(scene, currentEntity, compNode);
+                    else if (compType == "LightSpot")      ComponentLoader::LoadLightSpot(scene, currentEntity, compNode);
+                    else if (compType == "UITransform")    ComponentLoader::LoadUITransform(scene, currentEntity, compNode);
+                    else if (compType == "UIRenderer")     ComponentLoader::LoadUIRenderer(scene, currentEntity, compNode, res);
+                    else if (compType == "UIText")         ComponentLoader::LoadUIText(scene, currentEntity, compNode, res);
                     else if (compType == "SkyboxRenderer") ComponentLoader::LoadSkyboxRenderer(scene, currentEntity, compNode, res);
-                    else if (compType == "Script") ComponentLoader::LoadScript(scene, currentEntity, compNode, app);
-                    else if (compType == "AudioSource") ComponentLoader::LoadAudioSource(scene, currentEntity, compNode);
-                    else if (compType == "VideoPlayer") ComponentLoader::LoadVideoPlayer(scene, currentEntity, compNode);
-                    else if (compType == "ParticleEmitter") ComponentLoader::LoadParticleEmitter(scene, currentEntity, compNode, res);
-                    else if (compType == "Material") ComponentLoader::LoadMaterial(scene, currentEntity, compNode);
-                    else if (compType == "LOD") ComponentLoader::LoadLOD(scene, currentEntity, compNode, res);
-                    else if (compType == "Camera") ComponentLoader::LoadCamera(scene, currentEntity, compNode);
-                    else if (compType == "RigidBody") PhysicsLoader::LoadRigidBody(scene, currentEntity, compNode, phys);
+                    else if (compType == "Script")         ComponentLoader::LoadScript(scene, currentEntity, compNode, app);
+                    else if (compType == "AudioSource")    ComponentLoader::LoadAudioSource(scene, currentEntity, compNode);
+                    else if (compType == "VideoPlayer")    ComponentLoader::LoadVideoPlayer(scene, currentEntity, compNode);
+                    else if (compType == "ParticleEmitter")ComponentLoader::LoadParticleEmitter(scene, currentEntity, compNode, res);
+                    else if (compType == "Material")       ComponentLoader::LoadMaterial(scene, currentEntity, compNode);
+                    else if (compType == "LOD")            ComponentLoader::LoadLOD(scene, currentEntity, compNode, res);
+                    else if (compType == "RigidBody")      PhysicsLoader::LoadRigidBody(scene, currentEntity, compNode, phys);
                 }
             }
         }
@@ -256,5 +279,5 @@ std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepa
     SceneHandlers::SceneValidator::ValidateCamera(scene, app);
 
     LOGGER_INFO("SceneSerializer") << "Finished parsing AXS file: " << fullPath;
-    return loadedEntities;
+    return result;
 }

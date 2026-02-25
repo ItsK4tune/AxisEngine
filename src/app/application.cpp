@@ -49,14 +49,7 @@ Application::~Application()
 
     if (m_Scene && m_SceneManager)
     {
-        std::vector<entt::entity> toDestroy;
-        auto& entityStorage = m_Scene->registry.storage<entt::entity>();
-        for (auto entity : entityStorage) {
-            if (m_Scene->registry.valid(entity))
-                toDestroy.push_back(entity);
-        }
-        for (auto entity : toDestroy)
-            m_Scene->destroyEntity(entity, m_SceneManager.get());
+        m_SceneManager->Shutdown();
     }
 
     if (m_Scene)
@@ -210,6 +203,18 @@ PostProcessPipeline& Application::GetPostProcess()        { return m_SystemManag
 
 // --- Config ---
 const AppConfig& Application::GetConfig() const { return m_Config; }
+
+void Application::ApplyConfig(const AppConfig& config)
+{
+    m_Config = config;
+    if (m_IOHandler)
+    {
+        m_IOHandler->GetMonitorManager().SetWindowConfiguration(
+            config.width, config.height,
+            (WindowMode)config.windowMode,
+            config.monitorIndex, config.refreshRate);
+    }
+}
 
 // --- Time ---
 float Application::GetTimeScale() const      { return m_RuntimeCore->GetTimeScale(); }

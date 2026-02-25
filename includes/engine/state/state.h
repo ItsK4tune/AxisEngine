@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace Input { enum class CursorMode; }
 class Application;
@@ -36,9 +37,16 @@ public:
     class KeyboardManager& GetKeyboard();
     class MouseManager&    GetMouse();
 
-    void LoadScene(const std::string &path);
-    void UnloadScene(const std::string &path);
-    void ChangeScene(const std::string &path);
+    void LoadScene(const std::string& path, bool persistent = false);
+    void QueueLoadScene(const std::string& path, bool persistent = false);
+    void UnloadScene(const std::string& path);
+    void UnloadScene(const struct SceneRecord* rec);
+    void ChangeScene(const std::string& path);
+    void PopScene();
+    void QueuePopScene();
+    bool IsSceneLoaded(const std::string& path);
+    void LogAllScenes();
+    std::vector<const struct SceneRecord*> GetScenes();
     void SetCursorMode(Input::CursorMode mode);
 
     void EnablePhysics(bool enable);

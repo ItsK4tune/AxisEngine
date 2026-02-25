@@ -37,9 +37,16 @@ InputManager&    State::GetInputManager()    { return m_App->GetInputManager(); 
 KeyboardManager& State::GetKeyboard()        { return m_App->GetKeyboard(); }
 MouseManager&    State::GetMouse()           { return m_App->GetMouse(); }
 
-void State::LoadScene(const std::string &path)    { m_App->GetSceneManager().LoadScene(path); }
-void State::UnloadScene(const std::string &path)  { m_App->GetSceneManager().UnloadScene(path); }
-void State::ChangeScene(const std::string &path)  { m_App->GetSceneManager().ChangeScene(path); }
+void State::LoadScene(const std::string& path, bool persistent) { m_App->GetSceneManager().LoadScene(path, persistent); }
+void State::QueueLoadScene(const std::string& path, bool persistent) { m_App->GetSceneManager().QueueLoadScene(path, persistent); }
+void State::UnloadScene(const std::string& path)  { m_App->GetSceneManager().UnloadScene(path); }
+void State::UnloadScene(const SceneRecord* rec)   { m_App->GetSceneManager().UnloadScene(rec); }
+void State::ChangeScene(const std::string& path)  { m_App->GetSceneManager().ChangeScene(path); }
+void State::PopScene()                            { m_App->GetSceneManager().PopScene(); }
+void State::QueuePopScene()                       { m_App->GetSceneManager().QueuePopScene(); }
+bool State::IsSceneLoaded(const std::string& path){ return m_App->GetSceneManager().IsLoaded(path); }
+void State::LogAllScenes()                        { m_App->GetSceneManager().LogAllScenes(); }
+std::vector<const SceneRecord*> State::GetScenes(){ return m_App->GetSceneManager().GetScenes(); }
 void State::SetCursorMode(Input::CursorMode mode) { m_App->GetMouse().SetCursorMode(mode); }
 
 void State::EnablePhysics(bool e)   { m_App->GetPhysicsSystem().SetEnabled(e); }

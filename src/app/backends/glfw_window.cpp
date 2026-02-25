@@ -121,6 +121,7 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
 
     if (mode == WindowMode::Fullscreen) {
         glfwSetWindowMonitor(m_Window, targetMonitor, 0, 0, width, height, targetRefreshRate);
+        LOGGER_INFO("GLFWWindow") << "Window set to Fullscreen: " << width << "x" << height << "@" << targetRefreshRate;
     } else if (mode == WindowMode::Borderless) {
         glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_FALSE);
         int xpos, ypos;
@@ -128,15 +129,30 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         m_Width = videoMode->width;
         m_Height = videoMode->height;
         glfwSetWindowMonitor(m_Window, nullptr, xpos, ypos, videoMode->width, videoMode->height, targetRefreshRate);
+        LOGGER_INFO("GLFWWindow") << "Window set to Borderless: " << m_Width << "x" << m_Height;
     } else {
+        // Switching to Windowed
         glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_TRUE);
+        
         int xpos, ypos;
         glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
+        
         int cx = xpos + (videoMode->width - width) / 2;
         int cy = ypos + (videoMode->height - height) / 2;
-        glfwSetWindowMonitor(m_Window, nullptr, cx, cy, width, height, targetRefreshRate);
+        
+        // Ensure the title bar isn't off-screen (cy should be at least some margin from top if we are on primary monitor)
+        if (cy < ypos + 30) cy = ypos + 30; 
+
+        glfwSetWindowMonitor(m_Window, nullptr, cx, cy, width, height, GLFW_DONT_CARE);
+        
+        // Necessary on some systems to ensure decorations and proper state are refreshed after fullscreen
+        glfwRestoreWindow(m_Window);
+        glfwShowWindow(m_Window);
+
         m_Width = width;
         m_Height = height;
+
+        LOGGER_INFO("GLFWWindow") << "Window set to Windowed: " << width << "x" << height << " at (" << cx << "," << cy << ")";
     }
 }
 

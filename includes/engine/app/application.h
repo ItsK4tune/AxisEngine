@@ -97,6 +97,7 @@ public:
     void OnScroll(double xoffset, double yoffset);
 
     const AppConfig& GetConfig() const;
+    void ApplyConfig(const AppConfig& config);
 
 private:
     // Scene stored as unique_ptr so Scene type can be forward-declared in this header
