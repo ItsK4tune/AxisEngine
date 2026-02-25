@@ -127,6 +127,7 @@ axis_scene:
   Entities:
     Player:
       Component: Transform
+        Position: 0 0 0
       Component: Renderer
         Model: playerModel
         Shader: playerShader
@@ -523,9 +524,34 @@ SceneManager& GetSceneManager();
 ```cpp
 void OnTriggerEnter(entt::entity other) override {
     if (/* level complete */) {
-        GetSceneManager().ChangeScene("scenes/next_level.scene");
+        GetSceneManager().ChangeScene("scenes/next_level.axs");
     }
 }
+
+### Configuration & System Access
+
+```cpp
+const AppConfig& GetConfig() const;
+void ApplyConfig(const AppConfig& config);
+
+RenderSystem& GetRenderSystem();
+PhysicsSystem& GetPhysicsSystem();
+AudioSystem& GetAudioSystem();
+Scene& GetScene();
+```
+
+**Example:**
+```cpp
+void OnCreate() override {
+    // Access render system to set custom masks
+    GetRenderSystem().SetFilterLayerMask(1);
+    
+    // Check global config
+    if (GetConfig().vsync) {
+        // ...
+    }
+}
+```
 ```
 
 ### Time & Utility
@@ -814,7 +840,7 @@ private:
         // Button action
         // e.g., load scene, start game, etc.
         if (m_ButtonAction == "StartGame") {
-            GetSceneManager().ChangeScene("scenes/game.scene");
+            GetSceneManager().ChangeScene("scenes/game.axs");
         } else if (m_ButtonAction == "Quit") {
             // Quit game
         }

@@ -27,6 +27,7 @@ axis_scene:
 Global engine settings are defined directly in the `.axs` file under the `Config:` block. The `ConfigLoader` seamlessly injects these into `Application` before loading the `Entities` block.
 
 ```yaml
+axis_scene:
   Config:
     WINDOW_WIDTH: 1280
     WINDOW_HEIGHT: 720
@@ -38,6 +39,7 @@ Global engine settings are defined directly in the `.axs` file under the `Config
     CULL_FACE: 1 BACK
     DEPTH_TEST: 1 LESS
     RENDER_ORDER: 1
+    FILTER_LAYER: 1
 ```
 
 ---
@@ -53,6 +55,7 @@ Entities form the core of your game world.
   Entities:
     Player:
       Tag: Player
+      Layer: 1
 ```
 
 ---
@@ -64,26 +67,19 @@ They are structured under the `Component: <Type>` node. Indentation defines the 
 
 ### Basic Example
 ```yaml
+axis_scene:
   Entities:
     MyCube:
       Tag: default
-      
       Component: Transform
         Position: 0.0 0.0 0.0
         Rotation: 0.0 0.0 0.0
         Scale: 1.0 1.0 1.0
-        
       Component: Renderer
         Model: cubeModel
         Shader: defaultShader
-        
       Component: Script
         Class: PlayerController
-```
-
-### Physics Example
-Physics RigidBodies no longer use complex single-line strings.
-```yaml
       Component: RigidBody
         Type: CAPSULE
         Radius: 1.0
@@ -119,6 +115,7 @@ The `.axs` format assigns default values if a property is missing. Keys are case
 ### MeshRenderer
 - `Model`: String (Required, Name of loaded Model resource)
 - `Shader`: String (Required, Name of loaded Shader resource)
+- `Order`: Integer (Default: `0`, determines rendering priority when `RENDER_ORDER` is enabled)
 
 ### LOD
 Level of Detail component swapped dynamically based on distance to the camera (squared). Requires a base `MeshRenderer` component.

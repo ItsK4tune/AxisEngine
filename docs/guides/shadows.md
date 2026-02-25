@@ -5,8 +5,8 @@ The engine supports dynamic shadow casting for **Directional**, **Point**, and *
 ## Quick Start
 
 To enable shadows:
-1. Ensure `CONFIG SHADOWS 2` (or 1) is set in your `.scene` file.
-2. Add `castShadow` flag = `1` to your light entities in `.scene`.
+1. Ensure `SHADOWS` is set to `1` or `2` in the `Config` block.
+2. Add `CastShadow: 1` to your light components.
 
 ## Limitations & Constraints
 
@@ -24,12 +24,14 @@ Due to hardware Texture Unit limits (max 16 usually), there is a strict limit on
 
 ## Configuration
 
-### Scene File (`game.scene`)
+### AXS Configuration
 
-```
-CONFIG SHADOWS 2           // 0=Off, 1=First Dir Only, 2=All Supported
-CONFIG SHADOW_SIZE 100.0   // Ortho size for Directional Shadows
-CONFIG SHADOW_DISTANCE 100.0 // Max distance to render shadows
+```yaml
+axis_scene:
+  Config:
+    SHADOWS: 2           # 0=Off, 1=First Dir Only, 2=All Supported
+    SHADOW_SIZE: 100.0   # Orthographic size for Directional Shadows
+    SHADOW_DISTANCE: 100.0 # Max distance to render shadows
 ```
 
 ### Component Setup
@@ -37,6 +39,7 @@ CONFIG SHADOW_DISTANCE 100.0 // Max distance to render shadows
 #### Directional Light
 Direction (0, -1, 0) is rotated by Transform.
 ```yaml
+axis_scene:
   Entities:
     Sun:
       Component: Transform
@@ -44,17 +47,18 @@ Direction (0, -1, 0) is rotated by Transform.
         Rotation: -45 -30 0
         Scale: 1 1 1
       Component: LightDir
-        Color: 1 1 1.0
+        Color: 1 1 1
         Intensity: 1.0
-        AmbientStr: 1.0
-        DiffuseStr: 1.0
-        # Cast Shadow (0=No, 1=Yes)
-        # Active
+        AmbientStr: 0.2
+        DiffuseStr: 0.8
+        CastShadow: 1
+        Active: 1
 ```
 
 #### Spot Light
 Cone direction follows Transform rotation.
 ```yaml
+axis_scene:
   Entities:
     SpotLamp:
       Component: Transform
@@ -62,18 +66,20 @@ Cone direction follows Transform rotation.
         Rotation: -90 0 0
         Scale: 1 1 1
       Component: LightSpot
-        Color: 1 1 1.0
+        Color: 1 1 1
         Intensity: 1.0
         Constant: 1.0
-        Linear: 2.0
-        CutOff: 25.0
-        OuterCutOff: 30.0
-        # Cast Shadow
+        Linear: 0.09
+        CutOff: 12.5
+        OuterCutOff: 17.5
+        CastShadow: 1
+        Active: 1
 ```
 
 #### Point Light
 Omnidirectional shadow (most expensive).
 ```yaml
+axis_scene:
   Entities:
     Bulb:
       Component: Transform
@@ -81,12 +87,13 @@ Omnidirectional shadow (most expensive).
         Rotation: 0 0 0
         Scale: 1 1 1
       Component: LightPoint
-        Color: 1 1 1.0
+        Color: 1 1 1
         Intensity: 1.0
-        Constant: 0.0
-        Linear: 2.0
+        Constant: 1.0
+        Linear: 0.09
         Radius: 10.0
-        # Cast Shadow
+        CastShadow: 1
+        Active: 1
 ```
 
 ## Troubleshooting

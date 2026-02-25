@@ -14,25 +14,13 @@ The Axis Engine supports Anti-Aliasing to smooth jagged edges and improve image 
 
 You can enable Anti-Aliasing in two ways:
 
-### 1. Scene File (`.scene`)
-Add the `CONFIG ANTIALIASING` command to your scene file:
+### 1. Scene File (`.axs`)
+Add the `ANTIALIASING` setting to the `Config` block:
 
-```
-CONFIG ANTIALIASING TAA
-// Or
-CONFIG ANTIALIASING FXAA
-// Or
-CONFIG ANTIALIASING NONE
-```
-
-### 2. Settings File (`settings.json`)
-Add the `antialiasing` key to your configuration file:
-
-```json
-{
-    "antialiasing": "TAA", // "FXAA", "NONE"
-    ...
-}
+```yaml
+axis_scene:
+  Config:
+    ANTIALIASING: TAA  # Options: NONE, FXAA, TAA
 ```
 
 ## Technical Details

@@ -8,6 +8,7 @@ Renders a 3D model.
 *   `Shader* shader`: Pointer to the shader used for rendering.
 *   `bool castShadow`: If true, renders to shadow map.
 *   `glm::vec4 color`: Base tint color.
+*   `int order`: Rendering priority (used when `RENDER_ORDER` is enabled).
 
 ## MaterialComponent
 **Struct:** `MaterialComponent`

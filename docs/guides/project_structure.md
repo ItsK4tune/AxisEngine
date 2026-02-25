@@ -27,7 +27,6 @@ GameEngine/
 │   └── utils/       # Helpers
 ├── bin/             # Output binaries (Executables)
 ├── cmake/           # CMake modules and scripts
-├── configuration/   # JSON Configuration files (settings.json)
 ├── dlls/            # Runtime DLLs (Assimp, Freetype, irrKlang, etc.)
 ├── docs/            # Project Documentation
 ├── game/            # User-Land Game Code
@@ -45,9 +44,7 @@ GameEngine/
 │   └── entt/        # ECS Library
 ├── lib/             # Static Libraries (.lib)
 ├── resources/       # Game Assets
-├── scenes/          # Scene Definitions (.scene)
-├── resources/       # Game Assets
-└── scenes/          # Scene Definitions (.scene)
+└── scenes/          # Scene Definitions (.axs)
 ```
 
 ## Key Directories
@@ -58,7 +55,7 @@ Contains the foundation of the AXIS Engine. Modifications here affect the entire
 ### `game/` (Game Logic)
 Place your specific game logic here. This separates your game mechanics from the engine core, making upgrades easier.
 
-### `configuration/`
-Contains `settings.json` which controls the startup behavior (Window size, Title, VSync, etc.).
+### `scenes/`
+Contains the `.axs` scene definitions.
 
 > See [Configuration Guide](configuration.md) for details on modifying settings.

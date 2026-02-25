@@ -6,6 +6,8 @@
 Basic metadata for an entity.
 *   `std::string name`: The name of the entity.
 *   `std::string tag`: A tag for categorization (e.g., "Player", "Enemy").
+*   `uint32_t layer`: The bitmask layer for filtering (1-32).
+*   `std::string sceneName`: Internal ref to the source scene file.
 
 ## TransformComponent
 **Struct:** `TransformComponent`

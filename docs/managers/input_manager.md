@@ -29,12 +29,7 @@ Access: `m_App->GetAppHandler().GetMouse()`
 *   `glm::vec2 GetScrollOffset()`
     *   Returns the scroll wheel delta for this frame.
 
-## Action System (Scriptable Helper)
-Scripts inherit helper methods that map string actions to inputs (defined in `settings.json`):
 
-*   `bool GetAction(const std::string& name)`
-*   `bool GetActionDown(const std::string& name)`
-*   `bool GetActionUp(const std::string& name)`
 
 ## Cursor Modes
 Access: `m_App->GetAppHandler().GetMouse().SetCursorMode(CursorMode mode)`

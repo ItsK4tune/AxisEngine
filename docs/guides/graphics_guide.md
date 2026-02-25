@@ -36,31 +36,44 @@ The engine automatically culls objects outside the camera's view.
 
 ## 5. Skybox
 To render a skybox:
-1. Load it in the Scene (`LOAD_SKYBOX`).
-2. Add a `SKYBOX_RENDERER` component to an entity.
+1. Load it in the `Resources` block.
+2. Add a `SkyboxRenderer` component to an entity.
 
 ```yaml
+axis_scene:
+  Resources:
+    Skybox:
+      Name: mySkybox
+      Right: resources/skybox/right.jpg
+      # ... (Left, Top, Bottom, Front, Back)
+      
   Entities:
     Sky:
       Component: SkyboxRenderer
-        Texture: <skybox_name>
-        Shader: <shader_name>
+        Skybox: mySkybox
+        Shader: skyboxShader
 ```
 
 ## 6. Particle System
 The engine supports GPU-instanced 2D effects.
 - **Workflow**:
-    1. Load Texture: `LOAD_PARTICLE <name> <path>`.
-    2. Create Entity: Add `PARTICLE_EMITTER`.
+1. Load Texture in `Resources`.
+2. Add `ParticleEmitter` component.
     
 ```yaml
+axis_scene:
+  Resources:
+    Texture:
+      Name: fireTex
+      Path: resources/textures/fire.png
+
   Entities:
     FireFX:
       Component: Transform
         Position: 0 0 0
       Component: ParticleEmitter
-        Texture: <texture_name>
-        MaxParticles: <max_particles>
-        Life: <lifetime>
+        Texture: fireTex
+        MaxParticles: 100
+        Life: 1.0
 ```
 - Particles are simulated on CPU but rendered via Instancing for performance.

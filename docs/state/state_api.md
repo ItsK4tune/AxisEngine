@@ -313,16 +313,16 @@ ResourceManager& GetResourceManager();
 SceneManager& GetSceneManager();
 SoundManager& GetSoundManager();
 AppHandler& GetAppHandler();
+
+const AppConfig& GetConfig() const;
+void ApplyConfig(const AppConfig& config);
 ```
 
 **Example:**
 ```cpp
 void OnEnter() override {
-    auto& res = GetResourceManager();
-    
-    // Load additional resources at runtime
-    res.LoadModel("bossModel", "models/boss.fbx", true);
-    res.LoadSound("bossMusic", "audio/boss_theme.mp3");
+    auto& config = GetConfig();
+    LOGGER_INFO("State") << "Running on: " << config.graphicsBackend;
 }
 ```
 

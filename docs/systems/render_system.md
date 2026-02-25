@@ -9,6 +9,8 @@ Handles the 3D rendering pipeline, including shadowing, lighting, and model rend
 *   **Forward Rendering**: Renders `MeshRendererComponent` entities.
 *   **Lights**: Uploads light data (SSBO) to shaders.
 *   **State Management**: Manages Depth Testing and Face Culling states.
+*   **Bucket Rendering**: Implements a layered rendering approach by clearing the depth buffer between groups of entities with different `RenderOrder`.
+*   **Layer Filtering**: Provides global and camera-specific visibility masks for entities.
 
 ## Anti-Aliasing
 The RenderSystem supports multiple Anti-Aliasing techniques to reduce jagged edges:
@@ -48,17 +50,17 @@ Lights can be configured to cast shadows using the `isCastShadow` property. The 
 *   `void SetShadowFrustumCulling(bool enable)`: Enables/disables frustum culling for shadow rendering.
 *   `void SetShadowDistanceCulling(float distance)`: Sets maximum distance for shadow casting.
 
+*   `void SetFilterLayerMask(uint32_t mask)`: Sets the global layer filter mask (bitwise AND with entity layer).
+*   `void SetRenderOrderEnabled(bool enable)`: Enables/disables bucket rendering based on `MeshRendererComponent::order`.
+
 *   `void SetAntiAliasingMode(AntiAliasingMode mode)`: Sets AA mode (NONE, FXAA, TAA).
 
 ## Configuration
-Anti-Aliasing can be configured via `settings.json` or `.scene` files:
-```
-// .scene
-CONFIG ANTIALIASING TAA
-```
-```json
-// settings.json
-"antialiasing": "TAA"
+Anti-Aliasing can be configured via `.axs` files:
+```yaml
+axis_scene:
+  Config:
+    ANTIALIASING: TAA
 ```
 
 ## Shader Requirements

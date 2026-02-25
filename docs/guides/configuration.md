@@ -9,7 +9,6 @@ The AXIS Engine is configured via the `Config` block located at the top of your 
 ```yaml
 axis_scene:
   Config:
-    title: AXIS Engine
     WINDOW_WIDTH: 1280
     WINDOW_HEIGHT: 720
     WINDOW_MODE: BORDERLESS_FULLSCREEN
@@ -32,8 +31,9 @@ axis_scene:
     SHADOW_SIZE: 100.0
     SHADOW_FRUSTUM: 1
     SHADOW_DISTANCE: 100.0
+    FILTER_LAYER: -1
     PHYSICS_MODE: 1
-    PHYSICS_ASYNC: TRUE
+    PHYSICS_MODE: 1
 ```
 
 ### Parameters
@@ -45,7 +45,6 @@ axis_scene:
     - `WINDOW_REFRESH_RATE`: Target refresh rate (Hz) for Fullscreen mode (0 = Desktop rate).
     - `VSYNC`: Enable Vertical Sync (`1` or `0`).
     - `FPS`: Maximum frames per second (0 = Unlimited).
-    - `iconPath`: Path to the application window icon.
 
 - **Graphics Settings**
     - `SHADOWS`: Shadow rendering mode (default: `1`).
@@ -59,8 +58,9 @@ axis_scene:
     - `DEPTH_TEST`: Enable/Disable depth testing (`1 LESS`, `1 LEQUAL`, etc.).
     - `RENDER_ORDER`: Enable/Disable explicit render order (`1` or `0`). 
         - > [!IMPORTANT]
-        - > When `RENDER_ORDER` is enabled, **DEPTH_TEST** is automatically disabled to allow proper layer-based rendering (Painter's Algorithm). 
-        - > When disabled, the previous `DEPTH_TEST` setting is restored.
+        - > When `RENDER_ORDER` is enabled, the engine uses **Bucket Rendering**. It clears the depth buffer between different `Order` values, ensuring higher-order objects are always on top while maintaining 3D depth correctness within each layer.
+    - `FILTER_LAYER`: Bitmask for layer filtering (default: `-1` or `0xFFFFFFFF` = show all). 
+        - Example: `1` to show only Layer 1, `3` to show Layers 1 and 2.
     - `INSTANCING`: Enable/Disable instance batching for static meshes (`1` or `0`). Batching reduces draw calls but disabling can help with debugging transform issues.
     - `SHADOW_SIZE`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
     - `SHADOW_FRUSTUM`: Enable/Disable culling of objects outside the light's view frustum (default: `1`).
@@ -72,7 +72,6 @@ axis_scene:
         - `0`: FAST (30Hz, 2 iters)
         - `1`: BALANCED (60Hz, 10 iters)
         - `2`: ACCURATE (120Hz, 40 iters)
-    - `physicsAsync`: Enable/Disable asynchronous physics simulation (default: `true`). When enabled, physics calculations run in parallel with rendering for better performance. Disable for deterministic single-threaded behavior.
 
 - **Backend Settings**
     - `GRAPHICS_API`: Graphics backend to use (`OPENGL`, `VULKAN`, `DIRECTX`).
@@ -80,7 +79,7 @@ axis_scene:
     - `AUDIO_ENGINE`: Audio engine to use (`IRRKLANG`).
 
 - **Audio Settings**
-    - `audioDevice`: ID or Name of the audio output device (use "default" for system default). Use F2 in-game to see available device IDs.
+    - `AUDIO_ENGINE`: Audio engine to use (`IRRKLANG`).
 
 ## 2. CMake Build System
 

@@ -1,6 +1,6 @@
 # Light Components
 
-This document describes how to define light sources in the `.scene` file.
+This document describes how to define light sources in the `.axs` scene file.
 
 > [!IMPORTANT]
 > Shadow Casting is limited to **2 lights per type** (2 Dir, 2 Point, 2 Spot) due to texture unit constraints. See [Shadow Guide](../guides/shadows.md) for details.
@@ -10,19 +10,20 @@ This document describes how to define light sources in the `.scene` file.
 Directional lights simulate distant light sources like the sun. The direction is determined by the entity's **Transform rotation**.
 
 **Syntax:**
+```yaml
+      Component: LightDir
+        Active: 1         # 0/1
+        CastShadow: 1      # 0/1
+        Color: 1.0 1.0 1.0
+        Intensity: 1.0
+        AmbientStr: 0.2
+        DiffuseStr: 0.8
+        SpecularStr: 0.5
 ```
-LIGHT_DIR <Active> <CastShadow> <R> <G> <B> <Intensity> [Ambient] [Diffuse]
-```
-
-- **Active** (0/1): value `1` enables the light.
-- **CastShadow** (0/1): value `1` enables shadow casting.
-- **R, G, B**: Color (0.0 - 1.0).
-- **Intensity**: Brightness multiplier.
-- **Ambient** (Optional, default 0.2): Ambient strength.
-- **Diffuse** (Optional, default 0.8): Diffuse strength.
 
 **Example:**
 ```yaml
+axis_scene:
   Entities:
     Sun:
       Component: Transform
@@ -44,19 +45,24 @@ LIGHT_DIR <Active> <CastShadow> <R> <G> <B> <Intensity> [Ambient] [Diffuse]
 Point lights emit light in all directions from their position.
 
 **Syntax:**
+```yaml
+      Component: LightPoint
+        Active: 1
+        CastShadow: 1
+        Color: 1.0 1.0 1.0
+        Intensity: 1.0
+        Radius: 10.0
+        Constant: 1.0
+        Linear: 0.09
+        Quadratic: 0.032
+        AmbientStr: 0.1
+        DiffuseStr: 1.0
+        SpecularStr: 1.0
 ```
-LIGHT_POINT <Active> <CastShadow> <R> <G> <B> <Intensity> <Radius> [Constant Linear Quadratic] [Ambient Diffuse]
-```
-
-- **Active**, **CastShadow**: (0/1).
-- **R, G, B**: Color.
-- **Intensity**: Brightness.
-- **Radius**: Approximate range.
-- **Attenuation** (Optional): `Constant` (default 1.0), `Linear` (default 0.09), `Quadratic` (default 0.032).
-- **Ambient**, **Diffuse** (Optional): Strengths (default 0.1, 1.0).
 
 **Example:**
 ```yaml
+axis_scene:
   Entities:
     Lamp:
       Component: Transform
@@ -65,11 +71,6 @@ LIGHT_POINT <Active> <CastShadow> <R> <G> <B> <Intensity> <Radius> [Constant Lin
         Color: 1.0 0.5 0.0
         Intensity: 2.0
         Radius: 50.0
-        Constant: 1.0
-        Linear: 0.09
-        Quadratic: 0.032
-        AmbientStr: 0.1
-        DiffuseStr: 1.0
         CastShadow: 1
 ```
 
@@ -80,16 +81,24 @@ LIGHT_POINT <Active> <CastShadow> <R> <G> <B> <Intensity> <Radius> [Constant Lin
 Spot lights emit a cone of light. Direction and position come from Transform.
 
 **Syntax:**
+```yaml
+      Component: LightSpot
+        Active: 1
+        CastShadow: 1
+        Color: 1.0 1.0 1.0
+        Intensity: 1.0
+        CutOff: 12.5
+        OuterCutOff: 17.5
+        Constant: 1.0
+        Linear: 0.09
+        Quadratic: 0.032
+        AmbientStr: 0.1
+        DiffuseStr: 1.0
 ```
-LIGHT_SPOT <Active> <CastShadow> <R> <G> <B> <Intensity> <CutOff> <OuterCutOff> [Constant Linear Quadratic] [Ambient Diffuse]
-```
-
-- **CutOff**: Inner cone angle (in degrees).
-- **OuterCutOff**: Outer cone angle (in degrees, for soft edges).
-- Other parameters same as Point Light.
 
 **Example:**
 ```yaml
+axis_scene:
   Entities:
     Flashlight:
       Component: Transform

@@ -44,6 +44,8 @@ This document serves as a high-level summary of the technologies, architectural 
 *   **Occlusion Culling:** Hardware-based occlusion query (`GL_ANY_SAMPLES_PASSED`) that tests object bounding boxes against the depth buffer from the previous frame to skip objects hidden behind walls or large geometry.
 *   **Level of Detail (LOD) System:** Dynamically swaps high-detail models for lower-detail versions (or billboard/plane proxies) based on camera distance to optimize geometry throughput.
 *   **Instance Batching:** Auto-groups static meshes with the same model/shader and renders them using `glDrawElementsInstanced` (drastically reducing draw calls). Sorting is stabilized using Shader IDs.
+*   **Bucket Rendering (Render Order):** When explicit render order is enabled, the engine clears the depth buffer between different `Order` values. This ensures higher-order objects (like outlines or UI icons) always appear on top while preserving internal 3D depth.
+*   **Layer Filtering:** Entities can be assigned to layers (1-32). The `RenderSystem` can filter which layers to display using a bitmask (`FILTER_LAYER`), allowing for complex visibility setups.
 *   **Deferred Shadows:** Renders depth maps for up to 4 lights (Directional, Point, Spot) into a texture atlas before the main pass.
 *   **Post-Processing & Bloom:** Uses ping-pong FBOs to extract bright areas, blur them, and additively blend them over the final frame.
 *   **Particle System:** CPU-simulated but GPU-rendered using instanced quads.

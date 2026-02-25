@@ -25,11 +25,11 @@ virtual bool SetActiveDevice(const std::string& deviceId) = 0;
 ### MonitorManager
 - Manages the GLFW Window and Monitor selection.
 - Supports resizing, fullscreen/windowed modes, vsync.
-- **Config**: Set via `configuration/settings.json` (`width`, `height`, `monitorIndex`).
+- **Config**: Set via the `Config` block in your `.axs` scene file.
 
 ### SoundManager
 - Manages Audio Output devices via `irrKlang`.
-- **Config**: Set via `configuration/settings.json` (`audioDevice`).
+- **Config**: Set via the `Config` block in your `.axs` scene file.
 
 ### InputManager
 - Manages Keyboards, Mice, and Joysticks.
