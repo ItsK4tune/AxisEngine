@@ -67,12 +67,15 @@ void EngineLoop::ProcessFrame()
     m_App->GetSystemManager().UpdateDebugSystem(realDeltaTime);
 #endif
 
+    uint32_t mask = m_App->GetStateMachine().GetSystemMask();
+
     m_App->GetSystemManager().UpdateLogic(
         m_App->GetScene(),
         deltaTime,
         realDeltaTime,
         m_App,
-        m_App->GetMouse()
+        m_App->GetMouse(),
+        mask
     );
 
     m_App->GetStateMachine().Update(deltaTime);
@@ -84,7 +87,8 @@ void EngineLoop::ProcessFrame()
         m_App->GetScene(),
         deltaTime,
         m_App->GetResourceManager(),
-        m_App->GetSoundPlayer()
+        m_App->GetSoundPlayer(),
+        mask
     );
 
     Render();
@@ -129,10 +133,12 @@ void EngineLoop::FixedUpdate()
     int physicsSteps = 0;
     const int MAX_PHYSICS_STEPS = 5;
 
+    uint32_t mask = m_App->GetStateMachine().GetSystemMask();
+
     while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
     {
         auto& systemMgr = m_App->GetSystemManager();
-        systemMgr.FixedUpdateSystems(m_App->GetScene(), m_App->GetPhysicsWorld(), m_FixedDeltaTime);
+        systemMgr.FixedUpdateSystems(m_App->GetScene(), m_App->GetPhysicsWorld(), m_FixedDeltaTime, mask);
         m_App->GetStateMachine().FixedUpdate(m_FixedDeltaTime);
 
         m_Accumulator -= m_FixedDeltaTime;
@@ -148,14 +154,16 @@ void EngineLoop::FixedUpdate()
 void EngineLoop::Render()
 {
     auto& systemMgr = m_App->GetSystemManager();
+    uint32_t mask = m_App->GetStateMachine().GetSystemMask();
 
-    systemMgr.RenderShadows(m_App->GetScene());
+    systemMgr.RenderShadows(m_App->GetScene(), mask);
 
     systemMgr.RenderSystems(
         m_App->GetScene(),
         m_App->GetResourceManager(),
         m_App->GetWidth(),
-        m_App->GetHeight()
+        m_App->GetHeight(),
+        mask
     );
 
     m_App->GetStateMachine().Render();

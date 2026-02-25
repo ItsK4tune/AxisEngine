@@ -14,4 +14,7 @@
 #include <ecs/systems/particle_system.h>
 #include <ecs/systems/video_system.h>
 
+#include <ecs/entity_builder.h>
+#include <ecs/entity_manager.h>
+
 #include <entt/entt.hpp>

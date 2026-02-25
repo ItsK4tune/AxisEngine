@@ -54,3 +54,9 @@ void StateMachine::Render()
     if (State *s = GetCurrentState())
         s->OnRender();
 }
+uint32_t StateMachine::GetSystemMask() const
+{
+    if (!m_States.empty())
+        return m_States.top()->GetSystemMask();
+    return 0xFFFFFFFF; // Default to all systems enabled if no state
+}

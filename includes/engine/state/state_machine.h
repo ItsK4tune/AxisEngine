@@ -22,6 +22,8 @@ public:
     void FixedUpdate(float fixedDt);
     void Render();
 
+    uint32_t GetSystemMask() const;
+
 private:
     std::stack<std::unique_ptr<State>> m_States;
     Application* m_App;

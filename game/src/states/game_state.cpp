@@ -1,5 +1,8 @@
 ﻿#include <states/game_state.h>
-#include <axis/axis_all.h>
+#include <states/pause_state.h>
+#include <axis/axis_core.h>
+#include <axis/axis_input.h>
+#include <axis/axis_ecs.h>
 
 void GameState::OnEnter()
 {
@@ -19,7 +22,7 @@ void GameState::OnUpdate(float dt)
     auto& kb = GetKeyboard();
 
     static bool pLast = false;
-    bool pNow = kb.GetKey(Input::Key::P) || kb.IsKeyDown(Input::Key::P);
+    bool pNow = kb.GetKey(Input::Key::I) || kb.IsKeyDown(Input::Key::I);
     if (pNow && !pLast)
         QueueLoadScene("scenes/game2.axs");
     pLast = pNow;
@@ -29,7 +32,13 @@ void GameState::OnUpdate(float dt)
     if (oNow && !oLast)
         QueuePopScene();
     oLast = oNow;
+    static bool escLast = false;
+    bool escNow = kb.GetKey(Input::Key::P) || kb.IsKeyDown(Input::Key::P);
+    if (escNow && !escLast)
+        m_App->PushState<PauseState>();
+    escLast = escNow;
 }
+
 
 void GameState::OnFixedUpdate(float fixedDt)
 {

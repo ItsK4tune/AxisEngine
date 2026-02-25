@@ -66,41 +66,55 @@ void SystemManager::ApplyConfig(const AppConfig &config)
     renderSystem.SetAntiAliasingMode((AntiAliasingMode)config.antialiasing);
 }
 
-void SystemManager::FixedUpdateSystems(Scene& scene, IPhysicsWorld& phys, float fixedDt)
+void SystemManager::FixedUpdateSystems(Scene& scene, IPhysicsWorld& phys, float fixedDt, uint32_t mask)
 {
-    physicsSystem.Update(scene, phys, fixedDt);
+    if (mask & (uint32_t)SystemGroup::Physics)
+        physicsSystem.Update(scene, phys, fixedDt);
 }
 
-void SystemManager::UpdateLogic(Scene& scene, float deltaTime, float realDeltaTime, Application* app, MouseManager& mouse)
+void SystemManager::UpdateLogic(Scene& scene, float deltaTime, float realDeltaTime, Application* app, MouseManager& mouse, uint32_t mask)
 {
-    scriptSystem.Update(scene, deltaTime, realDeltaTime, app);
+    if (mask & (uint32_t)SystemGroup::Script)
+        scriptSystem.Update(scene, deltaTime, realDeltaTime, app);
 }
 
-void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager& res, SoundPlayer& sound)
+void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager& res, SoundPlayer& sound, uint32_t mask)
 {
-    animationSystem.Update(scene, deltaTime);
-    videoSystem.Update(scene, res, deltaTime);
-    audioSystem.Update(scene, sound);
-    particleSystem.Update(scene, deltaTime);
+    if (mask & (uint32_t)SystemGroup::Animation)
+        animationSystem.Update(scene, deltaTime);
+    if (mask & (uint32_t)SystemGroup::Video)
+        videoSystem.Update(scene, res, deltaTime);
+    if (mask & (uint32_t)SystemGroup::Audio)
+        audioSystem.Update(scene, sound);
+    if (mask & (uint32_t)SystemGroup::Particle)
+        particleSystem.Update(scene, deltaTime);
 }
 
 
-void SystemManager::RenderShadows(Scene& scene)
+void SystemManager::RenderShadows(Scene& scene, uint32_t mask)
 {
-    renderSystem.RenderShadows(scene);
+    if (mask & (uint32_t)SystemGroup::Render)
+        renderSystem.RenderShadows(scene);
 }
 
-void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width, int height)
+void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width, int height, uint32_t mask)
 {
     if (renderSystem.GetContext())
         renderSystem.GetContext()->GetRenderStateManager().Viewport(0, 0, width, height);
+    
     postProcess.BeginCapture();
 
-    skyboxRenderSystem.Render(scene);
-    renderSystem.Render(scene, width, height);
-    particleSystem.Render(scene, res);
+    if (mask & (uint32_t)SystemGroup::Skybox)
+        skyboxRenderSystem.Render(scene);
+    
+    if (mask & (uint32_t)SystemGroup::Render)
+        renderSystem.Render(scene, width, height);
+    
+    if (mask & (uint32_t)SystemGroup::Particle)
+        particleSystem.Render(scene, res);
 
-    uiRenderSystem.Render(scene, (float)width, (float)height, renderSystem.GetContext()->GetRenderStateManager());
+    if (mask & (uint32_t)SystemGroup::UI)
+        uiRenderSystem.Render(scene, (float)width, (float)height, renderSystem.GetContext()->GetRenderStateManager());
 
     postProcess.ApplyAntiAliasing(renderSystem.GetAntiAliasingMode(),
                                   renderSystem.GetPrevViewProj(),

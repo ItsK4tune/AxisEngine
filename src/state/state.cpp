@@ -1,4 +1,5 @@
 #include <state/state.h>
+#include <app/system_manager.h>
 #include <app/application.h>
 #include <app/io_handler.h>
 #include <input/keyboard_manager.h>
@@ -49,15 +50,15 @@ void State::LogAllScenes()                        { m_App->GetSceneManager().Log
 std::vector<const SceneRecord*> State::GetScenes(){ return m_App->GetSceneManager().GetScenes(); }
 void State::SetCursorMode(Input::CursorMode mode) { m_App->GetMouse().SetCursorMode(mode); }
 
-void State::EnablePhysics(bool e)   { m_App->GetPhysicsSystem().SetEnabled(e); }
-void State::EnableRender(bool e)    { m_App->GetRenderSystem().SetEnabled(e); }
-void State::EnableAudio(bool e)     { m_App->GetAudioSystem().SetEnabled(e); }
-void State::EnableScript(bool e)    { m_App->GetScriptSystem().SetEnabled(e); }
-void State::EnableAnimation(bool e) { m_App->GetAnimationSystem().SetEnabled(e); }
-void State::EnableVideo(bool e)     { m_App->GetVideoSystem().SetEnabled(e); }
-void State::EnableUIRender(bool e)  { m_App->GetUIRenderSystem().SetEnabled(e); }
-void State::EnableParticle(bool e)  { m_App->GetParticleSystem().SetEnabled(e); }
-void State::EnableSkybox(bool e)    { m_App->GetSkyboxRenderSystem().SetEnabled(e); }
+void State::EnablePhysics(bool e)   { if (e) m_SystemMask |= (uint32_t)SystemGroup::Physics; else m_SystemMask &= ~(uint32_t)SystemGroup::Physics; }
+void State::EnableRender(bool e)    { if (e) m_SystemMask |= (uint32_t)SystemGroup::Render; else m_SystemMask &= ~(uint32_t)SystemGroup::Render; }
+void State::EnableAudio(bool e)     { if (e) m_SystemMask |= (uint32_t)SystemGroup::Audio; else m_SystemMask &= ~(uint32_t)SystemGroup::Audio; }
+void State::EnableScript(bool e)    { if (e) m_SystemMask |= (uint32_t)SystemGroup::Script; else m_SystemMask &= ~(uint32_t)SystemGroup::Script; }
+void State::EnableAnimation(bool e) { if (e) m_SystemMask |= (uint32_t)SystemGroup::Animation; else m_SystemMask &= ~(uint32_t)SystemGroup::Animation; }
+void State::EnableVideo(bool e)     { if (e) m_SystemMask |= (uint32_t)SystemGroup::Video; else m_SystemMask &= ~(uint32_t)SystemGroup::Video; }
+void State::EnableUIRender(bool e)  { if (e) m_SystemMask |= (uint32_t)SystemGroup::UI; else m_SystemMask &= ~(uint32_t)SystemGroup::UI; }
+void State::EnableParticle(bool e)  { if (e) m_SystemMask |= (uint32_t)SystemGroup::Particle; else m_SystemMask &= ~(uint32_t)SystemGroup::Particle; }
+void State::EnableSkybox(bool e)    { if (e) m_SystemMask |= (uint32_t)SystemGroup::Skybox; else m_SystemMask &= ~(uint32_t)SystemGroup::Skybox; }
 
 const AppConfig& State::GetConfig() const { return m_App->GetConfig(); }
 void State::ApplyConfig(const AppConfig& config) { m_App->ApplyConfig(config); }

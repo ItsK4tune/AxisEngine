@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace Input { enum class CursorMode; }
 class Application;
@@ -17,6 +18,8 @@ public:
     virtual void OnFixedUpdate(float fixedDt) {}
     virtual void OnRender() = 0;
     virtual void OnExit() = 0;
+
+    virtual uint32_t GetSystemMask() const { return m_SystemMask; }
 
     class RenderSystem&       GetRenderSystem();
     class PhysicsSystem&      GetPhysicsSystem();
@@ -66,5 +69,6 @@ public:
     void ApplyConfig(const struct AppConfig& config);
 
 protected:
+    uint32_t m_SystemMask = 0xFFFFFFFF;
     Application* m_App = nullptr;
 };
