@@ -30,8 +30,39 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
         Reset();
         m_LastScene = &scene;
         m_LastPhysicsWorld = &physicsWorld;
-    }
 
+        physicsWorld.SetCollisionFilter([&scene](entt::entity eA, entt::entity eB) -> bool {
+            if (!scene.registry.valid(eA) || !scene.registry.valid(eB))
+                return false;
+
+            if (scene.registry.all_of<RigidBodyComponent>(eA)) {
+                if (!scene.registry.get<RigidBodyComponent>(eA).isCollisionEnabled)
+                    return false;
+            }
+
+            if (scene.registry.all_of<RigidBodyComponent>(eB)) {
+                if (!scene.registry.get<RigidBodyComponent>(eB).isCollisionEnabled)
+                    return false;
+            }
+
+            std::string tagA = "", nameA = "";
+            std::string tagB = "", nameB = "";
+
+            if (scene.registry.all_of<InfoComponent>(eA)) {
+                auto& info = scene.registry.get<InfoComponent>(eA);
+                tagA = info.tag;
+                nameA = info.name;
+            }
+            
+            if (scene.registry.all_of<InfoComponent>(eB)) {
+                auto& info = scene.registry.get<InfoComponent>(eB);
+                tagB = info.tag;
+                nameB = info.name;
+            }
+
+            return CollisionMatrix::Instance().CanCollide(tagA, tagB, nameA, nameB);
+        });
+    }
     if (!m_transformSync)
     {
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Transform Sync";
@@ -40,38 +71,6 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
     }
 
     m_transformSync->SyncToPhysics();
-
-    physicsWorld.SetCollisionFilter([&scene](entt::entity eA, entt::entity eB) -> bool {
-        if (!scene.registry.valid(eA) || !scene.registry.valid(eB))
-            return false;
-
-        if (scene.registry.all_of<RigidBodyComponent>(eA)) {
-            if (!scene.registry.get<RigidBodyComponent>(eA).isCollisionEnabled)
-                return false;
-        }
-
-        if (scene.registry.all_of<RigidBodyComponent>(eB)) {
-            if (!scene.registry.get<RigidBodyComponent>(eB).isCollisionEnabled)
-                return false;
-        }
-
-        std::string tagA = "", nameA = "";
-        std::string tagB = "", nameB = "";
-
-        if (scene.registry.all_of<InfoComponent>(eA)) {
-            auto& info = scene.registry.get<InfoComponent>(eA);
-            tagA = info.tag;
-            nameA = info.name;
-        }
-        
-        if (scene.registry.all_of<InfoComponent>(eB)) {
-            auto& info = scene.registry.get<InfoComponent>(eB);
-            tagB = info.tag;
-            nameB = info.name;
-        }
-
-        return CollisionMatrix::Instance().CanCollide(tagA, tagB, nameA, nameB);
-    });
 
     physicsWorld.Update(dt);
 

@@ -39,4 +39,20 @@ struct AABB
         minBound = (glm::min)(minBound, other.minBound);
         maxBound = (glm::max)(maxBound, other.maxBound);
     }
+
+    AABB Transform(const glm::mat4& matrix) const
+    {
+        glm::vec3 center = GetCenter();
+        glm::vec3 extent = GetExtent();
+
+        glm::vec3 worldCenter = glm::vec3(matrix * glm::vec4(center, 1.0f));
+
+        glm::mat3 rot = glm::mat3(matrix);
+        glm::vec3 worldExtent = glm::vec3(
+            std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+            std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+            std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
+
+        return AABB(worldCenter - worldExtent, worldCenter + worldExtent);
+    }
 };

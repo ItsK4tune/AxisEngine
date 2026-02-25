@@ -119,22 +119,9 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 continue;
 
             glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
-            glm::vec3 min = renderer.model->aabb.minBound;
-            glm::vec3 max = renderer.model->aabb.maxBound;
-
-            glm::vec3 center = (min + max) * 0.5f;
-            glm::vec3 extent = (max - min) * 0.5f;
-
-            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-
-            glm::mat3 rot = glm::mat3(modelMatrix);
-            glm::vec3 worldExtent = glm::vec3(
-                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
-
-            glm::vec3 worldMin = worldCenter - worldExtent;
-            glm::vec3 worldMax = worldCenter + worldExtent;
+            AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
+            glm::vec3 worldMin = worldAABB.minBound;
+            glm::vec3 worldMax = worldAABB.maxBound;
 
             float distSq = 0.0f;
             float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
@@ -254,21 +241,9 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             if (rObj.model)
             {
                 glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
-                glm::vec3 min = rObj.model->aabb.minBound;
-                glm::vec3 max = rObj.model->aabb.maxBound;
-
-                glm::vec3 center = (min + max) * 0.5f;
-                glm::vec3 extent = (max - min) * 0.5f;
-                glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-
-                glm::mat3 rot = glm::mat3(modelMatrix);
-                glm::vec3 worldExtent = glm::vec3(
-                    std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-                    std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-                    std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
-
-                glm::vec3 worldMin = worldCenter - worldExtent;
-                glm::vec3 worldMax = worldCenter + worldExtent;
+                AABB worldAABB = rObj.model->aabb.Transform(modelMatrix);
+                glm::vec3 worldMin = worldAABB.minBound;
+                glm::vec3 worldMax = worldAABB.maxBound;
 
                 float distSq = 0.0f;
                 float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
@@ -390,21 +365,9 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 continue;
 
             glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
-            glm::vec3 min = rObj.model->aabb.minBound;
-            glm::vec3 max = rObj.model->aabb.maxBound;
-
-            glm::vec3 center = (min + max) * 0.5f;
-            glm::vec3 extent = (max - min) * 0.5f;
-            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-
-            glm::mat3 rot = glm::mat3(modelMatrix);
-            glm::vec3 worldExtent = glm::vec3(
-                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
-
-            glm::vec3 worldMin = worldCenter - worldExtent;
-            glm::vec3 worldMax = worldCenter + worldExtent;
+            AABB worldAABB = rObj.model->aabb.Transform(modelMatrix);
+            glm::vec3 worldMin = worldAABB.minBound;
+            glm::vec3 worldMax = worldAABB.maxBound;
 
             float distSq = 0.0f;
             float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));

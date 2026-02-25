@@ -185,19 +185,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             if (!renderer.model) continue;
 
             glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
-            glm::vec3 min = renderer.model->aabb.minBound;
-            glm::vec3 max = renderer.model->aabb.maxBound;
-            glm::vec3 center = (min + max) * 0.5f;
-            glm::vec3 extent = (max - min) * 0.5f;
-
-            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-            glm::mat3 rot = glm::mat3(modelMatrix);
-            glm::vec3 worldExtent = glm::vec3(
-                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
-
-            elements.push_back({entity, AABB(worldCenter - worldExtent, worldCenter + worldExtent)});
+            elements.push_back({entity, renderer.model->aabb.Transform(modelMatrix)});
         }
         scene.GetOctree()->Rebuild(elements);
         
