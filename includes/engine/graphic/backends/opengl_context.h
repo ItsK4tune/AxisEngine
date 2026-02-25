@@ -8,6 +8,7 @@
 #include <graphic/backends/opengl_render_target_manager.h>
 #include <graphic/backends/opengl_render_state_manager.h>
 #include <graphic/backends/opengl_draw_context.h>
+#include <graphic/backends/opengl_query_manager.h>
 
 class OpenGLContext : public IGraphicsContext
 {
@@ -29,6 +30,7 @@ public:
     IRenderTargetManager &GetRenderTargetManager() override { return m_RenderTargetManager; }
     IRenderStateManager &GetRenderStateManager() override { return m_RenderStateManager; }
     IDrawContext &GetDrawContext() override { return m_DrawContext; }
+    IQueryManager &GetQueryManager() override { return m_QueryManager; }
 
     std::string GetName() const override { return "OpenGL"; }
 
@@ -39,4 +41,5 @@ private:
     OpenGLRenderTargetManager m_RenderTargetManager;
     OpenGLRenderStateManager m_RenderStateManager;
     OpenGLDrawContext m_DrawContext;
+    OpenGLQueryManager m_QueryManager;
 };

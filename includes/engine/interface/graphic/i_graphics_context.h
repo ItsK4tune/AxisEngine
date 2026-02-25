@@ -8,6 +8,7 @@ class IShaderManager;
 class IRenderTargetManager;
 class IRenderStateManager;
 class IDrawContext;
+class IQueryManager;
 
 class IGraphicsContext
 {
@@ -31,6 +32,7 @@ public:
     virtual IRenderTargetManager &GetRenderTargetManager() = 0;
     virtual IRenderStateManager &GetRenderStateManager() = 0;
     virtual IDrawContext &GetDrawContext() = 0;
+    virtual IQueryManager &GetQueryManager() = 0;
 
     virtual std::string GetName() const = 0;
 };

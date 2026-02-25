@@ -249,6 +249,14 @@ namespace Graphics {
         IncompleteLayerTargets,
         Unknown
     };
+    
+    enum class QueryType {
+        SamplesPassed,
+        AnySamplesPassed,
+        AnySamplesPassedConservative,
+        TimeElapsed,
+        Timestamp
+    };
 
     struct GpuHandle {
         uint32_t id = 0;

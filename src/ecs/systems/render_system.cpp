@@ -11,6 +11,8 @@
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/i_render_state_manager.h>
 #include <interface/graphic/i_draw_context.h>
+#include <interface/graphic/i_buffer_manager.h>
+#include <interface/graphic/i_query_manager.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 #include <debug/debug_config.h>
@@ -61,12 +63,31 @@ void RenderSystem::Init(IGraphicsContext& context, ResourceManager &res)
     m_LightSpaceMatrixSpotUniforms.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW);
     for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
         m_LightSpaceMatrixSpotUniforms.push_back("lightSpaceMatrixSpot[" + std::to_string(i) + "]");
+
+    res.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
+    m_OcclusionQueryShader = res.GetShader("occlusion_query");
+
+    InitOcclusionCube();
 }
 
 void RenderSystem::Shutdown()
 {
     LOGGER_INFO("RenderSystem") << "Shutting down RenderSystem";
     m_ShadowRenderer.Shutdown();
+
+    if (m_Context)
+    {
+        auto& bm = m_Context->GetBufferManager();
+        if (m_CubeVAO != 0) bm.DeleteVertexArray(m_CubeVAO);
+        if (m_CubeVBO != 0) bm.DeleteBuffer(m_CubeVBO);
+        if (m_CubeEBO != 0) bm.DeleteBuffer(m_CubeEBO);
+
+        // Delete all queries in registry
+        // Note: This requires access to the scene/registry, which Shutdown doesn't have.
+        // Actually, RenderSystem doesn't own the registry. 
+        // We might need a better way to cleanup queries, or we can just let them be deleted on context shutdown if the manager keeps track.
+        // But for standard practice, we should cleanup.
+    }
 }
 
 void RenderSystem::RenderShadows(Scene &scene)
@@ -170,6 +191,11 @@ void RenderSystem::Render(Scene &scene, int width, int height)
     if (cam)
         frustum.Update(m_CurrViewProj);
 
+    if (m_OcclusionCullingEnabled)
+    {
+        UpdateOcclusionResults(scene);
+    }
+
     m_RenderQueue.clear();
 
     std::vector<entt::entity> visibleEntities;
@@ -258,6 +284,15 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
         if ((m_FilterLayerMask & layer) == 0) continue;
         if (cam && (cam->cullingMask & layer) == 0) continue;
+
+        if (m_OcclusionCullingEnabled)
+        {
+            if (scene.registry.all_of<OcclusionComponent>(entity))
+            {
+                if (!scene.registry.get<OcclusionComponent>(entity).isVisible)
+                    continue;
+            }
+        }
 
         m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat, activeModel, layer, renderOrder});
     }
@@ -452,6 +487,11 @@ void RenderSystem::Render(Scene &scene, int width, int height)
     }
     flushBatch(currentShader, currentModel);
 
+    if (m_OcclusionCullingEnabled)
+    {
+        RenderOcclusionQueries(scene, projectionMatrix, cam->viewMatrix);
+    }
+
 #ifdef ENABLE_DEBUG_SYSTEM
     if (DebugConfig::ShowWireframe)
     {
@@ -504,4 +544,125 @@ void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Sc
         shader->setBool("debug_noTexture", true);
     else
         shader->setBool("debug_noTexture", false);
+}
+
+void RenderSystem::InitOcclusionCube()
+{
+    float vertices[] = {
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+        0, 4, 7, 7, 3, 0,
+        1, 5, 6, 6, 2, 1,
+        0, 1, 5, 5, 4, 0,
+        3, 2, 6, 6, 7, 3
+    };
+
+    auto& bm = m_Context->GetBufferManager();
+    m_CubeVAO = bm.GenVertexArray();
+    m_CubeVBO = bm.GenBuffer();
+    m_CubeEBO = bm.GenBuffer();
+
+    bm.BindVertexArray(m_CubeVAO);
+
+    bm.BindBuffer(Graphics::BufferType::ArrayBuffer, m_CubeVBO);
+    bm.BufferData(Graphics::BufferType::ArrayBuffer, sizeof(vertices), vertices, Graphics::BufferUsage::StaticDraw);
+
+    bm.BindBuffer(Graphics::BufferType::ElementArrayBuffer, m_CubeEBO);
+    bm.BufferData(Graphics::BufferType::ElementArrayBuffer, sizeof(indices), indices, Graphics::BufferUsage::StaticDraw);
+
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, Graphics::DataType::Float, false, 3 * sizeof(float), (void*)0);
+
+    bm.BindVertexArray(0);
+}
+
+void RenderSystem::UpdateOcclusionResults(Scene &scene)
+{
+    auto& qm = m_Context->GetQueryManager();
+    auto view = scene.registry.view<OcclusionComponent>();
+    
+    for (auto entity : view)
+    {
+        auto &occ = view.get<OcclusionComponent>(entity);
+        if (occ.queryPending && occ.lastQueryId != 0)
+        {
+            if (qm.IsResultAvailable(occ.lastQueryId))
+            {
+                uint32_t samples = qm.GetQueryResult(occ.lastQueryId);
+                occ.isVisible = (samples > 0);
+                occ.queryPending = false;
+            }
+        }
+    }
+}
+
+void RenderSystem::RenderOcclusionQueries(Scene &scene, const glm::mat4& projection, const glm::mat4& view)
+{
+    if (!m_OcclusionQueryShader || m_CubeVAO == 0) return;
+
+    auto& rsm = m_Context->GetRenderStateManager();
+    auto& qm = m_Context->GetQueryManager();
+    auto& bm = m_Context->GetBufferManager();
+
+    // Disable color and depth writes
+    rsm.ColorMask(false, false, false, false);
+    rsm.DepthMask(false);
+
+    m_OcclusionQueryShader->use();
+    m_OcclusionQueryShader->setMat4("projection", projection);
+    m_OcclusionQueryShader->setMat4("view", view);
+
+    bm.BindVertexArray(m_CubeVAO);
+
+    auto occView = scene.registry.view<TransformComponent, MeshRendererComponent>();
+    for (auto entity : occView)
+    {
+        auto [transform, renderer] = occView.get<TransformComponent, MeshRendererComponent>(entity);
+        if (!renderer.model) continue;
+
+        // Ensure OcclusionComponent exists
+        if (!scene.registry.all_of<OcclusionComponent>(entity))
+        {
+            auto& occ = scene.registry.emplace<OcclusionComponent>(entity);
+            occ.lastQueryId = qm.GenQuery();
+        }
+
+        auto &occ = scene.registry.get<OcclusionComponent>(entity);
+        
+        // Don't start a new query if one is still pending
+        if (occ.queryPending) continue;
+
+        glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+        AABB aabb = renderer.model->aabb;
+        
+        // Scale and translate the unit cube to match AABB
+        glm::vec3 center = (aabb.minBound + aabb.maxBound) * 0.5f;
+        glm::vec3 halfSize = (aabb.maxBound - aabb.minBound) * 0.5f;
+        
+        glm::mat4 boxTransform = modelMatrix * glm::translate(glm::mat4(1.0f), center) * glm::scale(glm::mat4(1.0f), halfSize);
+        m_OcclusionQueryShader->setMat4("model", boxTransform);
+
+        qm.BeginQuery(Graphics::QueryType::AnySamplesPassed, occ.lastQueryId);
+        m_Context->GetDrawContext().DrawElements(Graphics::Primitive::Triangles, 36, Graphics::DataType::UnsignedInt, 0);
+        qm.EndQuery(Graphics::QueryType::AnySamplesPassed);
+        
+        occ.queryPending = true;
+    }
+
+    bm.BindVertexArray(0);
+
+    // Restore state
+    rsm.ColorMask(true, true, true, true);
+    rsm.DepthMask(true);
 }

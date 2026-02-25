@@ -298,4 +298,15 @@ public:
             default: return GL_ALL_BARRIER_BITS;
         }
     }
+
+    static GLenum ToGL(Graphics::QueryType t) {
+        switch (t) {
+            case Graphics::QueryType::SamplesPassed: return GL_SAMPLES_PASSED;
+            case Graphics::QueryType::AnySamplesPassed: return GL_ANY_SAMPLES_PASSED;
+            case Graphics::QueryType::AnySamplesPassedConservative: return GL_ANY_SAMPLES_PASSED_CONSERVATIVE;
+            case Graphics::QueryType::TimeElapsed: return GL_TIME_ELAPSED;
+            case Graphics::QueryType::Timestamp: return GL_TIMESTAMP;
+            default: return GL_SAMPLES_PASSED;
+        }
+    }
 };

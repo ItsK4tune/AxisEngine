@@ -8,6 +8,8 @@
 #include <graphic/renderer/shadow_renderer.h>
 #include <graphic/renderer/light_renderer.h>
 #include <interface/graphic/graphics_types.h>
+#include <ecs/components/occlusion_component.h>
+#include <interface/graphic/i_query_manager.h>
 
 class ResourceManager;
 class Shader;
@@ -84,6 +86,9 @@ public:
     IGraphicsContext* GetContext() const { return m_Context; }
 
 private:
+    void RenderOcclusionQueries(Scene &scene, const glm::mat4& projection, const glm::mat4& view);
+    void UpdateOcclusionResults(Scene &scene);
+    void InitOcclusionCube();
     IGraphicsContext* m_Context = nullptr;
     ShadowRenderer m_ShadowRenderer;
     LightRenderer m_LightRenderer;
@@ -115,4 +120,9 @@ private:
     std::vector<std::string> m_ShadowSpotUniforms;
     std::vector<std::string> m_LightSpaceMatrixUniforms;
     std::vector<std::string> m_LightSpaceMatrixSpotUniforms;
+
+    std::shared_ptr<Shader> m_OcclusionQueryShader;
+    unsigned int m_CubeVAO = 0;
+    unsigned int m_CubeVBO = 0;
+    unsigned int m_CubeEBO = 0;
 };
