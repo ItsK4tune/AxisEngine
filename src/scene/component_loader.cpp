@@ -306,7 +306,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, cons
     scene.SetActiveSkybox(entity);
 }
 
-void ComponentLoader::LoadScript(Scene& scene, entt::entity entity, const YAMLNode& node, std::shared_ptr<Application> app)
+void ComponentLoader::LoadScript(Scene& scene, entt::entity entity, const YAMLNode& node, Application* app)
 {
     ValidateKeys(node, {"Class"}, "Script");
 

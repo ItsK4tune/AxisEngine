@@ -5,7 +5,7 @@
 #include <input/mouse_manager.h>
 #include <functional>
 
-void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, std::shared_ptr<Application> app, float dt, entt::entity entity)
+void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, Application* app, float dt, entt::entity entity)
 {
     if (!script.instance || !script.instance->IsEnabled())
         return;

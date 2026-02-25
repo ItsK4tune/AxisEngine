@@ -22,7 +22,7 @@
 DebugSystem::DebugSystem() {}
 DebugSystem::~DebugSystem() {}
 
-void DebugSystem::Init(std::shared_ptr<Application> app)
+void DebugSystem::Init(Application* app)
 {
     m_App = app;
 

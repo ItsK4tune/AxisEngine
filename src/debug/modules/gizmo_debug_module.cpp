@@ -26,7 +26,7 @@
 GizmoDebugModule::GizmoDebugModule() {}
 GizmoDebugModule::~GizmoDebugModule() {}
 
-void GizmoDebugModule::Init(std::shared_ptr<Application> app)
+void GizmoDebugModule::Init(Application* app)
 {
     m_App = app;
 }

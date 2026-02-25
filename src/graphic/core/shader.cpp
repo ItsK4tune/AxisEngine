@@ -101,7 +101,7 @@ void Shader::load(const char *vertexPath, const char *fragmentPath, const char *
     if (geometryPath != nullptr)
         sm.DeleteShader(geometry);
 
-    LOGGER_DEBUG("Shader") << "Shader loaded successfully: " << vertexPath << " | " << fragmentPath;
+    LOGGER_INFO("Shader") << "Shader loaded successfully: " << vertexPath << " | " << fragmentPath;
 }
 
 void Shader::use()

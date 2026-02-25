@@ -18,12 +18,12 @@ public:
     DebugSystem();
     ~DebugSystem();
 
-    void Init(std::shared_ptr<Application> app);
+    void Init(Application* app);
     void OnUpdate(float dt);
     void Render(Scene &scene);
 
 private:
-    std::shared_ptr<Application> m_App = nullptr;
+    Application* m_App = nullptr;
 
     std::shared_ptr<Font> m_DebugFont = nullptr;
     std::shared_ptr<Shader> m_TextShader = nullptr;

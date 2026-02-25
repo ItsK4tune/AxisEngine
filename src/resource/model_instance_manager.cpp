@@ -18,7 +18,7 @@ std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& n
 
     m_ModelPools[name] = pool;
 
-    LOGGER_DEBUG("ModelInstanceManager") << "Loaded model '" << name << "': " << path << (isStatic ? " (STATIC)" : " (DYNAMIC)");
+    LOGGER_INFO("ModelInstanceManager") << "Loaded model '" << name << "': " << path << (isStatic ? " (STATIC)" : " (DYNAMIC)");
 
     return model;
 }
@@ -32,7 +32,7 @@ void ModelInstanceManager::RegisterModel(const std::string& name, std::shared_pt
     pool.model = std::move(model);
     m_ModelPools[name] = std::move(pool);
 
-    LOGGER_DEBUG("ModelInstanceManager") << "Registered async model '" << name << "'";
+    LOGGER_INFO("ModelInstanceManager") << "Registered async model '" << name << "'";
 }
 
 void ModelInstanceManager::AddInstance(const std::string& modelPath, const glm::mat4& transform, entt::entity entity)

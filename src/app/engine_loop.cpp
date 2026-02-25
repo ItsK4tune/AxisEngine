@@ -20,7 +20,7 @@
 
 #include <iostream>
 
-EngineLoop::EngineLoop(std::shared_ptr<Application> app)
+EngineLoop::EngineLoop(Application* app)
     : m_App(app)
     , m_LastFrameTime(std::chrono::steady_clock::now())
 {
@@ -164,18 +164,18 @@ void EngineLoop::SetPhysicsStep(float step)
     if (step > 0.0f)
     {
         m_FixedDeltaTime = step;
-        LOGGER_DEBUG("EngineLoop") << "Fixed delta time set to: " << m_FixedDeltaTime;
+        LOGGER_INFO("EngineLoop") << "Fixed delta time set to: " << m_FixedDeltaTime;
     }
 }
 
 void EngineLoop::SetTimeScale(float scale)
 {
     m_TimeScale = scale;
-    LOGGER_DEBUG("EngineLoop") << "Time scale set to: " << m_TimeScale;
+    LOGGER_INFO("EngineLoop") << "Time scale set to: " << m_TimeScale;
 }
 
 void EngineLoop::SetPaused(bool paused)
 {
     m_IsPaused = paused;
-    LOGGER_DEBUG("EngineLoop") << (m_IsPaused ? "Engine paused" : "Engine resumed");
+    LOGGER_INFO("EngineLoop") << (m_IsPaused ? "Engine paused" : "Engine resumed");
 }

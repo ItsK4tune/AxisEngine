@@ -13,7 +13,7 @@ class Scriptable
 public:
     virtual ~Scriptable() {}
 
-    void Init(entt::entity entity, Scene *scene, std::shared_ptr<Application> app)
+    void Init(entt::entity entity, Scene *scene, Application* app)
     {
         m_Entity = entity;
         m_Scene = scene;
@@ -158,7 +158,7 @@ public:
 protected:
     entt::entity m_Entity;
     Scene *m_Scene = nullptr;
-    std::shared_ptr<Application> m_App = nullptr;
+    Application* m_App = nullptr;
 
 private:
     bool m_Enabled = true;

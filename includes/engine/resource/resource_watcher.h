@@ -7,6 +7,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 #include <event/resource_events.h>
 
 class ResourceWatcher
@@ -39,6 +40,9 @@ private:
     std::vector<ResourceReloadEvent> m_PendingReloads;
     std::mutex m_Mutex;
     std::atomic<bool> m_Running;
+    std::thread m_WatcherThread;
+    std::condition_variable m_StopCV;
+    std::mutex m_StopMutex;
 
     void WatcherLoop();
 };

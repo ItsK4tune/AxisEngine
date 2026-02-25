@@ -100,7 +100,7 @@ void SceneSerializer::Serialize(Scene& scene, const std::string& filepath)
     out << "axis_scene:\n";
 }
 
-std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, std::shared_ptr<Application> app)
+std::vector<entt::entity> SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, Application* app)
 {
     std::string fullPath = FileSystem::getPath(filepath);
     auto roots = ParseAXS(fullPath);

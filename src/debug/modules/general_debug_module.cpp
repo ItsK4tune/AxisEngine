@@ -29,7 +29,7 @@
 GeneralDebugModule::GeneralDebugModule() {}
 GeneralDebugModule::~GeneralDebugModule() {}
 
-void GeneralDebugModule::Init(std::shared_ptr<Application> app)
+void GeneralDebugModule::Init(Application* app)
 {
     m_App = app;
 

@@ -20,7 +20,7 @@
 OverlayDebugModule::OverlayDebugModule() {}
 OverlayDebugModule::~OverlayDebugModule() {}
 
-void OverlayDebugModule::Init(std::shared_ptr<Application> app)
+void OverlayDebugModule::Init(Application* app)
 {
     m_App = app;
 }

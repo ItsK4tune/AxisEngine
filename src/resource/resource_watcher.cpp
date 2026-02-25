@@ -3,17 +3,26 @@
 #include <iostream>
 #include <chrono>
 #include <event/event_system.h>
-#include <core/job_system.h>
 
 ResourceWatcher::ResourceWatcher()
     : m_Running(true)
 {
-    JobSystem::Instance().Execute([this]() { WatcherLoop(); });
+    // Use a dedicated thread, NOT the JobSystem, because this loop runs forever
+    m_WatcherThread = std::thread(&ResourceWatcher::WatcherLoop, this);
 }
 
 ResourceWatcher::~ResourceWatcher()
 {
-    m_Running = false;
+    // Signal the watcher loop to stop and wake it from its sleep immediately
+    {
+        std::lock_guard<std::mutex> lock(m_StopMutex);
+        m_Running = false;
+    }
+    m_StopCV.notify_all();
+
+    // Wait for the thread to finish cleanly
+    if (m_WatcherThread.joinable())
+        m_WatcherThread.join();
 }
 
 void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type)
@@ -73,7 +82,14 @@ void ResourceWatcher::WatcherLoop()
 {
     while (m_Running)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        // Interruptible sleep: wakes up immediately when m_StopCV is notified
+        {
+            std::unique_lock<std::mutex> lock(m_StopMutex);
+            m_StopCV.wait_for(lock, std::chrono::milliseconds(500),
+                              [this]() { return !m_Running.load(); });
+        }
+
+        if (!m_Running) break;
 
         std::lock_guard<std::mutex> lock(m_Mutex);
         for (auto& watcher : m_Watchers)
@@ -92,13 +108,12 @@ void ResourceWatcher::WatcherLoop()
                     e.name = watcher.name;
                     e.type = watcher.type;
                     e.filePath = watcher.filePath;
-                    
+
                     m_PendingReloads.push_back(e);
                 }
             }
             catch (const std::filesystem::filesystem_error&)
             {
-                // Ignore transient file locking issues
             }
         }
     }

@@ -22,13 +22,13 @@ public:
     SystemManager();
     ~SystemManager();
 
-    void InitializeSystems(ResourceManager &res, int width, int height, std::shared_ptr<Application> app);
+    void InitializeSystems(ResourceManager &res, int width, int height, Application* app);
     void ApplyConfig(const AppConfig &config);
     void ShutdownSystems();
 
     void FixedUpdateSystems(Scene &scene, IPhysicsWorld &phys, float fixedDt);
 
-    void UpdateLogic(Scene &scene, float deltaTime, float realDeltaTime, std::shared_ptr<Application> app, MouseManager &mouse);
+    void UpdateLogic(Scene &scene, float deltaTime, float realDeltaTime, Application* app, MouseManager &mouse);
     void UpdateVisuals(Scene &scene, float deltaTime, ResourceManager &res, SoundPlayer &sound);
 
     void RenderShadows(Scene &scene);

@@ -34,7 +34,7 @@ struct YAMLNode {
 class SceneSerializer
 {
 public:
-    static std::vector<entt::entity> Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, std::shared_ptr<Application> app);
+    static std::vector<entt::entity> Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, Application* app);
     static void Serialize(Scene& scene, const std::string& filepath);
 
 private:

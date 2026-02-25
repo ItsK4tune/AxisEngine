@@ -11,7 +11,7 @@
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
 
-void CameraDebugModule::Init(std::shared_ptr<Application> app)
+void CameraDebugModule::Init(Application* app)
 {
     m_App = app;
 }

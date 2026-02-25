@@ -20,7 +20,7 @@ public:
     static void LoadUIText(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
 
     static void LoadSkyboxRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
-    static void LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node, std::shared_ptr<Application> app);
+    static void LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node, Application* app);
 
     static void LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadVideoPlayer(Scene &scene, entt::entity entity, const YAMLNode &node);

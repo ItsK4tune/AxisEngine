@@ -9,7 +9,7 @@ class Application;
 class StateMachine
 {
 public:
-    StateMachine(std::shared_ptr<Application> app);
+    StateMachine(Application* app);
 
     void PushState(std::unique_ptr<State> state);
     void PopState();
@@ -24,5 +24,5 @@ public:
 
 private:
     std::stack<std::unique_ptr<State>> m_States;
-    std::shared_ptr<Application> m_App;
+    Application* m_App;
 };

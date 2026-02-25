@@ -8,7 +8,6 @@ void JobSystem::Initialize()
 
     m_IsRunning = true;
 
-    // Use available threads - 1 (leave one for main thread), but guarantee at least 1 worker
     uint32_t numThreads = std::thread::hardware_concurrency();
     if (numThreads > 1)
         numThreads -= 1;
@@ -32,12 +31,12 @@ void JobSystem::Shutdown()
     {
         std::unique_lock<std::mutex> lock(m_QueueMutex);
         m_IsRunning = false;
+        while (!m_JobQueue.empty()) m_JobQueue.pop();
     }
 
-    // Wake up all threads so they can exit the loop
     m_Condition.notify_all();
 
-    for (std::thread& worker : m_Workers)
+    for (auto& worker : m_Workers)
     {
         if (worker.joinable())
             worker.join();
@@ -82,7 +81,6 @@ void JobSystem::WorkerLoop()
         {
             std::unique_lock<std::mutex> lock(m_QueueMutex);
 
-            // Wait until a job is available or the system is shutting down
             m_Condition.wait(lock, [this]() {
                 return !m_JobQueue.empty() || !m_IsRunning;
             });
@@ -94,15 +92,10 @@ void JobSystem::WorkerLoop()
             m_JobQueue.pop();
         }
 
-        // Execute the job outside of the mutex lock
         if (job)
-        {
             job();
-        }
 
-        // Decrement active jobs and notify anyone waiting for jobs to finish
         m_ActiveJobs.fetch_sub(1, std::memory_order_release);
         m_WaitCondition.notify_all();
     }
 }
-

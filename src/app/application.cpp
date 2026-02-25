@@ -47,20 +47,39 @@ Application::~Application()
 
     JobSystem::Instance().Shutdown();
 
+    if (m_Scene && m_SceneManager)
+    {
+        std::vector<entt::entity> toDestroy;
+        auto& entityStorage = m_Scene->registry.storage<entt::entity>();
+        for (auto entity : entityStorage) {
+            if (m_Scene->registry.valid(entity))
+                toDestroy.push_back(entity);
+        }
+        for (auto entity : toDestroy)
+            m_Scene->destroyEntity(entity, m_SceneManager.get());
+    }
+
+    if (m_Scene)
+    {
+        m_Scene->ShutdownManagers();
+        m_Scene->registry.clear();
+    }
+
+    if (m_SystemManager)
+        m_SystemManager->GetPhysicsSystem().Reset();
+
     if (m_SystemManager)
         m_SystemManager->ShutdownSystems();
     m_SystemManager.reset();
 
-    m_Scene->registry.clear();
-
     m_ContentService.reset();
     m_SceneManager.reset();
     m_RuntimeCore.reset();
-
     m_SoundPlayer.reset();
     m_ResourceManager.reset();
-    m_PhysicsWorld.reset();
 
+    m_Scene.reset();
+    m_PhysicsWorld.reset();
     m_IOHandler.reset();
 
     LOGGER_INFO("Application") << "Application shutdown completed.";
@@ -94,7 +113,7 @@ bool Application::Init(const AppConfig &config)
 
     IWindow *appWindow = GetWindow();
     appWindow->SetResizeCallback([this](int width, int height) {
-        LOGGER_DEBUG("Application") << "Window resized to " << width << "x" << height;
+        LOGGER_INFO("Application") << "Window resized to " << width << "x" << height;
         OnResize(width, height);
     });
     appWindow->SetCursorPosCallback([this](double x, double y) {
@@ -122,15 +141,15 @@ bool Application::Init(const AppConfig &config)
     m_PhysicsWorld->Init();
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
-    m_SceneManager = std::make_unique<SceneManager>(*m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, shared_from_this());
+    m_SceneManager = std::make_unique<SceneManager>(*m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, this);
 
     m_ContentService = std::make_unique<ContentService>(*m_ResourceManager, *m_SceneManager, *m_SoundPlayer);
-    m_RuntimeCore = std::make_unique<RuntimeCore>(shared_from_this());
+    m_RuntimeCore = std::make_unique<RuntimeCore>(this);
 
     m_ResourceManager->CreateUIModel("default_rect", UIType::Color);
 
     m_SystemManager = std::make_unique<SystemManager>();
-    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, shared_from_this());
+    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, this);
     m_SystemManager->ApplyConfig(m_Config);
 
     m_ResourceManager->LoadShader("debugLine", "includes/engine/asset/shaders/debug_line.vs", "includes/engine/asset/shaders/debug_line.fs");
@@ -140,7 +159,7 @@ bool Application::Init(const AppConfig &config)
 
     if (!m_Config.iconPath.empty())
     {
-        LOGGER_DEBUG("Application") << "Setting window icon from: " << m_Config.iconPath;
+        LOGGER_INFO("Application") << "Setting window icon from: " << m_Config.iconPath;
         m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(m_Config.iconPath));
     }
 

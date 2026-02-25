@@ -6,7 +6,7 @@
 #include <ecs/component.h>
 #include <input/script_input_handler.h>
 
-void ScriptableSystem::Update(Scene &scene, float dt, float unscaledDt, std::shared_ptr<Application> app)
+void ScriptableSystem::Update(Scene &scene, float dt, float unscaledDt, Application* app)
 {
     if (!m_Enabled)
         return;

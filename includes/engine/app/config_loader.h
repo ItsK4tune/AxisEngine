@@ -48,6 +48,6 @@ struct AppConfig
 class ConfigLoader
 {
 public:
-    static void LoadConfig(std::stringstream &ss, std::shared_ptr<Application> app);
+    static void LoadConfig(std::stringstream &ss, Application* app);
     static void LoadConfig(std::stringstream &ss, AppConfig &config);
 };

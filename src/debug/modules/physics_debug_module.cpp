@@ -20,7 +20,7 @@
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}
 
-void PhysicsDebugModule::Init(std::shared_ptr<Application> app)
+void PhysicsDebugModule::Init(Application* app)
 {
     m_App = app;
 }

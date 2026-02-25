@@ -72,7 +72,7 @@ void ResourceManager::LoadTexture(const std::string &name, const std::string &pa
 void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
 {
     std::string fullPath = FileSystem::getPath(path);
-    LOGGER_DEBUG("ResourceManager") << "Loading model: " << name << " from " << fullPath;
+    LOGGER_INFO("ResourceManager") << "Loading model: " << name << " from " << fullPath;
 
     std::shared_ptr<Model> model = m_ModelInstanceManager.GetOrLoadModel(name, fullPath, isStatic);
     if (!model)
@@ -121,7 +121,7 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
         std::shared_ptr<Model> model = m_ModelInstanceManager.GetOrLoadModel(modelName, it->second.path, it->second.isStatic);
         if (model)
         {
-            LOGGER_DEBUG("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
+            LOGGER_INFO("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
             m_AnimationCache.LoadAnimation(name, path, model.get());
         }
     }
@@ -138,7 +138,7 @@ void ResourceManager::LoadFont(const std::string &name, const std::string &path,
 
 void ResourceManager::LoadSound(const std::string &name, const std::string &path, IAudioEngine *engine)
 {
-    LOGGER_DEBUG("ResourceManager") << "Loading sound: " << name;
+    LOGGER_INFO("ResourceManager") << "Loading sound: " << name;
     m_SoundCache.LoadSound(name, path, engine);
 }
 

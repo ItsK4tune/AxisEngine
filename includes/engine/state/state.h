@@ -52,8 +52,8 @@ public:
     void EnableSkybox(bool enable);
     void EnableLogic(bool enable);
 
-    void SetContext(std::shared_ptr<Application> app) { m_App = app; }
+    void SetContext(Application* app) { m_App = app; }
 
 protected:
-    std::shared_ptr<Application> m_App = nullptr;
+    Application* m_App = nullptr;
 };

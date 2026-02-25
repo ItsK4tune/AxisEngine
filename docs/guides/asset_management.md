@@ -1,36 +1,57 @@
 # Asset Management
 
-The **ResourceManager** handles loading and retrieving game assets in the AXIS Engine. In most cases, you define these in your `.scene` file, but you can also load them manually via C++.
+The **ResourceManager** handles loading and retrieving game assets in the AXIS Engine. Assets can be defined in a `.axs` scene file (recommended) or loaded manually via C++.
 
 ## 1. Supported Formats
 - **Models**: `.fbx`, `.obj`, `.gltf`, `.glb`
+- **Animations**: `.fbx`, `.dae` (requires an associated rigged Model)
 - **Textures**: `.png`, `.jpg`, `.tga`
 - **Audio**: `.wav`, `.mp3`, `.ogg`
 - **Fonts**: `.ttf`, `.otf`
 - **Shaders**: Text files (usually `.vs` and `.fs`)
 
 ## 2. Loading via Scene File (Recommended)
-This is the standard way to load assets for a specific level.
+This is the standard way to load assets for a specific scene using the AXS (YAML-like) format.
 
-```text
-# Shaders
-LOAD_SHADER    myshader       shaders/model.vs    shaders/model.fs
+```yaml
+axis_scene:
+  Resources:
+    Shader:
+      Name: myShader
+      VS: shaders/model.vs
+      FS: shaders/model.fs
+      
+    Model:
+      Name: character
+      Path: models/char.fbx
+      Static: 0  # Set to 1 for optimized non-animated static geometry
+      
+    Animation:
+      Name: runAnimation
+      Path: animations/run.fbx
+      Model: character # Must match a loaded Model name
+      
+    Texture:
+      Name: boxAlbedo
+      Path: textures/box_albedo.png
+      
+    Font:
+      Name: mainFont
+      Path: fonts/roboto.ttf
+      Size: 24
 
-# Models
-LOAD_MODEL     character      models/char.fbx
-LOAD_STATIC_MODEL  house      models/house.obj  # Optimized for non-animated
+    Sound:
+      Name: bgMusic
+      Path: audio/music.ogg
 
-# Textures (Loaded implicitly by models or for UI)
-# Custom textures can be bound in shaders/materials
-
-# Skybox
-LOAD_SKYBOX    daylight       right.jpg left.jpg top.jpg bottom.jpg front.jpg back.jpg
-
-# Audio
-LOAD_SOUND     bgm            audio/music.mp3
-
-# Particles
-LOAD_PARTICLE  smoke          textures/smoke.png
+    Skybox:
+      Name: daylight
+      Right: skybox/right.jpg
+      Left: skybox/left.jpg
+      Top: skybox/top.jpg
+      Bottom: skybox/bottom.jpg
+      Front: skybox/front.jpg
+      Back: skybox/back.jpg
 ```
 
 ## 3. Loading via C++ Code
@@ -41,16 +62,37 @@ auto& res = m_App->GetResourceManager();
 
 // Load manually
 res.LoadModel("sword", "resources/models/sword.fbx");
+res.LoadAnimation("swing", "resources/animations/swing.fbx", "sword");
 res.LoadSound("sfx_hit", "resources/audio/hit.wav", m_App->GetSoundManager().GetEngine());
 
 // Retrieve
-Model* sword = res.GetModel("sword");
+std::shared_ptr<Model> sword = res.GetModel("sword");
+std::shared_ptr<Animation> swingAnim = res.GetAnimation("swing");
 ```
 
 ## 4. UI Assets
 UI elements use `UIModel`. You can create basic shapes programmatically:
 
 ```cpp
+auto& res = m_App->GetResourceManager();
+
 // Create a colored rectangle quad
 res.CreateUIModel("health_bar", UIType::Color);
+
+// Create an image/texture quad
+res.CreateUIModel("avatar_icon", UIType::Image);
+```
+
+## 5. Unloading Assets
+Assets loaded via `.axs` scenes are automatically unloaded by the `SceneManager` when their parent scenes are unloaded (using reference counting to prevent freeing resources still used by other scenes).
+
+To manually unload resources loaded via C++:
+```cpp
+res.UnloadModel("sword");
+res.UnloadTexture("boxAlbedo");
+res.UnloadShader("myShader");
+res.UnloadFont("mainFont");
+res.UnloadSound("bgMusic");
+res.UnloadAnimation("swing");
+res.UnloadSkybox("daylight");
 ```

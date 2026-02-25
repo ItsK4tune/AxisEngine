@@ -9,7 +9,7 @@ class StateMachine;
 class EngineLoop
 {
 public:
-    EngineLoop(std::shared_ptr<Application> app);
+    EngineLoop(Application* app);
     ~EngineLoop();
 
     void Run();
@@ -27,7 +27,7 @@ private:
     void FixedUpdate();
     void Render();
 
-    std::shared_ptr<Application> m_App;
+    Application* m_App;
 
     float deltaTime = 0.0f;
     float realDeltaTime = 0.0f;
