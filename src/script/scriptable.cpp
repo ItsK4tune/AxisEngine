@@ -7,6 +7,9 @@
 #include <input/mouse_manager.h>
 #include <ecs/components/info_component.h>
 #include <ecs/components/physics_components.h>
+#include <ecs/systems/render_system.h>
+#include <ecs/systems/physics_system.h>
+#include <ecs/systems/audio_system.h>
 #include <physic/collision_matrix.h>
 
 bool Scriptable::GetAction(const std::string& name)
@@ -67,6 +70,14 @@ SceneManager& Scriptable::GetSceneManager()
 InputManager& Scriptable::GetInputManager() { return GetIOHandler().GetInputManager(); }
 KeyboardManager& Scriptable::GetKeyboard() { return GetIOHandler().GetKeyboard(); }
 MouseManager& Scriptable::GetMouse() { return GetIOHandler().GetMouse(); }
+
+const AppConfig& Scriptable::GetConfig() const { return m_App->GetConfig(); }
+void Scriptable::ApplyConfig(const AppConfig& config) { m_App->ApplyConfig(config); }
+
+RenderSystem& Scriptable::GetRenderSystem() { return m_App->GetRenderSystem(); }
+PhysicsSystem& Scriptable::GetPhysicsSystem() { return m_App->GetPhysicsSystem(); }
+AudioSystem& Scriptable::GetAudioSystem() { return m_App->GetAudioSystem(); }
+Scene& Scriptable::GetScene() { return *m_Scene; }
 
 bool Scriptable::CompareTag(entt::entity entity, const std::string& tag) const
 {

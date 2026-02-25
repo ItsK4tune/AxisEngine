@@ -364,18 +364,6 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
             bool renderOrder = (enable != 0);
             app->GetRenderSystem().SetRenderOrderEnabled(renderOrder);
 
-            if (renderOrder)
-            {
-                // Disable depth test when explicit render order is active
-                app->GetRenderSystem().SetDepthTest(false);
-            }
-            else
-            {
-                // Restore depth test based on configuration when render order is disabled
-                app->GetRenderSystem().SetDepthTest(app->GetConfig().depthTestEnabled);
-            }
-            
-            // Sync config state
             AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
             cfg.renderOrderEnabled = renderOrder;
         }

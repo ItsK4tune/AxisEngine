@@ -10,6 +10,7 @@
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/i_render_state_manager.h>
+#include <interface/graphic/i_draw_context.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 #include <debug/debug_config.h>
@@ -306,8 +307,22 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         }
     };
 
+    int lastRenderOrder = -1;
+    bool firstItem = true;
+
     for (const auto &item : m_RenderQueue)
     {
+        if (m_RenderOrderEnabled)
+        {
+            if (firstItem || item.renderOrder != lastRenderOrder)
+            {
+                flushBatch(currentShader, currentModel);
+                m_Context->GetDrawContext().Clear(Graphics::BufferBit::Depth);
+                lastRenderOrder = item.renderOrder;
+                firstItem = false;
+            }
+        }
+
         entt::entity entity = item.entity;
         TransformComponent &transform = *item.transform;
         MeshRendererComponent &renderer = *item.renderer;

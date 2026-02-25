@@ -59,6 +59,9 @@ void State::EnableUIRender(bool e)  { m_App->GetUIRenderSystem().SetEnabled(e); 
 void State::EnableParticle(bool e)  { m_App->GetParticleSystem().SetEnabled(e); }
 void State::EnableSkybox(bool e)    { m_App->GetSkyboxRenderSystem().SetEnabled(e); }
 
+const AppConfig& State::GetConfig() const { return m_App->GetConfig(); }
+void State::ApplyConfig(const AppConfig& config) { m_App->ApplyConfig(config); }
+
 void State::EnableLogic(bool enable)
 {
     EnableScript(enable);

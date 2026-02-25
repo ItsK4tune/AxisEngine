@@ -119,6 +119,14 @@ public:
     class KeyboardManager &GetKeyboard();
     class MouseManager &GetMouse();
 
+    const struct AppConfig& GetConfig() const;
+    void ApplyConfig(const struct AppConfig& config);
+
+    class RenderSystem& GetRenderSystem();
+    class PhysicsSystem& GetPhysicsSystem();
+    class AudioSystem& GetAudioSystem();
+    class Scene& GetScene();
+
     template <typename T>
     T &GetComponent()
     {

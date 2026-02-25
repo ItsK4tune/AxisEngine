@@ -60,6 +60,7 @@ axis_scene:
         Restitution: 1.0
         
     Dummy:
+      Layer: 1
       Tag: default
       Component: Transform
         Position: 0.0 10.0 0.0

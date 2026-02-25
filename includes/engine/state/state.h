@@ -61,6 +61,9 @@ public:
     void EnableLogic(bool enable);
 
     void SetContext(Application* app) { m_App = app; }
+    
+    const struct AppConfig& GetConfig() const;
+    void ApplyConfig(const struct AppConfig& config);
 
 protected:
     Application* m_App = nullptr;

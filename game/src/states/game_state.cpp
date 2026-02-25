@@ -1,5 +1,5 @@
 ﻿#include <states/game_state.h>
-#include <axis/axis_script.h>
+#include <axis/axis_all.h>
 
 void GameState::OnEnter()
 {
@@ -10,6 +10,8 @@ void GameState::OnEnter()
     EnableRender(true);
     EnableAudio(true);
     EnableLogic(true);
+
+    GetRenderSystem().SetFilterLayerMask(1);
 }
 
 void GameState::OnUpdate(float dt)
