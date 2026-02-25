@@ -31,6 +31,10 @@ bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, 
         return false;
     }
 
+    m_MonitorManager->SetVsync(vsync);
+    LOGGER_INFO("IOHandler") << "VSync initialized to: " << (vsync ? "ON" : "OFF");
+    LOGGER_INFO("IOHandler") << "Frame Rate Limit initialized to: " << frameRateLimit;
+
     if (!m_Graphics->Init())
     {
         LOGGER_ERROR("IOHandler") << "Failed to initialize graphics context";
@@ -64,8 +68,23 @@ void IOHandler::SetWindow(IWindow* window)
 
 void IOHandler::ProcessInput()
 {
+    if (m_KeyboardManager)
+        m_KeyboardManager->Update();
+
     if (m_KeyboardManager->GetKey(Input::Key::Escape))
         m_MonitorManager->GetWindow()->SetShouldClose(true);
+    
+    // Shortcuts: (Super + Enter) or (Alt + Enter)
+    bool superPressed = m_KeyboardManager->GetKey(Input::Key::LeftSuper) || m_KeyboardManager->GetKey(Input::Key::RightSuper);
+    bool altPressed = m_KeyboardManager->GetKey(Input::Key::LeftAlt) || m_KeyboardManager->GetKey(Input::Key::RightAlt);
+    bool enterDown = m_KeyboardManager->IsKeyDown(Input::Key::Enter) || m_KeyboardManager->IsKeyDown(Input::Key::KpEnter);
+
+    if ((superPressed || altPressed) && enterDown)
+    {
+        LOGGER_INFO("IOHandler") << "Toggle Fullscreen shortcut detected (" 
+                                 << (superPressed ? "Super" : "Alt") << " + Enter)";
+        m_MonitorManager->ToggleFullscreen();
+    }
 }
 
 void IOHandler::OnResize(int width, int height)

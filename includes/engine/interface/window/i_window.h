@@ -15,7 +15,8 @@ enum class WindowMode
 {
     Windowed,
     Fullscreen,
-    Borderless
+    Borderless,
+    BorderlessFullscreen
 };
 
 struct MonitorInfo

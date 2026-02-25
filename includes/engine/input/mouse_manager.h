@@ -30,12 +30,14 @@ public:
     bool IsLeftMouseClicked() const;
     bool IsRightMouseClicked() const;
 
-    void SetWindow(IWindow* window) { m_Window = window; }
     void SetWindowSize(int width, int height);
     void SetLastPosition(double x, double y);
     void SetLockPosition(double x, double y) { m_LockX = x; m_LockY = y; }
 
 private:
+    friend class IOHandler;
+    void SetWindow(IWindow* window);
+
     IWindow *m_Window = nullptr;
     int m_WindowWidth = 800;
     int m_WindowHeight = 600;

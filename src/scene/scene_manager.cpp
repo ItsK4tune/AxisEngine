@@ -1,10 +1,7 @@
 #include <scene/scene_manager.h>
 #include <utils/logger.h>
 #include <scene/scene_serializer.h>
-#include <script/script_registry.h>
-#include <utils/filesystem.h>
 #include <app/application.h>
-#include <app/monitor_manager.h>
 #include <algorithm>
 
 static std::string SceneBasename(const std::string& filePath)

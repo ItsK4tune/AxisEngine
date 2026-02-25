@@ -3,7 +3,6 @@
 #include <utils/filesystem.h>
 #include <app/config_loader.h>
 #include <app/monitor_manager.h>
-#include <interface/window/i_window.h>
 #include <scene/component_loader.h>
 #include <physic/physics_loader.h>
 #include <app/application.h>

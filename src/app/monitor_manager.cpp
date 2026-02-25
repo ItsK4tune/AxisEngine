@@ -29,6 +29,18 @@ bool MonitorManager::Init(std::unique_ptr<IWindow> window)
 
 void MonitorManager::SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex, int refreshRate)
 {
+    if (m_Mode == WindowMode::Windowed)
+    {
+        m_lastWindowedWidth = m_Width;
+        m_lastWindowedHeight = m_Height;
+    }
+    else
+    {
+        m_lastSpecialMode = m_Mode;
+        m_lastSpecialWidth = m_Width;
+        m_lastSpecialHeight = m_Height;
+    }
+
     m_Width = width;
     m_Height = height;
     m_Mode = mode;
@@ -152,4 +164,16 @@ bool MonitorManager::SetActiveDevice(const std::string& deviceId)
     {
     }
     return false;
+}
+
+void MonitorManager::ToggleFullscreen()
+{
+    if (m_Mode == WindowMode::Windowed)
+    {
+        SetWindowConfiguration(m_lastSpecialWidth, m_lastSpecialHeight, m_lastSpecialMode, m_MonitorIndex, 0);
+    }
+    else
+    {
+        SetWindowConfiguration(m_lastWindowedWidth, m_lastWindowedHeight, WindowMode::Windowed, m_MonitorIndex, 0);
+    }
 }

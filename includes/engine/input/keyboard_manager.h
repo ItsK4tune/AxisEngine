@@ -8,15 +8,19 @@
 class KeyboardManager
 {
 public:
-    KeyboardManager(IWindow *Window);
+    KeyboardManager(IWindow *window);
 
-    void SetWindow(IWindow* window) { m_Window = window; }
+    void Update();
 
     bool GetKey(Input::Key key) const;
     bool GetKeyUp(Input::Key key) const;
-    bool IsKeyDown(Input::Key key);
+    bool IsKeyDown(Input::Key key) const;
 
 private:
+    friend class IOHandler;
+    void SetWindow(IWindow* window);
+
     IWindow *m_Window = nullptr;
+    std::unordered_map<Input::Key, bool> m_CurrentState;
     std::unordered_map<Input::Key, bool> m_PreviousState;
 };

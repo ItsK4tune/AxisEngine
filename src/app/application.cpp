@@ -213,6 +213,9 @@ void Application::ApplyConfig(const AppConfig& config)
             config.width, config.height,
             (WindowMode)config.windowMode,
             config.monitorIndex, config.refreshRate);
+        
+        m_IOHandler->GetMonitorManager().SetVsync(config.vsync);
+        m_IOHandler->GetMonitorManager().SetFrameRateLimit(config.frameRateLimit);
     }
 }
 

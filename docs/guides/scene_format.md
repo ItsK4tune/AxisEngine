@@ -32,6 +32,12 @@ Global engine settings are defined directly in the `.axs` file under the `Config
     WINDOW_HEIGHT: 720
     VSYNC: 1
     ANTIALIASING: TAA
+    GRAPHICS_API: OPENGL
+    PHYSICS_ENGINE: BULLET
+    AUDIO_ENGINE: IRRKLANG
+    CULL_FACE: 1 BACK
+    DEPTH_TEST: 1 LESS
+    RENDER_ORDER: 1
 ```
 
 ---

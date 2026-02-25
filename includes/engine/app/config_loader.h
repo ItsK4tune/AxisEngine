@@ -22,7 +22,7 @@ struct AppConfig
     bool cullFaceEnabled = true;
     bool depthTestEnabled = true;
 
-    bool renderOrderEnabled = true;
+    bool renderOrderEnabled = false;
     uint32_t filterLayerMask = 0xFFFFFFFF;
 
     std::string audioDevice = "default";

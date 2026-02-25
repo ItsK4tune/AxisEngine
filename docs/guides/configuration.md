@@ -12,14 +12,18 @@ axis_scene:
     title: AXIS Engine
     WINDOW_WIDTH: 1280
     WINDOW_HEIGHT: 720
-    WINDOW_MODE: WINDOWED
+    WINDOW_MODE: BORDERLESS_FULLSCREEN
     WINDOW_MONITOR: 0
     WINDOW_REFRESH_RATE: 60
     VSYNC: 1
     FPS: 120
+    GRAPHICS_API: OPENGL
+    PHYSICS_ENGINE: BULLET
+    AUDIO_ENGINE: IRRKLANG
     SHADOWS: 1
     CULL_FACE: 1 BACK
     DEPTH_TEST: 1 LESS
+    RENDER_ORDER: 0
     ANTIALIASING: TAA
     FRUSTUM: 1
     DISTANCE: 0.0
@@ -36,7 +40,7 @@ axis_scene:
 
 - **Window Settings**
     - `WINDOW_WIDTH`, `WINDOW_HEIGHT`: Initial resolution of the window.
-    - `WINDOW_MODE`: Window display mode (`WINDOWED`, `FULLSCREEN`, or `BORDERLESS`).
+    - `WINDOW_MODE`: Window display mode (`WINDOWED`, `FULLSCREEN`, `BORDERLESS`, or `BORDERLESS_FULLSCREEN`).
     - `WINDOW_MONITOR`: Index of the monitor to display on (0 = Primary, 1 = Secondary, etc.).
     - `WINDOW_REFRESH_RATE`: Target refresh rate (Hz) for Fullscreen mode (0 = Desktop rate).
     - `VSYNC`: Enable Vertical Sync (`1` or `0`).
@@ -53,6 +57,10 @@ axis_scene:
     - `OCCLUSION_CULLING`: Enable/Disable hardware occlusion culling (`1` or `0`). Requires `Occlusion` component on entities to be tested.
     - `DISTANCE`: Maximum render distance from camera in world units (default: `0.0` = unlimited). Objects beyond this distance will not be rendered.
     - `DEPTH_TEST`: Enable/Disable depth testing (`1 LESS`, `1 LEQUAL`, etc.).
+    - `RENDER_ORDER`: Enable/Disable explicit render order (`1` or `0`). 
+        - > [!IMPORTANT]
+        - > When `RENDER_ORDER` is enabled, **DEPTH_TEST** is automatically disabled to allow proper layer-based rendering (Painter's Algorithm). 
+        - > When disabled, the previous `DEPTH_TEST` setting is restored.
     - `INSTANCING`: Enable/Disable instance batching for static meshes (`1` or `0`). Batching reduces draw calls but disabling can help with debugging transform issues.
     - `SHADOW_SIZE`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
     - `SHADOW_FRUSTUM`: Enable/Disable culling of objects outside the light's view frustum (default: `1`).
@@ -65,6 +73,11 @@ axis_scene:
         - `1`: BALANCED (60Hz, 10 iters)
         - `2`: ACCURATE (120Hz, 40 iters)
     - `physicsAsync`: Enable/Disable asynchronous physics simulation (default: `true`). When enabled, physics calculations run in parallel with rendering for better performance. Disable for deterministic single-threaded behavior.
+
+- **Backend Settings**
+    - `GRAPHICS_API`: Graphics backend to use (`OPENGL`, `VULKAN`, `DIRECTX`).
+    - `PHYSICS_ENGINE`: Physics engine to use (`BULLET`, `PHYSX`).
+    - `AUDIO_ENGINE`: Audio engine to use (`IRRKLANG`).
 
 - **Audio Settings**
     - `audioDevice`: ID or Name of the audio output device (use "default" for system default). Use F2 in-game to see available device IDs.

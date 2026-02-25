@@ -30,12 +30,24 @@ public:
     DeviceInfo GetCurrentDevice() const override;
     bool SetActiveDevice(const std::string& deviceId) override;
 
+    void ToggleFullscreen();
+
 private:
     std::unique_ptr<IWindow> m_Window;
 
     std::string m_Title = "Axis Engine";
     int m_Width = 800;
     int m_Height = 600;
+    
+    // Store last windowed state for toggling
+    int m_lastWindowedWidth = 800;
+    int m_lastWindowedHeight = 600;
+
+    // Store last special mode state (Fullscreen, Borderless, etc.)
+    int m_lastSpecialWidth = 0;
+    int m_lastSpecialHeight = 0;
+    WindowMode m_lastSpecialMode = WindowMode::Fullscreen;
+
     WindowMode m_Mode = WindowMode::Windowed;
     int m_MonitorIndex = 0;
     int m_RefreshRate = 0;

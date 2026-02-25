@@ -7,10 +7,7 @@
 #include <ecs/systems/render_system.h>
 #include <interface/physics/i_physics_world.h>
 #include <graphic/core/post_process_pipeline.h>
-#include <fstream>
-#include <sstream>
 #include <algorithm>
-#include <string>
 
 void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
 {
@@ -124,6 +121,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         if (ss >> modeStr) {
             if (modeStr == "FULLSCREEN") config.windowMode = 1;
             else if (modeStr == "BORDERLESS") config.windowMode = 2;
+            else if (modeStr == "BORDERLESS_FULLSCREEN" || modeStr == "STRETCH_FULLSCREEN") config.windowMode = 3;
+            else if (modeStr == "WINDOWED") config.windowMode = 0;
             else config.windowMode = 0;
         }
     }
@@ -214,7 +213,34 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
     std::string subCmd;
 
     ss >> subCmd;
-    if (subCmd == "SHADOWS")
+    if (subCmd == "GRAPHICS_API")
+    {
+        std::string backend;
+        if (ss >> backend && app) {
+            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+            cfg.graphicsBackend = backend;
+            LOGGER_INFO("ConfigLoader") << "Scene requested Graphics Backend: " << backend;
+        }
+    }
+    else if (subCmd == "PHYSICS_ENGINE")
+    {
+        std::string backend;
+        if (ss >> backend && app) {
+            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+            cfg.physicsBackend = backend;
+            LOGGER_INFO("ConfigLoader") << "Scene requested Physics Backend: " << backend;
+        }
+    }
+    else if (subCmd == "AUDIO_ENGINE")
+    {
+        std::string backend;
+        if (ss >> backend && app) {
+            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+            cfg.audioBackend = backend;
+            LOGGER_INFO("ConfigLoader") << "Scene requested Audio Backend: " << backend;
+        }
+    }
+    else if (subCmd == "SHADOWS")
     {
         int mode = 1;
         ss >> mode;
@@ -333,10 +359,25 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
     else if (subCmd == "RENDER_ORDER")
     {
         int enable = 0;
-        if (ss >> enable)
+        if (ss >> enable && app)
         {
-            if (app)
-                app->GetRenderSystem().SetRenderOrderEnabled(enable != 0);
+            bool renderOrder = (enable != 0);
+            app->GetRenderSystem().SetRenderOrderEnabled(renderOrder);
+
+            if (renderOrder)
+            {
+                // Disable depth test when explicit render order is active
+                app->GetRenderSystem().SetDepthTest(false);
+            }
+            else
+            {
+                // Restore depth test based on configuration when render order is disabled
+                app->GetRenderSystem().SetDepthTest(app->GetConfig().depthTestEnabled);
+            }
+            
+            // Sync config state
+            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+            cfg.renderOrderEnabled = renderOrder;
         }
     }
     else if (subCmd == "FILTER_LAYER")

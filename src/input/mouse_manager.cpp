@@ -1,8 +1,7 @@
 #include "engine/input/mouse_manager.h"
 
 MouseManager::MouseManager(IWindow *window)
-    : m_Window(window),
-      m_LastX(400.0), m_LastY(300.0),
+    : m_LastX(400.0), m_LastY(300.0),
       m_XOffset(0.0f), m_YOffset(0.0f), m_ScrollY(0.0f),
       m_FirstMouse(true),
       m_LeftButtonPressed(false),
@@ -10,9 +9,15 @@ MouseManager::MouseManager(IWindow *window)
       m_LeftMouseClicked(false),
       m_RightMouseClicked(false),
       m_Mode(Input::CursorMode::Normal)
-
 {
+    SetWindow(window);
 }
+
+void MouseManager::SetWindow(IWindow* window)
+{
+    m_Window = window;
+}
+
 
 void MouseManager::UpdatePosition(double xpos, double ypos)
 {

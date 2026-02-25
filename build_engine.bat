@@ -1,18 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 
-
-:: -----------------------------------------------------------------------------
-:: SINGLE INSTANCE CHECK (STREAM LOCK)
-:: -----------------------------------------------------------------------------
 set "LOCK_FILE=%~dp0build_engine.lock"
 
-:: Debug: Check if we are the locked session
 if "%~1"==":LOCKED_SESSION" goto :MAIN_LOGIC
 
-:: Try to launch the locked session
-:: redirecting stream 9 to the lock file.
-:: If file is locked by another instance, this fails.
 (
     "%COMSPEC%" /c "%~f0" :LOCKED_SESSION
 ) 9>"%LOCK_FILE%" || (
@@ -24,47 +16,43 @@ if "%~1"==":LOCKED_SESSION" goto :MAIN_LOGIC
     exit /b
 )
 
-:: If the child process finished, we exit too.
 exit /b
 
 :MAIN_LOGIC
-:: Set title
 title Axis Engine Builder
 
-:: -----------------------------------------------------------------------------
-
-:: -----------------------------------------------------------------------------
-:: -----------------------------------------------------------------------------
-:: 0. SELECT ACTION
-:: -----------------------------------------------------------------------------
 :SELECT_ACTION
 cls
 echo ==========================================
 echo           GAME ENGINE LAUNCHER
 echo ==========================================
 echo  1. Full Rebuild (Clean + Build + Run)
-echo  2. Run Existing Game
+echo  2. Quick Build (Build + Run - FAST)
+echo  3. Run Existing Game
 echo ==========================================
 set "action_choice="
 set /p action_choice="Enter number (Default: 1): "
 
 if "%action_choice%"=="" set action_choice=1
 
-:: Validate number
-echo %action_choice%| findstr /r "^[1-2]$" >nul
+echo %action_choice%| findstr /r "^[1-3]$" >nul
 if errorlevel 1 goto RETRY_ACTION
 
-if "%action_choice%"=="2" goto SELECT_BUILD_TYPE_FOR_RUN
-goto SELECT_COMPILER
+if "%action_choice%"=="1" (
+    set "QUICK_BUILD="
+    goto SELECT_COMPILER
+)
+if "%action_choice%"=="2" (
+    set "QUICK_BUILD=1"
+    goto SELECT_BUILD_TYPE
+)
+if "%action_choice%"=="3" goto SELECT_BUILD_TYPE_FOR_RUN
 
 :RETRY_ACTION
 echo [ERROR] Invalid selection!
 pause
 goto SELECT_ACTION
 
-:: -----------------------------------------------------------------------------
-:: 1. CHOOSE COMPILER / GENERATOR
-:: -----------------------------------------------------------------------------
 :SELECT_COMPILER
 cls
 echo ==========================================
@@ -84,13 +72,15 @@ echo 11. Visual Studio 2026
 echo 12. MinGW (MinGW Makefiles)
 echo 13. Clang (Ninja / NMake)
 echo 14. Auto-Detect (Default - CMake will pick latest VS)
+echo ------------------------------------------
+echo  B. Back to Main Menu
 echo ==========================================
 set "comp_choice="
 set /p comp_choice="Enter number (Default: 14): "
 
 if "%comp_choice%"=="" set comp_choice=14
+if /i "%comp_choice%"=="b" goto SELECT_ACTION
 
-:: Validate number
 echo %comp_choice%| findstr /r "^[0-9]*$" >nul
 if errorlevel 1 goto RETRY_COMPILER
 
@@ -125,9 +115,6 @@ if "%comp_choice%"=="14" set "GENERATOR="
 
 echo Selected Compiler Option: %comp_choice%
 
-:: -----------------------------------------------------------------------------
-:: 2. CHOOSE BUILD TYPE (FOR REBUILD)
-:: -----------------------------------------------------------------------------
 :SELECT_BUILD_TYPE
 cls
 echo.
@@ -138,13 +125,18 @@ echo  1. Debug
 echo  2. Release (Default)
 echo  3. RelWithDebInfo
 echo  4. MinSizeRel
+echo ------------------------------------------
+echo  B. Back
 echo ==========================================
 set "type_choice="
 set /p type_choice="Enter number (Default: 2): "
 
 if "%type_choice%"=="" set type_choice=2
+if /i "%type_choice%"=="b" (
+    if defined QUICK_BUILD goto SELECT_ACTION
+    goto SELECT_COMPILER
+)
 
-:: Validate number
 echo %type_choice%| findstr /r "^[0-9]*$" >nul
 if errorlevel 1 goto RETRY_BUILD_TYPE
 
@@ -167,11 +159,10 @@ if "%type_choice%"=="3" set BUILD_TYPE=RelWithDebInfo
 if "%type_choice%"=="4" set BUILD_TYPE=MinSizeRel
 
 echo Selected Build Type: %BUILD_TYPE%
+
+if defined QUICK_BUILD goto CONFIRM_CONFIG
 goto SELECT_CLEAN_MODE
 
-:: -----------------------------------------------------------------------------
-:: 2b. SELECT CLEAN MODE
-:: -----------------------------------------------------------------------------
 :SELECT_CLEAN_MODE
 cls
 echo.
@@ -179,14 +170,16 @@ echo ==========================================
 echo           SELECT CLEAN MODE
 echo ==========================================
 echo  1. Strict (Fail if cannot clean build/bin)
-echo  2. Soft   (Warning only if cannot clean)
+echo  2. Soft   (Warning only if cannot clean) [Default]
+echo ------------------------------------------
+echo  B. Back
 echo ==========================================
 set "clean_mode_choice="
 set /p clean_mode_choice="Enter number (Default: 2): "
 
 if "%clean_mode_choice%"=="" set clean_mode_choice=2
+if /i "%clean_mode_choice%"=="b" goto SELECT_BUILD_TYPE
 
-:: Validate
 echo %clean_mode_choice%| findstr /r "^[1-2]$" >nul
 if errorlevel 1 goto RETRY_CLEAN_MODE
 
@@ -202,9 +195,6 @@ echo [ERROR] Invalid selection!
 pause
 goto SELECT_CLEAN_MODE
 
-:: -----------------------------------------------------------------------------
-:: 2d. SELECT DEBUG SYSTEM
-:: -----------------------------------------------------------------------------
 :SELECT_DEBUG_SYSTEM
 cls
 echo.
@@ -213,13 +203,15 @@ echo           ENABLE DEBUG SYSTEM?
 echo ==========================================
 echo  1. No (Default)
 echo  2. Yes (Enables Debug Tools)
+echo ------------------------------------------
+echo  B. Back
 echo ==========================================
 set "debug_sys_choice="
 set /p debug_sys_choice="Enter number (Default: 1): "
 
 if "%debug_sys_choice%"=="" set debug_sys_choice=1
+if /i "%debug_sys_choice%"=="b" goto SELECT_CLEAN_MODE
 
-:: Validate
 echo %debug_sys_choice%| findstr /r "^[1-2]$" >nul
 if errorlevel 1 goto RETRY_DEBUG_SYSTEM
 
@@ -233,10 +225,6 @@ echo [ERROR] Invalid selection!
 pause
 goto SELECT_DEBUG_SYSTEM
 
-
-:: -----------------------------------------------------------------------------
-:: 2e. SELECT LOG LEVEL
-:: -----------------------------------------------------------------------------
 :SELECT_LOG_LEVEL
 cls
 echo.
@@ -247,13 +235,15 @@ echo  1. NO      (Disable all logging)
 echo  2. MINIMAL (Errors, Warnings, Important Info) [Default]
 echo  3. FLEX    (Standard Logging)
 echo  4. DEBUG   (Verbose Debugging)
+echo ------------------------------------------
+echo  B. Back
 echo ==========================================
 set "log_level_choice="
 set /p log_level_choice="Enter number (Default: 2): "
 
 if "%log_level_choice%"=="" set log_level_choice=2
+if /i "%log_level_choice%"=="b" goto SELECT_DEBUG_SYSTEM
 
-:: Validate
 echo %log_level_choice%| findstr /r "^[1-4]$" >nul
 if errorlevel 1 goto RETRY_LOG_LEVEL
 
@@ -270,10 +260,6 @@ echo [ERROR] Invalid selection!
 pause
 goto SELECT_LOG_LEVEL
 
-
-:: -----------------------------------------------------------------------------
-:: 2c. CONFIRM CONFIG
-:: -----------------------------------------------------------------------------
 :CONFIRM_CONFIG
 cls
 echo.
@@ -286,16 +272,23 @@ if not defined GENERATOR (
     echo  Generator:  %GENERATOR%
 )
 echo  Build Type: %BUILD_TYPE%
-echo  Clean Mode: %CLEAN_MODE%
-echo  Debug Sys:  %ENABLE_DEBUG_SYSTEM%
-echo  Log Level:  %AXIS_LOG_LEVEL%
+if defined QUICK_BUILD (
+    echo  Build Mode: QUICK
+) else (
+    echo  Clean Mode: %CLEAN_MODE%
+    echo  Debug Sys:  %ENABLE_DEBUG_SYSTEM%
+    echo  Log Level:  %AXIS_LOG_LEVEL%
+)
 echo ==========================================
 set "confirm="
-set /p confirm="Do you want to proceed? (Y/N, M=Main Menu) [Default: Y]: "
+set /p confirm="Do you want to proceed? (Y/N, B=Back) [Default: Y]: "
 if "%confirm%"=="" set confirm=y
 
-if /i "%confirm%"=="m" goto SELECT_ACTION
-if /i "%confirm%"=="n" goto SELECT_COMPILER
+if /i "%confirm%"=="b" (
+    if defined QUICK_BUILD goto SELECT_BUILD_TYPE
+    goto SELECT_LOG_LEVEL
+)
+if /i "%confirm%"=="n" goto SELECT_ACTION
 if /i "%confirm%"=="y" (
     cls
     goto CLEAN_FOLDERS
@@ -310,16 +303,15 @@ echo      SELECT VERSION TO RUN
 echo ==========================================
 echo  1. Debug
 echo  2. Release (Default)
-echo  M. Back to Main Menu
+echo ------------------------------------------
+echo  B. Back to Main Menu
 echo ==========================================
 set "run_type_choice="
 set /p run_type_choice="Enter selection (Default: 2): "
 
 if "%run_type_choice%"=="" set run_type_choice=2
+if /i "%run_type_choice%"=="b" goto SELECT_ACTION
 
-if /i "%run_type_choice%"=="m" goto SELECT_ACTION
-
-:: Validate number
 echo %run_type_choice%| findstr /r "^[1-2]$" >nul
 if errorlevel 1 goto RETRY_RUN_TYPE
 
@@ -334,16 +326,12 @@ echo [ERROR] Invalid selection!
 pause
 goto SELECT_BUILD_TYPE_FOR_RUN
 
-:: -----------------------------------------------------------------------------
-:: 3. CLEAN OLD FILES
-:: -----------------------------------------------------------------------------
 :CLEAN_FOLDERS
 echo.
 echo ==========================================
 echo        CLEANING BIN AND BUILD...
 echo ==========================================
 
-:: Kill processes...
 taskkill /F /IM AxisEngine.exe >nul 2>&1
 taskkill /F /IM cmake.exe >nul 2>&1
 taskkill /F /IM MSBuild.exe >nul 2>&1
@@ -353,6 +341,11 @@ taskkill /F /IM ninja.exe >nul 2>&1
 
 timeout /t 1 /nobreak >nul
 
+if defined QUICK_BUILD (
+    echo [SKIP] Quick Build enabled. Skipping folder deletion...
+    goto SKIP_CLEAN
+)
+
 if exist "build" (
     echo Deleting build folder...
     rmdir /s /q "build"
@@ -360,15 +353,12 @@ if exist "build" (
         echo [FAILED] Could not delete 'build' folder.
         if "%CLEAN_MODE%"=="Strict" (
             echo [ERROR] Strict Mode enabled. Aborting because cleanup failed.
-            echo [HINT]  Close any programs using files in 'build' (VS Code, Explorer, etc.)
             pause
             goto EXIT_SCRIPT
         )
     ) else (
         echo [DELETED] 'build' folder.
     )
-) else (
-    echo [NOT FOUND] 'build' folder.
 )
 
 if exist "bin\%BUILD_TYPE%" (
@@ -385,99 +375,66 @@ if exist "bin\%BUILD_TYPE%" (
         echo [DELETED] 'bin\%BUILD_TYPE%' folder.
     )
 ) else (
-    :: Handle flat structure (MinGW) or if folder doesn't exist
     if exist "bin\AxisEngine.exe" (
-        echo Deleting existing executable...
         del /f /q "bin\AxisEngine.exe"
-        if exist "bin\AxisEngine.exe" (
-             echo [FAILED] Could not delete 'bin\AxisEngine.exe'.
-        ) else (
-             echo [DELETED] 'bin\AxisEngine.exe'.
-        )
-    ) else (
-        echo [NOT FOUND] 'bin\%BUILD_TYPE%' or existing executable.
     )
 )
 
-:: -----------------------------------------------------------------------------
-:: 4. RUN CMAKE
-:: -----------------------------------------------------------------------------
-taskkill /F /IM cl.exe >nul 2>&1
-taskkill /F /IM link.exe >nul 2>&1
-taskkill /F /IM ninja.exe >nul 2>&1
+:SKIP_CLEAN
 
-timeout /t 1 /nobreak >nul
-
-:: -----------------------------------------------------------------------------
-:: 4. RUN CMAKE
-:: -----------------------------------------------------------------------------
+title Axis Engine Builder - Building...
 echo.
 echo ==========================================
 echo      CONFIGURING AND BUILDING...
 echo ==========================================
-echo Generator: %GENERATOR%
-echo Build Type: %BUILD_TYPE%
 
-:: Check for CMake in PATH
 where cmake >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     set CMAKE_CMD=cmake
 ) else (
-    echo CMake not found in PATH. Searching common locations...
-    
-    :: Try VS 2022 / VS 18 (Future) Preview Path
     if exist "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" (
         set "CMAKE_CMD=C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
     ) else (
          if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" (
             set "CMAKE_CMD=C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
          ) else (
-             echo [ERROR] CMake not found! Please install CMake or add it to PATH.
+             echo [ERROR] CMake not found!
              pause
              exit /b 1
          )
     )
 )
 
-echo Using CMake: "!CMAKE_CMD!"
-
-if not defined GENERATOR (
-    "!CMAKE_CMD!" -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM! -DAXIS_LOG_LEVEL=!AXIS_LOG_LEVEL!
+if not defined QUICK_BUILD (
+    if not defined GENERATOR (
+        "!CMAKE_CMD!" -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM! -DAXIS_LOG_LEVEL=!AXIS_LOG_LEVEL!
+    ) else (
+        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM! -DAXIS_LOG_LEVEL=!AXIS_LOG_LEVEL!
+    )
 ) else (
-    "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM! -DAXIS_LOG_LEVEL=!AXIS_LOG_LEVEL!
+    if not exist "build" (
+        "!CMAKE_CMD!" -B build
+    )
 )
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [ERROR] CMake Configuration failed with error code: !ERRORLEVEL!
-    echo [HINT]  Possible causes:
-    echo         - CMakeLists.txt has syntax errors.
-    echo         - Selected Generator/Compiler is not installed or invalid.
-    echo         - Missing dependencies/libraries.
-    echo.
+    echo [ERROR] CMake Configuration failed!
     pause
     goto EXIT_SCRIPT
 )
 
-:: CMake will pick the correct default target (ALL_BUILD for VS, all for Makefiles)
 "!CMAKE_CMD!" --build build --config %BUILD_TYPE%
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [ERROR] Build failed with error code: !ERRORLEVEL!
-    echo [HINT]  Possible causes:
-    echo         - C++ Syntax errors ^(check log above^).
-    echo         - Linker errors ^(missing symbols/libraries^).
-    echo         - File lock issues ^(if clean failed^).
-    echo.
+    echo [ERROR] Build failed!
     pause
     goto EXIT_SCRIPT
 )
 
-:: -----------------------------------------------------------------------------
-:: 5. RUN EXECUTABLE
-:: -----------------------------------------------------------------------------
 :RUN_GAME
+title Axis Engine Builder - Running...
 echo.
 echo ==========================================
 echo          RUNNING GAME ENGINE
@@ -485,54 +442,23 @@ echo ==========================================
 
 set EXE_PATH=bin\%BUILD_TYPE%\AxisEngine.exe
 
-:: CMake with VS generators puts output in bin/Debug or bin/Release
 if exist "bin\%BUILD_TYPE%\AxisEngine.exe" (
     set EXE_PATH=bin\%BUILD_TYPE%\AxisEngine.exe
 ) else (
-    :: Some configs might put it directly in bin if not using multi-config generator
     if exist "bin\AxisEngine.exe" (
         set EXE_PATH=bin\AxisEngine.exe
     )
 )
 
 if exist "%EXE_PATH%" (
-    echo Launching: %EXE_PATH%
     "%EXE_PATH%"
-    
     if !ERRORLEVEL! NEQ 0 (
         echo.
         echo [ERROR] Game exited with error code: !ERRORLEVEL!
-        echo [HINT]  Possible causes:
-        echo         - Runtime crash ^(Segmentation fault, Exception^).
-        echo         - Missing DLLs in the executable folder.
-        echo         - Asset loading failure ^(check scenes/resources^).
     )
 ) else (
-    echo.
-    echo [ERROR] Executable not found at:
-    echo         %EXE_PATH%
-    echo [HINT]  Build process might have reported success but failed to link the final .exe.
-    
-    echo.
-    echo [AUTO-RECOVERY] Attempting to clean build/bin artifacts...
-    
-    if exist "build" (
-        rmdir /s /q "build" 
-        if exist "build" ( echo [FAILED] Could not delete 'build'. ) else ( echo [DELETED] 'build'. )
-    )
-    if exist "bin" (
-        rmdir /s /q "bin"
-        if exist "bin" ( echo [FAILED] Could not delete 'bin'. ) else ( echo [DELETED] 'bin'. )
-    )
+    echo [ERROR] Executable not found!
 )
 
-echo.
-echo ==========================================
-echo           FINISHED
-echo ==========================================
-:: pause
-
 :EXIT_SCRIPT
-:: Lock is explicitly held by the parent process stream. 
-:: We just exit, and the parent will close, releasing the lock.
 exit /b %ERRORLEVEL%

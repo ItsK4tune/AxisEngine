@@ -1,11 +1,6 @@
 #include <engine/app/backends/glfw_window.h>
 #include <app/backends/glfw_translator.h>
 #include <utils/logger.h>
-#include <iostream>
-
-namespace {
-
-}
 
 GLFWWindow::GLFWWindow() {}
 
@@ -117,19 +112,36 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
     const GLFWvidmode* videoMode = glfwGetVideoMode(targetMonitor);
     if (!videoMode) return;
 
+    // Fallback to monitor resolution if width/height is 0
+    if (width <= 0) width = videoMode->width;
+    if (height <= 0) height = videoMode->height;
+
     int targetRefreshRate = (refreshRate > 0) ? refreshRate : videoMode->refreshRate;
 
     if (mode == WindowMode::Fullscreen) {
         glfwSetWindowMonitor(m_Window, targetMonitor, 0, 0, width, height, targetRefreshRate);
-        LOGGER_INFO("GLFWWindow") << "Window set to Fullscreen: " << width << "x" << height << "@" << targetRefreshRate;
-    } else if (mode == WindowMode::Borderless) {
+        LOGGER_INFO("GLFWWindow") << "Window set to Exclusive Fullscreen: " << width << "x" << height << "@" << targetRefreshRate;
+    } else if (mode == WindowMode::BorderlessFullscreen) {
         glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_FALSE);
         int xpos, ypos;
         glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
         m_Width = videoMode->width;
         m_Height = videoMode->height;
-        glfwSetWindowMonitor(m_Window, nullptr, xpos, ypos, videoMode->width, videoMode->height, targetRefreshRate);
-        LOGGER_INFO("GLFWWindow") << "Window set to Borderless: " << m_Width << "x" << m_Height;
+        // Use nullptr for monitor to make it a borderless window, but at monitor resolution and position
+        glfwSetWindowMonitor(m_Window, nullptr, xpos, ypos, m_Width, m_Height, GLFW_DONT_CARE);
+        LOGGER_INFO("GLFWWindow") << "Window set to Borderless Fullscreen: " << m_Width << "x" << m_Height;
+    } else if (mode == WindowMode::Borderless) {
+        glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_FALSE);
+        int xpos, ypos;
+        glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
+        
+        int cx = xpos + (videoMode->width - width) / 2;
+        int cy = ypos + (videoMode->height - height) / 2;
+        
+        glfwSetWindowMonitor(m_Window, nullptr, cx, cy, width, height, GLFW_DONT_CARE);
+        m_Width = width;
+        m_Height = height;
+        LOGGER_INFO("GLFWWindow") << "Window set to Borderless: " << width << "x" << height << " at (" << cx << "," << cy << ")";
     } else {
         // Switching to Windowed
         glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_TRUE);
@@ -140,12 +152,10 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         int cx = xpos + (videoMode->width - width) / 2;
         int cy = ypos + (videoMode->height - height) / 2;
         
-        // Ensure the title bar isn't off-screen (cy should be at least some margin from top if we are on primary monitor)
         if (cy < ypos + 30) cy = ypos + 30; 
 
         glfwSetWindowMonitor(m_Window, nullptr, cx, cy, width, height, GLFW_DONT_CARE);
         
-        // Necessary on some systems to ensure decorations and proper state are refreshed after fullscreen
         glfwRestoreWindow(m_Window);
         glfwShowWindow(m_Window);
 
