@@ -172,37 +172,70 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
     m_RenderQueue.clear();
 
-    auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
-    for (auto entity : view)
+    std::vector<entt::entity> visibleEntities;
+    if (scene.GetOctree())
     {
-        auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
+        // For now, rebuild every frame to ensure correctness with dynamic objects.
+        // In a production engine, you'd only update moved objects.
+        std::vector<OctreeElement> elements;
+        auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
+        for (auto entity : view)
+        {
+            auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
+            if (!renderer.model) continue;
+
+            glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+            glm::vec3 min = renderer.model->aabb.minBound;
+            glm::vec3 max = renderer.model->aabb.maxBound;
+            glm::vec3 center = (min + max) * 0.5f;
+            glm::vec3 extent = (max - min) * 0.5f;
+
+            glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
+            glm::mat3 rot = glm::mat3(modelMatrix);
+            glm::vec3 worldExtent = glm::vec3(
+                std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
+
+            elements.push_back({entity, AABB(worldCenter - worldExtent, worldCenter + worldExtent)});
+        }
+        scene.GetOctree()->Rebuild(elements);
+        
+        if (m_FrustumCullingEnabled)
+            scene.GetOctree()->Query(frustum, visibleEntities);
+        else
+        {
+            for (const auto& el : elements) visibleEntities.push_back(el.entity);
+        }
+    }
+    else
+    {
+        // Fallback if no octree
+        auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
+        for (auto entity : view) visibleEntities.push_back(entity);
+    }
+
+    for (auto entity : visibleEntities)
+    {
+        if (!scene.registry.all_of<TransformComponent, MeshRendererComponent>(entity))
+            continue;
+
+        auto &transform = scene.registry.get<TransformComponent>(entity);
+        auto &renderer = scene.registry.get<MeshRendererComponent>(entity);
 
         if (!renderer.model || renderer.shader.expired())
             continue;
 
         glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
-        glm::vec3 min = renderer.model->AABBmin;
-        glm::vec3 max = renderer.model->AABBmax;
-
-        glm::vec3 center = (min + max) * 0.5f;
-        glm::vec3 extent = (max - min) * 0.5f;
-
-        glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(center, 1.0f));
-
-        glm::mat3 rot = glm::mat3(modelMatrix);
-        glm::vec3 worldExtent = glm::vec3(
-            std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-            std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-            std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
-
-        glm::vec3 worldMin = worldCenter - worldExtent;
-        glm::vec3 worldMax = worldCenter + worldExtent;
-
+        
+        // Distance Culling (still useful with Octree if needed, though Octree can handle it)
         float distSq = 0.0f;
-
         if (cam && camTrans)
         {
             glm::vec3 cameraPos = camTrans->position;
+            glm::vec3 worldMin = modelMatrix * glm::vec4(renderer.model->aabb.minBound, 1.0f);
+            glm::vec3 worldMax = modelMatrix * glm::vec4(renderer.model->aabb.maxBound, 1.0f);
+            
             float dx = (std::max)(worldMin.x - cameraPos.x, (std::max)(0.0f, cameraPos.x - worldMax.x));
             float dy = (std::max)(worldMin.y - cameraPos.y, (std::max)(0.0f, cameraPos.y - worldMax.y));
             float dz = (std::max)(worldMin.z - cameraPos.z, (std::max)(0.0f, cameraPos.z - worldMax.z));
@@ -213,25 +246,14 @@ void RenderSystem::Render(Scene &scene, int width, int height)
                 continue;
         }
 
-        if (cam && m_FrustumCullingEnabled)
-        {
-            if (!frustum.IsBoxVisible(worldMin, worldMax))
-                continue;
-        }
-
-        MaterialComponent *mat = nullptr;
-        if (scene.registry.all_of<MaterialComponent>(entity))
-        {
-            mat = &scene.registry.get<MaterialComponent>(entity);
-        }
-
+        MaterialComponent *mat = scene.registry.try_get<MaterialComponent>(entity);
         Model *activeModel = renderer.model.get();
-        if (scene.registry.all_of<LODComponent>(entity))
+        
+        if (auto* lod = scene.registry.try_get<LODComponent>(entity))
         {
-            auto& lod = scene.registry.get<LODComponent>(entity);
-            for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
-                if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
-                    activeModel = lod.lodModels[i].get();
+            for (int i = 0; i < lod->lodDistancesSq.size(); ++i) {
+                if (distSq > lod->lodDistancesSq[i] && i < lod->lodModels.size() && lod->lodModels[i]) {
+                    activeModel = lod->lodModels[i].get();
                 } else {
                     break;
                 }
@@ -241,21 +263,13 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         uint32_t layer = 1;
         int renderOrder = renderer.order;
 
-        if (scene.registry.all_of<InfoComponent>(entity))
+        if (auto* info = scene.registry.try_get<InfoComponent>(entity))
         {
-            auto& info = scene.registry.get<InfoComponent>(entity);
-            layer = info.layer;
+            layer = info->layer;
         }
 
-        if ((m_FilterLayerMask & layer) == 0)
-        {
-            continue; // Clipped by global filter layer mask
-        }
-
-        if (cam && (cam->cullingMask & layer) == 0)
-        {
-            continue; // Clipped by camera's culling mask
-        }
+        if ((m_FilterLayerMask & layer) == 0) continue;
+        if (cam && (cam->cullingMask & layer) == 0) continue;
 
         m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat, activeModel, layer, renderOrder});
     }

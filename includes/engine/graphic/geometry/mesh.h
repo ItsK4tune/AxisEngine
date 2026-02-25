@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <graphic/core/shader.h>
+#include <math/aabb.h>
 #include <string>
 #include <vector>
 
@@ -36,8 +37,7 @@ public:
     std::vector<unsigned int> indices;
     std::vector<Texture> textures;
     unsigned int VAO;
-    glm::vec3 AABBmin;
-    glm::vec3 AABBmax;
+    AABB aabb;
 
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
     void Draw(Shader &shader);

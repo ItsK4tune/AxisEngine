@@ -252,9 +252,9 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
             if (mrc.model)
             {
                 glm::vec3 localTop = glm::vec3(
-                    (mrc.model->AABBmin.x + mrc.model->AABBmax.x) * 0.5f,
-                    mrc.model->AABBmax.y,
-                    (mrc.model->AABBmin.z + mrc.model->AABBmax.z) * 0.5f);
+                    (mrc.model->aabb.minBound.x + mrc.model->aabb.maxBound.x) * 0.5f,
+                    mrc.model->aabb.maxBound.y,
+                    (mrc.model->aabb.minBound.z + mrc.model->aabb.maxBound.z) * 0.5f);
                 labelPos = glm::vec3(modelMatrix * glm::vec4(localTop, 1.0f));
                 labelPos.y += 0.2f;
                 usedAABB = true;

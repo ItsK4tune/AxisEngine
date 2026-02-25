@@ -119,8 +119,8 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 continue;
 
             glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
-            glm::vec3 min = renderer.model->AABBmin;
-            glm::vec3 max = renderer.model->AABBmax;
+            glm::vec3 min = renderer.model->aabb.minBound;
+            glm::vec3 max = renderer.model->aabb.maxBound;
 
             glm::vec3 center = (min + max) * 0.5f;
             glm::vec3 extent = (max - min) * 0.5f;
@@ -254,8 +254,8 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             if (rObj.model)
             {
                 glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
-                glm::vec3 min = rObj.model->AABBmin;
-                glm::vec3 max = rObj.model->AABBmax;
+                glm::vec3 min = rObj.model->aabb.minBound;
+                glm::vec3 max = rObj.model->aabb.maxBound;
 
                 glm::vec3 center = (min + max) * 0.5f;
                 glm::vec3 extent = (max - min) * 0.5f;
@@ -390,8 +390,8 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 continue;
 
             glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
-            glm::vec3 min = rObj.model->AABBmin;
-            glm::vec3 max = rObj.model->AABBmax;
+            glm::vec3 min = rObj.model->aabb.minBound;
+            glm::vec3 max = rObj.model->aabb.maxBound;
 
             glm::vec3 center = (min + max) * 0.5f;
             glm::vec3 extent = (max - min) * 0.5f;

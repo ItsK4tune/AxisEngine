@@ -9,6 +9,7 @@
 #include <graphic/geometry/mesh.h>
 #include <graphic/core/shader.h>
 #include <graphic/geometry/animdata.h>
+#include <math/aabb.h>
 
 class Model
 {
@@ -21,8 +22,7 @@ public:
     std::vector<Mesh> meshes;
     std::string directory;
     bool gammaCorrection = false;
-    glm::vec3 AABBmin = glm::vec3(0.0f);
-    glm::vec3 AABBmax = glm::vec3(0.0f);
+    AABB aabb;
 
     void Draw(Shader &shader);
     void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models);

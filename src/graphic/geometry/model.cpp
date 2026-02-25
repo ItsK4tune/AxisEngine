@@ -383,17 +383,17 @@ void Model::ComputeAABB()
 {
     if (!meshes.empty())
     {
-        AABBmin = meshes[0].AABBmin;
-        AABBmax = meshes[0].AABBmax;
+        aabb.minBound = meshes[0].aabb.minBound;
+        aabb.maxBound = meshes[0].aabb.maxBound;
         for (const auto &mesh : meshes)
         {
-            AABBmin.x = (std::min)(AABBmin.x, mesh.AABBmin.x);
-            AABBmin.y = (std::min)(AABBmin.y, mesh.AABBmin.y);
-            AABBmin.z = (std::min)(AABBmin.z, mesh.AABBmin.z);
-
-            AABBmax.x = (std::max)(AABBmax.x, mesh.AABBmax.x);
-            AABBmax.y = (std::max)(AABBmax.y, mesh.AABBmax.y);
-            AABBmax.z = (std::max)(AABBmax.z, mesh.AABBmax.z);
+            aabb.minBound.x = (std::min)(aabb.minBound.x, mesh.aabb.minBound.x);
+            aabb.minBound.y = (std::min)(aabb.minBound.y, mesh.aabb.minBound.y);
+            aabb.minBound.z = (std::min)(aabb.minBound.z, mesh.aabb.minBound.z);
+ 
+            aabb.maxBound.x = (std::max)(aabb.maxBound.x, mesh.aabb.maxBound.x);
+            aabb.maxBound.y = (std::max)(aabb.maxBound.y, mesh.aabb.maxBound.y);
+            aabb.maxBound.z = (std::max)(aabb.maxBound.z, mesh.aabb.maxBound.z);
         }
     }
 }

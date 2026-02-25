@@ -39,17 +39,17 @@ void Frustum::Update(const glm::mat4 &vp)
     }
 }
 
-bool Frustum::IsBoxVisible(const glm::vec3 &min, const glm::vec3 &max) const
+bool Frustum::IsBoxVisible(const glm::vec3 &minBound, const glm::vec3 &maxBound) const
 {
     for (int i = 0; i < 6; ++i)
     {
-        glm::vec3 p = min;
+        glm::vec3 p = minBound;
         if (planes[i].normal.x >= 0)
-            p.x = max.x;
+            p.x = maxBound.x;
         if (planes[i].normal.y >= 0)
-            p.y = max.y;
+            p.y = maxBound.y;
         if (planes[i].normal.z >= 0)
-            p.z = max.z;
+            p.z = maxBound.z;
 
         if (glm::dot(planes[i].normal, p) + planes[i].distance < 0)
         {

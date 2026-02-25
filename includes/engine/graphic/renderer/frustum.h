@@ -15,17 +15,13 @@ struct Plane
     }
 };
 
-struct AABB
-{
-    glm::vec3 min;
-    glm::vec3 max;
-};
+#include <math/aabb.h>
 
 class Frustum
 {
 public:
     void Update(const glm::mat4 &viewProjection);
-    bool IsBoxVisible(const glm::vec3 &min, const glm::vec3 &max) const;
+    bool IsBoxVisible(const glm::vec3 &minBound, const glm::vec3 &maxBound) const;
 
 private:
     Plane planes[6];

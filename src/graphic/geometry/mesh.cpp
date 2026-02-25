@@ -29,17 +29,17 @@ Mesh::Mesh(std::vector<Vertex> vertices,
 
     if (!vertices.empty())
     {
-        AABBmin = vertices[0].Position;
-        AABBmax = vertices[0].Position;
+        aabb.minBound = vertices[0].Position;
+        aabb.maxBound = vertices[0].Position;
         for (const auto &v : vertices)
         {
-            AABBmin.x = (std::min)(AABBmin.x, v.Position.x);
-            AABBmin.y = (std::min)(AABBmin.y, v.Position.y);
-            AABBmin.z = (std::min)(AABBmin.z, v.Position.z);
+            aabb.minBound.x = (std::min)(aabb.minBound.x, v.Position.x);
+            aabb.minBound.y = (std::min)(aabb.minBound.y, v.Position.y);
+            aabb.minBound.z = (std::min)(aabb.minBound.z, v.Position.z);
 
-            AABBmax.x = (std::max)(AABBmax.x, v.Position.x);
-            AABBmax.y = (std::max)(AABBmax.y, v.Position.y);
-            AABBmax.z = (std::max)(AABBmax.z, v.Position.z);
+            aabb.maxBound.x = (std::max)(aabb.maxBound.x, v.Position.x);
+            aabb.maxBound.y = (std::max)(aabb.maxBound.y, v.Position.y);
+            aabb.maxBound.z = (std::max)(aabb.maxBound.z, v.Position.z);
         }
     }
 }

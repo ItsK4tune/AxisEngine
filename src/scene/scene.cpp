@@ -142,11 +142,13 @@ void Scene::InitializeManagers()
     lightManager = std::make_unique<LightManager>(*this);
     cameraManager = std::make_unique<CameraManager>(*this);
     entityFactory = std::make_unique<EntityFactory>(*this);
+    m_Octree = std::make_unique<Octree>(AABB(glm::vec3(-1000.0f), glm::vec3(1000.0f)));
 }
 
 void Scene::ShutdownManagers()
 {
     entityFactory.reset();
+    m_Octree.reset();
     cameraManager.reset();
     lightManager.reset();
 }
