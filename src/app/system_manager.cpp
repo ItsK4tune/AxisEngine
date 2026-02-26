@@ -78,7 +78,7 @@ void SystemManager::UpdateLogic(Scene& scene, float deltaTime, float realDeltaTi
         scriptSystem.Update(scene, deltaTime, realDeltaTime, app);
 }
 
-void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager& res, SoundPlayer& sound, uint32_t mask)
+void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager& res, SoundPlayer& sound, float alpha, uint32_t mask)
 {
     if (mask & (uint32_t)SystemGroup::Animation)
         animationSystem.Update(scene, deltaTime);
@@ -91,13 +91,13 @@ void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager
 }
 
 
-void SystemManager::RenderShadows(Scene& scene, uint32_t mask)
+void SystemManager::RenderShadows(Scene& scene, float alpha, uint32_t mask)
 {
     if (mask & (uint32_t)SystemGroup::Render)
-        renderSystem.RenderShadows(scene);
+        renderSystem.RenderShadows(scene, alpha);
 }
 
-void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width, int height, uint32_t mask)
+void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width, int height, float alpha, uint32_t mask)
 {
     if (renderSystem.GetContext())
         renderSystem.GetContext()->GetRenderStateManager().Viewport(0, 0, width, height);
@@ -108,7 +108,7 @@ void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width,
         skyboxRenderSystem.Render(scene);
     
     if (mask & (uint32_t)SystemGroup::Render)
-        renderSystem.Render(scene, width, height);
+        renderSystem.Render(scene, width, height, alpha);
     
     if (mask & (uint32_t)SystemGroup::Particle)
         particleSystem.Render(scene, res);

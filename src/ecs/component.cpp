@@ -63,6 +63,34 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
     return m_WorldMatrix;
 }
 
+glm::mat4 TransformComponent::GetInterpolatedLocalMatrix(float alpha) const
+{
+    glm::vec3 p = glm::mix(prevPosition, position, alpha);
+    glm::quat r = glm::slerp(prevRotation, rotation, alpha);
+    glm::vec3 s = glm::mix(prevScale, scale, alpha);
+
+    glm::mat4 trans = glm::translate(glm::mat4(1.0f), p);
+    glm::mat4 rot = glm::mat4_cast(r);
+    glm::mat4 sca = glm::scale(glm::mat4(1.0f), s);
+
+    return trans * rot * sca;
+}
+
+glm::mat4 TransformComponent::GetInterpolatedWorldMatrix(entt::registry& registry, float alpha) const
+{
+    glm::mat4 local = GetInterpolatedLocalMatrix(alpha);
+
+    if (registry.valid(parent) && parent != entt::null)
+    {
+        if (registry.all_of<TransformComponent>(parent))
+        {
+            const auto& parentTrans = registry.get<TransformComponent>(parent);
+            return parentTrans.GetInterpolatedWorldMatrix(registry, alpha) * local;
+        }
+    }
+    return local;
+}
+
 void TransformComponent::SetDirty(entt::registry &registry)
 {
     m_IsWorldDirty = true;

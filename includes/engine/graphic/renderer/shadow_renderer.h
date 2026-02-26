@@ -12,7 +12,7 @@ class ShadowRenderer
 public:
     void Init(ResourceManager &res);
     void Shutdown();
-    void RenderShadows(Scene &scene);
+    void RenderShadows(Scene &scene, float alpha);
 
     void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
     void SetShadowMode(int mode) { m_ShadowMode = mode; }

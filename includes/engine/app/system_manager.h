@@ -48,10 +48,10 @@ public:
     void FixedUpdateSystems(Scene &scene, IPhysicsWorld &phys, float fixedDt, uint32_t mask = 0xFFFFFFFF);
 
     void UpdateLogic(Scene &scene, float deltaTime, float realDeltaTime, Application* app, MouseManager &mouse, uint32_t mask = 0xFFFFFFFF);
-    void UpdateVisuals(Scene &scene, float deltaTime, ResourceManager &res, SoundPlayer &sound, uint32_t mask = 0xFFFFFFFF);
+    void UpdateVisuals(Scene &scene, float deltaTime, ResourceManager &res, SoundPlayer &sound, float alpha, uint32_t mask = 0xFFFFFFFF);
 
-    void RenderShadows(Scene &scene, uint32_t mask = 0xFFFFFFFF);
-    void RenderSystems(Scene &scene, ResourceManager &res, int width, int height, uint32_t mask = 0xFFFFFFFF);
+    void RenderShadows(Scene &scene, float alpha, uint32_t mask = 0xFFFFFFFF);
+    void RenderSystems(Scene &scene, ResourceManager &res, int width, int height, float alpha, uint32_t mask = 0xFFFFFFFF);
 
 #ifdef ENABLE_DEBUG_SYSTEM
     void UpdateDebugSystem(float realDeltaTime);

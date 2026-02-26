@@ -240,6 +240,11 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
                     t.position = glm::vec3(x, y, z);
                     t.rotation = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
                     t.scale = glm::vec3(sx, sy, sz);
+                    
+                    // Sync previous states for interpolation
+                    t.prevPosition = t.position;
+                    t.prevRotation = t.rotation;
+                    t.prevScale = t.scale;
                 }
                 
                 if (auto* pNode = entNode.GetChild("Parent")) {

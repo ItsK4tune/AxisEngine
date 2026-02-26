@@ -36,11 +36,11 @@ struct RenderItem
 class RenderSystem
 {
 public:
-    void Render(Scene &scene, int width, int height);
+    void Render(Scene &scene, int width, int height, float alpha);
 
     void Init(IGraphicsContext& context, ResourceManager &res);
     void Shutdown();
-    void RenderShadows(Scene &scene);
+    void RenderShadows(Scene &scene, float alpha);
     void SetEnableShadows(bool enable) { m_ShadowRenderer.SetEnableShadows(enable); }
     void SetShadowMode(int mode) { m_ShadowRenderer.SetShadowMode(mode); }
     bool IsShadowsEnabled() const { return m_ShadowRenderer.IsShadowsEnabled(); }
@@ -86,7 +86,7 @@ public:
     IGraphicsContext* GetContext() const { return m_Context; }
 
 private:
-    void RenderOcclusionQueries(Scene &scene, const glm::mat4& projection, const glm::mat4& view);
+    void RenderOcclusionQueries(Scene &scene, const glm::mat4& projection, const glm::mat4& view, float alpha);
     void UpdateOcclusionResults(Scene &scene);
     void InitOcclusionCube();
     IGraphicsContext* m_Context = nullptr;
@@ -112,6 +112,7 @@ private:
     glm::mat4 m_PrevViewProj = glm::mat4(1.0f);
     glm::mat4 m_CurrViewProj = glm::mat4(1.0f);
 
+    std::vector<uint32_t> m_OcclusionQueries;
     std::vector<RenderItem> m_RenderQueue;
 
     std::vector<std::string> m_BonesUniforms;

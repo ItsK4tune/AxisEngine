@@ -26,7 +26,7 @@ void ShadowRenderer::Shutdown()
     m_Shadow.Shutdown();
 }
 
-void ShadowRenderer::RenderShadows(Scene &scene)
+void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
 {
     if (m_ShadowMode == 0)
         return;
@@ -118,7 +118,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             if (!renderer.model || !renderer.castShadow)
                 continue;
 
-            glm::mat4 modelMatrix = trans.GetWorldModelMatrix(scene.registry);
+            glm::mat4 modelMatrix = trans.GetInterpolatedWorldMatrix(scene.registry, alpha);
             AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
             glm::vec3 worldMin = worldAABB.minBound;
             glm::vec3 worldMax = worldAABB.maxBound;
@@ -154,7 +154,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 }
             }
 
-            shaderDir->setMat4("model", trans.GetWorldModelMatrix(scene.registry));
+            shaderDir->setMat4("model", trans.GetInterpolatedWorldMatrix(scene.registry, alpha));
 
             if (scene.registry.all_of<AnimationComponent>(entity))
             {
@@ -240,7 +240,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             auto [tObj, rObj] = view.get<TransformComponent, MeshRendererComponent>(obj);
             if (rObj.model)
             {
-                glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
+                glm::mat4 modelMatrix = tObj.GetInterpolatedWorldMatrix(scene.registry, alpha);
                 AABB worldAABB = rObj.model->aabb.Transform(modelMatrix);
                 glm::vec3 worldMin = worldAABB.minBound;
                 glm::vec3 worldMax = worldAABB.maxBound;
@@ -267,7 +267,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                     }
                 }
 
-                shaderPoint->setMat4("model", modelMatrix);
+                shaderPoint->setMat4("model", tObj.GetInterpolatedWorldMatrix(scene.registry, alpha));
                 if (scene.registry.all_of<AnimationComponent>(obj))
                 {
                     auto &anim = scene.registry.get<AnimationComponent>(obj);
@@ -364,7 +364,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
             if (!rObj.model || !rObj.castShadow)
                 continue;
 
-            glm::mat4 modelMatrix = tObj.GetWorldModelMatrix(scene.registry);
+            glm::mat4 modelMatrix = tObj.GetInterpolatedWorldMatrix(scene.registry, alpha);
             AABB worldAABB = rObj.model->aabb.Transform(modelMatrix);
             glm::vec3 worldMin = worldAABB.minBound;
             glm::vec3 worldMax = worldAABB.maxBound;
@@ -400,7 +400,7 @@ void ShadowRenderer::RenderShadows(Scene &scene)
                 }
             }
 
-            shaderSpot->setMat4("model", modelMatrix);
+            shaderSpot->setMat4("model", tObj.GetInterpolatedWorldMatrix(scene.registry, alpha));
 
             if (scene.registry.all_of<AnimationComponent>(obj))
             {

@@ -125,7 +125,9 @@ void PhysicsTransformSync::SyncFromPhysics()
         bool isDynamic = !rb.body->IsStatic() && !rb.body->IsKinematic();
         bool hasParent = m_Scene.registry.valid(transform.parent);
 
-        if (isDynamic && rb.body->IsActive())
+        // Special case: for dynamic bodies, we sync even if inactive during the first few frames
+        // to ensure the initial render state matches the physics state.
+        if (isDynamic && (rb.body->IsActive() || m_LastSyncedVersions.find(entity) == m_LastSyncedVersions.end()))
         {
             glm::vec3 worldPos;
             glm::quat worldRot;

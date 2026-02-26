@@ -78,21 +78,24 @@ void RenderSystem::Shutdown()
     if (m_Context)
     {
         auto& bm = m_Context->GetBufferManager();
+        auto& qm = m_Context->GetQueryManager();
+
         if (m_CubeVAO != 0) bm.DeleteVertexArray(m_CubeVAO);
         if (m_CubeVBO != 0) bm.DeleteBuffer(m_CubeVBO);
         if (m_CubeEBO != 0) bm.DeleteBuffer(m_CubeEBO);
 
-        // Delete all queries in registry
-        // Note: This requires access to the scene/registry, which Shutdown doesn't have.
-        // Actually, RenderSystem doesn't own the registry. 
-        // We might need a better way to cleanup queries, or we can just let them be deleted on context shutdown if the manager keeps track.
-        // But for standard practice, we should cleanup.
+        // Delete all tracked queries
+        for (uint32_t queryId : m_OcclusionQueries)
+        {
+            qm.DeleteQuery(queryId);
+        }
+        m_OcclusionQueries.clear();
     }
 }
 
-void RenderSystem::RenderShadows(Scene &scene)
+void RenderSystem::RenderShadows(Scene &scene, float alpha)
 {
-    m_ShadowRenderer.RenderShadows(scene);
+    m_ShadowRenderer.RenderShadows(scene, alpha);
 }
 
 void RenderSystem::SetFaceCulling(bool enabled, Graphics::CullMode mode)
@@ -127,7 +130,7 @@ void RenderSystem::SetDepthTest(bool enabled, Graphics::CompareFunc func)
     }
 }
 
-void RenderSystem::Render(Scene &scene, int width, int height)
+void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
 {
     if (!m_Enabled || !m_Context)
         return;
@@ -210,7 +213,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             auto [transform, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
             if (!renderer.model) continue;
 
-            glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+            glm::mat4 modelMatrix = transform.GetInterpolatedWorldMatrix(scene.registry, alpha);
             elements.push_back({entity, renderer.model->aabb.Transform(modelMatrix)});
         }
         scene.GetOctree()->Rebuild(elements);
@@ -240,7 +243,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
         if (!renderer.model || renderer.shader.expired())
             continue;
 
-        glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+        glm::mat4 modelMatrix = transform.GetInterpolatedWorldMatrix(scene.registry, alpha);
         
         // Distance Culling (still useful with Octree if needed, though Octree can handle it)
         float distSq = 0.0f;
@@ -437,7 +440,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
             currentModel = nullptr;
             currentMaterial = nullptr;
 
-            glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+            glm::mat4 modelMatrix = transform.GetInterpolatedWorldMatrix(scene.registry, alpha);
             currentShader->setMat4("model", modelMatrix);
             currentShader->setVec4("tintColor", renderer.color);
 
@@ -460,7 +463,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
             if (!m_InstanceBatchingEnabled)
             {
-                currentShader->setMat4("model", transform.GetWorldModelMatrix(scene.registry));
+                currentShader->setMat4("model", transform.GetInterpolatedWorldMatrix(scene.registry, alpha));
                 currentShader->setVec4("tintColor", renderer.color);
 
                 SetupMaterialUniforms(currentShader, entity, scene);
@@ -481,7 +484,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
                     SetupMaterialUniforms(currentShader, entity, scene);
                 }
 
-                instanceBatch.push_back(transform.GetWorldModelMatrix(scene.registry));
+                instanceBatch.push_back(transform.GetInterpolatedWorldMatrix(scene.registry, alpha));
             }
         }
     }
@@ -489,7 +492,7 @@ void RenderSystem::Render(Scene &scene, int width, int height)
 
     if (m_OcclusionCullingEnabled)
     {
-        RenderOcclusionQueries(scene, projectionMatrix, cam->viewMatrix);
+        RenderOcclusionQueries(scene, projectionMatrix, cam->viewMatrix, alpha);
     }
 
 #ifdef ENABLE_DEBUG_SYSTEM
@@ -607,7 +610,7 @@ void RenderSystem::UpdateOcclusionResults(Scene &scene)
     }
 }
 
-void RenderSystem::RenderOcclusionQueries(Scene &scene, const glm::mat4& projection, const glm::mat4& view)
+void RenderSystem::RenderOcclusionQueries(Scene &scene, const glm::mat4& projection, const glm::mat4& view, float alpha)
 {
     if (!m_OcclusionQueryShader || m_CubeVAO == 0) return;
 
@@ -636,6 +639,7 @@ void RenderSystem::RenderOcclusionQueries(Scene &scene, const glm::mat4& project
         {
             auto& occ = scene.registry.emplace<OcclusionComponent>(entity);
             occ.lastQueryId = qm.GenQuery();
+            m_OcclusionQueries.push_back(occ.lastQueryId);
         }
 
         auto &occ = scene.registry.get<OcclusionComponent>(entity);
@@ -643,7 +647,7 @@ void RenderSystem::RenderOcclusionQueries(Scene &scene, const glm::mat4& project
         // Don't start a new query if one is still pending
         if (occ.queryPending) continue;
 
-        glm::mat4 modelMatrix = transform.GetWorldModelMatrix(scene.registry);
+        glm::mat4 modelMatrix = transform.GetInterpolatedWorldMatrix(scene.registry, alpha);
         AABB aabb = renderer.model->aabb;
         
         // Scale and translate the unit cube to match AABB

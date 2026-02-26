@@ -37,4 +37,6 @@ private:
 
     float m_TimeScale = 1.0f;
     bool m_IsPaused = false;
+    bool m_MaxForceSync = true;
+    float m_Alpha = 0.0f;
 };

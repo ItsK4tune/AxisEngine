@@ -11,11 +11,18 @@ struct TransformComponent
     glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 scale = glm::vec3(1.0f);
 
+    glm::vec3 prevPosition = position;
+    glm::quat prevRotation = rotation;
+    glm::vec3 prevScale = scale;
+
     entt::entity parent = entt::null;
     std::vector<entt::entity> children;
 
     glm::mat4 GetLocalModelMatrix() const;
     glm::mat4 GetWorldModelMatrix(entt::registry &registry) const;
+
+    glm::mat4 GetInterpolatedLocalMatrix(float alpha) const;
+    glm::mat4 GetInterpolatedWorldMatrix(entt::registry &registry, float alpha) const;
 
     void SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry &registry, bool keepWorldTransform = false);
     void AddChild(entt::entity thisEntity, entt::entity child, entt::registry &registry, bool keepWorldTransform = false);

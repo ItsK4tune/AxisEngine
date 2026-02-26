@@ -1,5 +1,6 @@
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 #include <app/engine_loop.h>
 #include <app/application.h>
@@ -130,13 +131,37 @@ void EngineLoop::FixedUpdate()
 {
     m_Accumulator += deltaTime;
 
-    int physicsSteps = 0;
     const int MAX_PHYSICS_STEPS = 5;
+    int physicsSteps = 0;
 
     uint32_t mask = m_App->GetStateMachine().GetSystemMask();
+    entt::registry& registry = m_App->GetScene().registry;
+
+    if (m_MaxForceSync)
+    {
+        auto view = registry.view<TransformComponent>();
+        for (auto entity : view)
+        {
+            auto& t = view.get<TransformComponent>(entity);
+            t.prevPosition = t.position;
+            t.prevRotation = t.rotation;
+            t.prevScale = t.scale;
+        }
+        m_MaxForceSync = false;
+    }
 
     while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
     {
+        // Backup states for interpolation
+        auto view = registry.view<TransformComponent>();
+        for (auto entity : view)
+        {
+            auto& transform = view.get<TransformComponent>(entity);
+            transform.prevPosition = transform.position;
+            transform.prevRotation = transform.rotation;
+            transform.prevScale = transform.scale;
+        }
+
         auto& systemMgr = m_App->GetSystemManager();
         systemMgr.FixedUpdateSystems(m_App->GetScene(), m_App->GetPhysicsWorld(), m_FixedDeltaTime, mask);
         m_App->GetStateMachine().FixedUpdate(m_FixedDeltaTime);
@@ -147,8 +172,19 @@ void EngineLoop::FixedUpdate()
 
     if (m_Accumulator > m_FixedDeltaTime)
     {
-        m_Accumulator = 0.0f;
+        m_Accumulator = m_FixedDeltaTime;
     }
+
+    m_Alpha = m_Accumulator / m_FixedDeltaTime;
+
+    m_App->GetSystemManager().UpdateVisuals(
+        m_App->GetScene(),
+        deltaTime,
+        m_App->GetResourceManager(),
+        m_App->GetSoundPlayer(),
+        m_Alpha, // Use member
+        mask
+    );
 }
 
 void EngineLoop::Render()
@@ -156,13 +192,14 @@ void EngineLoop::Render()
     auto& systemMgr = m_App->GetSystemManager();
     uint32_t mask = m_App->GetStateMachine().GetSystemMask();
 
-    systemMgr.RenderShadows(m_App->GetScene(), mask);
+    systemMgr.RenderShadows(m_App->GetScene(), m_Alpha, mask);
 
     systemMgr.RenderSystems(
         m_App->GetScene(),
         m_App->GetResourceManager(),
         m_App->GetWidth(),
         m_App->GetHeight(),
+        m_Alpha,
         mask
     );
 
