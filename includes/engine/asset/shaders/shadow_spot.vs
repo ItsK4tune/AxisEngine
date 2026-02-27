@@ -7,7 +7,7 @@ uniform mat4 lightSpaceMatrix;
 uniform mat4 model;
 
 uniform bool hasAnimation;
-const int MAX_BONES = 100;
+const int MAX_BONES = 200;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 
 void main()

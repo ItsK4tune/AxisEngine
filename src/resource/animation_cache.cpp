@@ -13,6 +13,7 @@ AnimationCache::~AnimationCache()
 
 void AnimationCache::LoadAnimation(const std::string& name, const std::string& path, Model* model)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (!model)
     {
         LOGGER_ERROR("AnimationCache") << "Model is null for animation: " << name;
@@ -25,6 +26,7 @@ void AnimationCache::LoadAnimation(const std::string& name, const std::string& p
 
 std::shared_ptr<Animation> AnimationCache::GetAnimation(const std::string& name)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_Animations.find(name) != m_Animations.end())
         return m_Animations[name];
 
@@ -32,7 +34,14 @@ std::shared_ptr<Animation> AnimationCache::GetAnimation(const std::string& name)
     return nullptr;
 }
 
+void AnimationCache::Remove(const std::string& name)
+{
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    m_Animations.erase(name);
+}
+
 void AnimationCache::Clear()
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     m_Animations.clear();
 }

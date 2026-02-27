@@ -2,6 +2,7 @@
 #include <ecs/component.h>
 
 #include <audio/sound_player.h>
+#include <utils/logger.h>
 
 void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
 {

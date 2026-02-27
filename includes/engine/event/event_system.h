@@ -73,12 +73,13 @@ public:
     template <typename T>
     int Subscribe(std::function<void(const T &)> callback)
     {
+        std::lock_guard<std::mutex> lock(m_DispatchersMutex);
         int id = nextListenerId++;
         std::type_index typeIndex = std::type_index(typeid(T));
 
         if (dispatchers.find(typeIndex) == dispatchers.end())
         {
-            dispatchers[typeIndex] = std::make_unique<EventDispatcher<T>>();
+            dispatchers[typeIndex] = std::make_shared<EventDispatcher<T>>();
         }
 
         auto *dispatcher = static_cast<EventDispatcher<T> *>(dispatchers[typeIndex].get());
@@ -90,6 +91,7 @@ public:
     template <typename T>
     void Unsubscribe(int listenerId)
     {
+        std::lock_guard<std::mutex> lock(m_DispatchersMutex);
         std::type_index typeIndex = std::type_index(typeid(T));
 
         if (dispatchers.find(typeIndex) != dispatchers.end())
@@ -102,11 +104,20 @@ public:
     template <typename T>
     void Publish(const T &event)
     {
-        std::type_index typeIndex = std::type_index(typeid(T));
-
-        if (dispatchers.find(typeIndex) != dispatchers.end())
+        std::shared_ptr<IEventDispatcher> dispatcherPtr;
         {
-            auto *dispatcher = static_cast<EventDispatcher<T> *>(dispatchers[typeIndex].get());
+            std::lock_guard<std::mutex> lock(m_DispatchersMutex);
+            std::type_index typeIndex = std::type_index(typeid(T));
+
+            if (dispatchers.find(typeIndex) != dispatchers.end())
+            {
+                dispatcherPtr = dispatchers[typeIndex];
+            }
+        }
+
+        if (dispatcherPtr)
+        {
+            auto *dispatcher = static_cast<EventDispatcher<T> *>(dispatcherPtr.get());
             dispatcher->Dispatch(event);
         }
     }
@@ -116,7 +127,8 @@ private:
     ~EventSystem() = default;
 
     int nextListenerId = 0;
-    std::unordered_map<std::type_index, std::unique_ptr<IEventDispatcher>> dispatchers;
+    std::unordered_map<std::type_index, std::shared_ptr<IEventDispatcher>> dispatchers;
+    std::mutex m_DispatchersMutex;
 };
 
 template <typename T>

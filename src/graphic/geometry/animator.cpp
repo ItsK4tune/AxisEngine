@@ -11,7 +11,7 @@ Animator::Animator(std::shared_ptr<Animation> animation)
 {
     m_CurrentTime = 0.0;
     m_CurrentAnimation = animation;
-    m_FinalBoneMatrices.resize(100, glm::mat4(1.0f));
+    m_FinalBoneMatrices.resize(200, glm::mat4(1.0f));
     m_Speed = 1.0f;
     m_UpdateRate = 0.0f;
     m_TimeSinceLastUpdate = 0.0f;
@@ -32,19 +32,28 @@ static glm::mat4 ComposeTransform(const glm::vec3 &t, const glm::quat &r, const 
 
 void Animator::UpdateAnimation(float dt)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_CurrentAnimation)
     {
+        float duration = m_CurrentAnimation->GetDuration();
+        if (duration <= 0.0f)
+            return;
+
         m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * dt * m_Speed;
-        m_CurrentTime = fmod(m_CurrentTime, m_CurrentAnimation->GetDuration());
+        m_CurrentTime = fmod(m_CurrentTime, duration);
         if (m_CurrentTime < 0.0f)
-            m_CurrentTime += m_CurrentAnimation->GetDuration();
+            m_CurrentTime += duration;
 
         if (m_NextAnimation)
         {
-            m_NextTime += m_NextAnimation->GetTicksPerSecond() * dt * m_Speed;
-            m_NextTime = fmod(m_NextTime, m_NextAnimation->GetDuration());
-            if (m_NextTime < 0.0f)
-                m_NextTime += m_NextAnimation->GetDuration();
+            float nextDuration = m_NextAnimation->GetDuration();
+            if (nextDuration > 0.0f)
+            {
+                m_NextTime += m_NextAnimation->GetTicksPerSecond() * dt * m_Speed;
+                m_NextTime = fmod(m_NextTime, nextDuration);
+                if (m_NextTime < 0.0f)
+                    m_NextTime += nextDuration;
+            }
         }
 
         if (m_IsCrossFading && m_NextAnimation)
@@ -70,12 +79,13 @@ void Animator::UpdateAnimation(float dt)
             m_TimeSinceLastUpdate = fmod(m_TimeSinceLastUpdate, timePerFrame);
         }
 
-        CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f));
+        CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f), 0);
     }
 }
 
 void Animator::AddAnimation(const std::string &name, std::shared_ptr<Animation> animation)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (animation)
     {
         m_AnimationsMap[name] = animation;
@@ -84,12 +94,15 @@ void Animator::AddAnimation(const std::string &name, std::shared_ptr<Animation> 
 
 void Animator::PlayAnimation(std::shared_ptr<Animation> pAnimation)
 {
+    if (!pAnimation) return;
+    std::lock_guard<std::mutex> lock(m_Mutex);
     m_CurrentAnimation = pAnimation;
     m_CurrentTime = 0.0f;
 }
 
 void Animator::PlayAnimation(const std::string &name)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_AnimationsMap.find(name) != m_AnimationsMap.end())
     {
         std::shared_ptr<Animation> targetAnim = m_AnimationsMap[name];
@@ -108,6 +121,7 @@ void Animator::PlayAnimation(const std::string &name)
 
 void Animator::CrossFade(const std::string &name, float transitionDuration)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_AnimationsMap.find(name) == m_AnimationsMap.end())
     {
         LOGGER_ERROR("Animator") << "CrossFade: Animation not found: " << name;
@@ -133,6 +147,7 @@ void Animator::CrossFade(const std::string &name, float transitionDuration)
 
 void Animator::PlayBlend(const std::string &nameA, const std::string &nameB, float factor)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_AnimationsMap.count(nameA) && m_AnimationsMap.count(nameB))
     {
         m_CurrentAnimation = m_AnimationsMap[nameA];
@@ -142,8 +157,13 @@ void Animator::PlayBlend(const std::string &nameA, const std::string &nameB, flo
     }
 }
 
-void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform)
+void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform, int depth)
 {
+    if (depth > 100)
+    {
+        LOGGER_ERROR("Animator") << "Recursion depth too high in CalculateBoneTransform! Potential cycle.";
+        return;
+    }
     std::string nodeName = node->name;
     glm::mat4 nodeTransform = node->transformation;
 
@@ -151,8 +171,6 @@ void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
 
     if (boneA)
     {
-        boneA->Update(m_CurrentTime);
-
         if (m_NextAnimation && (m_BlendFactor > 0.001f))
         {
             Bone *boneB = m_NextAnimation->FindBone(nodeName);
@@ -175,12 +193,12 @@ void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
             }
             else
             {
-                nodeTransform = boneA->GetLocalTransform();
+                nodeTransform = boneA->GetTransform(m_CurrentTime);
             }
         }
         else
         {
-            nodeTransform = boneA->GetLocalTransform();
+            nodeTransform = boneA->GetTransform(m_CurrentTime);
         }
     }
 
@@ -201,10 +219,21 @@ void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     }
 
     for (int i = 0; i < node->childrenCount; i++)
-        CalculateBoneTransform(&node->children[i], globalTransformation);
+        CalculateBoneTransform(&node->children[i], globalTransformation, depth + 1);
 }
 
 std::vector<glm::mat4> Animator::GetFinalBoneMatrices()
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     return m_FinalBoneMatrices;
+}
+
+void Animator::SetIdentityMatrices(int boneCount)
+{
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    if (m_FinalBoneMatrices.size() < (size_t)boneCount)
+        m_FinalBoneMatrices.resize(boneCount, glm::mat4(1.0f));
+
+    for (int i = 0; i < boneCount; ++i)
+        m_FinalBoneMatrices[i] = glm::mat4(1.0f);
 }

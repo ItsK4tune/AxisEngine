@@ -14,7 +14,8 @@ PhysicsTransformSync::PhysicsTransformSync(Scene &scene, IPhysicsWorld &physics)
 
 PhysicsTransformSync::~PhysicsTransformSync()
 {
-    if (m_initialized) {
+    if (m_initialized)
+    {
         m_Scene.registry.on_construct<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
         m_Scene.registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
         m_Scene.registry.on_construct<TransformComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
@@ -36,7 +37,7 @@ void PhysicsTransformSync::Init()
     m_initialized = true;
 }
 
-void PhysicsTransformSync::OnComponentChanged(entt::registry& registry, entt::entity entity)
+void PhysicsTransformSync::OnComponentChanged(entt::registry &registry, entt::entity entity)
 {
     m_simulationQuery.MarkDirty();
 }
@@ -87,7 +88,7 @@ void PhysicsTransformSync::SyncToPhysics()
         if (!rb.body)
             continue;
 
-        rb.body->SetUserPointer((void*)(uintptr_t)entity);
+        rb.body->SetUserPointer((void *)(uintptr_t)entity);
 
         uint32_t currentVersion = transform.GetVersion();
         if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
@@ -125,8 +126,6 @@ void PhysicsTransformSync::SyncFromPhysics()
         bool isDynamic = !rb.body->IsStatic() && !rb.body->IsKinematic();
         bool hasParent = m_Scene.registry.valid(transform.parent);
 
-        // Special case: for dynamic bodies, we sync even if inactive during the first few frames
-        // to ensure the initial render state matches the physics state.
         if (isDynamic && (rb.body->IsActive() || m_LastSyncedVersions.find(entity) == m_LastSyncedVersions.end()))
         {
             glm::vec3 worldPos;

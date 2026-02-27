@@ -25,9 +25,12 @@ struct Vertex
 
 struct Texture
 {
-    unsigned int id;
+    unsigned int id = 0;
     std::string type;
     std::string path;
+
+    unsigned char* pixelData = nullptr;
+    int width = 0, height = 0, nrComponents = 0;
 };
 
 class Mesh
@@ -39,9 +42,12 @@ public:
     unsigned int VAO;
     AABB aabb;
 
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
+    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures, bool setupGPU = true);
+    void setupMesh();
     void Draw(Shader &shader);
     void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models);
+
+    bool IsInitialized() const { return m_Initialized; }
 
     static void SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* draw);
     static IBufferManager& GetBufferManager() { return *s_BufferManager; }
@@ -50,7 +56,7 @@ public:
 
 private:
     unsigned int VBO, EBO, instanceVBO;
-    void setupMesh();
+    bool m_Initialized = false;
 
     static IBufferManager* s_BufferManager;
     static ITextureManager* s_TextureManager;

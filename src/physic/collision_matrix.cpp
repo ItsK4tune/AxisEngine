@@ -1,4 +1,5 @@
 #include <physic/collision_matrix.h>
+#include <iostream>
 
 CollisionMatrix& CollisionMatrix::Instance()
 {
@@ -24,6 +25,7 @@ void CollisionMatrix::Reset()
 
 bool CollisionMatrix::CanCollide(const std::string& tag1, const std::string& tag2, const std::string& name1, const std::string& name2) const
 {
+    std::cout << "[DEBUG] CanCollide: tags(" << tag1 << ", " << tag2 << ") names(" << name1 << ", " << name2 << ")" << std::endl;
     if (m_IgnoredTags.find({tag1, tag2}) != m_IgnoredTags.end())
         return false;
         

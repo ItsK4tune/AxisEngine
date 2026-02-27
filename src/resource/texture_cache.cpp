@@ -21,7 +21,10 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
     if (async)
     {
         auto promise = std::make_shared<std::promise<TextureData>>();
-        m_AsyncLoads.push_back(promise->get_future());
+        {
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            m_AsyncLoads.push_back(promise->get_future());
+        }
 
         JobSystem::Instance().Execute([promise, name, fullPath]() {
             TextureData data;
@@ -79,7 +82,10 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             tex->id = textureID;
             tex->type = "texture_diffuse";
             tex->path = path;
-            m_Textures[name] = tex;
+            {
+                std::lock_guard<std::mutex> lock(m_CacheMutex);
+                m_Textures[name] = tex;
+            }
 
             LOGGER_INFO("TextureCache") << "Loaded texture: " << name;
         }
@@ -93,6 +99,7 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
 
 std::shared_ptr<Texture> TextureCache::GetTexture(const std::string& name)
 {
+    std::lock_guard<std::mutex> lock(m_CacheMutex);
     if (m_Textures.find(name) != m_Textures.end())
         return m_Textures[name];
     return nullptr;
@@ -100,6 +107,7 @@ std::shared_ptr<Texture> TextureCache::GetTexture(const std::string& name)
 
 void TextureCache::UnloadTexture(const std::string& name)
 {
+    std::lock_guard<std::mutex> lock(m_CacheMutex);
     auto it = m_Textures.find(name);
     if (it != m_Textures.end())
     {
@@ -111,6 +119,7 @@ void TextureCache::UnloadTexture(const std::string& name)
 
 bool TextureCache::IsTextureLoaded(const std::string& name) const
 {
+    std::lock_guard<std::mutex> lock(m_CacheMutex);
     return m_Textures.find(name) != m_Textures.end();
 }
 
@@ -158,7 +167,10 @@ void TextureCache::Update()
                 tex->id = textureID;
                 tex->type = "texture_diffuse";
                 tex->path = data.path;
-                m_Textures[data.name] = tex;
+                {
+                    std::lock_guard<std::mutex> lock(m_CacheMutex);
+                    m_Textures[data.name] = tex;
+                }
 
                 LOGGER_INFO("TextureCache") << "Async texture loaded: " << data.name;
             }
@@ -178,6 +190,7 @@ void TextureCache::Update()
 
 void TextureCache::Clear()
 {
+    std::lock_guard<std::mutex> lock(m_CacheMutex);
     for (auto& pair : m_Textures)
     {
         GetTextureManager().DeleteTextures(1, &pair.second->id);

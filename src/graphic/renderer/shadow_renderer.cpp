@@ -29,6 +29,10 @@ void ShadowRenderer::Shutdown()
 
 void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& shadowQueue)
 {
+    static int shadowRenderCount = 0;
+    shadowRenderCount++;
+    bool logThisRender = (shadowRenderCount <= 5);
+
     if (m_ShadowMode == 0)
         return;
 
@@ -113,8 +117,11 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
 
         for (const auto& item : shadowQueue)
         {
+            if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
+                continue;
+
             entt::entity entity = item.entity;
-            MeshRendererComponent& renderer = *item.renderer;
+            auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
             
             AABB worldAABB = renderer.model->aabb.Transform(item.worldMatrix);
             glm::vec3 worldMin = worldAABB.minBound;
@@ -221,8 +228,11 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
 
         for (const auto& item : shadowQueue)
         {
+            if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
+                continue;
+
             entt::entity obj = item.entity;
-            MeshRendererComponent& rObj = *item.renderer;
+            auto& rObj = scene.registry.get<MeshRendererComponent>(obj);
 
             AABB worldAABB = rObj.model->aabb.Transform(item.worldMatrix);
             glm::vec3 worldMin = worldAABB.minBound;
@@ -328,8 +338,11 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
 
         for (const auto& item : shadowQueue)
         {
+            if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
+                continue;
+
             entt::entity obj = item.entity;
-            MeshRendererComponent& rObj = *item.renderer;
+            auto& rObj = scene.registry.get<MeshRendererComponent>(obj);
 
             AABB worldAABB = rObj.model->aabb.Transform(item.worldMatrix);
             glm::vec3 worldMin = worldAABB.minBound;

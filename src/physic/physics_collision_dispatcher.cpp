@@ -5,10 +5,12 @@
 #include <script/scriptable.h>
 #include <event/physics_events.h>
 #include <event/event_system.h>
+#include <utils/logger.h>
 
-PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene& scene, IPhysicsWorld& physics)
+PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene &scene, IPhysicsWorld &physics)
     : m_Scene(scene), m_Physics(physics)
 {
+    LOGGER_INFO("Physics") << "PhysicsCollisionDispatcher initialized";
 }
 
 PhysicsCollisionDispatcher::~PhysicsCollisionDispatcher()
@@ -19,12 +21,13 @@ PhysicsCollisionDispatcher::~PhysicsCollisionDispatcher()
 
 void PhysicsCollisionDispatcher::DispatchEvents()
 {
-
-    BulletPhysicsWorld* bulletWorld = dynamic_cast<BulletPhysicsWorld*>(&m_Physics);
-    if (!bulletWorld) return;
+    BulletPhysicsWorld *bulletWorld = dynamic_cast<BulletPhysicsWorld *>(&m_Physics);
+    if (!bulletWorld)
+        return;
 
     btDiscreteDynamicsWorld *world = bulletWorld->GetRawWorld();
-    if (!world) return;
+    if (!world)
+        return;
 
     int numManifolds = world->getDispatcher()->getNumManifolds();
 
@@ -34,8 +37,13 @@ void PhysicsCollisionDispatcher::DispatchEvents()
     for (int i = 0; i < numManifolds; i++)
     {
         btPersistentManifold *contactManifold = world->getDispatcher()->getManifoldByIndexInternal(i);
+        if (!contactManifold)
+            continue;
+
         const btCollisionObject *obA = contactManifold->getBody0();
         const btCollisionObject *obB = contactManifold->getBody1();
+        if (!obA || !obB)
+            continue;
 
         bool hasCollision = false;
         for (int j = 0; j < contactManifold->getNumContacts(); j++)
@@ -49,8 +57,17 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
         if (hasCollision)
         {
-            entt::entity eA = (entt::entity)(uintptr_t)obA->getUserPointer();
-            entt::entity eB = (entt::entity)(uintptr_t)obB->getUserPointer();
+            void *ptrA = obA->getUserPointer();
+            void *ptrB = obB->getUserPointer();
+
+            if (!ptrA || !ptrB)
+            {
+                LOGGER_WARN("PhysicsCollisionDispatcher") << "Collision detected but missing user pointers!";
+                continue;
+            }
+
+            entt::entity eA = (entt::entity)(uintptr_t)ptrA;
+            entt::entity eB = (entt::entity)(uintptr_t)ptrB;
 
             if (m_Scene.registry.valid(eA) && m_Scene.registry.valid(eB))
             {
@@ -66,7 +83,8 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 auto Notify = [&](entt::entity target, entt::entity other, bool trigger, bool stay)
                 {
-                    if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other)) return;
+                    if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
+                        return;
 
                     if (m_Scene.registry.all_of<ScriptComponent>(target))
                     {
@@ -90,9 +108,12 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                         }
                     }
 
-                    if (trigger) {
+                    if (trigger)
+                    {
                         EventSystem::Instance().Publish(EntityTriggerEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
-                    } else {
+                    }
+                    else
+                    {
                         EventSystem::Instance().Publish(EntityCollisionEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
                     }
                 };
@@ -129,7 +150,8 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
             auto NotifyExit = [&](entt::entity target, entt::entity other, bool trigger)
             {
-                if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other)) return;
+                if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
+                    return;
 
                 if (m_Scene.registry.all_of<ScriptComponent>(target))
                 {
@@ -143,9 +165,12 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                     }
                 }
 
-                if (trigger) {
+                if (trigger)
+                {
                     EventSystem::Instance().Publish(EntityTriggerEvent{target, other, CollisionEventType::Exit});
-                } else {
+                }
+                else
+                {
                     EventSystem::Instance().Publish(EntityCollisionEvent{target, other, CollisionEventType::Exit});
                 }
             };

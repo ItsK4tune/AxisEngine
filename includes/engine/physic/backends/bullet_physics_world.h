@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <physic/backends/bullet_debug_drawer.h>
+#include <iostream>
 
 class CustomCollisionDispatcher : public btCollisionDispatcher
 {
@@ -18,13 +19,20 @@ public:
 
     bool needsCollision(const btCollisionObject* body0, const btCollisionObject* body1) override
     {
+        void* ptrA = body0->getUserPointer();
+        void* ptrB = body1->getUserPointer();
+
+        if (!ptrA || !ptrB)
+            return false;
+
         if (m_FilterCallback)
         {
-            entt::entity eA = (entt::entity)(uintptr_t)body0->getUserPointer();
-            entt::entity eB = (entt::entity)(uintptr_t)body1->getUserPointer();
+            entt::entity eA = (entt::entity)(uintptr_t)ptrA;
+            entt::entity eB = (entt::entity)(uintptr_t)ptrB;
             
-            if (!m_FilterCallback(eA, eB))
-                return false;
+            bool result = m_FilterCallback(eA, eB);
+            std::cout << "[DEBUG] needsCollision: " << (uint32_t)eA << " vs " << (uint32_t)eB << " -> " << result << std::endl;
+            return result;
         }
 
         return btCollisionDispatcher::needsCollision(body0, body1);

@@ -6,7 +6,7 @@ layout (location = 6) in vec4 aWeights;
 uniform mat4 lightSpaceMatrix;
 uniform mat4 model;
 
-const int MAX_BONES = 100;
+const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 

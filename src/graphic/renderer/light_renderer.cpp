@@ -22,7 +22,7 @@ void LightRenderer::Init(IBufferManager& bufferManager)
 void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
 {
     if (!m_BufferManager) return;
-
+    
     m_DirLights.clear();
     auto dirView = scene.registry.view<DirectionalLightComponent>();
 
@@ -123,15 +123,15 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
     }
 
     m_BufferManager->BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_DirLightSSBO);
-    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, m_DirLights.size() * sizeof(GPUDirLight), m_DirLights.data(), Graphics::BufferUsage::DynamicDraw);
+    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, (std::max)(m_DirLights.size() * sizeof(GPUDirLight), (size_t)16), m_DirLights.data(), Graphics::BufferUsage::DynamicDraw);
     m_BufferManager->BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 0, m_DirLightSSBO);
 
     m_BufferManager->BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_PointLightSSBO);
-    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, m_PointLights.size() * sizeof(GPUPointLight), m_PointLights.data(), Graphics::BufferUsage::DynamicDraw);
+    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, (std::max)(m_PointLights.size() * sizeof(GPUPointLight), (size_t)16), m_PointLights.data(), Graphics::BufferUsage::DynamicDraw);
     m_BufferManager->BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 1, m_PointLightSSBO);
 
     m_BufferManager->BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_SpotLightSSBO);
-    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, m_SpotLights.size() * sizeof(GPUSpotLight), m_SpotLights.data(), Graphics::BufferUsage::DynamicDraw);
+    m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, (std::max)(m_SpotLights.size() * sizeof(GPUSpotLight), (size_t)16), m_SpotLights.data(), Graphics::BufferUsage::DynamicDraw);
     m_BufferManager->BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 2, m_SpotLightSSBO);
 
     if (shader)

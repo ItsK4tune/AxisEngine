@@ -43,6 +43,10 @@ void EngineLoop::Run()
 
 void EngineLoop::ProcessFrame()
 {
+    static int frameCounter = 0;
+    frameCounter++;
+    bool logThisFrame = (frameCounter <= 10);
+
     auto now = std::chrono::steady_clock::now();
     realDeltaTime = std::chrono::duration<float>(now - m_LastFrameTime).count();
     deltaTime = realDeltaTime;
@@ -83,17 +87,7 @@ void EngineLoop::ProcessFrame()
     m_App->GetMouse().EndFrame();
 
     FixedUpdate();
-
-    m_App->GetSystemManager().UpdateVisuals(
-        m_App->GetScene(),
-        deltaTime,
-        m_App->GetResourceManager(),
-        m_App->GetSoundPlayer(),
-        mask
-    );
-
     Render();
-
     m_App->GetWindow()->SwapBuffers();
 
     int frameRateLimit = m_App->GetMonitorManager().GetFrameRateLimit();
@@ -152,7 +146,6 @@ void EngineLoop::FixedUpdate()
 
     while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
     {
-        // Backup states for interpolation
         auto view = registry.view<TransformComponent>();
         for (auto entity : view)
         {
@@ -182,7 +175,7 @@ void EngineLoop::FixedUpdate()
         deltaTime,
         m_App->GetResourceManager(),
         m_App->GetSoundPlayer(),
-        m_Alpha, // Use member
+        m_Alpha,
         mask
     );
 }

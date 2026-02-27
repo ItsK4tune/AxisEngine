@@ -443,7 +443,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
             }
 
             uiTr.position = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.size = glm::vec2(textW, 20.0f * text.scale); // UITextComponent handles multiline internally if supported, otherwise lines will overlap or need custom logic. Update: AxisEngine UITextComponent handles \n.
+            uiTr.size = glm::vec2(textW, 20.0f * text.scale);
             uiTr.zIndex = 90;
 
             nextMap[entity] = labelEntity;

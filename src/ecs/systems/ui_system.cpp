@@ -1,10 +1,13 @@
 #include <ecs/system.h>
 #include <interface/window/input_codes.h>
+#include <utils/logger.h>
 
 void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState)
 {
     if (!m_Enabled)
+    {
         return;
+    }
 
     renderState.Disable(Graphics::ServerCapability::DepthTest);
     renderState.Disable(Graphics::ServerCapability::CullFace);

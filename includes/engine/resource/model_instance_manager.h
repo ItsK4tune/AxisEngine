@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 
 #include <memory>
+#include <mutex>
 
 struct ModelInstance
 {
@@ -45,4 +46,5 @@ private:
     };
 
     std::unordered_map<std::string, ModelPool> m_ModelPools;
+    mutable std::recursive_mutex m_PoolMutex;
 };

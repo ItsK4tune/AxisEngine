@@ -39,11 +39,11 @@ public:
 
     Graphics::PolygonMode GetPolygonMode() const override
     {
-        GLint mode;
-        glGetIntegerv(GL_POLYGON_MODE, &mode);
+        GLint mode[2];
+        glGetIntegerv(GL_POLYGON_MODE, mode);
 
-        if (mode == GL_POINT) return Graphics::PolygonMode::Point;
-        if (mode == GL_LINE) return Graphics::PolygonMode::Line;
+        if (mode[0] == GL_POINT) return Graphics::PolygonMode::Point;
+        if (mode[0] == GL_LINE) return Graphics::PolygonMode::Line;
         return Graphics::PolygonMode::Fill;
     }
     void LineWidth(float width) override { glLineWidth(width); }

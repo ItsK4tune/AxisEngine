@@ -19,6 +19,8 @@ public:
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
 
+    void LoadCPU(std::string const& path, bool isStatic = false, bool gamma = false);
+
     std::vector<Mesh> meshes;
     std::string directory;
     bool gammaCorrection = false;
@@ -32,15 +34,19 @@ public:
 
     void AddTexture(const Texture& tex) { textures_loaded.push_back(tex); }
 
-    void LoadCPU(std::string const &path, bool isStatic = false, bool gamma = false);
-
+    void UploadToGPU();
     bool IsReadyToRender() const { return m_ReadyToRender; }
+    bool IsStatic() const { return m_IsStatic; }
+    void SetStatic(bool isStatic) { m_IsStatic = isStatic; }
+    glm::mat4 GetRootTransform() const { return m_RootTransform; }
 
 private:
     std::vector<Texture> textures_loaded;
     std::unordered_map<std::string, BoneInfo> m_BoneInfoMap;
     int m_BoneCounter = 0;
     bool m_ReadyToRender = false;
+    bool m_IsStatic = false;
+    glm::mat4 m_RootTransform = glm::mat4(1.0f);
 
     void loadModel(std::string const &path, bool isStatic);
     void ComputeAABB();

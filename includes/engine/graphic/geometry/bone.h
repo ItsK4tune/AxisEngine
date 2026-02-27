@@ -29,25 +29,24 @@ class Bone
 public:
     Bone(const std::string &name, int ID, const aiNodeAnim *channel);
 
-    void Update(float animationTime);
-    glm::mat4 GetLocalTransform();
+    glm::mat4 GetTransform(float animationTime);
     std::string GetBoneName() const;
-    int GetBoneID();
+    int GetBoneID() const;
 
-    int GetPositionIndex(float animationTime);
-    int GetRotationIndex(float animationTime);
-    int GetScaleIndex(float animationTime);
+    int GetPositionIndex(float animationTime) const;
+    int GetRotationIndex(float animationTime) const;
+    int GetScaleIndex(float animationTime) const;
 
-    glm::vec3 GetPosition(float animationTime);
-    glm::quat GetRotation(float animationTime);
-    glm::vec3 GetScale(float animationTime);
+    glm::vec3 GetPosition(float animationTime) const;
+    glm::quat GetRotation(float animationTime) const;
+    glm::vec3 GetScale(float animationTime) const;
 
 private:
-    glm::vec3 InterpolatePosition(float animationTime);
-    glm::quat InterpolateRotation(float animationTime);
-    glm::vec3 InterpolateScaling(float animationTime);
+    glm::vec3 InterpolatePosition(float animationTime) const;
+    glm::quat InterpolateRotation(float animationTime) const;
+    glm::vec3 InterpolateScaling(float animationTime) const;
 
-    float GetScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime);
+    float GetScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime) const;
 
     std::vector<KeyPosition> m_Positions;
     std::vector<KeyRotation> m_Rotations;
@@ -56,11 +55,6 @@ private:
     int m_NumRotations;
     int m_NumScalings;
 
-    int m_LastPositionIndex = 0;
-    int m_LastRotationIndex = 0;
-    int m_LastScaleIndex = 0;
-
-    glm::mat4 m_LocalTransform;
     std::string m_Name;
     int m_ID;
 };

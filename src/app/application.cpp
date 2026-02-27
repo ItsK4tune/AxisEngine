@@ -60,16 +60,30 @@ Application::~Application()
     if (m_RuntimeCore)
         m_RuntimeCore->GetStateMachine().Clear();
 
-    // 4. Shutdown SceneManager (it will handle scene-specific entity destruction)
+    // 4. CLEAR REGISTRY FIRST
+    // This destroys all remaining entities while managers are still fully alive.
+    // destructors of components and scripts can safely access managers here.
+    if (m_Scene)
+    {
+        m_Scene->registry.clear();
+    }
+
+    // 5. Shutdown SceneManager
+    // It will find no more entities to destroy but will cleanup scene records and unload resources.
     if (m_SceneManager)
     {
         m_SceneManager->Shutdown();
     }
 
-    // 5. Cleanup managers and services
+    // 6. Cleanup managers and services
     if (m_Scene)
     {
         m_Scene->ShutdownManagers();
+    }
+
+    if (m_ResourceManager)
+    {
+        m_ResourceManager->ClearResource();
     }
 
     m_SystemManager.reset();
@@ -79,12 +93,11 @@ Application::~Application()
     m_SoundPlayer.reset();
     m_ResourceManager.reset();
 
-    // 6. Finally, clear the registry and destroy the scene object
     if (m_Scene)
     {
-        m_Scene->registry.clear();
         m_Scene.reset();
     }
+
     m_PhysicsWorld.reset();
     m_IOHandler.reset();
 

@@ -5,6 +5,7 @@
 #include <input/keyboard_manager.h>
 #include <ecs/component.h>
 #include <input/script_input_handler.h>
+#include <utils/logger.h>
 
 void ScriptableSystem::Update(Scene &scene, float dt, float unscaledDt, Application* app)
 {

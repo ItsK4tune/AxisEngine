@@ -4,6 +4,7 @@
 #include <vector>
 #include <assimp/scene.h>
 #include <unordered_map>
+#include <mutex>
 
 #include <graphic/geometry/animation.h>
 
@@ -18,19 +19,19 @@ public:
     void PlayAnimation(std::shared_ptr<Animation> pAnimation);
     void PlayAnimation(const std::string &name);
 
-    void CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform);
+    void CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform, int depth);
     std::vector<glm::mat4> GetFinalBoneMatrices();
 
     void SetSpeed(float speed) { m_Speed = speed; }
     void SetTime(float timeInSeconds) { m_CurrentTime = timeInSeconds; }
     void SetUpdateRate(float updatesPerSecond) { m_UpdateRate = updatesPerSecond; }
 
+    void SetIdentityMatrices(int boneCount);
+
     float GetDuration() const { return m_CurrentAnimation ? m_CurrentAnimation->GetDuration() : 0.0f; }
 
-private:
     void CrossFade(const std::string &name, float transitionDuration);
     void PlayBlend(const std::string &nameA, const std::string &nameB, float factor);
-
     void SetBlendFactor(float factor) { m_BlendFactor = factor; }
 
 private:
@@ -50,4 +51,5 @@ private:
     float m_TimeSinceLastUpdate = 0.0f;
 
     std::unordered_map<std::string, std::shared_ptr<Animation>> m_AnimationsMap;
+    mutable std::mutex m_Mutex;
 };

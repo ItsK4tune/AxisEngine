@@ -97,6 +97,7 @@ private:
     std::vector<PendingModel> m_PendingModels;
     std::vector<std::future<void>> m_ActiveFutures;
     std::mutex m_PendingMutex;
+    mutable std::mutex m_ResourceMutex;
 
     int m_ReloadListenerId = -1;
 };

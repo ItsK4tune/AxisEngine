@@ -1,7 +1,7 @@
 #include <graphic/geometry/animation.h>
 #include <graphic/geometry/model.h>
 #include <utils/assimp_glm_helpers.h>
-
+#include <utils/logger.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
@@ -9,12 +9,18 @@ Animation::Animation(const std::string &animationPath, Model &model)
 {
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
-    assert(scene && scene->mRootNode);
+    
+    if (!scene || !scene->mRootNode || scene->mNumAnimations == 0)
+    {
+        LOGGER_ERROR("Animation") << "Failed to load animation or no animations found in: " << animationPath;
+        m_Duration = 0.0f;
+        m_TicksPerSecond = 0;
+        return;
+    }
+
     auto animation = scene->mAnimations[0];
     m_Duration = animation->mDuration;
-    m_TicksPerSecond = animation->mTicksPerSecond;
-    aiMatrix4x4 globalTransformation = scene->mRootNode->mTransformation;
-    globalTransformation = globalTransformation.Inverse();
+    m_TicksPerSecond = (int)animation->mTicksPerSecond;
 
     ReadHierarchyData(m_RootNode, scene->mRootNode);
     ReadMissingBones(animation, model);
@@ -46,8 +52,16 @@ void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
 
         if (boneInfoMap.find(boneName) == boneInfoMap.end())
         {
-            boneInfoMap[boneName].id = boneCount;
-            boneCount++;
+            if (boneCount < 200)
+            {
+                boneInfoMap[boneName].id = boneCount;
+                boneCount++;
+            }
+            else
+            {
+                LOGGER_WARN("Animation") << "Max bone limit (200) exceeded while processing missing bone: " << boneName;
+                continue;
+            }
         }
 
         m_Bones.push_back(Bone(channel->mNodeName.data,

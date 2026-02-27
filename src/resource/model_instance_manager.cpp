@@ -4,6 +4,7 @@
 
 std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     auto it = m_ModelPools.find(name);
 
     if (it != m_ModelPools.end())
@@ -25,6 +26,7 @@ std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& n
 
 void ModelInstanceManager::RegisterModel(const std::string& name, std::shared_ptr<Model> model)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     if (m_ModelPools.find(name) != m_ModelPools.end())
         return;
 
@@ -37,6 +39,7 @@ void ModelInstanceManager::RegisterModel(const std::string& name, std::shared_pt
 
 void ModelInstanceManager::AddInstance(const std::string& modelPath, const glm::mat4& transform, entt::entity entity)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     auto it = m_ModelPools.find(modelPath);
 
     if (it == m_ModelPools.end())
@@ -54,6 +57,7 @@ void ModelInstanceManager::AddInstance(const std::string& modelPath, const glm::
 
 void ModelInstanceManager::RemoveInstance(const std::string& modelPath, entt::entity entity)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     auto it = m_ModelPools.find(modelPath);
 
     if (it == m_ModelPools.end())
@@ -69,6 +73,7 @@ void ModelInstanceManager::RemoveInstance(const std::string& modelPath, entt::en
 
 const std::vector<ModelInstance>& ModelInstanceManager::GetInstances(const std::string& modelPath)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     static std::vector<ModelInstance> empty;
 
     auto it = m_ModelPools.find(modelPath);
@@ -80,6 +85,7 @@ const std::vector<ModelInstance>& ModelInstanceManager::GetInstances(const std::
 
 void ModelInstanceManager::ClearAllInstances()
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     for (auto& pair : m_ModelPools)
     {
         pair.second.instances.clear();
@@ -88,6 +94,7 @@ void ModelInstanceManager::ClearAllInstances()
 
 void ModelInstanceManager::UnloadUnusedModels()
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     auto it = m_ModelPools.begin();
     while (it != m_ModelPools.end())
     {
@@ -105,6 +112,7 @@ void ModelInstanceManager::UnloadUnusedModels()
 
 bool ModelInstanceManager::UnloadModel(const std::string& name)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     auto it = m_ModelPools.find(name);
     if (it != m_ModelPools.end())
     {
@@ -125,6 +133,7 @@ bool ModelInstanceManager::UnloadModel(const std::string& name)
 
 size_t ModelInstanceManager::GetInstanceCount(const std::string& modelPath) const
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     auto it = m_ModelPools.find(modelPath);
     if (it == m_ModelPools.end())
         return 0;
@@ -134,6 +143,7 @@ size_t ModelInstanceManager::GetInstanceCount(const std::string& modelPath) cons
 
 size_t ModelInstanceManager::GetTotalInstanceCount() const
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     size_t total = 0;
     for (const auto& pair : m_ModelPools)
     {
@@ -144,5 +154,6 @@ size_t ModelInstanceManager::GetTotalInstanceCount() const
 
 size_t ModelInstanceManager::GetLoadedModelCount() const
 {
+    std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     return m_ModelPools.size();
 }

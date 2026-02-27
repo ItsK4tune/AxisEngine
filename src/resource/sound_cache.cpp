@@ -21,6 +21,7 @@ void SoundCache::LoadSound(const std::string& name, const std::string& path, IAu
         return;
     }
 
+    std::lock_guard<std::mutex> lock(m_Mutex);
     m_SoundEngine = engine;
     std::string fullPath = FileSystem::getPath(path);
 
@@ -39,6 +40,7 @@ void SoundCache::LoadSound(const std::string& name, const std::string& path, IAu
 
 std::shared_ptr<IAudioSource> SoundCache::GetSound(const std::string& name)
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_Sounds.find(name) != m_Sounds.end())
         return m_Sounds[name];
 
@@ -46,7 +48,14 @@ std::shared_ptr<IAudioSource> SoundCache::GetSound(const std::string& name)
     return nullptr;
 }
 
+void SoundCache::Remove(const std::string& name)
+{
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    m_Sounds.erase(name);
+}
+
 void SoundCache::Clear()
 {
+    std::lock_guard<std::mutex> lock(m_Mutex);
     m_Sounds.clear();
 }

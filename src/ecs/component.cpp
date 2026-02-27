@@ -1,6 +1,6 @@
 #include <ecs/component.h>
 #include <graphic/core/video_decoder.h>
-
+#include <utils/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <vector>
@@ -107,6 +107,20 @@ void TransformComponent::SetDirty(entt::registry &registry)
 void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry& registry, bool keepWorldTransform)
 {
     if (thisEntity == newParent || parent == newParent) return;
+
+    if (registry.valid(newParent) && registry.all_of<TransformComponent>(newParent))
+    {
+        entt::entity curr = newParent;
+        while (registry.valid(curr) && registry.all_of<TransformComponent>(curr))
+        {
+            if (curr == thisEntity)
+            {
+                LOGGER_ERROR("Transform") << "Detected cycle in SetParent! Aborting.";
+                return;
+            }
+            curr = registry.get<TransformComponent>(curr).parent;
+        }
+    }
 
     glm::mat4 worldMatrix;
     if (keepWorldTransform)

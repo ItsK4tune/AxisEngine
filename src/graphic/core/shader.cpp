@@ -173,7 +173,12 @@ void Shader::setMat4Array(const std::string &name, const std::vector<glm::mat4> 
 {
     if (matrices.empty()) return;
     int loc = GetUniformLocation(name);
-    GetShaderManager().SetUniformMatrix4fvArray(loc, static_cast<int>(matrices.size()), &matrices[0][0][0]);
+    if (loc != -1)
+    {
+        int count = static_cast<int>(matrices.size());
+        if (count > 128) count = 128;
+        GetShaderManager().SetUniformMatrix4fvArray(loc, count, &matrices[0][0][0]);
+    }
 }
 
 int Shader::GetUniformLocation(const std::string &name) const

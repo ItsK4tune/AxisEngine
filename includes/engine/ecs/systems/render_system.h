@@ -25,13 +25,11 @@ enum class AntiAliasingMode
 struct RenderItem
 {
     entt::entity entity;
-    TransformComponent *transform;
-    MeshRendererComponent *renderer;
-    MaterialComponent *material;
     Model *activeModel;
     glm::mat4 worldMatrix;
     uint32_t layer;
     int renderOrder;
+    float distSq;
 };
 
 class RenderSystem
@@ -118,6 +116,8 @@ private:
 
     bool m_QueuesBuilt = false;
     float m_LastAlpha = -1.0f;
+    int m_LastWidth = -1;
+    int m_LastHeight = -1;
 
     std::vector<uint32_t> m_OcclusionQueries;
     std::vector<RenderItem> m_RenderQueue;

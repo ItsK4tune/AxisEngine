@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <mutex>
 
 class SoundCache
 {
@@ -14,10 +15,11 @@ public:
 
     void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine);
     std::shared_ptr<IAudioSource> GetSound(const std::string& name);
-    void Remove(const std::string& name) { m_Sounds.erase(name); }
+    void Remove(const std::string& name);
     void Clear();
 
 private:
     std::map<std::string, std::shared_ptr<IAudioSource>> m_Sounds;
+    mutable std::mutex m_Mutex;
     IAudioEngine* m_SoundEngine;
 };

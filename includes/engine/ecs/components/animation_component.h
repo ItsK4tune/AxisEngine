@@ -9,12 +9,11 @@
 
 struct AnimationComponent
 {
-    std::shared_ptr<Animation> currentAnimation = nullptr;
-    std::shared_ptr<Animator> animator = nullptr;
-    float currentTime = 0.0f;
-    bool isPlaying = false;
-    bool loop = true;
+    std::vector<std::string> animations;
     float speed = 1.0f;
+    float startTime = 0.0f;
+    float rate = 0.0f;
 
+    std::shared_ptr<Animator> animator = nullptr;
     std::vector<glm::mat4> boneMatrices;
 };

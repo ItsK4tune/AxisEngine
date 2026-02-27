@@ -15,7 +15,6 @@
 #include <app/io_handler.h>
 #include <input/mouse_manager.h>
 #include <utils/logger.h>
-#include <iostream>
 #include <ecs/systems/render_system.h>
 
 SystemManager::SystemManager()
@@ -104,21 +103,28 @@ void SystemManager::RenderShadows(Scene& scene, float alpha, uint32_t mask)
 void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width, int height, float alpha, uint32_t mask)
 {
     if (renderSystem.GetContext())
+    {
         renderSystem.GetContext()->GetRenderStateManager().Viewport(0, 0, width, height);
+    }
     
     postProcess.BeginCapture();
 
     if (mask & (uint32_t)SystemGroup::Skybox)
+    {
         skyboxRenderSystem.Render(scene);
+    }
     
     if (mask & (uint32_t)SystemGroup::Render)
+    {
         renderSystem.Render(scene, width, height, alpha);
+    }
     
     if (mask & (uint32_t)SystemGroup::Particle)
         particleSystem.Render(scene, res);
 
-    if (mask & (uint32_t)SystemGroup::UI)
+    if (mask & (uint32_t)SystemGroup::UI) {
         uiRenderSystem.Render(scene, (float)width, (float)height, renderSystem.GetContext()->GetRenderStateManager());
+    }
 
     postProcess.ApplyAntiAliasing(renderSystem.GetAntiAliasingMode(),
                                   renderSystem.GetPrevViewProj(),

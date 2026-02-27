@@ -20,7 +20,7 @@ uniform mat4 lightSpaceMatrixSpot[2]; // Array of 2 spot light space matrices
 layout(location = 10) in mat4 instanceMatrix;
 uniform bool isInstanced;
 
-const int MAX_BONES = 100;
+const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 

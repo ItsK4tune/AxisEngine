@@ -1,6 +1,6 @@
 #include <state/state_machine.h>
 
-StateMachine::StateMachine(Application* app) : m_App(app) {}
+StateMachine::StateMachine(Application *app) : m_App(app) {}
 
 void StateMachine::PushState(std::unique_ptr<State> state)
 {
@@ -58,5 +58,5 @@ uint32_t StateMachine::GetSystemMask() const
 {
     if (!m_States.empty())
         return m_States.top()->GetSystemMask();
-    return 0xFFFFFFFF; // Default to all systems enabled if no state
+    return 0xFFFFFFFF;
 }

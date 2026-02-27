@@ -81,6 +81,7 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Collision Dispatcher";
         m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, physicsWorld);
     }
+    
     m_collisionDispatcher->DispatchEvents();
 }
 

@@ -1,6 +1,6 @@
 #include <scene/octree.h>
 
-OctreeNode::OctreeNode(const AABB& boundary, int depth)
+OctreeNode::OctreeNode(const AABB &boundary, int depth)
     : m_Boundary(boundary), m_Depth(depth)
 {
     for (int i = 0; i < 8; ++i)
@@ -13,7 +13,6 @@ void OctreeNode::Subdivide()
     glm::vec3 min = m_Boundary.minBound;
     glm::vec3 max = m_Boundary.maxBound;
 
-    // 8 children boundaries
     m_Children[0] = std::make_unique<OctreeNode>(AABB(min, center), m_Depth + 1);
     m_Children[1] = std::make_unique<OctreeNode>(AABB(glm::vec3(center.x, min.y, min.z), glm::vec3(max.x, center.y, center.z)), m_Depth + 1);
     m_Children[2] = std::make_unique<OctreeNode>(AABB(glm::vec3(min.x, center.y, min.z), glm::vec3(center.x, max.y, center.z)), m_Depth + 1);
@@ -23,9 +22,8 @@ void OctreeNode::Subdivide()
     m_Children[6] = std::make_unique<OctreeNode>(AABB(glm::vec3(min.x, center.y, center.z), glm::vec3(center.x, max.y, max.z)), m_Depth + 1);
     m_Children[7] = std::make_unique<OctreeNode>(AABB(center, max), m_Depth + 1);
 
-    // Redistribute existing elements
     std::vector<OctreeElement> remaining;
-    for (const auto& el : m_Elements)
+    for (const auto &el : m_Elements)
     {
         int index = GetChildIndex(el.aabb);
         if (index != -1)
@@ -36,10 +34,10 @@ void OctreeNode::Subdivide()
     m_Elements = std::move(remaining);
 }
 
-int OctreeNode::GetChildIndex(const AABB& itemAABB) const
+int OctreeNode::GetChildIndex(const AABB &itemAABB) const
 {
     glm::vec3 center = m_Boundary.GetCenter();
-    
+
     bool west = itemAABB.maxBound.x < center.x;
     bool east = itemAABB.minBound.x > center.x;
     bool bottom = itemAABB.maxBound.y < center.y;
@@ -47,19 +45,25 @@ int OctreeNode::GetChildIndex(const AABB& itemAABB) const
     bool front = itemAABB.maxBound.z < center.z;
     bool back = itemAABB.minBound.z > center.z;
 
-    if (!west && !east) return -1;
-    if (!bottom && !top) return -1;
-    if (!front && !back) return -1;
+    if (!west && !east)
+        return -1;
+    if (!bottom && !top)
+        return -1;
+    if (!front && !back)
+        return -1;
 
     int index = 0;
-    if (east) index |= 1;
-    if (top) index |= 2;
-    if (back) index |= 4;
-    
+    if (east)
+        index |= 1;
+    if (top)
+        index |= 2;
+    if (back)
+        index |= 4;
+
     return index;
 }
 
-void OctreeNode::Insert(entt::entity entity, const AABB& aabb)
+void OctreeNode::Insert(entt::entity entity, const AABB &aabb)
 {
     if (IsLeaf())
     {
@@ -81,7 +85,8 @@ void OctreeNode::Insert(entt::entity entity, const AABB& aabb)
 void OctreeNode::Remove(entt::entity entity)
 {
     auto it = std::remove_if(m_Elements.begin(), m_Elements.end(),
-        [entity](const OctreeElement& el) { return el.entity == entity; });
+                             [entity](const OctreeElement &el)
+                             { return el.entity == entity; });
     m_Elements.erase(it, m_Elements.end());
 
     if (!IsLeaf())
@@ -91,12 +96,12 @@ void OctreeNode::Remove(entt::entity entity)
     }
 }
 
-void OctreeNode::Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const
+void OctreeNode::Query(const Frustum &frustum, std::vector<entt::entity> &out_entities) const
 {
     if (!frustum.IsBoxVisible(m_Boundary.minBound, m_Boundary.maxBound))
         return;
 
-    for (const auto& el : m_Elements)
+    for (const auto &el : m_Elements)
     {
         if (frustum.IsBoxVisible(el.aabb.minBound, el.aabb.maxBound))
             out_entities.push_back(el.entity);
@@ -109,23 +114,25 @@ void OctreeNode::Query(const Frustum& frustum, std::vector<entt::entity>& out_en
     }
 }
 
-void OctreeNode::Rebuild(const std::vector<OctreeElement>& elements)
+void OctreeNode::Rebuild(const std::vector<OctreeElement> &elements)
 {
     m_Elements.clear();
-    for(int i=0; i<8; ++i) m_Children[i].reset();
-    
-    for(const auto& el : elements) {
+    for (int i = 0; i < 8; ++i)
+        m_Children[i].reset();
+
+    for (const auto &el : elements)
+    {
         Insert(el.entity, el.aabb);
     }
 }
 
-Octree::Octree(const AABB& boundary)
+Octree::Octree(const AABB &boundary)
     : m_InitialBoundary(boundary)
 {
     m_Root = std::make_unique<OctreeNode>(boundary);
 }
 
-void Octree::Insert(entt::entity entity, const AABB& aabb)
+void Octree::Insert(entt::entity entity, const AABB &aabb)
 {
     m_Root->Insert(entity, aabb);
 }
@@ -135,12 +142,12 @@ void Octree::Remove(entt::entity entity)
     m_Root->Remove(entity);
 }
 
-void Octree::Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const
+void Octree::Query(const Frustum &frustum, std::vector<entt::entity> &out_entities) const
 {
     m_Root->Query(frustum, out_entities);
 }
 
-void Octree::Rebuild(const std::vector<OctreeElement>& elements)
+void Octree::Rebuild(const std::vector<OctreeElement> &elements)
 {
     m_Root->Rebuild(elements);
 }

@@ -2,6 +2,7 @@
 #include <app/application.h>
 #include <resource/resource_manager.h>
 #include <ecs/components/info_component.h>
+#include <graphic/geometry/animator.h>
 
 EntityBuilder::EntityBuilder(Scene& scene, Application* app)
     : m_Scene(scene), m_App(app)
@@ -129,7 +130,6 @@ EntityBuilder& EntityBuilder::WithAudio(const std::string& soundName, bool loop,
 EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
 {
     auto& script = m_Scene.registry.get_or_emplace<ScriptComponent>(m_Entity);
-    // script.scriptName = scriptName; // ScriptComponent doesn't have scriptName
     return *this;
 }
 
@@ -137,7 +137,20 @@ EntityBuilder& EntityBuilder::WithAnimation(const std::string& animationName)
 {
     auto& res = m_App->GetResourceManager();
     auto& anim = m_Scene.registry.get_or_emplace<AnimationComponent>(m_Entity);
-    anim.currentAnimation = res.GetAnimation(animationName);
+    anim.animations.push_back(animationName);
+    
+    auto a = res.GetAnimation(animationName);
+    if (a)
+    {
+        if (!anim.animator)
+        {
+            anim.animator = std::make_shared<Animator>(a);
+        }
+        else
+        {
+            anim.animator->AddAnimation(animationName, a);
+        }
+    }
     return *this;
 }
 

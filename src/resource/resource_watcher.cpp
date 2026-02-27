@@ -7,33 +7,33 @@
 ResourceWatcher::ResourceWatcher()
     : m_Running(true)
 {
-    // Use a dedicated thread, NOT the JobSystem, because this loop runs forever
     m_WatcherThread = std::thread(&ResourceWatcher::WatcherLoop, this);
 }
 
 ResourceWatcher::~ResourceWatcher()
 {
-    // Signal the watcher loop to stop and wake it from its sleep immediately
     {
         std::lock_guard<std::mutex> lock(m_StopMutex);
         m_Running = false;
     }
     m_StopCV.notify_all();
 
-    // Wait for the thread to finish cleanly
     if (m_WatcherThread.joinable())
         m_WatcherThread.join();
 }
 
-void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type)
+void ResourceWatcher::Watch(const std::string &name, const std::string &path, const std::string &type)
 {
     bool alreadyWatched = false;
-    for (auto& w : m_Watchers)
     {
-        if (w.name == name && w.type == type)
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        for (auto &w : m_Watchers)
         {
-            alreadyWatched = true;
-            break;
+            if (w.name == name && w.type == type)
+            {
+                alreadyWatched = true;
+                break;
+            }
         }
     }
 
@@ -52,12 +52,13 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
         {
         }
 
+        std::lock_guard<std::mutex> lock(m_Mutex);
         m_Watchers.push_back(entry);
     }
 }
 
-void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type,
-                           const std::string& vsPath, const std::string& fsPath, const std::string& gsPath)
+void ResourceWatcher::Watch(const std::string &name, const std::string &path, const std::string &type,
+                            const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
 {
     WatchEntry entry;
     entry.name = name;
@@ -75,6 +76,7 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
     {
     }
 
+    std::lock_guard<std::mutex> lock(m_Mutex);
     m_Watchers.push_back(entry);
 }
 
@@ -82,21 +84,23 @@ void ResourceWatcher::WatcherLoop()
 {
     while (m_Running)
     {
-        // Interruptible sleep: wakes up immediately when m_StopCV is notified
         {
             std::unique_lock<std::mutex> lock(m_StopMutex);
             m_StopCV.wait_for(lock, std::chrono::milliseconds(500),
-                              [this]() { return !m_Running.load(); });
+                              [this]()
+                              { return !m_Running.load(); });
         }
 
-        if (!m_Running) break;
+        if (!m_Running)
+            break;
 
         std::lock_guard<std::mutex> lock(m_Mutex);
-        for (auto& watcher : m_Watchers)
+        for (auto &watcher : m_Watchers)
         {
             try
             {
-                if (!std::filesystem::exists(watcher.filePath)) continue;
+                if (!std::filesystem::exists(watcher.filePath))
+                    continue;
 
                 auto currentWriteTime = std::filesystem::last_write_time(watcher.filePath);
                 if (currentWriteTime > watcher.lastWriteTime)
@@ -112,7 +116,7 @@ void ResourceWatcher::WatcherLoop()
                     m_PendingReloads.push_back(e);
                 }
             }
-            catch (const std::filesystem::filesystem_error&)
+            catch (const std::filesystem::filesystem_error &)
             {
             }
         }
@@ -131,8 +135,7 @@ void ResourceWatcher::Update(float dt)
         }
     }
 
-    // Publish all pending events on the main thread
-    for (const auto& event : eventsToProcess)
+    for (const auto &event : eventsToProcess)
     {
         EventSystem::Instance().Publish(event);
     }

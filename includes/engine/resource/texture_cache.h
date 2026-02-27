@@ -37,6 +37,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<Texture>> m_Textures;
     std::vector<std::future<TextureData>> m_AsyncLoads;
     std::mutex m_Mutex;
+    mutable std::mutex m_CacheMutex;
 
     static ITextureManager* s_TextureManager;
 };

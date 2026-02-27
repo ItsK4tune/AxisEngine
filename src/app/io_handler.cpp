@@ -74,7 +74,6 @@ void IOHandler::ProcessInput()
     if (m_KeyboardManager->GetKey(Input::Key::Escape))
         m_MonitorManager->GetWindow()->SetShouldClose(true);
     
-    // Shortcuts: (Super + Enter) or (Alt + Enter)
     bool superPressed = m_KeyboardManager->GetKey(Input::Key::LeftSuper) || m_KeyboardManager->GetKey(Input::Key::RightSuper);
     bool altPressed = m_KeyboardManager->GetKey(Input::Key::LeftAlt) || m_KeyboardManager->GetKey(Input::Key::RightAlt);
     bool enterDown = m_KeyboardManager->IsKeyDown(Input::Key::Enter) || m_KeyboardManager->IsKeyDown(Input::Key::KpEnter);

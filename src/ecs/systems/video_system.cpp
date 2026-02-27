@@ -14,7 +14,6 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
     for (auto entity : view)
     {
         auto &video = view.get<VideoPlayerComponent>(entity);
-
         if (!video.isLoaded)
         {
             if (!video.decoder)

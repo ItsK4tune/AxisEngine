@@ -112,7 +112,6 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
     const GLFWvidmode* videoMode = glfwGetVideoMode(targetMonitor);
     if (!videoMode) return;
 
-    // Fallback to monitor resolution if width/height is 0
     if (width <= 0) width = videoMode->width;
     if (height <= 0) height = videoMode->height;
 
@@ -127,7 +126,6 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
         m_Width = videoMode->width;
         m_Height = videoMode->height;
-        // Use nullptr for monitor to make it a borderless window, but at monitor resolution and position
         glfwSetWindowMonitor(m_Window, nullptr, xpos, ypos, m_Width, m_Height, GLFW_DONT_CARE);
         LOGGER_INFO("GLFWWindow") << "Window set to Borderless Fullscreen: " << m_Width << "x" << m_Height;
     } else if (mode == WindowMode::Borderless) {
@@ -143,7 +141,6 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         m_Height = height;
         LOGGER_INFO("GLFWWindow") << "Window set to Borderless: " << width << "x" << height << " at (" << cx << "," << cy << ")";
     } else {
-        // Switching to Windowed
         glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_TRUE);
         
         int xpos, ypos;
@@ -196,7 +193,6 @@ std::vector<MonitorInfo> GLFWWindow::GetMonitors() const {
 std::vector<DeviceInfo> GLFWWindow::GetConnectedDevices() const {
     std::vector<DeviceInfo> devices;
 
-    // Default Keyboard & Mouse
     DeviceInfo kbdInfo;
     kbdInfo.id = "keyboard_0";
     kbdInfo.name = "Primary Keyboard";
@@ -211,7 +207,6 @@ std::vector<DeviceInfo> GLFWWindow::GetConnectedDevices() const {
     mouseInfo.isDefault = true;
     devices.push_back(mouseInfo);
 
-    // Joysticks
     for (int i = 0; i <= GLFW_JOYSTICK_LAST; i++) {
         if (glfwJoystickPresent(i)) {
             DeviceInfo joyInfo;

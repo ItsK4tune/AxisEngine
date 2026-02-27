@@ -4,6 +4,7 @@
 #include <interface/graphic/i_texture_manager.h>
 #include <graphic/core/shader.h>
 #include <graphic/renderer/skybox.h>
+#include <utils/logger.h>
 
 void SkyboxRenderSystem::Init(IGraphicsContext& context)
 {

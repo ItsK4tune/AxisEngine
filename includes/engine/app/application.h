@@ -42,7 +42,7 @@ public:
     Application();
     ~Application();
 
-    bool Init(const AppConfig& config);
+    bool Init(const AppConfig &config);
     void Run();
 
     template <typename T, typename... Args>
@@ -51,66 +51,65 @@ public:
         m_RuntimeCore->PushState(std::make_unique<T>(std::forward<Args>(args)...));
     }
 
-    Scene&           GetScene();
-    IPhysicsWorld&   GetPhysicsWorld();
-    IOHandler&       GetIOHandler();
-    ContentService&  GetContentService();
-    RuntimeCore&     GetRuntimeCore();
-    StateMachine&    GetStateMachine();
-    SystemManager&   GetSystemManager();
-    ResourceManager& GetResourceManager();
-    SceneManager&    GetSceneManager();
-    SoundPlayer&     GetSoundPlayer();
-    MonitorManager&  GetMonitorManager();
-    KeyboardManager& GetKeyboard() const;
-    MouseManager&    GetMouse() const;
-    InputManager&    GetInputManager() const;
-    IGraphicsContext& GetGraphicsContext() const;
-    IWindow*         GetWindow() const;
-    int              GetWidth() const;
-    int              GetHeight() const;
+    Scene &GetScene();
+    IPhysicsWorld &GetPhysicsWorld();
+    IOHandler &GetIOHandler();
+    ContentService &GetContentService();
+    RuntimeCore &GetRuntimeCore();
+    StateMachine &GetStateMachine();
+    SystemManager &GetSystemManager();
+    ResourceManager &GetResourceManager();
+    SceneManager &GetSceneManager();
+    SoundPlayer &GetSoundPlayer();
+    MonitorManager &GetMonitorManager();
+    KeyboardManager &GetKeyboard() const;
+    MouseManager &GetMouse() const;
+    InputManager &GetInputManager() const;
+    IGraphicsContext &GetGraphicsContext() const;
+    IWindow *GetWindow() const;
+    int GetWidth() const;
+    int GetHeight() const;
 
-    RenderSystem&        GetRenderSystem();
-    PhysicsSystem&       GetPhysicsSystem();
-    AudioSystem&         GetAudioSystem();
-    UIRenderSystem&      GetUIRenderSystem();
-    ScriptableSystem&    GetScriptSystem();
-    ParticleSystem&      GetParticleSystem();
-    SkyboxRenderSystem&  GetSkyboxRenderSystem();
-    AnimationSystem&     GetAnimationSystem();
-    VideoSystem&         GetVideoSystem();
-    PostProcessPipeline& GetPostProcess();
+    RenderSystem &GetRenderSystem();
+    PhysicsSystem &GetPhysicsSystem();
+    AudioSystem &GetAudioSystem();
+    UIRenderSystem &GetUIRenderSystem();
+    ScriptableSystem &GetScriptSystem();
+    ParticleSystem &GetParticleSystem();
+    SkyboxRenderSystem &GetSkyboxRenderSystem();
+    AnimationSystem &GetAnimationSystem();
+    VideoSystem &GetVideoSystem();
+    PostProcessPipeline &GetPostProcess();
 
-    WorldContext  GetWorldContext();
-    IOContext     GetIOContext();
+    WorldContext GetWorldContext();
+    IOContext GetIOContext();
     SystemContext GetSystemContext();
 
     float GetTimeScale() const;
-    void  SetTimeScale(float timeScale);
+    void SetTimeScale(float timeScale);
     float GetRealDeltaTime() const;
-    bool  IsPaused() const;
-    void  SetPaused(bool paused);
+    bool IsPaused() const;
+    void SetPaused(bool paused);
 
     void OnResize(int width, int height);
     void OnMouseMove(double xpos, double ypos);
     void OnMouseButton(int button, int action, int mods);
     void OnScroll(double xoffset, double yoffset);
 
-    const AppConfig& GetConfig() const;
-    void ApplyConfig(const AppConfig& config);
+    const AppConfig &GetConfig() const;
+    void ApplyConfig(const AppConfig &config);
 
 private:
-    // Scene stored as unique_ptr so Scene type can be forward-declared in this header
-    std::unique_ptr<Scene>           m_Scene;
-    std::unique_ptr<IPhysicsWorld>   m_PhysicsWorld;
+    std::unique_ptr<Scene> m_Scene;
+    std::unique_ptr<IPhysicsWorld> m_PhysicsWorld;
     std::unique_ptr<ResourceManager> m_ResourceManager;
-    std::unique_ptr<SoundPlayer>     m_SoundPlayer;
-    std::unique_ptr<SceneManager>    m_SceneManager;
+    std::unique_ptr<SoundPlayer> m_SoundPlayer;
+    std::unique_ptr<SceneManager> m_SceneManager;
 
-    std::unique_ptr<IOHandler>       m_IOHandler;
-    std::unique_ptr<ContentService>  m_ContentService;
-    std::unique_ptr<RuntimeCore>     m_RuntimeCore;
-    std::unique_ptr<SystemManager>   m_SystemManager;
+    std::unique_ptr<IOHandler> m_IOHandler;
+    std::unique_ptr<ContentService> m_ContentService;
+    std::unique_ptr<RuntimeCore> m_RuntimeCore;
+    std::unique_ptr<SystemManager> m_SystemManager;
 
     AppConfig m_Config;
 };

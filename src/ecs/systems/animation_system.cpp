@@ -1,20 +1,20 @@
 #include <ecs/system.h>
-#include <execution>
 #include <ecs/component.h>
+#include <graphic/geometry/animator.h>
+#include <utils/logger.h>
 
 void AnimationSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled) return;
 
-    auto view = scene.registry.view<AnimationComponent>();
+    auto view = scene.registry.view<AnimationComponent, MeshRendererComponent>();
 
-    m_Entities.assign(view.begin(), view.end());
-
-    std::for_each(std::execution::par, m_Entities.begin(), m_Entities.end(), [&scene, dt](entt::entity entity)
-                  {
+    for (auto entity : view)
+    {
         auto &anim = scene.registry.get<AnimationComponent>(entity);
         if (anim.animator)
         {
-            anim.animator->UpdateAnimation(dt);
-        } });
+            anim.animator->UpdateAnimation(dt * anim.speed);
+        }
+    }
 }

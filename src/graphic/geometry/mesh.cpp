@@ -5,6 +5,7 @@
 #include <interface/graphic/i_texture_manager.h>
 #include <interface/graphic/i_draw_context.h>
 #include <interface/graphic/graphics_types.h>
+#include <utils/logger.h>
 
 IBufferManager* Mesh::s_BufferManager = nullptr;
 ITextureManager* Mesh::s_TextureManager = nullptr;
@@ -19,13 +20,17 @@ void Mesh::SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* 
 
 Mesh::Mesh(std::vector<Vertex> vertices,
            std::vector<unsigned int> indices,
-           std::vector<Texture> textures)
+           std::vector<Texture> textures,
+           bool setupGPU)
 {
     this->vertices = vertices;
     this->indices = indices;
     this->textures = textures;
 
-    setupMesh();
+    if (setupGPU)
+    {
+        setupMesh();
+    }
 
     if (!vertices.empty())
     {
@@ -76,6 +81,10 @@ void Mesh::Draw(Shader &shader)
     }
 
     shader.setBool("isInstanced", false);
+
+    static int meshDrawCount = 0;
+    meshDrawCount++;
+    bool logThisMesh = (meshDrawCount <= 10);
 
     bm.BindVertexArray(VAO);
     dm.DrawElements(Graphics::Primitive::Triangles, static_cast<int>(indices.size()), Graphics::DataType::UnsignedInt, 0);
@@ -131,6 +140,7 @@ void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
 
 void Mesh::setupMesh()
 {
+    if (m_Initialized) return;
     auto& bm = GetBufferManager();
 
     VAO = bm.CreateVertexArray();
@@ -168,6 +178,8 @@ void Mesh::setupMesh()
 
     instanceVBO = bm.CreateBuffer();
     bm.BindBuffer(Graphics::BufferType::ArrayBuffer, instanceVBO);
+    glm::mat4 identity(1.0f);
+    bm.BufferData(Graphics::BufferType::ArrayBuffer, sizeof(glm::mat4), &identity, Graphics::BufferUsage::StaticDraw);
 
     std::size_t vec4Size = sizeof(glm::vec4);
 
@@ -186,4 +198,5 @@ void Mesh::setupMesh()
     bm.VertexAttribDivisor(13, 1);
 
     bm.BindVertexArray(0);
+    m_Initialized = true;
 }
