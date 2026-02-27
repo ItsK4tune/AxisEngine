@@ -169,6 +169,13 @@ void Shader::setMat4(const std::string &name, const glm::mat4 &mat) const
     GetShaderManager().SetUniformMatrix4fv(GetUniformLocation(name), &mat[0][0]);
 }
 
+void Shader::setMat4Array(const std::string &name, const std::vector<glm::mat4> &matrices) const
+{
+    if (matrices.empty()) return;
+    int loc = GetUniformLocation(name);
+    GetShaderManager().SetUniformMatrix4fvArray(loc, static_cast<int>(matrices.size()), &matrices[0][0][0]);
+}
+
 int Shader::GetUniformLocation(const std::string &name) const
 {
     if (uniformLocations.find(name) != uniformLocations.end())

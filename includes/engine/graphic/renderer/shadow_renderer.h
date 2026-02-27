@@ -3,16 +3,17 @@
 #include <scene/scene.h>
 #include <graphic/renderer/shadow.h>
 #include <graphic/renderer/frustum.h>
+#include <vector>
 
 class ResourceManager;
-class Shader;
+struct RenderItem;
 
 class ShadowRenderer
 {
 public:
     void Init(ResourceManager &res);
     void Shutdown();
-    void RenderShadows(Scene &scene, float alpha);
+    void RenderShadows(Scene &scene, const std::vector<RenderItem>& shadowQueue);
 
     void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
     void SetShadowMode(int mode) { m_ShadowMode = mode; }

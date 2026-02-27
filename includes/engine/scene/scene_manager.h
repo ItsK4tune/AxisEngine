@@ -90,6 +90,7 @@ private:
     void _UnloadOrphanedResources(const SceneRecord& rec);
     void _RollbackConfig(const SceneRecord& removed);
     void _UnloadRecord(SceneRecord& rec);
+    void _ReindexScenes();
 
     Scene&           m_Scene;
     ResourceManager& m_Resources;

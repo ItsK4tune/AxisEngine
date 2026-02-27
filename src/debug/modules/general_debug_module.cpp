@@ -216,7 +216,9 @@ void GeneralDebugModule::LogSceneGraph()
     for (auto entity : view)
     {
         const auto &info = view.get<InfoComponent>(entity);
-        std::cout << "[" << count++ << "] ID: " << (uint32_t)entity
+        uint32_t sequentialId = (uint32_t)entity & 0xFFFFF; 
+
+        std::cout << "[" << count++ << "] ID: " << sequentialId
                   << " | Name: " << info.name
                   << " | Tag: " << info.tag << std::endl;
     }

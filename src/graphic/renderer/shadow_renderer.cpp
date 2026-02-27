@@ -7,6 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <algorithm>
+#include <ecs/systems/render_system.h>
 
 void ShadowRenderer::Init(ResourceManager &res)
 {
@@ -26,7 +27,7 @@ void ShadowRenderer::Shutdown()
     m_Shadow.Shutdown();
 }
 
-void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
+void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& shadowQueue)
 {
     if (m_ShadowMode == 0)
         return;
@@ -110,16 +111,12 @@ void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
         shaderDir->use();
         shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
 
-        auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
-        for (auto entity : view)
+        for (const auto& item : shadowQueue)
         {
-            auto [trans, renderer] = view.get<TransformComponent, MeshRendererComponent>(entity);
-
-            if (!renderer.model || !renderer.castShadow)
-                continue;
-
-            glm::mat4 modelMatrix = trans.GetInterpolatedWorldMatrix(scene.registry, alpha);
-            AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
+            entt::entity entity = item.entity;
+            MeshRendererComponent& renderer = *item.renderer;
+            
+            AABB worldAABB = renderer.model->aabb.Transform(item.worldMatrix);
             glm::vec3 worldMin = worldAABB.minBound;
             glm::vec3 worldMax = worldAABB.maxBound;
 
@@ -141,20 +138,9 @@ void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
                     continue;
             }
 
-            Model* activeModel = renderer.model.get();
-            if (scene.registry.all_of<LODComponent>(entity))
-            {
-                auto& lod = scene.registry.get<LODComponent>(entity);
-                for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
-                    if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
-                        activeModel = lod.lodModels[i].get();
-                    } else {
-                        break;
-                    }
-                }
-            }
+            Model* activeModel = item.activeModel;
 
-            shaderDir->setMat4("model", trans.GetInterpolatedWorldMatrix(scene.registry, alpha));
+            shaderDir->setMat4("model", item.worldMatrix);
 
             if (scene.registry.all_of<AnimationComponent>(entity))
             {
@@ -162,8 +148,7 @@ void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
                 if (anim.animator)
                 {
                     auto transforms = anim.animator->GetFinalBoneMatrices();
-                    for (int j = 0; j < transforms.size() && j < 100; ++j)
-                        shaderDir->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                    shaderDir->setMat4Array("finalBonesMatrices", transforms);
                     shaderDir->setBool("hasAnimation", true);
                 }
                 else
@@ -234,61 +219,46 @@ void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
         m_Shadow.BindFBO_Point(pIdx);
         m_Shadow.GetDrawContext().Clear(Graphics::BufferBit::Depth);
 
-        auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
-        for (auto obj : view)
+        for (const auto& item : shadowQueue)
         {
-            auto [tObj, rObj] = view.get<TransformComponent, MeshRendererComponent>(obj);
-            if (rObj.model)
+            entt::entity obj = item.entity;
+            MeshRendererComponent& rObj = *item.renderer;
+
+            AABB worldAABB = rObj.model->aabb.Transform(item.worldMatrix);
+            glm::vec3 worldMin = worldAABB.minBound;
+            glm::vec3 worldMax = worldAABB.maxBound;
+
+            float distSq = 0.0f;
+            float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
+            float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
+            float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
+            distSq = dx*dx + dy*dy + dz*dz;
+
+            if (m_ShadowDistanceCullingSq > 0.0f && distSq > m_ShadowDistanceCullingSq)
+                continue;
+
+            Model* activeModel = item.activeModel;
+
+            shaderPoint->setMat4("model", item.worldMatrix);
+            if (scene.registry.all_of<AnimationComponent>(obj))
             {
-                glm::mat4 modelMatrix = tObj.GetInterpolatedWorldMatrix(scene.registry, alpha);
-                AABB worldAABB = rObj.model->aabb.Transform(modelMatrix);
-                glm::vec3 worldMin = worldAABB.minBound;
-                glm::vec3 worldMax = worldAABB.maxBound;
-
-                float distSq = 0.0f;
-                float dx = (std::max)(worldMin.x - camPos.x, (std::max)(0.0f, camPos.x - worldMax.x));
-                float dy = (std::max)(worldMin.y - camPos.y, (std::max)(0.0f, camPos.y - worldMax.y));
-                float dz = (std::max)(worldMin.z - camPos.z, (std::max)(0.0f, camPos.z - worldMax.z));
-                distSq = dx*dx + dy*dy + dz*dz;
-
-                if (m_ShadowDistanceCullingSq > 0.0f && distSq > m_ShadowDistanceCullingSq)
-                    continue;
-
-                Model* activeModel = rObj.model.get();
-                if (scene.registry.all_of<LODComponent>(obj))
+                auto &anim = scene.registry.get<AnimationComponent>(obj);
+                if (anim.animator)
                 {
-                    auto& lod = scene.registry.get<LODComponent>(obj);
-                    for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
-                        if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
-                            activeModel = lod.lodModels[i].get();
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                shaderPoint->setMat4("model", tObj.GetInterpolatedWorldMatrix(scene.registry, alpha));
-                if (scene.registry.all_of<AnimationComponent>(obj))
-                {
-                    auto &anim = scene.registry.get<AnimationComponent>(obj);
-                    if (anim.animator)
-                    {
-                        auto transforms = anim.animator->GetFinalBoneMatrices();
-                        for (int j = 0; j < transforms.size() && j < 100; ++j)
-                            shaderPoint->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
-                        shaderPoint->setBool("hasAnimation", true);
-                    }
-                    else
-                    {
-                        shaderPoint->setBool("hasAnimation", false);
-                    }
+                    auto transforms = anim.animator->GetFinalBoneMatrices();
+                    shaderPoint->setMat4Array("finalBonesMatrices", transforms);
+                    shaderPoint->setBool("hasAnimation", true);
                 }
                 else
                 {
                     shaderPoint->setBool("hasAnimation", false);
                 }
-                activeModel->Draw(*shaderPoint);
             }
+            else
+            {
+                shaderPoint->setBool("hasAnimation", false);
+            }
+            activeModel->Draw(*shaderPoint);
         }
 
         pIdx++;
@@ -356,16 +326,12 @@ void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
 
         shaderSpot->setMat4("lightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
 
-        auto meshView = scene.registry.view<TransformComponent, MeshRendererComponent>();
-        for (auto obj : meshView)
+        for (const auto& item : shadowQueue)
         {
-            auto [tObj, rObj] = meshView.get<TransformComponent, MeshRendererComponent>(obj);
+            entt::entity obj = item.entity;
+            MeshRendererComponent& rObj = *item.renderer;
 
-            if (!rObj.model || !rObj.castShadow)
-                continue;
-
-            glm::mat4 modelMatrix = tObj.GetInterpolatedWorldMatrix(scene.registry, alpha);
-            AABB worldAABB = rObj.model->aabb.Transform(modelMatrix);
+            AABB worldAABB = rObj.model->aabb.Transform(item.worldMatrix);
             glm::vec3 worldMin = worldAABB.minBound;
             glm::vec3 worldMax = worldAABB.maxBound;
 
@@ -387,20 +353,9 @@ void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
                     continue;
             }
 
-            Model* activeModel = rObj.model.get();
-            if (scene.registry.all_of<LODComponent>(obj))
-            {
-                auto& lod = scene.registry.get<LODComponent>(obj);
-                for (int i = 0; i < lod.lodDistancesSq.size(); ++i) {
-                    if (distSq > lod.lodDistancesSq[i] && i < lod.lodModels.size() && lod.lodModels[i]) {
-                        activeModel = lod.lodModels[i].get();
-                    } else {
-                        break;
-                    }
-                }
-            }
+            Model* activeModel = item.activeModel;
 
-            shaderSpot->setMat4("model", tObj.GetInterpolatedWorldMatrix(scene.registry, alpha));
+            shaderSpot->setMat4("model", item.worldMatrix);
 
             if (scene.registry.all_of<AnimationComponent>(obj))
             {
@@ -408,8 +363,7 @@ void ShadowRenderer::RenderShadows(Scene &scene, float alpha)
                 if (anim.animator)
                 {
                     auto transforms = anim.animator->GetFinalBoneMatrices();
-                    for (int j = 0; j < transforms.size() && j < 100; ++j)
-                        shaderSpot->setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
+                    shaderSpot->setMat4Array("finalBonesMatrices", transforms);
                     shaderSpot->setBool("hasAnimation", true);
                 }
                 else

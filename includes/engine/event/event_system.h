@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <algorithm>
+#include <mutex>
 
 class IEventDispatcher
 {
@@ -28,11 +29,13 @@ public:
 
     void Register(int id, Callback cb)
     {
+        std::lock_guard<std::mutex> lock(m_Mutex);
         listeners.push_back({id, cb});
     }
 
     void Unregister(int id)
     {
+        std::lock_guard<std::mutex> lock(m_Mutex);
         listeners.erase(
             std::remove_if(listeners.begin(), listeners.end(),
                            [id](const Listener &l)
@@ -42,7 +45,13 @@ public:
 
     void Dispatch(const T &event)
     {
-        for (const auto &listener : listeners)
+        std::vector<Listener> localListeners;
+        {
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            localListeners = listeners;
+        }
+
+        for (const auto &listener : localListeners)
         {
             listener.callback(event);
         }
@@ -50,6 +59,7 @@ public:
 
 private:
     std::vector<Listener> listeners;
+    std::mutex m_Mutex;
 };
 
 class EventSystem

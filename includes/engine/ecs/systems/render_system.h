@@ -29,6 +29,7 @@ struct RenderItem
     MeshRendererComponent *renderer;
     MaterialComponent *material;
     Model *activeModel;
+    glm::mat4 worldMatrix;
     uint32_t layer;
     int renderOrder;
 };
@@ -36,11 +37,13 @@ struct RenderItem
 class RenderSystem
 {
 public:
+    void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0);
+    void RenderShadows(Scene &scene);
     void Render(Scene &scene, int width, int height, float alpha);
 
     void Init(IGraphicsContext& context, ResourceManager &res);
     void Shutdown();
-    void RenderShadows(Scene &scene, float alpha);
+
     void SetEnableShadows(bool enable) { m_ShadowRenderer.SetEnableShadows(enable); }
     void SetShadowMode(int mode) { m_ShadowRenderer.SetShadowMode(mode); }
     bool IsShadowsEnabled() const { return m_ShadowRenderer.IsShadowsEnabled(); }
@@ -111,9 +114,14 @@ private:
 
     glm::mat4 m_PrevViewProj = glm::mat4(1.0f);
     glm::mat4 m_CurrViewProj = glm::mat4(1.0f);
+    glm::mat4 m_JitteredProjection = glm::mat4(1.0f);
+
+    bool m_QueuesBuilt = false;
+    float m_LastAlpha = -1.0f;
 
     std::vector<uint32_t> m_OcclusionQueries;
     std::vector<RenderItem> m_RenderQueue;
+    std::vector<RenderItem> m_ShadowQueue;
 
     std::vector<std::string> m_BonesUniforms;
     std::vector<std::string> m_ShadowPointUniforms;

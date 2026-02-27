@@ -16,6 +16,7 @@
 #include <input/mouse_manager.h>
 #include <utils/logger.h>
 #include <iostream>
+#include <ecs/systems/render_system.h>
 
 SystemManager::SystemManager()
 {
@@ -94,7 +95,10 @@ void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager
 void SystemManager::RenderShadows(Scene& scene, float alpha, uint32_t mask)
 {
     if (mask & (uint32_t)SystemGroup::Render)
-        renderSystem.RenderShadows(scene, alpha);
+    {
+        renderSystem.BuildRenderQueues(scene, alpha, 0, 0);
+        renderSystem.RenderShadows(scene);
+    }
 }
 
 void SystemManager::RenderSystems(Scene& scene, ResourceManager& res, int width, int height, float alpha, uint32_t mask)

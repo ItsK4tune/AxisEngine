@@ -37,6 +37,7 @@ public:
     virtual void SetUniformMatrix2fv(int location, const float *value) = 0;
     virtual void SetUniformMatrix3fv(int location, const float *value) = 0;
     virtual void SetUniformMatrix4fv(int location, const float *value) = 0;
+    virtual void SetUniformMatrix4fvArray(int location, int count, const float *value) = 0;
 
     virtual void DispatchCompute(unsigned int numGroupsX, unsigned int numGroupsY, unsigned int numGroupsZ) = 0;
     virtual void MemoryBarrier(Graphics::MemoryBarrierBit barriers) = 0;

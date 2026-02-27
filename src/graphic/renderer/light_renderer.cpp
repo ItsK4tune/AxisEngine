@@ -134,7 +134,10 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
     m_BufferManager->BufferData(Graphics::BufferType::ShaderStorageBuffer, m_SpotLights.size() * sizeof(GPUSpotLight), m_SpotLights.data(), Graphics::BufferUsage::DynamicDraw);
     m_BufferManager->BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 2, m_SpotLightSSBO);
 
-    shader->setInt("numDirLights", (int)m_DirLights.size());
-    shader->setInt("nrPointLights", (int)m_PointLights.size());
-    shader->setInt("nrSpotLights", (int)m_SpotLights.size());
+    if (shader)
+    {
+        shader->setInt("numDirLights", (int)m_DirLights.size());
+        shader->setInt("nrPointLights", (int)m_PointLights.size());
+        shader->setInt("nrSpotLights", (int)m_SpotLights.size());
+    }
 }

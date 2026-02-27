@@ -69,6 +69,10 @@ public:
     void Init(IBufferManager& bufferManager);
     void UploadLightData(Scene &scene, Shader *shader);
 
+    int GetDirLightCount() const { return (int)m_DirLights.size(); }
+    int GetPointLightCount() const { return (int)m_PointLights.size(); }
+    int GetSpotLightCount() const { return (int)m_SpotLights.size(); }
+
 private:
     unsigned int m_DirLightSSBO = 0;
     unsigned int m_PointLightSSBO = 0;

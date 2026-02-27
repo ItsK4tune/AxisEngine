@@ -255,23 +255,36 @@ void ResourceManager::ClearResource()
 
 void ResourceManager::FlushPendingModels()
 {
-    std::lock_guard<std::mutex> lock(m_PendingMutex);
-
-    m_ActiveFutures.erase(
-        std::remove_if(m_ActiveFutures.begin(), m_ActiveFutures.end(),
-            [](std::future<void>& f) {
-                return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-            }),
-        m_ActiveFutures.end());
-
-    for (auto& pending : m_PendingModels)
+    std::vector<PendingModel> readyModels;
+    
     {
-        if (pending.model && pending.model->IsReadyToRender())
+        std::lock_guard<std::mutex> lock(m_PendingMutex);
+
+        m_ActiveFutures.erase(
+            std::remove_if(m_ActiveFutures.begin(), m_ActiveFutures.end(),
+                [](std::future<void>& f) {
+                    return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+                }),
+            m_ActiveFutures.end());
+
+        for (auto it = m_PendingModels.begin(); it != m_PendingModels.end(); )
         {
-            m_ModelInstanceManager.RegisterModel(pending.name, std::move(pending.model));
-            LOGGER_INFO("ResourceManager") << "Async model registered: " << pending.name;
+            if (it->model && it->model->IsReadyToRender())
+            {
+                readyModels.push_back(std::move(*it));
+                it = m_PendingModels.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
         }
     }
-    m_PendingModels.clear();
+
+    for (auto& pending : readyModels)
+    {
+        m_ModelInstanceManager.RegisterModel(pending.name, std::move(pending.model));
+        LOGGER_INFO("ResourceManager") << "Async model registered: " << pending.name;
+    }
 }
 

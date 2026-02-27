@@ -91,12 +91,11 @@ void RenderSystem::Shutdown()
         }
         m_OcclusionQueries.clear();
     }
+    
+    m_RenderQueue.clear();
+    m_ShadowQueue.clear();
 }
 
-void RenderSystem::RenderShadows(Scene &scene, float alpha)
-{
-    m_ShadowRenderer.RenderShadows(scene, alpha);
-}
 
 void RenderSystem::SetFaceCulling(bool enabled, Graphics::CullMode mode)
 {
@@ -130,24 +129,37 @@ void RenderSystem::SetDepthTest(bool enabled, Graphics::CompareFunc func)
     }
 }
 
-void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
+void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int height)
 {
-    if (!m_Enabled || !m_Context)
+    if (m_QueuesBuilt && m_LastAlpha == alpha)
         return;
+
+    m_RenderQueue.clear();
+    m_ShadowQueue.clear();
 
     entt::entity camEntity = scene.GetActiveCamera();
     CameraComponent *cam = nullptr;
     TransformComponent *camTrans = nullptr;
 
     if (camEntity == entt::null)
+    {
+        m_QueuesBuilt = true; // Still mark as built to avoid repeated attempts this frame
+        m_LastAlpha = alpha;
         return;
+    }
 
     cam = &scene.registry.get<CameraComponent>(camEntity);
     camTrans = &scene.registry.get<TransformComponent>(camEntity);
 
-    glm::mat4 projectionMatrix = cam->projectionMatrix;
+    if (!m_QueuesBuilt)
+    {
+        m_PrevViewProj = m_CurrViewProj;
+    }
 
-    if (m_AAMode == AntiAliasingMode::TAA && cam)
+    m_JitteredProjection = cam->projectionMatrix;
+    m_JitterOffset = glm::vec2(0.0f);
+
+    if (m_AAMode == AntiAliasingMode::TAA && width > 0 && height > 0)
     {
         auto HaltonSequence = [](int index, int base) -> float
         {
@@ -175,37 +187,27 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
         jitterMatrix[3][0] = jitterX * 2.0f / (float)width;
         jitterMatrix[3][1] = jitterY * 2.0f / (float)height;
 
-        projectionMatrix = jitterMatrix * projectionMatrix;
-
-        m_FrameIndex++;
-    }
-    else
-    {
-        m_JitterOffset = glm::vec2(0.0f);
+        m_JitteredProjection = jitterMatrix * m_JitteredProjection;
+        
+        if (!m_QueuesBuilt)
+            m_FrameIndex++;
     }
 
-    m_PrevViewProj = m_CurrViewProj;
-    m_CurrViewProj = projectionMatrix * cam->viewMatrix;
-
-    if (m_PrevViewProj[3][3] == 0.0f)
-        m_PrevViewProj = m_CurrViewProj;
-
+    m_CurrViewProj = m_JitteredProjection * cam->viewMatrix;
+    
+    // Stable ViewProj for culling
+    glm::mat4 stableVP = cam->projectionMatrix * cam->viewMatrix;
     Frustum frustum;
-    if (cam)
-        frustum.Update(m_CurrViewProj);
+    frustum.Update(stableVP);
 
     if (m_OcclusionCullingEnabled)
     {
         UpdateOcclusionResults(scene);
     }
 
-    m_RenderQueue.clear();
-
     std::vector<entt::entity> visibleEntities;
     if (scene.GetOctree())
     {
-        // For now, rebuild every frame to ensure correctness with dynamic objects.
-        // In a production engine, you'd only update moved objects.
         std::vector<OctreeElement> elements;
         auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
         for (auto entity : view)
@@ -227,7 +229,6 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
     }
     else
     {
-        // Fallback if no octree
         auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
         for (auto entity : view) visibleEntities.push_back(entity);
     }
@@ -245,7 +246,6 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
 
         glm::mat4 modelMatrix = transform.GetInterpolatedWorldMatrix(scene.registry, alpha);
         
-        // Distance Culling (still useful with Octree if needed, though Octree can handle it)
         float distSq = 0.0f;
         if (cam && camTrans)
         {
@@ -268,8 +268,8 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
         
         if (auto* lod = scene.registry.try_get<LODComponent>(entity))
         {
-            for (int i = 0; i < lod->lodDistancesSq.size(); ++i) {
-                if (distSq > lod->lodDistancesSq[i] && i < lod->lodModels.size() && lod->lodModels[i]) {
+            for (int i = 0; i < (int)lod->lodDistancesSq.size(); ++i) {
+                if (distSq > lod->lodDistancesSq[i] && i < (int)lod->lodModels.size() && lod->lodModels[i]) {
                     activeModel = lod->lodModels[i].get();
                 } else {
                     break;
@@ -281,9 +281,7 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
         int renderOrder = renderer.order;
 
         if (auto* info = scene.registry.try_get<InfoComponent>(entity))
-        {
             layer = info->layer;
-        }
 
         if ((m_FilterLayerMask & layer) == 0) continue;
         if (cam && (cam->cullingMask & layer) == 0) continue;
@@ -297,7 +295,12 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
             }
         }
 
-        m_RenderQueue.emplace_back(RenderItem{entity, &transform, &renderer, mat, activeModel, layer, renderOrder});
+        m_RenderQueue.push_back({entity, &transform, &renderer, mat, activeModel, modelMatrix, layer, renderOrder});
+        
+        if (renderer.castShadow)
+        {
+            m_ShadowQueue.push_back({entity, &transform, &renderer, mat, activeModel, modelMatrix, layer, renderOrder});
+        }
     }
 
     std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [this](const RenderItem &lhs, const RenderItem &rhs)
@@ -321,11 +324,38 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
         return lhs.activeModel < rhs.activeModel; 
     });
 
+    m_QueuesBuilt = true;
+    m_LastAlpha = alpha;
+}
+
+void RenderSystem::RenderShadows(Scene &scene)
+{
+    m_ShadowRenderer.RenderShadows(scene, m_ShadowQueue);
+}
+
+void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
+{
+    if (!m_Enabled || !m_Context)
+        return;
+
+    BuildRenderQueues(scene, alpha, width, height);
+
+    entt::entity camEntity = scene.GetActiveCamera();
+    if (camEntity == entt::null)
+        return;
+
+    CameraComponent *cam = &scene.registry.get<CameraComponent>(camEntity);
+    TransformComponent *camTrans = &scene.registry.get<TransformComponent>(camEntity);
+
+    glm::mat4 projectionMatrix = m_JitteredProjection;
+
     Shader *currentShader = nullptr;
     Model *currentModel = nullptr;
     MaterialComponent *currentMaterial = nullptr;
     std::vector<glm::mat4> instanceBatch;
     m_RenderedCount = 0;
+
+    m_LightRenderer.UploadLightData(scene, nullptr);
 
     auto& rsm = m_Context->GetRenderStateManager();
     Graphics::PolygonMode prevMode = rsm.GetPolygonMode();
@@ -429,7 +459,14 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
                 currentShader->setFloat("farPlanePoint", m_ShadowRenderer.GetFarPlanePoint());
                 currentShader->setFloat("farPlaneSpot", m_ShadowRenderer.GetFarPlaneSpot());
             }
-            m_LightRenderer.UploadLightData(scene, currentShader);
+            if (m_DebugNoTexture)
+                currentShader->setBool("debug_noTexture", true);
+            else
+                currentShader->setBool("debug_noTexture", false);
+
+            currentShader->setInt("numDirLights", m_LightRenderer.GetDirLightCount());
+            currentShader->setInt("nrPointLights", m_LightRenderer.GetPointLightCount());
+            currentShader->setInt("nrSpotLights", m_LightRenderer.GetSpotLightCount());
         }
 
         bool isAnimated = scene.registry.all_of<AnimationComponent>(entity) && scene.registry.get<AnimationComponent>(entity).animator;
@@ -440,14 +477,14 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
             currentModel = nullptr;
             currentMaterial = nullptr;
 
-            glm::mat4 modelMatrix = transform.GetInterpolatedWorldMatrix(scene.registry, alpha);
-            currentShader->setMat4("model", modelMatrix);
+            currentShader->setMat4("model", item.worldMatrix);
             currentShader->setVec4("tintColor", renderer.color);
 
             auto &anim = scene.registry.get<AnimationComponent>(entity);
-            auto transforms = anim.animator->GetFinalBoneMatrices();
-            for (int j = 0; j < transforms.size() && j < 100; ++j)
-                currentShader->setMat4(m_BonesUniforms[j], transforms[j]);
+            if (anim.animator) {
+                auto transforms = anim.animator->GetFinalBoneMatrices();
+                currentShader->setMat4Array("finalBonesMatrices", transforms);
+            }
 
             SetupMaterialUniforms(currentShader, entity, scene);
 
@@ -456,14 +493,9 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
         }
         else
         {
-            if (m_DebugNoTexture)
-                currentShader->setBool("debug_noTexture", true);
-            else
-                currentShader->setBool("debug_noTexture", false);
-
             if (!m_InstanceBatchingEnabled)
             {
-                currentShader->setMat4("model", transform.GetInterpolatedWorldMatrix(scene.registry, alpha));
+                currentShader->setMat4("model", item.worldMatrix);
                 currentShader->setVec4("tintColor", renderer.color);
 
                 SetupMaterialUniforms(currentShader, entity, scene);
@@ -484,7 +516,7 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
                     SetupMaterialUniforms(currentShader, entity, scene);
                 }
 
-                instanceBatch.push_back(transform.GetInterpolatedWorldMatrix(scene.registry, alpha));
+                instanceBatch.push_back(item.worldMatrix);
             }
         }
     }
@@ -501,6 +533,7 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
         rsm.PolygonMode(Graphics::CullMode::FrontAndBack, prevMode);
     }
 #endif
+    m_QueuesBuilt = false;
 }
 
 void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene)
@@ -542,11 +575,6 @@ void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Sc
         shader->setVec2("uvScale", glm::vec2(1.0f));
         shader->setVec2("uvOffset", glm::vec2(0.0f));
     }
-
-    if (m_DebugNoTexture)
-        shader->setBool("debug_noTexture", true);
-    else
-        shader->setBool("debug_noTexture", false);
 }
 
 void RenderSystem::InitOcclusionCube()

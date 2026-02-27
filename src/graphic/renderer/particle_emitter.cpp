@@ -177,14 +177,14 @@ void ParticleEmitter::Init(unsigned int maxParticles)
 
 float RandomFloat()
 {
-    thread_local std::mt19937 generator(std::random_device{}());
+    static thread_local std::mt19937 generator(std::random_device{}());
     std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
     return distribution(generator);
 }
 
 float RandomFloat(float min, float max)
 {
-    thread_local std::mt19937 generator(std::random_device{}());
+    static thread_local std::mt19937 generator(std::random_device{}());
     std::uniform_real_distribution<float> distribution(min, max);
     return distribution(generator);
 }

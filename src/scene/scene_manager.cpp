@@ -145,6 +145,7 @@ void SceneManager::UnloadScene(const std::string& filePath)
     LOGGER_INFO("SceneManager") << "Unloading scene: " << filePath;
     _UnloadRecord(*it);
     m_LoadedScenes.erase(it);
+    _ReindexScenes();
 }
 
 void SceneManager::UnloadScene(const SceneRecord* rec)
@@ -169,6 +170,7 @@ void SceneManager::UnloadSceneByName(const std::string& name)
     LOGGER_INFO("SceneManager") << "Unloading scene by name: " << name;
     _UnloadRecord(*it);
     m_LoadedScenes.erase(it);
+    _ReindexScenes();
 }
 
 void SceneManager::UnloadSceneByOrder(int order)
@@ -187,6 +189,7 @@ void SceneManager::UnloadSceneByOrder(int order)
     LOGGER_INFO("SceneManager") << "Unloading scene by order=" << order << ": " << it->name;
     _UnloadRecord(*it);
     m_LoadedScenes.erase(it);
+    _ReindexScenes();
 }
 
 void SceneManager::PopScene()
@@ -219,6 +222,7 @@ void SceneManager::ChangeScene(const std::string& filePath)
         }
     }
     LoadScene(filePath);
+    _ReindexScenes();
 }
 
 void SceneManager::ClearAllScenes()
@@ -232,7 +236,7 @@ void SceneManager::ClearAllScenes()
             m_LoadedScenes.erase(m_LoadedScenes.begin() + i);
         }
     }
-    m_Scene.registry.clear();
+    _ReindexScenes();
 }
 
 void SceneManager::ClearAllIncludingPersistent()
@@ -246,7 +250,7 @@ void SceneManager::ClearAllIncludingPersistent()
             m_LoadedScenes.erase(m_LoadedScenes.begin() + i);
         }
     }
-    m_Scene.registry.clear();
+    _ReindexScenes();
 }
 
 void SceneManager::Shutdown()
@@ -258,7 +262,6 @@ void SceneManager::Shutdown()
         _UnloadOrphanedResources(m_LoadedScenes[i]);
     }
     m_LoadedScenes.clear();
-    m_Scene.registry.clear();
 }
 
 void SceneManager::QueueLoadScene(const std::string& path, bool persistent)
@@ -307,6 +310,23 @@ void SceneManager::UpdatePendingScene()
             case PendingOp::Pop:    PopScene(); break;
         }
     }
+}
+
+void SceneManager::_ReindexScenes()
+{
+    // Sort by current loadOrder to maintain relative sequence
+    std::sort(m_LoadedScenes.begin(), m_LoadedScenes.end(), [](const SceneRecord& a, const SceneRecord& b) {
+        return a.loadOrder < b.loadOrder;
+    });
+
+    // Reassign sequential indices
+    int index = 0;
+    for (auto& rec : m_LoadedScenes) {
+        rec.loadOrder = index++;
+    }
+    m_nextLoadOrder = index;
+
+    LOGGER_INFO("SceneManager") << "Scenes re-indexed. Total active scenes: " << m_LoadedScenes.size();
 }
 
 std::vector<const SceneRecord*> SceneManager::GetScenes() const

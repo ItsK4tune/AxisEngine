@@ -42,36 +42,49 @@ Application::Application()
 
 Application::~Application()
 {
+    LOGGER_INFO("Application") << "Shutting down application...";
+
+    // 1. Shutdown JobSystem first to stop any background tasks
+    JobSystem::Instance().Shutdown();
+
+    // 2. Halting Systems is CRITICAL before any data is destroyed.
+    // They must disconnect from EnTT hooks while the registry is still stable.
+    if (m_SystemManager)
+    {
+        m_SystemManager->GetPhysicsSystem().Reset();
+        m_SystemManager->ShutdownSystems();
+    }
+
+    // 3. Clear states only after systems are halted.
+    // This triggers GameState::OnExit, which might call SceneManager methods.
     if (m_RuntimeCore)
         m_RuntimeCore->GetStateMachine().Clear();
 
-    JobSystem::Instance().Shutdown();
-
-    if (m_Scene && m_SceneManager)
+    // 4. Shutdown SceneManager (it will handle scene-specific entity destruction)
+    if (m_SceneManager)
     {
         m_SceneManager->Shutdown();
     }
 
+    // 5. Cleanup managers and services
     if (m_Scene)
     {
         m_Scene->ShutdownManagers();
-        m_Scene->registry.clear();
     }
 
-    if (m_SystemManager)
-        m_SystemManager->GetPhysicsSystem().Reset();
-
-    if (m_SystemManager)
-        m_SystemManager->ShutdownSystems();
     m_SystemManager.reset();
-
     m_ContentService.reset();
     m_SceneManager.reset();
     m_RuntimeCore.reset();
     m_SoundPlayer.reset();
     m_ResourceManager.reset();
 
-    m_Scene.reset();
+    // 6. Finally, clear the registry and destroy the scene object
+    if (m_Scene)
+    {
+        m_Scene->registry.clear();
+        m_Scene.reset();
+    }
     m_PhysicsWorld.reset();
     m_IOHandler.reset();
 
