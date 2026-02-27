@@ -49,6 +49,21 @@ Mesh::Mesh(std::vector<Vertex> vertices,
     }
 }
 
+Mesh::~Mesh()
+{
+    if (m_Initialized && s_BufferManager)
+    {
+        try {
+            s_BufferManager->DeleteVertexArray(VAO);
+            s_BufferManager->DeleteBuffer(VBO);
+            s_BufferManager->DeleteBuffer(EBO);
+            if (instanceVBO != 0) s_BufferManager->DeleteBuffer(instanceVBO);
+        } catch (...) {
+            LOGGER_ERROR("Mesh") << "Destructor: CRASH during buffer deletion";
+        }
+    }
+}
+
 void Mesh::Draw(Shader &shader)
 {
     unsigned int diffuseNr = 1;
@@ -140,7 +155,7 @@ void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
 
 void Mesh::setupMesh()
 {
-    if (m_Initialized) return;
+    if (m_Initialized || !s_BufferManager) return;
     auto& bm = GetBufferManager();
 
     VAO = bm.CreateVertexArray();

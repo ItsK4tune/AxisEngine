@@ -53,9 +53,13 @@ ParticleEmitter::~ParticleEmitter()
 {
     if (s_BufferManager)
     {
-        if (m_VAO != 0) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
-        if (m_VBO != 0) s_BufferManager->DeleteBuffers(1, &m_VBO);
-        if (m_instanceVBO != 0) s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
+        try {
+            if (m_VAO != 0) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+            if (m_VBO != 0) s_BufferManager->DeleteBuffers(1, &m_VBO);
+            if (m_instanceVBO != 0) s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
+        } catch (...) {
+            LOGGER_ERROR("ParticleEmitter") << "Destructor: CRASH during buffer deletion";
+        }
     }
 }
 

@@ -25,6 +25,7 @@ public:
     void SetEnabled(bool enable) { m_Enabled = enable; }
     bool IsEnabled() const { return m_Enabled; }
     void Reset();
+    void OnRigidBodyDestroyed(entt::registry& registry, entt::entity entity);
 
 private:
     using CollisionPair = std::pair<entt::entity, entt::entity>;

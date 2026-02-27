@@ -16,6 +16,7 @@
 #include <input/mouse_manager.h>
 #include <utils/logger.h>
 #include <ecs/systems/render_system.h>
+#include <core/job_system.h>
 
 SystemManager::SystemManager()
 {
@@ -80,16 +81,41 @@ void SystemManager::UpdateLogic(Scene& scene, float deltaTime, float realDeltaTi
 
 void SystemManager::UpdateVisuals(Scene& scene, float deltaTime, ResourceManager& res, SoundPlayer& sound, float alpha, uint32_t mask)
 {
-    if (mask & (uint32_t)SystemGroup::Animation)
-        animationSystem.Update(scene, deltaTime);
-    if (mask & (uint32_t)SystemGroup::Video)
-        videoSystem.Update(scene, res, deltaTime);
-    if (mask & (uint32_t)SystemGroup::Audio)
-        audioSystem.Update(scene, sound);
-    if (mask & (uint32_t)SystemGroup::Particle)
-        particleSystem.Update(scene, deltaTime);
-}
+    std::vector<std::future<void>> futures;
 
+    if (mask & (uint32_t)SystemGroup::Animation)
+    {
+        futures.push_back(JobSystem::Instance().ExecuteAsync([&]() {
+            animationSystem.Update(scene, deltaTime);
+        }));
+    }
+
+    if (mask & (uint32_t)SystemGroup::Video)
+    {
+        futures.push_back(JobSystem::Instance().ExecuteAsync([&]() {
+            videoSystem.Update(scene, res, deltaTime);
+        }));
+    }
+
+    if (mask & (uint32_t)SystemGroup::Audio)
+    {
+        futures.push_back(JobSystem::Instance().ExecuteAsync([&]() {
+            audioSystem.Update(scene, sound);
+        }));
+    }
+
+    if (mask & (uint32_t)SystemGroup::Particle)
+    {
+        futures.push_back(JobSystem::Instance().ExecuteAsync([&]() {
+            particleSystem.Update(scene, deltaTime);
+        }));
+    }
+
+    for (auto& f : futures)
+    {
+        f.get();
+    }
+}
 
 void SystemManager::RenderShadows(Scene& scene, float alpha, uint32_t mask)
 {

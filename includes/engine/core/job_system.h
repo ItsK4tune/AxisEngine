@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <future>
 
 class JobSystem
 {
@@ -36,6 +37,24 @@ public:
      * @param job A callable function to execute.
      */
     void Execute(std::function<void()> job);
+
+    /**
+     * Enqueues a job for asynchronous execution and returns a future for the result.
+     */
+    template <typename F, typename... Args>
+    auto ExecuteAsync(F&& f, Args&&... args) -> std::future<typename std::invoke_result_t<F, Args...>>
+    {
+        using return_type = typename std::invoke_result_t<F, Args...>;
+
+        auto task = std::make_shared<std::packaged_task<return_type()>>(
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+        );
+
+        std::future<return_type> res = task->get_future();
+        Execute([task]() { (*task)(); });
+
+        return res;
+    }
 
     /**
      * Waits until all currently executing and queued jobs are finished.

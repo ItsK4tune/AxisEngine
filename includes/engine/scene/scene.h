@@ -12,6 +12,9 @@ class SceneManager;
 
 struct Scene
 {
+    Scene();
+    ~Scene();
+
     entt::registry registry;
 
     entt::entity createEntity();
@@ -22,6 +25,8 @@ struct Scene
 
     entt::entity GetActiveSkybox() const;
     void SetActiveSkybox(entt::entity entity);
+
+    void OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity);
 
     LightManager &GetLightManager() { return *lightManager; }
     CameraManager &GetCameraManager() { return *cameraManager; }

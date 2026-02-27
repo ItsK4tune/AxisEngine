@@ -42,6 +42,12 @@ void BulletPhysicsWorld::Clear()
 {
     if (m_DynamicsWorld)
     {
+        for (int i = m_DynamicsWorld->getNumConstraints() - 1; i >= 0; i--)
+        {
+            btTypedConstraint* constraint = m_DynamicsWorld->getConstraint(i);
+            m_DynamicsWorld->removeConstraint(constraint);
+        }
+
         for (int i = m_DynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
         {
             btCollisionObject* obj = m_DynamicsWorld->getCollisionObjectArray()[i];

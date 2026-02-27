@@ -34,6 +34,17 @@
 #include <core/job_system.h>
 #include <utils/logger.h>
 #include <utils/filesystem.h>
+#include <ecs/components/info_component.h>
+#include <ecs/components/transform_component.h>
+#include <ecs/components/render_components.h>
+#include <ecs/components/physics_components.h>
+#include <ecs/components/script_component.h>
+#include <ecs/components/camera_component.h>
+#include <ecs/components/light_components.h>
+#include <ecs/components/particle_component.h>
+#include <ecs/components/animation_component.h>
+#include <ecs/components/audio_component.h>
+#include <ecs/components/video_component.h>
 
 Application::Application()
     : m_Scene(std::make_unique<Scene>())
@@ -43,39 +54,44 @@ Application::Application()
 Application::~Application()
 {
     LOGGER_INFO("Application") << "Shutting down application...";
-
-    // 1. Shutdown JobSystem first to stop any background tasks
     JobSystem::Instance().Shutdown();
 
-    // 2. Halting Systems is CRITICAL before any data is destroyed.
-    // They must disconnect from EnTT hooks while the registry is still stable.
+    if (m_RuntimeCore)
+        m_RuntimeCore->GetStateMachine().Clear();
+
+    if (m_Scene)
+    {
+        auto& reg = m_Scene->registry;
+        
+        std::vector<entt::entity> aliveEntities;
+        for (auto entity : reg.storage<entt::entity>())
+        {
+            aliveEntities.push_back(entity);
+        }
+
+        for (auto entity : aliveEntities)
+        {
+            try {
+                reg.destroy(entity);
+            } catch (...) {
+                LOGGER_ERROR("Application") << "Destructor: CRASH while destroying Entity " << (uint32_t)entity;
+            }
+        }
+
+        m_Scene->registry.clear();
+    }
+
     if (m_SystemManager)
     {
         m_SystemManager->GetPhysicsSystem().Reset();
         m_SystemManager->ShutdownSystems();
     }
 
-    // 3. Clear states only after systems are halted.
-    // This triggers GameState::OnExit, which might call SceneManager methods.
-    if (m_RuntimeCore)
-        m_RuntimeCore->GetStateMachine().Clear();
-
-    // 4. CLEAR REGISTRY FIRST
-    // This destroys all remaining entities while managers are still fully alive.
-    // destructors of components and scripts can safely access managers here.
-    if (m_Scene)
-    {
-        m_Scene->registry.clear();
-    }
-
-    // 5. Shutdown SceneManager
-    // It will find no more entities to destroy but will cleanup scene records and unload resources.
     if (m_SceneManager)
     {
         m_SceneManager->Shutdown();
     }
 
-    // 6. Cleanup managers and services
     if (m_Scene)
     {
         m_Scene->ShutdownManagers();
@@ -91,14 +107,14 @@ Application::~Application()
     m_SceneManager.reset();
     m_RuntimeCore.reset();
     m_SoundPlayer.reset();
-    m_ResourceManager.reset();
+    m_PhysicsWorld.reset();
 
     if (m_Scene)
     {
         m_Scene.reset();
     }
 
-    m_PhysicsWorld.reset();
+    m_ResourceManager.reset();
     m_IOHandler.reset();
 
     LOGGER_INFO("Application") << "Application shutdown completed.";

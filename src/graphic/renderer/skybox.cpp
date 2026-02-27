@@ -56,13 +56,21 @@ Skybox::~Skybox()
 {
     if (s_BufferManager)
     {
-        if (m_VAO) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
-        if (m_VBO) s_BufferManager->DeleteBuffers(1, &m_VBO);
+        try {
+            if (m_VAO) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+            if (m_VBO) s_BufferManager->DeleteBuffers(1, &m_VBO);
+        } catch (...) {
+            LOGGER_ERROR("Skybox") << "Destructor: CRASH during buffer deletion";
+        }
     }
 
     if (s_TextureManager)
     {
-        if (m_TextureID) s_TextureManager->DeleteTextures(1, &m_TextureID);
+        try {
+            if (m_TextureID) s_TextureManager->DeleteTextures(1, &m_TextureID);
+        } catch (...) {
+            LOGGER_ERROR("Skybox") << "Destructor: CRASH during texture deletion";
+        }
     }
 }
 

@@ -282,7 +282,11 @@ void ResourceManager::FlushPendingModels()
             std::remove_if(m_ActiveFutures.begin(), m_ActiveFutures.end(),
                            [](std::future<void> &f)
                            {
-                               return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+                               try {
+                                   return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+                               } catch (...) {
+                                   return true;
+                               }
                            }),
             m_ActiveFutures.end());
 

@@ -62,6 +62,8 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
 
             return CollisionMatrix::Instance().CanCollide(tagA, tagB, nameA, nameB);
         });
+
+        scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
     }
     if (!m_transformSync)
     {
@@ -87,10 +89,45 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
 
 void PhysicsSystem::Reset()
 {
+    if (m_LastPhysicsWorld)
+    {
+        m_LastPhysicsWorld->SetCollisionFilter(nullptr);
+    }
+
+    if (m_LastScene)
+    {
+        m_LastScene->registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
+    }
+
     m_transformSync.reset();
     m_collisionDispatcher.reset();
     m_LastScene = nullptr;
     m_LastPhysicsWorld = nullptr;
+}
+
+void PhysicsSystem::OnRigidBodyDestroyed(entt::registry &registry, entt::entity entity)
+{
+    if (!m_LastPhysicsWorld)
+        return;
+
+    if (registry.all_of<RigidBodyComponent>(entity))
+    {
+        auto &rb = registry.get<RigidBodyComponent>(entity);
+        if (rb.body)
+        {
+            try {
+                for (auto &constraint : rb.constraints)
+                {
+                    if (constraint)
+                        m_LastPhysicsWorld->RemoveConstraint(constraint);
+                }
+                
+                m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
+            } catch (...) {
+                LOGGER_ERROR("PhysicsSystem") << "OnRigidBodyDestroyed: CRASH during rigid body cleanup for entity " << (uint32_t)entity;
+            }
+        }
+    }
 }
 
 void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState)
