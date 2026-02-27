@@ -20,7 +20,7 @@ axis_scene:
       Component: Transform
         Position: 2.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
-        Scale: 0.01 0.01 0.01
+        Scale: 1 1 1
       Component: Renderer
         Model: womanModel
         Shader: phongLitNoShadowShader

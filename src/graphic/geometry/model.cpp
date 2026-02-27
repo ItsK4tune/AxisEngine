@@ -17,6 +17,7 @@
 #include <utils/assimp_glm_helpers.h>
 #include <interface/graphic/i_texture_manager.h>
 #include <utils/logger.h>
+#include <utils/filesystem.h>
 
 namespace
 {
@@ -103,6 +104,13 @@ namespace
         {
             std::string fullPath = directory_sanitized + '/' + pureFilename;
             data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, req_comp);
+            
+            if (!data)
+            {
+                std::string globalPath = FileSystem::getPath("includes/engine/asset/textures") + '/' + pureFilename;
+                data = stbi_load(globalPath.c_str(), &width, &height, &nrComponents, req_comp);
+            }
+
             if (!data && filename != pureFilename)
             {
                 std::string fullPathOriginal = directory_sanitized + '/' + filename;
@@ -184,7 +192,8 @@ namespace
 
                 unsigned int id = TextureFromFile(str.C_Str(), directory, scene, deferred, &texture);
 
-                if (id != 0 || deferred)
+                // Only add the texture if it was actually found/loaded
+                if (id != 0 || (deferred && texture.pixelData != nullptr))
                 {
                     texture.id = id;
                     textures.push_back(texture);
@@ -439,17 +448,22 @@ void Model::ComputeAABB()
 {
     if (!meshes.empty())
     {
-        aabb.minBound = meshes[0].aabb.minBound;
-        aabb.maxBound = meshes[0].aabb.maxBound;
+        glm::mat4 root = GetRootTransform();
+        aabb.minBound = glm::vec3(root * glm::vec4(meshes[0].aabb.minBound, 1.0f));
+        aabb.maxBound = glm::vec3(root * glm::vec4(meshes[0].aabb.maxBound, 1.0f));
+        
         for (const auto &mesh : meshes)
         {
-            aabb.minBound.x = (std::min)(aabb.minBound.x, mesh.aabb.minBound.x);
-            aabb.minBound.y = (std::min)(aabb.minBound.y, mesh.aabb.minBound.y);
-            aabb.minBound.z = (std::min)(aabb.minBound.z, mesh.aabb.minBound.z);
+            glm::vec3 worldMin = glm::vec3(root * glm::vec4(mesh.aabb.minBound, 1.0f));
+            glm::vec3 worldMax = glm::vec3(root * glm::vec4(mesh.aabb.maxBound, 1.0f));
 
-            aabb.maxBound.x = (std::max)(aabb.maxBound.x, mesh.aabb.maxBound.x);
-            aabb.maxBound.y = (std::max)(aabb.maxBound.y, mesh.aabb.maxBound.y);
-            aabb.maxBound.z = (std::max)(aabb.maxBound.z, mesh.aabb.maxBound.z);
+            aabb.minBound.x = (std::min)(aabb.minBound.x, worldMin.x);
+            aabb.minBound.y = (std::min)(aabb.minBound.y, worldMin.y);
+            aabb.minBound.z = (std::min)(aabb.minBound.z, worldMin.z);
+
+            aabb.maxBound.x = (std::max)(aabb.maxBound.x, worldMax.x);
+            aabb.maxBound.y = (std::max)(aabb.maxBound.y, worldMax.y);
+            aabb.maxBound.z = (std::max)(aabb.maxBound.z, worldMax.z);
         }
     }
 }
@@ -488,6 +502,7 @@ void Model::loadModel(std::string const &path, bool isStatic)
     if (scene && scene->mRootNode)
     {
         m_RootTransform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(scene->mRootNode->mTransformation);
+        m_RootTransform = glm::scale(m_RootTransform, glm::vec3(0.01f));
     }
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)

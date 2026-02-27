@@ -549,34 +549,34 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
             }
             m_RenderedCount++;
         }
-        else
-        {
-            if (!m_InstanceBatchingEnabled)
-            {
-                currentShader->setMat4("model", item.worldMatrix);
-                currentShader->setVec4("tintColor", renderer.color);
-
-                SetupMaterialUniforms(currentShader, entity, scene);
-
-                item.activeModel->Draw(*currentShader);
-                m_RenderedCount++;
-            }
             else
             {
-                if (currentModel != item.activeModel || currentMaterial != material)
+                if (!m_InstanceBatchingEnabled)
                 {
-                    flushBatch(currentShader, currentModel);
-                    currentModel = item.activeModel;
-                    currentMaterial = material;
-
+                    currentShader->setMat4("model", item.worldMatrix * item.activeModel->GetRootTransform());
                     currentShader->setVec4("tintColor", renderer.color);
 
                     SetupMaterialUniforms(currentShader, entity, scene);
-                }
 
-                instanceBatch.push_back(item.worldMatrix);
+                    item.activeModel->Draw(*currentShader);
+                    m_RenderedCount++;
+                }
+                else
+                {
+                    if (currentModel != item.activeModel || currentMaterial != material)
+                    {
+                        flushBatch(currentShader, currentModel);
+                        currentModel = item.activeModel;
+                        currentMaterial = material;
+
+                        currentShader->setVec4("tintColor", renderer.color);
+
+                        SetupMaterialUniforms(currentShader, entity, scene);
+                    }
+
+                    instanceBatch.push_back(item.worldMatrix * item.activeModel->GetRootTransform());
+                }
             }
-        }
     }
     flushBatch(currentShader, currentModel);
 

@@ -14,7 +14,7 @@ public:
     Animator(std::shared_ptr<Animation> animation);
     ~Animator() = default;
 
-    void UpdateAnimation(float dt);
+    void UpdateAnimation(float dt, const glm::mat4& rootTransform = glm::mat4(1.0f));
     void AddAnimation(const std::string &name, std::shared_ptr<Animation> animation);
     void PlayAnimation(std::shared_ptr<Animation> pAnimation);
     void PlayAnimation(const std::string &name);

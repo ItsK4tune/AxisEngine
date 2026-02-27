@@ -14,7 +14,16 @@ void AnimationSystem::Update(Scene &scene, float dt)
         auto &anim = scene.registry.get<AnimationComponent>(entity);
         if (anim.animator)
         {
-            anim.animator->UpdateAnimation(dt * anim.speed);
+            glm::mat4 rootTransform = glm::mat4(1.0f);
+            if (scene.registry.all_of<MeshRendererComponent>(entity))
+            {
+                auto &renderer = scene.registry.get<MeshRendererComponent>(entity);
+                if (renderer.model)
+                {
+                    rootTransform = renderer.model->GetRootTransform();
+                }
+            }
+            anim.animator->UpdateAnimation(dt * anim.speed, rootTransform);
         }
     }
 }

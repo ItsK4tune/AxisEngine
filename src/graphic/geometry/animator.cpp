@@ -30,7 +30,7 @@ static glm::mat4 ComposeTransform(const glm::vec3 &t, const glm::quat &r, const 
     return translation * rotation * scale;
 }
 
-void Animator::UpdateAnimation(float dt)
+void Animator::UpdateAnimation(float dt, const glm::mat4& rootTransform)
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_CurrentAnimation)
@@ -79,7 +79,7 @@ void Animator::UpdateAnimation(float dt)
             m_TimeSinceLastUpdate = fmod(m_TimeSinceLastUpdate, timePerFrame);
         }
 
-        CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f), 0);
+        CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), rootTransform, 0);
     }
 }
 
