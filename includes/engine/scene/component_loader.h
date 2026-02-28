@@ -3,8 +3,10 @@
 #include <scene/scene.h>
 #include <resource/resource_manager.h>
 #include <interface/audio/i_sound.h>
-class Application;
 #include <scene/scene_serializer.h>
+#include <utils/yaml_parser.h>
+
+class Application;
 
 class ComponentLoader
 {

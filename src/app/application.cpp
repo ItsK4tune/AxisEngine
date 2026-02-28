@@ -45,6 +45,7 @@
 #include <ecs/components/animation_component.h>
 #include <ecs/components/audio_component.h>
 #include <ecs/components/video_component.h>
+#include <input/input_loader.h>
 
 Application::Application()
     : m_Scene(std::make_unique<Scene>())
@@ -95,11 +96,6 @@ Application::~Application()
     if (m_Scene)
     {
         m_Scene->ShutdownManagers();
-    }
-
-    if (m_ResourceManager)
-    {
-        m_ResourceManager->ClearResource();
     }
 
     m_SystemManager.reset();

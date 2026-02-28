@@ -2,6 +2,12 @@
 #include <app/backends/glfw_translator.h>
 #include <utils/logger.h>
 
+#ifdef _WIN32
+#undef APIENTRY
+#include <windows.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
 GLFWWindow::GLFWWindow() {}
 
 GLFWWindow::~GLFWWindow() {
@@ -24,6 +30,17 @@ bool GLFWWindow::Init(int width, int height, const std::string& title) {
         glfwTerminate();
         return false;
     }
+
+#ifdef _WIN32
+    HWND hwnd = glfwGetWin32Window(m_Window);
+    HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101));
+    if (hIcon) {
+        SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+        SetClassLongPtr(hwnd, GCLP_HICON, (LONG_PTR)hIcon);
+        SetClassLongPtr(hwnd, GCLP_HICONSM, (LONG_PTR)hIcon);
+    }
+#endif
 
     glfwMakeContextCurrent(m_Window);
     glfwSetWindowUserPointer(m_Window, this);

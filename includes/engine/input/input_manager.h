@@ -9,13 +9,19 @@
 enum class InputType
 {
     Key,
-    MouseButton
+    MouseButton,
+    GamepadButton
 };
 
 struct InputBinding
 {
     InputType type;
     int code;
+};
+
+struct InputActionBinding
+{
+    std::vector<InputBinding> bindings;
 };
 
 class InputManager : public IDeviceManager
@@ -25,6 +31,7 @@ public:
 
     void BindAction(const std::string &actionName, InputType type, int code);
     void UnbindAction(const std::string &actionName);
+    void FlushBindings();
 
     void Update();
 
@@ -40,6 +47,6 @@ private:
     const KeyboardManager &m_Keyboard;
     const MouseManager &m_Mouse;
     const IWindow &m_Window;
-    std::unordered_map<std::string, InputBinding> m_ActionMap;
+    std::unordered_map<std::string, InputActionBinding> m_ActionMap;
     std::unordered_map<std::string, bool> m_PreviousState;
 };

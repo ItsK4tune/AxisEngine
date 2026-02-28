@@ -91,10 +91,10 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
 
             if (scene.registry.all_of<MeshRendererComponent>(entity))
             {
-                auto& mrc = scene.registry.get<MeshRendererComponent>(entity);
+                auto &mrc = scene.registry.get<MeshRendererComponent>(entity);
                 if (mrc.model && mrc.model->IsStatic())
                 {
-                    LOGGER_WARN("ComponentLoader") << "Entity has Animator but its Model is STATIC! Animations will not play correctly. Entity: " 
+                    LOGGER_WARN("ComponentLoader") << "Entity has Animator but its Model is STATIC! Animations will not play correctly. Entity: "
                                                    << (scene.registry.all_of<InfoComponent>(entity) ? scene.registry.get<InfoComponent>(entity).name : "Unknown");
                 }
             }
@@ -494,11 +494,16 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     mat.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
     mat.alphaCutoff = std::stof(node.GetChildValue("AlphaCutoff", "0.5"));
 
-    auto parseBlend = [](const std::string& str, Graphics::BlendFactor defaultFactor) -> Graphics::BlendFactor {
-        if (str == "Zero") return Graphics::BlendFactor::Zero;
-        if (str == "One") return Graphics::BlendFactor::One;
-        if (str == "SrcAlpha") return Graphics::BlendFactor::SrcAlpha;
-        if (str == "OneMinusSrcAlpha") return Graphics::BlendFactor::OneMinusSrcAlpha;
+    auto parseBlend = [](const std::string &str, Graphics::BlendFactor defaultFactor) -> Graphics::BlendFactor
+    {
+        if (str == "Zero")
+            return Graphics::BlendFactor::Zero;
+        if (str == "One")
+            return Graphics::BlendFactor::One;
+        if (str == "SrcAlpha")
+            return Graphics::BlendFactor::SrcAlpha;
+        if (str == "OneMinusSrcAlpha")
+            return Graphics::BlendFactor::OneMinusSrcAlpha;
         // Add more if needed, default to provided default
         return defaultFactor;
     };
@@ -540,18 +545,22 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     }
 
     // Load textures
-    auto loadTex = [&](const std::string& key, std::string& outPath, uint32_t& outID) {
+    auto loadTex = [&](const std::string &key, std::string &outPath, uint32_t &outID)
+    {
         std::string path = node.GetChildValue(key);
-        if (!path.empty()) {
+        if (!path.empty())
+        {
             outPath = path;
             res.LoadTexture(path, path, false); // Load synchronously for material
             auto tex = res.GetTexture(path);
-            if (tex) outID = tex->id;
+            if (tex)
+                outID = tex->id;
         }
     };
 
     loadTex("Albedo", mat.albedoPath, mat.albedoMap);
-    if (mat.albedoPath.empty()) {
+    if (mat.albedoPath.empty())
+    {
         loadTex("Diffuse", mat.albedoPath, mat.albedoMap);
     }
     loadTex("Normal", mat.normalPath, mat.normalMap);

@@ -2,7 +2,7 @@
 #include <interface/window/input_codes.h>
 #include <utils/logger.h>
 
-void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState)
+void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)
 {
     if (!m_Enabled)
     {
@@ -33,7 +33,7 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
         {
             if (renderer->model && renderer->shader)
             {
-                Shader* shaderPtr = renderer->shader.get();
+                Shader *shaderPtr = renderer->shader.get();
                 if (currentShader != shaderPtr)
                 {
                     currentShader = shaderPtr;
@@ -53,7 +53,6 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
                     actualSize.y = (transform.size.y / 100.0f) * screenHeight;
                 }
 
-                // Apply anchoring
                 actualPos -= transform.anchor * actualSize;
 
                 glm::mat4 model = glm::mat4(1.0f);
@@ -69,7 +68,7 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
         {
             if (textComp->model && textComp->shader && textComp->font)
             {
-                Shader* shaderPtr = textComp->shader.get();
+                Shader *shaderPtr = textComp->shader.get();
                 if (currentShader != shaderPtr)
                 {
                     currentShader = shaderPtr;
@@ -89,7 +88,6 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
                     actualSize.y = (transform.size.y / 100.0f) * screenHeight;
                 }
 
-                // Apply anchoring
                 actualPos -= transform.anchor * actualSize;
 
                 float x = actualPos.x;

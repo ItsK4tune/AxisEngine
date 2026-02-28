@@ -5,6 +5,7 @@
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
 #include <input/input_manager.h>
+#include <input/input_loader.h>
 #include <scene/scene.h>
 #include <scene/scene_manager.h>
 #include <resource/resource_manager.h>
@@ -39,6 +40,7 @@ KeyboardManager& State::GetKeyboard()        { return m_App->GetKeyboard(); }
 MouseManager&    State::GetMouse()           { return m_App->GetMouse(); }
 
 void State::LoadScene(const std::string& path, bool persistent) { m_App->GetSceneManager().LoadScene(path, persistent); }
+void State::LoadInputBindings(const std::string& path) { InputLoader::LoadBindings(path, GetInputManager()); }
 void State::QueueLoadScene(const std::string& path, bool persistent) { m_App->GetSceneManager().QueueLoadScene(path, persistent); }
 void State::UnloadScene(const std::string& path)  { m_App->GetSceneManager().UnloadScene(path); }
 void State::UnloadScene(const SceneRecord* rec)   { m_App->GetSceneManager().UnloadScene(rec); }

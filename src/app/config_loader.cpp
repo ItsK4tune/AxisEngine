@@ -91,12 +91,11 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         ss >> enable;
         config.instanceBatchingEnabled = (enable != 0);
     }
-     else if (subCmd == "CULL_FACE")
+    else if (subCmd == "CULL_FACE")
     {
         int enable = 0;
         ss >> enable;
         config.cullFaceEnabled = (enable != 0);
-
     }
     else if (subCmd == "OCCLUSION_CULLING")
     {
@@ -110,27 +109,46 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         ss >> enable;
         config.depthTestEnabled = (enable != 0);
     }
-    else if (subCmd == "WINDOW_WIDTH") {
-        int w = 800; ss >> w; config.width = w;
+    else if (subCmd == "WINDOW_WIDTH")
+    {
+        int w = 800;
+        ss >> w;
+        config.width = w;
     }
-    else if (subCmd == "WINDOW_HEIGHT") {
-        int h = 600; ss >> h; config.height = h;
+    else if (subCmd == "WINDOW_HEIGHT")
+    {
+        int h = 600;
+        ss >> h;
+        config.height = h;
     }
-    else if (subCmd == "WINDOW_MODE") {
+    else if (subCmd == "WINDOW_MODE")
+    {
         std::string modeStr;
-        if (ss >> modeStr) {
-            if (modeStr == "FULLSCREEN") config.windowMode = 1;
-            else if (modeStr == "BORDERLESS") config.windowMode = 2;
-            else if (modeStr == "BORDERLESS_FULLSCREEN" || modeStr == "STRETCH_FULLSCREEN") config.windowMode = 3;
-            else if (modeStr == "WINDOWED") config.windowMode = 0;
-            else config.windowMode = 0;
+        if (ss >> modeStr)
+        {
+            if (modeStr == "FULLSCREEN")
+                config.windowMode = 1;
+            else if (modeStr == "BORDERLESS")
+                config.windowMode = 2;
+            else if (modeStr == "BORDERLESS_FULLSCREEN" || modeStr == "STRETCH_FULLSCREEN")
+                config.windowMode = 3;
+            else if (modeStr == "WINDOWED")
+                config.windowMode = 0;
+            else
+                config.windowMode = 0;
         }
     }
-    else if (subCmd == "WINDOW_MONITOR") {
-        int monitorIdx = 0; ss >> monitorIdx; config.monitorIndex = monitorIdx;
+    else if (subCmd == "WINDOW_MONITOR")
+    {
+        int monitorIdx = 0;
+        ss >> monitorIdx;
+        config.monitorIndex = monitorIdx;
     }
-    else if (subCmd == "WINDOW_REFRESH_RATE") {
-        int rate = 0; ss >> rate; config.refreshRate = rate;
+    else if (subCmd == "WINDOW_REFRESH_RATE")
+    {
+        int rate = 0;
+        ss >> rate;
+        config.refreshRate = rate;
     }
     else if (subCmd == "VSYNC")
     {
@@ -185,13 +203,22 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         std::string modeStr;
         if (ss >> modeStr)
         {
-            if (modeStr == "FAST") config.physicsMode = 0;
-            else if (modeStr == "BALANCED") config.physicsMode = 1;
-            else if (modeStr == "ACCURATE") config.physicsMode = 2;
+            if (modeStr == "FAST")
+                config.physicsMode = 0;
+            else if (modeStr == "BALANCED")
+                config.physicsMode = 1;
+            else if (modeStr == "ACCURATE")
+                config.physicsMode = 2;
             else
             {
-                try { config.physicsMode = std::stoi(modeStr); }
-                catch(...) { config.physicsMode = 1; }
+                try
+                {
+                    config.physicsMode = std::stoi(modeStr);
+                }
+                catch (...)
+                {
+                    config.physicsMode = 1;
+                }
             }
         }
     }
@@ -200,14 +227,17 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         std::string valStr;
         if (ss >> valStr)
         {
-            if (valStr == "FXAA") config.antialiasing = 1;
-            else if (valStr == "TAA") config.antialiasing = 2;
-            else config.antialiasing = 0;
+            if (valStr == "FXAA")
+                config.antialiasing = 1;
+            else if (valStr == "TAA")
+                config.antialiasing = 2;
+            else
+                config.antialiasing = 0;
         }
     }
 }
 
-void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
+void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
 {
 
     std::string subCmd;
@@ -216,8 +246,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
     if (subCmd == "GRAPHICS_API")
     {
         std::string backend;
-        if (ss >> backend && app) {
-            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+        if (ss >> backend && app)
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
             cfg.graphicsBackend = backend;
             LOGGER_INFO("ConfigLoader") << "Scene requested Graphics Backend: " << backend;
         }
@@ -225,8 +256,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
     else if (subCmd == "PHYSICS_ENGINE")
     {
         std::string backend;
-        if (ss >> backend && app) {
-            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+        if (ss >> backend && app)
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
             cfg.physicsBackend = backend;
             LOGGER_INFO("ConfigLoader") << "Scene requested Physics Backend: " << backend;
         }
@@ -234,8 +266,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
     else if (subCmd == "AUDIO_ENGINE")
     {
         std::string backend;
-        if (ss >> backend && app) {
-            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+        if (ss >> backend && app)
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
             cfg.audioBackend = backend;
             LOGGER_INFO("ConfigLoader") << "Scene requested Audio Backend: " << backend;
         }
@@ -244,13 +277,15 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
     {
         int mode = 1;
         ss >> mode;
-        if (app) app->GetRenderSystem().SetShadowMode(mode);
+        if (app)
+            app->GetRenderSystem().SetShadowMode(mode);
     }
     else if (subCmd == "SHADOW_SIZE")
     {
         float size = 20.0f;
         ss >> size;
-        if (app) app->GetRenderSystem().SetShadowProjectionSize(size);
+        if (app)
+            app->GetRenderSystem().SetShadowProjectionSize(size);
     }
 
     else if (subCmd == "INSTANCING")
@@ -364,7 +399,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
             bool renderOrder = (enable != 0);
             app->GetRenderSystem().SetRenderOrderEnabled(renderOrder);
 
-            AppConfig& cfg = const_cast<AppConfig&>(app->GetConfig());
+            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
             cfg.renderOrderEnabled = renderOrder;
         }
     }
@@ -410,13 +445,20 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
         int mode = 1;
         if (ss >> modeStr)
         {
-            if (modeStr == "FAST") mode = 0;
-            else if (modeStr == "BALANCED") mode = 1;
-            else if (modeStr == "ACCURATE") mode = 2;
+            if (modeStr == "FAST")
+                mode = 0;
+            else if (modeStr == "BALANCED")
+                mode = 1;
+            else if (modeStr == "ACCURATE")
+                mode = 2;
             else
             {
-                try { mode = std::stoi(modeStr); }
-                catch(...) {
+                try
+                {
+                    mode = std::stoi(modeStr);
+                }
+                catch (...)
+                {
                     LOGGER_WARN("ConfigLoader") << "Invalid PHYSICS_MODE: " << modeStr << ". Supported: FAST, BALANCED, ACCURATE (or 0, 1, 2).";
                 }
             }
@@ -433,9 +475,12 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
         if (ss >> valStr)
         {
             AntiAliasingMode mode = AntiAliasingMode::NONE;
-            if (valStr == "FXAA") mode = AntiAliasingMode::FXAA;
-            else if (valStr == "TAA") mode = AntiAliasingMode::TAA;
-            else if (valStr == "NONE") mode = AntiAliasingMode::NONE;
+            if (valStr == "FXAA")
+                mode = AntiAliasingMode::FXAA;
+            else if (valStr == "TAA")
+                mode = AntiAliasingMode::TAA;
+            else if (valStr == "NONE")
+                mode = AntiAliasingMode::NONE;
             else
                 LOGGER_WARN("ConfigLoader") << "Invalid ANTIALIASING mode: " << valStr << ". Supported: NONE, FXAA, TAA.";
 
@@ -445,5 +490,4 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application* app)
             }
         }
     }
-
 }

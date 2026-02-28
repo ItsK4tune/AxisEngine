@@ -8,6 +8,8 @@ MouseManager::MouseManager(IWindow *window)
       m_RightButtonPressed(false),
       m_LeftMouseClicked(false),
       m_RightMouseClicked(false),
+      m_LeftMouseReleased(false),
+      m_RightMouseReleased(false),
       m_Mode(Input::CursorMode::Normal)
 {
     SetWindow(window);
@@ -77,6 +79,7 @@ void MouseManager::UpdateButton(Input::Mouse button, int action, int mods)
         else if (action == 0)
         {
             m_LeftButtonPressed = false;
+            m_LeftMouseReleased = true;
         }
     }
 
@@ -90,6 +93,7 @@ void MouseManager::UpdateButton(Input::Mouse button, int action, int mods)
         else if (action == 0)
         {
             m_RightButtonPressed = false;
+            m_RightMouseReleased = true;
         }
     }
 }
@@ -102,6 +106,8 @@ void MouseManager::EndFrame()
 
     m_LeftMouseClicked = false;
     m_RightMouseClicked = false;
+    m_LeftMouseReleased = false;
+    m_RightMouseReleased = false;
 }
 
 void MouseManager::SetCursorMode(Input::CursorMode mode)
@@ -184,6 +190,16 @@ bool MouseManager::IsRightButtonPressed() const
 bool MouseManager::IsRightMouseClicked() const
 {
     return m_RightMouseClicked;
+}
+
+bool MouseManager::IsLeftMouseReleased() const
+{
+    return m_LeftMouseReleased;
+}
+
+bool MouseManager::IsRightMouseReleased() const
+{
+    return m_RightMouseReleased;
 }
 
 void MouseManager::SetLastPosition(double x, double y)

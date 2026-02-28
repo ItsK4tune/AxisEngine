@@ -106,6 +106,7 @@ public:
     bool GetActionUp(const std::string &name);
 
     void LoadScene(const std::string &path);
+    void LoadInputBindings(const std::string &path);
 
     void SetTimeScale(float scale);
     float GetTimeScale() const;

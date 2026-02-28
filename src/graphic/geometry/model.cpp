@@ -104,7 +104,7 @@ namespace
         {
             std::string fullPath = directory_sanitized + '/' + pureFilename;
             data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, req_comp);
-            
+
             if (!data)
             {
                 std::string globalPath = FileSystem::getPath("includes/engine/asset/textures") + '/' + pureFilename;
@@ -192,7 +192,6 @@ namespace
 
                 unsigned int id = TextureFromFile(str.C_Str(), directory, scene, deferred, &texture);
 
-                // Only add the texture if it was actually found/loaded
                 if (id != 0 || (deferred && texture.pixelData != nullptr))
                 {
                     texture.id = id;
@@ -451,7 +450,7 @@ void Model::ComputeAABB()
         glm::mat4 root = GetRootTransform();
         aabb.minBound = glm::vec3(root * glm::vec4(meshes[0].aabb.minBound, 1.0f));
         aabb.maxBound = glm::vec3(root * glm::vec4(meshes[0].aabb.maxBound, 1.0f));
-        
+
         for (const auto &mesh : meshes)
         {
             glm::vec3 worldMin = glm::vec3(root * glm::vec4(mesh.aabb.minBound, 1.0f));

@@ -30,6 +30,9 @@ public:
     bool IsLeftMouseClicked() const;
     bool IsRightMouseClicked() const;
 
+    bool IsLeftMouseReleased() const;
+    bool IsRightMouseReleased() const;
+
     void SetWindowSize(int width, int height);
     void SetLastPosition(double x, double y);
     void SetLockPosition(double x, double y) { m_LockX = x; m_LockY = y; }
@@ -59,6 +62,9 @@ private:
 
     bool m_LeftMouseClicked;
     bool m_RightMouseClicked;
+
+    bool m_LeftMouseReleased;
+    bool m_RightMouseReleased;
 
     Input::CursorMode m_Mode;
 };

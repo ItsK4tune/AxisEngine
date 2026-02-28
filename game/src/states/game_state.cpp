@@ -10,6 +10,8 @@ void GameState::OnEnter()
     LoadScene("scenes/game3.axs");
     SetCursorMode(Input::CursorMode::Normal);
 
+    LoadInputBindings("resources/configs/binding.axs");
+
     EnablePhysics(true);
     EnableRender(true);
     EnableAudio(true);
@@ -20,24 +22,16 @@ void GameState::OnEnter()
 
 void GameState::OnUpdate(float dt)
 {
-    auto& kb = GetKeyboard();
+    auto& input = m_App->GetInputManager();
 
-    static bool pLast = false;
-    bool pNow = kb.GetKey(Input::Key::I) || kb.IsKeyDown(Input::Key::I);
-    if (pNow && !pLast)
+    if (input.GetActionDown("LoadNextScene"))
         QueueLoadScene("scenes/game2.axs");
-    pLast = pNow;
 
-    static bool oLast = false;
-    bool oNow = kb.GetKey(Input::Key::O) || kb.IsKeyDown(Input::Key::O);
-    if (oNow && !oLast)
+    if (input.GetActionDown("ReloadScene"))
         QueuePopScene();
-    oLast = oNow;
-    static bool escLast = false;
-    bool escNow = kb.GetKey(Input::Key::P) || kb.IsKeyDown(Input::Key::P);
-    if (escNow && !escLast)
+        
+    if (input.GetActionDown("Pause"))
         m_App->PushState<PauseState>();
-    escLast = escNow;
 
     // --- Animation Examples (zxcvbnm) ---
     auto animView = GetScene().registry.view<AnimationComponent>();
@@ -46,45 +40,45 @@ void GameState::OnUpdate(float dt)
         auto& anim = animView.get<AnimationComponent>(entity);
         if (!anim.animator) continue;
 
-        // Z: Play first animation
-        if (kb.IsKeyDown(Input::Key::Z) && !anim.animations.empty())
+        // Play first animation
+        if (input.GetActionDown("AnimPlayPrimary") && !anim.animations.empty())
         {
-            LOGGER_INFO("GameState") << "Z Pressed - Playing animation: " << anim.animations[0];
+            LOGGER_INFO("GameState") << "AnimPlayPrimary - Playing animation: " << anim.animations[0];
             anim.animator->PlayAnimation(anim.animations[0]);
         }
-        // X: Play second animation
-        if (kb.IsKeyDown(Input::Key::X) && anim.animations.size() >= 2)
+        // Play second animation
+        if (input.GetActionDown("AnimPlaySecondary") && anim.animations.size() >= 2)
         {
-            LOGGER_INFO("GameState") << "X Pressed - Playing animation: " << anim.animations[1];
+            LOGGER_INFO("GameState") << "AnimPlaySecondary - Playing animation: " << anim.animations[1];
             anim.animator->PlayAnimation(anim.animations[1]);
         }
-        // C: Crossfade to second
-        if (kb.IsKeyDown(Input::Key::C) && anim.animations.size() >= 2)
+        // Crossfade to second
+        if (input.GetActionDown("AnimCrossfadeSec") && anim.animations.size() >= 2)
         {
-            LOGGER_INFO("GameState") << "C Pressed - Crossfading to: " << anim.animations[1];
+            LOGGER_INFO("GameState") << "AnimCrossfadeSec - Crossfading to: " << anim.animations[1];
             anim.animator->CrossFade(anim.animations[1], 0.5f);
         }
-        // V: Crossfade to first
-        if (kb.IsKeyDown(Input::Key::V) && !anim.animations.empty())
+        // Crossfade to first
+        if (input.GetActionDown("AnimCrossfadePri") && !anim.animations.empty())
         {
-            LOGGER_INFO("GameState") << "V Pressed - Crossfading to: " << anim.animations[0];
+            LOGGER_INFO("GameState") << "AnimCrossfadePri - Crossfading to: " << anim.animations[0];
             anim.animator->CrossFade(anim.animations[0], 0.5f);
         }
 
-        // B: Speed Down
-        if (kb.IsKeyDown(Input::Key::B))
+        // Speed Down
+        if (input.GetActionDown("AnimSpeedDown"))
         {
             anim.speed = (std::max)(0.1f, anim.speed - 0.1f);
             anim.animator->SetSpeed(anim.speed);
         }
-        // N: Speed Up
-        if (kb.IsKeyDown(Input::Key::N))
+        // Speed Up
+        if (input.GetActionDown("AnimSpeedUp"))
         {
             anim.speed += 0.1f;
             anim.animator->SetSpeed(anim.speed);
         }
-        // M: Reset Speed
-        if (kb.IsKeyDown(Input::Key::M))
+        // Reset Speed
+        if (input.GetActionDown("AnimSpeedReset"))
         {
             anim.speed = 1.0f;
             anim.animator->SetSpeed(anim.speed);

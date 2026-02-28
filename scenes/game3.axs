@@ -23,13 +23,12 @@ axis_scene:
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: phongLitNoShadowShader
+        Shader: unlitShader
         Order: 1
       Component: Material
         Type: PHONG
         Shininess: 32
         Specular: 0.5 0.5 0.5
-        Opacity: 0.5
       Component: Animator
         Animation: defeatedAnimation spinAnimation
         Speed: 1.0

@@ -3,6 +3,7 @@
 #include <app/io_handler.h>
 #include <scene/scene_manager.h>
 #include <input/input_manager.h>
+#include <input/input_loader.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
 #include <ecs/components/info_component.h>
@@ -30,6 +31,11 @@ bool Scriptable::GetActionUp(const std::string& name)
 void Scriptable::LoadScene(const std::string& path)
 {
     m_App->GetSceneManager().QueueLoadScene(path);
+}
+
+void Scriptable::LoadInputBindings(const std::string& path)
+{
+    InputLoader::LoadBindings(path, GetInputManager());
 }
 
 void Scriptable::SetTimeScale(float scale)

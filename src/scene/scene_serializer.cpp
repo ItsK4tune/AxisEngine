@@ -7,104 +7,13 @@
 #include <physic/physics_loader.h>
 #include <app/application.h>
 #include <scene/handlers/scene_validator.h>
-#include <fstream>
-#include <sstream>
-
-YAMLNode *GetNodeAtPath(std::vector<YAMLNode> &roots, const std::vector<size_t> &path)
-{
-    if (path.empty())
-        return nullptr;
-    YAMLNode *current = &roots[path[0]];
-    for (size_t i = 1; i < path.size(); ++i)
-    {
-        current = &current->children[path[i]];
-    }
-    return current;
-}
-
-std::vector<YAMLNode> SceneSerializer::ParseAXS(const std::string &filepath)
-{
-    std::vector<YAMLNode> roots;
-    std::ifstream file(filepath);
-    if (!file.is_open())
-        return roots;
-
-    struct IndentLevel
-    {
-        int indent;
-        std::vector<size_t> path;
-    };
-    std::vector<IndentLevel> stack;
-
-    std::string line;
-    while (std::getline(file, line))
-    {
-        if (line.empty())
-            continue;
-
-        int indent = 0;
-        while (indent < (int)line.length() && (line[indent] == ' ' || line[indent] == '\t'))
-        {
-            indent++;
-        }
-
-        std::string content = line.substr(indent);
-        if (content.empty() || content[0] == '#')
-            continue;
-
-        auto colonPos = content.find(':');
-        if (colonPos == std::string::npos)
-            continue;
-
-        std::string key = content.substr(0, colonPos);
-        std::string value = "";
-        if (colonPos + 1 < content.length())
-        {
-            value = content.substr(colonPos + 1);
-            size_t start = value.find_first_not_of(" \t\r\n");
-            if (start != std::string::npos)
-            {
-                value = value.substr(start);
-                size_t end = value.find_last_not_of(" \t\r\n");
-                if (end != std::string::npos)
-                    value = value.substr(0, end + 1);
-            }
-            else
-            {
-                value = "";
-            }
-        }
-
-        YAMLNode newNode{key, value, {}};
-
-        while (!stack.empty() && stack.back().indent >= indent)
-        {
-            stack.pop_back();
-        }
-
-        if (stack.empty())
-        {
-            roots.push_back(newNode);
-            stack.push_back({indent, {roots.size() - 1}});
-        }
-        else
-        {
-            YAMLNode *parent = GetNodeAtPath(roots, stack.back().path);
-            parent->children.push_back(newNode);
-
-            std::vector<size_t> currentPath = stack.back().path;
-            currentPath.push_back(parent->children.size() - 1);
-            stack.push_back({indent, currentPath});
-        }
-    }
-    return roots;
-}
+#include <utils/yaml_parser.h>
 
 SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
 {
     SceneLoadResult result;
     std::string fullPath = FileSystem::getPath(filepath);
-    auto roots = ParseAXS(fullPath);
+    auto roots = YAMLParser::Parse(fullPath);
     if (roots.empty())
     {
         LOGGER_ERROR("SceneSerializer") << "Failed to parse AXS file or file is empty: " << fullPath;

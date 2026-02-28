@@ -41,6 +41,7 @@ public:
     class MouseManager&    GetMouse();
 
     void LoadScene(const std::string& path, bool persistent = false);
+    void LoadInputBindings(const std::string& path);
     void QueueLoadScene(const std::string& path, bool persistent = false);
     void UnloadScene(const std::string& path);
     void UnloadScene(const struct SceneRecord* rec);
