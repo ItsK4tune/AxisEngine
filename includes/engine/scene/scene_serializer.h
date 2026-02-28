@@ -5,28 +5,13 @@
 #include <vector>
 #include <entt/entt.hpp>
 #include <app/config_loader.h>
+#include <scene/scene_types.h>
 
 class Scene;
 class ResourceManager;
 class IPhysicsWorld;
 class SoundPlayer;
 class Application;
-
-struct SceneLoadResult
-{
-    std::vector<entt::entity> entities;
-
-    std::vector<std::string> loadedShaders;
-    std::vector<std::string> loadedModels;
-    std::vector<std::string> loadedTextures;
-    std::vector<std::string> loadedFonts;
-    std::vector<std::string> loadedSkyboxes;
-    std::vector<std::string> loadedAnimations;
-    std::vector<std::string> loadedSounds;
-
-    AppConfig appliedConfig;
-    bool hasConfig = false;
-};
 
 class SceneSerializer
 {

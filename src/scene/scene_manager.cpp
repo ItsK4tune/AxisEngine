@@ -4,14 +4,16 @@
 #include <app/application.h>
 #include <algorithm>
 
-static std::string SceneBasename(const std::string &filePath)
-{
-    size_t slash = filePath.find_last_of("/\\");
-    std::string name = (slash != std::string::npos) ? filePath.substr(slash + 1) : filePath;
-    size_t dot = name.rfind('.');
-    if (dot != std::string::npos)
-        name = name.substr(0, dot);
-    return name;
+namespace {
+    std::string SceneBasename(const std::string &filePath)
+    {
+        size_t slash = filePath.find_last_of("/\\");
+        std::string name = (slash != std::string::npos) ? filePath.substr(slash + 1) : filePath;
+        size_t dot = name.rfind('.');
+        if (dot != std::string::npos)
+            name = name.substr(0, dot);
+        return name;
+    }
 }
 
 SceneManager::SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)

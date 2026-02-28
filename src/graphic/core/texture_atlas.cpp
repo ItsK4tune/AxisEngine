@@ -81,7 +81,19 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
 
     for (size_t i = 0; i < textures.size(); i++)
     {
-        BlitTexture(atlasData.data(), textures[i], rects[i]);
+        for (int y = 0; y < rects[i].height; y++)
+        {
+            for (int x = 0; x < rects[i].width; x++)
+            {
+                int atlasIndex = ((rects[i].y + y) * m_Width + (rects[i].x + x)) * 4;
+                int texIndex = (y * textures[i].width + x) * 4;
+
+                atlasData[atlasIndex + 0] = textures[i].data[texIndex + 0];
+                atlasData[atlasIndex + 1] = textures[i].data[texIndex + 1];
+                atlasData[atlasIndex + 2] = textures[i].data[texIndex + 2];
+                atlasData[atlasIndex + 3] = textures[i].data[texIndex + 3];
+            }
+        }
 
         AtlasRegion region;
         region.name = textureNames[i];
@@ -163,23 +175,6 @@ bool TextureAtlas::PackTextures(const std::vector<TextureData>& textures, std::v
     }
 
     return true;
-}
-
-void TextureAtlas::BlitTexture(unsigned char* atlasData, const TextureData& texture, const Rect& rect)
-{
-    for (int y = 0; y < rect.height; y++)
-    {
-        for (int x = 0; x < rect.width; x++)
-        {
-            int atlasIndex = ((rect.y + y) * m_Width + (rect.x + x)) * 4;
-            int texIndex = (y * texture.width + x) * 4;
-
-            atlasData[atlasIndex + 0] = texture.data[texIndex + 0];
-            atlasData[atlasIndex + 1] = texture.data[texIndex + 1];
-            atlasData[atlasIndex + 2] = texture.data[texIndex + 2];
-            atlasData[atlasIndex + 3] = texture.data[texIndex + 3];
-        }
-    }
 }
 
 TextureAtlas::AtlasRegion TextureAtlas::GetRegion(const std::string& textureName) const

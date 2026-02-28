@@ -100,6 +100,35 @@ void BulletPhysicsWorld::DebugDraw()
         m_CurrentDebugDrawer->Flush();
 }
 
+RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist)
+{
+    RayHit hit;
+    if (!m_DynamicsWorld) return hit;
+
+    glm::vec3 end = origin + (dir * maxDist);
+    btVector3 btStart(origin.x, origin.y, origin.z);
+    btVector3 btEnd(end.x, end.y, end.z);
+
+    btCollisionWorld::ClosestRayResultCallback rayCallback(btStart, btEnd);
+    m_DynamicsWorld->rayTest(btStart, btEnd, rayCallback);
+
+    if (rayCallback.hasHit())
+    {
+        hit.hasHit = true;
+        hit.distance = rayCallback.m_closestHitFraction * maxDist;
+        hit.hitPoint = glm::vec3(rayCallback.m_hitPointWorld.x(), rayCallback.m_hitPointWorld.y(), rayCallback.m_hitPointWorld.z());
+        hit.hitNormal = glm::vec3(rayCallback.m_hitNormalWorld.x(), rayCallback.m_hitNormalWorld.y(), rayCallback.m_hitNormalWorld.z());
+
+        const btCollisionObject* obj = rayCallback.m_collisionObject;
+        if (obj && obj->getUserPointer())
+        {
+            hit.entity = (entt::entity)(uintptr_t)obj->getUserPointer();
+        }
+    }
+
+    return hit;
+}
+
 void BulletPhysicsWorld::SetCollisionFilter(CollisionFilterCallback callback)
 {
     if (m_Dispatcher)

@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <memory>
+#include <interface/physics/physics_types.h>
 
 #include <functional>
 #include <entt/entt.hpp>
@@ -29,6 +30,8 @@ public:
     virtual void RemoveConstraint(std::shared_ptr<IConstraint> constraint) = 0;
 
     virtual void DebugDraw() = 0;
+
+    virtual RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist) = 0;
 
     using CollisionFilterCallback = std::function<bool(entt::entity, entt::entity)>;
     virtual void SetCollisionFilter(CollisionFilterCallback callback) = 0;

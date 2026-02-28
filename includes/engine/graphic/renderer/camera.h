@@ -37,6 +37,8 @@ public:
 
     glm::mat4 GetViewMatrix();
 
+    glm::vec3 GetScreenRay(float mouseX, float mouseY, float screenWidth, float screenHeight, const glm::mat4& projectionMatrix);
+
     void ProcessKeyboard(Camera_Movement direction, float deltaTime);
     void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true);
     void ProcessMouseScroll(float yoffset);

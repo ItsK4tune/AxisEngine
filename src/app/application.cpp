@@ -172,6 +172,10 @@ bool Application::Init(const AppConfig &config)
     m_PhysicsWorld->Init();
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
+    
+    // Initialize scene managers (Camera, Light, etc.) before handing scene to SceneManager
+    m_Scene->InitializeManagers();
+    
     m_SceneManager = std::make_unique<SceneManager>(*m_Scene, *m_ResourceManager, *m_PhysicsWorld, *m_SoundPlayer, this);
 
     m_ContentService = std::make_unique<ContentService>(*m_ResourceManager, *m_SceneManager, *m_SoundPlayer);
@@ -275,11 +279,6 @@ void Application::OnMouseButton(int button, int action, int mods) { m_IOHandler-
 void Application::OnScroll(double xoffset, double yoffset) { m_IOHandler->OnScroll(xoffset, yoffset); }
 
 // --- Context getters ---
-WorldContext Application::GetWorldContext()
-{
-    return { *m_Scene, *m_PhysicsWorld, *m_SceneManager, *m_ResourceManager, *m_SoundPlayer };
-}
-
 IOContext Application::GetIOContext()
 {
     return {

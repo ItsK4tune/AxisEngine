@@ -25,6 +25,32 @@ glm::mat4 Camera::GetViewMatrix()
     return glm::lookAt(Position, Position + Front, Up);
 }
 
+glm::vec3 Camera::GetScreenRay(float mouseX, float mouseY, float screenWidth, float screenHeight, const glm::mat4& projectionMatrix)
+{
+    // Convert mouse position to Normalized Device Coordinates (NDC)
+    // Range [-1, 1], with Y pointing up
+    float x = (2.0f * mouseX) / screenWidth - 1.0f;
+    float y = 1.0f - (2.0f * mouseY) / screenHeight;
+    float z = 1.0f; // pointing into the screen
+
+    // Ray in Clip Space
+    glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+
+    // Ray in Eye/View Space
+    glm::mat4 invProj = glm::inverse(projectionMatrix);
+    glm::vec4 rayEye = invProj * rayClip;
+    rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f); // We only care about direction
+
+    // Ray in World Space
+    glm::mat4 invView = glm::inverse(GetViewMatrix());
+    glm::vec4 rayWorld = invView * rayEye;
+    
+    // Normalize the ray direction
+    glm::vec3 rayDir = glm::normalize(glm::vec3(rayWorld));
+    
+    return rayDir;
+}
+
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
     float velocity = MovementSpeed * deltaTime;

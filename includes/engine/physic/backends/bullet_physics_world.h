@@ -65,6 +65,8 @@ public:
 
     void DebugDraw() override;
 
+    RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist) override;
+
     void SetCollisionFilter(CollisionFilterCallback callback) override;
 
     btDiscreteDynamicsWorld* GetRawWorld() const { return m_DynamicsWorld.get(); }

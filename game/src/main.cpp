@@ -12,6 +12,7 @@
 #include <sstream>
 #include <utils/filesystem.h>
 #include <filesystem>
+#include <Windows.h>
 
 class TeeBuf : public std::streambuf {
 public:
@@ -35,6 +36,23 @@ private:
 TeeBuf* teeBufOut = nullptr;
 TeeBuf* teeBufErr = nullptr;
 std::ofstream logFile;
+
+LONG WINAPI CrashHandler(EXCEPTION_POINTERS* exceptionInfo)
+{
+    if (logFile.is_open())
+    {
+        logFile << "Unhandled Exception Caught!\n";
+        if (exceptionInfo && exceptionInfo->ExceptionRecord)
+        {
+            logFile << "Exception Code: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionCode << std::dec << "\n";
+            logFile << "Faulting Address: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionAddress << std::dec << "\n";
+        }
+        logFile.flush();
+    }
+    
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
 
 void InitLogging() {
     std::string logsDirStr = FileSystem::getPath("logs");
@@ -86,6 +104,8 @@ int main() {
 #endif
 
     InitLogging();
+
+    SetUnhandledExceptionFilter(CrashHandler);
 
     std::shared_ptr<Application> app = std::make_shared<Application>();
 

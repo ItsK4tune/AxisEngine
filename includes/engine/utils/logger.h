@@ -4,20 +4,7 @@
 #include <string>
 #include <mutex>
 #include <sstream>
-
-enum class LogLevel {
-    None,
-    Minimal,
-    Flex,
-    Debug
-};
-
-enum class LogType {
-    Info,
-    Warning,
-    Error,
-    Debug
-};
+#include <utils/logger_types.h>
 
 class Logger {
 public:

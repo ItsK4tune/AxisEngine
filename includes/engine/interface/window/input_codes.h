@@ -1,8 +1,6 @@
-﻿#ifndef INPUT_CODES_H
-#define INPUT_CODES_H
+﻿#pragma once
 
 namespace Input {
-
     enum class Key {
         Unknown = -1,
         Space,
@@ -177,5 +175,3 @@ namespace Input {
         Disabled
     };
 }
-
-#endif

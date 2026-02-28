@@ -59,8 +59,6 @@ private:
     bool PackTextures(const std::vector<TextureData>& textures,
                      std::vector<Rect>& outRects);
 
-    void BlitTexture(unsigned char* atlasData, const TextureData& texture, const Rect& rect);
-
     static ITextureManager* s_TextureManager;
     static ITextureManager& GetTextureManager();
 };

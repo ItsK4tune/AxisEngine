@@ -104,13 +104,13 @@ void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, Appl
         bool trigger = false;
         switch (bind.event)
         {
-        case Scriptable::InputEvent::Pressed:
+        case InputEvent::Pressed:
             trigger = keyboard.IsKeyDown(static_cast<Input::Key>(bind.key));
             break;
-        case Scriptable::InputEvent::Held:
+        case InputEvent::Held:
             trigger = keyboard.GetKey(static_cast<Input::Key>(bind.key));
             break;
-        case Scriptable::InputEvent::Released:
+        case InputEvent::Released:
             trigger = keyboard.GetKeyUp(static_cast<Input::Key>(bind.key));
             break;
         }

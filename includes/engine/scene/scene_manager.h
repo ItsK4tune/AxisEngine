@@ -10,30 +10,9 @@
 #include <interface/physics/i_physics_world.h>
 #include <ecs/component.h>
 #include <app/config_loader.h>
+#include <scene/scene_types.h>
 
 class Application;
-
-struct SceneRecord
-{
-    std::string name;
-    std::string filePath;
-    int  loadOrder = 0;
-    bool persistent = false;
-    bool inviolable = false;    // true for load.axs — cannot be unloaded by any method
-
-    std::vector<entt::entity> entities;
-
-    std::vector<std::string> ownedShaders;
-    std::vector<std::string> ownedModels;
-    std::vector<std::string> ownedTextures;
-    std::vector<std::string> ownedFonts;
-    std::vector<std::string> ownedSkyboxes;
-    std::vector<std::string> ownedAnimations;
-    std::vector<std::string> ownedSounds;
-
-    AppConfig appliedConfig;
-    bool hasConfig = false;
-};
 
 class SceneManager
 {

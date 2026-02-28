@@ -1,52 +1,11 @@
-﻿#ifndef I_WINDOW_H
-#define I_WINDOW_H
+﻿#pragma once
 
 #include <string>
 #include <functional>
-
-namespace Input {
-
-}
 #include "input_codes.h"
 
 #include <vector>
-
-enum class WindowMode
-{
-    Windowed,
-    Fullscreen,
-    Borderless,
-    BorderlessFullscreen
-};
-
-struct MonitorInfo
-{
-    std::string name;
-    int index;
-    int width;
-    int height;
-    int refreshRate;
-    bool isPrimary;
-};
-
-enum class AxisDeviceType
-{
-    Monitor,
-    Keyboard,
-    Mouse,
-    Joystick,
-    Gamepad,
-    AudioOutput,
-    AudioInput
-};
-
-struct DeviceInfo
-{
-    std::string id;
-    std::string name;
-    AxisDeviceType type;
-    bool isDefault;
-};
+#include <interface/window/window_types.h>
 
 class IWindow {
 public:
@@ -94,5 +53,3 @@ public:
     virtual void SetCursorPosCallback(const MousePositionCallback& callback) = 0;
     virtual void SetScrollCallback(const ScrollCallback& callback) = 0;
 };
-
-#endif

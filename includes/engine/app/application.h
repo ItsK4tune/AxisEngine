@@ -81,7 +81,6 @@ public:
     VideoSystem &GetVideoSystem();
     PostProcessPipeline &GetPostProcess();
 
-    WorldContext GetWorldContext();
     IOContext GetIOContext();
     SystemContext GetSystemContext();
 

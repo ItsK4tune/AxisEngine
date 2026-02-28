@@ -4,8 +4,10 @@
 #include <utils/logger.h>
 #include <interface/graphic/i_shader_manager.h>
 
-static constexpr unsigned int COMPUTE_SHADER = 0x91B9;
-static constexpr unsigned int FALSE = 0;
+namespace {
+    constexpr unsigned int COMPUTE_SHADER = 0x91B9;
+    constexpr unsigned int FALSE = 0;
+}
 
 IShaderManager* ComputeShader::s_ShaderManager = nullptr;
 

@@ -7,9 +7,11 @@
 
 IShaderManager *Shader::s_ShaderManager = nullptr;
 
-static constexpr unsigned int SHADER_VERTEX = 0x8B31;
-static constexpr unsigned int SHADER_FRAGMENT = 0x8B30;
-static constexpr unsigned int SHADER_GEOMETRY = 0x8DD9;
+namespace {
+    constexpr unsigned int SHADER_VERTEX = 0x8B31;
+    constexpr unsigned int SHADER_FRAGMENT = 0x8B30;
+    constexpr unsigned int SHADER_GEOMETRY = 0x8DD9;
+}
 
 Shader::Shader()
     : ID(0)

@@ -5,24 +5,7 @@
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
 #include <interface/window/i_device_manager.h>
-
-enum class InputType
-{
-    Key,
-    MouseButton,
-    GamepadButton
-};
-
-struct InputBinding
-{
-    InputType type;
-    int code;
-};
-
-struct InputActionBinding
-{
-    std::vector<InputBinding> bindings;
-};
+#include <input/input_types.h>
 
 class InputManager : public IDeviceManager
 {

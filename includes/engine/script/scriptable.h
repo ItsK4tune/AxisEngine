@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <script/script_types.h>
 
 class Application;
 
@@ -59,19 +60,6 @@ public:
     virtual void OnHoverEnter() {}
     virtual void OnHoverStay() {}
     virtual void OnHoverExit() {}
-
-    enum class InputEvent
-    {
-        Pressed,
-        Held,
-        Released
-    };
-    struct KeyBinding
-    {
-        int key;
-        InputEvent event;
-        std::function<void()> callback;
-    };
 
     void BindKey(int key, InputEvent event, std::function<void()> callback)
     {

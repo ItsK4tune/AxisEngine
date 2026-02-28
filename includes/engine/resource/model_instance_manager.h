@@ -9,12 +9,7 @@
 
 #include <memory>
 #include <mutex>
-
-struct ModelInstance
-{
-    glm::mat4 transform;
-    entt::entity entity;
-};
+#include <resource/model_types.h>
 
 class ModelInstanceManager
 {

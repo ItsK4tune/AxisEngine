@@ -22,12 +22,14 @@ Animator::Animator(std::shared_ptr<Animation> animation)
     }
 }
 
-static glm::mat4 ComposeTransform(const glm::vec3 &t, const glm::quat &r, const glm::vec3 &s)
-{
-    glm::mat4 translation = glm::translate(glm::mat4(1.0f), t);
-    glm::mat4 rotation = glm::toMat4(r);
-    glm::mat4 scale = glm::scale(glm::mat4(1.0f), s);
-    return translation * rotation * scale;
+namespace {
+    glm::mat4 ComposeTransform(const glm::vec3 &t, const glm::quat &r, const glm::vec3 &s)
+    {
+        glm::mat4 translation = glm::translate(glm::mat4(1.0f), t);
+        glm::mat4 rotation = glm::toMat4(r);
+        glm::mat4 scale = glm::scale(glm::mat4(1.0f), s);
+        return translation * rotation * scale;
+    }
 }
 
 void Animator::UpdateAnimation(float dt, const glm::mat4& rootTransform)

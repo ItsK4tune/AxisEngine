@@ -6,6 +6,7 @@
 #include <graphic/geometry/animation.h>
 #include <graphic/renderer/font.h>
 #include <graphic/renderer/skybox.h>
+#include <graphic/renderer/camera.h>
 #include <graphic/core/post_process_pipeline.h>
 #include <graphic/core/shader_cache.h>
 

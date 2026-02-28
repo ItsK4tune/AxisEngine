@@ -15,7 +15,7 @@ axis_scene:
       Model: womanModel
 
   Entities:
-    Woman1:
+    Woman:
       Tag: default
       Component: Transform
         Position: 2.0 2.0 2.0

@@ -1,5 +1,4 @@
-﻿#ifndef GLFW_WINDOW_H
-#define GLFW_WINDOW_H
+﻿#pragma once
 
 #include <interface/window/i_window.h>
 #include <GLFW/glfw3.h>
@@ -66,5 +65,3 @@ private:
     int MapInputKeyToGLFW(int key);
 
 };
-
-#endif
