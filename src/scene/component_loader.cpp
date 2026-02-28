@@ -18,11 +18,17 @@ void ComponentLoader::ValidateKeys(const YAMLNode &node, const std::vector<std::
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Model", "Shader", "Order"}, "Renderer");
+    ValidateKeys(node, {"Model", "Shader", "Order", "Color", "CastShadow"}, "Renderer");
 
     std::string modelName = node.GetChildValue("Model");
     std::string shaderName = node.GetChildValue("Shader");
     int order = std::stoi(node.GetChildValue("Order", "0"));
+    bool castShadow = node.GetChildValue("CastShadow", "1") == "1" || node.GetChildValue("CastShadow", "true") == "true";
+
+    std::stringstream colorSS(node.GetChildValue("Color", "1 1 1 1"));
+    float cr, cg, cb, ca;
+    colorSS >> cr >> cg >> cb >> ca;
+    glm::vec4 color(cr, cg, cb, ca);
 
     if (modelName.empty() || shaderName.empty())
     {
@@ -33,6 +39,8 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
     r.model = res.GetModel(modelName);
     r.shader = res.GetShader(shaderName);
     r.order = order;
+    r.castShadow = castShadow;
+    r.color = color;
 
     if (!r.model)
         LOGGER_WARN("ComponentLoader") << "Renderer model not found: " << modelName;
@@ -243,7 +251,7 @@ void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAM
 
 void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Position", "Size", "ZOrder"}, "UITransform");
+    ValidateKeys(node, {"Position", "Size", "ZOrder", "UsePercentage", "Anchor"}, "UITransform");
 
     auto &ui = scene.registry.emplace<UITransformComponent>(entity);
 
@@ -261,6 +269,12 @@ void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const Y
         LOGGER_WARN("ComponentLoader") << "UITransform Size should not be negative: " << w << "x" << h;
 
     ui.zIndex = std::stoi(node.GetChildValue("ZOrder", "0"));
+    ui.usePercentage = node.GetChildValue("UsePercentage", "0") == "1" || node.GetChildValue("UsePercentage", "true") == "true";
+
+    std::stringstream anchorSS(node.GetChildValue("Anchor", "0 0"));
+    float ax, ay;
+    anchorSS >> ax >> ay;
+    ui.anchor = glm::vec2(ax, ay);
 }
 
 void ComponentLoader::LoadUIRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -470,27 +484,34 @@ void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, con
     }
 }
 
-void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAMLNode &node)
+void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Type", "Roughness", "Metallic", "AO", "Shininess", "Specular", "Emission", "Ambient"}, "Material");
+    ValidateKeys(node, {"Type", "Roughness", "Metallic", "AO", "Shininess", "Specular", "Emission", "Ambient", "Opacity", "AlphaCutoff", "BlendSrc", "BlendDst", "Albedo", "Diffuse", "Normal", "MetallicMap", "RoughnessMap", "AOMap", "EmissiveMap"}, "Material");
 
     MaterialComponent mat;
     std::string typeStr = node.GetChildValue("Type", "PHONG");
+
+    mat.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
+    mat.alphaCutoff = std::stof(node.GetChildValue("AlphaCutoff", "0.5"));
+
+    auto parseBlend = [](const std::string& str, Graphics::BlendFactor defaultFactor) -> Graphics::BlendFactor {
+        if (str == "Zero") return Graphics::BlendFactor::Zero;
+        if (str == "One") return Graphics::BlendFactor::One;
+        if (str == "SrcAlpha") return Graphics::BlendFactor::SrcAlpha;
+        if (str == "OneMinusSrcAlpha") return Graphics::BlendFactor::OneMinusSrcAlpha;
+        // Add more if needed, default to provided default
+        return defaultFactor;
+    };
+
+    mat.blendSrc = parseBlend(node.GetChildValue("BlendSrc", ""), Graphics::BlendFactor::SrcAlpha);
+    mat.blendDst = parseBlend(node.GetChildValue("BlendDst", ""), Graphics::BlendFactor::OneMinusSrcAlpha);
 
     if (typeStr == "PBR")
     {
         mat.type = MaterialType::PBR;
         mat.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
-        if (mat.roughness < 0.0f || mat.roughness > 1.0f)
-            LOGGER_WARN("ComponentLoader") << "Material Roughness out of bounds (0-1): " << mat.roughness;
-
         mat.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
-        if (mat.metallic < 0.0f || mat.metallic > 1.0f)
-            LOGGER_WARN("ComponentLoader") << "Material Metallic out of bounds (0-1): " << mat.metallic;
-
         mat.ao = std::stof(node.GetChildValue("AO", "1.0"));
-        if (mat.ao < 0.0f || mat.ao > 1.0f)
-            LOGGER_WARN("ComponentLoader") << "Material AO out of bounds (0-1): " << mat.ao;
 
         std::stringstream emissSS(node.GetChildValue("Emission", "0 0 0"));
         float er, eg, eb;
@@ -501,8 +522,6 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     {
         mat.type = MaterialType::PHONG;
         mat.shininess = std::stof(node.GetChildValue("Shininess", "32.0"));
-        if (mat.shininess <= 0.0f)
-            LOGGER_WARN("ComponentLoader") << "Material Shininess should be positive: " << mat.shininess;
 
         std::stringstream specSS(node.GetChildValue("Specular", "0.5 0.5 0.5"));
         float sr, sg, sb;
@@ -519,6 +538,27 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
         ambSS >> ar >> ag >> ab;
         mat.ambient = glm::vec3(ar, ag, ab);
     }
+
+    // Load textures
+    auto loadTex = [&](const std::string& key, std::string& outPath, uint32_t& outID) {
+        std::string path = node.GetChildValue(key);
+        if (!path.empty()) {
+            outPath = path;
+            res.LoadTexture(path, path, false); // Load synchronously for material
+            auto tex = res.GetTexture(path);
+            if (tex) outID = tex->id;
+        }
+    };
+
+    loadTex("Albedo", mat.albedoPath, mat.albedoMap);
+    if (mat.albedoPath.empty()) {
+        loadTex("Diffuse", mat.albedoPath, mat.albedoMap);
+    }
+    loadTex("Normal", mat.normalPath, mat.normalMap);
+    loadTex("MetallicMap", mat.metallicPath, mat.metallicMap);
+    loadTex("RoughnessMap", mat.roughnessPath, mat.roughnessMap);
+    loadTex("AOMap", mat.aoPath, mat.aoMap);
+    loadTex("EmissiveMap", mat.emissivePath, mat.emissiveMap);
 
     scene.registry.emplace<MaterialComponent>(entity, mat);
 }

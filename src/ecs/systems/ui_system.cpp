@@ -42,9 +42,23 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
                     currentShader->setInt("image", 0);
                 }
 
+                glm::vec2 actualPos = transform.position;
+                glm::vec2 actualSize = transform.size;
+
+                if (transform.usePercentage)
+                {
+                    actualPos.x = (transform.position.x / 100.0f) * screenWidth;
+                    actualPos.y = (transform.position.y / 100.0f) * screenHeight;
+                    actualSize.x = (transform.size.x / 100.0f) * screenWidth;
+                    actualSize.y = (transform.size.y / 100.0f) * screenHeight;
+                }
+
+                // Apply anchoring
+                actualPos -= transform.anchor * actualSize;
+
                 glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, glm::vec3(transform.position, 0.0f));
-                model = glm::scale(model, glm::vec3(transform.size, 1.0f));
+                model = glm::translate(model, glm::vec3(actualPos, 0.0f));
+                model = glm::scale(model, glm::vec3(actualSize, 1.0f));
                 currentShader->setMat4("model", model);
 
                 renderer->model->Draw(*currentShader, renderer->color);
@@ -64,8 +78,22 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
                     currentShader->setInt("text", 0);
                 }
 
-                float x = transform.position.x;
-                float y = transform.position.y;
+                glm::vec2 actualPos = transform.position;
+                glm::vec2 actualSize = transform.size;
+
+                if (transform.usePercentage)
+                {
+                    actualPos.x = (transform.position.x / 100.0f) * screenWidth;
+                    actualPos.y = (transform.position.y / 100.0f) * screenHeight;
+                    actualSize.x = (transform.size.x / 100.0f) * screenWidth;
+                    actualSize.y = (transform.size.y / 100.0f) * screenHeight;
+                }
+
+                // Apply anchoring
+                actualPos -= transform.anchor * actualSize;
+
+                float x = actualPos.x;
+                float y = actualPos.y;
                 float scale = textComp->scale;
 
                 for (char c : textComp->text)

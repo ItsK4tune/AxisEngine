@@ -13,6 +13,9 @@ struct UITransformComponent
     glm::vec2 size = glm::vec2(100.0f, 100.0f);
     float rotation = 0.0f;
     int zIndex = 0;
+
+    bool usePercentage = false;
+    glm::vec2 anchor = glm::vec2(0.0f); // (0,0) top-left, (0.5,0.5) center, (1,1) bottom-right
 };
 
 struct UIRendererComponent

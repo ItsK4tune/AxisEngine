@@ -5,19 +5,33 @@
 
 Represents a physical object in the Bullet Physics world.
 
-*   `btRigidBody* body`: Pointer to the internal Bullet body.
-*   `bool isAttachedToParent`: If true, position is synced to parent transform.
-*   `bool isParentMatter`: If true, this body affects parent physics/transform (e.g. combined compound shape logic).
-*   `bool isChildrenMatter`: If true, children bodies affect this body.
+*   **Type**: `BOX`, `CAPSULE`, `COMPOUND`.
+*   **BodyType**: `STATIC`, `DYNAMIC`, `KINEMATIC`.
+*   **Properties**:
+    *   `mass` (float): Object mass (0 for static).
+    *   `restitution` (float): Bounciness (0.0 to 1.0).
+    *   `friction` (float): Surface friction.
+    *   `linearFactor`, `angularFactor` (vec3): Axis locking (e.g., `0 1 0` locks to Y-axis).
+    *   `offset` (vec3): Center of mass offset from transform position.
+    *   `isAttachedToParent` (bool): Sync with parent transform.
+    *   `isParentMatter`, `isChildrenMatter` (bool): Compound physics interaction.
 
-**Methods:**
-*   `SetLinearVelocity(vec3)`
-*   `SetAngularVelocity(vec3)`
-*   `SetFriction(float)`
-*   `SetRestitution(float)` (Bounciness)
-*   `SetLinearFactor(vec3)`: Lock movement axes (e.g., 0,0,0 to lock).
-*   `SetAngularFactor(vec3)`: Lock rotation axes.
+**AXS Example:**
+```yaml
+Component: RigidBody
+  Type: BOX
+  Mass: 10.0
+  Size: 1.0 1.0 1.0
+  BodyType: DYNAMIC
+  AngularFactor: 0 1 0
+```
 
-**Note:** Changes to `TransformComponent` do NOT automatically sync to `RigidBodyComponent` every frame unless manually handled (Teleporting). Usually, the Physics system moves the Transform.
-
-**Optimization:** usage of `RigidBodyComponent` is optimized via `CachedQuery` in `PhysicsSystem`. Adding/Removing this component triggers query dirty flags.
+**C++ Public Methods:**
+- `SetLinearVelocity(glm::vec3)` / `GetLinearVelocity()`
+- `SetAngularVelocity(glm::vec3)` / `GetAngularVelocity()`
+- `SetFriction(float)`
+- `SetRestitution(float)`
+- `SetLinearFactor(glm::vec3)`
+- `SetAngularFactor(glm::vec3)`
+- `ApplyForce(glm::vec3, glm::vec3 offset)`
+- `ApplyImpulse(glm::vec3, glm::vec3 offset)`

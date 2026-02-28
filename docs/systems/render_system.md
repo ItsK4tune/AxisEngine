@@ -11,6 +11,20 @@ Handles the 3D rendering pipeline, including shadowing, lighting, and model rend
 *   **State Management**: Manages Depth Testing and Face Culling states.
 *   **Bucket Rendering**: Implements a layered rendering approach by clearing the depth buffer between groups of entities with different `RenderOrder`.
 *   **Layer Filtering**: Provides global and camera-specific visibility masks for entities.
+*   **Transparency Pass**: Implements a dedicated rendering pass for transparent objects with back-to-front sorting and alpha blending.
+*   **Material Overrides**: Supports overriding model textures with custom textures defined in `MaterialComponent`.
+
+## Rendering Hierarchy
+
+The engine uses the following priority rules to determine which pixels are drawn on top:
+
+1.  **Entity Type**: **Opaque** objects are always rendered first, and **Transparent** objects (opacity < 1.0) are rendered last.
+    *   *Result: Transparent objects will always appear in front of opaque objects unless occluded.*
+2.  **Render Order**: Within the same group (Opaque or Transparent), entities with a **higher** `Order` value are rendered later.
+    *   *Result: Order 2 renders on top of Order 1.*
+3.  **Depth**: 
+    *   Opaque: Uses Depth Testing (closer objects are drawn).
+    *   Transparent: Automatically sorted **Back-to-Front** (by distance to camera) to ensure correct alpha blending.
 
 ## Anti-Aliasing
 The RenderSystem supports multiple Anti-Aliasing techniques to reduce jagged edges:
@@ -63,12 +77,10 @@ axis_scene:
     ANTIALIASING: TAA
 ```
 
-## Shader Requirements
-
-Shaders that support shadows must:
-1. Accept `lightSpaceMatrix[4]` uniform array for directional light space transformations
-2. Accept `shadowMapDir[4]` uniform sampler2D array for directional shadow maps
-3. Accept `u_ReceiveShadow` uniform bool to enable/disable shadow reception
-4. Calculate shadows for each active directional light using the corresponding shadow map index
+### Transparency Requirements
+Shaders that support transparency must:
+1. Accept `Material` struct with `float opacity` field.
+2. Use `material.opacity` to calculate the final `FragColor.a`.
+3. Optionally handle `material.alphaCutoff` for masked transparency.
 
 See `phong_lit_shadow.fs` and `pbr_lit_shadow.fs` for reference implementations.

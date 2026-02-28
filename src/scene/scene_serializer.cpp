@@ -329,7 +329,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                     else if (compType == "ParticleEmitter")
                         ComponentLoader::LoadParticleEmitter(scene, currentEntity, compNode, res);
                     else if (compType == "Material")
-                        ComponentLoader::LoadMaterial(scene, currentEntity, compNode);
+                        ComponentLoader::LoadMaterial(scene, currentEntity, compNode, res);
                     else if (compType == "LOD")
                         ComponentLoader::LoadLOD(scene, currentEntity, compNode, res);
                     else if (compType == "RigidBody")

@@ -64,35 +64,38 @@ Mesh::~Mesh()
     }
 }
 
-void Mesh::Draw(Shader &shader)
+void Mesh::Draw(Shader &shader, bool bindTextures)
 {
-    unsigned int diffuseNr = 1;
-    unsigned int specularNr = 1;
-    unsigned int normalNr = 1;
-    unsigned int heightNr = 1;
-
     auto& tm = GetTextureManager();
     auto& dm = GetDrawContext();
     auto& bm = GetBufferManager();
 
-    for (unsigned int i = 0; i < textures.size(); i++)
+    if (bindTextures)
     {
-        tm.ActiveTexture(static_cast<Graphics::TextureUnit>(i));
+        unsigned int diffuseNr = 1;
+        unsigned int specularNr = 1;
+        unsigned int normalNr = 1;
+        unsigned int heightNr = 1;
 
-        std::string number;
-        std::string name = textures[i].type;
+        for (unsigned int i = 0; i < textures.size(); i++)
+        {
+            tm.ActiveTexture(static_cast<Graphics::TextureUnit>(i));
 
-        if (name == "texture_diffuse")
-            number = std::to_string(diffuseNr++);
-        else if (name == "texture_specular")
-            number = std::to_string(specularNr++);
-        else if (name == "texture_normal")
-            number = std::to_string(normalNr++);
-        else if (name == "texture_height")
-            number = std::to_string(heightNr++);
+            std::string number;
+            std::string name = textures[i].type;
 
-        shader.setInt((name + number).c_str(), i);
-        tm.BindTexture(Graphics::TextureType::Texture2D, textures[i].id);
+            if (name == "texture_diffuse")
+                number = std::to_string(diffuseNr++);
+            else if (name == "texture_specular")
+                number = std::to_string(specularNr++);
+            else if (name == "texture_normal")
+                number = std::to_string(normalNr++);
+            else if (name == "texture_height")
+                number = std::to_string(heightNr++);
+
+            shader.setInt((name + number).c_str(), i);
+            tm.BindTexture(Graphics::TextureType::Texture2D, textures[i].id);
+        }
     }
 
     shader.setBool("isInstanced", false);
@@ -108,35 +111,38 @@ void Mesh::Draw(Shader &shader)
     tm.ActiveTexture(Graphics::TextureUnit::Texture0);
 }
 
-void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
+void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, bool bindTextures)
 {
-    unsigned int diffuseNr = 1;
-    unsigned int specularNr = 1;
-    unsigned int normalNr = 1;
-    unsigned int heightNr = 1;
-
     auto& tm = GetTextureManager();
     auto& dm = GetDrawContext();
     auto& bm = GetBufferManager();
 
-    for (unsigned int i = 0; i < textures.size(); i++)
+    if (bindTextures)
     {
-        tm.ActiveTexture(static_cast<Graphics::TextureUnit>(i));
+        unsigned int diffuseNr = 1;
+        unsigned int specularNr = 1;
+        unsigned int normalNr = 1;
+        unsigned int heightNr = 1;
 
-        std::string number;
-        std::string name = textures[i].type;
+        for (unsigned int i = 0; i < textures.size(); i++)
+        {
+            tm.ActiveTexture(static_cast<Graphics::TextureUnit>(i));
 
-        if (name == "texture_diffuse")
-            number = std::to_string(diffuseNr++);
-        else if (name == "texture_specular")
-            number = std::to_string(specularNr++);
-        else if (name == "texture_normal")
-            number = std::to_string(normalNr++);
-        else if (name == "texture_height")
-            number = std::to_string(heightNr++);
+            std::string number;
+            std::string name = textures[i].type;
 
-        shader.setInt((name + number).c_str(), i);
-        tm.BindTexture(Graphics::TextureType::Texture2D, textures[i].id);
+            if (name == "texture_diffuse")
+                number = std::to_string(diffuseNr++);
+            else if (name == "texture_specular")
+                number = std::to_string(specularNr++);
+            else if (name == "texture_normal")
+                number = std::to_string(normalNr++);
+            else if (name == "texture_height")
+                number = std::to_string(heightNr++);
+
+            shader.setInt((name + number).c_str(), i);
+            tm.BindTexture(Graphics::TextureType::Texture2D, textures[i].id);
+        }
     }
 
     shader.setBool("isInstanced", true);

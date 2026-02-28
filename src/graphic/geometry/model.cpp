@@ -468,18 +468,18 @@ void Model::ComputeAABB()
     }
 }
 
-void Model::Draw(Shader &shader)
+void Model::Draw(Shader &shader, bool bindTextures)
 {
     for (unsigned int i = 0; i < meshes.size(); i++)
     {
-        meshes[i].Draw(shader);
+        meshes[i].Draw(shader, bindTextures);
     }
 }
 
-void Model::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models)
+void Model::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, bool bindTextures)
 {
     for (unsigned int i = 0; i < meshes.size(); i++)
-        meshes[i].DrawInstanced(shader, models);
+        meshes[i].DrawInstanced(shader, models, bindTextures);
 }
 
 std::unordered_map<std::string, BoneInfo> &Model::GetBoneInfoMap() { return m_BoneInfoMap; }

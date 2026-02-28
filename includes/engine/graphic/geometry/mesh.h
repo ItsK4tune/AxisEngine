@@ -45,8 +45,8 @@ public:
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures, bool setupGPU = true);
     ~Mesh();
     void setupMesh();
-    void Draw(Shader &shader);
-    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models);
+    void Draw(Shader &shader, bool bindTextures = true);
+    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, bool bindTextures = true);
 
     bool IsInitialized() const { return m_Initialized; }
 

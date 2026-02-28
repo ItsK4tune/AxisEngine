@@ -29,6 +29,7 @@ axis_scene:
         Type: PHONG
         Shininess: 32
         Specular: 0.5 0.5 0.5
+        Opacity: 0.5
       Component: Animator
         Animation: defeatedAnimation spinAnimation
         Speed: 1.0

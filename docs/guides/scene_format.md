@@ -115,7 +115,7 @@ The `.axs` format assigns default values if a property is missing. Keys are case
 ### MeshRenderer
 - `Model`: String (Required, Name of loaded Model resource)
 - `Shader`: String (Required, Name of loaded Shader resource)
-- `Order`: Integer (Default: `0`, determines rendering priority when `RENDER_ORDER` is enabled)
+- `Order`: Integer (Default: `0`, determines rendering priority when `RENDER_ORDER` is enabled. **Higher values render on top**).
 
 ### LOD
 Level of Detail component swapped dynamically based on distance to the camera (squared). Requires a base `MeshRenderer` component.
@@ -145,7 +145,21 @@ All lights share these base properties:
 
 ### Material
 - `Type`: String (`PHONG` or `PBR`, Default: `PHONG`)
+- `Opacity`: Float (Default: `1.0`, Range: `[0, 1]`)
+- `AlphaCutoff`: Float (Default: `0.5`)
+- `BlendSrc`: String (`Zero`, `One`, `SrcAlpha`, `OneMinusSrcAlpha`, Default: `SrcAlpha`)
+- `BlendDst`: String (`Zero`, `One`, `SrcAlpha`, `OneMinusSrcAlpha`, Default: `OneMinusSrcAlpha`)
 - `Emission`: Vector3 (Default: `0 0 0`)
+- `UVScale`: Vector2 (Default: `1 1`)
+- `UVOffset`: Vector2 (Default: `0 0`)
+
+**Texture Overrides:**
+- `Albedo` / `Diffuse`: String (Path to texture)
+- `Normal`: String (Path to texture)
+- `MetallicMap`: String (Path to texture)
+- `RoughnessMap`: String (Path to texture)
+- `AOMap`: String (Path to texture)
+- `EmissiveMap`: String (Path to texture)
 
 **PHONG Specific:**
 - `Shininess`: Float (Default: `32.0`, Must be > 0)
@@ -202,8 +216,10 @@ Hardware-based culling component. Testing objects against the depth buffer using
 
 ### UI Components
 **UITransform**
-- `Position`: Vector2 (Default: `0 0`)
-- `Size`: Vector2 (Default: `100 100`, Must be >= 0)
+- `Position`: Vector2 (Pixels or Percentage, Default: `0 0`)
+- `Size`: Vector2 (Pixels or Percentage, Default: `100 100`)
+- `UsePercentage`: Boolean (Default: `0`)
+- `Anchor`: Vector2 (Normalized `0-1`, Default: `0 0`)
 - `ZOrder`: Integer (Default: `0`)
 
 **UIRenderer**

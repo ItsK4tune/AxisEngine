@@ -1,6 +1,6 @@
-#include <ecs/system.h>
-#include <ecs/component.h>
-
+#include <ecs/systems/audio_system.h>
+#include <ecs/components/camera_component.h>
+#include <ecs/components/transform_component.h>
 #include <audio/sound_player.h>
 #include <utils/logger.h>
 
@@ -8,6 +8,20 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
 {
     if (!m_Enabled)
         return;
+
+    entt::entity camEntity = scene.GetActiveCamera();
+    if (camEntity != entt::null)
+    {
+        auto &cam = scene.registry.get<CameraComponent>(camEntity);
+        auto &camTrans = scene.registry.get<TransformComponent>(camEntity);
+
+        glm::vec3 lookDir = glm::vec3(0.0f, 0.0f, -1.0f);
+        if (glm::length(cam.front) > 0.1f) {
+            lookDir = cam.front;
+        }
+
+        soundPlayer.UpdateListener(camTrans.position, lookDir);
+    }
 
     auto view = scene.registry.view<AudioSourceComponent>();
 

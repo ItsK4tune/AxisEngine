@@ -6,6 +6,7 @@ struct Material {
     sampler2D texture_specular1;
     float shininess;
     vec3 specular;
+    float opacity;
 };
 
 struct DirLight {
@@ -88,7 +89,7 @@ void main()
     for(int i = 0; i < nrSpotLights; i++)
         result += CalcSpotLight(spotLights[i], norm, FragPos, viewDir);
 
-    FragColor = vec4(result, 1.0) * tintColor;
+    FragColor = vec4(result, material.opacity) * tintColor;
 }
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)

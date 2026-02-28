@@ -25,7 +25,7 @@ public:
     static void LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadVideoPlayer(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadParticleEmitter(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
-    static void LoadMaterial(Scene &scene, entt::entity entity, const YAMLNode &node);
+    static void LoadMaterial(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadLOD(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadCamera(Scene &scene, entt::entity entity, const YAMLNode &node);
 

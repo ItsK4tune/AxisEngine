@@ -316,11 +316,18 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
             }
         }
 
-        m_RenderQueue.push_back({entity, activeModel, modelMatrix, layer, renderOrder, distSq});
+        bool isTransparent = false;
+        if (auto *mat = scene.registry.try_get<MaterialComponent>(entity))
+        {
+            if (mat->opacity < 1.0f)
+                isTransparent = true;
+        }
+
+        m_RenderQueue.push_back({entity, activeModel, modelMatrix, layer, renderOrder, distSq, isTransparent});
 
         if (renderer.castShadow)
         {
-            m_ShadowQueue.push_back({entity, activeModel, modelMatrix, layer, renderOrder, distSq});
+            m_ShadowQueue.push_back({entity, activeModel, modelMatrix, layer, renderOrder, distSq, isTransparent});
         }
     }
 
@@ -334,25 +341,39 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
               {
         if (lhs.layer != rhs.layer)
             return lhs.layer < rhs.layer;
-        if (lhs.renderOrder != rhs.renderOrder)
-            return lhs.renderOrder < rhs.renderOrder;
-
-        auto &lRenderer = scene.registry.get<MeshRendererComponent>(lhs.entity);
-        auto &rRenderer = scene.registry.get<MeshRendererComponent>(rhs.entity);
-
-        auto lShader = lRenderer.shader.lock();
-        auto rShader = rRenderer.shader.lock();
-        unsigned int lID = lShader ? lShader->getID() : 0;
-        unsigned int rID = rShader ? rShader->getID() : 0;
-        if (lID != rID)
-            return lID < rID;
         
-        auto lMat = scene.registry.try_get<MaterialComponent>(lhs.entity);
-        auto rMat = scene.registry.try_get<MaterialComponent>(rhs.entity);
-        if (lMat != rMat)
-            return lMat < rMat;
+        // Priority 1: Opaque before Transparent
+        if (lhs.isTransparent != rhs.isTransparent)
+            return !lhs.isTransparent; // false (opaque) < true (transparent)
 
-        return lhs.activeModel < rhs.activeModel; });
+        if (!lhs.isTransparent)
+        {
+            // Opaque sorting: order -> shader -> material -> model
+            if (lhs.renderOrder != rhs.renderOrder)
+                return lhs.renderOrder < rhs.renderOrder;
+
+            auto &lRenderer = scene.registry.get<MeshRendererComponent>(lhs.entity);
+            auto &rRenderer = scene.registry.get<MeshRendererComponent>(rhs.entity);
+
+            auto lShader = lRenderer.shader.lock();
+            auto rShader = rRenderer.shader.lock();
+            unsigned int lID = lShader ? lShader->getID() : 0;
+            unsigned int rID = rShader ? rShader->getID() : 0;
+            if (lID != rID)
+                return lID < rID;
+            
+            auto lMat = scene.registry.try_get<MaterialComponent>(lhs.entity);
+            auto rMat = scene.registry.try_get<MaterialComponent>(rhs.entity);
+            if (lMat != rMat)
+                return lMat < rMat;
+
+            return lhs.activeModel < rhs.activeModel;
+        }
+        else
+        {
+            // Transparent sorting: back-to-front (descending distance)
+            return lhs.distSq > rhs.distSq;
+        } });
 
     m_QueuesBuilt = true;
     m_LastAlpha = alpha;
@@ -415,11 +436,22 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
 
     int lastRenderOrder = -1;
     bool firstItem = true;
+    bool transparencyEnabled = false;
 
     for (const auto &item : m_RenderQueue)
     {
         if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
             continue;
+
+        // Handle transition to transparent items
+        if (item.isTransparent && !transparencyEnabled)
+        {
+            flushBatch(currentShader, currentModel);
+            transparencyEnabled = true;
+            rsm.Enable(Graphics::ServerCapability::Blend);
+            // Default blend mode, can be overridden per material below
+            rsm.BlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
+        }
 
         auto &renderer = scene.registry.get<MeshRendererComponent>(item.entity);
         auto *material = scene.registry.try_get<MaterialComponent>(item.entity);
@@ -541,44 +573,67 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
                 currentShader->setMat4Array("finalBonesMatrices", bindPoseMatrices);
             }
 
+            if (material && transparencyEnabled)
+            {
+                rsm.BlendFunc(material->blendSrc, material->blendDst);
+            }
+
+            bool matHasTextures = (material && (material->albedoMap != 0 || material->normalMap != 0 || material->metallicMap != 0 || material->roughnessMap != 0 || material->aoMap != 0 || material->emissiveMap != 0));
+
             SetupMaterialUniforms(currentShader, entity, scene);
 
             if (item.activeModel)
             {
-                item.activeModel->Draw(*currentShader);
+                item.activeModel->Draw(*currentShader, !matHasTextures);
             }
             m_RenderedCount++;
         }
+        else
+        {
+            bool matHasTextures = (material && (material->albedoMap != 0 || material->normalMap != 0 || material->metallicMap != 0 || material->roughnessMap != 0 || material->aoMap != 0 || material->emissiveMap != 0));
+
+            if (!m_InstanceBatchingEnabled || matHasTextures) // Can't easily batch overridden textures yet
+            {
+                if (material && transparencyEnabled)
+                {
+                    rsm.BlendFunc(material->blendSrc, material->blendDst);
+                }
+
+                flushBatch(currentShader, currentModel); // Flush if we were batching
+                currentModel = nullptr;
+                currentMaterial = nullptr;
+
+                currentShader->setMat4("model", item.worldMatrix * item.activeModel->GetRootTransform());
+                currentShader->setVec4("tintColor", renderer.color);
+
+                SetupMaterialUniforms(currentShader, entity, scene);
+
+                item.activeModel->Draw(*currentShader, !matHasTextures);
+                m_RenderedCount++;
+            }
             else
             {
-                if (!m_InstanceBatchingEnabled)
+                if (currentModel != item.activeModel || currentMaterial != material)
                 {
-                    currentShader->setMat4("model", item.worldMatrix * item.activeModel->GetRootTransform());
+                    flushBatch(currentShader, currentModel);
+                    currentModel = item.activeModel;
+                    currentMaterial = material;
+
                     currentShader->setVec4("tintColor", renderer.color);
 
                     SetupMaterialUniforms(currentShader, entity, scene);
-
-                    item.activeModel->Draw(*currentShader);
-                    m_RenderedCount++;
                 }
-                else
-                {
-                    if (currentModel != item.activeModel || currentMaterial != material)
-                    {
-                        flushBatch(currentShader, currentModel);
-                        currentModel = item.activeModel;
-                        currentMaterial = material;
 
-                        currentShader->setVec4("tintColor", renderer.color);
-
-                        SetupMaterialUniforms(currentShader, entity, scene);
-                    }
-
-                    instanceBatch.push_back(item.worldMatrix * item.activeModel->GetRootTransform());
-                }
+                instanceBatch.push_back(item.worldMatrix * item.activeModel->GetRootTransform());
             }
+        }
     }
     flushBatch(currentShader, currentModel);
+
+    if (transparencyEnabled)
+    {
+        rsm.Disable(Graphics::ServerCapability::Blend);
+    }
 
     if (m_OcclusionCullingEnabled)
     {
@@ -621,6 +676,41 @@ void RenderSystem::SetupMaterialUniforms(Shader *shader, entt::entity entity, Sc
         {
             m_Context->GetTextureManager().ActiveTexture(Graphics::TextureUnit::Texture0);
             m_Context->GetTextureManager().BindTexture(Graphics::TextureType::Texture2D, m_WhiteTextureID);
+        }
+        else
+        {
+            auto& tm = m_Context->GetTextureManager();
+            // Bind overridden textures if they exist
+            if (mat.albedoMap != 0) {
+                tm.ActiveTexture(Graphics::TextureUnit::Texture0);
+                tm.BindTexture(Graphics::TextureType::Texture2D, mat.albedoMap);
+                shader->setInt("texture_diffuse1", 0);
+            }
+            if (mat.normalMap != 0) {
+                tm.ActiveTexture(Graphics::TextureUnit::Texture1);
+                tm.BindTexture(Graphics::TextureType::Texture2D, mat.normalMap);
+                shader->setInt("texture_normal1", 1);
+            }
+            if (mat.metallicMap != 0) {
+                tm.ActiveTexture(Graphics::TextureUnit::Texture2);
+                tm.BindTexture(Graphics::TextureType::Texture2D, mat.metallicMap);
+                shader->setInt("texture_metallic1", 2);
+            }
+            if (mat.roughnessMap != 0) {
+                tm.ActiveTexture(Graphics::TextureUnit::Texture3);
+                tm.BindTexture(Graphics::TextureType::Texture2D, mat.roughnessMap);
+                shader->setInt("texture_roughness1", 3);
+            }
+            if (mat.aoMap != 0) {
+                tm.ActiveTexture(Graphics::TextureUnit::Texture4);
+                tm.BindTexture(Graphics::TextureType::Texture2D, mat.aoMap);
+                shader->setInt("texture_ao1", 4);
+            }
+            if (mat.emissiveMap != 0) {
+                tm.ActiveTexture(Graphics::TextureUnit::Texture5);
+                tm.BindTexture(Graphics::TextureType::Texture2D, mat.emissiveMap);
+                shader->setInt("texture_emissive1", 5);
+            }
         }
     }
     else

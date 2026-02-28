@@ -26,8 +26,8 @@ public:
     bool gammaCorrection = false;
     AABB aabb;
 
-    void Draw(Shader &shader);
-    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models);
+    void Draw(Shader &shader, bool bindTextures = true);
+    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, bool bindTextures = true);
 
     std::unordered_map<std::string, BoneInfo> &GetBoneInfoMap();
     int &GetBoneCount();

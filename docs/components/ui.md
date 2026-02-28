@@ -4,8 +4,10 @@ UI components are used for 2D rendering overlay.
 
 ## UITransformComponent
 Defines 2D rect on screen.
-*   `glm::vec2 position`: Screen coordinates (pixels).
-*   `glm::vec2 size`: Width/Height.
+*   `glm::vec2 position`: Screen coordinates (pixels or percentage).
+*   `glm::vec2 size`: Width/Height (pixels or percentage).
+*   `bool usePercentage`: If true, `position` and `size` are treated as percentage of screen dimensions.
+*   `glm::vec2 anchor`: Normalized anchor point (e.g., `0,0` is Top-Left, `0.5,0.5` is Center).
 *   `int zIndex`: Rendering order.
 
 ## UIRendererComponent

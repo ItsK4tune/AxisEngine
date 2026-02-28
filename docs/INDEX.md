@@ -53,7 +53,9 @@ docs/
     ├── graphics_guide.md    # Graphics & rendering
     ├── post_processing.md   # Post-processing effects
     ├── debug_system.md      # Debug tools
-    └── device_management.md # Device configuration
+    ├── device_management.md # Device configuration
+    ├── resource_loading.md  # Resource loading standards
+    └── shader_development.md # Shader development guide
 ```
 
 ---
@@ -104,6 +106,8 @@ Practical how-to guides:
 - **Graphics Guide** - Rendering techniques
 - **Shadow Guide** - Shadow system setup & limits
 - **Debug System** - F-key shortcuts and tools
+- **Resource Loading** - AXS standards and conventions
+- **Shader Development** - Engine data binding
 
 ---
 
@@ -154,6 +158,7 @@ README.md
 3. [State API](state/state_api.md) - State management
 4. [ECS Overview](core/ecs_overview.md) - Core architecture
 5. [Scene Format](guides/scene_format.md) - Scene creation
+6. [Shader Development](guides/shader_development.md) - Writing shaders
 
 ### API Quick Reference
 - **State:** [State API](state/state_api.md)

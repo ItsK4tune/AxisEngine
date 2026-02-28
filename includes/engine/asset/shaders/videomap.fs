@@ -11,11 +11,17 @@ uniform vec2 uvOffset = vec2(0.0, 0.0);
 
 uniform bool debug_noTexture;
 
+struct Material {
+    float opacity;
+};
+uniform Material material;
+
 void main()
 {    
     if (debug_noTexture) {
-         FragColor = vec4(1.0) * tintColor;
+         FragColor = vec4(1.0, 1.0, 1.0, material.opacity) * tintColor;
     } else {
-         FragColor = texture(texture_diffuse1, TexCoords * uvScale + uvOffset) * tintColor;
+         vec4 texColor = texture(texture_diffuse1, TexCoords * uvScale + uvOffset);
+         FragColor = vec4(texColor.rgb, texColor.a * material.opacity) * tintColor;
     }
 }

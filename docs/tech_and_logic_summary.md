@@ -9,7 +9,7 @@ This document serves as a high-level summary of the technologies, architectural 
 *   **Math Library:** GLM (Vectors, Matrices, Quaternions).
 *   **ECS Framework:** EnTT (Entity-Component-System architecture for memory-efficient and fast entity data management).
 *   **Physics Engine:** Bullet Physics (Abstracted via `IPhysicsWorld`, allowing easy swapping. Currently implements rigidbodies, constraints, and compound shapes).
-*   **Audio Engine:** IrrKlang (Abstracted via `ISound`, `ISoundEngine`).
+*   **Audio Engine:** IrrKlang (Abstracted via `ISound`, `ISoundEngine`). Supports 3D spatial audio with automatic listener tracking tied to the active camera.
 *   **Asset Loading:**
     *   `Assimp` (3D Model Loading: OBJ, FBX, GLTF with animations).
     *   `stb_image` (Texture loading: PNG, JPG).
@@ -39,6 +39,8 @@ This document serves as a high-level summary of the technologies, architectural 
 
 ### Rendering Pipeline
 *   **Forward Rendering Pipeline:** Fast and simple structure.
+*   **Transparency Pass:** Dedicated pass for objects with `opacity < 1.0`. Implements back-to-front depth sorting and alpha blending (`SrcAlpha`/`OneMinusSrcAlpha`) to ensure correct visual layering.
+*   **Material Overrides:** Allows per-entity texture overrides (Albedo, Normal, PBR maps) via `MaterialComponent`, decoupling material data from the base mesh.
 *   **Frustum Culling:** Checks AABBs of models against the camera's view frustum to drop off-screen renders early.
 *   **Distance Culling:** Skips rendering objects beyond a certain distance threshold to save processing time.
 *   **Occlusion Culling:** Hardware-based occlusion query (`GL_ANY_SAMPLES_PASSED`) that tests object bounding boxes against the depth buffer from the previous frame to skip objects hidden behind walls or large geometry.
@@ -49,6 +51,7 @@ This document serves as a high-level summary of the technologies, architectural 
 *   **Deferred Shadows:** Renders depth maps for up to 4 lights (Directional, Point, Spot) into a texture atlas before the main pass.
 *   **Post-Processing & Bloom:** Uses ping-pong FBOs to extract bright areas, blur them, and additively blend them over the final frame.
 *   **Particle System:** CPU-simulated but GPU-rendered using instanced quads.
+*   **Responsive UI System:** Supports percentage-based positioning and sizing relative to the viewport. Implements anchoring (e.g., center, bottom-right) to ensure UI elements adapt to different screen aspect ratios.
 
 ### Physics Automation
 *   **Auto-Sync Integration:** The `PhysicsSystem` automatically mirrors Bullet's `btRigidBody` transforms back to the EnTT `TransformComponent` every fixed update tick.

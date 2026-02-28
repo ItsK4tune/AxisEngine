@@ -30,6 +30,7 @@ struct RenderItem
     uint32_t layer;
     int renderOrder;
     float distSq;
+    bool isTransparent;
 };
 
 class RenderSystem
