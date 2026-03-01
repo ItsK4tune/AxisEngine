@@ -91,7 +91,7 @@ namespace SceneHandlers
 
         LOGGER_WARN("SceneValidator") << "No Active Camera found in scene! Creating Default Spectator Camera.";
 
-        entt::entity camEntity = scene.createEntity();
+        entt::entity camEntity = scene.CreateEntity();
 
         scene.registry.emplace<InfoComponent>(camEntity, "Default Spectator Camera", "Default");
 

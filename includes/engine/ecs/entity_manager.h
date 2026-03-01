@@ -17,4 +17,9 @@ public:
     static std::vector<entt::entity> FindAllByName(Scene& scene, const std::string& name);
     static std::vector<entt::entity> FindAllByTag(Scene& scene, const std::string& tag);
     static std::vector<entt::entity> FindAllBySceneName(Scene& scene, const std::string& sceneName);
+
+    // --- Component Specific Queries ---
+    static entt::entity GetCameraByName(Scene& scene, const std::string& name);
+    static entt::entity GetCameraByTag(Scene& scene, const std::string& tag);
+    static std::vector<entt::entity> GetAllCameras(Scene& scene);
 };

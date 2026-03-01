@@ -1,9 +1,7 @@
 #include <scene/scene.h>
 #include <interface/physics/i_physics_world.h>
 #include <scene/scene_manager.h>
-#include <scene/light_manager.h>
-#include <scene/camera_manager.h>
-#include <scene/entity_factory.h>
+#include <glm/gtc/quaternion.hpp>
 #include <vector>
 #include <algorithm>
 #include <utils/logger.h>
@@ -35,14 +33,71 @@ void Scene::OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity)
     }
 }
 
-entt::entity Scene::createEntity()
+entt::entity Scene::CreateEntity(const std::string &name, const std::string &tag)
 {
     entt::entity entity = registry.create();
     registry.emplace<TransformComponent>(entity);
+    registry.emplace<InfoComponent>(entity, name, tag);
+    LOGGER_INFO("Scene") << "Created entity: " << name << " (Tag: " << tag << ")";
     return entity;
 }
 
-void Scene::destroyEntity(entt::entity entity, SceneManager *manager)
+entt::entity Scene::CreateEntityWithTransform(const std::string &name, const glm::vec3 &position, const glm::vec3 &rotation, const glm::vec3 &scale)
+{
+    entt::entity entity = CreateEntity(name);
+
+    auto &transform = registry.get<TransformComponent>(entity);
+    transform.position = position;
+    transform.rotation = glm::quat(rotation);
+    transform.scale = scale;
+
+    return entity;
+}
+
+entt::entity Scene::CreateEmptyEntity(const std::string &name)
+{
+    return CreateEntityWithTransform(name, glm::vec3(0.0f));
+}
+
+entt::entity Scene::CreateCube(const std::string &name, const glm::vec3 &position)
+{
+    return CreateEntityWithTransform(name, position);
+}
+
+entt::entity Scene::CreateSphere(const std::string &name, const glm::vec3 &position)
+{
+    return CreateEntityWithTransform(name, position);
+}
+
+entt::entity Scene::CreatePlane(const std::string &name, const glm::vec3 &position)
+{
+    return CreateEntityWithTransform(name, position);
+}
+
+void Scene::SetParent(entt::entity child, entt::entity parent, bool keepWorldTransform)
+{
+    if (!registry.valid(child) || !registry.valid(parent))
+    {
+        LOGGER_ERROR("Scene") << "Invalid child or parent entity";
+        return;
+    }
+
+    if (!registry.all_of<TransformComponent>(child) || !registry.all_of<TransformComponent>(parent))
+    {
+        LOGGER_ERROR("Scene") << "Child or parent missing TransformComponent";
+        return;
+    }
+
+    auto &childTransform = registry.get<TransformComponent>(child);
+    childTransform.SetParent(child, parent, registry, keepWorldTransform);
+}
+
+void Scene::AddChild(entt::entity parent, entt::entity child, bool keepWorldTransform)
+{
+    SetParent(child, parent, keepWorldTransform);
+}
+
+void Scene::DestroyEntity(entt::entity entity, SceneManager *manager)
 {
     if (!registry.valid(entity))
         return;
@@ -143,11 +198,29 @@ entt::entity Scene::GetActiveCamera()
     return entt::null;
 }
 
+void Scene::DestroyEntityWithChildren(entt::entity entity, SceneManager *manager)
+{
+    if (!registry.valid(entity))
+        return;
+
+    std::vector<entt::entity> children;
+    if (registry.all_of<TransformComponent>(entity))
+    {
+        const auto &transform = registry.get<TransformComponent>(entity);
+        children = transform.children;
+    }
+
+    for (auto child : children)
+    {
+        DestroyEntityWithChildren(child, manager);
+    }
+
+    DestroyEntity(entity, manager);
+}
+
 void Scene::SetActiveCamera(entt::entity entity)
 {
     m_ActiveCamera = entity;
-    if (cameraManager)
-        cameraManager->SetPrimaryCamera(entity);
 }
 
 entt::entity Scene::GetActiveSkybox() const
@@ -167,16 +240,10 @@ void Scene::SetActiveSkybox(entt::entity entity)
 
 void Scene::InitializeManagers()
 {
-    lightManager = std::make_unique<LightManager>(*this);
-    cameraManager = std::make_unique<CameraManager>(*this);
-    entityFactory = std::make_unique<EntityFactory>(*this);
     m_Octree = std::make_unique<Octree>(AABB(glm::vec3(-1000.0f), glm::vec3(1000.0f)));
 }
 
 void Scene::ShutdownManagers()
 {
-    entityFactory.reset();
     m_Octree.reset();
-    cameraManager.reset();
-    lightManager.reset();
 }

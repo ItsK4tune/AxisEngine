@@ -161,7 +161,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 if (duplicate)
                     continue;
 
-                entt::entity currentEntity = scene.createEntity();
+                entt::entity currentEntity = scene.CreateEntity();
                 uint32_t layer = std::stoul(entNode.GetChildValue("Layer", "1"));
 
                 auto &info = scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);

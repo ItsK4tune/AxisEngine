@@ -90,7 +90,7 @@ void CameraDebugModule::ToggleDebugCamera()
 
         if (!registry.valid(m_DebugCamera))
         {
-            m_DebugCamera = scene.createEntity();
+            m_DebugCamera = scene.CreateEntity();
             registry.emplace<InfoComponent>(m_DebugCamera, "Debug Camera", "Debug");
 
             auto &trans = registry.emplace<TransformComponent>(m_DebugCamera);

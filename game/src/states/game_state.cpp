@@ -39,79 +39,37 @@ void GameState::OnUpdate(float dt)
     {
         LOGGER_DEBUG("GameState") << "[Raycast] Left mouse clicked.";
         entt::entity cameraEntity = GetScene().GetActiveCamera();
+
         if (cameraEntity != entt::null && GetScene().registry.all_of<CameraComponent, TransformComponent>(cameraEntity))
         {
-            LOGGER_DEBUG("GameState") << "[Raycast] Primary camera found. Entity ID: " << (uint32_t)cameraEntity;
             auto& camComp = GetScene().registry.get<CameraComponent>(cameraEntity);
             auto& transform = GetScene().registry.get<TransformComponent>(cameraEntity);
-            glm::vec3 camPos = transform.position;
             
-            Camera cam(camPos, camComp.worldUp, camComp.yaw, camComp.pitch);
+            Camera cam(transform.position, camComp.worldUp, camComp.yaw, camComp.pitch);
             
             float mouseX = m_App->GetMouse().GetLastX();
             float mouseY = m_App->GetMouse().GetLastY();
             float screenW = (float)m_App->GetWidth();
             float screenH = (float)m_App->GetHeight();
             
-            LOGGER_DEBUG("GameState") << "[Raycast] MouseX: " << mouseX << " MouseY: " << mouseY;
-            LOGGER_DEBUG("GameState") << "[Raycast] ScreenW: " << screenW << " ScreenH: " << screenH;
-            
             if (screenW > 0.0f && screenH > 0.0f)
             {
                 float aspect = screenW / screenH;
                 glm::mat4 projMat = glm::perspective(glm::radians(camComp.fov), aspect, camComp.nearPlane, camComp.farPlane);
-                LOGGER_DEBUG("GameState") << "[Raycast] Projection matrix obtained.";
-                
                 glm::vec3 rayDir = cam.GetScreenRay(mouseX, mouseY, screenW, screenH, projMat);
                 
-                LOGGER_INFO("GameState") << "Raycast: pos=(" << camPos.x << ", " << camPos.y << ", " << camPos.z 
-                                         << ") dir=(" << rayDir.x << ", " << rayDir.y << ", " << rayDir.z << ")";
-                
-                if (glm::any(glm::isnan(camPos)) || glm::any(glm::isnan(rayDir)))
+                if (!glm::any(glm::isnan(transform.position)) && !glm::any(glm::isnan(rayDir)))
                 {
-                    LOGGER_WARN("GameState") << "Raycast vectors contain NaN! Aborting raycast.";
-                }
-                else
-                {
-                    LOGGER_DEBUG("GameState") << "[Raycast] Calling PhysicsWorld::Raycast...";
-                    RayHit hit = m_App->GetPhysicsWorld().Raycast(camPos, rayDir, 1000.0f);
-                    LOGGER_DEBUG("GameState") << "[Raycast] PhysicsWorld::Raycast returned. hasHit: " << (hit.hasHit ? "true" : "false");
-                    
-                    if (hit.hasHit)
+                    RayHit hit = m_App->GetPhysicsWorld().Raycast(transform.position, rayDir, 1000.0f);
+                    if (hit.hasHit && hit.entity != entt::null && GetScene().registry.valid(hit.entity))
                     {
-                        LOGGER_DEBUG("GameState") << "[Raycast] Hit Entity ID: " << ((hit.entity == entt::null) ? "null" : std::to_string((uint32_t)hit.entity));
-                        if (hit.entity != entt::null)
+                        if (auto* info = GetScene().registry.try_get<InfoComponent>(hit.entity))
                         {
-                            LOGGER_DEBUG("GameState") << "[Raycast] Checking if entity is valid in registry...";
-                            if (GetScene().registry.valid(hit.entity))
-                            {
-                                LOGGER_DEBUG("GameState") << "[Raycast] Entity is valid. Querying InfoComponent...";
-                                if (GetScene().registry.all_of<InfoComponent>(hit.entity))
-                                {
-                                    auto& info = GetScene().registry.get<InfoComponent>(hit.entity);
-                                    LOGGER_DEBUG("GameState") << "[Raycast] Entity Name: " << info.name;
-                                    if (info.name == "Woman")
-                                    {
-                                        LOGGER_INFO("GameState") << "Clicked entity: Woman";
-                                    }
-                                }
-                                else
-                                {
-                                    LOGGER_DEBUG("GameState") << "[Raycast] Entity does not have an InfoComponent.";
-                                }
-                            }
-                            else
-                            {
-                                LOGGER_DEBUG("GameState") << "[Raycast] WARNING: Physics returned an invalid entity ID that does NOT exist in the registry!";
-                            }
+                            LOGGER_INFO("GameState") << "Clicked entity: " << info->name;
                         }
                     }
                 }
             }
-        }
-        else
-        {
-            LOGGER_DEBUG("GameState") << "[Raycast] Primary camera is NULL.";
         }
     }
 

@@ -78,7 +78,7 @@ void SceneManager::_DestroySceneEntities(SceneRecord &rec)
     for (auto entity : rec.entities)
     {
         if (m_Scene.registry.valid(entity))
-            m_Scene.destroyEntity(entity, this);
+            m_Scene.DestroyEntity(entity, this);
     }
     rec.entities.clear();
 }

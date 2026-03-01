@@ -1,11 +1,12 @@
 #include <ecs/entity_manager.h>
 #include <ecs/components/info_component.h>
+#include <ecs/components/render_components.h>
 
 void EntityManager::Destroy(Scene& scene, entt::entity entity)
 {
     if (entity != entt::null && scene.registry.valid(entity))
     {
-        scene.destroyEntity(entity);
+        scene.DestroyEntity(entity);
     }
 }
 
@@ -89,4 +90,35 @@ std::vector<entt::entity> EntityManager::FindAllBySceneName(Scene& scene, const 
             results.push_back(entity);
     }
     return results;
+}
+
+entt::entity EntityManager::GetCameraByName(Scene& scene, const std::string& name)
+{
+    auto view = scene.registry.view<CameraComponent, InfoComponent>();
+    for (auto entity : view)
+    {
+        if (view.get<InfoComponent>(entity).name == name)
+            return entity;
+    }
+    return entt::null;
+}
+
+entt::entity EntityManager::GetCameraByTag(Scene& scene, const std::string& tag)
+{
+    auto view = scene.registry.view<CameraComponent, InfoComponent>();
+    for (auto entity : view)
+    {
+        if (view.get<InfoComponent>(entity).tag == tag)
+            return entity;
+    }
+    return entt::null;
+}
+
+std::vector<entt::entity> EntityManager::GetAllCameras(Scene& scene)
+{
+    std::vector<entt::entity> cameras;
+    auto view = scene.registry.view<CameraComponent>();
+    for (auto entity : view)
+        cameras.push_back(entity);
+    return cameras;
 }

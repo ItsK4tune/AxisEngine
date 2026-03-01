@@ -2,11 +2,10 @@
 
 #include <entt/entt.hpp>
 #include <ecs/component.h>
-#include <scene/light_manager.h>
-#include <scene/camera_manager.h>
-#include <scene/entity_factory.h>
 #include <scene/octree.h>
 #include <memory>
+#include <string>
+#include <glm/glm.hpp>
 
 class SceneManager;
 
@@ -17,8 +16,19 @@ struct Scene
 
     entt::registry registry;
 
-    entt::entity createEntity();
-    void destroyEntity(entt::entity entity, SceneManager *manager = nullptr);
+    entt::entity CreateEntity(const std::string &name = "unnamed", const std::string &tag = "default");
+    entt::entity CreateEntityWithTransform(const std::string &name, const glm::vec3 &position, const glm::vec3 &rotation = glm::vec3(0.0f), const glm::vec3 &scale = glm::vec3(1.0f));
+
+    entt::entity CreateEmptyEntity(const std::string &name = "Empty");
+    entt::entity CreateCube(const std::string &name, const glm::vec3 &position);
+    entt::entity CreateSphere(const std::string &name, const glm::vec3 &position);
+    entt::entity CreatePlane(const std::string &name, const glm::vec3 &position);
+
+    void SetParent(entt::entity child, entt::entity parent, bool keepWorldTransform = true);
+    void AddChild(entt::entity parent, entt::entity child, bool keepWorldTransform = true);
+
+    void DestroyEntity(entt::entity entity, SceneManager *manager = nullptr);
+    void DestroyEntityWithChildren(entt::entity entity, SceneManager *manager = nullptr);
 
     entt::entity GetActiveCamera();
     void SetActiveCamera(entt::entity entity);
@@ -28,18 +38,12 @@ struct Scene
 
     void OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity);
 
-    LightManager &GetLightManager() { return *lightManager; }
-    CameraManager &GetCameraManager() { return *cameraManager; }
-    EntityFactory &GetEntityFactory() { return *entityFactory; }
     Octree* GetOctree() { return m_Octree.get(); }
 
     void InitializeManagers();
     void ShutdownManagers();
 
 private:
-    std::unique_ptr<LightManager> lightManager;
-    std::unique_ptr<CameraManager> cameraManager;
-    std::unique_ptr<EntityFactory> entityFactory;
     std::unique_ptr<Octree> m_Octree;
 
     entt::entity m_ActiveSkybox = entt::null;
