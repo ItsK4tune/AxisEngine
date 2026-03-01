@@ -1,4 +1,5 @@
 #include <ecs/systems/audio_system.h>
+#include <ecs/entity_manager.h>
 #include <ecs/components/camera_component.h>
 #include <ecs/components/transform_component.h>
 #include <audio/sound_player.h>
@@ -9,7 +10,7 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
     if (!m_Enabled)
         return;
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity != entt::null)
     {
         auto &cam = scene.registry.get<CameraComponent>(camEntity);

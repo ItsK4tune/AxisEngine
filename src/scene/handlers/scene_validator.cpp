@@ -11,6 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <ecs/entity_manager.h>
 
 namespace SceneHandlers
 {
@@ -75,7 +76,7 @@ namespace SceneHandlers
 
     void SceneValidator::ValidateCamera(Scene &scene, Application* app)
     {
-        if (scene.GetActiveCamera() != entt::null)
+        if (EntityManager::GetActiveCamera(scene) != entt::null)
             return;
 
         auto renderableView = scene.registry.view<MeshRendererComponent>();
@@ -91,7 +92,7 @@ namespace SceneHandlers
 
         LOGGER_WARN("SceneValidator") << "No Active Camera found in scene! Creating Default Spectator Camera.";
 
-        entt::entity camEntity = scene.CreateEntity();
+        entt::entity camEntity = EntityManager::CreateEntity(scene);
 
         scene.registry.emplace<InfoComponent>(camEntity, "Default Spectator Camera", "Default");
 

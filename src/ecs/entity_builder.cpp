@@ -1,4 +1,5 @@
 #include <ecs/entity_builder.h>
+#include <ecs/entity_manager.h>
 #include <app/application.h>
 #include <resource/resource_manager.h>
 #include <ecs/components/info_component.h>
@@ -188,7 +189,7 @@ EntityBuilder& EntityBuilder::WithCamera(float fov, float near, float far, bool 
     cam.nearPlane = near;
     cam.farPlane = far;
     if (active)
-        m_Scene.SetActiveCamera(m_Entity);
+        EntityManager::SetActiveCamera(m_Scene, m_Entity);
     return *this;
 }
 

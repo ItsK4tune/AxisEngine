@@ -1,12 +1,16 @@
 #include <ecs/entity_manager.h>
 #include <ecs/components/info_component.h>
 #include <ecs/components/render_components.h>
+#include <glm/gtc/quaternion.hpp>
+#include <utils/logger.h>
+#include <interface/physics/i_physics_world.h>
+#include <scene/scene_manager.h>
 
 void EntityManager::Destroy(Scene& scene, entt::entity entity)
 {
     if (entity != entt::null && scene.registry.valid(entity))
     {
-        scene.DestroyEntity(entity);
+        DestroyEntity(scene, entity);
     }
 }
 
@@ -121,4 +125,204 @@ std::vector<entt::entity> EntityManager::GetAllCameras(Scene& scene)
     for (auto entity : view)
         cameras.push_back(entity);
     return cameras;
+}
+
+entt::entity EntityManager::GetActiveCamera(Scene& scene)
+{
+    auto view = scene.registry.view<CameraComponent>();
+    for (auto entity : view)
+    {
+        if (view.get<CameraComponent>(entity).isPrimary)
+        {
+            return entity;
+        }
+    }
+    for (auto entity : view)
+    {
+        return entity;
+    }
+    return entt::null;
+}
+
+void EntityManager::SetActiveCamera(Scene& scene, entt::entity entity)
+{
+    auto view = scene.registry.view<CameraComponent>();
+    for (auto camEntity : view)
+    {
+        view.get<CameraComponent>(camEntity).isPrimary = (camEntity == entity);
+    }
+}
+
+entt::entity EntityManager::GetActiveSkybox(Scene& scene)
+{
+    auto view = scene.registry.view<SkyboxRenderComponent>();
+    for (auto entity : view)
+    {
+        return entity;
+    }
+    return entt::null;
+}
+
+void EntityManager::SetActiveSkybox(Scene& scene, entt::entity entity)
+{
+    // In AxisEngine, there's usually just one skybox component active at a time.
+}
+
+entt::entity EntityManager::CreateEntity(Scene& scene, const std::string &name, const std::string &tag)
+{
+    entt::entity entity = scene.registry.create();
+    scene.registry.emplace<TransformComponent>(entity);
+    scene.registry.emplace<InfoComponent>(entity, name, tag);
+    LOGGER_INFO("Scene") << "Created entity: " << name << " (Tag: " << tag << ")";
+    return entity;
+}
+
+entt::entity EntityManager::CreateEntityWithTransform(Scene& scene, const std::string &name, const glm::vec3 &position, const glm::vec3 &rotation, const glm::vec3 &scale)
+{
+    entt::entity entity = CreateEntity(scene, name);
+
+    auto &transform = scene.registry.get<TransformComponent>(entity);
+    transform.position = position;
+    transform.rotation = glm::quat(rotation);
+    transform.scale = scale;
+
+    return entity;
+}
+
+entt::entity EntityManager::CreateEmptyEntity(Scene& scene, const std::string &name)
+{
+    return CreateEntityWithTransform(scene, name, glm::vec3(0.0f));
+}
+
+entt::entity EntityManager::CreateCube(Scene& scene, const std::string &name, const glm::vec3 &position)
+{
+    return CreateEntityWithTransform(scene, name, position);
+}
+
+entt::entity EntityManager::CreateSphere(Scene& scene, const std::string &name, const glm::vec3 &position)
+{
+    return CreateEntityWithTransform(scene, name, position);
+}
+
+entt::entity EntityManager::CreatePlane(Scene& scene, const std::string &name, const glm::vec3 &position)
+{
+    return CreateEntityWithTransform(scene, name, position);
+}
+
+void EntityManager::SetParent(Scene& scene, entt::entity child, entt::entity parent, bool keepWorldTransform)
+{
+    if (!scene.registry.valid(child) || !scene.registry.valid(parent))
+    {
+        LOGGER_ERROR("Scene") << "Invalid child or parent entity";
+        return;
+    }
+
+    if (!scene.registry.all_of<TransformComponent>(child) || !scene.registry.all_of<TransformComponent>(parent))
+    {
+        LOGGER_ERROR("Scene") << "Child or parent missing TransformComponent";
+        return;
+    }
+
+    auto &childTransform = scene.registry.get<TransformComponent>(child);
+    childTransform.SetParent(child, parent, scene.registry, keepWorldTransform);
+}
+
+void EntityManager::AddChild(Scene& scene, entt::entity parent, entt::entity child, bool keepWorldTransform)
+{
+    SetParent(scene, child, parent, keepWorldTransform);
+}
+
+void EntityManager::DestroyEntity(Scene& scene, entt::entity entity, SceneManager *manager)
+{
+    if (!scene.registry.valid(entity))
+        return;
+
+    if (auto *transform = scene.registry.try_get<TransformComponent>(entity))
+    {
+        if (scene.registry.valid(transform->parent) && scene.registry.all_of<TransformComponent>(transform->parent))
+        {
+            auto &parentTrans = scene.registry.get<TransformComponent>(transform->parent);
+            parentTrans.RemoveChild(entity);
+        }
+
+        std::vector<entt::entity> childrenCopy = transform->children;
+        for (auto child : childrenCopy)
+        {
+            if (scene.registry.valid(child) && scene.registry.all_of<TransformComponent>(child))
+            {
+                auto &childTrans = scene.registry.get<TransformComponent>(child);
+                childTrans.parent = entt::null;
+            }
+        }
+    }
+
+    if (auto sc = scene.registry.try_get<ScriptComponent>(entity))
+    {
+        if (sc->instance && sc->DestroyScript)
+            sc->DestroyScript(sc);
+        sc->instance = nullptr;
+    }
+
+    if (auto rb = scene.registry.try_get<RigidBodyComponent>(entity))
+    {
+        if (rb->body)
+        {
+            if (manager)
+                manager->GetPhysicsWorld().RemoveRigidBody(rb->body.get());
+
+            rb->body = nullptr;
+        }
+    }
+
+    if (auto mesh = scene.registry.try_get<MeshRendererComponent>(entity))
+    {
+        mesh->model = nullptr;
+        mesh->shader.reset();
+    }
+
+    if (auto anim = scene.registry.try_get<AnimationComponent>(entity))
+    {
+        anim->animator = nullptr;
+    }
+
+    if (auto ui = scene.registry.try_get<UIRendererComponent>(entity))
+    {
+        ui->model = nullptr;
+        ui->shader = nullptr;
+    }
+
+    if (auto text = scene.registry.try_get<UITextComponent>(entity))
+    {
+        text->model = nullptr;
+        text->shader = nullptr;
+        text->font = nullptr;
+    }
+
+    if (auto sky = scene.registry.try_get<SkyboxRenderComponent>(entity))
+    {
+        sky->skybox = nullptr;
+        sky->shader.reset();
+    }
+
+    scene.registry.destroy(entity);
+}
+
+void EntityManager::DestroyEntityWithChildren(Scene& scene, entt::entity entity, SceneManager *manager)
+{
+    if (!scene.registry.valid(entity))
+        return;
+
+    std::vector<entt::entity> children;
+    if (scene.registry.all_of<TransformComponent>(entity))
+    {
+        const auto &transform = scene.registry.get<TransformComponent>(entity);
+        children = transform.children;
+    }
+
+    for (auto child : children)
+    {
+        DestroyEntityWithChildren(scene, child, manager);
+    }
+
+    DestroyEntity(scene, entity, manager);
 }

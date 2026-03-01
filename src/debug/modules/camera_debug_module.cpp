@@ -7,6 +7,7 @@
 #include <script/script_registry.h>
 #include <script/default_camera_controller.h>
 #include <iostream>
+#include <ecs/entity_manager.h>
 
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
@@ -59,7 +60,7 @@ void CameraDebugModule::ToggleDebugCamera()
         }
         else
         {
-            entt::entity fallback = scene.GetActiveCamera();
+            entt::entity fallback = EntityManager::GetActiveCamera(scene);
             if (fallback == entt::null)
             {
                 auto view = registry.view<CameraComponent>();
@@ -80,7 +81,7 @@ void CameraDebugModule::ToggleDebugCamera()
     }
     else
     {
-        m_LastActiveCamera = scene.GetActiveCamera();
+        m_LastActiveCamera = EntityManager::GetActiveCamera(scene);
 
         if (registry.valid(m_LastActiveCamera))
         {
@@ -90,7 +91,7 @@ void CameraDebugModule::ToggleDebugCamera()
 
         if (!registry.valid(m_DebugCamera))
         {
-            m_DebugCamera = scene.CreateEntity();
+            m_DebugCamera = EntityManager::CreateEntity(scene);
             registry.emplace<InfoComponent>(m_DebugCamera, "Debug Camera", "Debug");
 
             auto &trans = registry.emplace<TransformComponent>(m_DebugCamera);

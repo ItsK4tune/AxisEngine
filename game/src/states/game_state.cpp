@@ -4,6 +4,7 @@
 #include <axis/axis_input.h>
 #include <axis/axis_ecs.h>
 #include <axis/axis_graphics.h>
+#include <axis/axis_utils.h>
 #include <algorithm>
 
 void GameState::OnEnter()
@@ -38,12 +39,12 @@ void GameState::OnUpdate(float dt)
     if (m_App->GetMouse().IsLeftMouseClicked())
     {
         LOGGER_DEBUG("GameState") << "[Raycast] Left mouse clicked.";
-        entt::entity cameraEntity = GetScene().GetActiveCamera();
+        entt::entity camEntity = EntityManager::GetActiveCamera(GetScene());
 
-        if (cameraEntity != entt::null && GetScene().registry.all_of<CameraComponent, TransformComponent>(cameraEntity))
+        if (camEntity != entt::null && EntityManager::HasComponent<CameraComponent>(GetScene(), camEntity) && EntityManager::HasComponent<TransformComponent>(GetScene(), camEntity))
         {
-            auto& camComp = GetScene().registry.get<CameraComponent>(cameraEntity);
-            auto& transform = GetScene().registry.get<TransformComponent>(cameraEntity);
+            auto& camComp = EntityManager::GetComponent<CameraComponent>(GetScene(), camEntity);
+            auto& transform = EntityManager::GetComponent<TransformComponent>(GetScene(), camEntity);
             
             Camera cam(transform.position, camComp.worldUp, camComp.yaw, camComp.pitch);
             
@@ -61,9 +62,9 @@ void GameState::OnUpdate(float dt)
                 if (!glm::any(glm::isnan(transform.position)) && !glm::any(glm::isnan(rayDir)))
                 {
                     RayHit hit = m_App->GetPhysicsWorld().Raycast(transform.position, rayDir, 1000.0f);
-                    if (hit.hasHit && hit.entity != entt::null && GetScene().registry.valid(hit.entity))
+                    if (hit.hasHit && EntityManager::IsValid(GetScene(), hit.entity))
                     {
-                        if (auto* info = GetScene().registry.try_get<InfoComponent>(hit.entity))
+                        if (auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity))
                         {
                             LOGGER_INFO("GameState") << "Clicked entity: " << info->name;
                         }

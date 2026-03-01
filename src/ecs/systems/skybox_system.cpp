@@ -1,4 +1,5 @@
 #include <ecs/systems/skybox_system.h>
+#include <ecs/entity_manager.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
 #include <interface/graphic/i_texture_manager.h>
@@ -15,7 +16,7 @@ void SkyboxRenderSystem::Render(Scene &scene)
 {
     if (!m_Enabled || !m_Context) return;
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null)
         return;
 
@@ -26,7 +27,7 @@ void SkyboxRenderSystem::Render(Scene &scene)
 
     rsm.DepthFunc(Graphics::CompareFunc::Lequal);
 
-    auto activeSkybox = scene.GetActiveSkybox();
+    auto activeSkybox = EntityManager::GetActiveSkybox(scene);
     if (activeSkybox != entt::null)
     {
         auto &component = scene.registry.get<SkyboxRenderComponent>(activeSkybox);

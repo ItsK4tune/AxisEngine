@@ -4,6 +4,7 @@
 #include <script/script_registry.h>
 #include <iostream>
 #include <algorithm>
+#include <ecs/entity_manager.h>
 
 void ComponentLoader::ValidateKeys(const YAMLNode &node, const std::vector<std::string> &allowedKeys, const std::string &componentName)
 {
@@ -141,7 +142,7 @@ void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNo
         LOGGER_WARN("ComponentLoader") << "Camera Near plane must be less than Far plane";
 
     if (c.isPrimary)
-        scene.SetActiveCamera(entity);
+        EntityManager::SetActiveCamera(scene, entity);
 }
 
 void ComponentLoader::LoadLightDir(Scene &scene, entt::entity entity, const YAMLNode &node)
@@ -391,7 +392,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, cons
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer skybox not found: " << skyboxName;
     if (comp.shader.expired())
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer shader not found: " << shaderName;
-    scene.SetActiveSkybox(entity);
+    EntityManager::SetActiveSkybox(scene, entity);
 }
 
 void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node, Application *app)

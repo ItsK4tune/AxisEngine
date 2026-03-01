@@ -22,6 +22,7 @@
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
 #include <debug/debug_config.h>
+#include <ecs/entity_manager.h>
 
 GizmoDebugModule::GizmoDebugModule() {}
 GizmoDebugModule::~GizmoDebugModule() {}
@@ -58,7 +59,7 @@ void GizmoDebugModule::Render(Scene &scene)
     auto debugShader = m_App->GetResourceManager().GetShader("debugLine");
     if (!debugShader) return;
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) return;
 
     auto& cam = scene.registry.get<CameraComponent>(camEntity);
@@ -201,7 +202,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
     glm::mat4 vp = glm::mat4(1.0f);
     if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity))
@@ -286,7 +287,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         {
             if (labelEntity == entt::null)
             {
-                labelEntity = scene.CreateEntity();
+                labelEntity = EntityManager::CreateEntity(scene);
                 registry.emplace<InfoComponent>(labelEntity, "DebugLabel_" + entityInfo.name, "DebugLabel");
                 registry.emplace<UITransformComponent>(labelEntity);
                 auto &text = registry.emplace<UITextComponent>(labelEntity);
@@ -363,7 +364,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     int width = m_App->GetWidth();
     int height = m_App->GetHeight();
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
     glm::mat4 vp = glm::mat4(1.0f);
     if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity))
@@ -412,7 +413,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         {
             if (labelEntity == entt::null)
             {
-                labelEntity = scene.CreateEntity();
+                labelEntity = EntityManager::CreateEntity(scene);
                 registry.emplace<InfoComponent>(labelEntity, "DebugLight_" + typeName, "DebugLabel");
                 registry.emplace<UITransformComponent>(labelEntity);
                 auto &text = registry.emplace<UITextComponent>(labelEntity);

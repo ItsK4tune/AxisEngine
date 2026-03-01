@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <ecs/component.h>
 #include <utils/logger.h>
+#include <ecs/entity_manager.h>
 #include <interface/graphic/i_graphics_context.h>
 #include <interface/graphic/i_render_state_manager.h>
 
@@ -51,7 +52,7 @@ void ParticleSystem::Render(Scene &scene, ResourceManager &res)
 
     shader->use();
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity != entt::null)
     {
         auto &cam = scene.registry.get<CameraComponent>(camEntity);

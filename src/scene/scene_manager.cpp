@@ -3,6 +3,7 @@
 #include <scene/scene_serializer.h>
 #include <app/application.h>
 #include <algorithm>
+#include <ecs/entity_manager.h>
 
 namespace {
     std::string SceneBasename(const std::string &filePath)
@@ -78,7 +79,7 @@ void SceneManager::_DestroySceneEntities(SceneRecord &rec)
     for (auto entity : rec.entities)
     {
         if (m_Scene.registry.valid(entity))
-            m_Scene.DestroyEntity(entity, this);
+            EntityManager::DestroyEntity(m_Scene, entity, this);
     }
     rec.entities.clear();
 }

@@ -13,6 +13,7 @@
 #include <interface/graphic/i_draw_context.h>
 #include <interface/graphic/i_buffer_manager.h>
 #include <interface/graphic/i_query_manager.h>
+#include <ecs/entity_manager.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 #include <debug/debug_config.h>
@@ -150,7 +151,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         LOGGER_WARN("RenderSystem") << "Invalid alpha value: " << alpha;
     }
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     CameraComponent *cam = nullptr;
     TransformComponent *camTrans = nullptr;
 
@@ -397,7 +398,7 @@ void RenderSystem::Render(Scene &scene, int width, int height, float alpha)
 
     BuildRenderQueues(scene, alpha, width, height);
 
-    entt::entity camEntity = scene.GetActiveCamera();
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null)
         return;
 

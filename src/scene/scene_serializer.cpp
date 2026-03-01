@@ -8,6 +8,7 @@
 #include <app/application.h>
 #include <scene/handlers/scene_validator.h>
 #include <utils/yaml_parser.h>
+#include <ecs/entity_manager.h>
 
 SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
 {
@@ -161,7 +162,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 if (duplicate)
                     continue;
 
-                entt::entity currentEntity = scene.CreateEntity();
+                entt::entity currentEntity = EntityManager::CreateEntity(scene);
                 uint32_t layer = std::stoul(entNode.GetChildValue("Layer", "1"));
 
                 auto &info = scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
