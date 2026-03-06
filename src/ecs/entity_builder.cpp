@@ -1,8 +1,8 @@
-﻿#include <ecs/components/info_component.h>
+#include <ecs/components/info_component.h>
 #include <ecs/entity_builder.h>
-#include <script/scriptable.h>
+#include <core/scripting/scriptable.h>
 #include <ecs/entity_manager.h>
-#include <graphics/geometry/animator.h>
+#include <rendering/geometry/animator.h>
 #include <resource/resource_manager.h>
 
 EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources)

@@ -5,7 +5,7 @@
 #include <scene/scene.h>
 
 class SoundPlayer;
-#include <audio/sound_player.h>
+#include <systems/audio/sound_player.h>
 
 class AudioSystem : public ISystem
 {

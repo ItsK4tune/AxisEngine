@@ -1,6 +1,6 @@
 #include <resource/animation_cache.h>
-#include <utils/filesystem.h>
-#include <utils/logger.h>
+#include <core/utils/filesystem.h>
+#include <core/utils/logger.h>
 
 AnimationCache::AnimationCache()
 {

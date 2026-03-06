@@ -1,15 +1,15 @@
-﻿#include <app/application.h>
-#include <app/config_loader.h>
-#include <window/io_handler.h>
-#include <window/monitor_manager.h>
+#include <core/app/application.h>
+#include <core/app/config_loader.h>
+#include <systems/window/io_handler.h>
+#include <systems/window/monitor_manager.h>
 #include <ecs/entity_manager.h>
-#include <physics/physics_loader.h>
+#include <systems/physics/physics_loader.h>
 #include <scene/component_loader.h>
 #include <scene/handlers/scene_validator.h>
 #include <scene/scene_serializer.h>
-#include <utils/filesystem.h>
-#include <utils/logger.h>
-#include <utils/yaml_parser.h>
+#include <core/utils/filesystem.h>
+#include <core/utils/logger.h>
+#include <core/utils/yaml_parser.h>
 
 SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, EngineContext ctx)
 {
@@ -163,10 +163,10 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 if (duplicate)
                     continue;
 
-                entt::entity currentEntity = EntityManager::CreateEntity(scene);
+                entt::entity currentEntity = EntityManager::CreateEntity(scene, entityName, entityTag);
                 uint32_t layer = std::stoul(entNode.GetChildValue("Layer", "1"));
 
-                auto &info = scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
+                auto &info = scene.registry.get<InfoComponent>(currentEntity);
                 info.sceneName = sceneName;
                 info.layer = layer;
                 result.entities.push_back(currentEntity);

@@ -1,0 +1,57 @@
+#pragma once
+
+#ifdef ENABLE_DEBUG_SYSTEM
+
+#include <core/engine_context.h>
+#include <functional>
+#include <core/debug/interfaces/i_debug_module.h>
+#include <systems/window/interfaces/input_codes.h>
+#include <scene/scene.h>
+#include <string>
+
+class Application;
+
+class GeneralDebugModule : public IDebugModule
+{
+public:
+    GeneralDebugModule();
+    ~GeneralDebugModule() override;
+
+    virtual void Init(EngineContext ctx) override;
+    void OnUpdate(float dt) override;
+    void Render(Scene &scene) override;
+    void ProcessInput(KeyboardManager &keyboard) override;
+
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enabled) override { m_Enabled = enabled; }
+    std::string GetModuleName() const override { return "GeneralDebugModule"; }
+
+private:
+    void LogDevices();
+    void LogSceneGraph();
+    void LogControls();
+    void LogStats();
+    void LogEntityStats();
+    void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
+
+    EngineContext m_Ctx;
+    bool m_Enabled = true;
+
+    bool m_F1Pressed = false;
+    bool m_F2Pressed = false;
+    bool m_F3Pressed = false;
+    bool m_F4Pressed = false;
+    bool m_F5Pressed = false;
+    bool m_F11Pressed = false;
+    bool m_F12Pressed = false;
+
+    float m_FpsTimer = 0.0f;
+    int m_FrameCount = 0;
+    float m_CurrentFps = 0.0f;
+    float m_CurrentFrameTime = 0.0f;
+
+    std::string m_GpuName;
+    std::string m_CpuName;
+};
+
+#endif

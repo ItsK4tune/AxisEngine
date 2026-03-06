@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <ecs/i_system.h>
 
-#include <input/mouse_manager.h>
-#include <graphics/interfaces/i_render_state_manager.h>
+#include <systems/input/mouse_manager.h>
+#include <rendering/interfaces/i_render_state_manager.h>
 #include <scene/scene.h>
 
 class UIRenderSystem : public ISystem

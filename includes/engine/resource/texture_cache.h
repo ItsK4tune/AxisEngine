@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include <future>
-#include <graphics/geometry/mesh.h>
+#include <rendering/geometry/mesh.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>

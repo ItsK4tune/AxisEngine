@@ -1,9 +1,9 @@
-#include <audio/sound_player.h>
+#include <systems/audio/sound_player.h>
 #include <ecs/components/camera_component.h>
 #include <ecs/components/transform_component.h>
 #include <ecs/entity_manager.h>
 #include <ecs/systems/audio_system.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 void AudioSystem::Update(Scene &scene, float dt)
 {

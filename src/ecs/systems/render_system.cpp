@@ -1,23 +1,23 @@
-﻿#include <ecs/systems/render_system.h>
-#include <graphics/renderer/frustum.h>
+#include <ecs/systems/render_system.h>
+#include <rendering/renderer/frustum.h>
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
 #include <resource/resource_manager.h>
-#include <graphics/interfaces/i_graphics_context.h>
-#include <graphics/interfaces/i_texture_manager.h>
-#include <graphics/interfaces/i_render_state_manager.h>
-#include <graphics/interfaces/i_draw_context.h>
-#include <graphics/interfaces/i_buffer_manager.h>
-#include <graphics/interfaces/i_query_manager.h>
+#include <rendering/interfaces/i_graphics_context.h>
+#include <rendering/interfaces/i_texture_manager.h>
+#include <rendering/interfaces/i_render_state_manager.h>
+#include <rendering/interfaces/i_draw_context.h>
+#include <rendering/interfaces/i_buffer_manager.h>
+#include <rendering/interfaces/i_query_manager.h>
 #include <ecs/entity_manager.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
-#include <debug/debug_config.h>
+#include <core/debug/debug_config.h>
 #endif
 
 void RenderSystem::Init(IGraphicsContext &context, IShaderLibrary &shaderLib)

@@ -1,6 +1,6 @@
-﻿#include <ecs/system.h>
-#include <window/interfaces/input_codes.h>
-#include <utils/logger.h>
+#include <ecs/system.h>
+#include <systems/window/interfaces/input_codes.h>
+#include <core/utils/logger.h>
 
 void UIRenderSystem::RenderUI(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)
 {

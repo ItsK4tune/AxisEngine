@@ -1,16 +1,16 @@
-﻿#ifndef ENABLE_DEBUG_SYSTEM
+#ifndef ENABLE_DEBUG_SYSTEM
 #include <Windows.h>
 #endif
 
-#include <app/application.h>
-#include <utils/logger.h>
+#include <core/app/application.h>
+#include <core/utils/logger.h>
 #include <states/game_state.h>
 #include <iostream>
 #include <fstream>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-#include <utils/filesystem.h>
+#include <core/utils/filesystem.h>
 #include <filesystem>
 #include <Windows.h>
 

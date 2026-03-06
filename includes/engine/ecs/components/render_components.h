@@ -1,12 +1,18 @@
-﻿#pragma once
+#pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <graphics/core/shader.h>
-#include <graphics/geometry/model.h>
-#include <graphics/renderer/skybox.h>
-#include <graphics/renderer/ui_model.h>
-#include <graphics/interfaces/graphics_types.h>
+#include <rendering/core/shader.h>
+#include <rendering/geometry/model.h>
+#include <rendering/renderer/skybox.h>
+#include <rendering/renderer/ui_model.h>
+#include <rendering/types/graphics_enums.h>
+#include <rendering/types/buffer_types.h>
+#include <rendering/types/texture_types.h>
+#include <rendering/types/render_state_types.h>
+#include <rendering/types/framebuffer_types.h>
+#include <rendering/types/graphics_query_types.h>
+#include <rendering/types/gpu_handle.h>
 #include <memory>
 
 #ifdef near

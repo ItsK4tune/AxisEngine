@@ -1,8 +1,8 @@
-﻿#include <ecs/system.h>
-#include <graphics/core/video_decoder.h>
+#include <ecs/system.h>
+#include <rendering/core/video_decoder.h>
 #include <iostream>
 #include <string>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 void VideoSystem::Update(Scene &scene, float dt)
 {

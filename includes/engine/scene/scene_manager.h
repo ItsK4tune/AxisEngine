@@ -1,14 +1,14 @@
-﻿#pragma once
+#pragma once
 
-#include <app/config_loader.h>
+#include <core/app/config_loader.h>
 #include <core/engine_context.h>
-#include <audio/sound_player.h>
+#include <systems/audio/sound_player.h>
 #include <ecs/component.h>
-#include <physics/interfaces/i_physics_world.h>
+#include <systems/physics/interfaces/i_physics_world.h>
 #include <memory>
 #include <resource/resource_manager.h>
 #include <scene/scene.h>
-#include <scene/scene_types.h>
+#include <scene/types/scene_record.h>
 #include <string>
 #include <vector>
 

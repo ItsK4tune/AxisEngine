@@ -1,12 +1,12 @@
-﻿#include <ecs/components/info_component.h>
+#include <ecs/components/info_component.h>
 #include <ecs/components/render_components.h>
 #include <ecs/entity_manager.h>
-#include <script/scriptable.h>
+#include <core/scripting/scriptable.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
-#include <physics/interfaces/i_physics_world.h>
+#include <systems/physics/interfaces/i_physics_world.h>
 #include <scene/scene_manager.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 void EntityManager::Destroy(Scene& scene, entt::entity entity)
 {

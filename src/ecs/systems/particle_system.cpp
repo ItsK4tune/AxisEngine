@@ -1,11 +1,11 @@
-﻿#include <algorithm>
+#include <algorithm>
 #include <ecs/component.h>
 #include <ecs/entity_manager.h>
 #include <ecs/systems/particle_system.h>
 #include <execution>
-#include <graphics/interfaces/i_graphics_context.h>
-#include <graphics/interfaces/i_render_state_manager.h>
-#include <utils/logger.h>
+#include <rendering/interfaces/i_graphics_context.h>
+#include <rendering/interfaces/i_render_state_manager.h>
+#include <core/utils/logger.h>
 #include <vector>
 
 void ParticleSystem::Init(IGraphicsContext& context)

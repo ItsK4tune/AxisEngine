@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include <string>
 #include <memory>
 #include <vector>
 #include <entt/entt.hpp>
-#include <app/config_loader.h>
-#include <scene/scene_types.h>
+#include <core/app/config_loader.h>
+#include <scene/types/scene_record.h>
 
 class Scene;
 class ResourceManager;

@@ -1,11 +1,11 @@
-﻿#include <algorithm>
+#include <algorithm>
 #include <ecs/component.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
-#include <graphics/core/video_decoder.h>
+#include <rendering/core/video_decoder.h>
 #include <iostream>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 #include <vector>
 
 glm::mat4 TransformComponent::GetLocalModelMatrix() const

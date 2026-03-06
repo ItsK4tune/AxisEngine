@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <graphics/renderer/font.h>
+#include <rendering/renderer/font.h>
 #include <map>
 #include <memory>
 #include <mutex>

@@ -3,8 +3,8 @@
 #include <event/resource_events.h>
 #include <iostream>
 #include <resource/resource_manager.h>
-#include <utils/filesystem.h>
-#include <utils/logger.h>
+#include <core/utils/filesystem.h>
+#include <core/utils/logger.h>
 
 ResourceManager::ResourceManager()
 {

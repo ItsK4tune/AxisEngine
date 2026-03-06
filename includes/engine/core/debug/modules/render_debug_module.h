@@ -1,0 +1,45 @@
+#pragma once
+
+#ifdef ENABLE_DEBUG_SYSTEM
+
+#include <core/engine_context.h>
+#include <functional>
+#include <core/debug/interfaces/i_debug_module.h>
+#include <systems/window/interfaces/input_codes.h>
+#include <string>
+
+class Application;
+
+class RenderDebugModule : public IDebugModule
+{
+public:
+    RenderDebugModule();
+    ~RenderDebugModule() override;
+
+    void Init(EngineContext ctx) override;
+    void OnUpdate(float dt) override;
+    void Render(Scene &scene) override;
+    void ProcessInput(KeyboardManager &keyboard) override;
+
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enabled) override { m_Enabled = enabled; }
+    std::string GetModuleName() const override { return "RenderDebugModule"; }
+
+    bool IsWireframeMode() const { return m_WireframeMode; }
+    bool IsNoTextureMode() const { return m_NoTextureMode; }
+
+private:
+    void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
+
+    EngineContext m_Ctx;
+    bool m_Enabled = true;
+
+    bool m_F6Pressed = false;
+    bool m_F7Pressed = false;
+    bool m_F9Pressed = false;
+
+    bool m_WireframeMode = false;
+    bool m_NoTextureMode = false;
+};
+
+#endif

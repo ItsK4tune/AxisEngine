@@ -1,12 +1,12 @@
-﻿#include <core/engine_context.h>
-#include <window/io_handler.h>
+#include <core/engine_context.h>
+#include <systems/window/io_handler.h>
 #include <ecs/component.h>
 #include <ecs/systems/script_system.h>
-#include <input/keyboard_manager.h>
-#include <input/mouse_manager.h>
-#include <input/script_input_handler.h>
-#include <script/scriptable.h>
-#include <utils/logger.h>
+#include <systems/input/keyboard_manager.h>
+#include <systems/input/mouse_manager.h>
+#include <systems/input/script_input_handler.h>
+#include <core/scripting/scriptable.h>
+#include <core/utils/logger.h>
 #include <core/runtime_core.h>
 
 void ScriptableSystem::Update(Scene &scene, float dt)

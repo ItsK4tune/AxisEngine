@@ -1,11 +1,17 @@
-﻿#include <core/job_system.h>
-#include <graphics/interfaces/graphics_types.h>
-#include <graphics/interfaces/i_texture_manager.h>
+#include <core/job_system.h>
+#include <rendering/types/graphics_enums.h>
+#include <rendering/types/buffer_types.h>
+#include <rendering/types/texture_types.h>
+#include <rendering/types/render_state_types.h>
+#include <rendering/types/framebuffer_types.h>
+#include <rendering/types/graphics_query_types.h>
+#include <rendering/types/gpu_handle.h>
+#include <rendering/interfaces/i_texture_manager.h>
 #include <iostream>
 #include <resource/texture_cache.h>
 #include <stb_image.h>
-#include <utils/filesystem.h>
-#include <utils/logger.h>
+#include <core/utils/filesystem.h>
+#include <core/utils/logger.h>
 
 ITextureManager* TextureCache::s_TextureManager = nullptr;
 

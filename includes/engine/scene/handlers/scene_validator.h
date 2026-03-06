@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <core/engine_context.h>
 #include <entt/entt.hpp>

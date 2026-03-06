@@ -1,4 +1,4 @@
-﻿#include <app/application.h>
+#include <core/app/application.h>
 #include <ecs/component.h>
 #include <ecs/entity_manager.h>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -6,15 +6,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <iostream>
-#include <physics/backends/bullet_physics_world.h>
-#include <physics/backends/bullet_rigid_body.h>
+#include <systems/physics/backends/bullet_physics_world.h>
+#include <systems/physics/backends/bullet_rigid_body.h>
 #include <scene/handlers/scene_validator.h>
 #include <scene/scene.h>
-#include <script/script_registry.h>
-#include <window/io_handler.h>
-#include <window/monitor_manager.h>
-#include <utils/bullet_glm_helpers.h>
-#include <utils/logger.h>
+#include <core/scripting/script_registry.h>
+#include <systems/window/io_handler.h>
+#include <systems/window/monitor_manager.h>
+#include <core/utils/bullet_glm_helpers.h>
+#include <core/utils/logger.h>
 
 namespace SceneHandlers
 {

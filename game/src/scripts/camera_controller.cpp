@@ -1,11 +1,11 @@
-﻿#include <scripts/camera_controller.h>
-#include <app/application.h>
-#include <window/io_handler.h>
+#include <scripts/camera_controller.h>
+#include <core/app/application.h>
+#include <systems/window/io_handler.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
-#include <input/keyboard_manager.h>
-#include <input/mouse_manager.h>
-#include <script/script_registry.h>
+#include <systems/input/keyboard_manager.h>
+#include <systems/input/mouse_manager.h>
+#include <core/scripting/script_registry.h>
 
 REGISTER_SCRIPT(CameraController)
 

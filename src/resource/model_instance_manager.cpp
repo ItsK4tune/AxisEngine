@@ -1,6 +1,6 @@
 #include <resource/model_instance_manager.h>
 #include <resource/model_instance_manager.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic)
 {

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <ecs/i_system.h>
 
@@ -6,18 +6,24 @@
 #include <ecs/components/occlusion_component.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <graphics/geometry/static_batch_manager.h>
-#include <graphics/renderer/light_renderer.h>
-#include <graphics/renderer/shadow_renderer.h>
-#include <graphics/interfaces/graphics_types.h>
-#include <graphics/interfaces/i_query_manager.h>
+#include <rendering/geometry/static_batch_manager.h>
+#include <rendering/renderer/light_renderer.h>
+#include <rendering/renderer/shadow_renderer.h>
+#include <rendering/types/graphics_enums.h>
+#include <rendering/types/buffer_types.h>
+#include <rendering/types/texture_types.h>
+#include <rendering/types/render_state_types.h>
+#include <rendering/types/framebuffer_types.h>
+#include <rendering/types/graphics_query_types.h>
+#include <rendering/types/gpu_handle.h>
+#include <rendering/interfaces/i_query_manager.h>
 #include <scene/scene.h>
 #include <vector>
-#include <graphics/renderer/frustum_culler.h>
-#include <graphics/renderer/occlusion_culler.h>
-#include <graphics/renderer/render_queue.h>
-#include <graphics/renderer/command_queue.h>
-#include <graphics/renderer/material_renderer.h>
+#include <rendering/renderer/frustum_culler.h>
+#include <rendering/renderer/occlusion_culler.h>
+#include <rendering/renderer/render_queue.h>
+#include <rendering/renderer/command_queue.h>
+#include <rendering/renderer/material_renderer.h>
 
 #include <resource/i_resource_libraries.h>
 class ResourceManager;

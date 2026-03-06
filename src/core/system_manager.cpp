@@ -1,7 +1,7 @@
-﻿#include <core/engine_context.h>
-#include <window/io_handler.h>
+#include <core/engine_context.h>
+#include <systems/window/io_handler.h>
 #include <core/system_manager.h>
-#include <audio/sound_player.h>
+#include <systems/audio/sound_player.h>
 #include <core/job_system.h>
 #include <ecs/systems/animation_system.h>
 #include <ecs/systems/audio_system.h>
@@ -13,23 +13,23 @@
 #include <ecs/systems/ui_system.h>
 #include <ecs/systems/video_system.h>
 #include <ecs/systems/dummy_test_system.h>
-#include <input/mouse_manager.h>
-#include <graphics/interfaces/i_buffer_manager.h>
-#include <graphics/interfaces/i_draw_context.h>
-#include <graphics/interfaces/i_graphics_context.h>
-#include <graphics/interfaces/i_render_state_manager.h>
-#include <graphics/interfaces/i_render_target_manager.h>
-#include <graphics/interfaces/i_shader_manager.h>
-#include <graphics/interfaces/i_texture_manager.h>
-#include <physics/interfaces/i_physics_world.h>
+#include <systems/input/mouse_manager.h>
+#include <rendering/interfaces/i_buffer_manager.h>
+#include <rendering/interfaces/i_draw_context.h>
+#include <rendering/interfaces/i_graphics_context.h>
+#include <rendering/interfaces/i_render_state_manager.h>
+#include <rendering/interfaces/i_render_target_manager.h>
+#include <rendering/interfaces/i_shader_manager.h>
+#include <rendering/interfaces/i_texture_manager.h>
+#include <systems/physics/interfaces/i_physics_world.h>
 #include <resource/resource_manager.h>
 #include <scene/scene.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 #include <algorithm>
 #ifdef ENABLE_DEBUG_SYSTEM
-#include <debug/debug_system.h>
+#include <core/debug/debug_system.h>
 #else
-#include <debug/null_debug_system.h>
+#include <core/debug/null_debug_system.h>
 #endif
 
 SystemManager::SystemManager()

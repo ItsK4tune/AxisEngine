@@ -1,15 +1,15 @@
-﻿#include <ecs/components/info_component.h>
+#include <ecs/components/info_component.h>
 #include <ecs/systems/physics_system.h>
 #include <engine/ecs/cached_query.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
-#include <physics/interfaces/i_physics_world.h>
-#include <physics/collision_matrix.h>
-#include <physics/physics_collision_dispatcher.h>
-#include <physics/physics_transform_sync.h>
-#include <script/scriptable.h>
-#include <utils/bullet_glm_helpers.h>
-#include <utils/logger.h>
+#include <systems/physics/interfaces/i_physics_world.h>
+#include <systems/physics/collision_matrix.h>
+#include <systems/physics/physics_collision_dispatcher.h>
+#include <systems/physics/physics_transform_sync.h>
+#include <core/scripting/scriptable.h>
+#include <core/utils/bullet_glm_helpers.h>
+#include <core/utils/logger.h>
 
 PhysicsSystem::PhysicsSystem()
 {

@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <graphics/renderer/particle_emitter.h>
+#include <rendering/renderer/particle_emitter.h>
 #include <string>
 
 struct ParticleEmitterComponent

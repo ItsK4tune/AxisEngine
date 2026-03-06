@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
-#include <app/config_loader.h>
+#include <core/app/config_loader.h>
 #include <core/engine_context.h>
 #include <ecs/i_system.h>
-#include <graphics/core/post_process_pipeline.h>
-#include <debug/i_debug_system.h>
+#include <rendering/core/post_process_pipeline.h>
+#include <core/debug/i_debug_system.h>
 #include <memory>
 #include <vector>
 #include <string>

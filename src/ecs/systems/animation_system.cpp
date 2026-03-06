@@ -1,7 +1,7 @@
-﻿#include <ecs/component.h>
+#include <ecs/component.h>
 #include <ecs/system.h>
-#include <graphics/geometry/animator.h>
-#include <utils/logger.h>
+#include <rendering/geometry/animator.h>
+#include <core/utils/logger.h>
 
 void AnimationSystem::Update(Scene &scene, float dt)
 {

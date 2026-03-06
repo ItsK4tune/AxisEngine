@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include <entt/entt.hpp>
-#include <graphics/renderer/frustum.h>
+#include <rendering/renderer/frustum.h>
 #include <math/aabb.h>
 #include <memory>
 #include <vector>

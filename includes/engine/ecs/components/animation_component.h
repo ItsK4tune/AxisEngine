@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <graphics/geometry/animation.h>
-#include <graphics/geometry/animator.h>
+#include <rendering/geometry/animation.h>
+#include <rendering/geometry/animator.h>
 #include <memory>
 #include <string>
 #include <vector>

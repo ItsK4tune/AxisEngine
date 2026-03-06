@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ecs/i_system.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 class DummyTestSystem : public ISystem
 {

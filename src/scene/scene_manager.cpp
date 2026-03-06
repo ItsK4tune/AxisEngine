@@ -1,9 +1,9 @@
-﻿#include <algorithm>
-#include <app/application.h>
+#include <algorithm>
+#include <core/app/application.h>
 #include <ecs/entity_manager.h>
 #include <scene/scene_manager.h>
 #include <scene/scene_serializer.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 namespace {
     std::string SceneBasename(const std::string &filePath)
@@ -119,6 +119,9 @@ void SceneManager::_UnloadOrphanedResources(const SceneRecord &rec)
     for (const auto &name : rec.ownedShaders)
         if (!usedByOther(name, &SceneRecord::ownedShaders))
             m_Resources->UnloadShader(name);
+    for (const auto &name : rec.ownedAnimations)
+        if (!usedByOther(name, &SceneRecord::ownedAnimations))
+            m_Resources->UnloadAnimation(name);
     for (const auto &name : rec.ownedModels)
         if (!usedByOther(name, &SceneRecord::ownedModels))
             m_Resources->UnloadModel(name);
@@ -131,9 +134,6 @@ void SceneManager::_UnloadOrphanedResources(const SceneRecord &rec)
     for (const auto &name : rec.ownedSkyboxes)
         if (!usedByOther(name, &SceneRecord::ownedSkyboxes))
             m_Resources->UnloadSkybox(name);
-    for (const auto &name : rec.ownedAnimations)
-        if (!usedByOther(name, &SceneRecord::ownedAnimations))
-            m_Resources->UnloadAnimation(name);
     for (const auto &name : rec.ownedSounds)
         if (!usedByOther(name, &SceneRecord::ownedSounds))
             m_Resources->UnloadSound(name);

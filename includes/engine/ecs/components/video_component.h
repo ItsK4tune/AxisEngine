@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <graphics/core/video_decoder.h>
+#include <rendering/core/video_decoder.h>
 #include <memory>
 #include <string>
 

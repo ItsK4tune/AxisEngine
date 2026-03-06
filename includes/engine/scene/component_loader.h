@@ -1,12 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include <core/engine_context.h>
-#include <audio/interfaces/i_sound.h>
+#include <systems/audio/interfaces/i_sound.h>
 #include <resource/resource_manager.h>
 #include <scene/scene.h>
 #include <scene/scene_serializer.h>
 #include <string>
-#include <utils/yaml_parser.h>
+#include <core/utils/yaml_parser.h>
 
 class Application;
 

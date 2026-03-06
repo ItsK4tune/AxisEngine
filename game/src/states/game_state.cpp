@@ -1,13 +1,13 @@
-﻿#include <states/game_state.h>
+#include <states/game_state.h>
 #include <algorithm>
-#include <window/io_handler.h>
+#include <systems/window/io_handler.h>
 #include <core/runtime_core.h>
 #include <axis/axis_core.h>
 #include <axis/axis_ecs.h>
 #include <axis/axis_graphics.h>
 #include <axis/axis_input.h>
 #include <axis/axis_utils.h>
-#include <state/state_machine.h>
+#include <core/state/state_machine.h>
 #include <states/pause_state.h>
 
 void GameState::OnEnter()
@@ -66,9 +66,10 @@ void GameState::OnUpdate(float dt)
                     RayHit hit = m_Ctx.physics->Raycast(transform.position, rayDir, 1000.0f);
                     if (hit.hasHit && EntityManager::IsValid(GetScene(), hit.entity))
                     {
+                        m_SelectedEntity = hit.entity;
                         if (auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity))
                         {
-                            LOGGER_INFO("GameState") << "Clicked entity: " << info->name;
+                            LOGGER_INFO("GameState") << "Selected entity for animation: " << info->name;
                         }
                     }
                 }
@@ -79,6 +80,8 @@ void GameState::OnUpdate(float dt)
     auto animView = GetScene().registry.view<AnimationComponent>();
     for (auto entity : animView)
     {
+        if (entity != m_SelectedEntity) continue;
+
         auto& anim = animView.get<AnimationComponent>(entity);
         if (!anim.animator) continue;
 
@@ -132,5 +135,6 @@ void GameState::OnRender()
 
 void GameState::OnExit()
 {
+    m_SelectedEntity = entt::null;
     GetSceneManager().ClearAllScenes();
 }

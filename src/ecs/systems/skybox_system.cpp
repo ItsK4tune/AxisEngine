@@ -1,11 +1,11 @@
-﻿#include <ecs/entity_manager.h>
+#include <ecs/entity_manager.h>
 #include <ecs/systems/skybox_system.h>
-#include <graphics/core/shader.h>
-#include <graphics/renderer/skybox.h>
-#include <graphics/interfaces/i_graphics_context.h>
-#include <graphics/interfaces/i_render_state_manager.h>
-#include <graphics/interfaces/i_texture_manager.h>
-#include <utils/logger.h>
+#include <rendering/core/shader.h>
+#include <rendering/renderer/skybox.h>
+#include <rendering/interfaces/i_graphics_context.h>
+#include <rendering/interfaces/i_render_state_manager.h>
+#include <rendering/interfaces/i_texture_manager.h>
+#include <core/utils/logger.h>
 
 void SkyboxRenderSystem::Init(IGraphicsContext& context)
 {

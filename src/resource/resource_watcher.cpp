@@ -2,7 +2,7 @@
 #include <event/event_system.h>
 #include <iostream>
 #include <resource/resource_watcher.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 ResourceWatcher::ResourceWatcher()
     : m_Running(true)

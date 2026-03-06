@@ -1,10 +1,10 @@
-﻿#include <app/application.h>
+#include <core/app/application.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/compatibility.hpp>
 #include <iostream>
-#include <script/script_registry.h>
-#include <script/scriptable.h>
-#include <script/input_scriptable.h>
+#include <core/scripting/script_registry.h>
+#include <core/scripting/scriptable.h>
+#include <core/scripting/input_scriptable.h>
 
 class UIButton : public InputScriptable
 {

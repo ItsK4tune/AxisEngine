@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
-#include <app/config_loader.h>
+#include <core/app/config_loader.h>
 #include <core/engine_context.h>
 #include <core/engine_loop.h>
 #include <functional>
 #include <memory>
-#include <state/state_machine.h>
+#include <core/state/state_machine.h>
 
 class RuntimeCore
 {

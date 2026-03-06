@@ -1,12 +1,12 @@
 #include <algorithm>
-#include <app/application.h>
+#include <core/app/application.h>
 #include <ecs/entity_manager.h>
 #include <iostream>
 #include <scene/component_loader.h>
-#include <script/script_registry.h>
-#include <utils/filesystem.h>
-#include <utils/logger.h>
-#include <physics/physics_loader.h>
+#include <core/scripting/script_registry.h>
+#include <core/utils/filesystem.h>
+#include <core/utils/logger.h>
+#include <systems/physics/physics_loader.h>
 
 std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> ComponentLoader::s_Factories;
 std::unordered_map<std::string, ComponentLoaderFunc> ComponentLoader::s_Loaders;
@@ -59,6 +59,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("Material", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadMaterial(s, e, n, r); });
     RegisterLoader("LOD", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadLOD(s, e, n, r); });
     RegisterLoader("RigidBody", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { PhysicsLoader::LoadRigidBody(s, e, n, p); });
+    RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { /* Transform is typically handled by SceneSerializer directly */ });
 }
 
 void ComponentLoader::ValidateKeys(const YAMLNode &node, const std::vector<std::string> &allowedKeys, const std::string &componentName)

@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <ecs/i_system.h>
 
 #include <engine/ecs/cached_query.h>
 #include <entt/entt.hpp>
-#include <graphics/interfaces/i_render_state_manager.h>
+#include <rendering/interfaces/i_render_state_manager.h>
 #include <memory>
 #include <scene/scene.h>
 #include <unordered_map>

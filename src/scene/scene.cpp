@@ -1,11 +1,11 @@
-﻿#include <algorithm>
+#include <algorithm>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
-#include <physics/interfaces/i_physics_world.h>
-#include <script/scriptable.h>
+#include <systems/physics/interfaces/i_physics_world.h>
+#include <core/scripting/scriptable.h>
 #include <scene/scene.h>
 #include <scene/scene_manager.h>
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 #include <vector>
 
 Scene::Scene()

@@ -1,4 +1,4 @@
-﻿#include <chrono>
+#include <chrono>
 #include <thread>
 #include <algorithm>
 
@@ -6,18 +6,18 @@
 #include <core/engine_context.h>
 #include <core/system_manager.h>
 #include <core/runtime_core.h>
-#include <window/io_handler.h>
-#include <window/monitor_manager.h>
-#include <state/state_machine.h>
+#include <systems/window/io_handler.h>
+#include <systems/window/monitor_manager.h>
+#include <core/state/state_machine.h>
 #include <scene/scene.h>
 #include <scene/scene_manager.h>
 #include <resource/resource_manager.h>
-#include <input/input_manager.h>
-#include <audio/sound_player.h>
-#include <graphics/interfaces/i_graphics_context.h>
-#include <window/interfaces/i_window.h>
+#include <systems/input/input_manager.h>
+#include <systems/audio/sound_player.h>
+#include <rendering/interfaces/i_graphics_context.h>
+#include <systems/window/interfaces/i_window.h>
 
-#include <utils/logger.h>
+#include <core/utils/logger.h>
 
 
 #include <iostream>

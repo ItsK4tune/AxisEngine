@@ -1,15 +1,15 @@
-﻿#pragma once
+#pragma once
 
 #include <future>
-#include <graphics/core/shader.h>
-#include <graphics/core/shader_cache.h>
-#include <graphics/geometry/animation.h>
-#include <graphics/geometry/mesh.h>
-#include <graphics/geometry/model.h>
-#include <graphics/renderer/font.h>
-#include <graphics/renderer/skybox.h>
-#include <graphics/renderer/ui_model.h>
-#include <audio/interfaces/i_audio_engine.h>
+#include <rendering/core/shader.h>
+#include <rendering/core/shader_cache.h>
+#include <rendering/geometry/animation.h>
+#include <rendering/geometry/mesh.h>
+#include <rendering/geometry/model.h>
+#include <rendering/renderer/font.h>
+#include <rendering/renderer/skybox.h>
+#include <rendering/renderer/ui_model.h>
+#include <systems/audio/interfaces/i_audio_engine.h>
 #include <iostream>
 #include <map>
 #include <memory>

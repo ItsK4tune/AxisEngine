@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
-#include <audio/interfaces/i_audio_source.h>
-#include <audio/interfaces/i_sound.h>
+#include <systems/audio/interfaces/i_audio_source.h>
+#include <systems/audio/interfaces/i_sound.h>
 #include <memory>
 #include <string>
 

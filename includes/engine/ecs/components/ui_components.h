@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <graphics/core/shader.h>
-#include <graphics/renderer/font.h>
-#include <graphics/renderer/ui_model.h>
+#include <rendering/core/shader.h>
+#include <rendering/renderer/font.h>
+#include <rendering/renderer/ui_model.h>
 #include <memory>
 #include <string>
 

@@ -1,12 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include <entt/entt.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <graphics/geometry/model.h>
+#include <rendering/geometry/model.h>
 #include <memory>
 #include <mutex>
-#include <resource/model_types.h>
+#include <resource/types/model_instance.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

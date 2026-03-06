@@ -1,6 +1,7 @@
 #pragma once
 
-#include <state/state.h>
+#include <core/state/state.h>
+#include <entt/entt.hpp>
 
 class GameState : public State
 
@@ -11,4 +12,7 @@ public:
     void OnFixedUpdate(float fixedDt) override;
     void OnRender() override;
     void OnExit() override;
+
+private:
+    entt::entity m_SelectedEntity = entt::null;
 };

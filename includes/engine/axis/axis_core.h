@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
-#include <app/application.h>
-#include <app/config_loader.h>
+#include <core/app/application.h>
+#include <core/app/config_loader.h>
 #include <core/engine_loop.h>
-#include <window/monitor_manager.h>
+#include <systems/window/monitor_manager.h>
 #include <resource/resource_manager.h>
 #include <scene/scene.h>
 #include <scene/scene_manager.h>
 #include <scene/scene_serializer.h>
-#include <state/state.h>
+#include <core/state/state.h>
