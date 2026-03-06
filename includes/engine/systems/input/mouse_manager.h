@@ -26,12 +26,26 @@ public:
 
     bool IsLeftButtonPressed() const;
     bool IsRightButtonPressed() const;
+    bool IsMiddleButtonPressed() const;
 
     bool IsLeftMouseClicked() const;
     bool IsRightMouseClicked() const;
+    bool IsMiddleMouseClicked() const;
 
     bool IsLeftMouseReleased() const;
     bool IsRightMouseReleased() const;
+    bool IsMiddleMouseReleased() const;
+
+    bool IsMouse4ButtonPressed() const;
+    bool IsMouse4MouseClicked() const;
+    bool IsMouse4MouseReleased() const;
+
+    bool IsMouse5ButtonPressed() const;
+    bool IsMouse5MouseClicked() const;
+    bool IsMouse5MouseReleased() const;
+
+    bool IsWheelUp() const;
+    bool IsWheelDown() const;
 
     void SetWindowSize(int width, int height);
     void SetLastPosition(double x, double y);
@@ -59,12 +73,24 @@ private:
 
     bool m_LeftButtonPressed;
     bool m_RightButtonPressed;
+    bool m_MiddleButtonPressed;
 
     bool m_LeftMouseClicked;
     bool m_RightMouseClicked;
+    bool m_MiddleMouseClicked;
 
     bool m_LeftMouseReleased;
     bool m_RightMouseReleased;
+    bool m_MiddleMouseReleased;
+
+    bool m_Mouse4ButtonPressed;
+    bool m_Mouse5ButtonPressed;
+
+    bool m_Mouse4MouseClicked;
+    bool m_Mouse5MouseClicked;
+
+    bool m_Mouse4MouseReleased;
+    bool m_Mouse5MouseReleased;
 
     Input::CursorMode m_Mode;
 };

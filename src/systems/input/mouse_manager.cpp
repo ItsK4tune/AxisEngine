@@ -6,10 +6,19 @@ MouseManager::MouseManager(IWindow *window)
       m_FirstMouse(true),
       m_LeftButtonPressed(false),
       m_RightButtonPressed(false),
+      m_MiddleButtonPressed(false),
+      m_Mouse4ButtonPressed(false),
+      m_Mouse5ButtonPressed(false),
       m_LeftMouseClicked(false),
       m_RightMouseClicked(false),
+      m_MiddleMouseClicked(false),
+      m_Mouse4MouseClicked(false),
+      m_Mouse5MouseClicked(false),
       m_LeftMouseReleased(false),
       m_RightMouseReleased(false),
+      m_MiddleMouseReleased(false),
+      m_Mouse4MouseReleased(false),
+      m_Mouse5MouseReleased(false),
       m_Mode(Input::CursorMode::Normal)
 {
     SetWindow(window);
@@ -19,7 +28,6 @@ void MouseManager::SetWindow(IWindow* window)
 {
     m_Window = window;
 }
-
 
 void MouseManager::UpdatePosition(double xpos, double ypos)
 {
@@ -96,6 +104,45 @@ void MouseManager::UpdateButton(Input::Mouse button, int action, int mods)
             m_RightMouseReleased = true;
         }
     }
+    else if (button == Input::Mouse::Middle)
+    {
+        if (action == 1)
+        {
+            m_MiddleButtonPressed = true;
+            m_MiddleMouseClicked = true;
+        }
+        else if (action == 0)
+        {
+            m_MiddleButtonPressed = false;
+            m_MiddleMouseReleased = true;
+        }
+    }
+    else if (button == Input::Mouse::Button4)
+    {
+        if (action == 1)
+        {
+            m_Mouse4ButtonPressed = true;
+            m_Mouse4MouseClicked = true;
+        }
+        else if (action == 0)
+        {
+            m_Mouse4ButtonPressed = false;
+            m_Mouse4MouseReleased = true;
+        }
+    }
+    else if (button == Input::Mouse::Button5)
+    {
+        if (action == 1)
+        {
+            m_Mouse5ButtonPressed = true;
+            m_Mouse5MouseClicked = true;
+        }
+        else if (action == 0)
+        {
+            m_Mouse5ButtonPressed = false;
+            m_Mouse5MouseReleased = true;
+        }
+    }
 }
 
 void MouseManager::EndFrame()
@@ -106,8 +153,15 @@ void MouseManager::EndFrame()
 
     m_LeftMouseClicked = false;
     m_RightMouseClicked = false;
+    m_MiddleMouseClicked = false;
+    m_Mouse4MouseClicked = false;
+    m_Mouse5MouseClicked = false;
+
     m_LeftMouseReleased = false;
     m_RightMouseReleased = false;
+    m_MiddleMouseReleased = false;
+    m_Mouse4MouseReleased = false;
+    m_Mouse5MouseReleased = false;
 }
 
 void MouseManager::SetCursorMode(Input::CursorMode mode)
@@ -200,6 +254,61 @@ bool MouseManager::IsLeftMouseReleased() const
 bool MouseManager::IsRightMouseReleased() const
 {
     return m_RightMouseReleased;
+}
+
+bool MouseManager::IsMiddleButtonPressed() const
+{
+    return m_MiddleButtonPressed;
+}
+
+bool MouseManager::IsMiddleMouseClicked() const
+{
+    return m_MiddleMouseClicked;
+}
+
+bool MouseManager::IsMiddleMouseReleased() const
+{
+    return m_MiddleMouseReleased;
+}
+
+bool MouseManager::IsMouse4ButtonPressed() const
+{
+    return m_Mouse4ButtonPressed;
+}
+
+bool MouseManager::IsMouse4MouseClicked() const
+{
+    return m_Mouse4MouseClicked;
+}
+
+bool MouseManager::IsMouse4MouseReleased() const
+{
+    return m_Mouse4MouseReleased;
+}
+
+bool MouseManager::IsMouse5ButtonPressed() const
+{
+    return m_Mouse5ButtonPressed;
+}
+
+bool MouseManager::IsMouse5MouseClicked() const
+{
+    return m_Mouse5MouseClicked;
+}
+
+bool MouseManager::IsMouse5MouseReleased() const
+{
+    return m_Mouse5MouseReleased;
+}
+
+bool MouseManager::IsWheelUp() const
+{
+    return m_ScrollY > 0.0f;
+}
+
+bool MouseManager::IsWheelDown() const
+{
+    return m_ScrollY < 0.0f;
 }
 
 void MouseManager::SetLastPosition(double x, double y)

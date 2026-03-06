@@ -70,6 +70,16 @@ bool InputManager::GetAction(const std::string &actionName) const
                     return true;
                 if (binding.code == (int)Input::Mouse::Right && m_Mouse.IsRightButtonPressed())
                     return true;
+                if (binding.code == (int)Input::Mouse::Middle && m_Mouse.IsMiddleButtonPressed())
+                    return true;
+                if (binding.code == (int)Input::Mouse::Button4 && m_Mouse.IsMouse4ButtonPressed())
+                    return true;
+                if (binding.code == (int)Input::Mouse::Button5 && m_Mouse.IsMouse5ButtonPressed())
+                    return true;
+                if (binding.code == (int)Input::Mouse::WheelUp && m_Mouse.IsWheelUp())
+                    return true;
+                if (binding.code == (int)Input::Mouse::WheelDown && m_Mouse.IsWheelDown())
+                    return true;
             }
             else if (binding.type == InputType::GamepadButton)
             {
@@ -97,6 +107,16 @@ bool InputManager::GetActionDown(const std::string &actionName) const
                     return true;
                 if (binding.code == (int)Input::Mouse::Right && m_Mouse.IsRightMouseClicked())
                     return true;
+                if (binding.code == (int)Input::Mouse::Middle && m_Mouse.IsMiddleMouseClicked())
+                    return true;
+                if (binding.code == (int)Input::Mouse::Button4 && m_Mouse.IsMouse4MouseClicked())
+                    return true;
+                if (binding.code == (int)Input::Mouse::Button5 && m_Mouse.IsMouse5MouseClicked())
+                    return true;
+                if (binding.code == (int)Input::Mouse::WheelUp && m_Mouse.IsWheelUp())
+                    return true;
+                if (binding.code == (int)Input::Mouse::WheelDown && m_Mouse.IsWheelDown())
+                    return true;
             }
             else if (binding.type == InputType::GamepadButton)
             {
@@ -123,6 +143,12 @@ bool InputManager::GetActionUp(const std::string &actionName) const
                 if (binding.code == (int)Input::Mouse::Left && m_Mouse.IsLeftMouseReleased())
                     return true;
                 if (binding.code == (int)Input::Mouse::Right && m_Mouse.IsRightMouseReleased())
+                    return true;
+                if (binding.code == (int)Input::Mouse::Middle && m_Mouse.IsMiddleMouseReleased())
+                    return true;
+                if (binding.code == (int)Input::Mouse::Button4 && m_Mouse.IsMouse4MouseReleased())
+                    return true;
+                if (binding.code == (int)Input::Mouse::Button5 && m_Mouse.IsMouse5MouseReleased())
                     return true;
             }
             else if (binding.type == InputType::GamepadButton)

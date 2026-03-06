@@ -136,7 +136,9 @@ namespace Input {
         Button8 = 7,
         Left = Button1,
         Right = Button2,
-        Middle = Button3
+        Middle = Button3,
+        WheelUp = 8,
+        WheelDown = 9
     };
 
     enum class Gamepad {

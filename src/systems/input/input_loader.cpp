@@ -57,7 +57,11 @@ bool InputLoader::LoadBindings(const std::string &filepath, InputManager &inputM
     static std::unordered_map<std::string, Input::Mouse> mouseMap = {
         {"left", Input::Mouse::Left},
         {"right", Input::Mouse::Right},
-        {"middle", Input::Mouse::Middle}};
+        {"middle", Input::Mouse::Middle},
+        {"button4", Input::Mouse::Button4},
+        {"button5", Input::Mouse::Button5},
+        {"wheelup", Input::Mouse::WheelUp},
+        {"wheeldown", Input::Mouse::WheelDown}};
 
     static std::unordered_map<std::string, Input::Gamepad> gamepadMap = {
         {"buttona", Input::Gamepad::ButtonA}, {"cross", Input::Gamepad::Cross}, {"buttonb", Input::Gamepad::ButtonB}, {"circle", Input::Gamepad::Circle}, {"buttonx", Input::Gamepad::ButtonX}, {"square", Input::Gamepad::Square}, {"buttony", Input::Gamepad::ButtonY}, {"triangle", Input::Gamepad::Triangle}, {"buttondpadup", Input::Gamepad::ButtonDpadUp}, {"buttondpaddown", Input::Gamepad::ButtonDpadDown}, {"buttondpadleft", Input::Gamepad::ButtonDpadLeft}, {"buttondpadright", Input::Gamepad::ButtonDpadRight}, {"buttonrightbumper", Input::Gamepad::ButtonRightBumper}, {"buttonleftbumper", Input::Gamepad::ButtonLeftBumper}, {"buttonrightthumb", Input::Gamepad::ButtonRightThumb}, {"buttonleftthumb", Input::Gamepad::ButtonLeftThumb}, {"buttonstart", Input::Gamepad::ButtonStart}};
@@ -96,7 +100,7 @@ bool InputLoader::LoadBindings(const std::string &filepath, InputManager &inputM
                     LOGGER_WARN("InputLoader") << "Unknown Key: " << keyName << " for action " << actionName;
                 }
             }
-            else if (triggerKey == "MouseButton")
+            else if (triggerKey == "Mouse")
             {
                 std::string btnName = ToLower(triggerValue);
                 if (mouseMap.count(btnName))
@@ -105,7 +109,7 @@ bool InputLoader::LoadBindings(const std::string &filepath, InputManager &inputM
                 }
                 else
                 {
-                    LOGGER_WARN("InputLoader") << "Unknown MouseButton: " << btnName << " for action " << actionName;
+                    LOGGER_WARN("InputLoader") << "Unknown Mouse key: " << btnName << " for action " << actionName;
                 }
             }
             else if (triggerKey == "Gamepad")

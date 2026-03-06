@@ -38,7 +38,7 @@ void GameState::OnUpdate(float dt)
     if (input.GetActionDown("Pause"))
         m_Ctx.runtime->GetStateMachine().PushState(std::make_unique<PauseState>());
 
-    if (GetMouse().IsLeftMouseClicked())
+    if (input.GetActionDown("Select"))
     {
         LOGGER_DEBUG("GameState") << "[Raycast] Left mouse clicked.";
         entt::entity camEntity = EntityManager::GetActiveCamera(GetScene());
