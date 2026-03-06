@@ -6,8 +6,38 @@
 #include <glm/gtc/quaternion.hpp>
 #include <vector>
 
+struct PositionComponent {
+    glm::vec3 value = glm::vec3(0.0f);
+    glm::vec3 prev = glm::vec3(0.0f);
+};
+
+struct RotationComponent {
+    glm::quat value = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    glm::quat prev = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+};
+
+struct ScaleComponent {
+    glm::vec3 value = glm::vec3(1.0f);
+    glm::vec3 prev = glm::vec3(1.0f);
+};
+
+struct HierarchyComponent {
+    entt::entity parent = entt::null;
+    std::vector<entt::entity> children;
+};
+
+struct WorldTransformComponent {
+    glm::mat4 worldMatrix = glm::mat4(1.0f);
+    glm::mat4 prevWorldMatrix = glm::mat4(1.0f);
+    uint32_t version = 0;
+    bool isDirty = true;
+};
+
+// Legacy class for easier migration if needed, but we should move away from it.
 struct TransformComponent
 {
+    // These will eventually be removed in favor of the SoA components above.
+    // For now, it might be used as a proxy or in systems not yet updated.
     glm::vec3 position = glm::vec3(0.0f);
     glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 scale = glm::vec3(1.0f);
@@ -29,24 +59,6 @@ struct TransformComponent
     void AddChild(entt::entity thisEntity, entt::entity child, entt::registry &registry, bool keepWorldTransform = false);
     void RemoveChild(entt::entity child);
     bool HasParent() const { return parent != entt::null; }
-    uint32_t GetVersion() const { return m_Cache.version; }
-
+    
     void SetDirty(entt::registry &registry);
-
-private:
-    struct TransformCache {
-        mutable glm::mat4 localMatrix = glm::mat4(1.0f);
-        mutable glm::mat4 worldMatrix = glm::mat4(1.0f);
-
-        mutable glm::vec3 lastPosition = glm::vec3(0.0f);
-        mutable glm::quat lastRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-        mutable glm::vec3 lastScale = glm::vec3(1.0f);
-
-        mutable uint32_t version = 0;
-        mutable uint32_t lastParentVersion = 0;
-        mutable entt::entity lastParent = entt::null;
-        mutable uint32_t lastLocalVersion = 0;
-
-        mutable bool isWorldDirty = true;
-    } m_Cache;
 };

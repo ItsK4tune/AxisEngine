@@ -1,7 +1,10 @@
 #include <rendering/renderer/render_queue.h>
+#include <core/job_system.h>
 #include <rendering/renderer/frustum_culler.h>
 #include <ecs/component.h>
 #include <ecs/components/occlusion_component.h>
+#include <ecs/components/render_components.h>
+#include <ecs/components/info_component.h>
 #include <rendering/core/shader.h>
 #include <algorithm>
 
@@ -16,54 +19,86 @@ void RenderQueue::Build(Scene& scene, float alpha,
     std::vector<entt::entity> visibleEntities;
     frustumCuller.Cull(scene, frustumCullEnabled, visibleEntities, alpha);
 
-    for (auto entity : visibleEntities) {
-        if (!scene.registry.all_of<TransformComponent, MeshRendererComponent>(entity)) continue;
+    uint32_t totalVisible = (uint32_t)visibleEntities.size();
+    if (totalVisible == 0) return;
 
-        auto& transform = scene.registry.get<TransformComponent>(entity);
-        auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
+    uint32_t numThreads = JobSystem::Instance().GetThreadCount();
+    uint32_t chunkSize = (totalVisible + numThreads - 1) / numThreads;
 
-        if (!renderer.model || renderer.shader.expired()) continue;
+    struct ThreadResult {
+        std::vector<RenderItem> renderQueue;
+        std::vector<RenderItem> shadowQueue;
+    };
+    std::vector<ThreadResult> threadResults(numThreads);
+    JobSystem::JobCounter counter(0);
 
-        glm::mat4 modelMatrix = transform.GetInterpolatedWorldMatrix(scene.registry, alpha);
+    for (uint32_t i = 0; i < numThreads; ++i) {
+        uint32_t startIdx = i * chunkSize;
+        if (startIdx >= totalVisible) break;
+        uint32_t endIdx = (std::min)(startIdx + chunkSize, totalVisible);
 
-        float distSq = 0.0f;
-        glm::vec3 worldMin = modelMatrix * glm::vec4(renderer.model->aabb.minBound, 1.0f);
-        glm::vec3 worldMax = modelMatrix * glm::vec4(renderer.model->aabb.maxBound, 1.0f);
+        JobSystem::Instance().Execute([&scene, &visibleEntities, startIdx, endIdx, &res = threadResults[i], alpha, occlusionCullEnabled, distCullSq, filterMask, camMask, camPos, &frustumCuller, frustumCullEnabled]() {
+            for (uint32_t k = startIdx; k < endIdx; ++k) {
+                entt::entity entity = visibleEntities[k];
 
-        float dx = std::max(worldMin.x - camPos.x, std::max(0.0f, camPos.x - worldMax.x));
-        float dy = std::max(worldMin.y - camPos.y, std::max(0.0f, camPos.y - worldMax.y));
-        float dz = std::max(worldMin.z - camPos.z, std::max(0.0f, camPos.z - worldMax.z));
-        distSq = dx * dx + dy * dy + dz * dz;
+                if (!scene.registry.all_of<WorldTransformComponent, MeshRendererComponent>(entity)) continue;
 
-        if (distCullSq > 0.0f && distSq > distCullSq) continue;
+                auto& world = scene.registry.get<WorldTransformComponent>(entity);
+                auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
+                if (!renderer.model || renderer.shader.expired()) continue;
 
-        Model* activeModel = renderer.model.get();
-        if (auto* lod = scene.registry.try_get<LODComponent>(entity)) {
-            for (int i = 0; i < (int)lod->lodDistancesSq.size(); ++i) {
-                if (distSq > lod->lodDistancesSq[i] && i < (int)lod->lodModels.size() && lod->lodModels[i]) {
-                    activeModel = lod->lodModels[i].get();
-                } else break;
+                // Interpolate world matrix
+                glm::mat4 modelMatrix = glm::mat4(1.0f);
+                for (int r = 0; r < 4; ++r) {
+                    for (int c = 0; c < 4; ++c) {
+                        modelMatrix[r][c] = glm::mix(world.prevWorldMatrix[r][c], world.worldMatrix[r][c], alpha);
+                    }
+                }
+                
+                AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
+                
+                float dx = (std::max)(worldAABB.minBound.x - camPos.x, (std::max)(0.0f, camPos.x - worldAABB.maxBound.x));
+                float dy = (std::max)(worldAABB.minBound.y - camPos.y, (std::max)(0.0f, camPos.y - worldAABB.maxBound.y));
+                float dz = (std::max)(worldAABB.minBound.z - camPos.z, (std::max)(0.0f, camPos.z - worldAABB.maxBound.z));
+                float distSqResult = dx * dx + dy * dy + dz * dz;
+
+                if (distCullSq > 0.0f && distSqResult > distCullSq) continue;
+
+                Model* activeModel = renderer.model.get();
+                if (auto* lod = scene.registry.try_get<LODComponent>(entity)) {
+                    for (int j = 0; j < (int)lod->lodDistancesSq.size(); ++j) {
+                        if (distSqResult > lod->lodDistancesSq[j] && j < (int)lod->lodModels.size() && lod->lodModels[j]) {
+                            activeModel = lod->lodModels[j].get();
+                        } else break;
+                    }
+                }
+
+                uint32_t layer = 1;
+                if (auto* info = scene.registry.try_get<InfoComponent>(entity)) layer = info->layer;
+                if ((filterMask & layer) == 0 || (camMask & layer) == 0) continue;
+
+                if (occlusionCullEnabled) {
+                    if (auto* occ = scene.registry.try_get<OcclusionComponent>(entity)) {
+                        if (!occ->isVisible) continue;
+                    }
+                }
+
+                bool isTransparent = false;
+                if (auto* mat = scene.registry.try_get<MaterialComponent>(entity)) {
+                    if (mat->desc.opacity < 1.0f) isTransparent = true;
+                }
+
+                res.renderQueue.push_back({entity, activeModel, modelMatrix, layer, renderer.order, distSqResult, isTransparent});
+                if (renderer.castShadow) res.shadowQueue.push_back({entity, activeModel, modelMatrix, layer, renderer.order, distSqResult, isTransparent});
             }
-        }
+        }, &counter);
+    }
 
-        uint32_t layer = 1;
-        if (auto* info = scene.registry.try_get<InfoComponent>(entity)) layer = info->layer;
+    JobSystem::Instance().Wait(&counter);
 
-        if ((filterMask & layer) == 0 || (camMask & layer) == 0) continue;
-
-        if (occlusionCullEnabled) {
-            if (auto* occ = scene.registry.try_get<OcclusionComponent>(entity)) {
-                if (!occ->isVisible) continue;
-            }
-        }
-
-        bool isTransparent = false;
-        if (auto* mat = scene.registry.try_get<MaterialComponent>(entity)) {
-            if (mat->desc.opacity < 1.0f) isTransparent = true;
-        }
-
-        m_RenderQueue.push_back({entity, activeModel, modelMatrix, layer, renderer.order, distSq, isTransparent});
-        if (renderer.castShadow) m_ShadowQueue.push_back({entity, activeModel, modelMatrix, layer, renderer.order, distSq, isTransparent});
+    for (const auto& res : threadResults) {
+        m_RenderQueue.insert(m_RenderQueue.end(), res.renderQueue.begin(), res.renderQueue.end());
+        m_ShadowQueue.insert(m_ShadowQueue.end(), res.shadowQueue.begin(), res.shadowQueue.end());
     }
 
     std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [&scene](const RenderItem& lhs, const RenderItem& rhs) {

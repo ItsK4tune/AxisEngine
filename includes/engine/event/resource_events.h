@@ -8,3 +8,10 @@ struct ResourceReloadEvent
     std::string type;
     std::string filePath;
 };
+
+struct ResourceLoadedEvent
+{
+    std::string name;
+    std::string type;
+    bool success;
+};

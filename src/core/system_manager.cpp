@@ -11,6 +11,8 @@
 #include <ecs/systems/script_system.h>
 #include <ecs/systems/skybox_system.h>
 #include <ecs/systems/ui_system.h>
+#include <ecs/systems/transform_system.h>
+#include <ecs/systems/streaming_system.h>
 #include <ecs/systems/video_system.h>
 #include <ecs/systems/dummy_test_system.h>
 #include <systems/input/mouse_manager.h>
@@ -66,14 +68,16 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
 
     RegisterSystem(std::make_unique<PhysicsSystem>());
     RegisterSystem(std::make_unique<RenderSystem>());
+    RegisterSystem(std::make_unique<TransformSystem>());
     RegisterSystem(std::make_unique<AnimationSystem>());
     RegisterSystem(std::make_unique<UIRenderSystem>());
     RegisterSystem(std::make_unique<ScriptableSystem>());
     RegisterSystem(std::make_unique<SkyboxRenderSystem>());
     RegisterSystem(std::make_unique<AudioSystem>());
     RegisterSystem(std::make_unique<ParticleSystem>());
-    m_Systems.push_back(std::make_unique<VideoSystem>());
-    m_Systems.push_back(std::make_unique<DummyTestSystem>());
+    RegisterSystem(std::make_unique<StreamingSystem>());
+    RegisterSystem(std::make_unique<VideoSystem>());
+    RegisterSystem(std::make_unique<DummyTestSystem>());
 
     for (auto& sys : m_Systems) {
         sys->Init(m_Ctx);
@@ -138,7 +142,7 @@ void SystemManager::RunUpdate(Scene& scene, float dt)
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;
         int p = sys->GetPriority();
-        if (p >= 20 && p < 30) {
+        if (p < 30) {
             sys->Update(scene, dt);
         }
     }

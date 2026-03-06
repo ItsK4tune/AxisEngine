@@ -114,7 +114,7 @@ int main() {
     config.width = 1280;
     config.height = 720;
     config.windowMode = 0;
-    config.vsync = true;
+    config.vsync = false;
     config.physicsMode = 1;
 
     if (app->Init(config)) {

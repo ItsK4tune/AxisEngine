@@ -32,10 +32,16 @@ public:
     void Shutdown();
 
     /**
+     * A counter used to synchronize multiple jobs.
+     */
+    using JobCounter = std::atomic<uint32_t>;
+
+    /**
      * Enqueues a job for asynchronous execution on a worker thread.
      * @param job A callable function to execute.
+     * @param counter Optional counter to decrement when the job is finished.
      */
-    void Execute(std::function<void()> job);
+    void Execute(std::function<void()> job, JobCounter* counter = nullptr);
 
     /**
      * Enqueues a job for asynchronous execution and returns a future for the result.
@@ -61,22 +67,35 @@ public:
     void Wait();
 
     /**
+     * Waits until the specified counter reaches zero.
+     */
+    void Wait(JobCounter* counter);
+
+    /**
      * Checks if the job system is currently busy executing jobs.
      */
     bool IsBusy();
+    uint32_t GetThreadCount() const { return (uint32_t)m_Workers.size(); }
 
 private:
     JobSystem() = default;
     ~JobSystem() = default;
 
+    struct Job
+    {
+        std::function<void()> task;
+        JobCounter* counter;
+    };
+
     void WorkerLoop();
 
     std::vector<std::thread> m_Workers;
-    std::queue<std::function<void()>> m_JobQueue;
+    std::queue<Job> m_JobQueue;
 
     std::mutex m_QueueMutex;
     std::condition_variable m_Condition;
     std::condition_variable m_WaitCondition;
+    std::condition_variable m_CounterCondition;
 
     std::atomic<uint32_t> m_ActiveJobs{0};
     std::atomic<bool> m_IsRunning{false};

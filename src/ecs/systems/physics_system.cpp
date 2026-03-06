@@ -157,9 +157,9 @@ void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shade
     if (registry.valid(m_cachedPrimaryCamera))
     {
         auto &camera = registry.get<CameraComponent>(m_cachedPrimaryCamera);
-        auto &transform = registry.get<TransformComponent>(m_cachedPrimaryCamera);
+        auto* posComp = registry.try_get<PositionComponent>(m_cachedPrimaryCamera);
+        glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
 
-        glm::vec3 pos = transform.position;
         glm::vec3 front;
         front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
         front.y = sin(glm::radians(camera.pitch));

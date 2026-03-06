@@ -12,6 +12,12 @@ public:
     void Clear();
     bool IsEmpty() const { return m_Commands.empty(); }
 
-private:
+    void Merge(CommandQueue& other)
+    {
+        m_Commands.insert(m_Commands.end(), 
+            std::make_move_iterator(other.m_Commands.begin()), 
+            std::make_move_iterator(other.m_Commands.end()));
+        other.Clear();
+    }
     std::vector<RenderCommand> m_Commands;
 };

@@ -21,6 +21,8 @@ public:
 
     void setID(unsigned int id) { ID = id; }
     unsigned int getID() const { return ID; }
+    std::string GetName() const { return m_Name; }
+    void SetName(const std::string& name) { m_Name = name; }
 
     void setBool(const std::string &name, bool value) const;
     void setInt(const std::string &name, int value) const;
@@ -44,4 +46,5 @@ private:
     mutable std::unordered_map<std::string, int> uniformLocations;
 
     IShaderManager& m_ShaderManager;
+    std::string m_Name;
 };

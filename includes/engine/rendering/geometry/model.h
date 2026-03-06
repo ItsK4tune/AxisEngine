@@ -34,6 +34,9 @@ public:
 
     void AddTexture(const Texture& tex) { textures_loaded.push_back(tex); }
 
+    std::string GetName() const { return m_Name; }
+    void SetName(const std::string& name) { m_Name = name; }
+
     void UploadToGPU();
     bool IsReadyToRender() const { return m_ReadyToRender; }
     bool IsStatic() const { return m_IsStatic; }
@@ -47,6 +50,7 @@ private:
     bool m_ReadyToRender = false;
     bool m_IsStatic = false;
     glm::mat4 m_RootTransform = glm::mat4(1.0f);
+    std::string m_Name;
 
     void loadModel(std::string const &path, bool isStatic);
     void ComputeAABB();

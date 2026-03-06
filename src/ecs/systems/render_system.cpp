@@ -1,3 +1,4 @@
+#include <core/job_system.h>
 #include <ecs/systems/render_system.h>
 #include <rendering/renderer/frustum.h>
 #include <string>
@@ -133,7 +134,8 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     }
 
     CameraComponent* cam = &scene.registry.get<CameraComponent>(camEntity);
-    TransformComponent* camTrans = &scene.registry.get<TransformComponent>(camEntity);
+    PositionComponent* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
     if (!m_QueuesBuilt) { m_PrevViewProj = m_CurrViewProj; }
 
@@ -168,7 +170,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     }
 
     m_RenderQueueObj.Build(scene, alpha, m_FrustumCuller, m_FrustumCullingEnabled, m_OcclusionCullingEnabled, 
-                           m_DistanceCullingSq, m_FilterLayerMask, cam->cullingMask, camTrans->position);
+                           m_DistanceCullingSq, m_FilterLayerMask, cam->cullingMask, camPos);
 
     m_QueuesBuilt = true;
     m_LastAlpha = alpha;
@@ -197,8 +199,8 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
         return;
 
     CameraComponent *cam = &scene.registry.get<CameraComponent>(camEntity);
-    TransformComponent *camTrans = &scene.registry.get<TransformComponent>(camEntity);
-
+    PositionComponent *camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
     glm::mat4 projectionMatrix = m_JitteredProjection;
 
     Shader *currentShader = nullptr;
@@ -221,264 +223,239 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 
     m_CommandQueue.Clear();
 
-    auto flushBatch = [&](Shader *shader, Model *model, const std::vector<glm::mat4>& instances)
+    const auto& fullQueue = m_RenderQueueObj.GetOpaqueQueue();
+    if (fullQueue.empty()) return;
+
+    size_t totalItems = fullQueue.size();
+    size_t numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 1;
+    size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
+
+    std::vector<CommandQueue> threadQueues(numThreads);
+    JobSystem::JobCounter counter(0);
+
+    for (size_t i = 0; i < numThreads; ++i)
     {
-        if (!instances.empty() && shader && model)
-        {
-            m_CommandQueue.Submit([shader, model, instances]() {
-                model->DrawInstanced(*shader, instances);
-            });
-            m_RenderedCount += instances.size();
-        }
-    };
+        size_t startIdx = i * chunkSize;
+        if (startIdx >= totalItems) break;
+        size_t endIdx = std::min(startIdx + chunkSize, totalItems);
 
-    int lastRenderOrder = -1;
-    bool firstItem = true;
-    bool transparencyEnabled = false;
+        JobSystem::Instance().Execute([this, &scene, &fullQueue, startIdx, endIdx, &threadQueue = threadQueues[i], projectionMatrix, alpha]() {
+            Shader *currentShader = nullptr;
+            Model *currentModel = nullptr;
+            MaterialComponent *currentMaterial = nullptr;
+            std::vector<glm::mat4> instanceBatch;
 
-    // Use a pre-captured context pointer for lambdas
-    IGraphicsContext* context = m_Context;
-    auto* materialRenderer = &m_MaterialRenderer;
+            auto* context = m_Context;
+            auto* materialRenderer = &m_MaterialRenderer;
+            auto* shadowRenderer = &m_ShadowRenderer;
+            auto* lightRenderer = &m_LightRenderer;
 
-    for (const auto &item : m_RenderQueueObj.GetOpaqueQueue())
-    {
-        if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
-            continue;
-
-        if (item.isTransparent && !transparencyEnabled)
-        {
-            flushBatch(currentShader, currentModel, instanceBatch);
-            instanceBatch.clear();
-            transparencyEnabled = true;
-            m_CommandQueue.Submit([context]() {
-                auto& rsm = context->GetRenderStateManager();
-                rsm.Enable(Graphics::ServerCapability::Blend);
-                rsm.BlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
-            });
-        }
-
-        auto &renderer = scene.registry.get<MeshRendererComponent>(item.entity);
-        auto *material = scene.registry.try_get<MaterialComponent>(item.entity);
-
-        if (m_RenderOrderEnabled)
-        {
-            if (firstItem || item.renderOrder != lastRenderOrder)
+            auto flushBatch = [&](Shader *shader, Model *model, const std::vector<glm::mat4>& instances)
             {
-                flushBatch(currentShader, currentModel, instanceBatch);
-                instanceBatch.clear();
-                m_CommandQueue.Submit([context]() {
-                    context->GetDrawContext().Clear(Graphics::BufferBit::Depth);
-                });
-                lastRenderOrder = item.renderOrder;
-                firstItem = false;
-            }
-        }
-
-        entt::entity entity = item.entity;
-
-        auto lockedShader = renderer.shader.lock();
-        if (!lockedShader)
-            continue;
-        Shader *itemShader = lockedShader.get();
-
-        if (currentShader != itemShader)
-        {
-            flushBatch(currentShader, currentModel, instanceBatch);
-            instanceBatch.clear();
-            currentShader = itemShader;
-            currentModel = nullptr;
-            currentMaterial = nullptr;
-
-            bool isDebugNoTexture = m_DebugNoTexture;
-            int numDir = m_LightRenderer.GetDirLightCount();
-            int numPoint = m_LightRenderer.GetPointLightCount();
-            int numSpot = m_LightRenderer.GetSpotLightCount();
-
-            // Need to capture by value everything needed for shader setup!
-            Shader* s = currentShader;
-            bool enableShadows = m_ShadowRenderer.IsShadowsEnabled() && m_ShadowRenderer.GetShadowMode() > 0;
-            float farP = m_ShadowRenderer.GetFarPlanePoint();
-            float farS = m_ShadowRenderer.GetFarPlaneSpot();
-            Shadow* shadowObj = &m_ShadowRenderer.GetShadow();
-
-            glm::mat4 viewMat = cam->viewMatrix;
-            glm::vec3 viewPos = camTrans->position;
-            
-            // To prevent massive copy overhead on vectors inside loop, copy the light matrices arrays.
-            // Wait, we can just pointer them if we assume they stay valid for the frame. They do.
-            const glm::mat4* lsmDir = m_ShadowRenderer.GetLightSpaceMatrices();
-            const glm::mat4* lsmSpot = m_ShadowRenderer.GetLightSpaceMatricesSpot();
-            
-            auto shadowDirUniforms = m_ShadowDirUniforms;
-            auto shadowPointUniforms = m_ShadowPointUniforms;
-            auto shadowSpotUniforms = m_ShadowSpotUniforms;
-            auto lsmUniforms = m_LightSpaceMatrixUniforms;
-            auto lsmsUniforms = m_LightSpaceMatrixSpotUniforms;
-
-            m_CommandQueue.Submit([=]() {
-                s->use();
-                s->setMat4("projection", projectionMatrix);
-                s->setMat4("view", viewMat);
-                s->setVec3("viewPos", viewPos);
-
-                if (enableShadows)
+                if (!instances.empty() && shader && model)
                 {
-                    s->setBool("u_ReceiveShadow", true);
-
-                    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
-                    {
-                        shadowObj->BindTexture_Dir(i, 10 + i);
-                        s->setInt(shadowDirUniforms[i], 10 + i);
-                        s->setMat4(lsmUniforms[i], lsmDir[i]);
-                    }
-
-                    for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
-                    {
-                        shadowObj->BindTexture_Point(i, 12 + i);
-                        s->setInt(shadowPointUniforms[i], 12 + i);
-                    }
-
-                    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
-                    {
-                        shadowObj->BindTexture_Spot(i, 14 + i);
-                        s->setInt(shadowSpotUniforms[i], 14 + i);
-                        s->setMat4(lsmsUniforms[i], lsmSpot[i]);
-                    }
+                    threadQueue.Submit([shader, model, instances]() {
+                        model->DrawInstanced(*shader, instances);
+                    });
                 }
-                else
-                {
-                    s->setBool("u_ReceiveShadow", false);
-                }
+            };
 
-                s->setFloat("farPlanePoint", farP);
-                s->setFloat("farPlaneSpot", farS);
+            entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+            CameraComponent *cam = &scene.registry.get<CameraComponent>(camEntity);
+            TransformComponent *camTrans = &scene.registry.get<TransformComponent>(camEntity);
 
-                s->setBool("debug_noTexture", isDebugNoTexture);
-                s->setInt("numDirLights", numDir);
-                s->setInt("nrPointLights", numPoint);
-                s->setInt("nrSpotLights", numSpot);
-            });
-        }
+            bool transparencyState = false;
 
-        bool hasAnimComp = scene.registry.all_of<AnimationComponent>(entity);
-        bool isAnimated = hasAnimComp && scene.registry.get<AnimationComponent>(entity).animator;
-        bool isNonStatic = item.activeModel && !item.activeModel->IsStatic();
-
-        if (isAnimated || isNonStatic)
-        {
-            flushBatch(currentShader, currentModel, instanceBatch);
-            instanceBatch.clear();
-            currentModel = nullptr;
-            currentMaterial = nullptr;
-
-            glm::mat4 mtx = item.worldMatrix;
-            glm::vec4 tc = renderer.color;
-            bool noTex = m_DebugNoTexture;
-            Model* actModel = item.activeModel;
-            Shader* actShader = currentShader;
-            bool enableBlend = transparencyEnabled;
-            Graphics::BlendFactor bSrc = material ? material->desc.blendSrc : Graphics::BlendFactor::SrcAlpha;
-            Graphics::BlendFactor bDst = material ? material->desc.blendDst : Graphics::BlendFactor::OneMinusSrcAlpha;
-            bool matHasTextures = (material && (material->gpu.albedoMap != 0 || material->gpu.normalMap != 0 || material->gpu.metallicMap != 0 || material->gpu.roughnessMap != 0 || material->gpu.aoMap != 0 || material->gpu.emissiveMap != 0));
-
-            std::vector<glm::mat4> transforms;
-            if (isAnimated)
+            for (size_t k = startIdx; k < endIdx; ++k)
             {
-                auto &animComp = scene.registry.get<AnimationComponent>(entity);
-                if (animComp.animator)
-                {
-                    transforms = animComp.animator->GetFinalBoneMatrices();
-                }
-            }
-            else if (isNonStatic && actModel)
-            {
-                transforms.assign(200, actModel->GetRootTransform());
-            }
+                const auto& item = fullQueue[k];
+                if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
+                    continue;
 
-            m_CommandQueue.Submit([=, &scene]() {
-                actShader->setMat4("model", mtx);
-                actShader->setVec4("tintColor", tc);
-
-                if (!transforms.empty())
-                {
-                    actShader->setMat4Array("finalBonesMatrices", transforms);
-                }
-
-                if (enableBlend && matHasTextures)
-                {
-                    context->GetRenderStateManager().BlendFunc(bSrc, bDst);
-                }
-
-                materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
-
-                if (actModel) {
-                    actModel->Draw(*actShader, !matHasTextures);
-                }
-            });
-            m_RenderedCount++;
-        }
-        else
-        {
-            bool matHasTextures = (material && (material->gpu.albedoMap != 0 || material->gpu.normalMap != 0 || material->gpu.metallicMap != 0 || material->gpu.roughnessMap != 0 || material->gpu.aoMap != 0 || material->gpu.emissiveMap != 0));
-
-            if (!m_InstanceBatchingEnabled || matHasTextures)
-            {
-                flushBatch(currentShader, currentModel, instanceBatch);
-                instanceBatch.clear();
-                currentModel = nullptr;
-                currentMaterial = nullptr;
-
-                glm::mat4 mtx = item.worldMatrix * item.activeModel->GetRootTransform();
-                glm::vec4 tc = renderer.color;
-                bool noTex = m_DebugNoTexture;
-                Model* actModel = item.activeModel;
-                Shader* actShader = currentShader;
-                bool enableBlend = transparencyEnabled;
-                Graphics::BlendFactor bSrc = material ? material->desc.blendSrc : Graphics::BlendFactor::SrcAlpha;
-                Graphics::BlendFactor bDst = material ? material->desc.blendDst : Graphics::BlendFactor::OneMinusSrcAlpha;
-
-                m_CommandQueue.Submit([=, &scene]() {
-                    if (enableBlend && matHasTextures) {
-                        context->GetRenderStateManager().BlendFunc(bSrc, bDst);
-                    }
-                    actShader->setMat4("model", mtx);
-                    actShader->setVec4("tintColor", tc);
-                    materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
-                    if (actModel) {
-                        actModel->Draw(*actShader, !matHasTextures);
-                    }
-                });
-                m_RenderedCount++;
-            }
-            else
-            {
-                if (currentModel != item.activeModel || currentMaterial != material)
+                if (item.isTransparent && !transparencyState)
                 {
                     flushBatch(currentShader, currentModel, instanceBatch);
                     instanceBatch.clear();
-                    currentModel = item.activeModel;
-                    currentMaterial = material;
-
-                    glm::vec4 tc = renderer.color;
-                    bool noTex = m_DebugNoTexture;
-                    Shader* actShader = currentShader;
-
-                    m_CommandQueue.Submit([=, &scene]() {
-                        actShader->setVec4("tintColor", tc);
-                        materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
+                    transparencyState = true;
+                    threadQueue.Submit([context]() {
+                        auto& rsm = context->GetRenderStateManager();
+                        rsm.Enable(Graphics::ServerCapability::Blend);
+                        rsm.BlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
                     });
                 }
-                instanceBatch.push_back(item.worldMatrix * item.activeModel->GetRootTransform());
-            }
-        }
-    }
-    flushBatch(currentShader, currentModel, instanceBatch);
 
-    if (transparencyEnabled)
+                auto &renderer = scene.registry.get<MeshRendererComponent>(item.entity);
+                auto *material = scene.registry.try_get<MaterialComponent>(item.entity);
+                entt::entity entity = item.entity;
+
+                auto lockedShader = renderer.shader.lock();
+                if (!lockedShader) continue;
+                Shader *itemShader = lockedShader.get();
+
+                if (currentShader != itemShader)
+                {
+                    flushBatch(currentShader, currentModel, instanceBatch);
+                    instanceBatch.clear();
+                    currentShader = itemShader;
+                    currentModel = nullptr;
+                    currentMaterial = nullptr;
+
+                    Shader* s = currentShader;
+                    bool enableShadows = shadowRenderer->IsShadowsEnabled() && shadowRenderer->GetShadowMode() > 0;
+                    float farP = shadowRenderer->GetFarPlanePoint();
+                    float farS = shadowRenderer->GetFarPlaneSpot();
+                    Shadow* shadowObj = &shadowRenderer->GetShadow();
+
+                    glm::mat4 viewMat = cam->viewMatrix;
+                    glm::vec3 viewPos = camTrans->position;
+                    
+                    const glm::mat4* lsmDir = shadowRenderer->GetLightSpaceMatrices();
+                    const glm::mat4* lsmSpot = shadowRenderer->GetLightSpaceMatricesSpot();
+                    
+                    auto shadowDirUniforms = m_ShadowDirUniforms;
+                    auto shadowPointUniforms = m_ShadowPointUniforms;
+                    auto shadowSpotUniforms = m_ShadowSpotUniforms;
+                    auto lsmUniforms = m_LightSpaceMatrixUniforms;
+                    auto lsmsUniforms = m_LightSpaceMatrixSpotUniforms;
+                    
+                    bool isDebugNoTexture = m_DebugNoTexture;
+                    int numDir = lightRenderer->GetDirLightCount();
+                    int numPoint = lightRenderer->GetPointLightCount();
+                    int numSpot = lightRenderer->GetSpotLightCount();
+
+                    threadQueue.Submit([=]() {
+                        s->use();
+                        s->setMat4("projection", projectionMatrix);
+                        s->setMat4("view", viewMat);
+                        s->setVec3("viewPos", viewPos);
+                        if (enableShadows) {
+                            s->setBool("u_ReceiveShadow", true);
+                            for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i) {
+                                shadowObj->BindTexture_Dir(i, 10 + i);
+                                s->setInt(shadowDirUniforms[i], 10 + i);
+                                s->setMat4(lsmUniforms[i], lsmDir[i]);
+                            }
+                            for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i) {
+                                shadowObj->BindTexture_Point(i, 12 + i);
+                                s->setInt(shadowPointUniforms[i], 12 + i);
+                            }
+                            for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i) {
+                                shadowObj->BindTexture_Spot(i, 14 + i);
+                                s->setInt(shadowSpotUniforms[i], 14 + i);
+                                s->setMat4(lsmsUniforms[i], lsmSpot[i]);
+                            }
+                        } else {
+                            s->setBool("u_ReceiveShadow", false);
+                        }
+                        s->setFloat("farPlanePoint", farP);
+                        s->setFloat("farPlaneSpot", farS);
+                        s->setBool("debug_noTexture", isDebugNoTexture);
+                        s->setInt("numDirLights", numDir);
+                        s->setInt("nrPointLights", numPoint);
+                        s->setInt("nrSpotLights", numSpot);
+                    });
+                }
+
+                bool hasAnimComp = scene.registry.all_of<AnimationComponent>(entity);
+                bool isAnimated = hasAnimComp && scene.registry.get<AnimationComponent>(entity).animator;
+                bool isNonStatic = item.activeModel && !item.activeModel->IsStatic();
+
+                if (isAnimated || isNonStatic)
+                {
+                    flushBatch(currentShader, currentModel, instanceBatch);
+                    instanceBatch.clear();
+                    currentModel = nullptr;
+                    currentMaterial = nullptr;
+
+                    glm::mat4 mtx = item.worldMatrix;
+                    glm::vec4 tc = renderer.color;
+                    bool noTex = m_DebugNoTexture;
+                    Model* actModel = item.activeModel;
+                    Shader* actShader = currentShader;
+                    bool enableBlend = transparencyState || item.isTransparent;
+                    Graphics::BlendFactor bSrc = material ? material->desc.blendSrc : Graphics::BlendFactor::SrcAlpha;
+                    Graphics::BlendFactor bDst = material ? material->desc.blendDst : Graphics::BlendFactor::OneMinusSrcAlpha;
+                    bool matHasTextures = (material && (material->gpu.albedoMap != 0 || material->gpu.normalMap != 0 || material->gpu.metallicMap != 0 || material->gpu.roughnessMap != 0 || material->gpu.aoMap != 0 || material->gpu.emissiveMap != 0));
+
+                    std::vector<glm::mat4> transforms;
+                    if (isAnimated) {
+                        auto &animComp = scene.registry.get<AnimationComponent>(entity);
+                        if (animComp.animator) transforms = animComp.animator->GetFinalBoneMatrices();
+                    } else if (isNonStatic && actModel) {
+                        transforms.assign(200, actModel->GetRootTransform());
+                    }
+
+                    threadQueue.Submit([=, &scene]() {
+                        actShader->setMat4("model", mtx);
+                        actShader->setVec4("tintColor", tc);
+                        if (!transforms.empty()) actShader->setMat4Array("finalBonesMatrices", transforms);
+                        if (enableBlend && matHasTextures) context->GetRenderStateManager().BlendFunc(bSrc, bDst);
+                        materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
+                        if (actModel) actModel->Draw(*actShader, !matHasTextures);
+                    });
+                }
+                else
+                {
+                    bool matHasTextures = (material && (material->gpu.albedoMap != 0 || material->gpu.normalMap != 0 || material->gpu.metallicMap != 0 || material->gpu.roughnessMap != 0 || material->gpu.aoMap != 0 || material->gpu.emissiveMap != 0));
+                    if (!m_InstanceBatchingEnabled || matHasTextures)
+                    {
+                        flushBatch(currentShader, currentModel, instanceBatch);
+                        instanceBatch.clear();
+                        currentModel = nullptr;
+                        currentMaterial = nullptr;
+                        glm::mat4 mtx = item.worldMatrix * item.activeModel->GetRootTransform();
+                        glm::vec4 tc = renderer.color;
+                        bool noTex = m_DebugNoTexture;
+                        Model* actModel = item.activeModel;
+                        Shader* actShader = currentShader;
+                        bool enableBlend = transparencyState || item.isTransparent;
+                        Graphics::BlendFactor bSrc = material ? material->desc.blendSrc : Graphics::BlendFactor::SrcAlpha;
+                        Graphics::BlendFactor bDst = material ? material->desc.blendDst : Graphics::BlendFactor::OneMinusSrcAlpha;
+
+                        threadQueue.Submit([=, &scene]() {
+                            if (enableBlend && matHasTextures) context->GetRenderStateManager().BlendFunc(bSrc, bDst);
+                            actShader->setMat4("model", mtx);
+                            actShader->setVec4("tintColor", tc);
+                            materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
+                            if (actModel) actModel->Draw(*actShader, !matHasTextures);
+                        });
+                    }
+                    else
+                    {
+                        if (currentModel != item.activeModel || currentMaterial != material)
+                        {
+                            flushBatch(currentShader, currentModel, instanceBatch);
+                            instanceBatch.clear();
+                            currentModel = item.activeModel;
+                            currentMaterial = material;
+                            glm::vec4 tc = renderer.color;
+                            bool noTex = m_DebugNoTexture;
+                            Shader* actShader = currentShader;
+                            threadQueue.Submit([=, &scene]() {
+                                actShader->setVec4("tintColor", tc);
+                                materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
+                            });
+                        }
+                        instanceBatch.push_back(item.worldMatrix * item.activeModel->GetRootTransform());
+                    }
+                }
+            }
+            flushBatch(currentShader, currentModel, instanceBatch);
+            if (transparencyState) {
+                threadQueue.Submit([context]() {
+                    context->GetRenderStateManager().Disable(Graphics::ServerCapability::Blend);
+                });
+            }
+        }, &counter);
+    }
+
+    JobSystem::Instance().Wait(&counter);
+
+    // Merge all thread queues into main command queue
+    for (auto& tq : threadQueues)
     {
-        m_CommandQueue.Submit([context]() {
-            context->GetRenderStateManager().Disable(Graphics::ServerCapability::Blend);
-        });
+        m_CommandQueue.Merge(tq);
     }
 
     if (m_OcclusionCullingEnabled)
@@ -492,15 +469,13 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
     if (DebugConfig::ShowWireframe)
     {
         Graphics::PolygonMode capMode = prevMode;
-        m_CommandQueue.Submit([context, capMode]() {
+        m_CommandQueue.Submit([context = m_Context, capMode]() {
             context->GetRenderStateManager().PolygonMode(Graphics::CullMode::FrontAndBack, capMode);
         });
     }
 #endif
 
-    // Execute the command queue!
     m_CommandQueue.Execute();
-
     m_QueuesBuilt = false;
 }
 

@@ -12,6 +12,8 @@
 #include <stb_image.h>
 #include <core/utils/filesystem.h>
 #include <core/utils/logger.h>
+#include <event/event_system.h>
+#include <event/resource_events.h>
 
 ITextureManager* TextureCache::s_TextureManager = nullptr;
 
@@ -94,11 +96,12 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             }
 
             LOGGER_INFO("TextureCache") << "Loaded texture: " << name;
+            EventSystem::Instance().Publish(ResourceLoadedEvent{name, "TEXTURE", true});
         }
-        else
         {
             LOGGER_ERROR("TextureCache") << "Failed to load texture: " << path;
             stbi_image_free(data);
+            EventSystem::Instance().Publish(ResourceLoadedEvent{name, "TEXTURE", false});
         }
     }
 }
@@ -179,10 +182,11 @@ void TextureCache::Update()
                 }
 
                 LOGGER_INFO("TextureCache") << "Async texture loaded: " << data.name;
+                EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "TEXTURE", true});
             }
-            else
             {
                 LOGGER_ERROR("TextureCache") << "Failed to async load texture: " << data.path;
+                EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "TEXTURE", false});
             }
 
             it = m_AsyncLoads.erase(it);

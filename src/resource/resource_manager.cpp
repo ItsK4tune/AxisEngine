@@ -93,10 +93,14 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
     }
     else
     {
+        model->SetName(name);
         model->UploadToGPU();
-        std::lock_guard<std::mutex> lock(m_ResourceMutex);
-        m_ModelPaths[name] = {fullPath, isStatic};
+        {
+            std::lock_guard<std::mutex> lock(m_ResourceMutex);
+            m_ModelPaths[name] = {fullPath, isStatic};
+        }
         LOGGER_INFO("ResourceManager") << "Loaded model: " << name;
+        EventSystem::Instance().Publish(ResourceLoadedEvent{name, "MODEL", true});
     }
 }
 
@@ -116,6 +120,7 @@ void ResourceManager::LoadModelAsync(const std::string &name, const std::string 
     JobSystem::Instance().Execute([this, promise, name, fullPath, isStatic]()
                                   {
         auto model = std::make_shared<Model>();
+        model->SetName(name);
         model->LoadCPU(fullPath, isStatic);
 
         std::lock_guard<std::mutex> lock(m_PendingMutex);
@@ -319,5 +324,6 @@ void ResourceManager::FlushPendingModels()
     {
         m_ModelInstanceManager.RegisterModel(pending.name, std::move(pending.model));
         LOGGER_INFO("ResourceManager") << "Async model registered: " << pending.name;
+        EventSystem::Instance().Publish(ResourceLoadedEvent{pending.name, "MODEL", true});
     }
 }

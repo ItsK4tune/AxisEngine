@@ -10,58 +10,20 @@
 
 glm::mat4 TransformComponent::GetLocalModelMatrix() const
 {
-    if (position != m_Cache.lastPosition || rotation != m_Cache.lastRotation || scale != m_Cache.lastScale)
-    {
-        glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
-        glm::mat4 rot = glm::mat4_cast(rotation);
-        glm::mat4 sca = glm::scale(glm::mat4(1.0f), scale);
-
-        m_Cache.localMatrix = trans * rot * sca;
-
-        m_Cache.lastPosition = position;
-        m_Cache.lastRotation = rotation;
-        m_Cache.lastScale = scale;
-
-        m_Cache.version++;
-        m_Cache.isWorldDirty = true;
-    }
-    return m_Cache.localMatrix;
+    glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
+    glm::mat4 rot = glm::mat4_cast(rotation);
+    glm::mat4 sca = glm::scale(glm::mat4(1.0f), scale);
+    return trans * rot * sca;
 }
 
 glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) const
 {
-    GetLocalModelMatrix();
-
-    if (parent != m_Cache.lastParent)
+    glm::mat4 local = GetLocalModelMatrix();
+    if (registry.valid(parent) && parent != entt::null && registry.all_of<TransformComponent>(parent))
     {
-        m_Cache.lastParent = parent;
-        m_Cache.isWorldDirty = true;
+        return registry.get<TransformComponent>(parent).GetWorldModelMatrix(registry) * local;
     }
-
-    if (!m_Cache.isWorldDirty)
-        return m_Cache.worldMatrix;
-
-    if (registry.valid(parent) && parent != entt::null)
-    {
-        if (registry.all_of<TransformComponent>(parent))
-        {
-            const auto& parentTrans = registry.get<TransformComponent>(parent);
-            glm::mat4 parentWorld = parentTrans.GetWorldModelMatrix(registry);
-
-            m_Cache.worldMatrix = parentWorld * m_Cache.localMatrix;
-        }
-        else
-        {
-             m_Cache.worldMatrix = m_Cache.localMatrix;
-        }
-    }
-    else
-    {
-        m_Cache.worldMatrix = m_Cache.localMatrix;
-    }
-
-    m_Cache.isWorldDirty = false;
-    return m_Cache.worldMatrix;
+    return local;
 }
 
 glm::mat4 TransformComponent::GetInterpolatedLocalMatrix(float alpha) const
@@ -69,113 +31,28 @@ glm::mat4 TransformComponent::GetInterpolatedLocalMatrix(float alpha) const
     glm::vec3 p = glm::mix(prevPosition, position, alpha);
     glm::quat r = glm::slerp(prevRotation, rotation, alpha);
     glm::vec3 s = glm::mix(prevScale, scale, alpha);
-
-    glm::mat4 trans = glm::translate(glm::mat4(1.0f), p);
-    glm::mat4 rot = glm::mat4_cast(r);
-    glm::mat4 sca = glm::scale(glm::mat4(1.0f), s);
-
-    return trans * rot * sca;
+    return glm::translate(glm::mat4(1.0f), p) * glm::mat4_cast(r) * glm::scale(glm::mat4(1.0f), s);
 }
 
 glm::mat4 TransformComponent::GetInterpolatedWorldMatrix(entt::registry& registry, float alpha) const
 {
     glm::mat4 local = GetInterpolatedLocalMatrix(alpha);
-
-    if (registry.valid(parent) && parent != entt::null)
+    if (registry.valid(parent) && parent != entt::null && registry.all_of<TransformComponent>(parent))
     {
-        if (registry.all_of<TransformComponent>(parent))
-        {
-            const auto& parentTrans = registry.get<TransformComponent>(parent);
-            return parentTrans.GetInterpolatedWorldMatrix(registry, alpha) * local;
-        }
+        return registry.get<TransformComponent>(parent).GetInterpolatedWorldMatrix(registry, alpha) * local;
     }
     return local;
 }
 
 void TransformComponent::SetDirty(entt::registry &registry)
 {
-    m_Cache.isWorldDirty = true;
-
-    for (auto child : children)
-    {
-        if (registry.valid(child) && registry.all_of<TransformComponent>(child))
-        {
-            registry.get<TransformComponent>(child).SetDirty(registry);
-        }
-    }
+    // Legacy dirty marking
 }
 
 void TransformComponent::SetParent(entt::entity thisEntity, entt::entity newParent, entt::registry& registry, bool keepWorldTransform)
 {
-    if (thisEntity == newParent || parent == newParent) return;
-
-    if (registry.valid(newParent) && registry.all_of<TransformComponent>(newParent))
-    {
-        entt::entity curr = newParent;
-        while (registry.valid(curr) && registry.all_of<TransformComponent>(curr))
-        {
-            if (curr == thisEntity)
-            {
-                LOGGER_ERROR("Transform") << "Detected cycle in SetParent! Aborting.";
-                return;
-            }
-            curr = registry.get<TransformComponent>(curr).parent;
-        }
-    }
-
-    glm::mat4 worldMatrix;
-    if (keepWorldTransform)
-    {
-        worldMatrix = GetWorldModelMatrix(registry);
-    }
-
-    if (registry.valid(parent) && registry.all_of<TransformComponent>(parent))
-    {
-        auto& oldParentTrans = registry.get<TransformComponent>(parent);
-        oldParentTrans.RemoveChild(thisEntity);
-    }
-
+    // Minimal legacy implementation
     parent = newParent;
-
-    if (registry.valid(newParent) && registry.all_of<TransformComponent>(newParent))
-    {
-        auto& newParentTrans = registry.get<TransformComponent>(newParent);
-        newParentTrans.children.push_back(thisEntity);
-
-        SetDirty(registry);
-
-        if (keepWorldTransform)
-        {
-            glm::mat4 parentWorldMatrix = newParentTrans.GetWorldModelMatrix(registry);
-            glm::mat4 newLocalMatrix = glm::inverse(parentWorldMatrix) * worldMatrix;
-
-            glm::vec3 s;
-            glm::quat r;
-            glm::vec3 t;
-            glm::vec3 skew;
-            glm::vec4 perspective;
-            glm::decompose(newLocalMatrix, s, r, t, skew, perspective);
-
-            position = t;
-            rotation = r;
-            scale = s;
-            GetLocalModelMatrix();
-            SetDirty(registry);
-        }
-    }
-    else if (keepWorldTransform)
-    {
-        glm::vec3 s;
-        glm::quat r;
-        glm::vec3 t;
-        glm::vec3 skew;
-        glm::vec4 perspective;
-        glm::decompose(worldMatrix, s, r, t, skew, perspective);
-
-        position = t;
-        rotation = r;
-        scale = s;
-    }
 }
 
 void TransformComponent::AddChild(entt::entity thisEntity, entt::entity child, entt::registry& registry, bool keepWorldTransform)

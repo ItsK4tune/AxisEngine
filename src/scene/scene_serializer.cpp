@@ -183,7 +183,6 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
 
                 if (tNode)
                 {
-                    auto &t = scene.registry.get_or_emplace<TransformComponent>(currentEntity);
                     std::stringstream ss;
                     ss << tNode->GetChildValue("Position", "0 0 0") << " "
                        << tNode->GetChildValue("Rotation", "0 0 0") << " "
@@ -191,13 +190,29 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
 
                     float x, y, z, rx, ry, rz, sx, sy, sz;
                     ss >> x >> y >> z >> rx >> ry >> rz >> sx >> sy >> sz;
-                    t.position = glm::vec3(x, y, z);
-                    t.rotation = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
-                    t.scale = glm::vec3(sx, sy, sz);
+                    
+                    glm::vec3 pos(x, y, z);
+                    glm::quat rot = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
+                    glm::vec3 scl(sx, sy, sz);
 
-                    t.prevPosition = t.position;
-                    t.prevRotation = t.rotation;
-                    t.prevScale = t.scale;
+                    if (auto* p = scene.registry.try_get<PositionComponent>(currentEntity)) p->value = p->prev = pos;
+                    if (auto* r = scene.registry.try_get<RotationComponent>(currentEntity)) r->value = r->prev = rot;
+                    if (auto* s = scene.registry.try_get<ScaleComponent>(currentEntity)) s->value = s->prev = scl;
+                    
+                    if (auto* w = scene.registry.try_get<WorldTransformComponent>(currentEntity))
+                    {
+                        w->isDirty = true;
+                        w->worldMatrix = glm::mat4(1.0f);
+                        w->prevWorldMatrix = glm::mat4(1.0f);
+                    }
+                    
+                    auto &t = scene.registry.get_or_emplace<TransformComponent>(currentEntity);
+                    t.position = pos;
+                    t.rotation = rot;
+                    t.scale = scl;
+                    t.prevPosition = pos;
+                    t.prevRotation = rot;
+                    t.prevScale = scl;
                 }
 
                 if (auto *pNode = entNode.GetChild("Parent"))

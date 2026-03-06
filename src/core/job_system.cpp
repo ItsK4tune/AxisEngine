@@ -46,13 +46,17 @@ void JobSystem::Shutdown()
     LOGGER_INFO("JobSystem") << "Thread pool shut down successfully.";
 }
 
-void JobSystem::Execute(std::function<void()> job)
+void JobSystem::Execute(std::function<void()> job, JobCounter* counter)
 {
     m_ActiveJobs.fetch_add(1, std::memory_order_relaxed);
+    if (counter)
+    {
+        counter->fetch_add(1, std::memory_order_relaxed);
+    }
 
     {
         std::unique_lock<std::mutex> lock(m_QueueMutex);
-        m_JobQueue.push(std::move(job));
+        m_JobQueue.push({std::move(job), counter});
     }
 
     m_Condition.notify_one();
@@ -66,6 +70,15 @@ void JobSystem::Wait()
     });
 }
 
+void JobSystem::Wait(JobCounter* counter)
+{
+    if (!counter) return;
+    std::unique_lock<std::mutex> lock(m_QueueMutex);
+    m_CounterCondition.wait(lock, [counter]() {
+        return counter->load(std::memory_order_relaxed) == 0;
+    });
+}
+
 bool JobSystem::IsBusy()
 {
     std::unique_lock<std::mutex> lock(m_QueueMutex);
@@ -76,7 +89,7 @@ void JobSystem::WorkerLoop()
 {
     while (true)
     {
-        std::function<void()> job;
+        Job job;
 
         {
             std::unique_lock<std::mutex> lock(m_QueueMutex);
@@ -92,10 +105,20 @@ void JobSystem::WorkerLoop()
             m_JobQueue.pop();
         }
 
-        if (job)
-            job();
+        if (job.task)
+            job.task();
+
+        if (job.counter)
+        {
+            job.counter->fetch_sub(1, std::memory_order_release);
+        }
 
         m_ActiveJobs.fetch_sub(1, std::memory_order_release);
-        m_WaitCondition.notify_all();
+
+        {
+            std::lock_guard<std::mutex> lock(m_QueueMutex);
+            m_WaitCondition.notify_all();
+            m_CounterCondition.notify_all();
+        }
     }
 }

@@ -18,6 +18,7 @@ std::shared_ptr<Shader> ShaderCache::GetOrCompile(const std::string& name, const
     }
 
     auto shader = std::make_shared<Shader>(m_ShaderManager);
+    shader->SetName(name);
     shader->load(vertPath.c_str(), fragPath.c_str());
 
     m_LoadedShaders[name] = shader;

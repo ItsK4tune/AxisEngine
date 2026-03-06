@@ -44,10 +44,9 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
         }
 
         glm::vec3 dir(0, -1, 0);
-        if (scene.registry.all_of<TransformComponent>(entity))
+        if (auto* rot = scene.registry.try_get<RotationComponent>(entity))
         {
-            auto &trans = scene.registry.get<TransformComponent>(entity);
-            dir = trans.rotation * glm::vec3(0, -1, 0);
+            dir = rot->value * glm::vec3(0, -1, 0);
         }
 
         m_DirLights.push_back({dir, shadowIdx, light.color, light.intensity});
@@ -71,10 +70,9 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
         }
 
         glm::vec3 pos = glm::vec3(0.0f);
-        if (scene.registry.all_of<TransformComponent>(entity))
+        if (auto* p = scene.registry.try_get<PositionComponent>(entity))
         {
-            auto &trans = scene.registry.get<TransformComponent>(entity);
-            pos = trans.position;
+            pos = p->value;
         }
 
         m_PointLights.push_back({pos, shadowIdx, light.color, light.intensity, light.constant, light.linear, light.quadratic, light.radius});
@@ -99,12 +97,10 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
 
         glm::vec3 pos = glm::vec3(0.0f);
         glm::vec3 dir(0, -1, 0);
-        if (scene.registry.all_of<TransformComponent>(entity))
-        {
-            auto &trans = scene.registry.get<TransformComponent>(entity);
-            pos = trans.position;
-            dir = trans.rotation * glm::vec3(0, -1, 0);
-        }
+        auto* p = scene.registry.try_get<PositionComponent>(entity);
+        auto* r = scene.registry.try_get<RotationComponent>(entity);
+        if (p) pos = p->value;
+        if (r) dir = r->value * glm::vec3(0, -1, 0);
 
         m_SpotLights.push_back({pos, 0.0f, dir, shadowIdx, light.color, light.intensity, light.cutOff, light.outerCutOff, light.constant, light.linear, light.quadratic, 0.0f, 0.0f, 0.0f});
     }

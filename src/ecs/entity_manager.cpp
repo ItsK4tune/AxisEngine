@@ -184,6 +184,12 @@ void EntityManager::SetActiveSkybox(Scene& scene, entt::entity entity)
 entt::entity EntityManager::CreateEntity(Scene& scene, const std::string &name, const std::string &tag)
 {
     entt::entity entity = scene.registry.create();
+    scene.registry.emplace<PositionComponent>(entity);
+    scene.registry.emplace<RotationComponent>(entity);
+    scene.registry.emplace<ScaleComponent>(entity);
+    scene.registry.emplace<HierarchyComponent>(entity);
+    scene.registry.emplace<WorldTransformComponent>(entity);
+
     scene.registry.emplace<TransformComponent>(entity);
     scene.registry.emplace<InfoComponent>(entity, name, tag);
     LOGGER_INFO("Scene") << "Created entity: " << name << " (Tag: " << tag << ")";
@@ -194,9 +200,13 @@ entt::entity EntityManager::CreateEntityWithTransform(Scene& scene, const std::s
 {
     entt::entity entity = CreateEntity(scene, name);
 
+    if (auto* p = scene.registry.try_get<PositionComponent>(entity)) p->value = p->prev = position;
+    if (auto* r = scene.registry.try_get<RotationComponent>(entity)) r->value = r->prev = glm::quat(glm::radians(rotation));
+    if (auto* s = scene.registry.try_get<ScaleComponent>(entity)) s->value = s->prev = scale;
+
     auto &transform = scene.registry.get<TransformComponent>(entity);
     transform.position = position;
-    transform.rotation = glm::quat(rotation);
+    transform.rotation = glm::quat(glm::radians(rotation));
     transform.scale = scale;
 
     return entity;
@@ -230,14 +240,34 @@ void EntityManager::SetParent(Scene& scene, entt::entity child, entt::entity par
         return;
     }
 
-    if (!scene.registry.all_of<TransformComponent>(child) || !scene.registry.all_of<TransformComponent>(parent))
+    if (!scene.registry.all_of<HierarchyComponent>(child) || !scene.registry.all_of<HierarchyComponent>(parent))
     {
-        LOGGER_ERROR("Scene") << "Child or parent missing TransformComponent";
+        LOGGER_ERROR("Scene") << "Child or parent missing HierarchyComponent";
         return;
     }
 
-    auto &childTransform = scene.registry.get<TransformComponent>(child);
-    childTransform.SetParent(child, parent, scene.registry, keepWorldTransform);
+    auto &childH = scene.registry.get<HierarchyComponent>(child);
+    if (childH.parent == parent) return;
+
+    // Remove from old parent
+    if (scene.registry.valid(childH.parent) && scene.registry.all_of<HierarchyComponent>(childH.parent))
+    {
+        auto &oldParentH = scene.registry.get<HierarchyComponent>(childH.parent);
+        oldParentH.children.erase(std::remove(oldParentH.children.begin(), oldParentH.children.end(), child), oldParentH.children.end());
+    }
+
+    childH.parent = parent;
+    auto& parentH = scene.registry.get<HierarchyComponent>(parent);
+    parentH.children.push_back(child);
+
+    if (auto* w = scene.registry.try_get<WorldTransformComponent>(child)) w->isDirty = true;
+    
+    // Support legacy
+    if (scene.registry.all_of<TransformComponent>(child) && scene.registry.all_of<TransformComponent>(parent))
+    {
+        auto &childTransform = scene.registry.get<TransformComponent>(child);
+        childTransform.SetParent(child, parent, scene.registry, keepWorldTransform);
+    }
 }
 
 void EntityManager::AddChild(Scene& scene, entt::entity parent, entt::entity child, bool keepWorldTransform)
@@ -250,21 +280,21 @@ void EntityManager::DestroyEntity(Scene& scene, entt::entity entity, SceneManage
     if (!scene.registry.valid(entity))
         return;
 
-    if (auto *transform = scene.registry.try_get<TransformComponent>(entity))
+    if (auto *h = scene.registry.try_get<HierarchyComponent>(entity))
     {
-        if (scene.registry.valid(transform->parent) && scene.registry.all_of<TransformComponent>(transform->parent))
+        if (scene.registry.valid(h->parent) && scene.registry.all_of<HierarchyComponent>(h->parent))
         {
-            auto &parentTrans = scene.registry.get<TransformComponent>(transform->parent);
-            parentTrans.RemoveChild(entity);
+            auto &parentH = scene.registry.get<HierarchyComponent>(h->parent);
+            parentH.children.erase(std::remove(parentH.children.begin(), parentH.children.end(), entity), parentH.children.end());
         }
 
-        std::vector<entt::entity> childrenCopy = transform->children;
+        std::vector<entt::entity> childrenCopy = h->children;
         for (auto child : childrenCopy)
         {
-            if (scene.registry.valid(child) && scene.registry.all_of<TransformComponent>(child))
+            if (scene.registry.valid(child) && scene.registry.all_of<HierarchyComponent>(child))
             {
-                auto &childTrans = scene.registry.get<TransformComponent>(child);
-                childTrans.parent = entt::null;
+                auto &childH = scene.registry.get<HierarchyComponent>(child);
+                childH.parent = entt::null;
             }
         }
     }

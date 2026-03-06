@@ -18,3 +18,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <memory>
+
+struct StreamingComponent
+{
+    std::string modelPath;
+    bool isStatic = false;
+    float loadDistance = 100.0f;
+    bool isRequested = false;
+};
