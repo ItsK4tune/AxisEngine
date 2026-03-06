@@ -1,13 +1,13 @@
-﻿#pragma once
+#pragma once
 
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <typeindex>
-#include <functional>
-#include <memory>
 #include <algorithm>
+#include <functional>
+#include <iostream>
+#include <memory>
 #include <mutex>
+#include <typeindex>
+#include <unordered_map>
+#include <vector>
 
 class IEventDispatcher
 {

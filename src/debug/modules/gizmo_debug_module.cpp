@@ -1,3 +1,4 @@
+﻿#include <glad/glad.h>
 #include <debug/modules/gizmo_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
@@ -6,8 +7,8 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-#include <glad/glad.h>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -19,17 +20,19 @@
 #include <ecs/components/camera_component.h>
 #include <ecs/components/light_components.h>
 #include <ecs/components/info_component.h>
-#include <interface/graphic/i_graphics_context.h>
-#include <interface/graphic/i_render_state_manager.h>
+#include <graphics/interfaces/i_graphics_context.h>
+#include <graphics/interfaces/i_render_state_manager.h>
+#include <window/io_handler.h>
+#include <window/monitor_manager.h>
 #include <debug/debug_config.h>
 #include <ecs/entity_manager.h>
 
 GizmoDebugModule::GizmoDebugModule() {}
 GizmoDebugModule::~GizmoDebugModule() {}
 
-void GizmoDebugModule::Init(Application* app)
+void GizmoDebugModule::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 }
 
 void GizmoDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
@@ -41,22 +44,22 @@ void GizmoDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::share
 
 void GizmoDebugModule::OnUpdate(float dt)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
-    UpdateDebugLabels(m_App->GetScene());
-    UpdateLightLabels(m_App->GetScene());
+    UpdateDebugLabels(*m_Ctx.scene);
+    UpdateLightLabels(*m_Ctx.scene);
 }
 
 void GizmoDebugModule::Render(Scene &scene)
 {
-    if (!m_App || !m_Enabled || !DebugConfig::ShowGizmos)
+    if (!m_Ctx.IsValid() || !m_Enabled || !DebugConfig::ShowGizmos)
         return;
 
-    int width = m_App->GetWidth();
-    int height = m_App->GetHeight();
+    int width = m_Ctx.io->GetMonitorManager().GetWidth();
+    int height = m_Ctx.io->GetMonitorManager().GetHeight();
 
-    auto debugShader = m_App->GetResourceManager().GetShader("debugLine");
+    auto debugShader = m_Ctx.resources->GetShader("debugLine");
     if (!debugShader) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
@@ -115,9 +118,9 @@ void GizmoDebugModule::Render(Scene &scene)
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    m_App->GetGraphicsContext().GetRenderStateManager().Disable(Graphics::ServerCapability::DepthTest);
+    m_Ctx.io->GetGraphicsContext().GetRenderStateManager().Disable(Graphics::ServerCapability::DepthTest);
     glDrawArrays(GL_LINES, 0, lineVertices.size() / 6);
-    m_App->GetGraphicsContext().GetRenderStateManager().Enable(Graphics::ServerCapability::DepthTest);
+    m_Ctx.io->GetGraphicsContext().GetRenderStateManager().Enable(Graphics::ServerCapability::DepthTest);
 
     glBindVertexArray(0);
     glDeleteBuffers(1, &vbo);
@@ -126,7 +129,7 @@ void GizmoDebugModule::Render(Scene &scene)
 
 void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
     ProcessKey(keyboard, Input::Key::F3, m_F3Pressed, [this, &keyboard]()
@@ -155,7 +158,7 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
         if (shift) {
             ToggleLightGizmos();
 
-            auto& reg = m_App->GetScene().registry;
+            auto& reg = m_Ctx.scene->registry;
             int p = 0; for(auto e : reg.view<PointLightComponent>()) p++;
             int s = 0; for(auto e : reg.view<SpotLightComponent>()) s++;
 
@@ -199,8 +202,8 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
     }
 
     auto &registry = scene.registry;
-    int width = m_App->GetWidth();
-    int height = m_App->GetHeight();
+    int width = m_Ctx.io->GetMonitorManager().GetWidth();
+    int height = m_Ctx.io->GetMonitorManager().GetHeight();
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
@@ -361,8 +364,8 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     }
 
     auto &registry = scene.registry;
-    int width = m_App->GetWidth();
-    int height = m_App->GetHeight();
+    int width = m_Ctx.io->GetMonitorManager().GetWidth();
+    int height = m_Ctx.io->GetMonitorManager().GetHeight();
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
@@ -464,7 +467,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         auto [pl, tr] = pointLights.get<PointLightComponent, TransformComponent>(entity);
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
-        ss << "[POINT]\nInt: " << pl.intensity << "\nCol: " << pl.diffuse.r << "," << pl.diffuse.g << "," << pl.diffuse.b;
+        ss << "[POINT]\nInt: " << pl.intensity << "\nCol: " << pl.color.r << "," << pl.color.g << "," << pl.color.b;
         processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), ss.str(), glm::vec3(1.0f, 1.0f, 0.0f));
     }
 
@@ -474,7 +477,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         auto [sl, tr] = spotLights.get<SpotLightComponent, TransformComponent>(entity);
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
-        ss << "[SPOT]\nInt: " << sl.intensity << "\nCol: " << sl.diffuse.r << "," << sl.diffuse.g << "," << sl.diffuse.b;
+        ss << "[SPOT]\nInt: " << sl.intensity << "\nCol: " << sl.color.r << "," << sl.color.g << "," << sl.color.b;
         processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), ss.str(), glm::vec3(0.0f, 1.0f, 1.0f));
     }
 
@@ -494,7 +497,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         }
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
-        ss << "[DIR]\nInt: " << dl.intensity << "\nCol: " << dl.diffuse.r << "," << dl.diffuse.g << "," << dl.diffuse.b;
+        ss << "[DIR]\nInt: " << dl.intensity << "\nCol: " << dl.color.r << "," << dl.color.g << "," << dl.color.b;
         processLight(entity, pos, ss.str(), glm::vec3(1.0f, 0.5f, 0.0f));
     }
 

@@ -1,11 +1,11 @@
 ﻿#pragma once
 
-#include <interface/audio/i_audio_engine.h>
-#include <interface/audio/i_audio_source.h>
-#include <string>
+#include <audio/interfaces/i_audio_engine.h>
+#include <audio/interfaces/i_audio_source.h>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <string>
 
 class SoundCache
 {

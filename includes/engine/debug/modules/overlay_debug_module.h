@@ -2,15 +2,16 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <interface/debug/i_debug_module.h>
-#include <vector>
-#include <string>
-#include <interface/window/input_codes.h>
-#include <graphic/renderer/ui_model.h>
-#include <graphic/core/shader.h>
-#include <memory>
+#include <core/engine_context.h>
 #include <functional>
+#include <graphics/core/shader.h>
+#include <graphics/renderer/ui_model.h>
+#include <debug/interfaces/i_debug_module.h>
+#include <window/interfaces/input_codes.h>
+#include <memory>
 #include <string>
+#include <string>
+#include <vector>
 
 class Font;
 class Application;
@@ -21,7 +22,7 @@ public:
     OverlayDebugModule();
     ~OverlayDebugModule() override;
 
-    void Init(Application* app) override;
+    void Init(EngineContext ctx) override;
     void OnUpdate(float dt) override;
     void Render(Scene &scene) override;
     void ProcessInput(KeyboardManager &keyboard) override;
@@ -40,7 +41,7 @@ private:
     void RenderText(const std::string &text, float x, float y, float scale, glm::vec3 color);
     void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
 
-    Application* m_App = nullptr;
+    EngineContext m_Ctx;
     bool m_Enabled = true;
 
     bool m_F10Pressed = false;

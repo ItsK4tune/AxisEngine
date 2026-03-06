@@ -1,17 +1,20 @@
+﻿#include <app/application.h>
+#include <ecs/component.h>
+#include <ecs/entity_manager.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <iostream>
+#include <physics/backends/bullet_physics_world.h>
+#include <physics/backends/bullet_rigid_body.h>
 #include <scene/handlers/scene_validator.h>
-#include <utils/logger.h>
 #include <scene/scene.h>
 #include <script/script_registry.h>
-#include <app/application.h>
-#include <ecs/component.h>
-#include <physic/backends/bullet_physics_world.h>
-#include <physic/backends/bullet_rigid_body.h>
+#include <window/io_handler.h>
+#include <window/monitor_manager.h>
 #include <utils/bullet_glm_helpers.h>
-#include <iostream>
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <ecs/entity_manager.h>
+#include <utils/logger.h>
 
 namespace SceneHandlers
 {
@@ -74,7 +77,7 @@ namespace SceneHandlers
         }
     }
 
-    void SceneValidator::ValidateCamera(Scene &scene, Application* app)
+    void SceneValidator::ValidateCamera(Scene &scene, EngineContext ctx)
     {
         if (EntityManager::GetActiveCamera(scene) != entt::null)
             return;
@@ -94,9 +97,11 @@ namespace SceneHandlers
 
         entt::entity camEntity = EntityManager::CreateEntity(scene);
 
-        scene.registry.emplace<InfoComponent>(camEntity, "Default Spectator Camera", "Default");
+        auto &info = scene.registry.get<InfoComponent>(camEntity);
+        info.name = "Default Spectator Camera";
+        info.tag = "Default";
 
-        auto &trans = scene.registry.emplace<TransformComponent>(camEntity);
+        auto &trans = scene.registry.get<TransformComponent>(camEntity);
         trans.position = glm::vec3(0.0f, 2.0f, 10.0f);
 
         auto &cam = scene.registry.emplace<CameraComponent>(camEntity);
@@ -105,20 +110,21 @@ namespace SceneHandlers
         cam.nearPlane = 0.1f;
         cam.farPlane = 1000.0f;
         cam.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        cam.aspectRatio = (float)ctx.io->GetMonitorManager().GetWidth() / (float)ctx.io->GetMonitorManager().GetHeight();
 
         std::string scriptName = "DefaultCameraController";
-        Scriptable *scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+        auto scriptInstance = ScriptRegistry::Instance().Create(scriptName);
 
         if (scriptInstance)
         {
             auto &scriptComp = scene.registry.emplace<ScriptComponent>(camEntity);
-            scriptComp.instance = scriptInstance;
+            scriptComp.instance = std::move(scriptInstance);
             scriptComp.InstantiateScript = [scriptName]()
             { return ScriptRegistry::Instance().Create(scriptName); };
             scriptComp.DestroyScript = [](ScriptComponent *nsc)
-            { delete nsc->instance; nsc->instance = nullptr; };
+            { nsc->instance.reset(); };
 
-            scriptComp.instance->Init(camEntity, &scene, app);
+            scriptComp.instance->Init(camEntity, &scene, ctx);
             scriptComp.instance->OnCreate();
             LOGGER_INFO("SceneValidator") << "Attached 'DefaultCameraController' (Engine Fallback) to default camera.";
         }

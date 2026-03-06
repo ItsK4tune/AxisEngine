@@ -1,6 +1,6 @@
+#include <algorithm>
 #include <audio/backends/irrklang_audio_engine.h>
 #include <utils/logger.h>
-#include <algorithm>
 
 class IrrKlangAudioSource : public IAudioSource
 {

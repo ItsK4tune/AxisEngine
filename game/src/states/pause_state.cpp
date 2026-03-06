@@ -1,11 +1,10 @@
-#include <states/pause_state.h>
 #include <axis/axis_core.h>
 #include <axis/axis_ecs.h>
 #include <axis/axis_input.h>
+#include <states/pause_state.h>
 
 void PauseState::OnEnter()
 {
-    // Disable everything except Render and UI
     EnablePhysics(false);
     EnableScript(false);
     EnableAnimation(false);
@@ -19,7 +18,7 @@ void PauseState::OnEnter()
 
     SetCursorMode(Input::CursorMode::Normal);
 
-    m_PausedTextEntity = EntityBuilder(GetScene(), m_App)
+    m_PausedTextEntity = EntityBuilder(GetScene(), GetResourceManager())
         .WithName("PauseOverlay")
         .WithMesh("capsuleSmoothModel", "phongLitNoShadowShader")
         .WithTransform({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f})
@@ -32,7 +31,7 @@ void PauseState::OnUpdate(float dt)
     auto& kb = GetKeyboard();
     if (kb.IsKeyDown(Input::Key::P))
     {
-        m_App->GetStateMachine().PopState();
+        m_Ctx.runtime->GetStateMachine().PopState();
     }
 }
 
@@ -40,7 +39,6 @@ void PauseState::OnFixedUpdate(float fixedDt) {}
 
 void PauseState::OnRender()
 {
-    // We could render a "PAUSED" text here if we had a simple UI helper
 }
 
 void PauseState::OnExit() 

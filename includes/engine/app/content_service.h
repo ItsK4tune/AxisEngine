@@ -1,21 +1,24 @@
-﻿#pragma once
+#pragma once
 
+#include <audio/sound_player.h>
 #include <memory>
 #include <resource/resource_manager.h>
 #include <scene/scene_manager.h>
-#include <audio/sound_player.h>
 
 class ContentService
 {
 public:
-    ContentService(ResourceManager& resources, SceneManager& sceneManager, SoundPlayer& soundPlayer);
+    ContentService();
+    ~ContentService() = default;
 
-    ResourceManager& GetResourceManager() { return m_Resources; }
-    SceneManager& GetSceneManager() { return m_SceneManager; }
-    SoundPlayer& GetSoundPlayer() { return m_SoundPlayer; }
+    void Init(EngineContext ctx);
+
+    ResourceManager* GetResourceManager() { return m_Resources; }
+    SceneManager* GetSceneManager() { return m_SceneManager; }
+    SoundPlayer* GetSoundPlayer() { return m_SoundPlayer; }
 
 private:
-    ResourceManager& m_Resources;
-    SceneManager& m_SceneManager;
-    SoundPlayer& m_SoundPlayer;
+    ResourceManager* m_Resources = nullptr;
+    SceneManager* m_SceneManager = nullptr;
+    SoundPlayer* m_SoundPlayer = nullptr;
 };

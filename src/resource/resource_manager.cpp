@@ -1,10 +1,10 @@
-#include <resource/resource_manager.h>
-#include <utils/logger.h>
-#include <utils/filesystem.h>
-#include <iostream>
+#include <core/job_system.h>
 #include <event/event_system.h>
 #include <event/resource_events.h>
-#include <core/job_system.h>
+#include <iostream>
+#include <resource/resource_manager.h>
+#include <utils/filesystem.h>
+#include <utils/logger.h>
 
 ResourceManager::ResourceManager()
 {
@@ -17,7 +17,17 @@ ResourceManager::ResourceManager()
         } });
 }
 
+void ResourceManager::Init(IShaderManager& shaderManager)
+{
+    m_ShaderManager = &shaderManager;
+    m_ShaderCache = std::make_unique<ShaderCache>(*m_ShaderManager);
+}
+
 ResourceManager::~ResourceManager()
+{
+}
+
+void ResourceManager::Shutdown()
 {
     EventSystem::Instance().Unsubscribe<ResourceReloadEvent>(m_ReloadListenerId);
     ClearResource();
@@ -43,7 +53,7 @@ void ResourceManager::UnloadModel(const std::string &name)
 void ResourceManager::ReloadShader(const std::string &name)
 {
     LOGGER_INFO("HotReload") << "Reloading Shader: " << name;
-    m_ShaderCache.Reload(name);
+    m_ShaderCache->Reload(name);
 }
 
 void ResourceManager::ReloadTexture(const std::string &name)
@@ -58,7 +68,7 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
     std::string gShaderPath = gsPath.empty() ? "" : FileSystem::getPath(gsPath);
 
     LOGGER_INFO("ResourceManager") << "Loading shader: " << name << " (" << vsPath << ", " << fsPath << ")";
-    m_ShaderCache.GetOrCompile(name, vShaderPath, fShaderPath);
+    m_ShaderCache->GetOrCompile(name, vShaderPath, fShaderPath);
 
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
 }
@@ -174,7 +184,7 @@ void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 
 void ResourceManager::UnloadShader(const std::string &name)
 {
-    m_ShaderCache.Remove(name);
+    m_ShaderCache->Remove(name);
 }
 
 void ResourceManager::UnloadFont(const std::string &name)
@@ -199,7 +209,7 @@ void ResourceManager::UnloadAnimation(const std::string &name)
 
 std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name)
 {
-    return m_ShaderCache.GetShared(name);
+    return m_ShaderCache->GetShared(name);
 }
 
 std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name)

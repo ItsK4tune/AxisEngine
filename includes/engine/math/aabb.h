@@ -1,7 +1,8 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <algorithm>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
 
 struct AABB
 {

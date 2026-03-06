@@ -2,8 +2,6 @@
 
 #include <string>
 
-// --- Logical Action Events --- //
-// These events are fired based on user-defined Bindings (e.g. "Jump", "Fire")
 
 struct InputActionPressedEvent
 {
@@ -20,8 +18,6 @@ struct InputActionHeldEvent
     std::string actionName;
 };
 
-// --- Hardware Input Events --- //
-// These events are fired directly by the OS window for raw input processing
 
 struct KeyPressedEvent
 {

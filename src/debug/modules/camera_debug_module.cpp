@@ -12,9 +12,9 @@
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
 
-void CameraDebugModule::Init(Application* app)
+void CameraDebugModule::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 }
 
 void CameraDebugModule::OnUpdate(float dt)
@@ -29,7 +29,7 @@ void CameraDebugModule::Render(Scene &scene)
 
 void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
     ProcessKey(keyboard, Input::Key::F11, m_F11Pressed, [this, &keyboard]()
@@ -43,7 +43,10 @@ void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)
 
 void CameraDebugModule::ToggleDebugCamera()
 {
-    auto &scene = m_App->GetScene();
+    if (!m_Ctx.IsValid())
+        return;
+
+    auto &scene = *m_Ctx.scene;
     auto &registry = scene.registry;
 
     if (m_IsDebugCameraActive)
@@ -111,16 +114,16 @@ void CameraDebugModule::ToggleDebugCamera()
             cam.farPlane = 1000.0f;
 
             std::string scriptName = "DefaultCameraController";
-            Scriptable *scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+            auto scriptInstance = ScriptRegistry::Instance().Create(scriptName);
             if (scriptInstance)
             {
                 auto &scriptComp = registry.emplace<ScriptComponent>(m_DebugCamera);
-                scriptComp.instance = scriptInstance;
+                scriptComp.instance = std::move(scriptInstance);
                 scriptComp.InstantiateScript = [scriptName]()
                 { return ScriptRegistry::Instance().Create(scriptName); };
                 scriptComp.DestroyScript = [](ScriptComponent *nsc)
-                { delete nsc->instance; nsc->instance = nullptr; };
-                scriptComp.instance->Init(m_DebugCamera, &scene, m_App);
+                { nsc->instance.reset(); };
+                scriptComp.instance->Init(m_DebugCamera, &scene, m_Ctx);
                 scriptComp.instance->OnCreate();
             }
         }

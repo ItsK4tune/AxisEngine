@@ -1,8 +1,9 @@
-﻿#pragma once
+#pragma once
 
+#include <btBulletDynamicsCommon.h>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <btBulletDynamicsCommon.h>
 
 class BulletGLMHelpers {
 public:

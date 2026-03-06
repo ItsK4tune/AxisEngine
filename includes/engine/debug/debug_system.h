@@ -1,29 +1,28 @@
-﻿#pragma once
+﻿#ifdef ENABLE_DEBUG_SYSTEM
 
-#ifdef ENABLE_DEBUG_SYSTEM
-
-#include <graphic/renderer/font.h>
-#include <graphic/renderer/ui_model.h>
-#include <graphic/core/shader.h>
+#include <debug/i_debug_system.h>
+#include <core/engine_context.h>
+#include <graphics/core/shader.h>
+#include <graphics/renderer/font.h>
+#include <graphics/renderer/ui_model.h>
 #include <memory>
 #include <vector>
 
-class Application;
 class Scene;
 class IDebugModule;
 
-class DebugSystem
+class DebugSystem : public IDebugSystem
 {
 public:
     DebugSystem();
     ~DebugSystem();
 
-    void Init(Application* app);
-    void OnUpdate(float dt);
-    void Render(Scene &scene);
+    void Init(EngineContext ctx) override;
+    void OnUpdate(float dt) override;
+    void Render(Scene& scene) override;
 
 private:
-    Application* m_App = nullptr;
+    EngineContext m_Ctx;
 
     std::shared_ptr<Font> m_DebugFont = nullptr;
     std::shared_ptr<Shader> m_TextShader = nullptr;

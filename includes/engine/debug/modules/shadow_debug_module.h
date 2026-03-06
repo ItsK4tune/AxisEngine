@@ -2,7 +2,8 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <interface/debug/i_debug_module.h>
+#include <core/engine_context.h>
+#include <debug/interfaces/i_debug_module.h>
 #include <string>
 
 class Application;
@@ -13,7 +14,7 @@ public:
     ShadowDebugModule();
     ~ShadowDebugModule() override;
 
-    void Init(Application* app) override;
+    void Init(EngineContext ctx) override;
     void OnUpdate(float dt) override;
     void Render(Scene &scene) override;
     void ProcessInput(KeyboardManager &keyboard) override;
@@ -23,7 +24,7 @@ public:
     std::string GetModuleName() const override { return "ShadowDebugModule"; }
 
 private:
-    Application* m_App = nullptr;
+    EngineContext m_Ctx;
     bool m_Enabled = true;
 };
 

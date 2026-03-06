@@ -1,9 +1,9 @@
-#include <scene/scene_manager.h>
-#include <utils/logger.h>
-#include <scene/scene_serializer.h>
+﻿#include <algorithm>
 #include <app/application.h>
-#include <algorithm>
 #include <ecs/entity_manager.h>
+#include <scene/scene_manager.h>
+#include <scene/scene_serializer.h>
+#include <utils/logger.h>
 
 namespace {
     std::string SceneBasename(const std::string &filePath)
@@ -17,8 +17,17 @@ namespace {
     }
 }
 
-SceneManager::SceneManager(Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
-    : m_Scene(scene), m_Resources(res), m_Physics(phys), m_SoundPlayer(sound), m_App(app) {}
+SceneManager::SceneManager() {}
+
+void SceneManager::Init(EngineContext ctx, std::function<void(const AppConfig&)> applyConfigFn)
+{
+    m_Ctx = ctx;
+    m_Scene = ctx.scene;
+    m_Resources = ctx.resources;
+    m_Physics = ctx.physics;
+    m_SoundPlayer = ctx.soundPlayer;
+    m_ApplyConfigFn = std::move(applyConfigFn);
+}
 
 void SceneManager::AddEntity(entt::entity entity, const std::string &sceneName)
 {
@@ -42,7 +51,7 @@ void SceneManager::LoadScene(const std::string &filePath, bool persistent)
 
     bool isLoadAxs = (SceneBasename(filePath) == "load");
 
-    SceneLoadResult result = SceneSerializer::Deserialize(filePath, m_Scene, m_Resources, m_Physics, m_SoundPlayer, m_App);
+    SceneLoadResult result = SceneSerializer::Deserialize(filePath, *m_Scene, *m_Resources, *m_Physics, *m_SoundPlayer, m_Ctx);
 
     if (result.entities.empty() && !result.hasConfig)
     {
@@ -78,8 +87,8 @@ void SceneManager::_DestroySceneEntities(SceneRecord &rec)
 {
     for (auto entity : rec.entities)
     {
-        if (m_Scene.registry.valid(entity))
-            EntityManager::DestroyEntity(m_Scene, entity, this);
+        if (m_Scene->registry.valid(entity))
+            EntityManager::DestroyEntity(*m_Scene, entity, this);
     }
     rec.entities.clear();
 }
@@ -109,25 +118,25 @@ void SceneManager::_UnloadOrphanedResources(const SceneRecord &rec)
 
     for (const auto &name : rec.ownedShaders)
         if (!usedByOther(name, &SceneRecord::ownedShaders))
-            m_Resources.UnloadShader(name);
+            m_Resources->UnloadShader(name);
     for (const auto &name : rec.ownedModels)
         if (!usedByOther(name, &SceneRecord::ownedModels))
-            m_Resources.UnloadModel(name);
+            m_Resources->UnloadModel(name);
     for (const auto &name : rec.ownedTextures)
         if (!usedByOther(name, &SceneRecord::ownedTextures))
-            m_Resources.UnloadTexture(name);
+            m_Resources->UnloadTexture(name);
     for (const auto &name : rec.ownedFonts)
         if (!usedByOther(name, &SceneRecord::ownedFonts))
-            m_Resources.UnloadFont(name);
+            m_Resources->UnloadFont(name);
     for (const auto &name : rec.ownedSkyboxes)
         if (!usedByOther(name, &SceneRecord::ownedSkyboxes))
-            m_Resources.UnloadSkybox(name);
+            m_Resources->UnloadSkybox(name);
     for (const auto &name : rec.ownedAnimations)
         if (!usedByOther(name, &SceneRecord::ownedAnimations))
-            m_Resources.UnloadAnimation(name);
+            m_Resources->UnloadAnimation(name);
     for (const auto &name : rec.ownedSounds)
         if (!usedByOther(name, &SceneRecord::ownedSounds))
-            m_Resources.UnloadSound(name);
+            m_Resources->UnloadSound(name);
 }
 
 void SceneManager::_RollbackConfig(const SceneRecord &removed)
@@ -146,10 +155,11 @@ void SceneManager::_RollbackConfig(const SceneRecord &removed)
             best = &rec;
     }
 
-    if (best && m_App)
+    if (best)
     {
         LOGGER_INFO("SceneManager") << "Rolling back config to scene: " << best->name;
-        m_App->ApplyConfig(best->appliedConfig);
+        if (m_ApplyConfigFn)
+            m_ApplyConfigFn(best->appliedConfig);
     }
 }
 
@@ -273,7 +283,7 @@ void SceneManager::ChangeScene(const std::string &filePath)
 void SceneManager::ClearAllScenes()
 {
     LOGGER_INFO("SceneManager") << "Clearing all non-persistent scenes...";
-    m_Physics.Clear();
+    m_Physics->Clear();
     for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
     {
         if (!m_LoadedScenes[i].persistent && !m_LoadedScenes[i].inviolable)
@@ -289,7 +299,7 @@ void SceneManager::ClearAllScenes()
 void SceneManager::ClearAllIncludingPersistent()
 {
     LOGGER_INFO("SceneManager") << "Clearing all scenes (including persistent, except inviolable)...";
-    m_Physics.Clear();
+    m_Physics->Clear();
     for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
     {
         if (!m_LoadedScenes[i].inviolable)
@@ -305,7 +315,7 @@ void SceneManager::ClearAllIncludingPersistent()
 void SceneManager::Shutdown()
 {
     LOGGER_INFO("SceneManager") << "Shutting down and clearing ALL scenes...";
-    m_Physics.Clear();
+    m_Physics->Clear();
     for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
     {
         _DestroySceneEntities(m_LoadedScenes[i]);

@@ -1,10 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include <entt/entt.hpp>
+#include <graphics/renderer/frustum.h>
 #include <math/aabb.h>
-#include <vector>
 #include <memory>
-#include <graphic/renderer/frustum.h>
+#include <vector>
 
 struct OctreeElement
 {

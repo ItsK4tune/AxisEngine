@@ -1,11 +1,12 @@
 ﻿#pragma once
 
-#include <interface/audio/i_audio_engine.h>
-#include <interface/audio/i_audio_source.h>
-#include <interface/audio/i_sound.h>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <string>
+#include <audio/interfaces/i_audio_engine.h>
+#include <audio/interfaces/i_audio_source.h>
+#include <audio/interfaces/i_sound.h>
 #include <memory>
+#include <string>
 
 class SoundPlayer
 {

@@ -1,10 +1,65 @@
-#include <utils/filesystem.h>
-#include <scene/component_loader.h>
-#include <utils/logger.h>
-#include <script/script_registry.h>
-#include <iostream>
 #include <algorithm>
+#include <app/application.h>
 #include <ecs/entity_manager.h>
+#include <iostream>
+#include <scene/component_loader.h>
+#include <script/script_registry.h>
+#include <utils/filesystem.h>
+#include <utils/logger.h>
+#include <physics/physics_loader.h>
+
+std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> ComponentLoader::s_Factories;
+std::unordered_map<std::string, ComponentLoaderFunc> ComponentLoader::s_Loaders;
+
+void ComponentLoader::RegisterLoader(const std::string& type, std::shared_ptr<IComponentLoaderFactory> factory)
+{
+    s_Factories[type] = std::move(factory);
+}
+
+void ComponentLoader::RegisterLoader(const std::string& type, ComponentLoaderFunc func)
+{
+    s_Loaders[type] = std::move(func);
+}
+
+bool ComponentLoader::Load(const std::string& type, Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, IPhysicsWorld &phys, EngineContext ctx)
+{
+    if (auto it = s_Loaders.find(type); it != s_Loaders.end())
+    {
+        it->second(scene, entity, node, res, phys, ctx);
+        return true;
+    }
+    if (auto it = s_Factories.find(type); it != s_Factories.end())
+    {
+        it->second->Load(scene, entity, node, res, phys, ctx);
+        return true;
+    }
+    return false;
+}
+
+void ComponentLoader::InitializeDefaultLoaders()
+{
+    static bool s_Initialized = false;
+    if (s_Initialized) return;
+    s_Initialized = true;
+
+    RegisterLoader("Renderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadRenderer(s, e, n, r); });
+    RegisterLoader("Animator", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadAnimator(s, e, n, r); });
+    RegisterLoader("Camera", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadCamera(s, e, n); });
+    RegisterLoader("LightDir", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadLightDir(s, e, n); });
+    RegisterLoader("LightPoint", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadLightPoint(s, e, n); });
+    RegisterLoader("LightSpot", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadLightSpot(s, e, n); });
+    RegisterLoader("UITransform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadUITransform(s, e, n); });
+    RegisterLoader("UIRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadUIRenderer(s, e, n, r); });
+    RegisterLoader("UIText", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadUIText(s, e, n, r); });
+    RegisterLoader("SkyboxRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadSkyboxRenderer(s, e, n, r); });
+    RegisterLoader("Script", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadScript(s, e, n, c); });
+    RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadAudioSource(s, e, n); });
+    RegisterLoader("VideoPlayer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadVideoPlayer(s, e, n); });
+    RegisterLoader("ParticleEmitter", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadParticleEmitter(s, e, n, r); });
+    RegisterLoader("Material", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadMaterial(s, e, n, r); });
+    RegisterLoader("LOD", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadLOD(s, e, n, r); });
+    RegisterLoader("RigidBody", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { PhysicsLoader::LoadRigidBody(s, e, n, p); });
+}
 
 void ComponentLoader::ValidateKeys(const YAMLNode &node, const std::vector<std::string> &allowedKeys, const std::string &componentName)
 {
@@ -118,10 +173,12 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Primary", "FOV", "Yaw", "Pitch", "Near", "Far"}, "Camera");
+    ValidateKeys(node, {"Primary", "FOV", "Yaw", "Pitch", "Near", "Far", "AspectRatio"}, "Camera");
 
     auto &c = scene.registry.emplace<CameraComponent>(entity);
     c.isPrimary = node.GetChildValue("Primary", "1") == "1" || node.GetChildValue("Primary", "true") == "true";
+
+    c.aspectRatio = std::stof(node.GetChildValue("AspectRatio", "0.0"));
 
     c.fov = std::stof(node.GetChildValue("FOV", "45.0"));
     if (c.fov <= 0.0f || c.fov >= 180.0f)
@@ -147,7 +204,7 @@ void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNo
 
 void ComponentLoader::LoadLightDir(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "AmbientStr", "DiffuseStr", "SpecularStr"}, "LightDir");
+    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Ambient", "Diffuse", "Specular"}, "LightDir");
 
     auto &l = scene.registry.emplace<DirectionalLightComponent>(entity);
 
@@ -163,18 +220,14 @@ void ComponentLoader::LoadLightDir(Scene &scene, entt::entity entity, const YAML
     if (l.intensity < 0.0f)
         LOGGER_WARN("ComponentLoader") << "LightDir Intensity should not be negative: " << l.intensity;
 
-    float ambientStr = std::stof(node.GetChildValue("AmbientStr", "0.2"));
-    float diffuseStr = std::stof(node.GetChildValue("DiffuseStr", "0.8"));
-    float specularStr = std::stof(node.GetChildValue("SpecularStr", "0.5"));
-
-    l.ambient = l.color * ambientStr;
-    l.diffuse = l.color * diffuseStr;
-    l.specular = l.color * specularStr;
+    l.ambient = std::stof(node.GetChildValue("Ambient", "0.1"));
+    l.diffuse = std::stof(node.GetChildValue("Diffuse", "0.8"));
+    l.specular = std::stof(node.GetChildValue("Specular", "0.5"));
 }
 
 void ComponentLoader::LoadLightPoint(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Radius", "Constant", "Linear", "Quadratic", "AmbientStr", "DiffuseStr", "SpecularStr"}, "LightPoint");
+    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Radius", "Constant", "Linear", "Quadratic", }, "LightPoint");
 
     auto &l = scene.registry.emplace<PointLightComponent>(entity);
 
@@ -197,19 +250,11 @@ void ComponentLoader::LoadLightPoint(Scene &scene, entt::entity entity, const YA
     l.constant = std::stof(node.GetChildValue("Constant", "1.0"));
     l.linear = std::stof(node.GetChildValue("Linear", "0.09"));
     l.quadratic = std::stof(node.GetChildValue("Quadratic", "0.032"));
-
-    float ambStr = std::stof(node.GetChildValue("AmbientStr", "0.1"));
-    float diffStr = std::stof(node.GetChildValue("DiffuseStr", "1.0"));
-    float specStr = std::stof(node.GetChildValue("SpecularStr", "1.0"));
-
-    l.ambient = l.color * ambStr;
-    l.diffuse = l.color * diffStr;
-    l.specular = l.color * specStr;
 }
 
 void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant", "Linear", "Quadratic", "AmbientStr", "DiffuseStr"}, "LightSpot");
+    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant", "Linear", "Quadratic"}, "LightSpot");
 
     auto &l = scene.registry.emplace<SpotLightComponent>(entity);
 
@@ -241,13 +286,6 @@ void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAM
     l.constant = std::stof(node.GetChildValue("Constant", "1.0"));
     l.linear = std::stof(node.GetChildValue("Linear", "0.09"));
     l.quadratic = std::stof(node.GetChildValue("Quadratic", "0.032"));
-
-    float ambStr = std::stof(node.GetChildValue("AmbientStr", "0.1"));
-    float diffStr = std::stof(node.GetChildValue("DiffuseStr", "1.0"));
-
-    l.ambient = l.color * ambStr;
-    l.diffuse = l.color * diffStr;
-    l.specular = glm::vec3(1.0f);
 }
 
 void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const YAMLNode &node)
@@ -395,7 +433,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, cons
     EntityManager::SetActiveSkybox(scene, entity);
 }
 
-void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node, Application *app)
+void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node, EngineContext ctx)
 {
     ValidateKeys(node, {"Class"}, "Script");
 
@@ -404,16 +442,16 @@ void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNo
         LOGGER_WARN("ComponentLoader") << "Script component missing 'Class' property";
 
     auto &scriptComp = scene.registry.emplace<ScriptComponent>(entity);
-    Scriptable *scriptInstance = ScriptRegistry::Instance().Create(className);
+    auto scriptInstance = ScriptRegistry::Instance().Create(className);
 
     if (scriptInstance)
     {
-        scriptComp.instance = scriptInstance;
+        scriptComp.instance = std::move(scriptInstance);
         scriptComp.InstantiateScript = [className]()
         { return ScriptRegistry::Instance().Create(className); };
         scriptComp.DestroyScript = [](ScriptComponent *nsc)
-        { delete nsc->instance; nsc->instance = nullptr; };
-        scriptComp.instance->Init(entity, &scene, app);
+        { nsc->instance.reset(); };
+        scriptComp.instance->Init(entity, &scene, ctx);
         scriptComp.instance->OnCreate();
     }
 }
@@ -492,8 +530,8 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     MaterialComponent mat;
     std::string typeStr = node.GetChildValue("Type", "PHONG");
 
-    mat.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
-    mat.alphaCutoff = std::stof(node.GetChildValue("AlphaCutoff", "0.5"));
+    mat.desc.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
+    mat.desc.alphaCutoff = std::stof(node.GetChildValue("AlphaCutoff", "0.5"));
 
     auto parseBlend = [](const std::string &str, Graphics::BlendFactor defaultFactor) -> Graphics::BlendFactor
     {
@@ -505,70 +543,63 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
             return Graphics::BlendFactor::SrcAlpha;
         if (str == "OneMinusSrcAlpha")
             return Graphics::BlendFactor::OneMinusSrcAlpha;
-        // Add more if needed, default to provided default
         return defaultFactor;
     };
 
-    mat.blendSrc = parseBlend(node.GetChildValue("BlendSrc", ""), Graphics::BlendFactor::SrcAlpha);
-    mat.blendDst = parseBlend(node.GetChildValue("BlendDst", ""), Graphics::BlendFactor::OneMinusSrcAlpha);
+    mat.desc.blendSrc = parseBlend(node.GetChildValue("BlendSrc"), Graphics::BlendFactor::SrcAlpha);
+    mat.desc.blendDst = parseBlend(node.GetChildValue("BlendDst"), Graphics::BlendFactor::OneMinusSrcAlpha);
 
     if (typeStr == "PBR")
     {
-        mat.type = MaterialType::PBR;
-        mat.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
-        mat.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
-        mat.ao = std::stof(node.GetChildValue("AO", "1.0"));
+        mat.desc.type = MaterialType::PBR;
+        mat.desc.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
+        mat.desc.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
+        mat.desc.ao = std::stof(node.GetChildValue("AO", "1.0"));
 
         std::stringstream emissSS(node.GetChildValue("Emission", "0 0 0"));
         float er, eg, eb;
         emissSS >> er >> eg >> eb;
-        mat.emission = glm::vec3(er, eg, eb);
+        mat.desc.emission = glm::vec3(er, eg, eb);
     }
     else
     {
-        mat.type = MaterialType::PHONG;
-        mat.shininess = std::stof(node.GetChildValue("Shininess", "32.0"));
+        mat.desc.type = MaterialType::PHONG;
+        mat.desc.shininess = std::stof(node.GetChildValue("Shininess", "32.0"));
 
         std::stringstream specSS(node.GetChildValue("Specular", "0.5 0.5 0.5"));
         float sr, sg, sb;
         specSS >> sr >> sg >> sb;
-        mat.specular = glm::vec3(sr, sg, sb);
+        mat.desc.specular = glm::vec3(sr, sg, sb);
 
         std::stringstream emissSS(node.GetChildValue("Emission", "0 0 0"));
         float er, eg, eb;
         emissSS >> er >> eg >> eb;
-        mat.emission = glm::vec3(er, eg, eb);
+        mat.desc.emission = glm::vec3(er, eg, eb);
 
         std::stringstream ambSS(node.GetChildValue("Ambient", "1 1 1"));
         float ar, ag, ab;
         ambSS >> ar >> ag >> ab;
-        mat.ambient = glm::vec3(ar, ag, ab);
+        mat.desc.ambient = glm::vec3(ar, ag, ab);
     }
 
-    // Load textures
-    auto loadTex = [&](const std::string &key, std::string &outPath, uint32_t &outID)
-    {
+    auto loadTex = [&](const std::string &key, std::string &outPath) {
         std::string path = node.GetChildValue(key);
-        if (!path.empty())
-        {
+        if (!path.empty()) {
             outPath = path;
-            res.LoadTexture(path, path, false); // Load synchronously for material
-            auto tex = res.GetTexture(path);
-            if (tex)
-                outID = tex->id;
         }
     };
 
-    loadTex("Albedo", mat.albedoPath, mat.albedoMap);
-    if (mat.albedoPath.empty())
-    {
-        loadTex("Diffuse", mat.albedoPath, mat.albedoMap);
+    loadTex("Albedo", mat.desc.albedoPath);
+    if (mat.desc.albedoPath.empty()) {
+        loadTex("Diffuse", mat.desc.albedoPath);
     }
-    loadTex("Normal", mat.normalPath, mat.normalMap);
-    loadTex("MetallicMap", mat.metallicPath, mat.metallicMap);
-    loadTex("RoughnessMap", mat.roughnessPath, mat.roughnessMap);
-    loadTex("AOMap", mat.aoPath, mat.aoMap);
-    loadTex("EmissiveMap", mat.emissivePath, mat.emissiveMap);
+    loadTex("Normal", mat.desc.normalPath);
+    loadTex("MetallicMap", mat.desc.metallicPath);
+    loadTex("RoughnessMap", mat.desc.roughnessPath);
+    loadTex("AOMap", mat.desc.aoPath);
+    loadTex("EmissiveMap", mat.desc.emissivePath);
+    
+    mat.gpu.dirty = true;
 
     scene.registry.emplace<MaterialComponent>(entity, mat);
 }

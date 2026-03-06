@@ -1,11 +1,12 @@
-#pragma once
+﻿#pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <graphics/core/shader.h>
+#include <graphics/renderer/font.h>
+#include <graphics/renderer/ui_model.h>
 #include <memory>
 #include <string>
-#include <glm/glm.hpp>
-#include <graphic/renderer/ui_model.h>
-#include <graphic/renderer/font.h>
-#include <graphic/core/shader.h>
 
 struct UITransformComponent
 {
@@ -15,7 +16,7 @@ struct UITransformComponent
     int zIndex = 0;
 
     bool usePercentage = false;
-    glm::vec2 anchor = glm::vec2(0.0f); // (0,0) top-left, (0.5,0.5) center, (1,1) bottom-right
+    glm::vec2 anchor = glm::vec2(0.0f);
 };
 
 struct UIRendererComponent

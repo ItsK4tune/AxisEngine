@@ -1,19 +1,20 @@
 #pragma once
 
-#include <scene/scene.h>
-#include <ecs/components/transform_component.h>
-#include <ecs/components/render_components.h>
-#include <ecs/components/ui_components.h>
 #include <ecs/components/info_component.h>
-#include <string>
+#include <ecs/components/render_components.h>
+#include <ecs/components/transform_component.h>
+#include <ecs/components/ui_components.h>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <scene/scene.h>
+#include <string>
 
-class Application;
+class ResourceManager;
 
 class EntityBuilder
 {
 public:
-    EntityBuilder(Scene& scene, Application* app);
+    EntityBuilder(Scene& scene, ResourceManager& resources);
 
     template<typename T, typename... Args>
     EntityBuilder& With(Args&&... args)
@@ -60,6 +61,6 @@ public:
 
 private:
     Scene& m_Scene;
-    Application* m_App;
+    ResourceManager& m_Resources;
     entt::entity m_Entity;
 };

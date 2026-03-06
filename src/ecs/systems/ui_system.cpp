@@ -1,8 +1,8 @@
-#include <ecs/system.h>
-#include <interface/window/input_codes.h>
+﻿#include <ecs/system.h>
+#include <window/interfaces/input_codes.h>
 #include <utils/logger.h>
 
-void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)
+void UIRenderSystem::RenderUI(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)
 {
     if (!m_Enabled)
     {
@@ -124,4 +124,8 @@ void UIRenderSystem::Render(Scene &scene, float screenWidth, float screenHeight,
     renderState.Disable(Graphics::ServerCapability::Blend);
 
     renderState.PolygonMode(Graphics::CullMode::FrontAndBack, previousPolygonMode);
+}
+
+void UIRenderSystem::Render(Scene &scene)
+{
 }

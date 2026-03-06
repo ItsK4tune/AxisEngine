@@ -136,13 +136,13 @@ vec3 CalcDirLightWithShadow(DirLight light, vec3 normal, vec3 viewDir, int light
     vec3 specular;
     
     if (debug_noTexture) {
-         ambient = light.ambient * light.intensity * vec3(1.0) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(1.0);
-         specular = light.specular * light.intensity * spec * vec3(0.5) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(1.0) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(1.0);
+         specular = light.color * 1.0 * light.intensity * spec * vec3(0.5) * material.specular;
     } else {
-         ambient = light.ambient * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
-         specular = light.specular * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
+         specular = light.color * 1.0 * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
     }
 
     float shadow = u_ReceiveShadow ? ShadowCalculationDir(FragPosLightSpace[lightIndex], normal, lightDir, lightIndex) : 0.0;
@@ -186,13 +186,13 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     vec3 specular;
     
     if (debug_noTexture) {
-         ambient = light.ambient * light.intensity * vec3(1.0) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(1.0);
-         specular = light.specular * light.intensity * spec * vec3(0.5) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(1.0) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(1.0);
+         specular = light.color * 1.0 * light.intensity * spec * vec3(0.5) * material.specular;
     } else {
-         ambient = light.ambient * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
-         specular = light.specular * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
+         specular = light.color * 1.0 * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
     }
 
     return (ambient + diffuse + specular);
@@ -212,13 +212,13 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, i
     vec3 specular;
     
     if (debug_noTexture) {
-         ambient = light.ambient * light.intensity * vec3(1.0) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(1.0);
-         specular = light.specular * light.intensity * spec * vec3(0.5) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(1.0) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(1.0);
+         specular = light.color * 1.0 * light.intensity * spec * vec3(0.5) * material.specular;
     } else {
-         ambient = light.ambient * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
-         specular = light.specular * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
+         specular = light.color * 1.0 * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
     }
 
     ambient *= attenuation;
@@ -240,48 +240,6 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int index)
     float bias = 0.05;
     float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
     return shadow;
-}
-
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
-{
-    vec3 lightDir = normalize(light.position - fragPos);
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
-    float theta = dot(lightDir, normalize(-light.direction));
-    float epsilon = light.cutOff - light.outerCutOff;
-    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    
-    if (debug_noTexture) {
-         ambient = light.ambient * light.intensity * vec3(1.0) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(1.0);
-         specular = light.specular * light.intensity * spec * vec3(0.5) * material.specular;
-    } else {
-         ambient = light.ambient * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
-         specular = light.specular * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
-    }
-
-    ambient *= attenuation * intensity;
-    diffuse *= attenuation * intensity;
-    specular *= attenuation * intensity;
-
-    // Spot shadow calculation
-    // Assuming light index corresponds to shadow map index for simplicity (or pass index)
-    // Here we need to know WHICH spot light index this is.
-    // CalcSpotLight usually iterates. I should update CalcSpotLight signature to take index.
-    // But wait, the loop in main() calls it. I should assume index maps.
-    // Wait, CalcSpotLight signature doesn't have index currently. I need to update it.
-    
-    // For now, I'll update signature in a moment. Let's write function logic assuming index is available.
-    
-    return (ambient + diffuse + specular);
 }
 
 float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex)
@@ -326,13 +284,13 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, int
     vec3 specular;
     
     if (debug_noTexture) {
-         ambient = light.ambient * light.intensity * vec3(1.0) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(1.0);
-         specular = light.specular * light.intensity * spec * vec3(0.5) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(1.0) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(1.0);
+         specular = light.color * 1.0 * light.intensity * spec * vec3(0.5) * material.specular;
     } else {
-         ambient = light.ambient * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
-         diffuse = light.diffuse * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
-         specular = light.specular * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
+         ambient = light.color * 0.1 * light.intensity * vec3(texture(material.texture_diffuse1, TexCoords)) * material.ambient;
+         diffuse = light.color * 0.8 * light.intensity * diff * vec3(texture(material.texture_diffuse1, TexCoords));
+         specular = light.color * 1.0 * light.intensity * spec * vec3(texture(material.texture_specular1, TexCoords)) * material.specular;
     }
 
     ambient *= attenuation * intensity;

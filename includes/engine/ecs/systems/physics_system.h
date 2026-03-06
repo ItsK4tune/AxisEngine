@@ -1,33 +1,39 @@
 ﻿#pragma once
 
-#include <scene/scene.h>
-#include <unordered_set>
-#include <unordered_map>
-#include <utility>
-#include <entt/entt.hpp>
-#include <engine/ecs/cached_query.h>
-#include <memory>
+#include <ecs/i_system.h>
 
-#include <interface/graphic/i_render_state_manager.h>
+#include <engine/ecs/cached_query.h>
+#include <entt/entt.hpp>
+#include <graphics/interfaces/i_render_state_manager.h>
+#include <memory>
+#include <scene/scene.h>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 class IPhysicsWorld;
 class PhysicsTransformSync;
 class PhysicsCollisionDispatcher;
 
-class PhysicsSystem
+class PhysicsSystem : public ISystem
 {
 public:
+
+    void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    int GetPriority() const override { return 10; }
+    std::string GetName() const override { return "PhysicsSystem"; }
     PhysicsSystem();
     ~PhysicsSystem();
 
-    void Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt);
+    void Update(Scene &scene, float dt) override;
     void RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState);
-    void SetEnabled(bool enable) { m_Enabled = enable; }
-    bool IsEnabled() const { return m_Enabled; }
     void Reset();
     void OnRigidBodyDestroyed(entt::registry& registry, entt::entity entity);
 
 private:
+    EngineContext m_Ctx;
     using CollisionPair = std::pair<entt::entity, entt::entity>;
 
     struct CollisionPairHash {

@@ -1,10 +1,10 @@
-#include <input/input_manager.h>
-#include <interface/window/i_window.h>
-#include <interface/window/input_codes.h>
-#include <string>
-#include <iostream>
+﻿#include <event/event_system.h>
 #include <event/input_events.h>
-#include <event/event_system.h>
+#include <input/input_manager.h>
+#include <window/interfaces/i_window.h>
+#include <window/interfaces/input_codes.h>
+#include <iostream>
+#include <string>
 
 InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse, const IWindow &window)
     : m_Keyboard(keyboard), m_Mouse(mouse), m_Window(window)
@@ -73,7 +73,6 @@ bool InputManager::GetAction(const std::string &actionName) const
             }
             else if (binding.type == InputType::GamepadButton)
             {
-                // TODO: Implement Gamepad support via GLFW/backend later
             }
         }
     }
@@ -101,7 +100,6 @@ bool InputManager::GetActionDown(const std::string &actionName) const
             }
             else if (binding.type == InputType::GamepadButton)
             {
-                // TODO: Implement Gamepad support via GLFW/backend later
             }
         }
     }
@@ -129,7 +127,6 @@ bool InputManager::GetActionUp(const std::string &actionName) const
             }
             else if (binding.type == InputType::GamepadButton)
             {
-                // TODO: Implement Gamepad support via GLFW/backend later
             }
         }
     }

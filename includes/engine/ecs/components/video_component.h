@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
-#include <string>
+#include <graphics/core/video_decoder.h>
 #include <memory>
-#include <graphic/core/video_decoder.h>
+#include <string>
 
 struct VideoPlayerComponent
 {

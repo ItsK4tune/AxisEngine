@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include <graphic/geometry/animation.h>
-#include <string>
+#include <graphics/geometry/animation.h>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <string>
 
 class AnimationCache
 {

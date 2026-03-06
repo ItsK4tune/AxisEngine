@@ -1,7 +1,7 @@
-#include "utils/logger.h"
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <stdexcept>
+#include "utils/logger.h"
 
 #ifdef AXIS_LOG_LEVEL_DEF
     #if AXIS_LOG_LEVEL_DEF == 0

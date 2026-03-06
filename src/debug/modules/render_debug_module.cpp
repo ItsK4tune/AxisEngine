@@ -1,4 +1,4 @@
-#include <debug/modules/render_debug_module.h>
+﻿#include <debug/modules/render_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -8,16 +8,18 @@
 #include <ecs/systems/skybox_system.h>
 #include <ecs/systems/ui_system.h>
 #include <iostream>
-#include <interface/graphic/i_graphics_context.h>
-#include <interface/graphic/i_render_state_manager.h>
+#include <graphics/interfaces/i_graphics_context.h>
+#include <graphics/interfaces/i_render_state_manager.h>
+#include <core/engine_context.h>
+#include <core/system_manager.h>
 #include <debug/debug_config.h>
 
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}
 
-void RenderDebugModule::Init(Application* app)
+void RenderDebugModule::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 }
 
 void RenderDebugModule::OnUpdate(float dt)
@@ -32,7 +34,7 @@ void RenderDebugModule::Render(Scene &scene)
 
 void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
     ProcessKey(keyboard, Input::Key::F6, m_F6Pressed, [this, &keyboard]()
@@ -41,7 +43,7 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
         if (shift) {
             static bool skyboxEnabled = true;
             skyboxEnabled = !skyboxEnabled;
-            m_App->GetSkyboxRenderSystem().SetEnabled(skyboxEnabled);
+            m_Ctx.systems->GetSystem<SkyboxRenderSystem>()->SetEnabled(skyboxEnabled);
             std::cout << "\n========== Skybox Toggle (Shift+F6) ==========" << std::endl;
             std::cout << "[Debug] Skybox: " << (skyboxEnabled ? "ON" : "OFF") << std::endl;
             std::cout << "==============================================" << std::endl;
@@ -57,14 +59,14 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
          bool shift = keyboard.GetKey(Input::Key::LeftShift) || keyboard.GetKey(Input::Key::RightShift);
          if (shift) {
-             bool shadow = !m_App->GetRenderSystem().IsShadowsEnabled();
-             m_App->GetRenderSystem().SetEnableShadows(shadow);
+             bool shadow = !m_Ctx.systems->GetSystem<RenderSystem>()->IsShadowsEnabled();
+             m_Ctx.systems->GetSystem<RenderSystem>()->SetEnableShadows(shadow);
              std::cout << "\n========== Shadow Toggle (Shift+F7) ==========" << std::endl;
              std::cout << "[Debug] Shadows: " << (shadow ? "ON" : "OFF") << std::endl;
              std::cout << "============================================" << std::endl;
          } else {
              m_NoTextureMode = !m_NoTextureMode;
-             m_App->GetRenderSystem().SetDebugNoTexture(m_NoTextureMode);
+             m_Ctx.systems->GetSystem<RenderSystem>()->SetDebugNoTexture(m_NoTextureMode);
              std::cout << "\n========== No Texture Mode (F7) ==========" << std::endl;
              std::cout << "[Debug] No Texture Mode: " << (m_NoTextureMode ? "ON" : "OFF") << std::endl;
              std::cout << "==========================================" << std::endl;
@@ -78,7 +80,7 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
         } else {
             static bool uiEnabled = true;
             uiEnabled = !uiEnabled;
-            m_App->GetUIRenderSystem().SetEnabled(uiEnabled);
+            m_Ctx.systems->GetSystem<UIRenderSystem>()->SetEnabled(uiEnabled);
             std::cout << "\n========== UI System (F9) ==========" << std::endl;
             std::cout << "[Debug] UI System: " << (uiEnabled ? "ON" : "OFF") << std::endl;
             std::cout << "====================================" << std::endl;

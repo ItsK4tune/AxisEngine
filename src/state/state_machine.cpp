@@ -1,10 +1,21 @@
+﻿#include <core/engine_context.h>
 #include <state/state_machine.h>
 
-StateMachine::StateMachine(Application *app) : m_App(app) {}
+StateMachine::StateMachine() {}
+
+void StateMachine::Init(EngineContext ctx)
+{
+    m_Ctx = ctx;
+}
+
+void StateMachine::Shutdown()
+{
+    Clear();
+}
 
 void StateMachine::PushState(std::unique_ptr<State> state)
 {
-    state->SetContext(m_App);
+    state->SetContext(m_Ctx);
     state->OnEnter();
     m_States.push(std::move(state));
 }
@@ -53,10 +64,4 @@ void StateMachine::Render()
 {
     if (State *s = GetCurrentState())
         s->OnRender();
-}
-uint32_t StateMachine::GetSystemMask() const
-{
-    if (!m_States.empty())
-        return m_States.top()->GetSystemMask();
-    return 0xFFFFFFFF;
 }

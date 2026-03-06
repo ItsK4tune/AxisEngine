@@ -1,4 +1,4 @@
-#include <debug/modules/physics_debug_module.h>
+﻿#include <debug/modules/physics_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -10,19 +10,25 @@
 #include <ecs/components/physics_components.h>
 #include <ecs/components/audio_component.h>
 #include <ecs/components/particle_component.h>
+#include <core/engine_context.h>
+#include <window/io_handler.h>
+#include <window/monitor_manager.h>
+#include <core/system_manager.h>
+#include <window/interfaces/i_window.h>
 #include <iostream>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <interface/graphic/i_graphics_context.h>
-#include <interface/graphic/i_render_state_manager.h>
+#include <graphics/interfaces/i_graphics_context.h>
+#include <graphics/interfaces/i_render_state_manager.h>
 #include <debug/debug_config.h>
 
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}
 
-void PhysicsDebugModule::Init(Application* app)
+void PhysicsDebugModule::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 }
 
 void PhysicsDebugModule::OnUpdate(float dt)
@@ -31,19 +37,19 @@ void PhysicsDebugModule::OnUpdate(float dt)
 
 void PhysicsDebugModule::Render(Scene &scene)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
-    int width = m_App->GetWidth();
-    int height = m_App->GetHeight();
+    int width = m_Ctx.io->GetMonitorManager().GetWidth();
+    int height = m_Ctx.io->GetMonitorManager().GetHeight();
 
     if (DebugConfig::ShowPhysics)
     {
-        auto &res = m_App->GetResourceManager();
+        auto &res = *m_Ctx.resources;
         auto debugShader = res.GetShader("debugLine");
         if (debugShader)
         {
-            m_App->GetPhysicsSystem().RenderDebug(scene, m_App->GetPhysicsWorld(), *debugShader, width, height, m_App->GetGraphicsContext().GetRenderStateManager());
+            m_Ctx.systems->GetSystem<PhysicsSystem>()->RenderDebug(scene, *m_Ctx.physics, *debugShader, width, height, m_Ctx.io->GetGraphicsContext().GetRenderStateManager());
         }
     }
 
@@ -70,7 +76,7 @@ void PhysicsDebugModule::Render(Scene &scene)
 
 void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
     ProcessKey(keyboard, Input::Key::F8, m_F8Pressed, [this, &keyboard]()

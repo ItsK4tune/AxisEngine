@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include <entt/entt.hpp>
-#include <vector>
 #include <functional>
+#include <vector>
 
 template<typename... Components>
 class CachedQuery
@@ -11,12 +11,27 @@ public:
     using UpdateCallback = std::function<void(entt::registry&)>;
 
     CachedQuery()
-        : m_Dirty(true)
+        : m_Dirty(true), m_SignalsConnected(false)
     {
+    }
+
+    ~CachedQuery()
+    {
+        // We can't safely disconnect signals here generally without a registry pointer, 
+        // but since CachedQuery is almost exclusively stored IN systems whose lifecycles 
+        // match the registry, it's generally safe. However, to be perfectly clean, 
+        // we omit auto-disconnect here. EnTT will clean up signals when the registry dies.
     }
 
     void Update(entt::registry& registry)
     {
+        if (!m_SignalsConnected)
+        {
+            (registry.on_construct<Components>().template connect<&CachedQuery::OnComponentAddedOrRemoved>(this), ...);
+            (registry.on_destroy<Components>().template connect<&CachedQuery::OnComponentAddedOrRemoved>(this), ...);
+            m_SignalsConnected = true;
+        }
+
         if (!m_Dirty)
             return;
 
@@ -58,6 +73,12 @@ public:
     }
 
 private:
+    void OnComponentAddedOrRemoved(entt::registry& registry, entt::entity entity)
+    {
+        m_Dirty = true;
+    }
+
     std::vector<entt::entity> m_CachedEntities;
     bool m_Dirty;
+    bool m_SignalsConnected;
 };

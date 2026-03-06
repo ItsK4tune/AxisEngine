@@ -1,11 +1,11 @@
 ﻿#pragma once
 
-#include <string>
-#include <unordered_map>
+#include <input/input_types.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
-#include <interface/window/i_device_manager.h>
-#include <input/input_types.h>
+#include <window/interfaces/i_device_manager.h>
+#include <string>
+#include <unordered_map>
 
 class InputManager : public IDeviceManager
 {

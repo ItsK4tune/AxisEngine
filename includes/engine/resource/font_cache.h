@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include <graphic/renderer/font.h>
-#include <string>
+#include <graphics/renderer/font.h>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <string>
 
 class FontCache
 {

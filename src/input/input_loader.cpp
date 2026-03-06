@@ -1,11 +1,11 @@
+﻿#include <algorithm>
 #include <input/input_loader.h>
 #include <input/input_manager.h>
-#include <interface/window/input_codes.h>
+#include <window/interfaces/input_codes.h>
+#include <unordered_map>
+#include <utils/filesystem.h>
 #include <utils/logger.h>
 #include <utils/yaml_parser.h>
-#include <unordered_map>
-#include <algorithm>
-#include <utils/filesystem.h>
 
 namespace
 {

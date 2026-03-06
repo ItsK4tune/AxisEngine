@@ -1,43 +1,32 @@
-﻿#pragma once
+#pragma once
 
-#include <string>
-#include <unordered_map>
 #include <functional>
+#include <memory>
 #include <iostream>
 #include <script/scriptable.h>
+#include <string>
+#include <unordered_map>
 #include <utils/logger.h>
 
 class ScriptRegistry
 {
 public:
-    static ScriptRegistry &Instance()
-    {
-        static ScriptRegistry instance;
-        return instance;
-    }
+    static ScriptRegistry &Instance();
 
-    using ScriptFactory = std::function<Scriptable *()>;
+    using ScriptFactory = std::function<std::unique_ptr<Scriptable>()>;
 
     template <typename T>
     void Register(const std::string &name)
     {
         if (m_FactoryMap.find(name) == m_FactoryMap.end())
         {
-            m_FactoryMap[name] = []() -> Scriptable *
-            { return new T(); };
+            m_FactoryMap[name] = []() -> std::unique_ptr<Scriptable>
+            { return std::make_unique<T>(); };
             LOGGER_INFO("ScriptRegistry") << "Registered script: " << name;
         }
     }
 
-    Scriptable *Create(const std::string &name)
-    {
-        if (m_FactoryMap.find(name) != m_FactoryMap.end())
-        {
-            return m_FactoryMap[name]();
-        }
-        LOGGER_ERROR("ScriptRegistry") << "Script not found: " << name;
-        return nullptr;
-    }
+    std::unique_ptr<Scriptable> Create(const std::string &name);
 
 private:
     std::unordered_map<std::string, ScriptFactory> m_FactoryMap;

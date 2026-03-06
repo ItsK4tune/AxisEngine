@@ -1,7 +1,7 @@
-#include <resource/sound_cache.h>
-#include <utils/logger.h>
-#include <utils/filesystem.h>
 #include <iostream>
+#include <resource/sound_cache.h>
+#include <utils/filesystem.h>
+#include <utils/logger.h>
 
 SoundCache::SoundCache()
     : m_SoundEngine(nullptr)

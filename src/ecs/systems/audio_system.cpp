@@ -1,11 +1,11 @@
-#include <ecs/systems/audio_system.h>
-#include <ecs/entity_manager.h>
+#include <audio/sound_player.h>
 #include <ecs/components/camera_component.h>
 #include <ecs/components/transform_component.h>
-#include <audio/sound_player.h>
+#include <ecs/entity_manager.h>
+#include <ecs/systems/audio_system.h>
 #include <utils/logger.h>
 
-void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
+void AudioSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled)
         return;
@@ -21,7 +21,7 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
             lookDir = cam.front;
         }
 
-        soundPlayer.UpdateListener(camTrans.position, lookDir);
+        m_Ctx.soundPlayer->UpdateListener(camTrans.position, lookDir);
     }
 
     auto view = scene.registry.view<AudioSourceComponent>();
@@ -52,18 +52,18 @@ void AudioSystem::Update(Scene &scene, SoundPlayer &soundPlayer)
                 TransformComponent *transform = scene.registry.try_get<TransformComponent>(entity);
                 glm::vec3 pos = transform ? transform->position : glm::vec3(0.0f);
 
-                auto source = soundPlayer.GetEngine()->AddSoundSourceFromFile(audio.filePath);
+                auto source = m_Ctx.soundPlayer->GetEngine()->AddSoundSourceFromFile(audio.filePath);
 
                 if (source)
                 {
                     source->SetDefaultMinDistance(audio.minDistance);
 
-                    audio.sound = soundPlayer.Play3D(audio.filePath, pos, audio.loop);
+                    audio.sound = m_Ctx.soundPlayer->Play3D(audio.filePath, pos, audio.loop);
                 }
             }
             else
             {
-                audio.sound = soundPlayer.GetEngine()->Play2D(audio.filePath, audio.loop, false );
+                audio.sound = m_Ctx.soundPlayer->GetEngine()->Play2D(audio.filePath, audio.loop, false );
             }
 
             if (audio.sound)

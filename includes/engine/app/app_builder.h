@@ -1,7 +1,7 @@
 #pragma once
 
-#include <memory>
 #include <app/config_loader.h>
+#include <memory>
 
 class IGraphicsContext;
 class IAudioEngine;

@@ -1,15 +1,17 @@
 ﻿#pragma once
 
-#include <stack>
+#include <core/engine_context.h>
 #include <memory>
+#include <stack>
 #include <state/state.h>
-
-class Application;
 
 class StateMachine
 {
 public:
-    StateMachine(Application* app);
+    StateMachine();
+
+    void Init(EngineContext ctx);
+    void Shutdown();
 
     void PushState(std::unique_ptr<State> state);
     void PopState();
@@ -22,9 +24,9 @@ public:
     void FixedUpdate(float fixedDt);
     void Render();
 
-    uint32_t GetSystemMask() const;
+
 
 private:
     std::stack<std::unique_ptr<State>> m_States;
-    Application* m_App;
+    EngineContext m_Ctx;
 };

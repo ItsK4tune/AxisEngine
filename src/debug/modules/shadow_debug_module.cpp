@@ -9,9 +9,9 @@
 ShadowDebugModule::ShadowDebugModule() {}
 ShadowDebugModule::~ShadowDebugModule() {}
 
-void ShadowDebugModule::Init(Application* app)
+void ShadowDebugModule::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 }
 
 void ShadowDebugModule::OnUpdate(float dt)

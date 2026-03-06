@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 
+#include <audio/interfaces/i_audio_source.h>
+#include <audio/interfaces/i_sound.h>
 #include <memory>
 #include <string>
-#include <interface/audio/i_sound.h>
-#include <interface/audio/i_audio_source.h>
 
 struct AudioSourceComponent
 {

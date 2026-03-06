@@ -1,11 +1,12 @@
-﻿#pragma once
+#pragma once
 
-#include <entt/entt.hpp>
 #include <ecs/component.h>
-#include <scene/octree.h>
-#include <memory>
-#include <string>
+#include <entt/entt.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <memory>
+#include <scene/octree.h>
+#include <string>
 
 class SceneManager;
 

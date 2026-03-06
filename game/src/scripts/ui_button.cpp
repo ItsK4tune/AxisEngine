@@ -1,10 +1,12 @@
 ﻿#include <app/application.h>
-#include <script/scriptable.h>
-#include <script/script_registry.h>
-#include <iostream>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/compatibility.hpp>
+#include <iostream>
+#include <script/script_registry.h>
+#include <script/scriptable.h>
+#include <script/input_scriptable.h>
 
-class UIButton : public Scriptable
+class UIButton : public InputScriptable
 {
 public:
     glm::vec4 normalColor;
@@ -38,7 +40,7 @@ public:
 
     void ToggleVideo()
     {
-        auto view = m_Scene->registry.view<VideoPlayerComponent>();
+        auto view = GetScene().registry.view<VideoPlayerComponent>();
         bool found = false;
         for (auto entity : view)
         {

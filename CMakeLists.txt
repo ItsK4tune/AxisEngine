@@ -9,7 +9,7 @@ if (NOT WIN32)
     message(FATAL_ERROR "AxisEngine currently only supports Windows.")
 endif()
 
-option(ENABLE_DEBUG_SYSTEM "Enable Runtime Debug System (F1/F2/F3)" OFF)
+option(ENABLE_DEBUG_SYSTEM "Enable Runtime Debug System (F1/F2/F3)" ON)
 
 if(ENABLE_DEBUG_SYSTEM)
     add_compile_definitions(ENABLE_DEBUG_SYSTEM)

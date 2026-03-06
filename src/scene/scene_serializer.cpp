@@ -1,16 +1,17 @@
-#include <scene/scene_serializer.h>
-#include <utils/logger.h>
-#include <utils/filesystem.h>
+﻿#include <app/application.h>
 #include <app/config_loader.h>
-#include <app/monitor_manager.h>
-#include <scene/component_loader.h>
-#include <physic/physics_loader.h>
-#include <app/application.h>
-#include <scene/handlers/scene_validator.h>
-#include <utils/yaml_parser.h>
+#include <window/io_handler.h>
+#include <window/monitor_manager.h>
 #include <ecs/entity_manager.h>
+#include <physics/physics_loader.h>
+#include <scene/component_loader.h>
+#include <scene/handlers/scene_validator.h>
+#include <scene/scene_serializer.h>
+#include <utils/filesystem.h>
+#include <utils/logger.h>
+#include <utils/yaml_parser.h>
 
-SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, Application *app)
+SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, EngineContext ctx)
 {
     SceneLoadResult result;
     std::string fullPath = FileSystem::getPath(filepath);
@@ -42,7 +43,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
     {
         if (root.key == "Config")
         {
-            AppConfig tempConfig = app ? app->GetConfig() : AppConfig{};
+            AppConfig tempConfig = ctx.IsValid() ? ctx.runtime->GetConfig() : AppConfig{};
             bool applyWindow = false;
 
             for (auto &cfgNode : root.children)
@@ -58,12 +59,12 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
 
                 std::stringstream ss2;
                 ss2 << cfgNode.key << " " << cfgNode.value;
-                ConfigLoader::LoadConfig(ss2, app);
+                ConfigLoader::LoadConfig(ss2, ctx);
             }
 
-            if (applyWindow && app)
+            if (applyWindow && ctx.IsValid())
             {
-                app->GetMonitorManager().SetWindowConfiguration(
+                ctx.io->GetMonitorManager().SetWindowConfiguration(
                     tempConfig.width, tempConfig.height,
                     (WindowMode)tempConfig.windowMode,
                     tempConfig.monitorIndex, tempConfig.refreshRate);
@@ -133,7 +134,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 {
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
-                    if (app)
+                    if (ctx.IsValid())
                         res.LoadSound(name, path, nullptr);
                     result.loadedSounds.push_back(name);
                 }
@@ -204,46 +205,18 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                     deferredChildren[currentEntity].push_back(pNode->value);
                 }
 
+                ComponentLoader::InitializeDefaultLoaders();
+
                 for (auto &compNode : entNode.children)
                 {
                     if (compNode.key != "Component")
                         continue;
                     std::string compType = compNode.value;
 
-                    if (compType == "Renderer")
-                        ComponentLoader::LoadRenderer(scene, currentEntity, compNode, res);
-                    else if (compType == "Animator")
-                        ComponentLoader::LoadAnimator(scene, currentEntity, compNode, res);
-                    else if (compType == "Camera")
-                        ComponentLoader::LoadCamera(scene, currentEntity, compNode);
-                    else if (compType == "LightDir")
-                        ComponentLoader::LoadLightDir(scene, currentEntity, compNode);
-                    else if (compType == "LightPoint")
-                        ComponentLoader::LoadLightPoint(scene, currentEntity, compNode);
-                    else if (compType == "LightSpot")
-                        ComponentLoader::LoadLightSpot(scene, currentEntity, compNode);
-                    else if (compType == "UITransform")
-                        ComponentLoader::LoadUITransform(scene, currentEntity, compNode);
-                    else if (compType == "UIRenderer")
-                        ComponentLoader::LoadUIRenderer(scene, currentEntity, compNode, res);
-                    else if (compType == "UIText")
-                        ComponentLoader::LoadUIText(scene, currentEntity, compNode, res);
-                    else if (compType == "SkyboxRenderer")
-                        ComponentLoader::LoadSkyboxRenderer(scene, currentEntity, compNode, res);
-                    else if (compType == "Script")
-                        ComponentLoader::LoadScript(scene, currentEntity, compNode, app);
-                    else if (compType == "AudioSource")
-                        ComponentLoader::LoadAudioSource(scene, currentEntity, compNode);
-                    else if (compType == "VideoPlayer")
-                        ComponentLoader::LoadVideoPlayer(scene, currentEntity, compNode);
-                    else if (compType == "ParticleEmitter")
-                        ComponentLoader::LoadParticleEmitter(scene, currentEntity, compNode, res);
-                    else if (compType == "Material")
-                        ComponentLoader::LoadMaterial(scene, currentEntity, compNode, res);
-                    else if (compType == "LOD")
-                        ComponentLoader::LoadLOD(scene, currentEntity, compNode, res);
-                    else if (compType == "RigidBody")
-                        PhysicsLoader::LoadRigidBody(scene, currentEntity, compNode, phys);
+                    if (!ComponentLoader::Load(compType, scene, currentEntity, compNode, res, phys, ctx))
+                    {
+                        LOGGER_WARN("SceneSerializer") << "No ComponentLoader registered for component type: " << compType;
+                    }
                 }
             }
         }
@@ -252,7 +225,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
     SceneHandlers::SceneValidator::ValidateParentChildRelationships(scene, deferredChildren);
     SceneHandlers::SceneValidator::ValidateLights(scene);
     SceneHandlers::SceneValidator::ValidatePhysicsSync(scene, phys);
-    SceneHandlers::SceneValidator::ValidateCamera(scene, app);
+    SceneHandlers::SceneValidator::ValidateCamera(scene, ctx);
 
     LOGGER_INFO("SceneSerializer") << "Finished parsing AXS file: " << fullPath;
     return result;

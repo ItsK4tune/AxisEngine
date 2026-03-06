@@ -1,11 +1,9 @@
-#pragma once
+﻿#pragma once
 
-#include <string>
+#include <core/engine_context.h>
 #include <iostream>
-
 #include <sstream>
-
-class Application;
+#include <string>
 
 struct AppConfig
 {
@@ -48,6 +46,6 @@ struct AppConfig
 class ConfigLoader
 {
 public:
-    static void LoadConfig(std::stringstream &ss, Application* app);
+    static void LoadConfig(std::stringstream &ss, EngineContext ctx);
     static void LoadConfig(std::stringstream &ss, AppConfig &config);
 };

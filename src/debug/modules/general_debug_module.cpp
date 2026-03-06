@@ -1,10 +1,10 @@
-#include <debug/modules/general_debug_module.h>
+﻿#include <debug/modules/general_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
 #include <app/application.h>
-#include <app/io_handler.h>
-#include <app/monitor_manager.h>
+#include <window/io_handler.h>
+#include <window/monitor_manager.h>
 #include <input/input_manager.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
@@ -14,7 +14,7 @@
 #include <ecs/components/render_components.h>
 #include <ecs/components/ui_components.h>
 #include <ecs/components/physics_components.h>
-#include <interface/window/input_codes.h>
+#include <window/interfaces/input_codes.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -29,9 +29,9 @@
 GeneralDebugModule::GeneralDebugModule() {}
 GeneralDebugModule::~GeneralDebugModule() {}
 
-void GeneralDebugModule::Init(Application* app)
+void GeneralDebugModule::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 
     m_GpuName = "Unknown GPU";
 
@@ -80,7 +80,7 @@ void GeneralDebugModule::Init(Application* app)
 
 void GeneralDebugModule::OnUpdate(float dt)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
     m_FpsTimer += dt;
@@ -101,7 +101,7 @@ void GeneralDebugModule::Render(Scene &scene)
 
 void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
     ProcessKey(keyboard, Input::Key::F1, m_F1Pressed, [this]()
@@ -121,8 +121,8 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
 
     ProcessKey(keyboard, Input::Key::F11, m_F11Pressed, [this]()
                {
-        bool paused = !m_App->IsPaused();
-        m_App->SetPaused(paused);
+        bool paused = !m_Ctx.runtime->IsPaused();
+        m_Ctx.runtime->SetPaused(paused);
         std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
         std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << std::endl;
         std::cout << "======================================" << std::endl; });
@@ -133,7 +133,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
 
         if (shift)
         {
-            auto& mouse = m_App->GetMouse();
+            auto& mouse = m_Ctx.io->GetMouse();
             Input::CursorMode current = mouse.GetCursorMode();
             Input::CursorMode next = Input::CursorMode::Normal;
             std::string modeName = "Normal";
@@ -154,7 +154,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
         }
         else
         {
-            float current = m_App->GetTimeScale();
+            float current = m_Ctx.runtime->GetTimeScale();
             float next = 1.0f;
             if (abs(current - 0.25f) < 0.01f) next = 0.5f;
             else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
@@ -163,7 +163,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
             else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
             else next = 1.0f;
 
-            m_App->SetTimeScale(next);
+            m_Ctx.runtime->SetTimeScale(next);
             std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
             std::cout << "[Debug] Time Scale: " << next << "x" << std::endl;
             std::cout << "======================================" << std::endl;
@@ -188,11 +188,11 @@ void GeneralDebugModule::LogDevices()
         }
     };
 
-    auto &mons = m_App->GetMonitorManager();
+    auto &mons = m_Ctx.io->GetMonitorManager();
     std::string activeMonId = mons.GetCurrentDevice().id;
     logHelper("Monitors", mons.GetAllDevices(), activeMonId);
 
-    auto &inputs = m_App->GetInputManager();
+    auto &inputs = m_Ctx.io->GetInputManager();
     auto allInputs = inputs.GetAllDevices();
     std::cout << "Inputs:" << std::endl;
     for (const auto &dev : allInputs)
@@ -201,7 +201,7 @@ void GeneralDebugModule::LogDevices()
         std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
     }
 
-    auto &audio = m_App->GetIOHandler().GetAudioManager();
+    auto &audio = m_Ctx.io->GetAudioManager();
     std::string activeAudio = audio.GetCurrentDevice().id;
     logHelper("Audio", audio.GetAllDevices(), activeAudio);
 
@@ -211,7 +211,7 @@ void GeneralDebugModule::LogDevices()
 void GeneralDebugModule::LogSceneGraph()
 {
     std::cout << "\n========== SCENE GRAPH DUMP (F5) ==========" << std::endl;
-    auto view = m_App->GetScene().registry.view<InfoComponent>();
+    auto view = m_Ctx.scene->registry.view<InfoComponent>();
     int count = 0;
     for (auto entity : view)
     {
@@ -271,7 +271,7 @@ void GeneralDebugModule::LogStats()
 
 void GeneralDebugModule::LogEntityStats()
 {
-    auto &reg = m_App->GetScene().registry;
+    auto &reg = m_Ctx.scene->registry;
     size_t total = reg.storage<entt::entity>().size();
 
     size_t uiEntities = reg.view<UITransformComponent>().size();

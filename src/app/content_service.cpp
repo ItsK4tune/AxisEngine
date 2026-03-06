@@ -1,8 +1,10 @@
-#include <app/content_service.h>
+﻿#include <app/content_service.h>
 
-ContentService::ContentService(ResourceManager& resources, SceneManager& sceneManager, SoundPlayer& soundPlayer)
-    : m_Resources(resources)
-    , m_SceneManager(sceneManager)
-    , m_SoundPlayer(soundPlayer)
+ContentService::ContentService() {}
+
+void ContentService::Init(EngineContext ctx)
 {
+    m_Resources = ctx.resources;
+    m_SceneManager = ctx.sceneManager;
+    m_SoundPlayer = ctx.soundPlayer;
 }

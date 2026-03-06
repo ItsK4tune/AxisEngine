@@ -1,9 +1,8 @@
-#include <app/app_builder.h>
-
-#include <graphic/backends/opengl_context.h>
+﻿#include <app/app_builder.h>
+#include <window/backends/glfw_window.h>
 #include <audio/backends/irrklang_audio_engine.h>
-#include <physic/backends/bullet_physics_world.h>
-#include <app/backends/glfw_window.h>
+#include <graphics/backends/opengl_context.h>
+#include <physics/backends/bullet_physics_world.h>
 #include <utils/logger.h>
 
 std::unique_ptr<IGraphicsContext> AppBuilder::CreateGraphicsContext(const AppConfig &config)

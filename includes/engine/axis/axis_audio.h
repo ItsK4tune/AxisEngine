@@ -1,5 +1,5 @@
-#pragma once
+﻿#pragma once
 
 #include <audio/sound_player.h>
-#include <interface/audio/i_audio_engine.h>
-#include <interface/audio/i_audio_source.h>
+#include <audio/interfaces/i_audio_engine.h>
+#include <audio/interfaces/i_audio_source.h>

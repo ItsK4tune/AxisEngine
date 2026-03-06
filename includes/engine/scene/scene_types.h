@@ -1,9 +1,9 @@
 #pragma once
 
+#include <app/config_loader.h>
+#include <entt/entt.hpp>
 #include <string>
 #include <vector>
-#include <entt/entt.hpp>
-#include <app/config_loader.h>
 
 struct SceneRecord
 {
@@ -11,7 +11,7 @@ struct SceneRecord
     std::string filePath;
     int  loadOrder = 0;
     bool persistent = false;
-    bool inviolable = false;    // true for load.axs - cannot be unloaded by any method
+    bool inviolable = false;
 
     std::vector<entt::entity> entities;
 

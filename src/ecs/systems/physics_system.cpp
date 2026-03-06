@@ -1,15 +1,15 @@
+﻿#include <ecs/components/info_component.h>
 #include <ecs/systems/physics_system.h>
-#include <utils/logger.h>
-#include <physic/physics_transform_sync.h>
-#include <physic/physics_collision_dispatcher.h>
 #include <engine/ecs/cached_query.h>
-#include <script/scriptable.h>
-#include <physic/collision_matrix.h>
-#include <ecs/components/info_component.h>
-
-#include <interface/physics/i_physics_world.h>
-#include <utils/bullet_glm_helpers.h>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
+#include <physics/interfaces/i_physics_world.h>
+#include <physics/collision_matrix.h>
+#include <physics/physics_collision_dispatcher.h>
+#include <physics/physics_transform_sync.h>
+#include <script/scriptable.h>
+#include <utils/bullet_glm_helpers.h>
+#include <utils/logger.h>
 
 PhysicsSystem::PhysicsSystem()
 {
@@ -19,19 +19,19 @@ PhysicsSystem::~PhysicsSystem()
 {
 }
 
-void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
+void PhysicsSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled)
         return;
 
-    if (&scene != m_LastScene || &physicsWorld != m_LastPhysicsWorld)
+    if (&scene != m_LastScene || m_Ctx.physics != m_LastPhysicsWorld)
     {
         LOGGER_INFO("PhysicsSystem") << "Scene or PhysicsWorld changed reinitializing subsystems";
         Reset();
         m_LastScene = &scene;
-        m_LastPhysicsWorld = &physicsWorld;
+        m_LastPhysicsWorld = m_Ctx.physics;
 
-        physicsWorld.SetCollisionFilter([&scene](entt::entity eA, entt::entity eB) -> bool {
+        m_Ctx.physics->SetCollisionFilter([&scene](entt::entity eA, entt::entity eB) -> bool {
             if (!scene.registry.valid(eA) || !scene.registry.valid(eB))
                 return false;
 
@@ -68,20 +68,20 @@ void PhysicsSystem::Update(Scene &scene, IPhysicsWorld &physicsWorld, float dt)
     if (!m_transformSync)
     {
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Transform Sync";
-        m_transformSync = std::make_unique<PhysicsTransformSync>(scene, physicsWorld);
+        m_transformSync = std::make_unique<PhysicsTransformSync>(scene, *m_Ctx.physics);
         m_transformSync->Init();
     }
 
     m_transformSync->SyncToPhysics();
 
-    physicsWorld.Update(dt);
+    m_Ctx.physics->Update(dt);
 
     m_transformSync->SyncFromPhysics();
 
     if (!m_collisionDispatcher)
     {
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Collision Dispatcher";
-        m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, physicsWorld);
+        m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, *m_Ctx.physics);
     }
     
     m_collisionDispatcher->DispatchEvents();
@@ -178,6 +178,6 @@ void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shade
     shader.setMat4("projection", projection);
 
     renderState.Disable(Graphics::ServerCapability::DepthTest);
-    physicsWorld.DebugDraw();
+    m_Ctx.physics->DebugDraw();
     renderState.Enable(Graphics::ServerCapability::DepthTest);
 }

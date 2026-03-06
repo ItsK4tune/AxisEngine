@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include <interface/window/i_window.h>
-#include <interface/window/input_codes.h>
+#include <window/interfaces/i_window.h>
+#include <window/interfaces/input_codes.h>
 
 class MouseManager
 {

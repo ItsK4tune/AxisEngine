@@ -1,11 +1,11 @@
 ﻿#pragma once
 
-#include <graphic/geometry/mesh.h>
+#include <future>
+#include <graphics/geometry/mesh.h>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <future>
-#include <mutex>
 
 class ITextureManager;
 

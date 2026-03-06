@@ -1,5 +1,5 @@
-#include <debug/modules/overlay_debug_module.h>
-#include <interface/graphic/i_graphics_context.h>
+﻿#include <debug/modules/overlay_debug_module.h>
+#include <graphics/interfaces/i_graphics_context.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -9,10 +9,17 @@
 #include <ecs/systems/render_system.h>
 #include <ecs/systems/skybox_system.h>
 #include <ecs/systems/ui_system.h>
+#include <core/engine_context.h>
+#include <window/io_handler.h>
+#include <window/monitor_manager.h>
+#include <core/system_manager.h>
+#include <core/runtime_core.h>
+#include <window/interfaces/i_window.h>
 #include <iostream>
 
 #include <sstream>
 #include <iomanip>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <debug/debug_config.h>
@@ -20,9 +27,9 @@
 OverlayDebugModule::OverlayDebugModule() {}
 OverlayDebugModule::~OverlayDebugModule() {}
 
-void OverlayDebugModule::Init(Application* app)
+void OverlayDebugModule::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 }
 
 void OverlayDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
@@ -45,21 +52,21 @@ void OverlayDebugModule::OnUpdate(float dt)
 
 void OverlayDebugModule::Render(Scene &scene)
 {
-    if (!m_App || !m_Enabled || !m_ShowStatsOverlay)
+    if (!m_Ctx.IsValid() || !m_Enabled || !m_ShowStatsOverlay)
         return;
 
     if (!m_DebugFont || !m_TextShader || !m_TextQuad)
         return;
 
-    int width = m_App->GetWidth();
-    int height = m_App->GetHeight();
+    int width = m_Ctx.io->GetMonitorManager().GetWidth();
+    int height = m_Ctx.io->GetMonitorManager().GetHeight();
 
-    m_App->GetGraphicsContext().SetDepthTest(false);
-    m_App->GetGraphicsContext().SetBlending(true);
-    m_App->GetGraphicsContext().SetBlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
+    m_Ctx.io->GetGraphicsContext().SetDepthTest(false);
+    m_Ctx.io->GetGraphicsContext().SetBlending(true);
+    m_Ctx.io->GetGraphicsContext().SetBlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::OneMinusSrcAlpha);
 
     size_t totalEntities = scene.registry.storage<entt::entity>().size();
-    int renderedEntities = m_App->GetRenderSystem().GetRenderedCount();
+    int renderedEntities = m_Ctx.systems->GetSystem<RenderSystem>()->GetRenderedCount();
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(1);
@@ -68,7 +75,7 @@ void OverlayDebugModule::Render(Scene &scene)
     {
         ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
         ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities << "\n";
-        ss << "TimeScale: " << m_App->GetTimeScale() << "x | Paused: " << (m_App->IsPaused() ? "YES" : "NO") << "\n";
+        ss << "TimeScale: " << m_Ctx.runtime->GetTimeScale() << "x | Paused: " << (m_Ctx.runtime->IsPaused() ? "YES" : "NO") << "\n";
     };
 
     auto appendTools = [&]()
@@ -76,13 +83,13 @@ void OverlayDebugModule::Render(Scene &scene)
         ss << "=== DEBUG TOOLS ===\n";
         auto boolStr = [](bool v)
         { return v ? "[ON]" : "[OFF]"; };
-        ss << "F6: Wireframe: " << boolStr(DebugConfig::ShowWireframe) << "  | S+F6: Skybox: " << boolStr(m_App->GetSkyboxRenderSystem().IsEnabled()) << "\n";
-        ss << "F7: NoTexture: " << boolStr(m_App->GetRenderSystem().IsDebugNoTexture()) << "  | S+F7: Shadows: " << boolStr(m_App->GetRenderSystem().IsShadowsEnabled()) << "\n";
+        ss << "F6: Wireframe: " << boolStr(DebugConfig::ShowWireframe) << "  | S+F6: Skybox: " << boolStr(m_Ctx.systems->GetSystem<SkyboxRenderSystem>()->IsEnabled()) << "\n";
+        ss << "F7: NoTexture: " << boolStr(m_Ctx.systems->GetSystem<RenderSystem>()->IsDebugNoTexture()) << "  | S+F7: Shadows: " << boolStr(m_Ctx.systems->GetSystem<RenderSystem>()->IsShadowsEnabled()) << "\n";
         ss << "F8: Physics: " << boolStr(DebugConfig::ShowPhysics) << "    | S+F8: Audio: [NYI]\n";
-        ss << "F9: UI System: " << boolStr(m_App->GetUIRenderSystem().IsEnabled()) << " | S+F9: Particle: [NYI]\n";
+        ss << "F9: UI System: " << boolStr(m_Ctx.systems->GetSystem<UIRenderSystem>()->IsEnabled()) << " | S+F9: Particle: [NYI]\n";
         ss << "S+F3: Names: " << boolStr(false) << "    | S+F4: Gizmos: " << boolStr(DebugConfig::ShowGizmos) << "\n";
         ss << "S+F5: Lights: " << boolStr(false) << "   | S+F11: Cam\n";
-        ss << "F11: Paused:   " << boolStr(m_App->IsPaused());
+        ss << "F11: Paused:   " << boolStr(m_Ctx.runtime->IsPaused());
     };
 
     if (m_OverlayMode == 1)
@@ -121,13 +128,13 @@ void OverlayDebugModule::Render(Scene &scene)
         yStart += 25.0f;
     }
 
-    m_App->GetGraphicsContext().SetBlending(false);
-    m_App->GetGraphicsContext().SetDepthTest(true);
+    m_Ctx.io->GetGraphicsContext().SetBlending(false);
+    m_Ctx.io->GetGraphicsContext().SetDepthTest(true);
 }
 
 void OverlayDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_App || !m_Enabled)
+    if (!m_Ctx.IsValid() || !m_Enabled)
         return;
 
     ProcessKey(keyboard, Input::Key::F10, m_F10Pressed, [this, &keyboard]()
@@ -174,8 +181,8 @@ void OverlayDebugModule::ToggleStatsOverlay()
 
 void OverlayDebugModule::RenderText(const std::string &text, float x, float y, float scale, glm::vec3 color)
 {
-    int width = m_App->GetWidth();
-    int height = m_App->GetHeight();
+    int width = m_Ctx.io->GetMonitorManager().GetWidth();
+    int height = m_Ctx.io->GetMonitorManager().GetHeight();
 
     m_TextShader->use();
     glm::mat4 projection = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);

@@ -1,15 +1,15 @@
 ﻿#pragma once
 
 #include <entt/entt.hpp>
-#include <graphic/geometry/model.h>
-#include <string>
-#include <unordered_map>
-#include <vector>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-
+#include <graphics/geometry/model.h>
 #include <memory>
 #include <mutex>
 #include <resource/model_types.h>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 class ModelInstanceManager
 {

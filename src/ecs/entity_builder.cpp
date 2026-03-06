@@ -1,12 +1,12 @@
+﻿#include <ecs/components/info_component.h>
 #include <ecs/entity_builder.h>
+#include <script/scriptable.h>
 #include <ecs/entity_manager.h>
-#include <app/application.h>
+#include <graphics/geometry/animator.h>
 #include <resource/resource_manager.h>
-#include <ecs/components/info_component.h>
-#include <graphic/geometry/animator.h>
 
-EntityBuilder::EntityBuilder(Scene& scene, Application* app)
-    : m_Scene(scene), m_App(app)
+EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources)
+    : m_Scene(scene), m_Resources(resources)
 {
     m_Entity = m_Scene.registry.create();
 }
@@ -43,7 +43,7 @@ EntityBuilder& EntityBuilder::WithTransform(const glm::vec3& pos, const glm::vec
 
 EntityBuilder& EntityBuilder::WithMesh(const std::string& modelName, const std::string& shaderName)
 {
-    auto& res = m_App->GetResourceManager();
+    auto& res = m_Resources;
     auto& mesh = m_Scene.registry.get_or_emplace<MeshRendererComponent>(m_Entity);
     mesh.model = res.GetModel(modelName);
     mesh.shader = res.GetShader(shaderName);
@@ -59,20 +59,20 @@ EntityBuilder& EntityBuilder::WithMaterial(const MaterialComponent& material)
 EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const glm::vec3& specular, float shininess)
 {
     auto& mat = m_Scene.registry.get_or_emplace<MaterialComponent>(m_Entity);
-    mat.type = MaterialType::PHONG;
-    mat.ambient = ambient;
-    mat.specular = specular;
-    mat.shininess = shininess;
+    mat.desc.type = MaterialType::PHONG;
+    mat.desc.ambient = ambient;
+    mat.desc.specular = specular;
+    mat.desc.shininess = shininess;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithPBRMaterial(float metallic, float roughness, float ao)
 {
     auto& mat = m_Scene.registry.get_or_emplace<MaterialComponent>(m_Entity);
-    mat.type = MaterialType::PBR;
-    mat.metallic = metallic;
-    mat.roughness = roughness;
-    mat.ao = ao;
+    mat.desc.type = MaterialType::PBR;
+    mat.desc.metallic = metallic;
+    mat.desc.roughness = roughness;
+    mat.desc.ao = ao;
     return *this;
 }
 
@@ -94,7 +94,7 @@ EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::v
 
 EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::string& fontName, float scale, const glm::vec3& color)
 {
-    auto& res = m_App->GetResourceManager();
+    auto& res = m_Resources;
     auto& textComp = m_Scene.registry.get_or_emplace<UITextComponent>(m_Entity);
     
     textComp.text = text;
@@ -117,7 +117,7 @@ EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::str
 
 EntityBuilder& EntityBuilder::WithAudio(const std::string& soundName, bool loop, float volume)
 {
-    auto& res = m_App->GetResourceManager();
+    auto& res = m_Resources;
     auto& audio = m_Scene.registry.get_or_emplace<AudioSourceComponent>(m_Entity);
     audio.sound = std::dynamic_pointer_cast<ISound>(res.GetSound(soundName));
     if (audio.sound)
@@ -136,7 +136,7 @@ EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
 
 EntityBuilder& EntityBuilder::WithAnimation(const std::string& animationName)
 {
-    auto& res = m_App->GetResourceManager();
+    auto& res = m_Resources;
     auto& anim = m_Scene.registry.get_or_emplace<AnimationComponent>(m_Entity);
     anim.animations.push_back(animationName);
     

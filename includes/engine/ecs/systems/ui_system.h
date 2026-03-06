@@ -1,17 +1,24 @@
 ﻿#pragma once
 
-#include <scene/scene.h>
+#include <ecs/i_system.h>
+
 #include <input/mouse_manager.h>
+#include <graphics/interfaces/i_render_state_manager.h>
+#include <scene/scene.h>
 
-#include <interface/graphic/i_render_state_manager.h>
-
-class UIRenderSystem
+class UIRenderSystem : public ISystem
 {
 public:
-    void Render(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState);
-    void SetEnabled(bool enable) { m_Enabled = enable; }
-    bool IsEnabled() const { return m_Enabled; }
+
+    void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    int GetPriority() const override { return 90; }
+    std::string GetName() const override { return "UIRenderSystem"; }
+    void Render(Scene &scene) override;
+    void RenderUI(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState);
 
 private:
+    EngineContext m_Ctx;
     bool m_Enabled = true;
 };

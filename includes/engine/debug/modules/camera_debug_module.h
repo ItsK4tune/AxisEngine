@@ -2,10 +2,11 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <interface/debug/i_debug_module.h>
+#include <core/engine_context.h>
 #include <entt/entity/entity.hpp>
 #include <functional>
-#include <interface/window/input_codes.h>
+#include <debug/interfaces/i_debug_module.h>
+#include <window/interfaces/input_codes.h>
 #include <string>
 
 class Application;
@@ -16,7 +17,7 @@ public:
     CameraDebugModule();
     ~CameraDebugModule() override;
 
-    virtual void Init(Application* app) override;
+    virtual void Init(EngineContext ctx) override;
     void OnUpdate(float dt) override;
     void Render(Scene &scene) override;
     void ProcessInput(KeyboardManager &keyboard) override;
@@ -32,7 +33,7 @@ private:
     void ToggleDebugCamera();
     void ProcessKey(KeyboardManager &keyboard, Input::Key key, bool &pressedState, std::function<void()> action);
 
-    Application* m_App = nullptr;
+    EngineContext m_Ctx;
     bool m_Enabled = true;
 
     bool m_F11Pressed = false;

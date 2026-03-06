@@ -1,18 +1,25 @@
-﻿#pragma once
+#pragma once
+
+#include <ecs/i_system.h>
 
 #include <scene/scene.h>
 
 class SoundPlayer;
 #include <audio/sound_player.h>
 
-class AudioSystem
+class AudioSystem : public ISystem
 {
 public:
-    void Update(Scene &scene, SoundPlayer &soundPlayer);
+
+    void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    int GetPriority() const override { return 30; }
+    std::string GetName() const override { return "AudioSystem"; }
+    void Update(Scene &scene, float dt) override;
     void StopAll(Scene &scene);
-    void SetEnabled(bool enable) { m_Enabled = enable; }
-    bool IsEnabled() const { return m_Enabled; }
 
 private:
+    EngineContext m_Ctx;
     bool m_Enabled = true;
 };

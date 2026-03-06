@@ -1,8 +1,8 @@
-#include <resource/resource_watcher.h>
-#include <utils/logger.h>
-#include <iostream>
 #include <chrono>
 #include <event/event_system.h>
+#include <iostream>
+#include <resource/resource_watcher.h>
+#include <utils/logger.h>
 
 ResourceWatcher::ResourceWatcher()
     : m_Running(true)

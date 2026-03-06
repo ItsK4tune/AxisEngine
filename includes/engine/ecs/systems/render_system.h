@@ -1,16 +1,25 @@
 ﻿#pragma once
 
-#include <glm/glm.hpp>
-#include <scene/scene.h>
-#include <graphic/geometry/static_batch_manager.h>
-#include <vector>
-#include <ecs/component.h>
-#include <graphic/renderer/shadow_renderer.h>
-#include <graphic/renderer/light_renderer.h>
-#include <interface/graphic/graphics_types.h>
-#include <ecs/components/occlusion_component.h>
-#include <interface/graphic/i_query_manager.h>
+#include <ecs/i_system.h>
 
+#include <ecs/component.h>
+#include <ecs/components/occlusion_component.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <graphics/geometry/static_batch_manager.h>
+#include <graphics/renderer/light_renderer.h>
+#include <graphics/renderer/shadow_renderer.h>
+#include <graphics/interfaces/graphics_types.h>
+#include <graphics/interfaces/i_query_manager.h>
+#include <scene/scene.h>
+#include <vector>
+#include <graphics/renderer/frustum_culler.h>
+#include <graphics/renderer/occlusion_culler.h>
+#include <graphics/renderer/render_queue.h>
+#include <graphics/renderer/command_queue.h>
+#include <graphics/renderer/material_renderer.h>
+
+#include <resource/i_resource_libraries.h>
 class ResourceManager;
 class Shader;
 class IGraphicsContext;
@@ -22,25 +31,22 @@ enum class AntiAliasingMode
     TAA = 2
 };
 
-struct RenderItem
-{
-    entt::entity entity;
-    Model *activeModel;
-    glm::mat4 worldMatrix;
-    uint32_t layer;
-    int renderOrder;
-    float distSq;
-    bool isTransparent;
-};
 
-class RenderSystem
+class RenderSystem : public ISystem
 {
 public:
+
+    void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    int GetPriority() const override { return 80; }
+    std::string GetName() const override { return "RenderSystem"; }
     void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0);
     void RenderShadows(Scene &scene);
-    void Render(Scene &scene, int width, int height, float alpha);
+    void RenderAlpha(Scene &scene, int width, int height, float alpha);
+    void Render(Scene &scene) override;
 
-    void Init(IGraphicsContext& context, ResourceManager &res);
+    void Init(IGraphicsContext& context, IShaderLibrary &shaderLib);
     void Shutdown();
 
     void SetEnableShadows(bool enable) { m_ShadowRenderer.SetEnableShadows(enable); }
@@ -54,8 +60,6 @@ public:
     Shadow &GetShadow() { return m_ShadowRenderer.GetShadow(); }
     int GetRenderedCount() const { return m_RenderedCount; }
 
-    void SetEnabled(bool enable) { m_Enabled = enable; }
-    bool IsEnabled() const { return m_Enabled; }
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
     bool IsDebugNoTexture() const { return m_DebugNoTexture; }
     void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
@@ -83,15 +87,12 @@ public:
 
     StaticBatchManager &GetBatchManager() { return m_BatchManager; }
 
-    void SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene);
-
+    
     IGraphicsContext* GetContext() const { return m_Context; }
 
 private:
-    void RenderOcclusionQueries(Scene &scene, const glm::mat4& projection, const glm::mat4& view, float alpha);
-    void UpdateOcclusionResults(Scene &scene);
-    void InitOcclusionCube();
-    IGraphicsContext* m_Context = nullptr;
+    EngineContext m_Ctx;
+        IGraphicsContext* m_Context = nullptr;
     ShadowRenderer m_ShadowRenderer;
     LightRenderer m_LightRenderer;
     StaticBatchManager m_BatchManager;
@@ -120,9 +121,11 @@ private:
     int m_LastWidth = -1;
     int m_LastHeight = -1;
 
-    std::vector<uint32_t> m_OcclusionQueries;
-    std::vector<RenderItem> m_RenderQueue;
-    std::vector<RenderItem> m_ShadowQueue;
+    
+    FrustumCuller m_FrustumCuller;
+    OcclusionCuller m_OcclusionCuller;
+    RenderQueue m_RenderQueueObj;
+    MaterialRenderer m_MaterialRenderer;
 
     std::vector<std::string> m_BonesUniforms;
     std::vector<std::string> m_ShadowPointUniforms;
@@ -131,8 +134,5 @@ private:
     std::vector<std::string> m_LightSpaceMatrixUniforms;
     std::vector<std::string> m_LightSpaceMatrixSpotUniforms;
 
-    std::shared_ptr<Shader> m_OcclusionQueryShader;
-    unsigned int m_CubeVAO = 0;
-    unsigned int m_CubeVBO = 0;
-    unsigned int m_CubeEBO = 0;
+    CommandQueue m_CommandQueue;
 };

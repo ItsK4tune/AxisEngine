@@ -1,14 +1,15 @@
 ﻿#pragma once
 
+#include <core/engine_context.h>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 namespace Input { enum class CursorMode; }
-class Application;
 
-class State
+#include <core/engine_accessor.h>
+class State : public EngineAccessor
 {
 public:
     virtual ~State() = default;
@@ -19,57 +20,5 @@ public:
     virtual void OnRender() = 0;
     virtual void OnExit() = 0;
 
-    virtual uint32_t GetSystemMask() const { return m_SystemMask; }
-
-    class RenderSystem&       GetRenderSystem();
-    class PhysicsSystem&      GetPhysicsSystem();
-    class AudioSystem&        GetAudioSystem();
-    class UIRenderSystem&     GetUIRenderSystem();
-    class ScriptableSystem&   GetScriptSystem();
-    class ParticleSystem&     GetParticleSystem();
-    class SkyboxRenderSystem& GetSkyboxRenderSystem();
-    class AnimationSystem&    GetAnimationSystem();
-    class VideoSystem&        GetVideoSystem();
-
-    class Scene&           GetScene();
-    class SceneManager&    GetSceneManager();
-    class ResourceManager& GetResourceManager();
-    class SoundPlayer&     GetSoundPlayer();
-    class IOHandler&       GetIOHandler();
-    class InputManager&    GetInputManager();
-    class KeyboardManager& GetKeyboard();
-    class MouseManager&    GetMouse();
-
-    void LoadScene(const std::string& path, bool persistent = false);
-    void LoadInputBindings(const std::string& path);
-    void QueueLoadScene(const std::string& path, bool persistent = false);
-    void UnloadScene(const std::string& path);
-    void UnloadScene(const struct SceneRecord* rec);
-    void ChangeScene(const std::string& path);
-    void PopScene();
-    void QueuePopScene();
-    bool IsSceneLoaded(const std::string& path);
-    void LogAllScenes();
-    std::vector<const struct SceneRecord*> GetScenes();
-    void SetCursorMode(Input::CursorMode mode);
-
-    void EnablePhysics(bool enable);
-    void EnableRender(bool enable);
-    void EnableAudio(bool enable);
-    void EnableScript(bool enable);
-    void EnableAnimation(bool enable);
-    void EnableVideo(bool enable);
-    void EnableUIRender(bool enable);
-    void EnableParticle(bool enable);
-    void EnableSkybox(bool enable);
-    void EnableLogic(bool enable);
-
-    void SetContext(Application* app) { m_App = app; }
-    
-    const struct AppConfig& GetConfig() const;
-    void ApplyConfig(const struct AppConfig& config);
-
 protected:
-    uint32_t m_SystemMask = 0xFFFFFFFF;
-    Application* m_App = nullptr;
 };

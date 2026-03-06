@@ -1,5 +1,5 @@
-#include <debug/debug_system.h>
-#include <interface/debug/i_debug_module.h>
+﻿#include <debug/debug_system.h>
+#include <debug/interfaces/i_debug_module.h>
 #include <debug/modules/general_debug_module.h>
 #include <debug/modules/overlay_debug_module.h>
 #include <debug/modules/render_debug_module.h>
@@ -10,23 +10,23 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <app/application.h>
+#include <window/io_handler.h>
 #include <utils/logger.h>
 #include <scene/scene.h>
 #include <input/keyboard_manager.h>
 #include <resource/resource_manager.h>
-#include <interface/graphic/i_graphics_context.h>
-#include <interface/graphic/i_render_state_manager.h>
+#include <graphics/interfaces/i_graphics_context.h>
+#include <graphics/interfaces/i_render_state_manager.h>
 #include <algorithm>
 
 DebugSystem::DebugSystem() {}
 DebugSystem::~DebugSystem() {}
 
-void DebugSystem::Init(Application* app)
+void DebugSystem::Init(EngineContext ctx)
 {
-    m_App = app;
+    m_Ctx = ctx;
 
-    auto &res = m_App->GetResourceManager();
+    auto &res = *m_Ctx.resources;
 
     res.LoadFont("debug_font", "includes/engine/asset/fonts/time.ttf", 24);
     res.LoadShader("debug_text", "includes/engine/asset/shaders/text.vs", "includes/engine/asset/shaders/text.fs");
@@ -43,39 +43,39 @@ void DebugSystem::Init(Application* app)
     LOGGER_INFO("DebugSystem") << "Initializing debug modules...";
 
     auto generalModule = std::make_unique<GeneralDebugModule>();
-    generalModule->Init(app);
+    generalModule->Init(ctx);
     m_Modules.push_back(std::move(generalModule));
     LOGGER_INFO("DebugSystem") << "  - GeneralDebugModule initialized";
 
     auto overlayModule = std::make_unique<OverlayDebugModule>();
-    overlayModule->Init(app);
+    overlayModule->Init(ctx);
     overlayModule->SetSharedResources(m_DebugFont, m_TextShader, m_TextQuad);
     m_Modules.push_back(std::move(overlayModule));
     LOGGER_INFO("DebugSystem") << "  - OverlayDebugModule initialized";
 
     auto renderModule = std::make_unique<RenderDebugModule>();
-    renderModule->Init(app);
+    renderModule->Init(ctx);
     m_Modules.push_back(std::move(renderModule));
     LOGGER_INFO("DebugSystem") << "  - RenderDebugModule initialized";
 
     auto physicsModule = std::make_unique<PhysicsDebugModule>();
-    physicsModule->Init(app);
+    physicsModule->Init(ctx);
     m_Modules.push_back(std::move(physicsModule));
     LOGGER_INFO("DebugSystem") << "  - PhysicsDebugModule initialized";
 
     auto gizmoModule = std::make_unique<GizmoDebugModule>();
-    gizmoModule->Init(app);
+    gizmoModule->Init(ctx);
     gizmoModule->SetSharedResources(m_DebugFont, m_TextShader, m_TextQuad);
     m_Modules.push_back(std::move(gizmoModule));
     LOGGER_INFO("DebugSystem") << "  - GizmoDebugModule initialized";
 
     auto cameraModule = std::make_unique<CameraDebugModule>();
-    cameraModule->Init(app);
+    cameraModule->Init(ctx);
     m_Modules.push_back(std::move(cameraModule));
     LOGGER_INFO("DebugSystem") << "  - CameraDebugModule initialized";
 
     auto shadowModule = std::make_unique<ShadowDebugModule>();
-    shadowModule->Init(app);
+    shadowModule->Init(ctx);
     m_Modules.push_back(std::move(shadowModule));
     LOGGER_INFO("DebugSystem") << "  - ShadowDebugModule initialized";
 
@@ -84,7 +84,7 @@ void DebugSystem::Init(Application* app)
 
 void DebugSystem::OnUpdate(float dt)
 {
-    if (!m_App)
+    if (!m_Ctx.IsValid())
         return;
 
     m_FpsTimer += dt;
@@ -113,7 +113,7 @@ void DebugSystem::OnUpdate(float dt)
         }
     }
 
-    auto &keyboard = m_App->GetKeyboard();
+    auto &keyboard = m_Ctx.io->GetKeyboard();
     for (auto &module : m_Modules)
     {
         if (module->IsEnabled())
@@ -125,10 +125,10 @@ void DebugSystem::OnUpdate(float dt)
 
 void DebugSystem::Render(Scene &scene)
 {
-    if (!m_App)
+    if (!m_Ctx.IsValid())
         return;
 
-    auto& rsm = m_App->GetGraphicsContext().GetRenderStateManager();
+    auto& rsm = m_Ctx.io->GetGraphicsContext().GetRenderStateManager();
     auto oldMode = rsm.GetPolygonMode();
 
     rsm.PolygonMode(Graphics::CullMode::FrontAndBack, Graphics::PolygonMode::Fill);

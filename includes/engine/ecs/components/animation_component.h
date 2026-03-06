@@ -1,11 +1,12 @@
-#pragma once
+﻿#pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <graphics/geometry/animation.h>
+#include <graphics/geometry/animator.h>
 #include <memory>
 #include <string>
 #include <vector>
-#include <glm/glm.hpp>
-#include <graphic/geometry/animation.h>
-#include <graphic/geometry/animator.h>
 
 struct AnimationComponent
 {

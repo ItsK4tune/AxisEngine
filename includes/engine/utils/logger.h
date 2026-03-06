@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <iostream>
-#include <string>
 #include <mutex>
 #include <sstream>
+#include <string>
 #include <utils/logger_types.h>
 
 class Logger {

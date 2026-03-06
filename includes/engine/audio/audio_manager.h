@@ -1,10 +1,10 @@
 ﻿#pragma once
 
+#include <audio/interfaces/i_audio_engine.h>
+#include <window/interfaces/i_device_manager.h>
+#include <window/interfaces/i_window.h>
 #include <memory>
 #include <memory>
-#include <interface/audio/i_audio_engine.h>
-#include <interface/window/i_window.h>
-#include <interface/window/i_device_manager.h>
 
 class AudioManager : public IDeviceManager
 {

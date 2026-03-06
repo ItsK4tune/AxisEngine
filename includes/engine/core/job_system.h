@@ -1,13 +1,13 @@
 #pragma once
 
+#include <atomic>
+#include <condition_variable>
 #include <functional>
+#include <future>
+#include <mutex>
+#include <queue>
 #include <thread>
 #include <vector>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
-#include <atomic>
-#include <future>
 
 class JobSystem
 {
@@ -18,7 +18,6 @@ public:
         return instance;
     }
 
-    // Prevents copying
     JobSystem(const JobSystem&) = delete;
     JobSystem& operator=(const JobSystem&) = delete;
 

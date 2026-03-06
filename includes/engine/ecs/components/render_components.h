@@ -1,12 +1,13 @@
-#pragma once
+﻿#pragma once
 
-#include <memory>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <graphic/geometry/model.h>
-#include <graphic/renderer/ui_model.h>
-#include <graphic/renderer/skybox.h>
-#include <graphic/core/shader.h>
-#include <interface/graphic/graphics_types.h>
+#include <graphics/core/shader.h>
+#include <graphics/geometry/model.h>
+#include <graphics/renderer/skybox.h>
+#include <graphics/renderer/ui_model.h>
+#include <graphics/interfaces/graphics_types.h>
+#include <memory>
 
 #ifdef near
 #undef near
@@ -33,7 +34,7 @@ enum class MaterialType
     PBR
 };
 
-struct MaterialComponent
+struct MaterialDescriptor
 {
     MaterialType type = MaterialType::PHONG;
 
@@ -51,7 +52,6 @@ struct MaterialComponent
     glm::vec2 uvScale = glm::vec2(1.0f);
     glm::vec2 uvOffset = glm::vec2(0.0f);
 
-    // Texture slots (Path for loading, ID for rendering)
     std::string albedoPath = "";
     std::string normalPath = "";
     std::string metallicPath = "";
@@ -59,6 +59,12 @@ struct MaterialComponent
     std::string aoPath = "";
     std::string emissivePath = "";
 
+    Graphics::BlendFactor blendSrc = Graphics::BlendFactor::SrcAlpha;
+    Graphics::BlendFactor blendDst = Graphics::BlendFactor::OneMinusSrcAlpha;
+};
+
+struct MaterialGPUState
+{
     uint32_t albedoMap = 0;
     uint32_t normalMap = 0;
     uint32_t metallicMap = 0;
@@ -66,15 +72,20 @@ struct MaterialComponent
     uint32_t aoMap = 0;
     uint32_t emissiveMap = 0;
 
-    // Blending state
-    Graphics::BlendFactor blendSrc = Graphics::BlendFactor::SrcAlpha;
-    Graphics::BlendFactor blendDst = Graphics::BlendFactor::OneMinusSrcAlpha;
+    bool dirty = true;
+};
+
+struct MaterialComponent
+{
+    MaterialDescriptor desc;
+    MaterialGPUState gpu;
 };
 
 struct SkyboxRenderComponent
 {
     std::shared_ptr<Skybox> skybox = nullptr;
     std::weak_ptr<Shader> shader;
+    bool isPrimary = true;
 };
 
 struct LODComponent

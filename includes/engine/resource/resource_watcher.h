@@ -1,14 +1,14 @@
-﻿#pragma once
+#pragma once
 
-#include <string>
-#include <vector>
-#include <functional>
-#include <filesystem>
-#include <thread>
-#include <mutex>
 #include <atomic>
 #include <condition_variable>
 #include <event/resource_events.h>
+#include <filesystem>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 class ResourceWatcher
 {

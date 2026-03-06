@@ -1,10 +1,12 @@
-#include <scene/scene.h>
-#include <interface/physics/i_physics_world.h>
-#include <scene/scene_manager.h>
+﻿#include <algorithm>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
-#include <vector>
-#include <algorithm>
+#include <physics/interfaces/i_physics_world.h>
+#include <script/scriptable.h>
+#include <scene/scene.h>
+#include <scene/scene_manager.h>
 #include <utils/logger.h>
+#include <vector>
 
 Scene::Scene()
 {
@@ -25,7 +27,7 @@ void Scene::OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity)
             try {
                 if (sc->DestroyScript)
                     sc->DestroyScript(sc);
-                sc->instance = nullptr;
+                sc->instance.reset();
             } catch (...) {
                 LOGGER_ERROR("Scene") << "OnScriptComponentDestroyed: CRASH during script cleanup for entity " << (uint32_t)entity;
             }

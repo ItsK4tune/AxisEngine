@@ -1,16 +1,22 @@
 ﻿#pragma once
 
+#include <ecs/i_system.h>
+
+#include <core/engine_context.h>
 #include <scene/scene.h>
 
-class Application;
-
-class ScriptableSystem
+class ScriptableSystem : public ISystem
 {
 public:
-    void Update(Scene &scene, float dt, float unscaledDt, Application* app);
-    void SetEnabled(bool enable) { m_Enabled = enable; }
-    bool IsEnabled() const { return m_Enabled; }
+
+    void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    int GetPriority() const override { return 20; }
+    std::string GetName() const override { return "ScriptableSystem"; }
+    void Update(Scene &scene, float dt) override;
 
 private:
+    EngineContext m_Ctx;
     bool m_Enabled = true;
 };

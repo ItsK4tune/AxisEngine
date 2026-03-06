@@ -1,10 +1,10 @@
-#include <ecs/system.h>
-#include <graphic/core/video_decoder.h>
-#include <utils/logger.h>
+﻿#include <ecs/system.h>
+#include <graphics/core/video_decoder.h>
 #include <iostream>
 #include <string>
+#include <utils/logger.h>
 
-void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
+void VideoSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled)
         return;
@@ -72,11 +72,11 @@ void VideoSystem::Update(Scene &scene, ResourceManager &res, float dt)
                 {
                     std::string uniqueName = "video_ui_" + std::to_string((uint32_t)entity);
 
-                    if (!res.GetUIModel(uniqueName))
+                    if (!m_Ctx.resources->GetUIModel(uniqueName))
                     {
-                        res.CreateUIModel(uniqueName, UIType::Texture);
+                        m_Ctx.resources->CreateUIModel(uniqueName, UIType::Texture);
                     }
-                    uiRenderer->model = res.GetUIModel(uniqueName);
+                    uiRenderer->model = m_Ctx.resources->GetUIModel(uniqueName);
                 }
 
                 if (uiRenderer->model)

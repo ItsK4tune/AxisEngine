@@ -1,9 +1,10 @@
 ﻿#include <scripts/camera_controller.h>
-#include <glm/gtc/matrix_transform.hpp>
 #include <app/application.h>
-#include <app/io_handler.h>
-#include <input/mouse_manager.h>
+#include <window/io_handler.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtc/matrix_transform.hpp>
 #include <input/keyboard_manager.h>
+#include <input/mouse_manager.h>
 #include <script/script_registry.h>
 
 REGISTER_SCRIPT(CameraController)
@@ -63,7 +64,7 @@ void CameraController::OnUpdate(float dt)
     if (keyboard.GetKey(Input::Key::LeftShift))
         transform.position -= camera.worldUp * velocity;
 
-    camera.aspectRatio = (float)m_App->GetWidth() / (float)m_App->GetHeight();
+    camera.aspectRatio = (float)m_Ctx.io->GetMonitorManager().GetWidth() / (float)m_Ctx.io->GetMonitorManager().GetHeight();
 
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
 

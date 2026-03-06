@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
-#include <script/scriptable.h>
 #include <ecs/component.h>
+#include <script/scriptable.h>
 
 class DefaultCameraController : public Scriptable
 {

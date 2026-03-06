@@ -1,44 +1,45 @@
+﻿#include <algorithm>
 #include <ecs/component.h>
-#include <graphic/core/video_decoder.h>
-#include <utils/logger.h>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
-#include <vector>
-#include <algorithm>
+#include <graphics/core/video_decoder.h>
 #include <iostream>
+#include <utils/logger.h>
+#include <vector>
 
 glm::mat4 TransformComponent::GetLocalModelMatrix() const
 {
-    if (position != m_LastPosition || rotation != m_LastRotation || scale != m_LastScale)
+    if (position != m_Cache.lastPosition || rotation != m_Cache.lastRotation || scale != m_Cache.lastScale)
     {
         glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
         glm::mat4 rot = glm::mat4_cast(rotation);
         glm::mat4 sca = glm::scale(glm::mat4(1.0f), scale);
 
-        m_LocalMatrix = trans * rot * sca;
+        m_Cache.localMatrix = trans * rot * sca;
 
-        m_LastPosition = position;
-        m_LastRotation = rotation;
-        m_LastScale = scale;
+        m_Cache.lastPosition = position;
+        m_Cache.lastRotation = rotation;
+        m_Cache.lastScale = scale;
 
-        m_Version++;
-        m_IsWorldDirty = true;
+        m_Cache.version++;
+        m_Cache.isWorldDirty = true;
     }
-    return m_LocalMatrix;
+    return m_Cache.localMatrix;
 }
 
 glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) const
 {
     GetLocalModelMatrix();
 
-    if (parent != m_LastParent)
+    if (parent != m_Cache.lastParent)
     {
-        m_LastParent = parent;
-        m_IsWorldDirty = true;
+        m_Cache.lastParent = parent;
+        m_Cache.isWorldDirty = true;
     }
 
-    if (!m_IsWorldDirty)
-        return m_WorldMatrix;
+    if (!m_Cache.isWorldDirty)
+        return m_Cache.worldMatrix;
 
     if (registry.valid(parent) && parent != entt::null)
     {
@@ -47,20 +48,20 @@ glm::mat4 TransformComponent::GetWorldModelMatrix(entt::registry& registry) cons
             const auto& parentTrans = registry.get<TransformComponent>(parent);
             glm::mat4 parentWorld = parentTrans.GetWorldModelMatrix(registry);
 
-            m_WorldMatrix = parentWorld * m_LocalMatrix;
+            m_Cache.worldMatrix = parentWorld * m_Cache.localMatrix;
         }
         else
         {
-             m_WorldMatrix = m_LocalMatrix;
+             m_Cache.worldMatrix = m_Cache.localMatrix;
         }
     }
     else
     {
-        m_WorldMatrix = m_LocalMatrix;
+        m_Cache.worldMatrix = m_Cache.localMatrix;
     }
 
-    m_IsWorldDirty = false;
-    return m_WorldMatrix;
+    m_Cache.isWorldDirty = false;
+    return m_Cache.worldMatrix;
 }
 
 glm::mat4 TransformComponent::GetInterpolatedLocalMatrix(float alpha) const
@@ -93,7 +94,7 @@ glm::mat4 TransformComponent::GetInterpolatedWorldMatrix(entt::registry& registr
 
 void TransformComponent::SetDirty(entt::registry &registry)
 {
-    m_IsWorldDirty = true;
+    m_Cache.isWorldDirty = true;
 
     for (auto child : children)
     {

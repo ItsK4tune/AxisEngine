@@ -1,8 +1,8 @@
-#include <app/app_handler.h>
+﻿#include <app/app_handler.h>
+#include <input/input_manager.h>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
-#include <input/input_manager.h>
-#include <interface/window/i_window.h>
+#include <window/interfaces/i_window.h>
 #include <iostream>
 
 AppHandler::AppHandler(IWindow* window)

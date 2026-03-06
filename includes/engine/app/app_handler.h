@@ -1,9 +1,8 @@
 ﻿#pragma once
 
-#include <memory>
 #include <functional>
-#include <interface/window/i_window.h>
-
+#include <window/interfaces/i_window.h>
+#include <memory>
 #include <string>
 
 class KeyboardManager;

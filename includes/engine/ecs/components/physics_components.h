@@ -1,10 +1,11 @@
-#pragma once
+﻿#pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <physics/interfaces/i_constraint.h>
+#include <physics/interfaces/i_rigid_body.h>
 #include <memory>
 #include <vector>
-#include <interface/physics/i_rigid_body.h>
-#include <interface/physics/i_constraint.h>
 
 struct RigidBodyComponent
 {

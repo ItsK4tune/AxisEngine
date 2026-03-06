@@ -1,17 +1,19 @@
-#include <input/script_input_handler.h>
-#include <script/scriptable.h>
-#include <app/application.h>
+﻿#include <core/engine_context.h>
+#include <window/io_handler.h>
+#include <functional>
 #include <input/keyboard_manager.h>
 #include <input/mouse_manager.h>
-#include <functional>
+#include <input/script_input_handler.h>
+#include <script/scriptable.h>
+#include <script/input_scriptable.h>
 
-void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, Application* app, float dt, entt::entity entity)
+void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, EngineContext ctx, float dt, entt::entity entity)
 {
     if (!script.instance || !script.instance->IsEnabled())
         return;
 
-    auto &mouse = app->GetMouse();
-    auto &keyboard = app->GetKeyboard();
+    auto &mouse    = ctx.io->GetMouse();
+    auto &keyboard = ctx.io->GetKeyboard();
 
     float mx = mouse.GetLastX();
     float my = mouse.GetLastY();
@@ -28,96 +30,112 @@ void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, Appl
         }
     }
 
-    if (isHovered && !script.instance->IsHovered())
+    if (auto* inputScript = dynamic_cast<InputScriptable*>(script.instance.get()))
     {
-        script.instance->SetHovered(true);
-        script.instance->OnHoverEnter();
-    }
-    else if (isHovered && script.instance->IsHovered())
-    {
-        script.instance->OnHoverStay();
-    }
-    else if (!isHovered && script.instance->IsHovered())
-    {
-        script.instance->SetHovered(false);
-        script.instance->OnHoverExit();
-    }
-
-    auto ProcessButton = [&](bool &pressedState, float &holdTimer, int buttonCode,
-                             std::function<void()> onClick,
-                             std::function<void(float)> onHold,
-                             std::function<void(float)> onRelease)
-    {
-        bool isDown = false;
-        if (buttonCode == 0)
-            isDown = mouse.IsLeftButtonPressed();
-        else if (buttonCode == 1)
-            isDown = mouse.IsRightButtonPressed();
-
-        if (isHovered && isDown)
+        if (isHovered && !inputScript->IsHovered())
         {
-            if (!pressedState)
+            inputScript->SetHovered(true);
+            inputScript->OnHoverEnter();
+        }
+        else if (isHovered && inputScript->IsHovered())
+        {
+            inputScript->OnHoverStay();
+        }
+        else if (!isHovered && inputScript->IsHovered())
+        {
+            inputScript->SetHovered(false);
+            inputScript->OnHoverExit();
+        }
+
+        auto ProcessButton = [&](bool &pressedState, float &holdTimer, int mouseButton, auto onClick, auto onHold, auto onRelease)
+        {
+            bool isDown = (mouseButton == 0) ? mouse.IsLeftButtonPressed() : mouse.IsRightButtonPressed();
+
+            if (!pressedState && isDown)
             {
-                pressedState = true;
-                holdTimer = 0.0f;
+                if (isHovered)
+                {
+                    pressedState = true;
+                    holdTimer = 0.0f;
+                }
             }
-            else
+            else if (pressedState && isHovered && isDown)
             {
                 holdTimer += dt;
                 onHold(holdTimer);
             }
-        }
-        else if (pressedState && !isDown)
-        {
-            if (isHovered)
+            else if (pressedState && isHovered && !isDown)
+            {
                 onClick();
-            onRelease(holdTimer);
+                onRelease(holdTimer);
+                pressedState = false;
+                holdTimer = 0.0f;
+            }
+            else if (!pressedState && !isHovered && isDown)
+            {
+                if (!pressedState)
+                {
+                    pressedState = true;
+                    holdTimer = 0.0f;
+                }
+                else
+                {
+                    holdTimer += dt;
+                    onHold(holdTimer);
+                }
+            }
+            else if (pressedState && !isDown)
+            {
+                if (isHovered)
+                    onClick();
+                onRelease(holdTimer);
 
-            pressedState = false;
-            holdTimer = 0.0f;
-        }
-        else if (pressedState && !isHovered && isDown)
+                pressedState = false;
+                holdTimer = 0.0f;
+            }
+            else if (pressedState && !isHovered && isDown)
+            {
+                holdTimer += dt;
+                onHold(holdTimer);
+            }
+            else if (pressedState && !isHovered && !isDown)
+            {
+                onRelease(holdTimer);
+                pressedState = false;
+                holdTimer = 0.0f;
+            }
+        };
+
+        ProcessButton(inputScript->GetLeftPressedRef(), inputScript->GetLeftHoldTimeRef(), 0, [&]()
+                      { inputScript->OnLeftClick(); }, [&](float t)
+                      { inputScript->OnLeftHold(t); }, [&](float t)
+                      { inputScript->OnLeftRelease(t); });
+
+        ProcessButton(inputScript->GetRightPressedRef(), inputScript->GetRightHoldTimeRef(), 1, [&]()
+                      { inputScript->OnRightClick(); }, [&](float t)
+                      { inputScript->OnRightHold(t); }, [&](float t)
+                      { inputScript->OnRightRelease(t); });
+
+        for (const auto &bind : inputScript->GetKeyBindings())
         {
-            holdTimer += dt;
-            onHold(holdTimer);
-        }
-        else if (pressedState && !isHovered && !isDown)
-        {
-            onRelease(holdTimer);
-            pressedState = false;
-            holdTimer = 0.0f;
-        }
-    };
+            bool trigger = false;
+            switch (bind.event)
+            {
+            case InputEvent::Pressed:
+                trigger = keyboard.IsKeyDown(static_cast<Input::Key>(bind.key));
+                break;
+            case InputEvent::Held:
+                trigger = keyboard.GetKey(static_cast<Input::Key>(bind.key));
+                break;
+            case InputEvent::Released:
+                trigger = keyboard.GetKeyUp(static_cast<Input::Key>(bind.key));
+                break;
+            }
 
-    ProcessButton(script.instance->GetLeftPressedRef(), script.instance->GetLeftHoldTimeRef(), 0, [&]()
-                  { script.instance->OnLeftClick(); }, [&](float t)
-                  { script.instance->OnLeftHold(t); }, [&](float t)
-                  { script.instance->OnLeftRelease(t); });
-
-    ProcessButton(script.instance->GetRightPressedRef(), script.instance->GetRightHoldTimeRef(), 1, [&]()
-                  { script.instance->OnRightClick(); }, [&](float t)
-                  { script.instance->OnRightHold(t); }, [&](float t)
-                  { script.instance->OnRightRelease(t); });
-
-    for (const auto &bind : script.instance->GetKeyBindings())
-    {
-        bool trigger = false;
-        switch (bind.event)
-        {
-        case InputEvent::Pressed:
-            trigger = keyboard.IsKeyDown(static_cast<Input::Key>(bind.key));
-            break;
-        case InputEvent::Held:
-            trigger = keyboard.GetKey(static_cast<Input::Key>(bind.key));
-            break;
-        case InputEvent::Released:
-            trigger = keyboard.GetKeyUp(static_cast<Input::Key>(bind.key));
-            break;
-        }
-
-        if (trigger && bind.callback)
-        {
-            bind.callback();
+            if (trigger && bind.callback)
+            {
+                bind.callback();
+            }
         }
     }
 }

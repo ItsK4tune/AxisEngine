@@ -1,13 +1,16 @@
+﻿#include <algorithm>
 #include <app/config_loader.h>
-#include <utils/logger.h>
-#include <interface/graphic/graphics_types.h>
-#include <interface/window/i_window.h>
-#include <app/application.h>
-#include <app/monitor_manager.h>
+#include <core/engine_context.h>
+#include <window/io_handler.h>
+#include <window/monitor_manager.h>
+#include <core/runtime_core.h>
+#include <core/system_manager.h>
 #include <ecs/systems/render_system.h>
-#include <interface/physics/i_physics_world.h>
-#include <graphic/core/post_process_pipeline.h>
-#include <algorithm>
+#include <graphics/core/post_process_pipeline.h>
+#include <graphics/interfaces/graphics_types.h>
+#include <physics/interfaces/i_physics_world.h>
+#include <window/interfaces/i_window.h>
+#include <utils/logger.h>
 
 void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
 {
@@ -237,7 +240,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
     }
 }
 
-void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
+void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
 {
 
     std::string subCmd;
@@ -246,9 +249,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
     if (subCmd == "GRAPHICS_API")
     {
         std::string backend;
-        if (ss >> backend && app)
+        if (ss >> backend && ctx.IsValid())
         {
-            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
             cfg.graphicsBackend = backend;
             LOGGER_INFO("ConfigLoader") << "Scene requested Graphics Backend: " << backend;
         }
@@ -256,9 +259,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
     else if (subCmd == "PHYSICS_ENGINE")
     {
         std::string backend;
-        if (ss >> backend && app)
+        if (ss >> backend && ctx.IsValid())
         {
-            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
             cfg.physicsBackend = backend;
             LOGGER_INFO("ConfigLoader") << "Scene requested Physics Backend: " << backend;
         }
@@ -266,9 +269,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
     else if (subCmd == "AUDIO_ENGINE")
     {
         std::string backend;
-        if (ss >> backend && app)
+        if (ss >> backend && ctx.IsValid())
         {
-            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
             cfg.audioBackend = backend;
             LOGGER_INFO("ConfigLoader") << "Scene requested Audio Backend: " << backend;
         }
@@ -277,24 +280,24 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
     {
         int mode = 1;
         ss >> mode;
-        if (app)
-            app->GetRenderSystem().SetShadowMode(mode);
+        if (ctx.IsValid())
+            ctx.systems->GetSystem<RenderSystem>()->SetShadowMode(mode);
     }
     else if (subCmd == "SHADOW_SIZE")
     {
         float size = 20.0f;
         ss >> size;
-        if (app)
-            app->GetRenderSystem().SetShadowProjectionSize(size);
+        if (ctx.IsValid())
+            ctx.systems->GetSystem<RenderSystem>()->SetShadowProjectionSize(size);
     }
 
     else if (subCmd == "INSTANCING")
     {
         int enable = 0;
         ss >> enable;
-        if (app)
+        if (ctx.IsValid())
         {
-            app->GetRenderSystem().SetInstanceBatching(enable != 0);
+            ctx.systems->GetSystem<RenderSystem>()->SetInstanceBatching(enable != 0);
         }
     }
     else if (subCmd == "CULL_FACE")
@@ -313,13 +316,13 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else if (modeStr != "BACK")
                 LOGGER_WARN("ConfigLoader") << "Invalid CULL_FACE mode: " << modeStr << ". Supported: BACK, FRONT, FRONT_AND_BACK.";
 
-            if (app)
-                app->GetRenderSystem().SetFaceCulling(true, mode);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetFaceCulling(true, mode);
         }
         else
         {
-            if (app)
-                app->GetRenderSystem().SetFaceCulling(false);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetFaceCulling(false);
         }
     }
     else if (subCmd == "DEPTH_TEST")
@@ -350,27 +353,25 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else
                 LOGGER_WARN("ConfigLoader") << "Invalid DEPTH_TEST func: " << funcStr << ". Supported: NEVER, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS.";
 
-            if (app)
-                app->GetRenderSystem().SetDepthTest(true, func);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetDepthTest(true, func);
         }
         else
         {
-            if (app)
-                app->GetRenderSystem().SetDepthTest(false);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetDepthTest(false);
         }
     }
     else if (subCmd.find("WINDOW") != std::string::npos)
     {
-        // Window configurations are applied in batch by the SceneSerializer
-        // to avoid recreating the window multiple times during parsing.
     }
     else if (subCmd == "VSYNC")
     {
         int enable = 0;
         if (ss >> enable)
         {
-            if (app)
-                app->GetMonitorManager().SetVsync(enable != 0);
+            if (ctx.IsValid())
+                ctx.io->GetMonitorManager().SetVsync(enable != 0);
         }
     }
     else if (subCmd == "FPS")
@@ -378,8 +379,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         int fps = 0;
         if (ss >> fps)
         {
-            if (app)
-                app->GetMonitorManager().SetFrameRateLimit(fps);
+            if (ctx.IsValid())
+                ctx.io->GetMonitorManager().SetFrameRateLimit(fps);
         }
     }
     else if (subCmd == "FRUSTUM")
@@ -387,19 +388,19 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         int enable = 0;
         if (ss >> enable)
         {
-            if (app)
-                app->GetRenderSystem().SetFrustumCulling(enable != 0);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetFrustumCulling(enable != 0);
         }
     }
     else if (subCmd == "RENDER_ORDER")
     {
         int enable = 0;
-        if (ss >> enable && app)
+        if (ss >> enable && ctx.IsValid())
         {
             bool renderOrder = (enable != 0);
-            app->GetRenderSystem().SetRenderOrderEnabled(renderOrder);
+            ctx.systems->GetSystem<RenderSystem>()->SetRenderOrderEnabled(renderOrder);
 
-            AppConfig &cfg = const_cast<AppConfig &>(app->GetConfig());
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
             cfg.renderOrderEnabled = renderOrder;
         }
     }
@@ -408,8 +409,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         uint32_t mask = 0xFFFFFFFF;
         if (ss >> mask)
         {
-            if (app)
-                app->GetRenderSystem().SetFilterLayerMask(mask);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetFilterLayerMask(mask);
         }
     }
     else if (subCmd == "SHADOW_FRUSTUM")
@@ -417,8 +418,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         int enable = 0;
         if (ss >> enable)
         {
-            if (app)
-                app->GetRenderSystem().SetShadowFrustumCulling(enable != 0);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetShadowFrustumCulling(enable != 0);
         }
     }
     else if (subCmd == "SHADOW_DISTANCE")
@@ -426,8 +427,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         float dist = 0.0f;
         if (ss >> dist)
         {
-            if (app)
-                app->GetRenderSystem().SetShadowDistanceCulling(dist);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetShadowDistanceCulling(dist);
         }
     }
     else if (subCmd == "DISTANCE")
@@ -435,8 +436,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
         float dist = 0.0f;
         if (ss >> dist)
         {
-            if (app)
-                app->GetRenderSystem().SetDistanceCulling(dist);
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetDistanceCulling(dist);
         }
     }
     else if (subCmd == "PHYSICS_MODE")
@@ -463,9 +464,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
                 }
             }
 
-            if (app)
+            if (ctx.IsValid())
             {
-                app->GetPhysicsWorld().SetMode(mode);
+                ctx.physics->SetMode(mode);
             }
         }
     }
@@ -484,9 +485,9 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, Application *app)
             else
                 LOGGER_WARN("ConfigLoader") << "Invalid ANTIALIASING mode: " << valStr << ". Supported: NONE, FXAA, TAA.";
 
-            if (app)
+            if (ctx.IsValid())
             {
-                app->GetRenderSystem().SetAntiAliasingMode(mode);
+                ctx.systems->GetSystem<RenderSystem>()->SetAntiAliasingMode(mode);
             }
         }
     }

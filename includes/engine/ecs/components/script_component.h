@@ -1,24 +1,23 @@
 #pragma once
 
-#include <memory>
 #include <functional>
+#include <memory>
 
 class Scriptable;
 
 struct ScriptComponent
 {
-    Scriptable *instance = nullptr;
-    std::function<Scriptable *()> InstantiateScript;
+    std::unique_ptr<Scriptable> instance;
+    std::function<std::unique_ptr<Scriptable>()> InstantiateScript;
     std::function<void(ScriptComponent *)> DestroyScript;
 
     template <typename T>
     void Bind()
     {
-        InstantiateScript = []() { return static_cast<Scriptable *>(new T()); };
+        InstantiateScript = []() { return std::make_unique<T>(); };
         DestroyScript = [](ScriptComponent *sc)
         {
-            delete sc->instance;
-            sc->instance = nullptr;
+            sc->instance.reset();
         };
     }
 };

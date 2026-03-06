@@ -1,8 +1,9 @@
 #pragma once
 
+#include <entt/entt.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <entt/entt.hpp>
 #include <vector>
 
 struct TransformComponent
@@ -28,22 +29,24 @@ struct TransformComponent
     void AddChild(entt::entity thisEntity, entt::entity child, entt::registry &registry, bool keepWorldTransform = false);
     void RemoveChild(entt::entity child);
     bool HasParent() const { return parent != entt::null; }
-    uint32_t GetVersion() const { return m_Version; }
+    uint32_t GetVersion() const { return m_Cache.version; }
 
     void SetDirty(entt::registry &registry);
 
 private:
-    mutable glm::mat4 m_LocalMatrix = glm::mat4(1.0f);
-    mutable glm::mat4 m_WorldMatrix = glm::mat4(1.0f);
+    struct TransformCache {
+        mutable glm::mat4 localMatrix = glm::mat4(1.0f);
+        mutable glm::mat4 worldMatrix = glm::mat4(1.0f);
 
-    mutable glm::vec3 m_LastPosition = glm::vec3(0.0f);
-    mutable glm::quat m_LastRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    mutable glm::vec3 m_LastScale = glm::vec3(1.0f);
+        mutable glm::vec3 lastPosition = glm::vec3(0.0f);
+        mutable glm::quat lastRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        mutable glm::vec3 lastScale = glm::vec3(1.0f);
 
-    mutable uint32_t m_Version = 0;
-    mutable uint32_t m_LastParentVersion = 0;
-    mutable entt::entity m_LastParent = entt::null;
-    mutable uint32_t m_LastLocalVersion = 0;
+        mutable uint32_t version = 0;
+        mutable uint32_t lastParentVersion = 0;
+        mutable entt::entity lastParent = entt::null;
+        mutable uint32_t lastLocalVersion = 0;
 
-    mutable bool m_IsWorldDirty = true;
+        mutable bool isWorldDirty = true;
+    } m_Cache;
 };

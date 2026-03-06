@@ -1,6 +1,6 @@
+﻿#include <ecs/component.h>
 #include <ecs/system.h>
-#include <ecs/component.h>
-#include <graphic/geometry/animator.h>
+#include <graphics/geometry/animator.h>
 #include <utils/logger.h>
 
 void AnimationSystem::Update(Scene &scene, float dt)

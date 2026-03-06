@@ -1,9 +1,10 @@
 ﻿#pragma once
 
+#include <app/config_loader.h>
+#include <core/engine_context.h>
+#include <core/runtime_core.h>
 #include <memory>
 #include <string>
-#include <app/config_loader.h>
-#include <app/runtime_core.h>
 
 class IOHandler;
 class ContentService;
@@ -43,6 +44,8 @@ public:
     ~Application();
 
     bool Init(const AppConfig &config);
+    void Shutdown();
+    EngineContext GetContext();
     void Run();
 
     template <typename T, typename... Args>

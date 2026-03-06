@@ -1,10 +1,12 @@
-#include <ecs/entity_manager.h>
-#include <ecs/components/info_component.h>
+﻿#include <ecs/components/info_component.h>
 #include <ecs/components/render_components.h>
+#include <ecs/entity_manager.h>
+#include <script/scriptable.h>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
-#include <utils/logger.h>
-#include <interface/physics/i_physics_world.h>
+#include <physics/interfaces/i_physics_world.h>
 #include <scene/scene_manager.h>
+#include <utils/logger.h>
 
 void EntityManager::Destroy(Scene& scene, entt::entity entity)
 {
@@ -158,6 +160,13 @@ entt::entity EntityManager::GetActiveSkybox(Scene& scene)
     auto view = scene.registry.view<SkyboxRenderComponent>();
     for (auto entity : view)
     {
+        if (view.get<SkyboxRenderComponent>(entity).isPrimary)
+        {
+            return entity;
+        }
+    }
+    for (auto entity : view)
+    {
         return entity;
     }
     return entt::null;
@@ -165,7 +174,11 @@ entt::entity EntityManager::GetActiveSkybox(Scene& scene)
 
 void EntityManager::SetActiveSkybox(Scene& scene, entt::entity entity)
 {
-    // In AxisEngine, there's usually just one skybox component active at a time.
+    auto view = scene.registry.view<SkyboxRenderComponent>();
+    for (auto skyEntity : view)
+    {
+        view.get<SkyboxRenderComponent>(skyEntity).isPrimary = (skyEntity == entity);
+    }
 }
 
 entt::entity EntityManager::CreateEntity(Scene& scene, const std::string &name, const std::string &tag)
@@ -260,15 +273,15 @@ void EntityManager::DestroyEntity(Scene& scene, entt::entity entity, SceneManage
     {
         if (sc->instance && sc->DestroyScript)
             sc->DestroyScript(sc);
-        sc->instance = nullptr;
+        sc->instance.reset();
     }
 
     if (auto rb = scene.registry.try_get<RigidBodyComponent>(entity))
     {
         if (rb->body)
         {
-            if (manager)
-                manager->GetPhysicsWorld().RemoveRigidBody(rb->body.get());
+            if (manager && manager->GetPhysicsWorld())
+                manager->GetPhysicsWorld()->RemoveRigidBody(rb->body.get());
 
             rb->body = nullptr;
         }

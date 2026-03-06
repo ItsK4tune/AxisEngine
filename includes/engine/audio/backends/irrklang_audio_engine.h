@@ -1,11 +1,11 @@
 ﻿#pragma once
 
-#include <interface/audio/i_audio_engine.h>
-#include <interface/audio/i_audio_source.h>
-#include <interface/audio/i_sound.h>
+#include <audio/interfaces/i_audio_engine.h>
+#include <audio/interfaces/i_audio_source.h>
+#include <audio/interfaces/i_sound.h>
 #include <irrKlang/irrKlang.h>
-#include <memory>
 #include <map>
+#include <memory>
 #include <vector>
 
 class IrrKlangAudioSource;

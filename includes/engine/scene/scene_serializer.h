@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <memory>
@@ -11,10 +11,10 @@ class Scene;
 class ResourceManager;
 class IPhysicsWorld;
 class SoundPlayer;
-class Application;
+#include <core/engine_context.h>
 
 class SceneSerializer
 {
 public:
-    static SceneLoadResult Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, Application* app);
+    static SceneLoadResult Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, EngineContext ctx);
 };

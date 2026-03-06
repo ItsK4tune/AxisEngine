@@ -1,37 +1,44 @@
 ﻿#pragma once
 
-#include <map>
-#include <string>
-#include <memory>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
 #include <future>
-#include <thread>
+#include <graphics/core/shader.h>
+#include <graphics/core/shader_cache.h>
+#include <graphics/geometry/animation.h>
+#include <graphics/geometry/mesh.h>
+#include <graphics/geometry/model.h>
+#include <graphics/renderer/font.h>
+#include <graphics/renderer/skybox.h>
+#include <graphics/renderer/ui_model.h>
+#include <audio/interfaces/i_audio_engine.h>
+#include <iostream>
+#include <map>
+#include <memory>
 #include <mutex>
-#include <interface/audio/i_audio_engine.h>
-
-#include <graphic/core/shader.h>
-#include <graphic/geometry/model.h>
-#include <graphic/renderer/ui_model.h>
-#include <graphic/geometry/animation.h>
-#include <graphic/renderer/font.h>
-#include <graphic/renderer/skybox.h>
-#include <graphic/geometry/mesh.h>
-#include <graphic/core/shader_cache.h>
-#include <resource/model_instance_manager.h>
-#include <resource/texture_cache.h>
-#include <resource/font_cache.h>
-#include <resource/sound_cache.h>
 #include <resource/animation_cache.h>
+#include <resource/font_cache.h>
+#include <resource/model_instance_manager.h>
 #include <resource/resource_watcher.h>
+#include <resource/sound_cache.h>
+#include <resource/texture_cache.h>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+#include <resource/i_resource_libraries.h>
 
-class ResourceManager
+class ResourceManager : public IShaderLibrary,
+                        public ITextureLibrary,
+                        public IModelLibrary,
+                        public ISoundLibrary,
+                        public IFontLibrary,
+                        public ISkyboxLibrary
 {
 public:
     ResourceManager();
     ~ResourceManager();
 
+    void Init(IShaderManager& shaderManager);
+    void Shutdown();
     void Update(float dt);
 
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
@@ -65,7 +72,7 @@ public:
 
     void ClearResource();
 
-    ShaderCache& GetShaderCache() { return m_ShaderCache; }
+    ShaderCache* GetShaderCache() { return m_ShaderCache.get(); }
     ModelInstanceManager& GetModelInstanceManager() { return m_ModelInstanceManager; }
 
 private:
@@ -78,7 +85,8 @@ private:
         std::shared_ptr<Model> model;
     };
 
-    ShaderCache m_ShaderCache;
+    IShaderManager* m_ShaderManager = nullptr;
+    std::unique_ptr<ShaderCache> m_ShaderCache;
     ModelInstanceManager m_ModelInstanceManager;
     TextureCache m_TextureCache;
     FontCache m_FontCache;

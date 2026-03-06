@@ -117,9 +117,9 @@ axis_scene:
         CastShadow: 1
         Color: 1.0 0.95 0.8
         Intensity: 0.8
-        AmbientStr: 0.1
-        DiffuseStr: 0.3
-        SpecularStr: 0.3
+        Ambient: 0.1
+        Diffuse: 0.3
+        Specular: 0.3
         
     Sun2_Dir:
       Tag: default
@@ -131,6 +131,6 @@ axis_scene:
         CastShadow: 1
         Color: 0.9 0.9 1.0
         Intensity: 0.6
-        AmbientStr: 0.1
-        DiffuseStr: 0.3
-        SpecularStr: 0.3
+        Ambient: 0.1
+        Diffuse: 0.3
+        Specular: 0.3

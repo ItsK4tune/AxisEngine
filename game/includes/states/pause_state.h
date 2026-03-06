@@ -1,7 +1,7 @@
 #pragma once
 
-#include <state/state.h>
 #include <axis/axis_all.h>
+#include <state/state.h>
 
 class PauseState : public State
 {

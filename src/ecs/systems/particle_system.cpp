@@ -1,12 +1,12 @@
+﻿#include <algorithm>
+#include <ecs/component.h>
+#include <ecs/entity_manager.h>
 #include <ecs/systems/particle_system.h>
 #include <execution>
-#include <vector>
-#include <algorithm>
-#include <ecs/component.h>
+#include <graphics/interfaces/i_graphics_context.h>
+#include <graphics/interfaces/i_render_state_manager.h>
 #include <utils/logger.h>
-#include <ecs/entity_manager.h>
-#include <interface/graphic/i_graphics_context.h>
-#include <interface/graphic/i_render_state_manager.h>
+#include <vector>
 
 void ParticleSystem::Init(IGraphicsContext& context)
 {
@@ -32,7 +32,7 @@ void ParticleSystem::Update(Scene &scene, float dt)
     });
 }
 
-void ParticleSystem::Render(Scene &scene, ResourceManager &res)
+void ParticleSystem::Render(Scene &scene)
 {
     if (!m_Enabled || !m_Context)
         return;
@@ -43,7 +43,7 @@ void ParticleSystem::Render(Scene &scene, ResourceManager &res)
     rsm.BlendFunc(Graphics::BlendFactor::SrcAlpha, Graphics::BlendFactor::One);
     rsm.DepthMask(false);
 
-    auto shader = res.GetShader("particle");
+    auto shader = m_Ctx.resources->GetShader("particle");
     if (!shader)
     {
         LOGGER_ERROR("ParticleSystem") << "'particle' shader not found!";
