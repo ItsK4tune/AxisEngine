@@ -17,12 +17,7 @@ bool FrustumCuller::IsVisible(Scene& scene, entt::entity entity, float alpha) co
     auto [world, renderer] = scene.registry.get<WorldTransformComponent, MeshRendererComponent>(entity);
     if (!renderer.model) return false;
 
-    glm::mat4 modelMatrix = glm::mat4(1.0f);
-    for (int r = 0; r < 4; r++) {
-        for (int c = 0; c < 4; c++) {
-            modelMatrix[r][c] = glm::mix(world.prevWorldMatrix[r][c], world.worldMatrix[r][c], alpha);
-        }
-    }
+    glm::mat4 modelMatrix = world.GetInterpolated(alpha);
     AABB transformedAABB = renderer.model->aabb.Transform(modelMatrix);
     return IsVisible(transformedAABB.minBound, transformedAABB.maxBound);
 }
@@ -55,13 +50,7 @@ void FrustumCuller::Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt
                     auto [world, renderer] = scene.registry.get<WorldTransformComponent, MeshRendererComponent>(entity);
                     if (!renderer.model) continue;
 
-                    glm::mat4 modelMatrix = glm::mat4(1.0f);
-                    for (int r = 0; r < 4; ++r) {
-                        for (int c = 0; c < 4; ++c) {
-                            modelMatrix[r][c] = glm::mix(world.prevWorldMatrix[r][c], world.worldMatrix[r][c], alpha);
-                        }
-                    }
-
+                    glm::mat4 modelMatrix = world.GetInterpolated(alpha);
                     res.push_back({entity, renderer.model->aabb.Transform(modelMatrix)});
                 }
             }, &counter);

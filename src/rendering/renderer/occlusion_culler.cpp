@@ -101,17 +101,12 @@ void OcclusionCuller::RenderQueries(Scene& scene, const glm::mat4& proj, const g
             AddQuery(occ.lastQueryId);
         }
 
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        for (int r = 0; r < 4; ++r) {
-            for (int c = 0; c < 4; ++c) {
-                modelMatrix[r][c] = glm::mix(world.prevWorldMatrix[r][c], world.worldMatrix[r][c], alpha);
-            }
-        }
-
+        glm::mat4 modelMatrix = world.GetInterpolated(alpha);
+        
         AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
         
-        glm::vec3 center = (worldAABB.minBound + worldAABB.maxBound) * 0.5f;
-        glm::vec3 size = worldAABB.maxBound - worldAABB.minBound;
+        glm::vec3 center = worldAABB.GetCenter();
+        glm::vec3 size = worldAABB.GetSize();
         
         glm::mat4 cubeModel(1.0f);
         cubeModel = glm::translate(cubeModel, center);

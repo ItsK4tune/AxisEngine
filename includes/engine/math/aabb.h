@@ -56,4 +56,25 @@ struct AABB
 
         return AABB(worldCenter - worldExtent, worldCenter + worldExtent);
     }
+
+    float DistanceSq(const glm::vec3& point) const
+    {
+        float dx = (std::max)(minBound.x - point.x, (std::max)(0.0f, point.x - maxBound.x));
+        float dy = (std::max)(minBound.y - point.y, (std::max)(0.0f, point.y - maxBound.y));
+        float dz = (std::max)(minBound.z - point.z, (std::max)(0.0f, point.z - maxBound.z));
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    float Distance(const glm::vec3& point) const
+    {
+        return std::sqrt(DistanceSq(point));
+    }
+
+    glm::vec3 GetSize() const { return maxBound - minBound; }
+
+    static AABB FromCenterSize(const glm::vec3& center, const glm::vec3& size)
+    {
+        glm::vec3 halfSize = size * 0.5f;
+        return AABB(center - halfSize, center + halfSize);
+    }
 };

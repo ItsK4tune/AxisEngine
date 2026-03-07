@@ -22,6 +22,7 @@ class Frustum
 public:
     void Update(const glm::mat4 &viewProjection);
     bool IsBoxVisible(const glm::vec3 &minBound, const glm::vec3 &maxBound) const;
+    bool IsBoxVisible(const AABB& aabb) const { return IsBoxVisible(aabb.minBound, aabb.maxBound); }
 
 private:
     Plane planes[6];

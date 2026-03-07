@@ -10,6 +10,7 @@ struct RenderItem {
     entt::entity entity;
     Model* activeModel;
     glm::mat4 worldMatrix;
+    AABB worldAABB;
     uint32_t layer;
     int renderOrder;
     float distSq;

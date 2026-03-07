@@ -47,19 +47,10 @@ void RenderQueue::Build(Scene& scene, float alpha,
                 auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
                 if (!renderer.model || renderer.shader.expired()) continue;
 
-                glm::mat4 modelMatrix = glm::mat4(1.0f);
-                for (int r = 0; r < 4; ++r) {
-                    for (int c = 0; c < 4; ++c) {
-                        modelMatrix[r][c] = glm::mix(world.prevWorldMatrix[r][c], world.worldMatrix[r][c], alpha);
-                    }
-                }
+                glm::mat4 modelMatrix = world.GetInterpolated(alpha);
                 
                 AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
-                
-                float dx = (std::max)(worldAABB.minBound.x - camPos.x, (std::max)(0.0f, camPos.x - worldAABB.maxBound.x));
-                float dy = (std::max)(worldAABB.minBound.y - camPos.y, (std::max)(0.0f, camPos.y - worldAABB.maxBound.y));
-                float dz = (std::max)(worldAABB.minBound.z - camPos.z, (std::max)(0.0f, camPos.z - worldAABB.maxBound.z));
-                float distSqResult = dx * dx + dy * dy + dz * dz;
+                float distSqResult = worldAABB.DistanceSq(camPos);
 
                 if (distCullSq > 0.0f && distSqResult > distCullSq) continue;
 
@@ -87,8 +78,8 @@ void RenderQueue::Build(Scene& scene, float alpha,
                     if (mat->desc.opacity < 1.0f) isTransparent = true;
                 }
 
-                res.renderQueue.push_back({entity, activeModel, modelMatrix, layer, renderer.order, distSqResult, isTransparent});
-                if (renderer.castShadow) res.shadowQueue.push_back({entity, activeModel, modelMatrix, layer, renderer.order, distSqResult, isTransparent});
+                res.renderQueue.push_back({entity, activeModel, modelMatrix, worldAABB, layer, renderer.order, distSqResult, isTransparent});
+                if (renderer.castShadow) res.shadowQueue.push_back({entity, activeModel, modelMatrix, worldAABB, layer, renderer.order, distSqResult, isTransparent});
             }
         }, &counter);
     }

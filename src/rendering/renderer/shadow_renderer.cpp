@@ -95,13 +95,9 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
                 for (size_t k = startIdx; k < endIdx; ++k) {
                     const auto& item = shadowQueue[k];
                     if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity)) continue;
-                    auto& renderer = scene.registry.get<MeshRendererComponent>(item.entity);
-                    AABB worldAABB = renderer.model->aabb.Transform(item.worldMatrix);
-                    float dx = (std::max)(worldAABB.minBound.x - camPos.x, (std::max)(0.0f, camPos.x - worldAABB.maxBound.x));
-                    float dy = (std::max)(worldAABB.minBound.y - camPos.y, (std::max)(0.0f, camPos.y - worldAABB.maxBound.y));
-                    float dz = (std::max)(worldAABB.minBound.z - camPos.z, (std::max)(0.0f, camPos.z - worldAABB.maxBound.z));
-                    if (m_ShadowDistanceCullingSq > 0.0f && (dx*dx+dy*dy+dz*dz) > m_ShadowDistanceCullingSq) continue;
-                    if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(worldAABB.minBound, worldAABB.maxBound)) continue;
+                    
+                    if (m_ShadowDistanceCullingSq > 0.0f && item.distSq > m_ShadowDistanceCullingSq) continue;
+                    if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(item.worldAABB)) continue;
 
                     Model* activeModel = item.activeModel;
                     glm::mat4 worldMat = item.worldMatrix;
@@ -171,12 +167,8 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
                     for (size_t k = startIdx; k < endIdx; ++k) {
                         const auto& item = shadowQueue[k];
                         if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity)) continue;
-                        auto& renderer = scene.registry.get<MeshRendererComponent>(item.entity);
-                        AABB worldAABB = renderer.model->aabb.Transform(item.worldMatrix);
-                        float dx = (std::max)(worldAABB.minBound.x - camPos.x, (std::max)(0.0f, camPos.x - worldAABB.maxBound.x));
-                        float dy = (std::max)(worldAABB.minBound.y - camPos.y, (std::max)(0.0f, camPos.y - worldAABB.maxBound.y));
-                        float dz = (std::max)(worldAABB.minBound.z - camPos.z, (std::max)(0.0f, camPos.z - worldAABB.maxBound.z));
-                        if (m_ShadowDistanceCullingSq > 0.0f && (dx*dx+dy*dy+dz*dz) > m_ShadowDistanceCullingSq) continue;
+                        
+                        if (m_ShadowDistanceCullingSq > 0.0f && item.distSq > m_ShadowDistanceCullingSq) continue;
 
                         Model* activeModel = item.activeModel;
                         glm::mat4 worldMat = item.worldMatrix;
@@ -241,13 +233,9 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
                     for (size_t k = startIdx; k < endIdx; ++k) {
                         const auto& item = shadowQueue[k];
                         if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity)) continue;
-                        auto& renderer = scene.registry.get<MeshRendererComponent>(item.entity);
-                        AABB worldAABB = renderer.model->aabb.Transform(item.worldMatrix);
-                        float dx = (std::max)(worldAABB.minBound.x - camPos.x, (std::max)(0.0f, camPos.x - worldAABB.maxBound.x));
-                        float dy = (std::max)(worldAABB.minBound.y - camPos.y, (std::max)(0.0f, camPos.y - worldAABB.maxBound.y));
-                        float dz = (std::max)(worldAABB.minBound.z - camPos.z, (std::max)(0.0f, camPos.z - worldAABB.maxBound.z));
-                        if (m_ShadowDistanceCullingSq > 0.0f && (dx*dx+dy*dy+dz*dz) > m_ShadowDistanceCullingSq) continue;
-                        if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(worldAABB.minBound, worldAABB.maxBound)) continue;
+
+                        if (m_ShadowDistanceCullingSq > 0.0f && item.distSq > m_ShadowDistanceCullingSq) continue;
+                        if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(item.worldAABB)) continue;
                         Model* activeModel = item.activeModel;
                         glm::mat4 worldMat = item.worldMatrix;
                         std::vector<glm::mat4> transforms;

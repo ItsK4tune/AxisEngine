@@ -31,6 +31,17 @@ struct WorldTransformComponent {
     glm::mat4 prevWorldMatrix = glm::mat4(1.0f);
     uint32_t version = 0;
     bool isDirty = true;
+
+    glm::mat4 GetInterpolated(float alpha) const
+    {
+        glm::mat4 result;
+        for (int r = 0; r < 4; ++r) {
+            for (int c = 0; c < 4; ++c) {
+                result[r][c] = glm::mix(prevWorldMatrix[r][c], worldMatrix[r][c], alpha);
+            }
+        }
+        return result;
+    }
 };
 
 

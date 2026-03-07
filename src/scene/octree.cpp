@@ -98,12 +98,12 @@ void OctreeNode::Remove(entt::entity entity)
 
 void OctreeNode::Query(const Frustum &frustum, std::vector<entt::entity> &out_entities) const
 {
-    if (!frustum.IsBoxVisible(m_Boundary.minBound, m_Boundary.maxBound))
+    if (!frustum.IsBoxVisible(m_Boundary))
         return;
 
     for (const auto &el : m_Elements)
     {
-        if (frustum.IsBoxVisible(el.aabb.minBound, el.aabb.maxBound))
+        if (frustum.IsBoxVisible(el.aabb))
             out_entities.push_back(el.entity);
     }
 
