@@ -10,6 +10,11 @@
 #include <core/scripting/scriptable.h>
 #include <core/utils/bullet_glm_helpers.h>
 #include <core/utils/logger.h>
+#include <systems/physics/raycast.h>
+#include <systems/window/io_handler.h>
+#include <systems/window/monitor_manager.h>
+#include <ecs/components/camera_component.h>
+#include <ecs/entity_manager.h>
 
 PhysicsSystem::PhysicsSystem()
 {
@@ -214,3 +219,50 @@ void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shade
     m_Ctx.physics->DebugDraw();
     renderState.Enable(Graphics::ServerCapability::DepthTest);
 }
+
+RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, const glm::vec3 &direction, float distance)
+{
+    if (!m_Ctx.physics)
+        return {};
+    return m_Ctx.physics->Raycast(origin, direction, distance);
+}
+
+RayHit PhysicsSystem::Raycast(const glm::vec3 &start, const glm::vec3 &end)
+{
+    if (!m_Ctx.physics)
+        return {};
+
+    glm::vec3 dir = end - start;
+    float dist = glm::length(dir);
+    if (dist < 0.0001f)
+        return {};
+
+    return m_Ctx.physics->Raycast(start, glm::normalize(dir), dist);
+}
+
+RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, float yaw, float pitch, float distance)
+{
+    if (!m_Ctx.physics)
+        return {};
+
+    glm::vec3 dir = RaycastUtils::AngleToDirection(yaw, pitch);
+    return m_Ctx.physics->Raycast(origin, dir, distance);
+}
+
+RayHit PhysicsSystem::RaycastFromScreen(const glm::vec2 &screenPos, float distance)
+{
+    if (!m_Ctx.physics || !m_LastScene)
+        return {};
+
+    entt::entity camEntity = EntityManager::GetActiveCamera(*m_LastScene);
+    if (camEntity == entt::null)
+        return {};
+
+    auto &camera = m_LastScene->registry.get<CameraComponent>(camEntity);
+    glm::vec2 viewportSize(m_Ctx.io->GetMonitorManager().GetWidth(), m_Ctx.io->GetMonitorManager().GetHeight());
+
+    RaycastUtils::Ray ray = RaycastUtils::CalculateRay(screenPos, viewportSize, camera.viewMatrix, camera.projectionMatrix);
+
+    return m_Ctx.physics->Raycast(ray.origin, ray.direction, distance);
+}
+
