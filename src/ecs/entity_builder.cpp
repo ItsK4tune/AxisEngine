@@ -83,6 +83,13 @@ EntityBuilder& EntityBuilder::WithRigidBody(std::shared_ptr<IRigidBody> body)
     return *this;
 }
 
+EntityBuilder& EntityBuilder::WithCharacterController(std::shared_ptr<ICharacterController> controller)
+{
+    auto& cc = m_Scene.registry.get_or_emplace<CharacterControllerComponent>(m_Entity);
+    cc.controller = controller;
+    return *this;
+}
+
 EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::vec2& size, int zIndex)
 {
     auto& uiTransform = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);

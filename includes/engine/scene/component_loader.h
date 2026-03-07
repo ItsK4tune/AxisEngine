@@ -7,6 +7,7 @@
 #include <scene/scene_serializer.h>
 #include <string>
 #include <core/utils/yaml_parser.h>
+#include <core/utils/loader_utils.h>
 
 class Application;
 
@@ -56,7 +57,6 @@ public:
     static void InitializeDefaultLoaders();
 
 private:
-    static void ValidateKeys(const YAMLNode& node, const std::vector<std::string>& allowedKeys, const std::string& componentName);
     
     static std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> s_Factories;
     static std::unordered_map<std::string, ComponentLoaderFunc> s_Loaders;

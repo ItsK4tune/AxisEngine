@@ -20,6 +20,8 @@ PhysicsTransformSync::~PhysicsTransformSync()
         m_Scene.registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
         m_Scene.registry.on_construct<WorldTransformComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
         m_Scene.registry.on_destroy<WorldTransformComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+        m_Scene.registry.on_construct<CharacterControllerComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+        m_Scene.registry.on_destroy<CharacterControllerComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
     }
 }
 
@@ -32,14 +34,18 @@ void PhysicsTransformSync::Init()
     m_Scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
     m_Scene.registry.on_construct<WorldTransformComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
     m_Scene.registry.on_destroy<WorldTransformComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+    m_Scene.registry.on_construct<CharacterControllerComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+    m_Scene.registry.on_destroy<CharacterControllerComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
 
     m_simulationQuery.Update(m_Scene.registry);
+    m_ccQuery.Update(m_Scene.registry);
     m_initialized = true;
 }
 
 void PhysicsTransformSync::OnComponentChanged(entt::registry &registry, entt::entity entity)
 {
     m_simulationQuery.MarkDirty();
+    m_ccQuery.MarkDirty();
 }
 
 void PhysicsTransformSync::SyncToPhysics()
@@ -67,6 +73,28 @@ void PhysicsTransformSync::SyncToPhysics()
         glm::quat worldRot = glm::quat_cast(world->worldMatrix);
 
         rb.body->SetWorldTransform(worldPos, worldRot);
+        m_LastSyncedVersions[entity] = currentVersion;
+    }
+
+    m_ccQuery.Update(m_Scene.registry);
+    const auto &ccEntities = m_ccQuery.GetEntities();
+    for (auto entity : ccEntities)
+    {
+        auto &cc = m_Scene.registry.get<CharacterControllerComponent>(entity);
+        auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
+        if (!world || !cc.controller) continue;
+
+        uint32_t currentVersion = world->version;
+        if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
+            m_LastSyncedVersions[entity] == currentVersion)
+        {
+            continue;
+        }
+
+        glm::vec3 worldPos = glm::vec3(world->worldMatrix[3]);
+        glm::quat worldRot = glm::quat_cast(world->worldMatrix);
+
+        cc.controller->SetWorldTransform(worldPos, worldRot);
         m_LastSyncedVersions[entity] = currentVersion;
     }
 }
@@ -119,6 +147,83 @@ void PhysicsTransformSync::SyncFromPhysics()
             world->isDirty = true;
             m_LastSyncedVersions[entity] = world->version;
             
+        }
+    }
+
+    const auto &ccEntities = m_ccQuery.GetEntities();
+    for (auto entity : ccEntities)
+    {
+        auto &cc = m_Scene.registry.get<CharacterControllerComponent>(entity);
+        auto* pos = m_Scene.registry.try_get<PositionComponent>(entity);
+        auto* rot = m_Scene.registry.try_get<RotationComponent>(entity);
+        auto* hier = m_Scene.registry.try_get<HierarchyComponent>(entity);
+        auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
+
+        if (!cc.controller || !pos || !rot || !world) continue;
+
+        bool hasParent = (hier && hier->parent != entt::null);
+
+        if (m_LastSyncedVersions.find(entity) == m_LastSyncedVersions.end())
+        {
+            glm::vec3 worldPos;
+            glm::quat worldRot;
+            cc.controller->GetWorldTransform(worldPos, worldRot);
+
+            if (hasParent)
+            {
+                if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
+                {
+                    glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
+                    glm::mat4 localMatrix = glm::inverse(parentWorld->worldMatrix) * validWorldMatrix;
+
+                    glm::vec3 s, t, skew;
+                    glm::quat r;
+                    glm::vec4 perspective;
+                    glm::decompose(localMatrix, s, r, t, skew, perspective);
+
+                    pos->value = t;
+                    rot->value = r;
+                }
+            }
+            else
+            {
+                pos->value = worldPos;
+                rot->value = worldRot;
+            }
+
+            world->isDirty = true;
+            m_LastSyncedVersions[entity] = world->version;
+        }
+        else
+        {
+            glm::vec3 worldPos;
+            glm::quat worldRot;
+            cc.controller->GetWorldTransform(worldPos, worldRot);
+
+            if (hasParent)
+            {
+                if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
+                {
+                    glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
+                    glm::mat4 localMatrix = glm::inverse(parentWorld->worldMatrix) * validWorldMatrix;
+
+                    glm::vec3 s, t, skew;
+                    glm::quat r;
+                    glm::vec4 perspective;
+                    glm::decompose(localMatrix, s, r, t, skew, perspective);
+
+                    pos->value = t;
+                    rot->value = r;
+                }
+            }
+            else
+            {
+                pos->value = worldPos;
+                rot->value = worldRot;
+            }
+
+            world->isDirty = true;
+            m_LastSyncedVersions[entity] = world->version;
         }
     }
 }

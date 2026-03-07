@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <systems/physics/interfaces/i_constraint.h>
 #include <systems/physics/interfaces/i_rigid_body.h>
+#include <systems/physics/interfaces/i_character_controller.h>
 #include <memory>
 #include <vector>
 
@@ -65,3 +66,28 @@ struct RigidBodyComponent
         }
     }
 };
+
+struct CharacterControllerComponent
+{
+    std::shared_ptr<ICharacterController> controller = nullptr;
+
+    float stepHeight = 0.35f;
+    float maxSlope = 45.0f; // degrees
+    
+    glm::vec3 walkDirection = glm::vec3(0.0f);
+    bool jumpRequested = false;
+
+    // Output status
+    bool isOnGround = false;
+
+    void Jump()
+    {
+        jumpRequested = true;
+    }
+
+    void SetWalkDirection(const glm::vec3& dir)
+    {
+        walkDirection = dir;
+    }
+};
+

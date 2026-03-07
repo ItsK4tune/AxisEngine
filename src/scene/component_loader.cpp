@@ -59,23 +59,13 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("Material", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadMaterial(s, e, n, r); });
     RegisterLoader("LOD", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadLOD(s, e, n, r); });
     RegisterLoader("RigidBody", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { PhysicsLoader::LoadRigidBody(s, e, n, p); });
+    RegisterLoader("CharacterController", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { PhysicsLoader::LoadCharacterController(s, e, n, p); });
     RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { /* Transform is typically handled by SceneSerializer directly */ });
-}
-
-void ComponentLoader::ValidateKeys(const YAMLNode &node, const std::vector<std::string> &allowedKeys, const std::string &componentName)
-{
-    for (const auto &child : node.children)
-    {
-        if (std::find(allowedKeys.begin(), allowedKeys.end(), child.key) == allowedKeys.end())
-        {
-            LOGGER_WARN("ComponentLoader") << "Unknown key '" << child.key << "' in component '" << componentName << "'";
-        }
-    }
 }
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Model", "Shader", "Order", "Color", "CastShadow"}, "Renderer");
+    LoaderUtils::ValidateKeys(node, {"Model", "Shader", "Order", "Color", "CastShadow"}, "Renderer");
 
     std::string modelName = node.GetChildValue("Model");
     std::string shaderName = node.GetChildValue("Shader");
@@ -107,7 +97,7 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Animation", "Speed", "StartTime", "Rate"}, "Animator");
+    LoaderUtils::ValidateKeys(node, {"Animation", "Speed", "StartTime", "Rate"}, "Animator");
 
     auto &a = scene.registry.emplace<AnimationComponent>(entity);
 
@@ -174,7 +164,7 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Primary", "FOV", "Yaw", "Pitch", "Near", "Far", "AspectRatio"}, "Camera");
+    LoaderUtils::ValidateKeys(node, {"Primary", "FOV", "Yaw", "Pitch", "Near", "Far", "AspectRatio"}, "Camera");
 
     auto &c = scene.registry.emplace<CameraComponent>(entity);
     c.isPrimary = node.GetChildValue("Primary", "1") == "1" || node.GetChildValue("Primary", "true") == "true";
@@ -205,7 +195,7 @@ void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNo
 
 void ComponentLoader::LoadLightDir(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Ambient", "Diffuse", "Specular"}, "LightDir");
+    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Ambient", "Diffuse", "Specular"}, "LightDir");
 
     auto &l = scene.registry.emplace<DirectionalLightComponent>(entity);
 
@@ -228,7 +218,7 @@ void ComponentLoader::LoadLightDir(Scene &scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadLightPoint(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Radius", "Constant", "Linear", "Quadratic", }, "LightPoint");
+    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Radius", "Constant", "Linear", "Quadratic", }, "LightPoint");
 
     auto &l = scene.registry.emplace<PointLightComponent>(entity);
 
@@ -255,7 +245,7 @@ void ComponentLoader::LoadLightPoint(Scene &scene, entt::entity entity, const YA
 
 void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant", "Linear", "Quadratic"}, "LightSpot");
+    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant", "Linear", "Quadratic"}, "LightSpot");
 
     auto &l = scene.registry.emplace<SpotLightComponent>(entity);
 
@@ -291,7 +281,7 @@ void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAM
 
 void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Position", "Size", "ZOrder", "UsePercentage", "Anchor"}, "UITransform");
+    LoaderUtils::ValidateKeys(node, {"Position", "Size", "ZOrder", "UsePercentage", "Anchor"}, "UITransform");
 
     auto &ui = scene.registry.emplace<UITransformComponent>(entity);
 
@@ -319,7 +309,7 @@ void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const Y
 
 void ComponentLoader::LoadUIRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Color", "Shader"}, "UIRenderer");
+    LoaderUtils::ValidateKeys(node, {"Color", "Shader"}, "UIRenderer");
 
     auto &ui = scene.registry.emplace<UIRendererComponent>(entity);
 
@@ -340,7 +330,7 @@ void ComponentLoader::LoadUIRenderer(Scene &scene, entt::entity entity, const YA
 
 void ComponentLoader::LoadUIText(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Text", "Font", "Color", "Scale"}, "UIText");
+    LoaderUtils::ValidateKeys(node, {"Text", "Font", "Color", "Scale"}, "UIText");
 
     auto &txt = scene.registry.emplace<UITextComponent>(entity);
 
@@ -371,7 +361,7 @@ void ComponentLoader::LoadUIText(Scene &scene, entt::entity entity, const YAMLNo
 
 void ComponentLoader::LoadLOD(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Models", "Distances"}, "LOD");
+    LoaderUtils::ValidateKeys(node, {"Models", "Distances"}, "LOD");
 
     std::string modelsStr = node.GetChildValue("Models");
     std::string distancesStr = node.GetChildValue("Distances");
@@ -417,7 +407,7 @@ void ComponentLoader::LoadLOD(Scene &scene, entt::entity entity, const YAMLNode 
 
 void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Skybox", "Shader"}, "SkyboxRenderer");
+    LoaderUtils::ValidateKeys(node, {"Skybox", "Shader"}, "SkyboxRenderer");
 
     auto &comp = scene.registry.emplace<SkyboxRenderComponent>(entity);
 
@@ -436,7 +426,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, cons
 
 void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node, EngineContext ctx)
 {
-    ValidateKeys(node, {"Class"}, "Script");
+    LoaderUtils::ValidateKeys(node, {"Class"}, "Script");
 
     std::string className = node.GetChildValue("Class");
     if (className.empty())
@@ -459,7 +449,7 @@ void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNo
 
 void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Path", "Volume", "Loop", "Is3D", "MinDistance", "PlayOnAwake"}, "AudioSource");
+    LoaderUtils::ValidateKeys(node, {"Path", "Volume", "Loop", "Is3D", "MinDistance", "PlayOnAwake"}, "AudioSource");
 
     AudioSourceComponent audio;
     audio.filePath = node.GetChildValue("Path");
@@ -483,7 +473,7 @@ void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const Y
 
 void ComponentLoader::LoadVideoPlayer(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    ValidateKeys(node, {"Path", "Loop", "Speed", "PlayOnAwake"}, "VideoPlayer");
+    LoaderUtils::ValidateKeys(node, {"Path", "Loop", "Speed", "PlayOnAwake"}, "VideoPlayer");
 
     VideoPlayerComponent video;
     video.filePath = FileSystem::getPath(node.GetChildValue("Path"));
@@ -499,7 +489,7 @@ void ComponentLoader::LoadVideoPlayer(Scene &scene, entt::entity entity, const Y
 
 void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Texture", "MaxParticles", "Life"}, "ParticleEmitter");
+    LoaderUtils::ValidateKeys(node, {"Texture", "MaxParticles", "Life"}, "ParticleEmitter");
 
     std::string texName = node.GetChildValue("Texture");
 
@@ -526,7 +516,7 @@ void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, con
 
 void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    ValidateKeys(node, {"Type", "Roughness", "Metallic", "AO", "Shininess", "Specular", "Emission", "Ambient", "Opacity", "AlphaCutoff", "BlendSrc", "BlendDst", "Albedo", "Diffuse", "Normal", "MetallicMap", "RoughnessMap", "AOMap", "EmissiveMap"}, "Material");
+    LoaderUtils::ValidateKeys(node, {"Type", "Roughness", "Metallic", "AO", "Shininess", "Specular", "Emission", "Ambient", "Opacity", "AlphaCutoff", "BlendSrc", "BlendDst", "Albedo", "Diffuse", "Normal", "MetallicMap", "RoughnessMap", "AOMap", "EmissiveMap"}, "Material");
 
     MaterialComponent mat;
     std::string typeStr = node.GetChildValue("Type", "PHONG");

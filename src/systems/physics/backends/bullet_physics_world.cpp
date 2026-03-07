@@ -1,6 +1,8 @@
 #include <systems/physics/backends/bullet_constraint.h>
 #include <systems/physics/backends/bullet_debug_drawer.h>
 #include <systems/physics/backends/bullet_physics_world.h>
+#include <systems/physics/backends/bullet_character_controller.h>
+#include <BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <core/utils/logger.h>
 
 BulletPhysicsWorld::BulletPhysicsWorld()
@@ -20,6 +22,8 @@ void BulletPhysicsWorld::Init()
     m_Solver = std::make_unique<btSequentialImpulseConstraintSolver>();
     m_DynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
         m_Dispatcher.get(), m_OverlappingPairCache.get(), m_Solver.get(), m_CollisionConfig.get());
+
+    m_DynamicsWorld->getPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
 
     m_DynamicsWorld->setGravity(btVector3(0, -9.81f, 0));
 
@@ -85,6 +89,30 @@ void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
     if (bBody->GetRaw())
     {
         m_DynamicsWorld->removeRigidBody(bBody->GetRaw());
+    }
+}
+
+void BulletPhysicsWorld::AddCharacterController(ICharacterController* controller)
+{
+    if (!m_DynamicsWorld || !controller) return;
+
+    BulletCharacterController* bCC = static_cast<BulletCharacterController*>(controller);
+    if (bCC->GetRawController() && bCC->GetGhostObject())
+    {
+        m_DynamicsWorld->addCollisionObject(bCC->GetGhostObject(), btBroadphaseProxy::CharacterFilter, btBroadphaseProxy::StaticFilter | btBroadphaseProxy::DefaultFilter);
+        m_DynamicsWorld->addAction(bCC->GetRawController());
+    }
+}
+
+void BulletPhysicsWorld::RemoveCharacterController(ICharacterController* controller)
+{
+    if (!m_DynamicsWorld || !controller) return;
+
+    BulletCharacterController* bCC = static_cast<BulletCharacterController*>(controller);
+    if (bCC->GetRawController() && bCC->GetGhostObject())
+    {
+        m_DynamicsWorld->removeAction(bCC->GetRawController());
+        m_DynamicsWorld->removeCollisionObject(bCC->GetGhostObject());
     }
 }
 
@@ -176,6 +204,21 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCapsuleShape(float ra
 {
     btCapsuleShape* shape = new btCapsuleShape(radius, height);
     return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::Capsule);
+}
+
+std::shared_ptr<ICharacterController> BulletPhysicsWorld::CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight)
+{
+    if (!shape) return nullptr;
+
+    BulletCollisionShape* bShape = static_cast<BulletCollisionShape*>(shape.get());
+    
+    btPairCachingGhostObject* ghostObject = new btPairCachingGhostObject();
+    ghostObject->setCollisionShape(bShape->GetRaw());
+    ghostObject->setCollisionFlags(btCollisionObject::CF_CHARACTER_OBJECT);
+    
+    btKinematicCharacterController* controller = new btKinematicCharacterController(ghostObject, static_cast<btConvexShape*>(bShape->GetRaw()), stepHeight);
+
+    return std::make_shared<BulletCharacterController>(ghostObject, controller, shape);
 }
 
 std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCompoundShape()

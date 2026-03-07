@@ -10,6 +10,7 @@
 #include <core/utils/filesystem.h>
 #include <core/utils/logger.h>
 #include <core/utils/yaml_parser.h>
+#include <core/utils/loader_utils.h>
 
 SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, EngineContext ctx)
 {
@@ -79,6 +80,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
             {
                 if (resNode.key == "Shader")
                 {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "VS", "FS", "GS"}, "Resource:Shader");
                     std::string name = resNode.GetChildValue("Name");
                     std::string vs = resNode.GetChildValue("VS");
                     std::string fs = resNode.GetChildValue("FS");
@@ -88,6 +90,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Model")
                 {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Static"}, "Resource:Model");
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     bool isStatic = resNode.GetChildValue("Static") == "1" || resNode.GetChildValue("Static") == "true";
@@ -96,6 +99,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Texture")
                 {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path"}, "Resource:Texture");
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     res.LoadTexture(name, path);
@@ -103,6 +107,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Font")
                 {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Size"}, "Resource:Font");
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     unsigned int size = std::stoul(resNode.GetChildValue("Size", "16"));
@@ -111,6 +116,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Skybox")
                 {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Right", "Left", "Top", "Bottom", "Front", "Back"}, "Resource:Skybox");
                     std::string name = resNode.GetChildValue("Name");
                     std::vector<std::string> faces = {
                         resNode.GetChildValue("Right"),
@@ -124,6 +130,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Animation")
                 {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Model"}, "Resource:Animation");
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     std::string model = resNode.GetChildValue("Model");
@@ -132,6 +139,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Sound")
                 {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path"}, "Resource:Sound");
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     if (ctx.IsValid())
@@ -144,6 +152,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
         {
             for (auto &entNode : root.children)
             {
+                LoaderUtils::ValidateKeys(entNode, {"Tag", "Layer", "Parent", "Component"}, "Entity:" + entNode.key);
                 std::string entityName = entNode.key;
                 std::string entityTag = entNode.GetChildValue("Tag", "default");
 
@@ -176,6 +185,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 {
                     if (child.key == "Component" && child.value == "Transform")
                     {
+                        LoaderUtils::ValidateKeys(child, {"Position", "Rotation", "Scale"}, "Component:Transform");
                         tNode = &child;
                         break;
                     }

@@ -64,6 +64,7 @@ void PhysicsSystem::Update(Scene &scene, float dt)
         });
 
         scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
+        scene.registry.on_destroy<CharacterControllerComponent>().connect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
     }
     if (!m_transformSync)
     {
@@ -85,6 +86,22 @@ void PhysicsSystem::Update(Scene &scene, float dt)
     }
     
     m_collisionDispatcher->DispatchEvents();
+
+    auto viewCC = scene.registry.view<CharacterControllerComponent>();
+    for (auto entity : viewCC)
+    {
+        auto& cc = viewCC.get<CharacterControllerComponent>(entity);
+        if (cc.controller)
+        {
+            cc.controller->SetWalkDirection(cc.walkDirection);
+            if (cc.jumpRequested)
+            {
+                cc.controller->Jump();
+                cc.jumpRequested = false;
+            }
+            cc.isOnGround = cc.controller->OnGround();
+        }
+    }
 }
 
 void PhysicsSystem::Reset()
@@ -97,6 +114,7 @@ void PhysicsSystem::Reset()
     if (m_LastScene)
     {
         m_LastScene->registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
+        m_LastScene->registry.on_destroy<CharacterControllerComponent>().disconnect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
     }
 
     m_transformSync.reset();
@@ -126,6 +144,21 @@ void PhysicsSystem::OnRigidBodyDestroyed(entt::registry &registry, entt::entity 
             } catch (...) {
                 LOGGER_ERROR("PhysicsSystem") << "OnRigidBodyDestroyed: CRASH during rigid body cleanup for entity " << (uint32_t)entity;
             }
+        }
+    }
+}
+
+void PhysicsSystem::OnCharacterControllerDestroyed(entt::registry& registry, entt::entity entity)
+{
+    if (!m_LastPhysicsWorld)
+        return;
+
+    if (registry.all_of<CharacterControllerComponent>(entity))
+    {
+        auto& cc = registry.get<CharacterControllerComponent>(entity);
+        if (cc.controller)
+        {
+            m_LastPhysicsWorld->RemoveCharacterController(cc.controller.get());
         }
     }
 }

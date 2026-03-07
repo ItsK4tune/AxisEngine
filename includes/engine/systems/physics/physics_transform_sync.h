@@ -29,6 +29,7 @@ private:
     IPhysicsWorld& m_Physics;
 
     CachedQuery<RigidBodyComponent, WorldTransformComponent> m_simulationQuery;
+    CachedQuery<CharacterControllerComponent, WorldTransformComponent> m_ccQuery;
     std::unordered_map<entt::entity, glm::mat4> m_worldMatrixCache;
     std::unordered_map<entt::entity, uint32_t> m_LastSyncedVersions;
     bool m_initialized = false;

@@ -5,17 +5,11 @@
 #include <string>
 #include <core/utils/bullet_glm_helpers.h>
 #include <core/utils/logger.h>
+#include <core/utils/loader_utils.h>
 
 void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLNode &node, IPhysicsWorld &physics)
 {
-    std::vector<std::string> allowed = {"Type", "Mass", "Size", "Radius", "Height", "Offset", "Restitution", "AngularFactor", "LinearFactor", "BodyType", "Shapes"};
-    for (const auto& child : node.children)
-    {
-        if (std::find(allowed.begin(), allowed.end(), child.key) == allowed.end())
-        {
-            LOGGER_WARN("PhysicsLoader") << "Unknown key '" << child.key << "' in component 'RigidBody'";
-        }
-    }
+    LoaderUtils::ValidateKeys(node, {"Type", "Mass", "Size", "Radius", "Height", "Offset", "Restitution", "AngularFactor", "LinearFactor", "BodyType", "Shapes"}, "RigidBody");
 
     std::string type = node.GetChildValue("Type", "BOX");
     float mass = std::stof(node.GetChildValue("Mass", "1.0"));
@@ -156,3 +150,31 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
         }
     }
 }
+
+void PhysicsLoader::LoadCharacterController(Scene &scene, entt::entity entity, const YAMLNode &node, IPhysicsWorld &physics)
+{
+    LoaderUtils::ValidateKeys(node, {"Radius", "Height", "StepHeight", "MaxSlope"}, "CharacterController");
+
+    float radius = std::stof(node.GetChildValue("Radius", "0.5"));
+    float height = std::stof(node.GetChildValue("Height", "1.0"));
+    float stepHeight = std::stof(node.GetChildValue("StepHeight", "0.35"));
+    float maxSlope = std::stof(node.GetChildValue("MaxSlope", "45.0"));
+
+    auto &pos = scene.registry.get<PositionComponent>(entity);
+    auto &rot = scene.registry.get<RotationComponent>(entity);
+    
+    auto& cc = scene.registry.emplace<CharacterControllerComponent>(entity);
+    cc.stepHeight = stepHeight;
+    cc.maxSlope = maxSlope;
+
+    auto shape = physics.CreateCapsuleShape(radius, height);
+    cc.controller = physics.CreateCharacterController(shape, stepHeight);
+
+    if (cc.controller)
+    {
+        cc.controller->SetMaxSlope(glm::radians(maxSlope));
+        cc.controller->SetWorldTransform(pos.value, rot.value);
+        physics.AddCharacterController(cc.controller.get());
+    }
+}
+

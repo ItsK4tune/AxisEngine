@@ -37,6 +37,7 @@ public:
     EntityBuilder& WithPBRMaterial(float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f);
     
     EntityBuilder& WithRigidBody(std::shared_ptr<IRigidBody> body);
+    EntityBuilder& WithCharacterController(std::shared_ptr<ICharacterController> controller);
     
     EntityBuilder& WithUITransform(const glm::vec2& pos, const glm::vec2& size, int zIndex = 0);
     EntityBuilder& WithUIText(const std::string& text, 

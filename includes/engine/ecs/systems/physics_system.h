@@ -31,6 +31,7 @@ public:
     void RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState);
     void Reset();
     void OnRigidBodyDestroyed(entt::registry& registry, entt::entity entity);
+    void OnCharacterControllerDestroyed(entt::registry& registry, entt::entity entity);
 
 private:
     EngineContext m_Ctx;

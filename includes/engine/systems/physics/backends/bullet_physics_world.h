@@ -63,6 +63,9 @@ public:
     void AddRigidBody(IRigidBody* body) override;
     void RemoveRigidBody(IRigidBody* body) override;
 
+    void AddCharacterController(ICharacterController* controller) override;
+    void RemoveCharacterController(ICharacterController* controller) override;
+
     void DebugDraw() override;
 
     RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist) override;
@@ -75,6 +78,7 @@ public:
     std::shared_ptr<ICollisionShape> CreateBoxShape(const glm::vec3& halfExtents) override;
     std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) override;
     std::shared_ptr<ICollisionShape> CreateCapsuleShape(float radius, float height) override;
+    std::shared_ptr<ICharacterController> CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight = 0.35f) override;
     std::shared_ptr<ICollisionShape> CreateCompoundShape() override;
     std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) override;
     void AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child, const glm::vec3& pos, const glm::quat& rot) override;

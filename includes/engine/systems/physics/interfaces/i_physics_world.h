@@ -10,6 +10,7 @@
 class ICollisionShape;
 class IRigidBody;
 class IConstraint;
+class ICharacterController;
 
 class IPhysicsWorld
 {
@@ -26,6 +27,9 @@ public:
     virtual void AddRigidBody(IRigidBody* body) = 0;
     virtual void RemoveRigidBody(IRigidBody* body) = 0;
 
+    virtual void AddCharacterController(ICharacterController* controller) = 0;
+    virtual void RemoveCharacterController(ICharacterController* controller) = 0;
+
     virtual void AddConstraint(std::shared_ptr<IConstraint> constraint) = 0;
     virtual void RemoveConstraint(std::shared_ptr<IConstraint> constraint) = 0;
 
@@ -40,6 +44,7 @@ public:
     virtual std::shared_ptr<ICollisionShape> CreateBoxShape(const glm::vec3& halfExtents) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateCapsuleShape(float radius, float height) = 0;
+    virtual std::shared_ptr<ICharacterController> CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight = 0.35f) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateCompoundShape() = 0;
     virtual std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) = 0;
     virtual void AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child, const glm::vec3& pos, const glm::quat& rot) = 0;
