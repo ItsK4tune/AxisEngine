@@ -47,7 +47,6 @@ void RenderQueue::Build(Scene& scene, float alpha,
                 auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
                 if (!renderer.model || renderer.shader.expired()) continue;
 
-                // Interpolate world matrix
                 glm::mat4 modelMatrix = glm::mat4(1.0f);
                 for (int r = 0; r < 4; ++r) {
                     for (int c = 0; c < 4; ++c) {

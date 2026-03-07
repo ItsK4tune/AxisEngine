@@ -86,7 +86,6 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     auto& context = ctx.io->GetGraphicsContext();
     postProcess.Init(context, width, height, res);
     
-    // Explicit initializations
     GetSystem<RenderSystem>()->Init(context, res);
     GetSystem<SkyboxRenderSystem>()->Init(context);
     GetSystem<ParticleSystem>()->Init(context);
@@ -106,7 +105,6 @@ void SystemManager::Shutdown()
     for (auto& sys : m_Systems) {
         sys->Shutdown();
     }
-    // Specific shutdown
     GetSystem<RenderSystem>()->Shutdown();
     postProcess.Shutdown();
 }
@@ -138,7 +136,6 @@ void SystemManager::RunFixedUpdate(Scene& scene, float fixedDt)
 
 void SystemManager::RunUpdate(Scene& scene, float dt)
 {
-    // High priority (Logic)
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;
         int p = sys->GetPriority();
@@ -147,7 +144,6 @@ void SystemManager::RunUpdate(Scene& scene, float dt)
         }
     }
 
-    // Medium priority (Visuals / Async)
     std::vector<std::future<void>> futures;
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;

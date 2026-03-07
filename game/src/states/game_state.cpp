@@ -43,12 +43,16 @@ void GameState::OnUpdate(float dt)
         LOGGER_DEBUG("GameState") << "[Raycast] Left mouse clicked.";
         entt::entity camEntity = EntityManager::GetActiveCamera(GetScene());
 
-        if (camEntity != entt::null && EntityManager::HasComponent<CameraComponent>(GetScene(), camEntity) && EntityManager::HasComponent<TransformComponent>(GetScene(), camEntity))
+        if (camEntity != entt::null && EntityManager::HasComponent<CameraComponent>(GetScene(), camEntity))
         {
             auto& camComp = EntityManager::GetComponent<CameraComponent>(GetScene(), camEntity);
-            auto& transform = EntityManager::GetComponent<TransformComponent>(GetScene(), camEntity);
+            glm::vec3 camPos = glm::vec3(0.0f);
             
-            Camera cam(transform.position, camComp.worldUp, camComp.yaw, camComp.pitch);
+            if (auto* pos = EntityManager::TryGetComponent<PositionComponent>(GetScene(), camEntity))
+                camPos = pos->value;
+            
+            // Use existing camera vectors if available, otherwise fallback to creating a temp Camera object
+            glm::vec3 rayDir;
             
             float mouseX = GetMouse().GetLastX();
             float mouseY = GetMouse().GetLastY();
@@ -57,13 +61,18 @@ void GameState::OnUpdate(float dt)
             
             if (screenW > 0.0f && screenH > 0.0f)
             {
-                float aspect = screenW / screenH;
-                glm::mat4 projMat = glm::perspective(glm::radians(camComp.fov), aspect, camComp.nearPlane, camComp.farPlane);
-                glm::vec3 rayDir = cam.GetScreenRay(mouseX, mouseY, screenW, screenH, projMat);
+                // Normalized Device Coordinates
+                float x = (2.0f * mouseX) / screenW - 1.0f;
+                float y = 1.0f - (2.0f * mouseY) / screenH;
                 
-                if (!glm::any(glm::isnan(transform.position)) && !glm::any(glm::isnan(rayDir)))
+                glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+                glm::vec4 rayEye = glm::inverse(camComp.projectionMatrix) * rayClip;
+                rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+                rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
+                
+                if (!glm::any(glm::isnan(camPos)) && !glm::any(glm::isnan(rayDir)))
                 {
-                    RayHit hit = m_Ctx.physics->Raycast(transform.position, rayDir, 1000.0f);
+                    RayHit hit = m_Ctx.physics->Raycast(camPos, rayDir, 1000.0f);
                     if (hit.hasHit && EntityManager::IsValid(GetScene(), hit.entity))
                     {
                         m_SelectedEntity = hit.entity;

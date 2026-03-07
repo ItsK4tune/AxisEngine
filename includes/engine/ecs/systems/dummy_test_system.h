@@ -13,7 +13,6 @@ public:
 
     void Update(Scene& scene, float dt) override
     {
-        // Don't spam the console, just prove we compile and can be linked
     }
 
     bool IsEnabled() const override { return true; }

@@ -55,21 +55,21 @@ void PhysicsDebugModule::Render(Scene &scene)
 
     if (m_ShowAudioDebug)
     {
-        auto view = scene.registry.view<AudioSourceComponent, TransformComponent>();
+        auto view = scene.registry.view<AudioSourceComponent, WorldTransformComponent>();
         for (auto entity : view)
         {
-            const auto &transform = view.get<TransformComponent>(entity);
-            glm::vec3 pos = transform.GetWorldModelMatrix(scene.registry)[3];
+            const auto &world = view.get<WorldTransformComponent>(entity);
+            glm::vec3 pos = glm::vec3(world.worldMatrix[3]);
         }
     }
 
     if (m_ShowParticleDebug)
     {
-        auto view = scene.registry.view<ParticleEmitterComponent, TransformComponent>();
+        auto view = scene.registry.view<ParticleEmitterComponent, WorldTransformComponent>();
         for (auto entity : view)
         {
-            const auto &transform = view.get<TransformComponent>(entity);
-            glm::vec3 pos = transform.GetWorldModelMatrix(scene.registry)[3];
+            const auto &world = view.get<WorldTransformComponent>(entity);
+            glm::vec3 pos = glm::vec3(world.worldMatrix[3]);
         }
     }
 }

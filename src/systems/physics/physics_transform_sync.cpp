@@ -18,8 +18,8 @@ PhysicsTransformSync::~PhysicsTransformSync()
     {
         m_Scene.registry.on_construct<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
         m_Scene.registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
-        m_Scene.registry.on_construct<PositionComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
-        m_Scene.registry.on_destroy<PositionComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+        m_Scene.registry.on_construct<WorldTransformComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
+        m_Scene.registry.on_destroy<WorldTransformComponent>().disconnect<&PhysicsTransformSync::OnComponentChanged>(this);
     }
 }
 
@@ -30,8 +30,8 @@ void PhysicsTransformSync::Init()
 
     m_Scene.registry.on_construct<RigidBodyComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
     m_Scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
-    m_Scene.registry.on_construct<PositionComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
-    m_Scene.registry.on_destroy<PositionComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+    m_Scene.registry.on_construct<WorldTransformComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
+    m_Scene.registry.on_destroy<WorldTransformComponent>().connect<&PhysicsTransformSync::OnComponentChanged>(this);
 
     m_simulationQuery.Update(m_Scene.registry);
     m_initialized = true;
@@ -119,12 +119,6 @@ void PhysicsTransformSync::SyncFromPhysics()
             world->isDirty = true;
             m_LastSyncedVersions[entity] = world->version;
             
-            // Legacy support
-            if (auto* legacy = m_Scene.registry.try_get<TransformComponent>(entity))
-            {
-                legacy->position = pos->value;
-                legacy->rotation = rot->value;
-            }
         }
     }
 }
@@ -187,11 +181,4 @@ void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
     }
     
     world->isDirty = true;
-    
-    // Legacy support
-    if (auto* legacy = m_Scene.registry.try_get<TransformComponent>(entity))
-    {
-        legacy->position = pos->value;
-        legacy->rotation = rot->value;
-    }
 }

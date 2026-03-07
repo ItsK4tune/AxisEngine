@@ -18,16 +18,16 @@ void ParticleSystem::Update(Scene &scene, float dt)
     if (!m_Enabled)
         return;
 
-    auto view = scene.registry.view<ParticleEmitterComponent, TransformComponent>();
+    auto view = scene.registry.view<ParticleEmitterComponent, PositionComponent>();
 
     std::vector<entt::entity> entities(view.begin(), view.end());
 
     std::for_each(std::execution::par, entities.begin(), entities.end(), [&view, dt](entt::entity entity) {
-        auto [emitterComp, transform] = view.get<ParticleEmitterComponent, TransformComponent>(entity);
+        auto [emitterComp, pos] = view.get<ParticleEmitterComponent, PositionComponent>(entity);
 
         if (emitterComp.isActive)
         {
-            emitterComp.emitter.Update(dt, transform.position);
+            emitterComp.emitter.Update(dt, pos.value);
         }
     });
 }

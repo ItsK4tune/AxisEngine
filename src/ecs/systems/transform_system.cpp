@@ -2,6 +2,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
+#include <core/utils/logger.h>
 
 void TransformSystem::Init(EngineContext ctx)
 {
@@ -10,7 +11,6 @@ void TransformSystem::Init(EngineContext ctx)
 
 void TransformSystem::FixedUpdate(Scene& scene, float dt)
 {
-    // Store previous states for interpolation
     auto view = scene.registry.view<PositionComponent, RotationComponent, ScaleComponent, WorldTransformComponent>();
     for (auto entity : view)
     {
@@ -30,7 +30,6 @@ void TransformSystem::Update(Scene& scene, float dt)
 {
     auto& registry = scene.registry;
 
-    // First, identify all root entities (no parent)
     auto view = registry.view<PositionComponent, RotationComponent, ScaleComponent, WorldTransformComponent>();
     
     for (auto entity : view)
@@ -38,7 +37,7 @@ void TransformSystem::Update(Scene& scene, float dt)
         auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
         if (!hierarchy || hierarchy->parent == entt::null)
         {
-            UpdateWorldTransform(entity, registry, glm::mat4(1.0f), false);
+        UpdateWorldTransform(entity, registry, glm::mat4(1.0f), false, 0);
         }
     }
 }
@@ -51,7 +50,7 @@ void TransformSystem::Shutdown()
 {
 }
 
-void TransformSystem::UpdateWorldTransform(entt::entity entity, entt::registry& registry, const glm::mat4& parentTransform, bool parentDirty)
+void TransformSystem::UpdateWorldTransform(entt::entity entity, entt::registry& registry, const glm::mat4& parentTransform, bool parentDirty, int depth)
 {
     auto* pos = registry.try_get<PositionComponent>(entity);
     auto* rot = registry.try_get<RotationComponent>(entity);
@@ -59,11 +58,12 @@ void TransformSystem::UpdateWorldTransform(entt::entity entity, entt::registry& 
     auto* world = registry.try_get<WorldTransformComponent>(entity);
 
     if (!pos || !rot || !scl || !world) return;
+    if (depth > 64) {
+        LOGGER_ERROR("TransformSystem") << "Max hierarchy depth reached for entity " << (uint32_t)entity << ". Possible cycle!";
+        return;
+    }
 
     bool isDirty = world->isDirty || parentDirty;
-    
-    // Check if PSR changed (this could be optimized with signals setting world->isDirty)
-    // For now, let's assume world->isDirty is managed externally or we check it here.
     
     if (isDirty)
     {
@@ -81,7 +81,7 @@ void TransformSystem::UpdateWorldTransform(entt::entity entity, entt::registry& 
     {
         for (auto child : hierarchy->children)
         {
-            UpdateWorldTransform(child, registry, world->worldMatrix, isDirty);
+            UpdateWorldTransform(child, registry, world->worldMatrix, isDirty, depth + 1);
         }
     }
 }

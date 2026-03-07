@@ -16,11 +16,7 @@
 #include <systems/audio/sound_player.h>
 #include <rendering/interfaces/i_graphics_context.h>
 #include <systems/window/interfaces/i_window.h>
-
 #include <core/utils/logger.h>
-
-
-#include <iostream>
 
 EngineLoop::EngineLoop()
     : m_LastFrameTime(std::chrono::steady_clock::now())
@@ -131,26 +127,26 @@ void EngineLoop::FixedUpdate()
 
     if (m_MaxForceSync)
     {
-        auto view = registry.view<TransformComponent>();
+        auto view = registry.view<PositionComponent, RotationComponent, ScaleComponent>();
         for (auto entity : view)
         {
-            auto& t = view.get<TransformComponent>(entity);
-            t.prevPosition = t.position;
-            t.prevRotation = t.rotation;
-            t.prevScale = t.scale;
+            auto [p, r, s] = view.get<PositionComponent, RotationComponent, ScaleComponent>(entity);
+            p.prev = p.value;
+            r.prev = r.value;
+            s.prev = s.value;
         }
         m_MaxForceSync = false;
     }
 
     while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
     {
-        auto view = registry.view<TransformComponent>();
+        auto view = registry.view<PositionComponent, RotationComponent, ScaleComponent>();
         for (auto entity : view)
         {
-            auto& transform = view.get<TransformComponent>(entity);
-            transform.prevPosition = transform.position;
-            transform.prevRotation = transform.rotation;
-            transform.prevScale = transform.scale;
+            auto [p, r, s] = view.get<PositionComponent, RotationComponent, ScaleComponent>(entity);
+            p.prev = p.value;
+            r.prev = r.value;
+            s.prev = s.value;
         }
 
         m_Ctx.systems->RunFixedUpdate(*m_Ctx.scene, m_FixedDeltaTime);
@@ -166,8 +162,6 @@ void EngineLoop::FixedUpdate()
     }
 
     m_Alpha = m_Accumulator / m_FixedDeltaTime;
-
-    // Visual update run alongside high priority logic now
 }
 
 void EngineLoop::Render()

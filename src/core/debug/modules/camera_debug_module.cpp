@@ -97,14 +97,18 @@ void CameraDebugModule::ToggleDebugCamera()
             m_DebugCamera = EntityManager::CreateEntity(scene);
             registry.emplace<InfoComponent>(m_DebugCamera, "Debug Camera", "Debug");
 
-            auto &trans = registry.emplace<TransformComponent>(m_DebugCamera);
-            if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera))
+            auto &posComp = registry.emplace<PositionComponent>(m_DebugCamera);
+            registry.emplace<RotationComponent>(m_DebugCamera);
+            registry.emplace<ScaleComponent>(m_DebugCamera);
+            registry.emplace<WorldTransformComponent>(m_DebugCamera);
+
+            if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera))
             {
-                trans.position = registry.get<TransformComponent>(m_LastActiveCamera).position;
+                posComp.value = registry.get<PositionComponent>(m_LastActiveCamera).value;
             }
             else
             {
-                trans.position = glm::vec3(0.0f, 5.0f, 10.0f);
+                posComp.value = glm::vec3(0.0f, 5.0f, 10.0f);
             }
 
             auto &cam = registry.emplace<CameraComponent>(m_DebugCamera);
@@ -133,12 +137,16 @@ void CameraDebugModule::ToggleDebugCamera()
             {
                 registry.get<CameraComponent>(m_DebugCamera).isPrimary = true;
 
-                if (registry.valid(m_LastActiveCamera) && registry.all_of<TransformComponent>(m_LastActiveCamera))
+                if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera))
                 {
-                    auto &userTrans = registry.get<TransformComponent>(m_LastActiveCamera);
-                    auto &debugTrans = registry.get<TransformComponent>(m_DebugCamera);
-                    debugTrans.position = userTrans.position;
-                    debugTrans.rotation = userTrans.rotation;
+                    auto &userPos = registry.get<PositionComponent>(m_LastActiveCamera);
+                    auto &debugPos = registry.get<PositionComponent>(m_DebugCamera);
+                    debugPos.value = userPos.value;
+                    
+                    if (registry.all_of<RotationComponent>(m_LastActiveCamera) && registry.all_of<RotationComponent>(m_DebugCamera))
+                    {
+                        registry.get<RotationComponent>(m_DebugCamera).value = registry.get<RotationComponent>(m_LastActiveCamera).value;
+                    }
                 }
             }
         }

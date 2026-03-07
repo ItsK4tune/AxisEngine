@@ -142,7 +142,7 @@ void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shade
         !registry.get<CameraComponent>(m_cachedPrimaryCamera).isPrimary)
     {
         m_cachedPrimaryCamera = entt::null;
-        auto viewCamera = registry.view<CameraComponent, TransformComponent>();
+        auto viewCamera = registry.view<CameraComponent, PositionComponent>();
         for (auto entity : viewCamera)
         {
             auto &camera = viewCamera.get<CameraComponent>(entity);

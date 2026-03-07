@@ -205,14 +205,6 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                         w->worldMatrix = glm::mat4(1.0f);
                         w->prevWorldMatrix = glm::mat4(1.0f);
                     }
-                    
-                    auto &t = scene.registry.get_or_emplace<TransformComponent>(currentEntity);
-                    t.position = pos;
-                    t.rotation = rot;
-                    t.scale = scl;
-                    t.prevPosition = pos;
-                    t.prevRotation = rot;
-                    t.prevScale = scl;
                 }
 
                 if (auto *pNode = entNode.GetChild("Parent"))

@@ -33,7 +33,6 @@ public:
     
     static bool Load(const std::string& type, Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, IPhysicsWorld &phys, EngineContext ctx);
 
-    // Existing hardcoded loaders, soon to be refactored or moved into the registry
     static void LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadAnimator(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadLightDir(Scene &scene, entt::entity entity, const YAMLNode &node);

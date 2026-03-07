@@ -42,11 +42,10 @@ namespace SceneHandlers
 
                 if (childEntity != entt::null)
                 {
-                    if (scene.registry.all_of<TransformComponent>(childEntity) &&
-                        scene.registry.all_of<TransformComponent>(parentEntity))
+                    if (scene.registry.all_of<HierarchyComponent>(childEntity) &&
+                        scene.registry.all_of<HierarchyComponent>(parentEntity))
                     {
-                        auto &transform = scene.registry.get<TransformComponent>(childEntity);
-                        transform.SetParent(childEntity, parentEntity, scene.registry, true);
+                        EntityManager::AddChild(scene, parentEntity, childEntity, true);
                     }
                 }
                 else
@@ -101,8 +100,9 @@ namespace SceneHandlers
         info.name = "Default Spectator Camera";
         info.tag = "Default";
 
-        auto &trans = scene.registry.get<TransformComponent>(camEntity);
-        trans.position = glm::vec3(0.0f, 2.0f, 10.0f);
+        auto &pos = scene.registry.get<PositionComponent>(camEntity);
+        pos.value = glm::vec3(0.0f, 2.0f, 10.0f);
+        pos.prev = pos.value;
 
         auto &cam = scene.registry.emplace<CameraComponent>(camEntity);
         cam.isPrimary = true;
@@ -142,18 +142,18 @@ namespace SceneHandlers
              return;
         }
 
-        auto rbView = scene.registry.view<RigidBodyComponent, TransformComponent>();
+        auto rbView = scene.registry.view<RigidBodyComponent, WorldTransformComponent>();
         for (auto entity : rbView)
         {
             auto &rb = rbView.get<RigidBodyComponent>(entity);
-            auto &transform = rbView.get<TransformComponent>(entity);
+            auto &world = rbView.get<WorldTransformComponent>(entity);
 
             if (rb.body)
             {
                 BulletRigidBody* bulletBody = dynamic_cast<BulletRigidBody*>(rb.body.get());
                 if (!bulletBody) continue;
 
-                glm::mat4 worldMatrix = transform.GetWorldModelMatrix(scene.registry);
+                glm::mat4 worldMatrix = world.worldMatrix;
                 glm::vec3 position = glm::vec3(worldMatrix[3]);
                 glm::quat rotation = glm::quat_cast(worldMatrix);
 
@@ -173,11 +173,12 @@ namespace SceneHandlers
                 bulletBody->GetRaw()->activate();
                 bulletBody->SetUserPointer((void*)(uintptr_t)entity);
 
-                if (rb.isAttachedToParent && scene.registry.valid(transform.parent))
+                if (rb.isAttachedToParent && scene.registry.all_of<HierarchyComponent>(entity))
                 {
-                    if (scene.registry.all_of<RigidBodyComponent>(transform.parent))
+                    auto &hier = scene.registry.get<HierarchyComponent>(entity);
+                    if (scene.registry.valid(hier.parent) && scene.registry.all_of<RigidBodyComponent>(hier.parent))
                     {
-                        auto &parentRb = scene.registry.get<RigidBodyComponent>(transform.parent);
+                        auto &parentRb = scene.registry.get<RigidBodyComponent>(hier.parent);
                         if (parentRb.body)
                         {
                             BulletRigidBody* parentBulletBody = dynamic_cast<BulletRigidBody*>(parentRb.body.get());

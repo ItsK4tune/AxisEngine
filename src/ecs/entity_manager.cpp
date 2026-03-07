@@ -189,8 +189,6 @@ entt::entity EntityManager::CreateEntity(Scene& scene, const std::string &name, 
     scene.registry.emplace<ScaleComponent>(entity);
     scene.registry.emplace<HierarchyComponent>(entity);
     scene.registry.emplace<WorldTransformComponent>(entity);
-
-    scene.registry.emplace<TransformComponent>(entity);
     scene.registry.emplace<InfoComponent>(entity, name, tag);
     LOGGER_INFO("Scene") << "Created entity: " << name << " (Tag: " << tag << ")";
     return entity;
@@ -203,11 +201,6 @@ entt::entity EntityManager::CreateEntityWithTransform(Scene& scene, const std::s
     if (auto* p = scene.registry.try_get<PositionComponent>(entity)) p->value = p->prev = position;
     if (auto* r = scene.registry.try_get<RotationComponent>(entity)) r->value = r->prev = glm::quat(glm::radians(rotation));
     if (auto* s = scene.registry.try_get<ScaleComponent>(entity)) s->value = s->prev = scale;
-
-    auto &transform = scene.registry.get<TransformComponent>(entity);
-    transform.position = position;
-    transform.rotation = glm::quat(glm::radians(rotation));
-    transform.scale = scale;
 
     return entity;
 }
@@ -247,9 +240,27 @@ void EntityManager::SetParent(Scene& scene, entt::entity child, entt::entity par
     }
 
     auto &childH = scene.registry.get<HierarchyComponent>(child);
+    if (child == parent) {
+        LOGGER_ERROR("Scene") << "Attempted to set entity as its own parent: " << (uint32_t)child;
+        return;
+    }
+
     if (childH.parent == parent) return;
 
-    // Remove from old parent
+    entt::entity current = parent;
+    while (current != entt::null)
+    {
+        if (current == child)
+        {
+            LOGGER_ERROR("Scene") << "Cycle detected in hierarchy! Cannot set " << (uint32_t)child << " as child of " << (uint32_t)parent;
+            return;
+        }
+        if (auto* pH = scene.registry.try_get<HierarchyComponent>(current))
+            current = pH->parent;
+        else
+            break;
+    }
+
     if (scene.registry.valid(childH.parent) && scene.registry.all_of<HierarchyComponent>(childH.parent))
     {
         auto &oldParentH = scene.registry.get<HierarchyComponent>(childH.parent);
@@ -261,13 +272,6 @@ void EntityManager::SetParent(Scene& scene, entt::entity child, entt::entity par
     parentH.children.push_back(child);
 
     if (auto* w = scene.registry.try_get<WorldTransformComponent>(child)) w->isDirty = true;
-    
-    // Support legacy
-    if (scene.registry.all_of<TransformComponent>(child) && scene.registry.all_of<TransformComponent>(parent))
-    {
-        auto &childTransform = scene.registry.get<TransformComponent>(child);
-        childTransform.SetParent(child, parent, scene.registry, keepWorldTransform);
-    }
 }
 
 void EntityManager::AddChild(Scene& scene, entt::entity parent, entt::entity child, bool keepWorldTransform)
@@ -356,10 +360,10 @@ void EntityManager::DestroyEntityWithChildren(Scene& scene, entt::entity entity,
         return;
 
     std::vector<entt::entity> children;
-    if (scene.registry.all_of<TransformComponent>(entity))
+    if (scene.registry.all_of<HierarchyComponent>(entity))
     {
-        const auto &transform = scene.registry.get<TransformComponent>(entity);
-        children = transform.children;
+        const auto &hier = scene.registry.get<HierarchyComponent>(entity);
+        children = hier.children;
     }
 
     for (auto child : children)

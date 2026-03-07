@@ -94,17 +94,23 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                         {
                             if (trigger)
                             {
-                                if (!stay)
-                                    if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get())) ps->OnTriggerEnter(other);
-                                else
-                                    if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get())) ps->OnTriggerStay(other);
+                                if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
+                                {
+                                    if (!stay)
+                                        ps->OnTriggerEnter(other);
+                                    else
+                                        ps->OnTriggerStay(other);
+                                }
                             }
                             else
                             {
-                                if (!stay)
-                                    if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get())) ps->OnCollisionEnter(other);
-                                else
-                                    if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get())) ps->OnCollisionStay(other);
+                                if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
+                                {
+                                    if (!stay)
+                                        ps->OnCollisionEnter(other);
+                                    else
+                                        ps->OnCollisionStay(other);
+                                }
                             }
                         }
                     }
@@ -160,9 +166,15 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                     if (s.instance)
                     {
                         if (trigger)
-                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get())) ps->OnTriggerExit(other);
+                        {
+                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
+                                ps->OnTriggerExit(other);
+                        }
                         else
-                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get())) ps->OnCollisionExit(other);
+                        {
+                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
+                                ps->OnCollisionExit(other);
+                        }
                     }
                 }
 

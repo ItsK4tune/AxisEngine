@@ -16,10 +16,10 @@ void DefaultCameraController::OnCreate()
 
 void DefaultCameraController::OnUpdate(float dt)
 {
-    if (!HasComponent<TransformComponent>() || !HasComponent<CameraComponent>())
+    if (!HasComponent<PositionComponent>() || !HasComponent<CameraComponent>())
         return;
 
-    auto &transform = GetComponent<TransformComponent>();
+    auto &posComp = GetComponent<PositionComponent>();
     auto &camera = GetComponent<CameraComponent>();
 
     const auto &mouse = GetIOHandler().GetMouse();
@@ -66,23 +66,23 @@ void DefaultCameraController::OnUpdate(float dt)
         speed *= 2.0f;
 
     if (keyboard.GetKey(Input::Key::W))
-        transform.position += camera.front * speed;
+        posComp.value += camera.front * speed;
     if (keyboard.GetKey(Input::Key::S))
-        transform.position -= camera.front * speed;
+        posComp.value -= camera.front * speed;
     if (keyboard.GetKey(Input::Key::A))
-        transform.position -= camera.right * speed;
+        posComp.value -= camera.right * speed;
     if (keyboard.GetKey(Input::Key::D))
-        transform.position += camera.right * speed;
+        posComp.value += camera.right * speed;
 
     if (keyboard.GetKey(Input::Key::Space))
-        transform.position += camera.worldUp * speed;
+        posComp.value += camera.worldUp * speed;
     if (keyboard.GetKey(Input::Key::LeftControl))
-        transform.position -= camera.worldUp * speed;
+        posComp.value -= camera.worldUp * speed;
 
     if (camera.aspectRatio <= 0.0f)
     {
         camera.aspectRatio = (float)m_Ctx.io->GetMonitorManager().GetWidth() / (float)m_Ctx.io->GetMonitorManager().GetHeight();
     }
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
-    camera.viewMatrix = glm::lookAt(transform.position, transform.position + camera.front, camera.up);
+    camera.viewMatrix = glm::lookAt(posComp.value, posComp.value + camera.front, camera.up);
 }

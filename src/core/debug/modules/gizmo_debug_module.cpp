@@ -66,18 +66,18 @@ void GizmoDebugModule::Render(Scene &scene)
     if (camEntity == entt::null) return;
 
     auto& cam = scene.registry.get<CameraComponent>(camEntity);
-    auto& camTrans = scene.registry.get<TransformComponent>(camEntity);
+    auto& camPos = scene.registry.get<PositionComponent>(camEntity);
 
     float aspect = (float)width / (float)height;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-    glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
+    glm::mat4 view = glm::lookAt(camPos.value, camPos.value + cam.front, cam.worldUp);
 
     debugShader->use();
     debugShader->setMat4("projection", proj);
     debugShader->setMat4("view", view);
     debugShader->setMat4("model", glm::mat4(1.0f));
 
-    auto viewEntities = scene.registry.view<TransformComponent>();
+    auto viewEntities = scene.registry.view<WorldTransformComponent>();
 
     std::vector<float> lineVertices;
     auto addLine = [&](const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) {
@@ -89,8 +89,8 @@ void GizmoDebugModule::Render(Scene &scene)
 
     for (auto entity : viewEntities)
     {
-        auto& tr = viewEntities.get<TransformComponent>(entity);
-        glm::mat4 modelMatrix = tr.GetWorldModelMatrix(scene.registry);
+        auto& tr = viewEntities.get<WorldTransformComponent>(entity);
+        glm::mat4 modelMatrix = tr.worldMatrix;
 
         glm::vec3 pos = glm::vec3(modelMatrix[3]);
         glm::vec3 right = glm::normalize(glm::vec3(modelMatrix[0]));
@@ -166,7 +166,7 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
             int d_transform = 0;
             for(auto e : reg.view<DirectionalLightComponent>()) {
                 d_total++;
-                if(reg.all_of<TransformComponent>(e)) d_transform++;
+                if(reg.all_of<PositionComponent>(e)) d_transform++;
             }
 
             std::cout << "\n========== Light Gizmos (Shift+F5) ==========" << std::endl;
@@ -208,14 +208,14 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
     glm::mat4 vp = glm::mat4(1.0f);
-    if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity))
+    if (registry.valid(camEntity) && registry.all_of<CameraComponent, PositionComponent>(camEntity))
     {
         auto &cam = registry.get<CameraComponent>(camEntity);
-        auto &camTrans = registry.get<TransformComponent>(camEntity);
+        auto &camPos = registry.get<PositionComponent>(camEntity);
 
         float aspect = (float)width / (float)height;
         glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-        glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
+        glm::mat4 view = glm::lookAt(camPos.value, camPos.value + cam.front, cam.worldUp);
         vp = proj * view;
     }
     else
@@ -223,7 +223,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         return;
     }
 
-    auto view = registry.view<InfoComponent, TransformComponent>();
+    auto view = registry.view<InfoComponent, WorldTransformComponent>();
 
     std::unordered_map<entt::entity, entt::entity> nextMap;
 
@@ -244,9 +244,9 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
                 labelEntity = entt::null;
         }
 
-        auto &tr = view.get<TransformComponent>(entity);
+        auto &tr = view.get<WorldTransformComponent>(entity);
 
-        glm::mat4 modelMatrix = tr.GetWorldModelMatrix(registry);
+        glm::mat4 modelMatrix = tr.worldMatrix;
         glm::vec3 labelPos;
         bool usedAABB = false;
 
@@ -268,7 +268,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         if (!usedAABB)
         {
             labelPos = glm::vec3(modelMatrix[3]);
-            labelPos.y += tr.scale.y * 0.6f + 0.5f;
+            labelPos.y += 1.0f;
         }
 
         glm::vec4 clipPos = vp * glm::vec4(labelPos, 1.0f);
@@ -370,14 +370,14 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
     glm::mat4 vp = glm::mat4(1.0f);
-    if (registry.valid(camEntity) && registry.all_of<CameraComponent, TransformComponent>(camEntity))
+    if (registry.valid(camEntity) && registry.all_of<CameraComponent, PositionComponent>(camEntity))
     {
         auto &cam = registry.get<CameraComponent>(camEntity);
-        auto &camTrans = registry.get<TransformComponent>(camEntity);
+        auto &camPos = registry.get<PositionComponent>(camEntity);
 
         float aspect = (float)width / (float)height;
         glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-        glm::mat4 view = glm::lookAt(camTrans.position, camTrans.position + cam.front, cam.worldUp);
+        glm::mat4 view = glm::lookAt(camPos.value, camPos.value + cam.front, cam.worldUp);
         vp = proj * view;
     }
     else
@@ -461,24 +461,24 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         }
     };
 
-    auto pointLights = registry.view<PointLightComponent, TransformComponent>();
+    auto pointLights = registry.view<PointLightComponent, PositionComponent>();
     for (auto entity : pointLights)
     {
-        auto [pl, tr] = pointLights.get<PointLightComponent, TransformComponent>(entity);
+        auto [pl, tr] = pointLights.get<PointLightComponent, PositionComponent>(entity);
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
         ss << "[POINT]\nInt: " << pl.intensity << "\nCol: " << pl.color.r << "," << pl.color.g << "," << pl.color.b;
-        processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), ss.str(), glm::vec3(1.0f, 1.0f, 0.0f));
+        processLight(entity, tr.value, ss.str(), glm::vec3(1.0f, 1.0f, 0.0f));
     }
 
-    auto spotLights = registry.view<SpotLightComponent, TransformComponent>();
+    auto spotLights = registry.view<SpotLightComponent, PositionComponent>();
     for (auto entity : spotLights)
     {
-        auto [sl, tr] = spotLights.get<SpotLightComponent, TransformComponent>(entity);
+        auto [sl, tr] = spotLights.get<SpotLightComponent, PositionComponent>(entity);
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
         ss << "[SPOT]\nInt: " << sl.intensity << "\nCol: " << sl.color.r << "," << sl.color.g << "," << sl.color.b;
-        processLight(entity, glm::vec3(tr.GetWorldModelMatrix(registry)[3]), ss.str(), glm::vec3(0.0f, 1.0f, 1.0f));
+        processLight(entity, tr.value, ss.str(), glm::vec3(0.0f, 1.0f, 1.0f));
     }
 
     auto dirLights = registry.view<DirectionalLightComponent>();
@@ -486,10 +486,10 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     {
         auto& dl = registry.get<DirectionalLightComponent>(entity);
         glm::vec3 pos(0.0f);
-        if (registry.all_of<TransformComponent>(entity))
+        if (registry.all_of<PositionComponent>(entity))
         {
-            auto &tr = registry.get<TransformComponent>(entity);
-            pos = glm::vec3(tr.GetWorldModelMatrix(registry)[3]);
+            auto &tr = registry.get<PositionComponent>(entity);
+            pos = tr.value;
         }
         else
         {

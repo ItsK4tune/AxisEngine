@@ -38,12 +38,6 @@ EntityBuilder& EntityBuilder::WithTransform(const glm::vec3& pos, const glm::vec
     m_Scene.registry.emplace_or_replace<RotationComponent>(m_Entity, glm::quat(glm::radians(rot)), glm::quat(glm::radians(rot)));
     m_Scene.registry.emplace_or_replace<ScaleComponent>(m_Entity, scale, scale);
     m_Scene.registry.emplace_or_replace<WorldTransformComponent>(m_Entity);
-    
-    // Legacy support
-    auto& transform = m_Scene.registry.get_or_emplace<TransformComponent>(m_Entity);
-    transform.position = pos;
-    transform.rotation = glm::quat(glm::radians(rot)); 
-    transform.scale = scale;
     return *this;
 }
 

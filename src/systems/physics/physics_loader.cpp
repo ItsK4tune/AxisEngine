@@ -21,7 +21,8 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
     float mass = std::stof(node.GetChildValue("Mass", "1.0"));
     if (mass < 0.0f) LOGGER_WARN("PhysicsLoader") << "RigidBody Mass should not be negative: " << mass;
 
-    auto &trans = scene.registry.get<TransformComponent>(entity);
+    auto &pos = scene.registry.get<PositionComponent>(entity);
+    auto &rot = scene.registry.get<RotationComponent>(entity);
     auto &rb = scene.registry.emplace<RigidBodyComponent>(entity);
 
     std::shared_ptr<ICollisionShape> finalShape = nullptr;
@@ -134,7 +135,7 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
 
         if (bodyType == "STATIC" || bodyType == "KINEMATIC") mass = 0.0f;
 
-        rb.body = physics.CreateRigidBody(mass, trans.position, trans.rotation, finalShape);
+        rb.body = physics.CreateRigidBody(mass, pos.value, rot.value, finalShape);
 
         if (rb.body)
         {

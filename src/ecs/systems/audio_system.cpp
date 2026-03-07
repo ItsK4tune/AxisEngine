@@ -14,14 +14,14 @@ void AudioSystem::Update(Scene &scene, float dt)
     if (camEntity != entt::null)
     {
         auto &cam = scene.registry.get<CameraComponent>(camEntity);
-        auto &camTrans = scene.registry.get<TransformComponent>(camEntity);
+        auto &camPos = scene.registry.get<PositionComponent>(camEntity);
 
         glm::vec3 lookDir = glm::vec3(0.0f, 0.0f, -1.0f);
         if (glm::length(cam.front) > 0.1f) {
             lookDir = cam.front;
         }
 
-        m_Ctx.soundPlayer->UpdateListener(camTrans.position, lookDir);
+        m_Ctx.soundPlayer->UpdateListener(camPos.value, lookDir);
     }
 
     auto view = scene.registry.view<AudioSourceComponent>();
@@ -49,8 +49,8 @@ void AudioSystem::Update(Scene &scene, float dt)
 
             if (audio.is3D)
             {
-                TransformComponent *transform = scene.registry.try_get<TransformComponent>(entity);
-                glm::vec3 pos = transform ? transform->position : glm::vec3(0.0f);
+                PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+                glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
 
                 auto source = m_Ctx.soundPlayer->GetEngine()->AddSoundSourceFromFile(audio.filePath);
 
@@ -74,10 +74,10 @@ void AudioSystem::Update(Scene &scene, float dt)
 
         if (audio.is3D && audio.sound && !audio.sound->IsFinished())
         {
-            TransformComponent *transform = scene.registry.try_get<TransformComponent>(entity);
-            if (transform)
+            PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+            if (posComp)
             {
-                audio.sound->SetPosition(transform->position);
+                audio.sound->SetPosition(posComp->value);
             }
         }
 

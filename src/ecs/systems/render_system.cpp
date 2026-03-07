@@ -183,10 +183,6 @@ void RenderSystem::RenderShadows(Scene &scene)
 
 void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 {
-    static int renderCount = 0;
-    renderCount++;
-    bool logThisRender = (renderCount <= 5);
-
     if (!m_Enabled || !m_Context)
     {
         return;
@@ -263,7 +259,7 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 
             entt::entity camEntity = EntityManager::GetActiveCamera(scene);
             CameraComponent *cam = &scene.registry.get<CameraComponent>(camEntity);
-            TransformComponent *camTrans = &scene.registry.get<TransformComponent>(camEntity);
+            PositionComponent *camPosComp = &scene.registry.get<PositionComponent>(camEntity);
 
             bool transparencyState = false;
 
@@ -308,7 +304,7 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
                     Shadow* shadowObj = &shadowRenderer->GetShadow();
 
                     glm::mat4 viewMat = cam->viewMatrix;
-                    glm::vec3 viewPos = camTrans->position;
+                    glm::vec3 viewPos = camPosComp->value;
                     
                     const glm::mat4* lsmDir = shadowRenderer->GetLightSpaceMatrices();
                     const glm::mat4* lsmSpot = shadowRenderer->GetLightSpaceMatricesSpot();
@@ -452,7 +448,6 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 
     JobSystem::Instance().Wait(&counter);
 
-    // Merge all thread queues into main command queue
     for (auto& tq : threadQueues)
     {
         m_CommandQueue.Merge(tq);

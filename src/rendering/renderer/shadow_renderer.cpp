@@ -8,7 +8,6 @@
 #include <rendering/renderer/shadow_renderer.h>
 #include <core/job_system.h>
 #include <rendering/interfaces/i_draw_context.h>
-#include <iostream>
 #include <resource/resource_manager.h>
 #include <core/utils/logger.h>
 
@@ -60,7 +59,6 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
     CommandQueue shadowQueueMain;
     JobSystem::JobCounter counter(0);
 
-    // 1. Directional Shadows
     int numDirShadows = (m_ShadowMode == 2) ? (std::min)((int)shadowCastingLights.size(), Shadow::MAX_DIR_LIGHTS_SHADOW) : (shadowCastingLights.empty() ? 0 : 1);
     
     for (int lightIdx = 0; lightIdx < numDirShadows; ++lightIdx) {
@@ -127,7 +125,6 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
         for (auto& tq : threadQueues) shadowQueueMain.Merge(tq);
     }
 
-    // 2. Point Shadows
     if (shaderPoint) {
         auto pointView = scene.registry.view<PointLightComponent, PositionComponent>();
         std::vector<entt::entity> pointLights;
@@ -203,7 +200,6 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
         }
     }
 
-    // 3. Spot Shadows
     if (shaderSpot) {
         auto spotView = scene.registry.view<SpotLightComponent, PositionComponent, RotationComponent>();
         std::vector<entt::entity> spotLights;

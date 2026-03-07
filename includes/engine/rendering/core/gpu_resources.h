@@ -19,11 +19,9 @@ public:
         }
     }
 
-    // Prevent copying
     GPUFramebuffer(const GPUFramebuffer&) = delete;
     GPUFramebuffer& operator=(const GPUFramebuffer&) = delete;
 
-    // Allow moving
     GPUFramebuffer(GPUFramebuffer&& other) noexcept
         : m_Context(other.m_Context), m_Handle(other.m_Handle) {
         other.m_Handle.Reset();
@@ -40,14 +38,13 @@ public:
     }
 
     uint32_t Get() const { return m_Handle.id; }
-    void Release() { m_Handle.Reset(); } // Release ownership without deleting
+    void Release() { m_Handle.Reset(); }
 
 private:
     IGraphicsContext& m_Context;
     GpuHandle m_Handle;
 };
 
-// Implement GPUTexture and GPUSSBO similarly
 class GPUTexture {
 public:
     GPUTexture(IGraphicsContext& context, uint32_t handleId)
@@ -122,4 +119,4 @@ private:
     GpuHandle m_Handle;
 };
 
-} // namespace Graphics
+}

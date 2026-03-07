@@ -13,11 +13,9 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
     std::ofstream os(filepath, std::ios::binary);
     if (!os.is_open()) return false;
 
-    // Header
     os.write(reinterpret_cast<const char*>(&MAGIC), sizeof(MAGIC));
     os.write(reinterpret_cast<const char*>(&VERSION), sizeof(VERSION));
 
-    // Entities
     auto view = scene.registry.view<InfoComponent>();
     std::vector<entt::entity> entities;
     for (auto entity : view) entities.push_back(entity);
@@ -32,7 +30,6 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
     {
         auto& info = view.get<InfoComponent>(entity);
         
-        // Info
         auto writeString = [&](const std::string& s) {
             uint32_t len = (uint32_t)s.length();
             os.write(reinterpret_cast<const char*>(&len), sizeof(len));
@@ -42,8 +39,7 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
         writeString(info.name);
         writeString(info.tag);
         os.write(reinterpret_cast<const char*>(&info.layer), sizeof(info.layer));
-
-        // SoA PSR Components
+        
         auto* pos = scene.registry.try_get<PositionComponent>(entity);
         auto* rot = scene.registry.try_get<RotationComponent>(entity);
         auto* scl = scene.registry.try_get<ScaleComponent>(entity);
@@ -57,14 +53,12 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
         bool hasS = (scl != nullptr); os.write(reinterpret_cast<const char*>(&hasS), sizeof(hasS));
         if (hasS) os.write(reinterpret_cast<const char*>(&scl->value), sizeof(scl->value));
 
-        // Hierarchy
         auto* hier = scene.registry.try_get<HierarchyComponent>(entity);
         int32_t parentIdx = -1;
         if (hier && hier->parent != entt::null && entityToIndex.count(hier->parent))
             parentIdx = (int32_t)entityToIndex[hier->parent];
         os.write(reinterpret_cast<const char*>(&parentIdx), sizeof(parentIdx));
 
-        // Mesh Renderer
         auto* mesh = scene.registry.try_get<MeshRendererComponent>(entity);
         bool hasMesh = (mesh != nullptr);
         os.write(reinterpret_cast<const char*>(&hasMesh), sizeof(hasMesh));
@@ -76,14 +70,12 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
             os.write(reinterpret_cast<const char*>(&mesh->castShadow), sizeof(mesh->castShadow));
         }
 
-        // Material
         auto* mat = scene.registry.try_get<MaterialComponent>(entity);
         bool hasMat = (mat != nullptr);
         os.write(reinterpret_cast<const char*>(&hasMat), sizeof(hasMat));
         if (hasMat)
         {
             os.write(reinterpret_cast<const char*>(&mat->desc), sizeof(mat->desc));
-            // Paths are already in mat->desc
         }
     }
 
@@ -166,10 +158,8 @@ bool BinarySceneSerializer::Deserialize(const std::string& filepath, Scene& scen
 
         scene.registry.emplace<HierarchyComponent>(entity);
         scene.registry.emplace<WorldTransformComponent>(entity);
-        scene.registry.emplace<TransformComponent>(entity); // Legacy
     }
 
-    // Reconstruct hierarchy
     for (size_t i = 0; i < entities.size(); ++i)
     {
         if (parents[i] != -1 && (size_t)parents[i] < entities.size())

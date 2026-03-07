@@ -14,6 +14,6 @@ public:
     static bool Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, EngineContext ctx);
 
 private:
-    static const uint32_t MAGIC = 0x41585342; // "AXSB"
+    static const uint32_t MAGIC = 0x41585342;
     static const uint32_t VERSION = 1;
 };

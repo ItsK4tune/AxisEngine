@@ -20,10 +20,10 @@ public:
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
 
     std::string GetName() const override { return "TransformSystem"; }
-    int GetPriority() const override { return 10; } // High priority, logic needs transforms
+    int GetPriority() const override { return 10; }
 
 private:
     EngineContext m_Ctx;
     bool m_Enabled = true;
-    void UpdateWorldTransform(entt::entity entity, entt::registry& registry, const glm::mat4& parentTransform, bool parentDirty);
+    void UpdateWorldTransform(entt::entity entity, entt::registry& registry, const glm::mat4& parentTransform, bool parentDirty, int depth);
 };
