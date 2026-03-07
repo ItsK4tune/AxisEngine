@@ -39,11 +39,11 @@ struct PointLight {
     vec3 specular; float pad3;
 };
 
-layout(std430, binding = 0) buffer DirLightBuffer {
+layout(std430, binding = 2) buffer DirLightBuffer {
     DirLight dirLights[];
 };
 
-layout(std430, binding = 1) buffer PointLightBuffer {
+layout(std430, binding = 3) buffer PointLightBuffer {
     PointLight pointLights[];
 };
 
@@ -58,9 +58,26 @@ struct SpotLight {
     vec3 specular; float pad7;
 };
 
-layout(std430, binding = 2) buffer SpotLightBuffer {
+layout(std430, binding = 4) buffer SpotLightBuffer {
     SpotLight spotLights[];
 };
+
+layout(std140, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 viewPos;
+} camera;
+
+layout(std140, binding = 1) uniform LightData {
+    mat4 lightSpaceMatricesDir[2];
+    mat4 lightSpaceMatricesSpot[2];
+    int numDirLights;
+    int nrPointLights;
+    int nrSpotLights;
+    int u_ReceiveShadow;
+    float farPlanePoint;
+    float farPlaneSpot;
+} light;
 
 #define NR_DIR_SHADOW_MAPS 2
 #define NR_POINT_LIGHTS 4
@@ -68,21 +85,13 @@ layout(std430, binding = 2) buffer SpotLightBuffer {
 #define NR_SPOT_LIGHTS 4
 #define NR_SPOT_SHADOW_MAPS 2
 
-uniform int numDirLights;
-uniform int nrPointLights;
-uniform int nrSpotLights;
-
-uniform vec3 viewPos;
 uniform Material material;
 uniform vec4 tintColor;
-uniform bool u_ReceiveShadow;
 uniform bool debug_noTexture;
 
 uniform sampler2D shadowMapDir[NR_DIR_SHADOW_MAPS]; // Array of 2 dir shadow maps
 uniform samplerCube shadowMapPoint[NR_POINT_SHADOW_MAPS];
 uniform sampler2D shadowMapSpot[NR_SPOT_SHADOW_MAPS]; // Array of 2 spot shadow maps
-uniform float farPlanePoint;
-uniform float farPlaneSpot;
 
 const float PI = 3.14159265359;
 
@@ -116,7 +125,7 @@ void main()
     }
 
     vec3 N = normalize(Normal);
-    vec3 V = normalize(viewPos - FragPos);
+    vec3 V = normalize(camera.viewPos - FragPos);
 
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
@@ -125,14 +134,14 @@ void main()
     
     // Directional lights with shadows (up to 4)
     // Directional lights
-    for(int d = 0; d < numDirLights; d++)
+    for(int d = 0; d < light.numDirLights; d++)
     {
         vec3 L = normalize(-dirLights[d].direction);
         vec3 H = normalize(V + L);
         
         float shadow = 0.0;
         int sIdx = int(dirLights[d].shadowIndex);
-        if (u_ReceiveShadow && sIdx >= 0 && sIdx < NR_DIR_SHADOW_MAPS)
+        if (light.u_ReceiveShadow != 0 && sIdx >= 0 && sIdx < NR_DIR_SHADOW_MAPS)
         {
             shadow = ShadowCalculationDir(FragPosLightSpace[sIdx], N, L, sIdx);
         }
@@ -163,7 +172,7 @@ void main()
 
 
     // Point lights
-    for(int i = 0; i < nrPointLights; ++i)
+    for(int i = 0; i < light.nrPointLights; ++i)
     {
         vec3 L = normalize(pointLights[i].position - FragPos);
         vec3 H = normalize(V + L);
@@ -188,7 +197,7 @@ void main()
     }
 
     // Spot Lights
-    for(int i = 0; i < nrSpotLights; ++i)
+    for(int i = 0; i < light.nrSpotLights; ++i)
     {
         vec3 L = normalize(spotLights[i].position - FragPos);
         vec3 H = normalize(V + L);
@@ -201,7 +210,7 @@ void main()
         
         float shadow = 0.0;
         int sIdx = int(spotLights[i].shadowIndex);
-        if (u_ReceiveShadow && sIdx >= 0 && sIdx < NR_SPOT_LIGHTS)
+        if (light.u_ReceiveShadow != 0 && sIdx >= 0 && sIdx < NR_SPOT_LIGHTS)
         {
             shadow = ShadowCalculationSpot(FragPosLightSpaceSpot[sIdx], N, L, sIdx);
         }

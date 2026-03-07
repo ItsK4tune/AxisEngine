@@ -119,4 +119,41 @@ private:
     GpuHandle m_Handle;
 };
 
+class GPUUBO {
+public:
+    GPUUBO(IGraphicsContext& context, uint32_t handleId)
+        : m_Context(context) { m_Handle.id = handleId; }
+
+    ~GPUUBO() {
+        if (m_Handle.IsValid()) {
+            m_Context.GetBufferManager().DeleteBuffers(1, &m_Handle.id);
+        }
+    }
+
+    GPUUBO(const GPUUBO&) = delete;
+    GPUUBO& operator=(const GPUUBO&) = delete;
+
+    GPUUBO(GPUUBO&& other) noexcept
+        : m_Context(other.m_Context), m_Handle(other.m_Handle) {
+        other.m_Handle.Reset();
+    }
+    GPUUBO& operator=(GPUUBO&& other) noexcept {
+        if (this != &other) {
+            if (m_Handle.IsValid()) {
+                m_Context.GetBufferManager().DeleteBuffers(1, &m_Handle.id);
+            }
+            m_Handle = other.m_Handle;
+            other.m_Handle.Reset();
+        }
+        return *this;
+    }
+
+    uint32_t Get() const { return m_Handle.id; }
+    void Release() { m_Handle.Reset(); }
+
+private:
+    IGraphicsContext& m_Context;
+    GpuHandle m_Handle;
+};
+
 }

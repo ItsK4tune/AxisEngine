@@ -36,10 +36,6 @@ void SkyboxRenderSystem::Render(Scene &scene)
         {
             lockedShader->use();
 
-            glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(camera.viewMatrix));
-            lockedShader->setMat4("view", viewNoTranslation);
-            lockedShader->setMat4("projection", camera.projectionMatrix);
-
             tm.ActiveTexture(Graphics::TextureUnit::Texture0);
             tm.BindTexture(Graphics::TextureType::TextureCubeMap, component.skybox->GetTextureID());
             lockedShader->setInt("skybox", 0);

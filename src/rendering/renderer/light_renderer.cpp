@@ -107,15 +107,15 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
 
     bm.BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_DirLightSSBO->Get());
     bm.BufferData(Graphics::BufferType::ShaderStorageBuffer, (std::max)(m_DirLights.size() * sizeof(GPUDirLight), (size_t)16), m_DirLights.data(), Graphics::BufferUsage::DynamicDraw);
-    bm.BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 0, m_DirLightSSBO->Get());
+    bm.BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 2, m_DirLightSSBO->Get());
 
     bm.BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_PointLightSSBO->Get());
     bm.BufferData(Graphics::BufferType::ShaderStorageBuffer, (std::max)(m_PointLights.size() * sizeof(GPUPointLight), (size_t)16), m_PointLights.data(), Graphics::BufferUsage::DynamicDraw);
-    bm.BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 1, m_PointLightSSBO->Get());
+    bm.BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 3, m_PointLightSSBO->Get());
 
     bm.BindBuffer(Graphics::BufferType::ShaderStorageBuffer, m_SpotLightSSBO->Get());
     bm.BufferData(Graphics::BufferType::ShaderStorageBuffer, (std::max)(m_SpotLights.size() * sizeof(GPUSpotLight), (size_t)16), m_SpotLights.data(), Graphics::BufferUsage::DynamicDraw);
-    bm.BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 2, m_SpotLightSSBO->Get());
+    bm.BindBufferBase(Graphics::BufferType::ShaderStorageBuffer, 4, m_SpotLightSSBO->Get());
 
     if (shader)
     {

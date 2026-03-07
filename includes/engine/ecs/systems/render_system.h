@@ -24,6 +24,7 @@
 #include <rendering/renderer/render_queue.h>
 #include <rendering/renderer/command_queue.h>
 #include <rendering/renderer/material_renderer.h>
+#include <rendering/types/gpu_common_types.h>
 
 #include <resource/i_resource_libraries.h>
 class ResourceManager;
@@ -134,11 +135,11 @@ private:
     MaterialRenderer m_MaterialRenderer;
 
     std::vector<std::string> m_BonesUniforms;
-    std::vector<std::string> m_ShadowPointUniforms;
-    std::vector<std::string> m_ShadowDirUniforms;
-    std::vector<std::string> m_ShadowSpotUniforms;
-    std::vector<std::string> m_LightSpaceMatrixUniforms;
-    std::vector<std::string> m_LightSpaceMatrixSpotUniforms;
+    
+    std::unique_ptr<Graphics::GPUUBO> m_CameraUBO;
+    std::unique_ptr<Graphics::GPUUBO> m_GlobalLightUBO;
+    Graphics::GPUCameraData m_CameraData;
+    Graphics::GPUGlobalLightData m_GlobalLightData;
 
     CommandQueue m_CommandQueue;
 };

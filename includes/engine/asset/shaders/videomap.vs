@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 layout (location = 0) in vec3 aPos;
 layout (location = 2) in vec2 aTexCoords;
 layout (location = 5) in ivec4 aBoneIds; 
@@ -7,8 +7,12 @@ layout (location = 6) in vec4 aWeights;
 out vec2 TexCoords;
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+
+layout(std140, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 viewPos;
+} camera;
 
 layout(location = 10) in mat4 instanceMatrix;
 uniform bool isInstanced;
@@ -42,5 +46,5 @@ void main()
     mat4 modelMatrix = isInstanced ? instanceMatrix : model;
 
     TexCoords = aTexCoords;    
-    gl_Position = projection * view * modelMatrix * totalPosition;
+    gl_Position = camera.projection * camera.view * modelMatrix * totalPosition;
 }

@@ -50,27 +50,35 @@ struct SpotLight {
     vec3 specular; float pad7;
 };
 
-layout(std430, binding = 0) buffer DirLightBuffer {
+layout(std430, binding = 2) buffer DirLightBuffer {
     DirLight dirLights[];
 };
 
-layout(std430, binding = 1) buffer PointLightBuffer {
+layout(std430, binding = 3) buffer PointLightBuffer {
     PointLight pointLights[];
 };
 
-layout(std430, binding = 2) buffer SpotLightBuffer {
+layout(std430, binding = 4) buffer SpotLightBuffer {
     SpotLight spotLights[];
 };
 
-uniform int numDirLights;
-uniform int nrPointLights;
-uniform int nrSpotLights;
+layout(std140, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 viewPos;
+} camera;
 
-// uniform DirLight dirLight;
-// uniform DirLight dirLights[NR_DIR_LIGHTS];
-// uniform PointLight pointLights[NR_POINT_LIGHTS];
+layout(std140, binding = 1) uniform LightData {
+    mat4 lightSpaceMatricesDir[2];
+    mat4 lightSpaceMatricesSpot[2];
+    int numDirLights;
+    int nrPointLights;
+    int nrSpotLights;
+    int u_ReceiveShadow;
+    float farPlanePoint;
+    float farPlaneSpot;
+} light;
 
-uniform vec3 viewPos;
 uniform Material material;
 uniform vec4 tintColor;
 uniform bool debug_noTexture;
@@ -105,15 +113,15 @@ void main()
     }
 
     vec3 N = normalize(Normal);
-    vec3 V = normalize(viewPos - FragPos);
+    vec3 V = normalize(camera.viewPos - FragPos);
 
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
 
     vec3 Lo = vec3(0.0);
 
-    if (numDirLights > 0) {
-        for(int d = 0; d < numDirLights; d++) {
+    if (light.numDirLights > 0) {
+        for(int d = 0; d < light.numDirLights; d++) {
             vec3 L = normalize(-dirLights[d].direction);
             vec3 H = normalize(V + L);
 
@@ -136,7 +144,7 @@ void main()
         }
     }
 
-    for(int i = 0; i < nrPointLights; ++i)
+    for(int i = 0; i < light.nrPointLights; ++i)
     {
         vec3 L = normalize(pointLights[i].position - FragPos);
         vec3 H = normalize(V + L);
@@ -161,7 +169,7 @@ void main()
     }
 
     // Spot Lights for PBR
-    for(int i = 0; i < nrSpotLights; ++i)
+    for(int i = 0; i < light.nrSpotLights; ++i)
     {
         vec3 L = normalize(spotLights[i].position - FragPos);
         vec3 H = normalize(V + L);

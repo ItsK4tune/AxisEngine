@@ -47,25 +47,16 @@ void RenderSystem::Init(IGraphicsContext &context, IShaderLibrary &shaderLib)
     for (int i = 0; i < 200; ++i)
         m_BonesUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
 
-    m_ShadowPointUniforms.reserve(Shadow::MAX_POINT_LIGHTS_SHADOW);
-    for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i)
-        m_ShadowPointUniforms.push_back("shadowMapPoint[" + std::to_string(i) + "]");
+    auto& bm = m_Context->GetBufferManager();
+    m_CameraUBO = std::make_unique<Graphics::GPUUBO>(context, bm.CreateBuffer());
+    bm.BindBuffer(Graphics::BufferType::UniformBuffer, m_CameraUBO->Get());
+    bm.BufferData(Graphics::BufferType::UniformBuffer, sizeof(Graphics::GPUCameraData), nullptr, Graphics::BufferUsage::DynamicDraw);
+    bm.BindBufferBase(Graphics::BufferType::UniformBuffer, 0, m_CameraUBO->Get());
 
-    m_ShadowDirUniforms.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
-    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
-        m_ShadowDirUniforms.push_back("shadowMapDir[" + std::to_string(i) + "]");
-
-    m_ShadowSpotUniforms.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW);
-    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
-        m_ShadowSpotUniforms.push_back("shadowMapSpot[" + std::to_string(i) + "]");
-
-    m_LightSpaceMatrixUniforms.reserve(Shadow::MAX_DIR_LIGHTS_SHADOW);
-    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i)
-        m_LightSpaceMatrixUniforms.push_back("lightSpaceMatrix[" + std::to_string(i) + "]");
-
-    m_LightSpaceMatrixSpotUniforms.reserve(Shadow::MAX_SPOT_LIGHTS_SHADOW);
-    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i)
-        m_LightSpaceMatrixSpotUniforms.push_back("lightSpaceMatrixSpot[" + std::to_string(i) + "]");
+    m_GlobalLightUBO = std::make_unique<Graphics::GPUUBO>(context, bm.CreateBuffer());
+    bm.BindBuffer(Graphics::BufferType::UniformBuffer, m_GlobalLightUBO->Get());
+    bm.BufferData(Graphics::BufferType::UniformBuffer, sizeof(Graphics::GPUGlobalLightData), nullptr, Graphics::BufferUsage::DynamicDraw);
+    bm.BindBufferBase(Graphics::BufferType::UniformBuffer, 1, m_GlobalLightUBO->Get());
 
     shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
     m_OcclusionCuller.Init(*m_Context, shaderLib.GetShader("occlusion_query"));
@@ -207,6 +198,30 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 
     m_LightRenderer.UploadLightData(scene, nullptr);
 
+    // Update Camera UBO
+    m_CameraData.projection = projectionMatrix;
+    m_CameraData.view = cam->viewMatrix;
+    m_CameraData.viewPos = camPos;
+    auto& bm = m_Context->GetBufferManager();
+    bm.BindBuffer(Graphics::BufferType::UniformBuffer, m_CameraUBO->Get());
+    bm.BufferSubData(Graphics::BufferType::UniformBuffer, 0, sizeof(Graphics::GPUCameraData), &m_CameraData);
+
+    // Update Global Light UBO
+    m_GlobalLightData.numDirLights = m_LightRenderer.GetDirLightCount();
+    m_GlobalLightData.nrPointLights = m_LightRenderer.GetPointLightCount();
+    m_GlobalLightData.nrSpotLights = m_LightRenderer.GetSpotLightCount();
+    m_GlobalLightData.farPlanePoint = m_ShadowRenderer.GetFarPlanePoint();
+    m_GlobalLightData.farPlaneSpot = m_ShadowRenderer.GetFarPlaneSpot();
+    m_GlobalLightData.u_ReceiveShadow = (m_ShadowRenderer.IsShadowsEnabled() && m_ShadowRenderer.GetShadowMode() > 0) ? 1 : 0;
+    
+    const glm::mat4* lsmDir = m_ShadowRenderer.GetLightSpaceMatrices();
+    const glm::mat4* lsmSpot = m_ShadowRenderer.GetLightSpaceMatricesSpot();
+    for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i) m_GlobalLightData.lightSpaceMatricesDir[i] = lsmDir[i];
+    for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i) m_GlobalLightData.lightSpaceMatricesSpot[i] = lsmSpot[i];
+
+    bm.BindBuffer(Graphics::BufferType::UniformBuffer, m_GlobalLightUBO->Get());
+    bm.BufferSubData(Graphics::BufferType::UniformBuffer, 0, sizeof(Graphics::GPUGlobalLightData), &m_GlobalLightData);
+
     auto &rsm = m_Context->GetRenderStateManager();
     Graphics::PolygonMode prevMode = rsm.GetPolygonMode();
 
@@ -299,57 +314,27 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 
                     Shader* s = currentShader;
                     bool enableShadows = shadowRenderer->IsShadowsEnabled() && shadowRenderer->GetShadowMode() > 0;
-                    float farP = shadowRenderer->GetFarPlanePoint();
-                    float farS = shadowRenderer->GetFarPlaneSpot();
                     Shadow* shadowObj = &shadowRenderer->GetShadow();
-
-                    glm::mat4 viewMat = cam->viewMatrix;
-                    glm::vec3 viewPos = camPosComp->value;
-                    
-                    const glm::mat4* lsmDir = shadowRenderer->GetLightSpaceMatrices();
-                    const glm::mat4* lsmSpot = shadowRenderer->GetLightSpaceMatricesSpot();
-                    
-                    auto shadowDirUniforms = m_ShadowDirUniforms;
-                    auto shadowPointUniforms = m_ShadowPointUniforms;
-                    auto shadowSpotUniforms = m_ShadowSpotUniforms;
-                    auto lsmUniforms = m_LightSpaceMatrixUniforms;
-                    auto lsmsUniforms = m_LightSpaceMatrixSpotUniforms;
                     
                     bool isDebugNoTexture = m_DebugNoTexture;
-                    int numDir = lightRenderer->GetDirLightCount();
-                    int numPoint = lightRenderer->GetPointLightCount();
-                    int numSpot = lightRenderer->GetSpotLightCount();
 
                     threadQueue.Submit([=]() {
                         s->use();
-                        s->setMat4("projection", projectionMatrix);
-                        s->setMat4("view", viewMat);
-                        s->setVec3("viewPos", viewPos);
                         if (enableShadows) {
-                            s->setBool("u_ReceiveShadow", true);
                             for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i) {
                                 shadowObj->BindTexture_Dir(i, 10 + i);
-                                s->setInt(shadowDirUniforms[i], 10 + i);
-                                s->setMat4(lsmUniforms[i], lsmDir[i]);
+                                s->setInt("shadowMapDir[" + std::to_string(i) + "]", 10 + i);
                             }
                             for (int i = 0; i < Shadow::MAX_POINT_LIGHTS_SHADOW; ++i) {
                                 shadowObj->BindTexture_Point(i, 12 + i);
-                                s->setInt(shadowPointUniforms[i], 12 + i);
+                                s->setInt("shadowMapPoint[" + std::to_string(i) + "]", 12 + i);
                             }
                             for (int i = 0; i < Shadow::MAX_SPOT_LIGHTS_SHADOW; ++i) {
                                 shadowObj->BindTexture_Spot(i, 14 + i);
-                                s->setInt(shadowSpotUniforms[i], 14 + i);
-                                s->setMat4(lsmsUniforms[i], lsmSpot[i]);
+                                s->setInt("shadowMapSpot[" + std::to_string(i) + "]", 14 + i);
                             }
-                        } else {
-                            s->setBool("u_ReceiveShadow", false);
                         }
-                        s->setFloat("farPlanePoint", farP);
-                        s->setFloat("farPlaneSpot", farS);
                         s->setBool("debug_noTexture", isDebugNoTexture);
-                        s->setInt("numDirLights", numDir);
-                        s->setInt("nrPointLights", numPoint);
-                        s->setInt("nrSpotLights", numSpot);
                     });
                 }
 

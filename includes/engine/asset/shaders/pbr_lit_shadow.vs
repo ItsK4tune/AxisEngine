@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
@@ -12,10 +12,23 @@ out vec4 FragPosLightSpace[2]; // For up to 2 Dir Light Shadows
 out vec4 FragPosLightSpaceSpot[2]; // For up to 2 Spot Light Shadows
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-uniform mat4 lightSpaceMatrix[2]; // Array of 2 dir light space matrices
-uniform mat4 lightSpaceMatrixSpot[2]; // Array of 2 spot light space matrices
+
+layout(std140, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 viewPos;
+} camera;
+
+layout(std140, binding = 1) uniform LightData {
+    mat4 lightSpaceMatricesDir[2];
+    mat4 lightSpaceMatricesSpot[2];
+    int numDirLights;
+    int nrPointLights;
+    int nrSpotLights;
+    int u_ReceiveShadow;
+    float farPlanePoint;
+    float farPlaneSpot;
+} light;
 
 layout(location = 10) in mat4 instanceMatrix;
 uniform bool isInstanced;
@@ -60,14 +73,14 @@ void main()
     // Calculate light space positions for all 2 directional lights
     for(int i = 0; i < 2; i++)
     {
-        FragPosLightSpace[i] = lightSpaceMatrix[i] * vec4(FragPos, 1.0);
+        FragPosLightSpace[i] = light.lightSpaceMatricesDir[i] * vec4(FragPos, 1.0);
     }
 
     // Calculate light space positions for all 2 spot lights
     for(int i = 0; i < 2; i++)
     {
-        FragPosLightSpaceSpot[i] = lightSpaceMatrixSpot[i] * vec4(FragPos, 1.0);
+        FragPosLightSpaceSpot[i] = light.lightSpaceMatricesSpot[i] * vec4(FragPos, 1.0);
     }
     
-    gl_Position = projection * view * vec4(FragPos, 1.0);
+    gl_Position = camera.projection * camera.view * vec4(FragPos, 1.0);
 }
