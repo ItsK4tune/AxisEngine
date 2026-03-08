@@ -1,10 +1,15 @@
-#include <core/app/application.h>
-#define GLM_ENABLE_EXPERIMENTAL
+#include <core/logic/app_framework.h>
+#include <entt/entt.hpp>
+#include <ecs/unit/media_components.h>
+#include <ecs/unit/ui_components.h>
+#include <ecs/manager/entity_manager.h>
+#include <scene/logic/scene.h>
+#include <glm/glm.hpp>
 #include <glm/gtx/compatibility.hpp>
 #include <iostream>
-#include <core/scripting/script_registry.h>
-#include <core/scripting/scriptable.h>
-#include <core/scripting/input_scriptable.h>
+#include <script/logic/script_registry.h>
+#include <script/logic/scriptable.h>
+#include <script/logic/input_scriptable.h>
 
 class UIButton : public InputScriptable
 {
@@ -92,8 +97,8 @@ public:
             }
         }
 
-        renderer.color = glm::mix(renderer.color, targetColor, dt * 15.0f);
-        transform.size = glm::mix(transform.size, targetSize, dt * 15.0f);
+        renderer.color = glm::mix(renderer.color, targetColor, (float)(dt * 15.0f));
+        transform.size = glm::mix(transform.size, targetSize, (float)(dt * 15.0f));
     }
 };
 

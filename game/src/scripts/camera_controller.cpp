@@ -1,11 +1,12 @@
 #include <scripts/camera_controller.h>
-#include <core/app/application.h>
-#include <systems/window/io_handler.h>
+#include <core/logic/app_framework.h>
+#include <platform/logic/io_handler.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
-#include <systems/input/keyboard_manager.h>
-#include <systems/input/mouse_manager.h>
-#include <core/scripting/script_registry.h>
+#include <platform/logic/input_system.h>
+#include <script/logic/script_registry.h>
+#include <scene/logic/scene.h>
+#include <ecs/unit/core_components.h>
 
 REGISTER_SCRIPT(CameraController)
 
@@ -20,7 +21,7 @@ void CameraController::OnUpdate(float dt)
     const auto &mouse = GetIOHandler().GetMouse();
     const auto &keyboard = GetIOHandler().GetKeyboard();
 
-    if (mouse.GetCursorMode() == Input::CursorMode::Locked || mouse.GetCursorMode() == Input::CursorMode::LockedHidden)
+    if (mouse.GetCursorMode() == CursorMode::Locked || mouse.GetCursorMode() == CursorMode::LockedHidden)
     {
         camera.yaw += mouse.GetXOffset() * mouseSensitivity;
         camera.pitch += mouse.GetYOffset() * mouseSensitivity;
@@ -50,18 +51,18 @@ void CameraController::OnUpdate(float dt)
     camera.up = glm::normalize(glm::cross(camera.right, camera.front));
 
     float velocity = moveSpeed * dt;
-    if (keyboard.GetKey(Input::Key::W))
+    if (keyboard.GetKey(Key::W))
         posComp.value += camera.front * velocity;
-    if (keyboard.GetKey(Input::Key::S))
+    if (keyboard.GetKey(Key::S))
         posComp.value -= camera.front * velocity;
-    if (keyboard.GetKey(Input::Key::A))
+    if (keyboard.GetKey(Key::A))
         posComp.value -= camera.right * velocity;
-    if (keyboard.GetKey(Input::Key::D))
+    if (keyboard.GetKey(Key::D))
         posComp.value += camera.right * velocity;
 
-    if (keyboard.GetKey(Input::Key::Space))
+    if (keyboard.GetKey(Key::Space))
         posComp.value += camera.worldUp * velocity;
-    if (keyboard.GetKey(Input::Key::LeftShift))
+    if (keyboard.GetKey(Key::LeftShift))
         posComp.value -= camera.worldUp * velocity;
 
     camera.aspectRatio = (float)m_Ctx.io->GetMonitorManager().GetWidth() / (float)m_Ctx.io->GetMonitorManager().GetHeight();

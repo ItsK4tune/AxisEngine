@@ -1,10 +1,10 @@
 #pragma once
 
-#include <core/state/state.h>
+#include <core/logic/state_management.h>
+#include <core/logic/engine_core.h>
 #include <entt/entt.hpp>
 
 class GameState : public State
-
 {
 public:
     void OnEnter() override;

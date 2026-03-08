@@ -68,7 +68,7 @@ void btTriangleMesh::addTriangleIndices(int index1, int index2, int index3)
 	addIndex(index3);
 }
 
-int btTriangleMesh::findOrAddVertex(const btVector3& vertex, bool removeDuplicateVertices)
+int btTriangleMesh::findOrAddVertex(const btVector3& Vertex, bool removeDuplicateVertices)
 {
 	
 	
@@ -78,14 +78,14 @@ int btTriangleMesh::findOrAddVertex(const btVector3& vertex, bool removeDuplicat
 		{
 			for (int i = 0; i < m_4componentVertices.size(); i++)
 			{
-				if ((m_4componentVertices[i] - vertex).length2() <= m_weldingThreshold)
+				if ((m_4componentVertices[i] - Vertex).length2() <= m_weldingThreshold)
 				{
 					return i;
 				}
 			}
 		}
 		m_indexedMeshes[0].m_numVertices++;
-		m_4componentVertices.push_back(vertex);
+		m_4componentVertices.push_back(Vertex);
 		m_indexedMeshes[0].m_vertexBase = (unsigned char*)&m_4componentVertices[0];
 
 		return m_4componentVertices.size() - 1;
@@ -97,15 +97,15 @@ int btTriangleMesh::findOrAddVertex(const btVector3& vertex, bool removeDuplicat
 			for (int i = 0; i < m_3componentVertices.size(); i += 3)
 			{
 				btVector3 vtx(m_3componentVertices[i], m_3componentVertices[i + 1], m_3componentVertices[i + 2]);
-				if ((vtx - vertex).length2() <= m_weldingThreshold)
+				if ((vtx - Vertex).length2() <= m_weldingThreshold)
 				{
 					return i / 3;
 				}
 			}
 		}
-		m_3componentVertices.push_back(vertex.getX());
-		m_3componentVertices.push_back(vertex.getY());
-		m_3componentVertices.push_back(vertex.getZ());
+		m_3componentVertices.push_back(Vertex.getX());
+		m_3componentVertices.push_back(Vertex.getY());
+		m_3componentVertices.push_back(Vertex.getZ());
 		m_indexedMeshes[0].m_numVertices++;
 		m_indexedMeshes[0].m_vertexBase = (unsigned char*)&m_3componentVertices[0];
 		return (m_3componentVertices.size() / 3) - 1;

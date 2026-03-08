@@ -2623,16 +2623,16 @@ bool btConvexHullInternal::shiftFace(Face* face, btScalar amount, btAlignedObjec
 	return true;
 }
 
-static int getVertexCopy(btConvexHullInternal::Vertex* vertex, btAlignedObjectArray<btConvexHullInternal::Vertex*>& vertices)
+static int getVertexCopy(btConvexHullInternal::Vertex* Vertex, btAlignedObjectArray<btConvexHullInternal::Vertex*>& vertices)
 {
-	int index = vertex->copy;
+	int index = Vertex->copy;
 	if (index < 0)
 	{
 		index = vertices.size();
-		vertex->copy = index;
-		vertices.push_back(vertex);
+		Vertex->copy = index;
+		vertices.push_back(Vertex);
 #ifdef DEBUG_CONVEX_HULL
-		printf("Vertex %d gets index *%d\n", vertex->point.index, index);
+		printf("Vertex %d gets index *%d\n", Vertex->point.index, index);
 #endif
 	}
 	return index;

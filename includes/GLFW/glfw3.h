@@ -79,21 +79,18 @@ extern "C" {
 
  #include <GLES3/gl3.h>
  #if defined(GLFW_INCLUDE_GLEXT)
-  #include <GLES2/gl2ext.h>
  #endif
 
 #elif defined(GLFW_INCLUDE_ES31)
 
  #include <GLES3/gl31.h>
  #if defined(GLFW_INCLUDE_GLEXT)
-  #include <GLES2/gl2ext.h>
  #endif
 
 #elif defined(GLFW_INCLUDE_ES32)
 
  #include <GLES3/gl32.h>
  #if defined(GLFW_INCLUDE_GLEXT)
-  #include <GLES2/gl2ext.h>
  #endif
 
 #elif defined(GLFW_INCLUDE_GLCOREARB)
@@ -158,7 +155,6 @@ extern "C" {
 
   #include <GL/gl.h>
   #if defined(GLFW_INCLUDE_GLEXT)
-   #include <GL/glext.h>
   #endif
 
  #endif 

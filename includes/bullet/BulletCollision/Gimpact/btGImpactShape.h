@@ -640,21 +640,21 @@ public:
 			}
 		}
 
-		SIMD_FORCE_INLINE void get_vertex(unsigned int vertex_index, btVector3& vertex) const
+		SIMD_FORCE_INLINE void get_vertex(unsigned int vertex_index, btVector3& Vertex) const
 		{
 			if (type == PHY_DOUBLE)
 			{
 				double* dvertices = (double*)(vertexbase + vertex_index * stride);
-				vertex[0] = btScalar(dvertices[0] * m_scale[0]);
-				vertex[1] = btScalar(dvertices[1] * m_scale[1]);
-				vertex[2] = btScalar(dvertices[2] * m_scale[2]);
+				Vertex[0] = btScalar(dvertices[0] * m_scale[0]);
+				Vertex[1] = btScalar(dvertices[1] * m_scale[1]);
+				Vertex[2] = btScalar(dvertices[2] * m_scale[2]);
 			}
 			else
 			{
 				float* svertices = (float*)(vertexbase + vertex_index * stride);
-				vertex[0] = svertices[0] * m_scale[0];
-				vertex[1] = svertices[1] * m_scale[1];
-				vertex[2] = svertices[2] * m_scale[2];
+				Vertex[0] = svertices[0] * m_scale[0];
+				Vertex[1] = svertices[1] * m_scale[1];
+				Vertex[2] = svertices[2] * m_scale[2];
 			}
 		}
 
@@ -803,9 +803,9 @@ public:
 		return m_primitive_manager.get_vertex_count();
 	}
 
-	SIMD_FORCE_INLINE void getVertex(int vertex_index, btVector3& vertex) const
+	SIMD_FORCE_INLINE void getVertex(int vertex_index, btVector3& Vertex) const
 	{
-		m_primitive_manager.get_vertex(vertex_index, vertex);
+		m_primitive_manager.get_vertex(vertex_index, Vertex);
 	}
 
 	SIMD_FORCE_INLINE void setMargin(btScalar margin)

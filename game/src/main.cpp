@@ -2,17 +2,16 @@
 #include <Windows.h>
 #endif
 
-#include <core/app/application.h>
-#include <core/utils/logger.h>
+#include <core/logic/app_framework.h>
+#include <core/logic/logger.h>
 #include <states/game_state.h>
 #include <iostream>
 #include <fstream>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-#include <core/utils/filesystem.h>
+#include <core/logic/filesystem.h>
 #include <filesystem>
-#include <Windows.h>
 
 class TeeBuf : public std::streambuf {
 public:

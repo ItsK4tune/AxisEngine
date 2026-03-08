@@ -668,28 +668,28 @@ void btGImpactCollisionAlgorithm::gimpacttrimeshpart_vs_plane_collision(
 
 	btScalar margin = shape0->getMargin() + planeshape->getMargin();
 
-	btVector3 vertex;
+	btVector3 Vertex;
 	int vi = shape0->getVertexCount();
 	while (vi--)
 	{
-		shape0->getVertex(vi, vertex);
-		vertex = orgtrans0(vertex);
+		shape0->getVertex(vi, Vertex);
+		Vertex = orgtrans0(Vertex);
 
-		btScalar distance = vertex.dot(plane) - plane[3] - margin;
+		btScalar distance = Vertex.dot(plane) - plane[3] - margin;
 
 		if (distance < 0.0)  
 		{
 			if (swapped)
 			{
 				addContactPoint(body1Wrap, body0Wrap,
-								vertex,
+								Vertex,
 								-plane,
 								distance);
 			}
 			else
 			{
 				addContactPoint(body0Wrap, body1Wrap,
-								vertex,
+								Vertex,
 								plane,
 								distance);
 			}

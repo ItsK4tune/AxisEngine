@@ -118,7 +118,6 @@ int btDumpMemoryLeaks()
 	return totalLeak;
 }
 
-#include <stdio.h>
 
 struct btDebugPtrMagic
 {

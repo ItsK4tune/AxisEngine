@@ -141,7 +141,6 @@ public:
 	virtual void processNode(int subPart, int triangleIndex) = 0;
 };
 
-#include "LinearMath/btAlignedAllocator.h"
 #include "LinearMath/btAlignedObjectArray.h"
 
 

@@ -48,7 +48,7 @@ public:
 	virtual void preallocateIndices(int numindices);
 
 	
-	int findOrAddVertex(const btVector3& vertex, bool removeDuplicateVertices);
+	int findOrAddVertex(const btVector3& Vertex, bool removeDuplicateVertices);
 	
 	void addIndex(int index);
 };

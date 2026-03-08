@@ -1,4 +1,3 @@
-
 #define IDI_APP_ICON                    101
 
 #ifdef APSTUDIO_INVOKED

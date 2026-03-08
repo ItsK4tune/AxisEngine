@@ -75,12 +75,12 @@ public:
     
     
     
-    static bool Save(aiTexture* texture, IOStream* file);
+    static bool Save(aiTexture* Texture, IOStream* file);
 
 protected:
     static void WriteHeader(Header& header, IOStream* file);
     static void WriteDIB(DIB& dib, IOStream* file);
-    static void WriteData(aiTexture* texture, IOStream* file);
+    static void WriteData(aiTexture* Texture, IOStream* file);
 };
 
 }

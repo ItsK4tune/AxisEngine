@@ -217,7 +217,7 @@ btHeightfieldTerrainShape::getRawHeightFieldValue(int x, int y) const
 }
 
 
-void btHeightfieldTerrainShape::getVertex(int x, int y, btVector3& vertex) const
+void btHeightfieldTerrainShape::getVertex(int x, int y, btVector3& Vertex) const
 {
 	btAssert(x >= 0);
 	btAssert(y >= 0);
@@ -230,7 +230,7 @@ void btHeightfieldTerrainShape::getVertex(int x, int y, btVector3& vertex) const
 	{
 		case 0:
 		{
-			vertex.setValue(
+			Vertex.setValue(
 				height - m_localOrigin.getX(),
 				(-m_width / btScalar(2.0)) + x,
 				(-m_length / btScalar(2.0)) + y);
@@ -238,7 +238,7 @@ void btHeightfieldTerrainShape::getVertex(int x, int y, btVector3& vertex) const
 		}
 		case 1:
 		{
-			vertex.setValue(
+			Vertex.setValue(
 				(-m_width / btScalar(2.0)) + x,
 				height - m_localOrigin.getY(),
 				(-m_length / btScalar(2.0)) + y);
@@ -246,7 +246,7 @@ void btHeightfieldTerrainShape::getVertex(int x, int y, btVector3& vertex) const
 		};
 		case 2:
 		{
-			vertex.setValue(
+			Vertex.setValue(
 				(-m_width / btScalar(2.0)) + x,
 				(-m_length / btScalar(2.0)) + y,
 				height - m_localOrigin.getZ());
@@ -259,7 +259,7 @@ void btHeightfieldTerrainShape::getVertex(int x, int y, btVector3& vertex) const
 		}
 	}
 
-	vertex *= m_localScaling;
+	Vertex *= m_localScaling;
 }
 
 static inline int

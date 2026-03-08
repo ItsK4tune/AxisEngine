@@ -31,7 +31,7 @@ typedef struct AVD3D11VADeviceContext {
 
 typedef struct AVD3D11FrameDescriptor {
     
-    ID3D11Texture2D *texture;
+    ID3D11Texture2D *Texture;
 
     
     intptr_t index;
@@ -40,7 +40,7 @@ typedef struct AVD3D11FrameDescriptor {
 
 typedef struct AVD3D11VAFramesContext {
     
-    ID3D11Texture2D *texture;
+    ID3D11Texture2D *Texture;
 
     
     UINT BindFlags;

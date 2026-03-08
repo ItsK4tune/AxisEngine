@@ -39,7 +39,7 @@ typedef struct AVD3D12VASyncContext {
 
 typedef struct AVD3D12VAFrame {
     
-    ID3D12Resource *texture;
+    ID3D12Resource *Texture;
 
     
     AVD3D12VASyncContext sync_ctx;

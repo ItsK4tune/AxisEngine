@@ -1,7 +1,12 @@
-#include <axis/axis_core.h>
-#include <axis/axis_ecs.h>
-#include <axis/axis_input.h>
+#include <core/logic/engine_core.h>
+#include <core/logic/state_management.h>
+#include <ecs/logic/entity_builder.h>
+#include <ecs/manager/entity_manager.h>
+#include <resource/manager/resource_manager.h>
+#include <scene/logic/scene_manager.h>
+#include <platform/logic/input_system.h>
 #include <states/pause_state.h>
+#include <scene/logic/scene.h>
 
 void PauseState::OnEnter()
 {
@@ -16,7 +21,7 @@ void PauseState::OnEnter()
     EnableUIRender(true);
     EnableSkybox(true);
 
-    SetCursorMode(Input::CursorMode::Normal);
+    SetCursorMode(CursorMode::Normal);
 
     m_PausedTextEntity = EntityBuilder(GetScene(), GetResourceManager())
         .WithName("PauseOverlay")
@@ -29,7 +34,7 @@ void PauseState::OnEnter()
 void PauseState::OnUpdate(float dt)
 {
     auto& kb = GetKeyboard();
-    if (kb.IsKeyDown(Input::Key::P))
+    if (kb.IsKeyDown(Key::P))
     {
         m_Ctx.runtime->GetStateMachine().PopState();
     }
