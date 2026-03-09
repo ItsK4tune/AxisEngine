@@ -114,6 +114,7 @@ void SystemManager::ApplyConfig(const AppConfig &config)
 {
     auto* rs = GetSystem<RenderSystem>();
     if (rs) {
+        rs->SetEnableShadows(config.shadowsEnabled);
         rs->SetShadowMode(config.shadowMode);
         rs->SetShadowProjectionSize(config.shadowProjectionSize);
         rs->SetInstanceBatching(config.instanceBatchingEnabled);
@@ -123,7 +124,37 @@ void SystemManager::ApplyConfig(const AppConfig &config)
         rs->SetShadowDistanceCulling(config.shadowDistanceCulling);
         rs->SetDistanceCulling(config.distanceCulling);
         rs->SetAntiAliasingMode((AntiAliasingMode)config.antialiasing);
+        rs->SetRenderOrderEnabled(config.renderOrderEnabled);
+        rs->SetFilterLayerMask(config.filterLayerMask);
+        rs->SetDeferredRendering(config.renderPath == 1);
+
+        if (config.cullFaceEnabled)
+            rs->SetFaceCulling(true);
+        else
+            rs->SetFaceCulling(false);
+
+        if (config.depthTestEnabled)
+            rs->SetDepthTest(true);
+        else
+            rs->SetDepthTest(false);
     }
+
+    // Post-process pipeline
+    postProcess.SetGamma(config.gamma);
+    postProcess.SetExposure(config.exposure);
+    postProcess.SetBloomIntensity(config.bloomIntensity);
+    postProcess.SetTonemappingMode(config.tonemappingMode);
+    postProcess.SetHDREnabled(config.hdrEnabled);
+    postProcess.SetBloomEnabled(config.bloomEnabled);
+    postProcess.SetClearColor(config.clearColor[0], config.clearColor[1], config.clearColor[2], config.clearColor[3]);
+
+    // Physics
+    if (m_Ctx.IsValid() && m_Ctx.physics) {
+        m_Ctx.physics->SetGravity(glm::vec3(config.gravity[0], config.gravity[1], config.gravity[2]));
+        m_Ctx.physics->SetMode(config.physicsMode);
+    }
+
+    LOGGER_INFO("SystemManager") << "Applied engine configuration.";
 }
 
 void SystemManager::RunFixedUpdate(Scene& scene, float fixedDt)

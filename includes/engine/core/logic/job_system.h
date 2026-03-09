@@ -24,7 +24,7 @@ public:
     /**
      * Initializes the thread pool. Automatically spawns threads based on hardware concurrency.
      */
-    void Initialize();
+    void Initialize(int configThreads = -1);
 
     /**
      * Shuts down the thread pool and joins all threads. Call this before application exit.

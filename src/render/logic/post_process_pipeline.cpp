@@ -134,7 +134,7 @@ void PostProcessPipeline::BeginCapture()
 
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[0]->Get());
     rsm.Enable(ServerCapability::DepthTest);
-    dc.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    dc.ClearColor(m_ClearColor[0], m_ClearColor[1], m_ClearColor[2], m_ClearColor[3]);
     dc.Clear(BufferBit::Color | BufferBit::Depth);
 }
 

@@ -238,6 +238,190 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
                 config.antialiasing = 0;
         }
     }
+    // Feature toggles
+    else if (subCmd == "SHADOWS_ENABLED")
+    {
+        int enable = 1;
+        ss >> enable;
+        config.shadowsEnabled = (enable != 0);
+    }
+    else if (subCmd == "BLOOM_ENABLED")
+    {
+        int enable = 0;
+        ss >> enable;
+        config.bloomEnabled = (enable != 0);
+    }
+    else if (subCmd == "HDR_ENABLED")
+    {
+        int enable = 0;
+        ss >> enable;
+        config.hdrEnabled = (enable != 0);
+    }
+    else if (subCmd == "TAA_ENABLED")
+    {
+        int enable = 0;
+        ss >> enable;
+        config.taaEnabled = (enable != 0);
+    }
+    // Rendering parameters
+    else if (subCmd == "GAMMA")
+    {
+        float val = 2.2f;
+        ss >> val;
+        config.gamma = val;
+    }
+    else if (subCmd == "EXPOSURE")
+    {
+        float val = 1.0f;
+        ss >> val;
+        config.exposure = val;
+    }
+    else if (subCmd == "BLOOM_INTENSITY")
+    {
+        float val = 1.0f;
+        ss >> val;
+        config.bloomIntensity = val;
+    }
+    else if (subCmd == "TAA_BLEND_FACTOR")
+    {
+        float val = 0.9f;
+        ss >> val;
+        config.taaBlendFactor = val;
+    }
+    else if (subCmd == "AMBIENT_INTENSITY")
+    {
+        float val = 0.1f;
+        ss >> val;
+        config.ambientIntensity = val;
+    }
+    else if (subCmd == "TONEMAPPING")
+    {
+        std::string valStr;
+        if (ss >> valStr)
+        {
+            if (valStr == "NONE")
+                config.tonemappingMode = 0;
+            else if (valStr == "ACES")
+                config.tonemappingMode = 1;
+            else if (valStr == "REINHARD")
+                config.tonemappingMode = 2;
+            else
+            {
+                try { config.tonemappingMode = std::stoi(valStr); }
+                catch (...) { config.tonemappingMode = 1; }
+            }
+        }
+    }
+    else if (subCmd == "RENDER_PATH")
+    {
+        std::string valStr;
+        if (ss >> valStr)
+        {
+            if (valStr == "FORWARD")
+                config.renderPath = 0;
+            else if (valStr == "DEFERRED")
+                config.renderPath = 1;
+            else
+            {
+                try { config.renderPath = std::stoi(valStr); }
+                catch (...) { config.renderPath = 0; }
+            }
+        }
+    }
+    else if (subCmd == "CLEAR_COLOR")
+    {
+        float r = 0.1f, g = 0.1f, b = 0.1f, a = 1.0f;
+        ss >> r >> g >> b >> a;
+        config.clearColor[0] = r;
+        config.clearColor[1] = g;
+        config.clearColor[2] = b;
+        config.clearColor[3] = a;
+    }
+    // Audio
+    else if (subCmd == "VOLUME")
+    {
+        float val = 1.0f;
+        ss >> val;
+        config.masterVolume = val;
+    }
+    // Core
+    else if (subCmd == "JOB_THREADS")
+    {
+        int val = -1;
+        ss >> val;
+        config.numJobThreads = val;
+    }
+    else if (subCmd == "LOG_LEVEL")
+    {
+        int val = 1;
+        ss >> val;
+        config.logLevel = val;
+    }
+    else if (subCmd == "TIME_SCALE")
+    {
+        float val = 1.0f;
+        ss >> val;
+        config.timeScale = val;
+    }
+    // Physics
+    else if (subCmd == "GRAVITY")
+    {
+        float x = 0.0f, y = -9.81f, z = 0.0f;
+        ss >> x >> y >> z;
+        config.gravity[0] = x;
+        config.gravity[1] = y;
+        config.gravity[2] = z;
+    }
+    else if (subCmd == "MAX_SUB_STEPS")
+    {
+        int val = 10;
+        ss >> val;
+        config.maxSubSteps = val;
+    }
+    else if (subCmd == "PHYSICS_TICK_RATE")
+    {
+        float val = 60.0f;
+        ss >> val;
+        config.physicsTickRate = val;
+    }
+    else if (subCmd == "CCD")
+    {
+        int enable = 0;
+        ss >> enable;
+        config.ccdEnabled = (enable != 0);
+    }
+    else if (subCmd == "SOLVER_ITERATIONS")
+    {
+        int val = 10;
+        ss >> val;
+        config.solverIterations = val;
+    }
+    // Navigation
+    else if (subCmd == "AGENT_RADIUS")
+    {
+        float val = 0.5f;
+        ss >> val;
+        config.agentRadius = val;
+    }
+    else if (subCmd == "AGENT_HEIGHT")
+    {
+        float val = 2.0f;
+        ss >> val;
+        config.agentHeight = val;
+    }
+    else if (subCmd == "WALKABLE_TAG")
+    {
+        std::string tag;
+        if (ss >> tag)
+            config.walkableTag = tag;
+    }
+    // Input
+    else if (subCmd == "MOUSE_SENSITIVITY")
+    {
+        float val = 0.1f;
+        ss >> val;
+        // Store in a general place; scripts can read from config
+    }
 }
 
 void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
@@ -489,6 +673,107 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
             {
                 ctx.systems->GetSystem<RenderSystem>()->SetAntiAliasingMode(mode);
             }
+        }
+    }
+    // Feature toggles (runtime)
+    else if (subCmd == "SHADOWS_ENABLED")
+    {
+        int enable = 1;
+        if (ss >> enable && ctx.IsValid())
+            ctx.systems->GetSystem<RenderSystem>()->SetEnableShadows(enable != 0);
+    }
+    else if (subCmd == "BLOOM_ENABLED")
+    {
+        int enable = 0;
+        if (ss >> enable && ctx.IsValid())
+            ctx.systems->GetPostProcess().SetBloomEnabled(enable != 0);
+    }
+    else if (subCmd == "HDR_ENABLED")
+    {
+        int enable = 0;
+        if (ss >> enable && ctx.IsValid())
+            ctx.systems->GetPostProcess().SetHDREnabled(enable != 0);
+    }
+    else if (subCmd == "TAA_ENABLED")
+    {
+        int enable = 0;
+        if (ss >> enable && ctx.IsValid())
+        {
+            auto* rs = ctx.systems->GetSystem<RenderSystem>();
+            rs->SetAntiAliasingMode(enable ? AntiAliasingMode::TAA : AntiAliasingMode::NONE);
+        }
+    }
+    // Rendering parameters (runtime)
+    else if (subCmd == "GAMMA")
+    {
+        float val = 2.2f;
+        if (ss >> val && ctx.IsValid())
+            ctx.systems->GetPostProcess().SetGamma(val);
+    }
+    else if (subCmd == "EXPOSURE")
+    {
+        float val = 1.0f;
+        if (ss >> val && ctx.IsValid())
+            ctx.systems->GetPostProcess().SetExposure(val);
+    }
+    else if (subCmd == "BLOOM_INTENSITY")
+    {
+        float val = 1.0f;
+        if (ss >> val && ctx.IsValid())
+            ctx.systems->GetPostProcess().SetBloomIntensity(val);
+    }
+    else if (subCmd == "TONEMAPPING")
+    {
+        std::string valStr;
+        if (ss >> valStr && ctx.IsValid())
+        {
+            int mode = 1;
+            if (valStr == "NONE") mode = 0;
+            else if (valStr == "ACES") mode = 1;
+            else if (valStr == "REINHARD") mode = 2;
+            ctx.systems->GetPostProcess().SetTonemappingMode(mode);
+        }
+    }
+    else if (subCmd == "RENDER_PATH")
+    {
+        std::string valStr;
+        if (ss >> valStr && ctx.IsValid())
+        {
+            bool deferred = (valStr == "DEFERRED" || valStr == "1");
+            ctx.systems->GetSystem<RenderSystem>()->SetDeferredRendering(deferred);
+        }
+    }
+    else if (subCmd == "CLEAR_COLOR")
+    {
+        float r = 0.1f, g = 0.1f, b = 0.1f, a = 1.0f;
+        ss >> r >> g >> b >> a;
+        if (ctx.IsValid())
+            ctx.systems->GetPostProcess().SetClearColor(r, g, b, a);
+    }
+    // Physics (runtime)
+    else if (subCmd == "GRAVITY")
+    {
+        float x = 0.0f, y = -9.81f, z = 0.0f;
+        ss >> x >> y >> z;
+        if (ctx.IsValid())
+            ctx.physics->SetGravity(glm::vec3(x, y, z));
+    }
+    else if (subCmd == "VOLUME")
+    {
+        float val = 1.0f;
+        if (ss >> val && ctx.IsValid())
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.masterVolume = val;
+        }
+    }
+    else if (subCmd == "TIME_SCALE")
+    {
+        float val = 1.0f;
+        if (ss >> val && ctx.IsValid())
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.timeScale = val;
         }
     }
 }

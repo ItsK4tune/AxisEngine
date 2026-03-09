@@ -113,7 +113,7 @@ bool Application::Init(const AppConfig &config)
 {
     m_Config = config;
 
-    JobSystem::Instance().Initialize();
+    JobSystem::Instance().Initialize(m_Config.numJobThreads);
 
     auto graphicsContext = AppBuilder::CreateGraphicsContext(m_Config);
     auto audioEngine = AppBuilder::CreateAudioEngine(m_Config);

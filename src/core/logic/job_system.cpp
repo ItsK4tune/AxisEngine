@@ -1,18 +1,26 @@
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
 
-void JobSystem::Initialize()
+void JobSystem::Initialize(int configThreads)
 {
     if (m_IsRunning)
         return;
 
     m_IsRunning = true;
 
-    uint32_t numThreads = std::thread::hardware_concurrency();
-    if (numThreads > 1)
-        numThreads -= 1;
+    uint32_t numThreads;
+    if (configThreads > 0)
+    {
+        numThreads = static_cast<uint32_t>(configThreads);
+    }
     else
-        numThreads = 1;
+    {
+        numThreads = std::thread::hardware_concurrency();
+        if (numThreads > 1)
+            numThreads -= 1;
+        else
+            numThreads = 1;
+    }
 
     m_Workers.reserve(numThreads);
     for (uint32_t i = 0; i < numThreads; ++i)
