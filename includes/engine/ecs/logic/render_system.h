@@ -132,8 +132,10 @@ private:
     
     std::unique_ptr<GPUUBO> m_CameraUBO;
     std::unique_ptr<GPUUBO> m_GlobalLightUBO;
+    std::unique_ptr<GPUUBO> m_GlobalDataUBO;
     GPUCameraData m_CameraData;
     GPUGlobalLightData m_GlobalLightData;
+    GPUGlobalData m_GlobalData;
 
     CommandQueue m_CommandQueue;
 };

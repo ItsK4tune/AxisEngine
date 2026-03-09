@@ -26,6 +26,7 @@ void MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity
         shader->setFloat("material.opacity", mat.desc.opacity);
         shader->setVec2("uvScale", mat.desc.uvScale);
         shader->setVec2("uvOffset", mat.desc.uvOffset);
+        shader->setCustomPorts(mat.desc.ports);
 
         if (debugNoTexture) {
             m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);

@@ -2,44 +2,44 @@ axis_scene:
   Resources:
     Shader:
       Name: phongLitNoShadowShader
-      VS: includes/engine/asset/shaders/phong_lit_no_shadow.vs
-      FS: includes/engine/asset/shaders/phong_lit_no_shadow.fs
+      vertex: includes/engine/asset/shaders/phong_lit_no_shadow.vs
+      fragment: includes/engine/asset/shaders/phong_lit_no_shadow.fs
     Shader:
       Name: phongLitShadowShader
-      VS: includes/engine/asset/shaders/phong_lit_shadow.vs
-      FS: includes/engine/asset/shaders/phong_lit_shadow.fs
+      vertex: includes/engine/asset/shaders/phong_lit_shadow.vs
+      fragment: includes/engine/asset/shaders/phong_lit_shadow.fs
     Shader:
       Name: pbrLitNoShadowShader
-      VS: includes/engine/asset/shaders/pbr_lit_no_shadow.vs
-      FS: includes/engine/asset/shaders/pbr_lit_no_shadow.fs
+      vertex: includes/engine/asset/shaders/pbr_lit_no_shadow.vs
+      fragment: includes/engine/asset/shaders/pbr_lit_no_shadow.fs
     Shader:
       Name: pbrLitShadowShader
-      VS: includes/engine/asset/shaders/pbr_lit_shadow.vs
-      FS: includes/engine/asset/shaders/pbr_lit_shadow.fs
+      vertex: includes/engine/asset/shaders/pbr_lit_shadow.vs
+      fragment: includes/engine/asset/shaders/pbr_lit_shadow.fs
     Shader:
       Name: unlitShader
-      VS: includes/engine/asset/shaders/unlit.vs
-      FS: includes/engine/asset/shaders/unlit.fs
+      vertex: includes/engine/asset/shaders/unlit.vs
+      fragment: includes/engine/asset/shaders/unlit.fs
     Shader:
       Name: uiShader
-      VS: includes/engine/asset/shaders/ui.vs
-      FS: includes/engine/asset/shaders/ui.fs
+      vertex: includes/engine/asset/shaders/ui.vs
+      fragment: includes/engine/asset/shaders/ui.fs
     Shader:
       Name: textShader
-      VS: includes/engine/asset/shaders/text.vs
-      FS: includes/engine/asset/shaders/text.fs
+      vertex: includes/engine/asset/shaders/text.vs
+      fragment: includes/engine/asset/shaders/text.fs
     Shader:
       Name: particle
-      VS: includes/engine/asset/shaders/particle.vs
-      FS: includes/engine/asset/shaders/particle.fs
+      vertex: includes/engine/asset/shaders/particle.vs
+      fragment: includes/engine/asset/shaders/particle.fs
     Shader:
       Name: videomapShader
-      VS: includes/engine/asset/shaders/videomap.vs
-      FS: includes/engine/asset/shaders/videomap.fs
+      vertex: includes/engine/asset/shaders/videomap.vs
+      fragment: includes/engine/asset/shaders/videomap.fs
     Shader:
       Name: skyboxShader
-      VS: includes/engine/asset/shaders/skybox.vs
-      FS: includes/engine/asset/shaders/skybox.fs
+      vertex: includes/engine/asset/shaders/skybox.vs
+      fragment: includes/engine/asset/shaders/skybox.fs
 
     Font:
       Name: time

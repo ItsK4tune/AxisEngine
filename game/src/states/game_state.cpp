@@ -156,6 +156,22 @@ void GameState::OnUpdate(float dt)
             anim.animator->SetSpeed(anim.speed);
         }
     }
+
+    // --- Demo: Shader Port Logic ---
+    auto demoView = GetScene().registry.view<InfoComponent, MaterialComponent>();
+    for (auto entity : demoView)
+    {
+        auto [info, mat] = demoView.get<InfoComponent, MaterialComponent>(entity);
+        
+        if (info.tag == "enemy")
+        {
+            mat.desc.ports.data[0] = 1.0f; // 1.0 = Enemy (Red in shader)
+        }
+        else if (info.tag == "ally")
+        {
+            mat.desc.ports.data[0] = 2.0f; // 2.0 = Ally (Green in shader)
+        }
+    }
 }
 
 

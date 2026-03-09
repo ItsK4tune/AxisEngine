@@ -83,11 +83,19 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
             {
                 if (resNode.key == "Shader")
                 {
-                    LoaderUtils::ValidateKeys(resNode, {"Name", "VS", "FS", "GS"}, "Resource:Shader");
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "vertex", "geometry", "fragment", "VS", "FS", "GS"}, "Resource:Shader");
                     std::string name = resNode.GetChildValue("Name");
-                    std::string vs = resNode.GetChildValue("VS");
-                    std::string fs = resNode.GetChildValue("FS");
-                    std::string gs = resNode.GetChildValue("GS");
+                    
+                    // Support both new names and legacy names
+                    std::string vs = resNode.GetChildValue("vertex");
+                    if (vs.empty()) vs = resNode.GetChildValue("VS");
+                    
+                    std::string fs = resNode.GetChildValue("fragment");
+                    if (fs.empty()) fs = resNode.GetChildValue("FS");
+                    
+                    std::string gs = resNode.GetChildValue("geometry");
+                    if (gs.empty()) gs = resNode.GetChildValue("GS");
+                    
                     res.LoadShader(name, vs, fs, gs);
                     result.loadedShaders.push_back(name);
                 }

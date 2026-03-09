@@ -82,15 +82,77 @@ Standard shaders must follow these conventions:
 - `sampler2D shadowMapDir[4]`, `shadowMapPoint[2]`
 - **SSBO Bindings**: `0` (Dir), `1` (Point), `2` (Spot) for lights.
 
----
+### 6. Shader "Gate" (Global Data)
+The engine provides a global `UBO` at **binding slot 2** for system constants. Declare it in your shader like this:
+```glsl
+layout (std140, binding = 2) uniform GlobalData {
+    float u_Time;
+    float u_DeltaTime;
+    vec2  u_Resolution;
+};
+```
 
-## 6. RenderSystem API
+### 7. Custom Data Ports
+Each material has **8 custom numeric ports** that can be used to pass arbitrary data to the shader (e.g., `isEnemy`, `vibrationScale`).
+- **C++ Usage**: `material.desc.ports.data[0] = 1.0f;`
+- **Shader Usage**: `uniform float u_CustomPorts[8];`
+
+### 8. Shader Declaration (.axs)
+Shaders support `vertex`, `fragment`, and an optional `geometry` stage.
+```yaml
+Shader:
+  Name: myCustomShader
+  vertex: shaders/custom.vs
+  geometry: shaders/custom.gs  # Optional
+  fragment: shaders/custom.fs
+```
 Accessible via `m_App->GetRenderSystem()`.
 
 - `Render(scene)`: Executes the main pass.
 - `RenderShadows(scene)`: Generates shadow maps.
 - `SetFaceCulling()`, `SetDepthTest()`: Manual state management.
 - `SetFilterLayerMask()`: Global visibility control.
+
+---
+
+## 9. Skeletal Animation (Skinning)
+For animated models, you must handle bone weights and matrices in the vertex shader. Use the snippet below:
+
+### Vertex Shader Skinning Snippet
+```glsl
+#version 430 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+// Bone data at locations 5 and 6
+layout (location = 5) in ivec4 aBoneIds; 
+layout (location = 6) in vec4 aWeights;
+
+uniform mat4 model;
+uniform mat4 finalBonesMatrices[200]; // Max 200 bones
+uniform bool isInstanced;
+layout(location = 10) in mat4 instanceMatrix;
+
+void main() {
+    vec4 totalPosition = vec4(0.0f);
+    bool hasBones = false;
+    
+    for(int i = 0 ; i < 4 ; i++) {
+        if(aBoneIds[i] == -1) continue;
+        if(aBoneIds[i] >= 200) break;
+        
+        vec4 localPosition = finalBonesMatrices[aBoneIds[i]] * vec4(aPos, 1.0f);
+        totalPosition += localPosition * aWeights[i];
+        hasBones = true;
+    }
+    
+    if (!hasBones) totalPosition = vec4(aPos, 1.0f);
+
+    mat4 modelMatrix = isInstanced ? instanceMatrix : model;
+    
+    // Use totalPosition for world space calculations
+    gl_Position = camera.projection * camera.view * modelMatrix * totalPosition;
+}
+```
 
 ---
 

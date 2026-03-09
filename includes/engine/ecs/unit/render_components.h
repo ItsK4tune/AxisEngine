@@ -56,6 +56,8 @@ struct MaterialDescriptor
 
     BlendFactor blendSrc = BlendFactor::SrcAlpha;
     BlendFactor blendDst = BlendFactor::OneMinusSrcAlpha;
+
+    ShaderPorts ports;
 };
 
 struct MaterialGPUState

@@ -54,6 +54,7 @@ public:
     int GetUniformLocation(unsigned int program, const char *name) override { return glGetUniformLocation(program, name); }
     void SetUniform1i(int location, int value) override { glUniform1i(location, value); }
     void SetUniform1f(int location, float value) override { glUniform1f(location, value); }
+    void SetUniform1fv(int location, int count, const float *value) override { glUniform1fv(location, count, value); }
     void SetUniform2f(int location, float v0, float v1) override { glUniform2f(location, v0, v1); }
     void SetUniform2fv(int location, const float *value) override { glUniform2fv(location, 1, value); }
     void SetUniform3f(int location, float v0, float v1, float v2) override { glUniform3f(location, v0, v1, v2); }

@@ -5,7 +5,7 @@
 
 ShaderCache::ShaderCache(IShaderManager& manager) : m_ShaderManager(manager) {}
 
-std::shared_ptr<Shader> ShaderCache::GetOrCompile(const std::string& name, const std::string& vertPath, const std::string& fragPath)
+std::shared_ptr<Shader> ShaderCache::GetOrCompile(const std::string& name, const std::string& vertPath, const std::string& fragPath, const std::string& geomPath)
 {
     auto it = m_LoadedShaders.find(name);
     if (it != m_LoadedShaders.end())
@@ -19,7 +19,7 @@ std::shared_ptr<Shader> ShaderCache::GetOrCompile(const std::string& name, const
 
     auto shader = std::make_shared<Shader>(m_ShaderManager);
     shader->SetName(name);
-    shader->load(vertPath.c_str(), fragPath.c_str());
+    shader->load(vertPath.c_str(), fragPath.c_str(), geomPath.empty() ? nullptr : geomPath.c_str());
 
     m_LoadedShaders[name] = shader;
 

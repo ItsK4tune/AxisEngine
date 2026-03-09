@@ -62,6 +62,11 @@ void RenderSystem::Init(IGraphicsContext &context, IShaderLibrary &shaderLib)
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalLightData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 1, m_GlobalLightUBO->Get());
 
+    m_GlobalDataUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
+    bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
+    bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
+    bm.BindBufferBase(BufferType::UniformBuffer, 2, m_GlobalDataUBO->Get());
+
     shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
     m_OcclusionCuller.Init(*m_Context, shaderLib.GetShader("occlusion_query"));
     m_MaterialRenderer.Init(*m_Context, m_WhiteTextureID);
@@ -228,6 +233,19 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalLightData), &m_GlobalLightData);
+
+    // Update Global Data UBO (Gate)
+    static auto startTime = std::chrono::steady_clock::now();
+    auto currentTime = std::chrono::steady_clock::now();
+    m_GlobalData.time = std::chrono::duration<float>(currentTime - startTime).count();
+    static auto lastTime = startTime;
+    m_GlobalData.deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+    lastTime = currentTime;
+    m_GlobalData.resolution[0] = static_cast<float>(width);
+    m_GlobalData.resolution[1] = static_cast<float>(height);
+
+    bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
+    bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
 
     auto &rsm = m_Context->GetRenderStateManager();
     PolygonMode prevMode = rsm.GetPolygonMode();

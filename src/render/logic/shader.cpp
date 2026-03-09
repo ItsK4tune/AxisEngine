@@ -181,6 +181,15 @@ void Shader::setMat4Array(const std::string &name, const std::vector<glm::mat4> 
     }
 }
 
+void Shader::setCustomPorts(const ShaderPorts& ports) const
+{
+    int loc = GetUniformLocation("u_CustomPorts");
+    if (loc != -1)
+    {
+        m_ShaderManager.SetUniform1fv(loc, 8, ports.data);
+    }
+}
+
 int Shader::GetUniformLocation(const std::string &name) const
 {
     if (uniformLocations.find(name) != uniformLocations.end())

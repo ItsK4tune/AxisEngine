@@ -14,16 +14,21 @@ axis_scene:
       Path: resources/objects/woman/spin.fbx
       Model: womanModel
 
+    Shader:
+      Name: demoPortShader
+      vertex: resources/shaders/demo_port.vs
+      fragment: resources/shaders/demo_port.fs
+
   Entities:
     Woman:
-      Tag: default
+      Tag: ally
       Component: Transform
         Position: 2.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -43,14 +48,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman2:
-      Tag: default
+      Tag: enemy
       Component: Transform
         Position: 20.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -70,14 +75,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman3:
-      Tag: default
+      Tag: ally
       Component: Transform
         Position: 18.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -97,14 +102,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman4:
-      Tag: default
+      Tag: enemy
       Component: Transform
         Position: 16.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -124,14 +129,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman5:
-      Tag: default
+      Tag: ally
       Component: Transform
         Position: 14.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -151,14 +156,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman6:
-      Tag: default
+      Tag: enemy
       Component: Transform
         Position: 12.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -178,14 +183,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman7:
-      Tag: default
+      Tag: ally
       Component: Transform
         Position: 10.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -205,14 +210,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman8:
-      Tag: default
+      Tag: enemy
       Component: Transform
         Position: 8.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -232,14 +237,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman9:
-      Tag: default
+      Tag: ally
       Component: Transform
         Position: 6.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -259,14 +264,14 @@ axis_scene:
         Offset: 0.0 0.0 0.0
 
     Woman10:
-      Tag: default
+      Tag: enemy
       Component: Transform
         Position: 4.0 2.0 2.0
         Rotation: 0.0 0.0 0.0
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: demoPortShader
         Order: 1
       Component: Material
         Type: PHONG

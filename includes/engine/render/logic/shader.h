@@ -1,7 +1,9 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <render/type/graphics_types.h>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 class IShaderManager;
@@ -39,6 +41,7 @@ public:
     void setMat3(const std::string &name, const glm::mat3 &mat) const;
     void setMat4(const std::string &name, const glm::mat4 &mat) const;
     void setMat4Array(const std::string &name, const std::vector<glm::mat4> &matrices) const;
+    void setCustomPorts(const ShaderPorts& ports) const;
 
     int GetUniformLocation(const std::string &name) const;
 

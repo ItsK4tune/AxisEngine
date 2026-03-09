@@ -327,6 +327,19 @@ struct GPUGlobalLightData {
     float pad1;
 };
 
+// --- Shader Data ---
+
+struct ShaderPorts {
+    float data[8] = {0.0f};
+};
+
+struct GPUGlobalData {
+    float time;
+    float deltaTime;
+    float resolution[2];
+    float pad[4];
+};
+
 // --- Vertex & Texture ---
 
 constexpr int MAX_BONE_INFLUENCE = 4;
