@@ -36,12 +36,19 @@ The `DebugSystem` provides real-time introspection, control, and diagnostics for
 
 ### 2. Gizmos (Shift+F4, Shift+F5)
 *   **Transform Gizmo (Shift+F4)**: Renders colored 3D axis lines (X=Red, Y=Green, Z=Blue) at the origin of entities possessing a `TransformComponent`.
-*   **Light Gizmo (Shift+F5)**: Renders wireframe spheres (Point/Spot) or bounding boxes (Directional) to visualize the exact bounds and ranges of unseen light sources in the scene.
+*   **Light Gizmo (Shift+F5)**: Renders wireframe spheres (Point/Spot) or icons (Directional) to visualize the position and range of lights.
 
-### 2. Time Control (F11, F12)
-*   **Pause (F11)**: Freezes `deltaTime` for logic/physics systems. Camera movement may still work if independent of game time.
-*   **Slow Motion (F12)**: Adjusts `deltaTime` multiplier.
-    *   **Note**: Safety limits are in place to prevent "spiral of death" (physics engine hanging due to large time steps).
+### 3. Debug Camera (Shift+F11)
+When enabled, the game camera is overridden by a free-flying "NoClip" camera.
+- **W/S**: Move Forward/Backward
+- **A/D**: Strafe Left/Right
+- **Q/E**: Move Down/Up
+- **Shift**: Move Faster
+- **Mouse**: Rotate Camera
+
+### 4. Time Control (F11, F12)
+*   **Pause (F11)**: Freezes `deltaTime` for logic/physics systems. Rendering and Debug Camera updates continue.
+*   **Slow Motion (F12)**: Adjusts `deltaTime` multiplier (0.25x, 0.5x, 1x, 1.5x, 2x).
 
 ### 3. Diagnostics (F2, F3, F4, F5)
 *   Use these keys to dump information to the console window.

@@ -91,143 +91,55 @@ axis_scene:
         Restitution: 0.2
 ```
 
-> For a full list of available components and their precise scene syntax properties, see the Component Loader implementation.
+> For a detailed list of all components and their exact YAML properties, refer to the domain-specific guides:
+> - **[Graphics & Rendering](../guides/graphics.md)** (Mesh, Material, Lights, LOD)
+> - **[Physics Simulation](../guides/physics.md)** (RigidBody, CharacterController)
+> - **[Navigation & AI](../guides/navigation.md)** (NavMesh, PathFollower)
+> - **[Audio & Sound](../guides/audio.md)** (AudioSource)
+> - **[User Interface (UI)](../guides/ui.md)** (UITransform, UIRenderer, UIText)
+> - **[Assets & Resources](../guides/assets.md)** (Animations, Videos, Particles)
 
 ---
 
-## 5. Component Reference & Defaults
+## 5. Component Reference Summary
 
 The `.axs` format assigns default values if a property is missing. Keys are case-sensitive. Specifying an unknown key will trigger a console warning.
 
-### Transform
-- `Position`: Vector3 (Default: `0 0 0`)
-- `Rotation`: Vector3 (Default: `0 0 0`, applied as Euler angles)
-- `Scale`: Vector3 (Default: `1 1 1`)
+### Basic Components
+For properties like `Position`, `Rotation`, and `Scale`, see the **[Architecture Overview](../core/architecture.md)**.
 
-### Camera
-- `Primary`: Boolean (Default: `1`)
-- `FOV`: Float (Default: `45.0`, Range: `(0, 180)`)
-- `Yaw`: Float (Default: `-90.0`)
-- `Pitch`: Float (Default: `0.0`, Range: `[-89, 89]`)
-- `Near`: Float (Default: `0.1`, Must be > 0 and < Far)
-- `Far`: Float (Default: `1000.0`)
+### Rendering & Visuals
+Refer to the **[Graphics Guide](graphics.md)** for:
+- `MeshRenderer`: Model, Shader, Render Order.
+- `LOD`: Level-of-detail model swapping.
+- `Lights`: Directional, Point, and Spot configuration.
+- `Material`: PBR vs Phong settings, texture overrides, and transparency.
+- `SkyboxRenderer`: Environment cubemaps.
 
-### MeshRenderer
-- `Model`: String (Required, Name of loaded Model resource)
-- `Shader`: String (Required, Name of loaded Shader resource)
-- `Order`: Integer (Default: `0`, determines rendering priority when `RENDER_ORDER` is enabled. **Higher values render on top**).
+### Physics & Movement
+Refer to the **[Physics Guide](physics.md)** for:
+- `RigidBody`: Dynamic, Static, and Kinematic bodies.
+- `CharacterController`: Player-specific movement and gravity.
+- `PhysicsMode`: Fast, Balanced, or Accurate simulation settings.
 
-### LOD
-Level of Detail component swapped dynamically based on distance to the camera (squared). Requires a base `MeshRenderer` component.
-- `Models`: String List (Space-separated names of loaded Model resources for LOD1, LOD2, etc.)
-- `Distances`: Float List (Space-separated distance thresholds for each LOD level.)
+### AI & Navigation
+Refer to the **[Navigation Guide](navigation.md)** for:
+- `NavMesh`: Baking walkable surfaces.
+- `PathFollower`: Pathfinding and steering parameters.
 
-### Lights (LightDir, LightPoint, LightSpot)
-All lights share these base properties:
-- `Active`: Boolean (Default: `1`)
-- `CastShadow`: Boolean (Default: `0`)
-- `Color`: Vector3 (Default: `1 1 1`)
-- `Intensity`: Float (Default: `1.0`, Must be >= 0)
-- `AmbientStr`: Float (Default: `0.2` for Dir, `0.1` for Point/Spot)
-- `DiffuseStr`: Float (Default: `0.8` for Dir, `1.0` for Point/Spot)
-- `SpecularStr`: Float (Default: `0.5` for Dir, `1.0` for Point/Spot)
+### User Interface
+Refer to the **[UI Guide](ui.md)** for:
+- `UITransform`: 2D positioning, anchoring, and scaling.
+- `UIRenderer` & `UIText`: Visual UI elements and dynamic labels.
 
-**Point Light Exclusive:**
-- `Radius`: Float (Default: `10.0`, Must be > 0)
-- `Constant`: Float (Default: `1.0`)
-- `Linear`: Float (Default: `0.09`)
-- `Quadratic`: Float (Default: `0.032`)
+### Scripts & Logic
+Entities can run custom C++ logic via the `Script` component:
+- `Class`: The name of the C++ class (e.g., `PlayerController`).
+- See **[Scriptable API](../scripting/scriptable_api.md)** for more.
 
-**Spot Light Exclusive:**
-- `CutOff`: Float (Default: `12.5`, Range: `[0, 90]`)
-- `OuterCutOff`: Float (Default: `17.5`, Range: `[0, 90]`, Must be >= CutOff)
-- Attenuation parameters identical to Point Light.
+---
 
-### Material
-- `Type`: String (`PHONG` or `PBR`, Default: `PHONG`)
-- `Opacity`: Float (Default: `1.0`, Range: `[0, 1]`)
-- `AlphaCutoff`: Float (Default: `0.5`)
-- `BlendSrc`: String (`Zero`, `One`, `SrcAlpha`, `OneMinusSrcAlpha`, Default: `SrcAlpha`)
-- `BlendDst`: String (`Zero`, `One`, `SrcAlpha`, `OneMinusSrcAlpha`, Default: `OneMinusSrcAlpha`)
-- `Emission`: Vector3 (Default: `0 0 0`)
-- `UVScale`: Vector2 (Default: `1 1`)
-- `UVOffset`: Vector2 (Default: `0 0`)
-
-**Texture Overrides:**
-- `Albedo` / `Diffuse`: String (Path to texture)
-- `Normal`: String (Path to texture)
-- `MetallicMap`: String (Path to texture)
-- `RoughnessMap`: String (Path to texture)
-- `AOMap`: String (Path to texture)
-- `EmissiveMap`: String (Path to texture)
-
-**PHONG Specific:**
-- `Shininess`: Float (Default: `32.0`, Must be > 0)
-- `Specular`: Vector3 (Default: `0.5 0.5 0.5`)
-- `Ambient`: Vector3 (Default: `1 1 1`)
-
-**PBR Specific:**
-- `Roughness`: Float (Default: `0.5`, Range: `[0, 1]`)
-- `Metallic`: Float (Default: `0.0`, Range: `[0, 1]`)
-- `AO`: Float (Default: `1.0`, Range: `[0, 1]`)
-
-### Animator
-- `Animation`: String (Required, Name of loaded Animation resource)
-- `Speed`: Float (Default: `1.0`, Must be >= 0)
-- `StartTime`: Float (Default: `0.0`)
-- `Rate`: Float (Default: `30.0`, Must be > 0)
-
-### ParticleEmitter
-- `Texture`: String (Required, Name of loaded Texture resource)
-- `MaxParticles`: Integer (Default: `100`, Must be > 0)
-- `Life`: Float (Default: `1.0`, Must be > 0)
-
-### AudioSource
-- `Path`: String (Required, Relative filepath to audio)
-- `Volume`: Float (Default: `1.0`, Range: `[0, 1]`)
-- `Loop`: Boolean (Default: `0`)
-- `Is3D`: Boolean (Default: `0`)
-- `MinDistance`: Float (Default: `1.0`, Must be > 0)
-- `PlayOnAwake`: Boolean (Default: `1`)
-
-### VideoPlayer
-- `Path`: String (Required, Relative filepath to video)
-- `Loop`: Boolean (Default: `0`)
-- `Speed`: Float (Default: `1.0`, Must be >= 0)
-- `PlayOnAwake`: Boolean (Default: `1`)
-
-### Script
-- `Class`: String (Required, Name of C++ class registered in `ScriptRegistry`)
-
-### RigidBody
-- `Type`: String (`BOX`, `SPHERE`, `CAPSULE`, `COMPOUND`, Default: `BOX`)
-- `BodyType`: String (`STATIC`, `DYNAMIC`, `KINEMATIC`, Default: `STATIC`)
-- `Mass`: Float (Default: `1.0`, Must be >= 0)
-- `Restitution`: Float (Default: `0.0`)
-- `AngularFactor`: Vector3 (Optional lock axes)
-- `LinearFactor`: Vector3 (Optional lock axes)
-- `Offset`: Vector3 (Optional center offset)
-
-*(Shape-specific size parameters (`Size`, `Radius`, `Height`) map to their collision hulls)*
-
-### Occlusion
-Hardware-based culling component. Testing objects against the depth buffer using t-1 frame visibility results.
-- No direct parameters required in `.axs`, the system generates query IDs automatically.
-
-### UI Components
-**UITransform**
-- `Position`: Vector2 (Pixels or Percentage, Default: `0 0`)
-- `Size`: Vector2 (Pixels or Percentage, Default: `100 100`)
-- `UsePercentage`: Boolean (Default: `0`)
-- `Anchor`: Vector2 (Normalized `0-1`, Default: `0 0`)
-- `ZOrder`: Integer (Default: `0`)
-
-**UIRenderer**
-- `Color`: Vector4 (RGBA, Default: `1 1 1 1`)
-- `Shader`: String (Required, Name of loaded Shader resource)
-
-**UIText**
-- `Text`: String (Supported with quotes)
-- `Font`: String (Required, Name of loaded Font resource)
-- `Color`: Vector3 (Default: `1 1 1`)
-- `Scale`: Float (Default: `1.0`)
+## 6. Resources & Tags
+- **Tags**: Used for filtering and identification (e.g., `Walkable`, `Player`).
+- **Layers**: Bitmask (1-32) for selective rendering visibility.
+- **Resources**: Pre-loading assets to avoid runtime hitches. See **[Assets Guide](assets.md)**.

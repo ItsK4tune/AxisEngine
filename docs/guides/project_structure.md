@@ -5,46 +5,39 @@
 The project follows a modular structure to separate Engine core, Game logic, and Assets.
 
 ```text
-GameEngine/
-├── src/
-│   ├── asset/
-│   │   ├── project/       # Project specific assets (icon.png, logo.png)
-│   │   ├── shaders/       # Shader files
-│   │   └── ...            # Other asset types (textures, models, fonts)
-│   ├── app/         # Application, Window, Config
-│   ├── audio/       # Sound System
-│   ├── debug/       # Debug System
-│   ├── ecs/         # ECS Systems & Components
-│   ├── event/       # Event System
-│   ├── graphic/     # Rendering modules
-│   ├── input/       # Input Managers (Mouse, Keyboard)
-│   ├── physic/      # Physics Wrapper
-│   ├── resource/    # Resource Manager
-│   ├── scene/       # Scene Management
-│   ├── script/      # Scripting Implementation
-│   ├── state/       # State Machine
-│   ├── third_party/ # Vendor Code (glad, stb_image)
-│   └── utils/       # Helpers
-├── bin/             # Output binaries (Executables)
-├── cmake/           # CMake modules and scripts
-├── dlls/            # Runtime DLLs (Assimp, Freetype, irrKlang, etc.)
-├── docs/            # Project Documentation
-├── game/            # User-Land Game Code
-│   ├── includes/    # Game-specific headers
-│   └── src/         # Game-specific logic (Scripts, States)
-├── includes/        # Engine & Library Headers
-│   ├── bullet/      # Physics Library
-│   ├── engine/      # Core Engine Headers
-│   │   ├── app/     # App Lifecycle & Windowing
-│   │   ├── interface/# Interfaces (IDeviceManager)
-│   │   ├── input/   # Input Management
-│   │   ├── scene/   # Scene Graph & Loading
-│   │   ├── script/  # Scripting Base
-│   │   └── ...      # Other modules (audio, resource, etc.)
-│   └── entt/        # ECS Library
-├── lib/             # Static Libraries (.lib)
-├── resources/       # Game Assets
-└── scenes/          # Scene Definitions (.axs)
+AxisEngine/
+├── src/               # Engine implementation (.cpp)
+│   ├── audio/         # Audio engine & sound emitters
+│   ├── core/          # Engine loop, application, logger, job system
+│   ├── ecs/           # Entity-Component-System framework & builders
+│   ├── navigation/    # NavMesh generation & Pathfinding
+│   ├── physics/       # Bullet physics integration & queries
+│   ├── platform/      # Windowing (GLFW), input, OpenGL context
+│   ├── render/        # Rendering pipeline, shaders, textures, lights
+│   ├── resource/      # Resource management & caching
+│   ├── scene/         # Scene loading & management
+│   ├── script/        # Scripting system base
+│   └── third_party/   # Embedded libraries (stb, etc.)
+├── includes/          # Headers (.h)
+│   ├── engine/        # Core Engine Headers
+│   │   ├── audio/     # Audio interfaces & units
+│   │   ├── core/      # Core logic & utilities
+│   │   ├── ecs/       # ECS management & units
+│   │   ├── navigation/# Navigation units & logic
+│   │   ├── physics/   # Physics interfaces & units
+│   │   ├── platform/  # Platform & input headers
+│   │   ├── render/    # Rendering units & renderer logic
+│   │   ├── resource/  # Resource management headers
+│   │   ├── scene/     # Scene graph & serialization
+│   │   └── script/    # Scriptable interfaces
+│   └── entt/          # ECS Library (External)
+├── game/              # User-Land Game Code
+│   ├── includes/      # Game-specific headers
+│   └── src/           # Game-specific states & scripts
+├── bin/               # Output binaries (Executables)
+├── cmake/             # CMake build scripts
+├── resources/         # Game Assets (Models, Textures, etc.)
+└── scenes/            # Scene Definitions (.axs)
 ```
 
 ## Key Directories

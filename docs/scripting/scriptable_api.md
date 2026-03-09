@@ -9,6 +9,7 @@
 - [Input Handling](#input-handling)
 - [Physics Callbacks](#physics-callbacks)
 - [Manager Access](#manager-access)
+- [EntityBuilder Reference](#entitybuilder-reference)
 - [Common Script Patterns](#common-script-patterns)
 
 ---
@@ -57,6 +58,24 @@
 3. **OnUpdate**: Called every frame - main gameplay logic
 4. **Input/Physics Callbacks**: Called when events occur
 5. **OnDestroy**: Called when entity is destroyed - cleanup resources
+
+## ScriptComponent
+The `ScriptComponent` is the ECS data structure that binds a `Scriptable` class to an entity.
+
+- **`instance`**: The allocated script object.
+- **`Bind<T>()`**: Registers the script type (used internally by loaders).
+- **`InstantiateScript()`**: Allocates the script instance.
+
+### Manual Instantiation
+While typically handled by the `.axs` loader, scripts can be added to entities manually via C++:
+
+```cpp
+auto& sc = registry.emplace<ScriptComponent>(entity);
+sc.Bind<MyScriptClass>();
+sc.instance = sc.InstantiateScript();
+sc.instance->Init(entity, scenePtr, appPtr);
+sc.instance->OnCreate();
+```
 
 ---
 

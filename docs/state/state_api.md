@@ -168,6 +168,19 @@ void ChangeScene(const std::string& path);
 ```
 Clears all current scenes and loads a new one.
 
+#### QueueLoadScene / QueuePopScene
+```cpp
+void QueueLoadScene(const std::string& path);
+void QueuePopScene();
+```
+Queues scene operations to be executed at the end of the current frame to avoid registry invalidation during updates.
+
+#### IsSceneLoaded
+```cpp
+bool IsSceneLoaded(const std::string& path);
+```
+Checks if a specific scene is currently active.
+
 **Example:**
 ```cpp
 void OnUpdate(float dt) override {
@@ -303,6 +316,22 @@ void OnUpdate(float dt) override {
     if (mouse.GetButtonDown(GLFW_MOUSE_BUTTON_LEFT)) {
         // Shoot
     }
+}
+```
+
+### Action Mapping
+Instead of polling raw keys, use higher-level actions defined in input bindings.
+
+```cpp
+bool GetAction(const std::string& actionName);
+bool GetActionDown(const std::string& actionName);
+bool GetActionUp(const std::string& actionName);
+```
+
+**Example:**
+```cpp
+if (GetActionDown("Jump")) {
+    // Jump logic
 }
 ```
 

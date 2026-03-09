@@ -15,8 +15,9 @@
 This guide will walk you through creating your first game with AXIS Engine. We'll build a simple scene with a player character, camera, and basic interaction.
 
 **What you'll learn:**
-- How to create a scene file
+- How to create a scene file (.axs)
 - How to write a gameplay script
+- How to create entities using EntityBuilder
 - How to build and run your game
 - How to use the debug system
 
@@ -502,9 +503,22 @@ class CameraFollow : public Scriptable {
 };
 ```
 
-#### 2. Add Enemies
+#### 2. Spawning Entities Dynamically
 
-Create new entities in your scene with `EnemyAI` script.
+Use the `EntityBuilder` to spawn entities at runtime. This is cleaner than manual `emplace` calls.
+
+```cpp
+void SpawnerScript::SpawnNPC(const glm::vec3& pos) {
+    auto npc = EntityBuilder(*m_Scene, GetResourceManager())
+        .WithName("SpawnedNPC")
+        .WithTag("Enemy")
+        .WithTransform(pos)
+        .WithMesh("dummyModel", "phongLitShadowShader")
+        .WithRigidBody(RigidBodyType::DYNAMIC, ShapeType::CAPSULE, 1.8f, 1.0f)
+        .WithScript<EnemyAI>()
+        .Build();
+}
+```
 
 #### 3. Add UI
 
@@ -546,7 +560,7 @@ ERROR: Model not found: playerModel
 ```
 ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ
 ```
-**Solution:** Verify shader paths point to `includes/engine/asset/shaders/...` not `resources/shaders/...`.
+**Solution:** Verify shader paths point to `includes/engine/asset/shaders/...` or ensure they are listed correctly in the `Resources` block of your `.axs` file.
 
 ### Physics Not Working
 ```

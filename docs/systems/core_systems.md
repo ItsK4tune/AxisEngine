@@ -1,0 +1,62 @@
+# Core Systems
+
+This document covers high-level engine systems that provide essential services across the engine.
+
+---
+
+## 1. Event System
+The Event System enables decoupled communication using a **Publish-Subscribe** pattern.
+
+### Core Concepts
+- **Type-Based**: The C++ struct *is* the event channel. No registration is required.
+- **Synchronous**: Events are dispatched immediately upon publication.
+- **Scoped Subscribers**: RAII-based safety to prevent dangling pointers.
+
+### Usage
+```cpp
+// 1. Define an event
+struct PlayerHitEvent { int damage; };
+
+// 2. Publish
+EventSystem::Instance().Publish(PlayerHitEvent{ 10 });
+
+// 3. Subscribe (Recommended: ScopedSubscriber)
+class MyScript : public Scriptable {
+    ScopedSubscriber<PlayerHitEvent> m_Listener;
+    void OnCreate() override {
+        int token = EventSystem::Instance().Subscribe<PlayerHitEvent>(
+            [this](const auto& e) { OnHit(e); }
+        );
+        m_Listener.Reset(token);
+    }
+};
+```
+
+---
+
+## 2. Video System
+Manages asynchronous video playback using **FFmpeg**.
+
+### Responsibilities
+- **Decoding**: Frame processing happens in the background.
+- **Auto-Injection**: Automatically updates the texture of a `UIRendererComponent` on the same entity.
+- **Sync**: Playback speed and internal clock synchronization.
+
+### VideoPlayerComponent
+- **Settings**: `Path`, `IsPlaying`, `IsLooping`, `Speed`.
+- **Playback Controls**: `Play()`, `Pause()`, `Stop()`, `Seek(double)`.
+
+---
+
+## 3. Job System
+The Job System provides a pool of worker threads for parallelizing heavy tasks.
+
+- **Asynchronous Assets**: Used internally by the `ResourceManager` for non-blocking loads.
+- **Parallel Iteration**: Optimization for large component views (where thread-safe).
+
+---
+
+## See Also
+- [Graphics Guide](../guides/graphics.md)
+- [UI Guide](../guides/ui.md)
+- [Managers](../core/managers.md)
