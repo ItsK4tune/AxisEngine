@@ -13,6 +13,8 @@
 #include <render/logic/render_queue.h>
 #include <render/logic/shadow_renderer.h>
 #include <render/logic/static_batch_manager.h>
+#include <render/logic/gbuffer.h>
+#include <render/logic/shader.h>
 #include <render/type/graphics_types.h>
 #include <resource/interface/i_resource_libraries.h>
 #include <scene/logic/scene.h>
@@ -57,6 +59,9 @@ public:
 
     void SetFaceCulling(bool enabled, CullMode mode = CullMode::Back);
     void SetDepthTest(bool enabled, CompareFunc func = CompareFunc::Less);
+
+    void SetDeferredRendering(bool enable) { m_DeferredRenderingEnabled = enable; }
+    bool IsDeferredRenderingEnabled() const { return m_DeferredRenderingEnabled; }
 
     Shadow &GetShadow() { return m_ShadowRenderer.GetShadow(); }
     int GetRenderedCount() const { return m_RenderedCount; }
@@ -136,6 +141,15 @@ private:
     GPUCameraData m_CameraData;
     GPUGlobalLightData m_GlobalLightData;
     GPUGlobalData m_GlobalData;
+
+    GBuffer m_GBuffer;
+    std::shared_ptr<Shader> m_GBufferShader;
+    std::shared_ptr<Shader> m_DeferredLightShader;
+    bool m_DeferredRenderingEnabled = false;
+
+    GpuHandle m_QuadVAO = 0;
+    GpuHandle m_QuadVBO = 0;
+    void InitQuad();
 
     CommandQueue m_CommandQueue;
 };

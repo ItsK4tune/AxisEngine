@@ -70,14 +70,25 @@ void RenderSystem::Init(IGraphicsContext &context, IShaderLibrary &shaderLib)
     shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
     m_OcclusionCuller.Init(*m_Context, shaderLib.GetShader("occlusion_query"));
     m_MaterialRenderer.Init(*m_Context, m_WhiteTextureID);
+
+    shaderLib.LoadShader("gbuffer", "includes/engine/asset/shaders/gbuffer.vs", "includes/engine/asset/shaders/gbuffer.fs");
+    m_GBufferShader = shaderLib.GetShader("gbuffer");
+
+    shaderLib.LoadShader("deferred_light", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/deferred_light.fs");
+    m_DeferredLightShader = shaderLib.GetShader("deferred_light");
+
+    InitQuad();
 }
 
 void RenderSystem::Shutdown()
 {
     LOGGER_INFO("RenderSystem") << "Shutting down RenderSystem";
     m_ShadowRenderer.Shutdown();
-
     m_OcclusionCuller.Shutdown();
+    m_GBuffer.Shutdown();
+
+    if (m_QuadVAO.IsValid()) m_Context->GetBufferManager().DeleteVertexArray(m_QuadVAO.id);
+    if (m_QuadVBO.IsValid()) m_Context->GetBufferManager().DeleteBuffer(m_QuadVBO.id);
 }
 
 void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
@@ -95,6 +106,29 @@ void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
     {
         rsm.Disable(ServerCapability::CullFace);
     }
+}
+
+void RenderSystem::InitQuad()
+{
+    float quadVertices[] = {
+        // positions        // texture Coords
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+         1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+    };
+    auto& bm = m_Context->GetBufferManager();
+    m_QuadVAO.id = bm.CreateVertexArray();
+    m_QuadVBO.id = bm.CreateBuffer();
+
+    bm.BindVertexArray(m_QuadVAO.id);
+    bm.BindBuffer(BufferType::ArrayBuffer, m_QuadVBO.id);
+    bm.BufferData(BufferType::ArrayBuffer, sizeof(quadVertices), &quadVertices, BufferUsage::StaticDraw);
+    
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, 5 * sizeof(float), (void*)0);
+    bm.EnableVertexAttribArray(1);
+    bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 }
 
 void RenderSystem::SetDepthTest(bool enabled, CompareFunc func)
@@ -123,6 +157,9 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         return;
     }
 
+    if (m_LastWidth != width || m_LastHeight != height) {
+        m_GBuffer.Resize(width, height);
+    }
     m_LastWidth = width;
     m_LastHeight = height;
 
@@ -262,6 +299,19 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
     const auto& fullQueue = m_RenderQueueObj.GetOpaqueQueue();
     if (fullQueue.empty()) return;
 
+    if (m_DeferredRenderingEnabled)
+    {
+        // --- DEFERRED RENDERING PATH ---
+        
+        // 1. Geometry Pass
+        m_GBuffer.BindForWriting();
+        auto& dc = m_Context->GetDrawContext();
+        dc.Clear(BufferBit::Color | BufferBit::Depth);
+
+        // Render opaque items using G-Buffer shader
+        // (For simplicity in this step, we reuse the same job logic but force the G-Buffer shader)
+    }
+
     size_t totalItems = fullQueue.size();
     size_t numThreads = std::thread::hardware_concurrency();
     if (numThreads == 0) numThreads = 1;
@@ -309,6 +359,9 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
                 if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
                     continue;
 
+                // Skip transparent items in Geometry Pass of Deferred Rendering
+                if (m_DeferredRenderingEnabled && item.isTransparent) continue;
+
                 if (item.isTransparent && !transparencyState)
                 {
                     flushBatch(currentShader, currentModel, instanceBatch);
@@ -329,6 +382,11 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
                 if (!lockedShader) continue;
                 Shader *itemShader = lockedShader.get();
 
+                // Force G-Buffer shader if deferred and not transparent
+                if (m_DeferredRenderingEnabled && !item.isTransparent) {
+                    itemShader = m_GBufferShader.get();
+                }
+
                 if (currentShader != itemShader)
                 {
                     flushBatch(currentShader, currentModel, instanceBatch);
@@ -345,7 +403,8 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 
                     threadQueue.Submit([=]() {
                         s->use();
-                        if (enableShadows) {
+                        // Only set shadow uniforms for forward shaders (not G-Buffer shader)
+                        if (enableShadows && s != m_GBufferShader.get()) {
                             for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i) {
                                 shadowObj->BindTexture_Dir(i, 10 + i);
                                 s->setInt("shadowMapDir[" + std::to_string(i) + "]", 10 + i);
@@ -461,6 +520,52 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
     for (auto& tq : threadQueues)
     {
         m_CommandQueue.Merge(tq);
+    }
+
+    if (m_DeferredRenderingEnabled)
+    {
+        m_CommandQueue.Submit([this]() {
+            m_GBuffer.Unbind();
+
+            // 2. Lighting Pass
+            // Render to default framebuffer (or post-process history)
+            auto& rsm = m_Context->GetRenderStateManager();
+            auto& tm = m_Context->GetTextureManager();
+            
+            m_DeferredLightShader->use();
+            
+            // Bind G-Buffer textures
+            tm.ActiveTexture(TextureUnit::Texture0);
+            tm.BindTexture(TextureType::Texture2D, m_GBuffer.GetPositionTexture());
+            m_DeferredLightShader->setInt("gPosition", 0);
+            
+            tm.ActiveTexture(TextureUnit::Texture1);
+            tm.BindTexture(TextureType::Texture2D, m_GBuffer.GetNormalTexture());
+            m_DeferredLightShader->setInt("gNormal", 1);
+            
+            tm.ActiveTexture(TextureUnit::Texture2);
+            tm.BindTexture(TextureType::Texture2D, m_GBuffer.GetAlbedoSpecTexture());
+            m_DeferredLightShader->setInt("gAlbedoSpec", 2);
+
+            // Bind Shadow Maps
+            bool enableShadows = m_ShadowRenderer.IsShadowsEnabled() && m_ShadowRenderer.GetShadowMode() > 0;
+            Shadow& shadowObj = m_ShadowRenderer.GetShadow();
+            if (enableShadows) {
+                for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i) {
+                    shadowObj.BindTexture_Dir(i, 10 + i);
+                    m_DeferredLightShader->setInt("shadowMapDir[" + std::to_string(i) + "]", 10 + i);
+                }
+            }
+
+            // Draw full-screen quad
+            auto& bm = m_Context->GetBufferManager();
+            bm.BindVertexArray(m_QuadVAO.id);
+            m_Context->GetDrawContext().DrawArrays(Primitive::TriangleStrip, 0, 4);
+            bm.BindVertexArray(0);
+        });
+        
+        // Note: Transparency pass would go here in a full implementation, 
+        // by blitting depth and rendering transparent items forward.
     }
 
     if (m_OcclusionCullingEnabled)
