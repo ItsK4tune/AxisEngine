@@ -25,9 +25,8 @@ void PauseState::OnEnter()
 
     m_PausedTextEntity = EntityBuilder(GetScene(), GetResourceManager())
         .WithName("PauseOverlay")
-        .WithMesh("capsuleSmoothModel", "phongLitNoShadowShader")
-        .WithTransform({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f})
-        .WithPhongMaterial({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, 32.0f)
+        .WithUITransform({400.0f, 300.0f}, {200.0f, 50.0f})
+        .WithUIText("PAUSED", "defaultFont", 2.0f, {1.0f, 1.0f, 1.0f})
         .Build();
 }
 

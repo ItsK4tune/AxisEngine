@@ -233,7 +233,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
             continue;
 
         auto &entityInfo = view.get<InfoComponent>(entity);
-        if (entityInfo.tag == "DebugLabel")
+        if (entityInfo.tag == "DebugLabel" || entityInfo.tag == "DebugLight")
             continue;
 
         entt::entity labelEntity = entt::null;
@@ -290,8 +290,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         {
             if (labelEntity == entt::null)
             {
-                labelEntity = EntityManager::CreateEntity(scene);
-                registry.emplace<InfoComponent>(labelEntity, "DebugLabel_" + entityInfo.name, "DebugLabel");
+                labelEntity = EntityManager::CreateEntity(scene, "Label_" + entityInfo.name, "DebugLabel");
                 registry.emplace<UITransformComponent>(labelEntity);
                 auto &text = registry.emplace<UITextComponent>(labelEntity);
 
@@ -416,8 +415,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         {
             if (labelEntity == entt::null)
             {
-                labelEntity = EntityManager::CreateEntity(scene);
-                registry.emplace<InfoComponent>(labelEntity, "DebugLight_" + typeName, "DebugLabel");
+                labelEntity = EntityManager::CreateEntity(scene, "LightLabel_" + typeName, "DebugLabel");
                 registry.emplace<UITransformComponent>(labelEntity);
                 auto &text = registry.emplace<UITextComponent>(labelEntity);
 

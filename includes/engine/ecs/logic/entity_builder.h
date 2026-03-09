@@ -41,6 +41,12 @@ public:
     EntityBuilder& WithRigidBody(std::shared_ptr<IRigidBody> body);
     EntityBuilder& WithCharacterController(std::shared_ptr<ICharacterController> controller);
     
+    EntityBuilder& WithPathFollower(float moveSpeed = 5.0f, 
+                                   float rotationSpeed = 10.0f, 
+                                   float maxRotationSpeed = 20.0f, 
+                                   float rotationAcceleration = 40.0f,
+                                   const glm::vec3& rotationOffset = glm::vec3(0.0f));
+    
     EntityBuilder& WithUITransform(const glm::vec2& pos, const glm::vec2& size, int zIndex = 0);
     EntityBuilder& WithUIText(const std::string& text, 
                              const std::string& fontName, 

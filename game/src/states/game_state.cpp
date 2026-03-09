@@ -14,6 +14,8 @@
 #include <resource/manager/resource_manager.h>
 #include <ecs/logic/render_system.h>
 #include <scene/logic/scene.h>
+#include <navigation/unit/navmesh_component.h>
+#include <navigation/unit/pathfollower_component.h>
 
 void GameState::OnEnter()
 {
@@ -28,6 +30,17 @@ void GameState::OnEnter()
     EnableLogic(true);
 
     GetRenderSystem().SetFilterLayerMask(1);
+
+    // --- NavMesh Demo Setup ---
+    // Navigation & Pathfinding Setup
+    auto navEntity = EntityManager::CreateEntity(GetScene(), "NavMesh");
+    auto& navMesh = GetScene().registry.emplace<NavMeshComponent>(navEntity);
+    navMesh.needsRebuild = true;
+
+    auto womanEnt = EntityManager::FindByName(GetScene(), "Woman");
+    if (womanEnt != entt::null) {
+        GetScene().registry.emplace<PathFollowerComponent>(womanEnt);
+    }
 }
 
 void GameState::OnUpdate(float dt)
@@ -43,21 +56,16 @@ void GameState::OnUpdate(float dt)
     if (input.GetActionDown("Pause"))
         m_Ctx.runtime->GetStateMachine().PushState(std::make_unique<PauseState>());
 
-    if (input.GetActionDown("Select"))
-    {
-        LOGGER_DEBUG("GameState") << "[Raycast] Left mouse clicked.";
-        entt::entity camEntity = EntityManager::GetActiveCamera(GetScene());
+    bool selectPressed = input.GetActionDown("Select");
+    bool movePressed = input.GetActionDown("MoveTo");
 
+    if (selectPressed || movePressed)
+    {
+        entt::entity camEntity = EntityManager::GetActiveCamera(GetScene());
         if (camEntity != entt::null && EntityManager::HasComponent<CameraComponent>(GetScene(), camEntity))
         {
             auto& camComp = EntityManager::GetComponent<CameraComponent>(GetScene(), camEntity);
-            glm::vec3 camPos = glm::vec3(0.0f);
-            
-            if (auto* pos = EntityManager::TryGetComponent<PositionComponent>(GetScene(), camEntity))
-                camPos = pos->value;
-            
-            // Use existing camera vectors if available, otherwise fallback to creating a temp Camera object
-            glm::vec3 rayDir;
+            glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(GetScene(), camEntity)) ? EntityManager::GetComponent<PositionComponent>(GetScene(), camEntity).value : glm::vec3(0.0f);
             
             float mouseX = GetMouse().GetLastX();
             float mouseY = GetMouse().GetLastY();
@@ -66,24 +74,36 @@ void GameState::OnUpdate(float dt)
             
             if (screenW > 0.0f && screenH > 0.0f)
             {
-                // Normalized Device Coordinates
                 float x = (2.0f * mouseX) / screenW - 1.0f;
                 float y = 1.0f - (2.0f * mouseY) / screenH;
                 
                 glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
                 glm::vec4 rayEye = glm::inverse(camComp.projectionMatrix) * rayClip;
                 rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
-                rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
+                glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
                 
                 if (!glm::any(glm::isnan(camPos)) && !glm::any(glm::isnan(rayDir)))
                 {
                     RayHit hit = m_Ctx.physics->Raycast(camPos, rayDir, 1000.0f);
-                    if (hit.hasHit && EntityManager::IsValid(GetScene(), hit.entity))
+                    if (hit.hasHit)
                     {
-                        m_SelectedEntity = hit.entity;
-                        if (auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity))
+                        if (movePressed) 
                         {
-                            LOGGER_INFO("GameState") << "Selected entity for animation: " << info->name;
+                             LOGGER_DEBUG("GameState") << "MoveTo triggered at: " << hit.hitPoint.x << ", " << hit.hitPoint.y << ", " << hit.hitPoint.z;
+                             auto followerView = GetScene().registry.view<PathFollowerComponent>();
+                             for (auto ent : followerView) {
+                                 auto& follower = followerView.get<PathFollowerComponent>(ent);
+                                 follower.targetPosition = hit.hitPoint;
+                                 follower.pathPending = true;
+                             }
+                        }
+                        else if (selectPressed && EntityManager::IsValid(GetScene(), hit.entity))
+                        {
+                            m_SelectedEntity = hit.entity;
+                            if (auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity))
+                            {
+                                LOGGER_INFO("GameState") << "Selected entity: " << info->name;
+                            }
                         }
                     }
                 }
@@ -150,7 +170,5 @@ void GameState::OnRender()
 void GameState::OnExit()
 {
     m_SelectedEntity = entt::null;
-    m_Ctx.runtime->GetEngineLoop().Shutdown(); // Just as a test or similar? 
-    // Wait, original was GetSceneManager().ClearAllScenes();
     GetSceneManager().ClearAllScenes();
 }

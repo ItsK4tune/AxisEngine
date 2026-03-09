@@ -13,6 +13,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <physics/logic/physics_loader.h>
+#include <navigation/unit/pathfollower_component.h>
 
 std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> ComponentLoader::s_Factories;
 std::unordered_map<std::string, ComponentLoaderFunc> ComponentLoader::s_Loaders;
@@ -67,6 +68,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("RigidBody", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { PhysicsLoader::LoadRigidBody(s, e, n, p); });
     RegisterLoader("CharacterController", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { PhysicsLoader::LoadCharacterController(s, e, n, p); });
     RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { /* Transform is typically handled by SceneSerializer directly */ });
+    RegisterLoader("PathFollower", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { ComponentLoader::LoadPathFollower(s, e, n); });
 }
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -599,4 +601,31 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     mat.gpu.dirty = true;
 
     scene.registry.emplace<MaterialComponent>(entity, mat);
+}
+
+void ComponentLoader::LoadPathFollower(Scene &scene, entt::entity entity, const YAMLNode &node)
+{
+    LoaderUtils::ValidateKeys(node, {"MoveSpeed", "RotationSpeed", "MaxRotationSpeed", "RotationAcceleration", "RotationOffset", "ArrivalDistance"}, "PathFollower");
+
+    auto &pf = scene.registry.emplace<PathFollowerComponent>(entity);
+    pf.moveSpeed = std::stof(node.GetChildValue("MoveSpeed", "5.0"));
+    pf.rotationSpeed = std::stof(node.GetChildValue("RotationSpeed", "10.0"));
+    pf.maxRotationSpeed = std::stof(node.GetChildValue("MaxRotationSpeed", "20.0"));
+    pf.rotationAcceleration = std::stof(node.GetChildValue("RotationAcceleration", "40.0"));
+
+    std::string ro = node.GetChildValue("RotationOffset", "0 0 0");
+    std::stringstream roSS(ro);
+    float rx, ry, rz;
+    if (roSS >> rx >> ry >> rz) {
+        pf.rotationOffset = glm::vec3(rx, ry, rz);
+    } else {
+        // Fallback for single value (only yaw)
+        try {
+            pf.rotationOffset = glm::vec3(0, std::stof(ro), 0);
+        } catch (...) {
+            pf.rotationOffset = glm::vec3(0.0f);
+        }
+    }
+
+    pf.arrivalDistance = std::stof(node.GetChildValue("ArrivalDistance", "0.5"));
 }

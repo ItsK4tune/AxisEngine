@@ -157,6 +157,18 @@ RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir
     return hit;
 }
 
+void BulletPhysicsWorld::DrawLine(const glm::vec3& from, const glm::vec3& to, const glm::vec3& color)
+{
+    if (m_CurrentDebugDrawer)
+    {
+        m_CurrentDebugDrawer->drawLine(
+            btVector3(from.x, from.y, from.z),
+            btVector3(to.x, to.y, to.z),
+            btVector3(color.x, color.y, color.z)
+        );
+    }
+}
+
 void BulletPhysicsWorld::SetCollisionFilter(CollisionFilterCallback callback)
 {
     if (m_Dispatcher)

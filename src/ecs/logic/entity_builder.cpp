@@ -10,6 +10,8 @@
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/light_components.h>
+#include <navigation/unit/pathfollower_component.h>
+
 
 EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources)
     : m_Scene(scene), m_Resources(resources)
@@ -93,6 +95,17 @@ EntityBuilder& EntityBuilder::WithCharacterController(std::shared_ptr<ICharacter
 {
     auto& cc = m_Scene.registry.get_or_emplace<CharacterControllerComponent>(m_Entity);
     cc.controller = controller;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithPathFollower(float moveSpeed, float rotationSpeed, float maxRotationSpeed, float rotationAcceleration, const glm::vec3& rotationOffset)
+{
+    auto& follower = m_Scene.registry.get_or_emplace<PathFollowerComponent>(m_Entity);
+    follower.moveSpeed = moveSpeed;
+    follower.rotationSpeed = rotationSpeed;
+    follower.maxRotationSpeed = maxRotationSpeed;
+    follower.rotationAcceleration = rotationAcceleration;
+    follower.rotationOffset = rotationOffset;
     return *this;
 }
 

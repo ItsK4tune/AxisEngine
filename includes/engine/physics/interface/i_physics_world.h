@@ -38,6 +38,7 @@ public:
     virtual void DebugDraw() = 0;
 
     virtual RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist) = 0;
+    virtual void DrawLine(const glm::vec3& from, const glm::vec3& to, const glm::vec3& color) = 0;
 
     using CollisionFilterCallback = std::function<bool(entt::entity, entt::entity)>;
     virtual void SetCollisionFilter(CollisionFilterCallback callback) = 0;

@@ -69,6 +69,7 @@ public:
     void DebugDraw() override;
 
     RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist) override;
+    void DrawLine(const glm::vec3& from, const glm::vec3& to, const glm::vec3& color) override;
 
     void SetCollisionFilter(CollisionFilterCallback callback) override;
 

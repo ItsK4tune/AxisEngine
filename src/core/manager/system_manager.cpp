@@ -14,6 +14,7 @@
 #include <ecs/logic/transform_system.h>
 #include <ecs/logic/streaming_system.h>
 #include <ecs/logic/video_system.h>
+#include <navigation/logic/navigation_system.h>
 #include <ecs/logic/dummy_test_system.h>
 #include <platform/logic/input_system.h>
 #include <render/interface/i_buffer_manager.h>
@@ -76,6 +77,7 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     RegisterSystem(std::make_unique<ParticleSystem>());
     RegisterSystem(std::make_unique<StreamingSystem>());
     RegisterSystem(std::make_unique<VideoSystem>());
+    RegisterSystem(std::make_unique<NavigationSystem>());
     RegisterSystem(std::make_unique<DummyTestSystem>());
 
     for (auto& sys : m_Systems) {
@@ -181,7 +183,7 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;
         int p = sys->GetPriority();
-        if (p >= 80) {
+        if (p >= 0) {
             if (p == 80 && rs) {
                 rs->RenderAlpha(scene, width, height, alpha);
             } else if (p == 90 && rs) {

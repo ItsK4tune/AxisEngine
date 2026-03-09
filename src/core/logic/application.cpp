@@ -5,7 +5,6 @@
 #include <platform/logic/monitor_manager.h>
 #include <core/unit/system_context.h>
 #include <core/manager/system_manager.h>
-#include <core/unit/world_context.h>
 #include <audio/logic/audio_manager.h>
 #include <audio/logic/sound_player.h>
 #include <core/logic/job_system.h>

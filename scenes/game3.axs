@@ -39,7 +39,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman2:
@@ -66,7 +66,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman3:
@@ -93,7 +93,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman4:
@@ -120,7 +120,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman5:
@@ -147,7 +147,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman6:
@@ -174,7 +174,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman7:
@@ -201,7 +201,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman8:
@@ -228,7 +228,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman9:
@@ -255,7 +255,7 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
 
     Woman10:
@@ -282,8 +282,28 @@ axis_scene:
         Radius: 1.0
         Height: 2.0
         Mass: 1.0
-        BodyType: STATIC
+        BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
+
+    Floor:
+      Tag: Walkable
+      Component: Transform
+        Position: 0.0 0.0 0.0
+        Rotation: 0.0 0.0 0.0
+        Scale: 100.0 1.0 100.0
+      Component: Renderer
+        Model: planeModel
+        Shader: unlitShader
+      Component: Material
+        Type: PHONG
+        Shininess: 32
+        Specular: 0.5 0.5 0.5
+      Component: RigidBody
+        Type: BOX
+        Size: 100.0 0.1 100.0
+        Mass: 0.0
+        BodyType: STATIC
+        Restitution: 1.0
 
     Sun1_Dir:
       Tag: default

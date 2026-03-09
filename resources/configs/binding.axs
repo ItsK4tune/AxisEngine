@@ -16,7 +16,6 @@ axis_input:
       Key: D
       Gamepad: ButtonDpadRight
     Shoot:
-      Mouse: Left
       Gamepad: ButtonRightBumper
     Interact:
       Key: E
@@ -51,7 +50,10 @@ axis_input:
     AnimSpeedReset:
       Key: M
     Select:
+      Mouse: Right
       Mouse: WheelUp
       Mouse: WheelDown
       Mouse: Button4
       Mouse: Button5
+    MoveTo:
+      Mouse: Left
