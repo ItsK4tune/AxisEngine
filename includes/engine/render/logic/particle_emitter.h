@@ -48,7 +48,7 @@ public:
     ParticleEmitter(ParticleEmitter &&other) noexcept;
     ParticleEmitter &operator=(ParticleEmitter &&other) noexcept;
 
-    void Init(unsigned int maxParticles = 500);
+    void Initialize(unsigned int maxParticles = 500);
     void Update(float dt, const glm::vec3 &offset = glm::vec3(0.0f));
     void Render(Shader *shader);
 

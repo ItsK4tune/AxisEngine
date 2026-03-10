@@ -25,7 +25,7 @@
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}
 
-void PhysicsDebugModule::Init(EngineContext ctx)
+void PhysicsDebugModule::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }

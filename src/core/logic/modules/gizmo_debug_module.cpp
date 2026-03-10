@@ -30,7 +30,7 @@
 GizmoDebugModule::GizmoDebugModule() {}
 GizmoDebugModule::~GizmoDebugModule() {}
 
-void GizmoDebugModule::Init(EngineContext ctx)
+void GizmoDebugModule::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }

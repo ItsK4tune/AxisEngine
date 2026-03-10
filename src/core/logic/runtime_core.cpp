@@ -1,24 +1,28 @@
-#include <core/logic/config_loader.h>
-#include <core/unit/engine_context.h>
 #include <core/logic/engine_core.h>
+#include <core/unit/engine_context.h>
+#include <core/logic/state_management.h>
+#include <core/logic/logger.h>
+
 RuntimeCore::RuntimeCore()
 {
 }
 
-void RuntimeCore::Init(EngineContext ctx, const AppConfig& config, std::function<void(const AppConfig&)> applyFn)
+void RuntimeCore::Initialize(EngineContext ctx, const AppConfig& config, std::function<void(const AppConfig&)> applyFn)
 {
     m_Config = config;
     m_ApplyConfigFn = std::move(applyFn);
-    m_EngineLoop.Init(ctx);
-    m_StateMachine.Init(ctx);
+    m_EngineLoop.Initialize(ctx);
+    m_StateMachine.Initialize(ctx);
+
+    LOGGER_INFO("RuntimeCore") << "Initialized";
 }
 
 void RuntimeCore::Shutdown()
 {
     m_StateMachine.Shutdown();
     m_EngineLoop.Shutdown();
+    LOGGER_INFO("RuntimeCore") << "Shutdown";
 }
-
 
 void RuntimeCore::Run()
 {
@@ -84,5 +88,7 @@ void RuntimeCore::ApplyConfig(const AppConfig& config)
 {
     m_Config = config;
     if (m_ApplyConfigFn)
-        m_ApplyConfigFn(config);
+    {
+        m_ApplyConfigFn(m_Config);
+    }
 }

@@ -16,7 +16,7 @@ PostProcessPipeline::~PostProcessPipeline()
     Shutdown();
 }
 
-void PostProcessPipeline::Init(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib)
+void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib)
 {
     m_Context = &context;
     m_Width = width;

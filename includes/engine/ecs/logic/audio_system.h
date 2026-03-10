@@ -10,7 +10,7 @@ class AudioSystem : public ISystem
 {
 public:
 
-    void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    void Initialize(EngineContext ctx) override { m_Ctx = ctx; }
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 30; }

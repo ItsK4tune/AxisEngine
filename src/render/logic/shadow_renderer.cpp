@@ -14,9 +14,9 @@
 #include <resource/manager/resource_manager.h>
 #include <core/logic/logger.h>
 
-void ShadowRenderer::Init(IGraphicsContext& context, IShaderLibrary &shaderLib)
+void ShadowRenderer::Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib)
 {
-    m_Shadow.Init(context);
+    m_Shadow.Initialize(context);
 
     shaderLib.LoadShader("shadow_depth", "includes/engine/asset/shaders/shadow_depth.vs", "includes/engine/asset/shaders/shadow_depth.fs");
     shaderLib.LoadShader("shadow_point", "includes/engine/asset/shaders/shadow_point.vs", "includes/engine/asset/shaders/shadow_point.fs", "includes/engine/asset/shaders/shadow_point.gs");

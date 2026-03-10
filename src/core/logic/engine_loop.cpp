@@ -23,7 +23,7 @@ EngineLoop::EngineLoop()
 {
 }
 
-void EngineLoop::Init(EngineContext ctx)
+void EngineLoop::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }

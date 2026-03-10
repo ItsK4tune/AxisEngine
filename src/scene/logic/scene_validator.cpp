@@ -127,7 +127,7 @@ namespace SceneHandlers
             scriptComp.DestroyScript = [](ScriptComponent *nsc)
             { nsc->instance.reset(); };
 
-            scriptComp.instance->Init(camEntity, &scene, ctx);
+            scriptComp.instance->Initialize(camEntity, &scene, ctx);
             scriptComp.instance->OnCreate();
             LOGGER_INFO("SceneValidator") << "Attached 'DefaultCameraController' (Engine Fallback) to default camera.";
         }

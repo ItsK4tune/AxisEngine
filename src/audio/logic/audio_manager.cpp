@@ -11,14 +11,14 @@ AudioManager::~AudioManager()
     Shutdown();
 }
 
-bool AudioManager::Init()
+bool AudioManager::Initialize()
 {
     if (!m_Engine)
     {
         LOGGER_ERROR("AudioManager") << "No audio engine provided";
         return false;
     }
-    return m_Engine->Init();
+    return m_Engine->Initialize();
 }
 
 void AudioManager::Shutdown()

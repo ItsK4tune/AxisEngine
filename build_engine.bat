@@ -218,50 +218,17 @@ if errorlevel 1 goto RETRY_DEBUG_SYSTEM
 set ENABLE_DEBUG_SYSTEM=OFF
 if "%debug_sys_choice%"=="2" set ENABLE_DEBUG_SYSTEM=ON
 
-goto SELECT_LOG_LEVEL
+goto CONFIRM_CONFIG
 
 :RETRY_DEBUG_SYSTEM
 echo [ERROR] Invalid selection!
 pause
 goto SELECT_DEBUG_SYSTEM
 
-:SELECT_LOG_LEVEL
-cls
-echo.
-echo ==========================================
-echo           SELECT LOG LEVEL
-echo ==========================================
-echo  1. NO      (Disable all logging)
-echo  2. MINIMAL (Errors, Warnings, Important Info) [Default]
-echo  3. FLEX    (Standard Logging)
-echo  4. DEBUG   (Verbose Debugging)
-echo ------------------------------------------
-echo  B. Back
-echo ==========================================
-set "log_level_choice="
-set /p log_level_choice="Enter number (Default: 2): "
-
-if "%log_level_choice%"=="" set log_level_choice=2
-if /i "%log_level_choice%"=="b" goto SELECT_DEBUG_SYSTEM
-
-echo %log_level_choice%| findstr /r "^[1-4]$" >nul
-if errorlevel 1 goto RETRY_LOG_LEVEL
-
-set AXIS_LOG_LEVEL=MINIMAL
-if "%log_level_choice%"=="1" set AXIS_LOG_LEVEL=NO
-if "%log_level_choice%"=="2" set AXIS_LOG_LEVEL=MINIMAL
-if "%log_level_choice%"=="3" set AXIS_LOG_LEVEL=FLEX
-if "%log_level_choice%"=="4" set AXIS_LOG_LEVEL=DEBUG
-
-goto CONFIRM_CONFIG
-
-:RETRY_LOG_LEVEL
-echo [ERROR] Invalid selection!
-pause
-goto SELECT_LOG_LEVEL
 
 :CONFIRM_CONFIG
 cls
+
 echo.
 echo ==========================================
 echo           CONFIRM CONFIGURATION
@@ -277,7 +244,6 @@ if defined QUICK_BUILD (
 ) else (
     echo  Clean Mode: %CLEAN_MODE%
     echo  Debug Sys:  %ENABLE_DEBUG_SYSTEM%
-    echo  Log Level:  %AXIS_LOG_LEVEL%
 )
 echo ==========================================
 set "confirm="
@@ -286,7 +252,7 @@ if "%confirm%"=="" set confirm=y
 
 if /i "%confirm%"=="b" (
     if defined QUICK_BUILD goto SELECT_BUILD_TYPE
-    goto SELECT_LOG_LEVEL
+    goto SELECT_DEBUG_SYSTEM
 )
 if /i "%confirm%"=="n" goto SELECT_ACTION
 if /i "%confirm%"=="y" (
@@ -407,9 +373,9 @@ if %ERRORLEVEL% EQU 0 (
 
 if not defined QUICK_BUILD (
     if not defined GENERATOR (
-        "!CMAKE_CMD!" -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM! -DAXIS_LOG_LEVEL=!AXIS_LOG_LEVEL!
+        "!CMAKE_CMD!" -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM!
     ) else (
-        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM! -DAXIS_LOG_LEVEL=!AXIS_LOG_LEVEL!
+        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM!
     )
 ) else (
     if not exist "build" (

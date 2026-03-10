@@ -75,7 +75,7 @@ void PhysicsSystem::Update(Scene &scene, float dt)
     {
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Transform Sync";
         m_transformSync = std::make_unique<PhysicsTransformSync>(scene, *m_Ctx.physics);
-        m_transformSync->Init();
+        m_transformSync->Initialize();
     }
 
     m_transformSync->SyncToPhysics();

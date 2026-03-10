@@ -12,7 +12,7 @@ struct RenderItem;
 class ShadowRenderer
 {
 public:
-    void Init(IGraphicsContext& context, IShaderLibrary &shaderLib);
+    void Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib);
     void Shutdown();
     void RenderShadows(Scene &scene, const std::vector<RenderItem>& shadowQueue);
 

@@ -4,6 +4,7 @@ enum class LogLevel {
     None,
     Minimal,
     Flex,
+    Verbose,
     Debug
 };
 

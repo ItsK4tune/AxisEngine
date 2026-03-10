@@ -19,7 +19,7 @@ public:
     CameraDebugModule();
     ~CameraDebugModule() override;
 
-    virtual void Init(EngineContext ctx) override;
+    virtual void Initialize(EngineContext ctx) override;
     void OnUpdate(float dt) override;
     void Render(Scene &scene) override;
     void ProcessInput(KeyboardManager &keyboard) override;

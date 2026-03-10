@@ -11,7 +11,7 @@ public:
     AudioManager(std::unique_ptr<IAudioEngine> engine);
     ~AudioManager();
 
-    bool Init();
+    bool Initialize();
     void Shutdown();
 
     IAudioEngine* GetEngine() const { return m_Engine.get(); }

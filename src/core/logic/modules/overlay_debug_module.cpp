@@ -16,17 +16,18 @@
 #include <core/logic/engine_core.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
-
 #include <sstream>
 #include <iomanip>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <core/logic/debug_core.h>
+
 OverlayDebugModule::OverlayDebugModule() {}
 OverlayDebugModule::~OverlayDebugModule() {}
 
-void OverlayDebugModule::Init(EngineContext ctx)
+void OverlayDebugModule::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }
@@ -46,7 +47,6 @@ void OverlayDebugModule::SetStats(float fps, float frameTime)
 
 void OverlayDebugModule::OnUpdate(float dt)
 {
-
 }
 
 void OverlayDebugModule::Render(Scene &scene)

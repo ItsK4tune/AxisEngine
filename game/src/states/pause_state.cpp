@@ -1,12 +1,4 @@
-#include <core/logic/engine_core.h>
-#include <core/logic/state_management.h>
-#include <ecs/logic/entity_builder.h>
-#include <ecs/manager/entity_manager.h>
-#include <resource/manager/resource_manager.h>
-#include <scene/logic/scene_manager.h>
-#include <platform/logic/input_system.h>
 #include <states/pause_state.h>
-#include <scene/logic/scene.h>
 
 void PauseState::OnEnter()
 {

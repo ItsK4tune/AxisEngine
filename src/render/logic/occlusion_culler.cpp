@@ -7,7 +7,7 @@
 #include <render/interface/i_draw_context.h>
 #include <render/logic/shader.h>
 #include <ecs/unit/render_components.h>
-void OcclusionCuller::Init(IGraphicsContext& context, std::shared_ptr<Shader> shader) {
+void OcclusionCuller::Initialize(IGraphicsContext& context, std::shared_ptr<Shader> shader) {
     m_Context = &context;
     m_Shader = shader;
     InitOcclusionCube();

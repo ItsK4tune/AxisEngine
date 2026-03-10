@@ -45,7 +45,7 @@ BulletDebugDrawer::~BulletDebugDrawer()
     }
 }
 
-void BulletDebugDrawer::Init()
+void BulletDebugDrawer::Initialize()
 {
     if (!s_BufferManager) return;
     auto& bm = GetBufferManager();

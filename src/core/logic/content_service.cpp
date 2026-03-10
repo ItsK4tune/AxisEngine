@@ -2,7 +2,7 @@
 
 ContentService::ContentService() {}
 
-void ContentService::Init(EngineContext ctx)
+void ContentService::Initialize(EngineContext ctx)
 {
     m_Resources = ctx.resources;
     m_SceneManager = ctx.sceneManager;

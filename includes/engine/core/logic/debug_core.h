@@ -12,7 +12,7 @@ class IDebugSystem
 {
 public:
     virtual ~IDebugSystem() = default;
-    virtual void Init(EngineContext ctx) = 0;
+    virtual void Initialize(EngineContext ctx) = 0;
     virtual void OnUpdate(float dt) = 0;
     virtual void Render(Scene& scene) = 0;
 };
@@ -42,7 +42,7 @@ public:
     DebugSystem();
     ~DebugSystem();
 
-    void Init(EngineContext ctx) override;
+    void Initialize(EngineContext ctx) override;
     void OnUpdate(float dt) override;
     void Render(Scene& scene) override;
 
@@ -68,7 +68,7 @@ private:
 class NullDebugSystem : public IDebugSystem
 {
 public:
-    void Init(EngineContext) override {}
+    void Initialize(EngineContext) override {}
     void OnUpdate(float) override {}
     void Render(Scene&) override {}
 };

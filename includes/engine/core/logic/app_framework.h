@@ -44,7 +44,7 @@ public:
     Application();
     ~Application();
 
-    bool Init(const AppConfig &config);
+    bool Initialize(const AppConfig &config);
     void Shutdown();
     EngineContext GetContext();
     void Run();

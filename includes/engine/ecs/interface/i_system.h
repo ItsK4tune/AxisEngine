@@ -9,7 +9,7 @@ class ISystem {
 public:
     virtual ~ISystem() = default;
 
-    virtual void Init(EngineContext ctx) {}
+    virtual void Initialize(EngineContext ctx) {}
     
     virtual void Update(Scene& scene, float dt) {}
     

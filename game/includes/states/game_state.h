@@ -1,8 +1,6 @@
 #pragma once
 
-#include <core/logic/state_management.h>
-#include <core/logic/engine_core.h>
-#include <entt/entt.hpp>
+#include <axis.h>
 
 class GameState : public State
 {

@@ -29,7 +29,7 @@ private:
     static ITextureManager* s_TextureManager;
     static IDrawContext* s_DrawContext;
 
-    void Init();
+    void Initialize();
 
     static IBufferManager& GetBufferManager();
     static ITextureManager& GetTextureManager();

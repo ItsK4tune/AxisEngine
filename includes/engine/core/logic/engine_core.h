@@ -24,7 +24,7 @@ public:
 
     void Run();
 
-    void Init(EngineContext ctx);
+    void Initialize(EngineContext ctx);
     void Shutdown();
 
     void SetPhysicsStep(float step);
@@ -62,7 +62,7 @@ public:
     RuntimeCore();
     ~RuntimeCore() = default;
 
-    void Init(EngineContext ctx, const AppConfig& config, std::function<void(const AppConfig&)> applyFn);
+    void Initialize(EngineContext ctx, const AppConfig& config, std::function<void(const AppConfig&)> applyFn);
     void Shutdown();
 
     void Run();

@@ -192,6 +192,7 @@ void Shader::setCustomPorts(const ShaderPorts& ports) const
 
 int Shader::GetUniformLocation(const std::string &name) const
 {
+    std::lock_guard<std::mutex> lock(m_UniformMutex);
     if (uniformLocations.find(name) != uniformLocations.end())
         return uniformLocations[name];
 
@@ -199,6 +200,7 @@ int Shader::GetUniformLocation(const std::string &name) const
     uniformLocations[name] = location;
     return location;
 }
+
 
 void Shader::checkCompileErrors(unsigned int shader, std::string type)
 {

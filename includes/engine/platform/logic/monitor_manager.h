@@ -12,7 +12,7 @@ public:
     MonitorManager();
     ~MonitorManager();
 
-    bool Init(std::unique_ptr<IWindow> window);
+    bool Initialize(std::unique_ptr<IWindow> window);
     void SetWindowConfiguration(int width, int height, WindowMode mode = WindowMode::Windowed, int monitorIndex = 0, int refreshRate = 0);
     void SetFrameRateLimit(int limit);
     void SetWindowTitle(const std::string &title);

@@ -14,7 +14,7 @@ GLFWWindow::~GLFWWindow() {
     Shutdown();
 }
 
-bool GLFWWindow::Init(int width, int height, const std::string& title) {
+bool GLFWWindow::Initialize(int width, int height, const std::string& title) {
     if (!glfwInit()) {
         LOGGER_ERROR("GLFWWindow") << "Failed to initialize GLFW";
         return false;

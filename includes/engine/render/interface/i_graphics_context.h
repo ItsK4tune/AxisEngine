@@ -16,7 +16,7 @@ class IGraphicsContext
 public:
     virtual ~IGraphicsContext() = default;
 
-    virtual bool Init() = 0;
+    virtual bool Initialize() = 0;
     virtual void Shutdown() = 0;
 
     virtual void SetViewport(int x, int y, int width, int height) = 0;

@@ -13,7 +13,7 @@
 class OpenGLContext : public IGraphicsContext
 {
 public:
-    bool Init() override;
+    bool Initialize() override;
     void Shutdown() override;
 
     void SetViewport(int x, int y, int width, int height) override;

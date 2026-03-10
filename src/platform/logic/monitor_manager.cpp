@@ -11,12 +11,12 @@ MonitorManager::~MonitorManager()
 {
 }
 
-bool MonitorManager::Init(std::unique_ptr<IWindow> window)
+bool MonitorManager::Initialize(std::unique_ptr<IWindow> window)
 {
 
     m_Window = std::move(window);
 
-    if (!m_Window->Init(m_Width, m_Height, m_Title))
+    if (!m_Window->Initialize(m_Width, m_Height, m_Title))
     {
         LOGGER_ERROR("MonitorManager") << "Failed to initialize window";
         return false;

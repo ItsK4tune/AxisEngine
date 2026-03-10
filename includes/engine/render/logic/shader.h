@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <mutex>
+
 
 class IShaderManager;
 
@@ -49,6 +51,8 @@ public:
 private:
     void checkCompileErrors(unsigned int shader, std::string type);
     mutable std::unordered_map<std::string, int> uniformLocations;
+    mutable std::mutex m_UniformMutex;
+
 
     IShaderManager& m_ShaderManager;
     std::string m_Name;

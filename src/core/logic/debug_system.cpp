@@ -22,7 +22,7 @@
 DebugSystem::DebugSystem() {}
 DebugSystem::~DebugSystem() {}
 
-void DebugSystem::Init(EngineContext ctx)
+void DebugSystem::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 
@@ -43,39 +43,39 @@ void DebugSystem::Init(EngineContext ctx)
     LOGGER_INFO("DebugSystem") << "Initializing debug modules...";
 
     auto generalModule = std::make_unique<GeneralDebugModule>();
-    generalModule->Init(ctx);
+    generalModule->Initialize(ctx);
     m_Modules.push_back(std::move(generalModule));
     LOGGER_INFO("DebugSystem") << "  - GeneralDebugModule initialized";
 
     auto overlayModule = std::make_unique<OverlayDebugModule>();
-    overlayModule->Init(ctx);
+    overlayModule->Initialize(ctx);
     overlayModule->SetSharedResources(m_DebugFont, m_TextShader, m_TextQuad);
     m_Modules.push_back(std::move(overlayModule));
     LOGGER_INFO("DebugSystem") << "  - OverlayDebugModule initialized";
 
     auto renderModule = std::make_unique<RenderDebugModule>();
-    renderModule->Init(ctx);
+    renderModule->Initialize(ctx);
     m_Modules.push_back(std::move(renderModule));
     LOGGER_INFO("DebugSystem") << "  - RenderDebugModule initialized";
 
     auto physicsModule = std::make_unique<PhysicsDebugModule>();
-    physicsModule->Init(ctx);
+    physicsModule->Initialize(ctx);
     m_Modules.push_back(std::move(physicsModule));
     LOGGER_INFO("DebugSystem") << "  - PhysicsDebugModule initialized";
 
     auto gizmoModule = std::make_unique<GizmoDebugModule>();
-    gizmoModule->Init(ctx);
+    gizmoModule->Initialize(ctx);
     gizmoModule->SetSharedResources(m_DebugFont, m_TextShader, m_TextQuad);
     m_Modules.push_back(std::move(gizmoModule));
     LOGGER_INFO("DebugSystem") << "  - GizmoDebugModule initialized";
 
     auto cameraModule = std::make_unique<CameraDebugModule>();
-    cameraModule->Init(ctx);
+    cameraModule->Initialize(ctx);
     m_Modules.push_back(std::move(cameraModule));
     LOGGER_INFO("DebugSystem") << "  - CameraDebugModule initialized";
 
     auto shadowModule = std::make_unique<ShadowDebugModule>();
-    shadowModule->Init(ctx);
+    shadowModule->Initialize(ctx);
     m_Modules.push_back(std::move(shadowModule));
     LOGGER_INFO("DebugSystem") << "  - ShadowDebugModule initialized";
 

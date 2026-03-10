@@ -18,7 +18,7 @@ public:
     IOHandler(std::unique_ptr<IGraphicsContext> graphics, std::unique_ptr<IAudioEngine> audioEngine);
     ~IOHandler();
 
-    bool Init(std::unique_ptr<IWindow> window, const std::string& title, int width, int height, int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit);
+    bool Initialize(std::unique_ptr<IWindow> window, const std::string& title, int width, int height, int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit);
     void SetWindow(IWindow* window);
     void ProcessInput();
 

@@ -25,13 +25,13 @@
 #include <core/logic/debug_core.h>
 #endif
 
-void RenderSystem::Init(IGraphicsContext &context, IShaderLibrary &shaderLib)
+void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib)
 {
     m_Context = &context;
 
     LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers";
-    m_ShadowRenderer.Init(context, shaderLib);
-    m_LightRenderer.Init(*m_Context);
+    m_ShadowRenderer.Initialize(context, shaderLib);
+    m_LightRenderer.Initialize(*m_Context);
 
     if (m_WhiteTextureID == 0)
     {
@@ -68,8 +68,8 @@ void RenderSystem::Init(IGraphicsContext &context, IShaderLibrary &shaderLib)
     bm.BindBufferBase(BufferType::UniformBuffer, 2, m_GlobalDataUBO->Get());
 
     shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
-    m_OcclusionCuller.Init(*m_Context, shaderLib.GetShader("occlusion_query"));
-    m_MaterialRenderer.Init(*m_Context, m_WhiteTextureID);
+    m_OcclusionCuller.Initialize(*m_Context, shaderLib.GetShader("occlusion_query"));
+    m_MaterialRenderer.Initialize(*m_Context, m_WhiteTextureID);
 
     shaderLib.LoadShader("gbuffer", "includes/engine/asset/shaders/gbuffer.vs", "includes/engine/asset/shaders/gbuffer.fs");
     m_GBufferShader = shaderLib.GetShader("gbuffer");

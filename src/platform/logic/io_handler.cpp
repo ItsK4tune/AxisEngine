@@ -16,13 +16,13 @@ IOHandler::~IOHandler()
 {
 }
 
-bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, int width, int height, int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit)
+bool IOHandler::Initialize(std::unique_ptr<IWindow> window, const std::string& title, int width, int height, int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit)
 {
     m_MonitorManager->SetWindowTitle(title);
     m_MonitorManager->SetWindowConfiguration(width, height, (WindowMode)windowMode, monitorIndex, refreshRate);
     m_MonitorManager->SetFrameRateLimit(frameRateLimit);
 
-    if (!m_MonitorManager->Init(std::move(window)))
+    if (!m_MonitorManager->Initialize(std::move(window)))
     {
         LOGGER_ERROR("IOHandler") << "Failed to initialize MonitorManager";
         return false;
@@ -32,7 +32,7 @@ bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, 
     LOGGER_INFO("IOHandler") << "VSync initialized to: " << (vsync ? "ON" : "OFF");
     LOGGER_INFO("IOHandler") << "Frame Rate Limit initialized to: " << frameRateLimit;
 
-    if (!m_Graphics->Init())
+    if (!m_Graphics->Initialize())
     {
         LOGGER_ERROR("IOHandler") << "Failed to initialize graphics context";
         return false;
@@ -47,7 +47,7 @@ bool IOHandler::Init(std::unique_ptr<IWindow> window, const std::string& title, 
     m_MouseManager->SetLastPosition(width / 2.0, height / 2.0);
     m_MouseManager->SetWindowSize(width, height);
 
-    if (!m_AudioManager->Init())
+    if (!m_AudioManager->Initialize())
     {
         LOGGER_WARN("IOHandler") << "Audio initialization failed, continuing without audio";
     }

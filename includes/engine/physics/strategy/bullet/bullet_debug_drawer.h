@@ -16,7 +16,7 @@ public:
     BulletDebugDrawer();
     virtual ~BulletDebugDrawer();
 
-    void Init();
+    void Initialize();
     void FrameStart();
     void Flush();
 

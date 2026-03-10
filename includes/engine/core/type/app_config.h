@@ -53,7 +53,7 @@ struct AppConfig
 
     // Core
     int numJobThreads = -1; // -1 for hardware_concurrency
-    int logLevel = 1;       // 0: Debug, 1: Info, 2: Warn, 3: Error
+    int logLevel = 4;       // 0: None, 1: Minimal, 2: Flex, 3: Verbose, 4: Debug
     float timeScale = 1.0f;
 
     // Physics

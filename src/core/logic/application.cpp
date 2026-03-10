@@ -33,6 +33,12 @@
 #include <scene/logic/scene_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
+#include <core/logic/log_manager.h>
+
+extern "C" {
+    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
 
 Application::Application()
     : m_Scene(std::make_unique<Scene>())
@@ -46,6 +52,9 @@ Application::~Application()
 void Application::Shutdown()
 {
     LOGGER_INFO("Application") << "Shutting down application...";
+    
+    LogManager::Instance().Shutdown();
+
     JobSystem::Instance().Shutdown();
 
     if (m_RuntimeCore)
@@ -109,11 +118,13 @@ void Application::Shutdown()
     LOGGER_INFO("Application") << "Application shutdown completed.";
 }
 
-bool Application::Init(const AppConfig &config)
+bool Application::Initialize(const AppConfig &config)
 {
     m_Config = config;
 
     JobSystem::Instance().Initialize(m_Config.numJobThreads);
+
+    LogManager::Instance().Initialize(static_cast<LogLevel>(m_Config.logLevel));
 
     auto graphicsContext = AppBuilder::CreateGraphicsContext(m_Config);
     auto audioEngine = AppBuilder::CreateAudioEngine(m_Config);
@@ -121,7 +132,7 @@ bool Application::Init(const AppConfig &config)
 
     m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext), std::move(audioEngine));
 
-    if (!m_IOHandler->Init(std::move(window), m_Config.title, m_Config.width, m_Config.height, m_Config.windowMode,
+    if (!m_IOHandler->Initialize(std::move(window), m_Config.title, m_Config.width, m_Config.height, m_Config.windowMode,
                            m_Config.monitorIndex, m_Config.refreshRate, m_Config.vsync, m_Config.frameRateLimit))
     {
         LOGGER_ERROR("Application") << "Failed to initialize IOHandler";
@@ -162,9 +173,9 @@ bool Application::Init(const AppConfig &config)
         m_IOHandler->GetAudioManager().SetActiveDevice(m_Config.audioDevice);
 
     m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(m_Config);
-    m_PhysicsWorld->Init();
+    m_PhysicsWorld->Initialize();
     m_ResourceManager = std::make_unique<ResourceManager>();
-    m_ResourceManager->Init(context.GetShaderManager());
+    m_ResourceManager->Initialize(context.GetShaderManager());
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
     m_Scene->InitializeManagers();
     
@@ -175,9 +186,10 @@ bool Application::Init(const AppConfig &config)
     m_RuntimeCore = std::make_unique<RuntimeCore>();
     m_SystemManager = std::make_unique<SystemManager>();
 
-    m_SceneManager->Init(GetContext(), applyConfigFn);
-    m_ContentService->Init(GetContext());
-    m_RuntimeCore->Init(GetContext(), m_Config, applyConfigFn);
+    EngineContext ctx = GetContext(); // Define ctx here
+    m_SceneManager->Initialize(ctx, [this](const AppConfig &cfg) { ApplyConfig(cfg); });
+    m_ContentService->Initialize(ctx);
+    m_RuntimeCore->Initialize(ctx, m_Config, [this](const AppConfig &cfg) { ApplyConfig(cfg); });
     m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, GetContext());
     m_SystemManager->ApplyConfig(m_Config);
 

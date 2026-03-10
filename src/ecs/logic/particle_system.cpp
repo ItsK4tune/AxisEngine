@@ -9,7 +9,7 @@
 #include <core/logic/logger.h>
 #include <vector>
 
-void ParticleSystem::Init(IGraphicsContext& context)
+void ParticleSystem::Initialize(IGraphicsContext& context)
 {
     m_Context = &context;
 }

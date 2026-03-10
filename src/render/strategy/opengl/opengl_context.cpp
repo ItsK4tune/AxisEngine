@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <core/logic/logger.h>
 
-bool OpenGLContext::Init()
+bool OpenGLContext::Initialize()
 {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {

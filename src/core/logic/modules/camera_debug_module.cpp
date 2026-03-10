@@ -13,7 +13,7 @@
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
 
-void CameraDebugModule::Init(EngineContext ctx)
+void CameraDebugModule::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }
@@ -128,7 +128,7 @@ void CameraDebugModule::ToggleDebugCamera()
                 { return ScriptRegistry::Instance().Create(scriptName); };
                 scriptComp.DestroyScript = [](ScriptComponent *nsc)
                 { nsc->instance.reset(); };
-                scriptComp.instance->Init(m_DebugCamera, &scene, m_Ctx);
+                scriptComp.instance->Initialize(m_DebugCamera, &scene, m_Ctx);
                 scriptComp.instance->OnCreate();
             }
         }

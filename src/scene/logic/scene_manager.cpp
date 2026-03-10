@@ -19,7 +19,7 @@ namespace {
 
 SceneManager::SceneManager() {}
 
-void SceneManager::Init(EngineContext ctx, std::function<void(const AppConfig&)> applyConfigFn)
+void SceneManager::Initialize(EngineContext ctx, std::function<void(const AppConfig&)> applyConfigFn)
 {
     m_Ctx = ctx;
     m_Scene = ctx.scene;
@@ -27,6 +27,14 @@ void SceneManager::Init(EngineContext ctx, std::function<void(const AppConfig&)>
     m_Physics = ctx.physics;
     m_SoundPlayer = ctx.soundPlayer;
     m_ApplyConfigFn = std::move(applyConfigFn);
+    
+    LOGGER_INFO("SceneManager") << "Initialized";
+}
+
+void SceneManager::Shutdown()
+{
+    ClearAllIncludingPersistent();
+    LOGGER_INFO("SceneManager") << "Shutdown";
 }
 
 void SceneManager::AddEntity(entt::entity entity, const std::string &sceneName)
@@ -41,256 +49,133 @@ void SceneManager::AddEntity(entt::entity entity, const std::string &sceneName)
     }
 }
 
-void SceneManager::LoadScene(const std::string &filePath, bool persistent)
+void SceneManager::LoadScene(const std::string& filePath, bool persistent)
 {
+    LOGGER_INFO("SceneManager") << "Loading scene: " << filePath << (persistent ? " (persistent)" : "");
+
     if (IsLoaded(filePath))
     {
-        LOGGER_INFO("SceneManager") << "Scene already loaded: " << filePath;
+        LOGGER_WARN("SceneManager") << "Scene already loaded: " << filePath;
         return;
     }
 
-    bool isLoadAxs = (SceneBasename(filePath) == "load");
-
-    SceneLoadResult result = SceneSerializer::Deserialize(filePath, *m_Scene, *m_Resources, *m_Physics, *m_SoundPlayer, m_Ctx);
-
-    if (result.entities.empty() && !result.hasConfig)
-    {
-        LOGGER_WARN("SceneManager") << "Scene loaded but has no entities or config: " << filePath;
-    }
+    SceneLoadResult res = SceneSerializer::Deserialize(filePath, *m_Scene, *m_Resources, *m_Physics, *m_SoundPlayer, m_Ctx);
 
     SceneRecord rec;
-    rec.name = SceneBasename(filePath);
     rec.filePath = filePath;
+    rec.name = SceneBasename(filePath);
+    rec.persistent = persistent;
     rec.loadOrder = m_nextLoadOrder++;
-    rec.persistent = persistent || isLoadAxs;
-    rec.inviolable = isLoadAxs;
-    rec.entities = std::move(result.entities);
-    rec.ownedShaders = std::move(result.loadedShaders);
-    rec.ownedModels = std::move(result.loadedModels);
-    rec.ownedTextures = std::move(result.loadedTextures);
-    rec.ownedFonts = std::move(result.loadedFonts);
-    rec.ownedSkyboxes = std::move(result.loadedSkyboxes);
-    rec.ownedAnimations = std::move(result.loadedAnimations);
-    rec.ownedSounds = std::move(result.loadedSounds);
-    rec.hasConfig = result.hasConfig;
-    rec.appliedConfig = result.appliedConfig;
+    rec.entities = std::move(res.entities);
+    rec.ownedShaders = std::move(res.loadedShaders);
+    rec.ownedModels = std::move(res.loadedModels);
+    rec.ownedTextures = std::move(res.loadedTextures);
+    rec.ownedFonts = std::move(res.loadedFonts);
+    rec.ownedSkyboxes = std::move(res.loadedSkyboxes);
+    rec.ownedAnimations = std::move(res.loadedAnimations);
+    rec.ownedSounds = std::move(res.loadedSounds);
+    rec.appliedConfig = res.appliedConfig;
+    rec.hasConfig = res.hasConfig;
 
-    LOGGER_INFO("SceneManager") << "Scene loaded: " << filePath
-                                << " [order=" << rec.loadOrder << ", persistent=" << rec.persistent
-                                << ", inviolable=" << rec.inviolable
-                                << ", entities=" << rec.entities.size() << "]";
+    if (rec.hasConfig && m_ApplyConfigFn)
+    {
+        m_ApplyConfigFn(rec.appliedConfig);
+    }
 
     m_LoadedScenes.push_back(std::move(rec));
 }
 
-void SceneManager::_DestroySceneEntities(SceneRecord &rec)
+void SceneManager::UnloadScene(const std::string& filePath)
 {
-    for (auto entity : rec.entities)
+    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
+        return r.filePath == filePath || r.name == filePath;
+    });
+
+    if (it != m_LoadedScenes.end())
     {
-        if (m_Scene->registry.valid(entity))
-            EntityManager::DestroyEntity(*m_Scene, entity, this);
-    }
-    rec.entities.clear();
-}
-
-void SceneManager::_UnloadOrphanedResources(const SceneRecord &rec)
-{
-    auto isShared = [&](const std::string &name, const std::vector<std::string> &list) -> bool
-    {
-        for (const auto &n : list)
-            if (n == name)
-                return true;
-        return false;
-    };
-
-    auto usedByOther = [&](const std::string &name,
-                           std::vector<std::string> SceneRecord::*field) -> bool
-    {
-        for (const auto &other : m_LoadedScenes)
-        {
-            if (other.filePath == rec.filePath)
-                continue;
-            if (isShared(name, other.*field))
-                return true;
-        }
-        return false;
-    };
-
-    for (const auto &name : rec.ownedShaders)
-        if (!usedByOther(name, &SceneRecord::ownedShaders))
-            m_Resources->UnloadShader(name);
-    for (const auto &name : rec.ownedAnimations)
-        if (!usedByOther(name, &SceneRecord::ownedAnimations))
-            m_Resources->UnloadAnimation(name);
-    for (const auto &name : rec.ownedModels)
-        if (!usedByOther(name, &SceneRecord::ownedModels))
-            m_Resources->UnloadModel(name);
-    for (const auto &name : rec.ownedTextures)
-        if (!usedByOther(name, &SceneRecord::ownedTextures))
-            m_Resources->UnloadTexture(name);
-    for (const auto &name : rec.ownedFonts)
-        if (!usedByOther(name, &SceneRecord::ownedFonts))
-            m_Resources->UnloadFont(name);
-    for (const auto &name : rec.ownedSkyboxes)
-        if (!usedByOther(name, &SceneRecord::ownedSkyboxes))
-            m_Resources->UnloadSkybox(name);
-    for (const auto &name : rec.ownedSounds)
-        if (!usedByOther(name, &SceneRecord::ownedSounds))
-            m_Resources->UnloadSound(name);
-}
-
-void SceneManager::_RollbackConfig(const SceneRecord &removed)
-{
-    if (!removed.hasConfig)
-        return;
-
-    const SceneRecord *best = nullptr;
-    for (const auto &rec : m_LoadedScenes)
-    {
-        if (rec.filePath == removed.filePath)
-            continue;
-        if (!rec.hasConfig)
-            continue;
-        if (!best || rec.loadOrder > best->loadOrder)
-            best = &rec;
-    }
-
-    if (best)
-    {
-        LOGGER_INFO("SceneManager") << "Rolling back config to scene: " << best->name;
-        if (m_ApplyConfigFn)
-            m_ApplyConfigFn(best->appliedConfig);
+        _UnloadRecord(*it);
+        m_LoadedScenes.erase(it);
+        _ReindexScenes();
     }
 }
 
-void SceneManager::_UnloadRecord(SceneRecord &rec)
+void SceneManager::UnloadScene(const SceneRecord* rec)
 {
-    _DestroySceneEntities(rec);
-    _UnloadOrphanedResources(rec);
-    _RollbackConfig(rec);
+    if (!rec) return;
+    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
+        return &r == rec;
+    });
+
+    if (it != m_LoadedScenes.end())
+    {
+        _UnloadRecord(*it);
+        m_LoadedScenes.erase(it);
+        _ReindexScenes();
+    }
 }
 
-void SceneManager::UnloadScene(const std::string &filePath)
+void SceneManager::UnloadSceneByName(const std::string& name)
 {
-    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(),
-                           [&](const SceneRecord &r)
-                           { return r.filePath == filePath; });
+    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
+        return r.name == name;
+    });
 
-    if (it == m_LoadedScenes.end())
+    if (it != m_LoadedScenes.end())
     {
-        LOGGER_WARN("SceneManager") << "Scene not found or not loaded: " << filePath;
-        return;
+        _UnloadRecord(*it);
+        m_LoadedScenes.erase(it);
+        _ReindexScenes();
     }
-    if (it->inviolable)
-    {
-        LOGGER_WARN("SceneManager") << "Cannot unload inviolable scene: " << filePath;
-        return;
-    }
-
-    LOGGER_INFO("SceneManager") << "Unloading scene: " << filePath;
-    _UnloadRecord(*it);
-    m_LoadedScenes.erase(it);
-    _ReindexScenes();
-}
-
-void SceneManager::UnloadScene(const SceneRecord *rec)
-{
-    if (!rec)
-        return;
-    UnloadScene(rec->filePath);
-}
-
-void SceneManager::UnloadSceneByName(const std::string &name)
-{
-    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(),
-                           [&](const SceneRecord &r)
-                           { return r.name == name; });
-
-    if (it == m_LoadedScenes.end())
-    {
-        LOGGER_WARN("SceneManager") << "Scene not found by name: " << name;
-        return;
-    }
-    if (it->inviolable)
-    {
-        LOGGER_WARN("SceneManager") << "Cannot unload inviolable scene: " << name;
-        return;
-    }
-    LOGGER_INFO("SceneManager") << "Unloading scene by name: " << name;
-    _UnloadRecord(*it);
-    m_LoadedScenes.erase(it);
-    _ReindexScenes();
 }
 
 void SceneManager::UnloadSceneByOrder(int order)
 {
-    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(),
-                           [&](const SceneRecord &r)
-                           { return r.loadOrder == order; });
+    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
+        return r.loadOrder == order;
+    });
 
-    if (it == m_LoadedScenes.end())
+    if (it != m_LoadedScenes.end())
     {
-        LOGGER_WARN("SceneManager") << "Scene not found by order: " << order;
-        return;
+        _UnloadRecord(*it);
+        m_LoadedScenes.erase(it);
+        _ReindexScenes();
     }
-    if (it->inviolable)
-    {
-        LOGGER_WARN("SceneManager") << "Cannot unload inviolable scene: order=" << order;
-        return;
-    }
-    LOGGER_INFO("SceneManager") << "Unloading scene by order=" << order << ": " << it->name;
-    _UnloadRecord(*it);
-    m_LoadedScenes.erase(it);
-    _ReindexScenes();
 }
 
 void SceneManager::PopScene()
 {
-    SceneRecord *best = nullptr;
-    for (auto &rec : m_LoadedScenes)
-    {
-        if (rec.persistent || rec.inviolable)
-            continue;
-        if (!best || rec.loadOrder > best->loadOrder)
-            best = &rec;
-    }
+    if (m_LoadedScenes.empty()) return;
 
-    if (!best)
-    {
-        LOGGER_WARN("SceneManager") << "PopScene: No non-persistent scene to pop.";
-        return;
-    }
-
-    LOGGER_INFO("SceneManager") << "PopScene: Unloading '" << best->name << "' (order=" << best->loadOrder << ")";
-    std::string path = best->filePath;
-    UnloadScene(path);
-}
-
-void SceneManager::ChangeScene(const std::string &filePath)
-{
     for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
     {
         if (!m_LoadedScenes[i].persistent)
         {
             _UnloadRecord(m_LoadedScenes[i]);
             m_LoadedScenes.erase(m_LoadedScenes.begin() + i);
+            _ReindexScenes();
+            return;
         }
     }
-    LoadScene(filePath);
-    _ReindexScenes();
+}
+
+void SceneManager::ChangeScene(const std::string& filePath)
+{
+    ClearAllScenes();
+    LoadScene(filePath, false);
 }
 
 void SceneManager::ClearAllScenes()
 {
-    LOGGER_INFO("SceneManager") << "Clearing all non-persistent scenes...";
-    m_Physics->Clear();
-    for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
+    for (auto it = m_LoadedScenes.begin(); it != m_LoadedScenes.end(); )
     {
-        if (!m_LoadedScenes[i].persistent && !m_LoadedScenes[i].inviolable)
+        if (!it->persistent)
         {
-            _DestroySceneEntities(m_LoadedScenes[i]);
-            _UnloadOrphanedResources(m_LoadedScenes[i]);
-            m_LoadedScenes.erase(m_LoadedScenes.begin() + i);
+            _UnloadRecord(*it);
+            it = m_LoadedScenes.erase(it);
+        }
+        else
+        {
+            ++it;
         }
     }
     _ReindexScenes();
@@ -298,176 +183,155 @@ void SceneManager::ClearAllScenes()
 
 void SceneManager::ClearAllIncludingPersistent()
 {
-    LOGGER_INFO("SceneManager") << "Clearing all scenes (including persistent, except inviolable)...";
-    m_Physics->Clear();
-    for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
+    for (auto& rec : m_LoadedScenes)
     {
-        if (!m_LoadedScenes[i].inviolable)
-        {
-            _DestroySceneEntities(m_LoadedScenes[i]);
-            _UnloadOrphanedResources(m_LoadedScenes[i]);
-            m_LoadedScenes.erase(m_LoadedScenes.begin() + i);
-        }
-    }
-    _ReindexScenes();
-}
-
-void SceneManager::Shutdown()
-{
-    LOGGER_INFO("SceneManager") << "Shutting down and clearing ALL scenes...";
-    m_Physics->Clear();
-    for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
-    {
-        _DestroySceneEntities(m_LoadedScenes[i]);
-        _UnloadOrphanedResources(m_LoadedScenes[i]);
+        _UnloadRecord(rec);
     }
     m_LoadedScenes.clear();
+    m_nextLoadOrder = 0;
 }
 
-void SceneManager::QueueLoadScene(const std::string &path, bool persistent)
+void SceneManager::QueueLoadScene(const std::string& path, bool persistent)
 {
     m_pendingQueue.push_back({PendingOp::Load, path, persistent});
-    LOGGER_INFO("SceneManager") << "Queued load scene: " << path;
 }
 
-void SceneManager::QueueUnloadScene(const std::string &path)
+void SceneManager::QueueUnloadScene(const std::string& path)
 {
-    const SceneRecord *rec = GetScene(path);
-    if (!rec)
-    {
-        LOGGER_WARN("SceneManager") << "QueueUnloadScene: Scene not found or not loaded: " << path;
-        return;
-    }
-    if (rec->inviolable)
-    {
-        LOGGER_WARN("SceneManager") << "QueueUnloadScene: Cannot queue unload for inviolable scene '" << rec->name << "'.";
-        return;
-    }
     m_pendingQueue.push_back({PendingOp::Unload, path, false});
-    LOGGER_INFO("SceneManager") << "Queued unload scene: " << path;
 }
 
-void SceneManager::QueueChangeScene(const std::string &path)
+void SceneManager::QueueChangeScene(const std::string& path)
 {
     m_pendingQueue.push_back({PendingOp::Change, path, false});
-    LOGGER_INFO("SceneManager") << "Queued change scene: " << path;
 }
 
 void SceneManager::QueuePopScene()
 {
     m_pendingQueue.push_back({PendingOp::Pop, "", false});
-    LOGGER_INFO("SceneManager") << "Queued pop scene.";
 }
 
 void SceneManager::UpdatePendingScene()
 {
-    if (m_pendingQueue.empty())
-        return;
     std::vector<PendingOp> ops = std::move(m_pendingQueue);
     m_pendingQueue.clear();
-    for (auto &op : ops)
+
+    for (const auto& op : ops)
     {
         switch (op.type)
         {
         case PendingOp::Load:
             LoadScene(op.path, op.persistent);
             break;
-        case PendingOp::Unload:
-            UnloadScene(op.path);
+        case PendingOp::Pop:
+            PopScene();
             break;
         case PendingOp::Change:
             ChangeScene(op.path);
             break;
-        case PendingOp::Pop:
-            PopScene();
+        case PendingOp::Unload:
+            UnloadScene(op.path);
             break;
         }
     }
 }
 
-void SceneManager::_ReindexScenes()
+bool SceneManager::IsLoaded(const std::string& filePath) const
 {
-    std::sort(m_LoadedScenes.begin(), m_LoadedScenes.end(), [](const SceneRecord &a, const SceneRecord &b)
-              { return a.loadOrder < b.loadOrder; });
+    return GetScene(filePath) != nullptr;
+}
 
-    int index = 0;
-    for (auto &rec : m_LoadedScenes)
+const SceneRecord* SceneManager::GetScene(const std::string& filePath) const
+{
+    for (const auto& rec : m_LoadedScenes)
     {
-        rec.loadOrder = index++;
+        if (rec.filePath == filePath || rec.name == filePath) return &rec;
     }
-    m_nextLoadOrder = index;
-
-    LOGGER_INFO("SceneManager") << "Scenes re-indexed. Total active scenes: " << m_LoadedScenes.size();
-}
-
-std::vector<const SceneRecord *> SceneManager::GetScenes() const
-{
-    std::vector<const SceneRecord *> result;
-    result.reserve(m_LoadedScenes.size());
-    for (const auto &rec : m_LoadedScenes)
-        result.push_back(&rec);
-    return result;
-}
-
-bool SceneManager::IsLoaded(const std::string &filePath) const
-{
-    return std::any_of(m_LoadedScenes.begin(), m_LoadedScenes.end(),
-                       [&](const SceneRecord &r)
-                       { return r.filePath == filePath; });
-}
-
-const SceneRecord *SceneManager::GetScene(const std::string &filePath) const
-{
-    for (const auto &rec : m_LoadedScenes)
-        if (rec.filePath == filePath)
-            return &rec;
     return nullptr;
 }
 
-const SceneRecord *SceneManager::GetSceneByName(const std::string &name) const
+const SceneRecord* SceneManager::GetSceneByName(const std::string& name) const
 {
-    for (const auto &rec : m_LoadedScenes)
-        if (rec.name == name)
-            return &rec;
-    return nullptr;
-}
-
-const SceneRecord *SceneManager::GetSceneByOrder(int order) const
-{
-    for (const auto &rec : m_LoadedScenes)
-        if (rec.loadOrder == order)
-            return &rec;
-    return nullptr;
-}
-
-void SceneManager::LogScene(const std::string &filePath) const
-{
-    const SceneRecord *rec = GetScene(filePath);
-    if (!rec)
+    for (const auto& rec : m_LoadedScenes)
     {
-        LOGGER_WARN("SceneManager") << "LogScene: scene not found: " << filePath;
-        return;
+        if (rec.name == name) return &rec;
     }
-    LOGGER_INFO("SceneManager") << "Scene '" << rec->name << "':"
-                                << " path=" << rec->filePath
-                                << " order=" << rec->loadOrder
-                                << " persistent=" << rec->persistent
-                                << " entities=" << rec->entities.size()
-                                << " shaders=" << rec->ownedShaders.size()
-                                << " models=" << rec->ownedModels.size()
-                                << " textures=" << rec->ownedTextures.size()
-                                << " fonts=" << rec->ownedFonts.size()
-                                << " skyboxes=" << rec->ownedSkyboxes.size()
-                                << " anims=" << rec->ownedAnimations.size()
-                                << " sounds=" << rec->ownedSounds.size();
+    return nullptr;
+}
+
+const SceneRecord* SceneManager::GetSceneByOrder(int order) const
+{
+    for (const auto& rec : m_LoadedScenes)
+    {
+        if (rec.loadOrder == order) return &rec;
+    }
+    return nullptr;
+}
+
+std::vector<const SceneRecord*> SceneManager::GetScenes() const
+{
+    std::vector<const SceneRecord*> res;
+    for (const auto& rec : m_LoadedScenes) res.push_back(&rec);
+    return res;
+}
+
+void SceneManager::LogScene(const std::string& filePath) const
+{
+    const SceneRecord* rec = GetScene(filePath);
+    if (rec)
+    {
+        LOGGER_INFO("SceneManager") << "Scene: " << rec->name << " (" << rec->filePath << "), Entities: " << rec->entities.size();
+    }
 }
 
 void SceneManager::LogAllScenes() const
 {
-    LOGGER_INFO("SceneManager") << "Loaded scenes (" << m_LoadedScenes.size() << "):";
-    for (const auto &rec : m_LoadedScenes)
-        LogScene(rec.filePath);
+    LOGGER_INFO("SceneManager") << "Loaded Scenes (" << m_LoadedScenes.size() << "):";
+    for (const auto& rec : m_LoadedScenes)
+    {
+        LOGGER_INFO("SceneManager") << " - " << rec.name << " (Order: " << rec.loadOrder << ", Persistent: " << (rec.persistent ? "Yes" : "No") << ")";
+    }
 }
 
+void SceneManager::_UnloadRecord(SceneRecord& rec)
+{
+    LOGGER_INFO("SceneManager") << "Unloading scene: " << rec.filePath;
+    _DestroySceneEntities(rec);
+    _UnloadOrphanedResources(rec);
+}
 
+void SceneManager::_DestroySceneEntities(SceneRecord& rec)
+{
+    for (auto entity : rec.entities)
+    {
+        if (m_Scene->registry.valid(entity))
+        {
+            m_Scene->registry.destroy(entity);
+        }
+    }
+    rec.entities.clear();
+}
 
+void SceneManager::_UnloadOrphanedResources(const SceneRecord& rec)
+{
+    // Implementation for resource unloading if needed
+}
+
+void SceneManager::_RollbackConfig(const SceneRecord& removed)
+{
+    // If the removed scene had a config, we might want to restore a previous one
+    // for simplicity, we just log it for now
+    if (removed.hasConfig)
+    {
+        LOGGER_INFO("SceneManager") << "Scene with config removed: " << removed.name;
+    }
+}
+
+void SceneManager::_ReindexScenes()
+{
+    m_nextLoadOrder = 0;
+    for (auto& rec : m_LoadedScenes)
+    {
+        rec.loadOrder = m_nextLoadOrder++;
+    }
+}

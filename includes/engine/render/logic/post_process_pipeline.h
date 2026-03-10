@@ -28,7 +28,7 @@ public:
     PostProcessPipeline();
     ~PostProcessPipeline();
 
-    void Init(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib);
+    void Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib);
     void Shutdown();
     void Resize(int width, int height);
 

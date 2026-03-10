@@ -17,7 +17,7 @@ ResourceManager::ResourceManager()
         } });
 }
 
-void ResourceManager::Init(IShaderManager& shaderManager)
+void ResourceManager::Initialize(IShaderManager& shaderManager)
 {
     m_ShaderManager = &shaderManager;
     m_ShaderCache = std::make_unique<ShaderCache>(*m_ShaderManager);

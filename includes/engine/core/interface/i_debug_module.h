@@ -8,7 +8,7 @@
 class IDebugModule {
 public:
     virtual ~IDebugModule() = default;
-    virtual void Init(EngineContext ctx) = 0;
+    virtual void Initialize(EngineContext ctx) = 0;
     virtual void OnUpdate(float dt) = 0;
     virtual void Render(Scene& scene) = 0;
     virtual void ProcessInput(KeyboardManager& keyboard) = 0;

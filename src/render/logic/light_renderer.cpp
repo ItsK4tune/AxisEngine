@@ -11,7 +11,7 @@
 #include <core/logic/logger.h>
 #include <vector>
 
-void LightRenderer::Init(IGraphicsContext& context)
+void LightRenderer::Initialize(IGraphicsContext& context)
 {
     m_Context = &context;
 

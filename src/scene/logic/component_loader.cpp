@@ -450,7 +450,7 @@ void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNo
         { return ScriptRegistry::Instance().Create(className); };
         scriptComp.DestroyScript = [](ScriptComponent *nsc)
         { nsc->instance.reset(); };
-        scriptComp.instance->Init(entity, &scene, ctx);
+        scriptComp.instance->Initialize(entity, &scene, ctx);
         scriptComp.instance->OnCreate();
     }
 }
@@ -510,7 +510,7 @@ void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, con
         LOGGER_WARN("ComponentLoader") << "ParticleEmitter Life must be > 0: " << life;
 
     auto &emitterComp = scene.registry.emplace<ParticleEmitterComponent>(entity);
-    emitterComp.emitter.Init(maxParticles);
+    emitterComp.emitter.Initialize(maxParticles);
     emitterComp.emitter.LifeTime = life;
     emitterComp.emitter.StartLife = life;
 

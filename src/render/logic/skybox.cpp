@@ -49,7 +49,7 @@ IDrawContext& Skybox::GetDrawContext()
 
 Skybox::Skybox()
 {
-    Init();
+    Initialize();
 }
 
 Skybox::~Skybox()
@@ -74,7 +74,7 @@ Skybox::~Skybox()
     }
 }
 
-void Skybox::Init()
+void Skybox::Initialize()
 {
     float vertices[] = {
         -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f,

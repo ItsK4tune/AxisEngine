@@ -9,7 +9,7 @@
 #include <render/interface/i_texture_manager.h>
 #include <core/logic/logger.h>
 
-void SkyboxRenderSystem::Init(IGraphicsContext& context)
+void SkyboxRenderSystem::Initialize(IGraphicsContext& context)
 {
     m_Context = &context;
 }

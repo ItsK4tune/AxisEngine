@@ -4,7 +4,7 @@
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
 
-void MaterialRenderer::Init(IGraphicsContext& context, unsigned int whiteTextureId) {
+void MaterialRenderer::Initialize(IGraphicsContext& context, unsigned int whiteTextureId) {
     m_Context = &context;
     m_WhiteTextureID = whiteTextureId;
 }

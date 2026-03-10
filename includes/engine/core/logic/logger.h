@@ -51,19 +51,8 @@ private:
     std::stringstream m_Stream;
 };
 
-#ifndef AXIS_LOG_LEVEL_DEF
-#define AXIS_LOG_LEVEL_DEF 1
-#endif
-
-#if AXIS_LOG_LEVEL_DEF >= 1
-    #define LOGGER_WARN(Tag)   LogStreamer(LogType::Warning, Tag)
-    #define LOGGER_ERROR(Tag)  LogStreamer(LogType::Error, Tag)
-#else
-    #define LOGGER_WARN(Tag)   if(true); else LogStreamer(LogType::Warning, Tag)
-    #define LOGGER_ERROR(Tag)  if(true); else LogStreamer(LogType::Error, Tag)
-#endif
-
-#define LOGGER_LOG(Tag)    if (AXIS_LOG_LEVEL_DEF < 2) ; else LogStreamer(LogType::Info, Tag)
-#define LOGGER_INFO(Tag)   if (AXIS_LOG_LEVEL_DEF < 2) ; else LogStreamer(LogType::Info, Tag)
-
-#define LOGGER_DEBUG(Tag)  if (AXIS_LOG_LEVEL_DEF < 3) ; else LogStreamer(LogType::Debug, Tag)
+#define LOGGER_ERROR(Tag)  LogStreamer(LogType::Error, Tag)
+#define LOGGER_WARN(Tag)   LogStreamer(LogType::Warning, Tag)
+#define LOGGER_INFO(Tag)   LogStreamer(LogType::Info, Tag)
+#define LOGGER_LOG(Tag)    LogStreamer(LogType::Info, Tag)
+#define LOGGER_DEBUG(Tag)  LogStreamer(LogType::Debug, Tag)

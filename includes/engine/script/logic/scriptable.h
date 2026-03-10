@@ -14,7 +14,7 @@ class Scriptable : public EngineAccessor
 public:
     virtual ~Scriptable() {}
 
-    void Init(entt::entity entity, Scene *scene, EngineContext ctx)
+    void Initialize(entt::entity entity, Scene *scene, EngineContext ctx)
     {
         m_Entity = entity;
         m_Ctx.scene = scene;

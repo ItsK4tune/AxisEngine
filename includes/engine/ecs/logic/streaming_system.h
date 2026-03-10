@@ -10,7 +10,7 @@ class StreamingSystem : public ISystem
 {
 public:
     StreamingSystem() : ISystem() {}
-    virtual void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    virtual void Initialize(EngineContext ctx) override { m_Ctx = ctx; }
     virtual void Update(Scene& scene, float dt) override;
 
     virtual bool IsEnabled() const override { return m_Enabled; }

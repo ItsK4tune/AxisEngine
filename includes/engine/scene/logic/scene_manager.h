@@ -16,7 +16,7 @@ class SceneManager
 {
 public:
     SceneManager();
-    void Init(EngineContext ctx, std::function<void(const AppConfig&)> applyConfigFn = nullptr);
+    void Initialize(EngineContext ctx, std::function<void(const AppConfig&)> applyConfigFn = nullptr);
 
     void AddEntity(entt::entity entity, const std::string& sceneName);
 

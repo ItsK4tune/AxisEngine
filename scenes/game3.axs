@@ -1,4 +1,6 @@
 axis_scene:
+  Config:
+    LOG_LEVEL: 4
   Resources:
     Model:
       Name: womanModel

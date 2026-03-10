@@ -43,7 +43,7 @@ public:
     ResourceManager();
     ~ResourceManager();
 
-    void Init(IShaderManager& shaderManager);
+    void Initialize(IShaderManager& shaderManager);
     void Shutdown();
     void Update(float dt);
 

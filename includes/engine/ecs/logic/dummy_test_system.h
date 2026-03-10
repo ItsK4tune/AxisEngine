@@ -6,7 +6,7 @@
 class DummyTestSystem : public ISystem
 {
 public:
-    void Init(EngineContext ctx) override
+    void Initialize(EngineContext ctx) override
     {
         LOGGER_INFO("DummyTestSystem") << "Init() called!";
     }

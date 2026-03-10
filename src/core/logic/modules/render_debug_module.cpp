@@ -16,7 +16,7 @@
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}
 
-void RenderDebugModule::Init(EngineContext ctx)
+void RenderDebugModule::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }

@@ -81,22 +81,22 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     RegisterSystem(std::make_unique<DummyTestSystem>());
 
     for (auto& sys : m_Systems) {
-        sys->Init(m_Ctx);
+        sys->Initialize(m_Ctx);
     }
 
     auto& context = ctx.io->GetGraphicsContext();
-    postProcess.Init(context, width, height, res);
+    postProcess.Initialize(context, width, height, res);
     
-    GetSystem<RenderSystem>()->Init(context, res);
-    GetSystem<SkyboxRenderSystem>()->Init(context);
-    GetSystem<ParticleSystem>()->Init(context);
+    GetSystem<RenderSystem>()->Initialize(context, res);
+    GetSystem<SkyboxRenderSystem>()->Initialize(context);
+    GetSystem<ParticleSystem>()->Initialize(context);
 
 #ifdef ENABLE_DEBUG_SYSTEM
     m_DebugSystem = std::make_unique<DebugSystem>();
 #else
     m_DebugSystem = std::make_unique<NullDebugSystem>();
 #endif
-    m_DebugSystem->Init(m_Ctx);
+    m_DebugSystem->Initialize(m_Ctx);
 }
 
 
@@ -153,6 +153,8 @@ void SystemManager::ApplyConfig(const AppConfig &config)
         m_Ctx.physics->SetGravity(glm::vec3(config.gravity[0], config.gravity[1], config.gravity[2]));
         m_Ctx.physics->SetMode(config.physicsMode);
     }
+
+    Logger::SetLogLevel(static_cast<LogLevel>(config.logLevel));
 
     LOGGER_INFO("SystemManager") << "Applied engine configuration.";
 }

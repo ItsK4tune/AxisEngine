@@ -128,7 +128,7 @@ ParticleEmitter &ParticleEmitter::operator=(ParticleEmitter &&other) noexcept
     return *this;
 }
 
-void ParticleEmitter::Init(unsigned int maxParticles)
+void ParticleEmitter::Initialize(unsigned int maxParticles)
 {
     if (!s_BufferManager) return;
     m_MaxParticles = maxParticles;

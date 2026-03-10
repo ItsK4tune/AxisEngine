@@ -25,7 +25,7 @@ void ScriptableSystem::Update(Scene &scene, float dt)
         if (!script.instance)
         {
             script.instance = std::move(script.InstantiateScript());
-            script.instance->Init(entity, &scene, m_Ctx);
+            script.instance->Initialize(entity, &scene, m_Ctx);
             script.instance->OnCreate();
         }
 

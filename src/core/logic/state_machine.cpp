@@ -1,8 +1,9 @@
 #include <core/unit/engine_context.h>
 #include <core/logic/state_management.h>
+
 StateMachine::StateMachine() {}
 
-void StateMachine::Init(EngineContext ctx)
+void StateMachine::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }

@@ -12,7 +12,7 @@ public:
     TransformSystem() : ISystem() {}
     virtual ~TransformSystem() = default;
 
-    void Init(EngineContext ctx) override;
+    void Initialize(EngineContext ctx) override;
     void Update(Scene& scene, float dt) override;
     void FixedUpdate(Scene& scene, float dt) override;
     void Render(Scene& scene) override;

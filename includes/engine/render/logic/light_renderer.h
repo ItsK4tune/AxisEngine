@@ -18,7 +18,7 @@ class Shader;
 class LightRenderer
 {
 public:
-    void Init(IGraphicsContext& context);
+    void Initialize(IGraphicsContext& context);
     void UploadLightData(Scene &scene, Shader *shader);
 
     int GetDirLightCount() const { return (int)m_DirLights.size(); }

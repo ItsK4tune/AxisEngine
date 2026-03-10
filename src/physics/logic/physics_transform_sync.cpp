@@ -25,7 +25,7 @@ PhysicsTransformSync::~PhysicsTransformSync()
     }
 }
 
-void PhysicsTransformSync::Init()
+void PhysicsTransformSync::Initialize()
 {
     if (m_initialized)
         return;

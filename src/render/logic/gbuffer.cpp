@@ -11,7 +11,7 @@ GBuffer::~GBuffer()
     Shutdown();
 }
 
-void GBuffer::Init(IGraphicsContext& context, int width, int height)
+void GBuffer::Initialize(IGraphicsContext& context, int width, int height)
 {
     m_Context = &context;
     m_Width = width;

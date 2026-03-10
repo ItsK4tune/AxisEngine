@@ -27,7 +27,7 @@
 GeneralDebugModule::GeneralDebugModule() {}
 GeneralDebugModule::~GeneralDebugModule() {}
 
-void GeneralDebugModule::Init(EngineContext ctx)
+void GeneralDebugModule::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 

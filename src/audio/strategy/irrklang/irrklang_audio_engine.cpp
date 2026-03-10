@@ -68,9 +68,10 @@ IrrKlangAudioEngine::~IrrKlangAudioEngine()
     Shutdown();
 }
 
-bool IrrKlangAudioEngine::Init()
+bool IrrKlangAudioEngine::Initialize()
 {
-    m_Engine = irrklang::createIrrKlangDevice();
+    m_Engine = irrklang::createIrrKlangDevice(irrklang::ESOD_AUTO_DETECT, 
+        irrklang::ESEO_MULTI_THREADED | irrklang::ESEO_LOAD_PLUGINS | irrklang::ESEO_USE_3D_BUFFERS | irrklang::ESEO_PRINT_DEBUG_INFO_TO_DEBUGGER);
     if (!m_Engine)
     {
         LOGGER_ERROR("IrrKlangAudioEngine") << "Failed to create IrrKlang device";

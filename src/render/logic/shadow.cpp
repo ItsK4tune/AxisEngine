@@ -37,7 +37,7 @@ void Shadow::Shutdown()
     for (int i = 0; i < MAX_SPOT_LIGHTS_SHADOW; ++i) { m_ShadowFBO_Spot[i].reset(); m_ShadowMap_Spot[i].reset(); }
 }
 
-void Shadow::Init(IGraphicsContext& context, unsigned int width, unsigned int height, unsigned int pointWidth, unsigned int pointHeight)
+void Shadow::Initialize(IGraphicsContext& context, unsigned int width, unsigned int height, bool manualControl, unsigned int pointWidth, unsigned int pointHeight)
 {
     SHADOW_WIDTH = width;
     SHADOW_HEIGHT = height;

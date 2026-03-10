@@ -53,7 +53,7 @@ public:
     BulletPhysicsWorld();
     ~BulletPhysicsWorld();
 
-    void Init() override;
+    void Initialize() override;
     void Update(float dt) override;
     void Clear() override;
 

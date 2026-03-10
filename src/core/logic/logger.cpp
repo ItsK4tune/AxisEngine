@@ -3,19 +3,7 @@
 #include <stdexcept>
 #include "core/logic/logger.h"
 
-#ifdef AXIS_LOG_LEVEL_DEF
-    #if AXIS_LOG_LEVEL_DEF == 0
-        LogLevel Logger::s_CurrentLevel = LogLevel::None;
-    #elif AXIS_LOG_LEVEL_DEF == 1
-        LogLevel Logger::s_CurrentLevel = LogLevel::Minimal;
-    #elif AXIS_LOG_LEVEL_DEF == 2
-        LogLevel Logger::s_CurrentLevel = LogLevel::Flex;
-    #else
-        LogLevel Logger::s_CurrentLevel = LogLevel::Debug;
-    #endif
-#else
-    LogLevel Logger::s_CurrentLevel = LogLevel::Minimal;
-#endif
+LogLevel Logger::s_CurrentLevel = LogLevel::None;
 std::mutex Logger::s_LogMutex;
 
 void Logger::Initialize() {
@@ -30,6 +18,17 @@ LogLevel Logger::GetLogLevel() {
 }
 
 void Logger::Log(LogType type, const std::string& tag, const std::string& message) {
+    if (s_CurrentLevel == LogLevel::None) {
+        if (type == LogType::Error) {
+            throw std::runtime_error("[" + tag + "] " + message);
+        }
+        return;
+    }
+
+    if (s_CurrentLevel == LogLevel::Minimal && type != LogType::Error) return;
+    if (s_CurrentLevel == LogLevel::Flex && (type == LogType::Info || type == LogType::Debug)) return;
+    if (s_CurrentLevel == LogLevel::Verbose && type == LogType::Debug) return;
+
     std::lock_guard<std::mutex> lock(s_LogMutex);
 
     std::string levelStr;

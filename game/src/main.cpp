@@ -1,122 +1,16 @@
-#ifndef ENABLE_DEBUG_SYSTEM
-#include <Windows.h>
-#endif
-
-#include <core/logic/app_framework.h>
-#include <core/logic/logger.h>
+#include <axis.h>
 #include <states/game_state.h>
-#include <iostream>
-#include <fstream>
-#include <chrono>
-#include <iomanip>
-#include <sstream>
-#include <core/logic/filesystem.h>
-#include <filesystem>
-
-class TeeBuf : public std::streambuf {
-public:
-    TeeBuf(std::streambuf* sb1, std::streambuf* sb2) : sb1(sb1), sb2(sb2) {}
-protected:
-    virtual int overflow(int c) {
-        if (c == EOF) return !EOF;
-        int const r1 = sb1->sputc(c);
-        int const r2 = sb2->sputc(c);
-        return r1 == EOF || r2 == EOF ? EOF : c;
-    }
-    virtual int sync() {
-        int const r1 = sb1->pubsync();
-        int const r2 = sb2->pubsync();
-        return r1 == 0 && r2 == 0 ? 0 : -1;
-    }
-private:
-    std::streambuf *sb1, *sb2;
-};
-
-TeeBuf* teeBufOut = nullptr;
-TeeBuf* teeBufErr = nullptr;
-std::ofstream logFile;
-
-LONG WINAPI CrashHandler(EXCEPTION_POINTERS* exceptionInfo)
-{
-    if (logFile.is_open())
-    {
-        logFile << "Unhandled Exception Caught!\n";
-        if (exceptionInfo && exceptionInfo->ExceptionRecord)
-        {
-            logFile << "Exception Code: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionCode << std::dec << "\n";
-            logFile << "Faulting Address: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionAddress << std::dec << "\n";
-        }
-        logFile.flush();
-    }
-    
-    return EXCEPTION_EXECUTE_HANDLER;
-}
-
-
-void InitLogging() {
-    std::string logsDirStr = FileSystem::getPath("logs");
-    namespace fs = std::filesystem;
-    fs::path logsDir = fs::path(logsDirStr);
-
-    if (!fs::exists(logsDir)) {
-        fs::create_directories(logsDir);
-    }
-
-    auto now = std::chrono::system_clock::now();
-    auto timeT = std::chrono::system_clock::to_time_t(now);
-    std::tm bt{};
-    localtime_s(&bt, &timeT);
-
-    std::stringstream ss;
-    ss << "log_" << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S") << ".txt";
-    fs::path logPath = logsDir / ss.str();
-
-    logFile.open(logPath);
-    if (logFile.is_open()) {
-#ifdef ENABLE_DEBUG_SYSTEM
-        static TeeBuf tOut(std::cout.rdbuf(), logFile.rdbuf());
-        static TeeBuf tErr(std::cerr.rdbuf(), logFile.rdbuf());
-
-        teeBufOut = &tOut;
-        teeBufErr = &tErr;
-
-        std::cout.rdbuf(teeBufOut);
-        std::cerr.rdbuf(teeBufErr);
-#else
-        std::cout.rdbuf(logFile.rdbuf());
-        std::cerr.rdbuf(logFile.rdbuf());
-#endif
-
-        LOGGER_INFO("Application") << "Logging started at " << std::put_time(&bt, "%Y-%m-%d %H:%M:%S");
-        LOGGER_INFO("Application") << "Log file: " << logPath.string();
-    }
-}
-
-extern "C" {
-    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
-    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
-}
 
 int main() {
-#ifndef ENABLE_DEBUG_SYSTEM
-    FreeConsole();
-#endif
-
-    InitLogging();
-
-    SetUnhandledExceptionFilter(CrashHandler);
-
-    std::shared_ptr<Application> app = std::make_shared<Application>();
+    auto app = std::make_shared<Application>();
 
     AppConfig config;
-    config.title = "Axis Engine - Code Config";
+    config.title = "Axis Engine - Game";
     config.width = 1280;
     config.height = 720;
-    config.windowMode = 0;
-    config.vsync = false;
-    config.physicsMode = 1;
+    config.logLevel = static_cast<int>(LogLevel::Flex); // Default log level
 
-    if (app->Init(config)) {
+    if (app->Initialize(config)) {
         app->PushState<GameState>();
         app->Run();
     }

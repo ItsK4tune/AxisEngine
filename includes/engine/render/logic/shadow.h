@@ -19,8 +19,8 @@ public:
     Shadow();
     ~Shadow();
 
-    void Init(IGraphicsContext& context, unsigned int width = 2048, unsigned int height = 2048,
-              unsigned int pointWidth = 1024, unsigned int pointHeight = 1024);
+    void Initialize(IGraphicsContext& context, unsigned int width = 2048, unsigned int height = 2048,
+                    bool manualControl = false, unsigned int pointWidth = 1024, unsigned int pointHeight = 1024);
     void Shutdown();
 
     void BindFBO_Dir(int index);

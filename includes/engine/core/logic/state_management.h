@@ -27,7 +27,7 @@ class StateMachine
 public:
     StateMachine();
 
-    void Init(EngineContext ctx);
+    void Initialize(EngineContext ctx);
     void Shutdown();
 
     void PushState(std::unique_ptr<State> state);

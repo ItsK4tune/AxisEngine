@@ -5,7 +5,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <core/logic/logger.h>
 
-void TransformSystem::Init(EngineContext ctx)
+void TransformSystem::Initialize(EngineContext ctx)
 {
     m_Ctx = ctx;
 }

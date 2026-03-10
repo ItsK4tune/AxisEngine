@@ -17,7 +17,7 @@ public:
     PhysicsTransformSync(Scene& scene, IPhysicsWorld& physics);
     ~PhysicsTransformSync();
 
-    void Init();
+    void Initialize();
     void SyncToPhysics();
     void SyncFromPhysics();
 

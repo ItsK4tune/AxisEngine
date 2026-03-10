@@ -12,7 +12,7 @@ public:
     GBuffer();
     ~GBuffer();
 
-    void Init(IGraphicsContext& context, int width, int height);
+    void Initialize(IGraphicsContext& context, int width, int height);
     void Shutdown();
     void Resize(int width, int height);
 

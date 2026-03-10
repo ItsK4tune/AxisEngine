@@ -39,7 +39,7 @@ class RenderSystem : public ISystem
 {
 public:
 
-    void Init(EngineContext ctx) override { m_Ctx = ctx; }
+    void Initialize(EngineContext ctx) override { m_Ctx = ctx; }
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 80; }
@@ -49,7 +49,7 @@ public:
     void RenderAlpha(Scene &scene, int width, int height, float alpha);
     void Render(Scene &scene) override;
 
-    void Init(IGraphicsContext& context, IShaderLibrary &shaderLib);
+    void Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib);
     void Shutdown();
 
     void SetEnableShadows(bool enable) { m_ShadowRenderer.SetEnableShadows(enable); }

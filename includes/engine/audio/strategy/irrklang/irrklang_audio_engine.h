@@ -17,7 +17,7 @@ public:
     IrrKlangAudioEngine();
     ~IrrKlangAudioEngine() override;
 
-    bool Init() override;
+    bool Initialize() override;
     void Update() override;
     void Shutdown() override;
 

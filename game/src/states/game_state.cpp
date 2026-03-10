@@ -1,21 +1,6 @@
 #include <states/game_state.h>
-#include <algorithm>
-#include <platform/logic/io_handler.h>
-#include <core/logic/engine_core.h>
-#include <core/logic/logger.h>
-#include <core/logic/state_management.h>
-#include <ecs/manager/entity_manager.h>
-#include <ecs/unit/core_components.h>
-#include <ecs/unit/media_components.h>
-#include <platform/logic/input_system.h>
-#include <render/type/graphics_types.h>
 #include <states/pause_state.h>
-#include <scene/logic/scene_manager.h>
-#include <resource/manager/resource_manager.h>
-#include <ecs/logic/render_system.h>
-#include <scene/logic/scene.h>
-#include <navigation/unit/navmesh_component.h>
-#include <navigation/unit/pathfollower_component.h>
+#include <algorithm>
 
 void GameState::OnEnter()
 {

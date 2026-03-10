@@ -11,7 +11,7 @@ public:
     ContentService();
     ~ContentService() = default;
 
-    void Init(EngineContext ctx);
+    void Initialize(EngineContext ctx);
 
     ResourceManager* GetResourceManager() { return m_Resources; }
     SceneManager* GetSceneManager() { return m_SceneManager; }

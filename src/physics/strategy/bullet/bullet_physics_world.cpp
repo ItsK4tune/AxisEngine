@@ -14,7 +14,7 @@ BulletPhysicsWorld::~BulletPhysicsWorld()
     Clear();
 }
 
-void BulletPhysicsWorld::Init()
+void BulletPhysicsWorld::Initialize()
 {
     m_CollisionConfig = std::make_unique<btDefaultCollisionConfiguration>();
     m_Dispatcher = std::make_unique<CustomCollisionDispatcher>(m_CollisionConfig.get());
@@ -28,7 +28,7 @@ void BulletPhysicsWorld::Init()
     m_DynamicsWorld->setGravity(btVector3(0, -9.81f, 0));
 
     m_OwnedDebugDrawer = std::make_unique<BulletDebugDrawer>();
-    m_OwnedDebugDrawer->Init();
+    m_OwnedDebugDrawer->Initialize();
     m_OwnedDebugDrawer->setDebugMode(btIDebugDraw::DBG_DrawWireframe);
     m_CurrentDebugDrawer = m_OwnedDebugDrawer.get();
     m_DynamicsWorld->setDebugDrawer(m_CurrentDebugDrawer);
