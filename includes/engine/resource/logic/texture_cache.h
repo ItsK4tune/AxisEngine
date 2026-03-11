@@ -14,6 +14,7 @@ struct TextureData {
     std::string path;
     int width, height, nrComponents;
     unsigned char* data = nullptr;
+    bool keepCpuData = false;
 };
 
 class TextureCache
@@ -22,7 +23,7 @@ public:
     TextureCache() = default;
     ~TextureCache();
 
-    void LoadTexture(const std::string& name, const std::string& path, bool async = true);
+    void LoadTexture(const std::string& name, const std::string& path, bool async = true, bool keepCpuData = false);
     std::shared_ptr<Texture> GetTexture(const std::string& name);
     void UnloadTexture(const std::string& name);
     bool IsTextureLoaded(const std::string& name) const;

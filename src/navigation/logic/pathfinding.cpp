@@ -60,6 +60,8 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
 
 uint32_t Pathfinding::FindClosestNode(const glm::vec3& pos, const NavMeshComponent& navMesh)
 {
+    if (navMesh.nodes.empty()) return 0;
+    
     uint32_t closest = 0;
     float minDist = glm::distance(pos, navMesh.nodes[0].position);
 

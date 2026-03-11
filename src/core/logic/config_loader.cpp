@@ -351,23 +351,6 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
         ss >> val;
         config.numJobThreads = val;
     }
-    else if (subCmd == "LOG_LEVEL")
-    {
-        std::string valStr;
-        if (ss >> valStr)
-        {
-            if (valStr == "NONE" || valStr == "0") config.logLevel = 0;
-            else if (valStr == "MINIMAL" || valStr == "1") config.logLevel = 1;
-            else if (valStr == "FLEX" || valStr == "2") config.logLevel = 2;
-            else if (valStr == "VERBOSE" || valStr == "3") config.logLevel = 3;
-            else if (valStr == "DEBUG" || valStr == "4") config.logLevel = 4;
-            else
-            {
-                try { config.logLevel = std::stoi(valStr); }
-                catch (...) { config.logLevel = 1; }
-            }
-        }
-    }
     else if (subCmd == "TIME_SCALE")
     {
         float val = 1.0f;

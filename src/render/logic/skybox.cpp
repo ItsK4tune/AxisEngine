@@ -5,7 +5,7 @@
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
 #include <iostream>
-#include <stb_image.h>
+#include <stb/stb_image.h>
 #include <core/logic/logger.h>
 
 IBufferManager* Skybox::s_BufferManager = nullptr;

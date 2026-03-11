@@ -81,7 +81,7 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
     bool castShadow = node.GetChildValue("CastShadow", "1") == "1" || node.GetChildValue("CastShadow", "true") == "true";
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1 1"));
-    float cr, cg, cb, ca;
+    float cr = 1, cg = 1, cb = 1, ca = 1;
     colorSS >> cr >> cg >> cb >> ca;
     glm::vec4 color(cr, cg, cb, ca);
 
@@ -211,7 +211,7 @@ void ComponentLoader::LoadLightDir(Scene &scene, entt::entity entity, const YAML
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1"));
-    float r, g, b;
+    float r = 1, g = 1, b = 1;
     colorSS >> r >> g >> b;
     l.color = glm::vec3(r, g, b);
 
@@ -234,7 +234,7 @@ void ComponentLoader::LoadLightPoint(Scene &scene, entt::entity entity, const YA
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1"));
-    float r, g, b;
+    float r = 1, g = 1, b = 1;
     colorSS >> r >> g >> b;
     l.color = glm::vec3(r, g, b);
 
@@ -261,7 +261,7 @@ void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAM
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1"));
-    float r, g, b;
+    float r = 1, g = 1, b = 1;
     colorSS >> r >> g >> b;
     l.color = glm::vec3(r, g, b);
 
@@ -294,12 +294,12 @@ void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const Y
     auto &ui = scene.registry.emplace<UITransformComponent>(entity);
 
     std::stringstream posSS(node.GetChildValue("Position", "0 0"));
-    float x, y;
+    float x = 0, y = 0;
     posSS >> x >> y;
     ui.position = glm::vec2(x, y);
 
     std::stringstream sizeSS(node.GetChildValue("Size", "100 100"));
-    float w, h;
+    float w = 0, h = 0;
     sizeSS >> w >> h;
     ui.size = glm::vec2(w, h);
 
@@ -310,7 +310,7 @@ void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const Y
     ui.usePercentage = node.GetChildValue("UsePercentage", "0") == "1" || node.GetChildValue("UsePercentage", "true") == "true";
 
     std::stringstream anchorSS(node.GetChildValue("Anchor", "0 0"));
-    float ax, ay;
+    float ax = 0, ay = 0;
     anchorSS >> ax >> ay;
     ui.anchor = glm::vec2(ax, ay);
 }
@@ -322,7 +322,7 @@ void ComponentLoader::LoadUIRenderer(Scene &scene, entt::entity entity, const YA
     auto &ui = scene.registry.emplace<UIRendererComponent>(entity);
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1 1"));
-    float r, g, b, a;
+    float r = 1, g = 1, b = 1, a = 1;
     colorSS >> r >> g >> b >> a;
     ui.color = glm::vec4(r, g, b, a);
 
@@ -355,7 +355,7 @@ void ComponentLoader::LoadUIText(Scene &scene, entt::entity entity, const YAMLNo
         LOGGER_WARN("ComponentLoader") << "UIText font not found: " << fontName;
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1"));
-    float r, g, b;
+    float r = 1, g = 1, b = 1;
     colorSS >> r >> g >> b;
     txt.color = glm::vec3(r, g, b);
 
@@ -566,17 +566,17 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
         mat.desc.shininess = std::stof(node.GetChildValue("Shininess", "32.0"));
 
         std::stringstream specSS(node.GetChildValue("Specular", "0.5 0.5 0.5"));
-        float sr, sg, sb;
+        float sr = 0, sg = 0, sb = 0;
         specSS >> sr >> sg >> sb;
         mat.desc.specular = glm::vec3(sr, sg, sb);
 
         std::stringstream emissSS(node.GetChildValue("Emission", "0 0 0"));
-        float er, eg, eb;
+        float er = 0, eg = 0, eb = 0;
         emissSS >> er >> eg >> eb;
         mat.desc.emission = glm::vec3(er, eg, eb);
 
         std::stringstream ambSS(node.GetChildValue("Ambient", "1 1 1"));
-        float ar, ag, ab;
+        float ar = 1, ag = 1, ab = 1;
         ambSS >> ar >> ag >> ab;
         mat.desc.ambient = glm::vec3(ar, ag, ab);
     }
@@ -615,7 +615,7 @@ void ComponentLoader::LoadPathFollower(Scene &scene, entt::entity entity, const 
 
     std::string ro = node.GetChildValue("RotationOffset", "0 0 0");
     std::stringstream roSS(ro);
-    float rx, ry, rz;
+    float rx = 0, ry = 0, rz = 0;
     if (roSS >> rx >> ry >> rz) {
         pf.rotationOffset = glm::vec3(rx, ry, rz);
     } else {

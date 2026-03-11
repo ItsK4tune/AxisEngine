@@ -48,7 +48,7 @@ public:
     void Update(float dt);
 
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
-    void LoadTexture(const std::string& name, const std::string& path, bool async = true);
+    void LoadTexture(const std::string& name, const std::string& path, bool async = true, bool keepCpuData = false) override;
     void UnloadTexture(const std::string& name);
 
     void LoadModel(const std::string& name, const std::string& path, bool isStatic = false);

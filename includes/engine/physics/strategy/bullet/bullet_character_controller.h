@@ -26,6 +26,9 @@ public:
 
     void Activate(bool forceActivation = false) override;
 
+    void SetUserPointer(void* ptr) override;
+    void* GetUserPointer() const override;
+
     btKinematicCharacterController* GetRawController() const { return m_Controller; }
     btPairCachingGhostObject* GetGhostObject() const { return m_GhostObject; }
 

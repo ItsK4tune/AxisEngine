@@ -14,6 +14,7 @@
 #include <ecs/logic/transform_system.h>
 #include <ecs/logic/streaming_system.h>
 #include <ecs/logic/video_system.h>
+#include <ecs/logic/terrain_system.h>
 #include <navigation/logic/navigation_system.h>
 #include <ecs/logic/dummy_test_system.h>
 #include <platform/logic/input_system.h>
@@ -78,6 +79,7 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     RegisterSystem(std::make_unique<StreamingSystem>());
     RegisterSystem(std::make_unique<VideoSystem>());
     RegisterSystem(std::make_unique<NavigationSystem>());
+    RegisterSystem(std::make_unique<TerrainSystem>());
     RegisterSystem(std::make_unique<DummyTestSystem>());
 
     for (auto& sys : m_Systems) {
@@ -99,14 +101,12 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     m_DebugSystem->Initialize(m_Ctx);
 }
 
-
 void SystemManager::Shutdown()
 {
     LOGGER_INFO("SystemManager") << "Shutting down systems...";
     for (auto& sys : m_Systems) {
         sys->Shutdown();
     }
-    GetSystem<RenderSystem>()->Shutdown();
     postProcess.Shutdown();
 }
 

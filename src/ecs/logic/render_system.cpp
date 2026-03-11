@@ -433,7 +433,9 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
                     currentModel = nullptr;
                     currentMaterial = nullptr;
 
-                    glm::mat4 mtx = item.worldMatrix;
+                    if (!item.activeModel) continue;
+
+                    glm::mat4 mtx = item.worldMatrix * item.activeModel->GetRootTransform();
                     glm::vec4 tc = renderer.color;
                     bool noTex = m_DebugNoTexture;
                     Model* actModel = item.activeModel;
@@ -441,24 +443,26 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
                     bool enableBlend = transparencyState || item.isTransparent;
                     BlendFactor bSrc = material ? material->desc.blendSrc : BlendFactor::SrcAlpha;
                     BlendFactor bDst = material ? material->desc.blendDst : BlendFactor::OneMinusSrcAlpha;
-                    bool matHasTextures = (material && (material->gpu.albedoMap != 0 || material->gpu.normalMap != 0 || material->gpu.metallicMap != 0 || material->gpu.roughnessMap != 0 || material->gpu.aoMap != 0 || material->gpu.emissiveMap != 0));
 
+                    bool matHasTextures = (material && (material->gpu.albedoMap != 0 || material->gpu.normalMap != 0 || material->gpu.metallicMap != 0 || material->gpu.roughnessMap != 0 || material->gpu.aoMap != 0 || material->gpu.emissiveMap != 0));
                     std::vector<glm::mat4> transforms;
                     if (isAnimated) {
                         auto &animComp = scene.registry.get<AnimationComponent>(entity);
                         if (animComp.animator) transforms = animComp.animator->GetFinalBoneMatrices();
                     } else if (isNonStatic && actModel) {
-                        transforms.assign(200, actModel->GetRootTransform());
+                        transforms.assign(100, actModel->GetRootTransform());
                     }
 
-                    threadQueue.Submit([=, &scene]() {
-                        actShader->setMat4("model", mtx);
-                        actShader->setVec4("tintColor", tc);
-                        if (!transforms.empty()) actShader->setMat4Array("finalBonesMatrices", transforms);
-                        if (enableBlend && matHasTextures) context->GetRenderStateManager().SetBlendFunc(bSrc, bDst);
-                        materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
-                        if (actModel) actModel->Draw(*actShader, !matHasTextures);
-                    });
+                    if (actModel && actShader) {
+                        threadQueue.Submit([=, &scene]() {
+                            actShader->setMat4("model", mtx);
+                            actShader->setVec4("tintColor", tc);
+                            if (!transforms.empty()) actShader->setMat4Array("finalBonesMatrices", transforms);
+                            if (enableBlend && matHasTextures) context->GetRenderStateManager().SetBlendFunc(bSrc, bDst);
+                            materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
+                            actModel->Draw(*actShader, !matHasTextures);
+                        });
+                    }
                 }
                 else
                 {
@@ -478,13 +482,26 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
                         BlendFactor bSrc = material ? material->desc.blendSrc : BlendFactor::SrcAlpha;
                         BlendFactor bDst = material ? material->desc.blendDst : BlendFactor::OneMinusSrcAlpha;
 
-                        threadQueue.Submit([=, &scene]() {
-                            if (enableBlend && matHasTextures) context->GetRenderStateManager().SetBlendFunc(bSrc, bDst);
-                            actShader->setMat4("model", mtx);
-                            actShader->setVec4("tintColor", tc);
-                            materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
-                            if (actModel) actModel->Draw(*actShader, !matHasTextures);
-                        });
+                        if (!item.activeModel) continue;
+
+                        std::vector<glm::mat4> transforms;
+                        if (isAnimated) {
+                            auto &animComp = scene.registry.get<AnimationComponent>(entity);
+                            if (animComp.animator) transforms = animComp.animator->GetFinalBoneMatrices();
+                        } else if (isNonStatic && actModel) {
+                            transforms.assign(100, actModel->GetRootTransform());
+                        }
+
+                        if (actModel && actShader) {
+                            threadQueue.Submit([=, &scene]() {
+                                if (enableBlend && matHasTextures) context->GetRenderStateManager().SetBlendFunc(bSrc, bDst);
+                                actShader->setMat4("model", mtx);
+                                actShader->setVec4("tintColor", tc);
+                                if (!transforms.empty()) actShader->setMat4Array("finalBonesMatrices", transforms);
+                                materialRenderer->SetupMaterialUniforms(actShader, entity, scene, noTex);
+                                actModel->Draw(*actShader, !matHasTextures);
+                            });
+                        }
                     }
                     else
                     {

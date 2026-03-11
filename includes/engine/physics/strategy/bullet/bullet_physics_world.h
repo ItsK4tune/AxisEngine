@@ -31,7 +31,6 @@ public:
             entt::entity eB = (entt::entity)(uintptr_t)ptrB;
             
             bool result = m_FilterCallback(eA, eB);
-            std::cout << "[DEBUG] needsCollision: " << (uint32_t)eA << " vs " << (uint32_t)eB << " -> " << result << std::endl;
             return result;
         }
 
@@ -82,6 +81,7 @@ public:
     std::shared_ptr<ICharacterController> CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight = 0.35f) override;
     std::shared_ptr<ICollisionShape> CreateCompoundShape() override;
     std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) override;
+    std::shared_ptr<ICollisionShape> CreateHeightfieldShape(const std::vector<float>& heights, int width, int length, float minHeight, float maxHeight) override;
     void AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child, const glm::vec3& pos, const glm::quat& rot) override;
 
     void AddConstraint(std::shared_ptr<IConstraint> constraint) override;

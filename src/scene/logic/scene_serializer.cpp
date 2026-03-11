@@ -209,7 +209,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                        << tNode->GetChildValue("Rotation", "0 0 0") << " "
                        << tNode->GetChildValue("Scale", "1 1 1");
 
-                    float x, y, z, rx, ry, rz, sx, sy, sz;
+                    float x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1;
                     ss >> x >> y >> z >> rx >> ry >> rz >> sx >> sy >> sz;
                     
                     glm::vec3 pos(x, y, z);

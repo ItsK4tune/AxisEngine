@@ -3,7 +3,7 @@
 #include <render/interface/i_texture_manager.h>
 #include <iostream>
 #include <resource/logic/texture_cache.h>
-#include <stb_image.h>
+#include <stb/stb_image.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/event_system.h>
@@ -15,10 +15,10 @@ TextureCache::~TextureCache()
     Clear();
 }
 
-void TextureCache::LoadTexture(const std::string& name, const std::string& path, bool async)
+void TextureCache::LoadTexture(const std::string& name, const std::string& path, bool async, bool keepCpuData)
 {
     std::string fullPath = FileSystem::getPath(path);
-
+    
     if (async)
     {
         auto promise = std::make_shared<std::promise<TextureData>>();
@@ -27,10 +27,11 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             m_AsyncLoads.push_back(promise->get_future());
         }
 
-        JobSystem::Instance().Execute([promise, name, fullPath]() {
+        JobSystem::Instance().Execute([promise, name, fullPath, keepCpuData]() {
             TextureData data;
             data.name = name;
             data.path = fullPath;
+            data.keepCpuData = keepCpuData;
             stbi_set_flip_vertically_on_load(true);
             data.data = stbi_load(fullPath.c_str(), &data.width, &data.height, &data.nrComponents, 0);
             promise->set_value(data);
@@ -47,28 +48,17 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
 
         if (data)
         {
-
             TextureFormat format = TextureFormat::RGBA;
-            InternalFormat internalFormat = InternalFormat::RGBA8;
-
-            if (nrComponents == 1) {
-                format = TextureFormat::Red;
-                const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
-            } else if (nrComponents == 3) {
-                format = TextureFormat::RGB;
-                const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
-            } else if (nrComponents == 4) {
-                format = TextureFormat::RGBA;
-                const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGBA8;
-            }
-
-            tm.BindTexture(TextureType::Texture2D, textureID);
+            if (nrComponents == 1) format = TextureFormat::Red;
+            else if (nrComponents == 3) format = TextureFormat::RGB;
+            else if (nrComponents == 4) format = TextureFormat::RGBA;
 
             InternalFormat iFormat = InternalFormat::RGBA8;
             if (nrComponents == 1) iFormat = InternalFormat::RGB8;
             else if (nrComponents == 3) iFormat = InternalFormat::RGB8;
             else if (nrComponents == 4) iFormat = InternalFormat::RGBA8;
 
+            tm.BindTexture(TextureType::Texture2D, textureID);
             tm.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format, DataType::UnsignedByte, data);
             tm.GenerateMipmap(TextureType::Texture2D);
 
@@ -77,23 +67,31 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
 
-            stbi_image_free(data);
-
             auto tex = std::make_shared<Texture>();
             tex->id = textureID;
             tex->type = "texture_diffuse";
             tex->path = path;
+            tex->width = width;
+            tex->height = height;
+            tex->nrComponents = nrComponents;
+
+            if (keepCpuData) {
+                tex->pixelData = data;
+            } else {
+                stbi_image_free(data);
+            }
+
             {
                 std::lock_guard<std::mutex> lock(m_CacheMutex);
                 m_Textures[name] = tex;
             }
 
-            LOGGER_INFO("TextureCache") << "Loaded Texture: " << name;
+            LOGGER_INFO("TextureCache") << "Loaded Texture: " << name << (keepCpuData ? " (CPU data kept)" : "");
             EventSystem::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
         }
+        else
         {
             LOGGER_ERROR("TextureCache") << "Failed to load Texture: " << path;
-            stbi_image_free(data);
             EventSystem::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
         }
     }
@@ -163,20 +161,29 @@ void TextureCache::Update()
                 tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
                 tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
 
-                stbi_image_free(data.data);
-
                 auto tex = std::make_shared<Texture>();
                 tex->id = textureID;
                 tex->type = "texture_diffuse";
                 tex->path = data.path;
+                tex->width = data.width;
+                tex->height = data.height;
+                tex->nrComponents = data.nrComponents;
+
+                if (data.keepCpuData) {
+                    tex->pixelData = data.data;
+                } else {
+                    stbi_image_free(data.data);
+                }
+
                 {
                     std::lock_guard<std::mutex> lock(m_CacheMutex);
                     m_Textures[data.name] = tex;
                 }
 
-                LOGGER_INFO("TextureCache") << "Async Texture loaded: " << data.name;
+                LOGGER_INFO("TextureCache") << "Async Texture loaded: " << data.name << (data.keepCpuData ? " (CPU data kept)" : "");
                 EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", true});
             }
+            else
             {
                 LOGGER_ERROR("TextureCache") << "Failed to async load Texture: " << data.path;
                 EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", false});

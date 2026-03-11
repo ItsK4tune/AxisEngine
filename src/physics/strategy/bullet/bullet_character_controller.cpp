@@ -62,3 +62,14 @@ void BulletCharacterController::Activate(bool forceActivation)
 {
     m_GhostObject->activate(forceActivation);
 }
+
+void BulletCharacterController::SetUserPointer(void* ptr)
+{
+    if (m_GhostObject)
+        m_GhostObject->setUserPointer(ptr);
+}
+
+void* BulletCharacterController::GetUserPointer() const
+{
+    return m_GhostObject ? m_GhostObject->getUserPointer() : nullptr;
+}

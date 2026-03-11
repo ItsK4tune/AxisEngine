@@ -1,15 +1,6 @@
-#include <core/logic/app_framework.h>
-#include <entt/entt.hpp>
-#include <ecs/unit/media_components.h>
-#include <ecs/unit/ui_components.h>
-#include <ecs/manager/entity_manager.h>
-#include <scene/logic/scene.h>
-#include <glm/glm.hpp>
-#include <glm/gtx/compatibility.hpp>
+#include <axis_build.h>
+#include <axis_component.h>
 #include <iostream>
-#include <script/logic/script_registry.h>
-#include <script/logic/scriptable.h>
-#include <script/logic/input_scriptable.h>
 
 class UIButton : public InputScriptable
 {

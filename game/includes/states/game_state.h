@@ -1,6 +1,7 @@
 #pragma once
 
-#include <axis.h>
+#include <axis_build.h>
+#include <axis_commons.h>
 
 class GameState : public State
 {

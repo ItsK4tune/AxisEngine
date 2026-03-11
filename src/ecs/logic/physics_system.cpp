@@ -36,31 +36,31 @@ void PhysicsSystem::Update(Scene &scene, float dt)
         m_LastScene = &scene;
         m_LastPhysicsWorld = m_Ctx.physics;
 
-        m_Ctx.physics->SetCollisionFilter([&scene](entt::entity eA, entt::entity eB) -> bool {
-            if (!scene.registry.valid(eA) || !scene.registry.valid(eB))
+        m_Ctx.physics->SetCollisionFilter([pRegistry = &scene.registry](entt::entity eA, entt::entity eB) -> bool {
+            if (!pRegistry || !pRegistry->valid(eA) || !pRegistry->valid(eB))
                 return false;
 
-            if (scene.registry.all_of<RigidBodyComponent>(eA)) {
-                if (!scene.registry.get<RigidBodyComponent>(eA).isCollisionEnabled)
+            if (pRegistry->all_of<RigidBodyComponent>(eA)) {
+                if (!pRegistry->get<RigidBodyComponent>(eA).isCollisionEnabled)
                     return false;
             }
 
-            if (scene.registry.all_of<RigidBodyComponent>(eB)) {
-                if (!scene.registry.get<RigidBodyComponent>(eB).isCollisionEnabled)
+            if (pRegistry->all_of<RigidBodyComponent>(eB)) {
+                if (!pRegistry->get<RigidBodyComponent>(eB).isCollisionEnabled)
                     return false;
             }
 
             std::string tagA = "", nameA = "";
             std::string tagB = "", nameB = "";
 
-            if (scene.registry.all_of<InfoComponent>(eA)) {
-                auto& info = scene.registry.get<InfoComponent>(eA);
+            if (pRegistry->all_of<InfoComponent>(eA)) {
+                auto& info = pRegistry->get<InfoComponent>(eA);
                 tagA = info.tag;
                 nameA = info.name;
             }
             
-            if (scene.registry.all_of<InfoComponent>(eB)) {
-                auto& info = scene.registry.get<InfoComponent>(eB);
+            if (pRegistry->all_of<InfoComponent>(eB)) {
+                auto& info = pRegistry->get<InfoComponent>(eB);
                 tagB = info.tag;
                 nameB = info.name;
             }

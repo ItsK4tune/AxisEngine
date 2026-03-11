@@ -1,14 +1,16 @@
 #include <states/game_state.h>
 #include <states/pause_state.h>
-#include <ecs/unit/light_components.h>
-#include <core/manager/system_manager.h>
+#include <axis_component.h>
+#include <axis_system.h>
+#include <axis_util.h>
+#include <axis_platform.h>
+#include <axis_core.h>
 #include <algorithm>
 
 void GameState::OnEnter()
 {
     LoadScene("scenes/game3.axs");
     SetCursorMode(CursorMode::Normal);
-
     LoadInputBindings("resources/configs/binding.axs");
 
     EnablePhysics(true);
@@ -18,178 +20,130 @@ void GameState::OnEnter()
 
     GetRenderSystem().SetFilterLayerMask(1);
 
-    // --- NavMesh Demo Setup ---
-    // Navigation & Pathfinding Setup
+    // Setup PathFollower for both entities
+    auto ally = EntityManager::FindByName(GetScene(), "Woman_Ally");
+    if (ally != entt::null) GetScene().registry.emplace<PathFollowerComponent>(ally);
+    
+    auto enemy = EntityManager::FindByName(GetScene(), "Woman_Enemy");
+    if (enemy != entt::null) GetScene().registry.emplace<PathFollowerComponent>(enemy);
+
+    // --- Terrain Setup ---
+    auto terrainEntity = EntityManager::CreateEntity(GetScene(), "DemoTerrain");
+    auto& info = GetScene().registry.emplace<InfoComponent>(terrainEntity);
+    info.name = "DemoTerrain";
+    info.tag = "Walkable";
+
+    auto& terrain = GetScene().registry.emplace<TerrainComponent>(terrainEntity);
+    auto& terrainPos = GetScene().registry.emplace<PositionComponent>(terrainEntity);
+    terrainPos.value = glm::vec3(-256.0f, -10.0f, -256.0f);
+
+    terrain.terrainSize = glm::vec3(512.0f, 50.0f, 512.0f);
+    terrain.resolution = 513; terrain.chunkSize = 33;
+    terrain.maxHeight = 50.0f; terrain.textureScale = 20.0f;
+
+    auto& res = GetResourceManager();
+    res.LoadShader("terrain", "includes/engine/asset/shaders/terrain.vs", "includes/engine/asset/shaders/terrain.fs");
+    res.LoadTexture("heightmap_demo", "resources/textures/heightmap_demo.png", false, true);
+    res.LoadTexture("splatmap_demo", "resources/textures/splatmap_demo.png", false);
+    res.LoadTexture("grass", "resources/textures/grass.png", false);
+    res.LoadTexture("dirt", "resources/textures/dirt.png", false);
+    res.LoadTexture("rock", "resources/textures/rock.png", false);
+    res.LoadTexture("snow", "resources/textures/snow.png", false);
+
+    auto hm = res.GetTexture("heightmap_demo");
+    auto sm = res.GetTexture("splatmap_demo");
+    auto g = res.GetTexture("grass");
+    auto d = res.GetTexture("dirt");
+    auto r = res.GetTexture("rock");
+    auto sn = res.GetTexture("snow");
+    
+    if (hm && sm && g && d && r && sn) {
+        terrain.heightMap = hm->id;
+        terrain.heightMapName = "heightmap_demo";
+        terrain.splatMap = sm->id;
+        terrain.diffuseLayers.push_back(g->id);
+        terrain.diffuseLayers.push_back(d->id);
+        terrain.diffuseLayers.push_back(r->id);
+        terrain.diffuseLayers.push_back(sn->id);
+        terrain.generatePhysics = true;
+        terrain.isWalkable = true;
+        terrain.needsRebuild = true;
+    }
+
+    // Rebuild NavMesh on start
     auto navEntity = EntityManager::CreateEntity(GetScene(), "NavMesh");
     auto& navMesh = GetScene().registry.emplace<NavMeshComponent>(navEntity);
     navMesh.needsRebuild = true;
-
-    auto womanEnt = EntityManager::FindByName(GetScene(), "Woman");
-    if (womanEnt != entt::null) {
-        GetScene().registry.emplace<PathFollowerComponent>(womanEnt);
-    }
 }
 
 void GameState::OnUpdate(float dt)
 {
     auto& input = GetInputManager();
 
-    if (input.GetActionDown("LoadNextScene"))
-        QueueLoadScene("scenes/game2.axs");
+    if (input.GetActionDown("LoadNextScene")) QueueLoadScene("scenes/game2.axs");
+    if (input.GetActionDown("ReloadScene")) QueuePopScene();
+    if (input.GetActionDown("Pause")) m_Ctx.runtime->GetStateMachine().PushState(std::make_unique<PauseState>());
 
-    if (input.GetActionDown("ReloadScene"))
-        QueuePopScene();
-        
-    if (input.GetActionDown("Pause"))
-        m_Ctx.runtime->GetStateMachine().PushState(std::make_unique<PauseState>());
-
-    bool selectPressed = input.GetActionDown("Select");
-    bool movePressed = input.GetActionDown("MoveTo");
-
-    if (selectPressed || movePressed)
+    // Selection & Movement Logic (Combined into Mouse Left Click)
+    if (input.GetActionDown("Select")) 
     {
         entt::entity camEntity = EntityManager::GetActiveCamera(GetScene());
-        if (camEntity != entt::null && EntityManager::HasComponent<CameraComponent>(GetScene(), camEntity))
+        if (camEntity != entt::null)
         {
             auto& camComp = EntityManager::GetComponent<CameraComponent>(GetScene(), camEntity);
-            glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(GetScene(), camEntity)) ? EntityManager::GetComponent<PositionComponent>(GetScene(), camEntity).value : glm::vec3(0.0f);
+            glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(GetScene(), camEntity)) ? 
+                                EntityManager::GetComponent<PositionComponent>(GetScene(), camEntity).value : glm::vec3(0.0f);
             
             float mouseX = GetMouse().GetLastX();
             float mouseY = GetMouse().GetLastY();
             float screenW = (float)m_Ctx.io->GetMonitorManager().GetWidth();
             float screenH = (float)m_Ctx.io->GetMonitorManager().GetHeight();
             
-            if (screenW > 0.0f && screenH > 0.0f)
+            float x = (2.0f * mouseX) / (screenW > 0 ? screenW : 1.0f) - 1.0f;
+            float y = 1.0f - (2.0f * mouseY) / (screenH > 0 ? screenH : 1.0f);
+            
+            glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+            glm::vec4 rayEye = glm::inverse(camComp.projectionMatrix) * rayClip;
+            rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+            glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
+            
+            RayHit hit = m_Ctx.physics->Raycast(camPos, rayDir, 1000.0f);
+            if (hit.hasHit)
             {
-                float x = (2.0f * mouseX) / screenW - 1.0f;
-                float y = 1.0f - (2.0f * mouseY) / screenH;
-                
-                glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
-                glm::vec4 rayEye = glm::inverse(camComp.projectionMatrix) * rayClip;
-                rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
-                glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
-                
-                if (!glm::any(glm::isnan(camPos)) && !glm::any(glm::isnan(rayDir)))
+                auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity);
+                if (info && (info->tag == "ally" || info->tag == "enemy"))
                 {
-                    RayHit hit = m_Ctx.physics->Raycast(camPos, rayDir, 1000.0f);
-                    if (hit.hasHit)
+                    m_SelectedEntity = hit.entity;
+                    LOGGER_INFO("GameState") << "Selected: " << info->name;
+                }
+                else if (m_SelectedEntity != entt::null)
+                {
+                    // If terrain (or something else) is clicked, move selected entity
+                    if (auto* follower = EntityManager::TryGetComponent<PathFollowerComponent>(GetScene(), m_SelectedEntity))
                     {
-                        if (movePressed) 
-                        {
-                             LOGGER_DEBUG("GameState") << "MoveTo triggered at: " << hit.hitPoint.x << ", " << hit.hitPoint.y << ", " << hit.hitPoint.z;
-                             auto followerView = GetScene().registry.view<PathFollowerComponent>();
-                             for (auto ent : followerView) {
-                                 auto& follower = followerView.get<PathFollowerComponent>(ent);
-                                 follower.targetPosition = hit.hitPoint;
-                                 follower.pathPending = true;
-                             }
-                        }
-                        else if (selectPressed && EntityManager::IsValid(GetScene(), hit.entity))
-                        {
-                            m_SelectedEntity = hit.entity;
-                            if (auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity))
-                            {
-                                LOGGER_INFO("GameState") << "Selected entity: " << info->name;
-                            }
-                        }
+                        follower->targetPosition = hit.hitPoint;
+                        follower->pathPending = true;
+                        LOGGER_INFO("GameState") << "Move Command: target=(" << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z << ") entity=" << (uint32_t)m_SelectedEntity;
                     }
                 }
             }
         }
     }
 
-    auto animView = GetScene().registry.view<AnimationComponent>();
-    for (auto entity : animView)
-    {
-        if (entity != m_SelectedEntity) continue;
-
-        auto& anim = animView.get<AnimationComponent>(entity);
-        if (!anim.animator) continue;
-
-        if (input.GetActionDown("AnimPlayPrimary") && !anim.animations.empty())
-        {
-            LOGGER_INFO("GameState") << "AnimPlayPrimary - Playing animation: " << anim.animations[0];
-            anim.animator->PlayAnimation(anim.animations[0]);
-        }
-        if (input.GetActionDown("AnimPlaySecondary") && anim.animations.size() >= 2)
-        {
-            LOGGER_INFO("GameState") << "AnimPlaySecondary - Playing animation: " << anim.animations[1];
-            anim.animator->PlayAnimation(anim.animations[1]);
-        }
-        if (input.GetActionDown("AnimCrossfadeSec") && anim.animations.size() >= 2)
-        {
-            LOGGER_INFO("GameState") << "AnimCrossfadeSec - Crossfading to: " << anim.animations[1];
-            anim.animator->CrossFade(anim.animations[1], 0.5f);
-        }
-        if (input.GetActionDown("AnimCrossfadePri") && !anim.animations.empty())
-        {
-            LOGGER_INFO("GameState") << "AnimCrossfadePri - Crossfading to: " << anim.animations[0];
-            anim.animator->CrossFade(anim.animations[0], 0.5f);
-        }
-
-        if (input.GetActionDown("AnimSpeedDown"))
-        {
-            anim.speed = (std::max)(0.1f, anim.speed - 0.1f);
-            anim.animator->SetSpeed(anim.speed);
-        }
-        if (input.GetActionDown("AnimSpeedUp"))
-        {
-            anim.speed += 0.1f;
-            anim.animator->SetSpeed(anim.speed);
-        }
-        if (input.GetActionDown("AnimSpeedReset"))
-        {
-            anim.speed = 1.0f;
-            anim.animator->SetSpeed(anim.speed);
-        }
-    }
-
-    // --- Demo: Shader Port Logic ---
+    // --- Shader Port Management ---
     auto demoView = GetScene().registry.view<InfoComponent, MaterialComponent>();
     for (auto entity : demoView)
     {
         auto [info, mat] = demoView.get<InfoComponent, MaterialComponent>(entity);
         
-        if (info.tag == "enemy")
-        {
-            mat.desc.ports.data[0] = 1.0f; // 1.0 = Enemy (Red in shader)
-        }
-        else if (info.tag == "ally")
-        {
-            mat.desc.ports.data[0] = 2.0f; // 2.0 = Ally (Green in shader)
-        }
+        // Port[0]: Team ID (1=Enemy/Red, 2=Ally/Blue)
+        if (info.tag == "enemy") mat.desc.ports.data[0] = 1.0f;
+        else if (info.tag == "ally") mat.desc.ports.data[0] = 2.0f;
+        else mat.desc.ports.data[0] = 0.0f;
+
+        // Port[1]: Selection Glow (1.0=On)
+        mat.desc.ports.data[1] = (entity == m_SelectedEntity) ? 1.0f : 0.0f;
     }
-
-    // --- Demo: Day-Night Cycle ---
-    m_DayNightTimer += dt;
-    float cycleTime = 1.0f;
-    float dayFactor = (fmod(m_DayNightTimer, cycleTime) / cycleTime); // 0.0 to 1.0
-    float angle = dayFactor * 2.0f * glm::pi<float>();
-
-    // Sun direction: rotates around X axis
-    glm::vec3 sunDir = glm::normalize(glm::vec3(0.0f, glm::sin(angle), glm::cos(angle)));
-    float sunIntensity = glm::clamp(glm::sin(angle) * 2.0f, 0.0f, 2.0f); // Brightest at peak, dark at night
-
-    auto lightView = GetScene().registry.view<DirectionalLightComponent>();
-    for (auto entity : lightView)
-    {
-        auto& light = lightView.get<DirectionalLightComponent>(entity);
-        light.direction = sunDir;
-        light.intensity = sunIntensity;
-        
-        // Change color slightly based on time (Sunset orange)
-        if (glm::sin(angle) < 0.2f && glm::sin(angle) > -0.2f) {
-            light.color = glm::vec3(1.0f, 0.5f, 0.2f); // Sunset/Sunrise
-        } else if (glm::sin(angle) > 0.2f) {
-            light.color = glm::vec3(1.0f, 1.0f, 0.9f); // Day
-        } else {
-            light.color = glm::vec3(0.1f, 0.1f, 0.2f); // Night (Moonlight)
-            light.intensity = 0.1f;
-        }
-    }
-
-    // Update exposure/bloom if needed (Optional: sync with day)
-    m_Ctx.systems->GetPostProcess().SetExposure(glm::mix(0.5f, 1.2f, glm::clamp(glm::sin(angle), 0.0f, 1.0f)));
 }
 
 

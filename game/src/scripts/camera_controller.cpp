@@ -1,12 +1,6 @@
 #include <scripts/camera_controller.h>
-#include <core/logic/app_framework.h>
-#include <platform/logic/io_handler.h>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/matrix_transform.hpp>
-#include <platform/logic/input_system.h>
-#include <script/logic/script_registry.h>
-#include <scene/logic/scene.h>
-#include <ecs/unit/core_components.h>
+#include <axis_component.h>
+#include <axis_platform.h>
 
 REGISTER_SCRIPT(CameraController)
 

@@ -73,10 +73,10 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
 }
 
-void ResourceManager::LoadTexture(const std::string &name, const std::string &path, bool async)
+void ResourceManager::LoadTexture(const std::string &name, const std::string &path, bool async, bool keepCpuData)
 {
-    LOGGER_INFO("ResourceManager") << "Loading Texture: " << name << " from " << path << (async ? " (async)" : "");
-    m_TextureCache.LoadTexture(name, FileSystem::getPath(path), async);
+    LOGGER_INFO("ResourceManager") << "Loading Texture: " << name << " from " << path << (async ? " (async)" : "") << (keepCpuData ? " (keep CPU data)" : "");
+    m_TextureCache.LoadTexture(name, FileSystem::getPath(path), async, keepCpuData);
 
     m_ResourceWatcher.Watch(name, FileSystem::getPath(path), "Texture");
 }

@@ -12,6 +12,7 @@ enum class CollisionShapeType
     Sphere,
     Capsule,
     Mesh,
+    Heightfield,
     ConvexHull,
     CompoundHull
 };

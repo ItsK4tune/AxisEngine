@@ -1,4 +1,7 @@
 #include <states/pause_state.h>
+#include <axis_component.h>
+#include <axis_platform.h>
+#include <axis_core.h>
 
 void PauseState::OnEnter()
 {

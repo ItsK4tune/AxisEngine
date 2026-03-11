@@ -22,7 +22,7 @@ void NavigationSystem::UpdateNavMesh(Scene& scene)
         auto& navMesh = view.get<NavMeshComponent>(entity);
         if (navMesh.needsRebuild) {
             LOGGER_INFO("NavigationSystem") << "NavMesh rebuild triggered for entity " << (uint32_t)entity;
-            NavMeshGenerator::Generate(scene, navMesh);
+            NavMeshGenerator::Generate(scene, navMesh, m_Ctx.resources, m_WalkableTag);
             LOGGER_INFO("NavigationSystem") << "NavMesh state: Nodes=" << navMesh.nodes.size() << ", Tris=" << navMesh.triangles.size();
         }
     }
@@ -46,32 +46,52 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
         auto& follower = view.get<PathFollowerComponent>(entity);
 
         if (follower.pathPending) {
-            if (globalNavMesh) {
-                LOGGER_INFO("NavigationSystem") << "Pathfinding request: Start=" << pos.value.x << "," << pos.value.z << " End=" << follower.targetPosition.x << "," << follower.targetPosition.z;
+            if (globalNavMesh && !globalNavMesh->nodes.empty()) {
+                LOGGER_INFO("NavigationSystem") << "Pathfinding request for entity " << (uint32_t)entity 
+                            << ": Start=(" << pos.value.x << "," << pos.value.y << "," << pos.value.z << ")"
+                            << " Target=(" << follower.targetPosition.x << "," << follower.targetPosition.y << "," << follower.targetPosition.z << ")"
+                            << " NavMeshNodes=" << globalNavMesh->nodes.size();
+                            
                 follower.currentPath = Pathfinding::FindPath(pos.value, follower.targetPosition, *globalNavMesh);
                 follower.currentPathIndex = 0;
                 follower.pathPending = false;
                 follower.isMoving = !follower.currentPath.empty();
-                LOGGER_INFO("NavigationSystem") << "Pathfound: " << (follower.isMoving ? "YES" : "NO") << " Nodes=" << follower.currentPath.size();
-            } else {
-                LOGGER_WARN("NavigationSystem") << "Path pending but no global NavMesh found!";
-                follower.pathPending = false;
-            }
-        }
-
-        // --- Path Smoothing (Farthest Visible Node) ---
-        if (follower.isMoving && follower.currentPathIndex + 1 < follower.currentPath.size()) {
-            for (size_t nextIdx = follower.currentPath.size() - 1; nextIdx > follower.currentPathIndex; --nextIdx) {
-                glm::vec3 startPos = pos.value + glm::vec3(0, 0.5f, 0);
-                glm::vec3 targetPos = follower.currentPath[nextIdx] + glm::vec3(0, 0.5f, 0);
-                glm::vec3 dir = targetPos - startPos;
-                float dist = glm::length(dir);
-                if (dist > 0.001f) {
-                    auto hit = m_Ctx.physics->Raycast(startPos, glm::normalize(dir), dist);
-                    if (!hit.hasHit) {
-                        follower.currentPathIndex = (uint32_t)nextIdx;
-                        break;
+                
+                // --- One-time Path Smoothing ---
+                if (follower.isMoving && follower.currentPath.size() > 2) {
+                    std::vector<glm::vec3> smoothedPath;
+                    smoothedPath.push_back(follower.currentPath[0]);
+                    
+                    size_t curr = 0;
+                    while (curr < follower.currentPath.size() - 1) {
+                        size_t nextFound = curr + 1;
+                        for (size_t test = follower.currentPath.size() - 1; test > curr + 1; --test) {
+                            glm::vec3 start = follower.currentPath[curr] + glm::vec3(0, 0.5f, 0);
+                            glm::vec3 end = follower.currentPath[test] + glm::vec3(0, 0.5f, 0);
+                            glm::vec3 dir = end - start;
+                            float dist = glm::length(dir);
+                            if (dist > 0.001f) {
+                                auto hit = m_Ctx.physics->Raycast(start, glm::normalize(dir), dist);
+                                if (!hit.hasHit) {
+                                    nextFound = test;
+                                    break;
+                                }
+                            }
+                        }
+                        smoothedPath.push_back(follower.currentPath[nextFound]);
+                        curr = nextFound;
                     }
+                    follower.currentPath = smoothedPath;
+                }
+
+                LOGGER_INFO("NavigationSystem") << "Pathfinding Result: " << (follower.isMoving ? "SUCCESS" : "FAILED") 
+                            << " PathSize=" << follower.currentPath.size();
+            } else {
+                if (follower.pathPending) {
+                    LOGGER_WARN("NavigationSystem") << "Path pending but NavMesh is empty or missing!";
+                    follower.pathPending = false;
+                    follower.isMoving = false;
+                    follower.currentPath.clear();
                 }
             }
         }
@@ -88,15 +108,23 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     follower.currentPath.clear();
                 }
             } else {
-                glm::vec3 moveDir = glm::normalize(glm::vec3(diff.x, 0.0f, diff.z));
-                pos.value += moveDir * follower.moveSpeed * dt;
+                glm::vec3 moveDir = glm::vec3(diff.x, 0.0f, diff.z);
+                float moveDist = glm::length(moveDir);
+                if (moveDist > 0.001f) {
+                    moveDir /= moveDist;
+                    pos.value += moveDir * follower.moveSpeed * dt;
+                } else {
+                    follower.currentPathIndex++;
+                    continue;
+                }
 
-                // Orientation with Surface Alignment & Accel-based Rotation
+                // Orientation & Ground Snap
                 if (glm::length(moveDir) > 0.001f) {
                     glm::vec3 groundNormal(0, 1, 0);
-                    auto groundHit = m_Ctx.physics->Raycast(pos.value + glm::vec3(0, 1.0f, 0), glm::vec3(0, -1, 0), 2.0f);
+                    auto groundHit = m_Ctx.physics->Raycast(pos.value + glm::vec3(0, 10.0f, 0), glm::vec3(0, -1, 0), 20.0f);
                     if (groundHit.hasHit) {
                         groundNormal = groundHit.hitNormal;
+                        pos.value.y = groundHit.hitPoint.y;
                     }
 
                     glm::vec3 right = glm::normalize(glm::cross(moveDir, groundNormal));
@@ -113,7 +141,6 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                         targetRot = targetRot * offsetQuat;
                     }
                     
-                    // Acceleration-based rotation
                     float dot = glm::dot(glm::normalize(rot.value), glm::normalize(targetRot));
                     float angleDiff = glm::acos(glm::min(glm::abs(dot), 1.0f)) * 2.0f;
                     if (angleDiff > 0.001f) {
@@ -124,7 +151,6 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                         
                         float step = (follower.currentRotationVelocity * dt) / angleDiff;
                         if (step > 1.0f) step = 1.0f;
-                        
                         rot.value = glm::slerp(rot.value, targetRot, step);
                     } else {
                         follower.currentRotationVelocity = 0.0f;
@@ -140,6 +166,8 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
 void NavigationSystem::Render(Scene& scene)
 {
+    if (!m_ShowDebug) return;
+
     // Debug visualization of NavMesh
     auto navMeshView = scene.registry.view<NavMeshComponent>();
     for (auto entity : navMeshView) {

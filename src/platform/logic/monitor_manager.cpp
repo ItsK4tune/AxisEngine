@@ -1,6 +1,6 @@
 #include <platform/logic/monitor_manager.h>
 #include <platform/interface/i_window.h>
-#include <stb_image.h>
+#include <stb/stb_image.h>
 #include <core/logic/logger.h>
 
 MonitorManager::MonitorManager()

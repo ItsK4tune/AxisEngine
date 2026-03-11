@@ -1,6 +1,6 @@
 #pragma once
 
-#include <script/logic/scriptable.h>
+#include <axis_build.h>
 
 class CameraController : public Scriptable
 {

@@ -13,6 +13,7 @@ FIND_PATH(FREETYPE_INCLUDE_DIR ft2build.h
     /usr/local/include
     /opt/local/include
     ${CMAKE_SOURCE_DIR}/includes
+    ${CMAKE_SOURCE_DIR}/includes/freetype
 )
 
 FIND_LIBRARY(FREETYPE_LIBRARY freetype

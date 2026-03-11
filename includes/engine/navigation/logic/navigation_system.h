@@ -20,10 +20,18 @@ public:
     void Update(Scene& scene, float dt) override;
     void Render(Scene& scene) override;
 
+    void SetWalkableTag(const std::string& tag) { m_WalkableTag = tag; }
+    const std::string& GetWalkableTag() const { return m_WalkableTag; }
+
+    void SetShowDebug(bool show) { m_ShowDebug = show; }
+    bool IsShowDebug() const { return m_ShowDebug; }
+
 private:
     void UpdatePathFollowing(Scene& scene, float dt);
     void UpdateNavMesh(Scene& scene);
     
     EngineContext m_Ctx;
     bool m_Enabled = true;
+    bool m_ShowDebug = false;
+    std::string m_WalkableTag = "Walkable";
 };

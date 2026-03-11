@@ -53,10 +53,6 @@ void Application::Shutdown()
 {
     LOGGER_INFO("Application") << "Shutting down application...";
     
-    LogManager::Instance().Shutdown();
-
-    JobSystem::Instance().Shutdown();
-
     if (m_RuntimeCore)
         m_RuntimeCore->Shutdown();
 
@@ -115,7 +111,10 @@ void Application::Shutdown()
     m_ResourceManager.reset();
     m_IOHandler.reset();
 
+    // Kill thread pool and logger last
+    JobSystem::Instance().Shutdown();
     LOGGER_INFO("Application") << "Application shutdown completed.";
+    LogManager::Instance().Shutdown();
 }
 
 bool Application::Initialize(const AppConfig &config)

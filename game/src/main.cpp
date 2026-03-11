@@ -1,4 +1,4 @@
-#include <axis.h>
+#include <axis_app.h>
 #include <states/game_state.h>
 
 int main() {
@@ -8,7 +8,7 @@ int main() {
     config.title = "Axis Engine - Game";
     config.width = 1280;
     config.height = 720;
-    config.logLevel = static_cast<int>(LogLevel::Flex); // Default log level
+    config.logLevel = static_cast<int>(LogLevel::Verbose); // Default log level
 
     if (app->Initialize(config)) {
         app->PushState<GameState>();

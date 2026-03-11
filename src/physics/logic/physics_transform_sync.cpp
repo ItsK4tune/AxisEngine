@@ -84,6 +84,8 @@ void PhysicsTransformSync::SyncToPhysics()
         auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
         if (!world || !cc.controller) continue;
 
+        cc.controller->SetUserPointer((void *)(uintptr_t)entity);
+
         uint32_t currentVersion = world->version;
         if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
             m_LastSyncedVersions[entity] == currentVersion)

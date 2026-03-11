@@ -35,6 +35,12 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/includes/bullet
     ${CMAKE_SOURCE_DIR}/includes/entt
     ${CMAKE_SOURCE_DIR}/includes/engine
+    ${FREETYPE_INCLUDE_DIR}
+    ${ASSIMP_INCLUDE_DIR}
+    ${GLFW3_INCLUDE_DIR}
+    ${GLM_INCLUDE_DIR}
+    ${BULLET_INCLUDE_DIR}
+    ${IRRKLANG_INCLUDE_DIR}
     ${FFMPEG_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/game/includes
 )

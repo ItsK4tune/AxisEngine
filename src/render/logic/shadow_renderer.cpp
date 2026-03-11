@@ -111,12 +111,14 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
                         if (anim.animator) { transforms = anim.animator->GetFinalBoneMatrices(); hasAnim = true; }
                     }
 
-                    threadQueue.Submit([shaderDir, worldMat, activeModel, transforms, hasAnim]() {
-                        shaderDir->setMat4("model", worldMat);
-                        shaderDir->setBool("hasAnimation", hasAnim);
-                        if (hasAnim) shaderDir->setMat4Array("finalBonesMatrices", transforms);
-                        activeModel->Draw(*shaderDir);
-                    });
+                    if (activeModel) {
+                        threadQueue.Submit([shaderDir, worldMat, activeModel, transforms, hasAnim]() {
+                            shaderDir->setMat4("model", worldMat);
+                            shaderDir->setBool("hasAnimation", hasAnim);
+                            if (hasAnim) shaderDir->setMat4Array("finalBonesMatrices", transforms);
+                            activeModel->Draw(*shaderDir);
+                        });
+                    }
                 }
             }, &counter);
         }
@@ -181,12 +183,14 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
                             auto &anim = scene.registry.get<AnimationComponent>(item.entity);
                             if (anim.animator) { transforms = anim.animator->GetFinalBoneMatrices(); hasAnim = true; }
                         }
-                        threadQueue.Submit([shaderPoint, worldMat, activeModel, transforms, hasAnim]() {
-                            shaderPoint->setMat4("model", worldMat);
-                            shaderPoint->setBool("hasAnimation", hasAnim);
-                            if (hasAnim) shaderPoint->setMat4Array("finalBonesMatrices", transforms);
-                            activeModel->Draw(*shaderPoint);
-                        });
+                        if (activeModel) {
+                            threadQueue.Submit([shaderPoint, worldMat, activeModel, transforms, hasAnim]() {
+                                shaderPoint->setMat4("model", worldMat);
+                                shaderPoint->setBool("hasAnimation", hasAnim);
+                                if (hasAnim) shaderPoint->setMat4Array("finalBonesMatrices", transforms);
+                                activeModel->Draw(*shaderPoint);
+                            });
+                        }
                     }
                 }, &counter);
             }
@@ -247,12 +251,14 @@ void ShadowRenderer::RenderShadows(Scene &scene, const std::vector<RenderItem>& 
                             auto &anim = scene.registry.get<AnimationComponent>(item.entity);
                             if (anim.animator) { transforms = anim.animator->GetFinalBoneMatrices(); hasAnim = true; }
                         }
-                        threadQueue.Submit([shaderSpot, worldMat, activeModel, transforms, hasAnim]() {
-                            shaderSpot->setMat4("model", worldMat);
-                            shaderSpot->setBool("hasAnimation", hasAnim);
-                            if (hasAnim) shaderSpot->setMat4Array("finalBonesMatrices", transforms);
-                            activeModel->Draw(*shaderSpot);
-                        });
+                        if (activeModel) {
+                            threadQueue.Submit([shaderSpot, worldMat, activeModel, transforms, hasAnim]() {
+                                shaderSpot->setMat4("model", worldMat);
+                                shaderSpot->setBool("hasAnimation", hasAnim);
+                                if (hasAnim) shaderSpot->setMat4Array("finalBonesMatrices", transforms);
+                                activeModel->Draw(*shaderSpot);
+                            });
+                        }
                     }
                 }, &counter);
             }

@@ -10,7 +10,7 @@
 #include <render/interface/i_texture_manager.h>
 #include <iostream>
 #include <sstream>
-#include <stb_image.h>
+#include <stb/stb_image.h>
 #include <string>
 #include <render/logic/assimp_glm_helpers.h>
 #include <core/logic/filesystem.h>

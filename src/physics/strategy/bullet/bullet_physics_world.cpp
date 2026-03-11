@@ -3,6 +3,7 @@
 #include <physics/strategy/bullet/bullet_physics_world.h>
 #include <physics/strategy/bullet/bullet_character_controller.h>
 #include <BulletCollision/CollisionDispatch/btGhostObject.h>
+#include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <core/logic/logger.h>
 
 BulletPhysicsWorld::BulletPhysicsWorld()
@@ -86,9 +87,29 @@ void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
     if (!m_DynamicsWorld || !body) return;
 
     BulletRigidBody* bBody = static_cast<BulletRigidBody*>(body);
-    if (bBody->GetRaw())
+    btRigidBody* rawBody = bBody->GetRaw();
+    if (rawBody)
     {
-        m_DynamicsWorld->removeRigidBody(bBody->GetRaw());
+        // 1. Manually clear manifolds associated with this body from the dispatcher
+        btDispatcher* dispatcher = m_DynamicsWorld->getDispatcher();
+        if (dispatcher) {
+            for (int i = dispatcher->getNumManifolds() - 1; i >= 0; i--) {
+                btPersistentManifold* manifold = dispatcher->getManifoldByIndexInternal(i);
+                if (manifold && (manifold->getBody0() == rawBody || manifold->getBody1() == rawBody)) {
+                    dispatcher->clearManifold(manifold);
+                }
+            }
+        }
+
+        // 2. Clear from broadphase pair cache - MUST be done while handle is valid
+        btBroadphaseProxy* handle = rawBody->getBroadphaseHandle();
+        auto pairCache = m_DynamicsWorld->getPairCache();
+        if (handle && pairCache && dispatcher) {
+            pairCache->cleanProxyFromPairs(handle, dispatcher);
+        }
+
+        // 3. Remove from dynamics world
+        m_DynamicsWorld->removeRigidBody(rawBody);
     }
 }
 
@@ -122,7 +143,13 @@ void BulletPhysicsWorld::DebugDraw()
         m_CurrentDebugDrawer->FrameStart();
 
     if (m_DynamicsWorld)
-        m_DynamicsWorld->debugDrawWorld();
+    {
+        try {
+            m_DynamicsWorld->debugDrawWorld();
+        } catch (...) {
+            LOGGER_ERROR("BulletPhysicsWorld") << "Crash caught during debugDrawWorld";
+        }
+    }
 
     if (m_CurrentDebugDrawer)
         m_CurrentDebugDrawer->Flush();
@@ -138,7 +165,13 @@ RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir
     btVector3 btEnd(end.x, end.y, end.z);
 
     btCollisionWorld::ClosestRayResultCallback rayCallback(btStart, btEnd);
-    m_DynamicsWorld->rayTest(btStart, btEnd, rayCallback);
+    
+    try {
+        m_DynamicsWorld->rayTest(btStart, btEnd, rayCallback);
+    } catch (...) {
+        LOGGER_ERROR("BulletPhysicsWorld") << "Crash caught during rayTest";
+        return hit;
+    }
 
     if (rayCallback.hasHit())
     {
@@ -259,6 +292,32 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateMeshShape(const std::
     btBvhTriangleMeshShape* bvhShape = new btBvhTriangleMeshShape(meshInterface, useQuantizedAabbCompression);
 
     return std::make_shared<BulletMeshCollisionShape>(bvhShape, meshInterface, std::move(vs), std::move(is));
+}
+
+std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateHeightfieldShape(const std::vector<float>& heights, int width, int length, float minHeight, float maxHeight)
+{
+    if (heights.empty()) {
+        LOGGER_ERROR("BulletPhysicsWorld") << "Cannot create heightfield: heights vector is empty.";
+        return nullptr;
+    }
+
+    LOGGER_INFO("BulletPhysicsWorld") << "Creating Heightfield: " << width << "x" << length << ", range [" << minHeight << ", " << maxHeight << "]";
+
+    // Create wrapper FIRST and move data into it to ensure stable pointer
+    auto hData = heights; // Copy to local
+    auto wrapper = std::make_shared<BulletHeightfieldCollisionShape>(nullptr, std::move(hData));
+    
+    // Get stable pointer from the wrapper's member
+    float* dataPtr = wrapper->GetHeightDataPointer();
+
+    btHeightfieldTerrainShape* heightfieldShape = new btHeightfieldTerrainShape(
+        width, length, dataPtr, 1.0f, minHeight, maxHeight, 1, PHY_FLOAT, false);
+
+    wrapper->SetShape(heightfieldShape);
+
+    LOGGER_INFO("BulletPhysicsWorld") << "btHeightfieldTerrainShape created at " << (void*)heightfieldShape << " with data at " << (void*)dataPtr;
+
+    return wrapper;
 }
 
 void BulletPhysicsWorld::AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child, const glm::vec3& pos, const glm::quat& rot)

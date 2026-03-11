@@ -2,7 +2,11 @@
 
 BulletCollisionShape::~BulletCollisionShape()
 {
-    if (m_Shape) delete m_Shape;
+    // Heightfield handles its own shape deletion in its destructor to ensure memory alignment stability during destruction
+    if (m_Shape && m_Type != CollisionShapeType::Heightfield) {
+        delete m_Shape;
+        m_Shape = nullptr;
+    }
 }
 
 CollisionShapeType BulletCollisionShape::GetType() const
@@ -40,5 +44,22 @@ BulletMeshCollisionShape::~BulletMeshCollisionShape()
     {
         delete m_IndexVertexArray;
         m_IndexVertexArray = nullptr;
+    }
+}
+
+BulletHeightfieldCollisionShape::BulletHeightfieldCollisionShape(btCollisionShape* shape, const std::vector<float>& heights)
+    : BulletCollisionShape(shape, CollisionShapeType::Heightfield)
+{
+    m_AlignedHeights.resize(heights.size());
+    for (size_t i = 0; i < heights.size(); ++i) {
+        m_AlignedHeights[i] = heights[i];
+    }
+}
+
+BulletHeightfieldCollisionShape::~BulletHeightfieldCollisionShape()
+{
+    if (m_Shape) {
+        delete m_Shape;
+        m_Shape = nullptr;
     }
 }
