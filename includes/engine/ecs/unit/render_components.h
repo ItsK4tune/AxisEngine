@@ -85,6 +85,11 @@ struct SkyboxRenderComponent
     std::shared_ptr<Skybox> skybox = nullptr;
     std::weak_ptr<Shader> shader;
     bool isPrimary = true;
+
+    // IBL Maps
+    uint32_t irradianceMap = 0;
+    uint32_t prefilterMap = 0;
+    uint32_t brdfLUT = 0;
 };
 
 // --- LOD ---

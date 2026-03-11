@@ -1,5 +1,7 @@
 #include <states/game_state.h>
 #include <states/pause_state.h>
+#include <ecs/unit/light_components.h>
+#include <core/manager/system_manager.h>
 #include <algorithm>
 
 void GameState::OnEnter()
@@ -157,6 +159,37 @@ void GameState::OnUpdate(float dt)
             mat.desc.ports.data[0] = 2.0f; // 2.0 = Ally (Green in shader)
         }
     }
+
+    // --- Demo: Day-Night Cycle ---
+    m_DayNightTimer += dt;
+    float cycleTime = 1.0f;
+    float dayFactor = (fmod(m_DayNightTimer, cycleTime) / cycleTime); // 0.0 to 1.0
+    float angle = dayFactor * 2.0f * glm::pi<float>();
+
+    // Sun direction: rotates around X axis
+    glm::vec3 sunDir = glm::normalize(glm::vec3(0.0f, glm::sin(angle), glm::cos(angle)));
+    float sunIntensity = glm::clamp(glm::sin(angle) * 2.0f, 0.0f, 2.0f); // Brightest at peak, dark at night
+
+    auto lightView = GetScene().registry.view<DirectionalLightComponent>();
+    for (auto entity : lightView)
+    {
+        auto& light = lightView.get<DirectionalLightComponent>(entity);
+        light.direction = sunDir;
+        light.intensity = sunIntensity;
+        
+        // Change color slightly based on time (Sunset orange)
+        if (glm::sin(angle) < 0.2f && glm::sin(angle) > -0.2f) {
+            light.color = glm::vec3(1.0f, 0.5f, 0.2f); // Sunset/Sunrise
+        } else if (glm::sin(angle) > 0.2f) {
+            light.color = glm::vec3(1.0f, 1.0f, 0.9f); // Day
+        } else {
+            light.color = glm::vec3(0.1f, 0.1f, 0.2f); // Night (Moonlight)
+            light.intensity = 0.1f;
+        }
+    }
+
+    // Update exposure/bloom if needed (Optional: sync with day)
+    m_Ctx.systems->GetPostProcess().SetExposure(glm::mix(0.5f, 1.2f, glm::clamp(glm::sin(angle), 0.0f, 1.0f)));
 }
 
 

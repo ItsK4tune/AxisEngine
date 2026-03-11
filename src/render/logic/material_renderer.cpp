@@ -17,6 +17,31 @@ void MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity
             shader->setFloat("material.metallic", mat.desc.metallic);
             shader->setFloat("material.ao", mat.desc.ao);
             shader->setVec3("material.emission", mat.desc.emission);
+
+            // Bind IBL textures if available from Skybox
+            auto skyboxView = scene.registry.view<SkyboxRenderComponent>();
+            for (auto skyEnt : skyboxView) {
+                auto& skyComp = skyboxView.get<SkyboxRenderComponent>(skyEnt);
+                if (skyComp.isPrimary && skyComp.skybox) {
+                    auto& tm = m_Context->GetTextureManager();
+                    if (skyComp.irradianceMap != 0) {
+                        tm.ActiveTexture(TextureUnit::Texture6);
+                        tm.BindTexture(TextureType::TextureCubeMap, skyComp.irradianceMap);
+                        shader->setInt("irradianceMap", 6);
+                    }
+                    if (skyComp.prefilterMap != 0) {
+                        tm.ActiveTexture(TextureUnit::Texture7);
+                        tm.BindTexture(TextureType::TextureCubeMap, skyComp.prefilterMap);
+                        shader->setInt("prefilterMap", 7);
+                    }
+                    if (skyComp.brdfLUT != 0) {
+                        tm.ActiveTexture(TextureUnit::Texture8);
+                        tm.BindTexture(TextureType::Texture2D, skyComp.brdfLUT);
+                        shader->setInt("brdfLUT", 8);
+                    }
+                    break;
+                }
+            }
         } else {
             shader->setFloat("material.shininess", mat.desc.shininess);
             shader->setVec3("material.specular", mat.desc.specular);

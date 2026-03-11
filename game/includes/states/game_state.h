@@ -13,4 +13,5 @@ public:
 
 private:
     entt::entity m_SelectedEntity = entt::null;
+    float m_DayNightTimer = 0.0f;
 };

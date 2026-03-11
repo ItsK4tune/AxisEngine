@@ -26,9 +26,15 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
 
     shaderLib.LoadShader("fxaa", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/fxaa.fs");
     shaderLib.LoadShader("taa", "includes/engine/asset/shaders/taa.vs", "includes/engine/asset/shaders/taa.fs");
+    shaderLib.LoadShader("bloom_down", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/bloom_downsample.fs");
+    shaderLib.LoadShader("bloom_up", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/bloom_upsample.fs");
+    shaderLib.LoadShader("hdr_final", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/hdr_final.fs");
 
     m_FXAAShader = shaderLib.GetShader("fxaa");
     m_TAAShader = shaderLib.GetShader("taa");
+    m_BloomDownsampleShader = shaderLib.GetShader("bloom_down");
+    m_BloomUpsampleShader = shaderLib.GetShader("bloom_up");
+    m_HDRFinalShader = shaderLib.GetShader("hdr_final");
 }
 
 void PostProcessPipeline::InitFramebuffers()
@@ -86,6 +92,28 @@ void PostProcessPipeline::InitFramebuffers()
     if (rtm.CheckFramebufferStatus(FramebufferTarget::Framebuffer) != FramebufferStatus::Complete)
         LOGGER_ERROR("PostProcess") << "History FBO is not complete!";
 
+    // Init Bloom Mips
+    m_BloomMips.clear();
+    int bloomW = m_Width / 2;
+    int bloomH = m_Height / 2;
+    for (int i = 0; i < BLOOM_MIP_COUNT; i++) {
+        BloomMip mip;
+        mip.width = bloomW;
+        mip.height = bloomH;
+        mip.texture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
+        tm.BindTexture(TextureType::Texture2D, mip.texture->Get());
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, bloomW, bloomH, 0, TextureFormat::RGBA, DataType::Float, NULL);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Linear));
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToEdge));
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToEdge));
+
+        m_BloomMips.push_back(std::move(mip));
+        bloomW /= 2;
+        bloomH /= 2;
+        if (bloomW <= 0 || bloomH <= 0) break;
+    }
+
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
 }
 
@@ -101,6 +129,7 @@ void PostProcessPipeline::Shutdown()
     m_DepthTexture.reset();
     m_HistoryFBO.reset();
     m_HistoryTexture.reset();
+    m_BloomMips.clear();
     if (m_QuadVAO.IsValid()) { bm.DeleteVertexArrays(1, &m_QuadVAO.id); m_QuadVAO.Reset(); }
     if (m_QuadVBO.IsValid()) { bm.DeleteBuffers(1, &m_QuadVBO.id); m_QuadVBO.Reset(); }
 }
@@ -123,6 +152,18 @@ void PostProcessPipeline::Resize(int width, int height)
 
     tm.BindTexture(TextureType::Texture2D, m_HistoryTexture->Get());
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, width, height, 0, TextureFormat::RGBA, DataType::Float, NULL);
+
+    int bloomW = width / 2;
+    int bloomH = height / 2;
+    for (auto& mip : m_BloomMips) {
+        mip.width = bloomW;
+        mip.height = bloomH;
+        tm.BindTexture(TextureType::Texture2D, mip.texture->Get());
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, bloomW, bloomH, 0, TextureFormat::RGBA, DataType::Float, NULL);
+        bloomW /= 2;
+        bloomH /= 2;
+        if (bloomW <= 0 || bloomH <= 0) bloomW = bloomH = 1;
+    }
 }
 
 void PostProcessPipeline::BeginCapture()
@@ -188,16 +229,95 @@ void PostProcessPipeline::EndCapture()
         writeIdx = 1 - readIdx;
     }
 
-    rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.fbo[readIdx]->Get());
-    rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
+    if (m_BloomEnabled) {
+        RenderBloom(m_PingPong.color[readIdx]->Get());
+    }
 
-    dc.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
     dc.Clear(BufferBit::Color);
 
-    rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+    m_HDRFinalShader->use();
+    m_HDRFinalShader->setInt("screenTexture", 0);
+    m_HDRFinalShader->setInt("bloomBlur", 1);
+    m_HDRFinalShader->setFloat("exposure", m_Exposure);
+    m_HDRFinalShader->setFloat("bloomIntensity", m_BloomIntensity);
+    m_HDRFinalShader->setFloat("gamma", m_Gamma);
+    m_HDRFinalShader->setInt("tonemappingMode", m_TonemappingMode);
+
+    tm.ActiveTexture(TextureUnit::Texture0);
+    tm.BindTexture(TextureType::Texture2D, m_PingPong.color[readIdx]->Get());
+
+    tm.ActiveTexture(TextureUnit::Texture1);
+    if (m_BloomEnabled && !m_BloomMips.empty()) {
+        tm.BindTexture(TextureType::Texture2D, m_BloomMips[0].texture->Get());
+    } else {
+        tm.BindTexture(TextureType::Texture2D, m_PingPong.color[writeIdx]->Get());
+    }
+
+    bm.BindVertexArray(m_QuadVAO.id);
+    dc.DrawArrays(Primitive::Triangles, 0, 6);
 
     bm.BindVertexArray(0);
     rsm.Enable(ServerCapability::DepthTest);
+}
+
+void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
+{
+    auto& rtm = m_Context->GetRenderTargetManager();
+    auto& tm = m_Context->GetTextureManager();
+    auto& bm = m_Context->GetBufferManager();
+    auto& dc = m_Context->GetDrawContext();
+
+    bm.BindVertexArray(m_QuadVAO.id);
+
+    m_BloomDownsampleShader->use();
+    uint32_t currentSrc = srcTexture;
+    int currentW = m_Width;
+    int currentH = m_Height;
+
+    for (const auto& mip : m_BloomMips) {
+        m_BloomDownsampleShader->setVec2("srcResolution", glm::vec2(currentW, currentH));
+        tm.ActiveTexture(TextureUnit::Texture0);
+        tm.BindTexture(TextureType::Texture2D, currentSrc);
+        m_BloomDownsampleShader->setInt("srcTexture", 0);
+
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[1]->Get());
+        rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D, mip.texture->Get(), 0);
+        
+        dc.SetViewport(0, 0, mip.width, mip.height);
+        dc.Clear(BufferBit::Color);
+        dc.DrawArrays(Primitive::Triangles, 0, 6);
+
+        currentSrc = mip.texture->Get();
+        currentW = mip.width;
+        currentH = mip.height;
+    }
+
+    m_BloomUpsampleShader->use();
+    m_BloomUpsampleShader->setFloat("filterRadius", 0.005f);
+
+    auto& rsm = m_Context->GetRenderStateManager();
+    rsm.Enable(ServerCapability::Blend);
+    rsm.SetBlendFunc(BlendFactor::One, BlendFactor::One);
+
+    for (size_t i = m_BloomMips.size() - 1; i > 0; --i) {
+        const auto& nextMip = m_BloomMips[i];
+        const auto& currMip = m_BloomMips[i - 1];
+
+        tm.ActiveTexture(TextureUnit::Texture0);
+        tm.BindTexture(TextureType::Texture2D, nextMip.texture->Get());
+        m_BloomUpsampleShader->setInt("srcTexture", 0);
+
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[1]->Get());
+        rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D, currMip.texture->Get(), 0);
+
+        dc.SetViewport(0, 0, currMip.width, currMip.height);
+        dc.DrawArrays(Primitive::Triangles, 0, 6);
+    }
+
+    rsm.Disable(ServerCapability::Blend);
+    rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D, m_PingPong.color[1]->Get(), 0);
+    dc.SetViewport(0, 0, m_Width, m_Height);
 }
 
 void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4 &prevViewProj, const glm::mat4 &currViewProj, const glm::vec2 &jitterOffset)

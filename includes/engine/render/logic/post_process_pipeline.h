@@ -78,6 +78,16 @@ private:
 
     std::shared_ptr<Shader> m_FXAAShader;
     std::shared_ptr<Shader> m_TAAShader;
+    std::shared_ptr<Shader> m_BloomDownsampleShader;
+    std::shared_ptr<Shader> m_BloomUpsampleShader;
+    std::shared_ptr<Shader> m_HDRFinalShader;
+
+    struct BloomMip {
+        std::unique_ptr<GPUTexture> texture;
+        int width, height;
+    };
+    std::vector<BloomMip> m_BloomMips;
+    static constexpr int BLOOM_MIP_COUNT = 6;
 
     GpuHandle m_QuadVAO;
     GpuHandle m_QuadVBO;
@@ -87,12 +97,13 @@ private:
     // Config values
     float m_Gamma = 2.2f;
     float m_Exposure = 1.0f;
-    float m_BloomIntensity = 1.0f;
-    int m_TonemappingMode = 1;
-    bool m_HDREnabled = false;
-    bool m_BloomEnabled = false;
+    float m_BloomIntensity = 0.5f;
+    int m_TonemappingMode = 2; // ACES
+    bool m_HDREnabled = true;
+    bool m_BloomEnabled = true;
     float m_ClearColor[4] = {0.1f, 0.1f, 0.1f, 1.0f};
 
     void InitQuad();
     void InitFramebuffers();
+    void RenderBloom(uint32_t srcTexture);
 };
