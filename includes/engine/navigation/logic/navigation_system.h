@@ -20,11 +20,24 @@ public:
     void Update(Scene& scene, float dt) override;
     void Render(Scene& scene) override;
 
-    void SetWalkableTag(const std::string& tag) { m_WalkableTag = tag; }
-    const std::string& GetWalkableTag() const { return m_WalkableTag; }
+    void AddWalkableTag(const std::string& tag);
+    void ClearWalkableTags();
+    const std::vector<std::string>& GetWalkableTags() const { return m_WalkableTags; }
 
     void SetShowDebug(bool show) { m_ShowDebug = show; }
     bool IsShowDebug() const { return m_ShowDebug; }
+
+    void AddCarveTag(const std::string& tag);
+    void ClearCarveTags();
+    const std::vector<std::string>& GetCarveTags() const { return m_CarveTags; }
+
+    // Management APIs
+    void StopMoving(Scene& scene, entt::entity entity);
+    bool IsMoving(Scene& scene, entt::entity entity);
+    void SetMoveSpeed(Scene& scene, entt::entity entity, float speed);
+    float GetRemainingDistance(Scene& scene, entt::entity entity);
+    void MoveTo(Scene& scene, entt::entity entity, const glm::vec3& position);
+    bool HasTarget(Scene& scene, entt::entity entity);
 
 private:
     void UpdatePathFollowing(Scene& scene, float dt);
@@ -33,5 +46,6 @@ private:
     EngineContext m_Ctx;
     bool m_Enabled = true;
     bool m_ShowDebug = false;
-    std::string m_WalkableTag = "Walkable";
+    std::vector<std::string> m_WalkableTags = { "walkable" };
+    std::vector<std::string> m_CarveTags = { "obstacle" };
 };

@@ -17,6 +17,7 @@ class Model
 public:
     Model() = default;
     Model(std::string const &path, bool isStatic = false, bool gamma = false);
+    ~Model();
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
 

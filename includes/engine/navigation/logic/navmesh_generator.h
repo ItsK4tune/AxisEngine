@@ -8,7 +8,9 @@ class ResourceManager;
 class NavMeshGenerator
 {
 public:
-    static void Generate(Scene& scene, NavMeshComponent& navMesh, ResourceManager* resources = nullptr, const std::string& walkableTag = "Walkable");
+    static void Generate(Scene& scene, NavMeshComponent& navMesh, ResourceManager* resources = nullptr, 
+                        const std::vector<std::string>& walkableTags = { "walkable" }, 
+                        const std::vector<std::string>& carveTags = { "obstacle" });
 
 private:
     struct RawMeshData {
@@ -16,6 +18,8 @@ private:
         std::vector<uint32_t> indices;
     };
 
-    static RawMeshData GatherWalkableGeometry(Scene& scene, ResourceManager* resources = nullptr, const std::string& walkableTag = "Walkable");
+    static RawMeshData GatherWalkableGeometry(Scene& scene, ResourceManager* resources = nullptr, 
+                                             const std::vector<std::string>& walkableTags = { "walkable" },
+                                             const std::vector<std::string>& carveTags = { "obstacle" });
     static void BuildConnectivity(NavMeshComponent& navMesh);
 };

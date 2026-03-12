@@ -83,6 +83,7 @@ void TerrainSystem::Render(Scene &scene) {
         data.terrainShader->setFloat("maxHeight", terrain.maxHeight);
         data.terrainShader->setVec2("terrainSize", glm::vec2(terrain.terrainSize.x, terrain.terrainSize.z));
         data.terrainShader->setFloat("textureScale", terrain.textureScale);
+        data.terrainShader->setBool("debug_noTexture", m_DebugNoTexture);
         
         tm.ActiveTexture(TextureUnit::Texture0);
         tm.BindTexture(TextureType::Texture2D, terrain.heightMap);
@@ -208,7 +209,7 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
                     terrain.physicsBody = m_Ctx.physics->CreateRigidBody(0.0f, centerPos, glm::quat(1,0,0,0), terrain.collisionShape);
                     
                     if (terrain.physicsBody) {
-                        terrain.physicsBody->SetUserPointer((void*)(uintptr_t)entity);
+                        terrain.physicsBody->SetUserPointer((void*)((uintptr_t)entity + 1));
                         m_Ctx.physics->AddRigidBody(terrain.physicsBody.get());
                         LOGGER_INFO("TerrainSystem") << "Terrain physics generated successfully for entity " << (uint32_t)entity << " at center " << centerPos.x << "," << centerPos.y << "," << centerPos.z;
                     }

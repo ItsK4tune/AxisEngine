@@ -347,10 +347,6 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
                 }
             };
 
-            entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-            CameraComponent *cam = &scene.registry.get<CameraComponent>(camEntity);
-            PositionComponent *camPosComp = &scene.registry.get<PositionComponent>(camEntity);
-
             bool transparencyState = false;
 
             for (size_t k = startIdx; k < endIdx; ++k)

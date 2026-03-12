@@ -5,6 +5,7 @@
 #include <core/logic/app_framework.h>
 #include <platform/logic/input_system.h>
 #include <ecs/logic/render_system.h>
+#include <ecs/logic/terrain_system.h>
 #include <ecs/logic/skybox_system.h>
 #include <ecs/logic/ui_system.h>
 #include <iostream>
@@ -66,6 +67,7 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
          } else {
              m_NoTextureMode = !m_NoTextureMode;
              m_Ctx.systems->GetSystem<RenderSystem>()->SetDebugNoTexture(m_NoTextureMode);
+             m_Ctx.systems->GetSystem<TerrainSystem>()->SetDebugNoTexture(m_NoTextureMode);
              std::cout << "\n========== No Texture Mode (F7) ==========" << std::endl;
              std::cout << "[Debug] No Texture Mode: " << (m_NoTextureMode ? "ON" : "OFF") << std::endl;
              std::cout << "==========================================" << std::endl;

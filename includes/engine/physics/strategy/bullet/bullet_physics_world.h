@@ -23,15 +23,14 @@ public:
         void* ptrB = body1->getUserPointer();
 
         if (!ptrA || !ptrB)
-            return false;
+            return btCollisionDispatcher::needsCollision(body0, body1);
 
         if (m_FilterCallback)
         {
-            entt::entity eA = (entt::entity)(uintptr_t)ptrA;
-            entt::entity eB = (entt::entity)(uintptr_t)ptrB;
+            entt::entity eA = (entt::entity)((uintptr_t)ptrA - 1);
+            entt::entity eB = (entt::entity)((uintptr_t)ptrB - 1);
             
-            bool result = m_FilterCallback(eA, eB);
-            return result;
+            return m_FilterCallback(eA, eB);
         }
 
         return btCollisionDispatcher::needsCollision(body0, body1);
@@ -67,7 +66,7 @@ public:
 
     void DebugDraw() override;
 
-    RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist) override;
+    RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist, entt::entity ignore = entt::null) override;
     void DrawLine(const glm::vec3& from, const glm::vec3& to, const glm::vec3& color) override;
 
     void SetCollisionFilter(CollisionFilterCallback callback) override;

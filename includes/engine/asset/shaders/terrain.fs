@@ -14,6 +14,7 @@ uniform sampler2D textureLayer3; // Snow
 
 uniform float textureScale;
 uniform vec3 camPos;
+uniform bool debug_noTexture;
 
 // PBR uniforms (simplified for now)
 uniform vec3 lightDir;
@@ -28,16 +29,21 @@ void main()
     vec2 tiledCoords = TexCoords * textureScale;
     
     // Sample layers
-    vec4 col0 = texture(textureLayer0, tiledCoords);
-    vec4 col1 = texture(textureLayer1, tiledCoords);
-    vec4 col2 = texture(textureLayer2, tiledCoords);
-    vec4 col3 = texture(textureLayer3, tiledCoords);
-    
-    // Mix layers based on splat map
-    vec3 albedo = col0.rgb * splat.r + 
-                  col1.rgb * splat.g + 
-                  col2.rgb * splat.b + 
-                  col3.rgb * (1.0 - (splat.r + splat.g + splat.b));
+    vec3 albedo;
+    if (debug_noTexture) {
+        albedo = vec3(1.0);
+    } else {
+        vec4 col0 = texture(textureLayer0, tiledCoords);
+        vec4 col1 = texture(textureLayer1, tiledCoords);
+        vec4 col2 = texture(textureLayer2, tiledCoords);
+        vec4 col3 = texture(textureLayer3, tiledCoords);
+        
+        // Mix layers based on splat map
+        albedo = col0.rgb * splat.r + 
+                 col1.rgb * splat.g + 
+                 col2.rgb * splat.b + 
+                 col3.rgb * (1.0 - (splat.r + splat.g + splat.b));
+    }
     
     // Simple Lighting (PBR-lite for now)
     vec3 N = normalize(Normal);

@@ -60,7 +60,7 @@ void PhysicsTransformSync::SyncToPhysics()
         auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
         if (!world || !rb.body) continue;
 
-        rb.body->SetUserPointer((void *)(uintptr_t)entity);
+        rb.body->SetUserPointer((void *)((uintptr_t)entity + 1));
 
         uint32_t currentVersion = world->version;
         if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
@@ -84,7 +84,7 @@ void PhysicsTransformSync::SyncToPhysics()
         auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
         if (!world || !cc.controller) continue;
 
-        cc.controller->SetUserPointer((void *)(uintptr_t)entity);
+        cc.controller->SetUserPointer((void *)((uintptr_t)entity + 1));
 
         uint32_t currentVersion = world->version;
         if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
@@ -128,16 +128,27 @@ void PhysicsTransformSync::SyncFromPhysics()
             {
                 if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
                 {
+                    float det = glm::determinant(parentWorld->worldMatrix);
+                    if (std::abs(det) < 0.0001f)
+                    {
+                        LOGGER_WARN("PhysicsTransformSync") << "Singular matrix detected on parent of entity " << (uint32_t)entity << ". Skipping sync.";
+                        continue;
+                    }
+
                     glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
                     glm::mat4 localMatrix = glm::inverse(parentWorld->worldMatrix) * validWorldMatrix;
 
                     glm::vec3 s, t, skew;
                     glm::quat r;
                     glm::vec4 perspective;
-                    glm::decompose(localMatrix, s, r, t, skew, perspective);
-
-                    pos->value = t;
-                    rot->value = r;
+                    if (glm::decompose(localMatrix, s, r, t, skew, perspective))
+                    {
+                        if (!glm::any(glm::isnan(t)) && !glm::any(glm::isnan(r)))
+                        {
+                            pos->value = t;
+                            rot->value = r;
+                        }
+                    }
                 }
             }
             else
@@ -175,16 +186,27 @@ void PhysicsTransformSync::SyncFromPhysics()
             {
                 if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
                 {
+                    float det = glm::determinant(parentWorld->worldMatrix);
+                    if (std::abs(det) < 0.0001f)
+                    {
+                        LOGGER_WARN("PhysicsTransformSync") << "Singular matrix detected on parent of CC entity " << (uint32_t)entity << ". Skipping sync.";
+                        continue;
+                    }
+
                     glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
                     glm::mat4 localMatrix = glm::inverse(parentWorld->worldMatrix) * validWorldMatrix;
 
                     glm::vec3 s, t, skew;
                     glm::quat r;
                     glm::vec4 perspective;
-                    glm::decompose(localMatrix, s, r, t, skew, perspective);
-
-                    pos->value = t;
-                    rot->value = r;
+                    if (glm::decompose(localMatrix, s, r, t, skew, perspective))
+                    {
+                        if (!glm::any(glm::isnan(t)) && !glm::any(glm::isnan(r)))
+                        {
+                            pos->value = t;
+                            rot->value = r;
+                        }
+                    }
                 }
             }
             else
@@ -206,16 +228,27 @@ void PhysicsTransformSync::SyncFromPhysics()
             {
                 if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
                 {
+                    float det = glm::determinant(parentWorld->worldMatrix);
+                    if (std::abs(det) < 0.0001f)
+                    {
+                        LOGGER_WARN("PhysicsTransformSync") << "Singular matrix detected on parent of CC entity " << (uint32_t)entity << ". Skipping sync.";
+                        continue;
+                    }
+
                     glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
                     glm::mat4 localMatrix = glm::inverse(parentWorld->worldMatrix) * validWorldMatrix;
 
                     glm::vec3 s, t, skew;
                     glm::quat r;
                     glm::vec4 perspective;
-                    glm::decompose(localMatrix, s, r, t, skew, perspective);
-
-                    pos->value = t;
-                    rot->value = r;
+                    if (glm::decompose(localMatrix, s, r, t, skew, perspective))
+                    {
+                        if (!glm::any(glm::isnan(t)) && !glm::any(glm::isnan(r)))
+                        {
+                            pos->value = t;
+                            rot->value = r;
+                        }
+                    }
                 }
             }
             else
@@ -269,16 +302,27 @@ void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
     {
         if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
         {
+            float det = glm::determinant(parentWorld->worldMatrix);
+            if (std::abs(det) < 0.0001f)
+            {
+                LOGGER_WARN("PhysicsTransformSync") << "Singular matrix detected on parent of entity " << (uint32_t)entity << " in direct sync. Skipping.";
+                return;
+            }
+
             glm::mat4 validWorldMatrix = glm::translate(glm::mat4(1.0f), position) * glm::mat4_cast(rotation);
             glm::mat4 localMatrix = glm::inverse(parentWorld->worldMatrix) * validWorldMatrix;
 
             glm::vec3 s, t, skew;
             glm::quat r;
             glm::vec4 perspective;
-            glm::decompose(localMatrix, s, r, t, skew, perspective);
-
-            pos->value = t;
-            rot->value = r;
+            if (glm::decompose(localMatrix, s, r, t, skew, perspective))
+            {
+                if (!glm::any(glm::isnan(t)) && !glm::any(glm::isnan(r)))
+                {
+                    pos->value = t;
+                    rot->value = r;
+                }
+            }
         }
     }
     else

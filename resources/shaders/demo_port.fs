@@ -7,6 +7,7 @@ in vec2 TexCoords;
 
 uniform sampler2D texture_diffuse1;
 uniform vec4 tintColor;
+uniform bool debug_noTexture;
 
 // Custom Ports from Engine
 uniform float u_CustomPorts[8];
@@ -27,7 +28,12 @@ layout (std140, binding = 0) uniform CameraData {
 
 void main()
 {
-    vec4 texColor = texture(texture_diffuse1, TexCoords);
+    vec4 texColor;
+    if (debug_noTexture) {
+        texColor = vec4(1.0);
+    } else {
+        texColor = texture(texture_diffuse1, TexCoords);
+    }
     vec3 result = texColor.rgb * tintColor.rgb;
     
     // logic: 

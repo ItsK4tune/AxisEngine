@@ -29,9 +29,13 @@ public:
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;
 
+    void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
+    bool IsDebugNoTexture() const { return m_DebugNoTexture; }
+
 private:
     EngineContext m_Ctx;
     bool m_Enabled = true;
+    bool m_DebugNoTexture = false;
 
     struct TerrainData {
         std::vector<TerrainChunk> chunks;

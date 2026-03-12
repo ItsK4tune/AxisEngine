@@ -5,6 +5,23 @@
 #include <BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <core/logic/logger.h>
+#include <physics/interface/i_collision_shape.h>
+
+// Custom callback to ignore a specific entity
+struct IgnoreEntityRayCallback : public btCollisionWorld::ClosestRayResultCallback {
+    entt::entity m_Ignore;
+    IgnoreEntityRayCallback(const btVector3& start, const btVector3& end, entt::entity ignore)
+        : btCollisionWorld::ClosestRayResultCallback(start, end), m_Ignore(ignore) {}
+
+    virtual btScalar addSingleResult(btCollisionWorld::LocalRayResult& rayResult, bool normalInWorldSpace) override {
+        if (m_Ignore != entt::null && rayResult.m_collisionObject->getUserPointer()) {
+            // Offset logic: getUserPointer returns entity + 1
+            entt::entity hitEnt = (entt::entity)((uintptr_t)rayResult.m_collisionObject->getUserPointer() - 1);
+            if (hitEnt == m_Ignore) return 1.0; 
+        }
+        return btCollisionWorld::ClosestRayResultCallback::addSingleResult(rayResult, normalInWorldSpace);
+    }
+};
 
 BulletPhysicsWorld::BulletPhysicsWorld()
 {
@@ -155,16 +172,16 @@ void BulletPhysicsWorld::DebugDraw()
         m_CurrentDebugDrawer->Flush();
 }
 
-RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist)
+RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist, entt::entity ignore)
 {
     RayHit hit;
-    if (!m_DynamicsWorld) return hit;
+    if (m_DynamicsWorld == nullptr) return hit;
 
     glm::vec3 end = origin + (dir * maxDist);
     btVector3 btStart(origin.x, origin.y, origin.z);
     btVector3 btEnd(end.x, end.y, end.z);
 
-    btCollisionWorld::ClosestRayResultCallback rayCallback(btStart, btEnd);
+    IgnoreEntityRayCallback rayCallback(btStart, btEnd, ignore);
     
     try {
         m_DynamicsWorld->rayTest(btStart, btEnd, rayCallback);
@@ -183,7 +200,8 @@ RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir
         const btCollisionObject* obj = rayCallback.m_collisionObject;
         if (obj && obj->getUserPointer())
         {
-            hit.entity = (entt::entity)(uintptr_t)obj->getUserPointer();
+            // Offset logic: getUserPointer returns entity + 1
+            hit.entity = (entt::entity)((uintptr_t)obj->getUserPointer() - 1);
         }
     }
 

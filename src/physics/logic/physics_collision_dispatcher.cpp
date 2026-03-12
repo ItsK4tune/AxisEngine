@@ -68,8 +68,8 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                 continue;
             }
 
-            entt::entity eA = (entt::entity)(uintptr_t)ptrA;
-            entt::entity eB = (entt::entity)(uintptr_t)ptrB;
+            entt::entity eA = (entt::entity)((uintptr_t)ptrA - 1);
+            entt::entity eB = (entt::entity)((uintptr_t)ptrB - 1);
 
             if (m_Scene.registry.valid(eA) && m_Scene.registry.valid(eB))
             {

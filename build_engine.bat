@@ -1,23 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set "LOCK_FILE=%~dp0build_engine.lock"
-
-if "%~1"==":LOCKED_SESSION" goto :MAIN_LOGIC
-
-(
-    "%COMSPEC%" /c "%~f0" :LOCKED_SESSION
-) 9>"%LOCK_FILE%" || (
-    echo.
-    echo [ERROR] Another instance of 'Game Engine Builder' is already running!
-    echo         (File '%LOCK_FILE%' is locked)
-    echo.
-    pause
-    exit /b
-)
-
-exit /b
-
 :MAIN_LOGIC
 title Axis Engine Builder
 

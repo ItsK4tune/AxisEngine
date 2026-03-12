@@ -15,6 +15,7 @@ class ParticleSystem;
 class SkyboxRenderSystem;
 class AnimationSystem;
 class VideoSystem;
+class NavigationSystem;
 
 class Scene;
 class SceneManager;
@@ -42,6 +43,7 @@ public:
     SkyboxRenderSystem& GetSkyboxRenderSystem() const;
     AnimationSystem&    GetAnimationSystem() const;
     VideoSystem&        GetVideoSystem() const;
+    NavigationSystem&   GetNavigationSystem() const;
 
     Scene&           GetScene() const;
     SceneManager&    GetSceneManager() const;
@@ -74,6 +76,7 @@ public:
     void EnableUIRender(bool enable);
     void EnableParticle(bool enable);
     void EnableSkybox(bool enable);
+    void EnableNavigation(bool enable);
     void EnableLogic(bool enable);
 
     bool GetAction(const std::string &name) const;

@@ -14,6 +14,7 @@
 #include <ecs/logic/skybox_system.h>
 #include <ecs/logic/ui_system.h>
 #include <ecs/logic/video_system.h>
+#include <navigation/logic/navigation_system.h>
 #include <platform/logic/input_system.h>
 #include <resource/manager/resource_manager.h>
 #include <scene/logic/scene.h>
@@ -28,6 +29,7 @@ ParticleSystem&     EngineAccessor::GetParticleSystem() const     { return *m_Ct
 SkyboxRenderSystem& EngineAccessor::GetSkyboxRenderSystem() const { return *m_Ctx.systems->GetSystem<SkyboxRenderSystem>(); }
 AnimationSystem&    EngineAccessor::GetAnimationSystem() const    { return *m_Ctx.systems->GetSystem<AnimationSystem>(); }
 VideoSystem&        EngineAccessor::GetVideoSystem() const        { return *m_Ctx.systems->GetSystem<VideoSystem>(); }
+NavigationSystem&   EngineAccessor::GetNavigationSystem() const   { return *m_Ctx.systems->GetSystem<NavigationSystem>(); }
 
 Scene&           EngineAccessor::GetScene() const           { return *m_Ctx.scene; }
 SceneManager&    EngineAccessor::GetSceneManager() const    { return *m_Ctx.sceneManager; }
@@ -58,6 +60,7 @@ void EngineAccessor::EnableVideo(bool e)    { GetVideoSystem().SetEnabled(e); }
 void EngineAccessor::EnableUIRender(bool e)    { GetUIRenderSystem().SetEnabled(e); }
 void EngineAccessor::EnableParticle(bool e)    { GetParticleSystem().SetEnabled(e); }
 void EngineAccessor::EnableSkybox(bool e)    { GetSkyboxRenderSystem().SetEnabled(e); }
+void EngineAccessor::EnableNavigation(bool e) { GetNavigationSystem().SetEnabled(e); }
 
 void EngineAccessor::EnableLogic(bool enable)
 {
@@ -65,6 +68,7 @@ void EngineAccessor::EnableLogic(bool enable)
     EnableAnimation(enable);
     EnableVideo(enable);
     EnableParticle(enable);
+    EnableNavigation(enable);
 }
 
 bool EngineAccessor::GetAction(const std::string &name) const { return m_Ctx.io->GetInputManager().GetAction(name); }

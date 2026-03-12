@@ -433,6 +433,18 @@ Model::Model(std::string const &path, bool isStatic, bool gamma) : gammaCorrecti
     ComputeAABB();
 }
 
+Model::~Model()
+{
+    for (auto &tex : textures_loaded)
+    {
+        if (tex.pixelData)
+        {
+            stbi_image_free(tex.pixelData);
+            tex.pixelData = nullptr;
+        }
+    }
+}
+
 void Model::LoadCPU(std::string const &path, bool isStatic, bool gamma)
 {
     gammaCorrection = gamma;

@@ -22,7 +22,7 @@ void NavigationSystem::UpdateNavMesh(Scene& scene)
         auto& navMesh = view.get<NavMeshComponent>(entity);
         if (navMesh.needsRebuild) {
             LOGGER_INFO("NavigationSystem") << "NavMesh rebuild triggered for entity " << (uint32_t)entity;
-            NavMeshGenerator::Generate(scene, navMesh, m_Ctx.resources, m_WalkableTag);
+            NavMeshGenerator::Generate(scene, navMesh, m_Ctx.resources, m_WalkableTags, m_CarveTags);
             LOGGER_INFO("NavigationSystem") << "NavMesh state: Nodes=" << navMesh.nodes.size() << ", Tris=" << navMesh.triangles.size();
         }
     }
@@ -121,40 +121,105 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 // Orientation & Ground Snap
                 if (glm::length(moveDir) > 0.001f) {
                     glm::vec3 groundNormal(0, 1, 0);
-                    auto groundHit = m_Ctx.physics->Raycast(pos.value + glm::vec3(0, 10.0f, 0), glm::vec3(0, -1, 0), 20.0f);
+                    // Use the new Raycast overload that ignores 'entity' (ourselves)
+                    auto groundHit = m_Ctx.physics->Raycast(pos.value + glm::vec3(0, 100.0f, 0), glm::vec3(0, -1, 0), 200.0f, entity);
+                    
                     if (groundHit.hasHit) {
                         groundNormal = groundHit.hitNormal;
-                        pos.value.y = groundHit.hitPoint.y;
+                        // Added extreme value guard
+                        if (!glm::any(glm::isnan(groundHit.hitPoint)) && std::abs(groundHit.hitPoint.y) < 10000.0f) {
+                            pos.value.y = groundHit.hitPoint.y;
+                        }
                     }
 
-                    glm::vec3 right = glm::normalize(glm::cross(moveDir, groundNormal));
-                    glm::vec3 actualForward = glm::normalize(glm::cross(groundNormal, right));
-                    
-                    glm::mat3 rotMat;
-                    rotMat[0] = right;
-                    rotMat[1] = groundNormal;
-                    rotMat[2] = -actualForward;
-                    glm::quat targetRot = glm::quat_cast(rotMat);
-                    
-                    if (glm::length(follower.rotationOffset) > 0.001f) {
-                        glm::quat offsetQuat = glm::quat(glm::radians(follower.rotationOffset));
-                        targetRot = targetRot * offsetQuat;
-                    }
-                    
-                    float dot = glm::dot(glm::normalize(rot.value), glm::normalize(targetRot));
-                    float angleDiff = glm::acos(glm::min(glm::abs(dot), 1.0f)) * 2.0f;
-                    if (angleDiff > 0.001f) {
-                        follower.currentRotationVelocity += follower.rotationAcceleration * dt;
-                        if (follower.currentRotationVelocity > follower.maxRotationSpeed) {
-                            follower.currentRotationVelocity = follower.maxRotationSpeed;
+                    glm::vec3 crossDir = glm::cross(moveDir, groundNormal);
+                    if (glm::length(crossDir) > 0.001f) {
+                        glm::vec3 right = glm::normalize(crossDir);
+                        glm::vec3 up = groundNormal;
+                        glm::vec3 forward = glm::cross(up, right);
+
+                        // Rotation Locking Logic
+                        if (follower.lockXPitch || follower.lockZRoll) {
+                            glm::vec3 worldUp(0, 1, 0);
+                            glm::vec3 moveDirXZ(0.0f);
+                            float moveLenXZ = glm::length(glm::vec3(moveDir.x, 0, moveDir.z));
+                            if (moveLenXZ > 0.001f) {
+                                moveDirXZ = glm::vec3(moveDir.x, 0, moveDir.z) / moveLenXZ;
+                            } else {
+                                // Default forward if moving only vertically
+                                moveDirXZ = glm::vec3(0, 0, 1); 
+                            }
+                            
+                            if (follower.lockXPitch && follower.lockZRoll) {
+                                // Only Yaw
+                                up = worldUp;
+                                glm::vec3 crossXZ = glm::cross(moveDirXZ, worldUp);
+                                if (glm::length(crossXZ) > 0.001f) {
+                                    right = glm::normalize(crossXZ);
+                                } else {
+                                    right = glm::vec3(1, 0, 0); // Default if moveDirXZ is somehow parallel to worldUp
+                                }
+                                forward = moveDirXZ;
+                            } else if (follower.lockXPitch) {
+                                // Keep forward flat on XZ, but allow roll
+                                forward = moveDirXZ;
+                                up = glm::normalize(glm::cross(right, forward));
+                            } else if (follower.lockZRoll) {
+                                // Keep right flat on XZ, but allow pitch
+                                glm::vec3 crossXZ = glm::cross(forward, worldUp);
+                                if (glm::length(crossXZ) > 0.001f) {
+                                    right = glm::normalize(crossXZ);
+                                } else {
+                                    right = glm::vec3(1, 0, 0);
+                                }
+                                up = glm::normalize(glm::cross(right, forward));
+                            }
                         }
-                        
-                        float step = (follower.currentRotationVelocity * dt) / angleDiff;
-                        if (step > 1.0f) step = 1.0f;
-                        rot.value = glm::slerp(rot.value, targetRot, step);
-                    } else {
-                        follower.currentRotationVelocity = 0.0f;
-                        rot.value = targetRot;
+
+                        if (glm::length(forward) > 0.001f) {
+                            glm::mat3 rotMat;
+                            rotMat[0] = right;
+                            rotMat[1] = up;
+                            rotMat[2] = -forward;
+                            glm::quat targetRot = glm::quat_cast(rotMat);
+                            
+                            if (follower.lockYYaw) {
+                                // This would be unusual, but let's handle it: keep original yaw
+                                // (Harder to decompose, but we can slerp and then reset yaw if needed)
+                                // For now, we'll just allow it unless explicitly requested otherwise.
+                            }
+
+                            if (glm::length(follower.rotationOffset) > 0.001f) {
+                                glm::quat offsetQuat = glm::quat(glm::radians(follower.rotationOffset));
+                                targetRot = targetRot * offsetQuat;
+                            }
+                            
+                            float dot = 0.0f;
+                            float angleDiff = 0.0f;
+                            
+                            if (glm::length(rot.value) > 0.001f && glm::length(targetRot) > 0.001f) {
+                                dot = glm::dot(glm::normalize(rot.value), glm::normalize(targetRot));
+                                angleDiff = glm::acos(glm::min(glm::abs(dot), 1.0f)) * 2.0f;
+                            }
+                            
+                            if (angleDiff > 0.001f && !glm::isnan(angleDiff)) {
+                                follower.currentRotationVelocity += follower.rotationAcceleration * dt;
+                                if (follower.currentRotationVelocity > follower.maxRotationSpeed) {
+                                    follower.currentRotationVelocity = follower.maxRotationSpeed;
+                                }
+                                
+                                float step = (follower.currentRotationVelocity * dt) / angleDiff;
+                                if (step > 1.0f) step = 1.0f;
+                                if (!glm::isnan(step) && step > 0.0f) {
+                                    rot.value = glm::slerp(rot.value, targetRot, step);
+                                }
+                            } else {
+                                follower.currentRotationVelocity = 0.0f;
+                                if (!std::isnan(targetRot.x) && !std::isnan(targetRot.y) && !std::isnan(targetRot.z) && !std::isnan(targetRot.w) && glm::length(targetRot) > 0.001f) {
+                                    rot.value = targetRot;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -162,6 +227,63 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
             }
         }
     }
+}
+
+void NavigationSystem::StopMoving(Scene& scene, entt::entity entity)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower) {
+        follower->isMoving = false;
+        follower->pathPending = false;
+        follower->currentPath.clear();
+        follower->currentPathIndex = 0;
+    }
+}
+
+bool NavigationSystem::IsMoving(Scene& scene, entt::entity entity)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    return follower ? follower->isMoving : false;
+}
+
+void NavigationSystem::SetMoveSpeed(Scene& scene, entt::entity entity, float speed)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower) follower->moveSpeed = speed;
+}
+
+float NavigationSystem::GetRemainingDistance(Scene& scene, entt::entity entity)
+{
+    auto* pos = scene.registry.try_get<PositionComponent>(entity);
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    
+    if (!pos || !follower || !follower->isMoving || follower->currentPath.empty()) 
+        return 0.0f;
+
+    float dist = 0.0f;
+    glm::vec3 lastPoint = pos->value;
+
+    for (size_t i = follower->currentPathIndex; i < follower->currentPath.size(); ++i) {
+        dist += glm::distance(lastPoint, follower->currentPath[i]);
+        lastPoint = follower->currentPath[i];
+    }
+
+    return dist;
+}
+
+void NavigationSystem::MoveTo(Scene& scene, entt::entity entity, const glm::vec3& position)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower) {
+        follower->targetPosition = position;
+        follower->pathPending = true;
+    }
+}
+
+bool NavigationSystem::HasTarget(Scene& scene, entt::entity entity)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    return follower ? (follower->pathPending || follower->isMoving) : false;
 }
 
 void NavigationSystem::Render(Scene& scene)
@@ -198,4 +320,30 @@ void NavigationSystem::Render(Scene& scene)
             }
         }
     }
+}
+
+void NavigationSystem::AddWalkableTag(const std::string& tag)
+{
+    if (std::find(m_WalkableTags.begin(), m_WalkableTags.end(), tag) == m_WalkableTags.end()) {
+        m_WalkableTags.push_back(tag);
+    }
+}
+
+void NavigationSystem::ClearWalkableTags()
+{
+    m_WalkableTags.clear();
+    m_WalkableTags.push_back("Walkable");
+}
+
+void NavigationSystem::AddCarveTag(const std::string& tag)
+{
+    if (std::find(m_CarveTags.begin(), m_CarveTags.end(), tag) == m_CarveTags.end()) {
+        m_CarveTags.push_back(tag);
+    }
+}
+
+void NavigationSystem::ClearCarveTags()
+{
+    m_CarveTags.clear();
+    m_CarveTags.push_back("obstacle");
 }

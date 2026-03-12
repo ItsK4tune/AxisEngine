@@ -74,6 +74,10 @@ void GameState::OnEnter()
     auto navEntity = EntityManager::CreateEntity(GetScene(), "NavMesh");
     auto& navMesh = GetScene().registry.emplace<NavMeshComponent>(navEntity);
     navMesh.needsRebuild = true;
+
+    // Configure Navigation System
+    GetNavigationSystem().ClearWalkableTags();
+    GetNavigationSystem().AddWalkableTag("Walkable");
 }
 
 void GameState::OnUpdate(float dt)
@@ -121,8 +125,9 @@ void GameState::OnUpdate(float dt)
                     // If terrain (or something else) is clicked, move selected entity
                     if (auto* follower = EntityManager::TryGetComponent<PathFollowerComponent>(GetScene(), m_SelectedEntity))
                     {
-                        follower->targetPosition = hit.hitPoint;
-                        follower->pathPending = true;
+                        follower->lockXPitch = true;
+                        follower->lockZRoll = true;
+                        GetNavigationSystem().MoveTo(GetScene(), m_SelectedEntity, hit.hitPoint);
                         LOGGER_INFO("GameState") << "Move Command: target=(" << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z << ") entity=" << (uint32_t)m_SelectedEntity;
                     }
                 }

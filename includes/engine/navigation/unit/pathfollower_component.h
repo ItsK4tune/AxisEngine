@@ -20,4 +20,9 @@ struct PathFollowerComponent
     
     bool isMoving = false;
     bool pathPending = false;
+
+    // Rotation locking
+    bool lockXPitch = false;
+    bool lockYYaw = false;
+    bool lockZRoll = false;
 };

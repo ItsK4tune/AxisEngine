@@ -11,7 +11,8 @@
 #include <map>
 #include <unordered_map>
 
-void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, ResourceManager* resources, const std::string& walkableTag)
+void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, ResourceManager* resources, 
+                                const std::vector<std::string>& walkableTags, const std::vector<std::string>& carveTags)
 {
     navMesh.needsRebuild = false;
 
@@ -19,12 +20,46 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
     navMesh.triangles.clear();
     navMesh.nodes.clear();
 
-    RawMeshData raw = GatherWalkableGeometry(scene, resources, walkableTag);
+    RawMeshData raw = GatherWalkableGeometry(scene, resources, walkableTags, carveTags);
     if (raw.vertices.empty()) {
         LOGGER_WARN("NavMeshGenerator") << "No walkable geometry found! NavMesh will be empty.";
         return;
     }
     
+    // Gather Obstacle AABBs
+    struct ObstacleAABB {
+        glm::vec3 min, max;
+    };
+    std::vector<ObstacleAABB> obstacles;
+    auto infoView = scene.registry.view<InfoComponent, WorldTransformComponent>();
+    for (auto ent : infoView) {
+        auto& info = infoView.get<InfoComponent>(ent);
+        bool isObstacle = false;
+        for (const auto& tag : carveTags) {
+            if (info.tag == tag) {
+                isObstacle = true;
+                break;
+            }
+        }
+        if (!isObstacle) continue;
+
+        auto& transform = infoView.get<WorldTransformComponent>(ent);
+        if (scene.registry.all_of<MeshRendererComponent>(ent)) {
+            auto& renderer = scene.registry.get<MeshRendererComponent>(ent);
+            if (renderer.model) {
+                // Approximate world AABB from model AABB
+                glm::vec3 worldMin = glm::vec3(transform.worldMatrix * glm::vec4(renderer.model->aabb.minBound, 1.0f));
+                glm::vec3 worldMax = glm::vec3(transform.worldMatrix * glm::vec4(renderer.model->aabb.maxBound, 1.0f));
+                
+                // Ensure min < max after transform
+                glm::vec3 actualMin = glm::min(worldMin, worldMax);
+                glm::vec3 actualMax = glm::max(worldMin, worldMax);
+                
+                obstacles.push_back({actualMin, actualMax});
+            }
+        }
+    }
+
     navMesh.vertices = raw.vertices;
     
     for (size_t i = 0; i < raw.indices.size(); i += 3) {
@@ -41,24 +76,46 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         tri.normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
         
         if (tri.normal.y > 0.3f) { // More lenient slope for terrain
-            navMesh.triangles.push_back(tri);
+            // Carving Check: Skip if center is inside any obstacle AABB
+            bool obstructed = false;
+            for (const auto& obs : obstacles) {
+                if (tri.center.x >= obs.min.x && tri.center.x <= obs.max.x &&
+                    tri.center.z >= obs.min.z && tri.center.z <= obs.max.z &&
+                    tri.center.y >= obs.min.y - 0.5f && tri.center.y <= obs.max.y + 0.5f) // Some vertical padding
+                {
+                    obstructed = true;
+                    break;
+                }
+            }
+            if (!obstructed) {
+                navMesh.triangles.push_back(tri);
+            }
         }
     }
 
     BuildConnectivity(navMesh);
 }
 
-NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& scene, ResourceManager* resources, const std::string& walkableTag)
+NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& scene, ResourceManager* resources, 
+                                                             const std::vector<std::string>& walkableTags, const std::vector<std::string>& carveTags)
 {
     RawMeshData result;
 
-    LOGGER_INFO("NavMeshGenerator") << "Gathering walkable geometry for tag: " << walkableTag;
+    LOGGER_INFO("NavMeshGenerator") << "Gathering walkable geometry for " << walkableTags.size() << " tags.";
 
-    // 1. Gather from Meshes with configurable walkable tag
+    // 1. Gather from Meshes with configurable walkable tags
     auto meshView = scene.registry.view<InfoComponent, MeshRendererComponent, WorldTransformComponent>();
     for (auto entity : meshView) {
         auto& info = meshView.get<InfoComponent>(entity);
-        if (info.tag != walkableTag) continue;
+        
+        bool isWalkable = false;
+        for (const auto& tag : walkableTags) {
+            if (info.tag == tag) {
+                isWalkable = true;
+                break;
+            }
+        }
+        if (!isWalkable) continue;
 
         auto& renderer = meshView.get<MeshRendererComponent>(entity);
         auto& transform = meshView.get<WorldTransformComponent>(entity);

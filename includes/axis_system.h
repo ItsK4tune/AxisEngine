@@ -15,4 +15,5 @@
 #include <ecs/logic/streaming_system.h>
 #include <ecs/logic/transform_system.h>
 #include <ecs/logic/terrain_system.h>
+#include <navigation/logic/navigation_system.h>
 #include <core/manager/system_manager.h>
