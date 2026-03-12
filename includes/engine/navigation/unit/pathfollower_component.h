@@ -1,7 +1,4 @@
-#pragma once
-
-#include <glm/glm.hpp>
-#include <vector>
+#include <navigation/logic/pathfinding.h>
 
 struct PathFollowerComponent
 {
@@ -20,6 +17,9 @@ struct PathFollowerComponent
     
     bool isMoving = false;
     bool pathPending = false;
+
+    // Pathfinding strategy
+    PathfindingOptions pathfindingOptions;
 
     // Rotation locking
     bool lockXPitch = false;

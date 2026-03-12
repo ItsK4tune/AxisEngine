@@ -39,6 +39,11 @@ public:
     void MoveTo(Scene& scene, entt::entity entity, const glm::vec3& position);
     bool HasTarget(Scene& scene, entt::entity entity);
 
+    // Pathfinding Preference APIs
+    void SetPathfindingCriteria(Scene& scene, entt::entity entity, PathfindingCriteria criteria);
+    void SetPreferredTags(Scene& scene, entt::entity entity, const std::vector<std::string>& tags);
+    void SetCustomCostFunction(Scene& scene, entt::entity entity, std::function<float(uint32_t, uint32_t, const NavMeshComponent&)> func);
+
 private:
     void UpdatePathFollowing(Scene& scene, float dt);
     void UpdateNavMesh(Scene& scene);

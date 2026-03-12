@@ -50,9 +50,10 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 LOGGER_INFO("NavigationSystem") << "Pathfinding request for entity " << (uint32_t)entity 
                             << ": Start=(" << pos.value.x << "," << pos.value.y << "," << pos.value.z << ")"
                             << " Target=(" << follower.targetPosition.x << "," << follower.targetPosition.y << "," << follower.targetPosition.z << ")"
-                            << " NavMeshNodes=" << globalNavMesh->nodes.size();
+                            << " NavMeshNodes=" << globalNavMesh->nodes.size()
+                            << " Strategy=" << (int)follower.pathfindingOptions.criteria;
                             
-                follower.currentPath = Pathfinding::FindPath(pos.value, follower.targetPosition, *globalNavMesh);
+                follower.currentPath = Pathfinding::FindPath(pos.value, follower.targetPosition, *globalNavMesh, follower.pathfindingOptions);
                 follower.currentPathIndex = 0;
                 follower.pathPending = false;
                 follower.isMoving = !follower.currentPath.empty();
@@ -346,4 +347,25 @@ void NavigationSystem::ClearCarveTags()
 {
     m_CarveTags.clear();
     m_CarveTags.push_back("obstacle");
+}
+
+void NavigationSystem::SetPathfindingCriteria(Scene& scene, entt::entity entity, PathfindingCriteria criteria)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower) follower->pathfindingOptions.criteria = criteria;
+}
+
+void NavigationSystem::SetPreferredTags(Scene& scene, entt::entity entity, const std::vector<std::string>& tags)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower) follower->pathfindingOptions.preferredTags = tags;
+}
+
+void NavigationSystem::SetCustomCostFunction(Scene& scene, entt::entity entity, std::function<float(uint32_t, uint32_t, const NavMeshComponent&)> func)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower) {
+        follower->pathfindingOptions.criteria = PathfindingCriteria::Custom;
+        follower->pathfindingOptions.customCostFunc = func;
+    }
 }

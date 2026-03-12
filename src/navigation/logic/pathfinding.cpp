@@ -13,7 +13,7 @@ struct AStarNode {
     }
 };
 
-std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::vec3& end, const NavMeshComponent& navMesh)
+std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::vec3& end, const NavMeshComponent& navMesh, const PathfindingOptions& options)
 {
     if (navMesh.nodes.empty()) return {};
 
@@ -25,7 +25,7 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
     std::unordered_map<uint32_t, float> gScore;
 
     gScore[startNodeIdx] = 0.0f;
-    openSet.push({startNodeIdx, 0.0f, Heuristic(navMesh.nodes[startNodeIdx].position, end)});
+    openSet.push({startNodeIdx, 0.0f, Heuristic(navMesh.nodes[startNodeIdx].position, end, options)});
 
     while (!openSet.empty()) {
         uint32_t current = openSet.top().index;
@@ -44,12 +44,31 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
         }
 
         for (uint32_t neighbor : navMesh.nodes[current].neighbors) {
-            float tentative_gScore = gScore[current] + glm::distance(navMesh.nodes[current].position, navMesh.nodes[neighbor].position);
+            float dist = glm::distance(navMesh.nodes[current].position, navMesh.nodes[neighbor].position);
+            float weight = 1.0f;
+
+            if (options.criteria == PathfindingCriteria::Smoothest) {
+                float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
+                weight = 1.0f + (yDelta * options.altitudePenaltyWeight);
+            } else if (options.criteria == PathfindingCriteria::StayOnRoad) {
+                bool onRoad = false;
+                for (const auto& tag : options.preferredTags) {
+                    if (navMesh.nodes[neighbor].tag == tag) {
+                        onRoad = true;
+                        break;
+                    }
+                }
+                if (onRoad) weight = 1.0f / options.tagWeightBonus;
+            } else if (options.criteria == PathfindingCriteria::Custom && options.customCostFunc) {
+                weight = options.customCostFunc(current, neighbor, navMesh);
+            }
+
+            float tentative_gScore = gScore[current] + (dist * weight);
             
             if (!gScore.count(neighbor) || tentative_gScore < gScore[neighbor]) {
                 cameFrom[neighbor] = current;
                 gScore[neighbor] = tentative_gScore;
-                float fScore = tentative_gScore + Heuristic(navMesh.nodes[neighbor].position, end);
+                float fScore = tentative_gScore + Heuristic(navMesh.nodes[neighbor].position, end, options);
                 openSet.push({neighbor, tentative_gScore, fScore});
             }
         }
@@ -75,7 +94,10 @@ uint32_t Pathfinding::FindClosestNode(const glm::vec3& pos, const NavMeshCompone
     return closest;
 }
 
-float Pathfinding::Heuristic(const glm::vec3& a, const glm::vec3& b)
+float Pathfinding::Heuristic(const glm::vec3& a, const glm::vec3& b, const PathfindingOptions& options)
 {
+    if (options.criteria == PathfindingCriteria::Custom && options.customHeuristicFunc) {
+        return options.customHeuristicFunc(a, b);
+    }
     return glm::distance(a, b);
 }
