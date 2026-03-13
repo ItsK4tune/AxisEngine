@@ -14,6 +14,9 @@ public:
 
     void Initialize(EngineContext ctx) override;
     void Update(Scene& scene, float dt) override;
+
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
     void FixedUpdate(Scene& scene, float dt) override;
     void Render(Scene& scene) override;
     void Shutdown() override;

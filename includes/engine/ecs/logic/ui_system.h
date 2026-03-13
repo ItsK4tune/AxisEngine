@@ -17,6 +17,9 @@ public:
     void Render(Scene &scene) override;
     void RenderUI(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState);
 
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
+
 private:
     EngineContext m_Ctx;
     bool m_Enabled = true;

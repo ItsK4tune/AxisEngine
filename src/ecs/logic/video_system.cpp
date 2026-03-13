@@ -107,3 +107,17 @@ void VideoSystem::Update(Scene &scene, float dt)
         }
     }
 }
+
+std::vector<entt::id_type> VideoSystem::GetReadComponents() const
+{
+    return {entt::type_id<UITransformComponent>().hash()};
+}
+
+std::vector<entt::id_type> VideoSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<VideoPlayerComponent>().hash(),
+        entt::type_id<UIRendererComponent>().hash(),
+        entt::type_id<MeshRendererComponent>().hash()
+    };
+}

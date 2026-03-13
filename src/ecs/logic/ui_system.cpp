@@ -132,3 +132,16 @@ void UIRenderSystem::RenderUI(Scene &scene, float screenWidth, float screenHeigh
 void UIRenderSystem::Render(Scene &scene)
 {
 }
+
+std::vector<entt::id_type> UIRenderSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<UIRendererComponent>().hash(),
+        entt::type_id<UITransformComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> UIRenderSystem::GetWriteComponents() const
+{
+    return {};
+}

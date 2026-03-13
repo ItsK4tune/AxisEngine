@@ -19,6 +19,9 @@ public:
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;
 
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
+
 private:
     EngineContext m_Ctx;
     IGraphicsContext* m_Context = nullptr;

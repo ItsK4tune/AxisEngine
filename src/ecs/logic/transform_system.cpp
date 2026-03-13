@@ -86,3 +86,23 @@ void TransformSystem::UpdateWorldTransform(entt::entity entity, entt::registry& 
         }
     }
 }
+
+std::vector<entt::id_type> TransformSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<RotationComponent>().hash(),
+        entt::type_id<ScaleComponent>().hash(),
+        entt::type_id<HierarchyComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> TransformSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<WorldTransformComponent>().hash(),
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<RotationComponent>().hash(),
+        entt::type_id<ScaleComponent>().hash()
+    };
+}

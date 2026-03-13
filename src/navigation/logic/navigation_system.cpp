@@ -369,3 +369,20 @@ void NavigationSystem::SetCustomCostFunction(Scene& scene, entt::entity entity, 
         follower->pathfindingOptions.customCostFunc = func;
     }
 }
+
+std::vector<entt::id_type> NavigationSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<NavMeshComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> NavigationSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<RotationComponent>().hash(),
+        entt::type_id<PathFollowerComponent>().hash()
+    };
+}

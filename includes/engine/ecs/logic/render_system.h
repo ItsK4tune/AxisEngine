@@ -49,6 +49,9 @@ public:
     void RenderAlpha(Scene &scene, int width, int height, float alpha);
     void Render(Scene &scene) override;
 
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
+
     void Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib);
     void Shutdown();
 

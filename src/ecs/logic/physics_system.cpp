@@ -266,3 +266,20 @@ RayHit PhysicsSystem::RaycastFromScreen(const glm::vec2 &screenPos, float distan
     return m_Ctx.physics->Raycast(ray.origin, ray.direction, distance);
 }
 
+std::vector<entt::id_type> PhysicsSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<InfoComponent>().hash(),
+        entt::type_id<RigidBodyComponent>().hash(),
+        entt::type_id<CharacterControllerComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> PhysicsSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<RotationComponent>().hash()
+    };
+}
+

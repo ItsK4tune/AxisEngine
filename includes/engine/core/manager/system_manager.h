@@ -8,6 +8,7 @@
 #include <render/logic/post_process_pipeline.h>
 #include <string>
 #include <vector>
+#include <set>
 
 class Application;
 class IPhysicsWorld;
@@ -15,6 +16,10 @@ class MouseManager;
 class ResourceManager;
 class Scene;
 class SoundPlayer;
+
+struct ExecutionBatch {
+    std::vector<ISystem*> systems;
+};
 
 class SystemManager
 {
@@ -53,11 +58,17 @@ public:
 
     PostProcessPipeline &GetPostProcess() { return postProcess; }
 
+    void RebuildExecutionBatches();
+
 private:
     std::vector<std::unique_ptr<ISystem>> m_Systems;
+    std::vector<ExecutionBatch> m_UpdateBatches;
+    
     PostProcessPipeline postProcess;
 
     EngineContext m_Ctx;
 
     std::unique_ptr<IDebugSystem> m_DebugSystem;
+
+    bool SystemsConflict(ISystem* a, ISystem* b) const;
 };

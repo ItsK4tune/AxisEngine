@@ -30,6 +30,9 @@ public:
 
     void Update(Scene &scene, float dt) override;
     void RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState);
+
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
     void Reset();
     void OnRigidBodyDestroyed(entt::registry& registry, entt::entity entity);
     void OnCharacterControllerDestroyed(entt::registry& registry, entt::entity entity);

@@ -609,3 +609,30 @@ void RenderSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 void RenderSystem::Render(Scene &scene)
 {
 }
+
+std::vector<entt::id_type> RenderSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<MeshRendererComponent>().hash(),
+        entt::type_id<CameraComponent>().hash(),
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<RotationComponent>().hash(),
+        entt::type_id<ScaleComponent>().hash(),
+        entt::type_id<WorldTransformComponent>().hash(),
+        entt::type_id<MaterialComponent>().hash(),
+        entt::type_id<SkyboxRenderComponent>().hash(),
+        entt::type_id<GPUDirLight>().hash(),
+        entt::type_id<GPUPointLight>().hash(),
+        entt::type_id<GPUSpotLight>().hash(),
+        entt::type_id<AnimationComponent>().hash(),
+        entt::type_id<StreamingComponent>().hash(),
+        entt::type_id<UIRendererComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> RenderSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<OcclusionComponent>().hash()
+    };
+}

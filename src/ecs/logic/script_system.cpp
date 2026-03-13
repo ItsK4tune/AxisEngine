@@ -46,3 +46,13 @@ void ScriptableSystem::Update(Scene &scene, float dt)
         }
     }
 }
+
+std::vector<entt::id_type> ScriptableSystem::GetReadComponents() const
+{
+    return {entt::type_id<ScriptComponent>().hash()};
+}
+
+std::vector<entt::id_type> ScriptableSystem::GetWriteComponents() const
+{
+    return {entt::type_id<ScriptComponent>().hash()};
+}

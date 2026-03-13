@@ -86,6 +86,8 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
         sys->Initialize(m_Ctx);
     }
 
+    RebuildExecutionBatches();
+
     auto& context = ctx.io->GetGraphicsContext();
     postProcess.Initialize(context, width, height, res);
     
@@ -170,6 +172,7 @@ void SystemManager::RunFixedUpdate(Scene& scene, float fixedDt)
 
 void SystemManager::RunUpdate(Scene& scene, float dt)
 {
+    // Serial update for p < 30
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;
         int p = sys->GetPriority();
@@ -178,20 +181,106 @@ void SystemManager::RunUpdate(Scene& scene, float dt)
         }
     }
 
-    std::vector<std::future<void>> futures;
-    for (auto& sys : m_Systems) {
-        if (!sys->IsEnabled()) continue;
-        int p = sys->GetPriority();
-        if (p >= 30 && p < 80) {
-            futures.push_back(JobSystem::Instance().ExecuteAsync([sys=sys.get(), &scene, dt]() {
-                sys->Update(scene, dt);
-            }));
+    // Parallel update in batches for p [30, 80)
+    for (auto& batch : m_UpdateBatches) {
+        if (batch.systems.empty()) continue;
+
+        if (batch.systems.size() == 1) {
+            if (batch.systems[0]->IsEnabled()) {
+                batch.systems[0]->Update(scene, dt);
+            }
+        } else {
+            std::vector<std::future<void>> futures;
+            for (auto* sys : batch.systems) {
+                if (sys->IsEnabled()) {
+                    futures.push_back(JobSystem::Instance().ExecuteAsync([sys, &scene, dt]() {
+                        sys->Update(scene, dt);
+                    }));
+                }
+            }
+            for (auto& f : futures) {
+                f.get();
+            }
         }
     }
 
-    for (auto& f : futures) {
-        f.get();
+    // Serial update for p >= 80 (Note: RenderAlpha/RenderUI are called in RunRender)
+    for (auto& sys : m_Systems) {
+        if (!sys->IsEnabled()) continue;
+        int p = sys->GetPriority();
+        if (p >= 80) {
+            sys->Update(scene, dt);
+        }
     }
+}
+
+void SystemManager::RebuildExecutionBatches()
+{
+    m_UpdateBatches.clear();
+
+    // Only batch systems with priority 30-80
+    std::vector<ISystem*> systemsToBatch;
+    for (auto& sys : m_Systems) {
+        int p = sys->GetPriority();
+        if (p >= 30 && p < 80) {
+            systemsToBatch.push_back(sys.get());
+        }
+    }
+
+    for (auto* sys : systemsToBatch) {
+        bool added = false;
+        for (auto& batch : m_UpdateBatches) {
+            bool conflict = false;
+            for (auto* batchSys : batch.systems) {
+                if (SystemsConflict(sys, batchSys)) {
+                    conflict = true;
+                    break;
+                }
+            }
+
+            if (!conflict) {
+                batch.systems.push_back(sys);
+                added = true;
+                break;
+            }
+        }
+
+        if (!added) {
+            m_UpdateBatches.push_back({{sys}});
+        }
+    }
+
+    // Log batches for verification
+    LOGGER_INFO("SystemManager") << "Rebuilt execution batches. Total batches: " << m_UpdateBatches.size();
+    for (size_t i = 0; i < m_UpdateBatches.size(); ++i) {
+        std::string batchInfo = "Batch " + std::to_string(i) + ": ";
+        for (auto* sys : m_UpdateBatches[i].systems) {
+            batchInfo += sys->GetName() + " ";
+        }
+        LOGGER_INFO("SystemManager") << batchInfo;
+    }
+}
+
+bool SystemManager::SystemsConflict(ISystem* a, ISystem* b) const
+{
+    auto readA = a->GetReadComponents();
+    auto writeA = a->GetWriteComponents();
+    auto readB = b->GetReadComponents();
+    auto writeB = b->GetWriteComponents();
+
+    // Check WriteA vs (ReadB U WriteB)
+    for (auto id : writeA) {
+        if (std::find(readB.begin(), readB.end(), id) != readB.end()) return true;
+        if (std::find(writeB.begin(), writeB.end(), id) != writeB.end()) return true;
+    }
+
+    // Check WriteB vs (ReadA U WriteA)
+    for (auto id : writeB) {
+        if (std::find(readA.begin(), readA.end(), id) != readA.end()) return true;
+        if (std::find(writeA.begin(), writeA.end(), id) != writeA.end()) return true;
+    }
+
+    return false;
 }
 
 void SystemManager::RenderShadows(Scene& scene, float alpha)

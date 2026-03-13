@@ -28,3 +28,13 @@ void AnimationSystem::Update(Scene &scene, float dt)
         }
     }
 }
+
+std::vector<entt::id_type> AnimationSystem::GetReadComponents() const
+{
+    return {entt::type_id<MeshRendererComponent>().hash()};
+}
+
+std::vector<entt::id_type> AnimationSystem::GetWriteComponents() const
+{
+    return {entt::type_id<AnimationComponent>().hash()};
+}

@@ -13,12 +13,15 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 5; } // Before transform
     std::string GetName() const override { return "NavigationSystem"; }
-
+    
     NavigationSystem() = default;
     ~NavigationSystem() = default;
 
     void Update(Scene& scene, float dt) override;
     void Render(Scene& scene) override;
+
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
 
     void AddWalkableTag(const std::string& tag);
     void ClearWalkableTags();

@@ -14,6 +14,9 @@ public:
     std::string GetName() const override { return "AnimationSystem"; }
     void Update(Scene &scene, float dt) override;
 
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
+
 private:
     EngineContext m_Ctx;
     bool m_Enabled = true;

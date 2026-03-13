@@ -100,3 +100,13 @@ void AudioSystem::StopAll(Scene &scene)
         }
     }
 }
+
+std::vector<entt::id_type> AudioSystem::GetReadComponents() const
+{
+    return {entt::type_id<CameraComponent>().hash(), entt::type_id<PositionComponent>().hash()};
+}
+
+std::vector<entt::id_type> AudioSystem::GetWriteComponents() const
+{
+    return {entt::type_id<AudioSourceComponent>().hash()};
+}

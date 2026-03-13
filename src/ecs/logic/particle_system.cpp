@@ -75,3 +75,20 @@ void ParticleSystem::Render(Scene &scene)
     rsm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
     rsm.Disable(ServerCapability::Blend);
 }
+
+std::vector<entt::id_type> ParticleSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<ParticleEmitterComponent>().hash(),
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<RotationComponent>().hash(),
+        entt::type_id<CameraComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> ParticleSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<ParticleEmitterComponent>().hash()
+    };
+}

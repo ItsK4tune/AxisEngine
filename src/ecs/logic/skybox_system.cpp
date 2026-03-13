@@ -14,6 +14,16 @@ void SkyboxRenderSystem::Initialize(IGraphicsContext& context)
     m_Context = &context;
 }
 
+std::vector<entt::id_type> SkyboxRenderSystem::GetReadComponents() const
+{
+    return {entt::type_id<SkyboxRenderComponent>().hash()};
+}
+
+std::vector<entt::id_type> SkyboxRenderSystem::GetWriteComponents() const
+{
+    return {};
+}
+
 void SkyboxRenderSystem::Render(Scene &scene)
 {
     if (!m_Enabled || !m_Context) return;

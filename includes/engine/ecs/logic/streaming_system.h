@@ -13,6 +13,9 @@ public:
     virtual void Initialize(EngineContext ctx) override { m_Ctx = ctx; }
     virtual void Update(Scene& scene, float dt) override;
 
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
+
     virtual bool IsEnabled() const override { return m_Enabled; }
     virtual void SetEnabled(bool enabled) override { m_Enabled = enabled; }
     virtual std::string GetName() const override { return "StreamingSystem"; }

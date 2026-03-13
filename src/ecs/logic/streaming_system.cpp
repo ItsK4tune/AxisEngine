@@ -36,3 +36,18 @@ void StreamingSystem::Update(Scene& scene, float dt)
         }
     }
 }
+
+std::vector<entt::id_type> StreamingSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<StreamingComponent>().hash(),
+        entt::type_id<PositionComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> StreamingSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<StreamingComponent>().hash()
+    };
+}

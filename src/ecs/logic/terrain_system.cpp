@@ -326,3 +326,18 @@ void TerrainSystem::CleanupTerrainData(TerrainData& data) {
         bm.DeleteBuffer(ebo);
     }
 }
+
+std::vector<entt::id_type> TerrainSystem::GetReadComponents() const
+{
+    return {
+        entt::type_id<TerrainComponent>().hash(),
+        entt::type_id<PositionComponent>().hash()
+    };
+}
+
+std::vector<entt::id_type> TerrainSystem::GetWriteComponents() const
+{
+    return {
+        entt::type_id<TerrainComponent>().hash()
+    };
+}
