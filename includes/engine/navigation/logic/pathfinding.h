@@ -1,5 +1,11 @@
-#include <functional>
+#pragma once
+
+#include <vector>
 #include <string>
+#include <functional>
+#include <cstdint>
+#include <glm/glm.hpp>
+#include <navigation/unit/navmesh_component.h>
 
 enum class PathfindingCriteria
 {
@@ -28,7 +34,7 @@ struct PathfindingOptions
 class Pathfinding
 {
 public:
-    static std::vector<glm::vec3> FindPath(const glm::vec3& start, const glm::vec3& end, const NavMeshComponent& navMesh, const PathfindingOptions& options = {});
+    static std::vector<glm::vec3> FindPath(const glm::vec3& start, const glm::vec3& end, const NavMeshComponent& navMesh, const PathfindingOptions& options = PathfindingOptions());
 
 private:
     static uint32_t FindClosestNode(const glm::vec3& pos, const NavMeshComponent& navMesh);

@@ -63,10 +63,12 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
     navMesh.vertices = raw.vertices;
     
     for (size_t i = 0; i < raw.indices.size(); i += 3) {
+        size_t triIdx = i / 3;
         NavMeshTriangle tri;
         tri.indices[0] = raw.indices[i];
         tri.indices[1] = raw.indices[i+1];
         tri.indices[2] = raw.indices[i+2];
+        tri.tag = (triIdx < raw.tags.size()) ? raw.tags[triIdx] : "walkable";
         
         const glm::vec3& v0 = navMesh.vertices[tri.indices[0]];
         const glm::vec3& v1 = navMesh.vertices[tri.indices[1]];
@@ -131,6 +133,10 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
             for (unsigned int idx : mesh.indices) {
                 result.indices.push_back(baseIndex + idx);
             }
+            // Add tag for each triangle in this mesh
+            for (size_t i = 0; i < mesh.indices.size() / 3; ++i) {
+                result.tags.push_back(info.tag);
+            }
         }
     }
 
@@ -187,6 +193,10 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
                 result.indices.push_back(i0);
                 result.indices.push_back(i2);
                 result.indices.push_back(i1);
+
+                // Tarrain triangles get "walkable" by default or terrain-specific tag
+                result.tags.push_back("walkable");
+                result.tags.push_back("walkable");
             }
         }
         
@@ -208,6 +218,7 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
         NavMeshNode node;
         node.position = navMesh.triangles[i].center;
         node.triangleIndex = i;
+        node.tag = navMesh.triangles[i].tag;
         navMesh.nodes.push_back(node);
     }
 

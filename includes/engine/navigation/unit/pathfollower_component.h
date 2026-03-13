@@ -1,3 +1,7 @@
+#pragma once
+
+#include <glm/glm.hpp>
+#include <vector>
 #include <navigation/logic/pathfinding.h>
 
 struct PathFollowerComponent

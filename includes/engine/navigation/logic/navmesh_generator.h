@@ -16,6 +16,7 @@ private:
     struct RawMeshData {
         std::vector<glm::vec3> vertices;
         std::vector<uint32_t> indices;
+        std::vector<std::string> tags; // One tag per triangle
     };
 
     static RawMeshData GatherWalkableGeometry(Scene& scene, ResourceManager* resources = nullptr, 

@@ -76,8 +76,17 @@ void GameState::OnEnter()
     navMesh.needsRebuild = true;
 
     // Configure Navigation System
-    GetNavigationSystem().ClearWalkableTags();
-    GetNavigationSystem().AddWalkableTag("Walkable");
+    auto& navSys = GetNavigationSystem();
+    navSys.ClearWalkableTags();
+    navSys.AddWalkableTag("Walkable");
+
+    // Demo Custom Logic: Smoothest (Custom weight based on Y delta)
+    if (ally != entt::null) {
+        navSys.SetCustomCostFunction(GetScene(), ally, [](uint32_t current, uint32_t neighbor, const NavMeshComponent& navMesh) {
+            float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
+            return 1.0f + (yDelta * 20.0f); // Example: Penalize height changes
+        });
+    }
 }
 
 void GameState::OnUpdate(float dt)
