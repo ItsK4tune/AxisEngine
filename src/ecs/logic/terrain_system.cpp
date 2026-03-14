@@ -96,19 +96,19 @@ void TerrainSystem::Render(Scene &scene) {
         actShader->setFloat("textureScale", terrain.textureScale);
         actShader->setBool("debug_noTexture", m_DebugNoTexture);
         
-        tm.ActiveTexture(TextureUnit::Texture0);
+        tm.ActiveTexture(TextureUnit::Texture26);
         tm.BindTexture(TextureType::Texture2D, terrain.heightMap);
-        actShader->setInt("heightMap", 0);
+        actShader->setInt("heightMap", 26);
 
-        tm.ActiveTexture(TextureUnit::Texture1);
+        tm.ActiveTexture(TextureUnit::Texture27);
         tm.BindTexture(TextureType::Texture2D, terrain.splatMap);
-        actShader->setInt("splatMap", 1);
+        actShader->setInt("splatMap", 27);
 
         for (size_t i = 0; i < terrain.diffuseLayers.size() && i < 4; ++i) {
-            tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture2) + i));
+            tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture28) + i));
             tm.BindTexture(TextureType::Texture2D, terrain.diffuseLayers[i]);
             std::string name = "textureLayer" + std::to_string(i);
-            actShader->setInt(name.c_str(), 2 + (int)i);
+            actShader->setInt(name.c_str(), 28 + (int)i);
         }
 
         for (auto& chunk : data.chunks) {

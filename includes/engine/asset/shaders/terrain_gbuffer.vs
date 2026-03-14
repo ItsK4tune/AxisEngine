@@ -1,4 +1,5 @@
 #version 460 core
+
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
@@ -8,21 +9,28 @@ out vec3 WorldPos;
 out vec3 Normal;
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
 
-uniform sampler2D heightMap;
+// 1. Camera UBO (Standardized Binding 20)
+layout(std140, binding = 20) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 viewPos;
+} camera;
+
+// 2. Heightmap (Standardized Unit 26)
+layout (binding = 26) uniform sampler2D heightMap;
 uniform float maxHeight;
 
 void main()
 {
     TexCoords = aTexCoords;
-    float h = texture(heightMap, aTexCoords).r * maxHeight;
+    float h = texture(heightMap, TexCoords).r * maxHeight;
     vec3 pos = aPos;
     pos.y = h;
     
     WorldPos = vec3(model * vec4(pos, 1.0));
     Normal = mat3(transpose(inverse(model))) * aNormal;
     
-    gl_Position = projection * view * vec4(WorldPos, 1.0);
+    // Use UBO projection/view
+    gl_Position = camera.projection * camera.view * vec4(WorldPos, 1.0);
 }

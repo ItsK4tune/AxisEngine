@@ -9,12 +9,17 @@ out vec3 WorldPos;
 out vec3 Normal;
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
 
-uniform sampler2D heightMap;
+// 1. Camera UBO (Standardized Binding 20)
+layout(std140, binding = 20) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 viewPos;
+} camera;
+
+// 2. Heightmap (Standardized Unit 26)
+layout (binding = 26) uniform sampler2D heightMap;
 uniform float maxHeight;
-uniform vec2 terrainSize;
 
 void main()
 {
@@ -28,10 +33,8 @@ void main()
     displacedPos.y = height;
     
     WorldPos = vec3(model * vec4(displacedPos, 1.0));
-    
-    // Basic normal calculation if not provided or to refine
-    // For now, use varying normal or pass identity if using normal mapping
     Normal = mat3(transpose(inverse(model))) * aNormal;
     
-    gl_Position = projection * view * vec4(WorldPos, 1.0);
+    // Use UBO projection/view
+    gl_Position = camera.projection * camera.view * vec4(WorldPos, 1.0);
 }

@@ -13,13 +13,13 @@ out vec4 FragPosLightSpaceSpot[2]; // For up to 2 Spot Light Shadows
 
 uniform mat4 model;
 
-layout(std140, binding = 0) uniform CameraData {
+layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
     vec3 viewPos;
 } camera;
 
-layout(std140, binding = 1) uniform LightData {
+layout(std140, binding = 21) uniform LightData {
     mat4 lightSpaceMatricesDir[2];
     mat4 lightSpaceMatricesSpot[2];
     int numDirLights;

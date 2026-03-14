@@ -1,57 +1,82 @@
 #version 460 core
-
 out vec4 FragColor;
 
 in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
 
-uniform sampler2D splatMap;
-uniform sampler2D textureLayer0; // Grass
-uniform sampler2D textureLayer1; // Dirt
-uniform sampler2D textureLayer2; // Rock
-uniform sampler2D textureLayer3; // Snow
+// 1. Terrain Samplers (Standardized Units 27-31)
+layout (binding = 27) uniform sampler2D splatMap;
+layout (binding = 28) uniform sampler2D textureLayer0; // Grass
+layout (binding = 29) uniform sampler2D textureLayer1; // Dirt
+layout (binding = 30) uniform sampler2D textureLayer2; // Rock
+layout (binding = 31) uniform sampler2D textureLayer3; // Snow
+
+// 2. UBO/SSBO Bindings (Standardized Binding 20-25)
+layout(std140, binding = 20) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 viewPos;
+} camera;
+
+layout(std140, binding = 21) uniform LightData {
+    mat4 lightSpaceMatricesDir[2];
+    mat4 lightSpaceMatricesSpot[2];
+    int numDirLights;
+    int nrPointLights;
+    int nrSpotLights;
+    int u_ReceiveShadow;
+    float farPlanePoint;
+    float farPlaneSpot;
+} light;
+
+struct DirLight {
+    vec3 direction; float shadowIndex;
+    vec3 color; float intensity;
+    vec3 ambient; float pad1;
+    vec3 diffuse; float pad2;
+    vec3 specular; float pad3;
+};
+layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 
 uniform float textureScale;
-uniform vec3 camPos;
 uniform bool debug_noTexture;
-
-// PBR uniforms (simplified for now)
-uniform vec3 lightDir;
-uniform vec3 lightColor;
 
 void main()
 {
-    // Read splat map
-    vec4 splat = texture(splatMap, TexCoords);
-    
-    // Scale texture coordinates for tiled textures
-    vec2 tiledCoords = TexCoords * textureScale;
-    
-    // Sample layers
+    // 1. Albedo calculation (Splatting)
     vec3 albedo;
     if (debug_noTexture) {
         albedo = vec3(1.0);
     } else {
-        vec4 col0 = texture(textureLayer0, tiledCoords);
-        vec4 col1 = texture(textureLayer1, tiledCoords);
-        vec4 col2 = texture(textureLayer2, tiledCoords);
-        vec4 col3 = texture(textureLayer3, tiledCoords);
+        vec4 splat = texture(splatMap, TexCoords);
+        vec2 tiledCoords = TexCoords * textureScale;
+        vec3 col0 = texture(textureLayer0, tiledCoords).rgb;
+        vec3 col1 = texture(textureLayer1, tiledCoords).rgb;
+        vec3 col2_3 = texture(textureLayer2, tiledCoords).rgb;
+        vec3 col3 = texture(textureLayer3, tiledCoords).rgb;
         
-        // Mix layers based on splat map
-        albedo = col0.rgb * splat.r + 
-                 col1.rgb * splat.g + 
-                 col2.rgb * splat.b + 
-                 col3.rgb * (1.0 - (splat.r + splat.g + splat.b));
+        albedo = col0 * splat.r + 
+                 col1 * splat.g + 
+                 col2_3 * splat.b + 
+                 col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
     }
     
-    // Simple Lighting (PBR-lite for now)
+    // 2. Simple Forward Lighting
     vec3 N = normalize(Normal);
-    vec3 L = normalize(-lightDir);
-    float diff = max(dot(N, L), 0.0);
-    vec3 diffuse = diff * lightColor;
+    vec3 V = normalize(camera.viewPos - WorldPos);
+    vec3 Lo = vec3(0.0);
+
+    for(int i = 0; i < light.numDirLights; i++) {
+        vec3 L = normalize(-dirLights[i].direction);
+        float diff = max(dot(N, L), 0.0);
+        Lo += (dirLights[i].ambient + diff) * dirLights[i].color * dirLights[i].intensity;
+    }
     
-    vec3 ambient = vec3(0.05) * albedo;
+    vec3 color = albedo * (Lo + 0.05); // albedo * (lighting + small ambient)
     
-    FragColor = vec4(ambient + diffuse * albedo, 1.0);
+    // Apply gamma correction
+    color = pow(color, vec3(1.0/2.2));
+    
+    FragColor = vec4(color, 1.0);
 }

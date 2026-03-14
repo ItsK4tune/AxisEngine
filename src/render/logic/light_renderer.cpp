@@ -110,20 +110,16 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
 
     bm.BindBuffer(BufferType::ShaderStorageBuffer, m_DirLightSSBO->Get());
     bm.BufferData(BufferType::ShaderStorageBuffer, (std::max)(m_DirLights.size() * sizeof(GPUDirLight), (size_t)16), m_DirLights.data(), BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 2, m_DirLightSSBO->Get());
+    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
 
     bm.BindBuffer(BufferType::ShaderStorageBuffer, m_PointLightSSBO->Get());
     bm.BufferData(BufferType::ShaderStorageBuffer, (std::max)(m_PointLights.size() * sizeof(GPUPointLight), (size_t)16), m_PointLights.data(), BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 3, m_PointLightSSBO->Get());
+    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
 
     bm.BindBuffer(BufferType::ShaderStorageBuffer, m_SpotLightSSBO->Get());
     bm.BufferData(BufferType::ShaderStorageBuffer, (std::max)(m_SpotLights.size() * sizeof(GPUSpotLight), (size_t)16), m_SpotLights.data(), BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 4, m_SpotLightSSBO->Get());
+    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
 
-    if (shader)
-    {
-        shader->setInt("numDirLights", (int)m_DirLights.size());
-        shader->setInt("nrPointLights", (int)m_PointLights.size());
-        shader->setInt("nrSpotLights", (int)m_SpotLights.size());
-    }
+    // Standard: Light counts are now passed via LightData UBO (Binding 21), 
+    // initialized in RenderSystem. Redundant uniform setters are removed for performance.
 }

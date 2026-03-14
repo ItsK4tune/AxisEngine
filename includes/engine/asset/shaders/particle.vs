@@ -8,7 +8,7 @@ layout (location = 4) in float aInstanceScale;
 out vec2 TexCoords;
 out vec4 ParticleColor;
 
-layout(std140, binding = 0) uniform CameraData {
+layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
     vec3 viewPos;

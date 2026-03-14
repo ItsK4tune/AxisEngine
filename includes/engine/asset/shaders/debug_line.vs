@@ -4,7 +4,7 @@ layout (location = 1) in vec3 aColor;
 
 out vec3 LineColor;
 
-layout(std140, binding = 0) uniform CameraData {
+layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
     vec3 viewPos;

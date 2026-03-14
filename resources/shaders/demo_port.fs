@@ -5,6 +5,17 @@ in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 
+layout(std140, binding = 21) uniform LightData {
+    mat4 lightSpaceMatricesDir[2];
+    mat4 lightSpaceMatricesSpot[2];
+    int numDirLights;
+    int nrPointLights;
+    int nrSpotLights;
+    int u_ReceiveShadow;
+    float farPlanePoint;
+    float farPlaneSpot;
+} light;
+
 uniform sampler2D texture_diffuse1;
 uniform vec4 tintColor;
 uniform bool debug_noTexture;
@@ -12,15 +23,14 @@ uniform bool debug_noTexture;
 // Custom Ports from Engine
 uniform float u_CustomPorts[8];
 
-// Global Data from Engine Gate (Binding 2)
-layout (std140, binding = 2) uniform GlobalData {
+layout(std140, binding = 22) uniform GlobalData {
     float u_Time;
     float u_DeltaTime;
     vec2  u_Resolution;
-};
+} globalData;
 
-// Camera Data from Engine (Binding 0)
-layout (std140, binding = 0) uniform CameraData {
+// Camera Data from Engine (Binding 20)
+layout (std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
     vec3 viewPos;
@@ -58,7 +68,7 @@ void main()
     
     // Selection Glow (White Overlay)
     if (u_CustomPorts[1] > 0.5) {
-        float pulse = (sin(u_Time * 10.0) + 1.0) * 0.5;
+        float pulse = (sin(globalData.u_Time * 10.0) + 1.0) * 0.5;
         result = mix(result, vec3(1.0, 1.0, 1.0), 0.3 + pulse * 0.2);
     }
     

@@ -11,7 +11,7 @@ out vec2 TexCoords;
 
 uniform mat4 model;
 
-layout(std140, binding = 0) uniform CameraData {
+layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
     vec3 viewPos;

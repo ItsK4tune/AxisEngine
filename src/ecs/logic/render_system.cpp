@@ -57,17 +57,17 @@ void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderL
     m_CameraUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUCameraData), nullptr, BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::UniformBuffer, 0, m_CameraUBO->Get());
+    bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
 
     m_GlobalLightUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalLightData), nullptr, BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::UniformBuffer, 1, m_GlobalLightUBO->Get());
+    bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
 
     m_GlobalDataUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::UniformBuffer, 2, m_GlobalDataUBO->Get());
+    bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
     shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
     m_OcclusionCuller.Initialize(*m_Context, shaderLib.GetShader("occlusion_query"));
@@ -249,6 +249,7 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
     auto& bm = m_Context->GetBufferManager();
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUCameraData), &m_CameraData);
+    bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
 
     // Update Global Light UBO
     m_GlobalLightData.numDirLights = m_LightRenderer.GetDirLightCount();
@@ -265,6 +266,7 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
 
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalLightData), &m_GlobalLightData);
+    bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
 
     // Update Global Data UBO
     static auto startTime = std::chrono::steady_clock::now();
@@ -273,6 +275,7 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
     m_GlobalData.resolution[0] = (float)width; m_GlobalData.resolution[1] = (float)height;
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
+    bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
     auto &rsm = m_Context->GetRenderStateManager();
     

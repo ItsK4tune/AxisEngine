@@ -157,7 +157,23 @@ enum class TextureUnit {
     Texture12,
     Texture13,
     Texture14,
-    Texture15
+    Texture15,
+    Texture16,
+    Texture17,
+    Texture18,
+    Texture19,
+    Texture20,
+    Texture21,
+    Texture22,
+    Texture23,
+    Texture24,
+    Texture25,
+    Texture26,
+    Texture27,
+    Texture28,
+    Texture29,
+    Texture30,
+    Texture31
 };
 
 // --- Render State Types ---
