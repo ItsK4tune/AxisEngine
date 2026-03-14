@@ -23,7 +23,7 @@ public:
     void Shutdown() override;
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 25; }
+    int GetPriority() const override { return 81; } // After Mesh rendering, before Decals
     std::string GetName() const override { return "TerrainSystem"; }
 
     void Update(Scene &scene, float dt) override;

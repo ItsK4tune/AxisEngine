@@ -46,6 +46,7 @@ public:
     static void LoadLOD(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadCamera(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadPathFollower(Scene &scene, entt::entity entity, const YAMLNode &node);
+    static void LoadDecal(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, EngineContext ctx);
 
     static void InitializeDefaultLoaders();
 

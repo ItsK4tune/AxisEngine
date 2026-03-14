@@ -25,10 +25,12 @@ public:
                bool occlusionCullEnabled, float distCullSq, 
                uint32_t filterMask, uint32_t camMask, const glm::vec3& camPos);
 
-    const std::vector<RenderItem>& GetOpaqueQueue() const { return m_RenderQueue; }
+    const std::vector<RenderItem>& GetOpaqueQueue() const { return m_OpaqueQueue; }
+    const std::vector<RenderItem>& GetTransparentQueue() const { return m_TransparentQueue; }
     const std::vector<RenderItem>& GetShadowQueue() const { return m_ShadowQueue; }
 
 private:
-    std::vector<RenderItem> m_RenderQueue;
+    std::vector<RenderItem> m_OpaqueQueue;
+    std::vector<RenderItem> m_TransparentQueue;
     std::vector<RenderItem> m_ShadowQueue;
 };

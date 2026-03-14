@@ -22,6 +22,9 @@ struct RigidBodyComponent
 
     bool isCollisionEnabled = true;
 
+    glm::vec3 positionOffset = glm::vec3(0.0f);
+    glm::quat rotationOffset = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+
     std::vector<std::shared_ptr<IConstraint>> constraints;
 
     glm::vec3 linearFactor = glm::vec3(1.0f);

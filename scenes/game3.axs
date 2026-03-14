@@ -1,4 +1,7 @@
 axis_scene:
+  Config:
+    LOG_LEVEL: 4
+    RENDER_PATH: DEFERRED
 
   Resources:
     Model:
@@ -26,10 +29,10 @@ axis_scene:
       Component: Transform
         Position: -5.0 5.0 -5.0
         Rotation: 0.0 0.0 0.0
-        Scale: 300 300 300
+        Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: demoPortShader
+        Shader: unlitShader
         Order: 1
       Component: Material
         Type: PHONG
@@ -53,7 +56,7 @@ axis_scene:
       Component: Transform
         Position: 5.0 5.0 5.0
         Rotation: 0.0 0.0 0.0
-        Scale: 300 300 300
+        Scale: 1 1 1
       Component: Renderer
         Model: womanModel
         Shader: demoPortShader
@@ -102,3 +105,34 @@ axis_scene:
         Ambient: 0.1
         Diffuse: 0.3
         Specular: 0.3
+
+    WallTest:
+      Tag: wall
+      Component: Transform
+        Position: 0.0 10.0 20.0
+        Rotation: 90.0 0.0 0.0
+        Scale: 10.0 10.0 10.0
+      Component: Renderer
+        Model: planeModel
+        Shader: phongLitShadowShader
+      Component: Material
+        Type: PHONG
+        Shininess: 32
+        Specular: 0.5 0.5 0.5
+      Component: RigidBody
+        Type: BOX
+        Size: 10.0 10.0 0.1
+        Mass: 0.0
+        BodyType: STATIC
+        Rotation: 0.0 0.0 0.0
+
+    DecalCrack:
+      Tag: decal
+      Component: Transform
+        Position: 0.0 10.0 19.9
+        Rotation: 90.0 0.0 0.0
+        Scale: 2.0 2.0 2.0
+      Component: Decal
+        Albedo: resources/textures/decal_crack.png
+        Opacity: 1.0
+        TargetTags: wall

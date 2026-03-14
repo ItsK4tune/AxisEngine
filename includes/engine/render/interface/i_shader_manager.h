@@ -27,6 +27,7 @@ public:
 
     virtual int GetUniformLocation(unsigned int program, const char *name) = 0;
     virtual void SetUniform1i(int location, int value) = 0;
+    virtual void SetUniform1ui(int location, unsigned int value) = 0;
     virtual void SetUniform1f(int location, float value) = 0;
     virtual void SetUniform1fv(int location, int count, const float *value) = 0;
     virtual void SetUniform2f(int location, float v0, float v1) = 0;

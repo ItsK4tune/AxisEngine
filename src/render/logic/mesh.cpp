@@ -94,7 +94,10 @@ void Mesh::Draw(Shader &shader, bool bindTextures)
             else if (name == "texture_height")
                 number = std::to_string(heightNr++);
 
-            shader.setInt((name + number).c_str(), i);
+            std::string fullName = name + number;
+            shader.setInt(fullName.c_str(), i);
+            shader.setInt(("material." + fullName).c_str(), i);
+            
             tm.BindTexture(TextureType::Texture2D, textures[i].id);
         }
     }
@@ -141,7 +144,10 @@ void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, b
             else if (name == "texture_height")
                 number = std::to_string(heightNr++);
 
-            shader.setInt((name + number).c_str(), i);
+            std::string fullName = name + number;
+            shader.setInt(fullName.c_str(), i);
+            shader.setInt(("material." + fullName).c_str(), i);
+            
             tm.BindTexture(TextureType::Texture2D, textures[i].id);
         }
     }

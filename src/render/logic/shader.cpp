@@ -119,6 +119,11 @@ void Shader::setInt(const std::string &name, int value) const
     m_ShaderManager.SetUniform1i(GetUniformLocation(name), value);
 }
 
+void Shader::setUInt(const std::string &name, unsigned int value) const
+{
+    m_ShaderManager.SetUniform1ui(GetUniformLocation(name), value);
+}
+
 void Shader::setFloat(const std::string &name, float value) const
 {
     m_ShaderManager.SetUniform1f(GetUniformLocation(name), value);

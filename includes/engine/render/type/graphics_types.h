@@ -84,6 +84,7 @@ inline bool operator&(BufferBit a, BufferBit b) {
 // --- Texture Types ---
 
 enum class TextureType {
+    Texture1D,
     Texture2D,
     TextureCubeMap,
     Texture3D,
@@ -101,7 +102,8 @@ enum class TextureFormat {
     RGB,
     RGBA,
     DepthComponent,
-    DepthStencil
+    DepthStencil,
+    Red_Integer
 };
 
 enum class InternalFormat {
@@ -109,6 +111,7 @@ enum class InternalFormat {
     RGB8,
     RGBA8,
     RGBA16F,
+    R32UI,
     DepthComponent24,
     Depth24Stencil8
 };
@@ -309,6 +312,9 @@ enum class QueryType {
 
 struct GpuHandle {
     uint32_t id = 0;
+    GpuHandle() = default;
+    GpuHandle(uint32_t handleId) : id(handleId) {}
+    operator uint32_t() const { return id; }
     bool IsValid() const { return id != 0; }
     void Reset() { id = 0; }
     bool operator==(const GpuHandle& other) const { return id == other.id; }

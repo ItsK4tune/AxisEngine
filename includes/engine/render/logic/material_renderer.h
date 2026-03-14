@@ -9,7 +9,7 @@ class Shader;
 class MaterialRenderer {
 public:
     void Initialize(IGraphicsContext& context, unsigned int whiteTextureId);
-    void SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene, bool debugNoTexture);
+    bool SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene, bool debugNoTexture);
 
 private:
     IGraphicsContext* m_Context = nullptr;

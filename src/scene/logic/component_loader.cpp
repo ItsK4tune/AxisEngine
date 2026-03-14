@@ -3,6 +3,7 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
+#include <ecs/unit/decal_component.h>
 #include <render/logic/animator.h>
 #include <algorithm>
 #include <core/logic/app_framework.h>
@@ -69,6 +70,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("CharacterController", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { PhysicsLoader::LoadCharacterController(s, e, n, p); });
     RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { /* Transform is typically handled by SceneSerializer directly */ });
     RegisterLoader("PathFollower", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { ComponentLoader::LoadPathFollower(s, e, n); });
+    RegisterLoader("Decal", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadDecal(s, e, n, r, c); });
 }
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -628,4 +630,41 @@ void ComponentLoader::LoadPathFollower(Scene &scene, entt::entity entity, const 
     }
 
     pf.arrivalDistance = std::stof(node.GetChildValue("ArrivalDistance", "0.5"));
+}
+
+void ComponentLoader::LoadDecal(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, EngineContext ctx)
+{
+    LoaderUtils::ValidateKeys(node, {"Albedo", "Normal", "Opacity", "Lifetime", "TargetTags"}, "Decal");
+
+    auto &d = scene.registry.emplace<DecalComponent>(entity);
+    
+    std::string albedoPath = node.GetChildValue("Albedo");
+    if (!albedoPath.empty())
+    {
+        res.LoadTexture(albedoPath, albedoPath);
+        auto tex = res.GetTexture(albedoPath);
+        if (tex) d.albedoMap = tex->id;
+    }
+
+    std::string normalPath = node.GetChildValue("Normal");
+    if (!normalPath.empty())
+    {
+        res.LoadTexture(normalPath, normalPath);
+        auto tex = res.GetTexture(normalPath);
+        if (tex) d.normalMap = tex->id;
+    }
+
+    d.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
+    d.lifetime = std::stof(node.GetChildValue("Lifetime", "-1.0"));
+
+    std::string tags = node.GetChildValue("TargetTags");
+    if (!tags.empty())
+    {
+        std::stringstream ss(tags);
+        std::string tag;
+        while (ss >> tag)
+        {
+            d.targetTags.push_back(tag);
+        }
+    }
 }

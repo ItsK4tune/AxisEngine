@@ -11,7 +11,8 @@ void RenderQueue::Build(Scene& scene, float alpha,
                         bool occlusionCullEnabled, float distCullSq, 
                         uint32_t filterMask, uint32_t camMask, const glm::vec3& camPos) {
     
-    m_RenderQueue.clear();
+    m_OpaqueQueue.clear();
+    m_TransparentQueue.clear();
     m_ShadowQueue.clear();
 
     std::vector<entt::entity> visibleEntities;
@@ -85,33 +86,37 @@ void RenderQueue::Build(Scene& scene, float alpha,
     JobSystem::Instance().Wait(&counter);
 
     for (const auto& res : threadResults) {
-        m_RenderQueue.insert(m_RenderQueue.end(), res.renderQueue.begin(), res.renderQueue.end());
+        for (const auto& item : res.renderQueue) {
+            if (item.isTransparent) m_TransparentQueue.push_back(item);
+            else m_OpaqueQueue.push_back(item);
+        }
         m_ShadowQueue.insert(m_ShadowQueue.end(), res.shadowQueue.begin(), res.shadowQueue.end());
     }
 
-    std::sort(m_RenderQueue.begin(), m_RenderQueue.end(), [&scene](const RenderItem& lhs, const RenderItem& rhs) {
+    // Sort Opaque: Front-to-back (actually by layer, then shader/mat for batching)
+    std::sort(m_OpaqueQueue.begin(), m_OpaqueQueue.end(), [&scene](const RenderItem& lhs, const RenderItem& rhs) {
         if (lhs.layer != rhs.layer) return lhs.layer < rhs.layer;
-        if (lhs.isTransparent != rhs.isTransparent) return !lhs.isTransparent;
+        if (lhs.renderOrder != rhs.renderOrder) return lhs.renderOrder < rhs.renderOrder;
 
-        if (!lhs.isTransparent) {
-            if (lhs.renderOrder != rhs.renderOrder) return lhs.renderOrder < rhs.renderOrder;
+        auto& lRenderer = scene.registry.get<MeshRendererComponent>(lhs.entity);
+        auto& rRenderer = scene.registry.get<MeshRendererComponent>(rhs.entity);
 
-            auto& lRenderer = scene.registry.get<MeshRendererComponent>(lhs.entity);
-            auto& rRenderer = scene.registry.get<MeshRendererComponent>(rhs.entity);
+        auto lShader = lRenderer.shader.lock();
+        auto rShader = rRenderer.shader.lock();
+        unsigned int lID = lShader ? lShader->getID() : 0;
+        unsigned int rID = rShader ? rShader->getID() : 0;
+        if (lID != rID) return lID < rID;
+        
+        auto lMat = scene.registry.try_get<MaterialComponent>(lhs.entity);
+        auto rMat = scene.registry.try_get<MaterialComponent>(rhs.entity);
+        if (lMat != rMat) return lMat < rMat;
 
-            auto lShader = lRenderer.shader.lock();
-            auto rShader = rRenderer.shader.lock();
-            unsigned int lID = lShader ? lShader->getID() : 0;
-            unsigned int rID = rShader ? rShader->getID() : 0;
-            if (lID != rID) return lID < rID;
-            
-            auto lMat = scene.registry.try_get<MaterialComponent>(lhs.entity);
-            auto rMat = scene.registry.try_get<MaterialComponent>(rhs.entity);
-            if (lMat != rMat) return lMat < rMat;
+        return lhs.activeModel < rhs.activeModel;
+    });
 
-            return lhs.activeModel < rhs.activeModel;
-        } else {
-            return lhs.distSq > rhs.distSq;
-        }
+    // Sort Transparent: Back-to-front
+    std::sort(m_TransparentQueue.begin(), m_TransparentQueue.end(), [](const RenderItem& lhs, const RenderItem& rhs) {
+        if (lhs.layer != rhs.layer) return lhs.layer < rhs.layer;
+        return lhs.distSq > rhs.distSq;
     });
 }

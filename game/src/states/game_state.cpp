@@ -4,8 +4,10 @@
 #include <axis_system.h>
 #include <axis_util.h>
 #include <axis_platform.h>
-#include <axis_core.h>
 #include <algorithm>
+#include <ecs/unit/decal_component.h>
+#include <ecs/logic/decal_system.h>
+#include <axis_core.h>
 
 void GameState::OnEnter()
 {
@@ -19,74 +21,6 @@ void GameState::OnEnter()
     EnableLogic(true);
 
     GetRenderSystem().SetFilterLayerMask(1);
-
-    // Setup PathFollower for both entities
-    auto ally = EntityManager::FindByName(GetScene(), "Woman_Ally");
-    if (ally != entt::null) GetScene().registry.emplace<PathFollowerComponent>(ally);
-    
-    auto enemy = EntityManager::FindByName(GetScene(), "Woman_Enemy");
-    if (enemy != entt::null) GetScene().registry.emplace<PathFollowerComponent>(enemy);
-
-    // --- Terrain Setup ---
-    auto terrainEntity = EntityManager::CreateEntity(GetScene(), "DemoTerrain");
-    auto& info = GetScene().registry.emplace<InfoComponent>(terrainEntity);
-    info.name = "DemoTerrain";
-    info.tag = "Walkable";
-
-    auto& terrain = GetScene().registry.emplace<TerrainComponent>(terrainEntity);
-    auto& terrainPos = GetScene().registry.emplace<PositionComponent>(terrainEntity);
-    terrainPos.value = glm::vec3(-256.0f, -10.0f, -256.0f);
-
-    terrain.terrainSize = glm::vec3(512.0f, 50.0f, 512.0f);
-    terrain.resolution = 513; terrain.chunkSize = 33;
-    terrain.maxHeight = 50.0f; terrain.textureScale = 20.0f;
-
-    auto& res = GetResourceManager();
-    res.LoadShader("terrain", "includes/engine/asset/shaders/terrain.vs", "includes/engine/asset/shaders/terrain.fs");
-    res.LoadTexture("heightmap_demo", "resources/textures/heightmap_demo.png", false, true);
-    res.LoadTexture("splatmap_demo", "resources/textures/splatmap_demo.png", false);
-    res.LoadTexture("grass", "resources/textures/grass.png", false);
-    res.LoadTexture("dirt", "resources/textures/dirt.png", false);
-    res.LoadTexture("rock", "resources/textures/rock.png", false);
-    res.LoadTexture("snow", "resources/textures/snow.png", false);
-
-    auto hm = res.GetTexture("heightmap_demo");
-    auto sm = res.GetTexture("splatmap_demo");
-    auto g = res.GetTexture("grass");
-    auto d = res.GetTexture("dirt");
-    auto r = res.GetTexture("rock");
-    auto sn = res.GetTexture("snow");
-    
-    if (hm && sm && g && d && r && sn) {
-        terrain.heightMap = hm->id;
-        terrain.heightMapName = "heightmap_demo";
-        terrain.splatMap = sm->id;
-        terrain.diffuseLayers.push_back(g->id);
-        terrain.diffuseLayers.push_back(d->id);
-        terrain.diffuseLayers.push_back(r->id);
-        terrain.diffuseLayers.push_back(sn->id);
-        terrain.generatePhysics = true;
-        terrain.isWalkable = true;
-        terrain.needsRebuild = true;
-    }
-
-    // Rebuild NavMesh on start
-    auto navEntity = EntityManager::CreateEntity(GetScene(), "NavMesh");
-    auto& navMesh = GetScene().registry.emplace<NavMeshComponent>(navEntity);
-    navMesh.needsRebuild = true;
-
-    // Configure Navigation System
-    auto& navSys = GetNavigationSystem();
-    navSys.ClearWalkableTags();
-    navSys.AddWalkableTag("Walkable");
-
-    // Demo Custom Logic: Smoothest (Custom weight based on Y delta)
-    if (ally != entt::null) {
-        navSys.SetCustomCostFunction(GetScene(), ally, [](uint32_t current, uint32_t neighbor, const NavMeshComponent& navMesh) {
-            float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
-            return 1.0f + (yDelta * 20.0f); // Example: Penalize height changes
-        });
-    }
 }
 
 void GameState::OnUpdate(float dt)
@@ -129,15 +63,46 @@ void GameState::OnUpdate(float dt)
                     m_SelectedEntity = hit.entity;
                     LOGGER_INFO("GameState") << "Selected: " << info->name;
                 }
-                else if (m_SelectedEntity != entt::null)
+                else
                 {
-                    // If terrain (or something else) is clicked, move selected entity
-                    if (auto* follower = EntityManager::TryGetComponent<PathFollowerComponent>(GetScene(), m_SelectedEntity))
+                    // Move command IF an entity is selected
+                    if (m_SelectedEntity != entt::null)
                     {
-                        follower->lockXPitch = true;
-                        follower->lockZRoll = true;
-                        GetNavigationSystem().MoveTo(GetScene(), m_SelectedEntity, hit.hitPoint);
-                        LOGGER_INFO("GameState") << "Move Command: target=(" << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z << ") entity=" << (uint32_t)m_SelectedEntity;
+                        if (auto* follower = EntityManager::TryGetComponent<PathFollowerComponent>(GetScene(), m_SelectedEntity))
+                        {
+                            follower->lockXPitch = true;
+                            follower->lockZRoll = true;
+                            GetNavigationSystem().MoveTo(GetScene(), m_SelectedEntity, hit.hitPoint);
+                            LOGGER_INFO("GameState") << "Move Command: target=(" << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z << ") entity=" << (uint32_t)m_SelectedEntity;
+                        }
+                    }
+                    
+                    // ALWAYS spawn decal on click if we hit something (terrain, etc)
+                    auto* decalSys = m_Ctx.systems->GetSystem<DecalSystem>();
+                    if (decalSys)
+                    {
+                        static uint32_t crackTex = 0;
+                        if (crackTex == 0) crackTex = decalSys->LoadDecalTexture("resources/textures/decal_crack.png");
+                        
+                        auto decalEnt = EntityManager::CreateEntity(GetScene(), "Decal_Crack");
+                        auto& dComp = EntityManager::AddComponent<DecalComponent>(GetScene(), decalEnt);
+                        dComp.albedoMap = crackTex;
+                        dComp.lifetime = 10.0f; // Fade out after 10s
+                        dComp.targetTags = {"terrain", "wall"}; // API demo: stick to terrain and wall
+                        
+                        auto& dPos = EntityManager::AddComponent<PositionComponent>(GetScene(), decalEnt);
+                        dPos.value = hit.hitPoint;
+                        
+                        auto& dRot = EntityManager::AddComponent<RotationComponent>(GetScene(), decalEnt);
+                        // Align decal box to surface normal
+                        glm::vec3 up = glm::vec3(0, 1, 0);
+                        if (glm::abs(glm::dot(hit.hitNormal, up)) > 0.99f) up = glm::vec3(1, 0, 0);
+                        dRot.value = glm::quatLookAt(-hit.hitNormal, up); // Decal projects along -Z
+                        
+                        auto& dScale = EntityManager::AddComponent<ScaleComponent>(GetScene(), decalEnt);
+                        dScale.value = glm::vec3(1.0f, 1.0f, 1.0f);
+                        
+                        LOGGER_INFO("GameState") << "Spawned Decal at " << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z;
                     }
                 }
             }

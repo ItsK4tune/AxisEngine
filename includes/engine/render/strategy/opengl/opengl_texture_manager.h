@@ -41,6 +41,13 @@ public:
 
     void GenerateMipmap(TextureType target) override { glGenerateMipmap(GLTranslator::ToGL(target)); }
 
+    void TexImage1D(TextureType target, int level, InternalFormat internalFormat,
+                    int width, int border,
+                    TextureFormat format, DataType type, const void *data) override
+    {
+        glTexImage1D(GLTranslator::ToGL(target), level, GLTranslator::ToGL(internalFormat), width, border, GLTranslator::ToGL(format), GLTranslator::ToGL(type), data);
+    }
+
     void TexImage2D(TextureType target, int level, InternalFormat internalFormat,
                     int width, int height, int border,
                     TextureFormat format, DataType type, const void *data) override

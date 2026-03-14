@@ -3,9 +3,11 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gAlbedoSpec;
+layout (binding = 0) uniform sampler2D gPosition;
+layout (binding = 1) uniform sampler2D gNormal;
+layout (binding = 2) uniform sampler2D gAlbedoSpec;
+
+uniform int u_DebugMode; // 0=Lit, 1=Pos, 2=Normal, 3=Albedo, 4=IDs
 
 struct DirLight {
     vec3 direction; float shadowIndex;
@@ -81,15 +83,17 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, 
 
 void main()
 {             
-    // retrieve data from gbuffer
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
+    
+    // Discard background pixels where no geometry was written (FragPos will be 0)
+    if (dot(FragPos, FragPos) < 0.0001) discard;
+
     vec3 Normal = texture(gNormal, TexCoords).rgb;
+    Normal = normalize(Normal * 2.0 - 1.0); // Decode from [0, 1]
     vec3 Albedo = texture(gAlbedoSpec, TexCoords).rgb;
     float Roughness = texture(gAlbedoSpec, TexCoords).a;
-    float Metallic = 0.0; // We can add metallic to G-Buffer later
+    float Metallic = 0.0;
     float AO = 1.0;
-
-    if (length(Normal) < 0.1) discard; // Handle empty/background pixels
 
     vec3 N = normalize(Normal);
     vec3 V = normalize(camera.viewPos - FragPos);
@@ -153,10 +157,9 @@ void main()
 
     // Spot lights... (Skipping for brevity in this initial implementation, or add it similarly)
 
-    vec3 ambient = vec3(0.03) * Albedo * AO;
-    vec3 color = ambient + Lo;
-
-    // HDR and Gamma correction will be done in post-processing or here
+    vec3 color = Lo + Albedo * 0.03; // Simple ambient
+    
+    // Simple tone mapping and gamma correction
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));
 
@@ -197,7 +200,7 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, i
     if(projCoords.z > 1.0) return 0.0;
     float closestDepth = texture(shadowMapDir[shadowMapIndex], projCoords.xy).r;
     float currentDepth = projCoords.z;
-    float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.0005);
+    float bias = max(0.02 * (1.0 - dot(normal, lightDir)), 0.002);
     float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0; // Simple shadow for now
     return shadow;
 }

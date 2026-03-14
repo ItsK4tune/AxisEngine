@@ -18,6 +18,9 @@ public:
     virtual void TexParameterfv(TextureType target, TextureParameter pname, const float *params) = 0;
     virtual void GenerateMipmap(TextureType target) = 0;
 
+    virtual void TexImage1D(TextureType target, int level, InternalFormat internalFormat,
+                            int width, int border,
+                            TextureFormat format, DataType type, const void *data) = 0;
     virtual void TexImage2D(TextureType target, int level, InternalFormat internalFormat,
                             int width, int height, int border,
                             TextureFormat format, DataType type, const void *data) = 0;

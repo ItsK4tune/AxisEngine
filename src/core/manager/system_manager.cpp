@@ -1,3 +1,4 @@
+#include <ecs/logic/deferred_lighting_system.h>
 #include <core/unit/engine_context.h>
 #include <platform/logic/io_handler.h>
 #include <core/manager/system_manager.h>
@@ -15,6 +16,7 @@
 #include <ecs/logic/streaming_system.h>
 #include <ecs/logic/video_system.h>
 #include <ecs/logic/terrain_system.h>
+#include <ecs/logic/decal_system.h>
 #include <navigation/logic/navigation_system.h>
 #include <ecs/logic/dummy_test_system.h>
 #include <platform/logic/input_system.h>
@@ -80,6 +82,8 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     RegisterSystem(std::make_unique<VideoSystem>());
     RegisterSystem(std::make_unique<NavigationSystem>());
     RegisterSystem(std::make_unique<TerrainSystem>());
+    RegisterSystem(std::make_unique<DecalSystem>());
+    RegisterSystem(std::make_unique<DeferredLightingSystem>());
     RegisterSystem(std::make_unique<DummyTestSystem>());
 
     for (auto& sys : m_Systems) {
@@ -94,6 +98,7 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     GetSystem<RenderSystem>()->Initialize(context, res);
     GetSystem<SkyboxRenderSystem>()->Initialize(context);
     GetSystem<ParticleSystem>()->Initialize(context);
+    GetSystem<DecalSystem>()->Initialize(context, res);
 
 #ifdef ENABLE_DEBUG_SYSTEM
     m_DebugSystem = std::make_unique<DebugSystem>();
@@ -312,6 +317,8 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
                 if (auto* ui = GetSystem<UIRenderSystem>()) {
                     ui->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager());
                 }
+            } else if (p == 100 && rs) {
+                rs->RenderTransparent(scene, width, height, alpha);
             } else {
                 sys->Render(scene);
             }

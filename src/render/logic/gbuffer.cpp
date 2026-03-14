@@ -28,6 +28,7 @@ void GBuffer::Shutdown()
     m_PositionTexture.reset();
     m_NormalTexture.reset();
     m_AlbedoSpecTexture.reset();
+    m_IDTexture.reset();
     m_DepthTexture.reset();
     m_FBO.reset();
 }
@@ -45,6 +46,15 @@ void GBuffer::BindForWriting()
     if (!m_Context || !m_FBO) return;
     auto& rtm = m_Context->GetRenderTargetManager();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_FBO->Get());
+    
+    // Always ensure all 4 buffers are enabled for the geometry pass
+    FramebufferAttachment attachments[] = { 
+        FramebufferAttachment::Color0, 
+        FramebufferAttachment::Color1, 
+        FramebufferAttachment::Color2,
+        FramebufferAttachment::Color3 
+    };
+    rtm.DrawBuffers(4, attachments);
 }
 
 void GBuffer::BindForReading()
@@ -85,8 +95,8 @@ void GBuffer::CreateTextures()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color1, TextureType::Texture2D, m_NormalTexture->Get(), 0);
-
-    // Color + Specular/Roughness color buffer
+    
+    // Albedo + Specular color buffer
     m_AlbedoSpecTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_AlbedoSpecTexture->Get());
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, m_Width, m_Height, 0, TextureFormat::RGBA, DataType::UnsignedByte, nullptr);
@@ -94,14 +104,28 @@ void GBuffer::CreateTextures()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color2, TextureType::Texture2D, m_AlbedoSpecTexture->Get(), 0);
 
-    // Tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
-    FramebufferAttachment attachments[] = { FramebufferAttachment::Color0, FramebufferAttachment::Color1, FramebufferAttachment::Color2 };
-    rtm.DrawBuffers(3, attachments);
+    // Entity ID color buffer
+    m_IDTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
+    tm.BindTexture(TextureType::Texture2D, m_IDTexture->Get());
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::R32UI, m_Width, m_Height, 0, TextureFormat::Red_Integer, DataType::UnsignedInt, nullptr);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
+    rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color3, TextureType::Texture2D, m_IDTexture->Get(), 0);
 
-    // Create depth buffer (renderbuffer)
+    // Tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
+    FramebufferAttachment attachments[] = { 
+        FramebufferAttachment::Color0, 
+        FramebufferAttachment::Color1, 
+        FramebufferAttachment::Color2,
+        FramebufferAttachment::Color3 
+    };
+    rtm.DrawBuffers(4, attachments);
+
     m_DepthTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_DepthTexture->Get());
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::DepthComponent24, m_Width, m_Height, 0, TextureFormat::DepthComponent, DataType::Float, nullptr);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, TextureType::Texture2D, m_DepthTexture->Get(), 0);
 
     if (rtm.CheckFramebufferStatus(FramebufferTarget::Framebuffer) != FramebufferStatus::Complete)

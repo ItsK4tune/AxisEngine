@@ -47,7 +47,15 @@ public:
     void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0);
     void RenderShadows(Scene &scene);
     void RenderAlpha(Scene &scene, int width, int height, float alpha);
+    void RenderTransparent(Scene &scene, int width, int height, float alpha);
     void Render(Scene &scene) override;
+    void RenderDeferredLighting(Scene &scene, int width, int height);
+    void UnbindGBuffer();
+
+    void ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass);
+
+    void BindForDecals();
+    void UnbindForDecals();
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -65,9 +73,16 @@ public:
 
     void SetDeferredRendering(bool enable) { m_DeferredRenderingEnabled = enable; }
     bool IsDeferredRenderingEnabled() const { return m_DeferredRenderingEnabled; }
+    uint32_t GetGBufferDepth() const { return m_GBuffer.GetDepthTexture(); }
+    uint32_t GetGBufferID() const { return m_GBuffer.GetIDTexture(); }
+    uint32_t GetGBufferPosition() const { return m_GBuffer.GetPositionTexture(); }
+    uint32_t GetGBufferNormal() const { return m_GBuffer.GetNormalTexture(); }
+    int GetGBufferWidth() const { return m_GBuffer.GetWidth(); }
+    int GetGBufferHeight() const { return m_GBuffer.GetHeight(); }
 
     Shadow &GetShadow() { return m_ShadowRenderer.GetShadow(); }
     int GetRenderedCount() const { return m_RenderedCount; }
+    void AddRenderedCount(int count) { m_RenderedCount += count; }
 
     void SetDebugNoTexture(bool enable) { m_DebugNoTexture = enable; }
     bool IsDebugNoTexture() const { return m_DebugNoTexture; }

@@ -1,4 +1,6 @@
 #include <ecs/logic/terrain_system.h>
+#include <core/manager/system_manager.h>
+#include <ecs/logic/render_system.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
@@ -70,34 +72,43 @@ void TerrainSystem::Render(Scene &scene) {
         }
 
         TerrainData& data = *it->second;
-        if (!data.terrainShader) continue;
+        Shader* actShader = data.terrainShader.get();
+        
+        auto rs = m_Ctx.systems->GetSystem<RenderSystem>();
+        if (rs && rs->IsDeferredRenderingEnabled()) {
+             auto gbufShader = m_Ctx.resources->GetShader("terrain_gbuffer");
+             if (gbufShader) actShader = gbufShader.get();
+        }
 
-        data.terrainShader->use();
-        data.terrainShader->setMat4("view", cam.viewMatrix);
-        data.terrainShader->setMat4("projection", cam.projectionMatrix);
-        data.terrainShader->setVec3("camPos", camPos);
+        if (!actShader) continue;
+
+        actShader->use();
+        actShader->setMat4("view", cam.viewMatrix);
+        actShader->setMat4("projection", cam.projectionMatrix);
+        actShader->setVec3("camPos", camPos);
         
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos.value);
-        data.terrainShader->setMat4("model", model);
+        actShader->setMat4("model", model);
+        actShader->setUInt("entityID", static_cast<unsigned int>(entity));
         
-        data.terrainShader->setFloat("maxHeight", terrain.maxHeight);
-        data.terrainShader->setVec2("terrainSize", glm::vec2(terrain.terrainSize.x, terrain.terrainSize.z));
-        data.terrainShader->setFloat("textureScale", terrain.textureScale);
-        data.terrainShader->setBool("debug_noTexture", m_DebugNoTexture);
+        actShader->setFloat("maxHeight", terrain.maxHeight);
+        actShader->setVec2("terrainSize", glm::vec2(terrain.terrainSize.x, terrain.terrainSize.z));
+        actShader->setFloat("textureScale", terrain.textureScale);
+        actShader->setBool("debug_noTexture", m_DebugNoTexture);
         
         tm.ActiveTexture(TextureUnit::Texture0);
         tm.BindTexture(TextureType::Texture2D, terrain.heightMap);
-        data.terrainShader->setInt("heightMap", 0);
+        actShader->setInt("heightMap", 0);
 
         tm.ActiveTexture(TextureUnit::Texture1);
         tm.BindTexture(TextureType::Texture2D, terrain.splatMap);
-        data.terrainShader->setInt("splatMap", 1);
+        actShader->setInt("splatMap", 1);
 
         for (size_t i = 0; i < terrain.diffuseLayers.size() && i < 4; ++i) {
             tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture2) + i));
             tm.BindTexture(TextureType::Texture2D, terrain.diffuseLayers[i]);
             std::string name = "textureLayer" + std::to_string(i);
-            data.terrainShader->setInt(name.c_str(), 2 + (int)i);
+            actShader->setInt(name.c_str(), 2 + (int)i);
         }
 
         for (auto& chunk : data.chunks) {
@@ -116,6 +127,7 @@ void TerrainSystem::Render(Scene &scene) {
             bm.BindVertexArray(chunk.VAO);
             bm.BindBuffer(BufferType::ElementArrayBuffer, data.lodEBOs[lod]);
             dc.DrawElements(Primitive::Triangles, data.lodIndexCounts[lod], DataType::UnsignedInt, nullptr);
+            if (rs) rs->AddRenderedCount(1);
         }
     }
 }
@@ -130,6 +142,11 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
         m_Ctx.resources->LoadShader("terrain", "includes/engine/asset/shaders/terrain.vs", 
                                    "includes/engine/asset/shaders/terrain.fs");
         data->terrainShader = m_Ctx.resources->GetShader("terrain");
+    }
+
+    if (!m_Ctx.resources->GetShader("terrain_gbuffer")) {
+        m_Ctx.resources->LoadShader("terrain_gbuffer", "includes/engine/asset/shaders/terrain_gbuffer.vs", 
+                                   "includes/engine/asset/shaders/terrain_gbuffer.fs");
     }
 
     if (!data->terrainShader) {

@@ -10,7 +10,7 @@
 
 void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLNode &node, IPhysicsWorld &physics)
 {
-    LoaderUtils::ValidateKeys(node, {"Type", "Mass", "Size", "Radius", "Height", "Offset", "Restitution", "AngularFactor", "LinearFactor", "BodyType", "Shapes"}, "RigidBody");
+    LoaderUtils::ValidateKeys(node, {"Type", "Mass", "Size", "Radius", "Height", "Offset", "Rotation", "Restitution", "AngularFactor", "LinearFactor", "BodyType", "Shapes"}, "RigidBody");
 
     std::string type = node.GetChildValue("Type", "BOX");
     float mass = std::stof(node.GetChildValue("Mass", "1.0"));
@@ -146,6 +146,22 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
             rb.body->SetLinearFactor(rb.linearFactor);
 
             if (restitution > 0.0f) rb.body->SetRestitution(restitution);
+
+            if (!node.GetChildValue("Rotation").empty()) {
+                std::stringstream rotSS(node.GetChildValue("Rotation"));
+                float rx, ry, rz; rotSS >> rx >> ry >> rz;
+                rb.rotationOffset = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
+                // We don't call SetWorldTransform here because PhysicsTransformSync::SyncToPhysics 
+                // will perform the correct offset-aware transform application on the first update.
+            }
+
+            if (!node.GetChildValue("Offset").empty()) {
+                std::stringstream offSS(node.GetChildValue("Offset"));
+                float ox, oy, oz; offSS >> ox >> oy >> oz;
+                rb.positionOffset = glm::vec3(ox, oy, oz);
+                // Note: The shape offset is already handled above if 'Offset' was used to create a compound.
+                // But if the user wants to shift the WHOLE BODY relative to the entity transform, we use rb.positionOffset.
+            }
 
             physics.AddRigidBody(rb.body.get());
         }

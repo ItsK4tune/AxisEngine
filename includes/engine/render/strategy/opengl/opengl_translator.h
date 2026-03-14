@@ -61,6 +61,7 @@ public:
 
     static GLenum ToGL(TextureType t) {
         switch (t) {
+            case TextureType::Texture1D: return GL_TEXTURE_1D;
             case TextureType::Texture2D: return GL_TEXTURE_2D;
             case TextureType::TextureCubeMap: return GL_TEXTURE_CUBE_MAP;
             case TextureType::Texture3D: return GL_TEXTURE_3D;
@@ -82,6 +83,7 @@ public:
             case TextureFormat::RGBA: return GL_RGBA;
             case TextureFormat::DepthComponent: return GL_DEPTH_COMPONENT;
             case TextureFormat::DepthStencil: return GL_DEPTH_STENCIL;
+            case TextureFormat::Red_Integer: return GL_RED_INTEGER;
             default: return GL_RGBA;
         }
     }
@@ -94,6 +96,7 @@ public:
             case InternalFormat::RGBA16F: return GL_RGBA16F;
             case InternalFormat::DepthComponent24: return GL_DEPTH_COMPONENT24;
             case InternalFormat::Depth24Stencil8: return GL_DEPTH24_STENCIL8;
+            case InternalFormat::R32UI: return GL_R32UI;
             default: return GL_RGBA8;
         }
     }
