@@ -40,6 +40,7 @@ public:
     void AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h);
 
     uint32_t GetDepthTexture() const { return m_DepthTexture ? m_DepthTexture->Get() : 0; }
+    uint32_t GetCaptureFBO() const { return m_PingPong.fbo[0] ? m_PingPong.fbo[0]->Get() : 0; }
 
     void ClearEffects();
 

@@ -91,7 +91,7 @@ void main()
        return; 
     }
 
-    // 3. Lighting (PBR-lite / Blinn-Phong base)
+    // 3. Lighting
     vec3 V = normalize(camera.viewPos - FragPos);
     vec3 Lo = vec3(0.0);
 
@@ -113,14 +113,16 @@ void main()
         }
 
         vec3 radiance = dirLights[i].color * dirLights[i].intensity;
-        Lo += (dirLights[i].ambient + (1.0 - shadow) * (diff + spec)) * Albedo * radiance;
+        
+        vec3 ambient  = 0.1 * radiance * Albedo;
+        vec3 diffuse  = 0.8 * radiance * diff * Albedo;
+        vec3 specular = 1.0 * radiance * spec * 0.5; // 0.5 as default spec intensity
+        
+        Lo += ambient + (1.0 - shadow) * (diffuse + specular);
     }
 
-    // 4. Final Color
-    vec3 color = Lo + Albedo * 0.03; // Simple global ambient
-    
-    // Apply gamma correction (matches forward path expectations)
-    color = pow(color, vec3(1.0/2.2));
+    // Final Color
+    vec3 color = Lo + Albedo * 0.01; // Tiny global ambient for deep shadows
     
     FragColor = vec4(color, 1.0);
 }

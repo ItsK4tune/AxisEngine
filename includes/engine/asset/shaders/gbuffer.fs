@@ -51,6 +51,7 @@ void main()
         _roughness = roughness;
     } else {
         texColor = texture(texture_diffuse1, TexCoords);
+        texColor.rgb = pow(texColor.rgb, vec3(2.2));
         _roughness = texture(texture_roughness1, TexCoords).r * roughness;
     }
     

@@ -38,15 +38,30 @@ void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderL
     if (m_WhiteTextureID == 0)
     {
         auto &tm = m_Context->GetTextureManager();
+        
+        // White
         m_WhiteTextureID = tm.GenTexture();
         tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
         unsigned char white[] = {255, 255, 255, 255};
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, white);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 
-        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0,
-                      TextureFormat::RGBA, DataType::UnsignedByte, white);
+        // Black
+        m_BlackTextureID = tm.GenTexture();
+        tm.BindTexture(TextureType::Texture2D, m_BlackTextureID);
+        unsigned char black[] = {0, 0, 0, 255};
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, black);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
+        // Flat Normal (0.5, 0.5, 1.0) => (128, 128, 255)
+        m_FlatNormalTextureID = tm.GenTexture();
+        tm.BindTexture(TextureType::Texture2D, m_FlatNormalTextureID);
+        unsigned char flatNormal[] = {128, 128, 255, 255};
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, flatNormal);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
     }
 
     m_BonesUniforms.reserve(200);
@@ -71,7 +86,7 @@ void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderL
 
     shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
     m_OcclusionCuller.Initialize(*m_Context, shaderLib.GetShader("occlusion_query"));
-    m_MaterialRenderer.Initialize(*m_Context, m_WhiteTextureID);
+    m_MaterialRenderer.Initialize(*m_Context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
 
     shaderLib.LoadShader("gbuffer", "includes/engine/asset/shaders/gbuffer.vs", "includes/engine/asset/shaders/gbuffer.fs");
     m_GBufferShader = shaderLib.GetShader("gbuffer");
@@ -162,8 +177,12 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         return;
     }
 
-    if (m_LastWidth != width || m_LastHeight != height) {
-        m_GBuffer.Resize(width, height);
+    if ((m_LastWidth != width || m_LastHeight != height) && width > 0 && height > 0) {
+        if (m_DeferredRenderingEnabled && m_GBuffer.GetFBO() == 0) {
+            m_GBuffer.Initialize(*m_Context, width, height);
+        } else {
+            m_GBuffer.Resize(width, height);
+        }
     }
     m_LastWidth = width;
     m_LastHeight = height;
@@ -305,7 +324,7 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
         ExecuteQueue(scene, opaqueQueue, false); // false = opaque
     }
 
-    if (m_DeferredRenderingEnabled) m_GBuffer.Unbind();
+    if (m_DeferredRenderingEnabled) UnbindGBuffer();
     m_QueuesBuilt = false;
 }
 
@@ -371,7 +390,7 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                 if (!instances.empty() && shader && model)
                 {
                     threadQueue.Submit([shader, model, instances]() {
-                        model->DrawInstanced(*shader, instances);
+                        model->DrawInstanced(*shader, instances, false);
                     });
                 }
             };
@@ -508,17 +527,19 @@ void RenderSystem::UnbindForDecals()
     if (m_DeferredRenderingEnabled)
     {
         auto& rtm = m_Context->GetRenderTargetManager();
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
         
-        // Restore all 4 draw buffers for subsequent passes if any
-        FramebufferAttachment attachments[] = { 
-            FramebufferAttachment::Color0, 
-            FramebufferAttachment::Color1, 
-            FramebufferAttachment::Color2,
-            FramebufferAttachment::Color3 
-        };
-        rtm.DrawBuffers(4, attachments);
-        
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+        // CRITICAL: Reset DrawBuffers for main FBO
+        FramebufferAttachment att = FramebufferAttachment::Color0;
+        rtm.DrawBuffers(1, &att);
+    }
+}
+
+void RenderSystem::BindGBufferForWriting()
+{
+    if (m_DeferredRenderingEnabled)
+    {
+        m_GBuffer.BindForWriting();
     }
 }
 
@@ -527,6 +548,12 @@ void RenderSystem::UnbindGBuffer()
     if (m_DeferredRenderingEnabled)
     {
         m_GBuffer.Unbind();
+        auto& rtm = m_Context->GetRenderTargetManager();
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
+
+        // CRITICAL: Reset DrawBuffers for main FBO
+        FramebufferAttachment att = FramebufferAttachment::Color0;
+        rtm.DrawBuffers(1, &att);
     }
 }
 
@@ -539,10 +566,14 @@ void RenderSystem::RenderDeferredLighting(Scene &scene, int width, int height)
     rsm.SetViewport(0, 0, width, height);
     rsm.Disable(ServerCapability::DepthTest);
     rsm.Disable(ServerCapability::CullFace);
+    rsm.Disable(ServerCapability::Blend);
 
     auto& tm = m_Context->GetTextureManager();
     auto& bm = m_Context->GetBufferManager();
     auto& dc = m_Context->GetDrawContext();
+    auto& rtm = m_Context->GetRenderTargetManager();
+    
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
     
     // We do NOT clear the target buffer here because skybox might already be there.
     // However, if we discard in shader, we are fine.
@@ -562,6 +593,10 @@ void RenderSystem::RenderDeferredLighting(Scene &scene, int width, int height)
     tm.ActiveTexture(TextureUnit::Texture2);
     tm.BindTexture(TextureType::Texture2D, m_GBuffer.GetAlbedoSpecTexture());
     m_DeferredLightShader->setInt("gAlbedoSpec", 2);
+
+    tm.ActiveTexture(TextureUnit::Texture3);
+    tm.BindTexture(TextureType::Texture2D, m_GBuffer.GetIDTexture());
+    m_DeferredLightShader->setInt("gID", 3);
     
     m_DeferredLightShader->setInt("u_DebugMode", 0); // Restore Lit mode
 

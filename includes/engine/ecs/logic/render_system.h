@@ -50,12 +50,15 @@ public:
     void RenderTransparent(Scene &scene, int width, int height, float alpha);
     void Render(Scene &scene) override;
     void RenderDeferredLighting(Scene &scene, int width, int height);
-    void UnbindGBuffer();
-
+    
     void ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass);
 
     void BindForDecals();
     void UnbindForDecals();
+
+    void BindGBufferForWriting();
+    void UnbindGBuffer();
+    void SetMainFBO(uint32_t fbo) { m_MainFBO = fbo; }
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -130,6 +133,8 @@ private:
     bool m_RenderOrderEnabled = true;
     uint32_t m_FilterLayerMask = 0xFFFFFFFF;
     unsigned int m_WhiteTextureID = 0;
+    unsigned int m_BlackTextureID = 0;
+    unsigned int m_FlatNormalTextureID = 0;
     float m_DistanceCullingSq = 0.0f;
 
     AntiAliasingMode m_AAMode = AntiAliasingMode::NONE;
@@ -170,4 +175,5 @@ private:
     void InitQuad();
 
     CommandQueue m_CommandQueue;
+    uint32_t m_MainFBO = 0;
 };

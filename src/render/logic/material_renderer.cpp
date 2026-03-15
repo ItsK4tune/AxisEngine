@@ -4,9 +4,11 @@
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
 
-void MaterialRenderer::Initialize(IGraphicsContext& context, unsigned int whiteTextureId) {
+void MaterialRenderer::Initialize(IGraphicsContext& context, unsigned int whiteTextureId, unsigned int blackTextureId, unsigned int flatNormalTextureId) {
     m_Context = &context;
     m_WhiteTextureID = whiteTextureId;
+    m_BlackTextureID = blackTextureId;
+    m_FlatNormalTextureID = flatNormalTextureId;
 }
 
 bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene, bool debugNoTexture) {
@@ -83,6 +85,11 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity
                 shader->setInt("material.texture_diffuse1", 0);
                 shader->setInt("texture_diffuse1", 0);
                 boundSomething = true;
+            } else {
+                tm.ActiveTexture(TextureUnit::Texture0);
+                tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+                shader->setInt("material.texture_diffuse1", 0);
+                shader->setInt("texture_diffuse1", 0);
             }
 
             if (mat.gpu.normalMap != 0) {
@@ -92,7 +99,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity
                 shader->setInt("texture_normal1", 1);
             } else {
                 tm.ActiveTexture(TextureUnit::Texture1);
-                tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+                tm.BindTexture(TextureType::Texture2D, m_FlatNormalTextureID != 0 ? m_FlatNormalTextureID : m_WhiteTextureID);
                 shader->setInt("material.texture_normal1", 1);
                 shader->setInt("texture_normal1", 1);
             }
@@ -140,7 +147,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity
                 shader->setInt("texture_emissive1", 5);
             } else {
                 tm.ActiveTexture(TextureUnit::Texture5);
-                tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+                tm.BindTexture(TextureType::Texture2D, m_BlackTextureID != 0 ? m_BlackTextureID : m_WhiteTextureID);
                 shader->setInt("material.texture_emissive1", 5);
                 shader->setInt("texture_emissive1", 5);
             }

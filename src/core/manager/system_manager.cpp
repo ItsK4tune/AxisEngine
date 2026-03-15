@@ -306,6 +306,7 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
     }
     
     postProcess.BeginCapture();
+    if (rs) rs->SetMainFBO(postProcess.GetCaptureFBO());
 
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;

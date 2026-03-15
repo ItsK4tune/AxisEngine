@@ -69,6 +69,8 @@ void GBuffer::Unbind()
     if (!m_Context) return;
     auto& rtm = m_Context->GetRenderTargetManager();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+    FramebufferAttachment att = FramebufferAttachment::Color0;
+    rtm.DrawBuffers(1, &att);
 }
 
 void GBuffer::CreateTextures()

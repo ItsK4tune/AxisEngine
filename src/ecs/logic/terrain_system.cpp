@@ -78,6 +78,7 @@ void TerrainSystem::Render(Scene &scene) {
         if (rs && rs->IsDeferredRenderingEnabled()) {
              auto gbufShader = m_Ctx.resources->GetShader("terrain_gbuffer");
              if (gbufShader) actShader = gbufShader.get();
+             rs->BindGBufferForWriting();
         }
 
         if (!actShader) continue;
@@ -128,6 +129,10 @@ void TerrainSystem::Render(Scene &scene) {
             bm.BindBuffer(BufferType::ElementArrayBuffer, data.lodEBOs[lod]);
             dc.DrawElements(Primitive::Triangles, data.lodIndexCounts[lod], DataType::UnsignedInt, nullptr);
             if (rs) rs->AddRenderedCount(1);
+        }
+
+        if (rs && rs->IsDeferredRenderingEnabled()) {
+            rs->UnbindGBuffer();
         }
     }
 }

@@ -39,10 +39,10 @@ void main()
         vec4 splat = texture(splatMap, TexCoords);
         vec2 tiledCoords = TexCoords * textureScale;
         
-        vec3 col0 = texture(textureLayer0, tiledCoords).rgb;
-        vec3 col1 = texture(textureLayer1, tiledCoords).rgb;
-        vec3 col2 = texture(textureLayer2, tiledCoords).rgb;
-        vec3 col3 = texture(textureLayer3, tiledCoords).rgb;
+        vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
+        vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
+        vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
+        vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
         
         albedo = col0 * splat.r + 
                  col1 * splat.g + 
