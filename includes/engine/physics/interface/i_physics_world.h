@@ -25,6 +25,8 @@ public:
 
     virtual void SetGravity(const glm::vec3& gravity) = 0;
     virtual void SetMode(int mode) = 0;
+    virtual void SetSolverIterations(int iterations) = 0;
+    virtual void SetCCDEnabled(bool enabled, float threshold = 0.0f) = 0;
 
     virtual void AddRigidBody(IRigidBody* body) = 0;
     virtual void RemoveRigidBody(IRigidBody* body) = 0;

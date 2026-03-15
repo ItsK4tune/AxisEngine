@@ -28,7 +28,7 @@ public:
     PostProcessPipeline();
     ~PostProcessPipeline();
 
-    void Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib);
+    void Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib, const AppConfig& config);
     void Shutdown();
     void Resize(int width, int height);
 
@@ -48,6 +48,9 @@ public:
     void SetGamma(float gamma) { m_Gamma = gamma; }
     void SetExposure(float exposure) { m_Exposure = exposure; }
     void SetBloomIntensity(float intensity) { m_BloomIntensity = intensity; }
+    void SetBloomThreshold(float threshold) { m_BloomThreshold = threshold; }
+    void SetBloomRadius(float radius) { m_BloomRadius = radius; }
+    void SetSkyboxIntensity(float intensity) { m_SkyboxIntensity = intensity; }
     void SetTonemappingMode(int mode) { m_TonemappingMode = mode; }
     void SetHDREnabled(bool enabled) { m_HDREnabled = enabled; }
     void SetBloomEnabled(bool enabled) { m_BloomEnabled = enabled; }
@@ -99,6 +102,9 @@ private:
     float m_Gamma = 2.2f;
     float m_Exposure = 1.0f;
     float m_BloomIntensity = 0.5f;
+    float m_BloomThreshold = 1.0f;
+    float m_BloomRadius = 0.005f;
+    float m_SkyboxIntensity = 1.0f;
     int m_TonemappingMode = 2; // ACES
     bool m_HDREnabled = true;
     bool m_BloomEnabled = true;

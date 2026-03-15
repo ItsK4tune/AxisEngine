@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ecs/interface/i_system.h>
+#include <core/type/app_config.h>
 
 #include <ecs/unit/render_components.h>
 #include <glm/glm.hpp>
@@ -63,7 +64,7 @@ public:
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
 
-    void Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib);
+    void Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib, const AppConfig& config);
     void Shutdown();
 
     void SetEnableShadows(bool enable) { m_ShadowRenderer.SetEnableShadows(enable); }
@@ -99,6 +100,13 @@ public:
     
     void SetFilterLayerMask(uint32_t mask) { m_FilterLayerMask = mask; }
     uint32_t GetFilterLayerMask() const { return m_FilterLayerMask; }
+    
+    void SetFogEnabled(bool enabled) { m_FogEnabled = enabled; }
+    void SetFogColor(const glm::vec3& color) { m_FogColor = color; }
+    void SetFogDensity(float density) { m_FogDensity = density; }
+
+    void SetShadowBias(float bias) { m_ShadowRenderer.SetShadowBias(bias); }
+    void SetShadowSoftness(int softness) { m_ShadowRenderer.SetShadowSoftness(softness); }
 
     void SetShadowProjectionSize(float size) { m_ShadowRenderer.SetShadowProjectionSize(size); }
     void SetShadowFrustumCulling(bool enable) { m_ShadowRenderer.SetShadowFrustumCulling(enable); }
@@ -136,6 +144,9 @@ private:
     unsigned int m_BlackTextureID = 0;
     unsigned int m_FlatNormalTextureID = 0;
     float m_DistanceCullingSq = 0.0f;
+    bool m_FogEnabled = false;
+    glm::vec3 m_FogColor = glm::vec3(0.5f);
+    float m_FogDensity = 0.01f;
 
     AntiAliasingMode m_AAMode = AntiAliasingMode::NONE;
     glm::vec2 m_JitterOffset = glm::vec2(0.0f);

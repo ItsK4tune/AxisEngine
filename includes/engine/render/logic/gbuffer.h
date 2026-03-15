@@ -29,10 +29,14 @@ public:
     int GetWidth() const { return m_Width; }
     int GetHeight() const { return m_Height; }
 
+    void SetRenderScale(float scale) { m_RenderScale = scale; }
+    float GetRenderScale() const { return m_RenderScale; }
+
 private:
     IGraphicsContext* m_Context = nullptr;
     int m_Width = 0;
     int m_Height = 0;
+    float m_RenderScale = 1.0f;
 
     std::unique_ptr<GPUFramebuffer> m_FBO;
     std::unique_ptr<GPUTexture> m_PositionTexture;

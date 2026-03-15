@@ -9,7 +9,7 @@ public:
     GLFWWindow();
     ~GLFWWindow() override;
 
-    bool Initialize(int width, int height, const std::string& title) override;
+    bool Initialize(int width, int height, const std::string& title, int msaaSamples = 0) override;
     void SetTitle(const std::string& title) override;
     void SetIcon(int width, int height, unsigned char* pixels) override;
     void SetVsync(bool enabled) override;

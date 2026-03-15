@@ -119,7 +119,6 @@ void EngineLoop::FixedUpdate()
 {
     m_Accumulator += m_DeltaTime;
 
-    const int MAX_PHYSICS_STEPS = 5;
     int physicsSteps = 0;
 
     auto& stateMachine = m_Ctx.runtime->GetStateMachine();
@@ -138,7 +137,7 @@ void EngineLoop::FixedUpdate()
         m_MaxForceSync = false;
     }
 
-    while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < MAX_PHYSICS_STEPS)
+    while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < m_MaxSubSteps)
     {
         auto view = registry.view<PositionComponent, RotationComponent, ScaleComponent>();
         for (auto entity : view)

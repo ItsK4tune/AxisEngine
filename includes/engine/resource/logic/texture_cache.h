@@ -34,6 +34,12 @@ public:
     static void SetTextureManager(ITextureManager* manager) { s_TextureManager = manager; }
     static ITextureManager& GetTextureManager() { return *s_TextureManager; }
 
+    static void SetAsyncEnabled(bool enabled) { s_AsyncEnabled = enabled; }
+    static bool IsAsyncEnabled() { return s_AsyncEnabled; }
+
+    static void SetMaxAnisotropy(float anisotropy) { s_MaxAnisotropy = anisotropy; }
+    static float GetMaxAnisotropy() { return s_MaxAnisotropy; }
+
 private:
     std::unordered_map<std::string, std::shared_ptr<Texture>> m_Textures;
     std::vector<std::future<TextureData>> m_AsyncLoads;
@@ -41,4 +47,6 @@ private:
     mutable std::mutex m_CacheMutex;
 
     static ITextureManager* s_TextureManager;
+    static bool s_AsyncEnabled;
+    static float s_MaxAnisotropy;
 };

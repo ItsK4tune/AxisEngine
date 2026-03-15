@@ -57,6 +57,8 @@ public:
 
     void SetGravity(const glm::vec3& gravity) override;
     void SetMode(int mode) override;
+    void SetSolverIterations(int iterations) override;
+    void SetCCDEnabled(bool enabled, float threshold = 0.0f) override;
 
     void AddRigidBody(IRigidBody* body) override;
     void RemoveRigidBody(IRigidBody* body) override;
@@ -97,4 +99,8 @@ private:
 
     BulletDebugDrawer* m_CurrentDebugDrawer = nullptr;
     std::unique_ptr<BulletDebugDrawer> m_OwnedDebugDrawer;
+
+    bool m_CCDEnabled = false;
+    float m_CCDThreshold = 0.0f;
+    int m_PhysicsMode = 0;
 };

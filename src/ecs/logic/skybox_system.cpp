@@ -51,6 +51,7 @@ void SkyboxRenderSystem::Render(Scene &scene)
             tm.ActiveTexture(TextureUnit::Texture0);
             tm.BindTexture(TextureType::TextureCubeMap, component.skybox->GetTextureID());
             lockedShader->setInt("skybox", 0);
+            lockedShader->setFloat("intensity", m_Intensity);
 
             component.skybox->Draw(*lockedShader);
         }

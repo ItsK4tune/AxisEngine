@@ -32,8 +32,16 @@ void DefaultCameraController::OnUpdate(float dt)
 
     if (canControl)
     {
-        camera.yaw += mouse.GetXOffset() * mouseSensitivity;
-        camera.pitch += mouse.GetYOffset() * mouseSensitivity;
+        const AppConfig& config = GetConfig();
+        
+        float xOffset = mouse.GetXOffset() * config.mouseSensitivityX;
+        float yOffset = mouse.GetYOffset() * config.mouseSensitivityY;
+
+        if (config.mouseInvertX) xOffset = -xOffset;
+        if (config.mouseInvertY) yOffset = -yOffset;
+
+        camera.yaw += xOffset;
+        camera.pitch += yOffset;
 
         if (camera.pitch > 89.0f)
             camera.pitch = 89.0f;

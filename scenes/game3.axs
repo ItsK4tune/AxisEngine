@@ -1,7 +1,6 @@
 axis_scene:
   Config:
-    LOG_LEVEL: 4
-    RENDER_PATH: FORWARD
+    RENDER_PATH: DEFERRED
 
   Resources:
     Model:

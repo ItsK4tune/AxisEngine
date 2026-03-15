@@ -14,7 +14,7 @@ GLFWWindow::~GLFWWindow() {
     Shutdown();
 }
 
-bool GLFWWindow::Initialize(int width, int height, const std::string& title) {
+bool GLFWWindow::Initialize(int width, int height, const std::string& title, int msaaSamples) {
     if (!glfwInit()) {
         LOGGER_ERROR("GLFWWindow") << "Failed to initialize GLFW";
         return false;
@@ -23,6 +23,10 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
+    if (msaaSamples > 0) {
+        glfwWindowHint(GLFW_SAMPLES, msaaSamples);
+    }
 
     m_Window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     if (!m_Window) {

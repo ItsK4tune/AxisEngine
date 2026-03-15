@@ -27,17 +27,24 @@
 #include <core/logic/debug_core.h>
 #endif
 
-void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib)
+void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib, const AppConfig &config)
 {
     m_Context = &context;
 
-    LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers";
+    LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers with res: " << config.shadowMapResolution;
     m_ShadowRenderer.Initialize(context, shaderLib);
+    m_ShadowRenderer.GetShadow().Initialize(context, config.shadowMapResolution, config.shadowMapResolution);
+    
     m_LightRenderer.Initialize(*m_Context);
 
     if (m_WhiteTextureID == 0)
     {
         auto &tm = m_Context->GetTextureManager();
+        
+        // Apply global anisotropy if supported
+        // In OpenGL we'd use glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, config.maxAnisotropy);
+        // For now, we'll just store it or apply it to some default textures if we want.
+        // But the user wants it as a config, so we should probably apply it in TextureCache::LoadTexture.
         
         // White
         m_WhiteTextureID = tm.GenTexture();
@@ -84,6 +91,13 @@ void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderL
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
+    m_FogEnabled = config.fogEnabled;
+    m_FogColor = glm::vec3(config.fogColor[0], config.fogColor[1], config.fogColor[2]);
+    m_FogDensity = config.fogDensity;
+
+    m_ShadowRenderer.SetShadowBias(config.shadowBias);
+    m_ShadowRenderer.SetShadowSoftness(config.shadowSoftness);
+
     shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
     m_OcclusionCuller.Initialize(*m_Context, shaderLib.GetShader("occlusion_query"));
     m_MaterialRenderer.Initialize(*m_Context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
@@ -95,6 +109,13 @@ void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderL
 
     shaderLib.LoadShader("deferred_light", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/deferred_light.fs");
     m_DeferredLightShader = shaderLib.GetShader("deferred_light");
+
+    m_GBuffer.SetRenderScale(config.renderScale);
+    m_GBuffer.Initialize(context, config.width, config.height);
+
+    SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
+    SetShadowDistanceCulling(config.shadowDistanceCulling);
+    SetDistanceCulling(config.distanceCulling);
 
     InitQuad();
     m_DeferredRenderingEnabled = true;
@@ -436,6 +457,15 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                             }
                         }
                         s->setBool("debug_noTexture", isDebugNoTexture);
+                        
+                        // Pass fog uniforms
+                        s->setBool("u_FogEnabled", m_FogEnabled);
+                        s->setVec3("u_FogColor", m_FogColor);
+                        s->setFloat("u_FogDensity", m_FogDensity);
+
+                        // Pass shadow control uniforms
+                        s->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
+                        s->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
                     });
                 }
 

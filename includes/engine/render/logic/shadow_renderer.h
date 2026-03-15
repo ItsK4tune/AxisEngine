@@ -24,6 +24,11 @@ public:
     void SetShadowProjectionSize(float size) { m_ShadowProjectionSize = size; }
     void SetShadowFrustumCulling(bool enable) { m_ShadowFrustumCullingEnabled = enable; }
     void SetShadowDistanceCulling(float distance) { m_ShadowDistanceCullingSq = distance * distance; }
+    void SetShadowBias(float bias) { m_ShadowBias = bias; }
+    void SetShadowSoftness(int softness) { m_ShadowSoftness = softness; }
+
+    float GetShadowBias() const { return m_ShadowBias; }
+    int GetShadowSoftness() const { return m_ShadowSoftness; }
 
     Shadow &GetShadow() { return m_Shadow; }
     const glm::mat4* GetLightSpaceMatrices() const { return m_LightSpaceMatrixDir; }
@@ -44,5 +49,7 @@ private:
     float m_ShadowProjectionSize = 20.0f;
     bool m_ShadowFrustumCullingEnabled = true;
     float m_ShadowDistanceCullingSq = 10000.0f;
+    float m_ShadowBias = 0.005f;
+    int m_ShadowSoftness = 1;
     bool m_DirLightLimitWarned = false;
 };

@@ -22,7 +22,7 @@ void LogManager::Initialize(LogLevel level) {
     namespace fs = std::filesystem;
     fs::path logsDir = fs::path(logsDirStr);
 
-    if (!fs::exists(logsDir)) {
+    if (!fs::is_directory(logsDir)) {
         fs::create_directories(logsDir);
     }
 

@@ -9,6 +9,8 @@
 #include <core/logic/event_system.h>
 #include <core/logic/event_types.h>
 ITextureManager* TextureCache::s_TextureManager = nullptr;
+bool TextureCache::s_AsyncEnabled = true;
+float TextureCache::s_MaxAnisotropy = 1.0f;
 
 TextureCache::~TextureCache()
 {
@@ -19,7 +21,7 @@ void TextureCache::LoadTexture(const std::string& name, const std::string& path,
 {
     std::string fullPath = FileSystem::getPath(path);
     
-    if (async)
+    if (async && s_AsyncEnabled)
     {
         auto promise = std::make_shared<std::promise<TextureData>>();
         {

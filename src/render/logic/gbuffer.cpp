@@ -85,7 +85,7 @@ void GBuffer::CreateTextures()
     // Position color buffer
     m_PositionTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_PositionTexture->Get());
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, m_Width, m_Height, 0, TextureFormat::RGBA, DataType::Float, nullptr);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::Float, nullptr);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D, m_PositionTexture->Get(), 0);
@@ -93,7 +93,7 @@ void GBuffer::CreateTextures()
     // Normal color buffer
     m_NormalTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_NormalTexture->Get());
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, m_Width, m_Height, 0, TextureFormat::RGBA, DataType::Float, nullptr);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::Float, nullptr);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color1, TextureType::Texture2D, m_NormalTexture->Get(), 0);
@@ -101,7 +101,7 @@ void GBuffer::CreateTextures()
     // Albedo + Specular color buffer
     m_AlbedoSpecTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_AlbedoSpecTexture->Get());
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, m_Width, m_Height, 0, TextureFormat::RGBA, DataType::UnsignedByte, nullptr);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::UnsignedByte, nullptr);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color2, TextureType::Texture2D, m_AlbedoSpecTexture->Get(), 0);
@@ -109,7 +109,7 @@ void GBuffer::CreateTextures()
     // Entity ID color buffer
     m_IDTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_IDTexture->Get());
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::R32UI, m_Width, m_Height, 0, TextureFormat::Red_Integer, DataType::UnsignedInt, nullptr);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::R32UI, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::Red_Integer, DataType::UnsignedInt, nullptr);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color3, TextureType::Texture2D, m_IDTexture->Get(), 0);
@@ -125,7 +125,7 @@ void GBuffer::CreateTextures()
 
     m_DepthTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_DepthTexture->Get());
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::DepthComponent24, m_Width, m_Height, 0, TextureFormat::DepthComponent, DataType::Float, nullptr);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::DepthComponent24, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::DepthComponent, DataType::Float, nullptr);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, TextureType::Texture2D, m_DepthTexture->Get(), 0);

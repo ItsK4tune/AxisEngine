@@ -17,6 +17,9 @@ public:
     void Initialize(IGraphicsContext& context);
     void Render(Scene &scene) override;
 
+    void SetIntensity(float intensity) { m_Intensity = intensity; }
+    float GetIntensity() const { return m_Intensity; }
+
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
 
@@ -24,4 +27,5 @@ private:
     EngineContext m_Ctx;
     IGraphicsContext* m_Context = nullptr;
     bool m_Enabled = true;
+    float m_Intensity = 1.0f;
 };

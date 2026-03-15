@@ -28,6 +28,7 @@ public:
     void Shutdown();
 
     void SetPhysicsStep(float step);
+    void SetMaxSubSteps(int steps) { m_MaxSubSteps = steps; }
     void SetTimeScale(float scale);
     void SetPaused(bool paused);
 
@@ -50,6 +51,7 @@ private:
     bool m_IsPaused = false;
     bool m_MaxForceSync = true;
     float m_Alpha = 0.0f;
+    int m_MaxSubSteps = 10;
 
     EngineContext m_Ctx;
 };
@@ -75,6 +77,7 @@ public:
     void SetTimeScale(float scale);
     void SetPaused(bool paused);
     void SetPhysicsStep(float step);
+    void SetMaxSubSteps(int steps) { m_EngineLoop.SetMaxSubSteps(steps); }
 
     float GetTimeScale() const;
     float GetRealDeltaTime() const;

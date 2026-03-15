@@ -3,6 +3,7 @@
 #include <platform/logic/io_handler.h>
 #include <core/manager/system_manager.h>
 #include <audio/logic/sound_player.h>
+#include <core/logic/engine_core.h>
 #include <core/logic/job_system.h>
 #include <ecs/logic/animation_system.h>
 #include <ecs/logic/audio_system.h>
@@ -93,9 +94,11 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
     RebuildExecutionBatches();
 
     auto& context = ctx.io->GetGraphicsContext();
-    postProcess.Initialize(context, width, height, res);
+    postProcess.Initialize(context, width, height, res, m_Ctx.runtime->GetConfig());
     
-    GetSystem<RenderSystem>()->Initialize(context, res);
+    auto* rs = GetSystem<RenderSystem>();
+    if (rs)
+        rs->Initialize(context, res, m_Ctx.runtime->GetConfig());
     GetSystem<SkyboxRenderSystem>()->Initialize(context);
     GetSystem<ParticleSystem>()->Initialize(context);
     GetSystem<DecalSystem>()->Initialize(context, res);
@@ -131,9 +134,15 @@ void SystemManager::ApplyConfig(const AppConfig &config)
         rs->SetShadowDistanceCulling(config.shadowDistanceCulling);
         rs->SetDistanceCulling(config.distanceCulling);
         rs->SetAntiAliasingMode((AntiAliasingMode)config.antialiasing);
+        rs->SetShadowBias(config.shadowBias);
+        rs->SetShadowSoftness(config.shadowSoftness);
         rs->SetRenderOrderEnabled(config.renderOrderEnabled);
         rs->SetFilterLayerMask(config.filterLayerMask);
-        rs->SetDeferredRendering(config.renderPath == 1);
+        rs->SetDeferredRendering(config.renderPath == RenderPath::Deferred);
+        
+        rs->SetFogEnabled(config.fogEnabled);
+        rs->SetFogColor(glm::vec3(config.fogColor[0], config.fogColor[1], config.fogColor[2]));
+        rs->SetFogDensity(config.fogDensity);
 
         if (config.cullFaceEnabled)
             rs->SetFaceCulling(true);
@@ -150,7 +159,13 @@ void SystemManager::ApplyConfig(const AppConfig &config)
     postProcess.SetGamma(config.gamma);
     postProcess.SetExposure(config.exposure);
     postProcess.SetBloomIntensity(config.bloomIntensity);
-    postProcess.SetTonemappingMode(config.tonemappingMode);
+    postProcess.SetBloomThreshold(config.bloomThreshold);
+    postProcess.SetBloomRadius(config.bloomRadius);
+    postProcess.SetSkyboxIntensity(config.skyboxIntensity);
+    if (auto* sky = GetSystem<SkyboxRenderSystem>()) {
+        static_cast<SkyboxRenderSystem*>(sky)->SetIntensity(config.skyboxIntensity);
+    }
+    postProcess.SetTonemappingMode(static_cast<int>(config.tonemappingMode));
     postProcess.SetHDREnabled(config.hdrEnabled);
     postProcess.SetBloomEnabled(config.bloomEnabled);
     postProcess.SetClearColor(config.clearColor[0], config.clearColor[1], config.clearColor[2], config.clearColor[3]);
@@ -158,10 +173,12 @@ void SystemManager::ApplyConfig(const AppConfig &config)
     // Physics
     if (m_Ctx.IsValid() && m_Ctx.physics) {
         m_Ctx.physics->SetGravity(glm::vec3(config.gravity[0], config.gravity[1], config.gravity[2]));
-        m_Ctx.physics->SetMode(config.physicsMode);
+        m_Ctx.physics->SetMode(static_cast<int>(config.physicsMode));
+        m_Ctx.physics->SetSolverIterations(config.solverIterations);
+        m_Ctx.physics->SetCCDEnabled(config.ccdEnabled, config.ccdThreshold);
     }
 
-    Logger::SetLogLevel(static_cast<LogLevel>(config.logLevel));
+    Logger::SetLogLevel(config.logLevel);
 
     LOGGER_INFO("SystemManager") << "Applied engine configuration.";
 }

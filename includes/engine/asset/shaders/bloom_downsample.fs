@@ -5,9 +5,15 @@
 
 uniform sampler2D srcTexture;
 uniform vec2 srcResolution;
+uniform float threshold;
 
 in vec2 TexCoords;
 layout (location = 0) out vec3 downsample;
+
+vec3 KarisAverage(vec3 color) {
+    float res = 1.0 / (1.0 + max(max(color.r, color.g), color.b));
+    return color * res;
+}
 
 void main()
 {
@@ -50,4 +56,10 @@ void main()
     downsample += (d+f+i+j)*0.125;
     downsample += (a+c+k+m)*0.03125;
     downsample += (b+g+h+l)*0.0625;
+
+    // Apply threshold
+    float brightness = max(max(downsample.r, downsample.g), downsample.b);
+    if (brightness < threshold) {
+        downsample = vec3(0.0);
+    }
 }

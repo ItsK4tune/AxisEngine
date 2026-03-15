@@ -88,6 +88,15 @@ uniform Material material;
 uniform vec4 tintColor;
 uniform bool debug_noTexture;
 
+// Fog
+uniform bool u_FogEnabled;
+uniform vec3 u_FogColor;
+uniform float u_FogDensity;
+
+// Shadow Control
+uniform float u_ShadowBias;
+uniform int u_ShadowSoftness;
+
 const float PI = 3.14159265359;
 
 // Forward Declarations
@@ -180,7 +189,16 @@ void main()
 
     vec3 ambient = (kD * diffuse + specular) * ao;
     vec3 emissive = debug_noTexture ? vec3(0.0) : pow(texture(texture_emissive1, TexCoords).rgb, vec3(2.2)) * material.emission;
-    FragColor = vec4(ambient + Lo + emissive, material.opacity);
+    vec3 finalColor = ambient + Lo + emissive;
+
+    if (u_FogEnabled) {
+        float dist = length(camera.viewPos - FragPos);
+        float fogFactor = 1.0 - exp(-pow(dist * u_FogDensity, 2.0));
+        fogFactor = clamp(fogFactor, 0.0, 1.0);
+        finalColor = mix(finalColor, u_FogColor, fogFactor);
+    }
+
+    FragColor = vec4(finalColor, material.opacity);
 }
 
 // Helper functions (Simplified for brevity, ensuring same math)
@@ -206,8 +224,26 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex) {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w * 0.5 + 0.5;
     if(projCoords.z > 1.0) return 0.0;
-    float closestDepth = texture(shadowMapDir[shadowMapIndex], projCoords.xy).r;
-    float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.0005);
-    return (projCoords.z - bias > closestDepth) ? 1.0 : 0.0;
+    
+    float currentDepth = projCoords.z;
+    float bias = u_ShadowBias > 0.0 ? u_ShadowBias : max(0.005 * (1.0 - dot(normal, lightDir)), 0.0005);
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMapDir[shadowMapIndex], 0);
+
+    if (u_ShadowSoftness == 0) {
+        float closestDepth = texture(shadowMapDir[shadowMapIndex], projCoords.xy).r;
+        shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+    } else {
+        int range = u_ShadowSoftness == 2 ? 2 : 1;
+        float totalSamples = pow(range * 2 + 1, 2);
+        for(int x = -range; x <= range; ++x) {
+            for(int y = -range; y <= range; ++y) {
+                float pcfDepth = texture(shadowMapDir[shadowMapIndex], projCoords.xy + vec2(x, y) * texelSize).r;
+                shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+            }
+        }
+        shadow /= totalSamples;
+    }
+    return shadow;
 }
 float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex) { return 0.0; }

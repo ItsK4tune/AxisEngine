@@ -122,8 +122,17 @@ bool Application::Initialize(const AppConfig &config)
     m_Config = config;
 
     JobSystem::Instance().Initialize(m_Config.numJobThreads);
+    LogManager::Instance().Initialize(m_Config.logLevel);
 
-    LogManager::Instance().Initialize(static_cast<LogLevel>(m_Config.logLevel));
+    // Allocate all core unique_ptr systems first to avoid null pointer issues
+    m_ResourceManager = std::make_unique<ResourceManager>();
+    m_SceneManager = std::make_unique<SceneManager>();
+    m_ContentService = std::make_unique<ContentService>();
+    m_RuntimeCore = std::make_unique<RuntimeCore>();
+    m_SystemManager = std::make_unique<SystemManager>();
+
+    TextureCache::SetAsyncEnabled(m_Config.asyncResourceLoading);
+    TextureCache::SetMaxAnisotropy(m_Config.maxAnisotropy);
 
     auto graphicsContext = AppBuilder::CreateGraphicsContext(m_Config);
     auto audioEngine = AppBuilder::CreateAudioEngine(m_Config);
@@ -131,12 +140,15 @@ bool Application::Initialize(const AppConfig &config)
 
     m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext), std::move(audioEngine));
 
-    if (!m_IOHandler->Initialize(std::move(window), m_Config.title, m_Config.width, m_Config.height, m_Config.windowMode,
+    if (!m_IOHandler->Initialize(std::move(window), m_Config.title, m_Config.width, m_Config.height, (int)m_Config.windowMode,
                            m_Config.monitorIndex, m_Config.refreshRate, m_Config.vsync, m_Config.frameRateLimit))
     {
         LOGGER_ERROR("Application") << "Failed to initialize IOHandler";
         return false;
     }
+
+    auto& engineLoop = m_RuntimeCore->GetEngineLoop();
+    engineLoop.SetPhysicsStep(1.0f / m_Config.physicsTickRate);
 
     auto &context = m_IOHandler->GetGraphicsContext();
     RendererInitializer::Initialize(context);
@@ -173,23 +185,16 @@ bool Application::Initialize(const AppConfig &config)
 
     m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(m_Config);
     m_PhysicsWorld->Initialize();
-    m_ResourceManager = std::make_unique<ResourceManager>();
+    
     m_ResourceManager->Initialize(context.GetShaderManager());
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
     m_Scene->InitializeManagers();
     
-    auto applyConfigFn = [this](const AppConfig& cfg) { this->ApplyConfig(cfg); };
-    
-    m_SceneManager = std::make_unique<SceneManager>();
-    m_ContentService = std::make_unique<ContentService>();
-    m_RuntimeCore = std::make_unique<RuntimeCore>();
-    m_SystemManager = std::make_unique<SystemManager>();
-
-    EngineContext ctx = GetContext(); // Define ctx here
+    EngineContext ctx = GetContext();
     m_SceneManager->Initialize(ctx, [this](const AppConfig &cfg) { ApplyConfig(cfg); });
     m_ContentService->Initialize(ctx);
     m_RuntimeCore->Initialize(ctx, m_Config, [this](const AppConfig &cfg) { ApplyConfig(cfg); });
-    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, GetContext());
+    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, ctx);
     m_SystemManager->ApplyConfig(m_Config);
 
     m_ResourceManager->CreateUIModel("default_rect", UIType::Color);

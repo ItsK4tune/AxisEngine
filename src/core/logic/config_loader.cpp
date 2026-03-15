@@ -12,409 +12,277 @@
 #include <platform/interface/i_window.h>
 #include <core/logic/logger.h>
 
+#include <unordered_map>
+
+namespace {
+    std::string ToUpper(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+        return s;
+    }
+
+    template<typename T>
+    T ResolveEnum(const std::string& input, const std::unordered_map<std::string, T>& mapping, T defaultValue) {
+        if (input.empty()) return defaultValue;
+
+        // Try numeric
+        try {
+            size_t pos;
+            int val = std::stoi(input, &pos);
+            if (pos == input.length()) { // Full numeric string
+                for (auto const& [name, enumVal] : mapping) {
+                    if (static_cast<int>(enumVal) == val) return enumVal;
+                }
+            }
+        } catch (...) {}
+
+        std::string clean = ToUpper(input);
+        
+        // Handle C++ style prefixes if present: "TonemappingMode::ACES" -> "ACES"
+        size_t colon = clean.rfind("::");
+        if (colon != std::string::npos) {
+            clean = clean.substr(colon + 2);
+        }
+
+        auto it = mapping.find(clean);
+        if (it != mapping.end()) return it->second;
+
+        return defaultValue;
+    }
+}
+
 void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
 {
     std::string subCmd;
     ss >> subCmd;
 
-    if (subCmd == "GRAPHICS_API")
-    {
-        std::string backend;
-        if (ss >> backend)
-        {
-            if (backend == "OPENGL")
-            {
-                config.graphicsBackend = "OPENGL";
-            }
-            else if (backend == "VULKAN" || backend == "DIRECTX")
-            {
-                LOGGER_WARN("ConfigLoader") << "Graphics Backend '" << backend << "' is not yet implemented. Switching back to OPENGL.";
-                config.graphicsBackend = "OPENGL";
-            }
-            else
-            {
-                LOGGER_WARN("ConfigLoader") << "Unknown Graphics Backend '" << backend << "'. Defaulting to OPENGL.";
-                config.graphicsBackend = "OPENGL";
-            }
-        }
+    if (subCmd == "GRAPHICS_API") {
+        std::string val; ss >> val;
+        config.graphicsBackend = ResolveEnum(val, {
+            {"OPENGL", GraphicsBackend::OpenGL},
+            {"VULKAN", GraphicsBackend::Vulkan},
+            {"DIRECTX", GraphicsBackend::DirectX}
+        }, GraphicsBackend::OpenGL);
     }
-    else if (subCmd == "PHYSICS_ENGINE")
-    {
-        std::string backend;
-        if (ss >> backend)
-        {
-            if (backend == "BULLET")
-            {
-                config.physicsBackend = "BULLET";
-            }
-            else if (backend == "PHYSX")
-            {
-                LOGGER_WARN("ConfigLoader") << "Physics Engine '" << backend << "' is not yet implemented. Switching back to BULLET.";
-                config.physicsBackend = "BULLET";
-            }
-            else
-            {
-                LOGGER_WARN("ConfigLoader") << "Unknown Physics Engine '" << backend << "'. Defaulting to BULLET.";
-                config.physicsBackend = "BULLET";
-            }
-        }
+    else if (subCmd == "PHYSICS_ENGINE") {
+        std::string val; ss >> val;
+        config.physicsBackend = ResolveEnum(val, {
+            {"BULLET", PhysicsBackend::Bullet},
+            {"PHYSX", PhysicsBackend::PhysX}
+        }, PhysicsBackend::Bullet);
     }
-    else if (subCmd == "AUDIO_ENGINE")
-    {
-        std::string backend;
-        if (ss >> backend)
-        {
-            if (backend == "IRRKLANG")
-            {
-                config.audioBackend = "IRRKLANG";
-            }
-            else
-            {
-                LOGGER_WARN("ConfigLoader") << "Audio Engine '" << backend << "' is not yet implemented (or unknown). Switching back to IRRKLANG.";
-                config.audioBackend = "IRRKLANG";
-            }
-        }
+    else if (subCmd == "AUDIO_ENGINE") {
+        std::string val; ss >> val;
+        config.audioBackend = ResolveEnum(val, {
+            {"IRRKLANG", AudioBackend::IrrKlang},
+            {"FMOD", AudioBackend::FMOD},
+            {"OPENAL", AudioBackend::OpenAL}
+        }, AudioBackend::IrrKlang);
     }
-
-    else if (subCmd == "SHADOWS")
-    {
-        int mode = 1;
-        ss >> mode;
+    else if (subCmd == "TONEMAPPING") {
+        std::string val; ss >> val;
+        config.tonemappingMode = ResolveEnum(val, {
+            {"NONE", TonemappingMode::None},
+            {"ACES", TonemappingMode::ACES},
+            {"REINHARD", TonemappingMode::Reinhard}
+        }, TonemappingMode::ACES);
+    }
+    else if (subCmd == "RENDER_PATH") {
+        std::string val; ss >> val;
+        config.renderPath = ResolveEnum(val, {
+            {"FORWARD", RenderPath::Forward},
+            {"DEFERRED", RenderPath::Deferred}
+        }, RenderPath::Forward);
+    }
+    else if (subCmd == "LOG_LEVEL") {
+        std::string val; ss >> val;
+        config.logLevel = ResolveEnum(val, {
+            {"NONE", LogLevel::None},
+            {"MINIMAL", LogLevel::Minimal},
+            {"FLEX", LogLevel::Flex},
+            {"VERBOSE", LogLevel::Verbose},
+            {"DEBUG", LogLevel::Debug}
+        }, LogLevel::Debug);
+    }
+    else if (subCmd == "PHYSICS_MODE") {
+        std::string val; ss >> val;
+        config.physicsMode = ResolveEnum(val, {
+            {"FAST", PhysicsMode::Fast},
+            {"BALANCED", PhysicsMode::Balanced},
+            {"ACCURATE", PhysicsMode::Accurate}
+        }, PhysicsMode::Balanced);
+    }
+    else if (subCmd == "SHADOWS") {
+        int mode; ss >> mode;
         config.shadowMode = mode;
     }
-    else if (subCmd == "SHADOW_SIZE")
-    {
-        float size = 20.0f;
-        ss >> size;
-        config.shadowProjectionSize = size;
+    else if (subCmd == "SHADOW_SIZE") {
+        ss >> config.shadowProjectionSize;
     }
-    else if (subCmd == "INSTANCING")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "SHADOW_RESOLUTION") {
+        ss >> config.shadowMapResolution;
+    }
+    else if (subCmd == "INSTANCING") {
+        int enable; ss >> enable;
         config.instanceBatchingEnabled = (enable != 0);
     }
-    else if (subCmd == "CULL_FACE")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "CULL_FACE") {
+        int enable; ss >> enable;
         config.cullFaceEnabled = (enable != 0);
     }
-    else if (subCmd == "OCCLUSION_CULLING")
-    {
-        int enable = 0;
-        ss >> enable;
-        config.occlusionCullingEnabled = (enable != 0);
-    }
-    else if (subCmd == "DEPTH_TEST")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "DEPTH_TEST") {
+        int enable; ss >> enable;
         config.depthTestEnabled = (enable != 0);
     }
-    else if (subCmd == "WINDOW_WIDTH")
-    {
-        int w = 800;
-        ss >> w;
-        config.width = w;
+    else if (subCmd == "WINDOW_WIDTH") {
+        ss >> config.width;
     }
-    else if (subCmd == "WINDOW_HEIGHT")
-    {
-        int h = 600;
-        ss >> h;
-        config.height = h;
+    else if (subCmd == "WINDOW_HEIGHT") {
+        ss >> config.height;
     }
-    else if (subCmd == "WINDOW_MODE")
-    {
-        std::string modeStr;
-        if (ss >> modeStr)
-        {
-            if (modeStr == "FULLSCREEN")
-                config.windowMode = 1;
-            else if (modeStr == "BORDERLESS")
-                config.windowMode = 2;
-            else if (modeStr == "BORDERLESS_FULLSCREEN" || modeStr == "STRETCH_FULLSCREEN")
-                config.windowMode = 3;
-            else if (modeStr == "WINDOWED")
-                config.windowMode = 0;
-            else
-                config.windowMode = 0;
-        }
+    else if (subCmd == "WINDOW_MODE") {
+        std::string modeStr; ss >> modeStr;
+        config.windowMode = ResolveEnum(modeStr, {
+            {"WINDOWED", WindowMode::Windowed},
+            {"FULLSCREEN", WindowMode::Fullscreen},
+            {"BORDERLESS", WindowMode::Borderless},
+            {"BORDERLESS_FULLSCREEN", WindowMode::BorderlessFullscreen}
+        }, WindowMode::Windowed);
     }
-    else if (subCmd == "WINDOW_MONITOR")
-    {
-        int monitorIdx = 0;
-        ss >> monitorIdx;
-        config.monitorIndex = monitorIdx;
-    }
-    else if (subCmd == "WINDOW_REFRESH_RATE")
-    {
-        int rate = 0;
-        ss >> rate;
-        config.refreshRate = rate;
-    }
-    else if (subCmd == "VSYNC")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "VSYNC") {
+        int enable; ss >> enable;
         config.vsync = (enable != 0);
     }
-    else if (subCmd == "FPS")
-    {
-        int fps = 0;
-        ss >> fps;
-        config.frameRateLimit = fps;
+    else if (subCmd == "MONITOR") {
+        ss >> config.monitorIndex;
     }
-    else if (subCmd == "FRUSTUM")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "REFRESH_RATE") {
+        ss >> config.refreshRate;
+    }
+    else if (subCmd == "FPS") {
+        ss >> config.frameRateLimit;
+    }
+    else if (subCmd == "FRUSTUM") {
+        int enable; ss >> enable;
         config.frustumCullingEnabled = (enable != 0);
     }
-    else if (subCmd == "RENDER_ORDER")
-    {
-        int enable = 0;
-        ss >> enable;
-        config.renderOrderEnabled = (enable != 0);
-    }
-    else if (subCmd == "FILTER_LAYER")
-    {
-        uint32_t mask = 0xFFFFFFFF;
-        ss >> mask;
-        config.filterLayerMask = mask;
-    }
-    else if (subCmd == "SHADOW_FRUSTUM")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "SHADOW_FRUSTUM") {
+        int enable; ss >> enable;
         config.shadowFrustumCullingEnabled = (enable != 0);
     }
-    else if (subCmd == "SHADOW_DISTANCE")
-    {
-        float dist = 0.0f;
-        ss >> dist;
-        config.shadowDistanceCulling = dist;
+    else if (subCmd == "SHADOW_DISTANCE") {
+        ss >> config.shadowDistanceCulling;
     }
-    else if (subCmd == "DISTANCE")
-    {
-        float dist = 0.0f;
-        ss >> dist;
-        config.distanceCulling = dist;
+    else if (subCmd == "SHADOW_BIAS") {
+        ss >> config.shadowBias;
     }
-    else if (subCmd == "PHYSICS_MODE")
-    {
-        std::string modeStr;
-        if (ss >> modeStr)
-        {
-            if (modeStr == "FAST")
-                config.physicsMode = 0;
-            else if (modeStr == "BALANCED")
-                config.physicsMode = 1;
-            else if (modeStr == "ACCURATE")
-                config.physicsMode = 2;
-            else
-            {
-                try
-                {
-                    config.physicsMode = std::stoi(modeStr);
-                }
-                catch (...)
-                {
-                    config.physicsMode = 1;
-                }
-            }
-        }
+    else if (subCmd == "SHADOW_SOFTNESS") {
+        ss >> config.shadowSoftness;
     }
-    else if (subCmd == "ANTIALIASING")
-    {
-        std::string valStr;
-        if (ss >> valStr)
-        {
-            if (valStr == "FXAA")
-                config.antialiasing = 1;
-            else if (valStr == "TAA")
-                config.antialiasing = 2;
-            else
-                config.antialiasing = 0;
-        }
+    else if (subCmd == "DISTANCE") {
+        ss >> config.distanceCulling;
     }
-    // Feature toggles
-    else if (subCmd == "SHADOWS_ENABLED")
-    {
-        int enable = 1;
-        ss >> enable;
+    else if (subCmd == "MOUSE_SENSITIVITY") {
+        ss >> config.mouseSensitivityX;
+        config.mouseSensitivityY = config.mouseSensitivityX;
+    }
+    else if (subCmd == "MOUSE_SENSITIVITY_X") {
+        ss >> config.mouseSensitivityX;
+    }
+    else if (subCmd == "MOUSE_SENSITIVITY_Y") {
+        ss >> config.mouseSensitivityY;
+    }
+    else if (subCmd == "MOUSE_INVERT_X") {
+        int invert; ss >> invert;
+        config.mouseInvertX = (invert != 0);
+    }
+    else if (subCmd == "MOUSE_INVERT_Y") {
+        int invert; ss >> invert;
+        config.mouseInvertY = (invert != 0);
+    }
+    else if (subCmd == "MSAA") {
+        ss >> config.msaaSamples;
+    }
+    else if (subCmd == "ANISOTROPY") {
+        ss >> config.maxAnisotropy;
+    }
+    else if (subCmd == "RENDER_SCALE") {
+        ss >> config.renderScale;
+    }
+    else if (subCmd == "ASYNC_RESOURCES") {
+        int enable; ss >> enable;
+        config.asyncResourceLoading = (enable != 0);
+    }
+    else if (subCmd == "SHADOWS_ENABLED") {
+        int enable; ss >> enable;
         config.shadowsEnabled = (enable != 0);
     }
-    else if (subCmd == "BLOOM_ENABLED")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "BLOOM_ENABLED") {
+        int enable; ss >> enable;
         config.bloomEnabled = (enable != 0);
     }
-    else if (subCmd == "HDR_ENABLED")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "HDR_ENABLED") {
+        int enable; ss >> enable;
         config.hdrEnabled = (enable != 0);
     }
-    else if (subCmd == "TAA_ENABLED")
-    {
-        int enable = 0;
-        ss >> enable;
-        config.taaEnabled = (enable != 0);
+    else if (subCmd == "GAMMA") {
+        ss >> config.gamma;
     }
-    // Rendering parameters
-    else if (subCmd == "GAMMA")
-    {
-        float val = 2.2f;
-        ss >> val;
-        config.gamma = val;
+    else if (subCmd == "EXPOSURE") {
+        ss >> config.exposure;
     }
-    else if (subCmd == "EXPOSURE")
-    {
-        float val = 1.0f;
-        ss >> val;
-        config.exposure = val;
+    else if (subCmd == "BLOOM_INTENSITY") {
+        ss >> config.bloomIntensity;
     }
-    else if (subCmd == "BLOOM_INTENSITY")
-    {
-        float val = 1.0f;
-        ss >> val;
-        config.bloomIntensity = val;
+    else if (subCmd == "BLOOM_THRESHOLD") {
+        ss >> config.bloomThreshold;
     }
-    else if (subCmd == "TAA_BLEND_FACTOR")
-    {
-        float val = 0.9f;
-        ss >> val;
-        config.taaBlendFactor = val;
+    else if (subCmd == "BLOOM_RADIUS") {
+        ss >> config.bloomRadius;
     }
-    else if (subCmd == "AMBIENT_INTENSITY")
-    {
-        float val = 0.1f;
-        ss >> val;
-        config.ambientIntensity = val;
+    else if (subCmd == "SKYBOX_INTENSITY") {
+        ss >> config.skyboxIntensity;
     }
-    else if (subCmd == "TONEMAPPING")
-    {
-        std::string valStr;
-        if (ss >> valStr)
-        {
-            if (valStr == "NONE")
-                config.tonemappingMode = 0;
-            else if (valStr == "ACES")
-                config.tonemappingMode = 1;
-            else if (valStr == "REINHARD")
-                config.tonemappingMode = 2;
-            else
-            {
-                try { config.tonemappingMode = std::stoi(valStr); }
-                catch (...) { config.tonemappingMode = 1; }
-            }
-        }
+    else if (subCmd == "FOG_ENABLED") {
+        int enable; ss >> enable;
+        config.fogEnabled = (enable != 0);
     }
-    else if (subCmd == "RENDER_PATH")
-    {
-        std::string valStr;
-        if (ss >> valStr)
-        {
-            if (valStr == "FORWARD")
-                config.renderPath = 0;
-            else if (valStr == "DEFERRED")
-                config.renderPath = 1;
-            else
-            {
-                try { config.renderPath = std::stoi(valStr); }
-                catch (...) { config.renderPath = 0; }
-            }
-        }
+    else if (subCmd == "FOG_COLOR") {
+        ss >> config.fogColor[0] >> config.fogColor[1] >> config.fogColor[2];
     }
-    else if (subCmd == "CLEAR_COLOR")
-    {
-        float r = 0.1f, g = 0.1f, b = 0.1f, a = 1.0f;
-        ss >> r >> g >> b >> a;
-        config.clearColor[0] = r;
-        config.clearColor[1] = g;
-        config.clearColor[2] = b;
-        config.clearColor[3] = a;
+    else if (subCmd == "FOG_DENSITY") {
+        ss >> config.fogDensity;
     }
-    // Audio
-    else if (subCmd == "VOLUME")
-    {
-        float val = 1.0f;
-        ss >> val;
-        config.masterVolume = val;
+    else if (subCmd == "AMBIENT_INTENSITY") {
+        float val; ss >> val;
+        // unused
     }
-    // Core
-    else if (subCmd == "JOB_THREADS")
-    {
-        int val = -1;
-        ss >> val;
-        config.numJobThreads = val;
+    else if (subCmd == "VOLUME") {
+        ss >> config.masterVolume;
     }
-    else if (subCmd == "TIME_SCALE")
-    {
-        float val = 1.0f;
-        ss >> val;
-        config.timeScale = val;
+    else if (subCmd == "JOB_THREADS") {
+        ss >> config.numJobThreads;
     }
-    // Physics
-    else if (subCmd == "GRAVITY")
-    {
-        float x = 0.0f, y = -9.81f, z = 0.0f;
-        ss >> x >> y >> z;
-        config.gravity[0] = x;
-        config.gravity[1] = y;
-        config.gravity[2] = z;
+    else if (subCmd == "TIME_SCALE") {
+        ss >> config.timeScale;
     }
-    else if (subCmd == "MAX_SUB_STEPS")
-    {
-        int val = 10;
-        ss >> val;
-        config.maxSubSteps = val;
+    else if (subCmd == "GRAVITY") {
+        ss >> config.gravity[0] >> config.gravity[1] >> config.gravity[2];
     }
-    else if (subCmd == "PHYSICS_TICK_RATE")
-    {
-        float val = 60.0f;
-        ss >> val;
-        config.physicsTickRate = val;
+    else if (subCmd == "MAX_SUBSTEPS") {
+        ss >> config.maxSubSteps;
     }
-    else if (subCmd == "CCD")
-    {
-        int enable = 0;
-        ss >> enable;
+    else if (subCmd == "PHYSICS_TICKRATE") {
+        ss >> config.physicsTickRate;
+    }
+    else if (subCmd == "CCD_ENABLED") {
+        int enable; ss >> enable;
         config.ccdEnabled = (enable != 0);
     }
-    else if (subCmd == "SOLVER_ITERATIONS")
-    {
-        int val = 10;
-        ss >> val;
-        config.solverIterations = val;
+    else if (subCmd == "CCD_THRESHOLD") {
+        ss >> config.ccdThreshold;
     }
-    // Navigation
-    else if (subCmd == "AGENT_RADIUS")
-    {
-        float val = 0.5f;
-        ss >> val;
-        config.agentRadius = val;
-    }
-    else if (subCmd == "AGENT_HEIGHT")
-    {
-        float val = 2.0f;
-        ss >> val;
-        config.agentHeight = val;
-    }
-    else if (subCmd == "WALKABLE_TAG")
-    {
-        std::string tag;
-        if (ss >> tag)
-            config.walkableTag = tag;
-    }
-    // Input
-    else if (subCmd == "MOUSE_SENSITIVITY")
-    {
-        float val = 0.1f;
-        ss >> val;
-        // Store in a general place; scripts can read from config
+    else if (subCmd == "SOLVER_ITERATIONS") {
+        ss >> config.solverIterations;
     }
 }
 
@@ -430,7 +298,11 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
         if (ss >> backend && ctx.IsValid())
         {
             AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
-            cfg.graphicsBackend = backend;
+            cfg.graphicsBackend = ResolveEnum(backend, {
+                {"OPENGL", GraphicsBackend::OpenGL},
+                {"VULKAN", GraphicsBackend::Vulkan},
+                {"DIRECTX", GraphicsBackend::DirectX}
+            }, GraphicsBackend::OpenGL);
             LOGGER_INFO("ConfigLoader") << "Scene requested Graphics Backend: " << backend;
         }
     }
@@ -440,7 +312,10 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
         if (ss >> backend && ctx.IsValid())
         {
             AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
-            cfg.physicsBackend = backend;
+            cfg.physicsBackend = ResolveEnum(backend, {
+                {"BULLET", PhysicsBackend::Bullet},
+                {"PHYSX", PhysicsBackend::PhysX}
+            }, PhysicsBackend::Bullet);
             LOGGER_INFO("ConfigLoader") << "Scene requested Physics Backend: " << backend;
         }
     }
@@ -450,7 +325,11 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
         if (ss >> backend && ctx.IsValid())
         {
             AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
-            cfg.audioBackend = backend;
+            cfg.audioBackend = ResolveEnum(backend, {
+                {"IRRKLANG", AudioBackend::IrrKlang},
+                {"FMOD", AudioBackend::FMOD},
+                {"OPENAL", AudioBackend::OpenAL}
+            }, AudioBackend::IrrKlang);
             LOGGER_INFO("ConfigLoader") << "Scene requested Audio Backend: " << backend;
         }
     }
@@ -570,6 +449,24 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
                 ctx.systems->GetSystem<RenderSystem>()->SetFrustumCulling(enable != 0);
         }
     }
+    else if (subCmd == "SHADOW_FRUSTUM")
+    {
+        int enable = 0;
+        if (ss >> enable)
+        {
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetShadowFrustumCulling(enable != 0);
+        }
+    }
+    else if (subCmd == "SHADOW_DISTANCE")
+    {
+        float dist = 0.0f;
+        if (ss >> dist)
+        {
+            if (ctx.IsValid())
+                ctx.systems->GetSystem<RenderSystem>()->SetShadowDistanceCulling(dist);
+        }
+    }
     else if (subCmd == "RENDER_ORDER")
     {
         int enable = 0;
@@ -591,24 +488,6 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
                 ctx.systems->GetSystem<RenderSystem>()->SetFilterLayerMask(mask);
         }
     }
-    else if (subCmd == "SHADOW_FRUSTUM")
-    {
-        int enable = 0;
-        if (ss >> enable)
-        {
-            if (ctx.IsValid())
-                ctx.systems->GetSystem<RenderSystem>()->SetShadowFrustumCulling(enable != 0);
-        }
-    }
-    else if (subCmd == "SHADOW_DISTANCE")
-    {
-        float dist = 0.0f;
-        if (ss >> dist)
-        {
-            if (ctx.IsValid())
-                ctx.systems->GetSystem<RenderSystem>()->SetShadowDistanceCulling(dist);
-        }
-    }
     else if (subCmd == "DISTANCE")
     {
         float dist = 0.0f;
@@ -618,33 +497,34 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
                 ctx.systems->GetSystem<RenderSystem>()->SetDistanceCulling(dist);
         }
     }
+    else if (subCmd == "MAX_SUBSTEPS")
+    {
+        int steps = 10;
+        if (ss >> steps && ctx.IsValid())
+            ctx.runtime->GetEngineLoop().SetMaxSubSteps(steps);
+    }
+    else if (subCmd == "PHYSICS_TICKRATE")
+    {
+        float rate = 60.0f;
+        if (ss >> rate && ctx.IsValid())
+            ctx.runtime->GetEngineLoop().SetPhysicsStep(1.0f / rate);
+    }
     else if (subCmd == "PHYSICS_MODE")
     {
         std::string modeStr;
-        int mode = 1;
         if (ss >> modeStr)
         {
-            if (modeStr == "FAST")
-                mode = 0;
-            else if (modeStr == "BALANCED")
-                mode = 1;
-            else if (modeStr == "ACCURATE")
-                mode = 2;
-            else
-            {
-                try
-                {
-                    mode = std::stoi(modeStr);
-                }
-                catch (...)
-                {
-                    LOGGER_WARN("ConfigLoader") << "Invalid PHYSICS_MODE: " << modeStr << ". Supported: FAST, BALANCED, ACCURATE (or 0, 1, 2).";
-                }
-            }
+            PhysicsMode mode = ResolveEnum(modeStr, {
+                {"FAST", PhysicsMode::Fast},
+                {"BALANCED", PhysicsMode::Balanced},
+                {"ACCURATE", PhysicsMode::Accurate}
+            }, PhysicsMode::Balanced);
 
             if (ctx.IsValid())
             {
-                ctx.physics->SetMode(mode);
+                ctx.physics->SetMode(static_cast<int>(mode));
+                AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+                cfg.physicsMode = mode;
             }
         }
     }
@@ -653,15 +533,11 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
         std::string valStr;
         if (ss >> valStr)
         {
-            AntiAliasingMode mode = AntiAliasingMode::NONE;
-            if (valStr == "FXAA")
-                mode = AntiAliasingMode::FXAA;
-            else if (valStr == "TAA")
-                mode = AntiAliasingMode::TAA;
-            else if (valStr == "NONE")
-                mode = AntiAliasingMode::NONE;
-            else
-                LOGGER_WARN("ConfigLoader") << "Invalid ANTIALIASING mode: " << valStr << ". Supported: NONE, FXAA, TAA.";
+            AntiAliasingMode mode = ResolveEnum(valStr, {
+                {"NONE", AntiAliasingMode::NONE},
+                {"FXAA", AntiAliasingMode::FXAA},
+                {"TAA", AntiAliasingMode::TAA}
+            }, AntiAliasingMode::FXAA);
 
             if (ctx.IsValid())
             {
@@ -721,11 +597,15 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
         std::string valStr;
         if (ss >> valStr && ctx.IsValid())
         {
-            int mode = 1;
-            if (valStr == "NONE") mode = 0;
-            else if (valStr == "ACES") mode = 1;
-            else if (valStr == "REINHARD") mode = 2;
-            ctx.systems->GetPostProcess().SetTonemappingMode(mode);
+            TonemappingMode mode = ResolveEnum(valStr, {
+                {"NONE", TonemappingMode::None},
+                {"ACES", TonemappingMode::ACES},
+                {"REINHARD", TonemappingMode::Reinhard}
+            }, TonemappingMode::ACES);
+            ctx.systems->GetPostProcess().SetTonemappingMode(static_cast<int>(mode));
+            
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.tonemappingMode = mode;
         }
     }
     else if (subCmd == "RENDER_PATH")
@@ -733,8 +613,14 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
         std::string valStr;
         if (ss >> valStr && ctx.IsValid())
         {
-            bool deferred = (valStr == "DEFERRED" || valStr == "1");
-            ctx.systems->GetSystem<RenderSystem>()->SetDeferredRendering(deferred);
+            RenderPath path = ResolveEnum(valStr, {
+                {"FORWARD", RenderPath::Forward},
+                {"DEFERRED", RenderPath::Deferred}
+            }, RenderPath::Forward);
+            ctx.systems->GetSystem<RenderSystem>()->SetDeferredRendering(path == RenderPath::Deferred);
+            
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.renderPath = path;
         }
     }
     else if (subCmd == "CLEAR_COLOR")

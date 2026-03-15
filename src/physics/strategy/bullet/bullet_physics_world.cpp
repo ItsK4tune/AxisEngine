@@ -88,6 +88,20 @@ void BulletPhysicsWorld::SetMode(int mode)
 {
 }
 
+void BulletPhysicsWorld::SetSolverIterations(int iterations)
+{
+    if (m_DynamicsWorld)
+    {
+        m_DynamicsWorld->getSolverInfo().m_numIterations = iterations;
+    }
+}
+
+void BulletPhysicsWorld::SetCCDEnabled(bool enabled, float threshold)
+{
+    m_CCDEnabled = enabled;
+    m_CCDThreshold = threshold;
+}
+
 void BulletPhysicsWorld::AddRigidBody(IRigidBody* body)
 {
     if (!m_DynamicsWorld || !body) return;
@@ -247,6 +261,15 @@ std::shared_ptr<IRigidBody> BulletPhysicsWorld::CreateRigidBody(float mass, cons
     btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
     btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, myMotionState, bShape->GetRaw(), localInertia);
     btRigidBody* body = new btRigidBody(rbInfo);
+
+    if (m_CCDEnabled && mass > 0.0f)
+    {
+        body->setCcdMotionThreshold(m_CCDThreshold);
+        btVector3 center;
+        btScalar radius;
+        bShape->GetRaw()->getBoundingSphere(center, radius);
+        body->setCcdSweptSphereRadius(radius * 0.2f); // Often a fraction of the radius is used
+    }
 
     return std::make_shared<BulletRigidBody>(body, shape);
 }

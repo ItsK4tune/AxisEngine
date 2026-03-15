@@ -11,6 +11,10 @@ void RuntimeCore::Initialize(EngineContext ctx, const AppConfig& config, std::fu
 {
     m_Config = config;
     m_ApplyConfigFn = std::move(applyFn);
+    
+    m_EngineLoop.SetPhysicsStep(1.0f / m_Config.physicsTickRate);
+    m_EngineLoop.SetMaxSubSteps(m_Config.maxSubSteps);
+    
     m_EngineLoop.Initialize(ctx);
     m_StateMachine.Initialize(ctx);
 

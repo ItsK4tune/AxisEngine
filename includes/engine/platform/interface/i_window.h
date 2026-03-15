@@ -14,7 +14,7 @@ class IWindow {
 public:
     virtual ~IWindow() = default;
 
-    virtual bool Initialize(int width, int height, const std::string& title) = 0;
+    virtual bool Initialize(int width, int height, const std::string& title, int msaaSamples = 0) = 0;
     virtual void SetTitle(const std::string& title) = 0;
     virtual void SetIcon(int width, int height, unsigned char* pixels) = 0;
     virtual void SetVsync(bool enabled) = 0;
