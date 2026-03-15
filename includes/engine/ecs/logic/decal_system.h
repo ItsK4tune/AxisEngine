@@ -42,6 +42,7 @@ private:
     EngineContext m_Ctx;
     bool m_Enabled = true;
     std::shared_ptr<Shader> m_DecalShader;
+    std::shared_ptr<Shader> m_ForwardShader;
     
     GpuHandle m_CubeVAO = 0;
     GpuHandle m_CubeVBO = 0;

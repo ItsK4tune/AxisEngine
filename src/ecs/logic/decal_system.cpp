@@ -28,6 +28,14 @@ void DecalSystem::Initialize(EngineContext ctx)
                                    "includes/engine/asset/shaders/decal.fs");
         m_DecalShader = m_Ctx.resources->GetShader("decal");
     }
+
+    m_ForwardShader = m_Ctx.resources->GetShader("decal_forward");
+    if (!m_ForwardShader)
+    {
+        m_Ctx.resources->LoadShader("decal_forward", "includes/engine/asset/shaders/decal_forward.vs", 
+                                   "includes/engine/asset/shaders/decal_forward.fs");
+        m_ForwardShader = m_Ctx.resources->GetShader("decal_forward");
+    }
 }
 
 void DecalSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib)
@@ -60,69 +68,69 @@ void DecalSystem::Update(Scene &scene, float dt)
 
 void DecalSystem::Render(Scene &scene)
 {
-    if (!m_Enabled || !m_DecalShader) return;
+    if (!m_Enabled) return;
     
     auto rs = m_Ctx.systems->GetSystem<RenderSystem>();
-    if (!rs || !rs->IsDeferredRenderingEnabled()) return;
-    
-    m_DecalShader->use();
-    
+    if (!rs) return;
+
     auto camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) return;
-
-    rs->BindForDecals();
-    
     auto &cam = scene.registry.get<CameraComponent>(camEntity);
-    
+
     auto& gc = m_Ctx.io->GetGraphicsContext();
     auto& dc = gc.GetDrawContext();
     auto& bm = gc.GetBufferManager();
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
-    
-    m_DecalShader->use();
-    
-    // Set Camera Uniforms
-    m_DecalShader->setMat4("invProj", glm::inverse(cam.projectionMatrix));
-    m_DecalShader->setMat4("invView", glm::inverse(cam.viewMatrix));
-    m_DecalShader->setMat4("view", cam.viewMatrix);
-    m_DecalShader->setMat4("projection", cam.projectionMatrix);
-    
-    int width = rs->GetGBufferWidth();
-    int height = rs->GetGBufferHeight();
-    m_DecalShader->setVec2("screenSize", glm::vec2((float)width, (float)height));
-    
-    UpdateTagMap(scene);
 
-    // Bind G-Buffer Depth (unit 0)
-    tm.ActiveTexture(TextureUnit::Texture0);
-    tm.BindTexture(TextureType::Texture2D, rs->GetGBufferDepth());
-    m_DecalShader->setInt("gDepth", 0);
+    bool isDeferred = rs->IsDeferredRenderingEnabled();
+    Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();
+    if (!shader) return;
 
-    // Bind G-Buffer ID (unit 1)
-    tm.ActiveTexture(TextureUnit::Texture1);
-    tm.BindTexture(TextureType::Texture2D, rs->GetGBufferID());
-    m_DecalShader->setInt("gID", 1);
-
-    // Bind Tag Map (unit 2)
-    tm.ActiveTexture(TextureUnit::Texture2);
-    tm.BindTexture(TextureType::Texture1D, m_TagMapTexture);
-    m_DecalShader->setInt("tagMap", 2);
-
-    // Bind G-Buffer Position (unit 4)
-    tm.ActiveTexture(TextureUnit::Texture4);
-    tm.BindTexture(TextureType::Texture2D, rs->GetGBufferPosition());
-    m_DecalShader->setInt("gPosition", 4);
+    if (isDeferred) rs->BindForDecals();
     
-    m_DecalShader->setVec2("screenSize", glm::vec2((float)rs->GetGBufferWidth(), (float)rs->GetGBufferHeight()));
+    shader->use();
     
-    // Rendering setup
+    if (isDeferred) {
+        // Screen Space Uniforms
+        shader->setMat4("invProj", glm::inverse(cam.projectionMatrix));
+        shader->setMat4("invView", glm::inverse(cam.viewMatrix));
+        shader->setVec2("screenSize", glm::vec2((float)rs->GetGBufferWidth(), (float)rs->GetGBufferHeight()));
+
+        UpdateTagMap(scene);
+
+        // Bind G-Buffer
+        tm.ActiveTexture(TextureUnit::Texture0);
+        tm.BindTexture(TextureType::Texture2D, rs->GetGBufferDepth());
+        shader->setInt("gDepth", 0);
+
+        tm.ActiveTexture(TextureUnit::Texture1);
+        tm.BindTexture(TextureType::Texture2D, rs->GetGBufferID());
+        shader->setInt("gID", 1);
+
+        tm.ActiveTexture(TextureUnit::Texture2);
+        tm.BindTexture(TextureType::Texture1D, m_TagMapTexture);
+        shader->setInt("tagMap", 2);
+
+        tm.ActiveTexture(TextureUnit::Texture4);
+        tm.BindTexture(TextureType::Texture2D, rs->GetGBufferPosition());
+        shader->setInt("gPosition", 4);
+        
+        sm.SetCullFace(CullMode::Front); // Back faces for volume
+        sm.SetDepthFunc(CompareFunc::Always);
+    } else {
+        // Forward Mesh Decal Uniforms
+        shader->setVec4("tintColor", glm::vec4(1.0f));
+        sm.SetCullFace(CullMode::Back);
+        sm.SetDepthFunc(CompareFunc::Less);
+    }
+
+    shader->setMat4("view", cam.viewMatrix);
+    shader->setMat4("projection", cam.projectionMatrix);
+    
     sm.Enable(ServerCapability::DepthTest);
-    sm.SetDepthFunc(CompareFunc::Always);
-    sm.SetDepthMask(false); // Don't write to depth
+    sm.SetDepthMask(false);
     sm.Enable(ServerCapability::CullFace);
-    sm.SetCullFace(CullMode::Front); // Render back faces to ensure volume coverage
-    
     sm.Enable(ServerCapability::Blend);
     sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
@@ -136,28 +144,30 @@ void DecalSystem::Render(Scene &scene)
         auto &rot = view.get<RotationComponent>(entity);
         auto &scale = view.get<ScaleComponent>(entity);
         
-        // Calculate matrices
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos.value) *
                           glm::mat4_cast(rot.value) *
                           glm::scale(glm::mat4(1.0f), scale.value);
         
-        m_DecalShader->setMat4("view", cam.viewMatrix);
-        m_DecalShader->setMat4("projection", cam.projectionMatrix);
-        m_DecalShader->setMat4("model", model);
-        m_DecalShader->setMat4("invModel", glm::inverse(model));
-        m_DecalShader->setFloat("opacity", decal.opacity);
+        shader->setMat4("model", model);
+        shader->setMat4("invModel", glm::inverse(model));
+        shader->setFloat("opacity", decal.opacity);
         
         tm.ActiveTexture(TextureUnit::Texture3);
         tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
-        m_DecalShader->setInt("decalAlbedo", 3);
+        shader->setInt("decalAlbedo", 3);
 
-        uint32_t mask = GetBitmask(decal.targetTags);
-        m_DecalShader->setUInt("allowedTagsMask", mask);
-        
-        dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, nullptr);
+        if (isDeferred) {
+            uint32_t mask = GetBitmask(decal.targetTags);
+            shader->setUInt("allowedTagsMask", mask);
+            dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, nullptr);
+        } else {
+            // In forward mode, we only render the "front" face of the cube as a quad
+            // Front face indices in the cube are 0, 1, 2, 2, 3, 0 (first 6 indices)
+            dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, nullptr);
+        }
     }
     
-    rs->UnbindForDecals();
+    if (isDeferred) rs->UnbindForDecals();
     
     sm.SetDepthMask(true);
     sm.SetDepthFunc(CompareFunc::Less);

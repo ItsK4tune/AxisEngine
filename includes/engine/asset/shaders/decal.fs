@@ -22,6 +22,8 @@ void main()
     // Use texelFetch instead of texture() to avoid interpolation issues at high resolutions/zoom
     ivec2 texCoord = ivec2(gl_FragCoord.xy);
     vec3 worldPos = texelFetch(gPosition, texCoord, 0).rgb;
+    if (dot(worldPos, worldPos) < 0.0001) discard; // Don't project on background
+    
     
     // Project into Decal Local Space
     vec4 localPos = invModel * vec4(worldPos, 1.0);
@@ -40,5 +42,6 @@ void main()
     vec2 uv = localPos.xy + 0.5;
     
     vec4 albedoSample = texture(decalAlbedo, uv);
+    albedoSample.rgb = pow(albedoSample.rgb, vec3(2.2));
     gAlbedoSpec = vec4(albedoSample.rgb, albedoSample.a * opacity);
 }

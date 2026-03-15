@@ -159,9 +159,8 @@ void main()
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
     vec3 ambient = (kD * diffuse + specular) * ao;
-    vec3 emission = debug_noTexture ? vec3(0.0) : texture(texture_emissive1, TexCoords).rgb * material.emission;
-    
-    FragColor = vec4(ambient + Lo + emission, material.opacity);
+    vec3 emissive = debug_noTexture ? vec3(0.0) : pow(texture(texture_emissive1, TexCoords).rgb, vec3(2.2)) * material.emission;
+    FragColor = vec4(ambient + Lo + emissive, material.opacity);
 }
 
 // Helper functions (Simplified for brevity)

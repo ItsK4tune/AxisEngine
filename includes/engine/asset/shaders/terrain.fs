@@ -51,14 +51,14 @@ void main()
     } else {
         vec4 splat = texture(splatMap, TexCoords);
         vec2 tiledCoords = TexCoords * textureScale;
-        vec3 col0 = texture(textureLayer0, tiledCoords).rgb;
-        vec3 col1 = texture(textureLayer1, tiledCoords).rgb;
-        vec3 col2_3 = texture(textureLayer2, tiledCoords).rgb;
-        vec3 col3 = texture(textureLayer3, tiledCoords).rgb;
+        vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
+        vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
+        vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
+        vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
         
         albedo = col0 * splat.r + 
                  col1 * splat.g + 
-                 col2_3 * splat.b + 
+                 col2 * splat.b + 
                  col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
     }
     
@@ -72,11 +72,6 @@ void main()
         float diff = max(dot(N, L), 0.0);
         Lo += (dirLights[i].ambient + diff) * dirLights[i].color * dirLights[i].intensity;
     }
-    
-    vec3 color = albedo * (Lo + 0.05); // albedo * (lighting + small ambient)
-    
-    // Apply gamma correction
-    color = pow(color, vec3(1.0/2.2));
     
     FragColor = vec4(color, 1.0);
 }

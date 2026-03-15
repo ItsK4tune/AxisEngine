@@ -102,6 +102,7 @@ void main()
         texColor = vec4(1.0);
     } else {
         texColor = texture(texture_diffuse1, TexCoords);
+        texColor.rgb = pow(texColor.rgb, vec3(2.2));
     }
     
     FragColor = vec4(result + material.emission, texColor.a * material.opacity) * tintColor;
@@ -114,7 +115,7 @@ vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
 
-    vec3 albedo = debug_noTexture ? vec3(1.0) : texture(texture_diffuse1, TexCoords).rgb;
+    vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, TexCoords).rgb;
 
     vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient;
@@ -133,7 +134,7 @@ vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir)
     float distance = length(pLight.position - fragPos);
     float attenuation = 1.0 / (pLight.constant + pLight.linear * distance + pLight.quadratic * (distance * distance));
 
-    vec3 albedo = debug_noTexture ? vec3(1.0) : texture(texture_diffuse1, TexCoords).rgb;
+    vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, TexCoords).rgb;
 
     vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient * attenuation;
@@ -156,7 +157,7 @@ vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir)
     float epsilon = pLight.cutOff - pLight.outerCutOff;
     float intensity = clamp((theta - pLight.outerCutOff) / epsilon, 0.0, 1.0);
 
-    vec3 albedo = debug_noTexture ? vec3(1.0) : texture(texture_diffuse1, TexCoords).rgb;
+    vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, TexCoords).rgb;
 
     vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient * attenuation * intensity;

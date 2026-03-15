@@ -19,6 +19,7 @@ void main()
          FragColor = vec4(1.0, 1.0, 1.0, material.opacity) * tintColor;
     } else {
          vec4 texColor = texture(texture_diffuse1, TexCoords);
+         texColor.rgb = pow(texColor.rgb, vec3(2.2));
          FragColor = vec4(texColor.rgb, texColor.a * material.opacity) * tintColor;
     }
 }

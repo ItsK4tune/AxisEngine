@@ -1,7 +1,7 @@
 axis_scene:
   Config:
     LOG_LEVEL: 4
-    RENDER_PATH: DEFERRED
+    RENDER_PATH: FORWARD
 
   Resources:
     Model:
@@ -124,15 +124,5 @@ axis_scene:
         Size: 10.0 10.0 0.1
         Mass: 0.0
         BodyType: STATIC
-        Rotation: 0.0 0.0 0.0
-
-    DecalCrack:
-      Tag: decal
-      Component: Transform
-        Position: 0.0 10.0 19.9
         Rotation: 90.0 0.0 0.0
-        Scale: 2.0 2.0 2.0
-      Component: Decal
-        Albedo: resources/textures/decal_crack.png
-        Opacity: 1.0
-        TargetTags: wall
+
