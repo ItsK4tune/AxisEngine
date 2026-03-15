@@ -48,6 +48,7 @@ void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity
     if (decal.renderOrder == 0) {
         decal.renderOrder = m_NextOrder++;
     }
+    LOGGER_INFO("DecalSystem") << "Decal created: Entity=" << (uint32_t)entity << ", Lifetime=" << decal.lifetime << ", Order=" << decal.renderOrder;
 }
 
 void DecalSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib)
@@ -73,7 +74,14 @@ void DecalSystem::Update(Scene &scene, float dt)
         }
     }
     
+    // Sort toRemove by renderOrder to ensure stable disappearance even if multiple decals hit O in the same frame
+    std::sort(toRemove.begin(), toRemove.end(), [&](entt::entity a, entt::entity b) {
+        return scene.registry.get<DecalComponent>(a).renderOrder < scene.registry.get<DecalComponent>(b).renderOrder;
+    });
+
     for (auto entity : toRemove) {
+        auto &decal = scene.registry.get<DecalComponent>(entity);
+        LOGGER_INFO("DecalSystem") << "Decal destroyed (lifetime expired): Entity=" << (uint32_t)entity << ", Lifetime=" << decal.lifetime << ", Order=" << decal.renderOrder;
         scene.registry.destroy(entity);
     }
 }

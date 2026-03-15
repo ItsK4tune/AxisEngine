@@ -71,14 +71,22 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
     m_ShaderCache->GetOrCompile(name, vShaderPath, fShaderPath);
 
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
+
+    std::string shaderKey = vShaderPath + "|" + fShaderPath + "|" + gShaderPath;
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    m_PathToShaderName[shaderKey] = name;
 }
 
 void ResourceManager::LoadTexture(const std::string &name, const std::string &path, bool async, bool keepCpuData)
 {
+    std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading Texture: " << name << " from " << path << (async ? " (async)" : "") << (keepCpuData ? " (keep CPU data)" : "");
-    m_TextureCache.LoadTexture(name, FileSystem::getPath(path), async, keepCpuData);
+    m_TextureCache.LoadTexture(name, fullPath, async, keepCpuData);
 
-    m_ResourceWatcher.Watch(name, FileSystem::getPath(path), "Texture");
+    m_ResourceWatcher.Watch(name, fullPath, "Texture");
+
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    m_PathToTextureName[fullPath] = name;
 }
 
 void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
@@ -98,6 +106,7 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
         {
             std::lock_guard<std::mutex> lock(m_ResourceMutex);
             m_ModelPaths[name] = {fullPath, isStatic};
+            m_PathToModelName[fullPath] = name;
         }
         LOGGER_INFO("ResourceManager") << "Loaded model: " << name;
         EventSystem::Instance().Publish(ResourceLoadedEvent{name, "MODEL", true});
@@ -133,6 +142,7 @@ void ResourceManager::LoadModelAsync(const std::string &name, const std::string 
 
 void ResourceManager::LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName)
 {
+    std::string fullPath = FileSystem::getPath(path);
     std::lock_guard<std::mutex> lock(m_ResourceMutex);
     auto it = m_ModelPaths.find(modelName);
     if (it != m_ModelPaths.end())
@@ -141,7 +151,8 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
         if (model)
         {
             LOGGER_INFO("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
-            m_AnimationCache.LoadAnimation(name, path, model.get());
+            m_AnimationCache.LoadAnimation(name, fullPath, model.get());
+            m_PathToAnimationName[fullPath] = name;
         }
     }
     else
@@ -152,28 +163,40 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
 
 void ResourceManager::LoadFont(const std::string &name, const std::string &path, unsigned int fontSize)
 {
+    std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading font: " << name << " (" << fontSize << "px) from " << path;
-    m_FontCache.LoadFont(name, path, fontSize);
+    m_FontCache.LoadFont(name, fullPath, fontSize);
+
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    m_PathToFontName[fullPath] = name;
 }
 
 void ResourceManager::LoadSound(const std::string &name, const std::string &path, IAudioEngine *engine)
 {
+    std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading sound: " << name;
-    m_SoundCache.LoadSound(name, path, engine);
+    m_SoundCache.LoadSound(name, fullPath, engine);
+
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    m_PathToSoundName[fullPath] = name;
 }
 
 void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
 {
     auto skybox = std::make_shared<Skybox>();
     std::vector<std::string> fullFaces;
+    std::string combinedPaths = "";
     for (const auto &face : faces)
     {
-        fullFaces.push_back(FileSystem::getPath(face));
+        std::string fullFacePath = FileSystem::getPath(face);
+        fullFaces.push_back(fullFacePath);
+        combinedPaths += fullFacePath + "|";
     }
     skybox->LoadCubemap(fullFaces);
     {
         std::lock_guard<std::mutex> lock(m_ResourceMutex);
         m_Skyboxes[name] = skybox;
+        m_PathToSkyboxName[combinedPaths] = name;
     }
     LOGGER_INFO("ResourceManager") << "Loaded skybox: " << name;
 }
@@ -252,6 +275,66 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name)
     return m_SoundCache.GetSound(name);
 }
 
+std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &nameOrPath)
+{
+    if (nameOrPath.empty()) return nullptr;
+    auto t = GetTexture(nameOrPath);
+    if (t) return t;
+    std::string name = GetTextureNameFromPath(nameOrPath);
+    if (!name.empty()) return GetTexture(name);
+    bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
+                         nameOrPath.find('\\') != std::string::npos ||
+                         nameOrPath.find('.') != std::string::npos;
+    if (!looksLikePath) return nullptr;
+    LoadTexture(nameOrPath, nameOrPath);
+    return GetTexture(nameOrPath);
+}
+
+std::shared_ptr<Model> ResourceManager::GetModelAuto(const std::string &nameOrPath, bool isStatic)
+{
+    if (nameOrPath.empty()) return nullptr;
+    auto m = GetModel(nameOrPath);
+    if (m) return m;
+    std::string name = GetModelNameFromPath(nameOrPath);
+    if (!name.empty()) return GetModel(name);
+    bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
+                         nameOrPath.find('\\') != std::string::npos ||
+                         nameOrPath.find('.') != std::string::npos;
+    if (!looksLikePath) return nullptr;
+    LoadModel(nameOrPath, nameOrPath, isStatic);
+    return GetModel(nameOrPath);
+}
+
+std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string &nameOrPath, unsigned int fontSize)
+{
+    if (nameOrPath.empty()) return nullptr;
+    auto f = GetFont(nameOrPath);
+    if (f) return f;
+    std::string name = GetFontNameFromPath(nameOrPath);
+    if (!name.empty()) return GetFont(name);
+    bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
+                         nameOrPath.find('\\') != std::string::npos ||
+                         nameOrPath.find('.') != std::string::npos;
+    if (!looksLikePath) return nullptr;
+    LoadFont(nameOrPath, nameOrPath, fontSize);
+    return GetFont(nameOrPath);
+}
+
+std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &nameOrPath, IAudioEngine *engine)
+{
+    if (nameOrPath.empty()) return nullptr;
+    auto s = GetSound(nameOrPath);
+    if (s) return s;
+    std::string name = GetSoundNameFromPath(nameOrPath);
+    if (!name.empty()) return GetSound(name);
+    bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
+                         nameOrPath.find('\\') != std::string::npos ||
+                         nameOrPath.find('.') != std::string::npos;
+    if (!looksLikePath) return nullptr;
+    LoadSound(nameOrPath, nameOrPath, engine);
+    return GetSound(nameOrPath);
+}
+
 std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name)
 {
     std::lock_guard<std::mutex> lock(m_ResourceMutex);
@@ -272,6 +355,89 @@ std::shared_ptr<UIModel> ResourceManager::GetUIModel(const std::string &name)
     return nullptr;
 }
 
+bool ResourceManager::HasUIModel(const std::string &name)
+{
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    return m_UIModels.find(name) != m_UIModels.end();
+}
+
+std::string ResourceManager::GetTextureNameFromPath(const std::string &path)
+{
+    std::string fullPath = FileSystem::getPath(path);
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    auto it = m_PathToTextureName.find(fullPath);
+    if (it != m_PathToTextureName.end())
+        return it->second;
+    return "";
+}
+
+std::string ResourceManager::GetFontNameFromPath(const std::string &path)
+{
+    std::string fullPath = FileSystem::getPath(path);
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    auto it = m_PathToFontName.find(fullPath);
+    if (it != m_PathToFontName.end())
+        return it->second;
+    return "";
+}
+
+std::string ResourceManager::GetModelNameFromPath(const std::string &path)
+{
+    std::string fullPath = FileSystem::getPath(path);
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    auto it = m_PathToModelName.find(fullPath);
+    if (it != m_PathToModelName.end())
+        return it->second;
+    return "";
+}
+
+std::string ResourceManager::GetShaderNameFromPath(const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
+{
+    std::string vShaderPath = FileSystem::getPath(vsPath);
+    std::string fShaderPath = FileSystem::getPath(fsPath);
+    std::string gShaderPath = gsPath.empty() ? "" : FileSystem::getPath(gsPath);
+    std::string shaderKey = vShaderPath + "|" + fShaderPath + "|" + gShaderPath;
+
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    auto it = m_PathToShaderName.find(shaderKey);
+    if (it != m_PathToShaderName.end())
+        return it->second;
+    return "";
+}
+
+std::string ResourceManager::GetSoundNameFromPath(const std::string &path)
+{
+    std::string fullPath = FileSystem::getPath(path);
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    auto it = m_PathToSoundName.find(fullPath);
+    if (it != m_PathToSoundName.end())
+        return it->second;
+    return "";
+}
+
+std::string ResourceManager::GetAnimationNameFromPath(const std::string &path)
+{
+    std::string fullPath = FileSystem::getPath(path);
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    auto it = m_PathToAnimationName.find(fullPath);
+    if (it != m_PathToAnimationName.end())
+        return it->second;
+    return "";
+}
+
+std::string ResourceManager::GetSkyboxNameFromPaths(const std::vector<std::string> &faces)
+{
+    std::string combinedPaths = "";
+    for (const auto &face : faces)
+    {
+        combinedPaths += FileSystem::getPath(face) + "|";
+    }
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    auto it = m_PathToSkyboxName.find(combinedPaths);
+    if (it != m_PathToSkyboxName.end())
+        return it->second;
+    return "";
+}
 void ResourceManager::ClearResource()
 {
     m_TextureCache.Clear();

@@ -14,7 +14,9 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 90; }
     std::string GetName() const override { return "UIRenderSystem"; }
+    void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;
+    void UpdateLayout(Scene &scene, float screenWidth, float screenHeight);
     void RenderUI(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState);
 
     std::vector<entt::id_type> GetReadComponents() const override;

@@ -118,7 +118,7 @@ EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::v
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::string& fontName, float scale, const glm::vec3& color)
+EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::string& fontName, float scale, const glm::vec4& color)
 {
     auto& res = m_Resources;
     auto& textComp = m_Scene.registry.get_or_emplace<UITextComponent>(m_Entity);
@@ -132,12 +132,81 @@ EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::str
     textComp.shader = res.GetShader("ui_text");
     
     std::string uniqueModelName = "ui_text_model_" + std::to_string((uint32_t)m_Entity);
-    if (!res.GetUIModel(uniqueModelName))
+    if (!res.HasUIModel(uniqueModelName))
     {
         res.CreateUIModel(uniqueModelName, UIType::Text);
     }
     textComp.model = res.GetUIModel(uniqueModelName);
     
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIAnchors(const glm::vec2& min, const glm::vec2& max)
+{
+    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    ui.anchorMin = min;
+    ui.anchorMax = max;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIOffsets(const glm::vec2& min, const glm::vec2& max)
+{
+    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    ui.offsetMin = min;
+    ui.offsetMax = max;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIPivot(const glm::vec2& pivot)
+{
+    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    ui.pivot = pivot;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIFlex(FlexDirection dir, float spacing)
+{
+    auto& flex = m_Scene.registry.get_or_emplace<UIFlexLayoutComponent>(m_Entity);
+    flex.direction = dir;
+    flex.spacing = spacing;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUITextAlignment(TextAlignment align, bool wrap, float maxWidth)
+{
+    auto& text = m_Scene.registry.get_or_emplace<UITextComponent>(m_Entity);
+    text.alignment = align;
+    text.wordWrap = wrap;
+    text.maxWidth = maxWidth;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIRenderer(const std::string& textureName, const glm::vec4& color)
+{
+    auto& res = m_Resources;
+    auto& renderer = m_Scene.registry.get_or_emplace<UIRendererComponent>(m_Entity);
+    
+    renderer.color = color;
+    renderer.shader = res.GetShader("ui");
+    
+    if (!res.GetUIModel(textureName))
+    {
+        res.CreateUIModel(textureName, UIType::Texture);
+    }
+    renderer.model = res.GetUIModel(textureName);
+    
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithParent(entt::entity parent)
+{
+    auto& hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(m_Entity);
+    hierarchy.parent = parent;
+    
+    if (parent != entt::null) {
+        auto& p_hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(parent);
+        p_hierarchy.children.push_back(m_Entity);
+    }
     return *this;
 }
 

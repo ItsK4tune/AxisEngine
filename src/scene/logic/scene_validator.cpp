@@ -29,21 +29,21 @@ namespace SceneHandlers
             return;
 
         auto view = scene.registry.view<InfoComponent>();
-        for (const auto &[parentEntity, childNames] : deferredChildren)
+        for (const auto &[childEntity, parentNames] : deferredChildren)
         {
-            for (const auto &childName : childNames)
+            for (const auto &parentName : parentNames)
             {
-                entt::entity childEntity = entt::null;
+                entt::entity parentEntity = entt::null;
                 for (auto entity : view)
                 {
-                    if (view.get<InfoComponent>(entity).name == childName)
+                    if (view.get<InfoComponent>(entity).name == parentName)
                     {
-                        childEntity = entity;
+                        parentEntity = entity;
                         break;
                     }
                 }
 
-                if (childEntity != entt::null)
+                if (parentEntity != entt::null)
                 {
                     if (scene.registry.all_of<HierarchyComponent>(childEntity) &&
                         scene.registry.all_of<HierarchyComponent>(parentEntity))
@@ -53,8 +53,8 @@ namespace SceneHandlers
                 }
                 else
                 {
-                    LOGGER_ERROR("SceneValidator") << "Child not found: " << childName
-                              << " for Parent Entity ID: " << (uint32_t)parentEntity;
+                    LOGGER_ERROR("SceneValidator") << "Parent not found: " << parentName
+                              << " for Child Entity ID: " << (uint32_t)childEntity;
                 }
             }
         }

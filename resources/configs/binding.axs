@@ -21,7 +21,7 @@ axis_input:
       Key: E
       Gamepad: ButtonX
     Pause:
-      Key: Escape
+      Key: P
       Gamepad: ButtonStart
     Crouch:
       Key: LeftControl

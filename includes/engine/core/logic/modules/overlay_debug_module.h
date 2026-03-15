@@ -39,7 +39,7 @@ public:
 
 private:
     void ToggleStatsOverlay();
-    void RenderText(const std::string &text, float x, float y, float scale, glm::vec3 color);
+    void RenderText(const std::string &text, float x, float y, float scale, glm::vec4 color);
     void ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action);
 
     EngineContext m_Ctx;

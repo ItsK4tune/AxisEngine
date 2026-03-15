@@ -236,6 +236,12 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         if (entityInfo.tag == "DebugLabel" || entityInfo.tag == "DebugLight")
             continue;
 
+        // Skip UI entities aggressively
+        if (registry.any_of<UITransformComponent>(entity) || 
+            registry.any_of<UIRendererComponent>(entity) || 
+            registry.any_of<UITextComponent>(entity))
+            continue;
+
         entt::entity labelEntity = entt::null;
         if (m_EntityLabelMap.find(entity) != m_EntityLabelMap.end())
         {
@@ -298,7 +304,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
                 text.shader = m_TextShader;
                 text.font = m_DebugFont;
                 text.text = entityInfo.name;
-                text.color = glm::vec3(1.0f, 1.0f, 0.0f);
+                text.color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
                 text.scale = 2.0f;
             }
 
@@ -309,8 +315,10 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
             if (m_DebugFont)
                 textW = (float)text.text.length() * 11.0f * text.scale;
 
-            uiTr.position = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.size = glm::vec2(textW, 20.0f * text.scale);
+            uiTr.anchorMin = glm::vec2(0.0f);
+            uiTr.anchorMax = glm::vec2(0.0f);
+            uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
+            uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
             uiTr.zIndex = 100;
 
             nextMap[entity] = labelEntity;
@@ -423,7 +431,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
                 text.shader = m_TextShader;
                 text.font = m_DebugFont;
                 text.text = typeName;
-                text.color = color;
+                text.color = glm::vec4(color, 1.0f);
                 text.scale = 2.0f;
             }
 
@@ -444,8 +452,10 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
                 textW = maxW;
             }
 
-            uiTr.position = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.size = glm::vec2(textW, 20.0f * text.scale);
+            uiTr.anchorMin = glm::vec2(0.0f);
+            uiTr.anchorMax = glm::vec2(0.0f);
+            uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
+            uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
             uiTr.zIndex = 90;
 
             nextMap[entity] = labelEntity;

@@ -21,7 +21,7 @@ void PauseState::OnEnter()
     m_PausedTextEntity = EntityBuilder(GetScene(), GetResourceManager())
         .WithName("PauseOverlay")
         .WithUITransform({400.0f, 300.0f}, {200.0f, 50.0f})
-        .WithUIText("PAUSED", "defaultFont", 2.0f, {1.0f, 1.0f, 1.0f})
+        .WithUIText("PAUSED", "time", 2.0f, {1.0f, 1.0f, 1.0f, 1.0f})
         .Build();
 }
 

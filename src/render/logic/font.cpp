@@ -48,6 +48,7 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
         return false;
     }
 
+    m_FontSize = fontSize;
     FT_Set_Pixel_Sizes(face, 0, fontSize);
 
     tm.PixelStorei(PixelStoreParam::UnpackAlignment, 1);

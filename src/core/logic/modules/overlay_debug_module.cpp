@@ -1,5 +1,6 @@
 #include <core/logic/modules/overlay_debug_module.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/logic/font.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -123,7 +124,7 @@ void OverlayDebugModule::Render(Scene &scene)
         }
         float x = (float)width - textWidth - 10.0f;
 
-        RenderText(line, x, yStart, scale, glm::vec3(0.0f, 1.0f, 0.0f));
+        RenderText(line, x, yStart, scale, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
         yStart += 25.0f;
     }
 
@@ -178,7 +179,7 @@ void OverlayDebugModule::ToggleStatsOverlay()
     std::cout << "=========================================" << std::endl;
 }
 
-void OverlayDebugModule::RenderText(const std::string &text, float x, float y, float scale, glm::vec3 color)
+void OverlayDebugModule::RenderText(const std::string &text, float x, float y, float scale, glm::vec4 color)
 {
     int width = m_Ctx.io->GetMonitorManager().GetWidth();
     int height = m_Ctx.io->GetMonitorManager().GetHeight();

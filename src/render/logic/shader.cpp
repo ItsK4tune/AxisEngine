@@ -101,6 +101,11 @@ void Shader::load(const char *vertexPath, const char *fragmentPath, const char *
     if (geometryPath != nullptr)
         sm.DeleteShader(geometry);
 
+    {
+        std::lock_guard<std::mutex> lock(m_UniformMutex);
+        uniformLocations.clear();
+    }
+
     LOGGER_INFO("Shader") << "Shader loaded successfully: " << vertexPath << " | " << fragmentPath;
 }
 

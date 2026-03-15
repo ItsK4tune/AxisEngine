@@ -23,10 +23,12 @@ public:
 
     bool Load(const std::string& fontPath, unsigned int fontSize);
     const Character& GetCharacter(char c) const;
+    unsigned int GetFontSize() const { return m_FontSize; }
 
     static void SetTextureManager(ITextureManager& textureManager);
 
 private:
+    unsigned int m_FontSize = 16;
     std::map<char, Character> Characters;
     static ITextureManager* s_TextureManager;
     static ITextureManager& GetTextureManager();

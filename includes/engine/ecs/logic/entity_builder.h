@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ecs/unit/core_components.h>
-#include <ecs/unit/render_components.h>
+#include <ecs/unit/ui_components.h>
 #include <glm/glm.hpp>
 #include <scene/logic/scene.h>
 #include <string>
@@ -48,11 +48,14 @@ public:
                                    const glm::vec3& rotationOffset = glm::vec3(0.0f));
     
     EntityBuilder& WithUITransform(const glm::vec2& pos, const glm::vec2& size, int zIndex = 0);
-    EntityBuilder& WithUIText(const std::string& text, 
-                             const std::string& fontName, 
-                             float scale = 1.0f, 
-                             const glm::vec3& color = glm::vec3(1.0f));
-
+    EntityBuilder& WithUIAnchors(const glm::vec2& min, const glm::vec2& max);
+    EntityBuilder& WithUIOffsets(const glm::vec2& min, const glm::vec2& max);
+    EntityBuilder& WithUIPivot(const glm::vec2& pivot);
+    EntityBuilder& WithUIFlex(FlexDirection dir, float spacing = 5.0f);
+    EntityBuilder& WithUIText(const std::string& text, const std::string& fontName, float scale = 1.0f, const glm::vec4& color = glm::vec4(1.0f));
+    EntityBuilder& WithUITextAlignment(TextAlignment align, bool wrap = false, float maxWidth = 0.0f);
+    EntityBuilder& WithUIRenderer(const std::string& textureName, const glm::vec4& color = glm::vec4(1.0f));
+    EntityBuilder& WithParent(entt::entity parent);
     EntityBuilder& WithAudio(const std::string& soundName, bool loop = false, float volume = 1.0f);
     EntityBuilder& WithScript(const std::string& scriptName);
     EntityBuilder& WithAnimation(const std::string& animationName);

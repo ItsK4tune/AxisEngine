@@ -116,7 +116,7 @@ void UIModel::InitDynamic()
     bm.BindVertexArray(0);
 }
 
-void UIModel::Draw(Shader &shader, const glm::vec4 &color)
+void UIModel::Draw(Shader &shader, const glm::vec4 &color, unsigned int textureID)
 {
     if (m_Type == UIType::Transparent || !s_TextureManager || !s_DrawContext || !s_BufferManager)
         return;
@@ -127,11 +127,14 @@ void UIModel::Draw(Shader &shader, const glm::vec4 &color)
 
     shader.setVec4("spriteColor", color);
 
-    shader.setInt("hasTexture", (m_Type == UIType::Texture));
-    if (m_Type == UIType::Texture)
+    unsigned int texToBind = (textureID != 0) ? textureID : m_TextureID;
+    bool hasTex = (texToBind != 0);
+
+    shader.setBool("hasTexture", hasTex);
+    if (hasTex)
     {
         tm.ActiveTexture(TextureUnit::Texture0);
-        tm.BindTexture(TextureType::Texture2D, m_TextureID);
+        tm.BindTexture(TextureType::Texture2D, texToBind);
     }
 
     bm.BindVertexArray(VAO);
@@ -139,14 +142,14 @@ void UIModel::Draw(Shader &shader, const glm::vec4 &color)
     bm.BindVertexArray(0);
 }
 
-void UIModel::DrawDynamic(Shader &shader, unsigned int textureID, const glm::vec3 &color, const std::vector<float> &vertices)
+void UIModel::DrawDynamic(Shader &shader, unsigned int textureID, const glm::vec4 &color, const std::vector<float> &vertices)
 {
     if (!s_TextureManager || !s_DrawContext || !s_BufferManager) return;
     auto& tm = GetTextureManager();
     auto& dc = GetDrawContext();
     auto& bm = GetBufferManager();
 
-    shader.setVec3("textColor", color);
+    shader.setVec4("textColor", color);
 
     tm.ActiveTexture(TextureUnit::Texture0);
     tm.BindTexture(TextureType::Texture2D, textureID);

@@ -12,6 +12,7 @@
 void GameState::OnEnter()
 {
     LoadScene("scenes/game3.axs");
+    LoadScene("scenes/ui.axs");
     SetCursorMode(CursorMode::Normal);
     LoadInputBindings("resources/configs/binding.axs");
 

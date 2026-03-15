@@ -35,11 +35,12 @@ public:
     static void LoadUITransform(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadUIRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadUIText(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
+    static void LoadUIFlex(Scene &scene, entt::entity entity, const YAMLNode &node);
 
     static void LoadSkyboxRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node, EngineContext ctx);
 
-    static void LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node);
+    static void LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, EngineContext ctx);
     static void LoadVideoPlayer(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadParticleEmitter(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadMaterial(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);

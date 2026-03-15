@@ -25,8 +25,8 @@ public:
 
     void SetTexture(unsigned int textureID);
 
-    void Draw(Shader& shader, const glm::vec4& color);
-    void DrawDynamic(Shader& shader, unsigned int textureID, const glm::vec3& color, const std::vector<float>& vertices);
+    void Draw(Shader& shader, const glm::vec4& color, unsigned int textureID = 0);
+    void DrawDynamic(Shader& shader, unsigned int textureID, const glm::vec4& color, const std::vector<float>& vertices);
 
     UIType GetType() const { return m_Type; }
 

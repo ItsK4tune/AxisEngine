@@ -75,11 +75,26 @@ public:
     std::shared_ptr<IAudioSource> GetSound(const std::string& name);
     std::shared_ptr<Skybox> GetSkybox(const std::string& name);
     std::shared_ptr<UIModel> GetUIModel(const std::string& name);
+    bool HasUIModel(const std::string& name);
+
+    // Auto-loading versions (Name or Path)
+    std::shared_ptr<Texture> GetTextureAuto(const std::string& nameOrPath);
+    std::shared_ptr<Model> GetModelAuto(const std::string& nameOrPath, bool isStatic = false);
+    std::shared_ptr<Font> GetFontAuto(const std::string& nameOrPath, unsigned int fontSize = 16);
+    std::shared_ptr<IAudioSource> GetSoundAuto(const std::string& nameOrPath, IAudioEngine* engine = nullptr);
 
     void ClearResource();
 
     ShaderCache* GetShaderCache() { return m_ShaderCache.get(); }
     ModelInstanceManager& GetModelInstanceManager() { return m_ModelInstanceManager; }
+
+    std::string GetTextureNameFromPath(const std::string& path);
+    std::string GetFontNameFromPath(const std::string& path);
+    std::string GetModelNameFromPath(const std::string& path);
+    std::string GetShaderNameFromPath(const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
+    std::string GetSoundNameFromPath(const std::string& path);
+    std::string GetAnimationNameFromPath(const std::string& path);
+    std::string GetSkyboxNameFromPaths(const std::vector<std::string>& faces);
 
 private:
     void ReloadShader(const std::string& name);
@@ -107,6 +122,14 @@ private:
     std::unordered_map<std::string, ModelInfo> m_ModelPaths;
     std::unordered_map<std::string, std::shared_ptr<UIModel>> m_UIModels;
     std::unordered_map<std::string, std::shared_ptr<Skybox>> m_Skyboxes;
+
+    std::unordered_map<std::string, std::string> m_PathToTextureName;
+    std::unordered_map<std::string, std::string> m_PathToFontName;
+    std::unordered_map<std::string, std::string> m_PathToModelName;
+    std::unordered_map<std::string, std::string> m_PathToShaderName;
+    std::unordered_map<std::string, std::string> m_PathToSoundName;
+    std::unordered_map<std::string, std::string> m_PathToAnimationName;
+    std::unordered_map<std::string, std::string> m_PathToSkyboxName;
 
     std::vector<PendingModel> m_PendingModels;
     std::vector<std::future<void>> m_ActiveFutures;

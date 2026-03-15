@@ -5,6 +5,7 @@
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/decal_component.h>
 #include <render/logic/animator.h>
+#include <audio/logic/sound_player.h>
 #include <algorithm>
 #include <core/logic/app_framework.h>
 #include <ecs/manager/entity_manager.h>
@@ -61,7 +62,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("UIText", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadUIText(s, e, n, r); });
     RegisterLoader("SkyboxRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadSkyboxRenderer(s, e, n, r); });
     RegisterLoader("Script", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadScript(s, e, n, c); });
-    RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadAudioSource(s, e, n); });
+    RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadAudioSource(s, e, n, r, c); });
     RegisterLoader("VideoPlayer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadVideoPlayer(s, e, n); });
     RegisterLoader("ParticleEmitter", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadParticleEmitter(s, e, n, r); });
     RegisterLoader("Material", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadMaterial(s, e, n, r); });
@@ -71,6 +72,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { /* Transform is typically handled by SceneSerializer directly */ });
     RegisterLoader("PathFollower", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { ComponentLoader::LoadPathFollower(s, e, n); });
     RegisterLoader("Decal", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadDecal(s, e, n, r, c); });
+    RegisterLoader("UIFlex", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld &p, EngineContext c) { LoadUIFlex(s, e, n); });
 }
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -93,8 +95,17 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
     }
 
     auto &r = scene.registry.emplace<MeshRendererComponent>(entity);
-    r.model = res.GetModel(modelName);
+    
+    // Model Lookup
+    r.model = res.GetModelAuto(modelName, false);
+
+    // Shader Lookup
     r.shader = res.GetShader(shaderName);
+    if (r.shader.expired()) {
+       // Note: Currently Shader lookup by path is complex (vs|fs). 
+       // For now, assume shaderName is a Name or we need a specific AXS format for path-based shaders.
+    }
+
     r.order = order;
     r.castShadow = castShadow;
     r.color = color;
@@ -137,7 +148,11 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
 
     if (!a.animations.empty())
     {
-        auto firstAnim = res.GetAnimation(a.animations[0]);
+        auto getAnim = [&](const std::string& nameOrPath) -> std::shared_ptr<Animation> {
+            return res.GetAnimation(nameOrPath); // GetAnimationAuto not yet implemented, but we have GetAnimation
+        };
+
+        auto firstAnim = getAnim(a.animations[0]);
         if (firstAnim)
         {
             a.animator = std::make_shared<Animator>(firstAnim);
@@ -158,7 +173,7 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
 
             for (size_t i = 1; i < a.animations.size(); ++i)
             {
-                auto extraAnim = res.GetAnimation(a.animations[i]);
+                auto extraAnim = getAnim(a.animations[i]);
                 if (extraAnim)
                 {
                     a.animator->AddAnimation(a.animations[i], extraAnim);
@@ -291,82 +306,125 @@ void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAM
 
 void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    LoaderUtils::ValidateKeys(node, {"Position", "Size", "ZOrder", "UsePercentage", "Anchor"}, "UITransform");
-
     auto &ui = scene.registry.emplace<UITransformComponent>(entity);
 
     std::stringstream posSS(node.GetChildValue("Position", "0 0"));
-    float x = 0, y = 0;
-    posSS >> x >> y;
-    ui.position = glm::vec2(x, y);
+    posSS >> ui.position.x >> ui.position.y;
 
     std::stringstream sizeSS(node.GetChildValue("Size", "100 100"));
-    float w = 0, h = 0;
-    sizeSS >> w >> h;
-    ui.size = glm::vec2(w, h);
-
-    if (w < 0.0f || h < 0.0f)
-        LOGGER_WARN("ComponentLoader") << "UITransform Size should not be negative: " << w << "x" << h;
+    sizeSS >> ui.size.x >> ui.size.y;
 
     ui.zIndex = std::stoi(node.GetChildValue("ZOrder", "0"));
+    std::string zLabel = node.GetChildValue("zIndex");
+    if (!zLabel.empty()) ui.zIndex = std::stoi(zLabel);
+    
     ui.usePercentage = node.GetChildValue("UsePercentage", "0") == "1" || node.GetChildValue("UsePercentage", "true") == "true";
 
-    std::stringstream anchorSS(node.GetChildValue("Anchor", "0 0"));
-    float ax = 0, ay = 0;
-    anchorSS >> ax >> ay;
-    ui.anchor = glm::vec2(ax, ay);
+    std::stringstream aminSS(node.GetChildValue("anchorMin", "0.5 0.5"));
+    aminSS >> ui.anchorMin.x >> ui.anchorMin.y;
+    
+    std::stringstream amaxSS(node.GetChildValue("anchorMax", "0.5 0.5"));
+    amaxSS >> ui.anchorMax.x >> ui.anchorMax.y;
+
+    std::stringstream ominSS(node.GetChildValue("offsetMin", "-50 -50"));
+    ominSS >> ui.offsetMin.x >> ui.offsetMin.y;
+
+    std::stringstream omaxSS(node.GetChildValue("offsetMax", "50 50"));
+    omaxSS >> ui.offsetMax.x >> ui.offsetMax.y;
+
+    std::stringstream pivotSS(node.GetChildValue("pivot", "0.5 0.5"));
+    pivotSS >> ui.pivot.x >> ui.pivot.y;
 }
 
 void ComponentLoader::LoadUIRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    LoaderUtils::ValidateKeys(node, {"Color", "Shader"}, "UIRenderer");
-
     auto &ui = scene.registry.emplace<UIRendererComponent>(entity);
 
-    std::stringstream colorSS(node.GetChildValue("Color", "1 1 1 1"));
-    float r = 1, g = 1, b = 1, a = 1;
-    colorSS >> r >> g >> b >> a;
-    ui.color = glm::vec4(r, g, b, a);
+    std::stringstream colorSS(node.GetChildValue("color", "1 1 1 1"));
+    if (node.GetChildValue("color").empty()) colorSS.str(node.GetChildValue("Color", "1 1 1 1"));
+    colorSS >> ui.color.r >> ui.color.g >> ui.color.b >> ui.color.a;
 
-    std::string shaderName = node.GetChildValue("Shader");
+    auto StripQuotes = [](std::string s) {
+        if (s.length() >= 2 && s.front() == '"' && s.back() == '"')
+            return s.substr(1, s.length() - 2);
+        return s;
+    };
+
+    std::string textureName = StripQuotes(node.GetChildValue("texture"));
+    if (textureName.empty()) textureName = StripQuotes(node.GetChildValue("Texture"));
+    
+    if (!textureName.empty()) {
+        std::shared_ptr<Texture> tex = res.GetTextureAuto(textureName);
+        std::string finalName = textureName;
+
+        if (!res.GetUIModel(finalName)) res.CreateUIModel(finalName, UIType::Texture);
+        auto model = res.GetUIModel(finalName);
+        if (tex && model) {
+            model->SetTexture(tex->id);
+            ui.texture = tex;
+        }
+        ui.model = model;
+    } else {
+        if (!res.GetUIModel("default_rect")) res.CreateUIModel("default_rect", UIType::Color);
+        ui.model = res.GetUIModel("default_rect");
+    }
+
+    std::string shaderName = StripQuotes(node.GetChildValue("shader"));
+    if (shaderName.empty()) shaderName = StripQuotes(node.GetChildValue("Shader", "uiShader"));
     ui.shader = res.GetShader(shaderName);
-    if (!ui.shader)
-        LOGGER_WARN("ComponentLoader") << "UIRenderer shader not found: " << shaderName;
-
-    if (!res.GetUIModel("default_rect"))
-        res.CreateUIModel("default_rect", UIType::Color);
-    ui.model = res.GetUIModel("default_rect");
 }
 
 void ComponentLoader::LoadUIText(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    LoaderUtils::ValidateKeys(node, {"Text", "Font", "Color", "Scale"}, "UIText");
-
     auto &txt = scene.registry.emplace<UITextComponent>(entity);
 
-    std::string textContent = node.GetChildValue("Text");
-    if (textContent.length() > 2 && textContent.front() == '"' && textContent.back() == '"')
-    {
-        textContent = textContent.substr(1, textContent.length() - 2);
+    auto StripQuotes = [](std::string s) {
+        if (s.length() >= 2 && s.front() == '"' && s.back() == '"')
+            return s.substr(1, s.length() - 2);
+        return s;
+    };
+
+    std::string textContent = node.GetChildValue("text");
+    if (textContent.empty()) textContent = node.GetChildValue("Text");
+    txt.text = StripQuotes(textContent);
+
+    std::string fontName = StripQuotes(node.GetChildValue("font"));
+    if (fontName.empty()) fontName = StripQuotes(node.GetChildValue("Font"));
+    
+    if (!fontName.empty()) {
+        txt.font = res.GetFontAuto(fontName, 60);
     }
-    txt.text = textContent;
+    
+    std::stringstream colorSS(node.GetChildValue("color", "1 1 1 1"));
+    colorSS >> txt.color.r >> txt.color.g >> txt.color.b >> txt.color.a;
 
-    std::string fontName = node.GetChildValue("Font");
-    txt.font = res.GetFont(fontName);
-    if (!txt.font)
-        LOGGER_WARN("ComponentLoader") << "UIText font not found: " << fontName;
+    txt.scale = std::stof(node.GetChildValue("scale", "1.0"));
 
-    std::stringstream colorSS(node.GetChildValue("Color", "1 1 1"));
-    float r = 1, g = 1, b = 1;
-    colorSS >> r >> g >> b;
-    txt.color = glm::vec3(r, g, b);
+    std::string alignStr = node.GetChildValue("alignment", "Left");
+    if (alignStr == "Center") txt.alignment = TextAlignment::Center;
+    else if (alignStr == "Right") txt.alignment = TextAlignment::Right;
+    else txt.alignment = TextAlignment::Left;
 
-    txt.scale = std::stof(node.GetChildValue("Scale", "1.0"));
+    txt.wordWrap = node.GetChildValue("wordWrap", "0") == "1" || node.GetChildValue("wordWrap", "true") == "true";
+    txt.maxWidth = std::stof(node.GetChildValue("maxWidth", "0.0"));
 
     if (!res.GetUIModel("default_text_rect"))
         res.CreateUIModel("default_text_rect", UIType::Text);
     txt.model = res.GetUIModel("default_text_rect");
     txt.shader = res.GetShader("textShader");
+}
+
+void ComponentLoader::LoadUIFlex(Scene &scene, entt::entity entity, const YAMLNode &node)
+{
+    auto &flex = scene.registry.emplace<UIFlexLayoutComponent>(entity);
+    
+    std::string dirStr = node.GetChildValue("direction", "Column");
+    flex.direction = (dirStr == "Row") ? FlexDirection::Row : FlexDirection::Column;
+    
+    flex.spacing = std::stof(node.GetChildValue("spacing", "5.0"));
+    
+    std::stringstream padSS(node.GetChildValue("padding", "0 0 0 0"));
+    padSS >> flex.padding.x >> flex.padding.y >> flex.padding.z >> flex.padding.w;
 }
 
 void ComponentLoader::LoadLOD(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -388,7 +446,8 @@ void ComponentLoader::LoadLOD(Scene &scene, entt::entity entity, const YAMLNode 
     std::string modelName;
     while (modelSS >> modelName)
     {
-        auto model = res.GetModel(modelName);
+        auto model = res.GetModelAuto(modelName, false);
+        
         if (!model)
         {
             LOGGER_WARN("ComponentLoader") << "LOD Model not found: " << modelName;
@@ -425,6 +484,11 @@ void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, cons
     std::string shaderName = node.GetChildValue("Shader");
 
     comp.skybox = res.GetSkybox(skyboxName);
+    if (!comp.skybox && skyboxName.find('|') != std::string::npos) {
+        // Handle specialized case of | separated paths if needed, 
+        // for now just try to find if it was already loaded by path string.
+    }
+
     comp.shader = res.GetShader(shaderName);
 
     if (!comp.skybox)
@@ -457,14 +521,18 @@ void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNo
     }
 }
 
-void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node)
+void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, EngineContext ctx)
 {
     LoaderUtils::ValidateKeys(node, {"Path", "Volume", "Loop", "Is3D", "MinDistance", "PlayOnAwake"}, "AudioSource");
 
     AudioSourceComponent audio;
     audio.filePath = node.GetChildValue("Path");
-    if (audio.filePath.empty())
+    if (audio.filePath.empty()) {
         LOGGER_WARN("ComponentLoader") << "AudioSource missing 'Path' property";
+    } else {
+        IAudioEngine* engine = (ctx.IsValid() && ctx.soundPlayer) ? ctx.soundPlayer->GetEngine() : nullptr;
+        audio.sound = std::dynamic_pointer_cast<ISound>(res.GetSoundAuto(audio.filePath, engine));
+    }
 
     audio.volume = std::stof(node.GetChildValue("Volume", "1.0"));
     if (audio.volume < 0.0f || audio.volume > 1.0f)
@@ -516,7 +584,8 @@ void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, con
     emitterComp.emitter.LifeTime = life;
     emitterComp.emitter.StartLife = life;
 
-    emitterComp.emitter.Texture = res.GetTexture(texName);
+    auto tex = res.GetTextureAuto(texName);
+    emitterComp.emitter.Texture = tex;
 
     if (!emitterComp.emitter.Texture)
     {
@@ -599,8 +668,15 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     loadTex("RoughnessMap", mat.desc.roughnessPath);
     loadTex("AOMap", mat.desc.aoPath);
     loadTex("EmissiveMap", mat.desc.emissivePath);
-    
-    mat.gpu.dirty = true;
+
+    mat.gpu.albedoMap = res.GetTextureAuto(mat.desc.albedoPath) ? res.GetTextureAuto(mat.desc.albedoPath)->id : 0;
+    mat.gpu.normalMap = res.GetTextureAuto(mat.desc.normalPath) ? res.GetTextureAuto(mat.desc.normalPath)->id : 0;
+    mat.gpu.metallicMap = res.GetTextureAuto(mat.desc.metallicPath) ? res.GetTextureAuto(mat.desc.metallicPath)->id : 0;
+    mat.gpu.roughnessMap = res.GetTextureAuto(mat.desc.roughnessPath) ? res.GetTextureAuto(mat.desc.roughnessPath)->id : 0;
+    mat.gpu.aoMap = res.GetTextureAuto(mat.desc.aoPath) ? res.GetTextureAuto(mat.desc.aoPath)->id : 0;
+    mat.gpu.emissiveMap = res.GetTextureAuto(mat.desc.emissivePath) ? res.GetTextureAuto(mat.desc.emissivePath)->id : 0;
+
+    mat.gpu.dirty = false;
 
     scene.registry.emplace<MaterialComponent>(entity, mat);
 }
@@ -638,21 +714,17 @@ void ComponentLoader::LoadDecal(Scene &scene, entt::entity entity, const YAMLNod
 
     auto &d = scene.registry.emplace<DecalComponent>(entity);
     
+    auto getOrLoadTex = [&](const std::string& path) -> std::shared_ptr<Texture> {
+        return res.GetTextureAuto(path);
+    };
+
     std::string albedoPath = node.GetChildValue("Albedo");
-    if (!albedoPath.empty())
-    {
-        res.LoadTexture(albedoPath, albedoPath);
-        auto tex = res.GetTexture(albedoPath);
-        if (tex) d.albedoMap = tex->id;
-    }
+    auto albedoTex = getOrLoadTex(albedoPath);
+    if (albedoTex) d.albedoMap = albedoTex->id;
 
     std::string normalPath = node.GetChildValue("Normal");
-    if (!normalPath.empty())
-    {
-        res.LoadTexture(normalPath, normalPath);
-        auto tex = res.GetTexture(normalPath);
-        if (tex) d.normalMap = tex->id;
-    }
+    auto normalTex = getOrLoadTex(normalPath);
+    if (normalTex) d.normalMap = normalTex->id;
 
     d.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
     d.lifetime = std::stof(node.GetChildValue("Lifetime", "-1.0"));
