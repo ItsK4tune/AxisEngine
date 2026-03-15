@@ -70,8 +70,9 @@ void main()
     for(int i = 0; i < light.numDirLights; i++) {
         vec3 L = normalize(-dirLights[i].direction);
         float diff = max(dot(N, L), 0.0);
-        Lo += (dirLights[i].ambient + diff) * dirLights[i].color * dirLights[i].intensity;
+        vec3 radiance = dirLights[i].color * dirLights[i].intensity;
+        Lo += (0.1 * radiance + 0.8 * diff * radiance);
     }
     
-    FragColor = vec4(color, 1.0);
+    FragColor = vec4(albedo * Lo, 1.0);
 }

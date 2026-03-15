@@ -123,7 +123,10 @@ void main()
         texColor.rgb = pow(texColor.rgb, vec3(2.2));
     }
     
-    FragColor = vec4(result + material.emission, texColor.a * material.opacity) * tintColor;
+    // Apply tint to Albedo (matching G-Buffer behavior)
+    vec3 finalAlbedo = texColor.rgb * tintColor.rgb;
+    
+    FragColor = vec4(result + material.emission, texColor.a * material.opacity * tintColor.a);
 }
 
 vec3 CalcDirLightWithShadow(DirLight pLight, vec3 normal, vec3 viewDir, int lightIndex)
@@ -133,7 +136,7 @@ vec3 CalcDirLightWithShadow(DirLight pLight, vec3 normal, vec3 viewDir, int ligh
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
 
-    vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
+    vec3 albedo = (debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2))) * tintColor.rgb;
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, TexCoords).rgb;
 
     vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient;
@@ -151,7 +154,7 @@ vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
 
-    vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
+    vec3 albedo = (debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2))) * tintColor.rgb;
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, TexCoords).rgb;
 
     vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient;

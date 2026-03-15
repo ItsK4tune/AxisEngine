@@ -97,6 +97,7 @@ void main()
     for(int i = 0; i < light.nrSpotLights; i++)
         result += CalcSpotLight(spotLights[i], norm, FragPos, viewDir);
     
+    // Final Color Assembly
     vec4 texColor;
     if (debug_noTexture) {
         texColor = vec4(1.0);
@@ -105,7 +106,7 @@ void main()
         texColor.rgb = pow(texColor.rgb, vec3(2.2));
     }
     
-    FragColor = vec4(result + material.emission, texColor.a * material.opacity) * tintColor;
+    FragColor = vec4(result + material.emission, texColor.a * material.opacity * tintColor.a);
 }
 
 vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
@@ -115,7 +116,7 @@ vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
 
-    vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
+    vec3 albedo = (debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2))) * tintColor.rgb;
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, TexCoords).rgb;
 
     vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient;
