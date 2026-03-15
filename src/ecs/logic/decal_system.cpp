@@ -36,6 +36,18 @@ void DecalSystem::Initialize(EngineContext ctx)
                                    "includes/engine/asset/shaders/decal_forward.fs");
         m_ForwardShader = m_Ctx.resources->GetShader("decal_forward");
     }
+
+    if (m_Ctx.scene) {
+        m_Ctx.scene->registry.on_construct<DecalComponent>().connect<&DecalSystem::OnDecalConstruct>(this);
+    }
+}
+
+void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity)
+{
+    auto& decal = registry.get<DecalComponent>(entity);
+    if (decal.renderOrder == 0) {
+        decal.renderOrder = m_NextOrder++;
+    }
 }
 
 void DecalSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib)
@@ -138,7 +150,17 @@ void DecalSystem::Render(Scene &scene)
     bm.BindBuffer(BufferType::ElementArrayBuffer, m_CubeEBO);
     
     auto view = scene.registry.view<DecalComponent, PositionComponent, RotationComponent, ScaleComponent>();
-    for (auto entity : view) {
+    
+    // Sort entities by renderOrder to ensure correct overlapping
+    std::vector<entt::entity> sortedEntities;
+    sortedEntities.reserve(view.size_hint());
+    for (auto entity : view) sortedEntities.push_back(entity);
+
+    std::sort(sortedEntities.begin(), sortedEntities.end(), [&](entt::entity a, entt::entity b) {
+        return view.get<DecalComponent>(a).renderOrder < view.get<DecalComponent>(b).renderOrder;
+    });
+
+    for (auto entity : sortedEntities) {
         auto &decal = view.get<DecalComponent>(entity);
         auto &pos = view.get<PositionComponent>(entity);
         auto &rot = view.get<RotationComponent>(entity);

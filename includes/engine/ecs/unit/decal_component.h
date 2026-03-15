@@ -16,6 +16,7 @@ struct DecalComponent
     
     float opacity = 1.0f;
     float lifetime = -1.0f; // -1 means infinite
+    uint32_t renderOrder = 0;
     
     // Tag filtering: only project onto entities with these tags
     // If empty, project onto everything (default)

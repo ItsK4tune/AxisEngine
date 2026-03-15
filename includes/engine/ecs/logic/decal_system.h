@@ -37,6 +37,7 @@ public:
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
+    void OnDecalConstruct(entt::registry& registry, entt::entity entity);
 
 private:
     EngineContext m_Ctx;
@@ -52,6 +53,7 @@ private:
     std::map<std::string, uint32_t> m_TagBitMap;
     unsigned int m_TagMapTexture = 0;
     std::vector<uint32_t> m_TagBuffer;
+    uint32_t m_NextOrder = 1;
 
     void InitCubeMesh();
     void UpdateTagMap(Scene& scene);

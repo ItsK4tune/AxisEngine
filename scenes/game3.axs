@@ -1,6 +1,6 @@
 axis_scene:
   Config:
-    RENDER_PATH: DEFERRED
+    RENDER_PATH: FORWARD
 
   Resources:
     Model:
