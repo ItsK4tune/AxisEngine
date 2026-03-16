@@ -271,16 +271,31 @@ const AppConfig& Application::GetConfig() const { return m_Config; }
 
 void Application::ApplyConfig(const AppConfig& config)
 {
+    bool windowChanged = (config.width != m_Config.width || 
+                          config.height != m_Config.height || 
+                          config.windowMode != m_Config.windowMode || 
+                          config.monitorIndex != m_Config.monitorIndex || 
+                          config.refreshRate != m_Config.refreshRate);
+    
+    bool syncChanged = (config.vsync != m_Config.vsync || 
+                        config.frameRateLimit != m_Config.frameRateLimit);
+
     m_Config = config;
     if (m_IOHandler)
     {
-        m_IOHandler->GetMonitorManager().SetWindowConfiguration(
-            config.width, config.height,
-            (WindowMode)config.windowMode,
-            config.monitorIndex, config.refreshRate);
+        if (windowChanged)
+        {
+            m_IOHandler->GetMonitorManager().SetWindowConfiguration(
+                config.width, config.height,
+                (WindowMode)config.windowMode,
+                config.monitorIndex, config.refreshRate);
+        }
         
-        m_IOHandler->GetMonitorManager().SetVsync(config.vsync);
-        m_IOHandler->GetMonitorManager().SetFrameRateLimit(config.frameRateLimit);
+        if (syncChanged)
+        {
+            m_IOHandler->GetMonitorManager().SetVsync(config.vsync);
+            m_IOHandler->GetMonitorManager().SetFrameRateLimit(config.frameRateLimit);
+        }
     }
 }
 

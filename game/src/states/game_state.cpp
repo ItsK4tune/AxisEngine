@@ -111,7 +111,6 @@ void GameState::OnUpdate(float dt)
     }
 
     // --- Demo Logic ---
-    static float globalVolume = 1.0f;
     static std::shared_ptr<ISound> bgmSound = nullptr;
 
     // Toggle BGM
@@ -140,14 +139,16 @@ void GameState::OnUpdate(float dt)
 
     // Volume Control
     if (input.GetActionDown("VolumeUp")) {
-        globalVolume = std::min(1.0f, globalVolume + 0.1f);
-        m_Ctx.soundPlayer->GetEngine()->SetGlobalVolume(globalVolume);
-        LOGGER_INFO("GameState") << "Volume: " << globalVolume;
+        AppConfig cfg = m_Ctx.runtime->GetConfig();
+        cfg.masterVolume = std::min(10.0f, cfg.masterVolume + 0.1f);
+        m_Ctx.runtime->ApplyConfig(cfg);
+        LOGGER_INFO("GameState") << "Master Volume: " << cfg.masterVolume;
     }
     if (input.GetActionDown("VolumeDown")) {
-        globalVolume = std::max(0.0f, globalVolume - 0.1f);
-        m_Ctx.soundPlayer->GetEngine()->SetGlobalVolume(globalVolume);
-        LOGGER_INFO("GameState") << "Volume: " << globalVolume;
+        AppConfig cfg = m_Ctx.runtime->GetConfig();
+        cfg.masterVolume = std::max(0.0f, cfg.masterVolume - 0.1f);
+        m_Ctx.runtime->ApplyConfig(cfg);
+        LOGGER_INFO("GameState") << "Master Volume: " << cfg.masterVolume;
     }
 
     // Toggle Particle

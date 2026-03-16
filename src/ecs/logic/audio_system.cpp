@@ -26,6 +26,9 @@ void AudioSystem::Update(Scene &scene, float dt)
 
     auto view = scene.registry.view<AudioSourceComponent>();
 
+    // Sync global volume every frame
+    m_Ctx.soundPlayer->GetEngine()->SetGlobalVolume(m_Ctx.runtime->GetConfig().masterVolume);
+
     for (auto entity : view)
     {
         auto &audio = view.get<AudioSourceComponent>(entity);
@@ -45,9 +48,6 @@ void AudioSystem::Update(Scene &scene, float dt)
                 audio.sound->Stop();
                 audio.sound = nullptr;
             }
-
-            // Sync global volume once per frame if needed, or just ensure it's set
-            m_Ctx.soundPlayer->GetEngine()->SetGlobalVolume(m_Ctx.runtime->GetConfig().masterVolume);
 
             if (audio.source)
             {

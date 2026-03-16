@@ -26,7 +26,7 @@ axis_scene:
       Name: bgm
       Path: resources/audios/bgm.mp3
       Loop: true
-      Volume: 0.5
+      Volume: 1
     Audio:
       Name: 2dSound
       Path: resources/audios/2dsound.mp3
@@ -41,7 +41,7 @@ axis_scene:
         Audio: bgm
         PlayOnAwake: true
         Loop: true
-        Volume: 0.8
+        Volume: 1
         Pitch: 1.1
 
     Particle_Demo:
