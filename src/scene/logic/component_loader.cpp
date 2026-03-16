@@ -535,7 +535,7 @@ void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNo
 
 void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, EngineContext ctx)
 {
-    LoaderUtils::ValidateKeys(node, {"Audio", "Path", "Volume", "Pitch", "Pan", "Loop", "Is3D", "MinDistance", "MaxDistance", "PlayOnAwake"}, "AudioSource");
+    LoaderUtils::ValidateKeys(node, {"Audio", "Path", "Volume", "Pitch", "Pan", "Speed", "Loop", "Is3d", "MinDistance", "MaxDistance", "Velocity", "PlayOnAwake"}, "AudioSource");
 
     AudioSourceComponent audio;
     
@@ -553,12 +553,19 @@ void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const Y
     audio.volume = std::stof(node.GetChildValue("Volume", "1.0"));
     audio.pitch = std::stof(node.GetChildValue("Pitch", "1.0"));
     audio.pan = std::stof(node.GetChildValue("Pan", "0.0"));
+    audio.speed = std::stof(node.GetChildValue("Speed", "1.0"));
     
     audio.loop = node.GetChildValue("Loop", "0") == "1" || node.GetChildValue("Loop", "true") == "true";
-    audio.is3D = node.GetChildValue("Is3D", "0") == "1" || node.GetChildValue("Is3D", "true") == "true";
+    audio.is3D = node.GetChildValue("Is3d", "0") == "1" || node.GetChildValue("Is3d", "true") == "true";
 
-    audio.minDistance = std::stof(node.GetChildValue("MinDistance", "1.0"));
-    audio.maxDistance = std::stof(node.GetChildValue("MaxDistance", "100.0"));
+    if (audio.is3D) {
+        audio.minDistance = std::stof(node.GetChildValue("MinDistance", "1.0"));
+        audio.maxDistance = std::stof(node.GetChildValue("MaxDistance", "100.0"));
+        
+        std::string velStr = node.GetChildValue("Velocity", "0 0 0");
+        std::stringstream ss(velStr);
+        ss >> audio.velocity.x >> audio.velocity.y >> audio.velocity.z;
+    }
     
     audio.playOnAwake = node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
 

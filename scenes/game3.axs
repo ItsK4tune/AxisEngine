@@ -25,8 +25,8 @@ axis_scene:
     Audio:
       Name: bgm
       Path: resources/audios/bgm.mp3
-      Loop: true
       Volume: 1
+      Speed: 1.0
     Audio:
       Name: 2dSound
       Path: resources/audios/2dsound.mp3
@@ -43,6 +43,8 @@ axis_scene:
         Loop: true
         Volume: 1
         Pitch: 1.1
+        Speed: 1.0
+        Is3d: false
 
     Particle_Demo:
       Component: Transform

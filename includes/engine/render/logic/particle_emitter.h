@@ -49,8 +49,10 @@ public:
     ParticleEmitter &operator=(ParticleEmitter &&other) noexcept;
 
     void Initialize(unsigned int maxParticles = 500);
-    void Update(float dt, const glm::vec3 &offset = glm::vec3(0.0f));
+    void Update(float dt, const glm::vec3 &offset = glm::vec3(0.0f), bool spawn = true);
     void Render(Shader *shader);
+
+    unsigned int GetActiveParticleCount() const;
 
     enum class EmissionShape
     {

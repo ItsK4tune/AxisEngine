@@ -200,17 +200,32 @@ void GameState::OnUpdate(float dt)
                 else // WheelDown: Particle
                 {
                     auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity);
-                    if (info && info->name == "WallTest")
+                    if (info && (info->name == "WallTest" || info->tag == "terrain"))
                     {
-                        auto view = GetScene().registry.view<InfoComponent, ParticleEmitterComponent, PositionComponent>();
-                        for (auto e : view) {
-                            auto& pInfo = view.get<InfoComponent>(e);
-                            if (pInfo.name == "Particle_Demo") {
-                                view.get<PositionComponent>(e).value = hit.hitPoint;
-                                view.get<ParticleEmitterComponent>(e).isActive = true;
-                                break;
-                            }
-                        }
+                        // Spawn a NEW "one-shot" impact particle
+                        auto particleEnt = EntityManager::CreateEntity(GetScene(), "Impact_Particle");
+                        
+                        auto& pPos = EntityManager::AddComponent<PositionComponent>(GetScene(), particleEnt);
+                        pPos.value = hit.hitPoint;
+                        
+                        auto& pComp = EntityManager::AddComponent<ParticleEmitterComponent>(GetScene(), particleEnt);
+                        
+                        // Configure for impact effect
+                        pComp.isActive = true;
+                        pComp.lifetime = 0.5f; // Spawning duration
+                        pComp.emitter.Initialize(300);
+                        pComp.emitter.Texture = m_Ctx.resources->GetTextureAuto("resources/textures/particle_star.png");
+                        pComp.emitter.SpawnRate = 400.0f; 
+                        pComp.emitter.LifeTime = 0.8f;   // Particles live slightly longer for fade
+                        pComp.emitter.StartSize = 0.5f;
+                        pComp.emitter.EndSize = 0.0f;
+                        pComp.emitter.MinVelocity = glm::vec3(-3, 1, -3);
+                        pComp.emitter.MaxVelocity = glm::vec3(3, 6, 3);
+                        pComp.emitter.StartColor = glm::vec4(1.0f, 0.8f, 0.4f, 1.0f); // Sparkly orange/yellow
+                        pComp.emitter.EndColor = glm::vec4(1.0f, 0.2f, 0.0f, 0.0f);
+                        pComp.emitter.Shape = ParticleEmitter::EmissionShape::CONE;
+                        
+                        LOGGER_INFO("GameState") << "Spawned Impact Particle at " << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z;
                     }
                 }
             }

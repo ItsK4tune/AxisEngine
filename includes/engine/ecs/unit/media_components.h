@@ -21,16 +21,20 @@ struct AudioSourceComponent
     std::shared_ptr<IAudioSource> source = nullptr;
     std::string filePath = "";
     std::string resourceName = "";
-    bool playOnStart = false;
+    
     bool playOnAwake = false;
     bool shouldPlay = false;
     bool loop = false;
     bool is3D = false;
+
     float volume = 1.0f;
     float pitch = 1.0f;
     float pan = 0.0f;
+    float speed = 1.0f;
+
     float minDistance = 1.0f;
     float maxDistance = 100.0f;
+    glm::vec3 velocity = glm::vec3(0.0f);
 };
 
 // --- Video ---

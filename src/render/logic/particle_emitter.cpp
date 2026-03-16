@@ -193,16 +193,19 @@ float RandomFloat(float min, float max)
     return distribution(generator);
 }
 
-void ParticleEmitter::Update(float dt, const glm::vec3 &offset)
+void ParticleEmitter::Update(float dt, const glm::vec3 &offset, bool spawn)
 {
-    m_SpawnAccumulator += dt;
-    float rate = (SpawnRate > 0.0f) ? (1.0f / SpawnRate) : 0.0f;
-
-    while (m_SpawnAccumulator >= rate && rate > 0.0001f)
+    if (spawn)
     {
-        int unusedParticle = FirstUnusedParticle();
-        RespawnParticle(m_Particles[unusedParticle], offset);
-        m_SpawnAccumulator -= rate;
+        m_SpawnAccumulator += dt;
+        float rate = (SpawnRate > 0.0f) ? (1.0f / SpawnRate) : 0.0f;
+
+        while (m_SpawnAccumulator >= rate && rate > 0.0001f)
+        {
+            int unusedParticle = FirstUnusedParticle();
+            RespawnParticle(m_Particles[unusedParticle], offset);
+            m_SpawnAccumulator -= rate;
+        }
     }
 
     for (unsigned int i = 0; i < m_MaxParticles; ++i)
@@ -218,6 +221,15 @@ void ParticleEmitter::Update(float dt, const glm::vec3 &offset)
             p.Size = StartSize * (1.0f - t) + EndSize * t;
         }
     }
+}
+
+unsigned int ParticleEmitter::GetActiveParticleCount() const
+{
+    unsigned int count = 0;
+    for (const auto& p : m_Particles) {
+        if (p.Life > 0.0f) count++;
+    }
+    return count;
 }
 
 void ParticleEmitter::Render(Shader *shader)

@@ -12,9 +12,14 @@ void MaterialRenderer::Initialize(IGraphicsContext& context, unsigned int whiteT
 }
 
 bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene, bool debugNoTexture) {
+    auto *mat = scene.registry.try_get<MaterialComponent>(entity);
+    return SetupMaterialUniforms(shader, mat, scene, debugNoTexture);
+}
+
+bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* material, Scene &scene, bool debugNoTexture) {
     bool boundSomething = false;
-    if (scene.registry.all_of<MaterialComponent>(entity)) {
-        auto &mat = scene.registry.get<MaterialComponent>(entity);
+    if (material) {
+        auto &mat = *material;
         if (mat.desc.type == MaterialType::PBR) {
             shader->setFloat("material.roughness", mat.desc.roughness);
             shader->setFloat("material.metallic", mat.desc.metallic);
@@ -59,8 +64,6 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity
             shader->setVec3("ambient", mat.desc.ambient);
             shader->setVec3("emission", mat.desc.emission);
             
-            // A good estimate: high shininess => low roughness.
-            // phong_shininess = 2 / roughness^4 - 2  => roughly
             float r = glm::clamp(1.0f - glm::sqrt(mat.desc.shininess / 128.0f), 0.05f, 1.0f);
             shader->setFloat("material.roughness", r);
             shader->setFloat("material.metallic", 0.0f);
@@ -163,7 +166,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity
         shader->setVec3("ambient", glm::vec3(1.0f));
         shader->setVec3("emission", glm::vec3(0.0f));
         shader->setFloat("opacity", 1.0f);
-        shader->setCustomPorts(ShaderPorts()); // Reset ports to 0
+        shader->setCustomPorts(ShaderPorts());
         
         m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
         m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_WhiteTextureID);

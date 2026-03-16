@@ -24,17 +24,23 @@ bool FrustumCuller::IsVisible(Scene& scene, entt::entity entity, float alpha) co
 
 void FrustumCuller::Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt::entity>& outVisibleEntities, float alpha) const {
     outVisibleEntities.clear();
-    if (scene.GetOctree()) {
-        auto view = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
-        std::vector<entt::entity> entities;
-        for (auto entity : view) entities.push_back(entity);
-        uint32_t totalEntities = (uint32_t)entities.size();
+    
+    auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
+    uint32_t totalEntities = (uint32_t)renderView.size_hint();
+    if (totalEntities == 0) return;
 
-        if (totalEntities == 0) return;
+    // Threshold for Octree rebuild. Rebuilding Octree is expensive (O(N log N)).
+    // Direct culling is O(N) but very fast per-item.
+    const uint32_t OCTREE_THRESHOLD = 5000; 
+
+    if (scene.GetOctree() && totalEntities >= OCTREE_THRESHOLD) {
+        // Rebuild and Query Octree path
+        std::vector<entt::entity> entities;
+        entities.reserve(totalEntities);
+        for (auto entity : renderView) entities.push_back(entity);
 
         uint32_t numThreads = JobSystem::Instance().GetThreadCount();
         uint32_t chunkSize = (totalEntities + numThreads - 1) / numThreads;
-
         std::vector<std::vector<OctreeElement>> threadElements(numThreads);
         JobSystem::JobCounter counter(0);
 
@@ -46,11 +52,11 @@ void FrustumCuller::Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt
             JobSystem::Instance().Execute([&scene, &entities, startIdx, endIdx, &res = threadElements[i], alpha]() {
                 for (uint32_t k = startIdx; k < endIdx; ++k) {
                     entt::entity entity = entities[k];
-                    if (!scene.registry.all_of<WorldTransformComponent, MeshRendererComponent>(entity)) continue;
-                    auto [world, renderer] = scene.registry.get<WorldTransformComponent, MeshRendererComponent>(entity);
+                    auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
                     if (!renderer.model) continue;
 
-                    glm::mat4 modelMatrix = world.GetInterpolated(alpha);
+                    auto& world = scene.registry.get<WorldTransformComponent>(entity);
+                    glm::mat4 modelMatrix = (alpha >= 0.99f) ? world.worldMatrix : world.GetInterpolated(alpha);
                     res.push_back({entity, renderer.model->aabb.Transform(modelMatrix)});
                 }
             }, &counter);
@@ -58,6 +64,7 @@ void FrustumCuller::Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt
         JobSystem::Instance().Wait(&counter);
 
         std::vector<OctreeElement> elements;
+        elements.reserve(totalEntities);
         for (const auto& res : threadElements) elements.insert(elements.end(), res.begin(), res.end());
         
         scene.GetOctree()->Rebuild(elements);
@@ -68,9 +75,45 @@ void FrustumCuller::Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt
             for (const auto& el : elements) outVisibleEntities.push_back(el.entity);
         }
     } else {
-        auto view = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
-        for (auto entity : view) {
-            outVisibleEntities.push_back(entity);
+        // Direct Parallel Culling path
+        std::vector<entt::entity> entities;
+        entities.reserve(totalEntities);
+        for (auto entity : renderView) entities.push_back(entity);
+
+        uint32_t numThreads = JobSystem::Instance().GetThreadCount();
+        uint32_t chunkSize = (totalEntities + numThreads - 1) / numThreads;
+        std::vector<std::vector<entt::entity>> threadVisible(numThreads);
+        JobSystem::JobCounter counter(0);
+
+        for (uint32_t i = 0; i < numThreads; ++i) {
+            uint32_t startIdx = i * chunkSize;
+            if (startIdx >= totalEntities) break;
+            uint32_t endIdx = (std::min)(startIdx + chunkSize, totalEntities);
+
+            JobSystem::Instance().Execute([this, &scene, &entities, startIdx, endIdx, &res = threadVisible[i], alpha, frustumCullEnabled]() {
+                for (uint32_t k = startIdx; k < endIdx; ++k) {
+                    entt::entity entity = entities[k];
+                    auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
+                    
+                    if (!renderer.model || !frustumCullEnabled) {
+                        res.push_back(entity);
+                        continue;
+                    }
+
+                    auto& world = scene.registry.get<WorldTransformComponent>(entity);
+                    glm::mat4 modelMatrix = (alpha >= 0.99f) ? world.worldMatrix : world.GetInterpolated(alpha);
+                    AABB transformedAABB = renderer.model->aabb.Transform(modelMatrix);
+                    
+                    if (IsVisible(transformedAABB.minBound, transformedAABB.maxBound)) {
+                        res.push_back(entity);
+                    }
+                }
+            }, &counter);
+        }
+        JobSystem::Instance().Wait(&counter);
+
+        for (const auto& res : threadVisible) {
+            outVisibleEntities.insert(outVisibleEntities.end(), res.begin(), res.end());
         }
     }
 }

@@ -21,16 +21,38 @@ void ParticleSystem::Update(Scene &scene, float dt)
 
     auto view = scene.registry.view<ParticleEmitterComponent, PositionComponent>();
 
-    std::vector<entt::entity> entities(view.begin(), view.end());
-
-    std::for_each(std::execution::par, entities.begin(), entities.end(), [&view, dt](entt::entity entity) {
+    std::vector<entt::entity> toDestroy;
+    for (auto entity : view)
+    {
         auto [emitterComp, pos] = view.get<ParticleEmitterComponent, PositionComponent>(entity);
 
-        if (emitterComp.isActive)
+        bool isSpawning = true;
+        if (emitterComp.lifetime > 0.0f)
         {
-            emitterComp.emitter.Update(dt, pos.value);
+            emitterComp.lifetime -= dt;
+            if (emitterComp.lifetime <= 0.0f)
+            {
+                isSpawning = false;
+            }
         }
-    });
+
+        emitterComp.emitter.Update(dt, pos.value, isSpawning);
+
+        // Auto-cleanup for Impact particles
+        if (!isSpawning && emitterComp.emitter.GetActiveParticleCount() == 0)
+        {
+            if (scene.registry.any_of<InfoComponent>(entity)) {
+                auto& info = scene.registry.get<InfoComponent>(entity);
+                if (info.name.find("Impact_Particle") != std::string::npos) {
+                    toDestroy.push_back(entity);
+                }
+            }
+        }
+    }
+
+    for (auto entity : toDestroy) {
+        scene.registry.destroy(entity);
+    }
 }
 
 void ParticleSystem::Render(Scene &scene)
@@ -42,6 +64,7 @@ void ParticleSystem::Render(Scene &scene)
 
     rsm.Enable(ServerCapability::Blend);
     rsm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::One);
+    rsm.Enable(ServerCapability::DepthTest);
     rsm.SetDepthMask(false);
 
     auto shader = m_Ctx.resources->GetShader("particle");

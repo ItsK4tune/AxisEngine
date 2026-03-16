@@ -81,11 +81,12 @@ void AudioSystem::Update(Scene &scene, float dt)
             {
                 // Set instance-specific parameters that might differ from resource defaults
                 audio.sound->SetVolume(audio.volume);
-                audio.sound->SetPitch(audio.pitch);
+                audio.sound->SetPitch(audio.pitch * audio.speed);
                 audio.sound->SetPan(audio.pan);
                 if (audio.is3D) {
                     audio.sound->SetMinDistance(audio.minDistance);
                     audio.sound->SetMaxDistance(audio.maxDistance);
+                    audio.sound->SetVelocity(audio.velocity);
                 }
             }
         }
@@ -94,7 +95,7 @@ void AudioSystem::Update(Scene &scene, float dt)
         {
             // Sync dynamic updates
             audio.sound->SetVolume(audio.volume);
-            audio.sound->SetPitch(audio.pitch);
+            audio.sound->SetPitch(audio.pitch * audio.speed);
             audio.sound->SetPan(audio.pan);
 
             if (audio.is3D)
@@ -104,6 +105,7 @@ void AudioSystem::Update(Scene &scene, float dt)
                 {
                     audio.sound->SetPosition(posComp->value);
                 }
+                audio.sound->SetVelocity(audio.velocity);
                 audio.sound->SetMinDistance(audio.minDistance);
                 audio.sound->SetMaxDistance(audio.maxDistance);
             }

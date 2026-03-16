@@ -29,15 +29,50 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
     if (!m_Context) return;
     auto& bm = m_Context->GetBufferManager();
     
-    m_DirLights.clear();
-    auto dirView = scene.registry.view<DirectionalLightComponent>();
+    // 1. Quick check if anything changed
+    uint32_t currentCombinedVersion = 0;
+    size_t currentLightCount = 0;
 
+    auto dirView = scene.registry.view<DirectionalLightComponent>();
+    auto pointView = scene.registry.view<PointLightComponent>();
+    auto spotView = scene.registry.view<SpotLightComponent>();
+    
+    currentLightCount = dirView.size() + pointView.size() + spotView.size();
+
+    // Sum versions of WorldTransformComponents for light entities
+    // We also need to account for property changes in the light components themselves.
+    // If they don't have a version, we'll just check if any were modified using entt's versioning if available, 
+    // or just assume if any light exists we check their transforms.
+    
+    for (auto entity : dirView) {
+        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity)) currentCombinedVersion += w->version;
+    }
+    for (auto entity : pointView) {
+        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity)) currentCombinedVersion += w->version;
+    }
+    for (auto entity : spotView) {
+        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity)) currentCombinedVersion += w->version;
+    }
+
+    if (currentCombinedVersion == m_LastCombinedVersion && currentLightCount == m_LastLightCount)
+    {
+        // Still need to bind the SSBOs to the current shader context if they weren't already
+        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
+        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
+        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
+        return; 
+    }
+
+    m_LastCombinedVersion = currentCombinedVersion;
+    m_LastLightCount = currentLightCount;
+
+    // 2. Rebuild and upload
+    m_DirLights.clear();
     int dirShadowCount = 0;
     for (auto entity : dirView)
     {
         auto &light = dirView.get<DirectionalLightComponent>(entity);
-        if (!light.active)
-            continue;
+        if (!light.active) continue;
 
         float shadowIdx = -1.0f;
         if (light.isCastShadow && dirShadowCount < Shadow::MAX_DIR_LIGHTS_SHADOW)
@@ -47,23 +82,20 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
         }
 
         glm::vec3 dir(0, -1, 0);
-        if (auto* rot = scene.registry.try_get<RotationComponent>(entity))
+        if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
         {
-            dir = rot->value * glm::vec3(0, -1, 0);
+            dir = glm::normalize(glm::vec3(world->worldMatrix * glm::vec4(0, -1, 0, 0)));
         }
 
         m_DirLights.push_back({dir, shadowIdx, light.color, light.intensity});
     }
 
     m_PointLights.clear();
-    auto pointView = scene.registry.view<PointLightComponent>();
     int pointShadowCount = 0;
-
     for (auto entity : pointView)
     {
         auto &light = pointView.get<PointLightComponent>(entity);
-        if (!light.active)
-            continue;
+        if (!light.active) continue;
 
         float shadowIdx = -1.0f;
         if (light.isCastShadow && pointShadowCount < Shadow::MAX_POINT_LIGHTS_SHADOW)
@@ -73,23 +105,20 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
         }
 
         glm::vec3 pos = glm::vec3(0.0f);
-        if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+        if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
         {
-            pos = p->value;
+            pos = glm::vec3(world->worldMatrix[3]);
         }
 
         m_PointLights.push_back({pos, shadowIdx, light.color, light.intensity, light.constant, light.linear, light.quadratic, light.radius});
     }
 
     m_SpotLights.clear();
-    auto spotView = scene.registry.view<SpotLightComponent>();
     int spotShadowCount = 0;
-
     for (auto entity : spotView)
     {
         auto &light = spotView.get<SpotLightComponent>(entity);
-        if (!light.active)
-            continue;
+        if (!light.active) continue;
 
         float shadowIdx = -1.0f;
         if (light.isCastShadow && spotShadowCount < Shadow::MAX_SPOT_LIGHTS_SHADOW)
@@ -100,10 +129,11 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
 
         glm::vec3 pos = glm::vec3(0.0f);
         glm::vec3 dir(0, -1, 0);
-        auto* p = scene.registry.try_get<PositionComponent>(entity);
-        auto* r = scene.registry.try_get<RotationComponent>(entity);
-        if (p) pos = p->value;
-        if (r) dir = r->value * glm::vec3(0, -1, 0);
+        if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
+        {
+            pos = glm::vec3(world->worldMatrix[3]);
+            dir = glm::normalize(glm::vec3(world->worldMatrix * glm::vec4(0, -1, 0, 0)));
+        }
 
         m_SpotLights.push_back({pos, 0.0f, dir, shadowIdx, light.color, light.intensity, light.cutOff, light.outerCutOff, light.constant, light.linear, light.quadratic, 0.0f, 0.0f, 0.0f});
     }

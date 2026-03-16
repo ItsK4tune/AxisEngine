@@ -29,60 +29,56 @@ void TransformSystem::FixedUpdate(Scene& scene, float dt)
 
 void TransformSystem::Update(Scene& scene, float dt)
 {
+    if (scene.isLinearTransformsDirty)
+    {
+        scene.RebuildLinearTransforms();
+    }
+
     auto& registry = scene.registry;
-
-    auto view = registry.view<PositionComponent, RotationComponent, ScaleComponent, WorldTransformComponent>();
-    
-    for (auto entity : view)
+    for (auto entity : scene.linearTransforms)
     {
+        auto* world = registry.try_get<WorldTransformComponent>(entity);
+        if (!world) continue;
+
+        // Propagate dirtiness from parent if necessary
         auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
-        if (!hierarchy || hierarchy->parent == entt::null)
+        glm::mat4 parentTransform(1.0f);
+        if (hierarchy && hierarchy->parent != entt::null)
         {
-        UpdateWorldTransform(entity, registry, glm::mat4(1.0f), false, 0);
+            if (auto* pWorld = registry.try_get<WorldTransformComponent>(hierarchy->parent))
+            {
+                parentTransform = pWorld->worldMatrix;
+            }
         }
-    }
-}
 
-void TransformSystem::Render(Scene& scene)
-{
-}
-
-void TransformSystem::Shutdown()
-{
-}
-
-void TransformSystem::UpdateWorldTransform(entt::entity entity, entt::registry& registry, const glm::mat4& parentTransform, bool parentDirty, int depth)
-{
-    auto* pos = registry.try_get<PositionComponent>(entity);
-    auto* rot = registry.try_get<RotationComponent>(entity);
-    auto* scl = registry.try_get<ScaleComponent>(entity);
-    auto* world = registry.try_get<WorldTransformComponent>(entity);
-
-    if (!pos || !rot || !scl || !world) return;
-    if (depth > 64) {
-        LOGGER_ERROR("TransformSystem") << "Max hierarchy depth reached for entity " << (uint32_t)entity << ". Possible cycle!";
-        return;
-    }
-
-    bool isDirty = world->isDirty || parentDirty;
-    
-    if (isDirty)
-    {
-        glm::mat4 localMatrix = glm::translate(glm::mat4(1.0f), pos->value) *
-                                glm::toMat4(rot->value) *
-                                glm::scale(glm::mat4(1.0f), scl->value);
-        
-        world->worldMatrix = parentTransform * localMatrix;
-        world->isDirty = false;
-        world->version++;
-    }
-
-    auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
-    if (hierarchy)
-    {
-        for (auto child : hierarchy->children)
+        if (world->isDirty)
         {
-            UpdateWorldTransform(child, registry, world->worldMatrix, isDirty, depth + 1);
+            auto* pos = registry.try_get<PositionComponent>(entity);
+            auto* rot = registry.try_get<RotationComponent>(entity);
+            auto* scl = registry.try_get<ScaleComponent>(entity);
+            if (!pos || !rot || !scl) continue;
+
+            glm::mat4 localMatrix = glm::translate(glm::mat4(1.0f), pos->value) *
+                                    glm::toMat4(rot->value) *
+                                    glm::scale(glm::mat4(1.0f), scl->value);
+
+            world->worldMatrix = parentTransform * localMatrix;
+            world->isDirty = false;
+            world->version++;
+
+            // Propagate dirty flag down the hierarchy. 
+            // Because linearTransforms is depth-sorted (BFS), children will be updated 
+            // later in this same loop and will see their isDirty flag as true.
+            if (hierarchy)
+            {
+                for (auto child : hierarchy->children)
+                {
+                    if (auto* cWorld = registry.try_get<WorldTransformComponent>(child))
+                    {
+                        cWorld->isDirty = true;
+                    }
+                }
+            }
         }
     }
 }
@@ -106,3 +102,5 @@ std::vector<entt::id_type> TransformSystem::GetWriteComponents() const
         entt::type_id<ScaleComponent>().hash()
     };
 }
+void TransformSystem::Render(Scene& scene) {}
+void TransformSystem::Shutdown() {}

@@ -4,18 +4,24 @@
 #include <scene/logic/scene.h>
 #include <vector>
 
-class FrustumCuller;
+class Shader;
 class Model;
+struct AABB;
+class FrustumCuller;
+struct MaterialComponent;
 
 struct RenderItem {
     entt::entity entity;
     Model* activeModel;
+    Shader* activeShader;
+    MaterialComponent* activeMaterial;
     glm::mat4 worldMatrix;
     AABB worldAABB;
     uint32_t layer;
     int renderOrder;
     float distSq;
     bool isTransparent;
+    uint64_t sortKey;
 };
 
 class RenderQueue {

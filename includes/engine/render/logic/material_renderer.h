@@ -5,11 +5,13 @@
 
 class IGraphicsContext;
 class Shader;
+struct MaterialComponent;
 
 class MaterialRenderer {
 public:
     void Initialize(IGraphicsContext& context, unsigned int whiteTextureId, unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
     bool SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene, bool debugNoTexture);
+    bool SetupMaterialUniforms(Shader *shader, MaterialComponent* material, Scene &scene, bool debugNoTexture);
 
 private:
     IGraphicsContext* m_Context = nullptr;

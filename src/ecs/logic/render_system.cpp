@@ -419,17 +419,12 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
             for (size_t k = startIdx; k < endIdx; ++k)
             {
                 const auto& item = queue[k];
-                if (!scene.registry.valid(item.entity) || !scene.registry.all_of<MeshRendererComponent>(item.entity))
-                    continue;
-
-                auto &renderer = scene.registry.get<MeshRendererComponent>(item.entity);
-                auto *material = scene.registry.try_get<MaterialComponent>(item.entity);
                 entt::entity entity = item.entity;
                 Model* actModel = item.activeModel;
+                MaterialComponent *material = item.activeMaterial;
+                Shader *itemShader = item.activeShader;
 
-                auto lockedShader = renderer.shader.lock();
-                if (!lockedShader) continue;
-                Shader *itemShader = lockedShader.get();
+                if (!itemShader) continue;
 
                 if (m_DeferredRenderingEnabled && !isTransparentPass) {
                     itemShader = m_GBufferShader.get();
@@ -457,13 +452,9 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                             }
                         }
                         s->setBool("debug_noTexture", isDebugNoTexture);
-                        
-                        // Pass fog uniforms
                         s->setBool("u_FogEnabled", m_FogEnabled);
                         s->setVec3("u_FogColor", m_FogColor);
                         s->setFloat("u_FogDensity", m_FogDensity);
-
-                        // Pass shadow control uniforms
                         s->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
                         s->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
                     });
@@ -471,7 +462,7 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
 
                 bool hasAnimComp = scene.registry.all_of<AnimationComponent>(entity);
                 bool isAnimated = hasAnimComp && scene.registry.get<AnimationComponent>(entity).animator;
-                bool isNonStatic = item.activeModel && !item.activeModel->IsStatic();
+                bool isNonStatic = actModel && !actModel->IsStatic();
 
                 if (isAnimated || isNonStatic || !m_InstanceBatchingEnabled)
                 {
@@ -482,7 +473,9 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                     glm::mat4 mtx = item.worldMatrix;
                     if (actModel && !isAnimated) mtx *= actModel->GetRootTransform();
 
-                    glm::vec4 tc = renderer.color;
+                    // Still need renderer for tint color
+                    auto* rendererPtr = scene.registry.try_get<MeshRendererComponent>(entity);
+                    glm::vec4 tc = rendererPtr ? rendererPtr->color : glm::vec4(1.0f);
                     Shader* actShader = currentShader;
                     
                     if (actModel && actShader) {
@@ -493,7 +486,7 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                             actShader->setMat4("model", mtx);
                             actShader->setVec4("tintColor", tc);
                             if (!transforms.empty()) actShader->setMat4Array("finalBonesMatrices", transforms);
-                            bool matBound = materialRenderer->SetupMaterialUniforms(actShader, entity, scene, m_DebugNoTexture);
+                            bool matBound = materialRenderer->SetupMaterialUniforms(actShader, material, scene, m_DebugNoTexture);
                             actShader->setBool("isInstanced", false);
                             actShader->setUInt("entityID", static_cast<unsigned int>(entity));
                             actModel->Draw(*actShader, !matBound);
@@ -502,25 +495,24 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                 }
                 else
                 {
-                    if (currentModel != item.activeModel || currentMaterial != material)
+                    if (currentModel != actModel || currentMaterial != material)
                     {
                         flushBatch(currentShader, currentModel, instanceBatch);
                         instanceBatch.clear();
-                        currentModel = item.activeModel;
+                        currentModel = actModel;
                         currentMaterial = material;
-                        glm::vec4 tc = renderer.color;
+                        
+                        auto* rendererPtr = scene.registry.try_get<MeshRendererComponent>(entity);
+                        glm::vec4 tc = rendererPtr ? rendererPtr->color : glm::vec4(1.0f);
                         Shader* actShader = currentShader;
                         threadQueue.Submit([=, &scene]() {
                             actShader->setVec4("tintColor", tc);
-                            bool matBound = materialRenderer->SetupMaterialUniforms(actShader, entity, scene, m_DebugNoTexture);
+                            bool matBound = materialRenderer->SetupMaterialUniforms(actShader, material, scene, m_DebugNoTexture);
                             actShader->setBool("isInstanced", false);
                             actShader->setUInt("entityID", static_cast<unsigned int>(entity));
-                            // For batching, we currently don't have per-mesh fallback easily here as it's deferred to flushBatch
-                            // But we'll at least pass !matBound to subsequent individual draws if possible.
-                            // However, flushBatch calls DrawInstanced(..., true) by default now in my plan.
                         });
                     }
-                    instanceBatch.push_back(item.worldMatrix * (item.activeModel ? item.activeModel->GetRootTransform() : glm::mat4(1.0f)));
+                    instanceBatch.push_back(item.worldMatrix * (actModel ? actModel->GetRootTransform() : glm::mat4(1.0f)));
                 }
             }
             flushBatch(currentShader, currentModel, instanceBatch);

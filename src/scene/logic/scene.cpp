@@ -11,11 +11,17 @@
 Scene::Scene()
 {
     registry.on_destroy<ScriptComponent>().connect<&Scene::OnScriptComponentDestroyed>(this);
+    registry.on_construct<HierarchyComponent>().connect<&Scene::OnHierarchyChanged>(this);
+    registry.on_destroy<HierarchyComponent>().connect<&Scene::OnHierarchyChanged>(this);
+    registry.on_update<HierarchyComponent>().connect<&Scene::OnHierarchyChanged>(this);
 }
 
 Scene::~Scene()
 {
     registry.on_destroy<ScriptComponent>().disconnect<&Scene::OnScriptComponentDestroyed>(this);
+    registry.on_construct<HierarchyComponent>().disconnect<&Scene::OnHierarchyChanged>(this);
+    registry.on_destroy<HierarchyComponent>().disconnect<&Scene::OnHierarchyChanged>(this);
+    registry.on_update<HierarchyComponent>().disconnect<&Scene::OnHierarchyChanged>(this);
 }
 
 void Scene::OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity)
@@ -35,8 +41,14 @@ void Scene::OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity)
     }
 }
 
+void Scene::OnHierarchyChanged(entt::registry &reg, entt::entity entity)
+{
+    isLinearTransformsDirty = true;
+}
 
 
+
+#include <deque>
 
 void Scene::InitializeManagers()
 {
@@ -46,4 +58,45 @@ void Scene::InitializeManagers()
 void Scene::ShutdownManagers()
 {
     m_Octree.reset();
+}
+
+void Scene::RebuildLinearTransforms()
+{
+    if (!isLinearTransformsDirty) return;
+
+    linearTransforms.clear();
+    std::vector<entt::entity> roots;
+    auto transformView = registry.view<WorldTransformComponent>();
+    
+    for (auto entity : transformView)
+    {
+        auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
+        if (!hierarchy || hierarchy->parent == entt::null)
+        {
+            roots.push_back(entity);
+        }
+    }
+
+    std::deque<entt::entity> queue(roots.begin(), roots.end());
+    while (!queue.empty())
+    {
+        entt::entity current = queue.front();
+        queue.pop_front();
+
+        linearTransforms.push_back(current);
+
+        auto* hierarchy = registry.try_get<HierarchyComponent>(current);
+        if (hierarchy)
+        {
+            for (auto child : hierarchy->children)
+            {
+                if (registry.valid(child) && registry.all_of<WorldTransformComponent>(child))
+                {
+                    queue.push_back(child);
+                }
+            }
+        }
+    }
+
+    isLinearTransformsDirty = false;
 }

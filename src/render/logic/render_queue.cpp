@@ -54,6 +54,8 @@ void RenderQueue::Build(Scene& scene, float alpha,
                 if (distCullSq > 0.0f && distSqResult > distCullSq) continue;
 
                 Model* activeModel = renderer.model.get();
+                Shader* itemShader = renderer.shader.lock().get();
+
                 if (auto* lod = scene.registry.try_get<LODComponent>(entity)) {
                     for (int j = 0; j < (int)lod->lodDistancesSq.size(); ++j) {
                         if (distSqResult > lod->lodDistancesSq[j] && j < (int)lod->lodModels.size() && lod->lodModels[j]) {
@@ -73,12 +75,32 @@ void RenderQueue::Build(Scene& scene, float alpha,
                 }
 
                 bool isTransparent = false;
-                if (auto* mat = scene.registry.try_get<MaterialComponent>(entity)) {
-                    if (mat->desc.opacity < 1.0f) isTransparent = true;
+                auto* material = scene.registry.try_get<MaterialComponent>(entity);
+                if (material) {
+                    if (material->desc.opacity < 1.0f) isTransparent = true;
                 }
 
-                res.renderQueue.push_back({entity, activeModel, modelMatrix, worldAABB, layer, renderer.order, distSqResult, isTransparent});
-                if (renderer.castShadow) res.shadowQueue.push_back({entity, activeModel, modelMatrix, worldAABB, layer, renderer.order, distSqResult, isTransparent});
+                uint64_t key = 0;
+                if (!isTransparent) {
+                    // Opaque: Layer (8) | Order (8) | Shader (16) | Material (16) | Model (8) | Depth (8)
+                    uint64_t l = (uint64_t)(layer & 0xFF) << 56;
+                    uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
+                    uint64_t s = (uint64_t)(itemShader->getID() & 0xFFFF) << 32;
+                    uint64_t m = (uint64_t)((uintptr_t)material & 0xFFFF) << 16;
+                    uint64_t mod = (uint64_t)((uintptr_t)activeModel & 0xFF) << 8;
+                    uint64_t d = (uint64_t)(glm::clamp(distSqResult * 0.1f, 0.0f, 255.0f)) & 0xFF;
+                    key = l | o | s | m | mod | d;
+                } else {
+                    // Transparent: Layer (8) | Reversed Depth (56)
+                    uint64_t l = (uint64_t)(layer & 0xFF) << 56;
+                    float invDepth = 1000000.0f - distSqResult; 
+                    if (invDepth < 0) invDepth = 0;
+                    uint64_t d = (uint64_t)(invDepth) & 0x00FFFFFFFFFFFFFFULL;
+                    key = l | d;
+                }
+
+                res.renderQueue.push_back({entity, activeModel, itemShader, material, modelMatrix, worldAABB, layer, renderer.order, distSqResult, isTransparent, key});
+                if (renderer.castShadow) res.shadowQueue.push_back({entity, activeModel, itemShader, material, modelMatrix, worldAABB, layer, renderer.order, distSqResult, isTransparent, key});
             }
         }, &counter);
     }
@@ -93,30 +115,13 @@ void RenderQueue::Build(Scene& scene, float alpha,
         m_ShadowQueue.insert(m_ShadowQueue.end(), res.shadowQueue.begin(), res.shadowQueue.end());
     }
 
-    // Sort Opaque: Front-to-back (actually by layer, then shader/mat for batching)
-    std::sort(m_OpaqueQueue.begin(), m_OpaqueQueue.end(), [&scene](const RenderItem& lhs, const RenderItem& rhs) {
-        if (lhs.layer != rhs.layer) return lhs.layer < rhs.layer;
-        if (lhs.renderOrder != rhs.renderOrder) return lhs.renderOrder < rhs.renderOrder;
-
-        auto& lRenderer = scene.registry.get<MeshRendererComponent>(lhs.entity);
-        auto& rRenderer = scene.registry.get<MeshRendererComponent>(rhs.entity);
-
-        auto lShader = lRenderer.shader.lock();
-        auto rShader = rRenderer.shader.lock();
-        unsigned int lID = lShader ? lShader->getID() : 0;
-        unsigned int rID = rShader ? rShader->getID() : 0;
-        if (lID != rID) return lID < rID;
-        
-        auto lMat = scene.registry.try_get<MaterialComponent>(lhs.entity);
-        auto rMat = scene.registry.try_get<MaterialComponent>(rhs.entity);
-        if (lMat != rMat) return lMat < rMat;
-
-        return lhs.activeModel < rhs.activeModel;
+    // Sort Opaque: Using pre-computed sortKey
+    std::sort(m_OpaqueQueue.begin(), m_OpaqueQueue.end(), [](const RenderItem& lhs, const RenderItem& rhs) {
+        return lhs.sortKey < rhs.sortKey;
     });
 
-    // Sort Transparent: Back-to-front
+    // Sort Transparent: Using pre-computed sortKey
     std::sort(m_TransparentQueue.begin(), m_TransparentQueue.end(), [](const RenderItem& lhs, const RenderItem& rhs) {
-        if (lhs.layer != rhs.layer) return lhs.layer < rhs.layer;
-        return lhs.distSq > rhs.distSq;
+        return lhs.sortKey < rhs.sortKey;
     });
 }

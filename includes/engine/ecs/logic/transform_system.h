@@ -30,5 +30,4 @@ public:
 private:
     EngineContext m_Ctx;
     bool m_Enabled = true;
-    void UpdateWorldTransform(entt::entity entity, entt::registry& registry, const glm::mat4& parentTransform, bool parentDirty, int depth);
 };

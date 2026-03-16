@@ -151,7 +151,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Audio")
                 {
-                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Volume", "Pitch", "Pan", "Loop", "Is3D", "MinDistance", "MaxDistance"}, "Resource:Audio");
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Volume", "Pitch", "Pan", "Speed"}, "Resource:Audio");
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     
@@ -162,9 +162,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                             sound->SetDefaultVolume(std::stof(resNode.GetChildValue("Volume", "1.0")));
                             sound->SetDefaultPitch(std::stof(resNode.GetChildValue("Pitch", "1.0")));
                             sound->SetDefaultPan(std::stof(resNode.GetChildValue("Pan", "0.0")));
-                            sound->SetDefaultMinDistance(std::stof(resNode.GetChildValue("MinDistance", "1.0")));
-                            sound->SetDefaultMaxDistance(std::stof(resNode.GetChildValue("MaxDistance", "100.0")));
-                            sound->SetDefaultLoop(resNode.GetChildValue("Loop", "0") == "1" || resNode.GetChildValue("Loop", "true") == "true");
+                            sound->SetDefaultSpeed(std::stof(resNode.GetChildValue("Speed", "1.0")));
                         }
                     }
                     result.loadedSounds.push_back(name);

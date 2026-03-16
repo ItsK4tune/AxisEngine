@@ -16,14 +16,8 @@ public:
     void SetDefaultPan(float pan) override { LOGGER_WARN("IrrKlangAudioSource") << "Default Pan not supported by irrKlang"; }
     float GetDefaultPan() const override { return 0.0f; }
 
-    void SetDefaultMinDistance(float minDist) override { if(m_Source) m_Source->setDefaultMinDistance(minDist); }
-    float GetDefaultMinDistance() const override { return m_Source ? m_Source->getDefaultMinDistance() : 1.0f; }
-
-    void SetDefaultMaxDistance(float maxDist) override { if(m_Source) m_Source->setDefaultMaxDistance(maxDist); }
-    float GetDefaultMaxDistance() const override { return m_Source ? m_Source->getDefaultMaxDistance() : 100.0f; }
-
-    void SetDefaultLoop(bool loop) override { LOGGER_WARN("IrrKlangAudioSource") << "Default Loop not supported by irrKlang"; }
-    bool GetDefaultLoop() const override { return false; }
+    void SetDefaultSpeed(float speed) override { m_DefaultSpeed = speed; }
+    float GetDefaultSpeed() const override { return m_DefaultSpeed; }
 
     std::string GetName() const override { return m_Source ? m_Source->getName() : ""; }
 
@@ -31,6 +25,7 @@ public:
 
 private:
     irrklang::ISoundSource* m_Source = nullptr;
+    float m_DefaultSpeed = 1.0f;
 };
 
 class IrrKlangSound : public ISound

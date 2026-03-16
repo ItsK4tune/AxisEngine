@@ -16,14 +16,8 @@ public:
     virtual void SetDefaultPan(float pan) = 0;
     virtual float GetDefaultPan() const = 0;
 
-    virtual void SetDefaultMinDistance(float minDist) = 0;
-    virtual float GetDefaultMinDistance() const = 0;
-
-    virtual void SetDefaultMaxDistance(float maxDist) = 0;
-    virtual float GetDefaultMaxDistance() const = 0;
-
-    virtual void SetDefaultLoop(bool loop) = 0;
-    virtual bool GetDefaultLoop() const = 0;
+    virtual void SetDefaultSpeed(float speed) = 0;
+    virtual float GetDefaultSpeed() const = 0;
 
     virtual std::string GetName() const = 0;
 };
