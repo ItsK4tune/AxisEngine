@@ -51,7 +51,11 @@ bool InputLoader::LoadBindings(const std::string &filepath, InputManager &inputM
     inputManager.FlushBindings();
 
     static std::unordered_map<std::string, Key> keyMap = {
-        {"space", Key::Space}, {"w", Key::W}, {"a", Key::A}, {"s", Key::S}, {"d", Key::D}, {"e", Key::E}, {"escape", Key::Escape}, {"enter", Key::Enter}, {"leftshift", Key::LeftShift}, {"leftctrl", Key::LeftControl}, {"leftcontrol", Key::LeftControl}, {"up", Key::Up}, {"down", Key::Down}, {"left", Key::Left}, {"right", Key::Right}, {"i", Key::I}, {"o", Key::O}, {"p", Key::P}, {"z", Key::Z}, {"x", Key::X}, {"c", Key::C}, {"v", Key::V}, {"b", Key::B}, {"n", Key::N}, {"m", Key::M}};
+        {"space", Key::Space}, {"w", Key::W}, {"a", Key::A}, {"s", Key::S}, {"d", Key::D}, {"e", Key::E}, {"escape", Key::Escape}, {"enter", Key::Enter}, {"leftshift", Key::LeftShift}, {"leftctrl", Key::LeftControl}, {"leftcontrol", Key::LeftControl}, {"up", Key::Up}, {"down", Key::Down}, {"left", Key::Left}, {"right", Key::Right}, {"i", Key::I}, {"o", Key::O}, {"p", Key::P}, {"z", Key::Z}, {"x", Key::X}, {"c", Key::C}, {"v", Key::V}, {"b", Key::B}, {"n", Key::N}, {"m", Key::M},
+        {"0", Key::_0}, {"1", Key::_1}, {"2", Key::_2}, {"3", Key::_3}, {"4", Key::_4}, {"5", Key::_5}, {"6", Key::_6}, {"7", Key::_7}, {"8", Key::_8}, {"9", Key::_9},
+        {"f1", Key::F1}, {"f2", Key::F2}, {"f3", Key::F3}, {"f4", Key::F4}, {"f5", Key::F5}, {"f6", Key::F6}, {"f7", Key::F7}, {"f8", Key::F8}, {"f9", Key::F9}, {"f10", Key::F10}, {"f11", Key::F11}, {"f12", Key::F12},
+        {"minus", Key::Minus}, {"equal", Key::Equal}, {"equals", Key::Equal}, {"plus", Key::KpAdd}, {"comma", Key::Comma}, {"period", Key::Period}, {"slash", Key::Slash}, {"backslash", Key::Backslash}, {"semicolon", Key::Semicolon}
+    };
 
     static std::unordered_map<std::string, Mouse> mouseMap = {
         {"left", Mouse::Left},

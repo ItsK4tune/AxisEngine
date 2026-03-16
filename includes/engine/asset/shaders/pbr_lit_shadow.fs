@@ -86,6 +86,8 @@ struct Material {
 };
 uniform Material material;
 uniform vec4 tintColor;
+uniform vec2 uvScale = vec2(1.0);
+uniform vec2 uvOffset = vec2(0.0);
 uniform bool debug_noTexture;
 
 // Fog
@@ -110,6 +112,7 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, 
 
 void main()
 {
+    vec2 finalTexCoords = TexCoords * uvScale + uvOffset;
     vec3 albedo;
     float metallic;
     float roughness;
@@ -121,10 +124,10 @@ void main()
         roughness = 0.8;
         ao = 1.0;
     } else {
-        albedo = pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2)) * tintColor.rgb;
-        metallic = texture(texture_metallic1, TexCoords).r * material.metallic;
-        roughness = texture(texture_roughness1, TexCoords).r * material.roughness;
-        ao = texture(texture_ao1, TexCoords).r * material.ao;
+        albedo = pow(texture(texture_diffuse1, finalTexCoords).rgb, vec3(2.2)) * tintColor.rgb;
+        metallic = texture(texture_metallic1, finalTexCoords).r * material.metallic;
+        roughness = texture(texture_roughness1, finalTexCoords).r * material.roughness;
+        ao = texture(texture_ao1, finalTexCoords).r * material.ao;
     }
 
     vec3 N = normalize(Normal);
@@ -188,7 +191,7 @@ void main()
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
     vec3 ambient = (kD * diffuse + specular) * ao;
-    vec3 emissive = debug_noTexture ? vec3(0.0) : pow(texture(texture_emissive1, TexCoords).rgb, vec3(2.2)) * material.emission;
+    vec3 emissive = debug_noTexture ? vec3(0.0) : pow(texture(texture_emissive1, finalTexCoords).rgb, vec3(2.2)) * material.emission;
     vec3 finalColor = ambient + Lo + emissive;
 
     if (u_FogEnabled) {

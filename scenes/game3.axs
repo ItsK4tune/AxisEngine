@@ -22,7 +22,36 @@ axis_scene:
       vertex: resources/shaders/demo_port.vs
       fragment: resources/shaders/demo_port.fs
 
+    Audio:
+      Name: bgm
+      Path: resources/audios/bgm.mp3
+      Loop: true
+      Volume: 0.5
+    Audio:
+      Name: 2dSound
+      Path: resources/audios/2dsound.mp3
+    Audio:
+      Name: 3dSound
+      Path: resources/audios/3dsound.mp3
+      Is3D: true
+
   Entities:
+    BGM_Player:
+      Component: AudioSource
+        Audio: bgm
+        PlayOnAwake: true
+        Loop: true
+        Volume: 0.8
+        Pitch: 1.1
+
+    Particle_Demo:
+      Component: Transform
+        Position: 0.0 10.0 19.5
+      Component: ParticleEmitter
+        Texture: resources/textures/particle_star.png
+        MaxParticles: 500
+        Life: 2.0
+
     Woman_Ally:
       Tag: ally
       Component: Transform

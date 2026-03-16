@@ -10,6 +10,7 @@
 #include <scene/logic/component_loader.h>
 #include <scene/logic/scene_validator.h>
 #include <scene/logic/scene_serializer.h>
+#include <audio/logic/sound_player.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/yaml_parser.h>
@@ -148,13 +149,24 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                     res.LoadAnimation(name, path, model);
                     result.loadedAnimations.push_back(name);
                 }
-                else if (resNode.key == "Sound")
+                else if (resNode.key == "Audio")
                 {
-                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path"}, "Resource:Sound");
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Volume", "Pitch", "Pan", "Loop", "Is3D", "MinDistance", "MaxDistance"}, "Resource:Audio");
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
-                    if (ctx.IsValid())
-                        res.LoadSound(name, path, nullptr);
+                    
+                    if (ctx.IsValid()) {
+                        res.LoadSound(name, path, ctx.soundPlayer ? ctx.soundPlayer->GetEngine() : nullptr);
+                        auto sound = res.GetSound(name);
+                        if (sound) {
+                            sound->SetDefaultVolume(std::stof(resNode.GetChildValue("Volume", "1.0")));
+                            sound->SetDefaultPitch(std::stof(resNode.GetChildValue("Pitch", "1.0")));
+                            sound->SetDefaultPan(std::stof(resNode.GetChildValue("Pan", "0.0")));
+                            sound->SetDefaultMinDistance(std::stof(resNode.GetChildValue("MinDistance", "1.0")));
+                            sound->SetDefaultMaxDistance(std::stof(resNode.GetChildValue("MaxDistance", "100.0")));
+                            sound->SetDefaultLoop(resNode.GetChildValue("Loop", "0") == "1" || resNode.GetChildValue("Loop", "true") == "true");
+                        }
+                    }
                     result.loadedSounds.push_back(name);
                 }
             }

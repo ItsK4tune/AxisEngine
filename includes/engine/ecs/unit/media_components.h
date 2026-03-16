@@ -18,7 +18,9 @@
 struct AudioSourceComponent
 {
     std::shared_ptr<ISound> sound = nullptr;
+    std::shared_ptr<IAudioSource> source = nullptr;
     std::string filePath = "";
+    std::string resourceName = "";
     bool playOnStart = false;
     bool playOnAwake = false;
     bool shouldPlay = false;
@@ -26,6 +28,7 @@ struct AudioSourceComponent
     bool is3D = false;
     float volume = 1.0f;
     float pitch = 1.0f;
+    float pan = 0.0f;
     float minDistance = 1.0f;
     float maxDistance = 100.0f;
 };
@@ -60,6 +63,7 @@ struct AnimationComponent
     float speed = 1.0f;
     float startTime = 0.0f;
     float rate = 0.0f;
+    float blendFactor = 0.0f;
 
     std::shared_ptr<Animator> animator = nullptr;
     std::vector<glm::mat4> boneMatrices;

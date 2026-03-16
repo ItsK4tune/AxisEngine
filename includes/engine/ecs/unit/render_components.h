@@ -18,6 +18,7 @@ struct MeshRendererComponent
     std::weak_ptr<Shader> shader;
     int order = 0;
     bool castShadow = true;
+    bool receiveShadow = true;
     glm::vec4 color = glm::vec4(1.0f);
 };
 

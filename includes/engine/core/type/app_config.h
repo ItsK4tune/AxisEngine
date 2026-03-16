@@ -84,7 +84,7 @@ struct AppConfig
 
     // Audio
     AudioBackend audioBackend = AudioBackend::IrrKlang;
-    float masterVolume = 1.0f;
+    float masterVolume = 10.0f;
 
     // Low-level Culling & State
     bool cullFaceEnabled = true;

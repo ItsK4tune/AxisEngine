@@ -110,6 +110,112 @@ void GameState::OnUpdate(float dt)
         }
     }
 
+    // --- Demo Logic ---
+    static float globalVolume = 1.0f;
+    static std::shared_ptr<ISound> bgmSound = nullptr;
+
+    // Toggle BGM
+    if (input.GetActionDown("ToggleBGM")) {
+        auto view = GetScene().registry.view<InfoComponent, AudioSourceComponent>();
+        for (auto e : view) {
+            auto& info = view.get<InfoComponent>(e);
+            auto& audio = view.get<AudioSourceComponent>(e);
+            if (info.name == "BGM_Player") {
+                if (audio.sound) {
+                    audio.sound->Stop();
+                    audio.sound = nullptr;
+                    audio.playOnAwake = false;
+                } else {
+                    audio.shouldPlay = true;
+                }
+                break;
+            }
+        }
+    }
+
+    // Toggle 2D Sound
+    if (input.GetActionDown("Toggle2DSound")) {
+        m_Ctx.soundPlayer->GetEngine()->Play2D("resources/audios/2dsound.mp3", false);
+    }
+
+    // Volume Control
+    if (input.GetActionDown("VolumeUp")) {
+        globalVolume = std::min(1.0f, globalVolume + 0.1f);
+        m_Ctx.soundPlayer->GetEngine()->SetGlobalVolume(globalVolume);
+        LOGGER_INFO("GameState") << "Volume: " << globalVolume;
+    }
+    if (input.GetActionDown("VolumeDown")) {
+        globalVolume = std::max(0.0f, globalVolume - 0.1f);
+        m_Ctx.soundPlayer->GetEngine()->SetGlobalVolume(globalVolume);
+        LOGGER_INFO("GameState") << "Volume: " << globalVolume;
+    }
+
+    // Toggle Particle
+    if (input.GetActionDown("ToggleParticle")) {
+        auto view = GetScene().registry.view<InfoComponent, ParticleEmitterComponent>();
+        for (auto e : view) {
+            auto& info = view.get<InfoComponent>(e);
+            if (info.name == "Particle_Demo") {
+                auto& emitter = view.get<ParticleEmitterComponent>(e);
+                emitter.isActive = !emitter.isActive;
+                LOGGER_INFO("GameState") << "Particle Emitter: " << (emitter.isActive ? "ON" : "OFF");
+                break;
+            }
+        }
+    }
+
+    // Mouse Wheel Interactions
+    float wheelMove = GetMouse().GetScrollY();
+    if (std::abs(wheelMove) > 0.1f)
+    {
+        entt::entity camEntity = EntityManager::GetActiveCamera(GetScene());
+        if (camEntity != entt::null)
+        {
+            auto& camComp = EntityManager::GetComponent<CameraComponent>(GetScene(), camEntity);
+            glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(GetScene(), camEntity)) ? 
+                                EntityManager::GetComponent<PositionComponent>(GetScene(), camEntity).value : glm::vec3(0.0f);
+            
+            float mouseX = GetMouse().GetLastX();
+            float mouseY = GetMouse().GetLastY();
+            float screenW = (float)m_Ctx.io->GetMonitorManager().GetWidth();
+            float screenH = (float)m_Ctx.io->GetMonitorManager().GetHeight();
+            
+            float x = (2.0f * mouseX) / (screenW > 0 ? screenW : 1.0f) - 1.0f;
+            float y = 1.0f - (2.0f * mouseY) / (screenH > 0 ? screenH : 1.0f);
+            
+            glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+            glm::vec4 rayEye = glm::inverse(camComp.projectionMatrix) * rayClip;
+            rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+            glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
+            
+            RayHit hit = m_Ctx.physics->Raycast(camPos, rayDir, 1000.0f);
+            if (hit.hasHit)
+            {
+                if (wheelMove > 0) // WheelUp: 3D Sound
+                {
+                    m_Ctx.soundPlayer->Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);
+                    LOGGER_INFO("GameState") << "Play 3D Sound at " << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z;
+                }
+                else // WheelDown: Particle
+                {
+                    auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity);
+                    if (info && info->name == "WallTest")
+                    {
+                        auto view = GetScene().registry.view<InfoComponent, ParticleEmitterComponent, PositionComponent>();
+                        for (auto e : view) {
+                            auto& pInfo = view.get<InfoComponent>(e);
+                            if (pInfo.name == "Particle_Demo") {
+                                view.get<PositionComponent>(e).value = hit.hitPoint;
+                                view.get<ParticleEmitterComponent>(e).isActive = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // --- Shader Port Management ---
     auto demoView = GetScene().registry.view<InfoComponent, MaterialComponent>();
     for (auto entity : demoView)

@@ -43,6 +43,7 @@ public:
 
     void SetLinearFactor(const glm::vec3& factor) override;
     void SetAngularFactor(const glm::vec3& factor) override;
+    void SetDamping(float linearDamping, float angularDamping) override;
 
     btRigidBody* GetRaw() const { return m_Body; }
 

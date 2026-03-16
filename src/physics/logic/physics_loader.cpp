@@ -147,6 +147,16 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
 
             if (restitution > 0.0f) rb.body->SetRestitution(restitution);
 
+            if (!node.GetChildValue("Friction").empty()) {
+                rb.body->SetFriction(std::stof(node.GetChildValue("Friction")));
+            }
+
+            float linDamping = std::stof(node.GetChildValue("LinearDamping", "0.0"));
+            float angDamping = std::stof(node.GetChildValue("AngularDamping", "0.0"));
+            if (linDamping > 0.0f || angDamping > 0.0f) {
+                rb.body->SetDamping(linDamping, angDamping);
+            }
+
             if (!node.GetChildValue("Rotation").empty()) {
                 std::stringstream rotSS(node.GetChildValue("Rotation"));
                 float rx, ry, rz; rotSS >> rx >> ry >> rz;

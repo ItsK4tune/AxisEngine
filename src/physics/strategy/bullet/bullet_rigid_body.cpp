@@ -178,3 +178,9 @@ void BulletRigidBody::SetAngularFactor(const glm::vec3& factor)
     if (m_Body)
         m_Body->setAngularFactor(btVector3(factor.x, factor.y, factor.z));
 }
+
+void BulletRigidBody::SetDamping(float linearDamping, float angularDamping)
+{
+    if (m_Body)
+        m_Body->setDamping(linearDamping, angularDamping);
+}

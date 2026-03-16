@@ -57,5 +57,8 @@ void SoundCache::Remove(const std::string& name)
 void SoundCache::Clear()
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
+    for (auto& pair : m_Sounds)
+    {
+    }
     m_Sounds.clear();
 }

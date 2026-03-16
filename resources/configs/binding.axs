@@ -55,5 +55,15 @@ axis_input:
       Mouse: WheelDown
       Mouse: Button4
       Mouse: Button5
+    ToggleBGM:
+      Key: 1
+    Toggle2DSound:
+      Key: 2
+    VolumeUp:
+      Key: Equals
+    VolumeDown:
+      Key: Minus
+    ToggleParticle:
+      Key: 3
     MoveTo:
       Mouse: Left

@@ -25,7 +25,9 @@ public:
     void SetGlobalVolume(float volume) override;
 
     std::shared_ptr<ISound> Play2D(const std::string& filename, bool loop = false, bool startPaused = false) override;
+    std::shared_ptr<ISound> Play2D(IAudioSource* source, bool loop = false, bool startPaused = false) override;
     std::shared_ptr<ISound> Play3D(const std::string& filename, const glm::vec3& pos, bool loop = false, bool startPaused = false) override;
+    std::shared_ptr<ISound> Play3D(IAudioSource* source, const glm::vec3& pos, bool loop = false, bool startPaused = false) override;
 
     std::shared_ptr<IAudioSource> AddSoundSourceFromFile(const std::string& filename) override;
 

@@ -77,12 +77,13 @@ void ComponentLoader::InitializeDefaultLoaders()
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    LoaderUtils::ValidateKeys(node, {"Model", "Shader", "Order", "Color", "CastShadow"}, "Renderer");
+    LoaderUtils::ValidateKeys(node, {"Model", "Shader", "Order", "Color", "CastShadow", "ReceiveShadow"}, "Renderer");
 
     std::string modelName = node.GetChildValue("Model");
     std::string shaderName = node.GetChildValue("Shader");
     int order = std::stoi(node.GetChildValue("Order", "0"));
     bool castShadow = node.GetChildValue("CastShadow", "1") == "1" || node.GetChildValue("CastShadow", "true") == "true";
+    bool receiveShadow = node.GetChildValue("ReceiveShadow", "1") == "1" || node.GetChildValue("ReceiveShadow", "true") == "true";
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1 1"));
     float cr = 1, cg = 1, cb = 1, ca = 1;
@@ -108,6 +109,7 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
 
     r.order = order;
     r.castShadow = castShadow;
+    r.receiveShadow = receiveShadow;
     r.color = color;
 
     if (!r.model)
@@ -140,6 +142,7 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
     a.speed = std::stof(node.GetChildValue("Speed", "1.0"));
     a.startTime = std::stof(node.GetChildValue("StartTime", "0.0"));
     a.rate = std::stof(node.GetChildValue("Rate", "30.0"));
+    a.blendFactor = std::stof(node.GetChildValue("BlendFactor", "0.0"));
 
     if (a.speed < 0.0f)
         LOGGER_WARN("ComponentLoader") << "Animator Speed should not be negative: " << a.speed;
@@ -160,6 +163,7 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
             a.animator->SetSpeed(a.speed);
             a.animator->SetTime(a.startTime);
             a.animator->SetUpdateRate(a.rate);
+            a.animator->SetBlendFactor(a.blendFactor);
 
             if (scene.registry.all_of<MeshRendererComponent>(entity))
             {
@@ -243,7 +247,7 @@ void ComponentLoader::LoadLightDir(Scene &scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadLightPoint(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Radius", "Constant", "Linear", "Quadratic", }, "LightPoint");
+    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Radius", "Constant", "Linear", "Quadratic", "Ambient", "Diffuse", "Specular"}, "LightPoint");
 
     auto &l = scene.registry.emplace<PointLightComponent>(entity);
 
@@ -266,11 +270,15 @@ void ComponentLoader::LoadLightPoint(Scene &scene, entt::entity entity, const YA
     l.constant = std::stof(node.GetChildValue("Constant", "1.0"));
     l.linear = std::stof(node.GetChildValue("Linear", "0.09"));
     l.quadratic = std::stof(node.GetChildValue("Quadratic", "0.032"));
+
+    l.ambient = std::stof(node.GetChildValue("Ambient", "0.1"));
+    l.diffuse = std::stof(node.GetChildValue("Diffuse", "0.8"));
+    l.specular = std::stof(node.GetChildValue("Specular", "0.5"));
 }
 
 void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant", "Linear", "Quadratic"}, "LightSpot");
+    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant", "Linear", "Quadratic", "Ambient", "Diffuse", "Specular"}, "LightSpot");
 
     auto &l = scene.registry.emplace<SpotLightComponent>(entity);
 
@@ -302,6 +310,10 @@ void ComponentLoader::LoadLightSpot(Scene &scene, entt::entity entity, const YAM
     l.constant = std::stof(node.GetChildValue("Constant", "1.0"));
     l.linear = std::stof(node.GetChildValue("Linear", "0.09"));
     l.quadratic = std::stof(node.GetChildValue("Quadratic", "0.032"));
+
+    l.ambient = std::stof(node.GetChildValue("Ambient", "0.1"));
+    l.diffuse = std::stof(node.GetChildValue("Diffuse", "0.8"));
+    l.specular = std::stof(node.GetChildValue("Specular", "0.5"));
 }
 
 void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const YAMLNode &node)
@@ -523,27 +535,31 @@ void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNo
 
 void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res, EngineContext ctx)
 {
-    LoaderUtils::ValidateKeys(node, {"Path", "Volume", "Loop", "Is3D", "MinDistance", "PlayOnAwake"}, "AudioSource");
+    LoaderUtils::ValidateKeys(node, {"Audio", "Path", "Volume", "Pitch", "Pan", "Loop", "Is3D", "MinDistance", "MaxDistance", "PlayOnAwake"}, "AudioSource");
 
     AudioSourceComponent audio;
-    audio.filePath = node.GetChildValue("Path");
-    if (audio.filePath.empty()) {
-        LOGGER_WARN("ComponentLoader") << "AudioSource missing 'Path' property";
+    
+    std::string audioName = node.GetChildValue("Audio");
+    if (audioName.empty()) audioName = node.GetChildValue("Path");
+
+    if (audioName.empty()) {
+        LOGGER_WARN("ComponentLoader") << "AudioSource missing 'Audio' property";
     } else {
         IAudioEngine* engine = (ctx.IsValid() && ctx.soundPlayer) ? ctx.soundPlayer->GetEngine() : nullptr;
-        audio.sound = std::dynamic_pointer_cast<ISound>(res.GetSoundAuto(audio.filePath, engine));
+        audio.source = res.GetSoundAuto(audioName, engine);
+        audio.resourceName = audioName;
     }
 
     audio.volume = std::stof(node.GetChildValue("Volume", "1.0"));
-    if (audio.volume < 0.0f || audio.volume > 1.0f)
-        LOGGER_WARN("ComponentLoader") << "AudioSource Volume out of bounds (0-1): " << audio.volume;
-
+    audio.pitch = std::stof(node.GetChildValue("Pitch", "1.0"));
+    audio.pan = std::stof(node.GetChildValue("Pan", "0.0"));
+    
     audio.loop = node.GetChildValue("Loop", "0") == "1" || node.GetChildValue("Loop", "true") == "true";
     audio.is3D = node.GetChildValue("Is3D", "0") == "1" || node.GetChildValue("Is3D", "true") == "true";
 
     audio.minDistance = std::stof(node.GetChildValue("MinDistance", "1.0"));
-    if (audio.minDistance <= 0.0f)
-        LOGGER_WARN("ComponentLoader") << "AudioSource MinDistance must be > 0: " << audio.minDistance;
+    audio.maxDistance = std::stof(node.GetChildValue("MaxDistance", "100.0"));
+    
     audio.playOnAwake = node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
 
     scene.registry.emplace<AudioSourceComponent>(entity, audio);
@@ -551,7 +567,7 @@ void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const Y
 
 void ComponentLoader::LoadVideoPlayer(Scene &scene, entt::entity entity, const YAMLNode &node)
 {
-    LoaderUtils::ValidateKeys(node, {"Path", "Loop", "Speed", "PlayOnAwake"}, "VideoPlayer");
+    LoaderUtils::ValidateKeys(node, {"Path", "Loop", "Speed", "PlayOnAwake", "Volume", "MaxDecodes"}, "VideoPlayer");
 
     VideoPlayerComponent video;
     video.filePath = FileSystem::getPath(node.GetChildValue("Path"));
@@ -560,6 +576,10 @@ void ComponentLoader::LoadVideoPlayer(Scene &scene, entt::entity entity, const Y
     video.speed = std::stof(node.GetChildValue("Speed", "1.0"));
     if (video.speed < 0.0f)
         LOGGER_WARN("ComponentLoader") << "VideoPlayer Speed must be positive: " << video.speed;
+    
+    video.volume = std::stof(node.GetChildValue("Volume", "1.0"));
+    video.maxDecodes = std::stoi(node.GetChildValue("MaxDecodes", "1"));
+    
     video.playOnAwake = node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
 
     scene.registry.emplace<VideoPlayerComponent>(entity, video);
@@ -567,7 +587,7 @@ void ComponentLoader::LoadVideoPlayer(Scene &scene, entt::entity entity, const Y
 
 void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    LoaderUtils::ValidateKeys(node, {"Texture", "MaxParticles", "Life"}, "ParticleEmitter");
+    LoaderUtils::ValidateKeys(node, {"Texture", "MaxParticles", "Life", "SpawnRate", "StartColor", "EndColor", "StartSize", "EndSize", "MinVelocity", "MaxVelocity", "Shape"}, "ParticleEmitter");
 
     std::string texName = node.GetChildValue("Texture");
 
@@ -584,6 +604,34 @@ void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, con
     emitterComp.emitter.LifeTime = life;
     emitterComp.emitter.StartLife = life;
 
+    emitterComp.emitter.SpawnRate = std::stof(node.GetChildValue("SpawnRate", "10.0"));
+    emitterComp.emitter.StartSize = std::stof(node.GetChildValue("StartSize", "1.0"));
+    emitterComp.emitter.EndSize = std::stof(node.GetChildValue("EndSize", "0.0"));
+
+    auto parseVec3 = [](const std::string &val, const glm::vec3 &def) {
+        std::stringstream ss(val);
+        glm::vec3 r = def;
+        ss >> r.x >> r.y >> r.z;
+        return r;
+    };
+
+    auto parseVec4 = [](const std::string &val, const glm::vec4 &def) {
+        std::stringstream ss(val);
+        glm::vec4 r = def;
+        ss >> r.x >> r.y >> r.z >> r.w;
+        return r;
+    };
+
+    emitterComp.emitter.StartColor = parseVec4(node.GetChildValue("StartColor", "1 1 1 1"), glm::vec4(1.0f));
+    emitterComp.emitter.EndColor = parseVec4(node.GetChildValue("EndColor", "1 1 1 0"), glm::vec4(1, 1, 1, 0));
+    emitterComp.emitter.MinVelocity = parseVec3(node.GetChildValue("MinVelocity", "-0.1 1 -0.1"), glm::vec3(-0.1f, 1.0f, -0.1f));
+    emitterComp.emitter.MaxVelocity = parseVec3(node.GetChildValue("MaxVelocity", "0.1 4 0.1"), glm::vec3(0.1f, 4.0f, 0.1f));
+
+    std::string shapeStr = node.GetChildValue("Shape", "DIRECTIONAL");
+    if (shapeStr == "CONE") emitterComp.emitter.Shape = ParticleEmitter::EmissionShape::CONE;
+    else if (shapeStr == "FIGURE_EIGHT") emitterComp.emitter.Shape = ParticleEmitter::EmissionShape::FIGURE_EIGHT;
+    else emitterComp.emitter.Shape = ParticleEmitter::EmissionShape::DIRECTIONAL;
+
     auto tex = res.GetTextureAuto(texName);
     emitterComp.emitter.Texture = tex;
 
@@ -595,13 +643,22 @@ void ComponentLoader::LoadParticleEmitter(Scene &scene, entt::entity entity, con
 
 void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    LoaderUtils::ValidateKeys(node, {"Type", "Roughness", "Metallic", "AO", "Shininess", "Specular", "Emission", "Ambient", "Opacity", "AlphaCutoff", "BlendSrc", "BlendDst", "Albedo", "Diffuse", "Normal", "MetallicMap", "RoughnessMap", "AOMap", "EmissiveMap"}, "Material");
+    LoaderUtils::ValidateKeys(node, {"Type", "Roughness", "Metallic", "AO", "Shininess", "Specular", "Emission", "Ambient", "Opacity", "AlphaCutoff", "BlendSrc", "BlendDst", "Albedo", "Diffuse", "Normal", "MetallicMap", "RoughnessMap", "AOMap", "EmissiveMap", "UVScale", "UVOffset"}, "Material");
 
     MaterialComponent mat;
     std::string typeStr = node.GetChildValue("Type", "PHONG");
 
     mat.desc.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
     mat.desc.alphaCutoff = std::stof(node.GetChildValue("AlphaCutoff", "0.5"));
+
+    if (!node.GetChildValue("UVScale").empty()) {
+        std::stringstream ss(node.GetChildValue("UVScale"));
+        ss >> mat.desc.uvScale.x >> mat.desc.uvScale.y;
+    }
+    if (!node.GetChildValue("UVOffset").empty()) {
+        std::stringstream ss(node.GetChildValue("UVOffset"));
+        ss >> mat.desc.uvOffset.x >> mat.desc.uvOffset.y;
+    }
 
     auto parseBlend = [](const std::string &str, BlendFactor defaultFactor) -> BlendFactor
     {

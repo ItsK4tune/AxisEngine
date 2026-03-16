@@ -28,6 +28,9 @@ struct PointLightComponent
     float constant = 1.0f;
     float linear = 0.09f;
     float quadratic = 0.032f;
+    float ambient = 0.1f;
+    float diffuse = 0.8f;
+    float specular = 0.5f;
     bool active = true;
     bool isCastShadow = false;
 };
@@ -42,6 +45,9 @@ struct SpotLightComponent
     float constant = 1.0f;
     float linear = 0.09f;
     float quadratic = 0.032f;
+    float ambient = 0.1f;
+    float diffuse = 0.8f;
+    float specular = 0.5f;
     float cutOff = glm::cos(glm::radians(12.5f));
     float outerCutOff = glm::cos(glm::radians(15.0f));
     bool active = true;

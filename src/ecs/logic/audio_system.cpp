@@ -3,6 +3,7 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/manager/entity_manager.h>
+#include <core/logic/engine_core.h>
 
 void AudioSystem::Update(Scene &scene, float dt)
 {
@@ -42,41 +43,69 @@ void AudioSystem::Update(Scene &scene, float dt)
             if (audio.sound)
             {
                 audio.sound->Stop();
-
                 audio.sound = nullptr;
             }
 
-            if (audio.is3D)
+            // Sync global volume once per frame if needed, or just ensure it's set
+            m_Ctx.soundPlayer->GetEngine()->SetGlobalVolume(m_Ctx.runtime->GetConfig().masterVolume);
+
+            if (audio.source)
             {
-                PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
-                glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
-
-                auto source = m_Ctx.soundPlayer->GetEngine()->AddSoundSourceFromFile(audio.filePath);
-
-                if (source)
+                if (audio.is3D)
                 {
-                    source->SetDefaultMinDistance(audio.minDistance);
-
-                    audio.sound = m_Ctx.soundPlayer->Play3D(audio.filePath, pos, audio.loop);
+                    PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+                    glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
+                    audio.sound = m_Ctx.soundPlayer->GetEngine()->Play3D(audio.source.get(), pos, audio.loop);
+                }
+                else
+                {
+                    audio.sound = m_Ctx.soundPlayer->GetEngine()->Play2D(audio.source.get(), audio.loop);
                 }
             }
-            else
+            else if (!audio.filePath.empty())
             {
-                audio.sound = m_Ctx.soundPlayer->GetEngine()->Play2D(audio.filePath, audio.loop, false );
+                // Fallback for dynamically added sources without resource name
+                if (audio.is3D)
+                {
+                    PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+                    glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
+                    audio.sound = m_Ctx.soundPlayer->GetEngine()->Play3D(audio.filePath, pos, audio.loop);
+                }
+                else
+                {
+                    audio.sound = m_Ctx.soundPlayer->GetEngine()->Play2D(audio.filePath, audio.loop);
+                }
             }
 
             if (audio.sound)
             {
+                // Set instance-specific parameters that might differ from resource defaults
                 audio.sound->SetVolume(audio.volume);
+                audio.sound->SetPitch(audio.pitch);
+                audio.sound->SetPan(audio.pan);
+                if (audio.is3D) {
+                    audio.sound->SetMinDistance(audio.minDistance);
+                    audio.sound->SetMaxDistance(audio.maxDistance);
+                }
             }
         }
 
-        if (audio.is3D && audio.sound && !audio.sound->IsFinished())
+        if (audio.sound && !audio.sound->IsFinished())
         {
-            PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
-            if (posComp)
+            // Sync dynamic updates
+            audio.sound->SetVolume(audio.volume);
+            audio.sound->SetPitch(audio.pitch);
+            audio.sound->SetPan(audio.pan);
+
+            if (audio.is3D)
             {
-                audio.sound->SetPosition(posComp->value);
+                PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+                if (posComp)
+                {
+                    audio.sound->SetPosition(posComp->value);
+                }
+                audio.sound->SetMinDistance(audio.minDistance);
+                audio.sound->SetMaxDistance(audio.maxDistance);
             }
         }
 

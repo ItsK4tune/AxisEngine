@@ -41,4 +41,5 @@ public:
 
     virtual void SetLinearFactor(const glm::vec3& factor) = 0;
     virtual void SetAngularFactor(const glm::vec3& factor) = 0;
+    virtual void SetDamping(float linearDamping, float angularDamping) = 0;
 };
