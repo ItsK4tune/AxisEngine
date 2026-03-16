@@ -333,14 +333,27 @@ Then call in `main.cpp` BEFORE `app.Init()`:
 
 void RegisterGameScripts();  // Forward declaration
 
+#include <engine/core/Application.h>
+#include "states/game_state.h"
+
+void RegisterGameScripts();  // Forward declaration
+
 int main() {
     RegisterGameScripts();  // Register scripts before init
     
-    Application app;
-    if (app.Init()) {
-        app.PushState<GameState>();
-        app.Run();
+    auto app = std::make_shared<Application>();
+
+    AppConfig config;
+    config.title = "Axis Engine - Game";
+    config.width = 1280;
+    config.height = 720;
+    config.logLevel = LogLevel::Verbose;
+
+    if (app->Initialize(config)) {
+        app->PushState<GameState>();
+        app->Run();
     }
+    
     return 0;
 }
 ```

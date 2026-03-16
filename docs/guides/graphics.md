@@ -156,6 +156,15 @@ void main() {
 
 ---
 
+## 10. Decal System
+The engine supports a hybrid deferred/forward decal system for detailing surfaces.
+
+- **Render Order**: Decals are sorted by `renderOrder` before drawing to ensure correct overlapping behavior.
+- **Lifetime Management**: Decals can have a finite `lifetime`, after which they are automatically destroyed in order of their creation.
+- **Tag Filtering**: (Deferred only) Decals can be masked to only affect surfaces with matching entity tags.
+
+---
+
 ## See Also
 - [Scene Format (.axs)](scene_format.md)
 - [Architecture Overview](../core/architecture.md)

@@ -7,18 +7,26 @@ AXIS Engine provides a responsive 2D overlay system for menus, HUDs, and interac
 ## 1. UI Components
 
 ### UITransformComponent
-Defines the bounding box and layout of a UI element.
-- **Position & Size**: Can be defined in raw pixels or percentages of the window dimensions.
-- **Anchor**: Normalized point (0.0 to 1.0) for positioning. `(0.5, 0.5)` anchors the element to its center.
-- **ZOrder**: Determines the rendering stack; higher values appear on top of lower ones.
+Defines the bounding box and layout of a UI element using a resolution-independent anchoring system.
+- **Anchors (`anchorMin`, `anchorMax`)**: Normalized points (0.0 to 1.0) in the parent's space that define the element's origin and stretching behavior.
+- **Offsets (`offsetMin`, `offsetMax`)**: Pixel offsets from the calculated anchor points.
+- **Pivot**: The point (0.0 to 1.0) within the element about which it rotates and scales.
+- **ZOrder**: Determines the rendering stack; higher values appear on top.
 
 ### UIRendererComponent
-Draws a colored quad or textured image to the screen.
+Draws a colored quad or textured image.
 - Supports tinting and custom UI shaders.
 
 ### UITextComponent
-Renders dynamic text using pre-loaded FreeType fonts.
-- **Properties**: `Text`, `Font`, `Color`, `Scale`.
+Renders dynamic text using pre-loaded fonts.
+- **Alignment**: `Left`, `Center`, `Right`.
+- **Word Wrap**: Enable `wordWrap` and set `maxWidth` to constrain text within a specific pixel width.
+
+### UIFlexLayoutComponent
+Provides automated horizontal or vertical arrangement of child elements.
+- **Direction**: `Row` or `Column`.
+- **Spacing**: Pixel gap between elements.
+- **Padding**: Internal spacing (`Left`, `Top`, `Right`, `Bottom`).
 
 ---
 

@@ -9,8 +9,8 @@ The AXIS Engine is configured via the `Config` block located at the top of your 
 ```yaml
 axis_scene:
   Config:
-    WINDOW_WIDTH: 1280
-    WINDOW_HEIGHT: 720
+    WINDOW_WIDTH: 1920
+    WINDOW_HEIGHT: 1080
     WINDOW_MODE: BORDERLESS_FULLSCREEN
     WINDOW_MONITOR: 0
     WINDOW_REFRESH_RATE: 60
@@ -36,50 +36,99 @@ axis_scene:
     PHYSICS_MODE: 1
 ```
 
-### Parameters
+### Comprehensive Configuration Guide
 
-- **Window Settings**
-    - `WINDOW_WIDTH`, `WINDOW_HEIGHT`: Initial resolution of the window.
-    - `WINDOW_MODE`: Window display mode (`WINDOWED`, `FULLSCREEN`, `BORDERLESS`, or `BORDERLESS_FULLSCREEN`).
-    - `WINDOW_MONITOR`: Index of the monitor to display on (0 = Primary, 1 = Secondary, etc.).
-    - `WINDOW_REFRESH_RATE`: Target refresh rate (Hz) for Fullscreen mode (0 = Desktop rate).
-    - `VSYNC`: Enable Vertical Sync (`1` or `0`).
-    - `FPS`: Maximum frames per second (0 = Unlimited).
+AXIS Engine uses a highly flexible configuration system to tune the **Hybrid Modular** architecture. Settings can be defined in global config files or overridden per-scene in the `.axs` format.
 
-- **Graphics Settings**
-    - `SHADOWS`: Shadow rendering mode (default: `1`).
-        - `0`: No shadows
-        - `1`: Single directional shadow
-        - `2`: Multiple directional shadows
-    - `CULL_FACE`: Enable/Disable back-face culling (`1 BACK`, `1 FRONT`, or `0`).
-    - `FRUSTUM`: Enable/Disable camera frustum culling (`1` or `0`).
-    - `OCCLUSION_CULLING`: Enable/Disable hardware occlusion culling (`1` or `0`). Requires `Occlusion` component on entities to be tested.
-    - `DISTANCE`: Maximum render distance from camera in world units (default: `0.0` = unlimited). Objects beyond this distance will not be rendered.
-    - `DEPTH_TEST`: Enable/Disable depth testing (`1 LESS`, `1 LEQUAL`, etc.).
-    - `RENDER_ORDER`: Enable/Disable explicit render order (`1` or `0`). 
-        - > [!IMPORTANT]
-        - > When `RENDER_ORDER` is enabled, the engine uses **Bucket Rendering**. It clears the depth buffer between different `Order` values, ensuring higher-order objects are always on top while maintaining 3D depth correctness within each layer.
-    - `FILTER_LAYER`: Bitmask for layer filtering (default: `-1` or `0xFFFFFFFF` = show all). 
-        - Example: `1` to show only Layer 1, `3` to show Layers 1 and 2.
-    - `INSTANCING`: Enable/Disable instance batching for static meshes (`1` or `0`). Batching reduces draw calls but disabling can help with debugging transform issues.
-    - `SHADOW_SIZE`: Size of the orthogonal projection for directional light shadows (default: `100.0`).
-    - `SHADOW_FRUSTUM`: Enable/Disable culling of objects outside the light's view frustum (default: `1`).
-    - `SHADOW_DISTANCE`: Maximum distance (from main camera) at which objects cast shadows (default: `100.0`). Objects further than this will not cast shadows.
-    - `ANTIALIASING`: Anti-Aliasing mode (default: `TAA`). Options: `NONE`, `FXAA`, `TAA`.
+---
 
-- **Physics Settings**
-    - `PHYSICS_MODE`: Physics simulation mode (default: `1`).
-        - `0`: FAST (30Hz, 2 iters)
-        - `1`: BALANCED (60Hz, 10 iters)
-        - `2`: ACCURATE (120Hz, 40 iters)
+## ⚙️ 1. Engine & System Global
 
-- **Backend Settings**
-    - `GRAPHICS_API`: Graphics backend to use (`OPENGL`, `VULKAN`, `DIRECTX`).
-    - `PHYSICS_ENGINE`: Physics engine to use (`BULLET`, `PHYSX`).
-    - `AUDIO_ENGINE`: Audio engine to use (`IRRKLANG`).
+Settings that control the fundamental behavior of the engine and hardware resource allocation.
 
-- **Audio Settings**
-    - `AUDIO_ENGINE`: Audio engine to use (`IRRKLANG`).
+- **`LOG_LEVEL`**: Console verbosity control.
+    - Values: `NONE`, `MINIMAL`, `VERBOSE`, `DEBUG`.
+- **`JOB_THREADS`**: Worker pool size for multithreaded systems.
+    - `-1`: Auto-detect hardware concurrency.
+- **`TIME_SCALE`**: Global simulation multiplier (0.5 = Slow motion, 2.0 = Fast forward).
+- **`ASYNC_RESOURCES`**: Enables background asset loading (`1` or `0`).
+
+---
+
+## 🖼️ 2. Graphics & Post-Processing (Modular)
+
+These settings apply to the `IGraphicsContext` and subsequent rendering providers (OpenGL/Vulkan).
+
+### Display & Resolution
+- **`WINDOW_MODE`**: Display strategy.
+    - `WINDOWED`, `FULLSCREEN`, `BORDERLESS`, `BORDERLESS_FULLSCREEN`.
+- **`RENDER_SCALE`**: Internal resolution multiplier (e.g., `0.5` for performance, `2.0` for supersampling).
+- **`VSYNC`**: Frame synchronization (`1` or `0`).
+- **`FPS`**: Frame rate limiter (`0` for unlimited).
+
+### Quality & AA
+- **`ANTIALIASING`**: Algorithm selection (`NONE`, `FXAA`, `TAA`).
+- **`MSAA`**: Multisample samples (`2`, `4`, `8`, `16`).
+- **`ANISOTROPY`**: Texture filtering quality (up to `16.0`).
+
+### PBR & Screen Space Effects
+- **`HDR_ENABLED`**: Enables high dynamic range rendering buffers.
+- **`TONEMAPPING`**: Algorithm selection (`ACES`, `REINHARD`, `NONE`).
+- **`BLOOM_ENABLED`**: Toggle glow effects.
+    - Sub-params: `BLOOM_INTENSITY`, `BLOOM_THRESHOLD`, `BLOOM_RADIUS`.
+- **`GAMMA`**: Color correction (Default: `2.2`).
+- **`EXPOSURE`**: Virtual camera exposure level.
+- **`SKYBOX_INTENSITY`**: Ambient light contribution from environment maps.
+
+---
+
+## 🌑 3. Advanced Shadow Mapping
+
+Configures the `IShadowManager` which handles depth projection and filtering.
+
+- **`SHADOW_RESOLUTION`**: Accuracy of shadow maps (e.g., `1024`, `2048`, `4096`).
+- **`SHADOW_SOFTNESS`**: PCF filter radius.
+    - `0` (Hard), `1` (3x3), `2` (5x5).
+- **`SHADOW_BIAS`**: Depth offset to prevent "Shadow Acne" artifacts.
+- **`SHADOW_SIZE`**: Orthographic projection width for directional lights.
+- **`SHADOW_FRUSTUM`**: Enables light-space view culling.
+- **`SHADOW_DISTANCE`**: Max radius for shadow casting.
+
+---
+
+## 🧊 4. Physics Simulation (Modular)
+
+Configuration for the `IPhysicsWorld` abstraction, applicable to Bullet or PhysX backends.
+
+- **`GRAVITY`**: Vector force `X Y Z` (e.g., `0 -9.81 0`).
+- **`PHYSICS_MODE`**: Simulation precision presets.
+    - `FAST`: 30Hz simulation, minimal iterations.
+    - `BALANCED`: 60Hz simulation (Default).
+    - `ACCURATE`: 120Hz simulation, high collision iterations.
+- **`CCD_ENABLED`**: Continuous Collision Detection for high-speed entities.
+- **`SOLVER_ITERATIONS`**: Internal precision of the constraint solver (e.g., `10`).
+- **`MAX_SUBSTEPS`**: Max delta-time catch-up steps.
+
+---
+
+## 🔊 5. Audio & Input
+
+- **`VOLUME`**: Global master volume (0.0 to 1.0).
+- **`MOUSE_SENSITIVITY`**: Global X/Y look speed.
+- **`MOUSE_INVERT_Y`**: Toggle vertical mouse axis inversion.
+
+---
+
+## 🔌 6. Backend Selection
+
+Directly selects the module implementation for each interface.
+
+| Key | Description | Supported Modules |
+|:---|:---|:---|
+| `GRAPHICS_API` | Core rendering implementation | `OPENGL`, `VULKAN`, `DIRECTX` |
+| `PHYSICS_ENGINE` | Simulation implementation | `BULLET`, `PHYSX` |
+| `AUDIO_ENGINE` | Sound processing implementation | `IRRKLANG`, `FMOD`, `OPENAL` |
+| `RENDER_PATH` | Geometry processing strategy | `FORWARD`, `DEFERRED` |
 
 ## 2. CMake Build System
 

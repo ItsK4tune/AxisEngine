@@ -56,6 +56,23 @@ The Job System provides a pool of worker threads for parallelizing heavy tasks.
 
 ---
 
+## 4. Scene Management
+The engine supports a stacked multi-scene architecture.
+
+- **Scene Overlays**: Multiple `.axs` files can be loaded simultaneously (e.g., a game world scene with a UI overlay scene).
+- **Active Camera**: The engine automatically picks the camera from the primary scene but allows overlay scenes to render their own 2D/3D elements on top.
+
+---
+
+## 5. Window & Video Modes
+The engine supports various display modes configured via the `WINDOW_MODE` flag:
+
+- **BORDERLESS_FULLSCREEN**: Renders the engine at full desktop resolution without borders, allowing for seamless Alt-Tab behavior.
+- **FULLSCREEN**: Exclusive fullscreen for maximum performance.
+- **WINDOWED**: Standard windowed mode with title bar.
+
+---
+
 ## See Also
 - [Graphics Guide](../guides/graphics.md)
 - [UI Guide](../guides/ui.md)

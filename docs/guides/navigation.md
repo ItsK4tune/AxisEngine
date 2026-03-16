@@ -39,7 +39,23 @@ The `NavigationSystem` automatically manages entities with a `PathFollowerCompon
 
 ---
 
-## 4. Scripting API
+## 4. Pathfinding Logic
+The system supports multiple criteria to suit different gameplay needs:
+
+- **Shortest**: Standard Euclidean distance (Fastest).
+- **Smoothest**: Minimizes altitude (slope) changes for more natural movement.
+- **StayOnRoad**: Prefers nodes with specific tags (e.g., `road`, `walkable`).
+- **Custom**: Evaluates path cost via a user-defined C++ callback.
+
+### PathfindingOptions
+Configure behavior via the `PathfindingOptions` struct:
+- `preferredTags`: List of tags that reduce movement cost.
+- `tagWeightBonus`: Multiplier to prioritize preferred areas.
+- `altitudePenaltyWeight`: Scaling for slope-based cost (Smoothest mode).
+
+---
+
+## 5. Scripting API
 ```cpp
 auto& follower = GetComponent<PathFollowerComponent>();
 

@@ -29,17 +29,20 @@ Global engine settings are defined directly in the `.axs` file under the `Config
 ```yaml
 axis_scene:
   Config:
-    WINDOW_WIDTH: 1280
-    WINDOW_HEIGHT: 720
+    WINDOW_WIDTH: 1920
+    WINDOW_HEIGHT: 1080
+    WINDOW_MODE: BORDERLESS_FULLSCREEN
     VSYNC: 1
     ANTIALIASING: TAA
-    GRAPHICS_API: OPENGL
-    PHYSICS_ENGINE: BULLET
-    AUDIO_ENGINE: IRRKLANG
-    CULL_FACE: 1 BACK
-    DEPTH_TEST: 1 LESS
-    RENDER_ORDER: 1
-    FILTER_LAYER: 1
+    MSAA: 4
+    HDR_ENABLED: 1
+    BLOOM_ENABLED: 1
+    TONEMAPPING: ACES
+    SHADOW_RESOLUTION: 2048
+    JOB_THREADS: -1
+    LOG_LEVEL: VERBOSE
+    RENDER_PATH: DEFERRED
+    PHYSICS_MODE: BALANCED
 ```
 
 ---
@@ -91,17 +94,20 @@ axis_scene:
         Restitution: 0.2
 ```
 
-> For a detailed list of all components and their exact YAML properties, refer to the domain-specific guides:
-> - **[Graphics & Rendering](../guides/graphics.md)** (Mesh, Material, Lights, LOD)
-> - **[Physics Simulation](../guides/physics.md)** (RigidBody, CharacterController)
-> - **[Navigation & AI](../guides/navigation.md)** (NavMesh, PathFollower)
-> - **[Audio & Sound](../guides/audio.md)** (AudioSource)
-> - **[User Interface (UI)](../guides/ui.md)** (UITransform, UIRenderer, UIText)
-> - **[Assets & Resources](../guides/assets.md)** (Animations, Videos, Particles)
+> For a detailed list of all components and their exact YAML properties, refer to the:
+> ### 📘 **[Components Reference Guide](components_reference.md)**
 
 ---
 
-## 5. Component Reference Summary
+## 5. Scene Best Practices
+
+1.  **Unique Names**: Entity names should be unique within their scene context to avoid lookup ambiguity.
+2.  **Modular Configs**: Use the `Config:` block to set backend-specific modes (e.g., `RENDER_PATH: DEFERRED`) to optimize per-scene complexity.
+3.  **Layer Filtering**: Use `Layer` bitmasks to isolate entities for specific camera views or physics queries.
+
+---
+
+## 6. Component Reference Summary
 
 The `.axs` format assigns default values if a property is missing. Keys are case-sensitive. Specifying an unknown key will trigger a console warning.
 

@@ -1,41 +1,42 @@
-# Engine Architecture & Technology
+# Hybrid Modular Architecture
 
-AXIS Engine is a high-performance 3D engine built on **data-oriented design** principles. It separates **data** (Components) from **behavior** (Systems), ensuring modularity, extensibility, and cache-friendly performance.
-
----
-
-## 1. Core Technologies
-
-AXIS Engine utilizes modern, industry-standard libraries abstracted via clean interfaces:
-
-- **Language:** C++17
-- **Graphics:** OpenGL 4.5+ (Abstracted via `IGraphicsContext`)
-- **Math:** GLM (Vectors, Matrices, Quaternions)
-- **ECS:** [EnTT](https://github.com/skypjack/entt) (Data-oriented entity management)
-- **Physics:** Bullet Physics (Abstracted via `IPhysicsWorld`)
-- **Audio:** IrrKlang (3D spatial audio)
-- **Asset Loading:** Assimp (Models), stb_image (Textures), FreeType (Fonts)
-- **Video:** FFmpeg (Asynchronous MP4 decoding)
+AXIS Engine is built on a **Modular Abstraction Layer** that decouples high-level gameplay logic from low-level hardware implementations. This "Hybrid" design allows the engine to remain backend-agnostic while maintaining maximum performance via data-oriented execution.
 
 ---
 
-## 2. High-Level Architecture
+## 🏗️ 1. Design Philosophy
 
-The engine is structured into five distinct layers:
+The engine architecture follows a **Pillar-Bridge-Provider** pattern:
+1.  **Pillar (Interfaces)**: Precise C++ interfaces (e.g., `IRenderSystem`, `IPhysicsWorld`) defined in the `engine::interface` namespace. These define *what* a system must do without dictating *how*.
+2.  **Bridge (Core systems)**: The ECS orchestration layer (`entt`) that moves data between systems and handles lifecycle management.
+3.  **Provider (Backends)**: Concrete implementations for specific APIs (e.g., `OpenGLRenderSystem`, `BulletPhysicsWorld`). These are swappable at setup or even runtime via configuration.
+
+---
+
+## 📐 2. Structural Layers
+
+The engine is organized into four hierarchical layers of abstraction:
 
 ```mermaid
 graph TD
-    App[Application & States] --> SM[Scene Management]
-    SM --> ECS[ECS Registry]
-    ECS --> Systems[Systems Layer]
-    Systems --> Managers[Managers & Backends]
+    A[<b>Application Layer</b><br/>States, Main Loop, UI Orchestration] --> B
+    B[<b>Logic Layer</b><br/>ECS Systems, Scripting API, Navigation] --> C
+    C[<b>Core Layer</b><br/>Resource Caching, Job System, Event Dispatch] --> D
+    D[<b>Abstraction Layer</b><br/>Graphics/Physics/Audio Interfaces] --> E
+    E[<b>Module Layer</b><br/>OpenGL, Vulkan, Bullet, PhysX, IrrKlang]
 ```
 
-1.  **Application Layer**: Manages the main loop and **State Machine** (Menu, Gameplay, Pause).
-2.  **Scene Layer**: Handles loading `.axs` files and managing the entity hierarchy.
-3.  **Systems Layer**: Contains the core logic (Render, Physics, Scripts, AI).
-4.  **Managers Layer**: Provides services like `ResourceManager`, `SoundManager`, and `InputManager`.
-5.  **Interface Layer**: Abstract backends for Graphics, Physics, and Audio.
+### Abstraction Mechanics
+Backends are managed via **Service Locators** and **Context Wrappers**. For instance, the `RenderSystem` does not call OpenGL commands directly; it issues commands to an `IGraphicsContext` which is fulfilled by either an OpenGL or Vulkan provider.
+
+---
+
+## ⚙️ 3. Execution & Memory Model
+- **Data-Oriented ECS**: Components are stored in contiguous memory blocks. Systems process entities in "views", ensuring high CPU cache hit rates and SIMD-friendly loops.
+- **Dual-Timestep Pipeline**: 
+    - **Fixed Time (60Hz)**: Deterministic steps for Physics and core state reconciliation.
+    - **Variable Time**: Frame-rate independent updates for Animation, Particles, and UI.
+- **Job-Based Concurrency**: A lock-free task queue distributes work (Asset decoding, Frustum Culling, Particle updates) across all CPU cores.
 
 ---
 
