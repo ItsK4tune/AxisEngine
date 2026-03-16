@@ -6,6 +6,8 @@
 #include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <core/logic/logger.h>
 #include <physics/interface/i_collision_shape.h>
+#include <physics/strategy/bullet/bullet_glm_helpers.h>
+#include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
 
 // Custom callback to ignore a specific entity
 struct IgnoreEntityRayCallback : public btCollisionWorld::ClosestRayResultCallback {
@@ -234,6 +236,22 @@ void BulletPhysicsWorld::DrawLine(const glm::vec3& from, const glm::vec3& to, co
     }
 }
 
+void BulletPhysicsWorld::SyncRigidBody(IRigidBody* body, const glm::vec3& pos, const glm::quat& rot)
+{
+    if (!body) return;
+    BulletRigidBody* bBody = static_cast<BulletRigidBody*>(body);
+    btRigidBody* rawBody = bBody->GetRaw();
+    if (rawBody)
+    {
+        btTransform trans;
+        trans.setIdentity();
+        trans.setOrigin(BulletGLMHelpers::convert(pos));
+        trans.setRotation(BulletGLMHelpers::convert(rot));
+        rawBody->setWorldTransform(trans);
+        rawBody->getMotionState()->setWorldTransform(trans);
+    }
+}
+
 void BulletPhysicsWorld::SetCollisionFilter(CollisionFilterCallback callback)
 {
     if (m_Dispatcher)
@@ -434,4 +452,71 @@ std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateHingeConstraint(std::shar
         btVector3(axisInB.x, axisInB.y, axisInB.z)
     );
     return std::make_shared<BulletConstraint>(hinge);
+}
+
+std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateFixedConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::quat& rotInA, const glm::quat& rotInB)
+{
+    if (!rbA || !rbB) return nullptr;
+    BulletRigidBody* bA = static_cast<BulletRigidBody*>(rbA.get());
+    BulletRigidBody* bB = static_cast<BulletRigidBody*>(rbB.get());
+    if (!bA->GetRaw() || !bB->GetRaw()) return nullptr;
+
+    btTransform frameInA, frameInB;
+    frameInA.setIdentity();
+    frameInA.setOrigin(BulletGLMHelpers::convert(pivotInA));
+    frameInA.setRotation(BulletGLMHelpers::convert(rotInA));
+
+    frameInB.setIdentity();
+    frameInB.setOrigin(BulletGLMHelpers::convert(pivotInB));
+    frameInB.setRotation(BulletGLMHelpers::convert(rotInB));
+
+    btFixedConstraint* fixed = new btFixedConstraint(
+        *bA->GetRaw(),
+        *bB->GetRaw(),
+        frameInA,
+        frameInB
+    );
+    return std::make_shared<BulletConstraint>(fixed);
+}
+
+std::vector<CollisionInfo> BulletPhysicsWorld::GetActiveCollisions()
+{
+    std::vector<CollisionInfo> collisions;
+    if (!m_DynamicsWorld) return collisions;
+
+    int numManifolds = m_DynamicsWorld->getDispatcher()->getNumManifolds();
+    for (int i = 0; i < numManifolds; i++)
+    {
+        btPersistentManifold* contactManifold = m_DynamicsWorld->getDispatcher()->getManifoldByIndexInternal(i);
+        const btCollisionObject* obA = contactManifold->getBody0();
+        const btCollisionObject* obB = contactManifold->getBody1();
+
+        bool hasCollision = false;
+        for (int j = 0; j < contactManifold->getNumContacts(); j++)
+        {
+            if (contactManifold->getContactPoint(j).getDistance() < 0.1f)
+            {
+                hasCollision = true;
+                break;
+            }
+        }
+
+        if (hasCollision)
+        {
+            void* ptrA = obA->getUserPointer();
+            void* ptrB = obB->getUserPointer();
+
+            if (ptrA && ptrB)
+            {
+                CollisionInfo info;
+                info.bodyA = (entt::entity)((uintptr_t)ptrA - 1);
+                info.bodyB = (entt::entity)((uintptr_t)ptrB - 1);
+                info.isTrigger = (obA->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE) ||
+                                 (obB->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE);
+                info.type = CollisionEventType::Stay; // Initial state for dispatcher to process
+                collisions.push_back(info);
+            }
+        }
+    }
+    return collisions;
 }

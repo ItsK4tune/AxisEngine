@@ -70,6 +70,7 @@ public:
 
     RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist, entt::entity ignore = entt::null) override;
     void DrawLine(const glm::vec3& from, const glm::vec3& to, const glm::vec3& color) override;
+    void SyncRigidBody(IRigidBody* body, const glm::vec3& pos, const glm::quat& rot) override;
 
     void SetCollisionFilter(CollisionFilterCallback callback) override;
 
@@ -88,7 +89,10 @@ public:
     void AddConstraint(std::shared_ptr<IConstraint> constraint) override;
     void RemoveConstraint(std::shared_ptr<IConstraint> constraint) override;
     std::shared_ptr<IConstraint> CreatePoint2PointConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB) override;
+    std::shared_ptr<IConstraint> CreateFixedConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::quat& rotInA, const glm::quat& rotInB) override;
     std::shared_ptr<IConstraint> CreateHingeConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::vec3& axisInA, const glm::vec3& axisInB) override;
+
+    std::vector<CollisionInfo> GetActiveCollisions() override;
 
 private:
     std::unique_ptr<btDefaultCollisionConfiguration> m_CollisionConfig;

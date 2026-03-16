@@ -19,116 +19,78 @@ PhysicsCollisionDispatcher::~PhysicsCollisionDispatcher()
 {
 }
 
-#include <physics/strategy/bullet/bullet_physics_world.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <script/logic/physics_scriptable.h>
+#include <unordered_set>
 
 void PhysicsCollisionDispatcher::DispatchEvents()
 {
-    BulletPhysicsWorld *bulletWorld = dynamic_cast<BulletPhysicsWorld *>(&m_Physics);
-    if (!bulletWorld)
-        return;
-
-    btDiscreteDynamicsWorld *world = bulletWorld->GetRawWorld();
-    if (!world)
-        return;
-
-    int numManifolds = world->getDispatcher()->getNumManifolds();
-
+    auto currentCollisionsList = m_Physics.GetActiveCollisions();
+    
     std::unordered_set<CollisionPair, CollisionPairHash> currentCollisions;
-    currentCollisions.reserve(numManifolds);
+    currentCollisions.reserve(currentCollisionsList.size());
 
-    for (int i = 0; i < numManifolds; i++)
+    for (const auto& info : currentCollisionsList)
     {
-        btPersistentManifold *contactManifold = world->getDispatcher()->getManifoldByIndexInternal(i);
-        if (!contactManifold)
-            continue;
+        entt::entity eA = info.bodyA;
+        entt::entity eB = info.bodyB;
 
-        const btCollisionObject *obA = contactManifold->getBody0();
-        const btCollisionObject *obB = contactManifold->getBody1();
-        if (!obA || !obB)
-            continue;
-
-        bool hasCollision = false;
-        for (int j = 0; j < contactManifold->getNumContacts(); j++)
+        if (m_Scene.registry.valid(eA) && m_Scene.registry.valid(eB))
         {
-            if (contactManifold->getContactPoint(j).getDistance() < 0.1f)
+            if (eA > eB)
+                std::swap(eA, eB);
+
+            currentCollisions.insert({eA, eB});
+
+            bool isTrigger = info.isTrigger;
+            bool isStay = m_activeCollisions.count({eA, eB}) > 0;
+
+            auto Notify = [&](entt::entity target, entt::entity other, bool trigger, bool stay)
             {
-                hasCollision = true;
-                break;
-            }
-        }
+                if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
+                    return;
 
-        if (hasCollision)
-        {
-            void *ptrA = obA->getUserPointer();
-            void *ptrB = obB->getUserPointer();
-
-            if (!ptrA || !ptrB)
-            {
-                LOGGER_WARN("PhysicsCollisionDispatcher") << "Collision detected but missing user pointers!";
-                continue;
-            }
-
-            entt::entity eA = (entt::entity)((uintptr_t)ptrA - 1);
-            entt::entity eB = (entt::entity)((uintptr_t)ptrB - 1);
-
-            if (m_Scene.registry.valid(eA) && m_Scene.registry.valid(eB))
-            {
-                if (eA > eB)
-                    std::swap(eA, eB);
-
-                currentCollisions.insert({eA, eB});
-
-                bool isTrigger = (obA->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE) ||
-                                 (obB->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE);
-
-                bool isStay = m_activeCollisions.count({eA, eB}) > 0;
-
-                auto Notify = [&](entt::entity target, entt::entity other, bool trigger, bool stay)
+                if (m_Scene.registry.all_of<ScriptComponent>(target))
                 {
-                    if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
-                        return;
-
-                    if (m_Scene.registry.all_of<ScriptComponent>(target))
+                    auto &s = m_Scene.registry.get<ScriptComponent>(target);
+                    if (s.instance)
                     {
-                        auto &s = m_Scene.registry.get<ScriptComponent>(target);
-                        if (s.instance)
+                        if (trigger)
                         {
-                            if (trigger)
+                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
                             {
-                                if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
-                                {
-                                    if (!stay)
-                                        ps->OnTriggerEnter(other);
-                                    else
-                                        ps->OnTriggerStay(other);
-                                }
+                                if (!stay)
+                                    ps->OnTriggerEnter(other);
+                                else
+                                    ps->OnTriggerStay(other);
                             }
-                            else
+                        }
+                        else
+                        {
+                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
                             {
-                                if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
-                                {
-                                    if (!stay)
-                                        ps->OnCollisionEnter(other);
-                                    else
-                                        ps->OnCollisionStay(other);
-                                }
+                                if (!stay)
+                                    ps->OnCollisionEnter(other);
+                                else
+                                    ps->OnCollisionStay(other);
                             }
                         }
                     }
+                }
 
-                    if (trigger)
-                    {
-                        EventSystem::Instance().Publish(EntityTriggerEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
-                    }
-                    else
-                    {
-                        EventSystem::Instance().Publish(EntityCollisionEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
-                    }
-                };
+                if (trigger)
+                {
+                    EventSystem::Instance().Publish(EntityTriggerEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                }
+                else
+                {
+                    EventSystem::Instance().Publish(EntityCollisionEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                }
+            };
 
-                Notify(eA, eB, isTrigger, isStay);
-                Notify(eB, eA, isTrigger, isStay);
-            }
+            Notify(eA, eB, isTrigger, isStay);
+            Notify(eB, eA, isTrigger, isStay);
         }
     }
 

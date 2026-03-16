@@ -80,8 +80,6 @@ void DecalSystem::Update(Scene &scene, float dt)
     });
 
     for (auto entity : toRemove) {
-        auto &decal = scene.registry.get<DecalComponent>(entity);
-        LOGGER_INFO("DecalSystem") << "Decal destroyed (lifetime expired): Entity=" << (uint32_t)entity << ", Lifetime=" << decal.lifetime << ", Order=" << decal.renderOrder;
         scene.registry.destroy(entity);
     }
 }

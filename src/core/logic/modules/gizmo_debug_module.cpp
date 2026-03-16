@@ -1,6 +1,7 @@
 #include <ecs/unit/core_components.h>
-#include <glad/glad.h>
 #include <core/logic/modules/gizmo_debug_module.h>
+#include <render/interface/i_buffer_manager.h>
+#include <render/interface/i_draw_context.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -105,26 +106,28 @@ void GizmoDebugModule::Render(Scene &scene)
 
     if (lineVertices.empty()) return;
 
-    unsigned int vao, vbo;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glBindVertexArray(vao);
+    auto& bm = m_Ctx.io->GetGraphicsContext().GetBufferManager();
+    auto& dc = m_Ctx.io->GetGraphicsContext().GetDrawContext();
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(float), lineVertices.data(), GL_STREAM_DRAW);
+    unsigned int vao = bm.GenVertexArray();
+    unsigned int vbo = bm.GenBuffer();
+    
+    bm.BindVertexArray(vao);
+    bm.BindBuffer(BufferType::ArrayBuffer, vbo);
+    bm.BufferData(BufferType::ArrayBuffer, lineVertices.size() * sizeof(float), lineVertices.data(), BufferUsage::StreamDraw);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, 6 * sizeof(float), (void*)0);
+    bm.EnableVertexAttribArray(1);
+    bm.VertexAttribPointer(1, 3, DataType::Float, false, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
     m_Ctx.io->GetGraphicsContext().GetRenderStateManager().Disable(ServerCapability::DepthTest);
-    glDrawArrays(GL_LINES, 0, lineVertices.size() / 6);
+    dc.DrawArrays(Primitive::Lines, 0, (int)(lineVertices.size() / 6));
     m_Ctx.io->GetGraphicsContext().GetRenderStateManager().Enable(ServerCapability::DepthTest);
 
-    glBindVertexArray(0);
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
+    bm.BindVertexArray(0);
+    bm.DeleteVertexArray(vao);
+    bm.DeleteBuffer(vbo);
 }
 
 void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
