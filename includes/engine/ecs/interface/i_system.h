@@ -6,6 +6,7 @@
 #include <entt/entt.hpp>
 
 struct Scene;
+class IRenderStateManager;
 
 class ISystem {
 public:
@@ -18,6 +19,12 @@ public:
     virtual void FixedUpdate(Scene& scene, float fixedDt) {}
     
     virtual void Render(Scene& scene) {}
+
+    virtual void RenderAlpha(Scene& scene, int width, int height, float alpha) {}
+
+    virtual void RenderUI(Scene& scene, float width, float height, IRenderStateManager& renderState) {}
+
+    virtual void RenderTransparent(Scene& scene, int width, int height, float alpha) {}
     
     virtual void Shutdown() {}
     

@@ -16,6 +16,7 @@ class MouseManager;
 class ResourceManager;
 class Scene;
 class SoundPlayer;
+class IDebugSystem;
 
 struct ExecutionBatch {
     std::vector<ISystem*> systems;

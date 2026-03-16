@@ -2,6 +2,7 @@
 #include <core/unit/engine_context.h>
 #include <platform/logic/io_handler.h>
 #include <core/manager/system_manager.h>
+#include <core/logic/debug_core.h>
 #include <audio/logic/sound_player.h>
 #include <core/logic/engine_core.h>
 #include <core/logic/job_system.h>
@@ -327,19 +328,26 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
 
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;
+        sys->RenderAlpha(scene, width, height, alpha);
+    }
+
+    for (auto& sys : m_Systems) {
+        if (!sys->IsEnabled()) continue;
+        if (rs) {
+            sys->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager());
+        }
+    }
+
+    for (auto& sys : m_Systems) {
+        if (!sys->IsEnabled()) continue;
+        sys->RenderTransparent(scene, width, height, alpha);
+    }
+    
+    for (auto& sys : m_Systems) {
+        if (!sys->IsEnabled()) continue;
         int p = sys->GetPriority();
-        if (p >= 0) {
-            if (p == 80 && rs) {
-                rs->RenderAlpha(scene, width, height, alpha);
-            } else if (p == 90 && rs) {
-                if (auto* ui = GetSystem<UIRenderSystem>()) {
-                    ui->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager());
-                }
-            } else if (p == 100 && rs) {
-                rs->RenderTransparent(scene, width, height, alpha);
-            } else {
-                sys->Render(scene);
-            }
+        if (p >= 0 && p != 80 && p != 90 && p != 100) {
+            sys->Render(scene);
         }
     }
 
@@ -352,7 +360,6 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
 
     postProcess.EndCapture();
 }
-
 
 void SystemManager::UpdateDebugSystem(float realDeltaTime)
 {

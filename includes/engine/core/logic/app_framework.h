@@ -74,14 +74,23 @@ public:
     int GetWidth() const;
     int GetHeight() const;
 
+    [[deprecated("Use GetContext().GetSystem<RenderSystem>() instead")]]
     RenderSystem &GetRenderSystem();
+    [[deprecated("Use GetContext().GetSystem<PhysicsSystem>() instead")]]
     PhysicsSystem &GetPhysicsSystem();
+    [[deprecated("Use GetContext().GetSystem<AudioSystem>() instead")]]
     AudioSystem &GetAudioSystem();
+    [[deprecated("Use GetContext().GetSystem<UIRenderSystem>() instead")]]
     UIRenderSystem &GetUIRenderSystem();
+    [[deprecated("Use GetContext().GetSystem<ScriptableSystem>() instead")]]
     ScriptableSystem &GetScriptSystem();
+    [[deprecated("Use GetContext().GetSystem<ParticleSystem>() instead")]]
     ParticleSystem &GetParticleSystem();
+    [[deprecated("Use GetContext().GetSystem<SkyboxRenderSystem>() instead")]]
     SkyboxRenderSystem &GetSkyboxRenderSystem();
+    [[deprecated("Use GetContext().GetSystem<AnimationSystem>() instead")]]
     AnimationSystem &GetAnimationSystem();
+    [[deprecated("Use GetContext().GetSystem<VideoSystem>() instead")]]
     VideoSystem &GetVideoSystem();
     PostProcessPipeline &GetPostProcess();
 

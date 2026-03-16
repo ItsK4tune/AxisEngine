@@ -648,10 +648,6 @@ void RenderSystem::RenderDeferredLighting(Scene &scene, int width, int height)
     rsm.Enable(ServerCapability::DepthTest);
 }
 
-
-
-
-
 void RenderSystem::Render(Scene &scene)
 {
 }

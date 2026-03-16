@@ -224,14 +224,6 @@ void UIRenderSystem::Update(Scene &scene, float dt)
 
 void UIRenderSystem::Render(Scene &scene)
 {
-    if (!m_Enabled) return;
-
-    // Get screen dimensions from monitor manager
-    float width = static_cast<float>(m_Ctx.io->GetMonitorManager().GetWidth());
-    float height = static_cast<float>(m_Ctx.io->GetMonitorManager().GetHeight());
-
-    UpdateLayout(scene, width, height);
-    RenderUI(scene, width, height, m_Ctx.io->GetGraphicsContext().GetRenderStateManager());
 }
 
 std::vector<entt::id_type> UIRenderSystem::GetReadComponents() const

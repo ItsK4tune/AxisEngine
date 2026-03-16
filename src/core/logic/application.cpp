@@ -34,6 +34,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/log_manager.h>
+#include <core/logic/axis_assert.h>
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
@@ -143,7 +144,7 @@ bool Application::Initialize(const AppConfig &config)
     if (!m_IOHandler->Initialize(std::move(window), m_Config.title, m_Config.width, m_Config.height, (int)m_Config.windowMode,
                            m_Config.monitorIndex, m_Config.refreshRate, m_Config.vsync, m_Config.frameRateLimit))
     {
-        LOGGER_ERROR("Application") << "Failed to initialize IOHandler";
+        AXIS_ASSERT(false, "Failed to initialize IOHandler - graphics/audio device error?");
         return false;
     }
 
