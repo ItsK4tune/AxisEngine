@@ -331,12 +331,6 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
         sys->RenderAlpha(scene, width, height, alpha);
     }
 
-    for (auto& sys : m_Systems) {
-        if (!sys->IsEnabled()) continue;
-        if (rs) {
-            sys->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager());
-        }
-    }
 
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;
@@ -348,6 +342,13 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
         int p = sys->GetPriority();
         if (p >= 0 && p != 80 && p != 90 && p != 100) {
             sys->Render(scene);
+        }
+    }
+
+    for (auto& sys : m_Systems) {
+        if (!sys->IsEnabled()) continue;
+        if (rs) {
+            sys->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager());
         }
     }
 
