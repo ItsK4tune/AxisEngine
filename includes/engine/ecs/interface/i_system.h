@@ -8,6 +8,15 @@
 struct Scene;
 class IRenderStateManager;
 
+enum class RenderStage {
+    Early,
+    Opaque,
+    Decals,
+    Transparent,
+    Overlay,
+    UI
+};
+
 class ISystem {
 public:
     virtual ~ISystem() = default;

@@ -94,8 +94,13 @@ void ResourceWatcher::WatcherLoop()
         if (!m_Running)
             break;
 
-        std::lock_guard<std::mutex> lock(m_Mutex);
-        for (auto &watcher : m_Watchers)
+        std::vector<WatchEntry> watchersCopy;
+        {
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            watchersCopy = m_Watchers;
+        }
+
+        for (auto &watcher : watchersCopy)
         {
             try
             {
@@ -105,7 +110,17 @@ void ResourceWatcher::WatcherLoop()
                 auto currentWriteTime = std::filesystem::last_write_time(watcher.filePath);
                 if (currentWriteTime > watcher.lastWriteTime)
                 {
-                    watcher.lastWriteTime = currentWriteTime;
+                    // Update the original watcher entry's lastWriteTime
+                    {
+                        std::lock_guard<std::mutex> lock(m_Mutex);
+                        for (auto& w : m_Watchers) {
+                            if (w.name == watcher.name && w.type == watcher.type) {
+                                w.lastWriteTime = currentWriteTime;
+                                break;
+                            }
+                        }
+                    }
+
                     LOGGER_INFO("HotReload") << "Detected change in: " << watcher.filePath;
 
                     ResourceReloadEvent e;
@@ -113,6 +128,7 @@ void ResourceWatcher::WatcherLoop()
                     e.type = watcher.type;
                     e.filePath = watcher.filePath;
 
+                    std::lock_guard<std::mutex> lock(m_Mutex);
                     m_PendingReloads.push_back(e);
                 }
             }

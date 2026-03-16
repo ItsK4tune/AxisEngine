@@ -49,7 +49,6 @@ public:
     void RenderShadows(Scene &scene);
     void RenderAlpha(Scene &scene, int width, int height, float alpha);
     void RenderTransparent(Scene &scene, int width, int height, float alpha);
-    void Render(Scene &scene) override;
     void RenderDeferredLighting(Scene &scene, int width, int height);
     
     void ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass);

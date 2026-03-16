@@ -3,8 +3,10 @@
 #include <core/logic/event_types.h>
 #include <iostream>
 #include <resource/manager/resource_manager.h>
-#include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
+#include <core/logic/filesystem.h>
+#include <core/logic/axis_assert.h>
+#include <filesystem>
 
 ResourceManager::ResourceManager()
 {
@@ -97,7 +99,7 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
     std::shared_ptr<Model> model = m_ModelInstanceManager.GetOrLoadModel(name, fullPath, isStatic);
     if (!model)
     {
-        LOGGER_ERROR("ResourceManager") << "Failed to load model: " << path;
+        AXIS_ASSERT(model != nullptr, "Failed to load model: " + path);
     }
     else
     {
@@ -286,6 +288,7 @@ std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &name
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
+    if (!std::filesystem::exists(nameOrPath)) return nullptr;
     LoadTexture(nameOrPath, nameOrPath);
     return GetTexture(nameOrPath);
 }
@@ -301,6 +304,7 @@ std::shared_ptr<Model> ResourceManager::GetModelAuto(const std::string &nameOrPa
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
+    if (!std::filesystem::exists(nameOrPath)) return nullptr;
     LoadModel(nameOrPath, nameOrPath, isStatic);
     return GetModel(nameOrPath);
 }
@@ -316,6 +320,7 @@ std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string &nameOrPath
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
+    if (!std::filesystem::exists(nameOrPath)) return nullptr;
     LoadFont(nameOrPath, nameOrPath, fontSize);
     return GetFont(nameOrPath);
 }
@@ -331,6 +336,7 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &n
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
+    if (!std::filesystem::exists(nameOrPath)) return nullptr;
     LoadSound(nameOrPath, nameOrPath, engine);
     return GetSound(nameOrPath);
 }

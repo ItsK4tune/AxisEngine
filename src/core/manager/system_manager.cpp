@@ -326,31 +326,23 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
     postProcess.BeginCapture();
     if (rs) rs->SetMainFBO(postProcess.GetCaptureFBO());
 
-    for (auto& sys : m_Systems) {
-        if (!sys->IsEnabled()) continue;
-        sys->RenderAlpha(scene, width, height, alpha);
-    }
-
-
-    for (auto& sys : m_Systems) {
-        if (!sys->IsEnabled()) continue;
-        sys->RenderTransparent(scene, width, height, alpha);
-    }
-    
-    for (auto& sys : m_Systems) {
-        if (!sys->IsEnabled()) continue;
-        int p = sys->GetPriority();
-        if (p >= 0 && p != 80 && p != 90 && p != 100) {
-            sys->Render(scene);
+    // Dispatch render stages
+    auto dispatchStage = [&](RenderStage stage, int w, int h, float a) {
+        for (auto& sys : m_Systems) {
+            if (!sys->IsEnabled()) continue;
+            switch (stage) {
+                case RenderStage::Opaque:      sys->RenderAlpha(scene, w, h, a); break;
+                case RenderStage::Transparent: sys->RenderTransparent(scene, w, h, a); break;
+                case RenderStage::UI:          if (rs) sys->RenderUI(scene, (float)w, (float)h, rs->GetContext()->GetRenderStateManager()); break;
+                default:                       sys->Render(scene); break;
+            }
         }
-    }
+    };
 
-    for (auto& sys : m_Systems) {
-        if (!sys->IsEnabled()) continue;
-        if (rs) {
-            sys->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager());
-        }
-    }
+    dispatchStage(RenderStage::Opaque, width, height, alpha);
+    dispatchStage(RenderStage::Transparent, width, height, alpha);
+    dispatchStage(RenderStage::Overlay, width, height, alpha);
+    dispatchStage(RenderStage::UI, width, height, alpha);
 
     if (rs) {
         postProcess.ApplyAntiAliasing(rs->GetAntiAliasingMode(),

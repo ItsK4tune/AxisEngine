@@ -72,7 +72,7 @@ void Application::Shutdown()
             try {
                 reg.destroy(entity);
             } catch (...) {
-                LOGGER_ERROR("Application") << "Destructor: CRASH while destroying Entity " << (uint32_t)entity;
+                AXIS_ASSERT(false, "Destructor: CRASH while destroying Entity " + std::to_string((uint32_t)entity));
             }
         }
 
