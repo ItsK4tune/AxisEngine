@@ -1,13 +1,13 @@
 #include <ecs/unit/core_components.h>
 #include <core/logic/app_framework.h>
 #include <core/type/app_config.h>
-#include <core/logic/config_loader.h>
+#include <core/io/config_loader.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <ecs/manager/entity_manager.h>
-#include <physics/logic/physics_loader.h>
+#include <physics/io/physics_loader.h>
 #include <scene/interface/i_component_loader_factory.h>
-#include <scene/logic/component_loader.h>
+#include <scene/io/component_loader.h>
 #include <scene/logic/scene_validator.h>
 #include <scene/logic/scene_serializer.h>
 #include <audio/logic/sound_player.h>

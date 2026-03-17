@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/logic/config_loader.h>
+#include <core/io/config_loader.h>
 #include <core/logic/debug_core.h>
 #include <core/unit/engine_context.h>
 #include <ecs/interface/i_system.h>

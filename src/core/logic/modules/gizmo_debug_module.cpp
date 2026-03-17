@@ -36,6 +36,14 @@ void GizmoDebugModule::Initialize(EngineContext ctx)
     m_Ctx = ctx;
 }
 
+bool GizmoDebugModule::IsEntityNamesEnabled() const { return DebugConfig::ShowEntityNames; }
+bool GizmoDebugModule::IsTransformGizmosEnabled() const { return DebugConfig::ShowGizmos; }
+bool GizmoDebugModule::IsLightGizmosEnabled() const { return DebugConfig::ShowLightGizmos; }
+
+void GizmoDebugModule::ToggleEntityNames() { DebugConfig::ShowEntityNames = !DebugConfig::ShowEntityNames; }
+void GizmoDebugModule::ToggleTransformGizmos() { DebugConfig::ShowGizmos = !DebugConfig::ShowGizmos; }
+void GizmoDebugModule::ToggleLightGizmos() { DebugConfig::ShowLightGizmos = !DebugConfig::ShowLightGizmos; }
+
 void GizmoDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
 {
     m_DebugFont = font;
@@ -141,7 +149,7 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
         if (shift) {
             ToggleEntityNames();
             std::cout << "\n========== Entity Names (Shift+F3) ==========" << std::endl;
-            std::cout << "[Debug] Entity Names: " << (m_ShowEntityNames ? "ON" : "OFF") << std::endl;
+            std::cout << "[Debug] Entity Names: " << (DebugConfig::ShowEntityNames ? "ON" : "OFF") << std::endl;
             std::cout << "=============================================" << std::endl;
         } });
 
@@ -173,7 +181,7 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
             }
 
             std::cout << "\n========== Light Gizmos (Shift+F5) ==========" << std::endl;
-            std::cout << "[Debug] Light Gizmos: " << (m_ShowLightGizmos ? "ON" : "OFF") << std::endl;
+            std::cout << "[Debug] Light Gizmos: " << (DebugConfig::ShowLightGizmos ? "ON" : "OFF") << std::endl;
             std::cout << "[Debug] Stats: " << p << " Points, " << s << " Spots" << std::endl;
             std::cout << "[Debug] Directional: " << d_total << " Total (" << d_transform << " with Transform)" << std::endl;
             std::cout << "=============================================" << std::endl;
@@ -195,7 +203,7 @@ void GizmoDebugModule::ClearDebugLabels(Scene &scene)
 
 void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
 {
-    if (!m_ShowEntityNames)
+    if (!DebugConfig::ShowEntityNames)
     {
         if (!m_EntityLabelMap.empty())
         {
@@ -364,7 +372,7 @@ void GizmoDebugModule::ClearLightLabels(Scene &scene)
 
 void GizmoDebugModule::UpdateLightLabels(Scene &scene)
 {
-    if (!m_ShowLightGizmos)
+    if (!DebugConfig::ShowLightGizmos)
     {
         if (!m_LightLabelMap.empty())
         {

@@ -15,4 +15,4 @@
 // --- Core Utilities ---
 #include <core/unit/engine_accessor.h>
 #include <core/unit/engine_context.h>
-#include <core/logic/config_loader.h>
+#include <core/io/config_loader.h>

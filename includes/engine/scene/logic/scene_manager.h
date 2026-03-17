@@ -1,7 +1,7 @@
 #pragma once
 
 #include <audio/logic/sound_player.h>
-#include <core/logic/config_loader.h>
+#include <core/io/config_loader.h>
 #include <core/unit/engine_context.h>
 #include <ecs/unit/core_components.h>
 #include <memory>

@@ -122,6 +122,8 @@ void Skybox::Draw(Shader &shader)
     }
 }
 
+#include <core/logic/filesystem.h>
+
 void Skybox::LoadCubemap(const std::vector<std::string> &faces)
 {
     if (!s_TextureManager) return;
@@ -141,7 +143,8 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
 
         if (i < faces.size())
         {
-            data = stbi_load(faces[i].c_str(), &width, &height, &channels, 0);
+            std::string fullPath = FileSystem::getPath(faces[i]);
+            data = stbi_load(fullPath.c_str(), &width, &height, &channels, 0);
 
             if (data)
             {

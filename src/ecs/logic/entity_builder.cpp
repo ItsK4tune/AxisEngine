@@ -134,7 +134,7 @@ EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::str
     std::string uniqueModelName = "ui_text_model_" + std::to_string((uint32_t)m_Entity);
     if (!res.HasUIModel(uniqueModelName))
     {
-        res.CreateUIModel(uniqueModelName, UIType::Text);
+        res.CreateUIModel(uniqueModelName, ::UIType::Text);
     }
     textComp.model = res.GetUIModel(uniqueModelName);
     
@@ -191,7 +191,7 @@ EntityBuilder& EntityBuilder::WithUIRenderer(const std::string& textureName, con
     
     if (!res.GetUIModel(textureName))
     {
-        res.CreateUIModel(textureName, UIType::Texture);
+        res.CreateUIModel(textureName, ::UIType::Texture);
     }
     renderer.model = res.GetUIModel(textureName);
     

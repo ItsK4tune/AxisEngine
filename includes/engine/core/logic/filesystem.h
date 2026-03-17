@@ -55,6 +55,15 @@ private:
                 cachedRoot = path.substr(0, binPos);
                 return cachedRoot;
             }
+
+            // Fallback for cases where it's not strictly /bin/ but we know we are in a subfolder of the root
+            // e.g. /build/Release/
+            size_t buildPos = path.rfind("/build/");
+            if (buildPos != std::string::npos)
+            {
+                cachedRoot = path.substr(0, buildPos);
+                return cachedRoot;
+            }
         }
 #else
         char exePath[PATH_MAX];
@@ -68,6 +77,13 @@ private:
             if (binPos != std::string::npos)
             {
                 cachedRoot = path.substr(0, binPos);
+                return cachedRoot;
+            }
+            
+            size_t buildPos = path.rfind("/build/");
+            if (buildPos != std::string::npos)
+            {
+                cachedRoot = path.substr(0, buildPos);
                 return cachedRoot;
             }
         }

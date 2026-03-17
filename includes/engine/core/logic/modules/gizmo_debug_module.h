@@ -2,6 +2,7 @@
 
 #include <core/interface/i_debug_module.h>
 #include <core/unit/engine_context.h>
+#include <core/logic/debug_core.h>
 #include <entt/entity/entity.hpp>
 #include <functional>
 #include <glm/glm.hpp>
@@ -39,14 +40,14 @@ public:
 
     void SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad);
 
-    bool IsEntityNamesEnabled() const { return m_ShowEntityNames; }
-    bool IsTransformGizmosEnabled() const { return m_ShowTransformGizmos; }
-    bool IsLightGizmosEnabled() const { return m_ShowLightGizmos; }
+    bool IsEntityNamesEnabled() const;
+    bool IsTransformGizmosEnabled() const;
+    bool IsLightGizmosEnabled() const;
 
 private:
-    void ToggleEntityNames() { m_ShowEntityNames = !m_ShowEntityNames; }
-    void ToggleTransformGizmos() { m_ShowTransformGizmos = !m_ShowTransformGizmos; }
-    void ToggleLightGizmos() { m_ShowLightGizmos = !m_ShowLightGizmos; }
+    void ToggleEntityNames();
+    void ToggleTransformGizmos();
+    void ToggleLightGizmos();
 
     void UpdateDebugLabels(Scene &scene);
     void ClearDebugLabels(Scene &scene);
@@ -62,9 +63,6 @@ private:
     bool m_F4Pressed = false;
     bool m_F5Pressed = false;
 
-    bool m_ShowEntityNames = false;
-    bool m_ShowTransformGizmos = false;
-    bool m_ShowLightGizmos = false;
 
     std::unordered_map<entt::entity, entt::entity> m_EntityLabelMap;
     std::unordered_map<entt::entity, entt::entity> m_LightLabelMap;

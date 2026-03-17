@@ -15,8 +15,6 @@ class Font;
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-
-
 class OverlayDebugModule : public IDebugModule
 {
 public:

@@ -87,8 +87,8 @@ void OverlayDebugModule::Render(Scene &scene)
         ss << "F7: NoTexture: " << boolStr(m_Ctx.systems->GetSystem<RenderSystem>()->IsDebugNoTexture()) << "  | S+F7: Shadows: " << boolStr(m_Ctx.systems->GetSystem<RenderSystem>()->IsShadowsEnabled()) << "\n";
         ss << "F8: Physics: " << boolStr(DebugConfig::ShowPhysics) << "    | S+F8: Audio: [NYI]\n";
         ss << "F9: UI System: " << boolStr(m_Ctx.systems->GetSystem<UIRenderSystem>()->IsEnabled()) << " | S+F9: Particle: [NYI]\n";
-        ss << "S+F3: Names: " << boolStr(false) << "    | S+F4: Gizmos: " << boolStr(DebugConfig::ShowGizmos) << "\n";
-        ss << "S+F5: Lights: " << boolStr(false) << "   | S+F11: Cam\n";
+        ss << "S+F3: Names: " << boolStr(DebugConfig::ShowEntityNames) << "    | S+F4: Gizmos: " << boolStr(DebugConfig::ShowGizmos) << "\n";
+        ss << "S+F5: Lights: " << boolStr(DebugConfig::ShowLightGizmos) << "   | S+F11: Cam\n";
         ss << "F11: Paused:   " << boolStr(m_Ctx.runtime->IsPaused());
     };
 

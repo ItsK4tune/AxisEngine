@@ -26,6 +26,8 @@ struct DebugConfig
     static bool ShowWireframe;
     static bool ShowPhysics;
     static bool ShowGizmos;
+    static bool ShowEntityNames;
+    static bool ShowLightGizmos;
 };
 
 // --- Debug Implementation ---

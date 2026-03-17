@@ -1,4 +1,4 @@
-#include <algorithm>
+#include <platform/io/input_loader.h>
 #include <platform/logic/input_system.h>
 #include <platform/interface/input_codes.h>
 #include <unordered_map>

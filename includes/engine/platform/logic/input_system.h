@@ -157,13 +157,6 @@ private:
     std::unordered_map<std::string, bool> m_PreviousState;
 };
 
-// --- Input Loader ---
-
-class InputLoader
-{
-public:
-    static bool LoadBindings(const std::string& filepath, InputManager& inputManager);
-};
 
 // --- Script Input Handler ---
 

@@ -8,7 +8,6 @@
 struct Scene;
 class IRenderStateManager;
 
-
 class ISystem {
 public:
     virtual ~ISystem() = default;

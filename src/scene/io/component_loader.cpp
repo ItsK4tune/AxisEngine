@@ -10,11 +10,11 @@
 #include <core/logic/app_framework.h>
 #include <ecs/manager/entity_manager.h>
 #include <iostream>
-#include <scene/logic/component_loader.h>
+#include <scene/io/component_loader.h>
 #include <script/logic/script_registry.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
-#include <physics/logic/physics_loader.h>
+#include <physics/io/physics_loader.h>
 #include <navigation/unit/pathfollower_component.h>
 
 std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> ComponentLoader::s_Factories;
@@ -369,7 +369,7 @@ void ComponentLoader::LoadUIRenderer(Scene &scene, entt::entity entity, const YA
         std::shared_ptr<Texture> tex = res.GetTextureAuto(textureName);
         std::string finalName = textureName;
 
-        if (!res.GetUIModel(finalName)) res.CreateUIModel(finalName, UIType::Texture);
+        if (!res.GetUIModel(finalName)) res.CreateUIModel(finalName, ::UIType::Texture);
         auto model = res.GetUIModel(finalName);
         if (tex && model) {
             model->SetTexture(tex->id);
@@ -377,7 +377,7 @@ void ComponentLoader::LoadUIRenderer(Scene &scene, entt::entity entity, const YA
         }
         ui.model = model;
     } else {
-        if (!res.GetUIModel("default_rect")) res.CreateUIModel("default_rect", UIType::Color);
+        if (!res.GetUIModel("default_rect")) res.CreateUIModel("default_rect", ::UIType::Color);
         ui.model = res.GetUIModel("default_rect");
     }
 
@@ -421,7 +421,7 @@ void ComponentLoader::LoadUIText(Scene &scene, entt::entity entity, const YAMLNo
     txt.maxWidth = std::stof(node.GetChildValue("maxWidth", "0.0"));
 
     if (!res.GetUIModel("default_text_rect"))
-        res.CreateUIModel("default_text_rect", UIType::Text);
+        res.CreateUIModel("default_text_rect", ::UIType::Text);
     txt.model = res.GetUIModel("default_text_rect");
     txt.shader = res.GetShader("textShader");
 }

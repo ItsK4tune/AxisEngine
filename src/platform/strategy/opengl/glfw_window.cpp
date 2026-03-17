@@ -1,6 +1,8 @@
 #include <platform/strategy/opengl/glfw_window.h>
 #include <platform/strategy/opengl/glfw_translator.h>
 #include <core/logic/logger.h>
+#include <core/logic/filesystem.h>
+#include <stb/stb_image.h>
 
 #ifdef _WIN32
 #undef APIENTRY
@@ -43,6 +45,22 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
         SetClassLongPtr(hwnd, GCLP_HICON, (LONG_PTR)hIcon);
         SetClassLongPtr(hwnd, GCLP_HICONSM, (LONG_PTR)hIcon);
+    } else {
+        // Fallback to loading icon from file
+        int w, h, ch;
+        std::string iconPath = FileSystem::getPath("includes/engine/asset/project/icon.png");
+        unsigned char* pixels = stbi_load(iconPath.c_str(), &w, &h, &ch, 4);
+        if (pixels) {
+            GLFWimage images[1];
+            images[0].width = w;
+            images[0].height = h;
+            images[0].pixels = pixels;
+            glfwSetWindowIcon(m_Window, 1, images);
+            stbi_image_free(pixels);
+            LOGGER_INFO("GLFWWindow") << "Loaded window icon from file: " << iconPath;
+        } else {
+            LOGGER_WARN("GLFWWindow") << "Failed to load window icon from file: " << iconPath;
+        }
     }
 #endif
 

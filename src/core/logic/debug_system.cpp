@@ -33,7 +33,7 @@ void DebugSystem::Initialize(EngineContext ctx)
 
     if (!res.GetUIModel("debug_sys_model"))
     {
-        res.CreateUIModel("debug_sys_model", UIType::Text);
+        res.CreateUIModel("debug_sys_model", ::UIType::Text);
     }
 
     m_DebugFont = res.GetFont("debug_font");

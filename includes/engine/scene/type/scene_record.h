@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/logic/config_loader.h>
+#include <core/io/config_loader.h>
 #include <entt/entt.hpp>
 #include <string>
 #include <vector>

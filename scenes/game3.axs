@@ -1,6 +1,7 @@
 axis_scene:
   Config:
-    RENDER_PATH: FORWARD
+    RENDER_PATH: DEFERRED
+    WINDOW_MODE: BORDERLESS_FULLSCREEN
 
   Resources:
     Model:

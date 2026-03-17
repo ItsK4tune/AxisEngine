@@ -1,7 +1,7 @@
 #include <ecs/unit/core_components.h>
 #include <iostream>
 #include <ecs/unit/physics_components.h>
-#include <physics/logic/physics_loader.h>
+#include <physics/io/physics_loader.h>
 #include <sstream>
 #include <string>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>

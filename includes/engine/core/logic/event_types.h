@@ -35,18 +35,4 @@ struct EntityTriggerEvent
     CollisionEventType type;
 };
 
-// --- Resource Events ---
-
-struct ResourceReloadEvent
-{
-    std::string name;
-    std::string type;
-    std::string filePath;
-};
-
-struct ResourceLoadedEvent
-{
-    std::string name;
-    std::string type;
-    bool success;
-};
+#include <core/type/resource_events.h>

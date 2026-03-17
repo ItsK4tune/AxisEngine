@@ -19,10 +19,16 @@ ResourceManager::ResourceManager()
         } });
 }
 
-void ResourceManager::Initialize(IShaderManager& shaderManager)
+void ResourceManager::Initialize(IShaderManager& shaderManager, ITextureManager& textureManager, IAudioEngine& audioEngine)
 {
-    m_ShaderManager = &shaderManager;
-    m_ShaderCache = std::make_unique<ShaderCache>(*m_ShaderManager);
+    m_ShaderManager = std::make_unique<ShaderManager>(shaderManager);
+    m_TextureManager = std::make_unique<TextureManager>(textureManager);
+    m_ModelManager = std::make_unique<ModelManager>(m_ModelInstanceManager);
+    m_AudioManager = std::make_unique<AudioAssetManager>(audioEngine);
+    m_FontManager = std::make_unique<FontManager>();
+    m_SkyboxManager = std::make_unique<SkyboxManager>();
+    m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);
+    m_VideoManager = std::make_unique<VideoManager>();
 }
 
 ResourceManager::~ResourceManager()
@@ -37,25 +43,25 @@ void ResourceManager::Shutdown()
 
 void ResourceManager::Update(float dt)
 {
-    FlushPendingModels();
-    m_TextureCache.Update();
+    m_TextureManager->Update();
+    m_ModelManager->Update();
     m_ResourceWatcher.Update(dt);
 }
 
 void ResourceManager::UnloadTexture(const std::string &name)
 {
-    m_TextureCache.UnloadTexture(name);
+    m_TextureManager->Unload(name);
 }
 
 void ResourceManager::UnloadModel(const std::string &name)
 {
-    m_ModelInstanceManager.UnloadModel(name);
+    m_ModelManager->Unload(name);
 }
 
 void ResourceManager::ReloadShader(const std::string &name)
 {
     LOGGER_INFO("HotReload") << "Reloading Shader: " << name;
-    m_ShaderCache->Reload(name);
+    m_ShaderManager->Reload(name);
 }
 
 void ResourceManager::ReloadTexture(const std::string &name)
@@ -70,12 +76,11 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
     std::string gShaderPath = gsPath.empty() ? "" : FileSystem::getPath(gsPath);
 
     LOGGER_INFO("ResourceManager") << "Loading shader: " << name << " (" << vsPath << ", " << fsPath << ")";
-    m_ShaderCache->GetOrCompile(name, vShaderPath, fShaderPath);
+    m_ShaderManager->Load(name, vShaderPath, fShaderPath, gShaderPath);
 
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
 
     std::string shaderKey = vShaderPath + "|" + fShaderPath + "|" + gShaderPath;
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
     m_PathToShaderName[shaderKey] = name;
 }
 
@@ -83,11 +88,9 @@ void ResourceManager::LoadTexture(const std::string &name, const std::string &pa
 {
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading Texture: " << name << " from " << path << (async ? " (async)" : "") << (keepCpuData ? " (keep CPU data)" : "");
-    m_TextureCache.LoadTexture(name, fullPath, async, keepCpuData);
+    m_TextureManager->Load(name, fullPath, async, keepCpuData);
 
     m_ResourceWatcher.Watch(name, fullPath, "Texture");
-
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
     m_PathToTextureName[fullPath] = name;
 }
 
@@ -96,21 +99,9 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading model: " << name << " from " << fullPath;
 
-    std::shared_ptr<Model> model = m_ModelInstanceManager.GetOrLoadModel(name, fullPath, isStatic);
-    if (!model)
+    if (m_ModelManager->Load(name, fullPath, isStatic, false))
     {
-        AXIS_ASSERT(model != nullptr, "Failed to load model: " + path);
-    }
-    else
-    {
-        model->SetName(name);
-        model->UploadToGPU();
-        {
-            std::lock_guard<std::mutex> lock(m_ResourceMutex);
-            m_ModelPaths[name] = {fullPath, isStatic};
-            m_PathToModelName[fullPath] = name;
-        }
-        LOGGER_INFO("ResourceManager") << "Loaded model: " << name;
+        m_PathToModelName[fullPath] = name;
         EventSystem::Instance().Publish(ResourceLoadedEvent{name, "MODEL", true});
     }
 }
@@ -120,56 +111,23 @@ void ResourceManager::LoadModelAsync(const std::string &name, const std::string 
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Async loading model: " << name;
 
-    {
-        std::lock_guard<std::mutex> lock(m_ResourceMutex);
-        m_ModelPaths[name] = {fullPath, isStatic};
-    }
-
-    auto promise = std::make_shared<std::promise<void>>();
-    auto future = promise->get_future();
-
-    JobSystem::Instance().Execute([this, promise, name, fullPath, isStatic]()
-                                  {
-        auto model = std::make_shared<Model>();
-        model->SetName(name);
-        model->LoadCPU(fullPath, isStatic);
-
-        std::lock_guard<std::mutex> lock(m_PendingMutex);
-        m_PendingModels.push_back({name, std::move(model)});
-        promise->set_value(); });
-
-    std::lock_guard<std::mutex> lock(m_PendingMutex);
-    m_ActiveFutures.push_back(std::move(future));
+    m_ModelManager->Load(name, fullPath, isStatic, true);
+    m_PathToModelName[fullPath] = name;
 }
 
 void ResourceManager::LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName)
 {
     std::string fullPath = FileSystem::getPath(path);
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
-    auto it = m_ModelPaths.find(modelName);
-    if (it != m_ModelPaths.end())
-    {
-        std::shared_ptr<Model> model = m_ModelInstanceManager.GetOrLoadModel(modelName, it->second.path, it->second.isStatic);
-        if (model)
-        {
-            LOGGER_INFO("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
-            m_AnimationCache.LoadAnimation(name, fullPath, model.get());
-            m_PathToAnimationName[fullPath] = name;
-        }
-    }
-    else
-    {
-        LOGGER_ERROR("ResourceManager") << "Model not found for animation: " << modelName;
-    }
+    LOGGER_INFO("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
+    m_AnimationManager->Load(name, fullPath, modelName);
+    m_PathToAnimationName[fullPath] = name;
 }
 
 void ResourceManager::LoadFont(const std::string &name, const std::string &path, unsigned int fontSize)
 {
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading font: " << name << " (" << fontSize << "px) from " << path;
-    m_FontCache.LoadFont(name, fullPath, fontSize);
-
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    m_FontManager->Load(name, fullPath, fontSize);
     m_PathToFontName[fullPath] = name;
 }
 
@@ -177,105 +135,38 @@ void ResourceManager::LoadSound(const std::string &name, const std::string &path
 {
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading sound: " << name;
-    m_SoundCache.LoadSound(name, fullPath, engine);
-
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    m_AudioManager->Load(name, fullPath);
     m_PathToSoundName[fullPath] = name;
 }
 
 void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
 {
-    auto skybox = std::make_shared<Skybox>();
-    std::vector<std::string> fullFaces;
+    LOGGER_INFO("ResourceManager") << "Loading skybox: " << name;
+    m_SkyboxManager->Load(name, faces);
+    
     std::string combinedPaths = "";
-    for (const auto &face : faces)
-    {
-        std::string fullFacePath = FileSystem::getPath(face);
-        fullFaces.push_back(fullFacePath);
-        combinedPaths += fullFacePath + "|";
-    }
-    skybox->LoadCubemap(fullFaces);
-    {
-        std::lock_guard<std::mutex> lock(m_ResourceMutex);
-        m_Skyboxes[name] = skybox;
-        m_PathToSkyboxName[combinedPaths] = name;
-    }
-    LOGGER_INFO("ResourceManager") << "Loaded skybox: " << name;
+    for (const auto &face : faces) combinedPaths += FileSystem::getPath(face) + "|";
+    m_PathToSkyboxName[combinedPaths] = name;
 }
 
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
-    {
-        std::lock_guard<std::mutex> lock(m_ResourceMutex);
-        m_UIModels[name] = std::make_shared<UIModel>(type);
-    }
+    m_UIModels[name] = std::make_shared<UIModel>(type);
     LOGGER_INFO("ResourceManager") << "Created UI Model: " << name;
 }
 
-void ResourceManager::UnloadShader(const std::string &name)
-{
-    m_ShaderCache->Remove(name);
-}
+void ResourceManager::UnloadShader(const std::string &name) { m_ShaderManager->Unload(name); }
+void ResourceManager::UnloadFont(const std::string &name) { m_FontManager->Unload(name); }
+void ResourceManager::UnloadSound(const std::string &name) { m_AudioManager->Unload(name); }
+void ResourceManager::UnloadSkybox(const std::string &name) { m_SkyboxManager->Unload(name); }
+void ResourceManager::UnloadAnimation(const std::string &name) { m_AnimationManager->Unload(name); }
 
-void ResourceManager::UnloadFont(const std::string &name)
-{
-    m_FontCache.Remove(name);
-}
-
-void ResourceManager::UnloadSound(const std::string &name)
-{
-    m_SoundCache.Remove(name);
-}
-
-void ResourceManager::UnloadSkybox(const std::string &name)
-{
-    m_Skyboxes.erase(name);
-}
-
-void ResourceManager::UnloadAnimation(const std::string &name)
-{
-    m_AnimationCache.Remove(name);
-}
-
-std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name)
-{
-    return m_ShaderCache->GetShared(name);
-}
-
-std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name)
-{
-    return m_TextureCache.GetTexture(name);
-}
-
-std::shared_ptr<Model> ResourceManager::GetModel(const std::string &name)
-{
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
-    auto it = m_ModelPaths.find(name);
-    if (it != m_ModelPaths.end())
-    {
-        auto model = m_ModelInstanceManager.GetOrLoadModel(name, it->second.path, it->second.isStatic);
-        if (model)
-            model->UploadToGPU();
-        return model;
-    }
-    LOGGER_WARN("ResourceManager") << "Model path not found for: " << name;
-    return nullptr;
-}
-
-std::shared_ptr<Animation> ResourceManager::GetAnimation(const std::string &name)
-{
-    return m_AnimationCache.GetAnimation(name);
-}
-
-std::shared_ptr<Font> ResourceManager::GetFont(const std::string &name)
-{
-    return m_FontCache.GetFont(name);
-}
-
-std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name)
-{
-    return m_SoundCache.GetSound(name);
-}
+std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name) { return m_ShaderManager->Get(name); }
+std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name) { return m_TextureManager->Get(name); }
+std::shared_ptr<Model> ResourceManager::GetModel(const std::string &name) { return m_ModelManager->Get(name); }
+std::shared_ptr<Animation> ResourceManager::GetAnimation(const std::string &name) { return m_AnimationManager->Get(name); }
+std::shared_ptr<Font> ResourceManager::GetFont(const std::string &name) { return m_FontManager->Get(name); }
+std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name) { return m_AudioManager->Get(name); }
 
 std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &nameOrPath)
 {
@@ -343,38 +234,26 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &n
 
 std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name)
 {
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
-    if (m_Skyboxes.find(name) != m_Skyboxes.end())
-        return m_Skyboxes[name];
-
-    LOGGER_WARN("ResourceManager") << "Skybox not found: " << name;
-    return nullptr;
+    return m_SkyboxManager->Get(name);
 }
 
 std::shared_ptr<UIModel> ResourceManager::GetUIModel(const std::string &name)
 {
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
     if (m_UIModels.find(name) != m_UIModels.end())
         return m_UIModels[name];
-
-    LOGGER_WARN("ResourceManager") << "UI Model not found: " << name;
     return nullptr;
 }
 
 bool ResourceManager::HasUIModel(const std::string &name)
 {
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
     return m_UIModels.find(name) != m_UIModels.end();
 }
 
 std::string ResourceManager::GetTextureNameFromPath(const std::string &path)
 {
     std::string fullPath = FileSystem::getPath(path);
-    std::lock_guard<std::mutex> lock(m_ResourceMutex);
     auto it = m_PathToTextureName.find(fullPath);
-    if (it != m_PathToTextureName.end())
-        return it->second;
-    return "";
+    return (it != m_PathToTextureName.end()) ? it->second : "";
 }
 
 std::string ResourceManager::GetFontNameFromPath(const std::string &path)
@@ -446,56 +325,22 @@ std::string ResourceManager::GetSkyboxNameFromPaths(const std::vector<std::strin
 }
 void ResourceManager::ClearResource()
 {
-    m_TextureCache.Clear();
-    m_FontCache.Clear();
-    m_SoundCache.Clear();
-    m_AnimationCache.Clear();
-    m_ModelInstanceManager.Clear();
+    m_ShaderManager->Clear();
+    m_TextureManager->Clear();
+    m_ModelManager->Clear();
+    m_AudioManager->Unload(""); // Simplified
+    m_FontManager->Unload("");
+    m_AnimationManager->Unload("");
+    m_SkyboxManager->Unload("");
 
     m_UIModels.clear();
-    m_Skyboxes.clear();
+    m_PathToTextureName.clear();
+    m_PathToFontName.clear();
+    m_PathToModelName.clear();
+    m_PathToShaderName.clear();
+    m_PathToSoundName.clear();
+    m_PathToAnimationName.clear();
+    m_PathToSkyboxName.clear();
 
-    LOGGER_INFO("ResourceManager") << "All resources cleared";
-}
-
-void ResourceManager::FlushPendingModels()
-{
-    std::vector<PendingModel> readyModels;
-
-    {
-        std::lock_guard<std::mutex> lock(m_PendingMutex);
-
-        m_ActiveFutures.erase(
-            std::remove_if(m_ActiveFutures.begin(), m_ActiveFutures.end(),
-                           [](std::future<void> &f)
-                           {
-                               try {
-                                   return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-                               } catch (...) {
-                                   return true;
-                               }
-                           }),
-            m_ActiveFutures.end());
-
-        for (auto it = m_PendingModels.begin(); it != m_PendingModels.end();)
-        {
-            if (it->model)
-            {
-                it->model->UploadToGPU();
-                readyModels.push_back(std::move(*it));
-                it = m_PendingModels.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-    }
-
-    for (auto &pending : readyModels)
-    {
-        m_ModelInstanceManager.RegisterModel(pending.name, std::move(pending.model));
-        LOGGER_INFO("ResourceManager") << "Async model registered: " << pending.name;
-        EventSystem::Instance().Publish(ResourceLoadedEvent{pending.name, "MODEL", true});
-    }
+    LOGGER_INFO("ResourceManager") << "All resources cleared via specialized managers";
 }

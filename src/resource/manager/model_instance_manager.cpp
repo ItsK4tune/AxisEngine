@@ -12,6 +12,7 @@ std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& n
     }
 
     std::shared_ptr<Model> model = std::make_shared<Model>(path, isStatic);
+    model->UploadToGPU();
 
     ModelPool pool;
     pool.model = model;

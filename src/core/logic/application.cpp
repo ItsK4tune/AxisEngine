@@ -34,6 +34,8 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/log_manager.h>
+#include <resource/logic/texture_cache.h>
+#include <platform/io/input_loader.h>
 #include <core/logic/axis_assert.h>
 
 extern "C" {
@@ -187,7 +189,7 @@ bool Application::Initialize(const AppConfig &config)
     m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(m_Config);
     m_PhysicsWorld->Initialize();
     
-    m_ResourceManager->Initialize(context.GetShaderManager());
+    m_ResourceManager->Initialize(context.GetShaderManager(), context.GetTextureManager(), *m_IOHandler->GetAudioManager().GetEngine());
     m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
     m_Scene->InitializeManagers();
     
@@ -198,7 +200,7 @@ bool Application::Initialize(const AppConfig &config)
     m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, ctx);
     m_SystemManager->ApplyConfig(m_Config);
 
-    m_ResourceManager->CreateUIModel("default_rect", UIType::Color);
+    m_ResourceManager->CreateUIModel("default_rect", ::UIType::Color);
 
     m_ResourceManager->LoadShader("debugLine", "includes/engine/asset/shaders/debug_line.vs", "includes/engine/asset/shaders/debug_line.fs");
 

@@ -9,7 +9,6 @@ class ISound;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
 class IAudioEngine
 {
 public:

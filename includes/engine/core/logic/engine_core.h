@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/unit/engine_context.h>
-#include <core/logic/config_loader.h>
+#include <core/io/config_loader.h>
 #include <core/logic/state_management.h>
 #include <core/unit/engine_accessor.h>
 #include <platform/interface/cursor_mode.h>

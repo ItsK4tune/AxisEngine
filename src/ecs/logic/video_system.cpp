@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <core/logic/logger.h>
+#include <memory>
 
 void VideoSystem::Update(Scene &scene, float dt)
 {
@@ -77,7 +78,7 @@ void VideoSystem::Update(Scene &scene, float dt)
 
                     if (!m_Ctx.resources->GetUIModel(uniqueName))
                     {
-                        m_Ctx.resources->CreateUIModel(uniqueName, UIType::Texture);
+                        m_Ctx.resources->CreateUIModel(uniqueName, ::UIType::Texture);
                     }
                     uiRenderer->model = m_Ctx.resources->GetUIModel(uniqueName);
                 }

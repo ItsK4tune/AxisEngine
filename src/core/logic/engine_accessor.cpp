@@ -1,9 +1,10 @@
 #include <core/logic/engine_core.h>
 #include <core/type/app_config.h>
-#include <core/logic/config_loader.h>
+#include <core/io/config_loader.h>
 #include <core/unit/engine_context.h>
 #include <engine/platform/logic/io_handler.h>
 #include <core/manager/system_manager.h>
+#include <platform/io/input_loader.h>
 #include <audio/logic/sound_player.h>
 #include <ecs/logic/animation_system.h>
 #include <ecs/logic/audio_system.h>
