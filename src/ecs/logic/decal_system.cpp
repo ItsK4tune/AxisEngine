@@ -40,6 +40,9 @@ void DecalSystem::Initialize(EngineContext ctx)
     if (m_Ctx.scene) {
         m_Ctx.scene->registry.on_construct<DecalComponent>().connect<&DecalSystem::OnDecalConstruct>(this);
     }
+
+    InitCubeMesh();
+    LOGGER_INFO("DecalSystem") << "DecalSystem GPU resources initialized.";
 }
 
 void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity)
@@ -49,12 +52,6 @@ void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity
         decal.renderOrder = m_NextOrder++;
     }
     LOGGER_INFO("DecalSystem") << "Decal created: Entity=" << (uint32_t)entity << ", Lifetime=" << decal.lifetime << ", Order=" << decal.renderOrder;
-}
-
-void DecalSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib)
-{
-    InitCubeMesh();
-    LOGGER_INFO("DecalSystem") << "DecalSystem GPU resources initialized.";
 }
 
 void DecalSystem::Update(Scene &scene, float dt)

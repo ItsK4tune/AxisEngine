@@ -9,9 +9,13 @@
 #include <core/logic/logger.h>
 #include <vector>
 
-void ParticleSystem::Initialize(IGraphicsContext& context)
+#include <platform/logic/io_handler.h>
+#include <core/unit/engine_context.h>
+
+void ParticleSystem::Initialize(EngineContext ctx)
 {
-    m_Context = &context;
+    m_Ctx = ctx;
+    m_Context = &ctx.io->GetGraphicsContext();
 }
 
 void ParticleSystem::Update(Scene &scene, float dt)

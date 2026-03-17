@@ -1,5 +1,6 @@
 #pragma once
 
+#include <scene/type/scene_types.h>
 #include <core/unit/aabb.h>
 #include <entt/entt.hpp>
 #include <memory>
@@ -33,9 +34,6 @@ private:
     int m_Depth;
     std::vector<OctreeElement> m_Elements;
     std::unique_ptr<OctreeNode> m_Children[8];
-
-    static constexpr int MAX_ELEMENTS = 16;
-    static constexpr int MAX_DEPTH = 6;
 };
 
 class Octree

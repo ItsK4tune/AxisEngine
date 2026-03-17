@@ -1,4 +1,5 @@
 #include <scene/logic/octree.h>
+#include <scene/type/scene_types.h>
 
 OctreeNode::OctreeNode(const AABB &boundary, int depth)
     : m_Boundary(boundary), m_Depth(depth)
@@ -67,7 +68,7 @@ void OctreeNode::Insert(entt::entity entity, const AABB &aabb)
 {
     if (IsLeaf())
     {
-        if (m_Elements.size() < MAX_ELEMENTS || m_Depth >= MAX_DEPTH)
+        if (m_Elements.size() < scene::OCTREE_MAX_ELEMENTS || m_Depth >= scene::OCTREE_MAX_DEPTH)
         {
             m_Elements.push_back({entity, aabb});
             return;

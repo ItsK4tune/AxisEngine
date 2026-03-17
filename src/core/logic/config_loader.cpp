@@ -556,13 +556,19 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
     {
         int enable = 0;
         if (ss >> enable && ctx.IsValid())
-            ctx.systems->GetPostProcess().SetBloomEnabled(enable != 0);
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.bloomEnabled = (enable != 0);
+        }
     }
     else if (subCmd == "HDR_ENABLED")
     {
         int enable = 0;
         if (ss >> enable && ctx.IsValid())
-            ctx.systems->GetPostProcess().SetHDREnabled(enable != 0);
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.hdrEnabled = (enable != 0);
+        }
     }
     else if (subCmd == "TAA_ENABLED")
     {
@@ -578,19 +584,28 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
     {
         float val = 2.2f;
         if (ss >> val && ctx.IsValid())
-            ctx.systems->GetPostProcess().SetGamma(val);
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.gamma = val;
+        }
     }
     else if (subCmd == "EXPOSURE")
     {
         float val = 1.0f;
         if (ss >> val && ctx.IsValid())
-            ctx.systems->GetPostProcess().SetExposure(val);
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.exposure = val;
+        }
     }
     else if (subCmd == "BLOOM_INTENSITY")
     {
         float val = 1.0f;
         if (ss >> val && ctx.IsValid())
-            ctx.systems->GetPostProcess().SetBloomIntensity(val);
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.bloomIntensity = val;
+        }
     }
     else if (subCmd == "TONEMAPPING")
     {
@@ -602,10 +617,12 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
                 {"ACES", TonemappingMode::ACES},
                 {"REINHARD", TonemappingMode::Reinhard}
             }, TonemappingMode::ACES);
-            ctx.systems->GetPostProcess().SetTonemappingMode(static_cast<int>(mode));
             
-            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
-            cfg.tonemappingMode = mode;
+            if (ctx.IsValid())
+            {
+                AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+                cfg.tonemappingMode = mode;
+            }
         }
     }
     else if (subCmd == "RENDER_PATH")
@@ -628,7 +645,10 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, EngineContext ctx)
         float r = 0.1f, g = 0.1f, b = 0.1f, a = 1.0f;
         ss >> r >> g >> b >> a;
         if (ctx.IsValid())
-            ctx.systems->GetPostProcess().SetClearColor(r, g, b, a);
+        {
+            AppConfig &cfg = const_cast<AppConfig &>(ctx.runtime->GetConfig());
+            cfg.clearColor[0] = r; cfg.clearColor[1] = g; cfg.clearColor[2] = b; cfg.clearColor[3] = a;
+        }
     }
     // Physics (runtime)
     else if (subCmd == "GRAVITY")

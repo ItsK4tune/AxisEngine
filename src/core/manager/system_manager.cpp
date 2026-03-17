@@ -96,13 +96,6 @@ void SystemManager::InitializeSystems(ResourceManager& res, int width, int heigh
 
     auto& context = ctx.io->GetGraphicsContext();
     postProcess.Initialize(context, width, height, res, m_Ctx.runtime->GetConfig());
-    
-    auto* rs = GetSystem<RenderSystem>();
-    if (rs)
-        rs->Initialize(context, res, m_Ctx.runtime->GetConfig());
-    GetSystem<SkyboxRenderSystem>()->Initialize(context);
-    GetSystem<ParticleSystem>()->Initialize(context);
-    GetSystem<DecalSystem>()->Initialize(context, res);
 
 #ifdef ENABLE_DEBUG_SYSTEM
     m_DebugSystem = std::make_unique<DebugSystem>();
@@ -140,10 +133,6 @@ void SystemManager::ApplyConfig(const AppConfig &config)
         rs->SetRenderOrderEnabled(config.renderOrderEnabled);
         rs->SetFilterLayerMask(config.filterLayerMask);
         rs->SetDeferredRendering(config.renderPath == RenderPath::Deferred);
-        
-        rs->SetFogEnabled(config.fogEnabled);
-        rs->SetFogColor(glm::vec3(config.fogColor[0], config.fogColor[1], config.fogColor[2]));
-        rs->SetFogDensity(config.fogDensity);
 
         if (config.cullFaceEnabled)
             rs->SetFaceCulling(true);
@@ -157,19 +146,7 @@ void SystemManager::ApplyConfig(const AppConfig &config)
     }
 
     // Post-process pipeline
-    postProcess.SetGamma(config.gamma);
-    postProcess.SetExposure(config.exposure);
-    postProcess.SetBloomIntensity(config.bloomIntensity);
-    postProcess.SetBloomThreshold(config.bloomThreshold);
-    postProcess.SetBloomRadius(config.bloomRadius);
-    postProcess.SetSkyboxIntensity(config.skyboxIntensity);
-    if (auto* sky = GetSystem<SkyboxRenderSystem>()) {
-        static_cast<SkyboxRenderSystem*>(sky)->SetIntensity(config.skyboxIntensity);
-    }
-    postProcess.SetTonemappingMode(static_cast<int>(config.tonemappingMode));
-    postProcess.SetHDREnabled(config.hdrEnabled);
-    postProcess.SetBloomEnabled(config.bloomEnabled);
-    postProcess.SetClearColor(config.clearColor[0], config.clearColor[1], config.clearColor[2], config.clearColor[3]);
+    // (Settings are now read directly from m_Config reference)
 
     // Physics
     if (m_Ctx.IsValid() && m_Ctx.physics) {
@@ -326,23 +303,26 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
     postProcess.BeginCapture();
     if (rs) rs->SetMainFBO(postProcess.GetCaptureFBO());
 
-    // Dispatch render stages
-    auto dispatchStage = [&](RenderStage stage, int w, int h, float a) {
-        for (auto& sys : m_Systems) {
-            if (!sys->IsEnabled()) continue;
-            switch (stage) {
-                case RenderStage::Opaque:      sys->RenderAlpha(scene, w, h, a); break;
-                case RenderStage::Transparent: sys->RenderTransparent(scene, w, h, a); break;
-                case RenderStage::UI:          if (rs) sys->RenderUI(scene, (float)w, (float)h, rs->GetContext()->GetRenderStateManager()); break;
-                default:                       sys->Render(scene); break;
-            }
-        }
-    };
-
-    dispatchStage(RenderStage::Opaque, width, height, alpha);
-    dispatchStage(RenderStage::Transparent, width, height, alpha);
-    dispatchStage(RenderStage::Overlay, width, height, alpha);
-    dispatchStage(RenderStage::UI, width, height, alpha);
+    // Opaque (RenderAlpha)
+    for (auto& sys : m_Systems) { 
+        if (sys->IsEnabled()) sys->RenderAlpha(scene, width, height, alpha); 
+    }
+    
+    // Transparent (RenderTransparent)
+    for (auto& sys : m_Systems) { 
+        if (sys->IsEnabled()) sys->RenderTransparent(scene, width, height, alpha); 
+    }
+    
+    // Overlay/Default (Render)
+    for (auto& sys : m_Systems) { 
+        if (sys->IsEnabled()) sys->Render(scene); 
+    }
+    
+    // UI (RenderUI)
+    for (auto& sys : m_Systems) { 
+        if (sys->IsEnabled() && rs && rs->GetContext()) 
+            sys->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager()); 
+    }
 
     if (rs) {
         postProcess.ApplyAntiAliasing(rs->GetAntiAliasingMode(),

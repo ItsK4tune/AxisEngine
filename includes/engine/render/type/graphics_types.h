@@ -558,3 +558,6 @@ private:
     IGraphicsContext& m_Context;
     GpuHandle m_Handle;
 };
+
+// --- Render Constants ---
+constexpr int BLOOM_MIP_COUNT = 6;

@@ -1,4 +1,5 @@
 #include <scene/io/binary_scene_serializer.h>
+#include <scene/type/scene_types.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
@@ -12,11 +13,8 @@
 bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
 {
     std::ofstream os(filepath, std::ios::binary);
-    if (!os.is_open()) return false;
-
-    os.write(reinterpret_cast<const char*>(&MAGIC), sizeof(MAGIC));
-    os.write(reinterpret_cast<const char*>(&VERSION), sizeof(VERSION));
-
+    os.write(reinterpret_cast<const char*>(&scene::BINARY_MAGIC), sizeof(scene::BINARY_MAGIC));
+    os.write(reinterpret_cast<const char*>(&scene::BINARY_VERSION), sizeof(scene::BINARY_VERSION));
     auto view = scene.registry.view<InfoComponent>();
     std::vector<entt::entity> entities;
     for (auto entity : view) entities.push_back(entity);
@@ -29,16 +27,18 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
 
     for (auto entity : entities)
     {
-        auto& info = view.get<InfoComponent>(entity);
+        auto& info = scene.registry.get<InfoComponent>(entity);
         
-        auto writeString = [&](const std::string& s) {
-            uint32_t len = (uint32_t)s.length();
+        {
+            uint32_t len = (uint32_t)info.name.length();
             os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-            os.write(s.c_str(), len);
-        };
-
-        writeString(info.name);
-        writeString(info.tag);
+            os.write(info.name.c_str(), len);
+        }
+        {
+            uint32_t len = (uint32_t)info.tag.length();
+            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+            os.write(info.tag.c_str(), len);
+        }
         os.write(reinterpret_cast<const char*>(&info.layer), sizeof(info.layer));
         
         auto* pos = scene.registry.try_get<PositionComponent>(entity);
@@ -65,9 +65,17 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
         os.write(reinterpret_cast<const char*>(&hasMesh), sizeof(hasMesh));
         if (hasMesh)
         {
-            writeString(mesh->model ? mesh->model->GetName() : "");
-            auto s = mesh->shader.lock();
-            writeString(s ? s->GetName() : "");
+            std::string mName = mesh->model ? mesh->model->GetName() : "";
+            uint32_t len = (uint32_t)mName.length();
+            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+            os.write(mName.c_str(), len);
+
+            auto s_ptr = mesh->shader.lock();
+            std::string sName = s_ptr ? s_ptr->GetName() : "";
+            len = (uint32_t)sName.length();
+            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+            os.write(sName.c_str(), len);
+
             os.write(reinterpret_cast<const char*>(&mesh->castShadow), sizeof(mesh->castShadow));
         }
 
@@ -94,7 +102,7 @@ bool BinarySceneSerializer::Deserialize(const std::string& filepath, Scene& scen
     is.read(reinterpret_cast<char*>(&magic), sizeof(magic));
     is.read(reinterpret_cast<char*>(&version), sizeof(version));
 
-    if (magic != MAGIC || version != VERSION) return false;
+    if (magic != scene::BINARY_MAGIC || version != scene::BINARY_VERSION) return false;
 
     uint32_t entityCount;
     is.read(reinterpret_cast<char*>(&entityCount), sizeof(entityCount));

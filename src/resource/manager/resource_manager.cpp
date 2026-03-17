@@ -288,7 +288,7 @@ std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &name
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(nameOrPath)) return nullptr;
+    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
     LoadTexture(nameOrPath, nameOrPath);
     return GetTexture(nameOrPath);
 }
@@ -304,7 +304,7 @@ std::shared_ptr<Model> ResourceManager::GetModelAuto(const std::string &nameOrPa
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(nameOrPath)) return nullptr;
+    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
     LoadModel(nameOrPath, nameOrPath, isStatic);
     return GetModel(nameOrPath);
 }
@@ -320,7 +320,7 @@ std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string &nameOrPath
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(nameOrPath)) return nullptr;
+    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
     LoadFont(nameOrPath, nameOrPath, fontSize);
     return GetFont(nameOrPath);
 }
@@ -336,7 +336,7 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &n
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(nameOrPath)) return nullptr;
+    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
     LoadSound(nameOrPath, nameOrPath, engine);
     return GetSound(nameOrPath);
 }

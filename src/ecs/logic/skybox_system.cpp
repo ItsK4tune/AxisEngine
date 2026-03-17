@@ -8,10 +8,17 @@
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <core/logic/logger.h>
+#include <core/type/app_config.h>
 
-void SkyboxRenderSystem::Initialize(IGraphicsContext& context)
+#include <platform/logic/io_handler.h>
+#include <core/unit/engine_context.h>
+#include <core/logic/engine_core.h>
+
+void SkyboxRenderSystem::Initialize(EngineContext ctx)
 {
-    m_Context = &context;
+    m_Ctx = ctx;
+    m_Context = &ctx.io->GetGraphicsContext();
+    m_Config = &ctx.runtime->GetConfig();
 }
 
 std::vector<entt::id_type> SkyboxRenderSystem::GetReadComponents() const
@@ -51,7 +58,7 @@ void SkyboxRenderSystem::Render(Scene &scene)
             tm.ActiveTexture(TextureUnit::Texture0);
             tm.BindTexture(TextureType::TextureCubeMap, component.skybox->GetTextureID());
             lockedShader->setInt("skybox", 0);
-            lockedShader->setFloat("intensity", m_Intensity);
+            lockedShader->setFloat("intensity", m_Config->skyboxIntensity);
 
             component.skybox->Draw(*lockedShader);
         }

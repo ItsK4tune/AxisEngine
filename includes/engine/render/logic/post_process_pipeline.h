@@ -45,19 +45,10 @@ public:
     void ClearEffects();
 
     // Config setters
-    void SetGamma(float gamma) { m_Gamma = gamma; }
-    void SetExposure(float exposure) { m_Exposure = exposure; }
-    void SetBloomIntensity(float intensity) { m_BloomIntensity = intensity; }
-    void SetBloomThreshold(float threshold) { m_BloomThreshold = threshold; }
-    void SetBloomRadius(float radius) { m_BloomRadius = radius; }
-    void SetSkyboxIntensity(float intensity) { m_SkyboxIntensity = intensity; }
-    void SetTonemappingMode(int mode) { m_TonemappingMode = mode; }
-    void SetHDREnabled(bool enabled) { m_HDREnabled = enabled; }
-    void SetBloomEnabled(bool enabled) { m_BloomEnabled = enabled; }
-    void SetClearColor(float r, float g, float b, float a) { m_ClearColor[0]=r; m_ClearColor[1]=g; m_ClearColor[2]=b; m_ClearColor[3]=a; }
+    void ApplyConfig(const AppConfig& config) { m_Config = &config; }
 
-    float GetGamma() const { return m_Gamma; }
-    float GetExposure() const { return m_Exposure; }
+    float GetGamma() const;
+    float GetExposure() const;
 
 private:
     IGraphicsContext* m_Context = nullptr;
@@ -91,24 +82,13 @@ private:
         int width, height;
     };
     std::vector<BloomMip> m_BloomMips;
-    static constexpr int BLOOM_MIP_COUNT = 6;
 
     GpuHandle m_QuadVAO;
     GpuHandle m_QuadVBO;
 
     std::vector<PostProcessEffect> m_Effects;
 
-    // Config values
-    float m_Gamma = 2.2f;
-    float m_Exposure = 1.0f;
-    float m_BloomIntensity = 0.5f;
-    float m_BloomThreshold = 1.0f;
-    float m_BloomRadius = 0.005f;
-    float m_SkyboxIntensity = 1.0f;
-    int m_TonemappingMode = 2; // ACES
-    bool m_HDREnabled = true;
-    bool m_BloomEnabled = true;
-    float m_ClearColor[4] = {0.1f, 0.1f, 0.1f, 1.0f};
+    const AppConfig* m_Config = nullptr;
 
     void InitQuad();
     void InitFramebuffers();

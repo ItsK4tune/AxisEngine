@@ -40,7 +40,7 @@ class RenderSystem : public ISystem
 {
 public:
 
-    void Initialize(EngineContext ctx) override { m_Ctx = ctx; }
+    void Initialize(EngineContext ctx) override;
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 80; }
@@ -63,7 +63,6 @@ public:
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
 
-    void Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib, const AppConfig& config);
     void Shutdown();
 
     void SetEnableShadows(bool enable) { m_ShadowRenderer.SetEnableShadows(enable); }
@@ -99,10 +98,6 @@ public:
     
     void SetFilterLayerMask(uint32_t mask) { m_FilterLayerMask = mask; }
     uint32_t GetFilterLayerMask() const { return m_FilterLayerMask; }
-    
-    void SetFogEnabled(bool enabled) { m_FogEnabled = enabled; }
-    void SetFogColor(const glm::vec3& color) { m_FogColor = color; }
-    void SetFogDensity(float density) { m_FogDensity = density; }
 
     void SetShadowBias(float bias) { m_ShadowRenderer.SetShadowBias(bias); }
     void SetShadowSoftness(int softness) { m_ShadowRenderer.SetShadowSoftness(softness); }
@@ -126,7 +121,7 @@ public:
 
 private:
     EngineContext m_Ctx;
-        IGraphicsContext* m_Context = nullptr;
+    IGraphicsContext* m_Context = nullptr;
     ShadowRenderer m_ShadowRenderer;
     LightRenderer m_LightRenderer;
     StaticBatchManager m_BatchManager;
@@ -143,9 +138,7 @@ private:
     unsigned int m_BlackTextureID = 0;
     unsigned int m_FlatNormalTextureID = 0;
     float m_DistanceCullingSq = 0.0f;
-    bool m_FogEnabled = false;
-    glm::vec3 m_FogColor = glm::vec3(0.5f);
-    float m_FogDensity = 0.01f;
+    const AppConfig* m_Config = nullptr;
 
     AntiAliasingMode m_AAMode = AntiAliasingMode::NONE;
     glm::vec2 m_JitterOffset = glm::vec2(0.0f);

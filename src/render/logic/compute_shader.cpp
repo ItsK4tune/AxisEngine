@@ -4,10 +4,8 @@
 #include <sstream>
 #include <core/logic/logger.h>
 
-namespace {
-    constexpr unsigned int COMPUTE_SHADER = 0x91B9;
-    constexpr unsigned int FALSE = 0;
-}
+
+
 
 ComputeShader::ComputeShader(IShaderManager& manager, const char *computePath)
     : ID(0), m_ShaderManager(manager)

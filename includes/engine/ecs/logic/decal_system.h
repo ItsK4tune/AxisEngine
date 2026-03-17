@@ -16,7 +16,6 @@ class DecalSystem : public ISystem
 {
 public:
     void Initialize(EngineContext ctx) override;
-    virtual void Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib);
     void Shutdown() override {}
     
     bool IsEnabled() const override { return m_Enabled; }

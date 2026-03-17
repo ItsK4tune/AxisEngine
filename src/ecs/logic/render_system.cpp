@@ -27,13 +27,20 @@
 #include <core/logic/debug_core.h>
 #endif
 
-void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderLib, const AppConfig &config)
+#include <platform/logic/io_handler.h>
+#include <core/unit/engine_context.h>
+#include <core/logic/engine_core.h>
+
+void RenderSystem::Initialize(EngineContext ctx)
 {
-    m_Context = &context;
+    m_Ctx = ctx;
+    m_Context = &ctx.io->GetGraphicsContext();
+    IShaderLibrary& shaderLib = *ctx.resources;
+    const AppConfig& config = ctx.runtime->GetConfig();
 
     LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers with res: " << config.shadowMapResolution;
-    m_ShadowRenderer.Initialize(context, shaderLib);
-    m_ShadowRenderer.GetShadow().Initialize(context, config.shadowMapResolution, config.shadowMapResolution);
+    m_ShadowRenderer.Initialize(*m_Context, shaderLib);
+    m_ShadowRenderer.GetShadow().Initialize(*m_Context, config.shadowMapResolution, config.shadowMapResolution);
     
     m_LightRenderer.Initialize(*m_Context);
 
@@ -76,24 +83,22 @@ void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderL
         m_BonesUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
 
     auto& bm = m_Context->GetBufferManager();
-    m_CameraUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
+    m_CameraUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUCameraData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
 
-    m_GlobalLightUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
+    m_GlobalLightUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalLightData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
 
-    m_GlobalDataUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
+    m_GlobalDataUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
-    m_FogEnabled = config.fogEnabled;
-    m_FogColor = glm::vec3(config.fogColor[0], config.fogColor[1], config.fogColor[2]);
-    m_FogDensity = config.fogDensity;
+    m_Config = &config;
 
     m_ShadowRenderer.SetShadowBias(config.shadowBias);
     m_ShadowRenderer.SetShadowSoftness(config.shadowSoftness);
@@ -111,7 +116,7 @@ void RenderSystem::Initialize(IGraphicsContext &context, IShaderLibrary &shaderL
     m_DeferredLightShader = shaderLib.GetShader("deferred_light");
 
     m_GBuffer.SetRenderScale(config.renderScale);
-    m_GBuffer.Initialize(context, config.width, config.height);
+    m_GBuffer.Initialize(*m_Context, config.width, config.height);
 
     SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
     SetShadowDistanceCulling(config.shadowDistanceCulling);
@@ -452,9 +457,9 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                             }
                         }
                         s->setBool("debug_noTexture", isDebugNoTexture);
-                        s->setBool("u_FogEnabled", m_FogEnabled);
-                        s->setVec3("u_FogColor", m_FogColor);
-                        s->setFloat("u_FogDensity", m_FogDensity);
+                        s->setBool("u_FogEnabled", m_Config->fogEnabled);
+                        s->setVec3("u_FogColor", glm::vec3(m_Config->fogColor[0], m_Config->fogColor[1], m_Config->fogColor[2]));
+                        s->setFloat("u_FogDensity", m_Config->fogDensity);
                         s->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
                         s->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
                     });
