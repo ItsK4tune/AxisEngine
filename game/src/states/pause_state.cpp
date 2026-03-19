@@ -30,7 +30,7 @@ void PauseState::OnUpdate(float dt)
     auto& kb = GetKeyboard();
     if (kb.IsKeyDown(Key::P))
     {
-        m_Ctx.runtime->GetStateMachine().PopState();
+        GetRuntimeCore().GetStateMachine().PopState();
     }
 }
 

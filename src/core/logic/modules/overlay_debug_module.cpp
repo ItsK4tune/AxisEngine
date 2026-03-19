@@ -1,20 +1,19 @@
 #include <core/logic/modules/overlay_debug_module.h>
 #include <render/interface/i_graphics_context.h>
-#include <render/logic/font.h>
+#include <render/unit/font.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/app_framework.h>
-#include <platform/logic/input_system.h>
+#include <core/logic/application.h>
+#include <platform/logic/input_manager.h>
 #include <scene/logic/scene.h>
 #include <ecs/logic/render_system.h>
-#include <ecs/logic/skybox_system.h>
-#include <ecs/logic/ui_system.h>
-#include <core/unit/engine_context.h>
+#include <ecs/logic/skybox_render_system.h>
+#include <ecs/logic/ui_render_system.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/manager/system_manager.h>
-#include <core/logic/engine_core.h>
+#include <core/logic/system_manager.h>
+#include <core/logic/runtime_core.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
 #include <sstream>
@@ -23,14 +22,14 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <core/logic/debug_core.h>
+#include <core/logic/debug_system.h>
+#include <core/logic/service_locator.h>
 
 OverlayDebugModule::OverlayDebugModule() {}
 OverlayDebugModule::~OverlayDebugModule() {}
 
-void OverlayDebugModule::Initialize(EngineContext ctx)
+void OverlayDebugModule::Initialize()
 {
-    m_Ctx = ctx;
 }
 
 void OverlayDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
@@ -52,21 +51,27 @@ void OverlayDebugModule::OnUpdate(float dt)
 
 void OverlayDebugModule::Render(Scene &scene)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled || !m_ShowStatsOverlay)
+    if (!m_Enabled || !m_ShowStatsOverlay)
         return;
 
     if (!m_DebugFont || !m_TextShader || !m_TextQuad)
         return;
 
-    int width = m_Ctx.io->GetMonitorManager().GetWidth();
-    int height = m_Ctx.io->GetMonitorManager().GetHeight();
+    auto& sl = ServiceLocator::Instance();
+    auto& io = sl.Require<IOHandler>();
+    auto& graphics = sl.Require<IGraphicsContext>();
+    auto& systems = sl.Require<SystemManager>();
+    auto& runtime = sl.Require<RuntimeCore>();
 
-    m_Ctx.io->GetGraphicsContext().SetDepthTest(false);
-    m_Ctx.io->GetGraphicsContext().SetBlending(true);
-    m_Ctx.io->GetGraphicsContext().SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+    int width = io.GetMonitorManager().GetWidth();
+    int height = io.GetMonitorManager().GetHeight();
+
+    graphics.SetDepthTest(false);
+    graphics.SetBlending(true);
+    graphics.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
     size_t totalEntities = scene.registry.storage<entt::entity>().size();
-    int renderedEntities = m_Ctx.systems->GetSystem<RenderSystem>()->GetRenderedCount();
+    int renderedEntities = systems.GetSystem<RenderSystem>()->GetRenderedCount();
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(1);
@@ -75,7 +80,7 @@ void OverlayDebugModule::Render(Scene &scene)
     {
         ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
         ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities << "\n";
-        ss << "TimeScale: " << m_Ctx.runtime->GetTimeScale() << "x | Paused: " << (m_Ctx.runtime->IsPaused() ? "YES" : "NO") << "\n";
+        ss << "TimeScale: " << runtime.GetTimeScale() << "x | Paused: " << (runtime.IsPaused() ? "YES" : "NO") << "\n";
     };
 
     auto appendTools = [&]()
@@ -83,13 +88,13 @@ void OverlayDebugModule::Render(Scene &scene)
         ss << "=== DEBUG TOOLS ===\n";
         auto boolStr = [](bool v)
         { return v ? "[ON]" : "[OFF]"; };
-        ss << "F6: Wireframe: " << boolStr(DebugConfig::ShowWireframe) << "  | S+F6: Skybox: " << boolStr(m_Ctx.systems->GetSystem<SkyboxRenderSystem>()->IsEnabled()) << "\n";
-        ss << "F7: NoTexture: " << boolStr(m_Ctx.systems->GetSystem<RenderSystem>()->IsDebugNoTexture()) << "  | S+F7: Shadows: " << boolStr(m_Ctx.systems->GetSystem<RenderSystem>()->IsShadowsEnabled()) << "\n";
+        ss << "F6: Wireframe: " << boolStr(DebugConfig::ShowWireframe) << "  | S+F6: Skybox: " << boolStr(systems.GetSystem<SkyboxRenderSystem>()->IsEnabled()) << "\n";
+        ss << "F7: NoTexture: " << boolStr(systems.GetSystem<RenderSystem>()->IsDebugNoTexture()) << "  | S+F7: Shadows: " << boolStr(systems.GetSystem<RenderSystem>()->IsShadowsEnabled()) << "\n";
         ss << "F8: Physics: " << boolStr(DebugConfig::ShowPhysics) << "    | S+F8: Audio: [NYI]\n";
-        ss << "F9: UI System: " << boolStr(m_Ctx.systems->GetSystem<UIRenderSystem>()->IsEnabled()) << " | S+F9: Particle: [NYI]\n";
+        ss << "F9: UI System: " << boolStr(systems.GetSystem<UIRenderSystem>()->IsEnabled()) << " | S+F9: Particle: [NYI]\n";
         ss << "S+F3: Names: " << boolStr(DebugConfig::ShowEntityNames) << "    | S+F4: Gizmos: " << boolStr(DebugConfig::ShowGizmos) << "\n";
         ss << "S+F5: Lights: " << boolStr(DebugConfig::ShowLightGizmos) << "   | S+F11: Cam\n";
-        ss << "F11: Paused:   " << boolStr(m_Ctx.runtime->IsPaused());
+        ss << "F11: Paused:   " << boolStr(runtime.IsPaused());
     };
 
     if (m_OverlayMode == 1)
@@ -128,13 +133,13 @@ void OverlayDebugModule::Render(Scene &scene)
         yStart += 25.0f;
     }
 
-    m_Ctx.io->GetGraphicsContext().SetBlending(false);
-    m_Ctx.io->GetGraphicsContext().SetDepthTest(true);
+    graphics.SetBlending(false);
+    graphics.SetDepthTest(true);
 }
 
 void OverlayDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled)
+    if (!m_Enabled)
         return;
 
     ProcessKey(keyboard, Key::F10, m_F10Pressed, [this, &keyboard]()
@@ -167,8 +172,8 @@ void OverlayDebugModule::ToggleStatsOverlay()
         bool quadOK = (m_TextQuad != nullptr);
 
         std::cout << "[DebugSystem] Resources Status:" << std::endl;
-        std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check includes/engine/asset/fonts/time.ttf)") << std::endl;
-        std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check includes/engine/asset/shaders/text.vs/fs)") << std::endl;
+        std::cout << "  Font:   " << (fontOK ? "OK" : "MISSING (Check include/engine/asset/fonts/time.ttf)") << std::endl;
+        std::cout << "  Shader: " << (shaderOK ? "OK" : "MISSING (Check include/engine/asset/shaders/text.vs/fs)") << std::endl;
         std::cout << "  Quad:   " << (quadOK ? "OK" : "MISSING") << std::endl;
 
         if (!fontOK || !shaderOK || !quadOK)
@@ -181,8 +186,9 @@ void OverlayDebugModule::ToggleStatsOverlay()
 
 void OverlayDebugModule::RenderText(const std::string &text, float x, float y, float scale, glm::vec4 color)
 {
-    int width = m_Ctx.io->GetMonitorManager().GetWidth();
-    int height = m_Ctx.io->GetMonitorManager().GetHeight();
+    auto& io = ServiceLocator::Instance().Require<IOHandler>();
+    int width = io.GetMonitorManager().GetWidth();
+    int height = io.GetMonitorManager().GetHeight();
 
     m_TextShader->use();
     glm::mat4 projection = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);

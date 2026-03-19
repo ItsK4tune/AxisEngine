@@ -16,8 +16,6 @@ if(ENABLE_DEBUG_SYSTEM)
     message(STATUS "Debug System Enabled")
 endif()
 
-
-
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})
@@ -31,10 +29,10 @@ find_package(IrrKlang REQUIRED)
 find_package(FFMPEG REQUIRED)
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}/includes
-    ${CMAKE_SOURCE_DIR}/includes/bullet
-    ${CMAKE_SOURCE_DIR}/includes/entt
-    ${CMAKE_SOURCE_DIR}/includes/engine
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/bullet
+    ${CMAKE_SOURCE_DIR}/include/entt
+    ${CMAKE_SOURCE_DIR}/include/engine
     ${FREETYPE_INCLUDE_DIR}
     ${ASSIMP_INCLUDE_DIR}
     ${GLFW3_INCLUDE_DIR}
@@ -42,7 +40,7 @@ include_directories(
     ${BULLET_INCLUDE_DIR}
     ${IRRKLANG_INCLUDE_DIR}
     ${FFMPEG_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/game/includes
+    ${CMAKE_SOURCE_DIR}/game/include
 )
 
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -55,8 +53,8 @@ file(GLOB_RECURSE ENGINE_SOURCES
 file(GLOB_RECURSE GAME_SOURCES
     ${CMAKE_SOURCE_DIR}/game/src/*.cpp
     # Windows resource files containing the app icon
-    ${CMAKE_SOURCE_DIR}/includes/engine/asset/project/app.rc
-    ${CMAKE_SOURCE_DIR}/includes/engine/asset/project/resource.h
+    ${CMAKE_SOURCE_DIR}/include/engine/asset/project/app.rc
+    ${CMAKE_SOURCE_DIR}/include/engine/asset/project/resource.h
 )
 
 add_executable(AxisEngine ${ENGINE_SOURCES} ${GAME_SOURCES})

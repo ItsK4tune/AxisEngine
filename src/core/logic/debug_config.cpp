@@ -1,4 +1,4 @@
-#include <core/logic/debug_core.h>
+#include <core/logic/debug_system.h>
 #ifdef ENABLE_DEBUG_SYSTEM
 
 bool DebugConfig::ShowWireframe = false;

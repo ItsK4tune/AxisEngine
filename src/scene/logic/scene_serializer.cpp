@@ -1,22 +1,24 @@
 #include <ecs/unit/core_components.h>
-#include <core/logic/app_framework.h>
+#include <core/logic/application.h>
 #include <core/type/app_config.h>
-#include <core/io/config_loader.h>
+#include <core/logic/config_loader.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <ecs/manager/entity_manager.h>
-#include <physics/io/physics_loader.h>
+#include <ecs/logic/entity_manager.h>
+#include <physics/logic/physics_loader.h>
 #include <scene/interface/i_component_loader_factory.h>
-#include <scene/io/component_loader.h>
+#include <scene/logic/component_loader.h>
 #include <scene/logic/scene_validator.h>
 #include <scene/logic/scene_serializer.h>
-#include <audio/logic/sound_player.h>
+#include <core/logic/runtime_core.h>
+#include <core/logic/config_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
-#include <core/logic/yaml_parser.h>
 #include <core/logic/loader_utils.h>
+#include <audio/logic/audio_service.h>
+#include <audio/interface/i_audio_engine.h>
 
-SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld &phys, SoundPlayer &sound, EngineContext ctx)
+SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld* phys, AudioService &sound)
 {
     SceneLoadResult result;
     std::string fullPath = FileSystem::getPath(filepath);
@@ -48,7 +50,9 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
     {
         if (root.key == "Config")
         {
-            AppConfig tempConfig = ctx.IsValid() ? ctx.runtime->GetConfig() : AppConfig{};
+            auto& sl = ServiceLocator::Instance();
+            auto& configMgr = sl.Require<ConfigManager>();
+            AppConfig tempConfig = configMgr.GetConfig();
             bool applyWindow = false;
 
             for (auto &cfgNode : root.children)
@@ -61,18 +65,19 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 std::stringstream ss1;
                 ss1 << cfgNode.key << " " << cfgNode.value;
                 ConfigLoader::LoadConfig(ss1, tempConfig);
-
-                std::stringstream ss2;
-                ss2 << cfgNode.key << " " << cfgNode.value;
-                ConfigLoader::LoadConfig(ss2, ctx);
             }
+            
+            configMgr.UpdateConfig(tempConfig);
 
-            if (applyWindow && ctx.IsValid())
+            if (applyWindow)
             {
-                ctx.io->GetMonitorManager().SetWindowConfiguration(
-                    tempConfig.width, tempConfig.height,
-                    (WindowMode)tempConfig.windowMode,
-                    tempConfig.monitorIndex, tempConfig.refreshRate);
+                auto io = ServiceLocator::Instance().Resolve<IOHandler>();
+                if (io) {
+                    io->GetMonitorManager().SetWindowConfiguration(
+                        tempConfig.width, tempConfig.height,
+                        (WindowMode)tempConfig.windowMode,
+                        tempConfig.monitorIndex, tempConfig.refreshRate);
+                }
             }
 
             result.hasConfig = true;
@@ -155,15 +160,19 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
                     
-                    if (ctx.IsValid()) {
-                        res.LoadSound(name, path, ctx.soundPlayer ? ctx.soundPlayer->GetEngine() : nullptr);
-                        auto sound = res.GetSound(name);
-                        if (sound) {
-                            sound->SetDefaultVolume(std::stof(resNode.GetChildValue("Volume", "1.0")));
-                            sound->SetDefaultPitch(std::stof(resNode.GetChildValue("Pitch", "1.0")));
-                            sound->SetDefaultPan(std::stof(resNode.GetChildValue("Pan", "0.0")));
-                            sound->SetDefaultSpeed(std::stof(resNode.GetChildValue("Speed", "1.0")));
-                        }
+                    res.LoadSound(name, path, sound.GetEngine());
+                    auto source = res.GetSound(name);
+                    if (source)
+                    {
+                        float vol = std::stof(resNode.GetChildValue("Volume", "1.0"));
+                        float pitch = std::stof(resNode.GetChildValue("Pitch", "1.0"));
+                        float pan = std::stof(resNode.GetChildValue("Pan", "0.0"));
+                        float speed = std::stof(resNode.GetChildValue("Speed", "1.0"));
+
+                        source->SetDefaultVolume(vol);
+                        source->SetDefaultPitch(pitch);
+                        source->SetDefaultPan(pan);
+                        source->SetDefaultSpeed(speed);
                     }
                     result.loadedSounds.push_back(name);
                 }
@@ -171,6 +180,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
         }
         else if (root.key == "Entities")
         {
+            ComponentLoader::InitializeDefaultLoaders();
             for (auto &entNode : root.children)
             {
                 LoaderUtils::ValidateKeys(entNode, {"Tag", "Layer", "Parent", "Component"}, "Entity:" + entNode.key);
@@ -243,7 +253,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                     deferredChildren[currentEntity].push_back(pNode->value);
                 }
 
-                ComponentLoader::InitializeDefaultLoaders();
+ 
 
                 for (auto &compNode : entNode.children)
                 {
@@ -251,7 +261,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                         continue;
                     std::string compType = compNode.value;
 
-                    if (!ComponentLoader::Load(compType, scene, currentEntity, compNode, res, phys, ctx))
+                    if (!ComponentLoader::Load(compType, scene, currentEntity, compNode, res, phys))
                     {
                         LOGGER_WARN("SceneSerializer") << "No ComponentLoader registered for component type: " << compType;
                     }
@@ -263,7 +273,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
     SceneHandlers::SceneValidator::ValidateParentChildRelationships(scene, deferredChildren);
     SceneHandlers::SceneValidator::ValidateLights(scene);
     SceneHandlers::SceneValidator::ValidatePhysicsSync(scene, phys);
-    SceneHandlers::SceneValidator::ValidateCamera(scene, ctx);
+    SceneHandlers::SceneValidator::ValidateCamera(scene);
 
     LOGGER_INFO("SceneSerializer") << "Finished parsing AXS file: " << fullPath;
     return result;

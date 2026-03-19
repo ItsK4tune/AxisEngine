@@ -5,7 +5,7 @@
 #include <render/interface/i_query_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_draw_context.h>
-#include <render/logic/shader.h>
+#include <render/unit/shader.h>
 #include <ecs/unit/render_components.h>
 void OcclusionCuller::Initialize(IGraphicsContext& context, std::shared_ptr<Shader> shader) {
     m_Context = &context;

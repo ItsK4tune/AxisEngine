@@ -19,7 +19,7 @@
 SET(_irrklang_HEADER_SEARCH_DIRS
     "/usr/include"
     "/usr/local/include"
-    "${CMAKE_SOURCE_DIR}/includes"
+    "${CMAKE_SOURCE_DIR}/include"
     "C:/Program Files/irrKlang"
     "C:/Program Files (x86)/irrKlang"
 )

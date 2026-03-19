@@ -1,11 +1,11 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
-#include <render/logic/shader.h>
+#include <render/unit/shader.h>
 #include <render/logic/light_renderer.h>
 #include <render/interface/i_graphics_context.h>
 
-#include <render/logic/shadow.h>
+#include <render/unit/shadow.h>
 #include <render/interface/i_buffer_manager.h>
 #include <scene/logic/scene.h>
 #include <core/logic/logger.h>

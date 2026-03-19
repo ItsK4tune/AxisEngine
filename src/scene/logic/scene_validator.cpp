@@ -1,9 +1,5 @@
-#include <ecs/unit/core_components.h>
-#include <ecs/unit/light_components.h>
-#include <ecs/unit/render_components.h>
-#include <ecs/unit/physics_components.h>
-#include <core/logic/app_framework.h>
-#include <ecs/manager/entity_manager.h>
+#include <core/logic/service_locator.h>
+#include <ecs/logic/entity_manager.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -17,6 +13,11 @@
 #include <platform/logic/monitor_manager.h>
 #include <core/logic/logger.h>
 #include <physics/interface/i_rigid_body.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/unit/light_components.h>
+#include <ecs/unit/media_components.h>
 
 namespace SceneHandlers
 {
@@ -78,7 +79,7 @@ namespace SceneHandlers
         }
     }
 
-    void SceneValidator::ValidateCamera(Scene &scene, EngineContext ctx)
+    void SceneValidator::ValidateCamera(Scene &scene)
     {
         if (EntityManager::GetActiveCamera(scene) != entt::null)
             return;
@@ -112,7 +113,13 @@ namespace SceneHandlers
         cam.nearPlane = 0.1f;
         cam.farPlane = 1000.0f;
         cam.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-        cam.aspectRatio = (float)ctx.io->GetMonitorManager().GetWidth() / (float)ctx.io->GetMonitorManager().GetHeight();
+        
+        auto io = ServiceLocator::Instance().Resolve<IOHandler>();
+        if (io) {
+            cam.aspectRatio = (float)io->GetMonitorManager().GetWidth() / (float)io->GetMonitorManager().GetHeight();
+        } else {
+            cam.aspectRatio = 16.0f / 9.0f;
+        }
 
         std::string scriptName = "DefaultCameraController";
         auto scriptInstance = ScriptRegistry::Instance().Create(scriptName);
@@ -126,7 +133,7 @@ namespace SceneHandlers
             scriptComp.DestroyScript = [](ScriptComponent *nsc)
             { nsc->instance.reset(); };
 
-            scriptComp.instance->Initialize(camEntity, &scene, ctx);
+            scriptComp.instance->Initialize(camEntity, &scene);
             scriptComp.instance->OnCreate();
             LOGGER_INFO("SceneValidator") << "Attached 'DefaultCameraController' (Engine Fallback) to default camera.";
         }
@@ -136,8 +143,9 @@ namespace SceneHandlers
         }
     }
 
-    void SceneValidator::ValidatePhysicsSync(Scene &scene, IPhysicsWorld &phys)
+    void SceneValidator::ValidatePhysicsSync(Scene &scene, IPhysicsWorld *phys)
     {
+        if (!phys) return;
         auto rbView = scene.registry.view<RigidBodyComponent, WorldTransformComponent>();
         for (auto entity : rbView)
         {
@@ -150,7 +158,7 @@ namespace SceneHandlers
                 glm::vec3 position = glm::vec3(worldMatrix[3]);
                 glm::quat rotation = glm::quat_cast(worldMatrix);
 
-                phys.SyncRigidBody(rb.body.get(), position, rotation);
+                phys->SyncRigidBody(rb.body.get(), position, rotation);
                 rb.body->SetUserPointer((void*)(uintptr_t)((uint32_t)entity + 1));
 
                 if (rb.isAttachedToParent && scene.registry.all_of<HierarchyComponent>(entity))
@@ -174,7 +182,7 @@ namespace SceneHandlers
                             pivotA = glm::vec3(localChild[3]);
                             rotA = glm::quat_cast(localChild);
 
-                            auto fixedConstraint = phys.CreateFixedConstraint(
+                            auto fixedConstraint = phys->CreateFixedConstraint(
                                 parentRb.body,
                                 rb.body,
                                 pivotA,
@@ -182,7 +190,7 @@ namespace SceneHandlers
                                 rotA,
                                 rotB);
 
-                            phys.AddConstraint(fixedConstraint);
+                            phys->AddConstraint(fixedConstraint);
                         }
                     }
                 }

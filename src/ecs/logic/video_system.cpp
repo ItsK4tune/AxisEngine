@@ -7,6 +7,8 @@
 #include <string>
 #include <core/logic/logger.h>
 #include <memory>
+#include <core/logic/service_locator.h>
+#include <resource/logic/resource_manager.h>
 
 void VideoSystem::Update(Scene &scene, float dt)
 {
@@ -14,6 +16,7 @@ void VideoSystem::Update(Scene &scene, float dt)
         return;
 
     auto view = scene.registry.view<VideoPlayerComponent>();
+    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
 
     for (auto entity : view)
     {
@@ -76,11 +79,11 @@ void VideoSystem::Update(Scene &scene, float dt)
                 {
                     std::string uniqueName = "video_ui_" + std::to_string((uint32_t)entity);
 
-                    if (!m_Ctx.resources->GetUIModel(uniqueName))
+                    if (!resources.GetUIModel(uniqueName))
                     {
-                        m_Ctx.resources->CreateUIModel(uniqueName, ::UIType::Texture);
+                        resources.CreateUIModel(uniqueName, ::UIType::Texture);
                     }
-                    uiRenderer->model = m_Ctx.resources->GetUIModel(uniqueName);
+                    uiRenderer->model = resources.GetUIModel(uniqueName);
                 }
 
                 if (uiRenderer->model)

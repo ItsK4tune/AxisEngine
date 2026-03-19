@@ -1,9 +1,9 @@
 #include <ecs/unit/core_components.h>
-#include <render/logic/render_queue.h>
+#include <render/unit/render_queue.h>
 #include <core/logic/job_system.h>
 #include <render/logic/frustum_culler.h>
 #include <ecs/unit/render_components.h>
-#include <render/logic/shader.h>
+#include <render/unit/shader.h>
 #include <algorithm>
 
 void RenderQueue::Build(Scene& scene, float alpha, 

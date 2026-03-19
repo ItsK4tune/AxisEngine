@@ -5,7 +5,7 @@
 #include <ecs/unit/core_components.h>
 #include <script/logic/scriptable.h>
 #include <script/logic/physics_scriptable.h>
-#include <core/logic/event_types.h>
+#include <core/type/event_types.h>
 #include <core/logic/event_system.h>
 #include <core/logic/logger.h>
 

@@ -1,15 +1,13 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <audio/logic/audio_manager.h>
-#include <platform/logic/input_system.h>
+#include <platform/logic/input_manager.h>
 #include <render/interface/i_graphics_context.h>
 #include <core/logic/logger.h>
 
-IOHandler::IOHandler(std::unique_ptr<IGraphicsContext> graphics, std::unique_ptr<IAudioEngine> audioEngine)
+IOHandler::IOHandler(std::unique_ptr<IGraphicsContext> graphics)
     : m_Graphics(std::move(graphics))
 {
     m_MonitorManager = std::make_unique<MonitorManager>();
-    m_AudioManager = std::make_unique<AudioManager>(std::move(audioEngine));
 }
 
 IOHandler::~IOHandler()
@@ -46,11 +44,6 @@ bool IOHandler::Initialize(std::unique_ptr<IWindow> window, const std::string& t
 
     m_MouseManager->SetLastPosition(width / 2.0, height / 2.0);
     m_MouseManager->SetWindowSize(width, height);
-
-    if (!m_AudioManager->Initialize())
-    {
-        LOGGER_WARN("IOHandler") << "Audio initialization failed, continuing without audio";
-    }
 
     return true;
 }

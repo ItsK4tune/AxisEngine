@@ -3,17 +3,18 @@
 #include <thread>
 #include <algorithm>
 
-#include <core/logic/engine_core.h>
-#include <core/unit/engine_context.h>
-#include <core/manager/system_manager.h>
+#include <core/logic/runtime_core.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/system_manager.h>
+#include <core/type/app_config.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/state_management.h>
+#include <core/logic/state_machine.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
-#include <resource/manager/resource_manager.h>
-#include <platform/logic/input_system.h>
-#include <audio/logic/sound_player.h>
+#include <resource/logic/resource_manager.h>
+#include <platform/logic/input_manager.h>
+#include <audio/logic/audio_service.h>
 #include <render/interface/i_graphics_context.h>
 #include <platform/interface/i_window.h>
 #include <core/logic/logger.h>
@@ -23,9 +24,14 @@ EngineLoop::EngineLoop()
 {
 }
 
-void EngineLoop::Initialize(EngineContext ctx)
+void EngineLoop::Initialize()
 {
-    m_Ctx = ctx;
+    auto& sl = ServiceLocator::Instance();
+    auto& appConfig = sl.Require<AppConfig>();
+    
+    SetPhysicsStep(1.0f / appConfig.physicsTickRate);
+    SetMaxSubSteps(appConfig.maxSubSteps);
+    // Systems are created and initialized by Application to avoid double-call during refactor.
 }
 
 void EngineLoop::Shutdown()
@@ -39,7 +45,7 @@ EngineLoop::~EngineLoop()
 void EngineLoop::Run()
 {
     LOGGER_INFO("EngineLoop") << "Starting engine loop";
-    IWindow* window = m_Ctx.io->GetMonitorManager().GetWindow();
+    IWindow* window = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager().GetWindow();
     while (!window->ShouldClose())
     {
         ProcessFrame();
@@ -56,9 +62,17 @@ void EngineLoop::ProcessFrame()
     m_DeltaTime = m_RealDeltaTime;
     m_LastFrameTime = now;
 
-    IWindow* window = m_Ctx.io->GetMonitorManager().GetWindow();
+    auto& sl = ServiceLocator::Instance();
+    auto& io = sl.Require<IOHandler>();
+    auto& scene = sl.Require<Scene>();
+    auto& res = sl.Require<ResourceManager>();
+    auto& systems = sl.Require<SystemManager>();
+    auto& sm = sl.Require<SceneManager>();
+    auto& runtime = sl.Require<RuntimeCore>();
+
+    IWindow* window = io.GetMonitorManager().GetWindow();
     window->PollEvents();
-    m_Ctx.io->GetMouse().Update();
+    io.GetMouse().Update();
 
     if (m_IsPaused)
     {
@@ -69,23 +83,23 @@ void EngineLoop::ProcessFrame()
         m_DeltaTime *= m_TimeScale;
     }
 
-    m_Ctx.resources->Update(m_RealDeltaTime);
-    m_Ctx.io->ProcessInput();
-    m_Ctx.io->GetInputManager().Update();
+    res.Update(m_RealDeltaTime);
+    io.ProcessInput();
+    io.GetInputManager().Update();
 
-    m_Ctx.systems->UpdateDebugSystem(m_RealDeltaTime);
+    systems.UpdateDebugSystem(m_RealDeltaTime);
 
-    auto& stateMachine = m_Ctx.runtime->GetStateMachine();
-    m_Ctx.systems->RunUpdate(*m_Ctx.scene, m_DeltaTime);
+    auto& stateMachine = runtime.GetStateMachine();
+    systems.RunUpdate(scene, m_DeltaTime);
 
     stateMachine.Update(m_DeltaTime);
-    m_Ctx.io->GetMouse().EndFrame();
+    io.GetMouse().EndFrame();
 
     FixedUpdate();
     Render();
     window->SwapBuffers();
 
-    int frameRateLimit = m_Ctx.io->GetMonitorManager().GetFrameRateLimit();
+    int frameRateLimit = io.GetMonitorManager().GetFrameRateLimit();
     if (frameRateLimit > 0)
     {
         double targetFrameTime = 1.0 / (double)frameRateLimit;
@@ -109,20 +123,25 @@ void EngineLoop::ProcessFrame()
         }
     }
 
-    if (m_Ctx.sceneManager->HasPendingScene())
+    if (sm.HasPendingScene())
     {
-        m_Ctx.sceneManager->UpdatePendingScene();
+        sm.UpdatePendingScene();
     }
 }
 
 void EngineLoop::FixedUpdate()
 {
+    auto& sl = ServiceLocator::Instance();
+    auto& scene = sl.Require<Scene>();
+    auto& systems = sl.Require<SystemManager>();
+    auto& runtime = sl.Require<RuntimeCore>();
+
     m_Accumulator += m_DeltaTime;
 
     int physicsSteps = 0;
 
-    auto& stateMachine = m_Ctx.runtime->GetStateMachine();
-    entt::registry& registry = m_Ctx.scene->registry;
+    auto& stateMachine = runtime.GetStateMachine();
+    entt::registry& registry = scene.registry;
 
     if (m_MaxForceSync)
     {
@@ -148,7 +167,7 @@ void EngineLoop::FixedUpdate()
             s.prev = s.value;
         }
 
-        m_Ctx.systems->RunFixedUpdate(*m_Ctx.scene, m_FixedDeltaTime);
+        systems.RunFixedUpdate(scene, m_FixedDeltaTime);
         stateMachine.FixedUpdate(m_FixedDeltaTime);
 
         m_Accumulator -= m_FixedDeltaTime;
@@ -165,20 +184,24 @@ void EngineLoop::FixedUpdate()
 
 void EngineLoop::Render()
 {
-    auto& systemMgr = *m_Ctx.systems;
+    auto& sl = ServiceLocator::Instance();
+    auto& scene = sl.Require<Scene>();
+    auto& systems = sl.Require<SystemManager>();
+    auto& io = sl.Require<IOHandler>();
+    auto& runtime = sl.Require<RuntimeCore>();
 
-    systemMgr.RenderShadows(*m_Ctx.scene, m_Alpha);
+    systems.RenderShadows(scene, m_Alpha);
 
-    systemMgr.RunRender(
-        *m_Ctx.scene,
-        m_Ctx.io->GetMonitorManager().GetWidth(),
-        m_Ctx.io->GetMonitorManager().GetHeight(),
+    systems.RunRender(
+        scene,
+        io.GetMonitorManager().GetWidth(),
+        io.GetMonitorManager().GetHeight(),
         m_Alpha
     );
 
-    m_Ctx.runtime->GetStateMachine().Render();
+    runtime.GetStateMachine().Render();
 
-    systemMgr.RenderDebugSystem(*m_Ctx.scene);
+    systems.RenderDebugSystem(scene);
 }
 
 void EngineLoop::SetPhysicsStep(float step)

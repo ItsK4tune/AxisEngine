@@ -1,17 +1,16 @@
-#include <core/io/config_loader.h>
-#include <core/unit/engine_context.h>
+#include <core/logic/config_loader.h>
 #include <platform/logic/io_handler.h>
-#include <core/logic/engine_core.h>
-#include <core/manager/system_manager.h>
-#include <audio/logic/sound_player.h>
+#include <core/logic/runtime_core.h>
+#include <core/logic/system_manager.h>
+#include <audio/logic/audio_service.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/logic/audio_system.h>
 #include <ecs/logic/physics_system.h>
 #include <ecs/logic/render_system.h>
-#include <platform/logic/input_system.h>
+#include <platform/logic/input_manager.h>
 #include <physics/logic/collision_matrix.h>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene_manager.h>
 #include <script/logic/scriptable.h>
 

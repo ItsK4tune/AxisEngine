@@ -1,6 +1,6 @@
 #include <core/logic/event_system.h>
-#include <core/logic/event_types.h>
-#include <platform/logic/input_system.h>
+#include <core/type/event_types.h>
+#include <platform/logic/input_manager.h>
 #include <platform/interface/i_window.h>
 #include <platform/interface/input_codes.h>
 #include <iostream>

@@ -1,18 +1,20 @@
-#include <core/unit/engine_context.h>
+#include <core/logic/service_locator.h>
 #include <ecs/unit/ui_components.h>
 #include <platform/logic/io_handler.h>
 #include <functional>
-#include <platform/logic/input_system.h>
+#include <platform/logic/input_manager.h>
 #include <script/logic/scriptable.h>
 #include <script/logic/input_scriptable.h>
 
-void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, EngineContext ctx, float dt, entt::entity entity)
+void ScriptInputHandler::HandleInput(ScriptComponent &script, Scene &scene, float dt, entt::entity entity)
 {
     if (!script.instance || !script.instance->IsEnabled())
         return;
 
-    auto &mouse    = ctx.io->GetMouse();
-    auto &keyboard = ctx.io->GetKeyboard();
+    auto &sl       = ServiceLocator::Instance();
+    auto &io       = sl.Require<IOHandler>();
+    auto &mouse    = io.GetMouse();
+    auto &keyboard = io.GetKeyboard();
 
     float mx = mouse.GetLastX();
     float my = mouse.GetLastY();

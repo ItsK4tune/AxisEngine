@@ -1,6 +1,6 @@
 <p align="center">
   <br>
-  <img src="includes/engine/asset/project/logo.png" alt="Axis Engine Logo"/>
+  <img src="include/engine/asset/project/logo.png" alt="Axis Engine Logo"/>
   <br>
 </p>
 

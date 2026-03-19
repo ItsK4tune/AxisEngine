@@ -12,7 +12,7 @@ axis_scene:
 
     Font:
       Name: time-60
-      Path: includes/engine/asset/fonts/time.ttf
+      Path: include/engine/asset/fonts/time.ttf
       Size: 60
       
   Entities:
@@ -130,7 +130,7 @@ axis_scene:
       Component: UITransform
         size: 300 25
       Component: UIText
-        text: Player1  [AK47]  Enemy1
+        text: Player1  [X]  Enemy1
         font: time-60
         scale: 0.8
         color: 1 1 1 1
@@ -141,7 +141,7 @@ axis_scene:
       Component: UITransform
         size: 300 25
       Component: UIText
-        text: Player1  [Knife]  Enemy2
+        text: Player1  [X]  Enemy2
         font: time-60
         scale: 0.8
         color: 1 0 0 1
@@ -156,7 +156,7 @@ axis_scene:
         offsetMax: 400 0
         pivot: 0.5 1.0
       Component: UIText
-        text: Commander: Move to site B and plant the bomb! We are running out of time, stay alert for any enemy rotation from tunnels.
+        text: Subtitle: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum convallis, sapien non bibendum cursus, libero justo gravida odio, vitae feugiat turpis turpis nec lorem.
         font: time-60
         scale: 0.9
         color: 1 1 1 0.9

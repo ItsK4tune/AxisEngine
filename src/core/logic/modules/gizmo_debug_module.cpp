@@ -14,9 +14,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <core/logic/app_framework.h>
-#include <platform/logic/input_system.h>
-#include <resource/manager/resource_manager.h>
+#include <core/logic/application.h>
+#include <platform/logic/input_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/light_components.h>
@@ -25,15 +25,15 @@
 #include <render/interface/i_render_state_manager.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/debug_core.h>
-#include <ecs/manager/entity_manager.h>
+#include <core/logic/debug_system.h>
+#include <ecs/logic/entity_manager.h>
+#include <core/logic/service_locator.h>
 
 GizmoDebugModule::GizmoDebugModule() {}
 GizmoDebugModule::~GizmoDebugModule() {}
 
-void GizmoDebugModule::Initialize(EngineContext ctx)
+void GizmoDebugModule::Initialize()
 {
-    m_Ctx = ctx;
 }
 
 bool GizmoDebugModule::IsEntityNamesEnabled() const { return DebugConfig::ShowEntityNames; }
@@ -53,22 +53,28 @@ void GizmoDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::share
 
 void GizmoDebugModule::OnUpdate(float dt)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled)
+    if (!m_Enabled)
         return;
 
-    UpdateDebugLabels(*m_Ctx.scene);
-    UpdateLightLabels(*m_Ctx.scene);
+    auto& scene = ServiceLocator::Instance().Require<Scene>();
+    UpdateDebugLabels(scene);
+    UpdateLightLabels(scene);
 }
 
 void GizmoDebugModule::Render(Scene &scene)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled || !DebugConfig::ShowGizmos)
+    if (!m_Enabled || !DebugConfig::ShowGizmos)
         return;
 
-    int width = m_Ctx.io->GetMonitorManager().GetWidth();
-    int height = m_Ctx.io->GetMonitorManager().GetHeight();
+    auto& sl = ServiceLocator::Instance();
+    auto& io = sl.Require<IOHandler>();
+    auto& resources = sl.Require<ResourceManager>();
+    auto& graphics = sl.Require<IGraphicsContext>();
 
-    auto debugShader = m_Ctx.resources->GetShader("debugLine");
+    int width = io.GetMonitorManager().GetWidth();
+    int height = io.GetMonitorManager().GetHeight();
+
+    auto debugShader = resources.GetShader("debugLine");
     if (!debugShader) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
@@ -114,8 +120,8 @@ void GizmoDebugModule::Render(Scene &scene)
 
     if (lineVertices.empty()) return;
 
-    auto& bm = m_Ctx.io->GetGraphicsContext().GetBufferManager();
-    auto& dc = m_Ctx.io->GetGraphicsContext().GetDrawContext();
+    auto& bm = graphics.GetBufferManager();
+    auto& dc = graphics.GetDrawContext();
 
     unsigned int vao = bm.GenVertexArray();
     unsigned int vbo = bm.GenBuffer();
@@ -129,9 +135,9 @@ void GizmoDebugModule::Render(Scene &scene)
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 3, DataType::Float, false, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
-    m_Ctx.io->GetGraphicsContext().GetRenderStateManager().Disable(ServerCapability::DepthTest);
+    graphics.GetRenderStateManager().Disable(ServerCapability::DepthTest);
     dc.DrawArrays(Primitive::Lines, 0, (int)(lineVertices.size() / 6));
-    m_Ctx.io->GetGraphicsContext().GetRenderStateManager().Enable(ServerCapability::DepthTest);
+    graphics.GetRenderStateManager().Enable(ServerCapability::DepthTest);
 
     bm.BindVertexArray(0);
     bm.DeleteVertexArray(vao);
@@ -140,7 +146,7 @@ void GizmoDebugModule::Render(Scene &scene)
 
 void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled)
+    if (!m_Enabled)
         return;
 
     ProcessKey(keyboard, Key::F3, m_F3Pressed, [this, &keyboard]()
@@ -169,7 +175,8 @@ void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
         if (shift) {
             ToggleLightGizmos();
 
-            auto& reg = m_Ctx.scene->registry;
+            auto& scene = ServiceLocator::Instance().Require<Scene>();
+            auto& reg = scene.registry;
             int p = 0; for(auto e : reg.view<PointLightComponent>()) p++;
             int s = 0; for(auto e : reg.view<SpotLightComponent>()) s++;
 
@@ -213,8 +220,9 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
     }
 
     auto &registry = scene.registry;
-    int width = m_Ctx.io->GetMonitorManager().GetWidth();
-    int height = m_Ctx.io->GetMonitorManager().GetHeight();
+    auto& io = ServiceLocator::Instance().Require<IOHandler>();
+    int width = io.GetMonitorManager().GetWidth();
+    int height = io.GetMonitorManager().GetHeight();
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
@@ -382,8 +390,9 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     }
 
     auto &registry = scene.registry;
-    int width = m_Ctx.io->GetMonitorManager().GetWidth();
-    int height = m_Ctx.io->GetMonitorManager().GetHeight();
+    auto& io = ServiceLocator::Instance().Require<IOHandler>();
+    int width = io.GetMonitorManager().GetWidth();
+    int height = io.GetMonitorManager().GetHeight();
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 

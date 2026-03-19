@@ -6,6 +6,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <resource/logic/resource_manager.h>
 
 void NavigationSystem::Update(Scene& scene, float dt)
 {
@@ -17,12 +19,15 @@ void NavigationSystem::Update(Scene& scene, float dt)
 
 void NavigationSystem::UpdateNavMesh(Scene& scene)
 {
+    auto& sl = ServiceLocator::Instance();
+    auto& resources = sl.Require<ResourceManager>();
+
     auto view = scene.registry.view<NavMeshComponent>();
     for (auto entity : view) {
         auto& navMesh = view.get<NavMeshComponent>(entity);
         if (navMesh.needsRebuild) {
             LOGGER_INFO("NavigationSystem") << "NavMesh rebuild triggered for entity " << (uint32_t)entity;
-            NavMeshGenerator::Generate(scene, navMesh, m_Ctx.resources, m_WalkableTags, m_CarveTags);
+            NavMeshGenerator::Generate(scene, navMesh, &resources, m_WalkableTags, m_CarveTags);
             LOGGER_INFO("NavigationSystem") << "NavMesh state: Nodes=" << navMesh.nodes.size() << ", Tris=" << navMesh.triangles.size();
         }
     }
@@ -30,6 +35,9 @@ void NavigationSystem::UpdateNavMesh(Scene& scene)
 
 void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 {
+    auto& sl = ServiceLocator::Instance();
+    auto physics_ptr = sl.Resolve<IPhysicsWorld>();
+
     auto view = scene.registry.view<PositionComponent, RotationComponent, WorldTransformComponent, PathFollowerComponent>();
     
     // Find NavMesh (global singleton-like component for now)
@@ -52,14 +60,14 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                             << " Target=(" << follower.targetPosition.x << "," << follower.targetPosition.y << "," << follower.targetPosition.z << ")"
                             << " NavMeshNodes=" << globalNavMesh->nodes.size()
                             << " Strategy=" << (int)follower.pathfindingOptions.criteria;
-                            
+                             
                 follower.currentPath = Pathfinding::FindPath(pos.value, follower.targetPosition, *globalNavMesh, follower.pathfindingOptions);
                 follower.currentPathIndex = 0;
                 follower.pathPending = false;
                 follower.isMoving = !follower.currentPath.empty();
                 
                 // --- One-time Path Smoothing ---
-                if (follower.isMoving && follower.currentPath.size() > 2) {
+                if (follower.isMoving && follower.currentPath.size() > 2 && physics_ptr) {
                     std::vector<glm::vec3> smoothedPath;
                     smoothedPath.push_back(follower.currentPath[0]);
                     
@@ -72,7 +80,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                             glm::vec3 dir = end - start;
                             float dist = glm::length(dir);
                             if (dist > 0.001f) {
-                                auto hit = m_Ctx.physics->Raycast(start, glm::normalize(dir), dist);
+                                auto hit = physics_ptr->Raycast(start, glm::normalize(dir), dist);
                                 if (!hit.hasHit) {
                                     nextFound = test;
                                     break;
@@ -122,14 +130,14 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 // Orientation & Ground Snap
                 if (glm::length(moveDir) > 0.001f) {
                     glm::vec3 groundNormal(0, 1, 0);
-                    // Use the new Raycast overload that ignores 'entity' (ourselves)
-                    auto groundHit = m_Ctx.physics->Raycast(pos.value + glm::vec3(0, 100.0f, 0), glm::vec3(0, -1, 0), 200.0f, entity);
-                    
-                    if (groundHit.hasHit) {
-                        groundNormal = groundHit.hitNormal;
-                        // Added extreme value guard
-                        if (!glm::any(glm::isnan(groundHit.hitPoint)) && std::abs(groundHit.hitPoint.y) < 10000.0f) {
-                            pos.value.y = groundHit.hitPoint.y;
+                    if (physics_ptr) {
+                        auto groundHit = physics_ptr->Raycast(pos.value + glm::vec3(0, 100.0f, 0), glm::vec3(0, -1, 0), 200.0f, entity);
+                        
+                        if (groundHit.hasHit) {
+                            groundNormal = groundHit.hitNormal;
+                            if (!glm::any(glm::isnan(groundHit.hitPoint)) && std::abs(groundHit.hitPoint.y) < 10000.0f) {
+                                pos.value.y = groundHit.hitPoint.y;
+                            }
                         }
                     }
 
@@ -291,6 +299,9 @@ void NavigationSystem::Render(Scene& scene)
 {
     if (!m_ShowDebug) return;
 
+    auto physics_ptr = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+    if (!physics_ptr) return;
+
     // Debug visualization of NavMesh
     auto navMeshView = scene.registry.view<NavMeshComponent>();
     for (auto entity : navMeshView) {
@@ -302,9 +313,9 @@ void NavigationSystem::Render(Scene& scene)
             glm::vec3 v2 = navMesh.vertices[tri.indices[2]];
             
             // Draw edges in blue
-            m_Ctx.physics->DrawLine(v0, v1, glm::vec3(0, 0, 1));
-            m_Ctx.physics->DrawLine(v1, v2, glm::vec3(0, 0, 1));
-            m_Ctx.physics->DrawLine(v2, v0, glm::vec3(0, 0, 1));
+            physics_ptr->DrawLine(v0, v1, glm::vec3(0, 0, 1));
+            physics_ptr->DrawLine(v1, v2, glm::vec3(0, 0, 1));
+            physics_ptr->DrawLine(v2, v0, glm::vec3(0, 0, 1));
         }
     }
 
@@ -317,7 +328,7 @@ void NavigationSystem::Render(Scene& scene)
                 glm::vec3 p0 = follower.currentPath[i-1];
                 glm::vec3 p1 = follower.currentPath[i];
                 // Draw path in green
-                m_Ctx.physics->DrawLine(p0, p1, glm::vec3(0, 1, 0));
+                physics_ptr->DrawLine(p0, p1, glm::vec3(0, 1, 0));
             }
         }
     }

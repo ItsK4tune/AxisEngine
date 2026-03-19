@@ -13,8 +13,8 @@ FIND_PATH(BULLET_INCLUDE_DIR btBulletDynamicsCommon.h
     /usr/include
     /usr/local/include
     /opt/local/include
-    ${CMAKE_SOURCE_DIR}/includes
-    ${CMAKE_SOURCE_DIR}/includes/bullet
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/bullet
 )
 
 # --- Library: BulletDynamics ---

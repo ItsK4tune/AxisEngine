@@ -1,13 +1,12 @@
-#include <core/logic/app_framework.h>
-#include <core/logic/content_service.h>
+#include <core/logic/application.h>
+#include <audio/logic/audio_service.h>
 #include <platform/unit/io_context.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/unit/system_context.h>
-#include <core/manager/system_manager.h>
-#include <audio/logic/audio_manager.h>
-#include <audio/logic/sound_player.h>
+#include <core/logic/system_manager.h>
 #include <core/logic/job_system.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/config_manager.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -16,26 +15,26 @@
 #include <ecs/logic/audio_system.h>
 #include <ecs/logic/particle_system.h>
 #include <ecs/logic/animation_system.h>
-#include <ecs/logic/script_system.h>
-#include <ecs/logic/skybox_system.h>
-#include <ecs/logic/ui_system.h>
+#include <ecs/logic/scriptable_system.h>
+#include <ecs/logic/skybox_render_system.h>
+#include <ecs/logic/ui_render_system.h>
 #include <ecs/logic/video_system.h>
 #include <core/logic/event_system.h>
-#include <core/logic/event_types.h>
+#include <core/type/event_types.h>
 #include <render/logic/post_process_pipeline.h>
 #include <render/logic/renderer_initializer.h>
-#include <platform/logic/input_system.h>
+#include <platform/logic/input_manager.h>
 #include <render/interface/i_graphics_context.h>
 #include <physics/interface/i_physics_world.h>
 #include <platform/interface/i_window.h>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/log_manager.h>
 #include <resource/logic/texture_cache.h>
-#include <platform/io/input_loader.h>
+#include <platform/logic/input_loader.h>
 #include <core/logic/axis_assert.h>
 
 extern "C" {
@@ -98,10 +97,9 @@ void Application::Shutdown()
     }
 
     m_SystemManager.reset();
-    m_ContentService.reset();
     m_SceneManager.reset();
     m_RuntimeCore.reset();
-    m_SoundPlayer.reset();
+    m_AudioService.reset();  // AudioService self-unregisters from ServiceLocator
     m_PhysicsWorld.reset();
 
     if (m_Scene)
@@ -116,49 +114,58 @@ void Application::Shutdown()
 
     // Kill thread pool and logger last
     JobSystem::Instance().Shutdown();
+    LOGGER_INFO("Application") << "Cleaning up ConfigManager and ServiceLocator...";
+    m_ConfigManager.reset();
+    
     LOGGER_INFO("Application") << "Application shutdown completed.";
     LogManager::Instance().Shutdown();
+
+    ServiceLocator::Instance().ClearAll();
 }
 
 bool Application::Initialize(const AppConfig &config)
 {
-    m_Config = config;
-
-    JobSystem::Instance().Initialize(m_Config.numJobThreads);
-    LogManager::Instance().Initialize(m_Config.logLevel);
-
+    JobSystem::Instance().Initialize(config.numJobThreads);
+    LogManager::Instance().Initialize(config.logLevel);
+ 
     // Allocate all core unique_ptr systems first to avoid null pointer issues
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SceneManager = std::make_unique<SceneManager>();
-    m_ContentService = std::make_unique<ContentService>();
     m_RuntimeCore = std::make_unique<RuntimeCore>();
     m_SystemManager = std::make_unique<SystemManager>();
+    m_ConfigManager = std::make_unique<ConfigManager>();
+    m_ConfigManager->Initialize(config);
+ 
+    const AppConfig& finalConfig = m_ConfigManager->GetConfig();
+ 
+    TextureCache::SetAsyncEnabled(finalConfig.asyncResourceLoading);
+    TextureCache::SetMaxAnisotropy(finalConfig.maxAnisotropy);
 
-    TextureCache::SetAsyncEnabled(m_Config.asyncResourceLoading);
-    TextureCache::SetMaxAnisotropy(m_Config.maxAnisotropy);
-
-    auto graphicsContext = AppBuilder::CreateGraphicsContext(m_Config);
-    auto audioEngine = AppBuilder::CreateAudioEngine(m_Config);
+    auto graphicsContext = AppBuilder::CreateGraphicsContext(finalConfig);
+    auto audioEngine = AppBuilder::CreateAudioEngine(finalConfig);
     auto window = AppBuilder::MakeWindow();
 
-    m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext), std::move(audioEngine));
+    m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext));
 
-    if (!m_IOHandler->Initialize(std::move(window), m_Config.title, m_Config.width, m_Config.height, (int)m_Config.windowMode,
-                           m_Config.monitorIndex, m_Config.refreshRate, m_Config.vsync, m_Config.frameRateLimit))
+    // --- Audio initialization (separate from IOHandler now) ---
+    m_AudioService = std::make_unique<AudioService>();
+    m_AudioService->Initialize(std::move(audioEngine));
+
+    if (!m_IOHandler->Initialize(std::move(window), finalConfig.title, finalConfig.width, finalConfig.height, (int)finalConfig.windowMode,
+                           finalConfig.monitorIndex, finalConfig.refreshRate, finalConfig.vsync, finalConfig.frameRateLimit))
     {
         AXIS_ASSERT(false, "Failed to initialize IOHandler - graphics/audio device error?");
         return false;
     }
 
-    auto& engineLoop = m_RuntimeCore->GetEngineLoop();
-    engineLoop.SetPhysicsStep(1.0f / m_Config.physicsTickRate);
+    // Physic step will be set in RuntimeCore/EngineLoop initialization to avoid duplicate logging
 
     auto &context = m_IOHandler->GetGraphicsContext();
     RendererInitializer::Initialize(context);
 
-    if (!m_Config.depthTestEnabled)
+    if (!finalConfig.depthTestEnabled)
         context.SetDepthTest(false);
-    context.SetCullFace(m_Config.cullFaceEnabled);
+    context.SetCullFace(finalConfig.cullFaceEnabled);
 
     IWindow *appWindow = GetWindow();
     appWindow->SetResizeCallback([this](int width, int height) {
@@ -183,34 +190,50 @@ bool Application::Initialize(const AppConfig &config)
         else if (action == 0) EventSystem::Instance().Publish(KeyReleasedEvent{key, mods});
     });
 
-    if (!m_Config.audioDevice.empty() && m_Config.audioDevice != "default")
-        m_IOHandler->GetAudioManager().SetActiveDevice(m_Config.audioDevice);
-
-    m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(m_Config);
+    if (!finalConfig.audioDevice.empty() && finalConfig.audioDevice != "default")
+    {
+        LOGGER_INFO("Application") << "Audio device preference: " << finalConfig.audioDevice;
+    }
+ 
+    m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(finalConfig);
     m_PhysicsWorld->Initialize();
     
-    m_ResourceManager->Initialize(context.GetShaderManager(), context.GetTextureManager(), *m_IOHandler->GetAudioManager().GetEngine());
-    m_SoundPlayer = std::make_unique<SoundPlayer>(m_IOHandler->GetAudioManager().GetEngine());
+    m_ResourceManager->Initialize(context.GetShaderManager(), context.GetTextureManager(), *m_AudioService->GetEngine());
     m_Scene->InitializeManagers();
     
-    EngineContext ctx = GetContext();
-    m_SceneManager->Initialize(ctx, [this](const AppConfig &cfg) { ApplyConfig(cfg); });
-    m_ContentService->Initialize(ctx);
-    m_RuntimeCore->Initialize(ctx, m_Config, [this](const AppConfig &cfg) { ApplyConfig(cfg); });
-    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height, ctx);
-    m_SystemManager->ApplyConfig(m_Config);
+    // --- Register services in ServiceLocator ---
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<Scene>(m_Scene.get());
+    sl.Register<IPhysicsWorld>(m_PhysicsWorld.get());
+    sl.Register<ResourceManager>(m_ResourceManager.get());
+    sl.Register<SceneManager>(m_SceneManager.get());
+    sl.Register<IOHandler>(m_IOHandler.get());
+    sl.Register<SystemManager>(m_SystemManager.get());
+    sl.Register<RuntimeCore>(m_RuntimeCore.get());
+    sl.Register<IGraphicsContext>(&m_IOHandler->GetGraphicsContext());
+    sl.Register<ConfigManager>(m_ConfigManager.get());
+    // AudioService already self-registered in its Initialize()
+
+    sl.Register<AppConfig>(const_cast<AppConfig*>(&finalConfig));
+
+    m_SystemManager->CreateSystems();
+
+    m_SceneManager->Initialize();
+    m_RuntimeCore->Initialize();
+    
+    m_SystemManager->InitializeSystems(*m_ResourceManager, finalConfig.width, finalConfig.height);
 
     m_ResourceManager->CreateUIModel("default_rect", ::UIType::Color);
 
-    m_ResourceManager->LoadShader("debugLine", "includes/engine/asset/shaders/debug_line.vs", "includes/engine/asset/shaders/debug_line.fs");
+    m_ResourceManager->LoadShader("debugLine", "include/engine/asset/shaders/debug_line.vs", "include/engine/asset/shaders/debug_line.fs");
 
-    LOGGER_INFO("Application") << "Loading default assets from includes/engine/asset/load.axs...";
-    m_SceneManager->LoadScene("includes/engine/asset/load.axs");
+    LOGGER_INFO("Application") << "Loading default assets from include/engine/asset/load.axs...";
+    m_SceneManager->LoadScene("include/engine/asset/load.axs");
 
-    if (!m_Config.iconPath.empty())
+    if (!finalConfig.iconPath.empty())
     {
-        LOGGER_INFO("Application") << "Setting window icon from: " << m_Config.iconPath;
-        m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(m_Config.iconPath));
+        LOGGER_INFO("Application") << "Setting window icon from: " << finalConfig.iconPath;
+        m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(finalConfig.iconPath));
     }
 
 
@@ -228,10 +251,10 @@ Scene&           Application::GetScene()          { return *m_Scene; }
 IPhysicsWorld&   Application::GetPhysicsWorld()   { return *m_PhysicsWorld; }
 ResourceManager& Application::GetResourceManager(){ return *m_ResourceManager; }
 SceneManager&    Application::GetSceneManager()   { return *m_SceneManager; }
-SoundPlayer&     Application::GetSoundPlayer()    { return *m_SoundPlayer; }
+AudioService&     Application::GetAudioService()    { return *m_AudioService; }
 
 IOHandler&       Application::GetIOHandler()      { return *m_IOHandler; }
-ContentService&  Application::GetContentService() { return *m_ContentService; }
+
 MonitorManager&  Application::GetMonitorManager() { return m_IOHandler->GetMonitorManager(); }
 KeyboardManager& Application::GetKeyboard() const { return m_IOHandler->GetKeyboard(); }
 MouseManager&    Application::GetMouse() const    { return m_IOHandler->GetMouse(); }
@@ -245,35 +268,13 @@ RuntimeCore&     Application::GetRuntimeCore()    { return *m_RuntimeCore; }
 StateMachine&    Application::GetStateMachine()   { return m_RuntimeCore->GetStateMachine(); }
 SystemManager&   Application::GetSystemManager()  { return *m_SystemManager; }
 
-EngineContext Application::GetContext()
-{
-    EngineContext ctx;
-    ctx.scene        = m_Scene.get();
-    ctx.physics      = m_PhysicsWorld.get();
-    ctx.resources    = m_ResourceManager.get();
-    ctx.sceneManager = m_SceneManager.get();
-    ctx.soundPlayer  = m_SoundPlayer.get();
-    ctx.io           = m_IOHandler.get();
-    ctx.systems      = m_SystemManager.get();
-    ctx.runtime      = m_RuntimeCore.get();
-    return ctx;
-}
+// --- Simplified Accessors and Configuration ---
 
-RenderSystem&        Application::GetRenderSystem()       { return *m_SystemManager->GetSystem<RenderSystem>(); }
-PhysicsSystem&       Application::GetPhysicsSystem()      { return *m_SystemManager->GetSystem<PhysicsSystem>(); }
-AudioSystem&         Application::GetAudioSystem()        { return *m_SystemManager->GetSystem<AudioSystem>(); }
-UIRenderSystem&      Application::GetUIRenderSystem()     { return *m_SystemManager->GetSystem<UIRenderSystem>(); }
-ScriptableSystem&    Application::GetScriptSystem()       { return *m_SystemManager->GetSystem<ScriptableSystem>(); }
-ParticleSystem&      Application::GetParticleSystem()     { return *m_SystemManager->GetSystem<ParticleSystem>(); }
-SkyboxRenderSystem&  Application::GetSkyboxRenderSystem() { return *m_SystemManager->GetSystem<SkyboxRenderSystem>(); }
-AnimationSystem&     Application::GetAnimationSystem()    { return *m_SystemManager->GetSystem<AnimationSystem>(); }
-VideoSystem&         Application::GetVideoSystem()        { return *m_SystemManager->GetSystem<VideoSystem>(); }
-PostProcessPipeline& Application::GetPostProcess()        { return m_SystemManager->GetPostProcess(); }
-
-const AppConfig& Application::GetConfig() const { return m_Config; }
+const AppConfig& Application::GetConfig() const { return m_ConfigManager->GetConfig(); }
 
 void Application::ApplyConfig(const AppConfig& config)
 {
+    const AppConfig& m_Config = m_ConfigManager->GetConfig();
     bool windowChanged = (config.width != m_Config.width || 
                           config.height != m_Config.height || 
                           config.windowMode != m_Config.windowMode || 
@@ -283,7 +284,8 @@ void Application::ApplyConfig(const AppConfig& config)
     bool syncChanged = (config.vsync != m_Config.vsync || 
                         config.frameRateLimit != m_Config.frameRateLimit);
 
-    m_Config = config;
+    m_ConfigManager->UpdateConfig(config);
+    
     if (m_IOHandler)
     {
         if (windowChanged)
@@ -317,31 +319,4 @@ void Application::OnMouseMove(double xpos, double ypos)   { m_IOHandler->OnMouse
 void Application::OnMouseButton(int button, int action, int mods) { m_IOHandler->OnMouseButton(button, action, mods); }
 void Application::OnScroll(double xoffset, double yoffset) { m_IOHandler->OnScroll(xoffset, yoffset); }
 
-IOContext Application::GetIOContext()
-{
-    return {
-        *m_IOHandler->GetMonitorManager().GetWindow(),
-        m_IOHandler->GetKeyboard(),
-        m_IOHandler->GetMouse(),
-        m_IOHandler->GetInputManager(),
-        m_IOHandler->GetMonitorManager(),
-        m_IOHandler->GetGraphicsContext(),
-        *m_IOHandler
-    };
-}
-
-SystemContext Application::GetSystemContext()
-{
-    return {
-        *m_SystemManager->GetSystem<RenderSystem>(),
-        *m_SystemManager->GetSystem<PhysicsSystem>(),
-        *m_SystemManager->GetSystem<AudioSystem>(),
-        *m_SystemManager->GetSystem<UIRenderSystem>(),
-        *m_SystemManager->GetSystem<ScriptableSystem>(),
-        *m_SystemManager->GetSystem<ParticleSystem>(),
-        *m_SystemManager->GetSystem<SkyboxRenderSystem>(),
-        *m_SystemManager->GetSystem<AnimationSystem>(),
-        *m_SystemManager->GetSystem<VideoSystem>(),
-        m_SystemManager->GetPostProcess()
-    };
-}
+PostProcessPipeline& Application::GetPostProcess() { return m_SystemManager->GetPostProcess(); }

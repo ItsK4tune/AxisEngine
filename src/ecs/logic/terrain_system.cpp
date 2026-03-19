@@ -1,5 +1,5 @@
 #include <ecs/logic/terrain_system.h>
-#include <core/manager/system_manager.h>
+#include <core/logic/system_manager.h>
 #include <ecs/logic/render_system.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_buffer_manager.h>
@@ -8,18 +8,17 @@
 #include <render/interface/i_texture_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/logic/frustum_culler.h>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <ecs/unit/core_components.h>
-#include <ecs/manager/entity_manager.h>
+#include <ecs/logic/entity_manager.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <render/logic/shader.h>
-#include <platform/logic/io_handler.h>
+#include <render/unit/shader.h>
 #include <physics/interface/i_physics_world.h>
 #include <ecs/unit/terrain_component.h>
+#include <core/logic/service_locator.h>
 
-void TerrainSystem::Initialize(EngineContext ctx) {
-    m_Ctx = ctx;
+void TerrainSystem::Initialize() {
 }
 
 void TerrainSystem::Shutdown() {
@@ -43,7 +42,7 @@ void TerrainSystem::Update(Scene &scene, float dt) {
 }
 
 void TerrainSystem::Render(Scene &scene) {
-    if (!m_Enabled || !m_Ctx.io) return;
+    if (!m_Enabled) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) return;
@@ -52,11 +51,13 @@ void TerrainSystem::Render(Scene &scene) {
     auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
-    auto& gc = m_Ctx.io->GetGraphicsContext();
+    auto& sl = ServiceLocator::Instance();
+    auto& gc = sl.Require<IGraphicsContext>();
     auto& dc = gc.GetDrawContext();
     auto& bm = gc.GetBufferManager();
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
+    auto& resources = sl.Require<ResourceManager>();
 
     FrustumCuller culler;
     culler.BuildFrustum(cam.projectionMatrix * cam.viewMatrix);
@@ -74,11 +75,11 @@ void TerrainSystem::Render(Scene &scene) {
         TerrainData& data = *it->second;
         Shader* actShader = data.terrainShader.get();
         
-        auto rs = m_Ctx.systems->GetSystem<RenderSystem>();
-        if (rs && rs->IsDeferredRenderingEnabled()) {
-             auto gbufShader = m_Ctx.resources->GetShader("terrain_gbuffer");
+        auto rs_ptr = sl.Require<SystemManager>().GetSystem<RenderSystem>();
+        if (rs_ptr && rs_ptr->IsDeferredRenderingEnabled()) {
+             auto gbufShader = resources.GetShader("terrain_gbuffer");
              if (gbufShader) actShader = gbufShader.get();
-             rs->BindGBufferForWriting();
+             rs_ptr->BindGBufferForWriting();
         }
 
         if (!actShader) continue;
@@ -128,30 +129,31 @@ void TerrainSystem::Render(Scene &scene) {
             bm.BindVertexArray(chunk.VAO);
             bm.BindBuffer(BufferType::ElementArrayBuffer, data.lodEBOs[lod]);
             dc.DrawElements(Primitive::Triangles, data.lodIndexCounts[lod], DataType::UnsignedInt, nullptr);
-            if (rs) rs->AddRenderedCount(1);
+            if (rs_ptr) rs_ptr->AddRenderedCount(1);
         }
 
-        if (rs && rs->IsDeferredRenderingEnabled()) {
-            rs->UnbindGBuffer();
+        if (rs_ptr && rs_ptr->IsDeferredRenderingEnabled()) {
+            rs_ptr->UnbindGBuffer();
         }
     }
 }
 
 void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain) {
-    if (!m_Ctx.io) return;
+    auto& sl = ServiceLocator::Instance();
+    auto& resources = sl.Require<ResourceManager>();
 
     auto data = std::make_unique<TerrainData>();
     
-    data->terrainShader = m_Ctx.resources->GetShader("terrain");
+    data->terrainShader = resources.GetShader("terrain");
     if (!data->terrainShader) {
-        m_Ctx.resources->LoadShader("terrain", "includes/engine/asset/shaders/terrain.vs", 
-                                   "includes/engine/asset/shaders/terrain.fs");
-        data->terrainShader = m_Ctx.resources->GetShader("terrain");
+        resources.LoadShader("terrain", "include/engine/asset/shaders/terrain.vs", 
+                                   "include/engine/asset/shaders/terrain.fs");
+        data->terrainShader = resources.GetShader("terrain");
     }
 
-    if (!m_Ctx.resources->GetShader("terrain_gbuffer")) {
-        m_Ctx.resources->LoadShader("terrain_gbuffer", "includes/engine/asset/shaders/terrain_gbuffer.vs", 
-                                   "includes/engine/asset/shaders/terrain_gbuffer.fs");
+    if (!resources.GetShader("terrain_gbuffer")) {
+        resources.LoadShader("terrain_gbuffer", "include/engine/asset/shaders/terrain_gbuffer.vs", 
+                                   "include/engine/asset/shaders/terrain_gbuffer.fs");
     }
 
     if (!data->terrainShader) {
@@ -173,7 +175,6 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
         }
     }
 
-    // Cleanup old data if exists
     auto cacheIt = m_TerrainCache.find(entity);
     if (cacheIt != m_TerrainCache.end() && cacheIt->second) {
         CleanupTerrainData(*cacheIt->second);
@@ -181,15 +182,13 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
 
     m_TerrainCache[entity] = std::move(data);
     
-    // Physics Generation
     bool needsRetry = false;
     LOGGER_INFO("TerrainSystem") << "Checking physics generation for entity " << (uint32_t)entity << ": generate=" << terrain.generatePhysics << ", mapName=" << terrain.heightMapName;
     
-    if (terrain.generatePhysics && m_Ctx.physics && !terrain.heightMapName.empty()) {
-        auto tex = m_Ctx.resources->GetTexture(terrain.heightMapName);
+    auto physics_ptr = sl.Resolve<IPhysicsWorld>();
+    if (terrain.generatePhysics && physics_ptr && !terrain.heightMapName.empty()) {
+        auto tex = resources.GetTexture(terrain.heightMapName);
         if (tex) {
-            LOGGER_INFO("TerrainSystem") << "Heightmap texture '" << terrain.heightMapName << "' found. pixelData=" << (void*)tex->pixelData << ", size=" << tex->width << "x" << tex->height;
-            
             if (tex->pixelData) {
                 std::vector<float> heights;
                 heights.reserve(tex->width * tex->height);
@@ -200,8 +199,7 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
                 }
                 
                 if (terrain.physicsBody) {
-                    LOGGER_INFO("TerrainSystem") << "Removing old physics body from world...";
-                    m_Ctx.physics->RemoveRigidBody(terrain.physicsBody.get());
+                    physics_ptr->RemoveRigidBody(terrain.physicsBody.get());
                     terrain.physicsBody.reset();
                 }
 
@@ -209,39 +207,30 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
                     terrain.collisionShape.reset();
                 }
 
-                LOGGER_INFO("TerrainSystem") << "Creating physics shape...";
-                terrain.collisionShape = m_Ctx.physics->CreateHeightfieldShape(
+                terrain.collisionShape = physics_ptr->CreateHeightfieldShape(
                     heights, tex->width, tex->height, 0.0f, terrain.maxHeight);
                 
                 if (terrain.collisionShape) {
-                    LOGGER_INFO("TerrainSystem") << "Setting scaling...";
                     float scaleX = terrain.terrainSize.x / (float)(tex->width > 1 ? tex->width - 1 : 1);
                     float scaleZ = terrain.terrainSize.z / (float)(tex->height > 1 ? tex->height - 1 : 1);
                     terrain.collisionShape->SetLocalScaling(glm::vec3(scaleX, 1.0f, scaleZ));
 
                     glm::vec3 basePos(0.0f);
-                    if (m_Ctx.scene) {
-                        auto* posComp = m_Ctx.scene->registry.try_get<PositionComponent>(entity);
-                        if (posComp) basePos = posComp->value;
-                    }
+                    // Note: Active scene access might be needed here or passed in.
                     
                     glm::vec3 centerPos = basePos + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f, terrain.terrainSize.z * 0.5f);
 
-                    LOGGER_INFO("TerrainSystem") << "Creating rigid body at center " << centerPos.x << "," << centerPos.y << "," << centerPos.z;
-                    terrain.physicsBody = m_Ctx.physics->CreateRigidBody(0.0f, centerPos, glm::quat(1,0,0,0), terrain.collisionShape);
+                    terrain.physicsBody = physics_ptr->CreateRigidBody(0.0f, centerPos, glm::quat(1,0,0,0), terrain.collisionShape);
                     
                     if (terrain.physicsBody) {
                         terrain.physicsBody->SetUserPointer((void*)((uintptr_t)entity + 1));
-                        m_Ctx.physics->AddRigidBody(terrain.physicsBody.get());
-                        LOGGER_INFO("TerrainSystem") << "Terrain physics generated successfully for entity " << (uint32_t)entity << " at center " << centerPos.x << "," << centerPos.y << "," << centerPos.z;
+                        physics_ptr->AddRigidBody(terrain.physicsBody.get());
                     }
                 }
             } else {
-                LOGGER_WARN("TerrainSystem") << "Heightmap pixelData is NULL. Ensure it's loaded with keepCpuData=true. Retrying next frame.";
                 needsRetry = true;
             }
         } else {
-            LOGGER_WARN("TerrainSystem") << "Heightmap texture NOT found in cache: " << terrain.heightMapName;
             needsRetry = true;
         }
     }
@@ -249,12 +238,10 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     if (!needsRetry) {
         terrain.needsRebuild = false;
     }
-
-    LOGGER_INFO("TerrainSystem") << "Built terrain for entity " << (uint32_t)entity << " with " << numChunksX * numChunksZ << " chunks. NeedsRetry=" << (needsRetry ? "YES" : "NO");
 }
 
 void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset) {
-    auto& gc = m_Ctx.io->GetGraphicsContext();
+    auto& gc = ServiceLocator::Instance().Require<IGraphicsContext>();
     auto& bm = gc.GetBufferManager();
 
     std::vector<Vertex> vertices;
@@ -302,9 +289,8 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
 }
 
 void TerrainSystem::GenerateLODIndices(TerrainData& data, int chunkSize) {
-    if (!m_Ctx.io) return;
-    
-    auto& gc = m_Ctx.io->GetGraphicsContext();
+    auto& sl = ServiceLocator::Instance();
+    auto& gc = sl.Require<IGraphicsContext>();
     auto& bm = gc.GetBufferManager();
     
     for (int lod = 0; lod < 4; ++lod) {
@@ -339,7 +325,10 @@ void TerrainSystem::GenerateLODIndices(TerrainData& data, int chunkSize) {
 }
 
 void TerrainSystem::CleanupTerrainData(TerrainData& data) {
-    auto& bm = m_Ctx.io->GetGraphicsContext().GetBufferManager();
+    auto& sl = ServiceLocator::Instance();
+    auto& gc = sl.Require<IGraphicsContext>();
+    auto& bm = gc.GetBufferManager();
+
     for (auto& chunk : data.chunks) {
         bm.DeleteVertexArray(chunk.VAO);
         bm.DeleteBuffer(chunk.VBO);

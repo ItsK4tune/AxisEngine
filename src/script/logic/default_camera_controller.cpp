@@ -1,9 +1,9 @@
 #include <ecs/unit/core_components.h>
-#include <core/logic/app_framework.h>
+#include <core/logic/application.h>
 #include <platform/logic/io_handler.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
-#include <platform/logic/input_system.h>
+#include <platform/logic/input_manager.h>
 #include <script/logic/default_camera_controller.h>
 #include <script/logic/script_registry.h>
 
@@ -89,7 +89,7 @@ void DefaultCameraController::OnUpdate(float dt)
 
     if (camera.aspectRatio <= 0.0f)
     {
-        camera.aspectRatio = (float)m_Ctx.io->GetMonitorManager().GetWidth() / (float)m_Ctx.io->GetMonitorManager().GetHeight();
+        camera.aspectRatio = (float)GetIOHandler().GetMonitorManager().GetWidth() / (float)GetIOHandler().GetMonitorManager().GetHeight();
     }
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
     camera.viewMatrix = glm::lookAt(posComp.value, posComp.value + camera.front, camera.up);

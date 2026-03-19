@@ -4,10 +4,10 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
 
-void TransformSystem::Initialize(EngineContext ctx)
+void TransformSystem::Initialize()
 {
-    m_Ctx = ctx;
 }
 
 void TransformSystem::FixedUpdate(Scene& scene, float dt)
@@ -102,5 +102,3 @@ std::vector<entt::id_type> TransformSystem::GetWriteComponents() const
         entt::type_id<ScaleComponent>().hash()
     };
 }
-void TransformSystem::Render(Scene& scene) {}
-void TransformSystem::Shutdown() {}

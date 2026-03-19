@@ -16,8 +16,8 @@ FIND_PATH(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
     /usr/include
     /usr/local/include
     /opt/local/include
-    ${CMAKE_SOURCE_DIR}/includes/ffmpeg
-    ${CMAKE_SOURCE_DIR}/includes
+    ${CMAKE_SOURCE_DIR}/include/ffmpeg
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 # --- Libraries ---

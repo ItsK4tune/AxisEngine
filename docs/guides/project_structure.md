@@ -18,7 +18,7 @@ AxisEngine/
 │   ├── scene/         # Scene loading & management
 │   ├── script/        # Scripting system base
 │   └── third_party/   # Embedded libraries (stb, etc.)
-├── includes/          # Headers (.h)
+├── include/          # Headers (.h)
 │   ├── engine/        # Core Engine Headers
 │   │   ├── audio/     # Audio interfaces & units
 │   │   ├── core/      # Core logic & utilities
@@ -32,7 +32,7 @@ AxisEngine/
 │   │   └── script/    # Scriptable interfaces
 │   └── entt/          # ECS Library (External)
 ├── game/              # User-Land Game Code
-│   ├── includes/      # Game-specific headers
+│   ├── include/      # Game-specific headers
 │   └── src/           # Game-specific states & scripts
 ├── bin/               # Output binaries (Executables)
 ├── cmake/             # CMake build scripts

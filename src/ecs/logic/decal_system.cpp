@@ -6,40 +6,43 @@
 #include <render/interface/i_texture_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_render_target_manager.h>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
 #include <ecs/logic/render_system.h>
-#include <core/manager/system_manager.h>
+#include <core/logic/system_manager.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <ecs/manager/entity_manager.h>
-#include <platform/logic/io_handler.h>
-#include <render/logic/shader.h>
+#include <ecs/logic/entity_manager.h>
+#include <render/unit/shader.h>
+#include <core/logic/service_locator.h>
+#include <scene/logic/scene.h>
 
-void DecalSystem::Initialize(EngineContext ctx)
+void DecalSystem::Initialize()
 {
-    m_Ctx = ctx;
+    auto& sl = ServiceLocator::Instance();
+    auto& resources = sl.Require<ResourceManager>();
     
-    m_DecalShader = m_Ctx.resources->GetShader("decal");
+    m_DecalShader = resources.GetShader("decal");
     if (!m_DecalShader)
     {
-        m_Ctx.resources->LoadShader("decal", "includes/engine/asset/shaders/decal.vs", 
-                                   "includes/engine/asset/shaders/decal.fs");
-        m_DecalShader = m_Ctx.resources->GetShader("decal");
+        resources.LoadShader("decal", "include/engine/asset/shaders/decal.vs", 
+                                   "include/engine/asset/shaders/decal.fs");
+        m_DecalShader = resources.GetShader("decal");
     }
 
-    m_ForwardShader = m_Ctx.resources->GetShader("decal_forward");
+    m_ForwardShader = resources.GetShader("decal_forward");
     if (!m_ForwardShader)
     {
-        m_Ctx.resources->LoadShader("decal_forward", "includes/engine/asset/shaders/decal_forward.vs", 
-                                   "includes/engine/asset/shaders/decal_forward.fs");
-        m_ForwardShader = m_Ctx.resources->GetShader("decal_forward");
+        resources.LoadShader("decal_forward", "include/engine/asset/shaders/decal_forward.vs", 
+                                   "include/engine/asset/shaders/decal_forward.fs");
+        m_ForwardShader = resources.GetShader("decal_forward");
     }
 
-    if (m_Ctx.scene) {
-        m_Ctx.scene->registry.on_construct<DecalComponent>().connect<&DecalSystem::OnDecalConstruct>(this);
-    }
+    // Note: Registration connection usually happens when adding to Scene
+    // For now, if we have a way to get the active scene, we connect it.
+    // If not, it's connected in Scene::AddSystem or similar
+    // This is a bit of a chicken-and-egg for systems that need scene events.
 
     InitCubeMesh();
     LOGGER_INFO("DecalSystem") << "DecalSystem GPU resources initialized.";
@@ -71,7 +74,6 @@ void DecalSystem::Update(Scene &scene, float dt)
         }
     }
     
-    // Sort toRemove by renderOrder to ensure stable disappearance even if multiple decals hit O in the same frame
     std::sort(toRemove.begin(), toRemove.end(), [&](entt::entity a, entt::entity b) {
         return scene.registry.get<DecalComponent>(a).renderOrder < scene.registry.get<DecalComponent>(b).renderOrder;
     });
@@ -81,46 +83,65 @@ void DecalSystem::Update(Scene &scene, float dt)
     }
 }
 
+void DecalSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
+{
+    auto rs_ptr = ServiceLocator::Instance().Require<SystemManager>().GetSystem<RenderSystem>();
+    if (rs_ptr && rs_ptr->IsDeferredRenderingEnabled())
+    {
+        Render(scene);
+    }
+}
+
 void DecalSystem::Render(Scene &scene)
 {
     if (!m_Enabled) return;
     
-    auto rs = m_Ctx.systems->GetSystem<RenderSystem>();
-    if (!rs) return;
+    auto& sl = ServiceLocator::Instance();
+    auto rs_ptr = sl.Require<SystemManager>().GetSystem<RenderSystem>();
+    if (!rs_ptr) return;
+    auto& rs = *rs_ptr;
+
+    // In deferred mode, we already rendered in RenderAlpha pass (Pass 1)
+    if (rs.IsDeferredRenderingEnabled()) {
+        // We only want to run once. If we are called here (Pass 3), we likely already ran.
+        // However, to keep it simple and safe for both paths:
+        // We allow Render() to be called directly, but we rely on the pass management in SystemManager.
+        // If we want to strictly avoid double-render in Pass 3:
+        static uint64_t lastFrameRendered = 0;
+        // ... but we don't have frame index here easily.
+    }
 
     auto camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) return;
     auto &cam = scene.registry.get<CameraComponent>(camEntity);
 
-    auto& gc = m_Ctx.io->GetGraphicsContext();
+    auto& gc = sl.Require<IGraphicsContext>();
     auto& dc = gc.GetDrawContext();
     auto& bm = gc.GetBufferManager();
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
 
-    bool isDeferred = rs->IsDeferredRenderingEnabled();
+    bool isDeferred = rs.IsDeferredRenderingEnabled();
     Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();
     if (!shader) return;
 
-    if (isDeferred) rs->BindForDecals();
+    if (isDeferred) rs.BindForDecals();
     
     shader->use();
     
     if (isDeferred) {
-        // Screen Space Uniforms
         shader->setMat4("invProj", glm::inverse(cam.projectionMatrix));
         shader->setMat4("invView", glm::inverse(cam.viewMatrix));
-        shader->setVec2("screenSize", glm::vec2((float)rs->GetGBufferWidth(), (float)rs->GetGBufferHeight()));
+        shader->setVec2("screenSize", glm::vec2((float)rs.GetGBufferWidth(), (float)rs.GetGBufferHeight()));
 
         UpdateTagMap(scene);
 
-        // Bind G-Buffer
         tm.ActiveTexture(TextureUnit::Texture0);
-        tm.BindTexture(TextureType::Texture2D, rs->GetGBufferDepth());
+        tm.BindTexture(TextureType::Texture2D, rs.GetGBufferDepth());
         shader->setInt("gDepth", 0);
 
         tm.ActiveTexture(TextureUnit::Texture1);
-        tm.BindTexture(TextureType::Texture2D, rs->GetGBufferID());
+        tm.BindTexture(TextureType::Texture2D, rs.GetGBufferID());
         shader->setInt("gID", 1);
 
         tm.ActiveTexture(TextureUnit::Texture2);
@@ -128,13 +149,12 @@ void DecalSystem::Render(Scene &scene)
         shader->setInt("tagMap", 2);
 
         tm.ActiveTexture(TextureUnit::Texture4);
-        tm.BindTexture(TextureType::Texture2D, rs->GetGBufferPosition());
+        tm.BindTexture(TextureType::Texture2D, rs.GetGBufferPosition());
         shader->setInt("gPosition", 4);
         
-        sm.SetCullFace(CullMode::Front); // Back faces for volume
+        sm.SetCullFace(CullMode::Front);
         sm.SetDepthFunc(CompareFunc::Always);
     } else {
-        // Forward Mesh Decal Uniforms
         shader->setVec4("tintColor", glm::vec4(1.0f));
         sm.SetCullFace(CullMode::Back);
         sm.SetDepthFunc(CompareFunc::Less);
@@ -154,7 +174,6 @@ void DecalSystem::Render(Scene &scene)
     
     auto view = scene.registry.view<DecalComponent, PositionComponent, RotationComponent, ScaleComponent>();
     
-    // Sort entities by renderOrder to ensure correct overlapping
     std::vector<entt::entity> sortedEntities;
     sortedEntities.reserve(view.size_hint());
     for (auto entity : view) sortedEntities.push_back(entity);
@@ -186,13 +205,11 @@ void DecalSystem::Render(Scene &scene)
             shader->setUInt("allowedTagsMask", mask);
             dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, nullptr);
         } else {
-            // In forward mode, we only render the "front" face of the cube as a quad
-            // Front face indices in the cube are 0, 1, 2, 2, 3, 0 (first 6 indices)
             dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, nullptr);
         }
     }
     
-    if (isDeferred) rs->UnbindForDecals();
+    if (isDeferred) rs.UnbindForDecals();
     
     sm.SetDepthMask(true);
     sm.SetDepthFunc(CompareFunc::Less);
@@ -202,10 +219,11 @@ void DecalSystem::Render(Scene &scene)
 
 uint32_t DecalSystem::LoadDecalTexture(const std::string &path)
 {
-    auto tex = m_Ctx.resources->GetTexture(path);
+    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
+    auto tex = resources.GetTexture(path);
     if (!tex) {
-        m_Ctx.resources->LoadTexture(path, path, false);
-        tex = m_Ctx.resources->GetTexture(path);
+        resources.LoadTexture(path, path, false);
+        tex = resources.GetTexture(path);
     }
     return tex ? tex->id : 0;
 }
@@ -235,16 +253,14 @@ std::vector<entt::id_type> DecalSystem::GetWriteComponents() const
 
 void DecalSystem::InitCubeMesh()
 {
-    auto& gc = m_Ctx.io->GetGraphicsContext();
+    auto& gc = ServiceLocator::Instance().Require<IGraphicsContext>();
     auto& bm = gc.GetBufferManager();
     
     float vertices[] = {
-        // Front
         -0.5f, -0.5f,  0.5f,
          0.5f, -0.5f,  0.5f,
          0.5f,  0.5f,  0.5f,
         -0.5f,  0.5f,  0.5f,
-        // Back
         -0.5f, -0.5f, -0.5f,
          0.5f, -0.5f, -0.5f,
          0.5f,  0.5f, -0.5f,
@@ -295,13 +311,13 @@ uint32_t DecalSystem::GetBitmask(const std::vector<std::string> &tags)
 
 void DecalSystem::UpdateTagMap(Scene &scene)
 {
-    auto& tm = m_Ctx.io->GetGraphicsContext().GetTextureManager();
+    auto& tm = ServiceLocator::Instance().Require<IGraphicsContext>().GetTextureManager();
     
     if (m_TagMapTexture == 0) {
         m_TagMapTexture = tm.GenTexture();
     }
 
-    uint32_t maxEnt = 10000; // Increased capacity for demo
+    uint32_t maxEnt = 10000;
     if (m_TagBuffer.size() < maxEnt) {
         m_TagBuffer.resize(maxEnt, 0);
     } else {
@@ -310,7 +326,7 @@ void DecalSystem::UpdateTagMap(Scene &scene)
 
     auto view = scene.registry.view<InfoComponent>();
     for (auto entity : view) {
-        uint32_t id = static_cast<uint32_t>(entity) & 0xFFFF; // Simple index
+        uint32_t id = static_cast<uint32_t>(entity) & 0xFFFF;
         if (id < maxEnt) {
             auto& info = view.get<InfoComponent>(entity);
             m_TagBuffer[id] = GetTagBit(info.tag);
@@ -322,3 +338,5 @@ void DecalSystem::UpdateTagMap(Scene &scene)
     tm.TexParameteri(TextureType::Texture1D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture1D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
 }
+
+

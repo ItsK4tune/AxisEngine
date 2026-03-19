@@ -40,17 +40,17 @@ GameEngine/
 │   │   ├── main.cpp           # Entry point
 │   │   ├── states/           # Your game states
 │   │   └── scripts/           # Your gameplay scripts
-│   └── includes/
+│   └── include/
 │       └── states/
 │       └── scripts/
 ├── scenes/                    # Your scene files
-├── includes/engine/asset/                # Default assets (shaders, fonts, models)
+├── include/engine/asset/                # Default assets (shaders, fonts, models)
 └── bin/Release/              # Built executable
 ```
 
 ### Default Assets
 
-The engine automatically loads default assets from `includes/engine/asset/load.axs` at startup:
+The engine automatically loads default assets from `include/engine/asset/load.axs` at startup:
 - Shaders (Phong, PBR, Unlit, UI, Text, Skybox, Particle, VideoMap)
 - Fonts (`time.ttf`)
 - Models (plane, dummy)
@@ -171,7 +171,7 @@ Scripts are C++ classes that control entity behavior.
 
 ### Step 1: Create Script Header
 
-Create `game/includes/scripts/player_controller.h`:
+Create `game/include/scripts/player_controller.h`:
 
 ```cpp
 #pragma once
@@ -360,7 +360,7 @@ int main() {
 
 ### Step 4: Create Game State
 
-Create `game/includes/states/game_state.h`:
+Create `game/include/states/game_state.h`:
 
 ```cpp
 #pragma once
@@ -573,7 +573,7 @@ ERROR: Model not found: playerModel
 ```
 ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ
 ```
-**Solution:** Verify shader paths point to `includes/engine/asset/shaders/...` or ensure they are listed correctly in the `Resources` block of your `.axs` file.
+**Solution:** Verify shader paths point to `include/engine/asset/shaders/...` or ensure they are listed correctly in the `Resources` block of your `.axs` file.
 
 ### Physics Not Working
 ```

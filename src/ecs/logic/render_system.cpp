@@ -2,41 +2,91 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
-#include <core/logic/job_system.h>
-#include <ecs/logic/render_system.h>
-#include <render/logic/frustum.h>
+#include <core/logic/logger.h>
+#include <core/type/event_types.h>
+#include <render/unit/frustum.h>
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <core/logic/logger.h>
 #include <thread>
+#include <core/logic/job_system.h>
+#include <ecs/logic/render_system.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_query_manager.h>
-#include <ecs/manager/entity_manager.h>
+#include <ecs/logic/entity_manager.h>
 #include <render/interface/i_render_target_manager.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/event_system.h>
+#include <core/type/app_config.h>
+#include <core/logic/config_manager.h>
+#include <resource/logic/resource_manager.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
-#include <core/logic/debug_core.h>
+#include <core/logic/debug_system.h>
 #endif
 
 #include <platform/logic/io_handler.h>
-#include <core/unit/engine_context.h>
-#include <core/logic/engine_core.h>
+#include <core/logic/runtime_core.h>
 
-void RenderSystem::Initialize(EngineContext ctx)
+void RenderSystem::Initialize()
 {
-    m_Ctx = ctx;
-    m_Context = &ctx.io->GetGraphicsContext();
-    IShaderLibrary& shaderLib = *ctx.resources;
-    const AppConfig& config = ctx.runtime->GetConfig();
+    auto& sl = ServiceLocator::Instance();
+    m_Context = &sl.Require<IGraphicsContext>();
+    auto& configManager = sl.Require<ConfigManager>();
+    const AppConfig& config = configManager.GetConfig();
+    auto& shaderLib = sl.Require<ResourceManager>();
+    
+    // Set initial state
+    this->SetEnableShadows(config.shadowsEnabled);
+    this->SetShadowMode(config.shadowMode);
+    this->SetShadowProjectionSize(config.shadowProjectionSize);
+    this->SetInstanceBatching(config.instanceBatchingEnabled);
+    this->SetFrustumCulling(config.frustumCullingEnabled);
+    this->SetOcclusionCulling(config.occlusionCullingEnabled);
+    this->SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
+    this->SetShadowDistanceCulling(config.shadowDistanceCulling);
+    this->SetDistanceCulling(config.distanceCulling);
+    this->SetAntiAliasingMode((AntiAliasingMode)config.antialiasing);
+    this->SetShadowBias(config.shadowBias);
+    this->SetShadowSoftness(config.shadowSoftness);
+    this->SetRenderOrderEnabled(config.renderOrderEnabled);
+    this->SetFilterLayerMask(config.filterLayerMask);
+    this->SetDeferredRendering(config.renderPath == RenderPath::Deferred);
+    this->SetFaceCulling(config.cullFaceEnabled);
+    this->SetDepthTest(config.depthTestEnabled);
+
+    // Subscribe to config changes
+    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
+            return;
+
+        auto& cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
+        this->SetEnableShadows(cfg.shadowsEnabled);
+        this->SetShadowMode(cfg.shadowMode);
+        this->SetShadowProjectionSize(cfg.shadowProjectionSize);
+        this->SetInstanceBatching(cfg.instanceBatchingEnabled);
+        this->SetFrustumCulling(cfg.frustumCullingEnabled);
+        this->SetOcclusionCulling(cfg.occlusionCullingEnabled);
+        this->SetShadowFrustumCulling(cfg.shadowFrustumCullingEnabled);
+        this->SetShadowDistanceCulling(cfg.shadowDistanceCulling);
+        this->SetDistanceCulling(cfg.distanceCulling);
+        this->SetAntiAliasingMode((AntiAliasingMode)cfg.antialiasing);
+        this->SetShadowBias(cfg.shadowBias);
+        this->SetShadowSoftness(cfg.shadowSoftness);
+        this->SetRenderOrderEnabled(cfg.renderOrderEnabled);
+        this->SetFilterLayerMask(cfg.filterLayerMask);
+        this->SetDeferredRendering(cfg.renderPath == RenderPath::Deferred);
+        this->SetFaceCulling(cfg.cullFaceEnabled);
+        this->SetDepthTest(cfg.depthTestEnabled);
+    });
 
     LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers with res: " << config.shadowMapResolution;
     m_ShadowRenderer.Initialize(*m_Context, shaderLib);
@@ -47,11 +97,6 @@ void RenderSystem::Initialize(EngineContext ctx)
     if (m_WhiteTextureID == 0)
     {
         auto &tm = m_Context->GetTextureManager();
-        
-        // Apply global anisotropy if supported
-        // In OpenGL we'd use glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, config.maxAnisotropy);
-        // For now, we'll just store it or apply it to some default textures if we want.
-        // But the user wants it as a config, so we should probably apply it in TextureCache::LoadTexture.
         
         // White
         m_WhiteTextureID = tm.GenTexture();
@@ -98,21 +143,19 @@ void RenderSystem::Initialize(EngineContext ctx)
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
-    m_Config = &config;
-
     m_ShadowRenderer.SetShadowBias(config.shadowBias);
     m_ShadowRenderer.SetShadowSoftness(config.shadowSoftness);
 
-    shaderLib.LoadShader("occlusion_query", "includes/engine/asset/shaders/occlusion_query.vs", "includes/engine/asset/shaders/occlusion_query.fs");
+    shaderLib.LoadShader("occlusion_query", "include/engine/asset/shaders/occlusion_query.vs", "include/engine/asset/shaders/occlusion_query.fs");
     m_OcclusionCuller.Initialize(*m_Context, shaderLib.GetShader("occlusion_query"));
     m_MaterialRenderer.Initialize(*m_Context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
 
-    shaderLib.LoadShader("gbuffer", "includes/engine/asset/shaders/gbuffer.vs", "includes/engine/asset/shaders/gbuffer.fs");
+    shaderLib.LoadShader("gbuffer", "include/engine/asset/shaders/gbuffer.vs", "include/engine/asset/shaders/gbuffer.fs");
     m_GBufferShader = shaderLib.GetShader("gbuffer");
 
-    shaderLib.LoadShader("terrain_gbuffer", "includes/engine/asset/shaders/terrain_gbuffer.vs", "includes/engine/asset/shaders/terrain_gbuffer.fs");
+    shaderLib.LoadShader("terrain_gbuffer", "include/engine/asset/shaders/terrain_gbuffer.vs", "include/engine/asset/shaders/terrain_gbuffer.fs");
 
-    shaderLib.LoadShader("deferred_light", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/deferred_light.fs");
+    shaderLib.LoadShader("deferred_light", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/deferred_light.fs");
     m_DeferredLightShader = shaderLib.GetShader("deferred_light");
 
     m_GBuffer.SetRenderScale(config.renderScale);
@@ -126,6 +169,22 @@ void RenderSystem::Initialize(EngineContext ctx)
     m_DeferredRenderingEnabled = true;
 }
 
+void RenderSystem::Update(Scene& scene, float dt)
+{
+    // RenderSystem update logic (e.g. frame index increment)
+    m_FrameIndex++;
+}
+
+void RenderSystem::Render(Scene& scene)
+{
+    // Primary render pass logic if any, otherwise handled in specialized passes
+}
+
+void RenderSystem::RenderUI(Scene &scene, float width, float height, IRenderStateManager &renderState)
+{
+    // RenderSystem doesn't handle UI directly; UIRenderSystem does.
+}
+
 void RenderSystem::Shutdown()
 {
     LOGGER_INFO("RenderSystem") << "Shutting down RenderSystem";
@@ -133,8 +192,8 @@ void RenderSystem::Shutdown()
     m_OcclusionCuller.Shutdown();
     m_GBuffer.Shutdown();
 
-    if (m_QuadVAO.IsValid()) m_Context->GetBufferManager().DeleteVertexArray(m_QuadVAO.id);
-    if (m_QuadVBO.IsValid()) m_Context->GetBufferManager().DeleteBuffer(m_QuadVBO.id);
+    if (m_QuadVAO.id != 0) m_Context->GetBufferManager().DeleteVertexArray(m_QuadVAO.id);
+    if (m_QuadVBO.id != 0) m_Context->GetBufferManager().DeleteBuffer(m_QuadVBO.id);
 }
 
 void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
@@ -261,6 +320,10 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
 
     m_RenderQueueObj.Build(scene, alpha, m_FrustumCuller, m_FrustumCullingEnabled, m_OcclusionCullingEnabled, 
                            m_DistanceCullingSq, m_FilterLayerMask, cam->cullingMask, camPos);
+
+    m_LastAlpha = -1.0f;
+    m_LastWidth = -1;
+    m_LastHeight = -1;
 
     m_QueuesBuilt = true;
     m_LastAlpha = alpha;
@@ -456,10 +519,10 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                                 s->setInt("shadowMapDir[" + std::to_string(i) + "]", 10 + i);
                             }
                         }
-                        s->setBool("debug_noTexture", isDebugNoTexture);
-                        s->setBool("u_FogEnabled", m_Config->fogEnabled);
-                        s->setVec3("u_FogColor", glm::vec3(m_Config->fogColor[0], m_Config->fogColor[1], m_Config->fogColor[2]));
-                        s->setFloat("u_FogDensity", m_Config->fogDensity);
+                        auto& cfg = ServiceLocator::Instance().Require<AppConfig>();
+                        s->setBool("u_FogEnabled", cfg.fogEnabled);
+                        s->setVec3("u_FogColor", glm::vec3(cfg.fogColor[0], cfg.fogColor[1], cfg.fogColor[2]));
+                        s->setFloat("u_FogDensity", cfg.fogDensity);
                         s->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
                         s->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
                     });
@@ -600,6 +663,10 @@ void RenderSystem::RenderDeferredLighting(Scene &scene, int width, int height)
     auto& dc = m_Context->GetDrawContext();
     auto& rtm = m_Context->GetRenderTargetManager();
     
+    rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_GBuffer.GetFBO());
+    rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_MainFBO);
+    rtm.BlitFramebuffer(0, 0, width, height, 0, 0, width, height, BufferBit::Depth, TextureFilter::Nearest);
+
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
     
     // We do NOT clear the target buffer here because skybox might already be there.

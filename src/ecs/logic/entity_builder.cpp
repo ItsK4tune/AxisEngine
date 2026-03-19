@@ -2,9 +2,9 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/logic/entity_builder.h>
 #include <script/logic/scriptable.h>
-#include <ecs/manager/entity_manager.h>
-#include <render/logic/animator.h>
-#include <resource/manager/resource_manager.h>
+#include <ecs/logic/entity_manager.h>
+#include <render/unit/animator.h>
+#include <resource/logic/resource_manager.h>
 #include <physics/interface/i_rigid_body.h>
 #include <physics/interface/i_character_controller.h>
 #include <ecs/unit/ui_components.h>

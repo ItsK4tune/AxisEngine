@@ -1,6 +1,7 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/logic/physics_system.h>
+#include <core/logic/config_manager.h>
 #include <ecs/logic/cached_query.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
@@ -11,10 +12,14 @@
 #include <script/logic/scriptable.h>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
 #include <core/logic/logger.h>
-#include <physics/logic/raycast.h>
+#include <physics/unit/ray.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <ecs/manager/entity_manager.h>
+#include <ecs/logic/entity_manager.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
+#include <core/type/app_config.h>
 
 PhysicsSystem::PhysicsSystem()
 {
@@ -24,19 +29,52 @@ PhysicsSystem::~PhysicsSystem()
 {
 }
 
+void PhysicsSystem::Initialize()
+{
+    auto& sl = ServiceLocator::Instance();
+    auto* phys = sl.Resolve<IPhysicsWorld>();
+    auto& configManager = sl.Require<ConfigManager>();
+    
+    if (phys) {
+        const auto& cfg = configManager.GetConfig();
+        phys->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
+        phys->SetMode(static_cast<int>(cfg.physicsMode));
+        phys->SetSolverIterations(cfg.solverIterations);
+        phys->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
+    }
+
+    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        if (!(e.bitmask & (ConfigChangedEvent::Physics | ConfigChangedEvent::All)))
+            return;
+
+        auto& sl_inner = ServiceLocator::Instance();
+        auto* phys_inner = sl_inner.Resolve<IPhysicsWorld>();
+        if (phys_inner) {
+            auto& cfg = sl_inner.Require<ConfigManager>().GetConfig();
+            phys_inner->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
+            phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
+            phys_inner->SetSolverIterations(cfg.solverIterations);
+            phys_inner->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
+        }
+    });
+}
+
 void PhysicsSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled)
         return;
 
-    if (&scene != m_LastScene || m_Ctx.physics != m_LastPhysicsWorld)
+    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+    if (!physicsWorld) return;
+
+    if (&scene != m_LastScene || physicsWorld != m_LastPhysicsWorld)
     {
         LOGGER_INFO("PhysicsSystem") << "Scene or PhysicsWorld changed reinitializing subsystems";
         Reset();
         m_LastScene = &scene;
-        m_LastPhysicsWorld = m_Ctx.physics;
+        m_LastPhysicsWorld = physicsWorld;
 
-        m_Ctx.physics->SetCollisionFilter([pRegistry = &scene.registry](entt::entity eA, entt::entity eB) -> bool {
+        physicsWorld->SetCollisionFilter([pRegistry = &scene.registry](entt::entity eA, entt::entity eB) -> bool {
             if (!pRegistry || !pRegistry->valid(eA) || !pRegistry->valid(eB))
                 return false;
 
@@ -71,23 +109,24 @@ void PhysicsSystem::Update(Scene &scene, float dt)
         scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
         scene.registry.on_destroy<CharacterControllerComponent>().connect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
     }
+    
     if (!m_transformSync)
     {
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Transform Sync";
-        m_transformSync = std::make_unique<PhysicsTransformSync>(scene, *m_Ctx.physics);
+        m_transformSync = std::make_unique<PhysicsTransformSync>(scene, *physicsWorld);
         m_transformSync->Initialize();
     }
 
     m_transformSync->SyncToPhysics();
 
-    m_Ctx.physics->Update(dt);
+    physicsWorld->Update(dt);
 
     m_transformSync->SyncFromPhysics();
 
     if (!m_collisionDispatcher)
     {
         LOGGER_INFO("PhysicsSystem") << "Initializing Physics Collision Dispatcher";
-        m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, *m_Ctx.physics);
+        m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, *physicsWorld);
     }
     
     m_collisionDispatcher->DispatchEvents();
@@ -216,20 +255,22 @@ void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shade
     shader.setMat4("projection", projection);
 
     renderState.Disable(ServerCapability::DepthTest);
-    m_Ctx.physics->DebugDraw();
+    physicsWorld.DebugDraw();
     renderState.Enable(ServerCapability::DepthTest);
 }
 
 RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, const glm::vec3 &direction, float distance)
 {
-    if (!m_Ctx.physics)
+    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+    if (!physicsWorld)
         return {};
-    return m_Ctx.physics->Raycast(origin, direction, distance);
+    return physicsWorld->Raycast(origin, direction, distance);
 }
 
 RayHit PhysicsSystem::Raycast(const glm::vec3 &start, const glm::vec3 &end)
 {
-    if (!m_Ctx.physics)
+    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+    if (!physicsWorld)
         return {};
 
     glm::vec3 dir = end - start;
@@ -237,21 +278,23 @@ RayHit PhysicsSystem::Raycast(const glm::vec3 &start, const glm::vec3 &end)
     if (dist < 0.0001f)
         return {};
 
-    return m_Ctx.physics->Raycast(start, glm::normalize(dir), dist);
+    return physicsWorld->Raycast(start, glm::normalize(dir), dist);
 }
 
 RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, float yaw, float pitch, float distance)
 {
-    if (!m_Ctx.physics)
+    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+    if (!physicsWorld)
         return {};
 
     glm::vec3 dir = RaycastUtils::AngleToDirection(yaw, pitch);
-    return m_Ctx.physics->Raycast(origin, dir, distance);
+    return physicsWorld->Raycast(origin, dir, distance);
 }
 
 RayHit PhysicsSystem::RaycastFromScreen(const glm::vec2 &screenPos, float distance)
 {
-    if (!m_Ctx.physics || !m_LastScene)
+    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+    if (!physicsWorld || !m_LastScene)
         return {};
 
     entt::entity camEntity = EntityManager::GetActiveCamera(*m_LastScene);
@@ -259,11 +302,12 @@ RayHit PhysicsSystem::RaycastFromScreen(const glm::vec2 &screenPos, float distan
         return {};
 
     auto &camera = m_LastScene->registry.get<CameraComponent>(camEntity);
-    glm::vec2 viewportSize(m_Ctx.io->GetMonitorManager().GetWidth(), m_Ctx.io->GetMonitorManager().GetHeight());
+    auto &monitorManager = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager();
+    glm::vec2 viewportSize(monitorManager.GetWidth(), monitorManager.GetHeight());
 
-    RaycastUtils::Ray ray = RaycastUtils::CalculateRay(screenPos, viewportSize, camera.viewMatrix, camera.projectionMatrix);
+    Ray ray = RaycastUtils::CalculateRay(screenPos, viewportSize, camera.viewMatrix, camera.projectionMatrix);
 
-    return m_Ctx.physics->Raycast(ray.origin, ray.direction, distance);
+    return physicsWorld->Raycast(ray.origin, ray.direction, distance);
 }
 
 std::vector<entt::id_type> PhysicsSystem::GetReadComponents() const

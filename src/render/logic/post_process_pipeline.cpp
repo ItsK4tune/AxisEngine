@@ -6,7 +6,7 @@
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_texture_manager.h>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <core/logic/logger.h>
 
 PostProcessPipeline::PostProcessPipeline() {}
@@ -27,11 +27,11 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
     InitQuad();
     InitFramebuffers();
 
-    shaderLib.LoadShader("fxaa", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/fxaa.fs");
-    shaderLib.LoadShader("taa", "includes/engine/asset/shaders/taa.vs", "includes/engine/asset/shaders/taa.fs");
-    shaderLib.LoadShader("bloom_down", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/bloom_downsample.fs");
-    shaderLib.LoadShader("bloom_up", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/bloom_upsample.fs");
-    shaderLib.LoadShader("hdr_final", "includes/engine/asset/shaders/fxaa.vs", "includes/engine/asset/shaders/hdr_final.fs");
+    shaderLib.LoadShader("fxaa", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/fxaa.fs");
+    shaderLib.LoadShader("taa", "include/engine/asset/shaders/taa.vs", "include/engine/asset/shaders/taa.fs");
+    shaderLib.LoadShader("bloom_down", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/bloom_downsample.fs");
+    shaderLib.LoadShader("bloom_up", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/bloom_upsample.fs");
+    shaderLib.LoadShader("hdr_final", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/hdr_final.fs");
 
     m_FXAAShader = shaderLib.GetShader("fxaa");
     m_TAAShader = shaderLib.GetShader("taa");

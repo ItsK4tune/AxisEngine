@@ -59,7 +59,7 @@ void CameraController::OnUpdate(float dt)
     if (keyboard.GetKey(Key::LeftShift))
         posComp.value -= camera.worldUp * velocity;
 
-    camera.aspectRatio = (float)m_Ctx.io->GetMonitorManager().GetWidth() / (float)m_Ctx.io->GetMonitorManager().GetHeight();
+    camera.aspectRatio = (float)GetIOHandler().GetMonitorManager().GetWidth() / (float)GetIOHandler().GetMonitorManager().GetHeight();
 
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
 

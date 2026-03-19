@@ -1,6 +1,6 @@
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/render_components.h>
-#include <render/logic/model.h>
+#include <render/unit/model.h>
 #include <physics/logic/physics_transform_sync.h>
 #include <scene/logic/scene.h>
 #include <physics/interface/i_physics_world.h>

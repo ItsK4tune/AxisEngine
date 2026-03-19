@@ -30,7 +30,7 @@ void GameState::OnUpdate(float dt)
 
     if (input.GetActionDown("LoadNextScene")) QueueLoadScene("scenes/game2.axs");
     if (input.GetActionDown("ReloadScene")) QueuePopScene();
-    if (input.GetActionDown("Pause")) m_Ctx.runtime->GetStateMachine().PushState(std::make_unique<PauseState>());
+    if (input.GetActionDown("Pause")) GetRuntimeCore().GetStateMachine().PushState(std::make_unique<PauseState>());
 
     // Selection & Movement Logic (Combined into Mouse Left Click)
     if (input.GetActionDown("Select")) 
@@ -44,8 +44,8 @@ void GameState::OnUpdate(float dt)
             
             float mouseX = GetMouse().GetLastX();
             float mouseY = GetMouse().GetLastY();
-            float screenW = (float)m_Ctx.io->GetMonitorManager().GetWidth();
-            float screenH = (float)m_Ctx.io->GetMonitorManager().GetHeight();
+            float screenW = (float)GetIOHandler().GetMonitorManager().GetWidth();
+            float screenH = (float)GetIOHandler().GetMonitorManager().GetHeight();
             
             float x = (2.0f * mouseX) / (screenW > 0 ? screenW : 1.0f) - 1.0f;
             float y = 1.0f - (2.0f * mouseY) / (screenH > 0 ? screenH : 1.0f);
@@ -55,7 +55,7 @@ void GameState::OnUpdate(float dt)
             rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
             glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
             
-            RayHit hit = m_Ctx.physics->Raycast(camPos, rayDir, 1000.0f);
+            RayHit hit = GetPhysicsSystem().GetPhysicsWorld().Raycast(camPos, rayDir, 1000.0f);
             if (hit.hasHit)
             {
                 auto* info = EntityManager::TryGetComponent<InfoComponent>(GetScene(), hit.entity);
@@ -79,7 +79,7 @@ void GameState::OnUpdate(float dt)
                     }
                     
                     // ALWAYS spawn decal on click if we hit something (terrain, etc)
-                    auto* decalSys = m_Ctx.systems->GetSystem<DecalSystem>();
+                    auto* decalSys = ServiceLocator::Instance().Require<SystemManager>().GetSystem<DecalSystem>();
                     if (decalSys)
                     {
                         static uint32_t crackTex = 0;
@@ -134,20 +134,20 @@ void GameState::OnUpdate(float dt)
 
     // Toggle 2D Sound
     if (input.GetActionDown("Toggle2DSound")) {
-        m_Ctx.soundPlayer->GetEngine()->Play2D("resources/audios/2dsound.mp3", false);
+        GetAudioService().GetEngine()->Play2D("resources/audios/2dsound.mp3", false);
     }
 
     // Volume Control
     if (input.GetActionDown("VolumeUp")) {
-        AppConfig cfg = m_Ctx.runtime->GetConfig();
+        AppConfig cfg = GetRuntimeCore().GetConfig();
         cfg.masterVolume = std::min(10.0f, cfg.masterVolume + 0.1f);
-        m_Ctx.runtime->ApplyConfig(cfg);
+        GetRuntimeCore().ApplyConfig(cfg);
         LOGGER_INFO("GameState") << "Master Volume: " << cfg.masterVolume;
     }
     if (input.GetActionDown("VolumeDown")) {
-        AppConfig cfg = m_Ctx.runtime->GetConfig();
+        AppConfig cfg = GetRuntimeCore().GetConfig();
         cfg.masterVolume = std::max(0.0f, cfg.masterVolume - 0.1f);
-        m_Ctx.runtime->ApplyConfig(cfg);
+        GetRuntimeCore().ApplyConfig(cfg);
         LOGGER_INFO("GameState") << "Master Volume: " << cfg.masterVolume;
     }
 
@@ -178,8 +178,8 @@ void GameState::OnUpdate(float dt)
             
             float mouseX = GetMouse().GetLastX();
             float mouseY = GetMouse().GetLastY();
-            float screenW = (float)m_Ctx.io->GetMonitorManager().GetWidth();
-            float screenH = (float)m_Ctx.io->GetMonitorManager().GetHeight();
+            float screenW = (float)GetIOHandler().GetMonitorManager().GetWidth();
+            float screenH = (float)GetIOHandler().GetMonitorManager().GetHeight();
             
             float x = (2.0f * mouseX) / (screenW > 0 ? screenW : 1.0f) - 1.0f;
             float y = 1.0f - (2.0f * mouseY) / (screenH > 0 ? screenH : 1.0f);
@@ -189,12 +189,12 @@ void GameState::OnUpdate(float dt)
             rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
             glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
             
-            RayHit hit = m_Ctx.physics->Raycast(camPos, rayDir, 1000.0f);
+            RayHit hit = GetPhysicsSystem().GetPhysicsWorld().Raycast(camPos, rayDir, 1000.0f);
             if (hit.hasHit)
             {
                 if (wheelMove > 0) // WheelUp: 3D Sound
                 {
-                    m_Ctx.soundPlayer->Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);
+                    GetAudioService().Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);
                     LOGGER_INFO("GameState") << "Play 3D Sound at " << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z;
                 }
                 else // WheelDown: Particle
@@ -214,7 +214,7 @@ void GameState::OnUpdate(float dt)
                         pComp.isActive = true;
                         pComp.lifetime = 0.5f; // Spawning duration
                         pComp.emitter.Initialize(300);
-                        pComp.emitter.Texture = m_Ctx.resources->GetTextureAuto("resources/textures/particle_star.png");
+                        pComp.emitter.Texture = GetResourceManager().GetTextureAuto("resources/textures/particle_star.png");
                         pComp.emitter.SpawnRate = 400.0f; 
                         pComp.emitter.LifeTime = 0.8f;   // Particles live slightly longer for fade
                         pComp.emitter.StartSize = 0.5f;

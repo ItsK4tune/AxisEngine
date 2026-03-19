@@ -1,6 +1,6 @@
 #include <ecs/unit/core_components.h>
 #include <algorithm>
-#include <ecs/manager/entity_manager.h>
+#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/logic/particle_system.h>
 #include <execution>
@@ -10,12 +10,12 @@
 #include <vector>
 
 #include <platform/logic/io_handler.h>
-#include <core/unit/engine_context.h>
+#include <core/logic/service_locator.h>
+#include <resource/logic/resource_manager.h>
 
-void ParticleSystem::Initialize(EngineContext ctx)
+void ParticleSystem::Initialize()
 {
-    m_Ctx = ctx;
-    m_Context = &ctx.io->GetGraphicsContext();
+    m_Context = &ServiceLocator::Instance().Require<IGraphicsContext>();
 }
 
 void ParticleSystem::Update(Scene &scene, float dt)
@@ -71,7 +71,8 @@ void ParticleSystem::Render(Scene &scene)
     rsm.Enable(ServerCapability::DepthTest);
     rsm.SetDepthMask(false);
 
-    auto shader = m_Ctx.resources->GetShader("particle");
+    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
+    auto shader = resources.GetShader("particle");
     if (!shader)
     {
         LOGGER_ERROR("ParticleSystem") << "'particle' shader not found!";

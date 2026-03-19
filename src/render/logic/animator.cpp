@@ -1,6 +1,6 @@
 #include <assimp/Importer.hpp>
-#include <render/logic/animator.h>
-#include <render/logic/bone.h>
+#include <render/unit/animator.h>
+#include <render/unit/bone.h>
 #include <iostream>
 #include <map>
 #include <core/logic/logger.h>

@@ -5,7 +5,7 @@
 #include <ecs/unit/terrain_component.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <entt/entt.hpp>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <algorithm>
 #include <map>

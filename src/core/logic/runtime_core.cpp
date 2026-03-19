@@ -1,22 +1,22 @@
-#include <core/logic/engine_core.h>
-#include <core/unit/engine_context.h>
-#include <core/logic/state_management.h>
+#include <core/logic/runtime_core.h>
+#include <core/logic/config_manager.h>
+#include <core/logic/state_machine.h>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/system_manager.h>
 
 RuntimeCore::RuntimeCore()
 {
 }
 
-void RuntimeCore::Initialize(EngineContext ctx, const AppConfig& config, std::function<void(const AppConfig&)> applyFn)
+void RuntimeCore::Initialize()
 {
-    m_Config = config;
-    m_ApplyConfigFn = std::move(applyFn);
+    auto& config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
     
-    m_EngineLoop.SetPhysicsStep(1.0f / m_Config.physicsTickRate);
-    m_EngineLoop.SetMaxSubSteps(m_Config.maxSubSteps);
+    // m_EngineLoop.Initialize() will set physics parameters from AppConfig
     
-    m_EngineLoop.Initialize(ctx);
-    m_StateMachine.Initialize(ctx);
+    m_EngineLoop.Initialize();
+    m_StateMachine.Initialize();
 
     LOGGER_INFO("RuntimeCore") << "Initialized";
 }
@@ -85,14 +85,10 @@ bool RuntimeCore::IsPaused() const
 
 const AppConfig& RuntimeCore::GetConfig() const
 {
-    return m_Config;
+    return ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
 }
 
 void RuntimeCore::ApplyConfig(const AppConfig& config)
 {
-    m_Config = config;
-    if (m_ApplyConfigFn)
-    {
-        m_ApplyConfigFn(m_Config);
-    }
+    ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(config);
 }

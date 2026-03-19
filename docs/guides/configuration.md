@@ -145,7 +145,7 @@ The build system automatically copies required DLLs (from `dlls/`) to the output
 
 ### Adding Libraries
 To integrate a new third-party library:
-1.  **Headers**: Place `.h` files in `includes/`.
+1.  **Headers**: Place `.h` files in `include/`.
 2.  **Static Libs**: Place `.lib` files in `lib/`.
 3.  **Dynamic Libs**: Place `.dll` files in `dlls/`.
 4.  **CMake**: Update `CMakeLists.txt` to find and link the library.

@@ -1,11 +1,11 @@
-#include <core/unit/engine_context.h>
-#include <core/logic/state_management.h>
+#include <core/logic/state_machine.h>
+#include <core/logic/service_locator.h>
+#include <scene/logic/scene.h>
 
 StateMachine::StateMachine() {}
 
-void StateMachine::Initialize(EngineContext ctx)
+void StateMachine::Initialize()
 {
-    m_Ctx = ctx;
 }
 
 void StateMachine::Shutdown()
@@ -15,7 +15,8 @@ void StateMachine::Shutdown()
 
 void StateMachine::PushState(std::unique_ptr<State> state)
 {
-    state->SetContext(m_Ctx);
+    auto& scene = ServiceLocator::Instance().Require<Scene>();
+    state->SetActiveScene(&scene);
     state->OnEnter();
     m_States.push(std::move(state));
 }

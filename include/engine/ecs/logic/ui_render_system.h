@@ -1,0 +1,27 @@
+#pragma once
+
+#include <ecs/interface/i_system.h>
+#include <platform/logic/input_manager.h>
+#include <render/interface/i_render_state_manager.h>
+#include <scene/logic/scene.h>
+
+class UIRenderSystem : public IUpdateSystem, public IRenderSystem
+{
+public:
+
+    void Initialize() override {}
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    int GetPriority() const override { return 90; }
+    std::string GetName() const override { return "UIRenderSystem"; }
+    void Update(Scene &scene, float dt) override;
+    void Render(Scene &scene) override;
+    void UpdateLayout(Scene &scene, float screenWidth, float screenHeight);
+    void RenderUI(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager& renderState) override;
+
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
+
+private:
+    bool m_Enabled = true;
+};

@@ -7,7 +7,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/event_system.h>
-#include <core/logic/event_types.h>
+#include <core/type/event_types.h>
 ITextureManager* TextureCache::s_TextureManager = nullptr;
 bool TextureCache::s_AsyncEnabled = true;
 float TextureCache::s_MaxAnisotropy = 1.0f;

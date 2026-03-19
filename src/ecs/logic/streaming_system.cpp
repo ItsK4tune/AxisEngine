@@ -1,10 +1,12 @@
 #include <ecs/logic/streaming_system.h>
-#include <ecs/manager/entity_manager.h>
+#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <resource/logic/resource_manager.h>
 
 void StreamingSystem::Update(Scene& scene, float dt)
 {
@@ -20,6 +22,8 @@ void StreamingSystem::Update(Scene& scene, float dt)
     glm::vec3 camPos = camPosComp->value;
 
     auto view = scene.registry.view<StreamingComponent, PositionComponent>();
+    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
+    
     for (auto entity : view)
     {
         auto& stream = view.get<StreamingComponent>(entity);
@@ -31,7 +35,7 @@ void StreamingSystem::Update(Scene& scene, float dt)
         if (distSq < stream.loadDistance * stream.loadDistance)
         {
             LOGGER_INFO("StreamingSystem") << "Distance threshold met, requesting resource: " << stream.modelPath;
-            m_Ctx.resources->LoadModelAsync(stream.modelPath, stream.modelPath, stream.isStatic);
+            resources.LoadModelAsync(stream.modelPath, stream.modelPath, stream.isStatic);
             stream.isRequested = true;
         }
     }

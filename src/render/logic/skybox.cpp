@@ -1,5 +1,5 @@
-#include <render/logic/shader.h>
-#include <render/logic/skybox.h>
+#include <render/unit/shader.h>
+#include <render/unit/skybox.h>
 #include <render/type/graphics_types.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>

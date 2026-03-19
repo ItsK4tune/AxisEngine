@@ -1,19 +1,20 @@
 #include <ecs/unit/core_components.h>
 #include <core/logic/modules/physics_debug_module.h>
+#include <physics/interface/i_physics_world.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/app_framework.h>
-#include <platform/logic/input_system.h>
-#include <resource/manager/resource_manager.h>
+#include <core/logic/application.h>
+#include <platform/logic/input_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <ecs/logic/physics_system.h>
 #include <scene/logic/scene.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/media_components.h>
-#include <core/unit/engine_context.h>
+
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/manager/system_manager.h>
+#include <core/logic/system_manager.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
 
@@ -21,13 +22,13 @@
 #include <glm/glm.hpp>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
-#include <core/logic/debug_core.h>
+#include <core/logic/debug_system.h>
+#include <core/logic/service_locator.h>
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}
 
-void PhysicsDebugModule::Initialize(EngineContext ctx)
+void PhysicsDebugModule::Initialize()
 {
-    m_Ctx = ctx;
 }
 
 void PhysicsDebugModule::OnUpdate(float dt)
@@ -36,19 +37,24 @@ void PhysicsDebugModule::OnUpdate(float dt)
 
 void PhysicsDebugModule::Render(Scene &scene)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled)
+    if (!m_Enabled)
         return;
 
-    int width = m_Ctx.io->GetMonitorManager().GetWidth();
-    int height = m_Ctx.io->GetMonitorManager().GetHeight();
+    auto& sl = ServiceLocator::Instance();
+    auto& io = sl.Require<IOHandler>();
+    auto& resources = sl.Require<ResourceManager>();
+    auto& systems = sl.Require<SystemManager>();
+    auto physics_ptr = sl.Resolve<IPhysicsWorld>();
 
-    if (DebugConfig::ShowPhysics)
+    int width = io.GetMonitorManager().GetWidth();
+    int height = io.GetMonitorManager().GetHeight();
+
+    if (DebugConfig::ShowPhysics && physics_ptr)
     {
-        auto &res = *m_Ctx.resources;
-        auto debugShader = res.GetShader("debugLine");
+        auto debugShader = resources.GetShader("debugLine");
         if (debugShader)
         {
-            m_Ctx.systems->GetSystem<PhysicsSystem>()->RenderDebug(scene, *m_Ctx.physics, *debugShader, width, height, m_Ctx.io->GetGraphicsContext().GetRenderStateManager());
+            systems.GetSystem<PhysicsSystem>()->RenderDebug(scene, *physics_ptr, *debugShader, width, height, io.GetGraphicsContext().GetRenderStateManager());
         }
     }
 
@@ -75,7 +81,7 @@ void PhysicsDebugModule::Render(Scene &scene)
 
 void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled)
+    if (!m_Enabled)
         return;
 
     ProcessKey(keyboard, Key::F8, m_F8Pressed, [this, &keyboard]()

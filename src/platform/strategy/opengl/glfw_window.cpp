@@ -48,7 +48,7 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
     } else {
         // Fallback to loading icon from file
         int w, h, ch;
-        std::string iconPath = FileSystem::getPath("includes/engine/asset/project/icon.png");
+        std::string iconPath = FileSystem::getPath("include/engine/asset/project/icon.png");
         unsigned char* pixels = stbi_load(iconPath.c_str(), &w, &h, &ch, 4);
         if (pixels) {
             GLFWimage images[1];

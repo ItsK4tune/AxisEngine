@@ -1,18 +1,30 @@
-#include <scene/io/binary_scene_serializer.h>
+#include <scene/logic/binary_scene_serializer.h>
 #include <scene/type/scene_types.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
-#include <ecs/manager/entity_manager.h>
-#include <render/logic/model.h>
-#include <render/logic/shader.h>
+#include <ecs/logic/entity_manager.h>
+#include <render/unit/model.h>
+#include <render/unit/shader.h>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <resource/logic/resource_manager.h>
+#include <physics/interface/i_physics_world.h>
+#include <engine/platform/logic/io_handler.h>
 #include <fstream>
 #include <vector>
+#include <map>
+#include <ecs/unit/media_components.h>
+#include <core/logic/config_manager.h>
+#include <core/type/app_config.h>
 
-bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
+bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
 {
-    std::ofstream os(filepath, std::ios::binary);
+    auto& sl = ServiceLocator::Instance();
+    auto& rm = sl.Require<ResourceManager>();
+    auto& io = sl.Require<IOHandler>();
+    std::ofstream os(path, std::ios::binary);
+    if (!os.is_open()) return false;
     os.write(reinterpret_cast<const char*>(&scene::BINARY_MAGIC), sizeof(scene::BINARY_MAGIC));
     os.write(reinterpret_cast<const char*>(&scene::BINARY_VERSION), sizeof(scene::BINARY_VERSION));
     auto view = scene.registry.view<InfoComponent>();
@@ -20,6 +32,53 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
     for (auto entity : view) entities.push_back(entity);
     uint32_t entityCount = (uint32_t)entities.size();
     os.write(reinterpret_cast<const char*>(&entityCount), sizeof(entityCount));
+
+    // --- NEW: Config ---
+    auto& configMgr = sl.Require<ConfigManager>();
+    const AppConfig& config = configMgr.GetConfig();
+    
+    auto writeString = [&](const std::string& s) {
+        uint32_t len = (uint32_t)s.length();
+        os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        os.write(s.c_str(), len);
+    };
+
+    writeString(config.title);
+    os.write(reinterpret_cast<const char*>(&config.logLevel), sizeof(config.logLevel));
+    os.write(reinterpret_cast<const char*>(&config.numJobThreads), sizeof(config.numJobThreads));
+    os.write(reinterpret_cast<const char*>(&config.timeScale), sizeof(config.timeScale));
+    writeString(config.iconPath);
+    writeString(config.audioDevice);
+    os.write(reinterpret_cast<const char*>(&config.width), 4 * 7); // width to framerateLimit
+    os.write(reinterpret_cast<const char*>(&config.graphicsBackend), sizeof(config.graphicsBackend));
+    os.write(reinterpret_cast<const char*>(&config.msaaSamples), 4 * 3); // msaa to maxAnisotropy
+    os.write(reinterpret_cast<const char*>(&config.renderScale), 4 * 1);
+    os.write(reinterpret_cast<const char*>(&config.asyncResourceLoading), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&config.renderPath), sizeof(config.renderPath));
+    os.write(reinterpret_cast<const char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
+    os.write(reinterpret_cast<const char*>(&config.hdrEnabled), sizeof(bool) * 2); // hdr, bloom
+    os.write(reinterpret_cast<const char*>(&config.gamma), 4 * 6); // gamma to skyboxIntensity
+    os.write(reinterpret_cast<const char*>(&config.fogEnabled), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&config.fogColor), 4 * 3);
+    os.write(reinterpret_cast<const char*>(&config.fogDensity), 4);
+    os.write(reinterpret_cast<const char*>(&config.clearColor), 4 * 4);
+    os.write(reinterpret_cast<const char*>(&config.shadowsEnabled), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&config.shadowMode), 4 * 3); // mode to projSize
+    os.write(reinterpret_cast<const char*>(&config.shadowFrustumCullingEnabled), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&config.shadowDistanceCulling), 4 * 3); // dist to softness
+    os.write(reinterpret_cast<const char*>(&config.physicsBackend), sizeof(config.physicsBackend));
+    os.write(reinterpret_cast<const char*>(&config.physicsMode), sizeof(config.physicsMode));
+    os.write(reinterpret_cast<const char*>(&config.gravity), 4 * 3);
+    os.write(reinterpret_cast<const char*>(&config.maxSubSteps), 4 * 2); // steps, rate
+    os.write(reinterpret_cast<const char*>(&config.ccdEnabled), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&config.ccdThreshold), 4 * 2); // thresh, iterations
+    os.write(reinterpret_cast<const char*>(&config.mouseSensitivityX), 4 * 2);
+    os.write(reinterpret_cast<const char*>(&config.mouseInvertX), sizeof(bool) * 2);
+    os.write(reinterpret_cast<const char*>(&config.audioBackend), sizeof(config.audioBackend));
+    os.write(reinterpret_cast<const char*>(&config.masterVolume), 4);
+    os.write(reinterpret_cast<const char*>(&config.cullFaceEnabled), sizeof(bool) * 5); // cull, depth, frustum, occlusion, batching
+    os.write(reinterpret_cast<const char*>(&config.renderOrderEnabled), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&config.filterLayerMask), 4 * 2); // mask, dist
 
     std::map<entt::entity, uint32_t> entityToIndex;
     uint32_t idx = 0;
@@ -86,37 +145,131 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, Scene& scene)
         {
             os.write(reinterpret_cast<const char*>(&mat->desc), sizeof(mat->desc));
         }
+
+        // --- NEW: Camera ---
+        auto* cam = scene.registry.try_get<CameraComponent>(entity);
+        bool hasCam = (cam != nullptr);
+        os.write(reinterpret_cast<const char*>(&hasCam), sizeof(hasCam));
+        if (hasCam)
+        {
+            os.write(reinterpret_cast<const char*>(cam), sizeof(CameraComponent));
+        }
+
+        // --- NEW: Lights ---
+        auto* dl = scene.registry.try_get<DirectionalLightComponent>(entity);
+        bool hasDL = (dl != nullptr);
+        os.write(reinterpret_cast<const char*>(&hasDL), sizeof(hasDL));
+        if (hasDL) os.write(reinterpret_cast<const char*>(dl), sizeof(DirectionalLightComponent));
+
+        auto* pl = scene.registry.try_get<PointLightComponent>(entity);
+        bool hasPL = (pl != nullptr);
+        os.write(reinterpret_cast<const char*>(&hasPL), sizeof(hasPL));
+        if (hasPL) os.write(reinterpret_cast<const char*>(pl), sizeof(PointLightComponent));
+
+        auto* sl_comp = scene.registry.try_get<SpotLightComponent>(entity);
+        bool hasSL = (sl_comp != nullptr);
+        os.write(reinterpret_cast<const char*>(&hasSL), sizeof(hasSL));
+        if (hasSL) os.write(reinterpret_cast<const char*>(sl_comp), sizeof(SpotLightComponent));
+
+        // --- NEW: Skybox ---
+        auto* sky = scene.registry.try_get<SkyboxRenderComponent>(entity);
+        bool hasSky = (sky != nullptr);
+        os.write(reinterpret_cast<const char*>(&hasSky), sizeof(hasSky));
+        if (hasSky)
+        {
+            os.write(reinterpret_cast<const char*>(&sky->isPrimary), sizeof(sky->isPrimary));
+            std::string sName = sky->skybox ? sky->skybox->GetName() : "";
+            uint32_t len = (uint32_t)sName.length();
+            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+            os.write(sName.c_str(), len);
+
+            auto sh_ptr = sky->shader.lock();
+            std::string shName = sh_ptr ? sh_ptr->GetName() : "";
+            len = (uint32_t)shName.length();
+            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+            os.write(shName.c_str(), len);
+        }
     }
 
     os.close();
-    LOGGER_INFO("BinarySceneSerializer") << "Serialized scene to: " << filepath;
+    LOGGER_INFO("BinarySceneSerializer") << "Serialized scene to: " << path;
     return true;
 }
 
-bool BinarySceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld& phys, SoundPlayer& sound, EngineContext ctx)
+bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
 {
-    std::ifstream is(filepath, std::ios::binary);
+    auto& sl = ServiceLocator::Instance();
+    auto& rm = sl.Require<ResourceManager>();
+    auto& physics = sl.Require<IPhysicsWorld>();
+
+    std::ifstream is(path, std::ios::binary);
     if (!is.is_open()) return false;
 
     uint32_t magic, version;
     is.read(reinterpret_cast<char*>(&magic), sizeof(magic));
     is.read(reinterpret_cast<char*>(&version), sizeof(version));
-
-    if (magic != scene::BINARY_MAGIC || version != scene::BINARY_VERSION) return false;
+    
+    if (magic != scene::BINARY_MAGIC) return false;
 
     uint32_t entityCount;
     is.read(reinterpret_cast<char*>(&entityCount), sizeof(entityCount));
 
-    std::vector<entt::entity> entities;
-    std::vector<int32_t> parents;
-
-    auto readString = [&]() {
+    auto readString = [&]() -> std::string {
         uint32_t len;
         is.read(reinterpret_cast<char*>(&len), sizeof(len));
         std::string s(len, ' ');
-        if (len > 0) is.read(&s[0], len);
+        is.read(&s[0], len);
         return s;
     };
+
+    if (version >= 2)
+    {
+        auto& configMgr = sl.Require<ConfigManager>();
+        AppConfig config = configMgr.GetConfig();
+
+        config.title = readString();
+        is.read(reinterpret_cast<char*>(&config.logLevel), sizeof(config.logLevel));
+        is.read(reinterpret_cast<char*>(&config.numJobThreads), sizeof(config.numJobThreads));
+        is.read(reinterpret_cast<char*>(&config.timeScale), sizeof(config.timeScale));
+        config.iconPath = readString();
+        config.audioDevice = readString();
+        is.read(reinterpret_cast<char*>(&config.width), 4 * 7);
+        is.read(reinterpret_cast<char*>(&config.graphicsBackend), sizeof(config.graphicsBackend));
+        is.read(reinterpret_cast<char*>(&config.msaaSamples), 4 * 3);
+        is.read(reinterpret_cast<char*>(&config.renderScale), 4 * 1);
+        is.read(reinterpret_cast<char*>(&config.asyncResourceLoading), sizeof(bool));
+        is.read(reinterpret_cast<char*>(&config.renderPath), sizeof(config.renderPath));
+        is.read(reinterpret_cast<char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
+        is.read(reinterpret_cast<char*>(&config.hdrEnabled), sizeof(bool) * 2);
+        is.read(reinterpret_cast<char*>(&config.gamma), 4 * 6);
+        is.read(reinterpret_cast<char*>(&config.fogEnabled), sizeof(bool));
+        is.read(reinterpret_cast<char*>(&config.fogColor), 4 * 3);
+        is.read(reinterpret_cast<char*>(&config.fogDensity), 4);
+        is.read(reinterpret_cast<char*>(&config.clearColor), 4 * 4);
+        is.read(reinterpret_cast<char*>(&config.shadowsEnabled), sizeof(bool));
+        is.read(reinterpret_cast<char*>(&config.shadowMode), 4 * 3);
+        is.read(reinterpret_cast<char*>(&config.shadowFrustumCullingEnabled), sizeof(bool));
+        is.read(reinterpret_cast<char*>(&config.shadowDistanceCulling), 4 * 3);
+        is.read(reinterpret_cast<char*>(&config.physicsBackend), sizeof(config.physicsBackend));
+        is.read(reinterpret_cast<char*>(&config.physicsMode), sizeof(config.physicsMode));
+        is.read(reinterpret_cast<char*>(&config.gravity), 4 * 3);
+        is.read(reinterpret_cast<char*>(&config.maxSubSteps), 4 * 2);
+        is.read(reinterpret_cast<char*>(&config.ccdEnabled), sizeof(bool));
+        is.read(reinterpret_cast<char*>(&config.ccdThreshold), 4 * 2);
+        is.read(reinterpret_cast<char*>(&config.mouseSensitivityX), 4 * 2);
+        is.read(reinterpret_cast<char*>(&config.mouseInvertX), sizeof(bool) * 2);
+        is.read(reinterpret_cast<char*>(&config.audioBackend), sizeof(config.audioBackend));
+        is.read(reinterpret_cast<char*>(&config.masterVolume), 4);
+        is.read(reinterpret_cast<char*>(&config.cullFaceEnabled), sizeof(bool) * 5);
+        is.read(reinterpret_cast<char*>(&config.renderOrderEnabled), sizeof(bool));
+        is.read(reinterpret_cast<char*>(&config.filterLayerMask), 4 * 2);
+
+        configMgr.UpdateConfig(config);
+    }
+
+    std::vector<entt::entity> entities;
+    std::vector<int32_t> parents;
+
 
     for (uint32_t i = 0; i < entityCount; ++i)
     {
@@ -152,17 +305,58 @@ bool BinarySceneSerializer::Deserialize(const std::string& filepath, Scene& scen
             bool castShadow; is.read(reinterpret_cast<char*>(&castShadow), sizeof(castShadow));
             
             auto& m = scene.registry.emplace<MeshRendererComponent>(entity);
-            m.model = res.GetModel(modelName);
-            m.shader = res.GetShader(shaderName);
+            m.model = rm.GetModel(modelName);
+            m.shader = rm.GetShader(shaderName);
             m.castShadow = castShadow;
         }
 
-        bool hasMat; is.read(reinterpret_cast<char*>(&hasMat), sizeof(hasMat));
+        bool hasMat;
+        is.read(reinterpret_cast<char*>(&hasMat), sizeof(hasMat));
         if (hasMat)
         {
             auto& m = scene.registry.emplace<MaterialComponent>(entity);
             is.read(reinterpret_cast<char*>(&m.desc), sizeof(m.desc));
             m.gpu.dirty = true;
+        }
+
+        bool hasCam; is.read(reinterpret_cast<char*>(&hasCam), sizeof(hasCam));
+        if (hasCam)
+        {
+            auto& c = scene.registry.emplace<CameraComponent>(entity);
+            is.read(reinterpret_cast<char*>(&c), sizeof(CameraComponent));
+        }
+
+        bool hasDL; is.read(reinterpret_cast<char*>(&hasDL), sizeof(hasDL));
+        if (hasDL)
+        {
+            auto& l = scene.registry.emplace<DirectionalLightComponent>(entity);
+            is.read(reinterpret_cast<char*>(&l), sizeof(DirectionalLightComponent));
+        }
+
+        bool hasPL; is.read(reinterpret_cast<char*>(&hasPL), sizeof(hasPL));
+        if (hasPL)
+        {
+            auto& l = scene.registry.emplace<PointLightComponent>(entity);
+            is.read(reinterpret_cast<char*>(&l), sizeof(PointLightComponent));
+        }
+
+        bool hasSL; is.read(reinterpret_cast<char*>(&hasSL), sizeof(hasSL));
+        if (hasSL)
+        {
+            auto& l = scene.registry.emplace<SpotLightComponent>(entity);
+            is.read(reinterpret_cast<char*>(&l), sizeof(SpotLightComponent));
+        }
+
+        bool hasSky; is.read(reinterpret_cast<char*>(&hasSky), sizeof(hasSky));
+        if (hasSky)
+        {
+            auto& s = scene.registry.emplace<SkyboxRenderComponent>(entity);
+            is.read(reinterpret_cast<char*>(&s.isPrimary), sizeof(s.isPrimary));
+            std::string sName = readString();
+            std::string shName = readString();
+            s.skybox = rm.GetSkybox(sName);
+            s.shader = rm.GetShader(shName);
+            if (s.isPrimary) EntityManager::SetActiveSkybox(scene, entity);
         }
 
         scene.registry.emplace<HierarchyComponent>(entity);
@@ -178,7 +372,7 @@ bool BinarySceneSerializer::Deserialize(const std::string& filepath, Scene& scen
     }
 
     is.close();
-    LOGGER_INFO("BinarySceneSerializer") << "Deserialized scene: " << filepath;
+    LOGGER_INFO("BinarySceneSerializer") << "Deserialized scene: " << path;
     return true;
 }
 

@@ -1,4 +1,4 @@
-#include <platform/logic/input_system.h>
+#include <platform/logic/input_manager.h>
 
 MouseManager::MouseManager(IWindow *window)
     : m_LastX(400.0), m_LastY(300.0),

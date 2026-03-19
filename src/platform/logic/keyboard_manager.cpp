@@ -1,4 +1,4 @@
-#include <platform/logic/input_system.h>
+#include <platform/logic/input_manager.h>
 KeyboardManager::KeyboardManager(IWindow *window)
 {
     SetWindow(window);

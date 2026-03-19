@@ -1,21 +1,21 @@
 #include <ecs/logic/deferred_lighting_system.h>
 #include <ecs/logic/render_system.h>
-#include <core/manager/system_manager.h>
-#include <platform/logic/io_handler.h>
+#include <core/logic/system_manager.h>
 #include <render/interface/i_graphics_context.h>
+#include <core/logic/service_locator.h>
 
-void DeferredLightingSystem::Initialize(EngineContext ctx) {
-    m_Ctx = ctx;
+void DeferredLightingSystem::Initialize() {
+}
+
+void DeferredLightingSystem::RenderAlpha(Scene &scene, int width, int height, float alpha) {
+    if (!m_Enabled) return;
+    
+    auto rs_ptr = ServiceLocator::Instance().Require<SystemManager>().GetSystem<RenderSystem>();
+    if (!rs_ptr || !rs_ptr->IsDeferredRenderingEnabled()) return;
+    
+    rs_ptr->RenderDeferredLighting(scene, width, height);
 }
 
 void DeferredLightingSystem::Render(Scene &scene) {
-    if (!m_Enabled) return;
-    
-    auto rs = m_Ctx.systems->GetSystem<RenderSystem>();
-    if (!rs || !rs->IsDeferredRenderingEnabled()) return;
-    
-    int width = rs->GetGBufferWidth();
-    int height = rs->GetGBufferHeight();
-    
-    rs->RenderDeferredLighting(scene, width, height);
+    // Logic moved to RenderAlpha to run before Skybox/Transparent
 }

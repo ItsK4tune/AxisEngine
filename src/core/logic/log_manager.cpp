@@ -7,58 +7,79 @@
 #include <sstream>
 
 void LogManager::Initialize(LogLevel level) {
+    Logger::SetLogLevel(level);
+
     if (level == LogLevel::None) {
 #ifndef ENABLE_DEBUG_SYSTEM
         FreeConsole();
 #endif
-        return;
     }
-
+    else {
 #ifndef ENABLE_DEBUG_SYSTEM
-    FreeConsole();
+        FreeConsole();
 #endif
+        std::string logsDirStr = FileSystem::getPath("logs");
+        namespace fs = std::filesystem;
+        fs::path logsDir = fs::path(logsDirStr);
 
-    std::string logsDirStr = FileSystem::getPath("logs");
-    namespace fs = std::filesystem;
-    fs::path logsDir = fs::path(logsDirStr);
+        if (!fs::is_directory(logsDir)) {
+            fs::create_directories(logsDir);
+        }
 
-    if (!fs::is_directory(logsDir)) {
-        fs::create_directories(logsDir);
-    }
+        auto now = std::chrono::system_clock::now();
+        auto timeT = std::chrono::system_clock::to_time_t(now);
+        std::tm bt{};
+        localtime_s(&bt, &timeT);
 
-    auto now = std::chrono::system_clock::now();
-    auto timeT = std::chrono::system_clock::to_time_t(now);
-    std::tm bt{};
-    localtime_s(&bt, &timeT);
+        std::stringstream ss;
+        ss << "log_" << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S") << ".txt";
+        fs::path logPath = logsDir / ss.str();
 
-    std::stringstream ss;
-    ss << "log_" << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S") << ".txt";
-    fs::path logPath = logsDir / ss.str();
-
-    m_LogFile.open(logPath);
-    if (m_LogFile.is_open()) {
+        m_LogFile.open(logPath);
+        if (m_LogFile.is_open()) {
 #ifdef ENABLE_DEBUG_SYSTEM
-        m_TeeOut = std::make_unique<TeeBuf>(std::cout.rdbuf(), m_LogFile.rdbuf());
-        m_TeeErr = std::make_unique<TeeBuf>(std::cerr.rdbuf(), m_LogFile.rdbuf());
+            m_TeeOut = std::make_unique<TeeBuf>(std::cout.rdbuf(), m_LogFile.rdbuf());
+            m_TeeErr = std::make_unique<TeeBuf>(std::cerr.rdbuf(), m_LogFile.rdbuf());
 
-        m_OldOut = std::cout.rdbuf(m_TeeOut.get());
-        m_OldErr = std::cerr.rdbuf(m_TeeErr.get());
+            m_OldOut = std::cout.rdbuf(m_TeeOut.get());
+            m_OldErr = std::cerr.rdbuf(m_TeeErr.get());
 #else
-        m_OldOut = std::cout.rdbuf(m_LogFile.rdbuf());
-        m_OldErr = std::cerr.rdbuf(m_LogFile.rdbuf());
+            m_OldOut = std::cout.rdbuf(m_LogFile.rdbuf());
+            m_OldErr = std::cerr.rdbuf(m_LogFile.rdbuf());
 #endif
 
-        LOGGER_INFO("Application") << "Logging started at " << std::put_time(&bt, "%Y-%m-%d %H:%M:%S");
-        LOGGER_INFO("Application") << "Log file: " << logPath.string();
+            LOGGER_INFO("Application") << "Logging started at " << std::put_time(&bt, "%Y-%m-%d %H:%M:%S");
+            LOGGER_INFO("Application") << "Log file: " << logPath.string();
+        }
     }
 
     SetUnhandledExceptionFilter(CrashHandler);
+
+    // Subscribe to config changes
+    if (auto* es = ServiceLocator::Instance().Resolve<EventSystem>()) {
+        m_ConfigListenerId = es->Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& ev) {
+            this->OnConfigChanged(ev);
+        });
+    }
 }
 
 void LogManager::Shutdown() {
+    if (m_ConfigListenerId != -1) {
+        if (auto* es = ServiceLocator::Instance().Resolve<EventSystem>()) {
+            es->Unsubscribe<ConfigChangedEvent>(m_ConfigListenerId);
+        }
+        m_ConfigListenerId = -1;
+    }
     if (m_OldOut) std::cout.rdbuf(m_OldOut);
     if (m_OldErr) std::cerr.rdbuf(m_OldErr);
     if (m_LogFile.is_open()) m_LogFile.close();
+}
+
+void LogManager::OnConfigChanged(const ConfigChangedEvent& event) {
+    auto& sl = ServiceLocator::Instance();
+    if (auto* cm = sl.Resolve<ConfigManager>()) {
+        Logger::SetLogLevel(cm->GetConfig().logLevel);
+    }
 }
 
 LONG WINAPI LogManager::CrashHandler(EXCEPTION_POINTERS* exceptionInfo) {

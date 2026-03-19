@@ -3,24 +3,24 @@
 #include <ecs/unit/render_components.h>
 #include <algorithm>
 #include <ecs/unit/media_components.h>
-#include <ecs/manager/entity_manager.h>
+#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/render_system.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
-#include <render/logic/model.h>
+#include <render/unit/model.h>
 #include <render/logic/shadow_renderer.h>
 #include <core/logic/job_system.h>
 #include <render/interface/i_draw_context.h>
-#include <resource/manager/resource_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <core/logic/logger.h>
 
 void ShadowRenderer::Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib)
 {
     m_Shadow.Initialize(context);
 
-    shaderLib.LoadShader("shadow_depth", "includes/engine/asset/shaders/shadow_depth.vs", "includes/engine/asset/shaders/shadow_depth.fs");
-    shaderLib.LoadShader("shadow_point", "includes/engine/asset/shaders/shadow_point.vs", "includes/engine/asset/shaders/shadow_point.fs", "includes/engine/asset/shaders/shadow_point.gs");
-    shaderLib.LoadShader("shadow_spot", "includes/engine/asset/shaders/shadow_spot.vs", "includes/engine/asset/shaders/shadow_spot.fs");
+    shaderLib.LoadShader("shadow_depth", "include/engine/asset/shaders/shadow_depth.vs", "include/engine/asset/shaders/shadow_depth.fs");
+    shaderLib.LoadShader("shadow_point", "include/engine/asset/shaders/shadow_point.vs", "include/engine/asset/shaders/shadow_point.fs", "include/engine/asset/shaders/shadow_point.gs");
+    shaderLib.LoadShader("shadow_spot", "include/engine/asset/shaders/shadow_spot.vs", "include/engine/asset/shaders/shadow_spot.fs");
 
     m_Shadow.SetShaderDir(shaderLib.GetShader("shadow_depth").get());
     m_Shadow.SetShaderPoint(shaderLib.GetShader("shadow_point").get());

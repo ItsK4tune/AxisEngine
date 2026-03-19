@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <fstream>
-#include <render/logic/texture_atlas.h>
+#include <render/unit/texture_atlas.h>
 #include <render/interface/i_texture_manager.h>
 #include <iostream>
 #include <stb/stb_image.h>

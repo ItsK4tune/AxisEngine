@@ -3,19 +3,21 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/app_framework.h>
-#include <platform/logic/input_system.h>
+#include <core/logic/application.h>
+#include <platform/logic/input_manager.h>
 #include <script/logic/script_registry.h>
 #include <script/logic/default_camera_controller.h>
 #include <iostream>
-#include <ecs/manager/entity_manager.h>
+#include <ecs/logic/entity_manager.h>
+#include <core/logic/service_locator.h>
+#include <scene/logic/scene.h>
+#include <core/logic/runtime_core.h>
 
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
 
-void CameraDebugModule::Initialize(EngineContext ctx)
+void CameraDebugModule::Initialize()
 {
-    m_Ctx = ctx;
 }
 
 void CameraDebugModule::OnUpdate(float dt)
@@ -30,7 +32,7 @@ void CameraDebugModule::Render(Scene &scene)
 
 void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_Ctx.IsValid() || !m_Enabled)
+    if (!m_Enabled)
         return;
 
     ProcessKey(keyboard, Key::F11, m_F11Pressed, [this, &keyboard]()
@@ -44,10 +46,7 @@ void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)
 
 void CameraDebugModule::ToggleDebugCamera()
 {
-    if (!m_Ctx.IsValid())
-        return;
-
-    auto &scene = *m_Ctx.scene;
+    auto& scene = ServiceLocator::Instance().Require<Scene>();
     auto &registry = scene.registry;
 
     if (m_IsDebugCameraActive)
@@ -128,7 +127,7 @@ void CameraDebugModule::ToggleDebugCamera()
                 { return ScriptRegistry::Instance().Create(scriptName); };
                 scriptComp.DestroyScript = [](ScriptComponent *nsc)
                 { nsc->instance.reset(); };
-                scriptComp.instance->Initialize(m_DebugCamera, &scene, m_Ctx);
+                scriptComp.instance->Initialize(m_DebugCamera, &scene);
                 scriptComp.instance->OnCreate();
             }
         }

@@ -1,9 +1,12 @@
 #include <algorithm>
-#include <core/logic/app_framework.h>
-#include <ecs/manager/entity_manager.h>
+#include <core/logic/config_manager.h>
+#include <ecs/logic/entity_manager.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
 
 namespace {
     std::string SceneBasename(const std::string &filePath)
@@ -19,15 +22,17 @@ namespace {
 
 SceneManager::SceneManager() {}
 
-void SceneManager::Initialize(EngineContext ctx, std::function<void(const AppConfig&)> applyConfigFn)
+void SceneManager::Initialize()
 {
-    m_Ctx = ctx;
-    m_Scene = ctx.scene;
-    m_Resources = ctx.resources;
-    m_Physics = ctx.physics;
-    m_SoundPlayer = ctx.soundPlayer;
-    m_ApplyConfigFn = std::move(applyConfigFn);
+    auto& sl = ServiceLocator::Instance();
+    m_Scene = &sl.Require<Scene>();
+    m_Resources = &sl.Require<ResourceManager>();
+    m_Physics = sl.Resolve<IPhysicsWorld>();
+    m_AudioService = &sl.Require<AudioService>();
     
+    // Initial scene notification
+    EventSystem::Instance().Publish(SceneChangedEvent{ &m_Scene->registry, m_Scene });
+
     LOGGER_INFO("SceneManager") << "Initialized";
 }
 
@@ -59,7 +64,7 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
         return;
     }
 
-    SceneLoadResult res = SceneSerializer::Deserialize(filePath, *m_Scene, *m_Resources, *m_Physics, *m_SoundPlayer, m_Ctx);
+    SceneLoadResult res = SceneSerializer::Deserialize(filePath, *m_Scene, *m_Resources, m_Physics, *m_AudioService);
 
     SceneRecord rec;
     rec.filePath = filePath;
@@ -77,9 +82,9 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     rec.appliedConfig = res.appliedConfig;
     rec.hasConfig = res.hasConfig;
 
-    if (rec.hasConfig && m_ApplyConfigFn)
+    if (rec.hasConfig)
     {
-        m_ApplyConfigFn(rec.appliedConfig);
+        ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(rec.appliedConfig);
     }
 
     m_LoadedScenes.push_back(std::move(rec));
@@ -162,6 +167,9 @@ void SceneManager::ChangeScene(const std::string& filePath)
 {
     ClearAllScenes();
     LoadScene(filePath, false);
+    
+    // Notify systems that the whole scene baseline has changed
+    EventSystem::Instance().Publish(SceneChangedEvent{ &m_Scene->registry, m_Scene });
 }
 
 void SceneManager::ClearAllScenes()
