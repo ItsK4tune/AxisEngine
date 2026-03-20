@@ -1,5 +1,5 @@
 #include <ecs/logic/terrain_system.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <ecs/logic/render_system.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_buffer_manager.h>

@@ -5,14 +5,15 @@
 
 #include <core/app/runtime_core.h>
 #include <core/logic/service_locator.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <core/type/app_config.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>
-#include <core/logic/state_machine.h>
+#include <core/app/state_machine.h>
+#include <core/logic/time_service.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <resource/logic/resource_manager.h>
@@ -80,6 +81,10 @@ void EngineLoop::ProcessFrame()
     auto& systems = sl.Require<SystemManager>();
     auto& sm = sl.Require<SceneManager>();
     auto& runtime = sl.Require<RuntimeCore>();
+    auto& timer = sl.Require<TimeService>();
+
+    m_TotalTime += m_RealDeltaTime;
+    timer.SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
 
     IWindow* window = io.GetMonitorManager().GetWindow();
     window->PollEvents();
@@ -239,10 +244,20 @@ void EngineLoop::SetTimeScale(float scale)
 {
     m_TimeScale = scale;
     LOGGER_INFO("EngineLoop") << "Time scale set to: " << m_TimeScale;
+
+    if (auto* timer = ServiceLocator::Instance().Resolve<TimeService>())
+    {
+        timer->SetTimeScale(scale);
+    }
 }
 
 void EngineLoop::SetPaused(bool paused)
 {
     m_IsPaused = paused;
     LOGGER_INFO("EngineLoop") << (m_IsPaused ? "Engine paused" : "Engine resumed");
+
+    if (auto* timer = ServiceLocator::Instance().Resolve<TimeService>())
+    {
+        timer->SetPaused(paused);
+    }
 }

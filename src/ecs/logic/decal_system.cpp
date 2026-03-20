@@ -10,7 +10,7 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
 #include <ecs/logic/render_system.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ecs/logic/entity_manager.h>

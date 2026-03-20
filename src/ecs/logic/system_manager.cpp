@@ -1,7 +1,7 @@
 #include <ecs/logic/deferred_lighting_system.h>
 #include <physics/logic/physics_loader.h>
 #include <platform/logic/io_handler.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_system.h>
@@ -9,7 +9,6 @@
 #include <core/type/app_config.h>
 #include <ecs/logic/debug/debug_system.h>
 #include <audio/logic/audio_service.h>
-#include <core/app/runtime_core.h>
 #include <core/logic/job_system.h>
 #include <ecs/logic/animation_system.h>
 #include <ecs/logic/audio_system.h>

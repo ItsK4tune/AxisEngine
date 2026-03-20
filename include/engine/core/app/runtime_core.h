@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/logic/config_loader.h>
-#include <core/logic/state_machine.h>
+#include <core/app/state_machine.h>
 #include <core/app/engine_accessor.h>
 #include <platform/interface/cursor_mode.h>
 #include <chrono>
@@ -50,6 +50,7 @@ private:
     bool m_IsPaused = false;
     bool m_MaxForceSync = true;
     float m_Alpha = 0.0f;
+    float m_TotalTime = 0.0f;
     int m_MaxSubSteps = 10;
     int m_ConfigSubId = -1;
 };

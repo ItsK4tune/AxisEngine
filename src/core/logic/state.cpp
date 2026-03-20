@@ -8,4 +8,4 @@
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
-#include <core/logic/state_machine.h>
+#include <core/app/state_machine.h>

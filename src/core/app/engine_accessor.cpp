@@ -2,7 +2,7 @@
 #include <core/type/app_config.h>
 #include <core/logic/config_loader.h>
 #include <engine/platform/logic/io_handler.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <platform/logic/input_loader.h>
 #include <audio/logic/audio_service.h>
 #include <ecs/logic/animation_system.h>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/logic/service_locator.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <platform/interface/cursor_mode.h>
 #include <string>
 #include <vector>
@@ -33,30 +33,48 @@ public:
     template <typename T>
     T& GetSystem() const { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<T>(); }
 
-    // Legacy/Convenience getters (Systems)
+    // Legacy/Convenience getters (Systems) - DEPRECATED: Use GetSystem<T>() instead.
+    [[deprecated("Use GetSystem<RenderSystem>() instead")]]
     class RenderSystem&       GetRenderSystem() const;
+    [[deprecated("Use GetSystem<PhysicsSystem>() instead")]]
     class PhysicsSystem&      GetPhysicsSystem() const;
+    [[deprecated("Use GetSystem<AudioSystem>() instead")]]
     class AudioSystem&        GetAudioSystem() const;
+    [[deprecated("Use GetSystem<UIRenderSystem>() instead")]]
     class UIRenderSystem&     GetUIRenderSystem() const;
+    [[deprecated("Use GetSystem<ScriptableSystem>() instead")]]
     class ScriptableSystem&   GetScriptSystem() const;
+    [[deprecated("Use GetSystem<ParticleSystem>() instead")]]
     class ParticleSystem&     GetParticleSystem() const;
+    [[deprecated("Use GetSystem<SkyboxRenderSystem>() instead")]]
     class SkyboxRenderSystem& GetSkyboxRenderSystem() const;
+    [[deprecated("Use GetSystem<AnimationSystem>() instead")]]
     class AnimationSystem&    GetAnimationSystem() const;
+    [[deprecated("Use GetSystem<VideoSystem>() instead")]]
     class VideoSystem&        GetVideoSystem() const;
+    [[deprecated("Use GetSystem<NavigationSystem>() instead")]]
     class NavigationSystem&   GetNavigationSystem() const;
 
-
-
-    // Legacy/Convenience getters
+    // Legacy/Convenience getters - DEPRECATED: Use Get<T>() instead.
+    [[deprecated("Use Get<Scene>() instead")]]
     Scene&           GetScene() const;
+    [[deprecated("Use Get<SceneManager>() instead")]]
     SceneManager&    GetSceneManager() const;
+    [[deprecated("Use Get<ResourceManager>() instead")]]
     ResourceManager& GetResourceManager() const;
+    [[deprecated("Use Get<AudioService>() instead")]]
     AudioService&    GetAudioService() const;
+    [[deprecated("Use Get<IOHandler>() instead")]]
     IOHandler&       GetIOHandler() const;
+    [[deprecated("Use Get<InputManager>() instead")]]
     InputManager&    GetInputManager() const;
+    [[deprecated("Use Get<KeyboardManager>() instead")]]
     KeyboardManager& GetKeyboard() const;
+    [[deprecated("Use Get<MouseManager>() instead")]]
     MouseManager&    GetMouse() const;
+    [[deprecated("Use Get<RuntimeCore>() instead")]]
     RuntimeCore&     GetRuntimeCore() const;
+    [[deprecated("Use Get<SystemManager>() instead")]]
     SystemManager&   GetSystemManager() const;
 
 

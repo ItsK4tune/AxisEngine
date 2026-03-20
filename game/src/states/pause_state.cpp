@@ -3,22 +3,28 @@
 #include <axis_platform.h>
 #include <axis_core.h>
 
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/media_components.h>
+#include <ecs/logic/entity_manager.h>
+#include <ecs/logic/entity_builder.h>
+#include <core/logic/service_locator.h>
+
 void PauseState::OnEnter()
 {
-    EnablePhysics(false);
-    EnableScript(false);
-    EnableAnimation(false);
-    EnableAudio(false);
-    EnableParticle(false);
-    EnableVideo(false);
+    this->EnablePhysics(false);
+    this->EnableScript(false);
+    this->EnableAnimation(false);
+    this->EnableAudio(false);
+    this->EnableParticle(false);
+    this->EnableVideo(false);
     
-    EnableRender(true);
-    EnableUIRender(true);
-    EnableSkybox(true);
+    this->EnableRender(true);
+    this->EnableUIRender(true);
+    this->EnableSkybox(true);
 
-    SetCursorMode(CursorMode::Normal);
+    this->SetCursorMode(CursorMode::Normal);
 
-    m_PausedTextEntity = EntityBuilder(GetScene(), GetResourceManager())
+    m_PausedTextEntity = EntityBuilder(this->GetScene(), this->GetResourceManager())
         .WithName("PauseOverlay")
         .WithUITransform({400.0f, 300.0f}, {200.0f, 50.0f})
         .WithUIText("PAUSED", "time", 2.0f, {1.0f, 1.0f, 1.0f, 1.0f})
@@ -27,10 +33,10 @@ void PauseState::OnEnter()
 
 void PauseState::OnUpdate(float dt)
 {
-    auto& kb = GetKeyboard();
+    auto& kb = this->GetKeyboard();
     if (kb.IsKeyDown(Key::P))
     {
-        GetRuntimeCore().GetStateMachine().PopState();
+        this->GetRuntimeCore().GetStateMachine().PopState();
     }
 }
 
@@ -44,7 +50,7 @@ void PauseState::OnExit()
 {
     if (m_PausedTextEntity != entt::null)
     {
-        EntityManager::Destroy(GetScene(), m_PausedTextEntity);
+        EntityManager::Destroy(this->GetScene(), m_PausedTextEntity);
         m_PausedTextEntity = entt::null;
     }
 }

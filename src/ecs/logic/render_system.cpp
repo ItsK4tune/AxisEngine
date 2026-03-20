@@ -34,7 +34,6 @@
 #endif
 
 #include <platform/logic/io_handler.h>
-#include <core/app/runtime_core.h>
 
 void RenderSystem::Initialize()
 {

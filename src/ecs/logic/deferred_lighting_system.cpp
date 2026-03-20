@@ -1,6 +1,6 @@
 #include <ecs/logic/deferred_lighting_system.h>
 #include <ecs/logic/render_system.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <render/interface/i_graphics_context.h>
 #include <core/logic/service_locator.h>
 

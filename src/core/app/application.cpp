@@ -3,7 +3,7 @@
 #include <platform/unit/io_context.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <core/logic/job_system.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
@@ -136,6 +136,7 @@ bool Application::Initialize(const AppConfig &config)
     m_SystemManager = std::make_unique<SystemManager>();
     m_ConfigManager = std::make_unique<ConfigManager>();
     m_ConfigManager->Initialize(config);
+    m_TimeService = std::make_unique<DefaultTimeService>();
 
     m_ScriptRegistry = std::make_unique<ScriptRegistry>();
     m_CollisionMatrix = std::make_unique<CollisionMatrix>();
@@ -213,6 +214,7 @@ bool Application::Initialize(const AppConfig &config)
     sl.Register<RuntimeCore>(m_RuntimeCore.get());
     sl.Register<IGraphicsContext>(&m_IOHandler->GetGraphicsContext());
     sl.Register<ConfigManager>(m_ConfigManager.get());
+    sl.Register<TimeService>(m_TimeService.get());
     sl.Register<ScriptRegistry>(m_ScriptRegistry.get());
     sl.Register<CollisionMatrix>(m_CollisionMatrix.get());
     // AudioService already self-registered in its Initialize()

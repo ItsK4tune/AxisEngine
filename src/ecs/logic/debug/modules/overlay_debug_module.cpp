@@ -4,7 +4,6 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/app/application.h>
 #include <platform/logic/input_manager.h>
 #include <scene/logic/scene.h>
 #include <ecs/logic/render_system.h>
@@ -12,8 +11,8 @@
 #include <ecs/logic/ui_render_system.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/app/system_manager.h>
-#include <core/app/runtime_core.h>
+#include <ecs/logic/system_manager.h>
+#include <core/logic/time_service.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
 #include <sstream>
@@ -61,7 +60,7 @@ void OverlayDebugModule::Render(Scene &scene)
     auto& io = sl.Require<IOHandler>();
     auto& graphics = sl.Require<IGraphicsContext>();
     auto& systems = sl.Require<SystemManager>();
-    auto& runtime = sl.Require<RuntimeCore>();
+    auto& timer = sl.Require<TimeService>();
 
     int width = io.GetMonitorManager().GetWidth();
     int height = io.GetMonitorManager().GetHeight();
@@ -80,7 +79,7 @@ void OverlayDebugModule::Render(Scene &scene)
     {
         ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
         ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities << "\n";
-        ss << "TimeScale: " << runtime.GetTimeScale() << "x | Paused: " << (runtime.IsPaused() ? "YES" : "NO") << "\n";
+        ss << "TimeScale: " << timer.GetTimeScale() << "x | Paused: " << (timer.IsPaused() ? "YES" : "NO") << "\n";
     };
 
     auto appendTools = [&]()
@@ -94,7 +93,7 @@ void OverlayDebugModule::Render(Scene &scene)
         ss << "F9: UI System: " << boolStr(systems.GetSystem<UIRenderSystem>()->IsEnabled()) << " | S+F9: Particle: [NYI]\n";
         ss << "S+F3: Names: " << boolStr(DebugConfig::ShowEntityNames) << "    | S+F4: Gizmos: " << boolStr(DebugConfig::ShowGizmos) << "\n";
         ss << "S+F5: Lights: " << boolStr(DebugConfig::ShowLightGizmos) << "   | S+F11: Cam\n";
-        ss << "F11: Paused:   " << boolStr(runtime.IsPaused());
+        ss << "F11: Paused:   " << boolStr(timer.IsPaused());
     };
 
     if (m_OverlayMode == 1)

@@ -2,7 +2,6 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/app/application.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <platform/logic/input_manager.h>
@@ -14,7 +13,7 @@
 #include <ecs/unit/physics_components.h>
 #include <platform/interface/input_codes.h>
 #include <core/logic/service_locator.h>
-#include <core/app/runtime_core.h>
+#include <core/logic/time_service.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -119,11 +118,11 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
 
     ProcessKey(keyboard, Key::F11, m_F11Pressed, [this]()
                {
-        auto& runtime = ServiceLocator::Instance().Require<RuntimeCore>();
-        bool paused = !runtime.IsPaused();
-        runtime.SetPaused(paused);
+        auto& timer = ServiceLocator::Instance().Require<TimeService>();
+        bool paused = !timer.IsPaused();
+        timer.SetPaused(paused);
         std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
-        std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << std::endl;
+        std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << "\n";
         std::cout << "======================================" << std::endl; });
 
     ProcessKey(keyboard, Key::F12, m_F12Pressed, [this, &keyboard]()
@@ -149,13 +148,13 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
 
             mouse.SetCursorMode(next);
             std::cout << "\n========== Cursor Mode (Shift+F12) ==========" << std::endl;
-            std::cout << "[Debug] Cursor Mode: " << modeName << std::endl;
+            std::cout << "[Debug] Cursor Mode: " << modeName << "\n";
             std::cout << "============================================" << std::endl;
         }
         else
         {
-            auto& runtime = ServiceLocator::Instance().Require<RuntimeCore>();
-            float current = runtime.GetTimeScale();
+            auto& timer = ServiceLocator::Instance().Require<TimeService>();
+            float current = timer.GetTimeScale();
             float next = 1.0f;
             if (abs(current - 0.25f) < 0.01f) next = 0.5f;
             else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
@@ -164,9 +163,9 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
             else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
             else next = 1.0f;
 
-            runtime.SetTimeScale(next);
+            timer.SetTimeScale(next);
             std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
-            std::cout << "[Debug] Time Scale: " << next << "x" << std::endl;
+            std::cout << "[Debug] Time Scale: " << next << "x" << "\n";
             std::cout << "======================================" << std::endl;
         } });
 }

@@ -11,7 +11,7 @@
 #include <iostream>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <ecs/logic/debug/debug_system.h>
 #include <core/logic/service_locator.h>
 RenderDebugModule::RenderDebugModule() {}

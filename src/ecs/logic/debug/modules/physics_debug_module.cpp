@@ -14,7 +14,7 @@
 
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/app/system_manager.h>
+#include <ecs/logic/system_manager.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
 

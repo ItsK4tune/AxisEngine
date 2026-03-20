@@ -11,7 +11,7 @@
 #include <ecs/unit/ui_components.h>
 #include <platform/logic/io_handler.h>
 #include <script/logic/input_scriptable.h>
-#include <core/app/runtime_core.h>
+#include <core/logic/time_service.h>
 
 void ScriptableSystem::Initialize()
 {
@@ -195,7 +195,7 @@ void ScriptableSystem::Update(Scene &scene, float dt)
 
     auto view = scene.registry.view<ScriptComponent>();
     auto& sl = ServiceLocator::Instance();
-    auto& runtime = sl.Require<RuntimeCore>();
+    auto& timer = sl.Require<TimeService>();
 
     for (auto entity : view)
     {
@@ -216,7 +216,7 @@ void ScriptableSystem::Update(Scene &scene, float dt)
 
             if (dt == 0.0f && script.instance->CanRunWhenPaused())
             {
-                effectiveDt = runtime.GetRealDeltaTime();
+                effectiveDt = timer.GetRealDeltaTime();
             }
 
             if (effectiveDt > 0.0f || script.instance->CanRunWhenPaused())

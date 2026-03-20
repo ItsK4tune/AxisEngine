@@ -1,4 +1,4 @@
-#include <core/logic/state_machine.h>
+#include <core/app/state_machine.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
 

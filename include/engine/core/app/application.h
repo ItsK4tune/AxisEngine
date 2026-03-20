@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/logic/config_loader.h>
+#include <core/logic/time_service.h>
 #include <core/app/runtime_core.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/script_component.h>
@@ -41,7 +42,6 @@ class UIRenderSystem;
 class VideoSystem;
 
 // --- Application ---
-
 
 class CollisionMatrix;
 class Application
@@ -106,6 +106,7 @@ private:
     std::unique_ptr<SceneManager> m_SceneManager;
 
     std::unique_ptr<IOHandler> m_IOHandler;
+    std::unique_ptr<TimeService> m_TimeService;
     std::unique_ptr<RuntimeCore> m_RuntimeCore;
     std::unique_ptr<SystemManager> m_SystemManager;
     std::unique_ptr<ConfigManager> m_ConfigManager;
