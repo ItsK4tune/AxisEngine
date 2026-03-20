@@ -1,9 +1,9 @@
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <audio/logic/audio_service.h>
 #include <platform/unit/io_context.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <core/logic/job_system.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
@@ -37,7 +37,6 @@
 #include <core/logic/axis_assert.h>
 #include <script/logic/script_registry.h>
 #include <physics/logic/collision_matrix.h>
-#include <core/logic/unified_loader.h>
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
@@ -140,7 +139,6 @@ bool Application::Initialize(const AppConfig &config)
 
     m_ScriptRegistry = std::make_unique<ScriptRegistry>();
     m_CollisionMatrix = std::make_unique<CollisionMatrix>();
-    m_UnifiedLoader = std::make_unique<UnifiedLoader>();
 
     auto graphicsContext = AppBuilder::CreateGraphicsContext(config);
     auto audioEngine = AppBuilder::CreateAudioEngine(config);
@@ -217,7 +215,6 @@ bool Application::Initialize(const AppConfig &config)
     sl.Register<ConfigManager>(m_ConfigManager.get());
     sl.Register<ScriptRegistry>(m_ScriptRegistry.get());
     sl.Register<CollisionMatrix>(m_CollisionMatrix.get());
-    sl.Register<UnifiedLoader>(m_UnifiedLoader.get());
     // AudioService already self-registered in its Initialize()
 
 

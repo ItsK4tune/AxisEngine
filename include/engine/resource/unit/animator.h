@@ -3,7 +3,7 @@
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
 #include <mutex>
-#include <render/unit/animation.h>
+#include <resource/unit/animation.h>
 #include <unordered_map>
 #include <vector>
 

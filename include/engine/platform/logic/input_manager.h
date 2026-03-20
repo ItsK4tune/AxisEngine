@@ -4,7 +4,6 @@
 #include <platform/interface/i_window.h>
 #include <platform/interface/input_codes.h>
 #include <platform/type/input_binding.h>
-#include <core/logic/event_system.h>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -146,6 +145,8 @@ public:
     std::vector<DeviceInfo> GetAllDevices() const override;
     DeviceInfo GetCurrentDevice() const override;
     bool SetActiveDevice(const std::string &deviceId) override;
+
+    const std::unordered_map<std::string, InputActionBinding>& GetActionMap() const { return m_ActionMap; }
 
 private:
     const KeyboardManager &m_Keyboard;

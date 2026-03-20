@@ -58,6 +58,8 @@ file(GLOB_RECURSE GAME_SOURCES
 )
 
 add_executable(AxisEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
+target_compile_options(AxisEngine PRIVATE /FS)
+
 
 set(BULLET_LIBS
     BulletDynamics$<$<CONFIG:Debug>:_Debug>

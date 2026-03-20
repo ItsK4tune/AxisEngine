@@ -14,7 +14,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>

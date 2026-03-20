@@ -1,12 +1,12 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <scene/logic/scene.h>
 
-class AnimationSystem : public IUpdateSystem
+class AnimationSystem : public IUpdateSystem, public IECSSystem
 {
 public:
-
     void Initialize() override {}
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }

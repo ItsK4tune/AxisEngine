@@ -1,4 +1,4 @@
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/strategy/opengl/glfw_window.h>
 #include <audio/strategy/irrklang/irrklang_audio_engine.h>
 #include <render/strategy/opengl/opengl_context.h>

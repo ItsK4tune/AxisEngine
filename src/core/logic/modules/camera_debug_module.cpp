@@ -3,7 +3,7 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/logic/input_manager.h>
 #include <script/logic/script_registry.h>
 #include <script/logic/default_camera_controller.h>
@@ -11,7 +11,7 @@
 #include <ecs/logic/entity_manager.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}

@@ -16,4 +16,4 @@
 #include <ecs/logic/transform_system.h>
 #include <ecs/logic/terrain_system.h>
 #include <navigation/logic/navigation_system.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>

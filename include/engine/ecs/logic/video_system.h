@@ -1,10 +1,11 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 
-class VideoSystem : public IUpdateSystem
+class VideoSystem : public IUpdateSystem, public IECSSystem
 {
 public:
 

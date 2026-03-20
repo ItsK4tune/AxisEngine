@@ -7,9 +7,9 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <platform/interface/input_codes.h>
-#include <render/unit/font.h>
-#include <render/unit/shader.h>
-#include <render/unit/ui_model.h>
+#include <resource/unit/font.h>
+#include <resource/unit/shader.h>
+#include <resource/unit/ui_model.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

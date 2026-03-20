@@ -25,9 +25,9 @@ struct DebugConfig
 
 // --- Debug Implementation ---
 
-#include <render/unit/font.h>
-#include <render/unit/shader.h>
-#include <render/unit/ui_model.h>
+#include <resource/unit/font.h>
+#include <resource/unit/shader.h>
+#include <resource/unit/ui_model.h>
 
 class IDebugModule;
 

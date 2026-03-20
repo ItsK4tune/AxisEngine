@@ -3,9 +3,9 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
-#include <render/unit/shader.h>
-#include <render/unit/ui_model.h>
-#include <render/unit/font.h>
+#include <resource/unit/shader.h>
+#include <resource/unit/ui_model.h>
+#include <resource/unit/font.h>
 
 // --- UI Enums ---
 

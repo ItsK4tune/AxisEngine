@@ -39,6 +39,12 @@ public:
     void Initialize(LogLevel level);
     void Shutdown();
 
+    void SetLogLevel(LogLevel level) { m_LogLevel = level; }
+    LogLevel GetLogLevel() const { return m_LogLevel; }
+
+    void Log(LogType type, const std::string& tag, const std::string& message);
+
+
 private:
     LogManager() = default;
     ~LogManager() = default;
@@ -52,4 +58,6 @@ private:
     std::streambuf* m_OldOut = nullptr;
     std::streambuf* m_OldErr = nullptr;
     int m_ConfigListenerId = -1;
+    LogLevel m_LogLevel = LogLevel::None;
+    std::mutex m_LogMutex;
 };

@@ -3,9 +3,9 @@
 #include <thread>
 #include <algorithm>
 
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <core/type/app_config.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
@@ -97,6 +97,17 @@ void EngineLoop::ProcessFrame()
     res.Update(m_RealDeltaTime);
     io.ProcessInput();
     io.GetInputManager().Update();
+
+    auto& input = io.GetInputManager();
+    for (const auto& [actionName, binding] : input.GetActionMap())
+    {
+        if (input.GetActionDown(actionName))
+            EventSystem::Instance().Publish(InputActionPressedEvent{actionName});
+        else if (input.GetActionUp(actionName))
+            EventSystem::Instance().Publish(InputActionReleasedEvent{actionName});
+        else if (input.GetAction(actionName))
+            EventSystem::Instance().Publish(InputActionHeldEvent{actionName});
+    }
 
     systems.UpdateDebugSystem(m_RealDeltaTime);
 

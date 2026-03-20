@@ -1,11 +1,13 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <platform/logic/input_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <scene/logic/scene.h>
 
-class UIRenderSystem : public IUpdateSystem, public IRenderSystem
+class UIRenderSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
 

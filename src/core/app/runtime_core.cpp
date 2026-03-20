@@ -1,9 +1,9 @@
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/state_machine.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 
 RuntimeCore::RuntimeCore()
 {

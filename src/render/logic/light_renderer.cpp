@@ -1,7 +1,7 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <render/logic/light_renderer.h>
 #include <render/interface/i_graphics_context.h>
 

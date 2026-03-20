@@ -4,7 +4,7 @@
 #pragma once
 
 #include <render/interface/i_shader_manager.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <resource/logic/resource_cache.h>
 #include <resource/interface/i_asset_manager.h>
 #include <string>

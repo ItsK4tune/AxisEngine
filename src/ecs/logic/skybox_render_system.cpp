@@ -2,7 +2,7 @@
 #include <ecs/logic/entity_manager.h>
 #include <ecs/logic/skybox_render_system.h>
 #include <ecs/unit/render_components.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <render/unit/skybox.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
@@ -12,7 +12,7 @@
 
 #include <platform/logic/io_handler.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>

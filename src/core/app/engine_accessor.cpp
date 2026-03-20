@@ -1,8 +1,8 @@
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <core/type/app_config.h>
 #include <core/logic/config_loader.h>
 #include <engine/platform/logic/io_handler.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <platform/logic/input_loader.h>
 #include <audio/logic/audio_service.h>
 #include <ecs/logic/animation_system.h>
@@ -24,26 +24,29 @@
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
 
-RenderSystem&       EngineAccessor::GetRenderSystem() const       { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<RenderSystem>(); }
-PhysicsSystem&      EngineAccessor::GetPhysicsSystem() const      { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<PhysicsSystem>(); }
-AudioSystem&        EngineAccessor::GetAudioSystem() const        { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<AudioSystem>(); }
-UIRenderSystem&     EngineAccessor::GetUIRenderSystem() const     { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<UIRenderSystem>(); }
-ScriptableSystem&   EngineAccessor::GetScriptSystem() const       { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<ScriptableSystem>(); }
-ParticleSystem&     EngineAccessor::GetParticleSystem() const     { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<ParticleSystem>(); }
-SkyboxRenderSystem& EngineAccessor::GetSkyboxRenderSystem() const { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<SkyboxRenderSystem>(); }
-AnimationSystem&    EngineAccessor::GetAnimationSystem() const    { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<AnimationSystem>(); }
-VideoSystem&        EngineAccessor::GetVideoSystem() const        { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<VideoSystem>(); }
-NavigationSystem&   EngineAccessor::GetNavigationSystem() const   { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<NavigationSystem>(); }
+RenderSystem&       EngineAccessor::GetRenderSystem() const       { return GetSystem<RenderSystem>(); }
+PhysicsSystem&      EngineAccessor::GetPhysicsSystem() const      { return GetSystem<PhysicsSystem>(); }
+AudioSystem&        EngineAccessor::GetAudioSystem() const        { return GetSystem<AudioSystem>(); }
+UIRenderSystem&     EngineAccessor::GetUIRenderSystem() const     { return GetSystem<UIRenderSystem>(); }
+ScriptableSystem&   EngineAccessor::GetScriptSystem() const       { return GetSystem<ScriptableSystem>(); }
+ParticleSystem&     EngineAccessor::GetParticleSystem() const     { return GetSystem<ParticleSystem>(); }
+SkyboxRenderSystem& EngineAccessor::GetSkyboxRenderSystem() const { return GetSystem<SkyboxRenderSystem>(); }
+AnimationSystem&    EngineAccessor::GetAnimationSystem() const    { return GetSystem<AnimationSystem>(); }
+VideoSystem&        EngineAccessor::GetVideoSystem() const        { return GetSystem<VideoSystem>(); }
+NavigationSystem&   EngineAccessor::GetNavigationSystem() const   { return GetSystem<NavigationSystem>(); }
+
 
 Scene&           EngineAccessor::GetScene() const           { return *m_ActiveScene; }
-SceneManager&    EngineAccessor::GetSceneManager() const    { return ServiceLocator::Instance().Require<SceneManager>(); }
-ResourceManager& EngineAccessor::GetResourceManager() const { return ServiceLocator::Instance().Require<ResourceManager>(); }
-AudioService&     EngineAccessor::GetAudioService() const     { return ServiceLocator::Instance().Require<AudioService>(); }
-IOHandler&       EngineAccessor::GetIOHandler() const       { return ServiceLocator::Instance().Require<IOHandler>(); }
-InputManager&    EngineAccessor::GetInputManager() const    { return ServiceLocator::Instance().Require<IOHandler>().GetInputManager(); }
-KeyboardManager& EngineAccessor::GetKeyboard() const        { return ServiceLocator::Instance().Require<IOHandler>().GetKeyboard(); }
-MouseManager&    EngineAccessor::GetMouse() const           { return ServiceLocator::Instance().Require<IOHandler>().GetMouse(); }
-RuntimeCore&     EngineAccessor::GetRuntimeCore() const     { return ServiceLocator::Instance().Require<RuntimeCore>(); }
+SceneManager&    EngineAccessor::GetSceneManager() const    { return Get<SceneManager>(); }
+ResourceManager& EngineAccessor::GetResourceManager() const { return Get<ResourceManager>(); }
+AudioService&    EngineAccessor::GetAudioService() const     { return Get<AudioService>(); }
+IOHandler&       EngineAccessor::GetIOHandler() const       { return Get<IOHandler>(); }
+InputManager&    EngineAccessor::GetInputManager() const    { return Get<IOHandler>().GetInputManager(); }
+KeyboardManager& EngineAccessor::GetKeyboard() const        { return Get<IOHandler>().GetKeyboard(); }
+MouseManager&    EngineAccessor::GetMouse() const           { return Get<IOHandler>().GetMouse(); }
+RuntimeCore&     EngineAccessor::GetRuntimeCore() const     { return Get<RuntimeCore>(); }
+SystemManager&   EngineAccessor::GetSystemManager() const  { return Get<SystemManager>(); }
+
 
 void EngineAccessor::LoadScene(const std::string& path, bool persistent) { ServiceLocator::Instance().Require<SceneManager>().LoadScene(path, persistent); }
 void EngineAccessor::LoadInputBindings(const std::string& path) { InputLoader::LoadBindings(path, GetInputManager()); }

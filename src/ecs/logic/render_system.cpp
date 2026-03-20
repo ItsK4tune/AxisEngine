@@ -34,7 +34,7 @@
 #endif
 
 #include <platform/logic/io_handler.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 
 void RenderSystem::Initialize()
 {
@@ -86,6 +86,11 @@ void RenderSystem::Initialize()
         this->SetDeferredRendering(cfg.renderPath == RenderPath::Deferred);
         this->SetFaceCulling(cfg.cullFaceEnabled);
         this->SetDepthTest(cfg.depthTestEnabled);
+
+        if (cfg.shadowMapResolution != m_ShadowRenderer.GetShadow().GetShadowWidth()) {
+            LOGGER_INFO("RenderSystem") << "Reinitializing shadow map with res: " << cfg.shadowMapResolution;
+            m_ShadowRenderer.GetShadow().Initialize(*m_Context, cfg.shadowMapResolution, cfg.shadowMapResolution);
+        }
     });
 
     LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers with res: " << config.shadowMapResolution;

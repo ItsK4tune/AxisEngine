@@ -1,5 +1,5 @@
 #define GLM_ENABLE_EXPERIMENTAL
-#include <render/unit/bone.h>
+#include <resource/unit/bone.h>
 #include <list>
 #include <render/logic/assimp_glm_helpers.h>
 

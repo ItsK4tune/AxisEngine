@@ -1,6 +1,6 @@
 #pragma once
 
-#include <render/unit/animation.h>
+#include <resource/unit/animation.h>
 #include <resource/logic/resource_cache.h>
 #include <resource/interface/i_asset_manager.h>
 #include <string>

@@ -1,5 +1,5 @@
 #include <ecs/logic/terrain_system.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <ecs/logic/render_system.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_buffer_manager.h>
@@ -13,7 +13,7 @@
 #include <ecs/logic/entity_manager.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <physics/interface/i_physics_world.h>
 #include <ecs/unit/terrain_component.h>
 #include <core/logic/service_locator.h>

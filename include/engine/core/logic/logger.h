@@ -25,9 +25,6 @@ public:
         LogStream(ss, std::forward<Args>(args)...);
     }
 
-private:
-    static LogLevel s_CurrentLevel;
-    static std::mutex s_LogMutex;
 };
 
 class LogStreamer {

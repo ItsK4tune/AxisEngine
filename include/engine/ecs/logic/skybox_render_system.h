@@ -1,11 +1,12 @@
 #pragma once
 
 #include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <scene/logic/scene.h>
 
 class IGraphicsContext;
 
-class SkyboxRenderSystem : public IRenderSystem
+class SkyboxRenderSystem : public IRenderSystem, public IECSSystem
 {
 public:
 

@@ -1,6 +1,6 @@
 #include <render/logic/material_renderer.h>
 #include <ecs/unit/render_components.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
 

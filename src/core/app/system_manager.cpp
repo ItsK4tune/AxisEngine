@@ -1,7 +1,7 @@
 #include <ecs/logic/deferred_lighting_system.h>
 #include <physics/logic/physics_loader.h>
 #include <platform/logic/io_handler.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_system.h>
@@ -9,7 +9,7 @@
 #include <core/type/app_config.h>
 #include <core/logic/debug_system.h>
 #include <audio/logic/audio_service.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <core/logic/job_system.h>
 #include <ecs/logic/animation_system.h>
 #include <ecs/logic/audio_system.h>
@@ -247,10 +247,12 @@ void SystemManager::RebuildExecutionBatches()
 
 bool SystemManager::SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const
 {
-    auto readA = a->GetReadComponents();
-    auto writeA = a->GetWriteComponents();
-    auto readB = b->GetReadComponents();
-    auto writeB = b->GetWriteComponents();
+    auto ecsA = dynamic_cast<IECSSystem*>(a);
+    auto readA = ecsA ? ecsA->GetReadComponents() : std::vector<entt::id_type>{};
+    auto writeA = ecsA ? ecsA->GetWriteComponents() : std::vector<entt::id_type>{};
+    auto ecsB = dynamic_cast<IECSSystem*>(b);
+    auto readB = ecsB ? ecsB->GetReadComponents() : std::vector<entt::id_type>{};
+    auto writeB = ecsB ? ecsB->GetWriteComponents() : std::vector<entt::id_type>{};
 
     for (auto id : writeA) {
         if (std::find(readB.begin(), readB.end(), id) != readB.end()) return true;

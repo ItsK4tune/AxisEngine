@@ -10,11 +10,11 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
 #include <ecs/logic/render_system.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ecs/logic/entity_manager.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
 

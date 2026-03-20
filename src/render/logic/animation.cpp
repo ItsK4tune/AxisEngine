@@ -1,7 +1,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
-#include <render/unit/animation.h>
-#include <render/unit/model.h>
+#include <resource/unit/animation.h>
+#include <resource/unit/model.h>
 #include <render/logic/assimp_glm_helpers.h>
 #include <core/logic/logger.h>
 

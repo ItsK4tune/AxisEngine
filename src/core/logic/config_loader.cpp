@@ -3,7 +3,7 @@
 #include <core/logic/config_loader.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <render/type/graphics_types.h>
 #include <physics/interface/i_physics_world.h>
 #include <platform/interface/i_window.h>

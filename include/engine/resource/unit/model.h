@@ -3,9 +3,9 @@
 #include <core/unit/aabb.h>
 #include <glm/glm.hpp>
 #include <memory>
-#include <render/unit/bone_info.h>
-#include <render/unit/mesh.h>
-#include <render/unit/shader.h>
+#include <resource/unit/bone_info.h>
+#include <resource/unit/mesh.h>
+#include <resource/unit/shader.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

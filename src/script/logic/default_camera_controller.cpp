@@ -1,5 +1,5 @@
 #include <ecs/unit/core_components.h>
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/logic/io_handler.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ecs/interface/i_system.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <render/type/graphics_types.h>
 #include <memory>
 #include <vector>
@@ -9,10 +9,14 @@
 #include <map>
 #include <entt/entt.hpp>
 #include <resource/interface/i_shader_library.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
+#include <scene/logic/scene.h>
 
 class IGraphicsContext;
 
-class DecalSystem : public IUpdateSystem, public IRenderSystem
+class DecalSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
     void Initialize() override;

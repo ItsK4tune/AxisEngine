@@ -16,7 +16,4 @@ public:
     virtual void SetEnabled(bool enabled) = 0;
     virtual int GetPriority() const { return 0; }
     virtual std::string GetName() const = 0;
-
-    virtual std::vector<entt::id_type> GetReadComponents() const { return {}; }
-    virtual std::vector<entt::id_type> GetWriteComponents() const { return {}; }
 };

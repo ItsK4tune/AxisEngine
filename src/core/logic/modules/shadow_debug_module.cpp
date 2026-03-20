@@ -2,7 +2,7 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <render/interface/i_graphics_context.h>
 #include <ecs/logic/render_system.h>
 #include <core/logic/debug_system.h>

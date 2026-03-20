@@ -3,8 +3,8 @@
 #include <glm/glm.hpp>
 #include <map>
 #include <memory>
-#include <render/unit/model.h>
-#include <render/unit/shader.h>
+#include <resource/unit/model.h>
+#include <resource/unit/shader.h>
 #include <string>
 #include <vector>
 

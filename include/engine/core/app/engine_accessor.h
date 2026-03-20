@@ -1,22 +1,12 @@
 #pragma once
 
 #include <core/logic/service_locator.h>
+#include <core/app/system_manager.h>
 #include <platform/interface/cursor_mode.h>
 #include <string>
 #include <vector>
 
 // Forward declarations for systems and managers
-class RenderSystem;
-class PhysicsSystem;
-class AudioSystem;
-class UIRenderSystem;
-class ScriptableSystem;
-class ParticleSystem;
-class SkyboxRenderSystem;
-class AnimationSystem;
-class VideoSystem;
-class NavigationSystem;
-
 class Scene;
 class SceneManager;
 class ResourceManager;
@@ -26,6 +16,7 @@ class InputManager;
 class KeyboardManager;
 class MouseManager;
 class RuntimeCore;
+class SystemManager;
 struct SceneRecord;
 struct AppConfig;
 
@@ -35,17 +26,28 @@ class EngineAccessor {
 public:
     virtual ~EngineAccessor() = default;
 
-    RenderSystem&       GetRenderSystem() const;
-    PhysicsSystem&      GetPhysicsSystem() const;
-    AudioSystem&        GetAudioSystem() const;
-    UIRenderSystem&     GetUIRenderSystem() const;
-    ScriptableSystem&   GetScriptSystem() const;
-    ParticleSystem&     GetParticleSystem() const;
-    SkyboxRenderSystem& GetSkyboxRenderSystem() const;
-    AnimationSystem&    GetAnimationSystem() const;
-    VideoSystem&        GetVideoSystem() const;
-    NavigationSystem&   GetNavigationSystem() const;
+    // Template-based accessors (Modern approach)
+    template <typename T>
+    T& Get() const { return ServiceLocator::Instance().Require<T>(); }
 
+    template <typename T>
+    T& GetSystem() const { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<T>(); }
+
+    // Legacy/Convenience getters (Systems)
+    class RenderSystem&       GetRenderSystem() const;
+    class PhysicsSystem&      GetPhysicsSystem() const;
+    class AudioSystem&        GetAudioSystem() const;
+    class UIRenderSystem&     GetUIRenderSystem() const;
+    class ScriptableSystem&   GetScriptSystem() const;
+    class ParticleSystem&     GetParticleSystem() const;
+    class SkyboxRenderSystem& GetSkyboxRenderSystem() const;
+    class AnimationSystem&    GetAnimationSystem() const;
+    class VideoSystem&        GetVideoSystem() const;
+    class NavigationSystem&   GetNavigationSystem() const;
+
+
+
+    // Legacy/Convenience getters
     Scene&           GetScene() const;
     SceneManager&    GetSceneManager() const;
     ResourceManager& GetResourceManager() const;
@@ -55,6 +57,8 @@ public:
     KeyboardManager& GetKeyboard() const;
     MouseManager&    GetMouse() const;
     RuntimeCore&     GetRuntimeCore() const;
+    SystemManager&   GetSystemManager() const;
+
 
     void LoadScene(const std::string& path, bool persistent = false);
     void LoadInputBindings(const std::string& path);

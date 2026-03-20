@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <vector>
 
 class IBufferManager;

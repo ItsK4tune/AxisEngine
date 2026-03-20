@@ -10,7 +10,7 @@
 #include <ecs/unit/ui_components.h>
 #include <platform/logic/io_handler.h>
 #include <script/logic/input_scriptable.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 
 void ScriptableSystem::Initialize()
 {

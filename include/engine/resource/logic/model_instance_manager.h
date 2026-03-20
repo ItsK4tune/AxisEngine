@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <mutex>
-#include <render/unit/model.h>
+#include <resource/unit/model.h>
 #include <resource/type/model_instance.h>
 #include <string>
 #include <unordered_map>

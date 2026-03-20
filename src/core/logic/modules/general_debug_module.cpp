@@ -2,7 +2,7 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <platform/logic/input_manager.h>
@@ -14,7 +14,7 @@
 #include <ecs/unit/physics_components.h>
 #include <platform/interface/input_codes.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>

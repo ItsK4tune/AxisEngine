@@ -2,7 +2,7 @@
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
 #include <core/logic/event_system.h>
-#include <core/type/resource_events.h>
+#include <core/type/event_types.h>
 
 ModelManager::ModelManager(ModelInstanceManager& instanceManager) 
     : m_InstanceManager(instanceManager) {}

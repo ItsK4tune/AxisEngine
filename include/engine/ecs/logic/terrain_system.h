@@ -1,10 +1,12 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <entt/entt.hpp>
 #include <ecs/unit/terrain_component.h>
 #include <render/type/graphics_types.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <vector>
 #include <map>
 #include <memory>
@@ -17,7 +19,7 @@ struct TerrainChunk {
     glm::ivec2 gridPos;
 };
 
-class TerrainSystem : public IUpdateSystem, public IRenderSystem {
+class TerrainSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem {
 public:
     void Initialize() override;
     void Shutdown() override;

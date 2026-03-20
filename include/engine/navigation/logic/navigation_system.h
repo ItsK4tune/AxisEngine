@@ -1,11 +1,13 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <scene/logic/scene.h>
 #include <navigation/unit/navmesh_component.h>
 #include <navigation/unit/pathfollower_component.h>
 
-class NavigationSystem : public IUpdateSystem, public IRenderSystem
+class NavigationSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
     void Initialize() override { }

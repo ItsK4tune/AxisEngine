@@ -1,6 +1,7 @@
 #pragma once
 
 #include <render/interface/i_shader_manager.h>
+#include <core/interface/i_loader_strategy.h>
 #include <resource/logic/audio_asset_manager.h>
 #include <resource/logic/shader_manager.h>
 #include <resource/logic/texture_manager.h>
@@ -12,7 +13,7 @@
 #include <resource/logic/resource_watcher.h>
 #include <resource/logic/model_instance_manager.h>
 #include <resource/interface/i_resource_libraries.h>
-#include <render/unit/ui_model.h>
+#include <resource/unit/ui_model.h>
 #include <mutex>
 #include <future>
 #include <string>
@@ -76,6 +77,12 @@ public:
 
     void ClearResource();
 
+    // --- Unified Loading (merged from UnifiedLoader) ---
+    void RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy);
+    bool LoadUnified(const std::string& type, const std::string& path);
+    std::vector<std::string> GetRegisteredLoaderTypes() const;
+
+
     // Accessors for specialized managers (Service Locator pattern)
     ShaderManager& GetShaderManager()    { return *m_ShaderManager; }
     TextureManager& GetTextureManager()  { return *m_TextureManager; }
@@ -126,6 +133,8 @@ private:
     std::unordered_map<std::string, std::string> m_PathToSoundName;
     std::unordered_map<std::string, std::string> m_PathToAnimationName;
     std::unordered_map<std::string, std::string> m_PathToSkyboxName;
+
+    std::unordered_map<std::string, std::unique_ptr<ILoaderStrategy>> m_Strategies;
 
     int m_ReloadListenerId = -1;
 };

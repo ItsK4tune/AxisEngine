@@ -3,7 +3,7 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/logic/entity_manager.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_system.h>

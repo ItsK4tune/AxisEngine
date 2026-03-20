@@ -7,7 +7,7 @@
 #include <ecs/logic/render_system.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
-#include <render/unit/model.h>
+#include <resource/unit/model.h>
 #include <render/logic/shadow_renderer.h>
 #include <core/logic/job_system.h>
 #include <render/interface/i_draw_context.h>

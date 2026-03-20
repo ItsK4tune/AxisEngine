@@ -399,7 +399,7 @@ struct Texture {
 
 // --- Animation Data ---
 
-#include <render/unit/bone_info.h>
+#include <resource/unit/bone_info.h>
 
 struct AssimpNodeData {
     glm::mat4 transformation;

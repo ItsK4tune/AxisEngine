@@ -1,5 +1,5 @@
 #include <ecs/unit/core_components.h>
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <core/type/app_config.h>
 #include <core/logic/config_loader.h>
 #include <engine/platform/logic/io_handler.h>
@@ -10,7 +10,7 @@
 #include <scene/logic/component_loader.h>
 #include <scene/logic/scene_validator.h>
 #include <scene/logic/scene_serializer.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>

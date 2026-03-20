@@ -4,7 +4,7 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <ecs/logic/physics_system.h>
@@ -14,7 +14,7 @@
 
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
 

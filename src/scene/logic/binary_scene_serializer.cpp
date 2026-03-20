@@ -4,8 +4,8 @@
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/logic/entity_manager.h>
-#include <render/unit/model.h>
-#include <render/unit/shader.h>
+#include <resource/unit/model.h>
+#include <resource/unit/shader.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <resource/logic/resource_manager.h>

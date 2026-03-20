@@ -1,6 +1,6 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/logic/animation_system.h>
-#include <render/unit/animator.h>
+#include <resource/unit/animator.h>
 #include <ecs/unit/render_components.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>

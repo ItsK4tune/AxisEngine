@@ -1,6 +1,7 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <string>
 #include <vector>
 #include <set>
@@ -8,7 +9,7 @@
 #include <core/type/event_types.h>
 #include <core/logic/yaml_parser.h>
 
-class ScriptableSystem : public IUpdateSystem
+class ScriptableSystem : public IUpdateSystem, public IECSSystem
 {
 public:
 

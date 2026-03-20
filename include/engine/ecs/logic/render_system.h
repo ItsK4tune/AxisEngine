@@ -1,6 +1,8 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <core/type/app_config.h>
 
 #include <ecs/unit/render_components.h>
@@ -15,7 +17,7 @@
 #include <render/logic/shadow_renderer.h>
 #include <render/logic/static_batch_manager.h>
 #include <render/unit/gbuffer.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <render/type/graphics_types.h>
 #include <resource/interface/i_resource_libraries.h>
 #include <scene/logic/scene.h>
@@ -36,7 +38,7 @@ enum class AntiAliasingMode
 };
 
 
-class RenderSystem : public IUpdateSystem, public IRenderSystem
+class RenderSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
 

@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <render/type/graphics_types.h>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <vector>
 
 class IDrawContext;

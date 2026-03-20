@@ -2,7 +2,7 @@
 
 #include <core/logic/config_loader.h>
 #include <core/logic/state_machine.h>
-#include <core/unit/engine_accessor.h>
+#include <core/app/engine_accessor.h>
 #include <platform/interface/cursor_mode.h>
 #include <chrono>
 #include <string>

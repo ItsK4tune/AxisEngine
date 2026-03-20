@@ -5,9 +5,14 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <mutex>
+#include <iostream>
+#include <stdexcept>
+
 
 void LogManager::Initialize(LogLevel level) {
-    Logger::SetLogLevel(level);
+    SetLogLevel(level);
+
 
     if (level == LogLevel::None) {
 #ifndef ENABLE_DEBUG_SYSTEM
@@ -77,9 +82,50 @@ void LogManager::Shutdown() {
 
 void LogManager::OnConfigChanged(const ConfigChangedEvent& event) {
     if (event.bitmask & (ConfigChangedEvent::General | ConfigChangedEvent::All)) {
-        Logger::SetLogLevel(event.config.logLevel);
+        SetLogLevel(event.config.logLevel);
     }
 }
+
+void LogManager::Log(LogType type, const std::string& tag, const std::string& message) {
+    if (m_LogLevel == LogLevel::None) {
+        if (type == LogType::Error) {
+            throw std::runtime_error("[" + tag + "] " + message);
+        }
+        return;
+    }
+
+    if (m_LogLevel == LogLevel::Minimal && type != LogType::Error) return;
+    if (m_LogLevel == LogLevel::Flex && (type == LogType::Info || type == LogType::Debug)) return;
+    if (m_LogLevel == LogLevel::Verbose && type == LogType::Debug) return;
+
+    std::lock_guard<std::mutex> lock(m_LogMutex);
+
+    std::string levelStr;
+    std::ostream* outStream = &std::cout;
+
+    switch (type) {
+        case LogType::Info:
+            levelStr = "INFO";
+            break;
+        case LogType::Warning:
+            levelStr = "WARNING";
+            break;
+        case LogType::Error:
+            levelStr = "ERROR";
+            outStream = &std::cerr;
+            break;
+        case LogType::Debug:
+            levelStr = "DEBUG";
+            break;
+    }
+
+    (*outStream) << "[" << levelStr << "] [" << tag << "] " << message << std::endl;
+
+    if (type == LogType::Error) {
+        throw std::runtime_error("[" + tag + "] " + message);
+    }
+}
+
 
 LONG WINAPI LogManager::CrashHandler(EXCEPTION_POINTERS* exceptionInfo) {
     auto& logFile = Instance().m_LogFile;

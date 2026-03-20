@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/logic/config_loader.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/runtime_core.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/script_component.h>
 #include <functional>
@@ -44,7 +44,6 @@ class VideoSystem;
 
 
 class CollisionMatrix;
-class UnifiedLoader;
 class Application
 {
 public:
@@ -112,7 +111,6 @@ private:
     std::unique_ptr<ConfigManager> m_ConfigManager;
     std::unique_ptr<ScriptRegistry> m_ScriptRegistry;
     std::unique_ptr<CollisionMatrix> m_CollisionMatrix;
-    std::unique_ptr<UnifiedLoader> m_UnifiedLoader;
 };
 
 template <typename T>

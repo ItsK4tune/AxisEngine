@@ -1,5 +1,5 @@
 #include <fstream>
-#include <render/unit/compute_shader.h>
+#include <resource/unit/compute_shader.h>
 #include <render/interface/i_shader_manager.h>
 #include <sstream>
 #include <core/logic/logger.h>

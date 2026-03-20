@@ -1,12 +1,13 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_ecs_system.h>
 
 
 #include <ecs/unit/core_components.h>
 #include <scene/logic/scene.h>
 
-class TransformSystem : public IUpdateSystem
+class TransformSystem : public IUpdateSystem, public IECSSystem
 {
 public:
     TransformSystem() : IBaseSystem() {}

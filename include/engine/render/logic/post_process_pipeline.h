@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <memory>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <render/type/graphics_types.h>
 #include <resource/interface/i_resource_libraries.h>
 #include <vector>

@@ -4,10 +4,10 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/decal_component.h>
-#include <render/unit/animator.h>
+#include <resource/unit/animator.h>
 #include <audio/logic/audio_service.h>
 #include <algorithm>
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <ecs/logic/entity_manager.h>
 #include <iostream>
 #include <scene/logic/component_loader.h>

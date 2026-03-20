@@ -3,7 +3,7 @@
 #include <ecs/logic/entity_builder.h>
 #include <script/logic/scriptable.h>
 #include <ecs/logic/entity_manager.h>
-#include <render/unit/animator.h>
+#include <resource/unit/animator.h>
 #include <resource/logic/resource_manager.h>
 #include <physics/interface/i_rigid_body.h>
 #include <physics/interface/i_character_controller.h>

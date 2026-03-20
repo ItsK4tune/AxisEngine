@@ -19,6 +19,37 @@ ResourceManager::ResourceManager()
         } });
 }
 
+// --- Unified Loading (merged from UnifiedLoader) ---
+
+void ResourceManager::RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy)
+{
+    if (!strategy) return;
+    std::string name = strategy->GetName();
+    m_Strategies[name] = std::move(strategy);
+    LOGGER_INFO("ResourceManager") << "Registered loading strategy: " << name;
+}
+
+bool ResourceManager::LoadUnified(const std::string& type, const std::string& path)
+{
+    auto it = m_Strategies.find(type);
+    if (it != m_Strategies.end()) {
+        LOGGER_INFO("ResourceManager") << "Dispatching '" << path << "' to strategy: " << type;
+        return it->second->Load(path);
+    }
+    
+    LOGGER_ERROR("ResourceManager") << "No strategy found for type: " << type;
+    return false;
+}
+
+std::vector<std::string> ResourceManager::GetRegisteredLoaderTypes() const
+{
+    std::vector<std::string> types;
+    for (const auto& pair : m_Strategies) {
+        types.push_back(pair.first);
+    }
+    return types;
+}
+
 void ResourceManager::Initialize(IShaderManager& shaderManager, ITextureManager& textureManager, IAudioEngine& audioEngine)
 {
     m_ShaderManager = std::make_unique<ShaderManager>(shaderManager);

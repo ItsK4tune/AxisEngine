@@ -3,9 +3,9 @@
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
 #include <map>
-#include <render/unit/bone_info.h>
-#include <render/unit/bone.h>
-#include <render/unit/model.h>
+#include <resource/unit/bone_info.h>
+#include <resource/unit/bone.h>
+#include <resource/unit/model.h>
 #include <render/type/graphics_types.h>
 #include <unordered_map>
 #include <vector>

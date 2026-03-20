@@ -2,7 +2,7 @@
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/logic/input_manager.h>
 #include <ecs/logic/render_system.h>
 #include <ecs/logic/terrain_system.h>
@@ -11,7 +11,7 @@
 #include <iostream>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
-#include <core/logic/system_manager.h>
+#include <core/app/system_manager.h>
 #include <core/logic/debug_system.h>
 #include <core/logic/service_locator.h>
 RenderDebugModule::RenderDebugModule() {}

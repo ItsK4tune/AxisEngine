@@ -2,6 +2,8 @@
 
 #include <string>
 #include <entt/entt.hpp>
+#include <core/logic/logger_types.h>
+#include <core/type/app_config.h>
 
 // --- Input Events ---
 
@@ -34,16 +36,13 @@ struct EntityTriggerEvent
     entt::entity entityB;
     CollisionEventType type;
 };
+
 // --- Lifecycle Events ---
 
 struct EngineInitializedEvent {};
 struct EngineShutdownEvent {};
 
 // --- Config Events ---
-
-#include <core/logic/logger_types.h>
-
-#include <core/type/app_config.h>
 
 struct ConfigChangedEvent { 
     enum ChangeType {
@@ -79,4 +78,18 @@ struct SceneChangedEvent { entt::registry* registry; class Scene* scene; };
 struct RenderFrameBeginEvent { float dt; };
 struct RenderFrameEndEvent {};
 
-#include <core/type/resource_events.h>
+// --- Resource Events ---
+
+struct ResourceReloadEvent
+{
+    std::string name;
+    std::string type;
+    std::string filePath;
+};
+
+struct ResourceLoadedEvent
+{
+    std::string name;
+    std::string type;
+    bool success;
+};

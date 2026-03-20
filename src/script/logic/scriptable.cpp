@@ -1,7 +1,7 @@
 #include <core/logic/config_loader.h>
 #include <platform/logic/io_handler.h>
-#include <core/logic/runtime_core.h>
-#include <core/logic/system_manager.h>
+#include <core/app/runtime_core.h>
+#include <core/app/system_manager.h>
 #include <audio/logic/audio_service.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>

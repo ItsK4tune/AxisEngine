@@ -1,6 +1,7 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <ecs/logic/cached_query.h>
 #include <entt/entt.hpp>
 #include <memory>
@@ -16,7 +17,7 @@ class PhysicsTransformSync;
 class Shader;
 class IRenderStateManager;
 
-class PhysicsSystem : public IUpdateSystem
+class PhysicsSystem : public IUpdateSystem, public IECSSystem
 {
 public:
 

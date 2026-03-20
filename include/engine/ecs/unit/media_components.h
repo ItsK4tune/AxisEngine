@@ -7,8 +7,8 @@
 #include <audio/interface/i_audio_source.h>
 #include <audio/interface/i_sound.h>
 #include <render/logic/video_decoder.h>
-#include <render/unit/animation.h>
-#include <render/unit/animator.h>
+#include <resource/unit/animation.h>
+#include <resource/unit/animator.h>
 #include <render/logic/particle_emitter.h>
 
 #define GLM_ENABLE_EXPERIMENTAL

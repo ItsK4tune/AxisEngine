@@ -12,5 +12,5 @@
 #include <physics/interface/i_physics_world.h>
 
 // --- Core Utilities ---
-#include <core/unit/engine_accessor.h>
+#include <core/app/engine_accessor.h>
 #include <core/logic/config_loader.h>

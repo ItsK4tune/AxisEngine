@@ -1,5 +1,3 @@
-#include <core/logic/event_system.h>
-#include <core/type/event_types.h>
 #include <platform/logic/input_manager.h>
 #include <platform/interface/i_window.h>
 #include <platform/interface/input_codes.h>
@@ -30,25 +28,12 @@ void InputManager::FlushBindings()
 
 void InputManager::Update()
 {
+    // State tracking is handled by GetAction, GetActionDown, etc.
+    // using m_Keyboard and m_Mouse. 
+    // m_PreviousState is updated here for GetActionDown/Up logic.
     for (const auto &[actionName, binding] : m_ActionMap)
     {
-        bool currentState = GetAction(actionName);
-        bool previousState = m_PreviousState[actionName];
-
-        if (currentState && !previousState)
-        {
-            EventSystem::Instance().Publish(InputActionPressedEvent{actionName});
-        }
-        else if (!currentState && previousState)
-        {
-            EventSystem::Instance().Publish(InputActionReleasedEvent{actionName});
-        }
-        else if (currentState && previousState)
-        {
-            EventSystem::Instance().Publish(InputActionHeldEvent{actionName});
-        }
-
-        m_PreviousState[actionName] = currentState;
+        m_PreviousState[actionName] = GetAction(actionName);
     }
 }
 

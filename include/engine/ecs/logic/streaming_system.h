@@ -1,12 +1,13 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_ecs_system.h>
 
 
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 
-class StreamingSystem : public IUpdateSystem
+class StreamingSystem : public IUpdateSystem, public IECSSystem
 {
 public:
     StreamingSystem() : IBaseSystem() {}

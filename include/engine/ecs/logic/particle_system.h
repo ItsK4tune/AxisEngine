@@ -1,12 +1,14 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
 #include <resource/logic/resource_manager.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <scene/logic/scene.h>
 
 class IGraphicsContext;
 
-class ParticleSystem : public IUpdateSystem, public IRenderSystem
+class ParticleSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
 

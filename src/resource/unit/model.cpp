@@ -6,7 +6,7 @@
 #include <fstream>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
-#include <render/unit/model.h>
+#include <resource/unit/model.h>
 #include <render/interface/i_texture_manager.h>
 #include <iostream>
 #include <sstream>

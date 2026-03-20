@@ -1,10 +1,10 @@
 #include <core/logic/modules/overlay_debug_module.h>
 #include <render/interface/i_graphics_context.h>
-#include <render/unit/font.h>
+#include <resource/unit/font.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
-#include <core/logic/application.h>
+#include <core/app/application.h>
 #include <platform/logic/input_manager.h>
 #include <scene/logic/scene.h>
 #include <ecs/logic/render_system.h>
@@ -12,8 +12,8 @@
 #include <ecs/logic/ui_render_system.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/system_manager.h>
-#include <core/logic/runtime_core.h>
+#include <core/app/system_manager.h>
+#include <core/app/runtime_core.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
 #include <sstream>

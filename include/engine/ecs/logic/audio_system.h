@@ -1,12 +1,12 @@
 #pragma once
 
-#include <audio/logic/audio_service.h>
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <scene/logic/scene.h>
 
 class AudioService;
 
-class AudioSystem : public IUpdateSystem
+class AudioSystem : public IUpdateSystem, public IECSSystem
 {
 public:
 

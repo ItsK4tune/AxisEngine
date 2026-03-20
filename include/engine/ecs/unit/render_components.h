@@ -6,8 +6,8 @@
 #include <vector>
 #include <cstdint>
 #include <render/type/graphics_types.h>
-#include <render/unit/model.h>
-#include <render/unit/shader.h>
+#include <resource/unit/model.h>
+#include <resource/unit/shader.h>
 #include <render/unit/skybox.h>
 
 // --- Mesh Renderer ---

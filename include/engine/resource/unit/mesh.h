@@ -2,7 +2,7 @@
 
 #include <core/unit/aabb.h>
 #include <glm/glm.hpp>
-#include <render/unit/shader.h>
+#include <resource/unit/shader.h>
 #include <render/type/graphics_types.h>
 #include <string>
 #include <vector>

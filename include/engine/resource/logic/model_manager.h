@@ -1,6 +1,6 @@
 #pragma once
 
-#include <render/unit/model.h>
+#include <resource/unit/model.h>
 #include <resource/logic/resource_cache.h>
 #include <resource/interface/i_asset_manager.h>
 #include <resource/logic/model_instance_manager.h>
