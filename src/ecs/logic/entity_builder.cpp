@@ -1,4 +1,5 @@
 #include <ecs/unit/physics_components.h>
+#include <ecs/unit/script_component.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/logic/entity_builder.h>
 #include <script/logic/scriptable.h>

@@ -118,6 +118,9 @@ void Application::Shutdown()
     LOGGER_INFO("Application") << "Cleaning up ConfigManager and ServiceLocator...";
     m_ConfigManager.reset();
     
+    if (m_ConfigSubId != 0)
+        EventSystem::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigSubId);
+
     LOGGER_INFO("Application") << "Application shutdown completed.";
     LogManager::Instance().Shutdown();
 
@@ -225,6 +228,30 @@ bool Application::Initialize(const AppConfig &config)
     m_SceneManager->Initialize();
     m_ScriptRegistry->Initialize(); // Pull from static map
     RegisterUserScripts();           // Call user hook
+
+    m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        if (m_IOHandler)
+        {
+            if (e.bitmask & ConfigChangedEvent::Window)
+            {
+                m_IOHandler->GetMonitorManager().SetWindowConfiguration(
+                    e.config.width, e.config.height,
+                    (WindowMode)e.config.windowMode,
+                    e.config.monitorIndex, e.config.refreshRate);
+
+                // Explicitly trigger resize logic to sync viewport and other systems
+                OnResize(m_IOHandler->GetMonitorManager().GetWidth(), 
+                         m_IOHandler->GetMonitorManager().GetHeight());
+            }
+            
+            if (e.bitmask & (ConfigChangedEvent::Window | ConfigChangedEvent::Graphics))
+            {
+                m_IOHandler->GetMonitorManager().SetVsync(e.config.vsync);
+                m_IOHandler->GetMonitorManager().SetFrameRateLimit(e.config.frameRateLimit);
+            }
+        }
+    });
+
     m_RuntimeCore->Initialize();
     
     m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height);
@@ -280,35 +307,8 @@ const AppConfig& Application::GetConfig() const { return m_ConfigManager->GetCon
 
 void Application::ApplyConfig(const AppConfig& config)
 {
-    const AppConfig& m_Config = m_ConfigManager->GetConfig();
-    bool windowChanged = (config.width != m_Config.width || 
-                          config.height != m_Config.height || 
-                          config.windowMode != m_Config.windowMode || 
-                          config.monitorIndex != m_Config.monitorIndex || 
-                          config.refreshRate != m_Config.refreshRate);
-    
-    bool syncChanged = (config.vsync != m_Config.vsync || 
-                        config.frameRateLimit != m_Config.frameRateLimit);
-
+    // Simply update the config manager, which triggers the event that we (and others) listen to.
     m_ConfigManager->UpdateConfig(config);
-    EventSystem::Instance().Publish(ConfigChangedEvent{config});
-    
-    if (m_IOHandler)
-    {
-        if (windowChanged)
-        {
-            m_IOHandler->GetMonitorManager().SetWindowConfiguration(
-                config.width, config.height,
-                (WindowMode)config.windowMode,
-                config.monitorIndex, config.refreshRate);
-        }
-        
-        if (syncChanged)
-        {
-            m_IOHandler->GetMonitorManager().SetVsync(config.vsync);
-            m_IOHandler->GetMonitorManager().SetFrameRateLimit(config.frameRateLimit);
-        }
-    }
 }
 
 float Application::GetTimeScale() const      { return m_RuntimeCore->GetTimeScale(); }

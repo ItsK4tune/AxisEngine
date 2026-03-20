@@ -5,12 +5,11 @@
 #include <core/logic/logger.h>
 #include <core/logic/loader_utils.h>
 #include <scene/logic/component_loader.h>
-#include <script/logic/script_registry.h>
+#include <ecs/interface/i_script_registry.h>
+#include <ecs/interface/i_scriptable.h>
 #include <ecs/unit/script_component.h>
-#include <script/logic/scriptable.h>
 #include <ecs/unit/ui_components.h>
 #include <platform/logic/io_handler.h>
-#include <script/logic/input_scriptable.h>
 #include <core/logic/time_service.h>
 
 void ScriptableSystem::Initialize()
@@ -177,7 +176,7 @@ void ScriptableSystem::LoadScript(Scene &scene, entt::entity entity, const YAMLN
     
     scriptComp.InstantiateScript = [className]()
     {
-        auto registry = ServiceLocator::Instance().Resolve<ScriptRegistry>();
+        auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
         return registry ? registry->Create(className) : nullptr;
     };
     scriptComp.DestroyScript = [](ScriptComponent *nsc)

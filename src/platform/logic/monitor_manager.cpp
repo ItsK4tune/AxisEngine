@@ -50,6 +50,8 @@ void MonitorManager::SetWindowConfiguration(int width, int height, WindowMode mo
     if (m_Window)
     {
         m_Window->SetWindowConfiguration(width, height, mode, monitorIndex, refreshRate);
+        m_Width = m_Window->GetWidth();
+        m_Height = m_Window->GetHeight();
     }
 }
 

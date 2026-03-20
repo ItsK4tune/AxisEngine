@@ -112,6 +112,7 @@ private:
     std::unique_ptr<ConfigManager> m_ConfigManager;
     std::unique_ptr<ScriptRegistry> m_ScriptRegistry;
     std::unique_ptr<CollisionMatrix> m_CollisionMatrix;
+    uint32_t m_ConfigSubId = 0;
 };
 
 template <typename T>

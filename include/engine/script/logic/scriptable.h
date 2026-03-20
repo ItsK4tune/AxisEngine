@@ -5,11 +5,12 @@
 #include <platform/interface/mouse.h>
 #include <entt/entt.hpp>
 #include <string>
+#include <ecs/interface/i_scriptable.h>
 #include <ecs/unit/script_component.h>
 
 class Scene;
 
-class Scriptable : public EngineAccessor
+class Scriptable : public EngineAccessor, public IScriptable
 {
 public:
     virtual ~Scriptable() {}

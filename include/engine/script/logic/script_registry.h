@@ -8,13 +8,15 @@
 #include <string>
 #include <unordered_map>
 
-class ScriptRegistry
+#include <ecs/interface/i_script_registry.h>
+
+class ScriptRegistry : public IScriptRegistry
 {
 public:
     ScriptRegistry() = default;
     void Initialize();
 
-    using ScriptFactory = std::function<std::unique_ptr<Scriptable>()>;
+    using ScriptFactory = std::function<std::unique_ptr<IScriptable>()>;
 
     template <typename T>
     void Register(const std::string &name)
@@ -27,7 +29,7 @@ public:
         }
     }
 
-    std::unique_ptr<Scriptable> Create(const std::string &name);
+    std::unique_ptr<IScriptable> Create(const std::string &name) override;
 
     static std::unordered_map<std::string, ScriptFactory>& GetStaticFactoryMap() {
         static std::unordered_map<std::string, ScriptFactory> staticMap;

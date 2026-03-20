@@ -1,16 +1,16 @@
 #include <ecs/unit/core_components.h>
-#include <core/app/application.h>
+#include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <core/logic/config_loader.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <ecs/logic/entity_manager.h>
+#include <ecs/unit/script_component.h>
+#include <physics/logic/physics_collision_dispatcher.h>
 #include <physics/logic/physics_loader.h>
 #include <scene/interface/i_component_loader_factory.h>
 #include <scene/logic/component_loader.h>
 #include <scene/logic/scene_validator.h>
 #include <scene/logic/scene_serializer.h>
-#include <core/app/runtime_core.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
@@ -69,16 +69,8 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
             
             configMgr.UpdateConfig(tempConfig);
 
-            if (applyWindow)
-            {
-                auto io = ServiceLocator::Instance().Resolve<IOHandler>();
-                if (io) {
-                    io->GetMonitorManager().SetWindowConfiguration(
-                        tempConfig.width, tempConfig.height,
-                        (WindowMode)tempConfig.windowMode,
-                        tempConfig.monitorIndex, tempConfig.refreshRate);
-                }
-            }
+            // Note: Window configuration should be handled by Application or a dedicated handler in Layer 5.
+            // SceneSerializer (Layer 3) should only return the config.
 
             result.hasConfig = true;
             result.appliedConfig = tempConfig;
@@ -203,9 +195,17 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 if (duplicate)
                     continue;
 
-                entt::entity currentEntity = EntityManager::CreateEntity(scene, entityName, entityTag);
-                uint32_t layer = std::stoul(entNode.GetChildValue("Layer", "1"));
+                entt::entity currentEntity = scene.registry.create();
+                
+                // Emplace default components (Layer 2/3 Data)
+                scene.registry.emplace<PositionComponent>(currentEntity);
+                scene.registry.emplace<RotationComponent>(currentEntity);
+                scene.registry.emplace<ScaleComponent>(currentEntity);
+                scene.registry.emplace<HierarchyComponent>(currentEntity);
+                scene.registry.emplace<WorldTransformComponent>(currentEntity);
+                scene.registry.emplace<InfoComponent>(currentEntity, entityName, entityTag);
 
+                uint32_t layer = std::stoul(entNode.GetChildValue("Layer", "1"));
                 auto &info = scene.registry.get<InfoComponent>(currentEntity);
                 info.sceneName = sceneName;
                 info.layer = layer;
@@ -278,9 +278,3 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
     LOGGER_INFO("SceneSerializer") << "Finished parsing AXS file: " << fullPath;
     return result;
 }
-
-
-
-
-
-

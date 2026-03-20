@@ -1,6 +1,7 @@
+#include <core/logic/service_locator.h>
 #include <script/logic/script_registry.h>
 
-std::unique_ptr<Scriptable> ScriptRegistry::Create(const std::string& name)
+std::unique_ptr<IScriptable> ScriptRegistry::Create(const std::string& name)
 {
     auto& staticMap = GetStaticFactoryMap();
     if (staticMap.find(name) != staticMap.end())
@@ -18,6 +19,7 @@ std::unique_ptr<Scriptable> ScriptRegistry::Create(const std::string& name)
 
 void ScriptRegistry::Initialize()
 {
+    ServiceLocator::Instance().Register<IScriptRegistry>(this);
     // Optional: copy from static map to instance map if we want to centralize
     auto &staticMap = GetStaticFactoryMap();
     for (auto &pair : staticMap)

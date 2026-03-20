@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <core/logic/config_manager.h>
-#include <ecs/logic/entity_manager.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
 #include <scene/type/scene_events.h>

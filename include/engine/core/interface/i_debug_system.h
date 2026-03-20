@@ -1,6 +1,6 @@
 #pragma once
 
-class EngineContext;
+
 class Scene;
 
 class IDebugSystem

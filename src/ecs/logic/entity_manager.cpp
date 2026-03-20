@@ -3,6 +3,7 @@
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
+#include <ecs/unit/script_component.h>
 #include <ecs/logic/entity_manager.h>
 #include <script/logic/scriptable.h>
 #define GLM_ENABLE_EXPERIMENTAL

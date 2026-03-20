@@ -1,5 +1,6 @@
 #include <core/logic/service_locator.h>
 #include <ecs/logic/entity_manager.h>
+#include <ecs/unit/script_component.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

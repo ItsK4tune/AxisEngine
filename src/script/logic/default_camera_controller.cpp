@@ -87,10 +87,7 @@ void DefaultCameraController::OnUpdate(float dt)
     if (keyboard.GetKey(Key::LeftControl))
         posComp.value -= camera.worldUp * speed;
 
-    if (camera.aspectRatio <= 0.0f)
-    {
-        camera.aspectRatio = (float)GetIOHandler().GetMonitorManager().GetWidth() / (float)GetIOHandler().GetMonitorManager().GetHeight();
-    }
+    camera.aspectRatio = (float)GetIOHandler().GetMonitorManager().GetWidth() / (float)GetIOHandler().GetMonitorManager().GetHeight();
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
     camera.viewMatrix = glm::lookAt(posComp.value, posComp.value + camera.front, camera.up);
 }

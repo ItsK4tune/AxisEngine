@@ -5,14 +5,14 @@
 #include <entt/entt.hpp>
 
 // Forward declarations
-class Scriptable;
+class IScriptable;
 
 // --- Script ---
 
 struct ScriptComponent
 {
-    std::unique_ptr<Scriptable> instance;
-    std::function<std::unique_ptr<Scriptable>()> InstantiateScript;
+    std::unique_ptr<IScriptable> instance;
+    std::function<std::unique_ptr<IScriptable>()> InstantiateScript;
     std::function<void(ScriptComponent *)> DestroyScript;
 
     template <typename T>

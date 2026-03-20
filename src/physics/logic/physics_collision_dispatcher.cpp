@@ -1,4 +1,5 @@
 #include <ecs/unit/physics_components.h>
+#include <ecs/unit/script_component.h>
 #include <physics/logic/physics_collision_dispatcher.h>
 #include <scene/logic/scene.h>
 #include <physics/interface/i_physics_world.h>
