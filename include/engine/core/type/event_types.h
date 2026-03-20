@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <entt/entt.hpp>
 #include <core/logic/logger_types.h>
 #include <core/type/app_config.h>
 
@@ -25,15 +24,15 @@ enum class CollisionEventType { Enter, Stay, Exit };
 
 struct EntityCollisionEvent
 {
-    entt::entity entityA;
-    entt::entity entityB;
+    uint32_t entityA; // Use raw ID or opaque type for L2
+    uint32_t entityB;
     CollisionEventType type;
 };
 
 struct EntityTriggerEvent
 {
-    entt::entity entityA;
-    entt::entity entityB;
+    uint32_t entityA;
+    uint32_t entityB;
     CollisionEventType type;
 };
 
@@ -67,29 +66,7 @@ struct ConfigChangedEvent {
 struct WindowResizedEvent { int width; int height; };
 struct WindowFocusEvent { bool focused; };
 
-// --- Scene Events ---
-
-struct SceneLoadedEvent { std::string path; };
-struct SceneUnloadedEvent { std::string path; };
-struct SceneChangedEvent { entt::registry* registry; class Scene* scene; };
-
 // --- Render Events ---
 
 struct RenderFrameBeginEvent { float dt; };
 struct RenderFrameEndEvent {};
-
-// --- Resource Events ---
-
-struct ResourceReloadEvent
-{
-    std::string name;
-    std::string type;
-    std::string filePath;
-};
-
-struct ResourceLoadedEvent
-{
-    std::string name;
-    std::string type;
-    bool success;
-};

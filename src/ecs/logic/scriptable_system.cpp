@@ -1,4 +1,5 @@
 #include <ecs/logic/scriptable_system.h>
+#include <scene/type/scene_events.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/event_system.h>
 #include <core/logic/logger.h>

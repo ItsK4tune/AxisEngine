@@ -26,6 +26,10 @@ public:
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
 
-private:
+    std::vector<entt::entity> m_LinearTransforms;
+    bool m_IsLinearTransformsDirty = true;
+    void RebuildLinearTransforms(Scene& scene);
+    void OnHierarchyChanged(entt::registry &reg, entt::entity entity);
+
     bool m_Enabled = true;
 };

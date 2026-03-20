@@ -1,8 +1,10 @@
 #include <resource/logic/model_manager.h>
-#include <core/logic/job_system.h>
+#include <resource/type/resource_events.h>
+#include <core/logic/axis_assert.h>
 #include <core/logic/logger.h>
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>
+#include <core/logic/job_system.h>
 
 ModelManager::ModelManager(ModelInstanceManager& instanceManager) 
     : m_InstanceManager(instanceManager) {}

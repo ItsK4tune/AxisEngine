@@ -3,6 +3,7 @@
 #include <core/type/event_types.h>
 #include <iostream>
 #include <resource/logic/resource_manager.h>
+#include <resource/type/resource_events.h>
 #include <core/logic/logger.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/axis_assert.h>

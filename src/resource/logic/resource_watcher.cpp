@@ -2,6 +2,7 @@
 #include <core/logic/event_system.h>
 #include <iostream>
 #include <resource/logic/resource_watcher.h>
+#include <resource/type/resource_events.h>
 #include <core/logic/logger.h>
 
 ResourceWatcher::ResourceWatcher()

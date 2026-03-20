@@ -3,6 +3,9 @@
 #include <ecs/logic/entity_manager.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
+#include <scene/type/scene_events.h>
+#include <resource/logic/resource_manager.h>
+#include <resource/type/resource_events.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/event_system.h>
@@ -24,14 +27,10 @@ SceneManager::SceneManager() {}
 
 void SceneManager::Initialize()
 {
-    auto& sl = ServiceLocator::Instance();
-    m_Scene = &sl.Require<Scene>();
-    m_Resources = &sl.Require<ResourceManager>();
-    m_Physics = sl.Resolve<IPhysicsWorld>();
-    m_AudioService = &sl.Require<AudioService>();
-    
     // Initial scene notification
-    EventSystem::Instance().Publish(SceneChangedEvent{ &m_Scene->registry, m_Scene });
+    auto& sl = ServiceLocator::Instance();
+    auto& scene = sl.Require<Scene>();
+    EventSystem::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
 
     LOGGER_INFO("SceneManager") << "Initialized";
 }
@@ -64,7 +63,13 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
         return;
     }
 
-    SceneLoadResult res = SceneSerializer::Deserialize(filePath, *m_Scene, *m_Resources, m_Physics, *m_AudioService);
+    auto& sl = ServiceLocator::Instance();
+    auto& scene = sl.Require<Scene>();
+    auto& resources = sl.Require<ResourceManager>();
+    auto* physics = sl.Resolve<IPhysicsWorld>();
+    auto& audio = sl.Require<AudioService>();
+
+    SceneLoadResult res = SceneSerializer::Deserialize(filePath, scene, resources, physics, audio);
 
     SceneRecord rec;
     rec.filePath = filePath;
@@ -169,7 +174,9 @@ void SceneManager::ChangeScene(const std::string& filePath)
     LoadScene(filePath, false);
     
     // Notify systems that the whole scene baseline has changed
-    EventSystem::Instance().Publish(SceneChangedEvent{ &m_Scene->registry, m_Scene });
+    auto& sl = ServiceLocator::Instance();
+    auto& scene = sl.Require<Scene>();
+    EventSystem::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
 }
 
 void SceneManager::ClearAllScenes()
@@ -267,6 +274,11 @@ const SceneRecord* SceneManager::GetSceneByName(const std::string& name) const
     return nullptr;
 }
 
+IPhysicsWorld* SceneManager::GetPhysicsWorld() 
+{ 
+    return ServiceLocator::Instance().Resolve<IPhysicsWorld>(); 
+}
+
 const SceneRecord* SceneManager::GetSceneByOrder(int order) const
 {
     for (const auto& rec : m_LoadedScenes)
@@ -310,11 +322,12 @@ void SceneManager::_UnloadRecord(SceneRecord& rec)
 
 void SceneManager::_DestroySceneEntities(SceneRecord& rec)
 {
+    auto& scene = ServiceLocator::Instance().Require<Scene>();
     for (auto entity : rec.entities)
     {
-        if (m_Scene->registry.valid(entity))
+        if (scene.registry.valid(entity))
         {
-            m_Scene->registry.destroy(entity);
+            scene.registry.destroy(entity);
         }
     }
     rec.entities.clear();

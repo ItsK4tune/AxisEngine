@@ -5,9 +5,24 @@
 #include <glm/gtx/quaternion.hpp>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/event_system.h>
+#include <scene/type/scene_events.h>
+#include <deque>
 
 void TransformSystem::Initialize()
 {
+    EventSystem::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
+        // Re-connect signals to new registry
+        e.registry->on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        e.registry->on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        e.registry->on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        m_IsLinearTransformsDirty = true;
+    });
+}
+
+void TransformSystem::OnHierarchyChanged(entt::registry &reg, entt::entity entity)
+{
+    m_IsLinearTransformsDirty = true;
 }
 
 void TransformSystem::FixedUpdate(Scene& scene, float dt)
@@ -27,20 +42,59 @@ void TransformSystem::FixedUpdate(Scene& scene, float dt)
     }
 }
 
+void TransformSystem::RebuildLinearTransforms(Scene& scene)
+{
+    m_LinearTransforms.clear();
+    std::vector<entt::entity> roots;
+    auto& registry = scene.registry;
+    auto transformView = registry.view<WorldTransformComponent>();
+    
+    for (auto entity : transformView)
+    {
+        auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
+        if (!hierarchy || hierarchy->parent == entt::null)
+        {
+            roots.push_back(entity);
+        }
+    }
+
+    std::deque<entt::entity> queue(roots.begin(), roots.end());
+    while (!queue.empty())
+    {
+        entt::entity current = queue.front();
+        queue.pop_front();
+
+        m_LinearTransforms.push_back(current);
+
+        auto* hierarchy = registry.try_get<HierarchyComponent>(current);
+        if (hierarchy)
+        {
+            for (auto child : hierarchy->children)
+            {
+                if (registry.valid(child) && registry.all_of<WorldTransformComponent>(child))
+                {
+                    queue.push_back(child);
+                }
+            }
+        }
+    }
+
+    m_IsLinearTransformsDirty = false;
+}
+
 void TransformSystem::Update(Scene& scene, float dt)
 {
-    if (scene.isLinearTransformsDirty)
+    if (m_IsLinearTransformsDirty)
     {
-        scene.RebuildLinearTransforms();
+        RebuildLinearTransforms(scene);
     }
 
     auto& registry = scene.registry;
-    for (auto entity : scene.linearTransforms)
+    for (auto entity : m_LinearTransforms)
     {
         auto* world = registry.try_get<WorldTransformComponent>(entity);
         if (!world) continue;
 
-        // Propagate dirtiness from parent if necessary
         auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
         glm::mat4 parentTransform(1.0f);
         if (hierarchy && hierarchy->parent != entt::null)
@@ -66,9 +120,6 @@ void TransformSystem::Update(Scene& scene, float dt)
             world->isDirty = false;
             world->version++;
 
-            // Propagate dirty flag down the hierarchy. 
-            // Because linearTransforms is depth-sorted (BFS), children will be updated 
-            // later in this same loop and will see their isDirty flag as true.
             if (hierarchy)
             {
                 for (auto child : hierarchy->children)

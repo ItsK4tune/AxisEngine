@@ -1,4 +1,5 @@
 #include <resource/logic/texture_manager.h>
+#include <resource/type/resource_events.h>
 #include <core/logic/job_system.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>

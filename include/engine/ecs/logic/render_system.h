@@ -125,11 +125,7 @@ public:
 
     StaticBatchManager &GetBatchManager() { return m_BatchManager; }
 
-    
-    IGraphicsContext* GetContext() const { return m_Context; }
-
 private:
-    IGraphicsContext* m_Context = nullptr;
     ShadowRenderer m_ShadowRenderer;
     LightRenderer m_LightRenderer;
     StaticBatchManager m_BatchManager;

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <core/type/event_types.h>
+#include <resource/type/resource_events.h>
 #include <filesystem>
 #include <functional>
 #include <mutex>

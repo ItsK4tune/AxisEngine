@@ -39,7 +39,7 @@
 void RenderSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
-    m_Context = &sl.Require<IGraphicsContext>();
+    auto& context = sl.Require<IGraphicsContext>();
     auto& configManager = sl.Require<ConfigManager>();
     const AppConfig& config = configManager.GetConfig();
     auto& shaderLib = sl.Require<ResourceManager>();
@@ -89,19 +89,20 @@ void RenderSystem::Initialize()
 
         if (cfg.shadowMapResolution != m_ShadowRenderer.GetShadow().GetShadowWidth()) {
             LOGGER_INFO("RenderSystem") << "Reinitializing shadow map with res: " << cfg.shadowMapResolution;
-            m_ShadowRenderer.GetShadow().Initialize(*m_Context, cfg.shadowMapResolution, cfg.shadowMapResolution);
+            auto& sl = ServiceLocator::Instance();
+            m_ShadowRenderer.GetShadow().Initialize(sl.Require<IGraphicsContext>(), cfg.shadowMapResolution, cfg.shadowMapResolution);
         }
     });
 
     LOGGER_INFO("RenderSystem") << "Initializing shadow and light renderers with res: " << config.shadowMapResolution;
-    m_ShadowRenderer.Initialize(*m_Context, shaderLib);
-    m_ShadowRenderer.GetShadow().Initialize(*m_Context, config.shadowMapResolution, config.shadowMapResolution);
+    m_ShadowRenderer.Initialize(context, shaderLib);
+    m_ShadowRenderer.GetShadow().Initialize(context, config.shadowMapResolution, config.shadowMapResolution);
     
-    m_LightRenderer.Initialize(*m_Context);
+    m_LightRenderer.Initialize(context);
 
     if (m_WhiteTextureID == 0)
     {
-        auto &tm = m_Context->GetTextureManager();
+        auto &tm = context.GetTextureManager();
         
         // White
         m_WhiteTextureID = tm.GenTexture();
@@ -132,28 +133,28 @@ void RenderSystem::Initialize()
     for (int i = 0; i < 200; ++i)
         m_BonesUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
 
-    auto& bm = m_Context->GetBufferManager();
-    m_CameraUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
+    auto& bm = context.GetBufferManager();
+    m_CameraUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUCameraData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
-
-    m_GlobalLightUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
+    
+    m_GlobalLightUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalLightData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
-
-    m_GlobalDataUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
+    
+    m_GlobalDataUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
-
+    
     m_ShadowRenderer.SetShadowBias(config.shadowBias);
     m_ShadowRenderer.SetShadowSoftness(config.shadowSoftness);
-
+    
     shaderLib.LoadShader("occlusion_query", "include/engine/asset/shaders/occlusion_query.vs", "include/engine/asset/shaders/occlusion_query.fs");
-    m_OcclusionCuller.Initialize(*m_Context, shaderLib.GetShader("occlusion_query"));
-    m_MaterialRenderer.Initialize(*m_Context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
+    m_OcclusionCuller.Initialize(context, shaderLib.GetShader("occlusion_query"));
+    m_MaterialRenderer.Initialize(context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
 
     shaderLib.LoadShader("gbuffer", "include/engine/asset/shaders/gbuffer.vs", "include/engine/asset/shaders/gbuffer.fs");
     m_GBufferShader = shaderLib.GetShader("gbuffer");
@@ -164,7 +165,7 @@ void RenderSystem::Initialize()
     m_DeferredLightShader = shaderLib.GetShader("deferred_light");
 
     m_GBuffer.SetRenderScale(config.renderScale);
-    m_GBuffer.Initialize(*m_Context, config.width, config.height);
+    m_GBuffer.Initialize(context, config.width, config.height);
 
     SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
     SetShadowDistanceCulling(config.shadowDistanceCulling);
@@ -197,15 +198,19 @@ void RenderSystem::Shutdown()
     m_OcclusionCuller.Shutdown();
     m_GBuffer.Shutdown();
 
-    if (m_QuadVAO.id != 0) m_Context->GetBufferManager().DeleteVertexArray(m_QuadVAO.id);
-    if (m_QuadVBO.id != 0) m_Context->GetBufferManager().DeleteBuffer(m_QuadVBO.id);
+    auto& sl = ServiceLocator::Instance();
+    auto& context = sl.Require<IGraphicsContext>();
+    auto& bm = context.GetBufferManager();
+
+    if (m_QuadVAO.id != 0) bm.DeleteVertexArray(m_QuadVAO.id);
+    if (m_QuadVBO.id != 0) bm.DeleteBuffer(m_QuadVBO.id);
 }
 
 void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
 {
-    if (!m_Context)
-        return;
-    auto &rsm = m_Context->GetRenderStateManager();
+    auto& sl = ServiceLocator::Instance();
+    auto& context = sl.Require<IGraphicsContext>();
+    auto &rsm = context.GetRenderStateManager();
 
     if (enabled)
     {
@@ -227,7 +232,8 @@ void RenderSystem::InitQuad()
          1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
          1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
     };
-    auto& bm = m_Context->GetBufferManager();
+    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+    auto& bm = context.GetBufferManager();
     m_QuadVAO.id = bm.CreateVertexArray();
     m_QuadVBO.id = bm.CreateBuffer();
 
@@ -243,9 +249,8 @@ void RenderSystem::InitQuad()
 
 void RenderSystem::SetDepthTest(bool enabled, CompareFunc func)
 {
-    if (!m_Context)
-        return;
-    auto &rsm = m_Context->GetRenderStateManager();
+    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+    auto &rsm = context.GetRenderStateManager();
 
     if (enabled)
     {
@@ -267,9 +272,10 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         return;
     }
 
+    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
     if ((m_LastWidth != width || m_LastHeight != height) && width > 0 && height > 0) {
         if (m_DeferredRenderingEnabled && m_GBuffer.GetFBO() == 0) {
-            m_GBuffer.Initialize(*m_Context, width, height);
+            m_GBuffer.Initialize(context, width, height);
         } else {
             m_GBuffer.Resize(width, height);
         }
@@ -341,7 +347,9 @@ void RenderSystem::RenderShadows(Scene &scene)
 
 void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
 {
-    if (!m_Enabled || !m_Context) return;
+    auto& sl = ServiceLocator::Instance();
+    auto& context = sl.Require<IGraphicsContext>();
+    if (!m_Enabled) return;
 
     BuildRenderQueues(scene, alpha, width, height);
 
@@ -359,7 +367,7 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
     std::memcpy(m_CameraData.projection, &projectionMatrix[0][0], 16 * sizeof(float));
     std::memcpy(m_CameraData.view, &cam->viewMatrix[0][0], 16 * sizeof(float));
     std::memcpy(m_CameraData.viewPos, &camPos[0], 3 * sizeof(float));
-    auto& bm = m_Context->GetBufferManager();
+    auto& bm = context.GetBufferManager();
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUCameraData), &m_CameraData);
     bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
@@ -398,9 +406,9 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
-    auto &rsm = m_Context->GetRenderStateManager();
+    auto &rsm = context.GetRenderStateManager();
     
-    auto& dc = m_Context->GetDrawContext();
+    auto& dc = context.GetDrawContext();
     // 1. Geometry Pass for Opaque
     if (m_DeferredRenderingEnabled) {
         m_GBuffer.BindForWriting();
@@ -432,9 +440,10 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
 
 void RenderSystem::RenderTransparent(Scene& scene, int width, int height, float alpha)
 {
-    if (!m_Enabled || !m_Context) return;
+    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+    if (!m_Enabled) return;
     
-    auto& rsm = m_Context->GetRenderStateManager();
+    auto& rsm = context.GetRenderStateManager();
     rsm.Enable(ServerCapability::Blend);
     rsm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
     rsm.Enable(ServerCapability::DepthTest);
@@ -609,8 +618,9 @@ void RenderSystem::BindForDecals()
 {
     if (m_DeferredRenderingEnabled)
     {
-        auto& rtm = m_Context->GetRenderTargetManager();
-        auto& rsm = m_Context->GetRenderStateManager();
+        auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+        auto& rtm = context.GetRenderTargetManager();
+        auto& rsm = context.GetRenderStateManager();
         
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_GBuffer.GetFBO());
         rsm.SetViewport(0, 0, m_GBuffer.GetWidth(), m_GBuffer.GetHeight());
@@ -628,7 +638,8 @@ void RenderSystem::UnbindForDecals()
 {
     if (m_DeferredRenderingEnabled)
     {
-        auto& rtm = m_Context->GetRenderTargetManager();
+        auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+        auto& rtm = context.GetRenderTargetManager();
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
         
         // CRITICAL: Reset DrawBuffers for main FBO
@@ -650,7 +661,8 @@ void RenderSystem::UnbindGBuffer()
     if (m_DeferredRenderingEnabled)
     {
         m_GBuffer.Unbind();
-        auto& rtm = m_Context->GetRenderTargetManager();
+        auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+        auto& rtm = context.GetRenderTargetManager();
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
 
         // CRITICAL: Reset DrawBuffers for main FBO
@@ -664,16 +676,18 @@ void RenderSystem::RenderDeferredLighting(Scene &scene, int width, int height)
     if (!m_DeferredRenderingEnabled || !m_DeferredLightShader) return;
     
     UnbindGBuffer();
-    auto& rsm = m_Context->GetRenderStateManager();
+    auto& sl = ServiceLocator::Instance();
+    auto& context = sl.Require<IGraphicsContext>();
+    auto& rsm = context.GetRenderStateManager();
     rsm.SetViewport(0, 0, width, height);
     rsm.Disable(ServerCapability::DepthTest);
     rsm.Disable(ServerCapability::CullFace);
     rsm.Disable(ServerCapability::Blend);
 
-    auto& tm = m_Context->GetTextureManager();
-    auto& bm = m_Context->GetBufferManager();
-    auto& dc = m_Context->GetDrawContext();
-    auto& rtm = m_Context->GetRenderTargetManager();
+    auto& tm = context.GetTextureManager();
+    auto& bm = context.GetBufferManager();
+    auto& dc = context.GetDrawContext();
+    auto& rtm = context.GetRenderTargetManager();
     
     rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_GBuffer.GetFBO());
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_MainFBO);

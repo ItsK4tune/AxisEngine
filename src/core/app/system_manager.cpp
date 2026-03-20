@@ -277,10 +277,11 @@ void SystemManager::RenderShadows(Scene& scene, float alpha)
 
 void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
 {
+    auto& sl = ServiceLocator::Instance();
     auto* rs = GetSystem<RenderSystem>();
-    if (rs && rs->GetContext())
+    if (rs)
     {
-        rs->GetContext()->GetRenderStateManager().SetViewport(0, 0, width, height);
+        sl.Require<IGraphicsContext>().GetRenderStateManager().SetViewport(0, 0, width, height);
     }
     
     postProcess.BeginCapture();
@@ -299,8 +300,8 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
     }
     
     for (auto* sys : m_RenderSystems) { 
-        if (sys->IsEnabled() && rs && rs->GetContext()) 
-            sys->RenderUI(scene, (float)width, (float)height, rs->GetContext()->GetRenderStateManager()); 
+        if (sys->IsEnabled() && rs) 
+            sys->RenderUI(scene, (float)width, (float)height, sl.Require<IGraphicsContext>().GetRenderStateManager()); 
     }
 
     if (rs) {

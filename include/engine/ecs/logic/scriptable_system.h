@@ -7,6 +7,7 @@
 #include <set>
 #include <entt/entt.hpp>
 #include <core/type/event_types.h>
+#include <scene/type/scene_events.h>
 #include <core/logic/yaml_parser.h>
 
 class ScriptableSystem : public IUpdateSystem, public IECSSystem

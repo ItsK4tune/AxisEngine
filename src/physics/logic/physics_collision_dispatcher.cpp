@@ -81,11 +81,11 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 if (trigger)
                 {
-                    EventSystem::Instance().Publish(EntityTriggerEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    EventSystem::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
                 }
                 else
                 {
-                    EventSystem::Instance().Publish(EntityCollisionEvent{target, other, stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    EventSystem::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
                 }
             };
 
@@ -143,11 +143,11 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 if (trigger)
                 {
-                    EventSystem::Instance().Publish(EntityTriggerEvent{target, other, CollisionEventType::Exit});
+                    EventSystem::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
                 }
                 else
                 {
-                    EventSystem::Instance().Publish(EntityCollisionEvent{target, other, CollisionEventType::Exit});
+                    EventSystem::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
                 }
             };
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ecs/unit/core_components.h>
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <memory>
@@ -20,14 +19,8 @@ struct Scene
     entt::registry registry;
     Octree* GetOctree() { return m_Octree.get(); }
 
-    void OnHierarchyChanged(entt::registry &reg, entt::entity entity);
-
     void InitializeManagers();
     void ShutdownManagers();
-
-    std::vector<entt::entity> linearTransforms;
-    void RebuildLinearTransforms();
-    bool isLinearTransformsDirty = true;
 
 private:
     std::unique_ptr<Octree> m_Octree;

@@ -2,7 +2,6 @@
 
 #include <audio/logic/audio_service.h>
 #include <core/logic/config_loader.h>
-#include <ecs/unit/core_components.h>
 #include <memory>
 #include <physics/interface/i_physics_world.h>
 #include <resource/logic/resource_manager.h>
@@ -10,6 +9,8 @@
 #include <scene/type/scene_record.h>
 #include <string>
 #include <vector>
+
+namespace entt { enum class entity : uint32_t; }
 
 class SceneManager
 {
@@ -48,7 +49,7 @@ public:
     void LogScene(const std::string& filePath) const;
     void LogAllScenes() const;
 
-    IPhysicsWorld* GetPhysicsWorld() { return m_Physics; }
+    IPhysicsWorld* GetPhysicsWorld();
 
 private:
     struct PendingOp
@@ -63,11 +64,6 @@ private:
     void _RollbackConfig(const SceneRecord& removed);
     void _UnloadRecord(SceneRecord& rec);
     void _ReindexScenes();
-
-    Scene* m_Scene = nullptr;
-    ResourceManager* m_Resources = nullptr;
-    AudioService* m_AudioService = nullptr;
-    IPhysicsWorld* m_Physics = nullptr;
 
     int m_nextLoadOrder = 0;
     std::vector<SceneRecord> m_LoadedScenes;
