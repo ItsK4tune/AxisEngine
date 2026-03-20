@@ -1,13 +1,13 @@
-#include <core/logic/debug_system.h>
-#include <core/interface/i_debug_module.h>
-#include <core/logic/modules/general_debug_module.h>
-#include <core/logic/modules/overlay_debug_module.h>
-#include <core/logic/modules/render_debug_module.h>
-#include <core/logic/modules/physics_debug_module.h>
-#include <core/logic/modules/gizmo_debug_module.h>
-#include <core/logic/modules/camera_debug_module.h>
+#include <ecs/logic/debug/debug_system.h>
+#include <ecs/logic/debug/i_debug_module.h>
+#include <ecs/logic/debug/modules/general_debug_module.h>
+#include <ecs/logic/debug/modules/overlay_debug_module.h>
+#include <ecs/logic/debug/modules/render_debug_module.h>
+#include <ecs/logic/debug/modules/physics_debug_module.h>
+#include <ecs/logic/debug/modules/gizmo_debug_module.h>
+#include <ecs/logic/debug/modules/camera_debug_module.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/modules/shadow_debug_module.h>
+#include <ecs/logic/debug/modules/shadow_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 

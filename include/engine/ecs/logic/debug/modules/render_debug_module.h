@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/interface/i_debug_module.h>
+#include <ecs/logic/debug/i_debug_module.h>
 #include <functional>
 #include <platform/interface/input_codes.h>
 #include <string>

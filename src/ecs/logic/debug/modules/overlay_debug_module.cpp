@@ -1,4 +1,4 @@
-#include <core/logic/modules/overlay_debug_module.h>
+#include <ecs/logic/debug/modules/overlay_debug_module.h>
 #include <render/interface/i_graphics_context.h>
 #include <resource/unit/font.h>
 
@@ -22,7 +22,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #include <core/logic/service_locator.h>
 
 OverlayDebugModule::OverlayDebugModule() {}

@@ -7,7 +7,7 @@
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h> // Updated from <core/logic/event_types.h>
 #include <core/type/app_config.h>
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #include <audio/logic/audio_service.h>
 #include <core/app/runtime_core.h>
 #include <core/logic/job_system.h>
@@ -40,7 +40,7 @@
 #include <core/logic/logger.h>
 #include <algorithm>
 #ifdef ENABLE_DEBUG_SYSTEM
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #else
 #endif
 

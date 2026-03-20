@@ -1,4 +1,4 @@
-#include <core/logic/modules/general_debug_module.h>
+#include <ecs/logic/debug/modules/general_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 

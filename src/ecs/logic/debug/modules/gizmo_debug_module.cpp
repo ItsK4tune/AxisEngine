@@ -1,5 +1,5 @@
 #include <ecs/unit/core_components.h>
-#include <core/logic/modules/gizmo_debug_module.h>
+#include <ecs/logic/debug/modules/gizmo_debug_module.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 
@@ -25,7 +25,7 @@
 #include <render/interface/i_render_state_manager.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #include <ecs/logic/entity_manager.h>
 #include <core/logic/service_locator.h>
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <core/interface/i_debug_module.h>
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/i_debug_module.h>
+#include <ecs/logic/debug/debug_system.h>
 #include <entt/entity/entity.hpp>
 #include <functional>
 #include <glm/glm.hpp>

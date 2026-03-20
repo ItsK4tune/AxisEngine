@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/logic/config_loader.h>
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #include <ecs/interface/i_base_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <ecs/interface/i_render_system.h>

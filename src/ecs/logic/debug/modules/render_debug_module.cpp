@@ -1,4 +1,4 @@
-#include <core/logic/modules/render_debug_module.h>
+#include <ecs/logic/debug/modules/render_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -12,7 +12,7 @@
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
 #include <core/app/system_manager.h>
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #include <core/logic/service_locator.h>
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}

@@ -1,5 +1,5 @@
 #include <ecs/unit/core_components.h>
-#include <core/logic/modules/physics_debug_module.h>
+#include <ecs/logic/debug/modules/physics_debug_module.h>
 #include <physics/interface/i_physics_world.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
@@ -22,7 +22,7 @@
 #include <glm/glm.hpp>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #include <core/logic/service_locator.h>
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}

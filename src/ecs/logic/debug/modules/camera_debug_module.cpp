@@ -1,5 +1,5 @@
 #include <ecs/unit/core_components.h>
-#include <core/logic/modules/camera_debug_module.h>
+#include <ecs/logic/debug/modules/camera_debug_module.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 

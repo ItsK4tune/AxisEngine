@@ -30,7 +30,7 @@
 #include <resource/logic/resource_manager.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
-#include <core/logic/debug_system.h>
+#include <ecs/logic/debug/debug_system.h>
 #endif
 
 #include <platform/logic/io_handler.h>
