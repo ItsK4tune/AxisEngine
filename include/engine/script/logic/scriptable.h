@@ -1,13 +1,13 @@
 #pragma once
 
-#include <core/app/runtime_core.h>
-#include <ecs/unit/core_components.h>
-#include <ecs/unit/script_component.h>
-#include <functional>
-#include <scene/logic/scene.h>
-#include <script/type/script_binding.h>
+#include <core/app/engine_accessor.h>
+#include <platform/interface/key.h>
+#include <platform/interface/mouse.h>
+#include <entt/entt.hpp>
 #include <string>
-#include <vector>
+#include <ecs/unit/script_component.h>
+
+class Scene;
 
 class Scriptable : public EngineAccessor
 {
@@ -27,6 +27,24 @@ public:
     virtual void OnEnable() {}
     virtual void OnDisable() {}
     virtual void OnReset() {}
+
+    // Event callbacks
+    virtual void OnCollisionEnter(entt::entity other) {}
+    virtual void OnCollisionExit(entt::entity other) {}
+    virtual void OnCollisionStay(entt::entity other) {}
+
+    virtual void OnTriggerEnter(entt::entity other) {}
+    virtual void OnTriggerExit(entt::entity other) {}
+
+    virtual void OnKeyPress(Key key) {}
+    virtual void OnKeyRelease(Key key) {}
+    virtual void OnMouseButtonPress(Mouse button) {}
+    virtual void OnMouseButtonRelease(Mouse button) {}
+
+    virtual void OnMouseEnter() {}
+    virtual void OnMouseExit() {}
+    virtual void OnMouseOver() {}
+    virtual void OnMouseClicked(Mouse button) {}
 
     void SetEnabled(bool enabled)
     {
@@ -54,13 +72,6 @@ public:
     void IgnoreTagCollision(const std::string& tag1, const std::string& tag2);
     void IgnoreNameCollision(const std::string& name1, const std::string& name2);
 
-    
-
-
-    
-
-    
-
     template <typename T>
     T &GetComponent()
     {
@@ -76,24 +87,21 @@ public:
     template <typename T>
     T *GetScript(entt::entity targetEntity)
     {
-        if (GetScene().registry.all_of<ScriptComponent>(targetEntity))
+        if (GetScene().registry.valid(targetEntity) && GetScene().registry.all_of<ScriptComponent>(targetEntity))
         {
-            auto &nsc = GetScene().registry.get<ScriptComponent>(targetEntity);
-            return dynamic_cast<T *>(nsc.instance);
+            auto &sc = GetScene().registry.get<ScriptComponent>(targetEntity);
+            if (sc.instance)
+            {
+                return dynamic_cast<T *>(sc.instance.get());
+            }
         }
         return nullptr;
     }
 
-    
-
 protected:
     entt::entity m_Entity;
     
-    
-
 private:
     bool m_Enabled = true;
     bool m_RunWhenPaused = false;
-
-    
 };

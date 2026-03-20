@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
 #include <resource/unit/shader.h>
 #include <render/type/graphics_types.h>
 #include <memory>

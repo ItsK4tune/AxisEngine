@@ -29,14 +29,13 @@ public:
 
     std::unique_ptr<Scriptable> Create(const std::string &name);
 
-private:
-    std::unordered_map<std::string, ScriptFactory> m_FactoryMap;
-
-public:
     static std::unordered_map<std::string, ScriptFactory>& GetStaticFactoryMap() {
         static std::unordered_map<std::string, ScriptFactory> staticMap;
         return staticMap;
     }
+
+private:
+    std::unordered_map<std::string, ScriptFactory> m_FactoryMap;
 };
 
 #define GET_MACRO(_1, _2, NAME, ...) NAME

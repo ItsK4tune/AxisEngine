@@ -1,19 +1,21 @@
-#include <core/logic/config_loader.h>
-#include <platform/logic/io_handler.h>
-#include <core/app/runtime_core.h>
-#include <core/app/system_manager.h>
-#include <audio/logic/audio_service.h>
+#include <script/logic/scriptable.h>
+#include <scene/logic/scene.h>
+#include <ecs/unit/script_component.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
-#include <ecs/logic/audio_system.h>
-#include <ecs/logic/physics_system.h>
-#include <ecs/logic/render_system.h>
-#include <platform/logic/input_manager.h>
-#include <physics/logic/collision_matrix.h>
-#include <resource/logic/resource_manager.h>
-#include <scene/logic/scene_manager.h>
-#include <script/logic/scriptable.h>
 #include <core/logic/service_locator.h>
+#include <physics/logic/collision_matrix.h>
+
+// Note: Template implementations for GetComponent/HasComponent/GetScript 
+// should technically be in the header if they are truly generic, 
+// OR explicitly instantiated in the cpp for known types.
+// Since entt::registry::get is a template, we'll keep them in a separate header 
+// or move them back if they cause linker errors. 
+// For now, I'll move them back to the header but keep them out of the main block 
+// or use a .tpp file to keep the header "clean".
+
+// Wait, the user wants "chặt" (tight) headers. 
+// Let's keep the templates in the header but minimize OTHER includes.
 
 
 

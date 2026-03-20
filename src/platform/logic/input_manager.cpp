@@ -40,35 +40,20 @@ void InputManager::Update()
 bool InputManager::GetAction(const std::string &actionName) const
 {
     auto it = m_ActionMap.find(actionName);
-    if (it != m_ActionMap.end())
+    if (it == m_ActionMap.end()) return false;
+
+    for (const auto &binding : it->second.bindings)
     {
-        for (const auto &binding : it->second.bindings)
+        if (binding.type == InputType::Key)
         {
-            if (binding.type == InputType::Key)
-            {
-                if (m_Keyboard.GetKey(static_cast<Key>(binding.code)))
-                    return true;
-            }
-            else if (binding.type == InputType::MouseButton)
-            {
-                if (binding.code == (int)Mouse::Left && m_Mouse.IsLeftButtonPressed())
-                    return true;
-                if (binding.code == (int)Mouse::Right && m_Mouse.IsRightButtonPressed())
-                    return true;
-                if (binding.code == (int)Mouse::Middle && m_Mouse.IsMiddleButtonPressed())
-                    return true;
-                if (binding.code == (int)Mouse::Button4 && m_Mouse.IsMouse4ButtonPressed())
-                    return true;
-                if (binding.code == (int)Mouse::Button5 && m_Mouse.IsMouse5ButtonPressed())
-                    return true;
-                if (binding.code == (int)Mouse::WheelUp && m_Mouse.IsWheelUp())
-                    return true;
-                if (binding.code == (int)Mouse::WheelDown && m_Mouse.IsWheelDown())
-                    return true;
-            }
-            else if (binding.type == InputType::GamepadButton)
-            {
-            }
+            if (m_Keyboard.GetKey(static_cast<Key>(binding.code))) return true;
+        }
+        else if (binding.type == InputType::MouseButton)
+        {
+            Mouse btn = static_cast<Mouse>(binding.code);
+            if (btn == Mouse::WheelUp)   { if (m_Mouse.IsWheelUp()) return true; }
+            else if (btn == Mouse::WheelDown) { if (m_Mouse.IsWheelDown()) return true; }
+            else if (m_Mouse.IsButtonPressed(btn)) return true;
         }
     }
     return false;
@@ -77,35 +62,20 @@ bool InputManager::GetAction(const std::string &actionName) const
 bool InputManager::GetActionDown(const std::string &actionName) const
 {
     auto it = m_ActionMap.find(actionName);
-    if (it != m_ActionMap.end())
+    if (it == m_ActionMap.end()) return false;
+
+    for (const auto &binding : it->second.bindings)
     {
-        for (const auto &binding : it->second.bindings)
+        if (binding.type == InputType::Key)
         {
-            if (binding.type == InputType::Key)
-            {
-                if (const_cast<KeyboardManager &>(m_Keyboard).IsKeyDown(static_cast<Key>(binding.code)))
-                    return true;
-            }
-            else if (binding.type == InputType::MouseButton)
-            {
-                if (binding.code == (int)Mouse::Left && m_Mouse.IsLeftMouseClicked())
-                    return true;
-                if (binding.code == (int)Mouse::Right && m_Mouse.IsRightMouseClicked())
-                    return true;
-                if (binding.code == (int)Mouse::Middle && m_Mouse.IsMiddleMouseClicked())
-                    return true;
-                if (binding.code == (int)Mouse::Button4 && m_Mouse.IsMouse4MouseClicked())
-                    return true;
-                if (binding.code == (int)Mouse::Button5 && m_Mouse.IsMouse5MouseClicked())
-                    return true;
-                if (binding.code == (int)Mouse::WheelUp && m_Mouse.IsWheelUp())
-                    return true;
-                if (binding.code == (int)Mouse::WheelDown && m_Mouse.IsWheelDown())
-                    return true;
-            }
-            else if (binding.type == InputType::GamepadButton)
-            {
-            }
+            if (const_cast<KeyboardManager &>(m_Keyboard).IsKeyDown(static_cast<Key>(binding.code))) return true;
+        }
+        else if (binding.type == InputType::MouseButton)
+        {
+            Mouse btn = static_cast<Mouse>(binding.code);
+            if (btn == Mouse::WheelUp)   { if (m_Mouse.IsWheelUp()) return true; }
+            else if (btn == Mouse::WheelDown) { if (m_Mouse.IsWheelDown()) return true; }
+            else if (m_Mouse.IsMouseClicked(btn)) return true;
         }
     }
     return false;
@@ -114,31 +84,18 @@ bool InputManager::GetActionDown(const std::string &actionName) const
 bool InputManager::GetActionUp(const std::string &actionName) const
 {
     auto it = m_ActionMap.find(actionName);
-    if (it != m_ActionMap.end())
+    if (it == m_ActionMap.end()) return false;
+
+    for (const auto &binding : it->second.bindings)
     {
-        for (const auto &binding : it->second.bindings)
+        if (binding.type == InputType::Key)
         {
-            if (binding.type == InputType::Key)
-            {
-                if (m_Keyboard.GetKeyUp(static_cast<Key>(binding.code)))
-                    return true;
-            }
-            else if (binding.type == InputType::MouseButton)
-            {
-                if (binding.code == (int)Mouse::Left && m_Mouse.IsLeftMouseReleased())
-                    return true;
-                if (binding.code == (int)Mouse::Right && m_Mouse.IsRightMouseReleased())
-                    return true;
-                if (binding.code == (int)Mouse::Middle && m_Mouse.IsMiddleMouseReleased())
-                    return true;
-                if (binding.code == (int)Mouse::Button4 && m_Mouse.IsMouse4MouseReleased())
-                    return true;
-                if (binding.code == (int)Mouse::Button5 && m_Mouse.IsMouse5MouseReleased())
-                    return true;
-            }
-            else if (binding.type == InputType::GamepadButton)
-            {
-            }
+            if (m_Keyboard.GetKeyUp(static_cast<Key>(binding.code))) return true;
+        }
+        else if (binding.type == InputType::MouseButton)
+        {
+            Mouse btn = static_cast<Mouse>(binding.code);
+            if (m_Mouse.IsMouseReleased(btn)) return true;
         }
     }
     return false;

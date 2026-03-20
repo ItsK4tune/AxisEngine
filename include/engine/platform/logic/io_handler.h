@@ -5,11 +5,11 @@
 #include <memory>
 #include <platform/interface/i_window.h>
 #include <platform/logic/input_manager.h>
+#include <platform/logic/keyboard_manager.h>
+#include <platform/logic/mouse_manager.h>
 #include <platform/logic/monitor_manager.h>
 
 class IGraphicsContext;
-class KeyboardManager;
-class MouseManager;
 
 /**
  * @brief Handles window, graphics, and input subsystems.
@@ -36,7 +36,7 @@ public:
     KeyboardManager& GetKeyboard() const { return *m_KeyboardManager; }
     MouseManager& GetMouse() const { return *m_MouseManager; }
     InputManager& GetInputManager() const { return *m_InputManager; }
-    IGraphicsContext& GetGraphicsContext() const { return *m_Graphics; }
+    IGraphicsContext& GetGraphicsContext() const;
 
 private:
     std::unique_ptr<IGraphicsContext> m_Graphics;

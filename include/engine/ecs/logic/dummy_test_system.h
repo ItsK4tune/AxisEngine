@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/logic/logger.h>
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_update_system.h>
 
 class DummyTestSystem : public IUpdateSystem
 {

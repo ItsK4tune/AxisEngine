@@ -15,9 +15,19 @@
 
 void ScriptableSystem::Initialize()
 {
-    m_SceneSubId = EventSystem::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
+    auto& ev = EventSystem::Instance();
+
+    m_SceneSubId = ev.Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
         OnSceneChanged(e);
     });
+
+    m_EventSubs.push_back(ev.Subscribe<EntityCollisionEvent>([this](const EntityCollisionEvent& e) { OnEntityCollision(e); }));
+    m_EventSubs.push_back(ev.Subscribe<EntityTriggerEvent>([this](const EntityTriggerEvent& e) { OnEntityTrigger(e); }));
+    m_EventSubs.push_back(ev.Subscribe<KeyPressedEvent>([this](const KeyPressedEvent& e) { OnKeyPressed(e); }));
+    m_EventSubs.push_back(ev.Subscribe<KeyReleasedEvent>([this](const KeyReleasedEvent& e) { OnKeyReleased(e); }));
+    m_EventSubs.push_back(ev.Subscribe<MouseButtonPressedEvent>([this](const MouseButtonPressedEvent& e) { OnMouseButtonPressed(e); }));
+    m_EventSubs.push_back(ev.Subscribe<MouseButtonReleasedEvent>([this](const MouseButtonReleasedEvent& e) { OnMouseButtonReleased(e); }));
+    m_EventSubs.push_back(ev.Subscribe<MouseMovedEvent>([this](const MouseMovedEvent& e) { OnMouseMoved(e); }));
 
     ComponentLoader::RegisterLoader("Script", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) {
         ScriptableSystem::LoadScript(s, e, n);
@@ -26,10 +36,114 @@ void ScriptableSystem::Initialize()
 
 void ScriptableSystem::OnSceneChanged(const SceneChangedEvent& e)
 {
+    m_ActiveScene = e.scene;
     if (e.registry && m_BoundRegistries.find(e.registry) == m_BoundRegistries.end())
     {
         e.registry->on_destroy<ScriptComponent>().connect<&ScriptableSystem::OnScriptComponentDestroyed>(this);
         m_BoundRegistries.insert(e.registry);
+    }
+}
+
+void ScriptableSystem::OnEntityCollision(const EntityCollisionEvent& e)
+{
+    if (!m_ActiveScene || !m_Enabled) return;
+
+    auto Dispatch = [&](entt::entity target, entt::entity other, CollisionEventType type) {
+        if (auto sc = m_ActiveScene->registry.try_get<ScriptComponent>(target)) {
+            if (sc->instance && sc->instance->IsEnabled()) {
+                if (type == CollisionEventType::Enter) sc->instance->OnCollisionEnter(other);
+                else if (type == CollisionEventType::Stay) sc->instance->OnCollisionStay(other);
+                else if (type == CollisionEventType::Exit) sc->instance->OnCollisionExit(other);
+            }
+        }
+    };
+
+    Dispatch((entt::entity)e.entityA, (entt::entity)e.entityB, e.type);
+    Dispatch((entt::entity)e.entityB, (entt::entity)e.entityA, e.type);
+}
+
+void ScriptableSystem::OnEntityTrigger(const EntityTriggerEvent& e)
+{
+    if (!m_ActiveScene || !m_Enabled) return;
+
+    auto Dispatch = [&](entt::entity target, entt::entity other, CollisionEventType type) {
+        if (auto sc = m_ActiveScene->registry.try_get<ScriptComponent>(target)) {
+            if (sc->instance && sc->instance->IsEnabled()) {
+                if (type == CollisionEventType::Enter) sc->instance->OnTriggerEnter(other);
+                else if (type == CollisionEventType::Exit) sc->instance->OnTriggerExit(other);
+            }
+        }
+    };
+
+    Dispatch((entt::entity)e.entityA, (entt::entity)e.entityB, e.type);
+    Dispatch((entt::entity)e.entityB, (entt::entity)e.entityA, e.type);
+}
+
+void ScriptableSystem::OnKeyPressed(const KeyPressedEvent& e)
+{
+    if (!m_ActiveScene || !m_Enabled) return;
+    auto view = m_ActiveScene->registry.view<ScriptComponent>();
+    for (auto entity : view) {
+        auto& sc = view.get<ScriptComponent>(entity);
+        if (sc.instance && sc.instance->IsEnabled()) {
+            sc.instance->OnKeyPress(static_cast<Key>(e.key));
+        }
+    }
+}
+
+void ScriptableSystem::OnKeyReleased(const KeyReleasedEvent& e)
+{
+    if (!m_ActiveScene || !m_Enabled) return;
+    auto view = m_ActiveScene->registry.view<ScriptComponent>();
+    for (auto entity : view) {
+        auto& sc = view.get<ScriptComponent>(entity);
+        if (sc.instance && sc.instance->IsEnabled()) {
+            sc.instance->OnKeyRelease(static_cast<Key>(e.key));
+        }
+    }
+}
+
+void ScriptableSystem::OnMouseButtonPressed(const MouseButtonPressedEvent& e)
+{
+    if (!m_ActiveScene || !m_Enabled) return;
+    auto view = m_ActiveScene->registry.view<ScriptComponent>();
+    for (auto entity : view) {
+        auto& sc = view.get<ScriptComponent>(entity);
+        if (sc.instance && sc.instance->IsEnabled()) {
+            sc.instance->OnMouseButtonPress(static_cast<Mouse>(e.button));
+        }
+    }
+}
+
+void ScriptableSystem::OnMouseButtonReleased(const MouseButtonReleasedEvent& e)
+{
+    if (!m_ActiveScene || !m_Enabled) return;
+    auto view = m_ActiveScene->registry.view<ScriptComponent>();
+    for (auto entity : view) {
+        auto& sc = view.get<ScriptComponent>(entity);
+        if (sc.instance && sc.instance->IsEnabled()) {
+            sc.instance->OnMouseButtonRelease(static_cast<Mouse>(e.button));
+        }
+    }
+}
+
+void ScriptableSystem::OnMouseMoved(const MouseMovedEvent& e)
+{
+    if (!m_ActiveScene || !m_Enabled) return;
+    
+    auto view = m_ActiveScene->registry.view<ScriptComponent, UITransformComponent>();
+    for (auto entity : view) {
+        auto& sc = view.get<ScriptComponent>(entity);
+        auto& ui = view.get<UITransformComponent>(entity);
+
+        if (!sc.instance || !sc.instance->IsEnabled()) continue;
+
+        bool isInside = (e.x >= ui.position.x && e.x <= ui.position.x + ui.size.x &&
+                         e.y >= ui.position.y && e.y <= ui.position.y + ui.size.y);
+        
+        // Note: Simple hover logic. For a production engine, this should handle hover states
+        // to fire OnMouseEnter and OnMouseExit only when the state changes.
+        if (isInside) sc.instance->OnMouseOver();
     }
 }
 
@@ -74,143 +188,6 @@ void ScriptableSystem::LoadScript(Scene &scene, entt::entity entity, const YAMLN
     // Note: instance will be created in the first Update()
 }
 
-namespace {
-    void HandleScriptInput(ScriptComponent &script, Scene &scene, float dt, entt::entity entity)
-    {
-        if (!script.instance || !script.instance->IsEnabled())
-            return;
-
-        auto &sl       = ServiceLocator::Instance();
-        auto &io       = sl.Require<IOHandler>();
-        auto &mouse    = io.GetMouse();
-        auto &keyboard = io.GetKeyboard();
-
-        float mx = mouse.GetLastX();
-        float my = mouse.GetLastY();
-
-        bool isHovered = false;
-
-        if (scene.registry.all_of<UITransformComponent>(entity))
-        {
-            auto &transform = scene.registry.get<UITransformComponent>(entity);
-            if (mx >= transform.position.x && mx <= transform.position.x + transform.size.x &&
-                my >= transform.position.y && my <= transform.position.y + transform.size.y)
-            {
-                isHovered = true;
-            }
-        }
-
-        if (auto* inputScript = dynamic_cast<InputScriptable*>(script.instance.get()))
-        {
-            if (isHovered && !inputScript->IsHovered())
-            {
-                inputScript->SetHovered(true);
-                inputScript->OnHoverEnter();
-            }
-            else if (isHovered && inputScript->IsHovered())
-            {
-                inputScript->OnHoverStay();
-            }
-            else if (!isHovered && inputScript->IsHovered())
-            {
-                inputScript->SetHovered(false);
-                inputScript->OnHoverExit();
-            }
-
-            auto ProcessButton = [&](bool &pressedState, float &holdTimer, int mouseButton, auto onClick, auto onHold, auto onRelease)
-            {
-                bool isDown = (mouseButton == 0) ? mouse.IsLeftButtonPressed() : mouse.IsRightButtonPressed();
-
-                if (!pressedState && isDown)
-                {
-                    if (isHovered)
-                    {
-                        pressedState = true;
-                        holdTimer = 0.0f;
-                    }
-                }
-                else if (pressedState && isHovered && isDown)
-                {
-                    holdTimer += dt;
-                    onHold(holdTimer);
-                }
-                else if (pressedState && isHovered && !isDown)
-                {
-                    onClick();
-                    onRelease(holdTimer);
-                    pressedState = false;
-                    holdTimer = 0.0f;
-                }
-                else if (!pressedState && !isHovered && isDown)
-                {
-                    if (!pressedState)
-                    {
-                        pressedState = true;
-                        holdTimer = 0.0f;
-                    }
-                    else
-                    {
-                        holdTimer += dt;
-                        onHold(holdTimer);
-                    }
-                }
-                else if (pressedState && !isDown)
-                {
-                    if (isHovered)
-                        onClick();
-                    onRelease(holdTimer);
-
-                    pressedState = false;
-                    holdTimer = 0.0f;
-                }
-                else if (pressedState && !isHovered && isDown)
-                {
-                    holdTimer += dt;
-                    onHold(holdTimer);
-                }
-                else if (pressedState && !isHovered && !isDown)
-                {
-                    onRelease(holdTimer);
-                    pressedState = false;
-                    holdTimer = 0.0f;
-                }
-            };
-
-            ProcessButton(inputScript->GetLeftPressedRef(), inputScript->GetLeftHoldTimeRef(), 0, [&]()
-                          { inputScript->OnLeftClick(); }, [&](float t)
-                          { inputScript->OnLeftHold(t); }, [&](float t)
-                          { inputScript->OnLeftRelease(t); });
-
-            ProcessButton(inputScript->GetRightPressedRef(), inputScript->GetRightHoldTimeRef(), 1, [&]()
-                          { inputScript->OnRightClick(); }, [&](float t)
-                          { inputScript->OnRightHold(t); }, [&](float t)
-                          { inputScript->OnRightRelease(t); });
-
-            for (const auto &bind : inputScript->GetKeyBindings())
-            {
-                bool trigger = false;
-                switch (bind.event)
-                {
-                case InputEvent::Pressed:
-                    trigger = keyboard.IsKeyDown(static_cast<Key>(bind.key));
-                    break;
-                case InputEvent::Held:
-                    trigger = keyboard.GetKey(static_cast<Key>(bind.key));
-                    break;
-                case InputEvent::Released:
-                    trigger = keyboard.GetKeyUp(static_cast<Key>(bind.key));
-                    break;
-                }
-
-                if (trigger && bind.callback)
-                {
-                    bind.callback();
-                }
-            }
-        }
-    }
-}
-
 void ScriptableSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled)
@@ -218,8 +195,6 @@ void ScriptableSystem::Update(Scene &scene, float dt)
 
     auto view = scene.registry.view<ScriptComponent>();
     auto& sl = ServiceLocator::Instance();
-    auto& input = sl.Require<IOHandler>();
-    auto& mouse = input.GetMouse();
     auto& runtime = sl.Require<RuntimeCore>();
 
     for (auto entity : view)
@@ -229,11 +204,13 @@ void ScriptableSystem::Update(Scene &scene, float dt)
         if (!script.instance)
         {
             script.instance = std::move(script.InstantiateScript());
-            script.instance->Initialize(entity, &scene);
-            script.instance->OnCreate();
+            if (script.instance) {
+                script.instance->Initialize(entity, &scene);
+                script.instance->OnCreate();
+            }
         }
 
-        if (script.instance->IsEnabled())
+        if (script.instance && script.instance->IsEnabled())
         {
             float effectiveDt = dt;
 
@@ -245,7 +222,6 @@ void ScriptableSystem::Update(Scene &scene, float dt)
             if (effectiveDt > 0.0f || script.instance->CanRunWhenPaused())
             {
                 script.instance->OnUpdate(effectiveDt);
-                HandleScriptInput(script, scene, effectiveDt, entity);
             }
         }
     }

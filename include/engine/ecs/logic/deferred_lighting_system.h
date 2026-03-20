@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ecs/interface/i_system.h>
+#include <ecs/interface/i_render_system.h>
 #include <memory>
 
 class DeferredLightingSystem : public IRenderSystem

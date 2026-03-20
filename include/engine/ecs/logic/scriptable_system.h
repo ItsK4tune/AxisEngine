@@ -24,6 +24,14 @@ public:
     void OnSceneChanged(const SceneChangedEvent& e);
     void OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity);
 
+    void OnEntityCollision(const EntityCollisionEvent& e);
+    void OnEntityTrigger(const EntityTriggerEvent& e);
+    void OnKeyPressed(const KeyPressedEvent& e);
+    void OnKeyReleased(const KeyReleasedEvent& e);
+    void OnMouseButtonPressed(const MouseButtonPressedEvent& e);
+    void OnMouseButtonReleased(const MouseButtonReleasedEvent& e);
+    void OnMouseMoved(const MouseMovedEvent& e);
+
     static void LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node);
 
     std::vector<entt::id_type> GetReadComponents() const override;
@@ -32,5 +40,7 @@ public:
 private:
     bool m_Enabled = true;
     uint32_t m_SceneSubId = 0;
+    std::vector<uint32_t> m_EventSubs;
     std::set<entt::registry*> m_BoundRegistries;
+    Scene* m_ActiveScene = nullptr;
 };

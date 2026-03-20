@@ -83,26 +83,17 @@ public:
     std::vector<std::string> GetRegisteredLoaderTypes() const;
 
 
-    // Accessors for specialized managers (Service Locator pattern)
+    // specialized managers accessors
     ShaderManager& GetShaderManager()    { return *m_ShaderManager; }
     TextureManager& GetTextureManager()  { return *m_TextureManager; }
     ModelManager& GetModelManager()      { return *m_ModelManager; }
-    AudioAssetManager& GetAudioManager()      { return *m_AudioManager; }
+    AudioAssetManager& GetAudioManager() { return *m_AudioManager; }
     FontManager& GetFontManager()        { return *m_FontManager; }
     SkyboxManager& GetSkyboxManager()    { return *m_SkyboxManager; }
     AnimationManager& GetAnimationManager() { return *m_AnimationManager; }
     VideoManager& GetVideoManager()      { return *m_VideoManager; }
 
     ModelInstanceManager& GetModelInstanceManager() { return m_ModelInstanceManager; }
-
-    // Path helpers
-    std::string GetTextureNameFromPath(const std::string& path);
-    std::string GetFontNameFromPath(const std::string& path);
-    std::string GetModelNameFromPath(const std::string& path);
-    std::string GetShaderNameFromPath(const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
-    std::string GetSoundNameFromPath(const std::string& path);
-    std::string GetAnimationNameFromPath(const std::string& path);
-    std::string GetSkyboxNameFromPaths(const std::vector<std::string>& faces);
 
 private:
     void ReloadShader(const std::string& name);
@@ -124,15 +115,6 @@ private:
     std::mutex           m_ResourceMutex;
 
     std::unordered_map<std::string, std::shared_ptr<UIModel>> m_UIModels;
-
-    // Name-to-path and path-to-name mappings (kept for facade convenience)
-    std::unordered_map<std::string, std::string> m_PathToTextureName;
-    std::unordered_map<std::string, std::string> m_PathToFontName;
-    std::unordered_map<std::string, std::string> m_PathToModelName;
-    std::unordered_map<std::string, std::string> m_PathToShaderName;
-    std::unordered_map<std::string, std::string> m_PathToSoundName;
-    std::unordered_map<std::string, std::string> m_PathToAnimationName;
-    std::unordered_map<std::string, std::string> m_PathToSkyboxName;
 
     std::unordered_map<std::string, std::unique_ptr<ILoaderStrategy>> m_Strategies;
 

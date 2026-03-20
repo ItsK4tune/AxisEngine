@@ -1,5 +1,7 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
+#include <platform/logic/keyboard_manager.h>
+#include <platform/logic/mouse_manager.h>
 #include <platform/logic/input_manager.h>
 #include <render/interface/i_graphics_context.h>
 #include <core/logic/logger.h>
@@ -100,4 +102,9 @@ void IOHandler::OnScroll(double xoffset, double yoffset)
 {
     if (m_MouseManager)
         m_MouseManager->UpdateScroll(xoffset, yoffset);
+}
+
+IGraphicsContext& IOHandler::GetGraphicsContext() const
+{
+    return *m_Graphics;
 }
