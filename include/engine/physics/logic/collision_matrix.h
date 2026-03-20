@@ -28,7 +28,7 @@ struct StringPairEqual
 class CollisionMatrix
 {
 public:
-    static CollisionMatrix &Instance();
+    CollisionMatrix() = default;
 
     void IgnoreTagCollision(const std::string &tag1, const std::string &tag2);
     void IgnoreNameCollision(const std::string &name1, const std::string &name2);
@@ -38,9 +38,6 @@ public:
     bool CanCollide(const std::string &tag1, const std::string &tag2, const std::string &name1, const std::string &name2) const;
 
 private:
-    CollisionMatrix() = default;
-    ~CollisionMatrix() = default;
-
     std::unordered_set<std::pair<std::string, std::string>, StringPairHash, StringPairEqual> m_IgnoredTags;
     std::unordered_set<std::pair<std::string, std::string>, StringPairHash, StringPairEqual> m_IgnoredNames;
 };

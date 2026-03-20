@@ -11,7 +11,8 @@
 class ScriptRegistry
 {
 public:
-    static ScriptRegistry &Instance();
+    ScriptRegistry() = default;
+    void Initialize();
 
     using ScriptFactory = std::function<std::unique_ptr<Scriptable>()>;
 
@@ -30,6 +31,12 @@ public:
 
 private:
     std::unordered_map<std::string, ScriptFactory> m_FactoryMap;
+
+public:
+    static std::unordered_map<std::string, ScriptFactory>& GetStaticFactoryMap() {
+        static std::unordered_map<std::string, ScriptFactory> staticMap;
+        return staticMap;
+    }
 };
 
 #define GET_MACRO(_1, _2, NAME, ...) NAME
@@ -40,7 +47,8 @@ private:
     {                                                         \
         AutoRegister_##TYPE()                                 \
         {                                                     \
-            ScriptRegistry::Instance().Register<TYPE>(#TYPE); \
+            ScriptRegistry::GetStaticFactoryMap()[#TYPE] = []() -> std::unique_ptr<Scriptable> \
+            { return std::make_unique<TYPE>(); };             \
         }                                                     \
     };                                                        \
     static AutoRegister_##TYPE global_ver_##TYPE;
@@ -50,7 +58,8 @@ private:
     {                                                        \
         AutoRegister_##TYPE()                                \
         {                                                    \
-            ScriptRegistry::Instance().Register<TYPE>(NAME); \
+            ScriptRegistry::GetStaticFactoryMap()[NAME] = []() -> std::unique_ptr<Scriptable> \
+            { return std::make_unique<TYPE>(); };            \
         }                                                    \
     };                                                       \
     static AutoRegister_##TYPE global_ver_##TYPE;

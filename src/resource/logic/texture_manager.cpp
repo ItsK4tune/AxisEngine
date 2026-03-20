@@ -68,6 +68,10 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
             m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
 
+            if (m_MaxAnisotropy > 1.0f) {
+                m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy, m_MaxAnisotropy);
+            }
+
             auto tex = std::make_shared<Texture>();
             tex->id = textureID;
             tex->path = path;
@@ -105,7 +109,7 @@ void TextureManager::Unload(const std::string& name) {
     }
 }
 
-void TextureManager::Update() {
+void TextureManager::Update(float dt) {
     std::lock_guard<std::mutex> lock(m_AsyncMutex);
     auto it = m_AsyncLoads.begin();
     while (it != m_AsyncLoads.end()) {
@@ -125,6 +129,10 @@ void TextureManager::Update() {
                 m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
                 m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
                 m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
+
+                if (m_MaxAnisotropy > 1.0f) {
+                    m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy, m_MaxAnisotropy);
+                }
 
                 if (auto tex = m_Cache.Get(data.name)) {
                     tex->id = textureID;

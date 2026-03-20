@@ -4,7 +4,6 @@
 #include <scene/logic/scene.h>
 
 class IGraphicsContext;
-struct AppConfig;
 
 class SkyboxRenderSystem : public IRenderSystem
 {
@@ -22,6 +21,8 @@ public:
 
 private:
     IGraphicsContext* m_Context = nullptr;
-    const struct AppConfig* m_Config = nullptr;
+    float m_Intensity = 1.0f;
+    uint32_t m_ConfigSubId = 0;
+    uint32_t m_SceneSubId = 0;
     bool m_Enabled = true;
 };

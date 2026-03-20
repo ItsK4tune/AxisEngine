@@ -1,11 +1,6 @@
 #include <core/logic/unified_loader.h>
 #include <core/logic/logger.h>
 
-UnifiedLoader& UnifiedLoader::Instance() {
-    static UnifiedLoader instance;
-    return instance;
-}
-
 void UnifiedLoader::Register(std::unique_ptr<ILoaderStrategy> strategy) {
     if (!strategy) return;
     std::string name = strategy->GetName();

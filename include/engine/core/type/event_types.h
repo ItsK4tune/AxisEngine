@@ -41,6 +41,10 @@ struct EngineShutdownEvent {};
 
 // --- Config Events ---
 
+#include <core/logic/logger_types.h>
+
+#include <core/type/app_config.h>
+
 struct ConfigChangedEvent { 
     enum ChangeType {
         None = 0,
@@ -53,8 +57,10 @@ struct ConfigChangedEvent {
         All = 0xFFFFFFFF
     };
     uint32_t bitmask = All;
+    AppConfig config;
 
-    ConfigChangedEvent(uint32_t mask = All) : bitmask(mask) {}
+    ConfigChangedEvent(const AppConfig& cfg, uint32_t mask = All) 
+        : config(cfg), bitmask(mask) {}
 };
 
 // --- Window Events ---

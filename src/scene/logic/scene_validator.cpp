@@ -97,6 +97,7 @@ namespace SceneHandlers
 
         LOGGER_WARN("SceneValidator") << "No Active Camera found in scene! Creating Default Spectator Camera.";
 
+        std::string scriptName = "DefaultCameraController";
         entt::entity camEntity = EntityManager::CreateEntity(scene);
 
         auto &info = scene.registry.get<InfoComponent>(camEntity);
@@ -121,15 +122,18 @@ namespace SceneHandlers
             cam.aspectRatio = 16.0f / 9.0f;
         }
 
-        std::string scriptName = "DefaultCameraController";
-        auto scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+        auto scriptRegistry = ServiceLocator::Instance().Resolve<ScriptRegistry>();
+        auto scriptInstance = scriptRegistry ? scriptRegistry->Create(scriptName) : nullptr;
 
         if (scriptInstance)
         {
             auto &scriptComp = scene.registry.emplace<ScriptComponent>(camEntity);
             scriptComp.instance = std::move(scriptInstance);
             scriptComp.InstantiateScript = [scriptName]()
-            { return ScriptRegistry::Instance().Create(scriptName); };
+            {
+                auto registry = ServiceLocator::Instance().Resolve<ScriptRegistry>();
+                return registry ? registry->Create(scriptName) : nullptr;
+            };
             scriptComp.DestroyScript = [](ScriptComponent *nsc)
             { nsc->instance.reset(); };
 

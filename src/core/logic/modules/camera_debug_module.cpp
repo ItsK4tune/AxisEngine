@@ -118,13 +118,13 @@ void CameraDebugModule::ToggleDebugCamera()
             cam.farPlane = 1000.0f;
 
             std::string scriptName = "DefaultCameraController";
-            auto scriptInstance = ScriptRegistry::Instance().Create(scriptName);
+            auto scriptInstance = ServiceLocator::Instance().Require<ScriptRegistry>().Create(scriptName);
             if (scriptInstance)
             {
                 auto &scriptComp = registry.emplace<ScriptComponent>(m_DebugCamera);
                 scriptComp.instance = std::move(scriptInstance);
                 scriptComp.InstantiateScript = [scriptName]()
-                { return ScriptRegistry::Instance().Create(scriptName); };
+                { return ServiceLocator::Instance().Require<ScriptRegistry>().Create(scriptName); };
                 scriptComp.DestroyScript = [](ScriptComponent *nsc)
                 { nsc->instance.reset(); };
                 scriptComp.instance->Initialize(m_DebugCamera, &scene);

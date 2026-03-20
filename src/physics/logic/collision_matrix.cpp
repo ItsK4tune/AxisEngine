@@ -1,11 +1,5 @@
-#include <iostream>
 #include <physics/logic/collision_matrix.h>
-
-CollisionMatrix& CollisionMatrix::Instance()
-{
-    static CollisionMatrix instance;
-    return instance;
-}
+#include <iostream>
 
 void CollisionMatrix::IgnoreTagCollision(const std::string& tag1, const std::string& tag2)
 {

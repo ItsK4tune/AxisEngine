@@ -5,7 +5,6 @@
 #include <platform/interface/input_codes.h>
 #include <platform/type/input_binding.h>
 #include <core/logic/event_system.h>
-#include <scene/logic/scene.h>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -154,13 +153,4 @@ private:
     const IWindow &m_Window;
     std::unordered_map<std::string, InputActionBinding> m_ActionMap;
     std::unordered_map<std::string, bool> m_PreviousState;
-};
-
-
-// --- Script Input Handler ---
-
-class ScriptInputHandler
-{
-public:
-    static void HandleInput(ScriptComponent& script, Scene& scene, float dt, entt::entity entity);
 };

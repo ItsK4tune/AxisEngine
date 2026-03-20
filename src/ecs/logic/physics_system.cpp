@@ -103,7 +103,8 @@ void PhysicsSystem::Update(Scene &scene, float dt)
                 nameB = info.name;
             }
 
-            return CollisionMatrix::Instance().CanCollide(tagA, tagB, nameA, nameB);
+            auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
+            return matrix ? matrix->CanCollide(tagA, tagB, nameA, nameB) : true;
         });
 
         scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);

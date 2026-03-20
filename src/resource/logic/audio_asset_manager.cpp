@@ -18,10 +18,14 @@ std::shared_ptr<IAudioSource> AudioAssetManager::Load(const std::string& name, c
     return nullptr;
 }
 
-std::shared_ptr<IAudioSource> AudioAssetManager::Get(const std::string& name) {
-    return m_Cache.Get(name);
+std::shared_ptr<IAudioSource> AudioAssetManager::Get(const std::string& nameOrPath) {
+    return m_Cache.Get(nameOrPath);
 }
 
-void AudioAssetManager::Unload(const std::string& name) {
-    m_Cache.Remove(name);
+void AudioAssetManager::Unload(const std::string& nameOrPath) {
+    m_Cache.Remove(nameOrPath);
+}
+
+void AudioAssetManager::Clear() {
+    m_Cache.Clear();
 }

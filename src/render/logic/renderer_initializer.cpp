@@ -12,7 +12,6 @@
 #include <render/logic/renderer_initializer.h>
 #include <render/interface/i_graphics_context.h>
 #include <physics/strategy/bullet/bullet_debug_drawer.h>
-#include <resource/logic/texture_cache.h>
 
 void RendererInitializer::Initialize(IGraphicsContext &context)
 {
@@ -20,7 +19,6 @@ void RendererInitializer::Initialize(IGraphicsContext &context)
                       &context.GetTextureManager(),
                       &context.GetDrawContext());
 
-    TextureCache::SetTextureManager(&context.GetTextureManager());
     Shadow::SetManagers(&context.GetRenderTargetManager(),
                         &context.GetTextureManager(),
                         &context.GetDrawContext());

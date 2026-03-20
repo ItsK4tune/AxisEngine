@@ -7,9 +7,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-// Forward declarations
-class Scriptable;
-
 // --- Info ---
 
 struct InfoComponent
@@ -19,25 +16,6 @@ struct InfoComponent
     std::string sceneName = "";
     uint32_t layer = 1;
     int renderOrder = 0;
-};
-
-// --- Script ---
-
-struct ScriptComponent
-{
-    std::unique_ptr<Scriptable> instance;
-    std::function<std::unique_ptr<Scriptable>()> InstantiateScript;
-    std::function<void(ScriptComponent *)> DestroyScript;
-
-    template <typename T>
-    void Bind()
-    {
-        InstantiateScript = []() { return std::make_unique<T>(); };
-        DestroyScript = [](ScriptComponent *sc)
-        {
-            sc->instance.reset();
-        };
-    }
 };
 
 // --- Camera ---

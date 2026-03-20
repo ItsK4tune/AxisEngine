@@ -12,10 +12,7 @@
  */
 class UnifiedLoader {
 public:
-    /**
-     * @brief Access the singleton instance.
-     */
-    static UnifiedLoader& Instance();
+    UnifiedLoader() = default;
 
     /**
      * @brief Registers a new loading strategy.
@@ -32,8 +29,6 @@ public:
      */
     std::vector<std::string> GetRegisteredTypes() const;
 
-private:
-    UnifiedLoader() = default;
     
     std::unordered_map<std::string, std::unique_ptr<ILoaderStrategy>> m_Strategies;
 };

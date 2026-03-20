@@ -31,13 +31,13 @@ std::shared_ptr<Shader> ShaderManager::Load(const std::string& name,
     return shader;
 }
 
-std::shared_ptr<Shader> ShaderManager::Get(const std::string& name) {
-    return m_Cache.Get(name);
+std::shared_ptr<Shader> ShaderManager::Get(const std::string& nameOrPath) {
+    return m_Cache.Get(nameOrPath);
 }
 
-void ShaderManager::Unload(const std::string& name) {
-    m_Cache.Remove(name);
-    m_Paths.erase(name);
+void ShaderManager::Unload(const std::string& nameOrPath) {
+    m_Cache.Remove(nameOrPath);
+    m_Paths.erase(nameOrPath);
 }
 
 void ShaderManager::Reload(const std::string& name) {

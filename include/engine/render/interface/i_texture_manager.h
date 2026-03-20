@@ -15,6 +15,7 @@ public:
     virtual void DeleteTextures(int n, const unsigned int* textures) = 0;
 
     virtual void TexParameteri(TextureType target, TextureParameter pname, int param) = 0;
+    virtual void TexParameterf(TextureType target, TextureParameter pname, float param) = 0;
     virtual void TexParameterfv(TextureType target, TextureParameter pname, const float *params) = 0;
     virtual void GenerateMipmap(TextureType target) = 0;
 

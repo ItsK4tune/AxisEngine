@@ -27,10 +27,14 @@ std::shared_ptr<Animation> AnimationManager::Load(const std::string& name, const
     return nullptr;
 }
 
-std::shared_ptr<Animation> AnimationManager::Get(const std::string& name) {
-    return m_Cache.Get(name);
+std::shared_ptr<Animation> AnimationManager::Get(const std::string& nameOrPath) {
+    return m_Cache.Get(nameOrPath);
 }
 
-void AnimationManager::Unload(const std::string& name) {
-    m_Cache.Remove(name);
+void AnimationManager::Unload(const std::string& nameOrPath) {
+    m_Cache.Remove(nameOrPath);
+}
+
+void AnimationManager::Clear() {
+    m_Cache.Clear();
 }

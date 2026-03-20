@@ -12,7 +12,7 @@
 #include <iostream>
 #include <scene/logic/component_loader.h>
 #include <core/logic/loader_utils.h>
-#include <script/logic/script_registry.h>
+#include <core/logic/service_locator.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <physics/logic/physics_loader.h>
@@ -62,7 +62,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("UIRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIRenderer(s, e, n, r); });
     RegisterLoader("UIText", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIText(s, e, n, r); });
     RegisterLoader("SkyboxRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadSkyboxRenderer(s, e, n, r); });
-    RegisterLoader("Script", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadScript(s, e, n); });
+    // RegisterLoader("Script", ...); // Registered by ScriptableSystem
     RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAudioSource(s, e, n, r); });
     RegisterLoader("VideoPlayer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadVideoPlayer(s, e, n); });
     RegisterLoader("ParticleEmitter", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadParticleEmitter(s, e, n, r); });
@@ -511,28 +511,6 @@ void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, cons
     EntityManager::SetActiveSkybox(scene, entity);
 }
 
-void ComponentLoader::LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node)
-{
-    LoaderUtils::ValidateKeys(node, {"Class"}, "Script");
-
-    std::string className = node.GetChildValue("Class");
-    if (className.empty())
-        LOGGER_WARN("ComponentLoader") << "Script component missing 'Class' property";
-
-    auto &scriptComp = scene.registry.emplace<ScriptComponent>(entity);
-    auto scriptInstance = ScriptRegistry::Instance().Create(className);
-
-    if (scriptInstance)
-    {
-        scriptComp.instance = std::move(scriptInstance);
-        scriptComp.InstantiateScript = [className]()
-        { return ScriptRegistry::Instance().Create(className); };
-        scriptComp.DestroyScript = [](ScriptComponent *nsc)
-        { nsc->instance.reset(); };
-        scriptComp.instance->Initialize(entity, &scene);
-        scriptComp.instance->OnCreate();
-    }
-}
 
 void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {

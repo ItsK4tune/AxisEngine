@@ -17,10 +17,14 @@ std::shared_ptr<Skybox> SkyboxManager::Load(const std::string& name, const std::
     return nullptr;
 }
 
-std::shared_ptr<Skybox> SkyboxManager::Get(const std::string& name) {
-    return m_Cache.Get(name);
+std::shared_ptr<Skybox> SkyboxManager::Get(const std::string& nameOrPath) {
+    return m_Cache.Get(nameOrPath);
 }
 
-void SkyboxManager::Unload(const std::string& name) {
-    m_Cache.Remove(name);
+void SkyboxManager::Unload(const std::string& nameOrPath) {
+    m_Cache.Remove(nameOrPath);
+}
+
+void SkyboxManager::Clear() {
+    m_Cache.Clear();
 }

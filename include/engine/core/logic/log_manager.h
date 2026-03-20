@@ -8,7 +8,7 @@
 #include <core/type/event_types.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/event_system.h>
-#include <core/logic/config_manager.h>
+#include <core/logic/event_system.h>
 
 class TeeBuf : public std::streambuf {
 public:

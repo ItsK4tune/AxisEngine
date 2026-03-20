@@ -15,10 +15,14 @@ std::shared_ptr<Font> FontManager::Load(const std::string& name, const std::stri
     return nullptr;
 }
 
-std::shared_ptr<Font> FontManager::Get(const std::string& name) {
-    return m_Cache.Get(name);
+std::shared_ptr<Font> FontManager::Get(const std::string& nameOrPath) {
+    return m_Cache.Get(nameOrPath);
 }
 
-void FontManager::Unload(const std::string& name) {
-    m_Cache.Remove(name);
+void FontManager::Unload(const std::string& nameOrPath) {
+    m_Cache.Remove(nameOrPath);
+}
+
+void FontManager::Clear() {
+    m_Cache.Clear();
 }

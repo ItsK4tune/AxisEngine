@@ -13,6 +13,7 @@
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene_manager.h>
 #include <script/logic/scriptable.h>
+#include <core/logic/service_locator.h>
 
 
 
@@ -71,10 +72,12 @@ bool Scriptable::IsCollisionEnabled() const
 
 void Scriptable::IgnoreTagCollision(const std::string& tag1, const std::string& tag2)
 {
-    CollisionMatrix::Instance().IgnoreTagCollision(tag1, tag2);
+    auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
+    if (matrix) matrix->IgnoreTagCollision(tag1, tag2);
 }
 
 void Scriptable::IgnoreNameCollision(const std::string& name1, const std::string& name2)
 {
-    CollisionMatrix::Instance().IgnoreNameCollision(name1, name2);
+    auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
+    if (matrix) matrix->IgnoreNameCollision(name1, name2);
 }

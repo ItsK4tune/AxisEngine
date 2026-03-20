@@ -76,9 +76,8 @@ void LogManager::Shutdown() {
 }
 
 void LogManager::OnConfigChanged(const ConfigChangedEvent& event) {
-    auto& sl = ServiceLocator::Instance();
-    if (auto* cm = sl.Resolve<ConfigManager>()) {
-        Logger::SetLogLevel(cm->GetConfig().logLevel);
+    if (event.bitmask & (ConfigChangedEvent::General | ConfigChangedEvent::All)) {
+        Logger::SetLogLevel(event.config.logLevel);
     }
 }
 

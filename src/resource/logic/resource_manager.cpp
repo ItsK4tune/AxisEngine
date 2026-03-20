@@ -328,10 +328,11 @@ void ResourceManager::ClearResource()
     m_ShaderManager->Clear();
     m_TextureManager->Clear();
     m_ModelManager->Clear();
-    m_AudioManager->Unload(""); // Simplified
-    m_FontManager->Unload("");
-    m_AnimationManager->Unload("");
-    m_SkyboxManager->Unload("");
+    m_AudioManager->Clear();
+    m_FontManager->Clear();
+    m_AnimationManager->Clear();
+    m_SkyboxManager->Clear();
+    m_VideoManager->Clear();
 
     m_UIModels.clear();
     m_PathToTextureName.clear();

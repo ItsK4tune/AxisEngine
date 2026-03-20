@@ -88,7 +88,11 @@ const AppConfig& RuntimeCore::GetConfig() const
     return ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
 }
 
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
+
 void RuntimeCore::ApplyConfig(const AppConfig& config)
 {
     ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(config);
+    EventSystem::Instance().Publish(ConfigChangedEvent{config});
 }

@@ -9,43 +9,48 @@
 #include <vector>
 #include <mutex>
 
+#include <resource/interface/i_asset_manager.h>
+
 /**
  * @brief High-level manager for Texture assets.
  * Handles synchronous and asynchronous loading using ResourceCache.
  */
-class TextureManager {
+class TextureManager : public IAssetManager<Texture> {
 public:
     TextureManager(ITextureManager& lowLevelManager);
     ~TextureManager();
 
     /**
-     * @brief Loads a texture from file.
-     * @param name Unique name for the texture in cache
-     * @param path File path
-     * @param async Whether to load in background thread
-     * @param keepCpuData If true, pixel data remains in Texture::pixelData
+     * @brief Loads a texture from file (IAssetManager implementation).
+     */
+    std::shared_ptr<Texture> Load(const std::string& path) override {
+        return Load(path, path);
+    }
+
+    /**
+     * @brief Loads a texture from file with custom name.
      */
     std::shared_ptr<Texture> Load(const std::string& name, const std::string& path, bool async = true, bool keepCpuData = false);
 
     /**
      * @brief Retrieves a texture from cache.
      */
-    std::shared_ptr<Texture> Get(const std::string& name);
+    std::shared_ptr<Texture> Get(const std::string& nameOrPath) override;
 
     /**
      * @brief Unloads a texture and deletes its GPU resource.
      */
-    void Unload(const std::string& name);
+    void Unload(const std::string& nameOrPath) override;
 
     /**
      * @brief Processes pending asynchronous loading results.
      */
-    void Update();
+    void Update(float dt = 0.0f) override;
 
     /**
      * @brief Clears cache and deletes all GPU textures.
      */
-    void Clear();
+    void Clear() override;
 
     // Configuration
     void SetAsyncEnabled(bool enabled) { m_AsyncEnabled = enabled; }

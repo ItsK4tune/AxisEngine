@@ -44,7 +44,7 @@ void ModelManager::Unload(const std::string& name) {
     m_InstanceManager.UnloadModel(name);
 }
 
-void ModelManager::Update() {
+void ModelManager::Update(float dt) {
     std::lock_guard<std::mutex> lock(m_PendingMutex);
     for (auto it = m_ActiveFutures.begin(); it != m_ActiveFutures.end();) {
         if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {

@@ -13,12 +13,23 @@
 #include <platform/logic/io_handler.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/runtime_core.h>
+#include <core/logic/config_manager.h>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
 
 void SkyboxRenderSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     m_Context = &sl.Require<IGraphicsContext>();
-    m_Config = &sl.Require<AppConfig>();
+    
+    auto& configManager = sl.Require<ConfigManager>();
+    m_Intensity = configManager.GetConfig().skyboxIntensity;
+
+    m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        if (e.bitmask & ConfigChangedEvent::Graphics) {
+            m_Intensity = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().skyboxIntensity;
+        }
+    });
 }
 
 std::vector<entt::id_type> SkyboxRenderSystem::GetReadComponents() const
@@ -33,7 +44,7 @@ std::vector<entt::id_type> SkyboxRenderSystem::GetWriteComponents() const
 
 void SkyboxRenderSystem::Render(Scene &scene)
 {
-    if (!m_Enabled || !m_Context || !m_Config) return;
+    if (!m_Enabled || !m_Context) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null)
@@ -58,7 +69,7 @@ void SkyboxRenderSystem::Render(Scene &scene)
             tm.ActiveTexture(TextureUnit::Texture0);
             tm.BindTexture(TextureType::TextureCubeMap, component.skybox->GetTextureID());
             lockedShader->setInt("skybox", 0);
-            lockedShader->setFloat("intensity", m_Config->skyboxIntensity);
+            lockedShader->setFloat("intensity", m_Intensity);
 
             component.skybox->Draw(*lockedShader);
         }

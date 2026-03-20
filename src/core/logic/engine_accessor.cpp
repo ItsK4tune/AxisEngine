@@ -20,6 +20,9 @@
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
+#include <core/logic/config_manager.h>
 
 RenderSystem&       EngineAccessor::GetRenderSystem() const       { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<RenderSystem>(); }
 PhysicsSystem&      EngineAccessor::GetPhysicsSystem() const      { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<PhysicsSystem>(); }
@@ -81,8 +84,11 @@ void EngineAccessor::SetTimeScale(float scale) { ServiceLocator::Instance().Requ
 float EngineAccessor::GetTimeScale() const { return ServiceLocator::Instance().Require<RuntimeCore>().GetTimeScale(); }
 float EngineAccessor::GetRealDeltaTime() const { return ServiceLocator::Instance().Require<RuntimeCore>().GetRealDeltaTime(); }
 
-const AppConfig& EngineAccessor::GetConfig() const { return ServiceLocator::Instance().Require<AppConfig>(); }
-void EngineAccessor::ApplyConfig(const AppConfig& config) { ServiceLocator::Instance().Require<RuntimeCore>().ApplyConfig(config); }
+const AppConfig& EngineAccessor::GetConfig() const { return ServiceLocator::Instance().Require<ConfigManager>().GetConfig(); }
+void EngineAccessor::ApplyConfig(const AppConfig& config) { 
+    ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(config);
+    EventSystem::Instance().Publish(ConfigChangedEvent{config});
+}
 
 
 

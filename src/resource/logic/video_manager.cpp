@@ -15,10 +15,14 @@ std::shared_ptr<VideoDecoder> VideoManager::Load(const std::string& name, const 
     return nullptr;
 }
 
-std::shared_ptr<VideoDecoder> VideoManager::Get(const std::string& name) {
-    return m_Cache.Get(name);
+std::shared_ptr<VideoDecoder> VideoManager::Get(const std::string& nameOrPath) {
+    return m_Cache.Get(nameOrPath);
 }
 
-void VideoManager::Unload(const std::string& name) {
-    m_Cache.Remove(name);
+void VideoManager::Unload(const std::string& nameOrPath) {
+    m_Cache.Remove(nameOrPath);
+}
+
+void VideoManager::Clear() {
+    m_Cache.Clear();
 }

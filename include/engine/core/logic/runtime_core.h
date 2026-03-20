@@ -51,6 +51,7 @@ private:
     bool m_MaxForceSync = true;
     float m_Alpha = 0.0f;
     int m_MaxSubSteps = 10;
+    int m_ConfigSubId = -1;
 };
 
 // --- Runtime Core ---

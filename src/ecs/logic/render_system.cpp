@@ -381,6 +381,14 @@ void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
     auto currentTime = std::chrono::steady_clock::now();
     m_GlobalData.time = std::chrono::duration<float>(currentTime - startTime).count();
     m_GlobalData.resolution[0] = (float)width; m_GlobalData.resolution[1] = (float)height;
+    
+    auto& cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
+    m_GlobalData.fogEnabled = cfg.fogEnabled ? 1.0f : 0.0f;
+    m_GlobalData.fogDensity = cfg.fogDensity;
+    m_GlobalData.fogColor[0] = cfg.fogColor[0];
+    m_GlobalData.fogColor[1] = cfg.fogColor[1];
+    m_GlobalData.fogColor[2] = cfg.fogColor[2];
+
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
@@ -519,10 +527,9 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
                                 s->setInt("shadowMapDir[" + std::to_string(i) + "]", 10 + i);
                             }
                         }
-                        auto& cfg = ServiceLocator::Instance().Require<AppConfig>();
-                        s->setBool("u_FogEnabled", cfg.fogEnabled);
-                        s->setVec3("u_FogColor", glm::vec3(cfg.fogColor[0], cfg.fogColor[1], cfg.fogColor[2]));
-                        s->setFloat("u_FogDensity", cfg.fogDensity);
+                        s->setBool("u_FogEnabled", m_GlobalData.fogEnabled > 0.5f);
+                        s->setVec3("u_FogColor", glm::vec3(m_GlobalData.fogColor[0], m_GlobalData.fogColor[1], m_GlobalData.fogColor[2]));
+                        s->setFloat("u_FogDensity", m_GlobalData.fogDensity);
                         s->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
                         s->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
                     });

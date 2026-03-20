@@ -28,7 +28,7 @@ public:
     PostProcessPipeline();
     ~PostProcessPipeline();
 
-    void Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib, const AppConfig& config);
+    void Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib);
     void Shutdown();
     void Resize(int width, int height);
 
@@ -45,7 +45,8 @@ public:
     void ClearEffects();
 
     // Config setters
-    void ApplyConfig(const AppConfig& config) { m_Config = &config; }
+    // Config updates
+    void UpdateConfig();
 
     float GetGamma() const;
     float GetExposure() const;
@@ -88,7 +89,16 @@ private:
 
     std::vector<PostProcessEffect> m_Effects;
 
-    const AppConfig* m_Config = nullptr;
+    glm::vec4 m_ClearColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
+    bool m_BloomEnabled = true;
+    float m_BloomThreshold = 1.0f;
+    float m_BloomIntensity = 1.0f;
+    float m_BloomRadius = 0.005f;
+    float m_Exposure = 1.0f;
+    float m_Gamma = 2.2f;
+    int m_TonemappingMode = 1;
+
+    uint32_t m_ConfigSubId = 0;
 
     void InitQuad();
     void InitFramebuffers();

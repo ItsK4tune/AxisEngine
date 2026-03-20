@@ -1,5 +1,10 @@
-#include <ecs/logic/render_system.h>
 #include <render/logic/post_process_pipeline.h>
+#include <ecs/logic/render_system.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/config_manager.h>
+#include <core/logic/event_system.h>
+#include <core/type/app_config.h>
+#include <core/type/event_types.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_graphics_context.h>
@@ -16,13 +21,19 @@ PostProcessPipeline::~PostProcessPipeline()
     Shutdown();
 }
 
-void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib, const AppConfig& config)
+void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary &shaderLib)
 {
     m_Context = &context;
     m_Width = width;
     m_Height = height;
 
-    m_Config = &config;
+    UpdateConfig();
+
+    m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)) {
+            UpdateConfig();
+        }
+    });
 
     InitQuad();
     InitFramebuffers();
@@ -120,6 +131,19 @@ void PostProcessPipeline::InitFramebuffers()
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
 }
 
+void PostProcessPipeline::UpdateConfig()
+{
+    auto& cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
+    m_ClearColor = glm::vec4(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
+    m_BloomEnabled = cfg.bloomEnabled;
+    m_BloomThreshold = cfg.bloomThreshold;
+    m_BloomIntensity = cfg.bloomIntensity;
+    m_BloomRadius = cfg.bloomRadius;
+    m_Exposure = cfg.exposure;
+    m_Gamma = cfg.gamma;
+    m_TonemappingMode = (int)cfg.tonemappingMode;
+}
+
 void PostProcessPipeline::Shutdown()
 {
     if (!m_Context) return;
@@ -178,7 +202,7 @@ void PostProcessPipeline::BeginCapture()
 
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[0]->Get());
     rsm.Enable(ServerCapability::DepthTest);
-    dc.ClearColor(m_Config->clearColor[0], m_Config->clearColor[1], m_Config->clearColor[2], m_Config->clearColor[3]);
+    dc.ClearColor(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, m_ClearColor.a);
     dc.Clear(BufferBit::Color | BufferBit::Depth);
 }
 
@@ -232,7 +256,7 @@ void PostProcessPipeline::EndCapture()
         writeIdx = 1 - readIdx;
     }
 
-    if (m_Config->bloomEnabled) {
+    if (m_BloomEnabled) {
         RenderBloom(m_PingPong.color[readIdx]->Get());
     }
 
@@ -242,16 +266,16 @@ void PostProcessPipeline::EndCapture()
     m_HDRFinalShader->use();
     m_HDRFinalShader->setInt("screenTexture", 0);
     m_HDRFinalShader->setInt("bloomBlur", 1);
-    m_HDRFinalShader->setFloat("exposure", m_Config->exposure);
-    m_HDRFinalShader->setFloat("bloomIntensity", m_Config->bloomIntensity);
-    m_HDRFinalShader->setFloat("gamma", m_Config->gamma);
-    m_HDRFinalShader->setInt("tonemappingMode", static_cast<int>(m_Config->tonemappingMode));
+    m_HDRFinalShader->setFloat("exposure", m_Exposure);
+    m_HDRFinalShader->setFloat("bloomIntensity", m_BloomIntensity);
+    m_HDRFinalShader->setFloat("gamma", m_Gamma);
+    m_HDRFinalShader->setInt("tonemappingMode", m_TonemappingMode);
 
     tm.ActiveTexture(TextureUnit::Texture0);
     tm.BindTexture(TextureType::Texture2D, m_PingPong.color[readIdx]->Get());
 
     tm.ActiveTexture(TextureUnit::Texture1);
-    if (m_Config->bloomEnabled && !m_BloomMips.empty()) {
+    if (m_BloomEnabled && !m_BloomMips.empty()) {
         tm.BindTexture(TextureType::Texture2D, m_BloomMips[0].texture->Get());
     } else {
         tm.BindTexture(TextureType::Texture2D, m_PingPong.color[writeIdx]->Get());
@@ -283,7 +307,7 @@ void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
         tm.ActiveTexture(TextureUnit::Texture0);
         tm.BindTexture(TextureType::Texture2D, currentSrc);
         m_BloomDownsampleShader->setInt("srcTexture", 0);
-        m_BloomDownsampleShader->setFloat("threshold", m_Config->bloomThreshold);
+        m_BloomDownsampleShader->setFloat("threshold", m_BloomThreshold);
 
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[1]->Get());
         rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D, mip.texture->Get(), 0);
@@ -298,7 +322,7 @@ void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
     }
 
     m_BloomUpsampleShader->use();
-    m_BloomUpsampleShader->setFloat("filterRadius", m_Config->bloomRadius);
+    m_BloomUpsampleShader->setFloat("filterRadius", m_BloomRadius);
 
     auto& rsm = m_Context->GetRenderStateManager();
     rsm.Enable(ServerCapability::Blend);
@@ -451,9 +475,9 @@ void PostProcessPipeline::InitQuad()
 }
 
 float PostProcessPipeline::GetGamma() const {
-    return m_Config ? m_Config->gamma : 2.2f;
+    return m_Gamma;
 }
 
 float PostProcessPipeline::GetExposure() const {
-    return m_Config ? m_Config->exposure : 1.0f;
+    return m_Exposure;
 }

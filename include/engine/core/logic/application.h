@@ -2,9 +2,16 @@
 
 #include <core/logic/config_loader.h>
 #include <core/logic/runtime_core.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/script_component.h>
+#include <functional>
 #include <platform/interface/i_window.h>
+#include <scene/logic/scene.h>
+#include <script/logic/script_registry.h>
+#include <script/type/script_binding.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Forward declarations
 class AnimationSystem;
@@ -35,6 +42,9 @@ class VideoSystem;
 
 // --- Application ---
 
+
+class CollisionMatrix;
+class UnifiedLoader;
 class Application
 {
 public:
@@ -44,6 +54,10 @@ public:
     bool Initialize(const AppConfig &config);
     void Shutdown();
     void Run();
+    virtual void RegisterUserScripts() {}
+
+    template <typename T>
+    void RegisterScript(const std::string &name);
 
     template <typename T, typename... Args>
     void PushState(Args &&...args)
@@ -96,7 +110,18 @@ private:
     std::unique_ptr<RuntimeCore> m_RuntimeCore;
     std::unique_ptr<SystemManager> m_SystemManager;
     std::unique_ptr<ConfigManager> m_ConfigManager;
+    std::unique_ptr<ScriptRegistry> m_ScriptRegistry;
+    std::unique_ptr<CollisionMatrix> m_CollisionMatrix;
+    std::unique_ptr<UnifiedLoader> m_UnifiedLoader;
 };
+
+template <typename T>
+inline void Application::RegisterScript(const std::string &name)
+{
+    if (m_ScriptRegistry) {
+        m_ScriptRegistry->Register<T>(name);
+    }
+}
 
 // --- App Builder ---
 

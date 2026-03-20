@@ -132,8 +132,7 @@ void SystemManager::InitializeSystems(ResourceManager &res, int width, int heigh
     auto& sl = ServiceLocator::Instance();
     auto& context = sl.Require<IGraphicsContext>();
     
-    auto& configMgr = sl.Require<ConfigManager>();
-    postProcess.Initialize(context, width, height, res, configMgr.GetConfig());
+    postProcess.Initialize(context, width, height, res);
 
 #ifdef ENABLE_DEBUG_SYSTEM
     m_DebugSystem = std::make_unique<DebugSystem>();

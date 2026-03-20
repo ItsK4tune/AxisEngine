@@ -138,7 +138,8 @@ enum class TextureParameter {
     WrapS,
     WrapT,
     WrapR,
-    BorderColor
+    BorderColor,
+    TextureMaxAnisotropy
 };
 
 enum class TextureUnit {
@@ -367,7 +368,10 @@ struct GPUGlobalData {
     float time;
     float deltaTime;
     float resolution[2];
-    float pad[4];
+    float fogColor[3];
+    float fogEnabled;
+    float fogDensity;
+    float pad[3];
 };
 
 // --- Vertex & Texture ---

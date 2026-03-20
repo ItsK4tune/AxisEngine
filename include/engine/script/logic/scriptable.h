@@ -2,6 +2,7 @@
 
 #include <core/logic/runtime_core.h>
 #include <ecs/unit/core_components.h>
+#include <ecs/unit/script_component.h>
 #include <functional>
 #include <scene/logic/scene.h>
 #include <script/type/script_binding.h>

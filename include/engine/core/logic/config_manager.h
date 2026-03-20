@@ -34,7 +34,7 @@ public:
             std::lock_guard<std::mutex> lock(m_Mutex);
             m_Config = config;
         }
-        EventSystem::Instance().Publish(ConfigChangedEvent{ type });
+        EventSystem::Instance().Publish(ConfigChangedEvent{ m_Config, type });
     }
 
     /**

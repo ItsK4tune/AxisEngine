@@ -20,7 +20,6 @@ struct Scene
     entt::registry registry;
     Octree* GetOctree() { return m_Octree.get(); }
 
-    void OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity);
     void OnHierarchyChanged(entt::registry &reg, entt::entity entity);
 
     void InitializeManagers();

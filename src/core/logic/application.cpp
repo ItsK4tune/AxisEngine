@@ -33,9 +33,11 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/log_manager.h>
-#include <resource/logic/texture_cache.h>
 #include <platform/logic/input_loader.h>
 #include <core/logic/axis_assert.h>
+#include <script/logic/script_registry.h>
+#include <physics/logic/collision_matrix.h>
+#include <core/logic/unified_loader.h>
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
@@ -135,14 +137,13 @@ bool Application::Initialize(const AppConfig &config)
     m_SystemManager = std::make_unique<SystemManager>();
     m_ConfigManager = std::make_unique<ConfigManager>();
     m_ConfigManager->Initialize(config);
- 
-    const AppConfig& finalConfig = m_ConfigManager->GetConfig();
- 
-    TextureCache::SetAsyncEnabled(finalConfig.asyncResourceLoading);
-    TextureCache::SetMaxAnisotropy(finalConfig.maxAnisotropy);
 
-    auto graphicsContext = AppBuilder::CreateGraphicsContext(finalConfig);
-    auto audioEngine = AppBuilder::CreateAudioEngine(finalConfig);
+    m_ScriptRegistry = std::make_unique<ScriptRegistry>();
+    m_CollisionMatrix = std::make_unique<CollisionMatrix>();
+    m_UnifiedLoader = std::make_unique<UnifiedLoader>();
+
+    auto graphicsContext = AppBuilder::CreateGraphicsContext(config);
+    auto audioEngine = AppBuilder::CreateAudioEngine(config);
     auto window = AppBuilder::MakeWindow();
 
     m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext));
@@ -151,8 +152,8 @@ bool Application::Initialize(const AppConfig &config)
     m_AudioService = std::make_unique<AudioService>();
     m_AudioService->Initialize(std::move(audioEngine));
 
-    if (!m_IOHandler->Initialize(std::move(window), finalConfig.title, finalConfig.width, finalConfig.height, (int)finalConfig.windowMode,
-                           finalConfig.monitorIndex, finalConfig.refreshRate, finalConfig.vsync, finalConfig.frameRateLimit))
+    if (!m_IOHandler->Initialize(std::move(window), config.title, config.width, config.height, (int)config.windowMode,
+                           config.monitorIndex, config.refreshRate, config.vsync, config.frameRateLimit))
     {
         AXIS_ASSERT(false, "Failed to initialize IOHandler - graphics/audio device error?");
         return false;
@@ -163,9 +164,9 @@ bool Application::Initialize(const AppConfig &config)
     auto &context = m_IOHandler->GetGraphicsContext();
     RendererInitializer::Initialize(context);
 
-    if (!finalConfig.depthTestEnabled)
+    if (!config.depthTestEnabled)
         context.SetDepthTest(false);
-    context.SetCullFace(finalConfig.cullFaceEnabled);
+    context.SetCullFace(config.cullFaceEnabled);
 
     IWindow *appWindow = GetWindow();
     appWindow->SetResizeCallback([this](int width, int height) {
@@ -190,15 +191,17 @@ bool Application::Initialize(const AppConfig &config)
         else if (action == 0) EventSystem::Instance().Publish(KeyReleasedEvent{key, mods});
     });
 
-    if (!finalConfig.audioDevice.empty() && finalConfig.audioDevice != "default")
+    if (!config.audioDevice.empty() && config.audioDevice != "default")
     {
-        LOGGER_INFO("Application") << "Audio device preference: " << finalConfig.audioDevice;
+        LOGGER_INFO("Application") << "Audio device preference: " << config.audioDevice;
     }
  
-    m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(finalConfig);
+    m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(config);
     m_PhysicsWorld->Initialize();
     
     m_ResourceManager->Initialize(context.GetShaderManager(), context.GetTextureManager(), *m_AudioService->GetEngine());
+    m_ResourceManager->GetTextureManager().SetAsyncEnabled(config.asyncResourceLoading);
+    m_ResourceManager->GetTextureManager().SetMaxAnisotropy(config.maxAnisotropy);
     m_Scene->InitializeManagers();
     
     // --- Register services in ServiceLocator ---
@@ -212,16 +215,20 @@ bool Application::Initialize(const AppConfig &config)
     sl.Register<RuntimeCore>(m_RuntimeCore.get());
     sl.Register<IGraphicsContext>(&m_IOHandler->GetGraphicsContext());
     sl.Register<ConfigManager>(m_ConfigManager.get());
+    sl.Register<ScriptRegistry>(m_ScriptRegistry.get());
+    sl.Register<CollisionMatrix>(m_CollisionMatrix.get());
+    sl.Register<UnifiedLoader>(m_UnifiedLoader.get());
     // AudioService already self-registered in its Initialize()
 
-    sl.Register<AppConfig>(const_cast<AppConfig*>(&finalConfig));
 
     m_SystemManager->CreateSystems();
 
     m_SceneManager->Initialize();
+    m_ScriptRegistry->Initialize(); // Pull from static map
+    RegisterUserScripts();           // Call user hook
     m_RuntimeCore->Initialize();
     
-    m_SystemManager->InitializeSystems(*m_ResourceManager, finalConfig.width, finalConfig.height);
+    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height);
 
     m_ResourceManager->CreateUIModel("default_rect", ::UIType::Color);
 
@@ -230,10 +237,10 @@ bool Application::Initialize(const AppConfig &config)
     LOGGER_INFO("Application") << "Loading default assets from include/engine/asset/load.axs...";
     m_SceneManager->LoadScene("include/engine/asset/load.axs");
 
-    if (!finalConfig.iconPath.empty())
+    if (!config.iconPath.empty())
     {
-        LOGGER_INFO("Application") << "Setting window icon from: " << finalConfig.iconPath;
-        m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(finalConfig.iconPath));
+        LOGGER_INFO("Application") << "Setting window icon from: " << config.iconPath;
+        m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(config.iconPath));
     }
 
 
@@ -285,6 +292,7 @@ void Application::ApplyConfig(const AppConfig& config)
                         config.frameRateLimit != m_Config.frameRateLimit);
 
     m_ConfigManager->UpdateConfig(config);
+    EventSystem::Instance().Publish(ConfigChangedEvent{config});
     
     if (m_IOHandler)
     {

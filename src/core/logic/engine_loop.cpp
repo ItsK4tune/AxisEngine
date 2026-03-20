@@ -9,6 +9,9 @@
 #include <core/type/app_config.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
+#include <core/logic/config_manager.h>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
 #include <core/logic/state_machine.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
@@ -27,15 +30,23 @@ EngineLoop::EngineLoop()
 void EngineLoop::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
-    auto& appConfig = sl.Require<AppConfig>();
+    auto& configMgr = sl.Require<ConfigManager>();
+    auto& appConfig = configMgr.GetConfig();
     
     SetPhysicsStep(1.0f / appConfig.physicsTickRate);
     SetMaxSubSteps(appConfig.maxSubSteps);
-    // Systems are created and initialized by Application to avoid double-call during refactor.
+
+    m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        SetPhysicsStep(1.0f / e.config.physicsTickRate);
+        SetMaxSubSteps(e.config.maxSubSteps);
+    });
 }
 
 void EngineLoop::Shutdown()
 {
+    if (m_ConfigSubId != -1) {
+        EventSystem::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigSubId);
+    }
 }
 
 EngineLoop::~EngineLoop()

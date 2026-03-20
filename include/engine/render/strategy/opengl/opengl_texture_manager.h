@@ -34,6 +34,11 @@ public:
         glTexParameteri(GLTranslator::ToGL(target), GLTranslator::ToGL(pname), glParam);
     }
 
+    void TexParameterf(TextureType target, TextureParameter pname, float param) override
+    {
+        glTexParameterf(GLTranslator::ToGL(target), GLTranslator::ToGL(pname), param);
+    }
+    
     void TexParameterfv(TextureType target, TextureParameter pname, const float *params) override
     {
         glTexParameterfv(GLTranslator::ToGL(target), GLTranslator::ToGL(pname), params);

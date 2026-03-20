@@ -60,9 +60,11 @@ public:
 // Helper function to register all default strategies
 #include <core/logic/unified_loader.h>
 void RegisterDefaultLoaderStrategies() {
-    auto& ul = UnifiedLoader::Instance();
-    ul.Register(std::make_unique<ConfigLoaderStrategy>());
-    ul.Register(std::make_unique<InputLoaderStrategy>());
-    ul.Register(std::make_unique<PhysicsLoaderStrategy>());
-    ul.Register(std::make_unique<ComponentLoaderStrategy>());
+    auto loader = ServiceLocator::Instance().Resolve<UnifiedLoader>();
+    if (loader) {
+        loader->Register(std::make_unique<ConfigLoaderStrategy>());
+        loader->Register(std::make_unique<InputLoaderStrategy>());
+        loader->Register(std::make_unique<PhysicsLoaderStrategy>());
+        loader->Register(std::make_unique<ComponentLoaderStrategy>());
+    }
 }
