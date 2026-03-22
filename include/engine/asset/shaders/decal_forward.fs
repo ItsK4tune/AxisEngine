@@ -27,6 +27,7 @@ struct DirLight {
     vec3 diffuse; float pad2;
     vec3 specular; float pad3;
 };
+
 layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 
 void main()
@@ -36,8 +37,6 @@ void main()
 
     // Linearize
     vec3 albedo = pow(texColor.rgb, vec3(2.2)) * tintColor.rgb;
-    
-    // Simple Lighting (Match Deferred/Forward coefficients)
     vec3 N = normalize(Normal);
     vec3 Lo = vec3(0.0);
     

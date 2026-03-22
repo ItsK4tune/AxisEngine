@@ -17,8 +17,7 @@ void AudioSystem::Initialize()
 
     EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All)) {
-            auto& cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
-            m_GlobalVolume = cfg.masterVolume;
+            m_GlobalVolume = e.config.masterVolume;
         }
     });
 }

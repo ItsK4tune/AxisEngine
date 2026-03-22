@@ -27,14 +27,6 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
     m_Width = width;
     m_Height = height;
 
-    UpdateConfig();
-
-    m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)) {
-            UpdateConfig();
-        }
-    });
-
     InitQuad();
     InitFramebuffers();
 
@@ -201,6 +193,8 @@ void PostProcessPipeline::BeginCapture()
     auto& dc = m_Context->GetDrawContext();
 
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[0]->Get());
+    rsm.SetViewport(0, 0, m_Width, m_Height);
+    rsm.Enable(ServerCapability::DepthTest);
     rsm.Enable(ServerCapability::DepthTest);
     dc.ClearColor(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, m_ClearColor.a);
     dc.Clear(BufferBit::Color | BufferBit::Depth);
@@ -261,6 +255,7 @@ void PostProcessPipeline::EndCapture()
     }
 
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+    rsm.SetViewport(0, 0, m_Width, m_Height);
     dc.Clear(BufferBit::Color);
 
     m_HDRFinalShader->use();

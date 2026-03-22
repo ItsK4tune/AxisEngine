@@ -239,15 +239,8 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
     else if (subCmd == "SKYBOX_INTENSITY") {
         ss >> config.skyboxIntensity;
     }
-    else if (subCmd == "FOG_ENABLED") {
-        int enable; ss >> enable;
-        config.fogEnabled = (enable != 0);
-    }
-    else if (subCmd == "FOG_COLOR") {
-        ss >> config.fogColor[0] >> config.fogColor[1] >> config.fogColor[2];
-    }
-    else if (subCmd == "FOG_DENSITY") {
-        ss >> config.fogDensity;
+    else if (subCmd == "SKYBOX_INTENSITY") {
+        ss >> config.skyboxIntensity;
     }
     else if (subCmd == "AMBIENT_INTENSITY") {
         float val; ss >> val;

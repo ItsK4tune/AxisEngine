@@ -145,7 +145,6 @@ axis_scene:
         Scale: 10.0 10.0 10.0
       Component: Renderer
         Model: planeModel
-        Shader: phongLitShadowShader
       Component: Material
         Type: PHONG
         Shininess: 32

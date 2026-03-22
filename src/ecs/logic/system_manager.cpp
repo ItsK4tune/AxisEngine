@@ -1,30 +1,36 @@
-#include <ecs/logic/deferred_lighting_system.h>
-#include <physics/logic/physics_loader.h>
-#include <platform/logic/io_handler.h>
 #include <ecs/logic/system_manager.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/config_manager.h>
-#include <core/logic/event_system.h>
-#include <core/type/event_types.h> // Updated from <core/logic/event_types.h>
-#include <core/type/app_config.h>
-#include <ecs/logic/debug/debug_system.h>
-#include <audio/logic/audio_service.h>
 #include <core/logic/job_system.h>
-#include <ecs/logic/animation_system.h>
-#include <ecs/logic/audio_system.h>
-#include <ecs/logic/particle_system.h>
-#include <ecs/logic/physics_system.h>
+#include <core/logic/event_system.h>
+#include <core/logic/config_manager.h>
+#include <core/type/event_types.h>
+#include <ecs/interface/i_shadow_service.h>
+#include <ecs/interface/i_geometry_service.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_lighting_service.h>
+#include <ecs/interface/i_skybox_service.h>
+#include <ecs/interface/i_ui_service.h>
+#include <ecs/logic/dummy_test_system.h>
 #include <ecs/logic/render_system.h>
-#include <ecs/logic/scriptable_system.h>
+#include <ecs/logic/geometry_system.h>
+#include <ecs/logic/lighting_system.h>
+#include <ecs/logic/shadow_system.h>
 #include <ecs/logic/skybox_render_system.h>
 #include <ecs/logic/ui_render_system.h>
+#include <ecs/logic/physics_system.h>
 #include <ecs/logic/transform_system.h>
-#include <ecs/logic/streaming_system.h>
-#include <ecs/logic/video_system.h>
+#include <ecs/logic/animation_system.h>
+#include <ecs/logic/scriptable_system.h>
+#include <ecs/logic/audio_system.h>
+#include <ecs/logic/particle_system.h>
+#include <navigation/logic/navigation_system.h>
+#include <ecs/logic/transparent_system.h>
+#include <ecs/logic/post_process_system.h>
 #include <ecs/logic/terrain_system.h>
 #include <ecs/logic/decal_system.h>
-#include <navigation/logic/navigation_system.h>
-#include <ecs/logic/dummy_test_system.h>
+#include <ecs/logic/video_system.h>
+#include <ecs/logic/streaming_system.h>
+
 #include <platform/logic/input_manager.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
@@ -100,22 +106,31 @@ void SystemManager::CreateSystems()
     RegisterSystem(std::make_unique<SkyboxRenderSystem>());
     RegisterSystem(std::make_unique<AudioSystem>());
     RegisterSystem(std::make_unique<ParticleSystem>());
-    RegisterSystem(std::make_unique<StreamingSystem>());
-    RegisterSystem(std::make_unique<VideoSystem>());
+    RegisterSystem(std::make_unique<ShadowSystem>());
+    RegisterSystem(std::make_unique<GeometrySystem>());
+    RegisterSystem(std::make_unique<LightingSystem>());
+    RegisterSystem(std::make_unique<TransparentSystem>());
+    RegisterSystem(std::make_unique<PostProcessSystem>());
     RegisterSystem(std::make_unique<NavigationSystem>());
-    RegisterSystem(std::make_unique<TerrainSystem>());
     RegisterSystem(std::make_unique<DecalSystem>());
-    RegisterSystem(std::make_unique<DeferredLightingSystem>());
+    RegisterSystem(std::make_unique<VideoSystem>());
+    RegisterSystem(std::make_unique<StreamingSystem>());
+    RegisterSystem(std::make_unique<TerrainSystem>());
     RegisterSystem(std::make_unique<DummyTestSystem>());
 
     // Register systems in ServiceLocator so they are available BEFORE initialization
     auto& sl = ServiceLocator::Instance();
     sl.Register<PhysicsSystem>(GetSystem<PhysicsSystem>());
-    sl.Register<RenderSystem>(GetSystem<RenderSystem>());
+    sl.Register<IRenderService>(GetSystem<RenderSystem>());
     sl.Register<AudioSystem>(GetSystem<AudioSystem>());
     sl.Register<UIRenderSystem>(GetSystem<UIRenderSystem>());
     sl.Register<ScriptableSystem>(GetSystem<ScriptableSystem>());
     sl.Register<NavigationSystem>(GetSystem<NavigationSystem>());
+    sl.Register<IShadowService>(GetSystem<ShadowSystem>());
+    sl.Register<IGeometryService>(GetSystem<GeometrySystem>());
+    sl.Register<ILightingService>(GetSystem<LightingSystem>());
+    sl.Register<ISkyboxService>(GetSystem<SkyboxRenderSystem>());
+    sl.Register<IUIService>(GetSystem<UIRenderSystem>());
 }
 
 void SystemManager::InitializeSystems(ResourceManager &res, int width, int height)
@@ -131,7 +146,7 @@ void SystemManager::InitializeSystems(ResourceManager &res, int width, int heigh
     auto& sl = ServiceLocator::Instance();
     auto& context = sl.Require<IGraphicsContext>();
     
-    postProcess.Initialize(context, width, height, res);
+    // postProcess initialization is now handled by PostProcessSystem
 
 #ifdef ENABLE_DEBUG_SYSTEM
     m_DebugSystem = std::make_unique<DebugSystem>();
@@ -147,7 +162,7 @@ void SystemManager::Shutdown()
     for (auto& sys : m_Systems) {
         sys->Shutdown();
     }
-    postProcess.Shutdown();
+    // postProcess shutdown is now handled by PostProcessSystem
 }
 
 
@@ -266,51 +281,44 @@ bool SystemManager::SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const
     return false;
 }
 
-void SystemManager::RenderShadows(Scene& scene, float alpha)
-{
-    if (auto* rs = GetSystem<RenderSystem>()) {
-        rs->BuildRenderQueues(scene, alpha, 0, 0);
-        rs->RenderShadows(scene);
-    }
-}
-
 void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
 {
     auto& sl = ServiceLocator::Instance();
-    auto* rs = GetSystem<RenderSystem>();
-    if (rs)
-    {
-        sl.Require<IGraphicsContext>().GetRenderStateManager().SetViewport(0, 0, width, height);
-    }
-    
-    postProcess.BeginCapture();
-    if (rs) rs->SetMainFBO(postProcess.GetCaptureFBO());
+    auto& context = sl.Require<IGraphicsContext>();
+    context.GetRenderStateManager().SetViewport(0, 0, width, height);
 
+    // Resolve systems once
+    auto* rs = GetSystem<RenderSystem>();
+    if (rs) rs->BuildRenderQueues(scene, alpha, width, height);
+    auto* pps = GetSystem<PostProcessSystem>();
+
+    if (pps && pps->IsEnabled()) {
+        pps->GetPipeline().BeginCapture();
+        if (rs) rs->SetMainFBO(pps->GetCaptureFBO());
+    }
+
+    // Pass 1: Opaque / Shadows / Geometry
     for (auto* sys : m_RenderSystems) { 
         if (sys->IsEnabled()) sys->RenderAlpha(scene, width, height, alpha); 
     }
     
+    // Pass 2: Transparent
     for (auto* sys : m_RenderSystems) { 
         if (sys->IsEnabled()) sys->RenderTransparent(scene, width, height, alpha); 
     }
     
+    // Pass 3: Final / Misc
     for (auto* sys : m_RenderSystems) { 
         if (sys->IsEnabled()) sys->Render(scene); 
     }
     
+    // Pass 4: UI
+    auto& rsm = context.GetRenderStateManager();
     for (auto* sys : m_RenderSystems) { 
-        if (sys->IsEnabled() && rs) 
-            sys->RenderUI(scene, (float)width, (float)height, sl.Require<IGraphicsContext>().GetRenderStateManager()); 
+        if (sys->IsEnabled()) sys->RenderUI(scene, (float)width, (float)height, rsm); 
     }
 
-    if (rs) {
-        postProcess.ApplyAntiAliasing(rs->GetAntiAliasingMode(),
-                                       rs->GetPrevViewProj(),
-                                       rs->GetCurrViewProj(),
-                                       rs->GetJitterOffset());
-    }
-
-    postProcess.EndCapture();
+    // AA and Capture are now handled by PostProcessSystem::Render
 }
 
 void SystemManager::UpdateDebugSystem(float realDeltaTime)
@@ -323,4 +331,15 @@ void SystemManager::RenderDebugSystem(Scene& scene)
 {
     if (m_DebugSystem)
         m_DebugSystem->Render(scene);
+}
+
+void SystemManager::RenderShadows(Scene& scene, float alpha)
+{
+    auto* rs = GetSystem<RenderSystem>();
+    if (rs) rs->BuildRenderQueues(scene, alpha);
+
+    auto* shadowSys = ServiceLocator::Instance().Resolve<IShadowService>();
+    if (shadowSys && shadowSys->IsEnabled()) {
+        shadowSys->Render(scene);
+    }
 }

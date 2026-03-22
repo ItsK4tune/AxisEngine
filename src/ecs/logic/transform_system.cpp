@@ -16,6 +16,10 @@ void TransformSystem::Initialize()
         e.registry->on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        
+        e.registry->on_construct<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        e.registry->on_destroy<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+
         m_IsLinearTransformsDirty = true;
     });
 }

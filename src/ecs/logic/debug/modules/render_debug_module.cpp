@@ -11,8 +11,8 @@
 #include <iostream>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
-#include <ecs/logic/system_manager.h>
-#include <ecs/logic/debug/debug_system.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_shadow_service.h>
 #include <core/logic/service_locator.h>
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}
@@ -59,17 +59,19 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
          bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
          if (shift) {
-             auto& systems = ServiceLocator::Instance().Require<SystemManager>();
-             bool shadow = !systems.GetSystem<RenderSystem>()->IsShadowsEnabled();
-             systems.GetSystem<RenderSystem>()->SetEnableShadows(shadow);
+             auto& sl = ServiceLocator::Instance();
+             auto* shadowSys = sl.Resolve<IShadowService>();
+             bool shadow = shadowSys ? !shadowSys->IsShadowsEnabled() : false;
+             if (shadowSys) shadowSys->SetEnableShadows(shadow);
              std::cout << "\n========== Shadow Toggle (Shift+F7) ==========" << std::endl;
              std::cout << "[Debug] Shadows: " << (shadow ? "ON" : "OFF") << std::endl;
              std::cout << "============================================" << std::endl;
          } else {
-             auto& systems = ServiceLocator::Instance().Require<SystemManager>();
+             auto& sl = ServiceLocator::Instance();
+             auto* renderSys = sl.Resolve<IRenderService>();
              m_NoTextureMode = !m_NoTextureMode;
-             systems.GetSystem<RenderSystem>()->SetDebugNoTexture(m_NoTextureMode);
-             systems.GetSystem<TerrainSystem>()->SetDebugNoTexture(m_NoTextureMode);
+             if (renderSys) renderSys->SetDebugNoTexture(m_NoTextureMode);
+             sl.Require<SystemManager>().GetSystem<TerrainSystem>()->SetDebugNoTexture(m_NoTextureMode);
              std::cout << "\n========== No Texture Mode (F7) ==========" << std::endl;
              std::cout << "[Debug] No Texture Mode: " << (m_NoTextureMode ? "ON" : "OFF") << std::endl;
              std::cout << "==========================================" << std::endl;

@@ -30,7 +30,7 @@ class PhysicsSystem;
 class PostProcessPipeline;
 class RenderSystem;
 class ResourceManager;
-class Scene;
+struct Scene;
 class SceneManager;
 class ScriptableSystem;
 class ConfigManager;

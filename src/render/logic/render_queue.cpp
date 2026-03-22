@@ -44,7 +44,7 @@ void RenderQueue::Build(Scene& scene, float alpha,
 
                 auto& world = scene.registry.get<WorldTransformComponent>(entity);
                 auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
-                if (!renderer.model || renderer.shader.expired()) continue;
+                if (!renderer.model) continue;
 
                 glm::mat4 modelMatrix = world.GetInterpolated(alpha);
                 
@@ -54,7 +54,7 @@ void RenderQueue::Build(Scene& scene, float alpha,
                 if (distCullSq > 0.0f && distSqResult > distCullSq) continue;
 
                 Model* activeModel = renderer.model.get();
-                Shader* itemShader = renderer.shader.lock().get();
+                Shader* itemShader = renderer.shader.expired() ? nullptr : renderer.shader.lock().get();
 
                 if (auto* lod = scene.registry.try_get<LODComponent>(entity)) {
                     for (int j = 0; j < (int)lod->lodDistancesSq.size(); ++j) {
@@ -81,11 +81,12 @@ void RenderQueue::Build(Scene& scene, float alpha,
                 }
 
                 uint64_t key = 0;
+                uint64_t sId = itemShader ? itemShader->getID() : 0;
                 if (!isTransparent) {
                     // Opaque: Layer (8) | Order (8) | Shader (16) | Material (16) | Model (8) | Depth (8)
                     uint64_t l = (uint64_t)(layer & 0xFF) << 56;
                     uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
-                    uint64_t s = (uint64_t)(itemShader->getID() & 0xFFFF) << 32;
+                    uint64_t s = (uint64_t)(sId & 0xFFFF) << 32;
                     uint64_t m = (uint64_t)((uintptr_t)material & 0xFFFF) << 16;
                     uint64_t mod = (uint64_t)((uintptr_t)activeModel & 0xFF) << 8;
                     uint64_t d = (uint64_t)(glm::clamp(distSqResult * 0.1f, 0.0f, 255.0f)) & 0xFF;

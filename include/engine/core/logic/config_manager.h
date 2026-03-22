@@ -38,6 +38,19 @@ public:
     }
 
     /**
+     * @brief Silent update for resolution (usually called from Application::OnResize).
+     */
+    void SetResolution(int width, int height) {
+        {
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            if (m_Config.width == width && m_Config.height == height) return;
+            m_Config.width = width;
+            m_Config.height = height;
+        }
+        EventSystem::Instance().Publish(ConfigChangedEvent{ m_Config, ConfigChangedEvent::Window });
+    }
+
+    /**
      * @brief Get a read-only copy of the current config.
      */
     const AppConfig& GetConfig() const {

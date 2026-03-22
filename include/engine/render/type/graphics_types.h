@@ -368,10 +368,7 @@ struct GPUGlobalData {
     float time;
     float deltaTime;
     float resolution[2];
-    float fogColor[3];
-    float fogEnabled;
-    float fogDensity;
-    float pad[3];
+    float pad[12]; // Keep alignment and size consistent
 };
 
 // --- Vertex & Texture ---

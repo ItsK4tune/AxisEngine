@@ -15,7 +15,7 @@ public:
     void Initialize() override;
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 84; }
+    int GetPriority() const override { return 85; }
     std::string GetName() const override { return "ParticleSystem"; }
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;
@@ -25,5 +25,6 @@ public:
 
 private:
     IGraphicsContext* m_Context = nullptr;
+    unsigned int m_DefaultTexture = 0;
     bool m_Enabled = true;
 };

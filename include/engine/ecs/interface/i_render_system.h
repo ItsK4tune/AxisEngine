@@ -1,7 +1,7 @@
 #pragma once
 #include <ecs/interface/i_base_system.h>
 
-class Scene;
+struct Scene;
 class Shader;
 class IRenderStateManager;
 

@@ -116,5 +116,6 @@ struct StreamingComponent
     std::string modelPath;
     bool isStatic = false;
     float loadDistance = 100.0f;
+    float unloadDistance = 150.0f;
     bool isRequested = false;
 };

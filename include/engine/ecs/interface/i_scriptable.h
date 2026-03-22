@@ -3,7 +3,7 @@
 #include <entt/entt.hpp>
 #include <string>
 
-class Scene;
+struct Scene;
 enum class Key;
 enum class Mouse;
 

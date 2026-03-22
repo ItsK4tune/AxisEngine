@@ -86,10 +86,7 @@ uniform vec2 uvScale = vec2(1.0);
 uniform vec2 uvOffset = vec2(0.0);
 uniform bool debug_noTexture;
 
-// Fog
-uniform bool u_FogEnabled;
-uniform vec3 u_FogColor;
-uniform float u_FogDensity;
+// Fog removed
 
 // Shadow Control
 uniform float u_ShadowBias;
@@ -139,12 +136,6 @@ void main()
     vec3 finalAlbedo = texColor.rgb * tintColor.rgb;
     
     vec3 finalColor = result + material.emission;
-    if (u_FogEnabled) {
-        float dist = length(camera.viewPos - FragPos);
-        float fogFactor = 1.0 - exp(-pow(dist * u_FogDensity, 2.0));
-        fogFactor = clamp(fogFactor, 0.0, 1.0);
-        finalColor = mix(finalColor, u_FogColor, fogFactor);
-    }
 
     FragColor = vec4(finalColor, texColor.a * material.opacity * tintColor.a);
 }
@@ -160,9 +151,9 @@ vec3 CalcDirLightWithShadow(DirLight pLight, vec3 normal, vec3 viewDir, int ligh
     vec3 albedo = (debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, finalTexCoords).rgb, vec3(2.2))) * tintColor.rgb;
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, finalTexCoords).rgb;
 
-    vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient;
-    vec3 diffuse  = pLight.color * 0.8 * pLight.intensity * diff * albedo;
-    vec3 specular = pLight.color * 1.0 * pLight.intensity * spec * specularMap * material.specular;
+    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo * material.ambient;
+    vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo;
+    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * material.specular;
 
     float shadow = light.u_ReceiveShadow != 0 ? ShadowCalculationDir(FragPosLightSpace[lightIndex], normal, lightDir, lightIndex) : 0.0;
     return (ambient + (1.0 - shadow) * (diffuse + specular));
@@ -179,9 +170,9 @@ vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
     vec3 albedo = (debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, finalTexCoords).rgb, vec3(2.2))) * tintColor.rgb;
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, finalTexCoords).rgb;
 
-    vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient;
-    vec3 diffuse  = pLight.color * 0.8 * pLight.intensity * diff * albedo;
-    vec3 specular = pLight.color * 1.0 * pLight.intensity * spec * specularMap * material.specular;
+    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo * material.ambient;
+    vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo;
+    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * material.specular;
 
     return (ambient + diffuse + specular);
 }
@@ -199,9 +190,9 @@ vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, 
     vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, finalTexCoords).rgb, vec3(2.2));
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, finalTexCoords).rgb;
 
-    vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient * attenuation;
-    vec3 diffuse  = pLight.color * 0.8 * pLight.intensity * diff * albedo * attenuation;
-    vec3 specular = pLight.color * 1.0 * pLight.intensity * spec * specularMap * material.specular * attenuation;
+    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo * material.ambient * attenuation;
+    vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo * attenuation;
+    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * material.specular * attenuation;
 
     float shadow = 0.0;
     if (index >= 0 && index < 2)
@@ -226,9 +217,9 @@ vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, in
     vec3 albedo = debug_noTexture ? vec3(1.0) : pow(texture(texture_diffuse1, finalTexCoords).rgb, vec3(2.2));
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(texture_specular1, finalTexCoords).rgb;
 
-    vec3 ambient  = pLight.color * 0.1 * pLight.intensity * albedo * material.ambient * attenuation * intensity;
-    vec3 diffuse  = pLight.color * 0.8 * pLight.intensity * diff * albedo * attenuation * intensity;
-    vec3 specular = pLight.color * 1.0 * pLight.intensity * spec * specularMap * material.specular * attenuation * intensity;
+    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo * material.ambient * attenuation * intensity;
+    vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo * attenuation * intensity;
+    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * material.specular * attenuation * intensity;
 
     float shadow = 0.0;
     if (light.u_ReceiveShadow != 0 && index >= 0 && index < 2)

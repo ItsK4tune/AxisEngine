@@ -50,6 +50,7 @@ void UIRenderSystem::RenderUI(Scene &scene, float screenWidth, float screenHeigh
 {
     if (!m_Enabled) return;
 
+    renderState.SetViewport(0, 0, (int)screenWidth, (int)screenHeight);
     renderState.Disable(ServerCapability::DepthTest);
     renderState.Disable(ServerCapability::CullFace);
     renderState.Enable(ServerCapability::Blend);

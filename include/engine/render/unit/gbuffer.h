@@ -28,6 +28,8 @@ public:
     uint32_t GetFBO() const { return m_FBO ? m_FBO->Get() : 0; }
     int GetWidth() const { return m_Width; }
     int GetHeight() const { return m_Height; }
+    int GetScaledWidth() const { return (int)(m_Width * m_RenderScale); }
+    int GetScaledHeight() const { return (int)(m_Height * m_RenderScale); }
 
     void SetRenderScale(float scale) { m_RenderScale = scale; }
     float GetRenderScale() const { return m_RenderScale; }

@@ -19,6 +19,7 @@ public:
 
     virtual bool IsEnabled() const override { return m_Enabled; }
     virtual void SetEnabled(bool enabled) override { m_Enabled = enabled; }
+    virtual int GetPriority() const override { return 12; }
     virtual std::string GetName() const override { return "StreamingSystem"; }
 
 private:

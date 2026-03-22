@@ -1,4 +1,6 @@
 #include <ecs/logic/decal_system.h>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_shader_manager.h>
 #include <render/interface/i_buffer_manager.h>
@@ -9,8 +11,9 @@
 #include <resource/logic/resource_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
-#include <ecs/logic/render_system.h>
-#include <ecs/logic/system_manager.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_geometry_service.h>
+#include <render/unit/gbuffer.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ecs/logic/entity_manager.h>
@@ -39,12 +42,8 @@ void DecalSystem::Initialize()
         m_ForwardShader = resources.GetShader("decal_forward");
     }
 
-    // Note: Registration connection usually happens when adding to Scene
-    // For now, if we have a way to get the active scene, we connect it.
-    // If not, it's connected in Scene::AddSystem or similar
-    // This is a bit of a chicken-and-egg for systems that need scene events.
-
     InitCubeMesh();
+    InitQuadMesh();
     LOGGER_INFO("DecalSystem") << "DecalSystem GPU resources initialized.";
 }
 
@@ -85,8 +84,8 @@ void DecalSystem::Update(Scene &scene, float dt)
 
 void DecalSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
 {
-    auto rs_ptr = ServiceLocator::Instance().Require<SystemManager>().GetSystem<RenderSystem>();
-    if (rs_ptr && rs_ptr->IsDeferredRenderingEnabled())
+    auto* geoSys = ServiceLocator::Instance().Resolve<IGeometryService>();
+    if (geoSys && geoSys->IsDeferredRenderingEnabled())
     {
         Render(scene);
     }
@@ -97,19 +96,8 @@ void DecalSystem::Render(Scene &scene)
     if (!m_Enabled) return;
     
     auto& sl = ServiceLocator::Instance();
-    auto rs_ptr = sl.Require<SystemManager>().GetSystem<RenderSystem>();
-    if (!rs_ptr) return;
-    auto& rs = *rs_ptr;
-
-    // In deferred mode, we already rendered in RenderAlpha pass (Pass 1)
-    if (rs.IsDeferredRenderingEnabled()) {
-        // We only want to run once. If we are called here (Pass 3), we likely already ran.
-        // However, to keep it simple and safe for both paths:
-        // We allow Render() to be called directly, but we rely on the pass management in SystemManager.
-        // If we want to strictly avoid double-render in Pass 3:
-        static uint64_t lastFrameRendered = 0;
-        // ... but we don't have frame index here easily.
-    }
+    auto* geoSys = sl.Resolve<IGeometryService>();
+    if (!geoSys) return;
 
     auto camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) return;
@@ -121,27 +109,22 @@ void DecalSystem::Render(Scene &scene)
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
 
-    bool isDeferred = rs.IsDeferredRenderingEnabled();
+    bool isDeferred = geoSys->IsDeferredRenderingEnabled();
     Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();
     if (!shader) return;
 
-    if (isDeferred) rs.BindForDecals();
-    
     shader->use();
-    
-    if (isDeferred) {
-        shader->setMat4("invProj", glm::inverse(cam.projectionMatrix));
-        shader->setMat4("invView", glm::inverse(cam.viewMatrix));
-        shader->setVec2("screenSize", glm::vec2((float)rs.GetGBufferWidth(), (float)rs.GetGBufferHeight()));
 
+    if (isDeferred) {
         UpdateTagMap(scene);
+        geoSys->BeginDecalPass();
 
         tm.ActiveTexture(TextureUnit::Texture0);
-        tm.BindTexture(TextureType::Texture2D, rs.GetGBufferDepth());
+        tm.BindTexture(TextureType::Texture2D, geoSys->GetGBufferDepth());
         shader->setInt("gDepth", 0);
 
         tm.ActiveTexture(TextureUnit::Texture1);
-        tm.BindTexture(TextureType::Texture2D, rs.GetGBufferID());
+        tm.BindTexture(TextureType::Texture2D, geoSys->GetGBufferID());
         shader->setInt("gID", 1);
 
         tm.ActiveTexture(TextureUnit::Texture2);
@@ -149,28 +132,40 @@ void DecalSystem::Render(Scene &scene)
         shader->setInt("tagMap", 2);
 
         tm.ActiveTexture(TextureUnit::Texture4);
-        tm.BindTexture(TextureType::Texture2D, rs.GetGBufferPosition());
+        tm.BindTexture(TextureType::Texture2D, geoSys->GetGBufferPosition());
         shader->setInt("gPosition", 4);
         
         sm.SetCullFace(CullMode::Front);
         sm.SetDepthFunc(CompareFunc::Always);
     } else {
+        auto* rs = sl.Resolve<IRenderService>();
+        uint32_t fbo = rs ? rs->GetMainFBO() : 0;
+        gc.GetRenderTargetManager().BindFramebuffer(FramebufferTarget::Framebuffer, fbo);
+
         shader->setVec4("tintColor", glm::vec4(1.0f));
-        sm.SetCullFace(CullMode::Back);
+        sm.Disable(ServerCapability::CullFace);
         sm.SetDepthFunc(CompareFunc::Less);
     }
 
     shader->setMat4("view", cam.viewMatrix);
     shader->setMat4("projection", cam.projectionMatrix);
     
+    if (!isDeferred) {
+        sm.SetViewport(0, 0, cam.screenWidth, cam.screenHeight);
+    }
     sm.Enable(ServerCapability::DepthTest);
     sm.SetDepthMask(false);
-    sm.Enable(ServerCapability::CullFace);
     sm.Enable(ServerCapability::Blend);
     sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
-    bm.BindVertexArray(m_CubeVAO);
-    bm.BindBuffer(BufferType::ElementArrayBuffer, m_CubeEBO);
+    if (isDeferred) {
+        sm.Enable(ServerCapability::CullFace);
+        bm.BindVertexArray(m_CubeVAO);
+        bm.BindBuffer(BufferType::ElementArrayBuffer, m_CubeEBO);
+    } else {
+        bm.BindVertexArray(m_QuadVAO);
+        bm.BindBuffer(BufferType::ElementArrayBuffer, m_QuadEBO);
+    }
     
     auto view = scene.registry.view<DecalComponent, PositionComponent, RotationComponent, ScaleComponent>();
     
@@ -208,8 +203,10 @@ void DecalSystem::Render(Scene &scene)
             dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, nullptr);
         }
     }
-    
-    if (isDeferred) rs.UnbindForDecals();
+    if (isDeferred) {
+        auto* rs = sl.Resolve<IRenderService>();
+        geoSys->EndDecalPass(rs ? rs->GetMainFBO() : 0);
+    }
     
     sm.SetDepthMask(true);
     sm.SetDepthFunc(CompareFunc::Less);
@@ -285,6 +282,37 @@ void DecalSystem::InitCubeMesh()
     bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::StaticDraw);
     
     bm.BindBuffer(BufferType::ElementArrayBuffer, m_CubeEBO);
+    bm.BufferData(BufferType::ElementArrayBuffer, sizeof(indices), indices, BufferUsage::StaticDraw);
+    
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, 3 * sizeof(float), (void*)0);
+}
+
+void DecalSystem::InitQuadMesh()
+{
+    auto& gc = ServiceLocator::Instance().Require<IGraphicsContext>();
+    auto& bm = gc.GetBufferManager();
+    
+    float vertices[] = {
+        -0.5f, -0.5f, 0.0f,
+         0.5f, -0.5f, 0.0f,
+         0.5f,  0.5f, 0.0f,
+        -0.5f,  0.5f, 0.0f
+    };
+    
+    unsigned int indices[] = {
+        0, 1, 2, 2, 3, 0
+    };
+    
+    m_QuadVAO = bm.CreateVertexArray();
+    m_QuadVBO = bm.CreateBuffer();
+    m_QuadEBO = bm.CreateBuffer();
+    
+    bm.BindVertexArray(m_QuadVAO);
+    bm.BindBuffer(BufferType::ArrayBuffer, m_QuadVBO);
+    bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::StaticDraw);
+    
+    bm.BindBuffer(BufferType::ElementArrayBuffer, m_QuadEBO);
     bm.BufferData(BufferType::ElementArrayBuffer, sizeof(indices), indices, BufferUsage::StaticDraw);
     
     bm.EnableVertexAttribArray(0);

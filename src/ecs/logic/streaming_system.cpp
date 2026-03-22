@@ -27,16 +27,49 @@ void StreamingSystem::Update(Scene& scene, float dt)
     for (auto entity : view)
     {
         auto& stream = view.get<StreamingComponent>(entity);
-        if (stream.isRequested) continue;
-
         auto& pos = view.get<PositionComponent>(entity);
         float distSq = glm::distance2(camPos, pos.value);
 
+        // --- Handling Streaming (Load/Unload) ---
         if (distSq < stream.loadDistance * stream.loadDistance)
         {
-            LOGGER_INFO("StreamingSystem") << "Distance threshold met, requesting resource: " << stream.modelPath;
-            resources.LoadModelAsync(stream.modelPath, stream.modelPath, stream.isStatic);
-            stream.isRequested = true;
+            if (!stream.isRequested) {
+                LOGGER_INFO("StreamingSystem") << "Distance threshold met, requesting resource: " << stream.modelPath;
+                resources.LoadModelAsync(stream.modelPath, stream.modelPath, stream.isStatic);
+                stream.isRequested = true;
+            }
+        }
+        else if (distSq > stream.unloadDistance * stream.unloadDistance)
+        {
+            if (stream.isRequested) {
+                LOGGER_INFO("StreamingSystem") << "Unload distance reached, removing mesh: " << stream.modelPath;
+                if (scene.registry.all_of<MeshRendererComponent>(entity)) {
+                    scene.registry.remove<MeshRendererComponent>(entity);
+                }
+                stream.isRequested = false;
+            }
+        }
+
+        // --- Handling LOD Switching ---
+        if (scene.registry.all_of<LODComponent, MeshRendererComponent>(entity))
+        {
+            auto& lod = scene.registry.get<LODComponent>(entity);
+            auto& mesh = scene.registry.get<MeshRendererComponent>(entity);
+            
+            size_t bestLod = 0;
+            for (size_t i = 0; i < lod.lodDistancesSq.size(); ++i) {
+                if (distSq > lod.lodDistancesSq[i]) {
+                    bestLod = i + 1;
+                } else {
+                    break;
+                }
+            }
+            
+            if (bestLod < lod.lodModels.size() && lod.lodModels[bestLod]) {
+                if (mesh.model != lod.lodModels[bestLod]) {
+                    mesh.model = lod.lodModels[bestLod];
+                }
+            }
         }
     }
 }

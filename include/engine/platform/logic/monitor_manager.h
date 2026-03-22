@@ -24,6 +24,7 @@ public:
     int GetWidth() const { return m_Width; }
     int GetHeight() const { return m_Height; }
     int GetFrameRateLimit() const { return m_FrameRateLimit; }
+    WindowMode GetWindowMode() const { return m_Mode; }
 
     std::vector<DeviceInfo> GetAllDevices() const override;
     DeviceInfo GetCurrentDevice() const override;

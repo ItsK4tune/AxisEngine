@@ -23,7 +23,7 @@ public:
     
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 81; } // After Terrain/Opaque
+    int GetPriority() const override { return 82; } // After Terrain (80)
     std::string GetName() const override { return "DecalSystem"; }
     void RenderAlpha(Scene &scene, int width, int height, float alpha) override;
 
@@ -51,13 +51,19 @@ private:
     GpuHandle m_CubeVBO = 0;
     GpuHandle m_CubeEBO = 0;
     
+    GpuHandle m_QuadVAO = 0;
+    GpuHandle m_QuadVBO = 0;
+    GpuHandle m_QuadEBO = 0;
+    
     std::vector<std::string> m_AllowedTags;
     std::map<std::string, uint32_t> m_TagBitMap;
     unsigned int m_TagMapTexture = 0;
     std::vector<uint32_t> m_TagBuffer;
     uint32_t m_NextOrder = 1;
+    bool m_NextOrderIsReset = false;
 
     void InitCubeMesh();
+    void InitQuadMesh();
     void UpdateTagMap(Scene& scene);
     uint32_t GetBitmask(const std::vector<std::string>& tags);
 };

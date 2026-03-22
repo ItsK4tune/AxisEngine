@@ -44,12 +44,20 @@ public:
 
     void ClearEffects();
 
-    // Config setters
-    // Config updates
-    void UpdateConfig();
-
     float GetGamma() const;
     float GetExposure() const;
+
+    int GetWidth() const { return m_Width; }
+    int GetHeight() const { return m_Height; }
+
+    // Config setters
+    void SetBloomEnabled(bool enable) { m_BloomEnabled = enable; }
+    void SetBloomThreshold(float threshold) { m_BloomThreshold = threshold; }
+    void SetBloomIntensity(float intensity) { m_BloomIntensity = intensity; }
+    void SetBloomRadius(float radius) { m_BloomRadius = radius; }
+    void SetExposure(float exposure) { m_Exposure = exposure; }
+    void SetGamma(float gamma) { m_Gamma = gamma; }
+    void SetTonemappingMode(int mode) { m_TonemappingMode = mode; }
 
 private:
     IGraphicsContext* m_Context = nullptr;
@@ -98,8 +106,8 @@ private:
     float m_Gamma = 2.2f;
     int m_TonemappingMode = 1;
 
-    uint32_t m_ConfigSubId = 0;
 
+    void UpdateConfig();
     void InitQuad();
     void InitFramebuffers();
     void RenderBloom(uint32_t srcTexture);

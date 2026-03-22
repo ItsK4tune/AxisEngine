@@ -6,7 +6,7 @@
 #include <ecs/interface/i_update_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <memory>
-#include <render/logic/post_process_pipeline.h>
+#include <string>
 #include <string>
 #include <vector>
 #include <set>
@@ -14,7 +14,7 @@
 class Application;
 class IPhysicsWorld;
 class ResourceManager;
-class Scene;
+struct Scene;
 class IDebugSystem;
 
 struct ExecutionBatch {
@@ -56,7 +56,6 @@ public:
     IBaseSystem* GetSystem(const std::string& name) const;
     void RegisterSystem(std::unique_ptr<IBaseSystem> system);
 
-    PostProcessPipeline &GetPostProcess() { return postProcess; }
 
     void RebuildExecutionBatches();
 
@@ -67,7 +66,6 @@ private:
     
     std::vector<ExecutionBatch> m_UpdateBatches;
     
-    PostProcessPipeline postProcess;
 
     std::unique_ptr<IDebugSystem> m_DebugSystem;
 

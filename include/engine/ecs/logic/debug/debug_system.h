@@ -4,7 +4,7 @@
 #include <vector>
 #include <core/interface/i_debug_system.h>
 
-class Scene;
+struct Scene;
 
 // --- Debug Interface ---
 

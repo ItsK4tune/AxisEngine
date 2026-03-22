@@ -5,7 +5,7 @@
 #include <vector>
 
 class IPhysicsWorld;
-class Scene;
+struct Scene;
 
 struct CollisionPair
 {

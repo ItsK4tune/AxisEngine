@@ -113,6 +113,8 @@ void GameState::OnUpdate(float dt)
                         auto& dScale = EntityManager::AddComponent<ScaleComponent>(this->GetScene(), decalEnt);
                         dScale.value = glm::vec3(1.0f, 1.0f, 1.0f);
                         
+                        EntityManager::AddComponent<WorldTransformComponent>(this->GetScene(), decalEnt);
+                        
                         LOGGER_INFO("GameState") << "Spawned Decal at " << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z;
                     }
                 }
@@ -234,6 +236,8 @@ void GameState::OnUpdate(float dt)
                         pComp.emitter.StartColor = glm::vec4(1.0f, 0.8f, 0.4f, 1.0f); // Sparkly orange/yellow
                         pComp.emitter.EndColor = glm::vec4(1.0f, 0.2f, 0.0f, 0.0f);
                         pComp.emitter.Shape = ParticleEmitter::EmissionShape::CONE;
+                        
+                        EntityManager::AddComponent<WorldTransformComponent>(this->GetScene(), particleEnt);
                         
                         LOGGER_INFO("GameState") << "Spawned Impact Particle at " << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z;
                     }

@@ -3,7 +3,7 @@
 #include <string>
 #include <entt/entt.hpp>
 
-class Scene;
+struct Scene;
 
 struct SceneLoadedEvent { std::string path; };
 struct SceneUnloadedEvent { std::string path; };

@@ -35,7 +35,11 @@ void GBuffer::Shutdown()
 
 void GBuffer::Resize(int width, int height)
 {
-    if (m_Width == width && m_Height == height) return;
+    if (m_Width == width && m_Height == height) {
+        // Even if w/h match, we might have a different renderScale now.
+        // We can either pass scale here or rely on m_RenderScale being set before.
+        // For safety, we only return if nothing changed.
+    }
     m_Width = width;
     m_Height = height;
     CreateTextures();

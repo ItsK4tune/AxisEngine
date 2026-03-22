@@ -10,7 +10,6 @@ class SceneManager;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
 struct Scene
 {
     Scene();

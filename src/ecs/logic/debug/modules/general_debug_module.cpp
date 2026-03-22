@@ -101,29 +101,32 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
     if (!m_Enabled)
         return;
 
-    ProcessKey(keyboard, Key::F1, m_F1Pressed, [this]()
-               { LogControls(); });
+    ProcessKey(keyboard, Key::F1, m_F1Pressed, [this, &keyboard]()
+               { if (!keyboard.GetKey(Key::LeftShift) && !keyboard.GetKey(Key::RightShift)) LogControls(); });
 
-    ProcessKey(keyboard, Key::F2, m_F2Pressed, [this]()
-               { LogDevices(); });
+    ProcessKey(keyboard, Key::F2, m_F2Pressed, [this, &keyboard]()
+               { if (!keyboard.GetKey(Key::LeftShift) && !keyboard.GetKey(Key::RightShift)) LogDevices(); });
 
-    ProcessKey(keyboard, Key::F3, m_F3Pressed, [this]()
-               { LogStats(); });
+    ProcessKey(keyboard, Key::F3, m_F3Pressed, [this, &keyboard]()
+               { if (!keyboard.GetKey(Key::LeftShift) && !keyboard.GetKey(Key::RightShift)) LogStats(); });
 
-    ProcessKey(keyboard, Key::F4, m_F4Pressed, [this]()
-               { LogEntityStats(); });
+    ProcessKey(keyboard, Key::F4, m_F4Pressed, [this, &keyboard]()
+               { if (!keyboard.GetKey(Key::LeftShift) && !keyboard.GetKey(Key::RightShift)) LogEntityStats(); });
 
-    ProcessKey(keyboard, Key::F5, m_F5Pressed, [this]()
-               { LogSceneGraph(); });
+    ProcessKey(keyboard, Key::F5, m_F5Pressed, [this, &keyboard]()
+               { if (!keyboard.GetKey(Key::LeftShift) && !keyboard.GetKey(Key::RightShift)) LogSceneGraph(); });
 
-    ProcessKey(keyboard, Key::F11, m_F11Pressed, [this]()
+    ProcessKey(keyboard, Key::F11, m_F11Pressed, [this, &keyboard]()
                {
-        auto& timer = ServiceLocator::Instance().Require<TimeService>();
-        bool paused = !timer.IsPaused();
-        timer.SetPaused(paused);
-        std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
-        std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << "\n";
-        std::cout << "======================================" << std::endl; });
+        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
+        if (!shift) {
+            auto& timer = ServiceLocator::Instance().Require<TimeService>();
+            bool paused = !timer.IsPaused();
+            timer.SetPaused(paused);
+            std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
+            std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << "\n";
+            std::cout << "======================================" << std::endl;
+        } });
 
     ProcessKey(keyboard, Key::F12, m_F12Pressed, [this, &keyboard]()
                {

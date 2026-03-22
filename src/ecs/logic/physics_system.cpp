@@ -47,10 +47,10 @@ void PhysicsSystem::Initialize()
         if (!(e.bitmask & (ConfigChangedEvent::Physics | ConfigChangedEvent::All)))
             return;
 
+        const auto& cfg = e.config;
         auto& sl_inner = ServiceLocator::Instance();
         auto* phys_inner = sl_inner.Resolve<IPhysicsWorld>();
         if (phys_inner) {
-            auto& cfg = sl_inner.Require<ConfigManager>().GetConfig();
             phys_inner->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
             phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
             phys_inner->SetSolverIterations(cfg.solverIterations);

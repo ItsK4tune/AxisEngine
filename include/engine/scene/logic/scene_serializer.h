@@ -9,7 +9,7 @@
 
 class IPhysicsWorld;
 class ResourceManager;
-class Scene;
+struct Scene;
 class AudioService;
 
 class SceneSerializer

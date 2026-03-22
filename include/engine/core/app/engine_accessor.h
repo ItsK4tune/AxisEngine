@@ -2,12 +2,13 @@
 
 #include <core/logic/service_locator.h>
 #include <ecs/logic/system_manager.h>
+#include <core/logic/logger.h>
 #include <platform/interface/cursor_mode.h>
 #include <string>
 #include <vector>
 
 // Forward declarations for systems and managers
-class Scene;
+struct Scene;
 class SceneManager;
 class ResourceManager;
 class AudioService;
@@ -31,7 +32,17 @@ public:
     T& Get() const { return ServiceLocator::Instance().Require<T>(); }
 
     template <typename T>
-    T& GetSystem() const { return *ServiceLocator::Instance().Require<SystemManager>().GetSystem<T>(); }
+    T& GetSystem() const { 
+        T* sys = ServiceLocator::Instance().Require<SystemManager>().GetSystem<T>();
+        if (!sys) {
+            // We crash with a controlled message rather than access violation if possible, 
+            // but in many cases we just want to know WHICH system is missing.
+            LOGGER_ERROR("EngineAccessor") << "System not found or not registered: " << typeid(T).name();
+            // Since we must return a reference, we still have to handle the failure.
+            // For now, let's keep the dereference but the log will help pinpoint it.
+        }
+        return *sys; 
+    }
 
     // Legacy/Convenience getters (Systems) - DEPRECATED: Use GetSystem<T>() instead.
     [[deprecated("Use GetSystem<RenderSystem>() instead")]]

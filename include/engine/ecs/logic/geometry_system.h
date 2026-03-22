@@ -1,0 +1,50 @@
+#pragma once
+
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_ecs_system.h>
+#include <ecs/interface/i_geometry_service.h>
+#include <render/unit/gbuffer.h>
+#include <render/unit/command_queue.h>
+#include <render/logic/material_renderer.h>
+#include <memory>
+
+class GeometrySystem : public IRenderSystem, public IECSSystem, public IGeometryService
+{
+public:
+    void Initialize() override;
+    void Shutdown() override;
+    
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    int GetPriority() const override { return 80; }
+    std::string GetName() const override { return "GeometrySystem"; }
+    void Render(Scene &scene) override {}
+    void RenderAlpha(Scene &scene, int width, int height, float alpha) override;
+    
+    GBuffer& GetGBuffer() override { return m_GBuffer; }
+    void BindGBufferForWriting() override;
+    void UnbindGBuffer() override;
+    
+    void BeginDecalPass() override;
+    void EndDecalPass(uint32_t mainFBO) override;
+
+    bool IsDeferredRenderingEnabled() const override;
+
+    uint32_t GetGBufferDepth() const override { return m_GBuffer.GetDepthTexture(); }
+    uint32_t GetGBufferID() const override { return m_GBuffer.GetIDTexture(); }
+    uint32_t GetGBufferPosition() const override { return m_GBuffer.GetPositionTexture(); }
+    uint32_t GetGBufferNormal() const { return m_GBuffer.GetNormalTexture(); }
+    uint32_t GetGBufferWidth() const override { return (uint32_t)m_GBuffer.GetWidth(); }
+    uint32_t GetGBufferHeight() const override { return (uint32_t)m_GBuffer.GetHeight(); }
+
+    std::vector<entt::id_type> GetReadComponents() const override;
+    std::vector<entt::id_type> GetWriteComponents() const override;
+
+private:
+    bool m_Enabled = true;
+    GBuffer m_GBuffer;
+    std::shared_ptr<Shader> m_GBufferShader;
+    MaterialRenderer m_MaterialRenderer;
+    CommandQueue m_CommandQueue;
+    
+};

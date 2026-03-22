@@ -12,10 +12,21 @@
 #include <platform/logic/io_handler.h>
 #include <core/logic/service_locator.h>
 #include <resource/logic/resource_manager.h>
+#include <ecs/interface/i_render_service.h>
+#include <render/interface/i_render_target_manager.h>
 
 void ParticleSystem::Initialize()
 {
     m_Context = &ServiceLocator::Instance().Require<IGraphicsContext>();
+    
+    // Create default white texture if it doesn't exist
+    auto& tm = m_Context->GetTextureManager();
+    m_DefaultTexture = tm.GenTexture();
+    tm.BindTexture(TextureType::Texture2D, m_DefaultTexture);
+    unsigned char white[] = { 255, 255, 255, 255 };
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, white);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 }
 
 void ParticleSystem::Update(Scene &scene, float dt)
@@ -64,12 +75,19 @@ void ParticleSystem::Render(Scene &scene)
     if (!m_Enabled || !m_Context)
         return;
 
+    auto& sl = ServiceLocator::Instance();
+    auto* rs = sl.Resolve<IRenderService>();
+    uint32_t fbo = rs ? rs->GetMainFBO() : 0;
+    m_Context->GetRenderTargetManager().BindFramebuffer(FramebufferTarget::Framebuffer, fbo);
+    
     auto& rsm = m_Context->GetRenderStateManager();
 
     rsm.Enable(ServerCapability::Blend);
     rsm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::One);
     rsm.Enable(ServerCapability::DepthTest);
+    rsm.SetDepthFunc(CompareFunc::Lequal);
     rsm.SetDepthMask(false);
+    rsm.Disable(ServerCapability::CullFace);
 
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
     auto shader = resources.GetShader("particle");
@@ -81,12 +99,11 @@ void ParticleSystem::Render(Scene &scene)
 
     shader->use();
 
+    // Matrices handled by Camera UBO (Binding 20)
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity != entt::null)
-    {
-        auto &cam = scene.registry.get<CameraComponent>(camEntity);
-        shader->setMat4("projection", cam.projectionMatrix);
-        shader->setMat4("view", cam.viewMatrix);
+    if (camEntity != entt::null) {
+        auto& cam = scene.registry.get<CameraComponent>(camEntity);
+        rsm.SetViewport(0, 0, cam.screenWidth, cam.screenHeight);
     }
 
     auto view = scene.registry.view<ParticleEmitterComponent>();
@@ -95,6 +112,11 @@ void ParticleSystem::Render(Scene &scene)
         auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
         if (emitterComp.isActive)
         {
+            if (!emitterComp.emitter.Texture) {
+                m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
+                m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);
+                shader->setInt("sprite", 0);
+            }
             emitterComp.emitter.Render(shader.get());
         }
     }

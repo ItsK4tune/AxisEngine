@@ -12,6 +12,7 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/logic/physics_system.h>
 #include <ecs/logic/render_system.h>
+#include <ecs/logic/post_process_system.h>
 #include <ecs/logic/audio_system.h>
 #include <ecs/logic/particle_system.h>
 #include <ecs/logic/animation_system.h>
@@ -37,6 +38,7 @@
 #include <core/logic/axis_assert.h>
 #include <script/logic/script_registry.h>
 #include <physics/logic/collision_matrix.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
@@ -232,16 +234,18 @@ bool Application::Initialize(const AppConfig &config)
     m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (m_IOHandler)
         {
-            if (e.bitmask & ConfigChangedEvent::Window)
-            {
-                m_IOHandler->GetMonitorManager().SetWindowConfiguration(
-                    e.config.width, e.config.height,
-                    (WindowMode)e.config.windowMode,
-                    e.config.monitorIndex, e.config.refreshRate);
-
-                // Explicitly trigger resize logic to sync viewport and other systems
-                OnResize(m_IOHandler->GetMonitorManager().GetWidth(), 
-                         m_IOHandler->GetMonitorManager().GetHeight());
+            if (e.bitmask & ConfigChangedEvent::Window) {
+                auto& mm = m_IOHandler->GetMonitorManager();
+                if (mm.GetWidth() != e.config.width || mm.GetHeight() != e.config.height || mm.GetWindowMode() != e.config.windowMode) {
+                    mm.SetWindowConfiguration(
+                        e.config.width, e.config.height,
+                        e.config.windowMode,
+                        e.config.monitorIndex,
+                        e.config.refreshRate
+                    );
+                    mm.SetVsync(e.config.vsync);
+                    OnResize(mm.GetWidth(), mm.GetHeight());
+                }
             }
             
             if (e.bitmask & (ConfigChangedEvent::Window | ConfigChangedEvent::Graphics))
@@ -319,11 +323,41 @@ void  Application::SetPaused(bool paused)    { m_RuntimeCore->SetPaused(paused);
 
 void Application::OnResize(int width, int height)
 {
+    if (m_ConfigManager) m_ConfigManager->SetResolution(width, height);
     m_IOHandler->OnResize(width, height);
-    m_SystemManager->GetPostProcess().Resize(width, height);
+    
+    auto& sl = ServiceLocator::Instance();
+    auto* sm = sl.Resolve<SystemManager>();
+    if (!sm) return;
+
+    // Resize PostProcess if available
+    if (auto* pps = sm->GetSystem<PostProcessSystem>()) {
+        pps->GetPipeline().Resize(width, height);
+    }
+    
+    // Update active camera aspect ratio
+    if (m_Scene) {
+        auto view = m_Scene->registry.view<CameraComponent>();
+        float aspect = (float)width / (float)height;
+        for (auto entity : view) {
+            auto& camera = view.get<CameraComponent>(entity);
+            camera.aspectRatio = aspect;
+            camera.screenWidth = width;
+            camera.screenHeight = height;
+            if (!camera.isOrthographic) {
+                camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
+            } else {
+                float h = camera.orthoSize;
+                float w = h * aspect;
+                camera.projectionMatrix = glm::ortho(-w, w, -h, h, camera.nearPlane, camera.farPlane);
+            }
+        }
+    }
 }
 void Application::OnMouseMove(double xpos, double ypos)   { m_IOHandler->OnMouseMove(xpos, ypos); }
 void Application::OnMouseButton(int button, int action, int mods) { m_IOHandler->OnMouseButton(button, action, mods); }
 void Application::OnScroll(double xoffset, double yoffset) { m_IOHandler->OnScroll(xoffset, yoffset); }
 
-PostProcessPipeline& Application::GetPostProcess() { return m_SystemManager->GetPostProcess(); }
+PostProcessPipeline& Application::GetPostProcess() { 
+    return ServiceLocator::Instance().Require<SystemManager>().GetSystem<PostProcessSystem>()->GetPipeline(); 
+}

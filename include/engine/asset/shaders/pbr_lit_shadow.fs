@@ -90,10 +90,7 @@ uniform vec2 uvScale = vec2(1.0);
 uniform vec2 uvOffset = vec2(0.0);
 uniform bool debug_noTexture;
 
-// Fog
-uniform bool u_FogEnabled;
-uniform vec3 u_FogColor;
-uniform float u_FogDensity;
+// Fog removed
 
 // Shadow Control
 uniform float u_ShadowBias;
@@ -193,13 +190,6 @@ void main()
     vec3 ambient = (kD * diffuse + specular) * ao;
     vec3 emissive = debug_noTexture ? vec3(0.0) : pow(texture(texture_emissive1, finalTexCoords).rgb, vec3(2.2)) * material.emission;
     vec3 finalColor = ambient + Lo + emissive;
-
-    if (u_FogEnabled) {
-        float dist = length(camera.viewPos - FragPos);
-        float fogFactor = 1.0 - exp(-pow(dist * u_FogDensity, 2.0));
-        fogFactor = clamp(fogFactor, 0.0, 1.0);
-        finalColor = mix(finalColor, u_FogColor, fogFactor);
-    }
 
     FragColor = vec4(finalColor, material.opacity);
 }

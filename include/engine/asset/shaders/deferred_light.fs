@@ -114,11 +114,55 @@ void main()
 
         vec3 radiance = dirLights[i].color * dirLights[i].intensity;
         
-        vec3 ambient  = 0.1 * radiance * Albedo;
-        vec3 diffuse  = 0.8 * radiance * diff * Albedo;
-        vec3 specular = 1.0 * radiance * spec * 0.5; // 0.5 as default spec intensity
+        vec3 ambient  = dirLights[i].ambient * radiance * Albedo;
+        vec3 diffuse  = dirLights[i].diffuse * radiance * diff * Albedo;
+        vec3 specular = dirLights[i].specular * radiance * spec * 0.5; 
         
         Lo += ambient + (1.0 - shadow) * (diffuse + specular);
+    }
+    
+    // 2. Point Lights
+    for(int i = 0; i < light.nrPointLights; ++i)
+    {
+        vec3 L = normalize(pointLights[i].position - FragPos);
+        vec3 H = normalize(V + L);
+        float dist = length(pointLights[i].position - FragPos);
+        float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
+        
+        float diff = max(dot(Normal, L), 0.0);
+        float spec = pow(max(dot(Normal, H), 0.0), 32.0);
+        
+        vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation;
+        
+        vec3 ambient  = pointLights[i].ambient * radiance * Albedo;
+        vec3 diffuse  = pointLights[i].diffuse * radiance * diff * Albedo;
+        vec3 specular = pointLights[i].specular * radiance * spec * 0.5;
+        
+        Lo += ambient + diffuse + specular;
+    }
+
+    // 3. Spot Lights
+    for(int i = 0; i < light.nrSpotLights; ++i)
+    {
+        vec3 L = normalize(spotLights[i].position - FragPos);
+        vec3 H = normalize(V + L);
+        float dist = length(spotLights[i].position - FragPos);
+        float attenuation = 1.0 / (spotLights[i].constant + spotLights[i].linear * dist + spotLights[i].quadratic * (dist * dist));
+        
+        float theta = dot(L, normalize(-spotLights[i].direction));
+        float epsilon = spotLights[i].cutOff - spotLights[i].outerCutOff;
+        float spotIntensity = clamp((theta - spotLights[i].outerCutOff) / epsilon, 0.0, 1.0);
+        
+        float diff = max(dot(Normal, L), 0.0);
+        float spec = pow(max(dot(Normal, H), 0.0), 32.0);
+        
+        vec3 radiance = spotLights[i].color * spotLights[i].intensity * attenuation * spotIntensity;
+        
+        vec3 ambient  = spotLights[i].ambient * radiance * Albedo;
+        vec3 diffuse  = spotLights[i].diffuse * radiance * diff * Albedo;
+        vec3 specular = spotLights[i].specular * radiance * spec * 0.5;
+        
+        Lo += ambient + diffuse + specular;
     }
 
     // Final Color

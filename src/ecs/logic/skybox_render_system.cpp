@@ -11,6 +11,8 @@
 #include <core/type/app_config.h>
 
 #include <platform/logic/io_handler.h>
+#include <ecs/interface/i_render_service.h>
+#include <render/interface/i_render_target_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_system.h>
@@ -54,6 +56,12 @@ void SkyboxRenderSystem::Render(Scene &scene)
     auto& rsm = m_Context->GetRenderStateManager();
     auto& tm = m_Context->GetTextureManager();
 
+    auto* rs = ServiceLocator::Instance().Resolve<IRenderService>();
+    uint32_t mainFBO = rs ? rs->GetMainFBO() : 0;
+    auto& rtm = m_Context->GetRenderTargetManager();
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
+
+    rsm.SetViewport(0, 0, camera.screenWidth, camera.screenHeight);
     rsm.SetDepthFunc(CompareFunc::Lequal);
 
     auto activeSkybox = EntityManager::GetActiveSkybox(scene);

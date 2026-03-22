@@ -8,11 +8,13 @@
 #include <scene/logic/scene.h>
 #include <ecs/logic/render_system.h>
 #include <ecs/logic/skybox_render_system.h>
-#include <ecs/logic/ui_render_system.h>
-#include <platform/logic/io_handler.h>
-#include <platform/logic/monitor_manager.h>
 #include <ecs/logic/system_manager.h>
 #include <core/logic/time_service.h>
+#include <platform/logic/io_handler.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_shadow_service.h>
+#include <ecs/interface/i_skybox_service.h>
+#include <ecs/interface/i_ui_service.h>
 #include <platform/interface/i_window.h>
 #include <iostream>
 #include <sstream>
@@ -70,7 +72,10 @@ void OverlayDebugModule::Render(Scene &scene)
     graphics.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
     size_t totalEntities = scene.registry.storage<entt::entity>().size();
-    int renderedEntities = systems.GetSystem<RenderSystem>()->GetRenderedCount();
+    int renderedEntities = 0;
+    if (auto* rs = sl.Resolve<IRenderService>()) {
+        renderedEntities = rs->GetRenderedCount();
+    }
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(1);
@@ -87,10 +92,15 @@ void OverlayDebugModule::Render(Scene &scene)
         ss << "=== DEBUG TOOLS ===\n";
         auto boolStr = [](bool v)
         { return v ? "[ON]" : "[OFF]"; };
-        ss << "F6: Wireframe: " << boolStr(DebugConfig::ShowWireframe) << "  | S+F6: Skybox: " << boolStr(systems.GetSystem<SkyboxRenderSystem>()->IsEnabled()) << "\n";
-        ss << "F7: NoTexture: " << boolStr(systems.GetSystem<RenderSystem>()->IsDebugNoTexture()) << "  | S+F7: Shadows: " << boolStr(systems.GetSystem<RenderSystem>()->IsShadowsEnabled()) << "\n";
+        bool noTexture = false;
+        bool shadowsEnabled = false;
+        if (auto* rs = sl.Resolve<IRenderService>()) noTexture = rs->IsDebugNoTexture();
+        if (auto* ss = sl.Resolve<IShadowService>()) shadowsEnabled = ss->IsShadowsEnabled();
+
+        ss << "F6: Wireframe: " << boolStr(DebugConfig::ShowWireframe) << "  | S+F6: Skybox: " << boolStr(sl.Resolve<ISkyboxService>() && sl.Resolve<ISkyboxService>()->IsEnabled()) << "\n";
+        ss << "F7: NoTexture: " << boolStr(noTexture) << "  | S+F7: Shadows: " << boolStr(shadowsEnabled) << "\n";
         ss << "F8: Physics: " << boolStr(DebugConfig::ShowPhysics) << "    | S+F8: Audio: [NYI]\n";
-        ss << "F9: UI System: " << boolStr(systems.GetSystem<UIRenderSystem>()->IsEnabled()) << " | S+F9: Particle: [NYI]\n";
+        ss << "F9: UI System: " << boolStr(sl.Resolve<IUIService>() && sl.Resolve<IUIService>()->IsEnabled()) << " | S+F9: Particle: [NYI]\n";
         ss << "S+F3: Names: " << boolStr(DebugConfig::ShowEntityNames) << "    | S+F4: Gizmos: " << boolStr(DebugConfig::ShowGizmos) << "\n";
         ss << "S+F5: Lights: " << boolStr(DebugConfig::ShowLightGizmos) << "   | S+F11: Cam\n";
         ss << "F11: Paused:   " << boolStr(timer.IsPaused());

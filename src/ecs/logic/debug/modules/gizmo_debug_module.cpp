@@ -83,14 +83,12 @@ void GizmoDebugModule::Render(Scene &scene)
     auto& cam = scene.registry.get<CameraComponent>(camEntity);
     auto& camPos = scene.registry.get<PositionComponent>(camEntity);
 
+    // Matrices handled by Camera UBO (Binding 20)
     float aspect = (float)width / (float)height;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
     glm::mat4 view = glm::lookAt(camPos.value, camPos.value + cam.front, cam.worldUp);
 
     debugShader->use();
-    debugShader->setMat4("projection", proj);
-    debugShader->setMat4("view", view);
-    debugShader->setMat4("model", glm::mat4(1.0f));
 
     auto viewEntities = scene.registry.view<WorldTransformComponent>();
 
@@ -242,7 +240,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         return;
     }
 
-    auto view = registry.view<InfoComponent, WorldTransformComponent>();
+    auto view = registry.view<InfoComponent>();
 
     std::unordered_map<entt::entity, entt::entity> nextMap;
 
@@ -269,9 +267,18 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
                 labelEntity = entt::null;
         }
 
-        auto &tr = view.get<WorldTransformComponent>(entity);
-
-        glm::mat4 modelMatrix = tr.worldMatrix;
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        if (auto* tr = registry.try_get<WorldTransformComponent>(entity)) {
+            modelMatrix = tr->worldMatrix;
+        } else if (registry.all_of<PositionComponent, RotationComponent, ScaleComponent>(entity)) { // Fallback to individual components
+            auto& pos = registry.get<PositionComponent>(entity);
+            auto& rot = registry.get<RotationComponent>(entity);
+            auto& scale = registry.get<ScaleComponent>(entity);
+            modelMatrix = glm::translate(glm::mat4(1.0f), pos.value) *
+                          glm::mat4_cast(rot.value) *
+                          glm::scale(glm::mat4(1.0f), scale.value);
+        }
+        
         glm::vec3 labelPos;
         bool usedAABB = false;
 
@@ -292,7 +299,11 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
 
         if (!usedAABB)
         {
-            labelPos = glm::vec3(modelMatrix[3]);
+            if (modelMatrix == glm::mat4(1.0f) && registry.any_of<PositionComponent>(entity)) {
+                labelPos = registry.get<PositionComponent>(entity).value;
+            } else {
+                labelPos = glm::vec3(modelMatrix[3]);
+            }
             labelPos.y += 1.0f;
         }
 

@@ -1,19 +1,20 @@
 #pragma once
 
+#include <ecs/interface/i_skybox_service.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <scene/logic/scene.h>
 
 class IGraphicsContext;
 
-class SkyboxRenderSystem : public IRenderSystem, public IECSSystem
+class SkyboxRenderSystem : public IRenderSystem, public IECSSystem, public ISkyboxService
 {
 public:
 
     void Initialize() override;
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 83; }
+    int GetPriority() const override { return 84; } // After Lighting (83), Before Particles (85)
     std::string GetName() const override { return "SkyboxRenderSystem"; }
     void Render(Scene &scene) override;
 

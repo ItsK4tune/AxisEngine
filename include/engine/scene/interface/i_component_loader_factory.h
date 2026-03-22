@@ -6,7 +6,7 @@
 
 class IPhysicsWorld;
 class ResourceManager;
-class Scene;
+struct Scene;
 
 class IComponentLoaderFactory
 {

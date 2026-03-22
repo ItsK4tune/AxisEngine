@@ -58,9 +58,6 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
     os.write(reinterpret_cast<const char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
     os.write(reinterpret_cast<const char*>(&config.hdrEnabled), sizeof(bool) * 2); // hdr, bloom
     os.write(reinterpret_cast<const char*>(&config.gamma), 4 * 6); // gamma to skyboxIntensity
-    os.write(reinterpret_cast<const char*>(&config.fogEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.fogColor), 4 * 3);
-    os.write(reinterpret_cast<const char*>(&config.fogDensity), 4);
     os.write(reinterpret_cast<const char*>(&config.clearColor), 4 * 4);
     os.write(reinterpret_cast<const char*>(&config.shadowsEnabled), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&config.shadowMode), 4 * 3); // mode to projSize
@@ -242,9 +239,6 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         is.read(reinterpret_cast<char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
         is.read(reinterpret_cast<char*>(&config.hdrEnabled), sizeof(bool) * 2);
         is.read(reinterpret_cast<char*>(&config.gamma), 4 * 6);
-        is.read(reinterpret_cast<char*>(&config.fogEnabled), sizeof(bool));
-        is.read(reinterpret_cast<char*>(&config.fogColor), 4 * 3);
-        is.read(reinterpret_cast<char*>(&config.fogDensity), 4);
         is.read(reinterpret_cast<char*>(&config.clearColor), 4 * 4);
         is.read(reinterpret_cast<char*>(&config.shadowsEnabled), sizeof(bool));
         is.read(reinterpret_cast<char*>(&config.shadowMode), 4 * 3);

@@ -51,9 +51,6 @@ struct AppConfig
     float bloomThreshold = 1.0f;
     float bloomRadius = 0.005f;
     float skyboxIntensity = 1.0f;
-    bool fogEnabled = false;
-    float fogColor[3] = {0.5f, 0.5f, 0.5f};
-    float fogDensity = 0.01f;
     float clearColor[4] = {0.1f, 0.1f, 0.1f, 1.0f};
 
     // Shadows

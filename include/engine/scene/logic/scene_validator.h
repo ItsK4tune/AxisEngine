@@ -7,7 +7,7 @@
 
 class Application;
 class IPhysicsWorld;
-class Scene;
+struct Scene;
 
 namespace SceneHandlers
 {

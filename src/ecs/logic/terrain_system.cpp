@@ -1,6 +1,9 @@
 #include <ecs/logic/terrain_system.h>
-#include <ecs/logic/system_manager.h>
-#include <ecs/logic/render_system.h>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
+#include <core/logic/config_manager.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_geometry_service.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
@@ -19,6 +22,11 @@
 #include <core/logic/service_locator.h>
 
 void TerrainSystem::Initialize() {
+    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)) {
+            // Placeholder for future terrain-specific config (e.g. LOD distances)
+        }
+    });
 }
 
 void TerrainSystem::Shutdown() {
@@ -75,11 +83,11 @@ void TerrainSystem::Render(Scene &scene) {
         TerrainData& data = *it->second;
         Shader* actShader = data.terrainShader.get();
         
-        auto rs_ptr = sl.Require<SystemManager>().GetSystem<RenderSystem>();
-        if (rs_ptr && rs_ptr->IsDeferredRenderingEnabled()) {
+        auto* geoSys = sl.Resolve<IGeometryService>();
+        if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
              auto gbufShader = resources.GetShader("terrain_gbuffer");
              if (gbufShader) actShader = gbufShader.get();
-             rs_ptr->BindGBufferForWriting();
+             geoSys->BindGBufferForWriting();
         }
 
         if (!actShader) continue;
@@ -129,11 +137,12 @@ void TerrainSystem::Render(Scene &scene) {
             bm.BindVertexArray(chunk.VAO);
             bm.BindBuffer(BufferType::ElementArrayBuffer, data.lodEBOs[lod]);
             dc.DrawElements(Primitive::Triangles, data.lodIndexCounts[lod], DataType::UnsignedInt, nullptr);
+            auto rs_ptr = sl.Resolve<IRenderService>();
             if (rs_ptr) rs_ptr->AddRenderedCount(1);
         }
 
-        if (rs_ptr && rs_ptr->IsDeferredRenderingEnabled()) {
-            rs_ptr->UnbindGBuffer();
+        if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
+            geoSys->UnbindGBuffer();
         }
     }
 }

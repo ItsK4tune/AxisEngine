@@ -50,22 +50,22 @@ public:
 
     void SetPosition(const glm::vec3& pos) override
     {
-        if(m_Sound) m_Sound->setPosition(irrklang::vec3df(pos.x, pos.y, pos.z));
+        if(m_Sound) m_Sound->setPosition(irrklang::vec3df(pos.x, pos.y, -pos.z));
     }
     glm::vec3 GetPosition() override { 
         if (!m_Sound) return glm::vec3(0.0f);
         auto p = m_Sound->getPosition();
-        return glm::vec3(p.X, p.Y, p.Z);
+        return glm::vec3(p.X, p.Y, -p.Z);
     }
 
     void SetVelocity(const glm::vec3& vel) override
     {
-        if(m_Sound) m_Sound->setVelocity(irrklang::vec3df(vel.x, vel.y, vel.z));
+        if(m_Sound) m_Sound->setVelocity(irrklang::vec3df(vel.x, vel.y, -vel.z));
     }
     glm::vec3 GetVelocity() override {
         if (!m_Sound) return glm::vec3(0.0f);
         auto v = m_Sound->getVelocity();
-        return glm::vec3(v.X, v.Y, v.Z);
+        return glm::vec3(v.X, v.Y, -v.Z);
     }
 
     void SetMinDistance(float minDist) override { if(m_Sound) m_Sound->setMinDistance(minDist); }
@@ -130,8 +130,8 @@ void IrrKlangAudioEngine::SetListenerPosition(const glm::vec3& pos, const glm::v
     if (m_Engine)
     {
         m_Engine->setListenerPosition(
-            irrklang::vec3df(pos.x, pos.y, pos.z),
-            irrklang::vec3df(lookDir.x, lookDir.y, lookDir.z)
+            irrklang::vec3df(pos.x, pos.y, -pos.z),
+            irrklang::vec3df(lookDir.x, lookDir.y, -lookDir.z)
         );
     }
 }
@@ -166,7 +166,7 @@ std::shared_ptr<ISound> IrrKlangAudioEngine::Play2D(IAudioSource* source, bool l
 std::shared_ptr<ISound> IrrKlangAudioEngine::Play3D(const std::string& filename, const glm::vec3& pos, bool loop, bool startPaused)
 {
     if (!m_Engine) return nullptr;
-    auto s = m_Engine->play3D(filename.c_str(), irrklang::vec3df(pos.x, pos.y, pos.z), loop, startPaused, true);
+    auto s = m_Engine->play3D(filename.c_str(), irrklang::vec3df(pos.x, pos.y, -pos.z), loop, startPaused, true);
     if (!s) return nullptr;
     auto sound = std::make_shared<IrrKlangSound>(s);
     m_ActiveSounds.push_back(sound);
@@ -177,7 +177,7 @@ std::shared_ptr<ISound> IrrKlangAudioEngine::Play3D(IAudioSource* source, const 
 {
     if (!m_Engine || !source) return nullptr;
     auto irrSource = static_cast<IrrKlangAudioSource*>(source);
-    auto s = m_Engine->play3D(irrSource->GetRaw(), irrklang::vec3df(pos.x, pos.y, pos.z), loop, startPaused, true);
+    auto s = m_Engine->play3D(irrSource->GetRaw(), irrklang::vec3df(pos.x, pos.y, -pos.z), loop, startPaused, true);
     if (!s) return nullptr;
     auto sound = std::make_shared<IrrKlangSound>(s);
     m_ActiveSounds.push_back(sound);

@@ -29,4 +29,6 @@ void main()
         + CameraUp_worldspace * aPos.y * aInstanceScale;
         
     gl_Position = camera.projection * camera.view * vec4(vertexPosition_worldspace, 1.0);
+    // Push particle slightly towards the camera to avoid Z-fighting with perfectly flush walls
+    gl_Position.z -= 0.005 * gl_Position.w;
 }

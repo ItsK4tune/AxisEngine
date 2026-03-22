@@ -29,6 +29,8 @@ struct CameraComponent
     float nearPlane = 0.1f;
     float farPlane = 1000.0f;
     float aspectRatio = 16.0f / 9.0f;
+    int screenWidth = 800;
+    int screenHeight = 600;
 
     glm::vec3 front = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
