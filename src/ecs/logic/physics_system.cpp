@@ -208,8 +208,11 @@ void PhysicsSystem::OnCharacterControllerDestroyed(entt::registry& registry, ent
     }
 }
 
-void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState)
+void PhysicsSystem::RenderDebug(Scene &scene, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState)
 {
+    if (!m_LastPhysicsWorld)
+        return;
+
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
 
@@ -256,7 +259,7 @@ void PhysicsSystem::RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shade
     shader.setMat4("projection", projection);
 
     renderState.Disable(ServerCapability::DepthTest);
-    physicsWorld.DebugDraw();
+    m_LastPhysicsWorld->DebugDraw();
     renderState.Enable(ServerCapability::DepthTest);
 }
 

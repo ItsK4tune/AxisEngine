@@ -1,14 +1,18 @@
 #pragma once
 
+#include <ecs/interface/i_update_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_base_system.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <memory>
+#include <string>
 #include <vector>
-#include <core/interface/i_debug_system.h>
 
 struct Scene;
 
 // --- Debug Interface ---
 
-// IDebugSystem moved to <core/interface/i_debug_system.h>
+// IDebugSystem removed in favor of IUpdateSystem and IRenderSystem
 
 // --- Debug Config ---
 
@@ -31,18 +35,31 @@ struct DebugConfig
 
 class IDebugModule;
 
-class DebugSystem : public IDebugSystem
+class DebugSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
     DebugSystem();
     ~DebugSystem();
 
     void Initialize() override;
-    void OnUpdate(float dt) override;
+    void Shutdown() override {}
+    
+    void Update(Scene& scene, float dt) override { OnUpdate(dt); }
+    void OnUpdate(float dt);
+    
     void Render(Scene& scene) override;
+    
+    bool IsEnabled() const override { return m_Enabled; }
+    void SetEnabled(bool enabled) override { m_Enabled = enabled; }
+    std::string GetName() const override { return "DebugSystem"; }
+    int GetPriority() const override { return 1000; } // Rendered last
  
+    std::vector<entt::id_type> GetReadComponents() const override { return {}; }
+    std::vector<entt::id_type> GetWriteComponents() const override { return {}; }
+
 private:
 
+    bool m_Enabled = true;
     std::shared_ptr<Font> m_DebugFont = nullptr;
     std::shared_ptr<Shader> m_TextShader = nullptr;
     std::shared_ptr<UIModel> m_TextQuad = nullptr;
@@ -59,12 +76,21 @@ private:
 
 // --- Null Implementation ---
 
-class NullDebugSystem : public IDebugSystem
+class NullDebugSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
     void Initialize() override {}
-    void OnUpdate(float) override {}
+    void Shutdown() override {}
+    void Update(Scene&, float) override {}
+    void OnUpdate(float) {}
     void Render(Scene&) override {}
+    bool IsEnabled() const override { return false; }
+    void SetEnabled(bool) override {}
+    std::string GetName() const override { return "NullDebugSystem"; }
+    int GetPriority() const override { return 1000; }
+    
+    std::vector<entt::id_type> GetReadComponents() const override { return {}; }
+    std::vector<entt::id_type> GetWriteComponents() const override { return {}; }
 };
 
 #endif

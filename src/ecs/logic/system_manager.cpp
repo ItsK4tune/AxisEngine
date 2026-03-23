@@ -117,9 +117,17 @@ void SystemManager::CreateSystems()
     RegisterSystem(std::make_unique<StreamingSystem>());
     RegisterSystem(std::make_unique<TerrainSystem>());
     RegisterSystem(std::make_unique<DummyTestSystem>());
+#ifdef ENABLE_DEBUG_SYSTEM
+    RegisterSystem(std::make_unique<DebugSystem>());
+#endif
 
-    // Register systems in ServiceLocator so they are available BEFORE initialization
+    // Register ALL systems in ServiceLocator by name so they are available BEFORE initialization
     auto& sl = ServiceLocator::Instance();
+    for (auto& sys : m_Systems) {
+        sl.Register<IBaseSystem>(sys->GetName(), sys.get());
+    }
+
+    // Still keep specific service registrations for backward compatibility and type-safe access
     sl.Register<PhysicsSystem>(GetSystem<PhysicsSystem>());
     sl.Register<IRenderService>(GetSystem<RenderSystem>());
     sl.Register<AudioSystem>(GetSystem<AudioSystem>());
@@ -147,13 +155,6 @@ void SystemManager::InitializeSystems(ResourceManager &res, int width, int heigh
     auto& context = sl.Require<IGraphicsContext>();
     
     // postProcess initialization is now handled by PostProcessSystem
-
-#ifdef ENABLE_DEBUG_SYSTEM
-    m_DebugSystem = std::make_unique<DebugSystem>();
-#else
-    m_DebugSystem = std::make_unique<NullDebugSystem>();
-#endif
-    m_DebugSystem->Initialize();
 }
 
 void SystemManager::Shutdown()
@@ -323,14 +324,14 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
 
 void SystemManager::UpdateDebugSystem(float realDeltaTime)
 {
-    if (m_DebugSystem)
-        m_DebugSystem->OnUpdate(realDeltaTime);
+    if (auto* ds = GetSystem<DebugSystem>())
+        ds->OnUpdate(realDeltaTime);
 }
 
 void SystemManager::RenderDebugSystem(Scene& scene)
 {
-    if (m_DebugSystem)
-        m_DebugSystem->Render(scene);
+    if (auto* ds = GetSystem<DebugSystem>())
+        ds->Render(scene);
 }
 
 void SystemManager::RenderShadows(Scene& scene, float alpha)

@@ -11,13 +11,15 @@
 #include <unordered_set>
 #include <utility>
 
+#include <ecs/interface/i_render_system.h>
+
 class IPhysicsWorld;
 class PhysicsCollisionDispatcher;
 class PhysicsTransformSync;
 class Shader;
 class IRenderStateManager;
 
-class PhysicsSystem : public IUpdateSystem, public IECSSystem
+class PhysicsSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
 
@@ -31,7 +33,8 @@ public:
     IPhysicsWorld& GetPhysicsWorld() const { return *m_LastPhysicsWorld; }
 
     void Update(Scene &scene, float dt) override;
-    void RenderDebug(Scene &scene, IPhysicsWorld &physicsWorld, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState);
+    void Render(Scene &scene) override {}
+    void RenderDebug(Scene &scene, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

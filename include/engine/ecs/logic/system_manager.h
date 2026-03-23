@@ -7,7 +7,6 @@
 #include <ecs/interface/i_render_system.h>
 #include <memory>
 #include <string>
-#include <string>
 #include <vector>
 #include <set>
 
@@ -15,7 +14,6 @@ class Application;
 class IPhysicsWorld;
 class ResourceManager;
 struct Scene;
-class IDebugSystem;
 
 struct ExecutionBatch {
     std::vector<IUpdateSystem*> systems;
@@ -40,7 +38,6 @@ public:
 
     void UpdateDebugSystem(float realDeltaTime);
     void RenderDebugSystem(Scene& scene);
-    IDebugSystem* GetDebugSystem() { return m_DebugSystem.get(); }
 
     template<typename T>
     T* GetSystem() const
@@ -65,9 +62,6 @@ private:
     std::vector<IRenderSystem*> m_RenderSystems;
     
     std::vector<ExecutionBatch> m_UpdateBatches;
-    
-
-    std::unique_ptr<IDebugSystem> m_DebugSystem;
 
     bool SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const;
 };

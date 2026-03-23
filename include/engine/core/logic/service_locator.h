@@ -83,12 +83,57 @@ public:
     }
 
     /**
+     * @brief Register a service instance by name. The caller retains ownership.
+     */
+    template <typename T>
+    void Register(const std::string& name, T* service)
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        m_NamedServices[name] = static_cast<void*>(service);
+    }
+
+    /**
+     * @brief Resolve a service by name. Returns nullptr if not registered.
+     */
+    template <typename T>
+    T* Resolve(const std::string& name) const
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        auto it = m_NamedServices.find(name);
+        if (it != m_NamedServices.end())
+            return static_cast<T*>(it->second);
+        return nullptr;
+    }
+
+    /**
+     * @brief Resolve a service by name. Throws if not registered.
+     */
+    template <typename T>
+    T& Require(const std::string& name) const
+    {
+        T* service = Resolve<T>(name);
+        if (!service)
+            throw std::runtime_error("ServiceLocator: service not registered by name: " + name);
+        return *service;
+    }
+
+    /**
+     * @brief Check if a service is registered by name.
+     */
+    bool Has(const std::string& name) const
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        return m_NamedServices.find(name) != m_NamedServices.end();
+    }
+
+    /**
      * @brief Clear all registered services (used during shutdown).
      */
     void ClearAll()
     {
         std::lock_guard<std::mutex> lock(m_Mutex);
         m_Services.clear();
+        m_NamedServices.clear();
     }
 
 private:
@@ -96,5 +141,6 @@ private:
     ~ServiceLocator() = default;
 
     std::unordered_map<std::type_index, void*> m_Services;
+    std::unordered_map<std::string, void*> m_NamedServices;
     mutable std::mutex m_Mutex;
 };

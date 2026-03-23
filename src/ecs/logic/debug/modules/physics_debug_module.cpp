@@ -43,18 +43,16 @@ void PhysicsDebugModule::Render(Scene &scene)
     auto& sl = ServiceLocator::Instance();
     auto& io = sl.Require<IOHandler>();
     auto& resources = sl.Require<ResourceManager>();
-    auto& systems = sl.Require<SystemManager>();
-    auto physics_ptr = sl.Resolve<IPhysicsWorld>();
-
     int width = io.GetMonitorManager().GetWidth();
     int height = io.GetMonitorManager().GetHeight();
 
-    if (DebugConfig::ShowPhysics && physics_ptr)
+    if (DebugConfig::ShowPhysics)
     {
+        auto* physics_sys = sl.Resolve<IRenderSystem>("PhysicsSystem");
         auto debugShader = resources.GetShader("debugLine");
-        if (debugShader)
+        if (debugShader && physics_sys)
         {
-            systems.GetSystem<PhysicsSystem>()->RenderDebug(scene, *physics_ptr, *debugShader, width, height, io.GetGraphicsContext().GetRenderStateManager());
+            physics_sys->RenderDebug(scene, *debugShader, width, height, io.GetGraphicsContext().GetRenderStateManager());
         }
     }
 
