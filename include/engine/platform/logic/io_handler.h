@@ -11,12 +11,7 @@
 
 class IGraphicsContext;
 
-/**
- * @brief Handles window, graphics, and input subsystems.
- * 
- * After refactor: AudioManager was removed (use AudioService instead).
- * IOHandler now focuses on window + graphics + input only.
- */
+
 class IOHandler
 {
 public:

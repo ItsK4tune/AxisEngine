@@ -40,7 +40,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
     auto view = scene.registry.view<PositionComponent, RotationComponent, WorldTransformComponent, PathFollowerComponent>();
     
-    // Find NavMesh (global singleton-like component for now)
+
     NavMeshComponent* globalNavMesh = nullptr;
     auto navMeshView = scene.registry.view<NavMeshComponent>();
     if (!navMeshView.empty()) {
@@ -66,7 +66,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 follower.pathPending = false;
                 follower.isMoving = !follower.currentPath.empty();
                 
-                // --- One-time Path Smoothing ---
+
                 if (follower.isMoving && follower.currentPath.size() > 2 && physics_ptr) {
                     std::vector<glm::vec3> smoothedPath;
                     smoothedPath.push_back(follower.currentPath[0]);
@@ -127,7 +127,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     continue;
                 }
 
-                // Orientation & Ground Snap
+
                 if (glm::length(moveDir) > 0.001f) {
                     glm::vec3 groundNormal(0, 1, 0);
                     if (physics_ptr) {
@@ -147,7 +147,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                         glm::vec3 up = groundNormal;
                         glm::vec3 forward = glm::cross(up, right);
 
-                        // Rotation Locking Logic
+
                         if (follower.lockXPitch || follower.lockZRoll) {
                             glm::vec3 worldUp(0, 1, 0);
                             glm::vec3 moveDirXZ(0.0f);
@@ -155,26 +155,26 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                             if (moveLenXZ > 0.001f) {
                                 moveDirXZ = glm::vec3(moveDir.x, 0, moveDir.z) / moveLenXZ;
                             } else {
-                                // Default forward if moving only vertically
+
                                 moveDirXZ = glm::vec3(0, 0, 1); 
                             }
                             
                             if (follower.lockXPitch && follower.lockZRoll) {
-                                // Only Yaw
+
                                 up = worldUp;
                                 glm::vec3 crossXZ = glm::cross(moveDirXZ, worldUp);
                                 if (glm::length(crossXZ) > 0.001f) {
                                     right = glm::normalize(crossXZ);
                                 } else {
-                                    right = glm::vec3(1, 0, 0); // Default if moveDirXZ is somehow parallel to worldUp
+                                    right = glm::vec3(1, 0, 0);
                                 }
                                 forward = moveDirXZ;
                             } else if (follower.lockXPitch) {
-                                // Keep forward flat on XZ, but allow roll
+
                                 forward = moveDirXZ;
                                 up = glm::normalize(glm::cross(right, forward));
                             } else if (follower.lockZRoll) {
-                                // Keep right flat on XZ, but allow pitch
+
                                 glm::vec3 crossXZ = glm::cross(forward, worldUp);
                                 if (glm::length(crossXZ) > 0.001f) {
                                     right = glm::normalize(crossXZ);
@@ -193,9 +193,9 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                             glm::quat targetRot = glm::quat_cast(rotMat);
                             
                             if (follower.lockYYaw) {
-                                // This would be unusual, but let's handle it: keep original yaw
-                                // (Harder to decompose, but we can slerp and then reset yaw if needed)
-                                // For now, we'll just allow it unless explicitly requested otherwise.
+
+
+
                             }
 
                             if (glm::length(follower.rotationOffset) > 0.001f) {
@@ -302,7 +302,7 @@ void NavigationSystem::Render(Scene& scene)
     auto physics_ptr = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
     if (!physics_ptr) return;
 
-    // Debug visualization of NavMesh
+
     auto navMeshView = scene.registry.view<NavMeshComponent>();
     for (auto entity : navMeshView) {
         auto& navMesh = navMeshView.get<NavMeshComponent>(entity);
@@ -312,14 +312,14 @@ void NavigationSystem::Render(Scene& scene)
             glm::vec3 v1 = navMesh.vertices[tri.indices[1]];
             glm::vec3 v2 = navMesh.vertices[tri.indices[2]];
             
-            // Draw edges in blue
+
             physics_ptr->DrawLine(v0, v1, glm::vec3(0, 0, 1));
             physics_ptr->DrawLine(v1, v2, glm::vec3(0, 0, 1));
             physics_ptr->DrawLine(v2, v0, glm::vec3(0, 0, 1));
         }
     }
 
-    // Debug visualization of paths
+
     auto pathView = scene.registry.view<PositionComponent, PathFollowerComponent>();
     for (auto entity : pathView) {
         auto& follower = pathView.get<PathFollowerComponent>(entity);
@@ -327,7 +327,7 @@ void NavigationSystem::Render(Scene& scene)
             for (size_t i = 1; i < follower.currentPath.size(); ++i) {
                 glm::vec3 p0 = follower.currentPath[i-1];
                 glm::vec3 p1 = follower.currentPath[i];
-                // Draw path in green
+
                 physics_ptr->DrawLine(p0, p1, glm::vec3(0, 1, 0));
             }
         }

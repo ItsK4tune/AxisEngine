@@ -12,7 +12,7 @@ layout(std140, binding = 20) uniform CameraData {
 void main()
 {
     TexCoords = aPos;
-    // Remove translation from view matrix
+
     mat4 viewNoTranslation = mat4(mat3(camera.view));
     vec4 pos = camera.projection * viewNoTranslation * vec4(aPos, 1.0);
     

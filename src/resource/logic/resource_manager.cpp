@@ -20,7 +20,7 @@ ResourceManager::ResourceManager()
         } });
 }
 
-// --- Unified Loading (merged from UnifiedLoader) ---
+
 
 void ResourceManager::RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy)
 {
@@ -278,4 +278,4 @@ void ResourceManager::ClearResource()
     m_UIModels.clear();
 
     LOGGER_INFO("ResourceManager") << "All resources cleared via specialized managers";
-}
+}

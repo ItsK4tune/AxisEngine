@@ -48,7 +48,7 @@ void PhysicsDebugModule::Render(Scene &scene)
 
     if (DebugConfig::ShowPhysics)
     {
-        auto* physics_sys = sl.Resolve<IRenderSystem>("PhysicsSystem");
+        auto* physics_sys = sl.Resolve<PhysicsSystem>();
         auto debugShader = resources.GetShader("debugLine");
         if (debugShader && physics_sys)
         {
@@ -58,11 +58,25 @@ void PhysicsDebugModule::Render(Scene &scene)
 
     if (m_ShowAudioDebug)
     {
-        auto view = scene.registry.view<AudioSourceComponent, WorldTransformComponent>();
-        for (auto entity : view)
-        {
-            const auto &world = view.get<WorldTransformComponent>(entity);
-            glm::vec3 pos = glm::vec3(world.worldMatrix[3]);
+        auto* physics_sys = sl.Resolve<PhysicsSystem>();
+        if (physics_sys) {
+            auto& pw = physics_sys->GetPhysicsWorld();
+            auto view = scene.registry.view<AudioSourceComponent>();
+            for (auto entity : view)
+            {
+                glm::vec3 pos(0.0f);
+                if (auto* tr = scene.registry.try_get<WorldTransformComponent>(entity))
+                    pos = glm::vec3(tr->worldMatrix[3]);
+                else if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+                    pos = p->value;
+                
+
+                float s = 0.5f;
+                glm::vec3 c(1.0f, 0.0f, 1.0f);
+                pw.DrawLine(pos - glm::vec3(s, 0, 0), pos + glm::vec3(s, 0, 0), c);
+                pw.DrawLine(pos - glm::vec3(0, s, 0), pos + glm::vec3(0, s, 0), c);
+                pw.DrawLine(pos - glm::vec3(0, 0, s), pos + glm::vec3(0, 0, s), c);
+            }
         }
     }
 

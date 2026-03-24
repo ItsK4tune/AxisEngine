@@ -76,7 +76,7 @@ void SystemManager::RegisterSystem(std::unique_ptr<IBaseSystem> system)
         });
     }
 
-    // Still keep m_Systems sorted for GetSystem templates
+
     std::sort(m_Systems.begin(), m_Systems.end(), [](const std::unique_ptr<IBaseSystem>& a, const std::unique_ptr<IBaseSystem>& b) {
         return a->GetPriority() < b->GetPriority();
     });
@@ -121,13 +121,13 @@ void SystemManager::CreateSystems()
     RegisterSystem(std::make_unique<DebugSystem>());
 #endif
 
-    // Register ALL systems in ServiceLocator by name so they are available BEFORE initialization
+
     auto& sl = ServiceLocator::Instance();
     for (auto& sys : m_Systems) {
         sl.Register<IBaseSystem>(sys->GetName(), sys.get());
     }
 
-    // Still keep specific service registrations for backward compatibility and type-safe access
+
     sl.Register<PhysicsSystem>(GetSystem<PhysicsSystem>());
     sl.Register<IRenderService>(GetSystem<RenderSystem>());
     sl.Register<AudioSystem>(GetSystem<AudioSystem>());
@@ -151,10 +151,37 @@ void SystemManager::InitializeSystems(ResourceManager &res, int width, int heigh
 
     RebuildExecutionBatches();
 
+    m_RenderAlphaSystems.clear();
+    m_RenderTransparentSystems.clear();
+    m_RenderMainSystems.clear();
+    m_RenderUISystems.clear();
+    
+    for (auto* sys : m_RenderSystems) {
+        const std::string& name = sys->GetName();
+
+        if (name == "GeometrySystem" || name == "LightingSystem") {
+            m_RenderAlphaSystems.push_back(sys);
+        }
+
+        if (name == "TransparentSystem" || name == "RenderSystem") {
+            m_RenderTransparentSystems.push_back(sys);
+        }
+
+        if (name == "ShadowSystem" || name == "SkyboxRenderSystem" || 
+            name == "ParticleSystem" || name == "TerrainSystem" ||
+            name == "VideoSystem" || name == "RenderSystem") {
+            m_RenderMainSystems.push_back(sys);
+        }
+
+        if (name == "UIRenderSystem") {
+            m_RenderUISystems.push_back(sys);
+        }
+    }
+
     auto& sl = ServiceLocator::Instance();
     auto& context = sl.Require<IGraphicsContext>();
     
-    // postProcess initialization is now handled by PostProcessSystem
+
 }
 
 void SystemManager::Shutdown()
@@ -163,7 +190,7 @@ void SystemManager::Shutdown()
     for (auto& sys : m_Systems) {
         sys->Shutdown();
     }
-    // postProcess shutdown is now handled by PostProcessSystem
+
 }
 
 
@@ -179,7 +206,7 @@ void SystemManager::RunFixedUpdate(Scene& scene, float fixedDt)
 
 void SystemManager::RunUpdate(Scene& scene, float dt)
 {
-    // Serial update for p < 30
+
     for (auto* sys : m_UpdateSystems) {
         if (!sys->IsEnabled()) continue;
         int p = sys->GetPriority();
@@ -188,7 +215,7 @@ void SystemManager::RunUpdate(Scene& scene, float dt)
         }
     }
 
-    // Parallel update in batches for p [30, 80)
+
     for (auto& batch : m_UpdateBatches) {
         if (batch.systems.empty()) continue;
 
@@ -197,21 +224,19 @@ void SystemManager::RunUpdate(Scene& scene, float dt)
                 batch.systems[0]->Update(scene, dt);
             }
         } else {
-            std::vector<std::future<void>> futures;
+            JobSystem::JobCounter counter{0};
             for (auto* sys : batch.systems) {
                 if (sys->IsEnabled()) {
-                    futures.push_back(JobSystem::Instance().ExecuteAsync([sys, &scene, dt]() {
+                    JobSystem::Instance().Execute([sys, &scene, dt]() {
                         sys->Update(scene, dt);
-                    }));
+                    }, &counter);
                 }
             }
-            for (auto& f : futures) {
-                f.get();
-            }
+            JobSystem::Instance().Wait(&counter);
         }
     }
 
-    // Serial update for p >= 80
+
     for (auto* sys : m_UpdateSystems) {
         if (!sys->IsEnabled()) continue;
         int p = sys->GetPriority();
@@ -225,7 +250,7 @@ void SystemManager::RebuildExecutionBatches()
 {
     m_UpdateBatches.clear();
 
-    // Only batch systems with priority 30-80
+
     std::vector<IUpdateSystem*> systemsToBatch;
     for (auto* sys : m_UpdateSystems) {
         int p = sys->GetPriority();
@@ -288,7 +313,7 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
     auto& context = sl.Require<IGraphicsContext>();
     context.GetRenderStateManager().SetViewport(0, 0, width, height);
 
-    // Resolve systems once
+
     auto* rs = GetSystem<RenderSystem>();
     if (rs) rs->BuildRenderQueues(scene, alpha, width, height);
     auto* pps = GetSystem<PostProcessSystem>();
@@ -298,28 +323,28 @@ void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
         if (rs) rs->SetMainFBO(pps->GetCaptureFBO());
     }
 
-    // Pass 1: Opaque / Shadows / Geometry
-    for (auto* sys : m_RenderSystems) { 
+
+    for (auto* sys : m_RenderAlphaSystems) { 
         if (sys->IsEnabled()) sys->RenderAlpha(scene, width, height, alpha); 
     }
     
-    // Pass 2: Transparent
-    for (auto* sys : m_RenderSystems) { 
+
+    for (auto* sys : m_RenderTransparentSystems) { 
         if (sys->IsEnabled()) sys->RenderTransparent(scene, width, height, alpha); 
     }
     
-    // Pass 3: Final / Misc
-    for (auto* sys : m_RenderSystems) { 
+
+    for (auto* sys : m_RenderMainSystems) { 
         if (sys->IsEnabled()) sys->Render(scene); 
     }
     
-    // Pass 4: UI
+
     auto& rsm = context.GetRenderStateManager();
-    for (auto* sys : m_RenderSystems) { 
+    for (auto* sys : m_RenderUISystems) { 
         if (sys->IsEnabled()) sys->RenderUI(scene, (float)width, (float)height, rsm); 
     }
 
-    // AA and Capture are now handled by PostProcessSystem::Render
+
 }
 
 void SystemManager::UpdateDebugSystem(float realDeltaTime)

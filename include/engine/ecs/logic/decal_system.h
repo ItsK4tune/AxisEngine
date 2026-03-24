@@ -23,18 +23,18 @@ public:
     
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 82; } // After Terrain (80)
+    int GetPriority() const override { return 82; }
     std::string GetName() const override { return "DecalSystem"; }
     void RenderAlpha(Scene &scene, int width, int height, float alpha) override;
 
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;
 
-    // API
+
     uint32_t LoadDecalTexture(const std::string& path);
     void FlushDecals(Scene& scene);
     
-    // Set global tags that decals can stick to if they don't have specific ones
+
     void SetAllowedTags(const std::vector<std::string>& tags) { m_AllowedTags = tags; }
     uint32_t GetTagBit(const std::string& tag);
 
@@ -61,6 +61,11 @@ private:
     std::vector<uint32_t> m_TagBuffer;
     uint32_t m_NextOrder = 1;
     bool m_NextOrderIsReset = false;
+    bool m_IsRenderedThisFrame = false;
+
+    class IGeometryService* m_GeoService = nullptr;
+    class IRenderService* m_RenderService = nullptr;
+    class IGraphicsContext* m_GraphicsContext = nullptr;
 
     void InitCubeMesh();
     void InitQuadMesh();

@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-// Forward declarations
+
 class AnimationSystem;
 class AudioService;
 class AudioSystem;
@@ -41,7 +41,7 @@ class SystemManager;
 class UIRenderSystem;
 class VideoSystem;
 
-// --- Application ---
+
 
 class CollisionMatrix;
 class Application
@@ -123,7 +123,7 @@ inline void Application::RegisterScript(const std::string &name)
     }
 }
 
-// --- App Builder ---
+
 
 class IAudioEngine;
 

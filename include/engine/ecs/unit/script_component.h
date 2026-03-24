@@ -4,10 +4,10 @@
 #include <functional>
 #include <entt/entt.hpp>
 
-// Forward declarations
+
 class IScriptable;
 
-// --- Script ---
+
 
 struct ScriptComponent
 {

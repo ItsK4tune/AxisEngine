@@ -9,7 +9,7 @@
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
 #include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
 
-// Custom callback to ignore a specific entity
+
 struct IgnoreEntityRayCallback : public btCollisionWorld::ClosestRayResultCallback {
     entt::entity m_Ignore;
     IgnoreEntityRayCallback(const btVector3& start, const btVector3& end, entt::entity ignore)
@@ -17,7 +17,7 @@ struct IgnoreEntityRayCallback : public btCollisionWorld::ClosestRayResultCallba
 
     virtual btScalar addSingleResult(btCollisionWorld::LocalRayResult& rayResult, bool normalInWorldSpace) override {
         if (m_Ignore != entt::null && rayResult.m_collisionObject->getUserPointer()) {
-            // Offset logic: getUserPointer returns entity + 1
+
             entt::entity hitEnt = (entt::entity)((uintptr_t)rayResult.m_collisionObject->getUserPointer() - 1);
             if (hitEnt == m_Ignore) return 1.0; 
         }
@@ -123,7 +123,7 @@ void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
     btRigidBody* rawBody = bBody->GetRaw();
     if (rawBody)
     {
-        // 1. Manually clear manifolds associated with this body from the dispatcher
+
         btDispatcher* dispatcher = m_DynamicsWorld->getDispatcher();
         if (dispatcher) {
             for (int i = dispatcher->getNumManifolds() - 1; i >= 0; i--) {
@@ -134,14 +134,14 @@ void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
             }
         }
 
-        // 2. Clear from broadphase pair cache - MUST be done while handle is valid
+
         btBroadphaseProxy* handle = rawBody->getBroadphaseHandle();
         auto pairCache = m_DynamicsWorld->getPairCache();
         if (handle && pairCache && dispatcher) {
             pairCache->cleanProxyFromPairs(handle, dispatcher);
         }
 
-        // 3. Remove from dynamics world
+
         m_DynamicsWorld->removeRigidBody(rawBody);
     }
 }
@@ -216,7 +216,7 @@ RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir
         const btCollisionObject* obj = rayCallback.m_collisionObject;
         if (obj && obj->getUserPointer())
         {
-            // Offset logic: getUserPointer returns entity + 1
+
             hit.entity = (entt::entity)((uintptr_t)obj->getUserPointer() - 1);
         }
     }
@@ -286,7 +286,7 @@ std::shared_ptr<IRigidBody> BulletPhysicsWorld::CreateRigidBody(float mass, cons
         btVector3 center;
         btScalar radius;
         bShape->GetRaw()->getBoundingSphere(center, radius);
-        body->setCcdSweptSphereRadius(radius * 0.2f); // Often a fraction of the radius is used
+        body->setCcdSweptSphereRadius(radius * 0.2f);
     }
 
     return std::make_shared<BulletRigidBody>(body, shape);
@@ -362,11 +362,11 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateHeightfieldShape(cons
 
     LOGGER_INFO("BulletPhysicsWorld") << "Creating Heightfield: " << width << "x" << length << ", range [" << minHeight << ", " << maxHeight << "]";
 
-    // Create wrapper FIRST and move data into it to ensure stable pointer
-    auto hData = heights; // Copy to local
+
+    auto hData = heights;
     auto wrapper = std::make_shared<BulletHeightfieldCollisionShape>(nullptr, std::move(hData));
     
-    // Get stable pointer from the wrapper's member
+
     float* dataPtr = wrapper->GetHeightDataPointer();
 
     btHeightfieldTerrainShape* heightfieldShape = new btHeightfieldTerrainShape(
@@ -513,7 +513,7 @@ std::vector<CollisionInfo> BulletPhysicsWorld::GetActiveCollisions()
                 info.bodyB = (entt::entity)((uintptr_t)ptrB - 1);
                 info.isTrigger = (obA->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE) ||
                                  (obB->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE);
-                info.type = CollisionEventType::Stay; // Initial state for dispatcher to process
+                info.type = CollisionEventType::Stay;
                 collisions.push_back(info);
             }
         }

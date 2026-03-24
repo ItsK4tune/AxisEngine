@@ -20,7 +20,7 @@ std::unique_ptr<IScriptable> ScriptRegistry::Create(const std::string& name)
 void ScriptRegistry::Initialize()
 {
     ServiceLocator::Instance().Register<IScriptRegistry>(this);
-    // Optional: copy from static map to instance map if we want to centralize
+
     auto &staticMap = GetStaticFactoryMap();
     for (auto &pair : staticMap)
     {

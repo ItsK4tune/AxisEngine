@@ -179,7 +179,7 @@ namespace SceneHandlers
                             glm::quat rotA = glm::quat(1, 0, 0, 0);
                             glm::quat rotB = glm::quat(1, 0, 0, 0);
 
-                            // Note: Simple heuristic for child transform offset
+
                             auto& parentWorld = scene.registry.get<WorldTransformComponent>(hier.parent);
                             glm::mat4 invParent = glm::inverse(parentWorld.worldMatrix);
                             glm::mat4 localChild = invParent * world.worldMatrix;

@@ -35,7 +35,7 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
     if (!m_Context) return;
     auto& bm = m_Context->GetBufferManager();
     
-    // 1. Quick check if anything changed
+
     uint32_t currentCombinedVersion = 0;
     size_t currentLightCount = 0;
 
@@ -45,10 +45,10 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
     
     currentLightCount = dirView.size() + pointView.size() + spotView.size();
 
-    // Sum versions of WorldTransformComponents for light entities
-    // We also need to account for property changes in the light components themselves.
-    // If they don't have a version, we'll just check if any were modified using entt's versioning if available, 
-    // or just assume if any light exists we check their transforms.
+
+
+
+
     
     for (auto entity : dirView) {
         if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity)) currentCombinedVersion += w->version;
@@ -62,7 +62,7 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
 
     if (currentCombinedVersion == m_LastCombinedVersion && currentLightCount == m_LastLightCount)
     {
-        // Still need to bind the SSBOs to the current shader context if they weren't already
+
         bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
         bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
         bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
@@ -72,7 +72,7 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
     m_LastCombinedVersion = currentCombinedVersion;
     m_LastLightCount = currentLightCount;
 
-    // 2. Rebuild and upload
+
     m_DirLights.clear();
     int dirShadowCount = 0;
     for (auto entity : dirView)
@@ -175,7 +175,7 @@ void LightRenderer::UploadLightData(Scene &scene, Shader *shader)
     bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
 
 
-    // Update Global Light UBO (Binding 21)
+
         auto* shadowSys = ServiceLocator::Instance().Resolve<IShadowService>();
         auto* rs = ServiceLocator::Instance().Resolve<IRenderService>();
         if (shadowSys && rs)

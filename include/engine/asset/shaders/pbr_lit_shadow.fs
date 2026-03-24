@@ -1,7 +1,7 @@
 #version 430 core
 out vec4 FragColor;
 
-// 1. Root Level Samplers (Standardized Binding 0-15)
+
 layout (binding = 0) uniform sampler2D texture_diffuse1;
 layout (binding = 1) uniform sampler2D texture_normal1;
 layout (binding = 2) uniform sampler2D texture_metallic1;
@@ -9,12 +9,12 @@ layout (binding = 3) uniform sampler2D texture_roughness1;
 layout (binding = 4) uniform sampler2D texture_ao1;
 layout (binding = 5) uniform sampler2D texture_emissive1;
 
-// IBL Maps
+
 layout (binding = 6) uniform samplerCube irradianceMap;
 layout (binding = 7) uniform samplerCube prefilterMap;
 layout (binding = 8) uniform sampler2D brdfLUT;
 
-// 2. UBO/SSBO Bindings (Standardized Binding 20-25)
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
@@ -64,19 +64,19 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-// 3. Shadow Maps (Standardized Binding 10-15)
+
 layout (binding = 10) uniform sampler2D shadowMapDir[2];
 layout (binding = 12) uniform samplerCube shadowMapPoint[2];
 layout (binding = 14) uniform sampler2D shadowMapSpot[2];
 
-// 4. Input Stage
+
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 in vec4 FragPosLightSpace[2];
 in vec4 FragPosLightSpaceSpot[2];
 
-// 5. Common Uniforms
+
 struct Material {
     float roughness;
     float metallic;
@@ -89,16 +89,17 @@ uniform vec4 tintColor;
 uniform vec2 uvScale = vec2(1.0);
 uniform vec2 uvOffset = vec2(0.0);
 uniform bool debug_noTexture;
+uniform bool u_isWireframe;
 
-// Fog removed
 
-// Shadow Control
+
+
 uniform float u_ShadowBias;
 uniform int u_ShadowSoftness;
 
 const float PI = 3.14159265359;
 
-// Forward Declarations
+
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
@@ -136,7 +137,7 @@ void main()
 
     vec3 Lo = vec3(0.0);
     
-    // Directional lights
+
     for(int d = 0; d < light.numDirLights; d++) {
         vec3 L = normalize(-dirLights[d].direction);
         vec3 H = normalize(V + L);
@@ -159,7 +160,7 @@ void main()
         }
     }
 
-    // Point lights (simplified for space, same as original logic but standardized)
+
     for(int i = 0; i < light.nrPointLights; ++i) {
         vec3 L = normalize(pointLights[i].position - FragPos);
         vec3 H = normalize(V + L);
@@ -175,9 +176,9 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
     }
 
-    // Spot lights... (Add if needed, aligned with shadow maps 14-15)
 
-    // IBL
+
+
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
@@ -192,9 +193,13 @@ void main()
     vec3 finalColor = ambient + Lo + emissive;
 
     FragColor = vec4(finalColor, material.opacity);
+
+    if (u_isWireframe) {
+        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
 }
 
-// Helper functions (Simplified for brevity, ensuring same math)
+
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness*roughness; float a2 = a*a;
     float NdotH = max(dot(N, H), 0.0);

@@ -2,7 +2,7 @@
 
 #include <axis_commons.h>
 
-// --- Base Interfaces ---
+
 #include <script/logic/scriptable.h>
 #include <script/logic/input_scriptable.h>
 #include <script/logic/physics_scriptable.h>

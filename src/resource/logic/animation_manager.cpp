@@ -15,7 +15,7 @@ std::shared_ptr<Animation> AnimationManager::Load(const std::string& name, const
         return nullptr;
     }
 
-    // Animation constructor handles its own loading via Assimp
+
     auto animation = std::make_shared<Animation>(path, *model); 
     if (animation) {
         m_Cache.Add(name, animation);

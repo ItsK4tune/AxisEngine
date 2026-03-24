@@ -56,9 +56,12 @@ void GizmoDebugModule::OnUpdate(float dt)
     if (!m_Enabled)
         return;
 
-    auto& scene = ServiceLocator::Instance().Require<Scene>();
-    UpdateDebugLabels(scene);
-    UpdateLightLabels(scene);
+    auto& sl = ServiceLocator::Instance();
+    auto* scene = sl.Resolve<Scene>();
+    if (!scene) return;
+
+    UpdateDebugLabels(*scene);
+    UpdateLightLabels(*scene);
 }
 
 void GizmoDebugModule::Render(Scene &scene)
@@ -67,28 +70,31 @@ void GizmoDebugModule::Render(Scene &scene)
         return;
 
     auto& sl = ServiceLocator::Instance();
-    auto& io = sl.Require<IOHandler>();
-    auto& resources = sl.Require<ResourceManager>();
-    auto& graphics = sl.Require<IGraphicsContext>();
+    auto* io = sl.Resolve<IOHandler>();
+    auto* resources = sl.Resolve<ResourceManager>();
+    auto* graphics = sl.Resolve<IGraphicsContext>();
+    if (!io || !resources || !graphics) return;
 
-    int width = io.GetMonitorManager().GetWidth();
-    int height = io.GetMonitorManager().GetHeight();
+    int width = io->GetMonitorManager().GetWidth();
+    int height = io->GetMonitorManager().GetHeight();
 
-    auto debugShader = resources.GetShader("debugLine");
+    auto debugShader = resources->GetShader("debugLine");
     if (!debugShader) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) return;
 
     auto& cam = scene.registry.get<CameraComponent>(camEntity);
-    auto& camPos = scene.registry.get<PositionComponent>(camEntity);
+    auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
-    // Matrices handled by Camera UBO (Binding 20)
     float aspect = (float)width / (float)height;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-    glm::mat4 view = glm::lookAt(camPos.value, camPos.value + cam.front, cam.worldUp);
+    glm::mat4 view = glm::lookAt(camPos, camPos + cam.front, cam.worldUp);
 
     debugShader->use();
+    debugShader->setMat4("projection", proj);
+    debugShader->setMat4("view", view);
 
     auto viewEntities = scene.registry.view<WorldTransformComponent>();
 
@@ -106,6 +112,15 @@ void GizmoDebugModule::Render(Scene &scene)
         glm::mat4 modelMatrix = tr.worldMatrix;
 
         glm::vec3 pos = glm::vec3(modelMatrix[3]);
+        
+
+        float lenR = glm::length(glm::vec3(modelMatrix[0]));
+        float lenU = glm::length(glm::vec3(modelMatrix[1]));
+        float lenF = glm::length(glm::vec3(modelMatrix[2]));
+
+        if (lenR < 0.0001f || lenU < 0.0001f || lenF < 0.0001f)
+            continue;
+
         glm::vec3 right = glm::normalize(glm::vec3(modelMatrix[0]));
         glm::vec3 up = glm::normalize(glm::vec3(modelMatrix[1]));
         glm::vec3 forward = glm::normalize(glm::vec3(modelMatrix[2]));
@@ -118,14 +133,14 @@ void GizmoDebugModule::Render(Scene &scene)
 
     if (lineVertices.empty()) return;
 
-    auto& bm = graphics.GetBufferManager();
-    auto& dc = graphics.GetDrawContext();
+    auto& bm = graphics->GetBufferManager();
+    auto& dc = graphics->GetDrawContext();
 
-    unsigned int vao = bm.GenVertexArray();
-    unsigned int vbo = bm.GenBuffer();
+    if (m_LineVAO == 0) m_LineVAO = bm.GenVertexArray();
+    if (m_LineVBO == 0) m_LineVBO = bm.GenBuffer();
     
-    bm.BindVertexArray(vao);
-    bm.BindBuffer(BufferType::ArrayBuffer, vbo);
+    bm.BindVertexArray(m_LineVAO);
+    bm.BindBuffer(BufferType::ArrayBuffer, m_LineVBO);
     bm.BufferData(BufferType::ArrayBuffer, lineVertices.size() * sizeof(float), lineVertices.data(), BufferUsage::StreamDraw);
 
     bm.EnableVertexAttribArray(0);
@@ -133,13 +148,11 @@ void GizmoDebugModule::Render(Scene &scene)
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 3, DataType::Float, false, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
-    graphics.GetRenderStateManager().Disable(ServerCapability::DepthTest);
+    graphics->GetRenderStateManager().Disable(ServerCapability::DepthTest);
     dc.DrawArrays(Primitive::Lines, 0, (int)(lineVertices.size() / 6));
-    graphics.GetRenderStateManager().Enable(ServerCapability::DepthTest);
+    graphics->GetRenderStateManager().Enable(ServerCapability::DepthTest);
 
     bm.BindVertexArray(0);
-    bm.DeleteVertexArray(vao);
-    bm.DeleteBuffer(vbo);
 }
 
 void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
@@ -217,11 +230,14 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         return;
     }
 
-    auto &registry = scene.registry;
-    auto& io = ServiceLocator::Instance().Require<IOHandler>();
-    int width = io.GetMonitorManager().GetWidth();
-    int height = io.GetMonitorManager().GetHeight();
+    auto& sl = ServiceLocator::Instance();
+    auto* io = sl.Resolve<IOHandler>();
+    if (!io) return;
 
+    int width = io->GetMonitorManager().GetWidth();
+    int height = io->GetMonitorManager().GetHeight();
+
+    auto &registry = scene.registry;
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
     glm::mat4 vp = glm::mat4(1.0f);
@@ -240,9 +256,12 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         return;
     }
 
+    std::vector<entt::entity> toDestroy;
+
     auto view = registry.view<InfoComponent>();
 
     std::unordered_map<entt::entity, entt::entity> nextMap;
+    std::vector<std::pair<entt::entity, std::string>> pendingLabels;
 
     for (auto entity : view)
     {
@@ -253,16 +272,17 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         if (entityInfo.tag == "DebugLabel" || entityInfo.tag == "DebugLight")
             continue;
 
-        // Skip UI entities aggressively
+
         if (registry.any_of<UITransformComponent>(entity) || 
             registry.any_of<UIRendererComponent>(entity) || 
             registry.any_of<UITextComponent>(entity))
             continue;
 
         entt::entity labelEntity = entt::null;
-        if (m_EntityLabelMap.find(entity) != m_EntityLabelMap.end())
+        auto it = m_EntityLabelMap.find(entity);
+        if (it != m_EntityLabelMap.end())
         {
-            labelEntity = m_EntityLabelMap[entity];
+            labelEntity = it->second;
             if (!registry.valid(labelEntity))
                 labelEntity = entt::null;
         }
@@ -270,7 +290,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         if (auto* tr = registry.try_get<WorldTransformComponent>(entity)) {
             modelMatrix = tr->worldMatrix;
-        } else if (registry.all_of<PositionComponent, RotationComponent, ScaleComponent>(entity)) { // Fallback to individual components
+        } else if (registry.all_of<PositionComponent, RotationComponent, ScaleComponent>(entity)) {
             auto& pos = registry.get<PositionComponent>(entity);
             auto& rot = registry.get<RotationComponent>(entity);
             auto& scale = registry.get<ScaleComponent>(entity);
@@ -316,8 +336,8 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
             glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
             if (ndc.x >= -1.0f && ndc.x <= 1.0f && ndc.y >= -1.0f && ndc.y <= 1.0f && ndc.z < 1.0f)
             {
-                screenPos.x = (ndc.x * 0.5f + 0.5f) * width;
-                screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
+                screenPos.x = (ndc.x * 0.5f + 0.5f) * (float)width;
+                screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * (float)height;
                 visible = true;
             }
         }
@@ -326,40 +346,58 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
         {
             if (labelEntity == entt::null)
             {
-                labelEntity = EntityManager::CreateEntity(scene, "Label_" + entityInfo.name, "DebugLabel");
-                registry.emplace<UITransformComponent>(labelEntity);
-                auto &text = registry.emplace<UITextComponent>(labelEntity);
-
-                text.model = m_TextQuad;
-                text.shader = m_TextShader;
-                text.font = m_DebugFont;
-                text.text = entityInfo.name;
-                text.color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
-                text.scale = 2.0f;
+                pendingLabels.push_back({entity, entityInfo.name});
             }
+            else
+            {
+                auto &uiTr = registry.get<UITransformComponent>(labelEntity);
+                auto &text = registry.get<UITextComponent>(labelEntity);
 
-            auto &uiTr = registry.get<UITransformComponent>(labelEntity);
-            auto &text = registry.get<UITextComponent>(labelEntity);
+                float textW = 0.0f;
+                if (m_DebugFont)
+                    textW = (float)text.text.length() * 11.0f * text.scale;
 
-            float textW = 0.0f;
-            if (m_DebugFont)
-                textW = (float)text.text.length() * 11.0f * text.scale;
+                uiTr.anchorMin = glm::vec2(0.0f);
+                uiTr.anchorMax = glm::vec2(0.0f);
+                uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
+                uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
+                uiTr.zIndex = 100;
 
-            uiTr.anchorMin = glm::vec2(0.0f);
-            uiTr.anchorMax = glm::vec2(0.0f);
-            uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
-            uiTr.zIndex = 100;
-
-            nextMap[entity] = labelEntity;
+                nextMap[entity] = labelEntity;
+            }
         }
         else
         {
             if (labelEntity != entt::null)
             {
-                registry.destroy(labelEntity);
+                toDestroy.push_back(labelEntity);
             }
         }
+    }
+
+    for (auto e : toDestroy)
+    {
+        if (registry.valid(e))
+            registry.destroy(e);
+    }
+    toDestroy.clear();
+
+
+    for (auto& pending : pendingLabels)
+    {
+        entt::entity labelEntity = EntityManager::CreateEntity(scene, "Label_" + pending.second, "DebugLabel");
+        registry.emplace<UITransformComponent>(labelEntity);
+        auto &text = registry.emplace<UITextComponent>(labelEntity);
+
+        text.model = m_TextQuad;
+        text.shader = m_TextShader;
+        text.font = m_DebugFont;
+        text.text = pending.second;
+        text.color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+        text.scale = 2.0f;
+        
+
+        nextMap[pending.first] = labelEntity;
     }
 
     for (auto &pair : m_EntityLabelMap)
@@ -400,11 +438,14 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         return;
     }
 
-    auto &registry = scene.registry;
-    auto& io = ServiceLocator::Instance().Require<IOHandler>();
-    int width = io.GetMonitorManager().GetWidth();
-    int height = io.GetMonitorManager().GetHeight();
+    auto& sl = ServiceLocator::Instance();
+    auto* io = sl.Resolve<IOHandler>();
+    if (!io) return;
 
+    int width = io->GetMonitorManager().GetWidth();
+    int height = io->GetMonitorManager().GetHeight();
+
+    auto &registry = scene.registry;
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
     glm::mat4 vp = glm::mat4(1.0f);
@@ -423,14 +464,20 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         return;
     }
 
+    std::vector<entt::entity> toDestroy;
+
     std::unordered_map<entt::entity, entt::entity> nextMap;
+
+    struct PendingLight { entt::entity entity; glm::vec3 pos; std::string typeName; glm::vec3 color; };
+    std::vector<PendingLight> pendingLights;
 
     auto processLight = [&](entt::entity entity, const glm::vec3 &pos, const std::string &typeName, const glm::vec3 &color)
     {
         entt::entity labelEntity = entt::null;
-        if (m_LightLabelMap.find(entity) != m_LightLabelMap.end())
+        auto it = m_LightLabelMap.find(entity);
+        if (it != m_LightLabelMap.end())
         {
-            labelEntity = m_LightLabelMap[entity];
+            labelEntity = it->second;
             if (!registry.valid(labelEntity))
                 labelEntity = entt::null;
         }
@@ -444,8 +491,8 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
             glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
             if (ndc.x >= -1.0f && ndc.x <= 1.0f && ndc.y >= -1.0f && ndc.y <= 1.0f && ndc.z < 1.0f)
             {
-                screenPos.x = (ndc.x * 0.5f + 0.5f) * width;
-                screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
+                screenPos.x = (ndc.x * 0.5f + 0.5f) * (float)width;
+                screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * (float)height;
                 visible = true;
             }
         }
@@ -454,48 +501,41 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         {
             if (labelEntity == entt::null)
             {
-                labelEntity = EntityManager::CreateEntity(scene, "LightLabel_" + typeName, "DebugLabel");
-                registry.emplace<UITransformComponent>(labelEntity);
-                auto &text = registry.emplace<UITextComponent>(labelEntity);
-
-                text.model = m_TextQuad;
-                text.shader = m_TextShader;
-                text.font = m_DebugFont;
-                text.text = typeName;
-                text.color = glm::vec4(color, 1.0f);
-                text.scale = 2.0f;
+                pendingLights.push_back({entity, pos, typeName, color});
             }
-
-            auto &uiTr = registry.get<UITransformComponent>(labelEntity);
-            auto &text = registry.get<UITextComponent>(labelEntity);
-
-            float textW = 0.0f;
-            if (m_DebugFont)
+            else
             {
-                std::istringstream textStream(typeName);
-                std::string line;
-                float maxW = 0.0f;
-                while (std::getline(textStream, line))
+                auto &uiTr = registry.get<UITransformComponent>(labelEntity);
+                auto &text = registry.get<UITextComponent>(labelEntity);
+
+                float textW = 0.0f;
+                if (m_DebugFont)
                 {
-                    float w = (float)line.length() * 11.0f * text.scale;
-                    if (w > maxW) maxW = w;
+                    std::istringstream textStream(typeName);
+                    std::string line;
+                    float maxW = 0.0f;
+                    while (std::getline(textStream, line))
+                    {
+                        float w = (float)line.length() * 11.0f * text.scale;
+                        if (w > maxW) maxW = w;
+                    }
+                    textW = maxW;
                 }
-                textW = maxW;
+
+                uiTr.anchorMin = glm::vec2(0.0f);
+                uiTr.anchorMax = glm::vec2(0.0f);
+                uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
+                uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
+                uiTr.zIndex = 90;
+
+                nextMap[entity] = labelEntity;
             }
-
-            uiTr.anchorMin = glm::vec2(0.0f);
-            uiTr.anchorMax = glm::vec2(0.0f);
-            uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
-            uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
-            uiTr.zIndex = 90;
-
-            nextMap[entity] = labelEntity;
         }
         else
         {
             if (labelEntity != entt::null)
             {
-                registry.destroy(labelEntity);
+                toDestroy.push_back(labelEntity);
             }
         }
     };
@@ -538,6 +578,29 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
         ss << std::fixed << std::setprecision(1);
         ss << "[DIR]\nInt: " << dl.intensity << "\nCol: " << dl.color.r << "," << dl.color.g << "," << dl.color.b;
         processLight(entity, pos, ss.str(), glm::vec3(1.0f, 0.5f, 0.0f));
+    }
+
+    for (auto e : toDestroy)
+    {
+        if (registry.valid(e))
+            registry.destroy(e);
+    }
+    toDestroy.clear();
+
+    for (auto& pending : pendingLights)
+    {
+        entt::entity labelEntity = EntityManager::CreateEntity(scene, "LightLabel_" + pending.typeName, "DebugLabel");
+        registry.emplace<UITransformComponent>(labelEntity);
+        auto &text = registry.emplace<UITextComponent>(labelEntity);
+
+        text.model = m_TextQuad;
+        text.shader = m_TextShader;
+        text.font = m_DebugFont;
+        text.text = pending.typeName;
+        text.color = glm::vec4(pending.color, 1.0f);
+        text.scale = 2.0f;
+
+        nextMap[pending.entity] = labelEntity;
     }
 
     for (auto &pair : m_LightLabelMap)

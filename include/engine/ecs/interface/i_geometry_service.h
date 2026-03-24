@@ -4,9 +4,7 @@
 #include <cstdint>
 class GBuffer;
 
-/**
- * @brief Service interface for geometry-related operations (G-Buffer).
- */
+
 class IGeometryService : virtual public IBaseSystem
 {
 public:
@@ -26,4 +24,5 @@ public:
     virtual unsigned int GetGBufferDepth() const = 0;
     virtual unsigned int GetGBufferID() const = 0;
     virtual unsigned int GetGBufferPosition() const = 0;
+    virtual unsigned int GetGBufferNormal() const = 0;
 };

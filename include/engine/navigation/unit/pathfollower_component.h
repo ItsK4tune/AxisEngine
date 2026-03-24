@@ -11,21 +11,21 @@ struct PathFollowerComponent
     uint32_t currentPathIndex = 0;
     
     float moveSpeed = 5.0f;
-    float rotationSpeed = 10.0f; // Current/Target rotation speed
+    float rotationSpeed = 10.0f;
     float maxRotationSpeed = 20.0f;
     float rotationAcceleration = 40.0f;
     float currentRotationVelocity = 0.0f; 
     
-    glm::vec3 rotationOffset = glm::vec3(0.0f); // Euler offsets in degrees
+    glm::vec3 rotationOffset = glm::vec3(0.0f);
     float arrivalDistance = 0.5f;
     
     bool isMoving = false;
     bool pathPending = false;
 
-    // Pathfinding strategy
+
     PathfindingOptions pathfindingOptions;
 
-    // Rotation locking
+
     bool lockXPitch = false;
     bool lockYYaw = false;
     bool lockZRoll = false;

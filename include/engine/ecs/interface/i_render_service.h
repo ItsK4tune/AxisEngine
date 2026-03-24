@@ -19,9 +19,7 @@ enum class AntiAliasingMode
     TAA = 2
 };
 
-/**
- * @brief Service interface for the main rendering system.
- */
+
 class IRenderService : virtual public IBaseSystem
 {
 public:
@@ -49,6 +47,9 @@ public:
     
     virtual bool IsDebugNoTexture() const = 0;
     virtual void SetDebugNoTexture(bool enable) = 0;
+    
+    virtual bool IsWireframe() const = 0;
+    virtual void SetWireframe(bool enable) = 0;
     
     virtual bool IsOcclusionCullingEnabled() const = 0;
     virtual void SetOcclusionCulling(bool enable) = 0;

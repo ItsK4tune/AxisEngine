@@ -5,9 +5,7 @@ class Shadow;
 class ShadowRenderer;
 struct Scene;
 
-/**
- * @brief Service interface for shadow-related operations.
- */
+
 class IShadowService : virtual public IBaseSystem
 {
 public:

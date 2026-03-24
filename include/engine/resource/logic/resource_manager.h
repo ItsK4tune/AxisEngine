@@ -31,14 +31,12 @@ public:
     ResourceManager();
     ~ResourceManager();
 
-    /**
-     * @brief Initializes the facade with necessary low-level dependencies.
-     */
+    
     void Initialize(IShaderManager& shaderManager, ITextureManager& textureManager, IAudioEngine& audioEngine);
     void Shutdown();
     void Update(float dt);
 
-    // Facade Methods (delegating to specialized managers)
+
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
     void LoadTexture(const std::string& name, const std::string& path, bool async = true, bool keepCpuData = false) override;
     void UnloadTexture(const std::string& name);
@@ -69,7 +67,7 @@ public:
     std::shared_ptr<UIModel> GetUIModel(const std::string& name);
     bool HasUIModel(const std::string& name);
 
-    // Auto-loading versions (Helper methods)
+
     std::shared_ptr<Texture> GetTextureAuto(const std::string& nameOrPath);
     std::shared_ptr<Model> GetModelAuto(const std::string& nameOrPath, bool isStatic = false);
     std::shared_ptr<Font> GetFontAuto(const std::string& nameOrPath, unsigned int fontSize = 16);
@@ -77,13 +75,13 @@ public:
 
     void ClearResource();
 
-    // --- Unified Loading (merged from UnifiedLoader) ---
+
     void RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy);
     bool LoadUnified(const std::string& type, const std::string& path);
     std::vector<std::string> GetRegisteredLoaderTypes() const;
 
 
-    // specialized managers accessors
+
     ShaderManager& GetShaderManager()    { return *m_ShaderManager; }
     TextureManager& GetTextureManager()  { return *m_TextureManager; }
     ModelManager& GetModelManager()      { return *m_ModelManager; }
@@ -99,7 +97,7 @@ private:
     void ReloadShader(const std::string& name);
     void ReloadTexture(const std::string& name);
 
-    // Specialized Managers
+
     std::unique_ptr<ShaderManager>    m_ShaderManager;
     std::unique_ptr<TextureManager>   m_TextureManager;
     std::unique_ptr<ModelManager>     m_ModelManager;

@@ -50,6 +50,9 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
         } else {
             DebugConfig::ShowWireframe = !DebugConfig::ShowWireframe;
 
+            auto* renderSys = ServiceLocator::Instance().Resolve<IRenderService>();
+            if (renderSys) renderSys->SetWireframe(DebugConfig::ShowWireframe);
+
             std::cout << "\n========== Wireframe Mode (F6) ==========" << std::endl;
             std::cout << "[Debug] Wireframe: " << (DebugConfig::ShowWireframe ? "ON" : "OFF") << std::endl;
             std::cout << "=========================================" << std::endl;

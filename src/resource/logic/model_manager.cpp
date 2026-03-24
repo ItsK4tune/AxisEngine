@@ -21,11 +21,10 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         auto future = JobSystem::Instance().ExecuteAsync([model, path, isStatic]() {
             model->LoadCPU(path, isStatic);
         });
-
+        
         std::lock_guard<std::mutex> lock(m_PendingMutex);
-        m_ActiveFutures.push_back(std::move(future));
-        m_PendingModels.push_back({name, model});
-
+        m_PendingModels.push_back({name, model, std::move(future)});
+        
         return model;
     } else {
         auto model = std::make_shared<Model>(path, isStatic);
@@ -48,22 +47,17 @@ void ModelManager::Unload(const std::string& name) {
 
 void ModelManager::Update(float dt) {
     std::lock_guard<std::mutex> lock(m_PendingMutex);
-    for (auto it = m_ActiveFutures.begin(); it != m_ActiveFutures.end();) {
-        if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-            it->get();
-            it = m_ActiveFutures.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    
-    // Process pending models and upload to GPU on main thread
+
     for (auto it = m_PendingModels.begin(); it != m_PendingModels.end();) {
-        if (!it->model->IsReadyToRender()) { 
-            it->model->UploadToGPU();
-            m_InstanceManager.RegisterModel(it->name, it->model);
-            LOGGER_INFO("ModelManager") << "Async model finished loading and uploaded to GPU: " << it->name;
-            EventSystem::Instance().Publish(ResourceLoadedEvent{it->name, "MODEL", true});
+        if (it->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            it->future.get();
+            
+            if (!it->model->IsReadyToRender()) { 
+                it->model->UploadToGPU();
+                m_InstanceManager.RegisterModel(it->name, it->model);
+                LOGGER_INFO("ModelManager") << "Async model finished loading and uploaded to GPU: " << it->name;
+                EventSystem::Instance().Publish(ResourceLoadedEvent{it->name, "MODEL", true});
+            }
             it = m_PendingModels.erase(it);
         } else {
             ++it;
@@ -75,5 +69,4 @@ void ModelManager::Clear() {
     m_Cache.Clear();
     std::lock_guard<std::mutex> lock(m_PendingMutex);
     m_PendingModels.clear();
-    m_ActiveFutures.clear();
 }

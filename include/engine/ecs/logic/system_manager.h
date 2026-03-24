@@ -60,6 +60,10 @@ private:
     std::vector<std::unique_ptr<IBaseSystem>> m_Systems;
     std::vector<IUpdateSystem*> m_UpdateSystems;
     std::vector<IRenderSystem*> m_RenderSystems;
+    std::vector<IRenderSystem*> m_RenderAlphaSystems;
+    std::vector<IRenderSystem*> m_RenderTransparentSystems;
+    std::vector<IRenderSystem*> m_RenderMainSystems;
+    std::vector<IRenderSystem*> m_RenderUISystems;
     
     std::vector<ExecutionBatch> m_UpdateBatches;
 

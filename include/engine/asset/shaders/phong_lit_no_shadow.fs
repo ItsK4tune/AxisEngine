@@ -1,7 +1,7 @@
 #version 430 core
 out vec4 FragColor;
 
-// 1. Root Level Samplers (Standardized Binding 0-15)
+
 layout (binding = 0) uniform sampler2D texture_diffuse1;
 layout (binding = 1) uniform sampler2D texture_normal1;
 layout (binding = 2) uniform sampler2D texture_metallic1;
@@ -10,7 +10,7 @@ layout (binding = 4) uniform sampler2D texture_ao1;
 layout (binding = 5) uniform sampler2D texture_emissive1;
 layout (binding = 6) uniform sampler2D texture_specular1;
 
-// 2. UBO/SSBO Bindings (Standardized Binding 20-25)
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
@@ -60,12 +60,12 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-// 3. Input Stage
+
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 
-// 4. Common Uniforms
+
 struct Material {
     float shininess;
     vec3 specular;
@@ -77,7 +77,7 @@ uniform Material material;
 uniform vec4 tintColor;
 uniform bool debug_noTexture;
 
-// Forward Declarations
+
 vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir);
@@ -97,7 +97,7 @@ void main()
     for(int i = 0; i < light.nrSpotLights; i++)
         result += CalcSpotLight(spotLights[i], norm, FragPos, viewDir);
     
-    // Final Color Assembly
+
     vec4 texColor;
     if (debug_noTexture) {
         texColor = vec4(1.0);

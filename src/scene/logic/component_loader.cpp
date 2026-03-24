@@ -62,7 +62,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("UIRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIRenderer(s, e, n, r); });
     RegisterLoader("UIText", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIText(s, e, n, r); });
     RegisterLoader("SkyboxRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadSkyboxRenderer(s, e, n, r); });
-    // RegisterLoader("Script", ...); // Registered by ScriptableSystem
+
     RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAudioSource(s, e, n, r); });
     RegisterLoader("VideoPlayer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadVideoPlayer(s, e, n); });
     RegisterLoader("ParticleEmitter", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadParticleEmitter(s, e, n, r); });
@@ -70,7 +70,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("LOD", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLOD(s, e, n, r); });
     RegisterLoader("RigidBody", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { if (p) PhysicsLoader::LoadRigidBody(s, e, n, *p); });
     RegisterLoader("CharacterController", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { if (p) PhysicsLoader::LoadCharacterController(s, e, n, *p); });
-    RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { /* Transform is typically handled by SceneSerializer directly */ });
+    RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) {  });
     RegisterLoader("PathFollower", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { ComponentLoader::LoadPathFollower(s, e, n); });
     RegisterLoader("Decal", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadDecal(s, e, n, r); });
     RegisterLoader("UIFlex", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIFlex(s, e, n); });
@@ -98,14 +98,14 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
 
     auto &r = scene.registry.emplace<MeshRendererComponent>(entity);
     
-    // Model Lookup
+
     r.model = res.GetModelAuto(modelName, false);
 
-    // Shader Lookup
+
     r.shader = res.GetShader(shaderName);
     if (r.shader.expired()) {
-       // Note: Currently Shader lookup by path is complex (vs|fs). 
-       // For now, assume shaderName is a Name or we need a specific AXS format for path-based shaders.
+
+
     }
 
     r.order = order;
@@ -153,7 +153,7 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
     if (!a.animations.empty())
     {
         auto getAnim = [&](const std::string& nameOrPath) -> std::shared_ptr<Animation> {
-            return res.GetAnimation(nameOrPath); // GetAnimationAuto not yet implemented, but we have GetAnimation
+            return res.GetAnimation(nameOrPath);
         };
 
         auto firstAnim = getAnim(a.animations[0]);
@@ -498,8 +498,8 @@ void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, cons
 
     comp.skybox = res.GetSkybox(skyboxName);
     if (!comp.skybox && skyboxName.find('|') != std::string::npos) {
-        // Handle specialized case of | separated paths if needed, 
-        // for now just try to find if it was already loaded by path string.
+
+
     }
 
     comp.shader = res.GetShader(shaderName);
@@ -741,7 +741,7 @@ void ComponentLoader::LoadPathFollower(Scene &scene, entt::entity entity, const 
     if (roSS >> rx >> ry >> rz) {
         pf.rotationOffset = glm::vec3(rx, ry, rz);
     } else {
-        // Fallback for single value (only yaw)
+
         try {
             pf.rotationOffset = glm::vec3(0, std::stof(ro), 0);
         } catch (...) {

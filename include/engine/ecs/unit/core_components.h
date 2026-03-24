@@ -7,7 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-// --- Info ---
+
 
 struct InfoComponent
 {
@@ -18,7 +18,7 @@ struct InfoComponent
     int renderOrder = 0;
 };
 
-// --- Camera ---
+
 
 struct CameraComponent
 {
@@ -46,7 +46,7 @@ struct CameraComponent
     uint32_t cullingMask = 0xFFFFFFFF;
 };
 
-// --- Transform ---
+
 
 #define GLM_ENABLE_EXPERIMENTAL
 

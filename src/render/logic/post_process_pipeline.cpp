@@ -98,7 +98,7 @@ void PostProcessPipeline::InitFramebuffers()
     if (rtm.CheckFramebufferStatus(FramebufferTarget::Framebuffer) != FramebufferStatus::Complete)
         LOGGER_ERROR("PostProcess") << "History FBO is not complete!";
 
-    // Init Bloom Mips
+
     m_BloomMips.clear();
     int bloomW = m_Width / 2;
     int bloomH = m_Height / 2;

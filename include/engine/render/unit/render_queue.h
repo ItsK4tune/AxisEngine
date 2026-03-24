@@ -6,7 +6,7 @@
 
 class Shader;
 class Model;
-struct AABB;
+#include <core/unit/aabb.h>
 class FrustumCuller;
 struct MaterialComponent;
 

@@ -21,13 +21,8 @@
 #include <core/type/event_types.h>
 #include <core/type/app_config.h>
 
-PhysicsSystem::PhysicsSystem()
-{
-}
-
-PhysicsSystem::~PhysicsSystem()
-{
-}
+PhysicsSystem::PhysicsSystem() {}
+PhysicsSystem::~PhysicsSystem() {}
 
 void PhysicsSystem::Initialize()
 {
@@ -48,8 +43,7 @@ void PhysicsSystem::Initialize()
             return;
 
         const auto& cfg = e.config;
-        auto& sl_inner = ServiceLocator::Instance();
-        auto* phys_inner = sl_inner.Resolve<IPhysicsWorld>();
+        auto* phys_inner = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
         if (phys_inner) {
             phys_inner->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
             phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
@@ -61,15 +55,13 @@ void PhysicsSystem::Initialize()
 
 void PhysicsSystem::Update(Scene &scene, float dt)
 {
-    if (!m_Enabled)
-        return;
+    if (!m_Enabled) return;
 
     IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
     if (!physicsWorld) return;
 
     if (&scene != m_LastScene || physicsWorld != m_LastPhysicsWorld)
     {
-        LOGGER_INFO("PhysicsSystem") << "Scene or PhysicsWorld changed reinitializing subsystems";
         Reset();
         m_LastScene = &scene;
         m_LastPhysicsWorld = physicsWorld;
@@ -78,29 +70,19 @@ void PhysicsSystem::Update(Scene &scene, float dt)
             if (!pRegistry || !pRegistry->valid(eA) || !pRegistry->valid(eB))
                 return false;
 
-            if (pRegistry->all_of<RigidBodyComponent>(eA)) {
-                if (!pRegistry->get<RigidBodyComponent>(eA).isCollisionEnabled)
-                    return false;
-            }
-
-            if (pRegistry->all_of<RigidBodyComponent>(eB)) {
-                if (!pRegistry->get<RigidBodyComponent>(eB).isCollisionEnabled)
-                    return false;
-            }
+            if (pRegistry->all_of<RigidBodyComponent>(eA) && !pRegistry->get<RigidBodyComponent>(eA).isCollisionEnabled) return false;
+            if (pRegistry->all_of<RigidBodyComponent>(eB) && !pRegistry->get<RigidBodyComponent>(eB).isCollisionEnabled) return false;
 
             std::string tagA = "", nameA = "";
             std::string tagB = "", nameB = "";
 
             if (pRegistry->all_of<InfoComponent>(eA)) {
                 auto& info = pRegistry->get<InfoComponent>(eA);
-                tagA = info.tag;
-                nameA = info.name;
+                tagA = info.tag; nameA = info.name;
             }
-            
             if (pRegistry->all_of<InfoComponent>(eB)) {
                 auto& info = pRegistry->get<InfoComponent>(eB);
-                tagB = info.tag;
-                nameB = info.name;
+                tagB = info.tag; nameB = info.name;
             }
 
             auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
@@ -113,23 +95,18 @@ void PhysicsSystem::Update(Scene &scene, float dt)
     
     if (!m_transformSync)
     {
-        LOGGER_INFO("PhysicsSystem") << "Initializing Physics Transform Sync";
         m_transformSync = std::make_unique<PhysicsTransformSync>(scene, *physicsWorld);
         m_transformSync->Initialize();
     }
 
     m_transformSync->SyncToPhysics();
-
     physicsWorld->Update(dt);
-
     m_transformSync->SyncFromPhysics();
 
     if (!m_collisionDispatcher)
     {
-        LOGGER_INFO("PhysicsSystem") << "Initializing Physics Collision Dispatcher";
         m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, *physicsWorld);
     }
-    
     m_collisionDispatcher->DispatchEvents();
 
     auto viewCC = scene.registry.view<CharacterControllerComponent>();
@@ -151,10 +128,7 @@ void PhysicsSystem::Update(Scene &scene, float dt)
 
 void PhysicsSystem::Reset()
 {
-    if (m_LastPhysicsWorld)
-    {
-        m_LastPhysicsWorld->SetCollisionFilter(nullptr);
-    }
+    if (m_LastPhysicsWorld) m_LastPhysicsWorld->SetCollisionFilter(nullptr);
 
     if (m_LastScene)
     {
@@ -170,48 +144,36 @@ void PhysicsSystem::Reset()
 
 void PhysicsSystem::OnRigidBodyDestroyed(entt::registry &registry, entt::entity entity)
 {
-    if (!m_LastPhysicsWorld)
-        return;
+    if (!m_LastPhysicsWorld) return;
 
     if (registry.all_of<RigidBodyComponent>(entity))
     {
         auto &rb = registry.get<RigidBodyComponent>(entity);
         if (rb.body)
         {
-            try {
-                for (auto &constraint : rb.constraints)
-                {
-                    if (constraint)
-                        m_LastPhysicsWorld->RemoveConstraint(constraint);
-                }
-                
-                m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
-            } catch (...) {
-                LOGGER_ERROR("PhysicsSystem") << "OnRigidBodyDestroyed: CRASH during rigid body cleanup for entity " << (uint32_t)entity;
+            for (auto &constraint : rb.constraints)
+            {
+                if (constraint) m_LastPhysicsWorld->RemoveConstraint(constraint);
             }
+            m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
         }
     }
 }
 
 void PhysicsSystem::OnCharacterControllerDestroyed(entt::registry& registry, entt::entity entity)
 {
-    if (!m_LastPhysicsWorld)
-        return;
+    if (!m_LastPhysicsWorld) return;
 
     if (registry.all_of<CharacterControllerComponent>(entity))
     {
         auto& cc = registry.get<CharacterControllerComponent>(entity);
-        if (cc.controller)
-        {
-            m_LastPhysicsWorld->RemoveCharacterController(cc.controller.get());
-        }
+        if (cc.controller) m_LastPhysicsWorld->RemoveCharacterController(cc.controller.get());
     }
 }
 
 void PhysicsSystem::RenderDebug(Scene &scene, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState)
 {
-    if (!m_LastPhysicsWorld)
-        return;
+    if (!m_LastPhysicsWorld) return;
 
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
@@ -226,8 +188,7 @@ void PhysicsSystem::RenderDebug(Scene &scene, Shader &shader, int screenWidth, i
         auto viewCamera = registry.view<CameraComponent, PositionComponent>();
         for (auto entity : viewCamera)
         {
-            auto &camera = viewCamera.get<CameraComponent>(entity);
-            if (camera.isPrimary)
+            if (viewCamera.get<CameraComponent>(entity).isPrimary)
             {
                 m_cachedPrimaryCamera = entity;
                 break;
@@ -238,20 +199,8 @@ void PhysicsSystem::RenderDebug(Scene &scene, Shader &shader, int screenWidth, i
     if (registry.valid(m_cachedPrimaryCamera))
     {
         auto &camera = registry.get<CameraComponent>(m_cachedPrimaryCamera);
-        auto* posComp = registry.try_get<PositionComponent>(m_cachedPrimaryCamera);
-        glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
-
-        glm::vec3 front;
-        front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-        front.y = sin(glm::radians(camera.pitch));
-        front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-        front = glm::normalize(front);
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-
-        view = glm::lookAt(pos, pos + front, up);
-
-        float aspect = (float)screenWidth / (float)screenHeight;
-        projection = glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
+        view = camera.viewMatrix;
+        projection = camera.projectionMatrix;
     }
 
     shader.use();
@@ -266,21 +215,17 @@ void PhysicsSystem::RenderDebug(Scene &scene, Shader &shader, int screenWidth, i
 RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, const glm::vec3 &direction, float distance)
 {
     IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    if (!physicsWorld)
-        return {};
-    return physicsWorld->Raycast(origin, direction, distance);
+    return physicsWorld ? physicsWorld->Raycast(origin, direction, distance) : RayHit{};
 }
 
 RayHit PhysicsSystem::Raycast(const glm::vec3 &start, const glm::vec3 &end)
 {
     IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    if (!physicsWorld)
-        return {};
+    if (!physicsWorld) return {};
 
     glm::vec3 dir = end - start;
     float dist = glm::length(dir);
-    if (dist < 0.0001f)
-        return {};
+    if (dist < 0.0001f) return {};
 
     return physicsWorld->Raycast(start, glm::normalize(dir), dist);
 }
@@ -288,29 +233,22 @@ RayHit PhysicsSystem::Raycast(const glm::vec3 &start, const glm::vec3 &end)
 RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, float yaw, float pitch, float distance)
 {
     IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    if (!physicsWorld)
-        return {};
-
-    glm::vec3 dir = RaycastUtils::AngleToDirection(yaw, pitch);
-    return physicsWorld->Raycast(origin, dir, distance);
+    return physicsWorld ? physicsWorld->Raycast(origin, RaycastUtils::AngleToDirection(yaw, pitch), distance) : RayHit{};
 }
 
 RayHit PhysicsSystem::RaycastFromScreen(const glm::vec2 &screenPos, float distance)
 {
     IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    if (!physicsWorld || !m_LastScene)
-        return {};
+    if (!physicsWorld || !m_LastScene) return {};
 
     entt::entity camEntity = EntityManager::GetActiveCamera(*m_LastScene);
-    if (camEntity == entt::null)
-        return {};
+    if (camEntity == entt::null) return {};
 
     auto &camera = m_LastScene->registry.get<CameraComponent>(camEntity);
     auto &monitorManager = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager();
     glm::vec2 viewportSize(monitorManager.GetWidth(), monitorManager.GetHeight());
 
     Ray ray = RaycastUtils::CalculateRay(screenPos, viewportSize, camera.viewMatrix, camera.projectionMatrix);
-
     return physicsWorld->Raycast(ray.origin, ray.direction, distance);
 }
 
@@ -330,4 +268,3 @@ std::vector<entt::id_type> PhysicsSystem::GetWriteComponents() const
         entt::type_id<RotationComponent>().hash()
     };
 }
-

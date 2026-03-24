@@ -60,7 +60,7 @@ void LogManager::Initialize(LogLevel level) {
 
     SetUnhandledExceptionFilter(CrashHandler);
 
-    // Subscribe to config changes
+
     if (auto* es = ServiceLocator::Instance().Resolve<EventSystem>()) {
         m_ConfigListenerId = es->Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& ev) {
             this->OnConfigChanged(ev);

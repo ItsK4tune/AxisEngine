@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-// Forward declarations for systems and managers
+
 struct Scene;
 class SceneManager;
 class ResourceManager;
@@ -21,13 +21,13 @@ class SystemManager;
 struct SceneRecord;
 struct AppConfig;
 
-// --- Engine Accessor ---
+
 
 class EngineAccessor {
 public:
     virtual ~EngineAccessor() = default;
 
-    // Template-based accessors (Modern approach)
+
     template <typename T>
     T& Get() const { return ServiceLocator::Instance().Require<T>(); }
 
@@ -35,16 +35,16 @@ public:
     T& GetSystem() const { 
         T* sys = ServiceLocator::Instance().Require<SystemManager>().GetSystem<T>();
         if (!sys) {
-            // We crash with a controlled message rather than access violation if possible, 
-            // but in many cases we just want to know WHICH system is missing.
+
+
             LOGGER_ERROR("EngineAccessor") << "System not found or not registered: " << typeid(T).name();
-            // Since we must return a reference, we still have to handle the failure.
-            // For now, let's keep the dereference but the log will help pinpoint it.
+
+
         }
         return *sys; 
     }
 
-    // Legacy/Convenience getters (Systems) - DEPRECATED: Use GetSystem<T>() instead.
+
     [[deprecated("Use GetSystem<RenderSystem>() instead")]]
     class RenderSystem&       GetRenderSystem() const;
     [[deprecated("Use GetSystem<PhysicsSystem>() instead")]]
@@ -66,7 +66,7 @@ public:
     [[deprecated("Use GetSystem<NavigationSystem>() instead")]]
     class NavigationSystem&   GetNavigationSystem() const;
 
-    // Legacy/Convenience getters - DEPRECATED: Use Get<T>() instead.
+
     [[deprecated("Use Get<Scene>() instead")]]
     Scene&           GetScene() const;
     [[deprecated("Use Get<SceneManager>() instead")]]

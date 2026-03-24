@@ -12,9 +12,14 @@ struct Material {
     float opacity;
 };
 uniform Material material;
+uniform bool u_isWireframe;
 
 void main()
 {    
+    if (u_isWireframe) {
+        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+        return;
+    }
     if (debug_noTexture) {
          FragColor = vec4(1.0, 1.0, 1.0, material.opacity) * tintColor;
     } else {

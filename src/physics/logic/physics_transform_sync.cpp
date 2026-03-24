@@ -152,9 +152,9 @@ void PhysicsTransformSync::SyncFromPhysics()
             {
                 if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
                 {
-                    // ... (skipped for now as it's complex, but rootMtx should be in there)
-                    // For static objects (like the wall), SyncFromPhysics isn't usually the issue.
-                    // But I'll refine this if needed.
+
+
+
                 }
             }
             else
@@ -163,8 +163,8 @@ void PhysicsTransformSync::SyncFromPhysics()
                 glm::quat physWorldRot = worldRot * invRotOffset;
                 glm::vec3 physWorldPos = worldPos - physWorldRot * rb.positionOffset;
                 
-                // physWorld is (entityWorld * root)
-                // entityWorld = physWorld * inv(root)
+
+
                 glm::mat4 physMtx = glm::translate(glm::mat4(1.0f), physWorldPos) * glm::mat4_cast(physWorldRot);
                 glm::mat4 entityMtx = physMtx * glm::inverse(rootMtx);
                 

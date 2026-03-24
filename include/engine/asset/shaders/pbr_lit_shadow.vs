@@ -8,8 +8,8 @@ layout (location = 6) in vec4 aWeights;
 out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoords;
-out vec4 FragPosLightSpace[2]; // For up to 2 Dir Light Shadows
-out vec4 FragPosLightSpaceSpot[2]; // For up to 2 Spot Light Shadows
+out vec4 FragPosLightSpace[2];
+out vec4 FragPosLightSpaceSpot[2];
 
 uniform mat4 model;
 
@@ -70,13 +70,13 @@ void main()
     Normal = mat3(transpose(inverse(modelMatrix))) * totalNormal;  
     TexCoords = aTexCoords;
     
-    // Calculate light space positions for all 2 directional lights
+
     for(int i = 0; i < 2; i++)
     {
         FragPosLightSpace[i] = light.lightSpaceMatricesDir[i] * vec4(FragPos, 1.0);
     }
 
-    // Calculate light space positions for all 2 spot lights
+
     for(int i = 0; i < 2; i++)
     {
         FragPosLightSpaceSpot[i] = light.lightSpaceMatricesSpot[i] * vec4(FragPos, 1.0);

@@ -74,7 +74,7 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
         }
     }
 
-    return {}; // No path found
+    return {};
 }
 
 uint32_t Pathfinding::FindClosestNode(const glm::vec3& pos, const NavMeshComponent& navMesh)

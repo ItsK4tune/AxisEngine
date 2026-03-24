@@ -33,7 +33,7 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
     uint32_t entityCount = (uint32_t)entities.size();
     os.write(reinterpret_cast<const char*>(&entityCount), sizeof(entityCount));
 
-    // --- NEW: Config ---
+
     auto& configMgr = sl.Require<ConfigManager>();
     const AppConfig& config = configMgr.GetConfig();
     
@@ -49,33 +49,33 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
     os.write(reinterpret_cast<const char*>(&config.timeScale), sizeof(config.timeScale));
     writeString(config.iconPath);
     writeString(config.audioDevice);
-    os.write(reinterpret_cast<const char*>(&config.width), 4 * 7); // width to framerateLimit
+    os.write(reinterpret_cast<const char*>(&config.width), 4 * 7);
     os.write(reinterpret_cast<const char*>(&config.graphicsBackend), sizeof(config.graphicsBackend));
-    os.write(reinterpret_cast<const char*>(&config.msaaSamples), 4 * 3); // msaa to maxAnisotropy
+    os.write(reinterpret_cast<const char*>(&config.msaaSamples), 4 * 3);
     os.write(reinterpret_cast<const char*>(&config.renderScale), 4 * 1);
     os.write(reinterpret_cast<const char*>(&config.asyncResourceLoading), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&config.renderPath), sizeof(config.renderPath));
     os.write(reinterpret_cast<const char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
-    os.write(reinterpret_cast<const char*>(&config.hdrEnabled), sizeof(bool) * 2); // hdr, bloom
-    os.write(reinterpret_cast<const char*>(&config.gamma), 4 * 6); // gamma to skyboxIntensity
+    os.write(reinterpret_cast<const char*>(&config.hdrEnabled), sizeof(bool) * 2);
+    os.write(reinterpret_cast<const char*>(&config.gamma), 4 * 6);
     os.write(reinterpret_cast<const char*>(&config.clearColor), 4 * 4);
     os.write(reinterpret_cast<const char*>(&config.shadowsEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.shadowMode), 4 * 3); // mode to projSize
+    os.write(reinterpret_cast<const char*>(&config.shadowMode), 4 * 3);
     os.write(reinterpret_cast<const char*>(&config.shadowFrustumCullingEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.shadowDistanceCulling), 4 * 3); // dist to softness
+    os.write(reinterpret_cast<const char*>(&config.shadowDistanceCulling), 4 * 3);
     os.write(reinterpret_cast<const char*>(&config.physicsBackend), sizeof(config.physicsBackend));
     os.write(reinterpret_cast<const char*>(&config.physicsMode), sizeof(config.physicsMode));
     os.write(reinterpret_cast<const char*>(&config.gravity), 4 * 3);
-    os.write(reinterpret_cast<const char*>(&config.maxSubSteps), 4 * 2); // steps, rate
+    os.write(reinterpret_cast<const char*>(&config.maxSubSteps), 4 * 2);
     os.write(reinterpret_cast<const char*>(&config.ccdEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.ccdThreshold), 4 * 2); // thresh, iterations
+    os.write(reinterpret_cast<const char*>(&config.ccdThreshold), 4 * 2);
     os.write(reinterpret_cast<const char*>(&config.mouseSensitivityX), 4 * 2);
     os.write(reinterpret_cast<const char*>(&config.mouseInvertX), sizeof(bool) * 2);
     os.write(reinterpret_cast<const char*>(&config.audioBackend), sizeof(config.audioBackend));
     os.write(reinterpret_cast<const char*>(&config.masterVolume), 4);
-    os.write(reinterpret_cast<const char*>(&config.cullFaceEnabled), sizeof(bool) * 5); // cull, depth, frustum, occlusion, batching
+    os.write(reinterpret_cast<const char*>(&config.cullFaceEnabled), sizeof(bool) * 5);
     os.write(reinterpret_cast<const char*>(&config.renderOrderEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.filterLayerMask), 4 * 2); // mask, dist
+    os.write(reinterpret_cast<const char*>(&config.filterLayerMask), 4 * 2);
 
     std::map<entt::entity, uint32_t> entityToIndex;
     uint32_t idx = 0;
@@ -143,7 +143,7 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
             os.write(reinterpret_cast<const char*>(&mat->desc), sizeof(mat->desc));
         }
 
-        // --- NEW: Camera ---
+
         auto* cam = scene.registry.try_get<CameraComponent>(entity);
         bool hasCam = (cam != nullptr);
         os.write(reinterpret_cast<const char*>(&hasCam), sizeof(hasCam));
@@ -152,7 +152,7 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
             os.write(reinterpret_cast<const char*>(cam), sizeof(CameraComponent));
         }
 
-        // --- NEW: Lights ---
+
         auto* dl = scene.registry.try_get<DirectionalLightComponent>(entity);
         bool hasDL = (dl != nullptr);
         os.write(reinterpret_cast<const char*>(&hasDL), sizeof(hasDL));
@@ -168,7 +168,7 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
         os.write(reinterpret_cast<const char*>(&hasSL), sizeof(hasSL));
         if (hasSL) os.write(reinterpret_cast<const char*>(sl_comp), sizeof(SpotLightComponent));
 
-        // --- NEW: Skybox ---
+
         auto* sky = scene.registry.try_get<SkyboxRenderComponent>(entity);
         bool hasSky = (sky != nullptr);
         os.write(reinterpret_cast<const char*>(&hasSky), sizeof(hasSky));

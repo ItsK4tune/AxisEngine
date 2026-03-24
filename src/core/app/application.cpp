@@ -102,7 +102,7 @@ void Application::Shutdown()
     m_SystemManager.reset();
     m_SceneManager.reset();
     m_RuntimeCore.reset();
-    m_AudioService.reset();  // AudioService self-unregisters from ServiceLocator
+    m_AudioService.reset();
     m_PhysicsWorld.reset();
 
     if (m_Scene)
@@ -115,7 +115,7 @@ void Application::Shutdown()
     m_ResourceManager.reset();
     m_IOHandler.reset();
 
-    // Kill thread pool and logger last
+
     JobSystem::Instance().Shutdown();
     LOGGER_INFO("Application") << "Cleaning up ConfigManager and ServiceLocator...";
     m_ConfigManager.reset();
@@ -134,7 +134,7 @@ bool Application::Initialize(const AppConfig &config)
     JobSystem::Instance().Initialize(config.numJobThreads);
     LogManager::Instance().Initialize(config.logLevel);
  
-    // Allocate all core unique_ptr systems first to avoid null pointer issues
+
     m_ResourceManager = std::make_unique<ResourceManager>();
     m_SceneManager = std::make_unique<SceneManager>();
     m_RuntimeCore = std::make_unique<RuntimeCore>();
@@ -152,7 +152,7 @@ bool Application::Initialize(const AppConfig &config)
 
     m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext));
 
-    // --- Audio initialization (separate from IOHandler now) ---
+
     m_AudioService = std::make_unique<AudioService>();
     m_AudioService->Initialize(std::move(audioEngine));
 
@@ -163,7 +163,7 @@ bool Application::Initialize(const AppConfig &config)
         return false;
     }
 
-    // Physic step will be set in RuntimeCore/EngineLoop initialization to avoid duplicate logging
+
 
     auto &context = m_IOHandler->GetGraphicsContext();
     RendererInitializer::Initialize(context);
@@ -208,7 +208,7 @@ bool Application::Initialize(const AppConfig &config)
     m_ResourceManager->GetTextureManager().SetMaxAnisotropy(config.maxAnisotropy);
     m_Scene->InitializeManagers();
     
-    // --- Register services in ServiceLocator ---
+
     auto& sl = ServiceLocator::Instance();
     sl.Register<Scene>(m_Scene.get());
     sl.Register<IPhysicsWorld>(m_PhysicsWorld.get());
@@ -222,14 +222,14 @@ bool Application::Initialize(const AppConfig &config)
     sl.Register<TimeService>(m_TimeService.get());
     sl.Register<ScriptRegistry>(m_ScriptRegistry.get());
     sl.Register<CollisionMatrix>(m_CollisionMatrix.get());
-    // AudioService already self-registered in its Initialize()
+
 
 
     m_SystemManager->CreateSystems();
 
     m_SceneManager->Initialize();
-    m_ScriptRegistry->Initialize(); // Pull from static map
-    RegisterUserScripts();           // Call user hook
+    m_ScriptRegistry->Initialize();
+    RegisterUserScripts();
 
     m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (m_IOHandler)
@@ -305,13 +305,13 @@ RuntimeCore&     Application::GetRuntimeCore()    { return *m_RuntimeCore; }
 StateMachine&    Application::GetStateMachine()   { return m_RuntimeCore->GetStateMachine(); }
 SystemManager&   Application::GetSystemManager()  { return *m_SystemManager; }
 
-// --- Simplified Accessors and Configuration ---
+
 
 const AppConfig& Application::GetConfig() const { return m_ConfigManager->GetConfig(); }
 
 void Application::ApplyConfig(const AppConfig& config)
 {
-    // Simply update the config manager, which triggers the event that we (and others) listen to.
+
     m_ConfigManager->UpdateConfig(config);
 }
 
@@ -330,12 +330,12 @@ void Application::OnResize(int width, int height)
     auto* sm = sl.Resolve<SystemManager>();
     if (!sm) return;
 
-    // Resize PostProcess if available
+
     if (auto* pps = sm->GetSystem<PostProcessSystem>()) {
         pps->GetPipeline().Resize(width, height);
     }
     
-    // Update active camera aspect ratio
+
     if (m_Scene) {
         auto view = m_Scene->registry.view<CameraComponent>();
         float aspect = (float)width / (float)height;

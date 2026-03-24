@@ -20,9 +20,10 @@ void TransparentSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     auto& context = sl.Require<IGraphicsContext>();
     auto* renderSys = sl.Resolve<IRenderService>();
-    if (renderSys) {
-        m_MaterialRenderer.Initialize(context, renderSys->GetWhiteTexture(), renderSys->GetBlackTexture(), renderSys->GetFlatNormalTexture()); 
-    }
+    uint32_t white = renderSys ? renderSys->GetWhiteTexture() : 0;
+    uint32_t black = renderSys ? renderSys->GetBlackTexture() : 0;
+    uint32_t normal = renderSys ? renderSys->GetFlatNormalTexture() : 0;
+    m_MaterialRenderer.Initialize(context, white, black, normal);
 }
 
 void TransparentSystem::RenderTransparent(Scene& scene, int width, int height, float alpha)

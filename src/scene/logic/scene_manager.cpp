@@ -26,7 +26,7 @@ SceneManager::SceneManager() {}
 
 void SceneManager::Initialize()
 {
-    // Initial scene notification
+
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
     EventSystem::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
@@ -172,7 +172,7 @@ void SceneManager::ChangeScene(const std::string& filePath)
     ClearAllScenes();
     LoadScene(filePath, false);
     
-    // Notify systems that the whole scene baseline has changed
+
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
     EventSystem::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
@@ -334,13 +334,13 @@ void SceneManager::_DestroySceneEntities(SceneRecord& rec)
 
 void SceneManager::_UnloadOrphanedResources(const SceneRecord& rec)
 {
-    // Implementation for resource unloading if needed
+
 }
 
 void SceneManager::_RollbackConfig(const SceneRecord& removed)
 {
-    // If the removed scene had a config, we might want to restore a previous one
-    // for simplicity, we just log it for now
+
+
     if (removed.hasConfig)
     {
         LOGGER_INFO("SceneManager") << "Scene with config removed: " << removed.name;

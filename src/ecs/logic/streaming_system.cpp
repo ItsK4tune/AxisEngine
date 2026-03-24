@@ -30,7 +30,7 @@ void StreamingSystem::Update(Scene& scene, float dt)
         auto& pos = view.get<PositionComponent>(entity);
         float distSq = glm::distance2(camPos, pos.value);
 
-        // --- Handling Streaming (Load/Unload) ---
+
         if (distSq < stream.loadDistance * stream.loadDistance)
         {
             if (!stream.isRequested) {
@@ -50,7 +50,7 @@ void StreamingSystem::Update(Scene& scene, float dt)
             }
         }
 
-        // --- Handling LOD Switching ---
+
         if (scene.registry.all_of<LODComponent, MeshRendererComponent>(entity))
         {
             auto& lod = scene.registry.get<LODComponent>(entity);

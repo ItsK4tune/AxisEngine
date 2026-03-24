@@ -8,7 +8,7 @@ class IBaseSystem {
 public:
     virtual ~IBaseSystem() = default;
     
-    // EngineContext removed in favor of ServiceLocator
+
     virtual void Initialize() {}
     virtual void Shutdown() {}
     

@@ -46,7 +46,7 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
         SetClassLongPtr(hwnd, GCLP_HICON, (LONG_PTR)hIcon);
         SetClassLongPtr(hwnd, GCLP_HICONSM, (LONG_PTR)hIcon);
     } else {
-        // Fallback to loading icon from file
+
         int w, h, ch;
         std::string iconPath = FileSystem::getPath("include/engine/asset/project/icon.png");
         unsigned char* pixels = stbi_load(iconPath.c_str(), &w, &h, &ch, 4);

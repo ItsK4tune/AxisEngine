@@ -9,9 +9,9 @@ uniform sampler2D historyTexture;
 
 uniform mat4 invViewProj;
 uniform mat4 prevViewProj;
-uniform vec2 jitterOffset; // Current frame jitter (in NDC space, or pixel space if preferred, but usually NDC/View space)
+uniform vec2 jitterOffset;
 
-// Adjustable parameters
+
 const float feedbackMin = 0.88; 
 const float feedbackMax = 0.97;
 
@@ -35,7 +35,7 @@ vec3 YCoCgToRGB(vec3 ycocg)
     return vec3(R, G, B);
 }
 
-// Simple clipping/clamping to reduce ghosting
+
 vec3 ClipAABB(vec3 aabbMin, vec3 aabbMax, vec3 prevSample)
 {
     vec3 p_clip = 0.5 * (aabbMax + aabbMin);
@@ -54,11 +54,11 @@ vec3 ClipAABB(vec3 aabbMin, vec3 aabbMax, vec3 prevSample)
 
 void main()
 {
-    // 1. Reconstruct world position from depth
+
     float depth = texture(depthTexture, TexCoords).r;
     
-    // If depth is skybox (often 1.0), we might need special handling, but usually velocity is just 0 unless camera moved.
-    // However, for TAA we need world pos to reproject.
+
+
     
     vec4 clipPos;
     clipPos.xy = TexCoords * 2.0 - 1.0;
@@ -68,20 +68,20 @@ void main()
     vec4 worldPos = invViewProj * clipPos;
     worldPos /= worldPos.w;
     
-    // 2. Reproject to finding previous UV
+
     vec4 prevClipPos = prevViewProj * worldPos;
     prevClipPos /= prevClipPos.w;
     
-    // Convert to UV [0, 1]
+
     vec2 prevUV = prevClipPos.xy * 0.5 + 0.5;
     
-    // Calculate Velocity (optional visualization)
+
     vec2 velocity = (TexCoords - prevUV);
     
-    // 3. Sample
+
     vec3 color = texture(screenTexture, TexCoords).rgb;
     
-    // Access neighborhood for clamping
+
     vec2 texSize = textureSize(screenTexture, 0);
     vec2 du = vec2(1.0 / texSize.x, 0.0);
     vec2 dv = vec2(0.0, 1.0 / texSize.y);
@@ -98,28 +98,28 @@ void main()
     vec3 colorMin = min(color, min(cTL, min(cTC, min(cTR, min(cML, min(cMR, min(cBL, min(cBC, cBR))))))));
     vec3 colorMax = max(color, max(cTL, max(cTC, max(cTR, max(cML, max(cMR, max(cBL, max(cBC, cBR))))))));
     
-    // 4. Sample History
-    // We should un-jitter previous UV if the history buffer is not jittered. 
-    // Usually history buffer is aligned (resolved). 
-    // Here we reproject from current (jittered) to previous (jittered).
-    // The previous projection matrix passed in should ideally contain the PREVIOUS jitter.
-    // OR we track pure camera movement and apply jitter offset manually.
-    // For simplicity, let's assume prevViewProj includes prev jitter.
+
+
+
+
+
+
+
     
     vec3 history = texture(historyTexture, prevUV).rgb;
     
-    // Clip history to neighborhood
+
     history = ClipAABB(colorMin, colorMax, history);
     
-    // 5. Blend
-    // Detect invalid history (offscreen)
-    float blendFactor = 0.95; // High blend = more smoothing, more ghosting
+
+
+    float blendFactor = 0.95;
     if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0)
     {
         blendFactor = 0.0;
     }
     
-    // Simple motion detection can reduce blend factor on fast motion to reduce ghosting
+
     float velocityLen = length(velocity * texSize);
     float motionFactor = clamp(1.0 - velocityLen * 0.05, 0.8, 0.97);
     blendFactor = blendFactor * motionFactor;

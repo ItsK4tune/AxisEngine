@@ -140,8 +140,8 @@ void ScriptableSystem::OnMouseMoved(const MouseMovedEvent& e)
         bool isInside = (e.x >= ui.position.x && e.x <= ui.position.x + ui.size.x &&
                          e.y >= ui.position.y && e.y <= ui.position.y + ui.size.y);
         
-        // Note: Simple hover logic. For a production engine, this should handle hover states
-        // to fire OnMouseEnter and OnMouseExit only when the state changes.
+
+
         if (isInside) sc.instance->OnMouseOver();
     }
 }
@@ -184,7 +184,7 @@ void ScriptableSystem::LoadScript(Scene &scene, entt::entity entity, const YAMLN
         nsc->instance.reset(); 
     };
     
-    // Note: instance will be created in the first Update()
+
 }
 
 void ScriptableSystem::Update(Scene &scene, float dt)

@@ -9,24 +9,24 @@
 
 enum class PathfindingCriteria
 {
-    Shortest,       // Standard Euclidean
-    Smoothest,      // Prefers minimal altitude change
-    StayOnRoad,     // Prefers nodes with "road" or preferred tags
-    Custom          // Uses user-provided callback
+    Shortest,
+    Smoothest,
+    StayOnRoad,
+    Custom
 };
 
 struct PathfindingOptions
 {
     PathfindingCriteria criteria = PathfindingCriteria::Shortest;
     
-    // For StayOnRoad or PreferTags
-    std::vector<std::string> preferredTags = { "walkable" };
-    float tagWeightBonus = 5.0f; // Multiplier to reduce cost for preferred tags
 
-    // For Smoothest
+    std::vector<std::string> preferredTags = { "walkable" };
+    float tagWeightBonus = 5.0f;
+
+
     float altitudePenaltyWeight = 10.0f;
 
-    // For Custom
+
     std::function<float(uint32_t current, uint32_t neighbor, const NavMeshComponent& navMesh)> customCostFunc;
     std::function<float(const glm::vec3& a, const glm::vec3& b)> customHeuristicFunc;
 };

@@ -4,7 +4,7 @@
 #include <memory>
 #include <stack>
 
-// --- State ---
+
 
 class State : public EngineAccessor
 {
@@ -19,7 +19,7 @@ public:
     virtual void OnExit() = 0;
 };
 
-// --- State Machine ---
+
 
 class StateMachine
 {

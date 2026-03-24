@@ -19,7 +19,7 @@ void main()
     TexCoords = aTexCoords;
     ParticleColor = aInstanceColor;
     
-    // Billboarding: Extract Right and Up from View Matrix
+
     vec3 CameraRight_worldspace = vec3(camera.view[0][0], camera.view[1][0], camera.view[2][0]);
     vec3 CameraUp_worldspace = vec3(camera.view[0][1], camera.view[1][1], camera.view[2][1]);
     
@@ -29,6 +29,6 @@ void main()
         + CameraUp_worldspace * aPos.y * aInstanceScale;
         
     gl_Position = camera.projection * camera.view * vec4(vertexPosition_worldspace, 1.0);
-    // Push particle slightly towards the camera to avoid Z-fighting with perfectly flush walls
+
     gl_Position.z -= 0.005 * gl_Position.w;
 }

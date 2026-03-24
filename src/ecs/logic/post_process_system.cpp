@@ -57,7 +57,7 @@ void PostProcessSystem::Render(Scene& scene)
     auto& sl = ServiceLocator::Instance();
     auto* rs = sl.Resolve<IRenderService>();
     
-    // Pass 3 is for "Final / Misc". We apply AA and then EndCapture.
+
     if (rs) {
         m_Pipeline.ApplyAntiAliasing(rs->GetAntiAliasingMode(), rs->GetPrevViewProj(), rs->GetCurrViewProj(), rs->GetJitterOffset());
     }

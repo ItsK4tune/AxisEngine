@@ -4,7 +4,7 @@
 #include <core/logic/logger_types.h>
 #include <core/type/app_config.h>
 
-// --- Input Events ---
+
 
 struct InputActionPressedEvent { std::string actionName; };
 struct InputActionReleasedEvent { std::string actionName; };
@@ -18,13 +18,13 @@ struct MouseButtonPressedEvent { int button; int mods; };
 struct MouseButtonReleasedEvent { int button; int mods; };
 struct MouseScrolledEvent { double xOffset; double yOffset; };
 
-// --- Physics Events ---
+
 
 enum class CollisionEventType { Enter, Stay, Exit };
 
 struct EntityCollisionEvent
 {
-    uint32_t entityA; // Use raw ID or opaque type for L2
+    uint32_t entityA;
     uint32_t entityB;
     CollisionEventType type;
 };
@@ -36,12 +36,12 @@ struct EntityTriggerEvent
     CollisionEventType type;
 };
 
-// --- Lifecycle Events ---
+
 
 struct EngineInitializedEvent {};
 struct EngineShutdownEvent {};
 
-// --- Config Events ---
+
 
 struct ConfigChangedEvent { 
     enum ChangeType {
@@ -61,12 +61,12 @@ struct ConfigChangedEvent {
         : config(cfg), bitmask(mask) {}
 };
 
-// --- Window Events ---
+
 
 struct WindowResizedEvent { int width; int height; };
 struct WindowFocusEvent { bool focused; };
 
-// --- Render Events ---
+
 
 struct RenderFrameBeginEvent { float dt; };
 struct RenderFrameEndEvent {};

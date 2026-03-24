@@ -3,9 +3,7 @@
 
 struct Scene;
 
-/**
- * @brief Interface for systems that require a logical update step.
- */
+
 class IUpdateSystem : virtual public IBaseSystem
 {
 public:

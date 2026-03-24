@@ -2,14 +2,14 @@
 
 #include <axis_commons.h>
 
-// --- Essential Components ---
+
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/light_components.h>
 
-// --- Specialized Components ---
+
 #include <navigation/unit/navmesh_component.h>
 #include <navigation/unit/pathfollower_component.h>
 #include <ecs/unit/terrain_component.h>

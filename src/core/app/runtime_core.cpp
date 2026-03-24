@@ -13,7 +13,7 @@ void RuntimeCore::Initialize()
 {
     auto& config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
     
-    // m_EngineLoop.Initialize() will set physics parameters from AppConfig
+
     
     m_EngineLoop.Initialize();
     m_StateMachine.Initialize();

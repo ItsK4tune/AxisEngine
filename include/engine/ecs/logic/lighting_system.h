@@ -31,4 +31,9 @@ private:
     GpuHandle m_QuadVAO = 0;
     GpuHandle m_QuadVBO = 0;
     void InitQuad();
+
+    class IGraphicsContext* m_GraphicsContext = nullptr;
+    class IGeometryService* m_GeoService = nullptr;
+    class IShadowService* m_ShadowService = nullptr;
+    class IRenderService* m_RenderService = nullptr;
 };

@@ -14,7 +14,7 @@ public:
     void Initialize() override;
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 84; } // After Lighting (83), Before Particles (85)
+    int GetPriority() const override { return 84; }
     std::string GetName() const override { return "SkyboxRenderSystem"; }
     void Render(Scene &scene) override;
 

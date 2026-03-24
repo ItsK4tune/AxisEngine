@@ -83,9 +83,6 @@ void EngineLoop::ProcessFrame()
     auto& runtime = sl.Require<RuntimeCore>();
     auto& timer = sl.Require<TimeService>();
 
-    m_TotalTime += m_RealDeltaTime;
-    timer.SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
-
     IWindow* window = io.GetMonitorManager().GetWindow();
     window->PollEvents();
     io.GetMouse().Update();
@@ -98,6 +95,9 @@ void EngineLoop::ProcessFrame()
     {
         m_DeltaTime *= m_TimeScale;
     }
+
+    m_TotalTime += m_RealDeltaTime;
+    timer.SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
 
     res.Update(m_RealDeltaTime);
     io.ProcessInput();

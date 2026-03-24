@@ -1,29 +1,18 @@
 #pragma once
 
-/**
- * @brief Layer 2 service providing access to frame time data.
- * 
- * This service allows systems (Layer 4) to access delta time and real delta time
- * without depending on the application loop (Layer 5).
- */
+
 class TimeService
 {
 public:
     virtual ~TimeService() = default;
 
-    /**
-     * @brief Get the delta time for the current frame (scaled).
-     */
+    
     virtual float GetDeltaTime() const = 0;
 
-    /**
-     * @brief Get the unscaled real delta time for the current frame.
-     */
+    
     virtual float GetRealDeltaTime() const = 0;
 
-    /**
-     * @brief Get the total time since engine start.
-     */
+    
     virtual float GetTotalTime() const = 0;
 
     virtual float GetTimeScale() const = 0;
@@ -32,9 +21,7 @@ public:
     virtual bool IsPaused() const = 0;
     virtual void SetPaused(bool paused) = 0;
 
-    /**
-     * @brief Set the time data for the current frame (called by Layer 5 loop).
-     */
+    
     virtual void SetTimeData(float dt, float realDt, float totalTime) = 0;
 };
 

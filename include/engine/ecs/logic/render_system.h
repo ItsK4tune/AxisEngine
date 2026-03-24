@@ -16,6 +16,7 @@
 #include <render/unit/render_queue.h>
 #include <render/logic/static_batch_manager.h>
 #include <render/logic/occlusion_culler.h>
+#include <render/logic/material_renderer.h>
 #include <resource/unit/shader.h>
 #include <render/type/graphics_types.h>
 #include <resource/interface/i_resource_libraries.h>
@@ -28,7 +29,7 @@ class Shader;
 class ShadowRenderer;
 class MaterialRenderer;
 
-// AntiAliasingMode moved to i_render_service.h
+
 
 class RenderSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem, public IRenderService
 {
@@ -71,9 +72,12 @@ public:
     void SetOcclusionCulling(bool enable) override { m_OcclusionCullingEnabled = enable; }
     bool IsOcclusionCullingEnabled() const override { return m_OcclusionCullingEnabled; }
     
+    void SetWireframe(bool enable) override { m_Wireframe = enable; }
+    bool IsWireframe() const override { return m_Wireframe; }
+    
     void UpdateGlobalLightData(const GPUGlobalLightData& data) override;
 
-    RenderPath GetRenderPath() const override;
+    RenderPath GetRenderPath() const override { return m_CachedRenderPath; }
     
     void SetRenderOrderEnabled(bool enable) { m_RenderOrderEnabled = enable; }
     bool IsRenderOrderEnabled() const { return m_RenderOrderEnabled; }
@@ -108,6 +112,7 @@ private:
     bool m_FrustumCullingEnabled = true;
     bool m_OcclusionCullingEnabled = false;
     bool m_DebugNoTexture = false;
+    bool m_Wireframe = false;
     bool m_RenderOrderEnabled = true;
     uint32_t m_FilterLayerMask = 0xFFFFFFFF;
 
@@ -116,6 +121,7 @@ private:
     unsigned int m_BlackTextureID = 0;
     unsigned int m_FlatNormalTextureID = 0;
     float m_DistanceCullingSq = 0.0f;
+    RenderPath m_CachedRenderPath = RenderPath::Deferred;
 
     AntiAliasingMode m_AAMode = AntiAliasingMode::NONE;
     glm::vec2 m_JitterOffset = glm::vec2(0.0f);
@@ -140,6 +146,7 @@ private:
 
     FrustumCuller m_FrustumCuller;
     OcclusionCuller m_OcclusionCuller;
+    MaterialRenderer m_MaterialRenderer;
     GpuHandle m_QuadVAO = 0;
     GpuHandle m_QuadVBO = 0;
     void InitQuad();

@@ -29,7 +29,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
         }
 
         auto tex = std::make_shared<Texture>();
-        tex->id = 0; // GPU resource pending
+        tex->id = 0;
         tex->path = path;
         m_Cache.Add(name, tex);
 
@@ -63,7 +63,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format, DataType::UnsignedByte, data);
             m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
 
-            // Default parameters
+
             m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
             m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
             m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
@@ -79,7 +79,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             tex->width = width;
             tex->height = height;
             tex->nrComponents = nrComponents;
-            tex->type = "texture_diffuse"; // Default
+            tex->type = "texture_diffuse";
 
             if (keepCpuData) tex->pixelData = data;
             else stbi_image_free(data);
@@ -118,7 +118,7 @@ void TextureManager::Update(float dt) {
             TextureData data = it->get();
             if (data.data) {
                 unsigned int textureID = m_LowLevelManager.GenTexture();
-                // (Setup parameters similar to Load...)
+
                 TextureFormat format = TextureFormat::RGBA;
                 InternalFormat iFormat = InternalFormat::RGBA8;
                 if (data.nrComponents == 1) { format = TextureFormat::Red; iFormat = InternalFormat::R8; }

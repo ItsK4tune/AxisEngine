@@ -10,7 +10,7 @@
 #include <resource/unit/shader.h>
 #include <render/unit/skybox.h>
 
-// --- Mesh Renderer ---
+
 
 struct MeshRendererComponent
 {
@@ -22,7 +22,7 @@ struct MeshRendererComponent
     glm::vec4 color = glm::vec4(1.0f);
 };
 
-// --- Material ---
+
 
 enum class MaterialType
 {
@@ -79,7 +79,7 @@ struct MaterialComponent
     MaterialGPUState gpu;
 };
 
-// --- Skybox ---
+
 
 struct SkyboxRenderComponent
 {
@@ -87,13 +87,13 @@ struct SkyboxRenderComponent
     std::weak_ptr<Shader> shader;
     bool isPrimary = true;
 
-    // IBL Maps
+
     uint32_t irradianceMap = 0;
     uint32_t prefilterMap = 0;
     uint32_t brdfLUT = 0;
 };
 
-// --- LOD ---
+
 
 struct LODComponent
 {
@@ -101,7 +101,7 @@ struct LODComponent
     std::vector<float> lodDistancesSq;
 };
 
-// --- Occlusion ---
+
 
 struct OcclusionComponent {
     uint32_t lastQueryId = 0;
@@ -109,7 +109,7 @@ struct OcclusionComponent {
     bool queryPending = false;
 };
 
-// --- Streaming ---
+
 
 struct StreamingComponent
 {

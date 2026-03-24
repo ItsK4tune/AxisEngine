@@ -4,7 +4,7 @@ layout (location = 5) in ivec4 aBoneIds;
 layout (location = 6) in vec4 aWeights;
 
 uniform mat4 model;
-uniform mat4 shadowMatrices[6]; // Geometry Shader will use this
+uniform mat4 shadowMatrices[6];
 
 const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;

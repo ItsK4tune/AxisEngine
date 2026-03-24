@@ -28,12 +28,12 @@ public:
     void BeginDecalPass() override;
     void EndDecalPass(uint32_t mainFBO) override;
 
-    bool IsDeferredRenderingEnabled() const override;
+    bool IsDeferredRenderingEnabled() const override { return m_IsDeferredCached; }
 
     uint32_t GetGBufferDepth() const override { return m_GBuffer.GetDepthTexture(); }
     uint32_t GetGBufferID() const override { return m_GBuffer.GetIDTexture(); }
     uint32_t GetGBufferPosition() const override { return m_GBuffer.GetPositionTexture(); }
-    uint32_t GetGBufferNormal() const { return m_GBuffer.GetNormalTexture(); }
+    uint32_t GetGBufferNormal() const override { return m_GBuffer.GetNormalTexture(); }
     uint32_t GetGBufferWidth() const override { return (uint32_t)m_GBuffer.GetWidth(); }
     uint32_t GetGBufferHeight() const override { return (uint32_t)m_GBuffer.GetHeight(); }
 
@@ -46,5 +46,10 @@ private:
     std::shared_ptr<Shader> m_GBufferShader;
     MaterialRenderer m_MaterialRenderer;
     CommandQueue m_CommandQueue;
-    
+    bool m_IsDeferredCached = false;
+
+    class IRenderService* m_RenderService = nullptr;
+    class IShadowService* m_ShadowService = nullptr;
+    class IGraphicsContext* m_GraphicsContext = nullptr;
+    class ConfigManager* m_ConfigManager = nullptr;
 };

@@ -28,9 +28,9 @@ void InputManager::FlushBindings()
 
 void InputManager::Update()
 {
-    // State tracking is handled by GetAction, GetActionDown, etc.
-    // using m_Keyboard and m_Mouse. 
-    // m_PreviousState is updated here for GetActionDown/Up logic.
+
+
+
     for (const auto &[actionName, binding] : m_ActionMap)
     {
         m_PreviousState[actionName] = GetAction(actionName);

@@ -29,7 +29,7 @@ public:
     virtual void OnDisable() {}
     virtual void OnReset() {}
 
-    // Event callbacks
+
     virtual void OnCollisionEnter(entt::entity other) {}
     virtual void OnCollisionExit(entt::entity other) {}
     virtual void OnCollisionStay(entt::entity other) {}

@@ -57,7 +57,7 @@ public:
     const char* GetName() const override { return "COMPONENT"; }
 };
 
-// Helper function to register all default strategies
+
 #include <resource/logic/resource_manager.h>
 void RegisterDefaultLoaderStrategies() {
     auto& loader = ServiceLocator::Instance().Require<ResourceManager>();

@@ -8,7 +8,7 @@ int main() {
     config.title = "Axis Engine - Game";
     config.width = 1280;
     config.height = 720;
-    config.logLevel = LogLevel::Verbose; // Default log level
+    config.logLevel = LogLevel::Verbose;
 
     if (app->Initialize(config)) {
         app->PushState<GameState>();

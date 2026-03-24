@@ -21,11 +21,11 @@ namespace {
     T ResolveEnum(const std::string& input, const std::unordered_map<std::string, T>& mapping, T defaultValue) {
         if (input.empty()) return defaultValue;
 
-        // Try numeric
+
         try {
             size_t pos;
             int val = std::stoi(input, &pos);
-            if (pos == input.length()) { // Full numeric string
+            if (pos == input.length()) {
                 for (auto const& [name, enumVal] : mapping) {
                     if (static_cast<int>(enumVal) == val) return enumVal;
                 }
@@ -34,7 +34,7 @@ namespace {
 
         std::string clean = ToUpper(input);
         
-        // Handle C++ style prefixes if present: "TonemappingMode::ACES" -> "ACES"
+
         size_t colon = clean.rfind("::");
         if (colon != std::string::npos) {
             clean = clean.substr(colon + 2);
@@ -244,7 +244,7 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
     }
     else if (subCmd == "AMBIENT_INTENSITY") {
         float val; ss >> val;
-        // unused
+
     }
     else if (subCmd == "VOLUME") {
         ss >> config.masterVolume;
@@ -276,4 +276,4 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
     }
 }
 
-// End of ConfigLoader
+

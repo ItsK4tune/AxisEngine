@@ -7,41 +7,30 @@
 #include <platform/logic/input_manager.h>
 #include <script/logic/script_registry.h>
 #include <script/logic/default_camera_controller.h>
-#include <iostream>
 #include <ecs/logic/entity_manager.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
 #include <core/app/runtime_core.h>
+#include <platform/logic/io_handler.h>
+#include <platform/logic/monitor_manager.h>
+#include <core/logic/logger.h>
 
 CameraDebugModule::CameraDebugModule() {}
 CameraDebugModule::~CameraDebugModule() {}
 
-void CameraDebugModule::Initialize()
-{
-}
-
-void CameraDebugModule::OnUpdate(float dt)
-{
-
-}
-
-void CameraDebugModule::Render(Scene &scene)
-{
-
-}
+void CameraDebugModule::Initialize() {}
+void CameraDebugModule::OnUpdate(float dt) {}
+void CameraDebugModule::Render(Scene &scene) {}
 
 void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_Enabled)
-        return;
+    if (!m_Enabled) return;
 
-    ProcessKey(keyboard, Key::F11, m_F11Pressed, [this, &keyboard]()
-               {
-        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift)
-        {
+    ProcessKey(keyboard, Key::F11, m_F11Pressed, [this, &keyboard]() {
+        if (keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift)) {
             ToggleDebugCamera();
-        } });
+        }
+    });
 }
 
 void CameraDebugModule::ToggleDebugCamera()
@@ -51,50 +40,38 @@ void CameraDebugModule::ToggleDebugCamera()
 
     if (m_IsDebugCameraActive)
     {
-        if (registry.valid(m_DebugCamera) && registry.all_of<CameraComponent>(m_DebugCamera))
-        {
+        if (registry.valid(m_DebugCamera) && registry.all_of<CameraComponent>(m_DebugCamera)) {
             registry.get<CameraComponent>(m_DebugCamera).isPrimary = false;
         }
 
-        if (registry.valid(m_LastActiveCamera) && registry.all_of<CameraComponent>(m_LastActiveCamera))
-        {
+        if (registry.valid(m_LastActiveCamera) && registry.all_of<CameraComponent>(m_LastActiveCamera)) {
             registry.get<CameraComponent>(m_LastActiveCamera).isPrimary = true;
-            std::cout << "[Debug] Switched to User Camera (Entity " << (uint32_t)m_LastActiveCamera << ")" << std::endl;
+            LOGGER_INFO("Debug") << "Switched to User Camera (Entity " << (uint32_t)m_LastActiveCamera << ")";
         }
-        else
-        {
-            entt::entity fallback = EntityManager::GetActiveCamera(scene);
-            if (fallback == entt::null)
-            {
-                auto view = registry.view<CameraComponent>();
-                for (auto entity : view)
-                {
-                    if (entity != m_DebugCamera)
-                    {
-                        view.get<CameraComponent>(entity).isPrimary = true;
-                        std::cout << "[Debug] Original camera invalid. Switched to fallback camera (Entity " << (uint32_t)entity << ")" << std::endl;
-                        break;
-                    }
+        else {
+            auto view = registry.view<CameraComponent>();
+            for (auto entity : view) {
+                if (entity != m_DebugCamera) {
+                    view.get<CameraComponent>(entity).isPrimary = true;
+                    LOGGER_INFO("Debug") << "Original camera missing. Switched to fallback (Entity " << (uint32_t)entity << ")";
+                    break;
                 }
             }
         }
-
         m_IsDebugCameraActive = false;
-        std::cout << "========== Debug Camera: OFF ==========" << std::endl;
+        LOGGER_INFO("Debug") << "Debug Camera: OFF";
     }
     else
     {
         m_LastActiveCamera = EntityManager::GetActiveCamera(scene);
-
-        if (registry.valid(m_LastActiveCamera))
-        {
+        if (registry.valid(m_LastActiveCamera)) {
             if (registry.all_of<CameraComponent>(m_LastActiveCamera))
                 registry.get<CameraComponent>(m_LastActiveCamera).isPrimary = false;
         }
 
         if (!registry.valid(m_DebugCamera))
         {
-            m_DebugCamera = EntityManager::CreateEntity(scene);
+            m_DebugCamera = EntityManager::CreateEntity(scene, "Debug_Camera");
             registry.emplace<InfoComponent>(m_DebugCamera, "Debug Camera", "Debug");
 
             auto &posComp = registry.emplace<PositionComponent>(m_DebugCamera);
@@ -102,75 +79,61 @@ void CameraDebugModule::ToggleDebugCamera()
             registry.emplace<ScaleComponent>(m_DebugCamera);
             registry.emplace<WorldTransformComponent>(m_DebugCamera);
 
-            if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera))
-            {
+            if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera)) {
                 posComp.value = registry.get<PositionComponent>(m_LastActiveCamera).value;
-            }
-            else
-            {
+            } else {
                 posComp.value = glm::vec3(0.0f, 5.0f, 10.0f);
             }
 
             auto &cam = registry.emplace<CameraComponent>(m_DebugCamera);
             cam.isPrimary = true;
-            cam.fov = 45.0f;
-            cam.nearPlane = 0.1f;
-            cam.farPlane = 1000.0f;
+            
+            if (registry.valid(m_LastActiveCamera) && registry.all_of<CameraComponent>(m_LastActiveCamera)) {
+                auto &lastCam = registry.get<CameraComponent>(m_LastActiveCamera);
+                cam.fov = lastCam.fov; cam.nearPlane = lastCam.nearPlane; cam.farPlane = lastCam.farPlane;
+                cam.screenWidth = lastCam.screenWidth; cam.screenHeight = lastCam.screenHeight;
+                cam.aspectRatio = lastCam.aspectRatio; cam.isOrthographic = lastCam.isOrthographic;
+                cam.orthoSize = lastCam.orthoSize;
+                
+                LOGGER_DEBUG("Debug") << "Inherited Camera Props: " << cam.screenWidth << "x" << cam.screenHeight;
+            } else {
+                cam.fov = 45.0f; cam.nearPlane = 0.1f; cam.farPlane = 1000.0f;
+                auto& mm = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager();
+                cam.screenWidth = mm.GetWidth(); cam.screenHeight = mm.GetHeight();
+                cam.aspectRatio = (float)cam.screenWidth / (float)cam.screenHeight;
+            }
 
-            std::string scriptName = "DefaultCameraController";
-            auto scriptInstance = ServiceLocator::Instance().Require<ScriptRegistry>().Create(scriptName);
-            if (scriptInstance)
-            {
+            auto scriptInstance = ServiceLocator::Instance().Require<ScriptRegistry>().Create("DefaultCameraController");
+            if (scriptInstance) {
                 auto &scriptComp = registry.emplace<ScriptComponent>(m_DebugCamera);
                 scriptComp.instance = std::move(scriptInstance);
-                scriptComp.InstantiateScript = [scriptName]()
-                { return ServiceLocator::Instance().Require<ScriptRegistry>().Create(scriptName); };
-                scriptComp.DestroyScript = [](ScriptComponent *nsc)
-                { nsc->instance.reset(); };
+                scriptComp.InstantiateScript = []() { return ServiceLocator::Instance().Require<ScriptRegistry>().Create("DefaultCameraController"); };
+                scriptComp.DestroyScript = [](ScriptComponent *nsc) { nsc->instance.reset(); };
                 scriptComp.instance->Initialize(m_DebugCamera, &scene);
                 scriptComp.instance->OnCreate();
             }
         }
-        else
+        else if (registry.all_of<CameraComponent>(m_DebugCamera))
         {
-            if (registry.all_of<CameraComponent>(m_DebugCamera))
-            {
-                registry.get<CameraComponent>(m_DebugCamera).isPrimary = true;
-
-                if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera))
-                {
-                    auto &userPos = registry.get<PositionComponent>(m_LastActiveCamera);
-                    auto &debugPos = registry.get<PositionComponent>(m_DebugCamera);
-                    debugPos.value = userPos.value;
-                    
-                    if (registry.all_of<RotationComponent>(m_LastActiveCamera) && registry.all_of<RotationComponent>(m_DebugCamera))
-                    {
-                        registry.get<RotationComponent>(m_DebugCamera).value = registry.get<RotationComponent>(m_LastActiveCamera).value;
-                    }
-                }
+            registry.get<CameraComponent>(m_DebugCamera).isPrimary = true;
+            if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera)) {
+                registry.get<PositionComponent>(m_DebugCamera).value = registry.get<PositionComponent>(m_LastActiveCamera).value;
+                if (registry.all_of<RotationComponent>(m_LastActiveCamera) && registry.all_of<RotationComponent>(m_DebugCamera))
+                    registry.get<RotationComponent>(m_DebugCamera).value = registry.get<RotationComponent>(m_LastActiveCamera).value;
             }
         }
-
         m_IsDebugCameraActive = true;
-        std::cout << "========== Debug Camera: ON ==========" << std::endl;
-        std::cout << "[Debug] Switched to Free Cam (Shift+F11)" << std::endl;
+        LOGGER_INFO("Debug") << "Debug Camera: ON (Shift+F11)";
     }
 }
 
 void CameraDebugModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
 {
-    if (keyboard.GetKey(key))
-    {
-        if (!pressedState)
-        {
-            action();
-            pressedState = true;
+    if (keyboard.GetKey(key)) {
+        if (!pressedState) {
+            action(); pressedState = true;
         }
-    }
-    else
-    {
-        pressedState = false;
-    }
+    } else pressedState = false;
 }
 
 #endif

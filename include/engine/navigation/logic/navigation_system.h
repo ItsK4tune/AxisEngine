@@ -13,7 +13,7 @@ public:
     void Initialize() override { }
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 5; } // Before transform
+    int GetPriority() const override { return 5; }
     std::string GetName() const override { return "NavigationSystem"; }
     
     NavigationSystem() = default;
@@ -36,7 +36,7 @@ public:
     void ClearCarveTags();
     const std::vector<std::string>& GetCarveTags() const { return m_CarveTags; }
 
-    // Management APIs
+
     void StopMoving(Scene& scene, entt::entity entity);
     bool IsMoving(Scene& scene, entt::entity entity);
     void SetMoveSpeed(Scene& scene, entt::entity entity, float speed);
@@ -44,7 +44,7 @@ public:
     void MoveTo(Scene& scene, entt::entity entity, const glm::vec3& position);
     bool HasTarget(Scene& scene, entt::entity entity);
 
-    // Pathfinding Preference APIs
+
     void SetPathfindingCriteria(Scene& scene, entt::entity entity, PathfindingCriteria criteria);
     void SetPreferredTags(Scene& scene, entt::entity entity, const std::vector<std::string>& tags);
     void SetCustomCostFunction(Scene& scene, entt::entity entity, std::function<float(uint32_t, uint32_t, const NavMeshComponent&)> func);

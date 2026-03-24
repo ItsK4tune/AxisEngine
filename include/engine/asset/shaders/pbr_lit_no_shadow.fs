@@ -1,7 +1,7 @@
 #version 430 core
 out vec4 FragColor;
 
-// 1. Root Level Samplers (Standardized Binding 0-15)
+
 layout (binding = 0) uniform sampler2D texture_diffuse1;
 layout (binding = 1) uniform sampler2D texture_normal1;
 layout (binding = 2) uniform sampler2D texture_metallic1;
@@ -9,12 +9,12 @@ layout (binding = 3) uniform sampler2D texture_roughness1;
 layout (binding = 4) uniform sampler2D texture_ao1;
 layout (binding = 5) uniform sampler2D texture_emissive1;
 
-// IBL Maps
+
 layout (binding = 6) uniform samplerCube irradianceMap;
 layout (binding = 7) uniform samplerCube prefilterMap;
 layout (binding = 8) uniform sampler2D brdfLUT;
 
-// 2. UBO/SSBO Bindings (Standardized Binding 20-25)
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
@@ -64,12 +64,12 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-// 3. Input Stage
+
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 
-// 4. Common Uniforms
+
 struct Material {
     float roughness;
     float metallic;
@@ -83,7 +83,7 @@ uniform bool debug_noTexture;
 
 const float PI = 3.14159265359;
 
-// Forward Declarations
+
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
@@ -118,7 +118,7 @@ void main()
 
     vec3 Lo = vec3(0.0);
     
-    // Directional lights
+
     for(int d = 0; d < light.numDirLights; d++) {
         vec3 L = normalize(-dirLights[d].direction);
         vec3 H = normalize(V + L);
@@ -132,7 +132,7 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
     }
 
-    // Point lights
+
     for(int i = 0; i < light.nrPointLights; ++i) {
         vec3 L = normalize(pointLights[i].position - FragPos);
         vec3 H = normalize(V + L);
@@ -148,7 +148,7 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
     }
 
-    // IBL
+
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
@@ -163,7 +163,7 @@ void main()
     FragColor = vec4(ambient + Lo + emissive, material.opacity);
 }
 
-// Helper functions (Simplified for brevity)
+
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness*roughness; float a2 = a*a;
     float NdotH = max(dot(N, H), 0.0);

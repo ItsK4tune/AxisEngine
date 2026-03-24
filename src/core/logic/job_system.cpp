@@ -117,7 +117,7 @@ void JobSystem::WorkerLoop()
             if (job.task)
                 job.task();
         } catch (const std::exception& e) {
-            // Using std::cerr directly or a safe log to avoid recursive throws if LOGGER_ERROR throws
+
             std::cerr << "[JobSystem] CRITICAL: Unhandled exception in worker thread: " << e.what() << std::endl;
         } catch (...) {
             std::cerr << "[JobSystem] CRITICAL: Unknown exception in worker thread" << std::endl;

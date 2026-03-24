@@ -10,10 +10,10 @@
 #include <functional>
 #include <memory>
 
-// Forward declarations
+
 struct SceneRecord;
 
-// --- Engine Loop ---
+
 
 class EngineLoop
 {
@@ -55,7 +55,7 @@ private:
     int m_ConfigSubId = -1;
 };
 
-// --- Runtime Core ---
+
 
 class RuntimeCore
 {

@@ -15,10 +15,10 @@ struct DecalComponent
     glm::mat4 invModel = glm::mat4(1.0f);
     
     float opacity = 1.0f;
-    float lifetime = -1.0f; // -1 means infinite
+    float lifetime = -1.0f;
     uint32_t renderOrder = 0;
     
-    // Tag filtering: only project onto entities with these tags
-    // If empty, project onto everything (default)
+
+
     std::vector<std::string> targetTags;
 };

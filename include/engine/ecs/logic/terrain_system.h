@@ -25,7 +25,7 @@ public:
     void Shutdown() override;
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 80; } // After Mesh rendering, before Decals
+    int GetPriority() const override { return 80; }
     std::string GetName() const override { return "TerrainSystem"; }
 
     void Update(Scene &scene, float dt) override;
@@ -44,7 +44,7 @@ private:
     struct TerrainData {
         std::vector<TerrainChunk> chunks;
         std::shared_ptr<Shader> terrainShader;
-        // Shared index buffers for LODs
+
         std::vector<unsigned int> lodEBOs;
         std::vector<int> lodIndexCounts;
     };

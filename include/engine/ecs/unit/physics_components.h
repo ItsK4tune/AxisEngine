@@ -9,7 +9,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-// --- Rigid Body ---
+
 
 struct RigidBodyComponent
 {
@@ -73,19 +73,19 @@ struct RigidBodyComponent
     }
 };
 
-// --- Character Controller ---
+
 
 struct CharacterControllerComponent
 {
     std::shared_ptr<ICharacterController> controller = nullptr;
 
     float stepHeight = 0.35f;
-    float maxSlope = 45.0f; // degrees
+    float maxSlope = 45.0f;
     
     glm::vec3 walkDirection = glm::vec3(0.0f);
     bool jumpRequested = false;
 
-    // Output status
+
     bool isOnGround = false;
 
     void Jump()

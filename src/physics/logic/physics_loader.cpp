@@ -161,16 +161,16 @@ void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLN
                 std::stringstream rotSS(node.GetChildValue("Rotation"));
                 float rx, ry, rz; rotSS >> rx >> ry >> rz;
                 rb.rotationOffset = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
-                // We don't call SetWorldTransform here because PhysicsTransformSync::SyncToPhysics 
-                // will perform the correct offset-aware transform application on the first update.
+
+
             }
 
             if (!node.GetChildValue("Offset").empty()) {
                 std::stringstream offSS(node.GetChildValue("Offset"));
                 float ox, oy, oz; offSS >> ox >> oy >> oz;
                 rb.positionOffset = glm::vec3(ox, oy, oz);
-                // Note: The shape offset is already handled above if 'Offset' was used to create a compound.
-                // But if the user wants to shift the WHOLE BODY relative to the entity transform, we use rb.positionOffset.
+
+
             }
 
             physics.AddRigidBody(rb.body.get());

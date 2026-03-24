@@ -2,5 +2,5 @@
 
 void main()
 {
-    // Depth is written automatically to gl_FragDepth
+
 }

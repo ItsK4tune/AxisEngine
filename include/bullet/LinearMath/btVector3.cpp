@@ -279,29 +279,29 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
 		
 		asm volatile(
 			".align 4                                                                   \n\
-             0: movaps  %[max], %[t2]                            // move max out of the way to avoid propagating NaNs in max \n\
-          movaps  (%[vertices], %[byteIndex], 4),    %[t0]    // vertices[0]      \n\
-          movaps  16(%[vertices], %[byteIndex], 4),  %[t1]    // vertices[1]      \n\
-          movaps  %[t0], %[max]                               // vertices[0]      \n\
-          movlhps %[t1], %[max]                               // x0y0x1y1         \n\
-         movaps  32(%[vertices], %[byteIndex], 4),  %[t3]    // vertices[2]      \n\
-         movaps  48(%[vertices], %[byteIndex], 4),  %[t4]    // vertices[3]      \n\
-          mulps   %[vLo], %[max]                              // x0y0x1y1 * vLo   \n\
-         movhlps %[t0], %[t1]                                // z0w0z1w1         \n\
-         movaps  %[t3], %[t0]                                // vertices[2]      \n\
-         movlhps %[t4], %[t0]                                // x2y2x3y3         \n\
-         mulps   %[vLo], %[t0]                               // x2y2x3y3 * vLo   \n\
-          movhlps %[t3], %[t4]                                // z2w2z3w3         \n\
-          shufps  $0x88, %[t4], %[t1]                         // z0z1z2z3         \n\
-          mulps   %[vHi], %[t1]                               // z0z1z2z3 * vHi   \n\
-         movaps  %[max], %[t3]                               // x0y0x1y1 * vLo   \n\
-         shufps  $0x88, %[t0], %[max]                        // x0x1x2x3 * vLo.x \n\
-         shufps  $0xdd, %[t0], %[t3]                         // y0y1y2y3 * vLo.y \n\
-         addps   %[t3], %[max]                               // x + y            \n\
-         addps   %[t1], %[max]                               // x + y + z        \n\
-         movaps  %[max], (%[sap], %[byteIndex])              // record result for later scrutiny \n\
-         maxps   %[t2], %[max]                               // record max, restore max   \n\
-         add     $16, %[byteIndex]                           // advance loop counter\n\
+             0: movaps  %[max], %[t2]
+          movaps  (%[vertices], %[byteIndex], 4),    %[t0]
+          movaps  16(%[vertices], %[byteIndex], 4),  %[t1]
+          movaps  %[t0], %[max]
+          movlhps %[t1], %[max]
+         movaps  32(%[vertices], %[byteIndex], 4),  %[t3]
+         movaps  48(%[vertices], %[byteIndex], 4),  %[t4]
+          mulps   %[vLo], %[max]
+         movhlps %[t0], %[t1]
+         movaps  %[t3], %[t0]
+         movlhps %[t4], %[t0]
+         mulps   %[vLo], %[t0]
+          movhlps %[t3], %[t4]
+          shufps  $0x88, %[t4], %[t1]
+          mulps   %[vHi], %[t1]
+         movaps  %[max], %[t3]
+         shufps  $0x88, %[t0], %[max]
+         shufps  $0xdd, %[t0], %[t3]
+         addps   %[t3], %[max]
+         addps   %[t1], %[max]
+         movaps  %[max], (%[sap], %[byteIndex])
+         maxps   %[t2], %[max]
+         add     $16, %[byteIndex]
          jnz     0b                                          \n\
      "
 			: [max] "+x"(max), [t0] "=&x"(t0), [t1] "=&x"(t1), [t2] "=&x"(t2), [t3] "=&x"(t3), [t4] "=&x"(t4), [byteIndex] "+r"(byteIndex)
@@ -672,29 +672,29 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
 
 		asm volatile(
 			".align 4                                                                   \n\
-             0: movaps  %[min], %[t2]                            // move min out of the way to avoid propagating NaNs in min \n\
-             movaps  (%[vertices], %[byteIndex], 4),    %[t0]    // vertices[0]      \n\
-             movaps  16(%[vertices], %[byteIndex], 4),  %[t1]    // vertices[1]      \n\
-             movaps  %[t0], %[min]                               // vertices[0]      \n\
-             movlhps %[t1], %[min]                               // x0y0x1y1         \n\
-             movaps  32(%[vertices], %[byteIndex], 4),  %[t3]    // vertices[2]      \n\
-             movaps  48(%[vertices], %[byteIndex], 4),  %[t4]    // vertices[3]      \n\
-             mulps   %[vLo], %[min]                              // x0y0x1y1 * vLo   \n\
-             movhlps %[t0], %[t1]                                // z0w0z1w1         \n\
-             movaps  %[t3], %[t0]                                // vertices[2]      \n\
-             movlhps %[t4], %[t0]                                // x2y2x3y3         \n\
-             movhlps %[t3], %[t4]                                // z2w2z3w3         \n\
-             mulps   %[vLo], %[t0]                               // x2y2x3y3 * vLo   \n\
-             shufps  $0x88, %[t4], %[t1]                         // z0z1z2z3         \n\
-             mulps   %[vHi], %[t1]                               // z0z1z2z3 * vHi   \n\
-             movaps  %[min], %[t3]                               // x0y0x1y1 * vLo   \n\
-             shufps  $0x88, %[t0], %[min]                        // x0x1x2x3 * vLo.x \n\
-             shufps  $0xdd, %[t0], %[t3]                         // y0y1y2y3 * vLo.y \n\
-             addps   %[t3], %[min]                               // x + y            \n\
-             addps   %[t1], %[min]                               // x + y + z        \n\
-             movaps  %[min], (%[sap], %[byteIndex])              // record result for later scrutiny \n\
-             minps   %[t2], %[min]                               // record min, restore min   \n\
-             add     $16, %[byteIndex]                           // advance loop counter\n\
+             0: movaps  %[min], %[t2]
+             movaps  (%[vertices], %[byteIndex], 4),    %[t0]
+             movaps  16(%[vertices], %[byteIndex], 4),  %[t1]
+             movaps  %[t0], %[min]
+             movlhps %[t1], %[min]
+             movaps  32(%[vertices], %[byteIndex], 4),  %[t3]
+             movaps  48(%[vertices], %[byteIndex], 4),  %[t4]
+             mulps   %[vLo], %[min]
+             movhlps %[t0], %[t1]
+             movaps  %[t3], %[t0]
+             movlhps %[t4], %[t0]
+             movhlps %[t3], %[t4]
+             mulps   %[vLo], %[t0]
+             shufps  $0x88, %[t4], %[t1]
+             mulps   %[vHi], %[t1]
+             movaps  %[min], %[t3]
+             shufps  $0x88, %[t0], %[min]
+             shufps  $0xdd, %[t0], %[t3]
+             addps   %[t3], %[min]
+             addps   %[t1], %[min]
+             movaps  %[min], (%[sap], %[byteIndex])
+             minps   %[t2], %[min]
+             add     $16, %[byteIndex]
              jnz     0b                                          \n\
              "
 			: [min] "+x"(min), [t0] "=&x"(t0), [t1] "=&x"(t1), [t2] "=&x"(t2), [t3] "=&x"(t3), [t4] "=&x"(t4), [byteIndex] "+r"(byteIndex)

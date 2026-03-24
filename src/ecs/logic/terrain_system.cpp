@@ -24,7 +24,7 @@
 void TerrainSystem::Initialize() {
     EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)) {
-            // Placeholder for future terrain-specific config (e.g. LOD distances)
+
         }
     });
 }
@@ -70,6 +70,8 @@ void TerrainSystem::Render(Scene &scene) {
     FrustumCuller culler;
     culler.BuildFrustum(cam.projectionMatrix * cam.viewMatrix);
 
+    auto* geoSys = sl.Resolve<IGeometryService>();
+
     auto view = scene.registry.view<TerrainComponent, PositionComponent>();
     for (auto entity : view) {
         auto &terrain = view.get<TerrainComponent>(entity);
@@ -83,7 +85,6 @@ void TerrainSystem::Render(Scene &scene) {
         TerrainData& data = *it->second;
         Shader* actShader = data.terrainShader.get();
         
-        auto* geoSys = sl.Resolve<IGeometryService>();
         if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
              auto gbufShader = resources.GetShader("terrain_gbuffer");
              if (gbufShader) actShader = gbufShader.get();
@@ -137,8 +138,8 @@ void TerrainSystem::Render(Scene &scene) {
             bm.BindVertexArray(chunk.VAO);
             bm.BindBuffer(BufferType::ElementArrayBuffer, data.lodEBOs[lod]);
             dc.DrawElements(Primitive::Triangles, data.lodIndexCounts[lod], DataType::UnsignedInt, nullptr);
-            auto rs_ptr = sl.Resolve<IRenderService>();
-            if (rs_ptr) rs_ptr->AddRenderedCount(1);
+            auto* rs = sl.Resolve<IRenderService>();
+            if (rs) rs->AddRenderedCount(1);
         }
 
         if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
@@ -225,7 +226,7 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
                     terrain.collisionShape->SetLocalScaling(glm::vec3(scaleX, 1.0f, scaleZ));
 
                     glm::vec3 basePos(0.0f);
-                    // Note: Active scene access might be needed here or passed in.
+
                     
                     glm::vec3 centerPos = basePos + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f, terrain.terrainSize.z * 0.5f);
 

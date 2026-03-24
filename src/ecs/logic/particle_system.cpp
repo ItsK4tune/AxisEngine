@@ -19,7 +19,7 @@ void ParticleSystem::Initialize()
 {
     m_Context = &ServiceLocator::Instance().Require<IGraphicsContext>();
     
-    // Create default white texture if it doesn't exist
+
     auto& tm = m_Context->GetTextureManager();
     m_DefaultTexture = tm.GenTexture();
     tm.BindTexture(TextureType::Texture2D, m_DefaultTexture);
@@ -53,7 +53,7 @@ void ParticleSystem::Update(Scene &scene, float dt)
 
         emitterComp.emitter.Update(dt, pos.value, isSpawning);
 
-        // Auto-cleanup for Impact particles
+
         if (!isSpawning && emitterComp.emitter.GetActiveParticleCount() == 0)
         {
             if (scene.registry.any_of<InfoComponent>(entity)) {
@@ -99,7 +99,7 @@ void ParticleSystem::Render(Scene &scene)
 
     shader->use();
 
-    // Matrices handled by Camera UBO (Binding 20)
+
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity != entt::null) {
         auto& cam = scene.registry.get<CameraComponent>(camEntity);

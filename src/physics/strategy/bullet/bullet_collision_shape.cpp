@@ -2,7 +2,7 @@
 
 BulletCollisionShape::~BulletCollisionShape()
 {
-    // Heightfield handles its own shape deletion in its destructor to ensure memory alignment stability during destruction
+
     if (m_Shape && m_Type != CollisionShapeType::Heightfield) {
         delete m_Shape;
         m_Shape = nullptr;

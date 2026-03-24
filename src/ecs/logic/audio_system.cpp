@@ -44,7 +44,7 @@ void AudioSystem::Update(Scene &scene, float dt)
 
     auto view = scene.registry.view<AudioSourceComponent>();
 
-    // Sync global volume (updated reactive via event)
+
     audioService->GetEngine()->SetGlobalVolume(m_GlobalVolume);
 
     for (auto entity : view)
@@ -82,7 +82,7 @@ void AudioSystem::Update(Scene &scene, float dt)
             }
             else if (!audio.filePath.empty())
             {
-                // Fallback for dynamically added sources without resource name
+
                 if (audio.is3D)
                 {
                     PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
@@ -97,7 +97,7 @@ void AudioSystem::Update(Scene &scene, float dt)
 
             if (audio.sound)
             {
-                // Set instance-specific parameters that might differ from resource defaults
+
                 audio.sound->SetVolume(audio.volume);
                 audio.sound->SetPitch(audio.pitch * audio.speed);
                 audio.sound->SetPan(audio.pan);
@@ -111,7 +111,7 @@ void AudioSystem::Update(Scene &scene, float dt)
 
         if (audio.sound && !audio.sound->IsFinished())
         {
-            // Sync dynamic updates
+
             audio.sound->SetVolume(audio.volume);
             audio.sound->SetPitch(audio.pitch * audio.speed);
             audio.sound->SetPan(audio.pan);

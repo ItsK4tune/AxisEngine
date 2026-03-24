@@ -111,7 +111,7 @@ void ResourceWatcher::WatcherLoop()
                 auto currentWriteTime = std::filesystem::last_write_time(watcher.filePath);
                 if (currentWriteTime > watcher.lastWriteTime)
                 {
-                    // Update the original watcher entry's lastWriteTime
+
                     {
                         std::lock_guard<std::mutex> lock(m_Mutex);
                         for (auto& w : m_Watchers) {

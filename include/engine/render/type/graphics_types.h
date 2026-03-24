@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 
 
-// Forward declarations for resource wrappers
+
 class IGraphicsContext;
 class IBufferManager;
 class ITextureManager;
@@ -14,7 +14,7 @@ class IRenderTargetManager;
 class Bone;
 
 
-// --- Common Types ---
+
 
 enum class Primitive {
     Points,
@@ -37,7 +37,7 @@ enum class DataType {
     Double
 };
 
-// --- Buffer Types ---
+
 
 enum class BufferType {
     ArrayBuffer,
@@ -81,7 +81,7 @@ inline bool operator&(BufferBit a, BufferBit b) {
     return (static_cast<int>(a) & static_cast<int>(b)) != 0;
 }
 
-// --- Texture Types ---
+
 
 enum class TextureType {
     Texture1D,
@@ -177,7 +177,7 @@ enum class TextureUnit {
     Texture31
 };
 
-// --- Render State Types ---
+
 
 enum class CullMode {
     None,
@@ -258,7 +258,7 @@ enum class BlendEquation {
     Max
 };
 
-// --- Framebuffer & Shader Types ---
+
 
 enum class ShaderType {
     Vertex,
@@ -313,7 +313,7 @@ enum class FramebufferStatus {
     Unknown
 };
 
-// --- Query Types ---
+
 
 enum class QueryType {
     SamplesPassed,
@@ -325,7 +325,7 @@ enum class QueryType {
     TransformFeedbackPrimitivesWritten
 };
 
-// --- GPU Data Structs ---
+
 
 struct GpuHandle {
     uint32_t id = 0;
@@ -339,15 +339,15 @@ struct GpuHandle {
 };
 
 struct GPUCameraData {
-    float projection[16]; // Mat4
-    float view[16];       // Mat4
+    float projection[16];
+    float view[16];
     float viewPos[3];
     float pad0;
 };
 
 struct GPUGlobalLightData {
-    float lightSpaceMatricesDir[16 * 2];  // MAX_DIR_LIGHTS_SHADOW = 2
-    float lightSpaceMatricesSpot[16 * 2]; // MAX_SPOT_LIGHTS_SHADOW = 2
+    float lightSpaceMatricesDir[16 * 2];
+    float lightSpaceMatricesSpot[16 * 2];
     int numDirLights;
     int nrPointLights;
     int nrSpotLights;
@@ -358,7 +358,7 @@ struct GPUGlobalLightData {
     float pad1;
 };
 
-// --- Shader Data ---
+
 
 struct ShaderPorts {
     float data[8] = {0.0f};
@@ -368,10 +368,10 @@ struct GPUGlobalData {
     float time;
     float deltaTime;
     float resolution[2];
-    float pad[12]; // Keep alignment and size consistent
+    float pad[12];
 };
 
-// --- Vertex & Texture ---
+
 
 constexpr int MAX_BONE_INFLUENCE = 4;
 
@@ -394,7 +394,7 @@ struct Texture {
     int width = 0, height = 0, nrComponents = 0;
 };
 
-// --- Animation Data ---
+
 
 #include <resource/unit/bone_info.h>
 
@@ -407,7 +407,7 @@ struct AssimpNodeData {
     Bone* cachedBone = nullptr;
 };
 
-// --- GPU Light Structs ---
+
 
 struct GPUDirLight {
     glm::vec3 direction;
@@ -462,7 +462,7 @@ struct GPUSpotLight {
     float pad7;
 };
 
-// --- Resource Wrappers ---
+
 
 class GPUFramebuffer {
 public:
@@ -560,5 +560,5 @@ private:
     GpuHandle m_Handle;
 };
 
-// --- Render Constants ---
+
 constexpr int BLOOM_MIP_COUNT = 6;

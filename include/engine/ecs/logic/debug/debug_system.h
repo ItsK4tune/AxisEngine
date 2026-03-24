@@ -10,11 +10,11 @@
 
 struct Scene;
 
-// --- Debug Interface ---
 
-// IDebugSystem removed in favor of IUpdateSystem and IRenderSystem
 
-// --- Debug Config ---
+
+
+
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -27,7 +27,7 @@ struct DebugConfig
     static bool ShowLightGizmos;
 };
 
-// --- Debug Implementation ---
+
 
 #include <resource/unit/font.h>
 #include <resource/unit/shader.h>
@@ -52,7 +52,7 @@ public:
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
     std::string GetName() const override { return "DebugSystem"; }
-    int GetPriority() const override { return 1000; } // Rendered last
+    int GetPriority() const override { return 1000; }
  
     std::vector<entt::id_type> GetReadComponents() const override { return {}; }
     std::vector<entt::id_type> GetWriteComponents() const override { return {}; }
@@ -74,7 +74,7 @@ private:
 
 #else
 
-// --- Null Implementation ---
+
 
 class NullDebugSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {

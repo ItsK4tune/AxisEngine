@@ -12,7 +12,7 @@
 void TransformSystem::Initialize()
 {
     EventSystem::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
-        // Re-connect signals to new registry
+
         e.registry->on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);

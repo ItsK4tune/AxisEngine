@@ -48,7 +48,7 @@ private:
     unsigned int m_VBO = 0;
     unsigned int m_TextureID = 0;
 
-    // IBL Maps
+
     unsigned int m_IrradianceMap = 0;
     unsigned int m_PrefilterMap = 0;
     unsigned int m_BrdfLUT = 0;

@@ -22,7 +22,7 @@ public:
     virtual void OnDisable() = 0;
     virtual void OnReset() = 0;
 
-    // Event callbacks
+
     virtual void OnCollisionEnter(entt::entity other) = 0;
     virtual void OnCollisionExit(entt::entity other) = 0;
     virtual void OnCollisionStay(entt::entity other) = 0;

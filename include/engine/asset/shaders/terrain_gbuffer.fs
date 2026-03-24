@@ -10,19 +10,19 @@ in vec3 Normal;
 
 uniform uint entityID;
 
-// 1. UBO Bindings (Standardized Binding 20-25)
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
     vec3 viewPos;
 } camera;
 
-// 2. Terrain Samplers (Standardized Units 27-31)
+
 layout (binding = 27) uniform sampler2D splatMap;
-layout (binding = 28) uniform sampler2D textureLayer0; // Grass
-layout (binding = 29) uniform sampler2D textureLayer1; // Dirt
-layout (binding = 30) uniform sampler2D textureLayer2; // Rock
-layout (binding = 31) uniform sampler2D textureLayer3; // Snow
+layout (binding = 28) uniform sampler2D textureLayer0;
+layout (binding = 29) uniform sampler2D textureLayer1;
+layout (binding = 30) uniform sampler2D textureLayer2;
+layout (binding = 31) uniform sampler2D textureLayer3;
 
 uniform float textureScale;
 uniform bool debug_noTexture;
@@ -30,7 +30,7 @@ uniform bool debug_noTexture;
 void main()
 {
     gPosition = WorldPos;
-    gNormal = normalize(Normal) * 0.5 + 0.5; // Encode to [0, 1]
+    gNormal = normalize(Normal) * 0.5 + 0.5;
     
     vec3 albedo;
     if (debug_noTexture) {
@@ -51,6 +51,6 @@ void main()
     }
     
     gAlbedoSpec.rgb = albedo;
-    gAlbedoSpec.a = 0.5; // Default roughness
+    gAlbedoSpec.a = 0.5;
     gEntityID = entityID;
 }

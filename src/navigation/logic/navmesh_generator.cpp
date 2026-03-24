@@ -26,7 +26,7 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         return;
     }
     
-    // Gather Obstacle AABBs
+
     struct ObstacleAABB {
         glm::vec3 min, max;
     };
@@ -47,11 +47,11 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         if (scene.registry.all_of<MeshRendererComponent>(ent)) {
             auto& renderer = scene.registry.get<MeshRendererComponent>(ent);
             if (renderer.model) {
-                // Approximate world AABB from model AABB
+
                 glm::vec3 worldMin = glm::vec3(transform.worldMatrix * glm::vec4(renderer.model->aabb.minBound, 1.0f));
                 glm::vec3 worldMax = glm::vec3(transform.worldMatrix * glm::vec4(renderer.model->aabb.maxBound, 1.0f));
                 
-                // Ensure min < max after transform
+
                 glm::vec3 actualMin = glm::min(worldMin, worldMax);
                 glm::vec3 actualMax = glm::max(worldMin, worldMax);
                 
@@ -77,13 +77,13 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         tri.center = (v0 + v1 + v2) / 3.0f;
         tri.normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
         
-        if (tri.normal.y > 0.3f) { // More lenient slope for terrain
-            // Carving Check: Skip if center is inside any obstacle AABB
+        if (tri.normal.y > 0.3f) {
+
             bool obstructed = false;
             for (const auto& obs : obstacles) {
                 if (tri.center.x >= obs.min.x && tri.center.x <= obs.max.x &&
                     tri.center.z >= obs.min.z && tri.center.z <= obs.max.z &&
-                    tri.center.y >= obs.min.y - 0.5f && tri.center.y <= obs.max.y + 0.5f) // Some vertical padding
+                    tri.center.y >= obs.min.y - 0.5f && tri.center.y <= obs.max.y + 0.5f)
                 {
                     obstructed = true;
                     break;
@@ -105,7 +105,7 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
 
     LOGGER_INFO("NavMeshGenerator") << "Gathering walkable geometry for " << walkableTags.size() << " tags.";
 
-    // 1. Gather from Meshes with configurable walkable tags
+
     auto meshView = scene.registry.view<InfoComponent, MeshRendererComponent, WorldTransformComponent>();
     for (auto entity : meshView) {
         auto& info = meshView.get<InfoComponent>(entity);
@@ -133,14 +133,14 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
             for (unsigned int idx : mesh.indices) {
                 result.indices.push_back(baseIndex + idx);
             }
-            // Add tag for each triangle in this mesh
+
             for (size_t i = 0; i < mesh.indices.size() / 3; ++i) {
                 result.tags.push_back(info.tag);
             }
         }
     }
 
-    // 2. Gather from Terrain (Check isWalkable flag)
+
     auto terrainView = scene.registry.view<TerrainComponent, PositionComponent>();
     for (auto entity : terrainView) {
         auto& terrain = terrainView.get<TerrainComponent>(entity);
@@ -173,7 +173,7 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
                     int idx = (texZ * tex->width + texX) * tex->nrComponents;
                     hVal = (float)tex->pixelData[idx] / 255.0f * terrain.maxHeight;
                 }
-                // Generate vertex in world space
+
                 result.vertices.push_back(pos.value + glm::vec3(x * resStepX, hVal, z * resStepZ));
             }
         }
@@ -185,16 +185,16 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
                 uint32_t i2 = baseIndex + ((z + 1) * gridRes + (x + 1));
                 uint32_t i3 = baseIndex + ((z + 1) * gridRes + x);
 
-                // Triangle 1: 0 -> 3 -> 2
+
                 result.indices.push_back(i0);
                 result.indices.push_back(i3);
                 result.indices.push_back(i2);
-                // Triangle 2: 0 -> 2 -> 1
+
                 result.indices.push_back(i0);
                 result.indices.push_back(i2);
                 result.indices.push_back(i1);
 
-                // Tarrain triangles get "walkable" by default or terrain-specific tag
+
                 result.tags.push_back("walkable");
                 result.tags.push_back("walkable");
             }
@@ -211,7 +211,7 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
 {
     if (navMesh.triangles.empty()) return;
 
-    // 1. Create nodes
+
     navMesh.nodes.clear();
     navMesh.nodes.reserve(navMesh.triangles.size());
     for (uint32_t i = 0; i < (uint32_t)navMesh.triangles.size(); ++i) {
@@ -222,8 +222,8 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
         navMesh.nodes.push_back(node);
     }
 
-    // 2. Build edge map for O(N) connectivity
-    // Map of edge (sorted vertex indices) -> list of triangle indices sharing it
+
+
     struct Edge {
         uint32_t v1, v2;
         bool operator==(const Edge& other) const {
@@ -247,7 +247,7 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
         }
     }
 
-    // 3. Connect nodes sharing edges
+
     for (auto const& [edge, triIndices] : edgeMap) {
         if (triIndices.size() >= 2) {
             for (size_t i = 0; i < triIndices.size(); ++i) {
@@ -255,7 +255,7 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
                     uint32_t idx_i = triIndices[i];
                     uint32_t idx_j = triIndices[j];
                     
-                    // Add neighbors if not already added
+
                     if (std::find(navMesh.nodes[idx_i].neighbors.begin(), 
                                   navMesh.nodes[idx_i].neighbors.end(), idx_j) == navMesh.nodes[idx_i].neighbors.end()) {
                         navMesh.nodes[idx_i].neighbors.push_back(idx_j);

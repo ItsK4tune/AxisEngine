@@ -69,8 +69,8 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
             
             configMgr.UpdateConfig(tempConfig);
 
-            // Note: Window configuration should be handled by Application or a dedicated handler in Layer 5.
-            // SceneSerializer (Layer 3) should only return the config.
+
+
 
             result.hasConfig = true;
             result.appliedConfig = tempConfig;
@@ -84,7 +84,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                     LoaderUtils::ValidateKeys(resNode, {"Name", "vertex", "geometry", "fragment", "VS", "FS", "GS"}, "Resource:Shader");
                     std::string name = resNode.GetChildValue("Name");
                     
-                    // Support both new names and legacy names
+
                     std::string vs = resNode.GetChildValue("vertex");
                     if (vs.empty()) vs = resNode.GetChildValue("VS");
                     
@@ -197,7 +197,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
 
                 entt::entity currentEntity = scene.registry.create();
                 
-                // Emplace default components (Layer 2/3 Data)
+
                 scene.registry.emplace<PositionComponent>(currentEntity);
                 scene.registry.emplace<RotationComponent>(currentEntity);
                 scene.registry.emplace<ScaleComponent>(currentEntity);

@@ -3,13 +3,13 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
-// 1. G-Buffer Input Samplers (Standardized Binding 0-3)
+
 layout (binding = 0) uniform sampler2D gPosition;
 layout (binding = 1) uniform sampler2D gNormal;
 layout (binding = 2) uniform sampler2D gAlbedoSpec;
 layout (binding = 3) uniform usampler2D gID;
 
-// 2. UBO/SSBO Bindings (Standardized Binding 20-25)
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
@@ -59,7 +59,7 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-// 3. Shadow Maps (Standardized Binding 10-15)
+
 layout (binding = 10) uniform sampler2D shadowMapDir[2];
 layout (binding = 12) uniform samplerCube shadowMapPoint[2];
 layout (binding = 14) uniform sampler2D shadowMapSpot[2];
@@ -70,18 +70,18 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, i
 
 void main()
 {             
-    // 1. Retrieve data from G-buffer
+
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
-    if (dot(FragPos, FragPos) < 0.0001) discard; // Optimization: early discard for background
+    if (dot(FragPos, FragPos) < 0.0001) discard;
 
     vec3 Normal = texture(gNormal, TexCoords).rgb;
-    Normal = normalize(Normal * 2.0 - 1.0); // Decode from [0, 1]
+    Normal = normalize(Normal * 2.0 - 1.0);
     
     vec3 Albedo = texture(gAlbedoSpec, TexCoords).rgb;
     float Roughness = texture(gAlbedoSpec, TexCoords).a;
     uint EntityID = texture(gID, TexCoords).r;
 
-    // 2. Debug Views
+
     if (u_DebugMode == 1) { FragColor = vec4(FragPos, 1.0); return; }
     if (u_DebugMode == 2) { FragColor = vec4(Normal * 0.5 + 0.5, 1.0); return; }
     if (u_DebugMode == 3) { FragColor = vec4(Albedo, 1.0); return; }
@@ -91,18 +91,18 @@ void main()
        return; 
     }
 
-    // 3. Lighting
+
     vec3 V = normalize(camera.viewPos - FragPos);
     vec3 Lo = vec3(0.0);
 
-    // Directional Lights
+
     for(int i = 0; i < light.numDirLights; ++i)
     {
         vec3 L = normalize(-dirLights[i].direction);
         vec3 H = normalize(V + L);
         
         float diff = max(dot(Normal, L), 0.0);
-        float spec = pow(max(dot(Normal, H), 0.0), 32.0); // Simplified shininess
+        float spec = pow(max(dot(Normal, H), 0.0), 32.0);
         
         float shadow = 0.0;
         int sIdx = int(dirLights[i].shadowIndex);
@@ -121,7 +121,7 @@ void main()
         Lo += ambient + (1.0 - shadow) * (diffuse + specular);
     }
     
-    // 2. Point Lights
+
     for(int i = 0; i < light.nrPointLights; ++i)
     {
         vec3 L = normalize(pointLights[i].position - FragPos);
@@ -141,7 +141,7 @@ void main()
         Lo += ambient + diffuse + specular;
     }
 
-    // 3. Spot Lights
+
     for(int i = 0; i < light.nrSpotLights; ++i)
     {
         vec3 L = normalize(spotLights[i].position - FragPos);
@@ -165,8 +165,8 @@ void main()
         Lo += ambient + diffuse + specular;
     }
 
-    // Final Color
-    vec3 color = Lo + Albedo * 0.01; // Tiny global ambient for deep shadows
+
+    vec3 color = Lo + Albedo * 0.01;
     
     FragColor = vec4(color, 1.0);
 }

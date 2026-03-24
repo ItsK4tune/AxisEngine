@@ -2,7 +2,7 @@
 
 #include <axis_commons.h>
 
-// --- Systems ---
+
 #include <ecs/logic/render_system.h>
 #include <ecs/logic/physics_system.h>
 #include <ecs/logic/audio_system.h>

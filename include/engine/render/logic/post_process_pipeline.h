@@ -50,7 +50,7 @@ public:
     int GetWidth() const { return m_Width; }
     int GetHeight() const { return m_Height; }
 
-    // Config setters
+
     void SetBloomEnabled(bool enable) { m_BloomEnabled = enable; }
     void SetBloomThreshold(float threshold) { m_BloomThreshold = threshold; }
     void SetBloomIntensity(float intensity) { m_BloomIntensity = intensity; }

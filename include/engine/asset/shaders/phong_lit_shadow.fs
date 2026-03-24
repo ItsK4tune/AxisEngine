@@ -1,7 +1,7 @@
 #version 430 core
 out vec4 FragColor;
 
-// 1. Root Level Samplers (Standardized Binding 0-15)
+
 layout (binding = 0) uniform sampler2D texture_diffuse1;
 layout (binding = 1) uniform sampler2D texture_normal1;
 layout (binding = 2) uniform sampler2D texture_metallic1;
@@ -10,7 +10,7 @@ layout (binding = 4) uniform sampler2D texture_ao1;
 layout (binding = 5) uniform sampler2D texture_emissive1;
 layout (binding = 6) uniform sampler2D texture_specular1;
 
-// 2. UBO/SSBO Bindings (Standardized Binding 20-25)
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
@@ -60,19 +60,19 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-// 3. Shadow Maps (Standardized Binding 10-15)
+
 layout (binding = 10) uniform sampler2D shadowMapDir[2];
 layout (binding = 12) uniform samplerCube shadowMapPoint[2];
 layout (binding = 14) uniform sampler2D shadowMapSpot[2];
 
-// 4. Input Stage
+
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 in vec4 FragPosLightSpace[2];
 in vec4 FragPosLightSpaceSpot[2];
 
-// 5. Common Uniforms
+
 struct Material {
     float shininess;
     vec3 specular;
@@ -86,13 +86,13 @@ uniform vec2 uvScale = vec2(1.0);
 uniform vec2 uvOffset = vec2(0.0);
 uniform bool debug_noTexture;
 
-// Fog removed
 
-// Shadow Control
+
+
 uniform float u_ShadowBias;
 uniform int u_ShadowSoftness;
 
-// Forward Declarations
+
 vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir);
 vec3 CalcDirLightWithShadow(DirLight pLight, vec3 normal, vec3 viewDir, int lightIndex);
 vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, int index);
@@ -108,7 +108,7 @@ void main()
     vec3 viewDir = normalize(camera.viewPos - FragPos);
     vec3 result = vec3(0.0);
     
-    // 1. Lighting Calculation
+
     for(int i = 0; i < light.numDirLights; i++) {
         int sIdx = int(dirLights[i].shadowIndex);
         if (sIdx >= 0 && sIdx < 2)
@@ -123,7 +123,7 @@ void main()
     for(int i = 0; i < light.nrSpotLights; i++)
         result += CalcSpotLight(spotLights[i], norm, FragPos, viewDir, int(spotLights[i].shadowIndex));
     
-    // 2. Final Color Assembly
+
     vec4 texColor;
     if (debug_noTexture) {
         texColor = vec4(1.0);
@@ -132,7 +132,7 @@ void main()
         texColor.rgb = pow(texColor.rgb, vec3(2.2));
     }
     
-    // Apply tint to Albedo (matching G-Buffer behavior)
+
     vec3 finalAlbedo = texColor.rgb * tintColor.rgb;
     
     vec3 finalColor = result + material.emission;

@@ -42,8 +42,8 @@ void main()
         vec4 localPosition = finalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
         totalPosition += localPosition * aWeights[i];
         
-        // Use the upper 3x3 of the bone matrix for normals (assumes no non-uniform scaling per bone)
-        // For correctness this should be transpose(inverse(mat3(bone))), but often omitted for performance
+
+
         vec3 localNormal = mat3(finalBonesMatrices[aBoneIds[i]]) * aNormal;
         totalNormal += localNormal * aWeights[i];
         hasBones = true;

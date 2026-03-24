@@ -21,31 +21,13 @@ public:
     JobSystem(const JobSystem&) = delete;
     JobSystem& operator=(const JobSystem&) = delete;
 
-    /**
-     * Initializes the thread pool. Automatically spawns threads based on hardware concurrency.
-     */
     void Initialize(int configThreads = -1);
-
-    /**
-     * Shuts down the thread pool and joins all threads. Call this before application exit.
-     */
     void Shutdown();
 
-    /**
-     * A counter used to synchronize multiple jobs.
-     */
     using JobCounter = std::atomic<uint32_t>;
 
-    /**
-     * Enqueues a job for asynchronous execution on a worker thread.
-     * @param job A callable function to execute.
-     * @param counter Optional counter to decrement when the job is finished.
-     */
     void Execute(std::function<void()> job, JobCounter* counter = nullptr);
-
-    /**
-     * Enqueues a job for asynchronous execution and returns a future for the result.
-     */
+    
     template <typename F, typename... Args>
     auto ExecuteAsync(F&& f, Args&&... args) -> std::future<typename std::invoke_result_t<F, Args...>>
     {
@@ -61,19 +43,9 @@ public:
         return res;
     }
 
-    /**
-     * Waits until all currently executing and queued jobs are finished.
-     */
     void Wait();
-
-    /**
-     * Waits until the specified counter reaches zero.
-     */
     void Wait(JobCounter* counter);
-
-    /**
-     * Checks if the job system is currently busy executing jobs.
-     */
+    
     bool IsBusy();
     uint32_t GetThreadCount() const { return (uint32_t)m_Workers.size(); }
 

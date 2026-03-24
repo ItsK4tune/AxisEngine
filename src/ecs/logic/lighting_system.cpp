@@ -25,7 +25,12 @@
 void LightingSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
+    m_GraphicsContext = sl.Resolve<IGraphicsContext>();
+    m_RenderService = sl.Resolve<IRenderService>();
+    m_GeoService = sl.Resolve<IGeometryService>();
+    m_ShadowService = sl.Resolve<IShadowService>();
+
+    auto& context = *m_GraphicsContext;
     auto& resources = sl.Require<ResourceManager>();
 
     m_LightRenderer.Initialize(context);
@@ -49,48 +54,41 @@ void LightingSystem::RenderAlpha(Scene& scene, int width, int height, float alph
     if (!m_Enabled)
          return;
 
-    auto* rs = ServiceLocator::Instance().Resolve<IRenderService>();
+    auto* rs = m_RenderService;
     if (!rs) return;
 
-    // Always update light buffers so Forward shaders have data
-    m_LightRenderer.UploadLightData(scene, nullptr);
-
     if (rs->GetRenderPath() == RenderPath::Forward) {
-        auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-        context.GetRenderStateManager().SetViewport(0, 0, width, height);
+        m_LightRenderer.UploadLightData(scene, nullptr);
+        m_GraphicsContext->GetRenderStateManager().SetViewport(0, 0, width, height);
         return;
     }
 
-    // Perform Deferred Lighting Pass
+
     RenderDeferredLighting(scene, width, height);
 }
+
 
 void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
 {
     if (!m_DeferredLightShader) return;
 
-    auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
+    auto& context = *m_GraphicsContext;
     auto& tm = context.GetTextureManager();
     auto& rsm = context.GetRenderStateManager();
     auto& dc = context.GetDrawContext();
     auto& rtm = context.GetRenderTargetManager();
     auto& bm = context.GetBufferManager();
 
-    // Resolve G-Buffer from GeometrySystem
-    auto* geoSys = sl.Resolve<IGeometryService>();
+    auto* geoSys = m_GeoService;
     if (!geoSys) return;
     auto& gBuffer = geoSys->GetGBuffer();
 
-    // Resolve Shadow textures from ShadowSystem
-    auto* shadowSys = sl.Resolve<IShadowService>();
-    
-    // Ensure we are rendering to the main FBO
-    auto* rs = sl.Resolve<IRenderService>();
+    auto* shadowSys = m_ShadowService;
+    auto* rs = m_RenderService;
     uint32_t mainFBO = rs ? rs->GetMainFBO() : 0;
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
 
-    // Blit depth from G-Buffer to the current FBO (so Skybox and Transparents can use it)
+
     rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, gBuffer.GetFBO());
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, mainFBO);
     rtm.BlitFramebuffer(0, 0, gBuffer.GetScaledWidth(), gBuffer.GetScaledHeight(), 0, 0, width, height, BufferBit::Depth, TextureFilter::Nearest);
@@ -105,7 +103,7 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     m_LightRenderer.UploadLightData(scene, m_DeferredLightShader.get());
     m_DeferredLightShader->use();
     
-    // Bind G-Buffer textures
+
     tm.ActiveTexture(TextureUnit::Texture0);
     tm.BindTexture(TextureType::Texture2D, gBuffer.GetPositionTexture());
     m_DeferredLightShader->setInt("gPosition", 0);

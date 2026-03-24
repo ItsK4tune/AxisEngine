@@ -66,11 +66,11 @@ void MouseManager::UpdateButton(Mouse button, int action, int mods)
     size_t btnIdx = (size_t)button;
     if (btnIdx >= 16) return;
 
-    if (action == 1) // Press
+    if (action == 1)
     {
         m_CurrentButtons.set(btnIdx, true);
     }
-    else if (action == 0) // Release
+    else if (action == 0)
     {
         m_CurrentButtons.set(btnIdx, false);
     }

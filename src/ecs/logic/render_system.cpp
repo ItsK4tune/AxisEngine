@@ -45,7 +45,7 @@ void RenderSystem::Initialize()
     const AppConfig& config = configManager.GetConfig();
     auto& shaderLib = sl.Require<ResourceManager>();
     
-    // Set initial state
+
     this->SetInstanceBatching(config.instanceBatchingEnabled);
     this->SetFrustumCulling(config.frustumCullingEnabled);
     this->SetOcclusionCulling(config.occlusionCullingEnabled);
@@ -56,7 +56,7 @@ void RenderSystem::Initialize()
     this->SetFaceCulling(config.cullFaceEnabled);
     this->SetDepthTest(config.depthTestEnabled);
 
-    // Subscribe to config changes
+
     EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
             return;
@@ -73,14 +73,14 @@ void RenderSystem::Initialize()
         this->SetDepthTest(cfg.depthTestEnabled);
     });
 
-    // Shadow and Light renderers are now handled by ShadowSystem and LightingSystem
-    // m_LightRenderer is still here for now if needed, but should be handled by LightingSystem
+
+
 
     if (m_WhiteTextureID == 0)
     {
         auto &tm = context.GetTextureManager();
         
-        // White
+
         m_WhiteTextureID = tm.GenTexture();
         tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
         unsigned char white[] = {255, 255, 255, 255};
@@ -88,7 +88,7 @@ void RenderSystem::Initialize()
         tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
         tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 
-        // Black
+
         m_BlackTextureID = tm.GenTexture();
         tm.BindTexture(TextureType::Texture2D, m_BlackTextureID);
         unsigned char black[] = {0, 0, 0, 255};
@@ -96,7 +96,7 @@ void RenderSystem::Initialize()
         tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
         tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 
-        // Flat Normal (0.5, 0.5, 1.0) => (128, 128, 255)
+
         m_FlatNormalTextureID = tm.GenTexture();
         tm.BindTexture(TextureType::Texture2D, m_FlatNormalTextureID);
         unsigned char flatNormal[] = {128, 128, 255, 255};
@@ -107,10 +107,8 @@ void RenderSystem::Initialize()
 
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
     resources.LoadShader("unlit", "include/engine/asset/shaders/unlit.vs", "include/engine/asset/shaders/unlit.fs");
+    resources.LoadShader("occlusion", "include/engine/asset/shaders/occlusion_query.vs", "include/engine/asset/shaders/occlusion_query.fs");
     m_UnlitShader = resources.GetShader("unlit");
-    m_BonesUniforms.reserve(200);
-    for (int i = 0; i < 200; ++i)
-        m_BonesUniforms.push_back("finalBonesMatrices[" + std::to_string(i) + "]");
 
     auto& bm = context.GetBufferManager();
     m_CameraUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
@@ -128,25 +126,27 @@ void RenderSystem::Initialize()
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
     
-    // PostProcess and GBuffer initials are now handled by specialized systems
+    m_MaterialRenderer.Initialize(context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
+    m_OcclusionCuller.Initialize(context, resources.GetShader("occlusion"));
     InitQuad();
 }
 
 void RenderSystem::Update(Scene& scene, float dt)
 {
-    // RenderSystem update logic (e.g. frame index increment)
+    m_CachedRenderPath = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().renderPath;
+
     m_FrameIndex++;
     m_RenderedCount = 0;
 }
 
 void RenderSystem::Render(Scene& scene)
 {
-    // Primary render pass logic if any, otherwise handled in specialized passes
+
 }
 
 void RenderSystem::RenderUI(Scene &scene, float width, float height, IRenderStateManager &renderState)
 {
-    // RenderSystem doesn't handle UI directly; UIRenderSystem does.
+
 }
 
 void RenderSystem::Shutdown()
@@ -182,7 +182,7 @@ void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
 void RenderSystem::InitQuad()
 {
     float quadVertices[] = {
-        // positions        // texture Coords
+
         -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
         -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
          1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
@@ -228,9 +228,15 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         return;
     }
 
-    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+    MaterialRenderer::InvalidateSkyboxCache();
+
+
+    auto& sl = ServiceLocator::Instance();
+    m_CachedRenderPath = sl.Require<ConfigManager>().GetConfig().renderPath;
+
+    auto& context = sl.Require<IGraphicsContext>();
     if ((m_LastWidth != width || m_LastHeight != height) && width > 0 && height > 0) {
-        // GBuffer resize is now handled by GeometrySystem
+
     }
     m_LastWidth = width;
     m_LastHeight = height;
@@ -249,12 +255,24 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     PositionComponent* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
+    if (width <= 0 || height <= 0) return;
+
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (!std::isfinite(cam->projectionMatrix[i][j]) || !std::isfinite(cam->viewMatrix[i][j])) {
+                LOGGER_ERROR("RenderSystem") << "NaN detected in camera matrices. Skipping frame.";
+                return;
+            }
+        }
+    }
+
     if (!m_QueuesBuilt) { m_PrevViewProj = m_CurrViewProj; }
 
     m_JitteredProjection = cam->projectionMatrix;
     m_JitterOffset = glm::vec2(0.0f);
 
-    if (m_AAMode == AntiAliasingMode::TAA && width > 0 && height > 0) {
+    if (m_AAMode == AntiAliasingMode::TAA) {
         auto HaltonSequence = [](int index, int base) -> float {
             float result = 0.0f; float f = 1.0f; int i = index;
             while (i > 0) { f = f / base; result = result + f * (i % base); i = i / base; }
@@ -265,16 +283,29 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         float jitterX = HaltonSequence(frameIdx + 1, 2) - 0.5f;
         float jitterY = HaltonSequence(frameIdx + 1, 3) - 0.5f;
         m_JitterOffset = glm::vec2(jitterX, jitterY);
+        
         glm::mat4 jitterMatrix = glm::mat4(1.0f);
         jitterMatrix[3][0] = jitterX * 2.0f / (float)width;
         jitterMatrix[3][1] = jitterY * 2.0f / (float)height;
         m_JitteredProjection = jitterMatrix * m_JitteredProjection;
+        
         if (!m_QueuesBuilt) m_FrameIndex++;
     }
 
     m_CurrViewProj = m_JitteredProjection * cam->viewMatrix;
+    
 
-    // Update Camera UBO
+    bool stable = true;
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (!std::isfinite(m_CurrViewProj[i][j])) stable = false;
+        }
+    }
+    if (!stable) {
+        m_CurrViewProj = cam->projectionMatrix * cam->viewMatrix;
+    }
+
+
     GPUCameraData camData;
     std::memcpy(camData.projection, &m_JitteredProjection[0][0], 16 * sizeof(float));
     std::memcpy(camData.view, &cam->viewMatrix[0][0], 16 * sizeof(float));
@@ -285,7 +316,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUCameraData), &camData);
 
-    // Update Global Data UBO
+
     m_GlobalData.resolution[0] = (float)width;
     m_GlobalData.resolution[1] = (float)height;
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
@@ -311,147 +342,78 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
 
 void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader)
 {
-    size_t totalItems = queue.size();
-    size_t numThreads = std::thread::hardware_concurrency();
-    if (numThreads == 0) numThreads = 1;
-    size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
+    if (!materialRenderer) {
+        LOGGER_ERROR("RenderSystem") << "ExecuteQueue failed: materialRenderer is null!";
+        return;
+    }
 
-    std::vector<CommandQueue> threadQueues(numThreads);
-    JobSystem::JobCounter counter(0);
-    
-    // Increment total rendered count for UI (only once per pass type)
+    size_t totalItems = queue.size();
+    if (totalItems == 0) return;
+
     m_RenderedCount += (int)totalItems;
 
-    for (size_t i = 0; i < numThreads; ++i)
-    {
-        size_t startIdx = i * chunkSize;
-        if (startIdx >= totalItems) break;
-        size_t endIdx = std::min(startIdx + chunkSize, totalItems);
+    Shader* lastShader = nullptr;
 
-        JobSystem::Instance().Execute([this, &scene, &queue, startIdx, endIdx, &threadQueue = threadQueues[i], isTransparentPass, shadowRenderer, materialRenderer, overrideShader]() {
-            Shader *currentShader = nullptr;
-            Model *currentModel = nullptr;
-            MaterialComponent *currentMaterial = nullptr;
-            std::vector<glm::mat4> instanceBatch;
+    for (size_t i = 0; i < totalItems; i++) {
+        const auto& item = queue[i];
+        entt::entity entity = item.entity;
+        Model* model = item.activeModel;
+        MaterialComponent* material = item.activeMaterial;
+        Shader* shader = item.activeShader;
 
-            auto flushBatch = [&](Shader *shader, Model *model, const std::vector<glm::mat4>& instances)
-            {
-                if (!instances.empty() && shader && model)
-                {
-                    threadQueue.Submit([shader, model, instances]() {
-                        model->DrawInstanced(*shader, instances, false);
-                    });
+        if (overrideShader) {
+            shader = overrideShader;
+        } else if (!shader) {
+            shader = m_UnlitShader.get();
+        }
+
+        if (!shader || !model) continue;
+
+        if (shader != lastShader) {
+            shader->use();
+            lastShader = shader;
+
+
+            if (shadowRenderer && shadowRenderer->IsShadowsEnabled()) {
+                auto& shadow = shadowRenderer->GetShadow();
+                for (int j = 0; j < Shadow::MAX_DIR_LIGHTS_SHADOW; j++) {
+                    shadow.BindTexture_Dir(j, 10 + j);
+                    shader->setInt(("shadowMapDir[" + std::to_string(j) + "]").c_str(), 10 + j);
                 }
-            };
-
-            for (size_t k = startIdx; k < endIdx; ++k)
-            {
-                const auto& item = queue[k];
-                entt::entity entity = item.entity;
-                Model* actModel = item.activeModel;
-                MaterialComponent *material = item.activeMaterial;
-                Shader *itemShader = item.activeShader;
-                if (overrideShader) {
-                    // Deferred Pass (G-Buffer) or Shadow Pass (though Shadow doesn't call ExecuteQueue currently)
-                    if (!itemShader) itemShader = overrideShader;
-                } else if (!itemShader) {
-                    // Forward Pass Opaque/Transparent
-                    itemShader = m_UnlitShader.get();
-                }
-
-                if (!itemShader) continue;
-
-                if (currentShader != itemShader)
-                {
-                    flushBatch(currentShader, currentModel, instanceBatch);
-                    instanceBatch.clear();
-                    currentShader = itemShader;
-                    currentModel = nullptr;
-
-                    Shader* s = currentShader;
-                    bool enableShadows = shadowRenderer && shadowRenderer->IsShadowsEnabled() && shadowRenderer->GetShadowMode() > 0;
-                    Shadow* shadowObj = shadowRenderer ? &shadowRenderer->GetShadow() : nullptr;
-                    bool isDebugNoTexture = m_DebugNoTexture;
-
-                    threadQueue.Submit([=]() {
-                        s->use();
-                        if (enableShadows && shadowObj) {
-                            for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i) {
-                                shadowObj->BindTexture_Dir(i, 10 + i);
-                                s->setInt(("shadowMapDir[" + std::to_string(i) + "]").c_str(), 10 + i);
-                            }
-                        }
-                        // Fog removed
-                        if (shadowRenderer) {
-                            s->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
-                            s->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
-                        }
-                    });
-                }
-
-                bool hasAnimComp = scene.registry.all_of<AnimationComponent>(entity);
-                bool isAnimated = hasAnimComp && scene.registry.get<AnimationComponent>(entity).animator;
-                bool isNonStatic = actModel && !actModel->IsStatic();
-
-                if (isAnimated || isNonStatic || !m_InstanceBatchingEnabled)
-                {
-                    flushBatch(currentShader, currentModel, instanceBatch);
-                    instanceBatch.clear();
-                    currentModel = nullptr;
-
-                    glm::mat4 mtx = item.worldMatrix;
-                    if (actModel && !isAnimated) mtx *= actModel->GetRootTransform();
-
-                    // Still need renderer for tint color
-                    auto* rendererPtr = scene.registry.try_get<MeshRendererComponent>(entity);
-                    glm::vec4 tc = rendererPtr ? rendererPtr->color : glm::vec4(1.0f);
-                    Shader* actShader = currentShader;
-                    
-                    if (actModel && actShader) {
-                        std::vector<glm::mat4> transforms;
-                        if (isAnimated) transforms = scene.registry.get<AnimationComponent>(entity).animator->GetFinalBoneMatrices();
-
-                        threadQueue.Submit([=, &scene]() {
-                            actShader->setMat4("model", mtx);
-                            actShader->setVec4("tintColor", tc);
-                            if (!transforms.empty()) actShader->setMat4Array("finalBonesMatrices", transforms);
-                            bool matBound = materialRenderer->SetupMaterialUniforms(actShader, material, scene, m_DebugNoTexture);
-                            actShader->setBool("isInstanced", false);
-                            actShader->setUInt("entityID", static_cast<unsigned int>(entity));
-                            actModel->Draw(*actShader, !matBound);
-                        });
-                    }
-                }
-                else
-                {
-                    if (currentModel != actModel || currentMaterial != material)
-                    {
-                        flushBatch(currentShader, currentModel, instanceBatch);
-                        instanceBatch.clear();
-                        currentModel = actModel;
-                        currentMaterial = material;
-                        
-                        auto* rendererPtr = scene.registry.try_get<MeshRendererComponent>(entity);
-                        glm::vec4 tc = rendererPtr ? rendererPtr->color : glm::vec4(1.0f);
-                        Shader* actShader = currentShader;
-                        threadQueue.Submit([=, &scene]() {
-                            actShader->setVec4("tintColor", tc);
-                            bool matBound = materialRenderer->SetupMaterialUniforms(actShader, material, scene, m_DebugNoTexture);
-                            actShader->setBool("isInstanced", false);
-                            actShader->setUInt("entityID", static_cast<unsigned int>(entity));
-                        });
-                    }
-                    instanceBatch.push_back(item.worldMatrix * (actModel ? actModel->GetRootTransform() : glm::mat4(1.0f)));
-                }
+                shader->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
+                shader->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
             }
-            flushBatch(currentShader, currentModel, instanceBatch);
-        }, &counter);
-    }
-    JobSystem::Instance().Wait(&counter);
+        }
 
-    m_CommandQueue.Clear();
-    for (auto& tq : threadQueues) m_CommandQueue.Merge(tq);
-    m_CommandQueue.Execute();
+        glm::mat4 mtx = item.worldMatrix;
+        bool isAnimated = false;
+        if (scene.registry.all_of<AnimationComponent>(entity)) {
+            auto& anim = scene.registry.get<AnimationComponent>(entity);
+            if (anim.animator) {
+                isAnimated = true;
+                auto bones = anim.animator->GetFinalBoneMatrices();
+                shader->setMat4Array("finalBonesMatrices", bones);
+            }
+        }
+
+        if (!isAnimated) {
+            mtx *= model->GetRootTransform();
+        }
+
+        shader->setMat4("model", mtx);
+        
+
+        glm::vec4 tc(1.0f);
+        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity)) {
+            tc = renderer->color;
+        }
+        shader->setVec4("tintColor", tc);
+        shader->setUInt("entityID", (uint32_t)entity);
+        shader->setBool("isInstanced", false);
+
+        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, scene, m_DebugNoTexture, m_Wireframe);
+        model->Draw(*shader, !matBound);
+    }
 }
 
 std::vector<entt::id_type> RenderSystem::GetReadComponents() const
@@ -482,13 +444,13 @@ std::vector<entt::id_type> RenderSystem::GetWriteComponents() const
 }
 void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
 {
-    // Rendering with alpha is usually handled by other systems like TransparentSystem or ParticleSystem
-    // But we need to implement it as part of IRenderSystem if called directly
+
+
 }
 
 void RenderSystem::RenderTransparent(Scene& scene, int width, int height, float alpha)
 {
-    // Transparent rendering logic
+
 }
 
 void RenderSystem::UpdateGlobalLightData(const GPUGlobalLightData& data)
@@ -499,9 +461,4 @@ void RenderSystem::UpdateGlobalLightData(const GPUGlobalLightData& data)
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalLightData), &data);
 }
 
-RenderPath RenderSystem::GetRenderPath() const
-{
-    auto& sl = ServiceLocator::Instance();
-    auto& config = sl.Require<ConfigManager>().GetConfig();
-    return config.renderPath;
-}
+

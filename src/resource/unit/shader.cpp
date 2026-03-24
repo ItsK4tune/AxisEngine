@@ -100,7 +100,7 @@ void Shader::load(const char *vertexPath, const char *fragmentPath, const char *
 
     {
         std::lock_guard<std::mutex> lock(m_UniformMutex);
-        uniformLocations.clear();
+        m_UniformLocations.clear();
     }
 
     LOGGER_INFO("Shader") << "Shader loaded successfully: " << vertexPath << " | " << fragmentPath;
@@ -111,81 +111,137 @@ void Shader::use()
     m_ShaderManager.UseProgram(ID);
 }
 
+
+
 void Shader::setBool(const std::string &name, bool value) const
 {
-    m_ShaderManager.SetUniform1i(GetUniformLocation(name), (int)value);
+    setBool(GetUniformLocation(name), value);
+}
+
+void Shader::setBool(int location, bool value) const
+{
+    if (location != -1)
+        m_ShaderManager.SetUniform1i(location, (int)value);
 }
 
 void Shader::setInt(const std::string &name, int value) const
 {
-    m_ShaderManager.SetUniform1i(GetUniformLocation(name), value);
+    setInt(GetUniformLocation(name), value);
+}
+
+void Shader::setInt(int location, int value) const
+{
+    if (location != -1)
+        m_ShaderManager.SetUniform1i(location, value);
 }
 
 void Shader::setUInt(const std::string &name, unsigned int value) const
 {
-    m_ShaderManager.SetUniform1ui(GetUniformLocation(name), value);
+    setUInt(GetUniformLocation(name), value);
+}
+
+void Shader::setUInt(int location, unsigned int value) const
+{
+    if (location != -1)
+        m_ShaderManager.SetUniform1ui(location, value);
 }
 
 void Shader::setFloat(const std::string &name, float value) const
 {
-    m_ShaderManager.SetUniform1f(GetUniformLocation(name), value);
+    setFloat(GetUniformLocation(name), value);
+}
+
+void Shader::setFloat(int location, float value) const
+{
+    if (location != -1)
+        m_ShaderManager.SetUniform1f(location, value);
 }
 
 void Shader::setVec2(const std::string &name, const glm::vec2 &value) const
 {
-    m_ShaderManager.SetUniform2fv(GetUniformLocation(name), &value[0]);
+    setVec2(GetUniformLocation(name), value);
+}
+
+void Shader::setVec2(int location, const glm::vec2 &value) const
+{
+    if (location != -1)
+        m_ShaderManager.SetUniform2fv(location, &value[0]);
 }
 
 void Shader::setVec2(const std::string &name, float x, float y) const
 {
-    m_ShaderManager.SetUniform2f(GetUniformLocation(name), x, y);
+    setVec2(name, glm::vec2(x, y));
 }
 
 void Shader::setVec3(const std::string &name, const glm::vec3 &value) const
 {
-    m_ShaderManager.SetUniform3fv(GetUniformLocation(name), &value[0]);
+    setVec3(GetUniformLocation(name), value);
+}
+
+void Shader::setVec3(int location, const glm::vec3 &value) const
+{
+    if (location != -1)
+        m_ShaderManager.SetUniform3fv(location, &value[0]);
 }
 
 void Shader::setVec3(const std::string &name, float x, float y, float z) const
 {
-    m_ShaderManager.SetUniform3f(GetUniformLocation(name), x, y, z);
+    setVec3(name, glm::vec3(x, y, z));
 }
 
 void Shader::setVec4(const std::string &name, const glm::vec4 &value) const
 {
-    m_ShaderManager.SetUniform4fv(GetUniformLocation(name), &value[0]);
+    setVec4(GetUniformLocation(name), value);
 }
 
-void Shader::setVec4(const std::string &name, float x, float y, float z, float w)
+void Shader::setVec4(int location, const glm::vec4 &value) const
 {
-    m_ShaderManager.SetUniform4f(GetUniformLocation(name), x, y, z, w);
+    if (location != -1)
+        m_ShaderManager.SetUniform4fv(location, &value[0]);
+}
+
+void Shader::setVec4(const std::string &name, float x, float y, float z, float w) const
+{
+    setVec4(name, glm::vec4(x, y, z, w));
 }
 
 void Shader::setMat2(const std::string &name, const glm::mat2 &mat) const
 {
-    m_ShaderManager.SetUniformMatrix2fv(GetUniformLocation(name), &mat[0][0]);
+    int loc = GetUniformLocation(name);
+    if (loc != -1)
+        m_ShaderManager.SetUniformMatrix2fv(loc, &mat[0][0]);
 }
 
 void Shader::setMat3(const std::string &name, const glm::mat3 &mat) const
 {
-    m_ShaderManager.SetUniformMatrix3fv(GetUniformLocation(name), &mat[0][0]);
+    int loc = GetUniformLocation(name);
+    if (loc != -1)
+        m_ShaderManager.SetUniformMatrix3fv(loc, &mat[0][0]);
 }
 
 void Shader::setMat4(const std::string &name, const glm::mat4 &mat) const
 {
-    m_ShaderManager.SetUniformMatrix4fv(GetUniformLocation(name), &mat[0][0]);
+    setMat4(GetUniformLocation(name), mat);
+}
+
+void Shader::setMat4(int location, const glm::mat4 &mat) const
+{
+    if (location != -1)
+        m_ShaderManager.SetUniformMatrix4fv(location, &mat[0][0]);
 }
 
 void Shader::setMat4Array(const std::string &name, const std::vector<glm::mat4> &matrices) const
 {
-    if (matrices.empty()) return;
-    int loc = GetUniformLocation(name);
-    if (loc != -1)
-    {
-        int count = static_cast<int>(matrices.size());
-        if (count > 128) count = 128;
-        m_ShaderManager.SetUniformMatrix4fvArray(loc, count, &matrices[0][0][0]);
-    }
+    setMat4Array(GetUniformLocation(name), matrices);
+}
+
+void Shader::setMat4Array(int location, const std::vector<glm::mat4> &matrices) const
+{
+    if (matrices.empty() || location == -1) return;
+    int count = static_cast<int>(matrices.size());
+    if (count > 128) count = 128;
+
+    m_ShaderManager.SetUniformMatrix4fvArray(location, count, &matrices[0][0][0]);
 }
 
 void Shader::setCustomPorts(const ShaderPorts& ports) const
@@ -193,6 +249,7 @@ void Shader::setCustomPorts(const ShaderPorts& ports) const
     int loc = GetUniformLocation("u_CustomPorts");
     if (loc != -1)
     {
+
         m_ShaderManager.SetUniform1fv(loc, 8, ports.data);
     }
 }
@@ -200,14 +257,14 @@ void Shader::setCustomPorts(const ShaderPorts& ports) const
 int Shader::GetUniformLocation(const std::string &name) const
 {
     std::lock_guard<std::mutex> lock(m_UniformMutex);
-    if (uniformLocations.find(name) != uniformLocations.end())
-        return uniformLocations[name];
+    auto it = m_UniformLocations.find(name);
+    if (it != m_UniformLocations.end())
+        return it->second;
 
     int location = m_ShaderManager.GetUniformLocation(ID, name.c_str());
-    uniformLocations[name] = location;
+    m_UniformLocations[name] = location;
     return location;
 }
-
 
 void Shader::checkCompileErrors(unsigned int shader, std::string type)
 {

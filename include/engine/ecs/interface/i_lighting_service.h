@@ -3,9 +3,7 @@
 
 struct Scene;
 
-/**
- * @brief Service interface for the lighting system.
- */
+
 class ILightingService : virtual public IBaseSystem
 {
 public:

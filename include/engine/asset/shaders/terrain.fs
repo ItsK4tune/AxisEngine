@@ -5,14 +5,14 @@ in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
 
-// 1. Terrain Samplers (Standardized Units 27-31)
-layout (binding = 27) uniform sampler2D splatMap;
-layout (binding = 28) uniform sampler2D textureLayer0; // Grass
-layout (binding = 29) uniform sampler2D textureLayer1; // Dirt
-layout (binding = 30) uniform sampler2D textureLayer2; // Rock
-layout (binding = 31) uniform sampler2D textureLayer3; // Snow
 
-// 2. UBO/SSBO Bindings (Standardized Binding 20-25)
+layout (binding = 27) uniform sampler2D splatMap;
+layout (binding = 28) uniform sampler2D textureLayer0;
+layout (binding = 29) uniform sampler2D textureLayer1;
+layout (binding = 30) uniform sampler2D textureLayer2;
+layout (binding = 31) uniform sampler2D textureLayer3;
+
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
@@ -44,7 +44,7 @@ uniform bool debug_noTexture;
 
 void main()
 {
-    // 1. Albedo calculation (Splatting)
+
     vec3 albedo;
     if (debug_noTexture) {
         albedo = vec3(1.0);
@@ -62,7 +62,7 @@ void main()
                  col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
     }
     
-    // 2. Simple Forward Lighting
+
     vec3 N = normalize(Normal);
     vec3 V = normalize(camera.viewPos - WorldPos);
     vec3 Lo = vec3(0.0);

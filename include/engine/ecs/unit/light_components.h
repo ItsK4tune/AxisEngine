@@ -4,7 +4,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-// --- Directional Light ---
+
 
 struct DirectionalLightComponent
 {
@@ -18,7 +18,7 @@ struct DirectionalLightComponent
     bool isCastShadow = true;
 };
 
-// --- Point Light ---
+
 
 struct PointLightComponent
 {
@@ -35,7 +35,7 @@ struct PointLightComponent
     bool isCastShadow = false;
 };
 
-// --- Spot Light ---
+
 
 struct SpotLightComponent
 {

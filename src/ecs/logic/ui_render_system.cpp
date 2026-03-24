@@ -31,15 +31,15 @@ UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screen
         }
     }
 
-    // Calculate screen space anchor points
+
     glm::vec2 anchorMinPos = parentPos + transform.anchorMin * parentSize;
     glm::vec2 anchorMaxPos = parentPos + transform.anchorMax * parentSize;
 
-    // Apply offsets
+
     glm::vec2 finalMin = anchorMinPos + transform.offsetMin;
     glm::vec2 finalMax = anchorMaxPos + transform.offsetMax;
 
-    // Final size and position (pivot-adjusted)
+
     glm::vec2 size = finalMax - finalMin;
     glm::vec2 pos = finalMin + transform.pivot * size;
 
@@ -59,7 +59,7 @@ void UIRenderSystem::RenderUI(Scene &scene, float screenWidth, float screenHeigh
     PolygonMode previousPolygonMode = renderState.GetPolygonMode();
     renderState.SetPolygonMode(CullMode::FrontAndBack, PolygonMode::Fill);
 
-    // Filter and sort by Z-Index
+
     std::vector<entt::entity> sortedEntities;
     auto view = scene.registry.view<UITransformComponent>();
     for (auto entity : view) sortedEntities.push_back(entity);
@@ -117,7 +117,7 @@ void UIRenderSystem::RenderUI(Scene &scene, float screenWidth, float screenHeigh
                 float scale = textComp->scale;
                 std::string text = textComp->text;
                 
-                // --- Simple Word Wrap (Characters based for now) ---
+
                 std::vector<std::string> lines;
                 if (textComp->wordWrap && textComp->maxWidth > 0) {
                     std::string currentLine;

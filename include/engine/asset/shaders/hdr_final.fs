@@ -9,7 +9,7 @@ uniform sampler2D bloomBlur;
 uniform float exposure;
 uniform float bloomIntensity;
 uniform float gamma;
-uniform int tonemappingMode; // 0: None, 1: Reinhard, 2: ACES
+uniform int tonemappingMode;
 
 vec3 ReinhardTonemap(vec3 color)
 {
@@ -31,20 +31,20 @@ void main()
     vec3 hdrColor = texture(screenTexture, TexCoords).rgb;
     vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
     
-    // Add bloom
+
     hdrColor += bloomColor * bloomIntensity;
 
-    // Exposure reinforcement
+
     vec3 result = hdrColor * exposure;
 
-    // Tonemapping
+
     if (tonemappingMode == 1) {
         result = ReinhardTonemap(result);
     } else if (tonemappingMode == 2) {
         result = ACESFilm(result);
     }
 
-    // Gamma correction
+
     result = pow(result, vec3(1.0 / gamma));
 
     FragColor = vec4(result, 1.0);

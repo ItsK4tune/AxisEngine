@@ -13,7 +13,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-// --- Audio ---
+
 
 struct AudioSourceComponent
 {
@@ -37,7 +37,7 @@ struct AudioSourceComponent
     glm::vec3 velocity = glm::vec3(0.0f);
 };
 
-// --- Video ---
+
 
 struct VideoPlayerComponent
 {
@@ -59,7 +59,7 @@ struct VideoPlayerComponent
     void Seek(double time);
 };
 
-// --- Animation ---
+
 
 struct AnimationComponent
 {
@@ -73,7 +73,7 @@ struct AnimationComponent
     std::vector<glm::mat4> boneMatrices;
 };
 
-// --- Particle ---
+
 
 struct ParticleEmitterComponent
 {

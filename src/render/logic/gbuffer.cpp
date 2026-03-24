@@ -36,9 +36,9 @@ void GBuffer::Shutdown()
 void GBuffer::Resize(int width, int height)
 {
     if (m_Width == width && m_Height == height) {
-        // Even if w/h match, we might have a different renderScale now.
-        // We can either pass scale here or rely on m_RenderScale being set before.
-        // For safety, we only return if nothing changed.
+
+
+
     }
     m_Width = width;
     m_Height = height;
@@ -51,7 +51,7 @@ void GBuffer::BindForWriting()
     auto& rtm = m_Context->GetRenderTargetManager();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_FBO->Get());
     
-    // Always ensure all 4 buffers are enabled for the geometry pass
+
     FramebufferAttachment attachments[] = { 
         FramebufferAttachment::Color0, 
         FramebufferAttachment::Color1, 
@@ -86,7 +86,7 @@ void GBuffer::CreateTextures()
 
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_FBO->Get());
 
-    // Position color buffer
+
     m_PositionTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_PositionTexture->Get());
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::Float, nullptr);
@@ -94,7 +94,7 @@ void GBuffer::CreateTextures()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D, m_PositionTexture->Get(), 0);
 
-    // Normal color buffer
+
     m_NormalTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_NormalTexture->Get());
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::Float, nullptr);
@@ -102,7 +102,7 @@ void GBuffer::CreateTextures()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color1, TextureType::Texture2D, m_NormalTexture->Get(), 0);
     
-    // Albedo + Specular color buffer
+
     m_AlbedoSpecTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_AlbedoSpecTexture->Get());
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::UnsignedByte, nullptr);
@@ -110,7 +110,7 @@ void GBuffer::CreateTextures()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color2, TextureType::Texture2D, m_AlbedoSpecTexture->Get(), 0);
 
-    // Entity ID color buffer
+
     m_IDTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_IDTexture->Get());
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::R32UI, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::Red_Integer, DataType::UnsignedInt, nullptr);
@@ -118,7 +118,7 @@ void GBuffer::CreateTextures()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color3, TextureType::Texture2D, m_IDTexture->Get(), 0);
 
-    // Tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
+
     FramebufferAttachment attachments[] = { 
         FramebufferAttachment::Color0, 
         FramebufferAttachment::Color1, 

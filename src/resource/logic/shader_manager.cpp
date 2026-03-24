@@ -20,7 +20,7 @@ std::shared_ptr<Shader> ShaderManager::Load(const std::string& name,
     auto shader = std::make_shared<Shader>(m_LowLevelManager);
     shader->SetName(name);
     
-    // Shader::load returns void and handles its own errors via logging/exceptions
+
     shader->load(vsPath.c_str(), fsPath.c_str(), gsPath.empty() ? nullptr : gsPath.c_str());
     
     m_Cache.Add(name, shader);

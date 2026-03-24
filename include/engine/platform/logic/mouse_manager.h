@@ -25,12 +25,12 @@ public:
     float GetLastX() const;
     float GetLastY() const;
 
-    // Streamlined getters
+
     bool IsButtonPressed(Mouse button) const  { return m_CurrentButtons.test((size_t)button); }
     bool IsMouseClicked(Mouse button) const   { return m_CurrentButtons.test((size_t)button) && !m_PreviousButtons.test((size_t)button); }
     bool IsMouseReleased(Mouse button) const  { return !m_CurrentButtons.test((size_t)button) && m_PreviousButtons.test((size_t)button); }
 
-    // Legacy wrappers for compatibility
+
     bool IsLeftButtonPressed() const { return IsButtonPressed(Mouse::Left); }
     bool IsRightButtonPressed() const { return IsButtonPressed(Mouse::Right); }
     bool IsMiddleButtonPressed() const { return IsButtonPressed(Mouse::Middle); }

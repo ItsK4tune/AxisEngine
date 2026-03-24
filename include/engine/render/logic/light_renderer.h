@@ -13,7 +13,7 @@ class Shader;
 #define GLM_ENABLE_EXPERIMENTAL
 
 
-// Structs are now in graphics_types.h
+
 
 class LightRenderer
 {
