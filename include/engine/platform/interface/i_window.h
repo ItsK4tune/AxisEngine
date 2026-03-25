@@ -34,6 +34,7 @@ public:
     virtual std::vector<MonitorInfo> GetMonitors() const = 0;
 
     virtual void SetCursorMode(CursorMode mode) = 0;
+    virtual void SetAspectRatio(int numerator, int denominator) = 0;
 
     virtual void* GetNativeWindow() const = 0;
 

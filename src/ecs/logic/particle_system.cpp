@@ -99,7 +99,6 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
 
     shader->use();
 
-
     rsm.SetViewport(0, 0, width, height);
 
     auto view = scene.registry.view<ParticleEmitterComponent>();

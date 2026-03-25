@@ -27,14 +27,11 @@ public:
     std::string GetName() const override { return "DecalSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update; }
     void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
-
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;
 
-
     uint32_t LoadDecalTexture(const std::string& path);
     void FlushDecals(Scene& scene);
-    
 
     void SetAllowedTags(const std::vector<std::string>& tags) { m_AllowedTags = tags; }
     uint32_t GetTagBit(const std::string& tag);
@@ -59,6 +56,8 @@ private:
     class IGeometryService* m_GeoService = nullptr;
     class IRenderService* m_RenderService = nullptr;
     class IGraphicsContext* m_GraphicsContext = nullptr;
+    int m_ScreenWidth = 800;
+    int m_ScreenHeight = 600;
 
     void UpdateTagMap(Scene& scene);
     uint32_t GetBitmask(const std::vector<std::string>& tags);

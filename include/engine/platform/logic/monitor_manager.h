@@ -47,6 +47,7 @@ private:
     WindowMode m_lastSpecialMode = WindowMode::Fullscreen;
 
     WindowMode m_Mode = WindowMode::Windowed;
+    WindowMode m_initialMode = WindowMode::Windowed;
     int m_MonitorIndex = 0;
     int m_RefreshRate = 0;
     int m_FrameRateLimit = 0;

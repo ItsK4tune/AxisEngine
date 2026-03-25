@@ -49,6 +49,10 @@ axis_scene:
       vertex: include/engine/asset/shaders/decal.vs
       fragment: include/engine/asset/shaders/decal.fs
     Shader:
+      Name: decal_forward
+      vertex: include/engine/asset/shaders/decal_forward.vs
+      fragment: include/engine/asset/shaders/decal_forward.fs
+    Shader:
       Name: deferred_light
       vertex: include/engine/asset/shaders/fxaa.vs
       fragment: include/engine/asset/shaders/deferred_light.fs

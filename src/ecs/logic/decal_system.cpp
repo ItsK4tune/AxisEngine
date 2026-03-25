@@ -73,6 +73,8 @@ void DecalSystem::Update(Scene &scene, float dt)
 void DecalSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
 {
     if (!m_Enabled) return;
+    m_ScreenWidth = width;
+    m_ScreenHeight = height;
     Render(scene);
 }
 
@@ -126,7 +128,8 @@ void DecalSystem::Render(Scene &scene)
         
         sm.SetCullFace(CullMode::Front);
         sm.SetDepthFunc(CompareFunc::Always);
-        sm.Disable(ServerCapability::Blend); // Temporarily disable blend to see if it shows up solid
+        sm.Enable(ServerCapability::Blend); 
+        sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         sm.Disable(ServerCapability::DepthTest);
         sm.SetDepthMask(false);
         sm.Disable(ServerCapability::CullFace); 
@@ -137,16 +140,24 @@ void DecalSystem::Render(Scene &scene)
         uint32_t fbo = rs ? rs->GetMainFBO() : 0;
         gc.GetRenderTargetManager().BindFramebuffer(FramebufferTarget::Framebuffer, fbo);
 
+        sm.Enable(ServerCapability::Blend);
+        sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         sm.Disable(ServerCapability::CullFace);
-        sm.SetDepthFunc(CompareFunc::Less);
-        sm.SetViewport(0, 0, cam.screenWidth, cam.screenHeight);
+        sm.SetDepthFunc(CompareFunc::Lequal); // Changed from Less to Lequal
+        sm.SetDepthMask(false);
+        sm.SetViewport(0, 0, m_ScreenWidth, m_ScreenHeight);
         sm.SetColorMask(true, true, true, true);
     }
 
     shader->setUInt("allowedTagsMask", 0xFFFFFFFF);
     shader->setVec4("tintColor", glm::vec4(1.0f));
+    shader->setVec4("u_TintColor", glm::vec4(1.0f));
+    shader->setVec4("u_Color", glm::vec4(1.0f));
+    
     shader->setMat4("view", cam.viewMatrix);
     shader->setMat4("projection", cam.projectionMatrix);
+    shader->setMat4("u_View", cam.viewMatrix);
+    shader->setMat4("u_Projection", cam.projectionMatrix);
     
     auto& sl = ServiceLocator::Instance();
     auto& core = sl.Require<RenderCore>();
@@ -159,7 +170,7 @@ void DecalSystem::Render(Scene &scene)
         bm.BindBuffer(BufferType::ElementArrayBuffer, core.GetQuadEBO());
     }
     
-    auto view = scene.registry.view<DecalComponent, PositionComponent, RotationComponent, ScaleComponent>();
+    auto view = scene.registry.view<DecalComponent, PositionComponent>();
     
     std::vector<entt::entity> sortedEntities;
     sortedEntities.reserve(view.size_hint());
@@ -172,28 +183,40 @@ void DecalSystem::Render(Scene &scene)
     for (auto entity : sortedEntities) {
         auto &decal = view.get<DecalComponent>(entity);
         auto &pos = view.get<PositionComponent>(entity);
-        auto &rot = view.get<RotationComponent>(entity);
-        auto &scale = view.get<ScaleComponent>(entity);
+        
+        // Use try_get for components that might be missing
+        auto *rotComp = scene.registry.try_get<RotationComponent>(entity);
+        auto *scaleComp = scene.registry.try_get<ScaleComponent>(entity);
+        
+        glm::quat rotation = rotComp ? rotComp->value : glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        glm::vec3 scale = scaleComp ? scaleComp->value : glm::vec3(1.0f);
         
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos.value) *
-                          glm::mat4_cast(rot.value) *
-                          glm::scale(glm::mat4(1.0f), scale.value);
+                          glm::mat4_cast(rotation) *
+                          glm::scale(glm::mat4(1.0f), scale);
         
         shader->setMat4("model", model);
+        shader->setMat4("u_Model", model);
         shader->setMat4("invModel", glm::inverse(cam.projectionMatrix * cam.viewMatrix * model));
         shader->setFloat("opacity", decal.opacity);
+        shader->setFloat("u_Opacity", decal.opacity);
+        shader->setFloat("u_Alpha", decal.opacity);
         
-        tm.ActiveTexture(TextureUnit::Texture3);
-        tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
-        shader->setInt("decalAlbedo", 3);
-
         if (isDeferred) {
+            tm.ActiveTexture(TextureUnit::Texture3);
+            tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
+            shader->setInt("decalAlbedo", 3);
             dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, 0);
         } else {
+            tm.ActiveTexture(TextureUnit::Texture0);
+            tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
+            shader->setInt("decalAlbedo", 0);
+            shader->setInt("u_Texture", 0);
+            shader->setInt("u_Texture0", 0);
             dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, 0);
         }
     }
-
+    
     if (isDeferred) {
         geoSys->EndDecalPass(m_RenderService ? m_RenderService->GetMainFBO() : 0);
     }

@@ -30,8 +30,6 @@ class Shader;
 class ShadowRenderer;
 class MaterialRenderer;
 
-
-
 class RenderSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem, public IRenderService
 {
 public:
@@ -110,7 +108,7 @@ public:
 private:
     StaticBatchManager m_BatchManager;
     RenderQueue m_RenderQueueObj;
-private:
+
     int m_RenderedCount = 0;
 
     bool m_Enabled = true;
@@ -122,7 +120,6 @@ private:
     bool m_RenderOrderEnabled = true;
     uint32_t m_FilterLayerMask = 0xFFFFFFFF;
 
-private:
     float m_DistanceCullingSq = 0.0f;
     RenderPath m_CachedRenderPath = RenderPath::Deferred;
 

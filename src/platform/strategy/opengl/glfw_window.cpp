@@ -134,6 +134,12 @@ void GLFWWindow::SetCursorMode(CursorMode mode) {
     glfwSetInputMode(m_Window, GLFW_CURSOR, glfwMode);
 }
 
+void GLFWWindow::SetAspectRatio(int numerator, int denominator) {
+    if (m_Window) {
+        glfwSetWindowAspectRatio(m_Window, numerator, denominator);
+    }
+}
+
 void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex, int refreshRate) {
     if (!m_Window) return;
 
@@ -158,6 +164,9 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
 
     if (mode == WindowMode::Fullscreen) {
         glfwSetWindowMonitor(m_Window, targetMonitor, 0, 0, width, height, targetRefreshRate);
+        m_Width = width;
+        m_Height = height;
+        if (m_ResizeCallback) m_ResizeCallback(m_Width, m_Height);
         LOGGER_INFO("GLFWWindow") << "Window set to Exclusive Fullscreen: " << width << "x" << height << "@" << targetRefreshRate;
     } else if (mode == WindowMode::BorderlessFullscreen) {
         glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_FALSE);
@@ -165,6 +174,7 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
         m_Width = videoMode->width;
         m_Height = videoMode->height;
+        if (m_ResizeCallback) m_ResizeCallback(m_Width, m_Height);
         glfwSetWindowMonitor(m_Window, nullptr, xpos, ypos, m_Width, m_Height, GLFW_DONT_CARE);
         LOGGER_INFO("GLFWWindow") << "Window set to Borderless Fullscreen: " << m_Width << "x" << m_Height;
     } else if (mode == WindowMode::Borderless) {
@@ -178,6 +188,7 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         glfwSetWindowMonitor(m_Window, nullptr, cx, cy, width, height, GLFW_DONT_CARE);
         m_Width = width;
         m_Height = height;
+        if (m_ResizeCallback) m_ResizeCallback(m_Width, m_Height);
         LOGGER_INFO("GLFWWindow") << "Window set to Borderless: " << width << "x" << height << " at (" << cx << "," << cy << ")";
     } else {
         glfwSetWindowAttrib(m_Window, GLFW_DECORATED, GLFW_TRUE);
@@ -185,6 +196,9 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         int xpos, ypos;
         glfwGetMonitorPos(targetMonitor, &xpos, &ypos);
         
+        if (width <= 100) width = 1280;
+        if (height <= 100) height = 720;
+
         int cx = xpos + (videoMode->width - width) / 2;
         int cy = ypos + (videoMode->height - height) / 2;
         
@@ -197,6 +211,9 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
 
         m_Width = width;
         m_Height = height;
+
+        // Force a viewport update
+        if (m_ResizeCallback) m_ResizeCallback(m_Width, m_Height);
 
         LOGGER_INFO("GLFWWindow") << "Window set to Windowed: " << width << "x" << height << " at (" << cx << "," << cy << ")";
     }

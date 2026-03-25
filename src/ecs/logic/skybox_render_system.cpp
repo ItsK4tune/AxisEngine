@@ -65,7 +65,7 @@ void SkyboxRenderSystem::RenderAlphaPass(Scene &scene, int width, int height, fl
     auto& rtm = m_Context->GetRenderTargetManager();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
 
-    rsm.SetViewport(0, 0, camera.screenWidth, camera.screenHeight);
+    rsm.SetViewport(0, 0, width, height);
     rsm.SetDepthFunc(CompareFunc::Lequal);
 
     auto activeSkybox = EntityManager::GetActiveSkybox(scene);

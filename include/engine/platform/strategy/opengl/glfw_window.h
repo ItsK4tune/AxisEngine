@@ -32,6 +32,7 @@ public:
     std::vector<DeviceInfo> GetConnectedDevices() const override;
 
     void SetCursorMode(CursorMode mode) override;
+    void SetAspectRatio(int numerator, int denominator) override;
 
     void* GetNativeWindow() const override;
 

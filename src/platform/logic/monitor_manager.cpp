@@ -4,7 +4,10 @@
 #include <core/logic/logger.h>
 
 MonitorManager::MonitorManager()
+    : m_Width(1280), m_Height(720), m_lastWindowedWidth(1280), m_lastWindowedHeight(720)
+    , m_lastSpecialWidth(1920), m_lastSpecialHeight(1080)
 {
+    m_initialMode = m_Mode;
 }
 
 MonitorManager::~MonitorManager()
@@ -22,7 +25,11 @@ bool MonitorManager::Initialize(std::unique_ptr<IWindow> window)
         return false;
     }
 
-    m_Window->SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
+    if (m_Width <= 0) m_Width = 1280;
+    if (m_Height <= 0) m_Height = 720;
+
+    m_initialMode = m_Mode;
+    SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
 
     return true;
 }
@@ -52,6 +59,15 @@ void MonitorManager::SetWindowConfiguration(int width, int height, WindowMode mo
         m_Window->SetWindowConfiguration(width, height, mode, monitorIndex, refreshRate);
         m_Width = m_Window->GetWidth();
         m_Height = m_Window->GetHeight();
+        
+        if (mode == WindowMode::Windowed && m_Width > 0 && m_Height > 0)
+        {
+            m_Window->SetAspectRatio(m_Width, m_Height);
+        }
+        else if (m_Window)
+        {
+            m_Window->SetAspectRatio(0, 0); // No constraint for fullscreen
+        }
     }
 }
 
@@ -170,12 +186,31 @@ bool MonitorManager::SetActiveDevice(const std::string& deviceId)
 
 void MonitorManager::ToggleFullscreen()
 {
+    if (m_Mode != m_initialMode)
+    {
+        // Return to initial mode
+        SetWindowConfiguration(m_lastWindowedWidth, m_lastWindowedHeight, m_initialMode, m_MonitorIndex, m_RefreshRate);
+        return;
+    }
+
     if (m_Mode == WindowMode::Windowed)
     {
-        SetWindowConfiguration(m_lastSpecialWidth, m_lastSpecialHeight, m_lastSpecialMode, m_MonitorIndex, 0);
+        SetWindowConfiguration(m_Width, m_Height, WindowMode::Fullscreen, m_MonitorIndex, 0);
     }
-    else
+    else if (m_Mode == WindowMode::Fullscreen)
     {
-        SetWindowConfiguration(m_lastWindowedWidth, m_lastWindowedHeight, WindowMode::Windowed, m_MonitorIndex, 0);
+        SetWindowConfiguration(m_Width, m_Height, WindowMode::Windowed, m_MonitorIndex, 0);
+    }
+    else if (m_Mode == WindowMode::BorderlessFullscreen || m_Mode == WindowMode::Borderless)
+    {
+        int nativeW = 1920, nativeH = 1080;
+        if (m_Window) {
+            auto monitors = m_Window->GetMonitors();
+            if (m_MonitorIndex >= 0 && m_MonitorIndex < monitors.size()) {
+                nativeW = monitors[m_MonitorIndex].width;
+                nativeH = monitors[m_MonitorIndex].height;
+            }
+        }
+        SetWindowConfiguration(nativeW, nativeH, WindowMode::Windowed, m_MonitorIndex, 0);
     }
 }

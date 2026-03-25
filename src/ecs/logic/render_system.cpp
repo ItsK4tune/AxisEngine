@@ -121,38 +121,6 @@ void RenderSystem::Render(Scene& scene)
         LOGGER_INFO("RenderSystem") << "Final Render Pass: m_MainFBO=" << m_MainFBO;
         firstLog = false;
     }
-
-    // --- DEBUG: Draw a red triangle on screen to verify pipeline ---
-    if (m_UnlitShader) {
-        static uint32_t debugVAO = 0;
-        static uint32_t debugVBO = 0;
-        if (debugVAO == 0) {
-            float tri[] = { -0.5f, -0.5f, 0, 0.5f, -0.5f, 0, 0, 0.5f, 0 };
-            debugVAO = bm.GenVertexArray();
-            debugVBO = bm.GenBuffer();
-            bm.BindVertexArray(debugVAO);
-            bm.BindBuffer(BufferType::ArrayBuffer, debugVBO);
-            bm.BufferData(BufferType::ArrayBuffer, sizeof(tri), tri, BufferUsage::StaticDraw);
-            bm.EnableVertexAttribArray(0);
-            bm.VertexAttribPointer(0, 3, DataType::Float, false, 0, 0);
-        }
-        auto& rsm = context.GetRenderStateManager();
-        auto& rtm = context.GetRenderTargetManager();
-        auto& dc = context.GetDrawContext();
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
-        rsm.Disable(ServerCapability::DepthTest);
-        rsm.Disable(ServerCapability::CullFace);
-        m_UnlitShader->use();
-        m_UnlitShader->setVec4("tintColor", glm::vec4(1, 0, 0, 1)); // Correct uniform name
-        m_UnlitShader->setBool("debug_noTexture", true); // Ensure no texture sampling
-        m_UnlitShader->setBool("u_isWireframe", false);
-        m_UnlitShader->setMat4("model", glm::mat4(1.0f));
-        m_UnlitShader->setMat4("view", glm::mat4(1.0f));
-        m_UnlitShader->setMat4("projection", glm::mat4(1.0f));
-        bm.BindVertexArray(debugVAO);
-        dc.DrawArrays(Primitive::Triangles, 0, 3);
-        bm.BindVertexArray(0);
-    }
 }
 
 void RenderSystem::RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState)

@@ -13,6 +13,7 @@
 #include <ecs/logic/physics_system.h>
 #include <ecs/logic/render_system.h>
 #include <ecs/logic/post_process_system.h>
+#include <ecs/logic/geometry_system.h>
 #include <ecs/logic/audio_system.h>
 #include <ecs/logic/particle_system.h>
 #include <ecs/logic/animation_system.h>
@@ -163,7 +164,9 @@ bool Application::Initialize(const AppConfig &config)
         return false;
     }
 
-
+    // Sync config with actual window size (in case it differs from requested)
+    auto& mm = m_IOHandler->GetMonitorManager();
+    m_ConfigManager->SetResolution(mm.GetWidth(), mm.GetHeight());
 
     auto &context = m_IOHandler->GetGraphicsContext();
     RendererInitializer::Initialize(context);
@@ -326,9 +329,12 @@ void Application::OnResize(int width, int height)
     auto* sm = sl.Resolve<SystemManager>();
     if (!sm) return;
 
-
     if (auto* pps = sm->GetSystem<PostProcessSystem>()) {
         pps->GetPipeline().Resize(width, height);
+    }
+
+    if (auto* gs = sm->GetSystem<GeometrySystem>()) {
+        gs->GetGBuffer().Resize(width, height);
     }
     
 
