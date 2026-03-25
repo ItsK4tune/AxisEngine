@@ -25,6 +25,7 @@
 #include <ecs/logic/entity_manager.h>
 #include <render/interface/i_render_target_manager.h>
 #include <core/logic/service_locator.h>
+#include <render/logic/render_core.h>
 #include <core/logic/event_system.h>
 #include <core/type/app_config.h>
 #include <core/logic/config_manager.h>
@@ -36,6 +37,7 @@
 #include <platform/logic/io_handler.h>
 #include <render/logic/shadow_renderer.h>
 #include <render/logic/material_renderer.h>
+#include <render/logic/render_core.h>
 
 void RenderSystem::Initialize()
 {
@@ -73,78 +75,87 @@ void RenderSystem::Initialize()
         this->SetDepthTest(cfg.depthTestEnabled);
     });
 
-
-
-
-    if (m_WhiteTextureID == 0)
-    {
-        auto &tm = context.GetTextureManager();
-        
-
-        m_WhiteTextureID = tm.GenTexture();
-        tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
-        unsigned char white[] = {255, 255, 255, 255};
-        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, white);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
-
-
-        m_BlackTextureID = tm.GenTexture();
-        tm.BindTexture(TextureType::Texture2D, m_BlackTextureID);
-        unsigned char black[] = {0, 0, 0, 255};
-        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, black);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
-
-
-        m_FlatNormalTextureID = tm.GenTexture();
-        tm.BindTexture(TextureType::Texture2D, m_FlatNormalTextureID);
-        unsigned char flatNormal[] = {128, 128, 255, 255};
-        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, flatNormal);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Linear);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Linear);
-    }
-
-    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
-    resources.LoadShader("unlit", "include/engine/asset/shaders/unlit.vs", "include/engine/asset/shaders/unlit.fs");
-    resources.LoadShader("occlusion", "include/engine/asset/shaders/occlusion_query.vs", "include/engine/asset/shaders/occlusion_query.fs");
-    m_UnlitShader = resources.GetShader("unlit");
-
+    auto& core = sl.Require<RenderCore>();
+    
     auto& bm = context.GetBufferManager();
     m_CameraUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUCameraData), nullptr, BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
-    
+
     m_GlobalLightUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalLightData), nullptr, BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
-    
+
     m_GlobalDataUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
     bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
+
+    bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
+    bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
-    
-    m_MaterialRenderer.Initialize(context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
-    m_OcclusionCuller.Initialize(context, resources.GetShader("occlusion"));
-    InitQuad();
+
+    m_OcclusionCuller.Initialize(context, shaderLib.GetShader("occlusion"));
+    m_UnlitShader = shaderLib.GetShader("unlitShader");
 }
 
 void RenderSystem::Update(Scene& scene, float dt)
 {
     m_CachedRenderPath = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().renderPath;
 
+    m_QueuesBuilt = false;
     m_FrameIndex++;
     m_RenderedCount = 0;
+
+    m_GlobalData.time += dt;
+    m_GlobalData.deltaTime = dt;
 }
 
 void RenderSystem::Render(Scene& scene)
 {
+    auto& sl = ServiceLocator::Instance();
+    auto& context = sl.Require<IGraphicsContext>();
+    auto& bm = context.GetBufferManager();
 
+    static bool firstLog = true;
+    if (firstLog) {
+        LOGGER_INFO("RenderSystem") << "Final Render Pass: m_MainFBO=" << m_MainFBO;
+        firstLog = false;
+    }
+
+    // --- DEBUG: Draw a red triangle on screen to verify pipeline ---
+    if (m_UnlitShader) {
+        static uint32_t debugVAO = 0;
+        static uint32_t debugVBO = 0;
+        if (debugVAO == 0) {
+            float tri[] = { -0.5f, -0.5f, 0, 0.5f, -0.5f, 0, 0, 0.5f, 0 };
+            debugVAO = bm.GenVertexArray();
+            debugVBO = bm.GenBuffer();
+            bm.BindVertexArray(debugVAO);
+            bm.BindBuffer(BufferType::ArrayBuffer, debugVBO);
+            bm.BufferData(BufferType::ArrayBuffer, sizeof(tri), tri, BufferUsage::StaticDraw);
+            bm.EnableVertexAttribArray(0);
+            bm.VertexAttribPointer(0, 3, DataType::Float, false, 0, 0);
+        }
+        auto& rsm = context.GetRenderStateManager();
+        auto& rtm = context.GetRenderTargetManager();
+        auto& dc = context.GetDrawContext();
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_MainFBO);
+        rsm.Disable(ServerCapability::DepthTest);
+        rsm.Disable(ServerCapability::CullFace);
+        m_UnlitShader->use();
+        m_UnlitShader->setVec4("tintColor", glm::vec4(1, 0, 0, 1)); // Correct uniform name
+        m_UnlitShader->setBool("debug_noTexture", true); // Ensure no texture sampling
+        m_UnlitShader->setBool("u_isWireframe", false);
+        m_UnlitShader->setMat4("model", glm::mat4(1.0f));
+        m_UnlitShader->setMat4("view", glm::mat4(1.0f));
+        m_UnlitShader->setMat4("projection", glm::mat4(1.0f));
+        bm.BindVertexArray(debugVAO);
+        dc.DrawArrays(Primitive::Triangles, 0, 3);
+        bm.BindVertexArray(0);
+    }
 }
 
-void RenderSystem::RenderUI(Scene &scene, float width, float height, IRenderStateManager &renderState)
+void RenderSystem::RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState)
 {
 
 }
@@ -153,13 +164,6 @@ void RenderSystem::Shutdown()
 {
     LOGGER_INFO("RenderSystem") << "Shutting down RenderSystem";
     m_OcclusionCuller.Shutdown();
-
-    auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
-    auto& bm = context.GetBufferManager();
-
-    if (m_QuadVAO.id != 0) bm.DeleteVertexArray(m_QuadVAO.id);
-    if (m_QuadVBO.id != 0) bm.DeleteBuffer(m_QuadVBO.id);
 }
 
 void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
@@ -179,29 +183,6 @@ void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
     }
 }
 
-void RenderSystem::InitQuad()
-{
-    float quadVertices[] = {
-
-        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-         1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-    };
-    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto& bm = context.GetBufferManager();
-    m_QuadVAO.id = bm.CreateVertexArray();
-    m_QuadVBO.id = bm.CreateBuffer();
-
-    bm.BindVertexArray(m_QuadVAO.id);
-    bm.BindBuffer(BufferType::ArrayBuffer, m_QuadVBO.id);
-    bm.BufferData(BufferType::ArrayBuffer, sizeof(quadVertices), &quadVertices, BufferUsage::StaticDraw);
-    
-    bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, 5 * sizeof(float), (void*)0);
-    bm.EnableVertexAttribArray(1);
-    bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-}
 
 void RenderSystem::SetDepthTest(bool enabled, CompareFunc func)
 {
@@ -332,29 +313,35 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     m_RenderQueueObj.Build(scene, alpha, m_FrustumCuller, m_FrustumCullingEnabled, m_OcclusionCullingEnabled, 
                            m_DistanceCullingSq, m_FilterLayerMask, cam->cullingMask, camPos);
 
-    m_LastAlpha = -1.0f;
-    m_LastWidth = -1;
-    m_LastHeight = -1;
+    static bool firstFrame = true;
+    if (firstFrame) {
+        LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque=" << m_RenderQueueObj.GetOpaqueQueue().size() 
+                                    << ", Transparent=" << m_RenderQueueObj.GetTransparentQueue().size()
+                                    << ", Camera=" << (uint32_t)camEntity;
+        
+        // Log camera matrices to see if they are zeros
+        LOGGER_INFO("RenderSystem") << "Camera View[0]: " << cam->viewMatrix[0][0] << ", " << cam->viewMatrix[0][1] << ", " << cam->viewMatrix[0][2];
+        LOGGER_INFO("RenderSystem") << "Camera Proj[0]: " << cam->projectionMatrix[0][0] << ", " << cam->projectionMatrix[0][1] << ", " << cam->projectionMatrix[0][2];
+        
+        firstFrame = false;
+    }
 
     m_QueuesBuilt = true;
     m_LastAlpha = alpha;
+    m_LastWidth = width;
+    m_LastHeight = height;
 }
 
 void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader)
 {
     if (!materialRenderer) {
-        LOGGER_ERROR("RenderSystem") << "ExecuteQueue failed: materialRenderer is null!";
-        return;
+        auto& core = ServiceLocator::Instance().Require<RenderCore>();
+        materialRenderer = &core.GetMaterialRenderer();
     }
-
-    size_t totalItems = queue.size();
-    if (totalItems == 0) return;
-
-    m_RenderedCount += (int)totalItems;
 
     Shader* lastShader = nullptr;
 
-    for (size_t i = 0; i < totalItems; i++) {
+    for (size_t i = 0; i < queue.size(); i++) {
         const auto& item = queue[i];
         entt::entity entity = item.entity;
         Model* model = item.activeModel;
@@ -416,6 +403,10 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
     }
 }
 
+unsigned int RenderSystem::GetWhiteTexture() const { return ServiceLocator::Instance().Require<RenderCore>().GetWhiteTexture(); }
+unsigned int RenderSystem::GetBlackTexture() const { return ServiceLocator::Instance().Require<RenderCore>().GetBlackTexture(); }
+unsigned int RenderSystem::GetFlatNormalTexture() const { return ServiceLocator::Instance().Require<RenderCore>().GetFlatNormalTexture(); }
+
 std::vector<entt::id_type> RenderSystem::GetReadComponents() const
 {
     return {
@@ -442,13 +433,12 @@ std::vector<entt::id_type> RenderSystem::GetWriteComponents() const
         entt::type_id<OcclusionComponent>().hash()
     };
 }
-void RenderSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
+void RenderSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
 {
-
 
 }
 
-void RenderSystem::RenderTransparent(Scene& scene, int width, int height, float alpha)
+void RenderSystem::RenderTransparentPass(Scene& scene, int width, int height, float alpha)
 {
 
 }
@@ -459,6 +449,68 @@ void RenderSystem::UpdateGlobalLightData(const GPUGlobalLightData& data)
     auto& bm = context.GetBufferManager();
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalLightData), &data);
+}
+
+void RenderSystem::SubmitCommand(const RenderDrawCommand& cmd)
+{
+    m_RenderCommandBuffer.Submit(cmd);
+}
+
+void RenderSystem::FlushCommands()
+{
+    m_RenderCommandBuffer.Sort();
+    const auto& commands = m_RenderCommandBuffer.GetCommands();
+    
+    if (commands.empty()) return;
+
+    auto& sl = ServiceLocator::Instance();
+    auto& context = sl.Require<IGraphicsContext>();
+    auto& rsm = context.GetRenderStateManager();
+    auto& bm = context.GetBufferManager();
+    auto& dc = context.GetDrawContext();
+    auto& tm = context.GetTextureManager();
+
+    uint32_t lastShader = 0;
+    uint32_t lastVAO = 0;
+
+    for (const auto& cmd : commands) {
+        if (cmd.shaderId != lastShader) {
+            if (cmd.shader) cmd.shader->use();
+            lastShader = cmd.shaderId;
+        }
+        
+        if (cmd.vao != lastVAO) {
+            bm.BindVertexArray(cmd.vao);
+            lastVAO = cmd.vao;
+        }
+        
+        if (cmd.shader) {
+            cmd.shader->setMat4("model", cmd.modelMatrix);
+            if (cmd.texture0 != 0) {
+                tm.ActiveTexture(TextureUnit::Texture0);
+                tm.BindTexture(TextureType::Texture2D, cmd.texture0);
+                cmd.shader->setInt("u_Texture0", 0);
+            }
+            cmd.shader->setVec4("u_TintColor", cmd.tintColor);
+            
+            for (const auto& kv : cmd.uintUniforms) {
+                cmd.shader->setUInt(kv.first, kv.second);
+            }
+            for (const auto& kv : cmd.floatUniforms) {
+                cmd.shader->setFloat(kv.first, kv.second);
+            }
+        }
+        
+        if (cmd.ebo != 0) {
+            bm.BindBuffer(BufferType::ElementArrayBuffer, cmd.ebo);
+            dc.DrawElements(Primitive::Triangles, cmd.count, DataType::UnsignedInt, 0);
+        } else {
+            dc.DrawArrays(Primitive::Triangles, 0, cmd.count);
+        }
+    }
+    
+    m_RenderCommandBuffer.Clear();
+    bm.BindVertexArray(0);
 }
 
 

@@ -25,7 +25,8 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 82; }
     std::string GetName() const override { return "DecalSystem"; }
-    void RenderAlpha(Scene &scene, int width, int height, float alpha) override;
+    SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update; }
+    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
 
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;
@@ -47,14 +48,6 @@ private:
     std::shared_ptr<Shader> m_DecalShader;
     std::shared_ptr<Shader> m_ForwardShader;
     
-    GpuHandle m_CubeVAO = 0;
-    GpuHandle m_CubeVBO = 0;
-    GpuHandle m_CubeEBO = 0;
-    
-    GpuHandle m_QuadVAO = 0;
-    GpuHandle m_QuadVBO = 0;
-    GpuHandle m_QuadEBO = 0;
-    
     std::vector<std::string> m_AllowedTags;
     std::map<std::string, uint32_t> m_TagBitMap;
     unsigned int m_TagMapTexture = 0;
@@ -67,8 +60,6 @@ private:
     class IRenderService* m_RenderService = nullptr;
     class IGraphicsContext* m_GraphicsContext = nullptr;
 
-    void InitCubeMesh();
-    void InitQuadMesh();
     void UpdateTagMap(Scene& scene);
     uint32_t GetBitmask(const std::vector<std::string>& tags);
 };

@@ -10,31 +10,27 @@
 #include <ecs/interface/i_lighting_service.h>
 #include <ecs/interface/i_skybox_service.h>
 #include <ecs/interface/i_ui_service.h>
-#include <ecs/logic/dummy_test_system.h>
 #include <ecs/logic/render_system.h>
 #include <ecs/logic/geometry_system.h>
 #include <ecs/logic/lighting_system.h>
 #include <ecs/logic/shadow_system.h>
 #include <ecs/logic/skybox_render_system.h>
 #include <ecs/logic/ui_render_system.h>
+#include <ecs/logic/post_process_system.h>
+#include <ecs/logic/decal_system.h>
+#include <ecs/logic/transparent_system.h>
+#include <ecs/logic/terrain_system.h>
 #include <ecs/logic/physics_system.h>
 #include <ecs/logic/transform_system.h>
 #include <ecs/logic/animation_system.h>
 #include <ecs/logic/scriptable_system.h>
+#include <ecs/logic/video_system.h>
 #include <ecs/logic/audio_system.h>
 #include <ecs/logic/particle_system.h>
+#include <ecs/logic/dummy_test_system.h>
 #include <navigation/logic/navigation_system.h>
-#include <ecs/logic/transparent_system.h>
-#include <ecs/logic/post_process_system.h>
-#include <ecs/logic/terrain_system.h>
-#include <ecs/logic/decal_system.h>
-#include <ecs/logic/video_system.h>
+#include <render/logic/render_core.h>
 #include <ecs/logic/streaming_system.h>
-
-#include <platform/logic/input_manager.h>
-#include <render/interface/i_buffer_manager.h>
-#include <render/interface/i_draw_context.h>
-#include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_shader_manager.h>
@@ -44,9 +40,9 @@
 #include <scene/logic/scene.h>
 #include <core/logic/logger.h>
 #include <algorithm>
+
 #ifdef ENABLE_DEBUG_SYSTEM
 #include <ecs/logic/debug/debug_system.h>
-#else
 #endif
 
 SystemManager::SystemManager()
@@ -74,7 +70,16 @@ void SystemManager::RegisterSystem(std::unique_ptr<IBaseSystem> system)
         std::sort(m_RenderSystems.begin(), m_RenderSystems.end(), [](IRenderSystem* a, IRenderSystem* b) {
             return a->GetPriority() < b->GetPriority();
         });
-    }
+        std::sort(m_RenderUISystems.begin(), m_RenderUISystems.end(), [](IRenderSystem* a, IRenderSystem* b) {
+        return a->GetPriority() < b->GetPriority();
+    });
+    std::sort(m_RenderCaptureSystems.begin(), m_RenderCaptureSystems.end(), [](IRenderSystem* a, IRenderSystem* b) {
+        return a->GetPriority() < b->GetPriority();
+    });
+    std::sort(m_PostProcessSystems.begin(), m_PostProcessSystems.end(), [](IRenderSystem* a, IRenderSystem* b) {
+        return a->GetPriority() < b->GetPriority();
+    });
+}
 
 
     std::sort(m_Systems.begin(), m_Systems.end(), [](const std::unique_ptr<IBaseSystem>& a, const std::unique_ptr<IBaseSystem>& b) {
@@ -121,12 +126,10 @@ void SystemManager::CreateSystems()
     RegisterSystem(std::make_unique<DebugSystem>());
 #endif
 
-
     auto& sl = ServiceLocator::Instance();
     for (auto& sys : m_Systems) {
         sl.Register<IBaseSystem>(sys->GetName(), sys.get());
     }
-
 
     sl.Register<PhysicsSystem>(GetSystem<PhysicsSystem>());
     sl.Register<IRenderService>(GetSystem<RenderSystem>());
@@ -139,49 +142,63 @@ void SystemManager::CreateSystems()
     sl.Register<ILightingService>(GetSystem<LightingSystem>());
     sl.Register<ISkyboxService>(GetSystem<SkyboxRenderSystem>());
     sl.Register<IUIService>(GetSystem<UIRenderSystem>());
+
+    auto& context = sl.Require<IGraphicsContext>();
+    m_RenderCore = std::make_unique<RenderCore>();
+    m_RenderCore->Initialize(context);
+    sl.Register<RenderCore>(m_RenderCore.get());
 }
 
 void SystemManager::InitializeSystems(ResourceManager &res, int width, int height)
 {
     LOGGER_INFO("SystemManager") << "Initializing systems...";
 
-    for (auto& sys : m_Systems) {
-        sys->Initialize();
-    }
-
-    RebuildExecutionBatches();
-
+    m_UpdateSystems.clear();
+    m_RenderSystems.clear();
     m_RenderAlphaSystems.clear();
     m_RenderTransparentSystems.clear();
     m_RenderMainSystems.clear();
     m_RenderUISystems.clear();
+    m_RenderCaptureSystems.clear();
+    m_PostProcessSystems.clear();
     
-    for (auto* sys : m_RenderSystems) {
-        const std::string& name = sys->GetName();
-
-        if (name == "GeometrySystem" || name == "LightingSystem") {
-            m_RenderAlphaSystems.push_back(sys);
+    for (auto& sys : m_Systems) {
+        sys->Initialize();
+        
+        SystemCategory cat = sys->GetCategory();
+        
+        if ((cat & SystemCategory::Update) != SystemCategory::None) {
+            if (auto* updateSys = dynamic_cast<IUpdateSystem*>(sys.get())) {
+                m_UpdateSystems.push_back(updateSys);
+            }
         }
 
-        if (name == "TransparentSystem" || name == "RenderSystem") {
-            m_RenderTransparentSystems.push_back(sys);
-        }
-
-        if (name == "ShadowSystem" || name == "SkyboxRenderSystem" || 
-            name == "ParticleSystem" || name == "TerrainSystem" ||
-            name == "VideoSystem" || name == "RenderSystem") {
-            m_RenderMainSystems.push_back(sys);
-        }
-
-        if (name == "UIRenderSystem") {
-            m_RenderUISystems.push_back(sys);
+        if (auto* renderSys = dynamic_cast<IRenderSystem*>(sys.get())) {
+            m_RenderSystems.push_back(renderSys);
+            if ((cat & SystemCategory::RenderAlpha) != SystemCategory::None) { m_RenderAlphaSystems.push_back(renderSys); LOGGER_INFO("SystemManager") << "Registered " << sys->GetName() << " as RenderAlpha"; }
+            if ((cat & SystemCategory::RenderMain) != SystemCategory::None) { m_RenderMainSystems.push_back(renderSys); LOGGER_INFO("SystemManager") << "Registered " << sys->GetName() << " as RenderMain"; }
+            if ((cat & SystemCategory::RenderTransparent) != SystemCategory::None) { m_RenderTransparentSystems.push_back(renderSys); LOGGER_INFO("SystemManager") << "Registered " << sys->GetName() << " as RenderTransparent"; }
+            if ((cat & SystemCategory::RenderUI) != SystemCategory::None) { m_RenderUISystems.push_back(renderSys); LOGGER_INFO("SystemManager") << "Registered " << sys->GetName() << " as RenderUI"; }
+            if ((cat & SystemCategory::RenderCapture) != SystemCategory::None) { m_RenderCaptureSystems.push_back(renderSys); LOGGER_INFO("SystemManager") << "Registered " << sys->GetName() << " as RenderCapture"; }
+            if ((cat & SystemCategory::PostProcess) != SystemCategory::None) { m_PostProcessSystems.push_back(renderSys); LOGGER_INFO("SystemManager") << "Registered " << sys->GetName() << " as PostProcess"; }
         }
     }
 
-    auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
-    
+    auto sortRender = [](std::vector<IRenderSystem*>& systems) {
+        std::sort(systems.begin(), systems.end(), [](IRenderSystem* a, IRenderSystem* b) {
+            return a->GetPriority() < b->GetPriority();
+        });
+    };
 
+    sortRender(m_RenderSystems);
+    sortRender(m_RenderAlphaSystems);
+    sortRender(m_RenderTransparentSystems);
+    sortRender(m_RenderMainSystems);
+    sortRender(m_RenderUISystems);
+    sortRender(m_RenderCaptureSystems);
+    sortRender(m_PostProcessSystems);
+
+    RebuildExecutionBatches();
 }
 
 void SystemManager::Shutdown()
@@ -190,7 +207,7 @@ void SystemManager::Shutdown()
     for (auto& sys : m_Systems) {
         sys->Shutdown();
     }
-
+    if (m_RenderCore) m_RenderCore->Shutdown();
 }
 
 
@@ -307,44 +324,69 @@ bool SystemManager::SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const
     return false;
 }
 
-void SystemManager::RunRender(Scene& scene, int width, int height, float alpha)
-{
+void SystemManager::RunRender(Scene &scene, int width, int height, float alpha) {
     auto& sl = ServiceLocator::Instance();
     auto& context = sl.Require<IGraphicsContext>();
-    context.GetRenderStateManager().SetViewport(0, 0, width, height);
-
-
     auto* rs = GetSystem<RenderSystem>();
+
+    // 1. Capture Pass (Start PostProcess)
+    for (IRenderSystem* sys : m_RenderCaptureSystems) {
+        if (sys->IsEnabled()) sys->RenderCapturePass(scene, width, height);
+    }
+
+    // Update target for RenderSystem if PostProcess is active
+    if (auto* pps = GetSystem<PostProcessSystem>()) {
+        if (pps->IsEnabled() && rs) {
+            rs->SetMainFBO(pps->GetCaptureFBO());
+        }
+    }
+
+    // 2. Build Queues
     if (rs) rs->BuildRenderQueues(scene, alpha, width, height);
-    auto* pps = GetSystem<PostProcessSystem>();
 
-    if (pps && pps->IsEnabled()) {
-        pps->GetPipeline().BeginCapture();
-        if (rs) rs->SetMainFBO(pps->GetCaptureFBO());
-    }
+    // 3. Publish Render Data
+    FrameRenderDataEvent ev;
+    ev.data.mainFBO = rs ? rs->GetMainFBO() : 0;
+    ev.data.width = width;
+    ev.data.height = height;
+    ev.data.alpha = alpha;
+    EventSystem::Instance().Publish(ev);
 
-
-    for (auto* sys : m_RenderAlphaSystems) { 
-        if (sys->IsEnabled()) sys->RenderAlpha(scene, width, height, alpha); 
-    }
-    
-
-    for (auto* sys : m_RenderTransparentSystems) { 
-        if (sys->IsEnabled()) sys->RenderTransparent(scene, width, height, alpha); 
-    }
-    
-
-    for (auto* sys : m_RenderMainSystems) { 
-        if (sys->IsEnabled()) sys->Render(scene); 
+    static bool firstFrame = true;
+    // 4. Render Passes
+    for (IRenderSystem* sys : m_RenderMainSystems) {
+        if (sys->IsEnabled()) {
+            if (firstFrame) LOGGER_INFO("SystemManager") << "Executing RenderMain: " << sys->GetName();
+            sys->RenderAlphaPass(scene, width, height, alpha);
+        }
     }
     
+    for (IRenderSystem* sys : m_RenderTransparentSystems) {
+        if (sys->IsEnabled()) {
+            if (firstFrame) LOGGER_INFO("SystemManager") << "Executing RenderTransparent: " << sys->GetName();
+            sys->RenderTransparentPass(scene, width, height, alpha);
+        }
+    }
+    
+    firstFrame = false;
 
+    for (IRenderSystem* sys : m_RenderAlphaSystems) {
+        if (sys->IsEnabled()) sys->Render(scene);
+    }
+
+    // 5. Flush
+    if (rs) rs->FlushCommands();
+
+    // 6. PostProcess (End Capture & Blit)
+    for (IRenderSystem* sys : m_PostProcessSystems) {
+        if (sys->IsEnabled()) sys->Render(scene);
+    }
+
+    // 7. UI Pass
     auto& rsm = context.GetRenderStateManager();
-    for (auto* sys : m_RenderUISystems) { 
-        if (sys->IsEnabled()) sys->RenderUI(scene, (float)width, (float)height, rsm); 
+    for (IRenderSystem* sys : m_RenderUISystems) {
+        if (sys->IsEnabled()) sys->RenderUIPass(scene, (float)width, (float)height, rsm);
     }
-
-
 }
 
 void SystemManager::UpdateDebugSystem(float realDeltaTime)

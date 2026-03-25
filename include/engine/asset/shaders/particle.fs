@@ -8,7 +8,7 @@ uniform sampler2D sprite;
 
 void main()
 {
-    FragColor = texture(sprite, TexCoords) * ParticleColor;
-    if(FragColor.a < 0.1)
-        discard;
+    vec4 texColor = texture(sprite, TexCoords);
+    vec3 linearColor = pow(texColor.rgb, vec3(2.2));
+    FragColor = vec4(linearColor, texColor.a) * ParticleColor;
 }

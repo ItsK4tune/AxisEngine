@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ecs/interface/i_render_system.h>
+#include <render/unit/render_command.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_update_system.h>
@@ -40,15 +41,16 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 79; }
     std::string GetName() const override { return "RenderSystem"; }
+    SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update | SystemCategory::PostProcess; }
     
     void Update(Scene& scene, float dt) override;
     
     void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0);
     
     void Render(Scene& scene) override;
-    void RenderAlpha(Scene &scene, int width, int height, float alpha) override;
-    void RenderTransparent(Scene &scene, int width, int height, float alpha) override;
-    void RenderUI(Scene &scene, float width, float height, IRenderStateManager &renderState) override;
+    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
+    void RenderTransparentPass(Scene &scene, int width, int height, float alpha) override;
+    void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) override;
     
     void ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) override;
 
@@ -97,14 +99,18 @@ public:
     StaticBatchManager &GetBatchManager() override { return m_BatchManager; }
     RenderQueue &GetRenderQueueObj() override { return m_RenderQueueObj; }
 
-    unsigned int GetWhiteTexture() const override { return m_WhiteTextureID; }
-    unsigned int GetBlackTexture() const override { return m_BlackTextureID; }
-    unsigned int GetFlatNormalTexture() const override { return m_FlatNormalTextureID; }
+    unsigned int GetWhiteTexture() const override;
+    unsigned int GetBlackTexture() const override;
+    unsigned int GetFlatNormalTexture() const override;
     uint32_t GetMainFBO() const override { return m_MainFBO; }
+    
+    void SubmitCommand(const RenderDrawCommand& cmd) override;
+    void FlushCommands() override;
 
 private:
     StaticBatchManager m_BatchManager;
     RenderQueue m_RenderQueueObj;
+private:
     int m_RenderedCount = 0;
 
     bool m_Enabled = true;
@@ -117,9 +123,6 @@ private:
     uint32_t m_FilterLayerMask = 0xFFFFFFFF;
 
 private:
-    unsigned int m_WhiteTextureID = 0;
-    unsigned int m_BlackTextureID = 0;
-    unsigned int m_FlatNormalTextureID = 0;
     float m_DistanceCullingSq = 0.0f;
     RenderPath m_CachedRenderPath = RenderPath::Deferred;
 
@@ -146,11 +149,8 @@ private:
 
     FrustumCuller m_FrustumCuller;
     OcclusionCuller m_OcclusionCuller;
-    MaterialRenderer m_MaterialRenderer;
-    GpuHandle m_QuadVAO = 0;
-    GpuHandle m_QuadVBO = 0;
-    void InitQuad();
-
+    
     CommandQueue m_CommandQueue;
+    RenderCommandBuffer m_RenderCommandBuffer;
     uint32_t m_MainFBO = 0;
 };

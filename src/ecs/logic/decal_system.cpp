@@ -20,6 +20,8 @@
 #include <resource/unit/shader.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
+#include <render/unit/render_command.h>
+#include <render/logic/render_core.h>
 
 void DecalSystem::Initialize()
 {
@@ -31,21 +33,8 @@ void DecalSystem::Initialize()
     auto& resources = sl.Require<ResourceManager>();
     
     m_DecalShader = resources.GetShader("decal");
-    if (!m_DecalShader)
-    {
-        resources.LoadShader("decal", "include/engine/asset/shaders/decal.vs", "include/engine/asset/shaders/decal.fs");
-        m_DecalShader = resources.GetShader("decal");
-    }
 
     m_ForwardShader = resources.GetShader("decal_forward");
-    if (!m_ForwardShader)
-    {
-        resources.LoadShader("decal_forward", "include/engine/asset/shaders/decal_forward.vs", "include/engine/asset/shaders/decal_forward.fs");
-        m_ForwardShader = resources.GetShader("decal_forward");
-    }
-
-    InitCubeMesh();
-    InitQuadMesh();
 }
 
 void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity)
@@ -81,14 +70,10 @@ void DecalSystem::Update(Scene &scene, float dt)
     }
 }
 
-void DecalSystem::RenderAlpha(Scene &scene, int width, int height, float alpha)
+void DecalSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
 {
     if (!m_Enabled) return;
-    auto* geoSys = m_GeoService;
-    if (geoSys && geoSys->IsDeferredRenderingEnabled())
-    {
-        Render(scene);
-    }
+    Render(scene);
 }
 
 void DecalSystem::Render(Scene &scene)
@@ -141,7 +126,10 @@ void DecalSystem::Render(Scene &scene)
         
         sm.SetCullFace(CullMode::Front);
         sm.SetDepthFunc(CompareFunc::Always);
-        sm.SetColorMask(true, true, true, false); 
+        sm.Disable(ServerCapability::Blend); // Temporarily disable blend to see if it shows up solid
+        sm.Disable(ServerCapability::DepthTest);
+        sm.SetDepthMask(false);
+        sm.Disable(ServerCapability::CullFace); 
     } else {
         auto* rs = m_RenderService;
         if (rs && geoSys->IsDeferredRenderingEnabled()) return;
@@ -155,22 +143,20 @@ void DecalSystem::Render(Scene &scene)
         sm.SetColorMask(true, true, true, true);
     }
 
+    shader->setUInt("allowedTagsMask", 0xFFFFFFFF);
     shader->setVec4("tintColor", glm::vec4(1.0f));
     shader->setMat4("view", cam.viewMatrix);
     shader->setMat4("projection", cam.projectionMatrix);
     
-    sm.Enable(ServerCapability::DepthTest);
-    sm.SetDepthMask(false);
-    sm.Enable(ServerCapability::Blend);
-    sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
-
+    auto& sl = ServiceLocator::Instance();
+    auto& core = sl.Require<RenderCore>();
     if (isDeferred) {
         sm.Enable(ServerCapability::CullFace);
-        bm.BindVertexArray(m_CubeVAO);
-        bm.BindBuffer(BufferType::ElementArrayBuffer, m_CubeEBO);
+        bm.BindVertexArray(core.GetCubeVAO());
+        bm.BindBuffer(BufferType::ElementArrayBuffer, core.GetCubeEBO());
     } else {
-        bm.BindVertexArray(m_QuadVAO);
-        bm.BindBuffer(BufferType::ElementArrayBuffer, m_QuadEBO);
+        bm.BindVertexArray(core.GetQuadVAO());
+        bm.BindBuffer(BufferType::ElementArrayBuffer, core.GetQuadEBO());
     }
     
     auto view = scene.registry.view<DecalComponent, PositionComponent, RotationComponent, ScaleComponent>();
@@ -194,9 +180,7 @@ void DecalSystem::Render(Scene &scene)
                           glm::scale(glm::mat4(1.0f), scale.value);
         
         shader->setMat4("model", model);
-        float det = glm::determinant(model);
-        if (std::abs(det) < 0.0001f) continue;
-        shader->setMat4("invModel", glm::inverse(model));
+        shader->setMat4("invModel", glm::inverse(cam.projectionMatrix * cam.viewMatrix * model));
         shader->setFloat("opacity", decal.opacity);
         
         tm.ActiveTexture(TextureUnit::Texture3);
@@ -204,17 +188,14 @@ void DecalSystem::Render(Scene &scene)
         shader->setInt("decalAlbedo", 3);
 
         if (isDeferred) {
-            uint32_t mask = GetBitmask(decal.targetTags);
-            shader->setUInt("allowedTagsMask", mask);
-            dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, nullptr);
+            dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, 0);
         } else {
-            dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, nullptr);
+            dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, 0);
         }
     }
 
     if (isDeferred) {
-        auto* rs = m_RenderService;
-        geoSys->EndDecalPass(rs ? rs->GetMainFBO() : 0);
+        geoSys->EndDecalPass(m_RenderService ? m_RenderService->GetMainFBO() : 0);
     }
     
     sm.SetColorMask(true, true, true, true);
@@ -258,63 +239,6 @@ std::vector<entt::id_type> DecalSystem::GetWriteComponents() const
     };
 }
 
-void DecalSystem::InitCubeMesh()
-{
-    auto& gc = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto& bm = gc.GetBufferManager();
-    
-    float vertices[] = {
-        -0.5f, -0.5f,  0.5f,  0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f, -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,  0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f, -0.5f,  0.5f, -0.5f
-    };
-    
-    unsigned int indices[] = {
-        0, 1, 2, 2, 3, 0, 1, 5, 6, 6, 2, 1,
-        7, 6, 5, 5, 4, 7, 4, 0, 3, 3, 7, 4,
-        4, 5, 1, 1, 0, 4, 3, 2, 6, 6, 7, 3
-    };
-    
-    m_CubeVAO = bm.CreateVertexArray();
-    m_CubeVBO = bm.CreateBuffer();
-    m_CubeEBO = bm.CreateBuffer();
-    
-    bm.BindVertexArray(m_CubeVAO);
-    bm.BindBuffer(BufferType::ArrayBuffer, m_CubeVBO);
-    bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::StaticDraw);
-    bm.BindBuffer(BufferType::ElementArrayBuffer, m_CubeEBO);
-    bm.BufferData(BufferType::ElementArrayBuffer, sizeof(indices), indices, BufferUsage::StaticDraw);
-    
-    bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, 3 * sizeof(float), (void*)0);
-}
-
-void DecalSystem::InitQuadMesh()
-{
-    auto& gc = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto& bm = gc.GetBufferManager();
-    
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,  0.5f, -0.5f, 0.0f,
-         0.5f,  0.5f, 0.0f, -0.5f,  0.5f, 0.0f
-    };
-    
-    unsigned int indices[] = { 0, 1, 2, 2, 3, 0 };
-    
-    m_QuadVAO = bm.CreateVertexArray();
-    m_QuadVBO = bm.CreateBuffer();
-    m_QuadEBO = bm.CreateBuffer();
-    
-    bm.BindVertexArray(m_QuadVAO);
-    bm.BindBuffer(BufferType::ArrayBuffer, m_QuadVBO);
-    bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::StaticDraw);
-    bm.BindBuffer(BufferType::ElementArrayBuffer, m_QuadEBO);
-    bm.BufferData(BufferType::ElementArrayBuffer, sizeof(indices), indices, BufferUsage::StaticDraw);
-    
-    bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, 3 * sizeof(float), (void*)0);
-}
 
 uint32_t DecalSystem::GetTagBit(const std::string &tag)
 {

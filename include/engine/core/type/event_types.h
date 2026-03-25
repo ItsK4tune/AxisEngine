@@ -70,3 +70,14 @@ struct WindowFocusEvent { bool focused; };
 
 struct RenderFrameBeginEvent { float dt; };
 struct RenderFrameEndEvent {};
+
+struct FrameRenderData {
+    uint32_t mainFBO = 0;
+    int width = 0;
+    int height = 0;
+    float alpha = 0.0f;
+};
+
+struct FrameRenderDataEvent {
+    FrameRenderData data;
+};

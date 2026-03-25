@@ -1,5 +1,9 @@
 #include <ecs/logic/geometry_system.h>
+#include <core/logic/logger.h>
 #include <ecs/interface/i_render_service.h>
+#include <core/logic/service_locator.h>
+#include <render/logic/render_core.h>
+#include <core/logic/config_manager.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
@@ -8,14 +12,14 @@
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_buffer_manager.h>
 #include <resource/logic/resource_manager.h>
-#include <core/logic/service_locator.h>
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>
-#include <core/logic/config_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
 #include <render/logic/frustum_culler.h>
 #include <render/unit/render_queue.h>
+#include <render/logic/material_renderer.h>
+#include <render/logic/material_renderer.h>
 #include <algorithm>
 
 void GeometrySystem::Initialize()
@@ -27,7 +31,6 @@ void GeometrySystem::Initialize()
     auto& resources = sl.Require<ResourceManager>();
     auto& config = m_ConfigManager->GetConfig();
 
-    resources.LoadShader("gbuffer", "include/engine/asset/shaders/gbuffer.vs", "include/engine/asset/shaders/gbuffer.fs");
     m_GBufferShader = resources.GetShader("gbuffer");
 
     m_GBuffer.SetRenderScale(config.renderScale);
@@ -36,11 +39,6 @@ void GeometrySystem::Initialize()
 
     m_RenderService = sl.Resolve<IRenderService>();
     m_ShadowService = sl.Resolve<IShadowService>();
-    auto* renderSys = m_RenderService;
-    uint32_t white = renderSys ? renderSys->GetWhiteTexture() : 0;
-    uint32_t black = renderSys ? renderSys->GetBlackTexture() : 0;
-    uint32_t normal = renderSys ? renderSys->GetFlatNormalTexture() : 0;
-    m_MaterialRenderer.Initialize(context, white, black, normal);
 
     EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
@@ -58,7 +56,7 @@ void GeometrySystem::Shutdown()
     m_GBuffer.Shutdown();
 }
 
-void GeometrySystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
+void GeometrySystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
 {
     if (!m_Enabled) return;
 
@@ -90,6 +88,7 @@ void GeometrySystem::RenderAlpha(Scene& scene, int width, int height, float alph
     } else {
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, rs->GetMainFBO());
         rsm.SetViewport(0, 0, width, height);
+        auto& sl = ServiceLocator::Instance();
         const auto& cfg = sl.Require<ConfigManager>().GetConfig();
         dc.ClearColor(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
         dc.Clear(BufferBit::Color | BufferBit::Depth);
@@ -100,14 +99,24 @@ void GeometrySystem::RenderAlpha(Scene& scene, int width, int height, float alph
     rsm.Enable(ServerCapability::CullFace);
     rsm.SetCullFace(CullMode::Back);
 
+    auto& sl = ServiceLocator::Instance();
     auto* shadowSys = sl.Resolve<IShadowService>();
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
 
     const auto& opaqueQueue = rs->GetRenderQueueObj().GetOpaqueQueue();
     if (!opaqueQueue.empty())
     {
+        static bool firstFrame = true;
+        if (firstFrame) {
+            LOGGER_INFO("GeometrySystem") << "Rendering opaque queue with " << opaqueQueue.size() << " items";
+            firstFrame = false;
+        }
+        auto& sl_local = ServiceLocator::Instance();
+        RenderCore* core = sl_local.Resolve<RenderCore>();
         Shader* overrideShader = isDeferred ? m_GBufferShader.get() : nullptr;
-        rs->ExecuteQueue(scene, opaqueQueue, false, shadowRenderer, &m_MaterialRenderer, overrideShader); 
+        if (core) {
+            rs->ExecuteQueue(scene, opaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), overrideShader); 
+        }
     }
     
     if (isDeferred) {

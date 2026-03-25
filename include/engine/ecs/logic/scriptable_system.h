@@ -19,6 +19,7 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 20; }
     std::string GetName() const override { return "ScriptableSystem"; }
+    SystemCategory GetCategory() const override { return SystemCategory::Script | SystemCategory::Update; }
     void Update(Scene &scene, float dt) override;
 
     void OnSceneChanged(const SceneChangedEvent& e);
@@ -43,4 +44,5 @@ private:
     std::vector<uint32_t> m_EventSubs;
     std::set<entt::registry*> m_BoundRegistries;
     Scene* m_ActiveScene = nullptr;
+    class TimeService* m_TimeService = nullptr;
 };

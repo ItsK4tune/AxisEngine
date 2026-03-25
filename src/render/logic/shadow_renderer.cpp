@@ -18,9 +18,6 @@ void ShadowRenderer::Initialize(IGraphicsContext& context, IShaderLibrary &shade
 {
     m_Shadow.Initialize(context);
 
-    shaderLib.LoadShader("shadow_depth", "include/engine/asset/shaders/shadow_depth.vs", "include/engine/asset/shaders/shadow_depth.fs");
-    shaderLib.LoadShader("shadow_point", "include/engine/asset/shaders/shadow_point.vs", "include/engine/asset/shaders/shadow_point.fs", "include/engine/asset/shaders/shadow_point.gs");
-    shaderLib.LoadShader("shadow_spot", "include/engine/asset/shaders/shadow_spot.vs", "include/engine/asset/shaders/shadow_spot.fs");
 
     m_Shadow.SetShaderDir(shaderLib.GetShader("shadow_depth").get());
     m_Shadow.SetShaderPoint(shaderLib.GetShader("shadow_point").get());

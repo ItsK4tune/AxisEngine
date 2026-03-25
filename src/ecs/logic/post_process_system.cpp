@@ -33,6 +33,8 @@ void PostProcessSystem::Initialize()
              m_Pipeline.Resize(cfg.width, cfg.height);
         }
     });
+
+    m_RenderService = sl.Resolve<IRenderService>();
 }
 
 void PostProcessSystem::Shutdown()
@@ -40,13 +42,17 @@ void PostProcessSystem::Shutdown()
     m_Pipeline.Shutdown();
 }
 
-void PostProcessSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
+void PostProcessSystem::RenderCapturePass(Scene &scene, int width, int height)
 {
     if (!m_Enabled) return;
-    
     if (width != m_Pipeline.GetWidth() || height != m_Pipeline.GetHeight()) {
         m_Pipeline.Resize(width, height);
     }
+    m_Pipeline.BeginCapture();
+}
+
+void PostProcessSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
+{
 }
 
 void PostProcessSystem::Render(Scene& scene)
@@ -54,12 +60,8 @@ void PostProcessSystem::Render(Scene& scene)
     if (!m_Enabled)
          return;
 
-    auto& sl = ServiceLocator::Instance();
-    auto* rs = sl.Resolve<IRenderService>();
-    
-
-    if (rs) {
-        m_Pipeline.ApplyAntiAliasing(rs->GetAntiAliasingMode(), rs->GetPrevViewProj(), rs->GetCurrViewProj(), rs->GetJitterOffset());
+    if (m_RenderService) {
+        m_Pipeline.ApplyAntiAliasing(m_RenderService->GetAntiAliasingMode(), m_RenderService->GetPrevViewProj(), m_RenderService->GetCurrViewProj(), m_RenderService->GetJitterOffset());
     }
     
     m_Pipeline.EndCapture();

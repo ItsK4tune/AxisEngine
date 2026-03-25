@@ -16,8 +16,9 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 85; }
     std::string GetName() const override { return "TransparentSystem"; }
+    SystemCategory GetCategory() const override { return SystemCategory::RenderTransparent; }
     void Render(Scene &scene) override {}
-    void RenderTransparent(Scene &scene, int width, int height, float alpha) override;
+    void RenderTransparentPass(Scene &scene, int width, int height, float alpha) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -25,5 +26,4 @@ public:
 private:
     bool m_Enabled = true;
     CommandQueue m_CommandQueue;
-    MaterialRenderer m_MaterialRenderer;
 };

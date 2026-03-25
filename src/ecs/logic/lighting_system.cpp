@@ -1,6 +1,7 @@
 #include <ecs/logic/lighting_system.h>
 #include <core/logic/service_locator.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/logic/render_core.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_draw_context.h>
@@ -35,21 +36,14 @@ void LightingSystem::Initialize()
 
     m_LightRenderer.Initialize(context);
     
-    resources.LoadShader("deferred_light", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/deferred_light.fs");
     m_DeferredLightShader = resources.GetShader("deferred_light");
-
-    InitQuad();
 }
 
 void LightingSystem::Shutdown()
 {
-    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto& bm = context.GetBufferManager();
-    if (m_QuadVAO.id != 0) bm.DeleteVertexArray(m_QuadVAO.id);
-    if (m_QuadVBO.id != 0) bm.DeleteBuffer(m_QuadVBO.id);
 }
 
-void LightingSystem::RenderAlpha(Scene& scene, int width, int height, float alpha)
+void LightingSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
 {
     if (!m_Enabled)
          return;
@@ -130,7 +124,9 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         }
     }
 
-    bm.BindVertexArray(m_QuadVAO.id);
+    auto& sl = ServiceLocator::Instance();
+    auto& core = sl.Require<RenderCore>();
+    bm.BindVertexArray(core.GetQuadVAO());
     dc.DrawArrays(Primitive::TriangleStrip, 0, 4);
     bm.BindVertexArray(0);
 
@@ -138,28 +134,6 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     rsm.Enable(ServerCapability::DepthTest);
 }
 
-void LightingSystem::InitQuad()
-{
-    float quadVertices[] = {
-        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-         1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-    };
-    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto& bm = context.GetBufferManager();
-    m_QuadVAO.id = bm.CreateVertexArray();
-    m_QuadVBO.id = bm.CreateBuffer();
-
-    bm.BindVertexArray(m_QuadVAO.id);
-    bm.BindBuffer(BufferType::ArrayBuffer, m_QuadVBO.id);
-    bm.BufferData(BufferType::ArrayBuffer, sizeof(quadVertices), &quadVertices, BufferUsage::StaticDraw);
-    
-    bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, 5 * sizeof(float), (void*)0);
-    bm.EnableVertexAttribArray(1);
-    bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-}
 
 std::vector<entt::id_type> LightingSystem::GetReadComponents() const
 {

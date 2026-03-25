@@ -8,5 +8,7 @@ uniform float intensity;
 
 void main()
 {    
-    FragColor = texture(skybox, TexCoords) * intensity;
+    vec4 texColor = texture(skybox, TexCoords);
+    vec3 linearColor = pow(texColor.rgb, vec3(2.2));
+    FragColor = vec4(linearColor * intensity, texColor.a);
 }

@@ -40,11 +40,80 @@ axis_scene:
       Name: skyboxShader
       vertex: include/engine/asset/shaders/skybox.vs
       fragment: include/engine/asset/shaders/skybox.fs
+    Shader:
+      Name: gbuffer
+      vertex: include/engine/asset/shaders/gbuffer.vs
+      fragment: include/engine/asset/shaders/gbuffer.fs
+    Shader:
+      Name: decal
+      vertex: include/engine/asset/shaders/decal.vs
+      fragment: include/engine/asset/shaders/decal.fs
+    Shader:
+      Name: deferred_light
+      vertex: include/engine/asset/shaders/fxaa.vs
+      fragment: include/engine/asset/shaders/deferred_light.fs
+    Shader:
+      Name: shadow_depth
+      vertex: include/engine/asset/shaders/shadow_depth.vs
+      fragment: include/engine/asset/shaders/shadow_depth.fs
+    Shader:
+      Name: shadow_point
+      vertex: include/engine/asset/shaders/shadow_point.vs
+      fragment: include/engine/asset/shaders/shadow_point.fs
+      geometry: include/engine/asset/shaders/shadow_point.gs
+    Shader:
+      Name: shadow_spot
+      vertex: include/engine/asset/shaders/shadow_spot.vs
+      fragment: include/engine/asset/shaders/shadow_spot.fs
+    Shader:
+      Name: fxaa
+      vertex: include/engine/asset/shaders/fxaa.vs
+      fragment: include/engine/asset/shaders/fxaa.fs
+    Shader:
+      Name: taa
+      vertex: include/engine/asset/shaders/taa.vs
+      fragment: include/engine/asset/shaders/taa.fs
+    Shader:
+      Name: bloom_down
+      vertex: include/engine/asset/shaders/fxaa.vs
+      fragment: include/engine/asset/shaders/bloom_downsample.fs
+    Shader:
+      Name: bloom_up
+      vertex: include/engine/asset/shaders/fxaa.vs
+      fragment: include/engine/asset/shaders/bloom_upsample.fs
+    Shader:
+      Name: hdr_final
+      vertex: include/engine/asset/shaders/fxaa.vs
+      fragment: include/engine/asset/shaders/hdr_final.fs
+    Shader:
+      Name: debug_text
+      vertex: include/engine/asset/shaders/text.vs
+      fragment: include/engine/asset/shaders/text.fs
+    Shader:
+      Name: occlusion
+      vertex: include/engine/asset/shaders/occlusion_query.vs
+      fragment: include/engine/asset/shaders/occlusion_query.fs
+    Shader:
+      Name: terrain
+      vertex: include/engine/asset/shaders/terrain.vs
+      fragment: include/engine/asset/shaders/terrain.fs
+    Shader:
+      Name: terrain_gbuffer
+      vertex: include/engine/asset/shaders/terrain_gbuffer.vs
+      fragment: include/engine/asset/shaders/terrain_gbuffer.fs
+    Shader:
+      Name: debug_line
+      vertex: include/engine/asset/shaders/debug_line.vs
+      fragment: include/engine/asset/shaders/debug_line.fs
 
     Font:
       Name: time
       Path: include/engine/asset/fonts/time.ttf
       Size: 16
+    Font:
+      Name: debug_font
+      Path: include/engine/asset/fonts/time.ttf
+      Size: 24
 
     Model:
       Name: planeModel

@@ -30,17 +30,14 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
     InitQuad();
     InitFramebuffers();
 
-    shaderLib.LoadShader("fxaa", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/fxaa.fs");
-    shaderLib.LoadShader("taa", "include/engine/asset/shaders/taa.vs", "include/engine/asset/shaders/taa.fs");
-    shaderLib.LoadShader("bloom_down", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/bloom_downsample.fs");
-    shaderLib.LoadShader("bloom_up", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/bloom_upsample.fs");
-    shaderLib.LoadShader("hdr_final", "include/engine/asset/shaders/fxaa.vs", "include/engine/asset/shaders/hdr_final.fs");
 
     m_FXAAShader = shaderLib.GetShader("fxaa");
     m_TAAShader = shaderLib.GetShader("taa");
     m_BloomDownsampleShader = shaderLib.GetShader("bloom_down");
     m_BloomUpsampleShader = shaderLib.GetShader("bloom_up");
     m_HDRFinalShader = shaderLib.GetShader("hdr_final");
+
+    UpdateConfig();
 }
 
 void PostProcessPipeline::InitFramebuffers()
@@ -194,7 +191,6 @@ void PostProcessPipeline::BeginCapture()
 
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[0]->Get());
     rsm.SetViewport(0, 0, m_Width, m_Height);
-    rsm.Enable(ServerCapability::DepthTest);
     rsm.Enable(ServerCapability::DepthTest);
     dc.ClearColor(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, m_ClearColor.a);
     dc.Clear(BufferBit::Color | BufferBit::Depth);

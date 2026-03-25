@@ -46,7 +46,7 @@ UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screen
     return { finalMin, size };
 }
 
-void UIRenderSystem::RenderUI(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)
+void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)
 {
     if (!m_Enabled) return;
 

@@ -16,7 +16,9 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 84; }
     std::string GetName() const override { return "SkyboxRenderSystem"; }
-    void Render(Scene &scene) override;
+    SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
+    void Render(Scene& scene) override {}
+    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -26,5 +28,12 @@ private:
     float m_Intensity = 1.0f;
     uint32_t m_ConfigSubId = 0;
     uint32_t m_SceneSubId = 0;
+    uint32_t m_RenderDataSubId = 0;
     bool m_Enabled = true;
+
+    struct {
+        uint32_t mainFBO = 0;
+    } m_LastFrameData;
+
+    class IRenderService* m_RenderService = nullptr;
 };

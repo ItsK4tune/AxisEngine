@@ -17,8 +17,10 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 85; }
     std::string GetName() const override { return "ParticleSystem"; }
-    void Update(Scene &scene, float dt) override;
-    void Render(Scene &scene) override;
+    SystemCategory GetCategory() const override { return SystemCategory::RenderTransparent | SystemCategory::Update; }
+    void Update(Scene& scene, float dt) override;
+    void Render(Scene& scene) override {}
+    void RenderTransparentPass(Scene& scene, int width, int height, float alpha) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

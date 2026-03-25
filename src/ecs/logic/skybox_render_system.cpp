@@ -31,6 +31,12 @@ void SkyboxRenderSystem::Initialize()
             m_Intensity = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().skyboxIntensity;
         }
     });
+
+    m_RenderDataSubId = EventSystem::Instance().Subscribe<FrameRenderDataEvent>([this](const FrameRenderDataEvent& e) {
+        m_LastFrameData.mainFBO = e.data.mainFBO;
+    });
+
+    m_RenderService = sl.Resolve<IRenderService>();
 }
 
 std::vector<entt::id_type> SkyboxRenderSystem::GetReadComponents() const
@@ -43,7 +49,7 @@ std::vector<entt::id_type> SkyboxRenderSystem::GetWriteComponents() const
     return {};
 }
 
-void SkyboxRenderSystem::Render(Scene &scene)
+void SkyboxRenderSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
 {
     if (!m_Enabled || !m_Context) return;
 
@@ -55,9 +61,7 @@ void SkyboxRenderSystem::Render(Scene &scene)
 
     auto& rsm = m_Context->GetRenderStateManager();
     auto& tm = m_Context->GetTextureManager();
-
-    auto* rs = ServiceLocator::Instance().Resolve<IRenderService>();
-    uint32_t mainFBO = rs ? rs->GetMainFBO() : 0;
+    uint32_t mainFBO = m_LastFrameData.mainFBO;
     auto& rtm = m_Context->GetRenderTargetManager();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
 

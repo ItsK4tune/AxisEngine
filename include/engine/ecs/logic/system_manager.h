@@ -19,6 +19,8 @@ struct ExecutionBatch {
     std::vector<IUpdateSystem*> systems;
 };
 
+class RenderCore;
+
 class SystemManager
 {
 public:
@@ -64,8 +66,12 @@ private:
     std::vector<IRenderSystem*> m_RenderTransparentSystems;
     std::vector<IRenderSystem*> m_RenderMainSystems;
     std::vector<IRenderSystem*> m_RenderUISystems;
+    std::vector<IRenderSystem*> m_RenderCaptureSystems;
+    std::vector<IRenderSystem*> m_PostProcessSystems;
     
     std::vector<ExecutionBatch> m_UpdateBatches;
+
+    std::unique_ptr<RenderCore> m_RenderCore;
 
     bool SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const;
 };

@@ -70,7 +70,7 @@ void ParticleSystem::Update(Scene &scene, float dt)
     }
 }
 
-void ParticleSystem::Render(Scene &scene)
+void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, float alpha)
 {
     if (!m_Enabled || !m_Context)
         return;
@@ -100,25 +100,24 @@ void ParticleSystem::Render(Scene &scene)
     shader->use();
 
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity != entt::null) {
-        auto& cam = scene.registry.get<CameraComponent>(camEntity);
-        rsm.SetViewport(0, 0, cam.screenWidth, cam.screenHeight);
-    }
+    rsm.SetViewport(0, 0, width, height);
 
     auto view = scene.registry.view<ParticleEmitterComponent>();
     for (auto entity : view)
     {
         auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
-        if (emitterComp.isActive)
-        {
-            if (!emitterComp.emitter.Texture) {
-                m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
-                m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);
-                shader->setInt("sprite", 0);
+            if (emitterComp.isActive)
+            {
+                uint32_t activeCount = emitterComp.emitter.GetActiveParticleCount();
+                if (activeCount > 0) {
+                    if (!emitterComp.emitter.Texture) {
+                        m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
+                        m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);
+                        shader->setInt("sprite", 0);
+                    }
+                    emitterComp.emitter.Render(shader.get());
+                }
             }
-            emitterComp.emitter.Render(shader.get());
-        }
     }
 
     rsm.SetDepthMask(true);

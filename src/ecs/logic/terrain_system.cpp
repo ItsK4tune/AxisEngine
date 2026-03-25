@@ -49,7 +49,8 @@ void TerrainSystem::Update(Scene &scene, float dt) {
     }
 }
 
-void TerrainSystem::Render(Scene &scene) {
+void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
+{
     if (!m_Enabled) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
@@ -155,16 +156,6 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     auto data = std::make_unique<TerrainData>();
     
     data->terrainShader = resources.GetShader("terrain");
-    if (!data->terrainShader) {
-        resources.LoadShader("terrain", "include/engine/asset/shaders/terrain.vs", 
-                                   "include/engine/asset/shaders/terrain.fs");
-        data->terrainShader = resources.GetShader("terrain");
-    }
-
-    if (!resources.GetShader("terrain_gbuffer")) {
-        resources.LoadShader("terrain_gbuffer", "include/engine/asset/shaders/terrain_gbuffer.vs", 
-                                   "include/engine/asset/shaders/terrain_gbuffer.fs");
-    }
 
     if (!data->terrainShader) {
         LOGGER_ERROR("TerrainSystem") << "Cannot build terrain: shader failed to load.";

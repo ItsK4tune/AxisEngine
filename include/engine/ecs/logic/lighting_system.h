@@ -15,8 +15,9 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 83; }
     std::string GetName() const override { return "LightingSystem"; }
+    SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
     void Render(Scene &scene) override {}
-    void RenderAlpha(Scene &scene, int width, int height, float alpha) override;
+    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
     
     void RenderDeferredLighting(Scene &scene, int width, int height);
 
@@ -28,10 +29,6 @@ private:
     LightRenderer m_LightRenderer;
     std::shared_ptr<Shader> m_DeferredLightShader;
     
-    GpuHandle m_QuadVAO = 0;
-    GpuHandle m_QuadVBO = 0;
-    void InitQuad();
-
     class IGraphicsContext* m_GraphicsContext = nullptr;
     class IGeometryService* m_GeoService = nullptr;
     class IShadowService* m_ShadowService = nullptr;

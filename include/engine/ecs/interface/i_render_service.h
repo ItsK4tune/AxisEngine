@@ -57,4 +57,7 @@ public:
     virtual void UpdateGlobalLightData(const GPUGlobalLightData& data) = 0;
     
     virtual RenderPath GetRenderPath() const = 0;
+    
+    virtual void SubmitCommand(const struct RenderDrawCommand& cmd) = 0;
+    virtual void FlushCommands() = 0;
 };

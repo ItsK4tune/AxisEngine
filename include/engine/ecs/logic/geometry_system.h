@@ -18,8 +18,9 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 80; }
     std::string GetName() const override { return "GeometrySystem"; }
+    SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
     void Render(Scene &scene) override {}
-    void RenderAlpha(Scene &scene, int width, int height, float alpha) override;
+    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
     
     GBuffer& GetGBuffer() override { return m_GBuffer; }
     void BindGBufferForWriting() override;
@@ -44,7 +45,6 @@ private:
     bool m_Enabled = true;
     GBuffer m_GBuffer;
     std::shared_ptr<Shader> m_GBufferShader;
-    MaterialRenderer m_MaterialRenderer;
     CommandQueue m_CommandQueue;
     bool m_IsDeferredCached = false;
 

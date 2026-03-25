@@ -28,6 +28,7 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 10; }
     std::string GetName() const override { return "PhysicsSystem"; }
+    SystemCategory GetCategory() const override { return SystemCategory::Physics | SystemCategory::Update; }
     PhysicsSystem();
     ~PhysicsSystem();
     IPhysicsWorld& GetPhysicsWorld() const { return *m_LastPhysicsWorld; }

@@ -258,14 +258,10 @@ bool Application::Initialize(const AppConfig &config)
 
     m_RuntimeCore->Initialize();
     
-    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height);
-
-    m_ResourceManager->CreateUIModel("default_rect", ::UIType::Color);
-
-    m_ResourceManager->LoadShader("debugLine", "include/engine/asset/shaders/debug_line.vs", "include/engine/asset/shaders/debug_line.fs");
-
     LOGGER_INFO("Application") << "Loading default assets from include/engine/asset/load.axs...";
     m_SceneManager->LoadScene("include/engine/asset/load.axs");
+
+    m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height);
 
     if (!config.iconPath.empty())
     {

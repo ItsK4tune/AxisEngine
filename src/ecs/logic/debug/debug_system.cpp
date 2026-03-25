@@ -28,8 +28,7 @@ void DebugSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     auto& res = sl.Require<ResourceManager>();
 
-    res.LoadFont("debug_font", "include/engine/asset/fonts/time.ttf", 24);
-    res.LoadShader("debug_text", "include/engine/asset/shaders/text.vs", "include/engine/asset/shaders/text.fs");
+    m_TextShader = res.GetShader("debug_text");
 
     if (!res.GetUIModel("debug_sys_model"))
     {
@@ -37,7 +36,6 @@ void DebugSystem::Initialize()
     }
 
     m_DebugFont = res.GetFont("debug_font");
-    m_TextShader = res.GetShader("debug_text");
     m_TextQuad = res.GetUIModel("debug_sys_model");
 
     LOGGER_INFO("DebugSystem") << "Initializing debug modules...";

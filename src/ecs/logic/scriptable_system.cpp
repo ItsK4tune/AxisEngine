@@ -31,6 +31,8 @@ void ScriptableSystem::Initialize()
     ComponentLoader::RegisterLoader("Script", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) {
         ScriptableSystem::LoadScript(s, e, n);
     });
+
+    m_TimeService = &ServiceLocator::Instance().Require<TimeService>();
 }
 
 void ScriptableSystem::OnSceneChanged(const SceneChangedEvent& e)
@@ -194,7 +196,6 @@ void ScriptableSystem::Update(Scene &scene, float dt)
 
     auto view = scene.registry.view<ScriptComponent>();
     auto& sl = ServiceLocator::Instance();
-    auto& timer = sl.Require<TimeService>();
 
     for (auto entity : view)
     {
@@ -213,9 +214,9 @@ void ScriptableSystem::Update(Scene &scene, float dt)
         {
             float effectiveDt = dt;
 
-            if (dt == 0.0f && script.instance->CanRunWhenPaused())
+            if (dt == 0.0f && script.instance->CanRunWhenPaused() && m_TimeService)
             {
-                effectiveDt = timer.GetRealDeltaTime();
+                effectiveDt = m_TimeService->GetRealDeltaTime();
             }
 
             if (effectiveDt > 0.0f || script.instance->CanRunWhenPaused())

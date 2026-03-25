@@ -7,6 +7,7 @@
 #include <render/interface/i_draw_context.h>
 #include <resource/logic/resource_manager.h>
 #include <render/unit/gbuffer.h>
+#include <render/logic/render_core.h>
 #include <render/unit/render_queue.h>
 #include <render/interface/i_render_target_manager.h>
 #include <core/logic/service_locator.h>
@@ -17,16 +18,9 @@
 
 void TransparentSystem::Initialize()
 {
-    auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
-    auto* renderSys = sl.Resolve<IRenderService>();
-    uint32_t white = renderSys ? renderSys->GetWhiteTexture() : 0;
-    uint32_t black = renderSys ? renderSys->GetBlackTexture() : 0;
-    uint32_t normal = renderSys ? renderSys->GetFlatNormalTexture() : 0;
-    m_MaterialRenderer.Initialize(context, white, black, normal);
 }
 
-void TransparentSystem::RenderTransparent(Scene& scene, int width, int height, float alpha)
+void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int height, float alpha)
 {
     if (!m_Enabled)
          return;
@@ -48,7 +42,8 @@ void TransparentSystem::RenderTransparent(Scene& scene, int width, int height, f
 
     auto* shadowSys = sl.Resolve<IShadowService>();
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
-    rs->ExecuteQueue(scene, rs->GetRenderQueueObj().GetTransparentQueue(), true, shadowRenderer, &m_MaterialRenderer);
+    auto& core = sl.Require<RenderCore>();
+    rs->ExecuteQueue(scene, rs->GetRenderQueueObj().GetTransparentQueue(), true, shadowRenderer, &core.GetMaterialRenderer());
 
     rsm.Disable(ServerCapability::Blend);
     rsm.SetDepthMask(true);
