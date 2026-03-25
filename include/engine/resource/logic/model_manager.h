@@ -37,9 +37,12 @@ public:
 
     ModelInstanceManager& GetInstanceManager() { return m_InstanceManager; }
 
+    void Initialize() override;
+
 private:
     ModelInstanceManager& m_InstanceManager;
     ResourceCache<Model> m_Cache;
+    std::shared_ptr<Model> m_ErrorModel;
 
     struct PendingModel {
         std::string name;

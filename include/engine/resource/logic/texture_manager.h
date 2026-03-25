@@ -41,6 +41,8 @@ public:
     void SetAsyncEnabled(bool enabled) { m_AsyncEnabled = enabled; }
     void SetMaxAnisotropy(float anisotropy) { m_MaxAnisotropy = anisotropy; }
 
+    void Initialize() override;
+
 private:
     struct TextureData {
         std::string name;
@@ -58,4 +60,6 @@ private:
     
     bool m_AsyncEnabled = true;
     float m_MaxAnisotropy = 1.0f;
+    
+    std::shared_ptr<Texture> m_ErrorTexture;
 };

@@ -10,6 +10,36 @@
 TextureManager::TextureManager(ITextureManager& lowLevelManager) 
     : m_LowLevelManager(lowLevelManager) {}
 
+void TextureManager::Initialize() {
+    // Load error texture from file
+    std::string errorTexturePath = "include/engine/asset/textures/error_checkerboard.ppm";
+    
+    // We use a simplified load that doesn't trigger secondary fallbacks if possible, 
+    // but here we just use the existing Load method by name.
+    m_ErrorTexture = Load("Internal_Error_Texture", errorTexturePath, false, false);
+    
+    if (!m_ErrorTexture || m_ErrorTexture->id == 0) {
+        LOGGER_ERROR("TextureManager") << "CRITICAL: Failed to load external error texture!";
+        // Secondary fallback to hardcoded if file load fails
+        unsigned char pinkBlack[] = { 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255 };
+        unsigned int errorID = m_LowLevelManager.GenTexture();
+        m_LowLevelManager.BindTexture(TextureType::Texture2D, errorID);
+        m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 2, 2, 0, TextureFormat::RGBA, DataType::UnsignedByte, pinkBlack);
+        m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+        m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
+        
+        m_ErrorTexture = std::make_shared<Texture>();
+        m_ErrorTexture->id = errorID;
+        m_ErrorTexture->width = 2;
+        m_ErrorTexture->height = 2;
+        m_ErrorTexture->nrComponents = 4;
+        m_ErrorTexture->path = "internal://error_texture";
+        m_Cache.Add("Internal_Error_Texture", m_ErrorTexture);
+    }
+
+    LOGGER_INFO("TextureManager") << "Initialized Externalized Error Texture (Pink/Black Checkerboard)";
+}
+
 TextureManager::~TextureManager() {
     Clear();
 }
@@ -89,9 +119,9 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             EventSystem::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
             return tex;
         } else {
-            LOGGER_ERROR("TextureManager") << "Failed to load texture: " << path;
+            LOGGER_ERROR("TextureManager") << "Failed to load texture: " << path << ". Returning error texture.";
             EventSystem::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
-            return nullptr;
+            return m_ErrorTexture;
         }
     }
 }
@@ -143,10 +173,18 @@ void TextureManager::Update(float dt) {
                     if (data.keepCpuData) tex->pixelData = data.data;
                     else stbi_image_free(data.data);
                 }
-                LOGGER_INFO("TextureManager") << "Async texture loaded: " << data.name;
+                LOGGER_INFO("Async texture loaded: ") << data.name;
                 EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", true});
             } else {
-                LOGGER_ERROR("TextureManager") << "Failed async texture: " << data.name;
+                if (auto tex = m_Cache.Get(data.name)) {
+                    if (m_ErrorTexture) {
+                        tex->id = m_ErrorTexture->id;
+                        tex->width = m_ErrorTexture->width;
+                        tex->height = m_ErrorTexture->height;
+                        tex->nrComponents = m_ErrorTexture->nrComponents;
+                    }
+                }
+                LOGGER_ERROR("TextureManager") << "Failed async texture: " << data.name << ". Falling back to error texture.";
                 EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", false});
             }
             it = m_AsyncLoads.erase(it);

@@ -36,10 +36,12 @@ void EngineLoop::Initialize()
     
     SetPhysicsStep(1.0f / appConfig.physicsTickRate);
     SetMaxSubSteps(appConfig.maxSubSteps);
+    SetTimeScale(appConfig.timeScale);
 
     m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         SetPhysicsStep(1.0f / e.config.physicsTickRate);
         SetMaxSubSteps(e.config.maxSubSteps);
+        SetTimeScale(e.config.timeScale);
     });
 }
 

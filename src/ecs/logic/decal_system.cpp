@@ -184,7 +184,25 @@ void DecalSystem::Render(Scene &scene)
         auto &decal = view.get<DecalComponent>(entity);
         auto &pos = view.get<PositionComponent>(entity);
         
-        // Use try_get for components that might be missing
+        Shader* activeShader = shader;
+        if (!decal.customShader.empty()) {
+            auto& res = ServiceLocator::Instance().Require<ResourceManager>();
+            if (auto custom = res.GetShader(decal.customShader)) {
+                activeShader = custom.get();
+            }
+        }
+        
+        if (!activeShader) continue;
+        activeShader->use();
+        
+        // Re-set common uniforms for custom shader
+        activeShader->setMat4("view", cam.viewMatrix);
+        activeShader->setMat4("projection", cam.projectionMatrix);
+        activeShader->setMat4("u_View", cam.viewMatrix);
+        activeShader->setMat4("u_Projection", cam.projectionMatrix);
+        activeShader->setUInt("allowedTagsMask", 0xFFFFFFFF);
+        activeShader->setVec4("u_TintColor", glm::vec4(1.0f));
+
         auto *rotComp = scene.registry.try_get<RotationComponent>(entity);
         auto *scaleComp = scene.registry.try_get<ScaleComponent>(entity);
         
@@ -195,24 +213,24 @@ void DecalSystem::Render(Scene &scene)
                           glm::mat4_cast(rotation) *
                           glm::scale(glm::mat4(1.0f), scale);
         
-        shader->setMat4("model", model);
-        shader->setMat4("u_Model", model);
-        shader->setMat4("invModel", glm::inverse(cam.projectionMatrix * cam.viewMatrix * model));
-        shader->setFloat("opacity", decal.opacity);
-        shader->setFloat("u_Opacity", decal.opacity);
-        shader->setFloat("u_Alpha", decal.opacity);
+        activeShader->setMat4("model", model);
+        activeShader->setMat4("u_Model", model);
+        activeShader->setMat4("invModel", glm::inverse(cam.projectionMatrix * cam.viewMatrix * model));
+        activeShader->setFloat("opacity", decal.opacity);
+        activeShader->setFloat("u_Opacity", decal.opacity);
+        activeShader->setFloat("u_Alpha", decal.opacity);
         
         if (isDeferred) {
             tm.ActiveTexture(TextureUnit::Texture3);
             tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
-            shader->setInt("decalAlbedo", 3);
+            activeShader->setInt("decalAlbedo", 3);
             dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, 0);
         } else {
             tm.ActiveTexture(TextureUnit::Texture0);
             tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
-            shader->setInt("decalAlbedo", 0);
-            shader->setInt("u_Texture", 0);
-            shader->setInt("u_Texture0", 0);
+            activeShader->setInt("decalAlbedo", 0);
+            activeShader->setInt("u_Texture", 0);
+            activeShader->setInt("u_Texture0", 0);
             dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, 0);
         }
     }

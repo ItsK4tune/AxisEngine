@@ -12,37 +12,27 @@
 #include <vector>
 #include <unordered_map>
 
-
 class ShaderManager : public IAssetManager<Shader> {
 public:
     ShaderManager(IShaderManager& lowLevelManager);
     ~ShaderManager() = default;
-
     
     std::shared_ptr<Shader> Load(const std::string& path) override {
         return Load(path, path + ".vs", path + ".fs");
     }
-
     
     std::shared_ptr<Shader> Load(const std::string& name, 
                                  const std::string& vsPath, 
                                  const std::string& fsPath, 
                                  const std::string& gsPath = "");
-
     
     std::shared_ptr<Shader> Get(const std::string& nameOrPath) override;
-
     
     void Unload(const std::string& nameOrPath) override;
-
-    
     void Clear() override;
-
-    
     void Reload(const std::string& name);
-
-    
     void ReloadAll();
+    void Initialize() override;
 
 private:
     IShaderManager& m_LowLevelManager;
@@ -52,6 +42,9 @@ private:
         std::string vs, fs, gs;
     };
     std::unordered_map<std::string, ShaderPaths> m_Paths;
+    
+    std::shared_ptr<Shader> m_ErrorShader;
+    std::shared_ptr<Shader> m_ErrorGBufferShader;
 };
 
 #endif

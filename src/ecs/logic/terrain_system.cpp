@@ -85,9 +85,20 @@ void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float a
 
         TerrainData& data = *it->second;
         Shader* actShader = data.terrainShader.get();
+        if (!terrain.customShader.empty()) {
+            if (auto custom = resources.GetShader(terrain.customShader)) {
+                actShader = custom.get();
+            }
+        }
         
         if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
              auto gbufShader = resources.GetShader("terrain_gbuffer");
+             if (!terrain.customShader.empty()) {
+                 if (auto custom = resources.GetShader(terrain.customShader + "_gbuffer")) {
+                     gbufShader = custom;
+                 }
+             }
+
              if (gbufShader) actShader = gbufShader.get();
              geoSys->BindGBufferForWriting();
         }

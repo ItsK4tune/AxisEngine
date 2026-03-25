@@ -30,6 +30,9 @@ public:
     unsigned int getID() const { return ID; }
     std::string GetName() const { return m_Name; }
     void SetName(const std::string& name) { m_Name = name; }
+    
+    bool IsError() const { return m_IsError; }
+    void SetError(bool error) { m_IsError = error; }
 
 
     void setBool(const std::string &name, bool value) const;
@@ -70,4 +73,5 @@ private:
 
     IShaderManager& m_ShaderManager;
     std::string m_Name;
+    bool m_IsError = false;
 };

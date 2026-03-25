@@ -3,9 +3,9 @@
 #include <render/interface/i_shader_manager.h>
 #include <sstream>
 #include <core/logic/logger.h>
-
-
-
+#include <core/logic/service_locator.h>
+#include <resource/logic/shader_manager.h>
+#include <ecs/interface/i_geometry_service.h>
 
 Shader::Shader(IShaderManager& manager)
     : ID(0), m_ShaderManager(manager)
@@ -108,6 +108,25 @@ void Shader::load(const char *vertexPath, const char *fragmentPath, const char *
 
 void Shader::use()
 {
+    if (m_IsError) {
+        auto& sl = ServiceLocator::Instance();
+        auto& sm = sl.Require<ShaderManager>();
+        auto* gs = sl.Resolve<IGeometryService>();
+        
+        bool isDeferred = gs && gs->IsDeferredRenderingEnabled();
+        
+        std::shared_ptr<Shader> fallback;
+        if (isDeferred) {
+            fallback = sm.Get("Internal_Error_GBuffer_Shader");
+        } else {
+            fallback = sm.Get("Internal_Error_Shader");
+        }
+
+        if (fallback && fallback.get() != this) {
+            fallback->use();
+            return;
+        }
+    }
     m_ShaderManager.UseProgram(ID);
 }
 
@@ -273,8 +292,9 @@ void Shader::checkCompileErrors(unsigned int shader, std::string type)
     {
         if (!sm.GetShaderCompileStatus(shader))
         {
+            m_IsError = true;
             std::string infoLog = sm.GetShaderInfoLog(shader);
-            LOGGER_ERROR("Shader") << "COMPILATION_ERROR of type: " << type << "\n"
+            LOGGER_ERROR("Shader") << "COMPILATION_ERROR in '" << m_Name << "' (type: " << type << "):\n"
                                    << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
@@ -282,8 +302,9 @@ void Shader::checkCompileErrors(unsigned int shader, std::string type)
     {
         if (!sm.GetProgramLinkStatus(shader))
         {
+            m_IsError = true;
             std::string infoLog = sm.GetProgramInfoLog(shader);
-            LOGGER_ERROR("Shader") << "LINKING_ERROR of type: " << type << "\n"
+            LOGGER_ERROR("Shader") << "LINKING_ERROR in '" << m_Name << "':\n"
                                    << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }

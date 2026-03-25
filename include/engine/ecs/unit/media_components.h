@@ -88,4 +88,5 @@ struct ParticleEmitterComponent
     glm::vec4 startColor = glm::vec4(1.0f);
     glm::vec4 endColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
     std::string textureName = "";
+    std::string customShader;
 };

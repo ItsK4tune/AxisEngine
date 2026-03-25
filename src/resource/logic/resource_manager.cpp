@@ -61,6 +61,15 @@ void ResourceManager::Initialize(IShaderManager& shaderManager, ITextureManager&
     m_SkyboxManager = std::make_unique<SkyboxManager>();
     m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);
     m_VideoManager = std::make_unique<VideoManager>();
+
+    m_ShaderManager->Initialize();
+    m_TextureManager->Initialize();
+    // ModelManager::Initialize requires cubeModel from load.axs, so it should be called after LoadScene
+}
+
+void ResourceManager::InitializePostLoad()
+{
+    if (m_ModelManager) m_ModelManager->Initialize();
 }
 
 ResourceManager::~ResourceManager()

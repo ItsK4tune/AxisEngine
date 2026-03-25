@@ -21,4 +21,5 @@ struct DecalComponent
 
 
     std::vector<std::string> targetTags;
+    std::string customShader;
 };

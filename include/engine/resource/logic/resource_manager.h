@@ -33,6 +33,7 @@ public:
 
     
     void Initialize(IShaderManager& shaderManager, ITextureManager& textureManager, IAudioEngine& audioEngine);
+    void InitializePostLoad();
     void Shutdown();
     void Update(float dt);
 

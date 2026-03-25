@@ -263,6 +263,7 @@ bool Application::Initialize(const AppConfig &config)
     
     LOGGER_INFO("Application") << "Loading default assets from include/engine/asset/load.axs...";
     m_SceneManager->LoadScene("include/engine/asset/load.axs");
+    m_ResourceManager->InitializePostLoad();
 
     m_SystemManager->InitializeSystems(*m_ResourceManager, config.width, config.height);
 

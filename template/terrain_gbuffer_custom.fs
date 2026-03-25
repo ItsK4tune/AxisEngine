@@ -1,0 +1,39 @@
+#version 430 core
+layout (location = 0) out vec4 gAlbedoSpec;
+layout (location = 1) out vec4 gNormal;
+layout (location = 2) out vec4 gPosition;
+layout (location = 3) out uvec4 gID;
+
+in vec2 TexCoords;
+in vec3 WorldPos;
+in vec3 Normal;
+uniform uint entityID;
+
+uniform sampler2D heightMap;
+uniform sampler2D splatMap;
+uniform sampler2D textureLayer0;
+uniform sampler2D textureLayer1;
+uniform sampler2D textureLayer2;
+uniform sampler2D textureLayer3;
+
+uniform float textureScale;
+
+void main()
+{
+    vec4 blend = texture(splatMap, TexCoords);
+    vec2 scaledUV = TexCoords * textureScale;
+    
+    vec4 c0 = texture(textureLayer0, scaledUV);
+    vec4 c1 = texture(textureLayer1, scaledUV);
+    vec4 c2 = texture(textureLayer2, scaledUV);
+    vec4 c3 = texture(textureLayer3, scaledUV);
+    
+    vec3 finalColor = blend.r * c0.rgb + blend.g * c1.rgb + blend.b * c2.rgb + blend.a * c3.rgb;
+    
+    // CUSTOM LOGIC HERE
+    
+    gAlbedoSpec = vec4(finalColor, 1.0);
+    gNormal = vec4(normalize(Normal), 1.0);
+    gPosition = vec4(WorldPos, 1.0);
+    gID = uvec4(entityID, 0, 0, 0);
+}

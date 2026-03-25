@@ -90,33 +90,32 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
     rsm.Disable(ServerCapability::CullFace);
 
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
-    auto shader = resources.GetShader("particle");
-    if (!shader)
-    {
-        LOGGER_ERROR("ParticleSystem") << "'particle' shader not found!";
-        return;
-    }
-
-    shader->use();
-
-    rsm.SetViewport(0, 0, width, height);
-
     auto view = scene.registry.view<ParticleEmitterComponent>();
+    auto defaultShader = resources.GetShader("particle"); // Assuming a default particle shader exists
     for (auto entity : view)
     {
         auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
-            if (emitterComp.isActive)
-            {
-                uint32_t activeCount = emitterComp.emitter.GetActiveParticleCount();
-                if (activeCount > 0) {
-                    if (!emitterComp.emitter.Texture) {
-                        m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
-                        m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);
-                        shader->setInt("sprite", 0);
-                    }
-                    emitterComp.emitter.Render(shader.get());
+        if (emitterComp.isActive)
+        {
+            std::shared_ptr<Shader> activeShader = defaultShader;
+            if (!emitterComp.customShader.empty()) {
+                if (auto custom = resources.GetShader(emitterComp.customShader)) {
+                    activeShader = custom;
                 }
             }
+            if (!activeShader) continue;
+            activeShader->use();
+            
+            uint32_t activeCount = emitterComp.emitter.GetActiveParticleCount();
+            if (activeCount > 0) {
+                if (!emitterComp.emitter.Texture) {
+                    m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
+                    m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);
+                    activeShader->setInt("sprite", 0);
+                }
+                emitterComp.emitter.Render(activeShader.get());
+            }
+        }
     }
 
     rsm.SetDepthMask(true);

@@ -1,8 +1,37 @@
 #include <resource/logic/shader_manager.h>
 #include <core/logic/logger.h>
+#include <render/interface/i_graphics_context.h>
+#include <core/logic/service_locator.h>
+#include <ecs/interface/i_geometry_service.h>
 
 ShaderManager::ShaderManager(IShaderManager& lowLevelManager) 
     : m_LowLevelManager(lowLevelManager) {}
+
+void ShaderManager::Initialize() {
+    auto loadErrorShader = [&](const std::string& name, const std::string& vsName, const std::string& fsName) {
+        auto shader = std::make_shared<Shader>(m_LowLevelManager);
+        shader->SetName(name);
+        
+        // Construct full paths relative to the engine's asset directory
+        std::string vsPath = "include/engine/asset/shaders/" + vsName;
+        std::string fsPath = "include/engine/asset/shaders/" + fsName;
+        
+        try {
+            shader->load(vsPath.c_str(), fsPath.c_str());
+        } catch (...) {
+            LOGGER_ERROR("ShaderManager") << "CRITICAL: Failed to load external error shader: " << name;
+        }
+        return shader;
+    };
+
+    m_ErrorShader = loadErrorShader("Internal_Error_Shader", "error_forward.vs", "error_forward.fs");
+    m_ErrorGBufferShader = loadErrorShader("Internal_Error_GBuffer_Shader", "error_gbuffer.vs", "error_gbuffer.fs");
+
+    m_Cache.Add("Internal_Error_Shader", m_ErrorShader);
+    m_Cache.Add("Internal_Error_GBuffer_Shader", m_ErrorGBufferShader);
+
+    LOGGER_INFO("ShaderManager") << "Initialized Externalized Error Shaders (Pink/Black Checkerboard)";
+}
 
 std::shared_ptr<Shader> ShaderManager::Load(const std::string& name, 
                                             const std::string& vsPath, 
@@ -13,15 +42,25 @@ std::shared_ptr<Shader> ShaderManager::Load(const std::string& name,
     }
 
     if (vsPath.empty() || fsPath.empty()) {
-        LOGGER_ERROR("ShaderManager") << "Empty shader paths for '" << name << "'!";
-        return nullptr;
+        LOGGER_ERROR("ShaderManager") << "Empty shader paths for '" << name << "'. Returning error shader.";
+        return m_ErrorShader;
     }
 
     auto shader = std::make_shared<Shader>(m_LowLevelManager);
     shader->SetName(name);
     
-
-    shader->load(vsPath.c_str(), fsPath.c_str(), gsPath.empty() ? nullptr : gsPath.c_str());
+    try {
+        shader->load(vsPath.c_str(), fsPath.c_str(), gsPath.empty() ? nullptr : gsPath.c_str());
+    } catch (...) {
+        shader->SetError(true);
+    }
+    
+    if (shader->IsError()) {
+        LOGGER_ERROR("ShaderManager") << "Failed to load shader: " << name << ". Cache will contain errored shader for fallback.";
+        m_Cache.Add(name, shader); // Add the errored shader to cache
+        m_Paths[name] = {vsPath, fsPath, gsPath}; // Store paths for potential reload
+        return shader; // Return the errored shader
+    }
     
     m_Cache.Add(name, shader);
     m_Paths[name] = {vsPath, fsPath, gsPath};

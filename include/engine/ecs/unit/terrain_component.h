@@ -36,4 +36,5 @@ struct TerrainComponent
     bool isWalkable = false;
     std::shared_ptr<ICollisionShape> collisionShape;
     std::shared_ptr<IRigidBody> physicsBody;
+    std::string customShader;
 };

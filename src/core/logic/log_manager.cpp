@@ -120,10 +120,6 @@ void LogManager::Log(LogType type, const std::string& tag, const std::string& me
     }
 
     (*outStream) << "[" << levelStr << "] [" << tag << "] " << message << std::endl;
-
-    if (type == LogType::Error) {
-        throw std::runtime_error("[" + tag + "] " + message);
-    }
 }
 
 

@@ -9,6 +9,13 @@
 ModelManager::ModelManager(ModelInstanceManager& instanceManager) 
     : m_InstanceManager(instanceManager) {}
 
+void ModelManager::Initialize() {
+    m_ErrorModel = m_Cache.Get("cubeModel");
+    if (!m_ErrorModel) {
+        LOGGER_WARN("ModelManager") << "cubeModel not found in cache during Initialize. Fallback might be limited.";
+    }
+}
+
 std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::string& path, bool isStatic, bool async) {
     if (auto existing = m_Cache.Get(name)) {
         return existing;
@@ -18,8 +25,12 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         auto model = std::make_shared<Model>();
         m_Cache.Add(name, model);
 
-        auto future = JobSystem::Instance().ExecuteAsync([model, path, isStatic]() {
-            model->LoadCPU(path, isStatic);
+        auto future = JobSystem::Instance().ExecuteAsync([this, model, path, isStatic, name]() {
+            try {
+                model->LoadCPU(path, isStatic);
+            } catch (...) {
+                LOGGER_ERROR("ModelManager") << "Async load failed for: " << path << ". Fallback will be applied on GPU upload.";
+            }
         });
         
         std::lock_guard<std::mutex> lock(m_PendingMutex);
@@ -27,12 +38,22 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         
         return model;
     } else {
-        auto model = std::make_shared<Model>(path, isStatic);
-        model->UploadToGPU();
-        m_Cache.Add(name, model);
-        m_InstanceManager.RegisterModel(name, model);
-        LOGGER_INFO("ModelManager") << "Loaded model: " << name;
-        return model;
+        auto model = std::make_shared<Model>();
+        try {
+            model->LoadCPU(path, isStatic);
+            model->UploadToGPU();
+            m_Cache.Add(name, model);
+            m_InstanceManager.RegisterModel(name, model);
+            LOGGER_INFO("ModelManager") << "Loaded model: " << name;
+            return model;
+        } catch (...) {
+            LOGGER_ERROR("ModelManager") << "Failed to load model: " << path << ". Returning cubeModel fallback.";
+            if (m_ErrorModel) {
+                m_Cache.Add(name, m_ErrorModel);
+                return m_ErrorModel;
+            }
+            return nullptr;
+        }
     }
 }
 
