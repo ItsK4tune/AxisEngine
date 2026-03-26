@@ -56,10 +56,10 @@ std::shared_ptr<Shader> ShaderManager::Load(const std::string& name,
     }
     
     if (shader->IsError()) {
-        LOGGER_ERROR("ShaderManager") << "Failed to load shader: " << name << ". Cache will contain errored shader for fallback.";
-        m_Cache.Add(name, shader); // Add the errored shader to cache
+        LOGGER_ERROR("ShaderManager") << "Failed to load shader: " << name << ". Returning error shader.";
+        m_Cache.Add(name, m_ErrorShader); // Add the error shader to cache for this name
         m_Paths[name] = {vsPath, fsPath, gsPath}; // Store paths for potential reload
-        return shader; // Return the errored shader
+        return m_ErrorShader; // Return the error shader
     }
     
     m_Cache.Add(name, shader);

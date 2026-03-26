@@ -10,9 +10,9 @@ ModelManager::ModelManager(ModelInstanceManager& instanceManager)
     : m_InstanceManager(instanceManager) {}
 
 void ModelManager::Initialize() {
-    m_ErrorModel = m_Cache.Get("cubeModel");
+    m_ErrorModel = m_Cache.Get("capsuleModel");
     if (!m_ErrorModel) {
-        LOGGER_WARN("ModelManager") << "cubeModel not found in cache during Initialize. Fallback might be limited.";
+        LOGGER_WARN("ModelManager") << "capsuleModel not found in cache during Initialize. Fallback might be limited.";
     }
 }
 

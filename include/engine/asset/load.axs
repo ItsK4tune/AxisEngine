@@ -109,6 +109,14 @@ axis_scene:
       Name: debug_line
       vertex: include/engine/asset/shaders/debug_line.vs
       fragment: include/engine/asset/shaders/debug_line.fs
+    Shader:
+      Name: error_shader
+      vertex: include/engine/asset/shaders/error_forward.vs
+      fragment: include/engine/asset/shaders/error_forward.fs
+    
+    Texture:
+      Name: error_texture
+      Path: include/engine/asset/textures/error_checkerboard.ppm
 
     Font:
       Name: time
