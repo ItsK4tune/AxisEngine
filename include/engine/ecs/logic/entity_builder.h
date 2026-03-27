@@ -34,7 +34,7 @@ public:
                                  const glm::vec3& scale = glm::vec3(1.0f));
                                  
     EntityBuilder& WithMesh(const std::string& modelName, const std::string& shaderName);
-    EntityBuilder& WithMaterial(const MaterialComponent& material);
+    EntityBuilder& WithMaterial(const AxisMaterialComponent& material);
     EntityBuilder& WithPhongMaterial(const glm::vec3& ambient = glm::vec3(1.0f), const glm::vec3& specular = glm::vec3(0.5f), float shininess = 32.0f);
     EntityBuilder& WithPBRMaterial(float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f);
     

@@ -59,16 +59,16 @@ EntityBuilder& EntityBuilder::WithMesh(const std::string& modelName, const std::
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithMaterial(const MaterialComponent& material)
+EntityBuilder& EntityBuilder::WithMaterial(const AxisMaterialComponent& material)
 {
-    m_Scene.registry.emplace_or_replace<MaterialComponent>(m_Entity, material);
+    m_Scene.registry.emplace_or_replace<AxisMaterialComponent>(m_Entity, material);
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const glm::vec3& specular, float shininess)
 {
-    auto& mat = m_Scene.registry.get_or_emplace<MaterialComponent>(m_Entity);
-    mat.desc.type = MaterialType::PHONG;
+    auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
+    mat.desc.type = AxisMaterialType::PHONG;
     mat.desc.ambient = ambient;
     mat.desc.specular = specular;
     mat.desc.shininess = shininess;
@@ -77,8 +77,8 @@ EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const 
 
 EntityBuilder& EntityBuilder::WithPBRMaterial(float metallic, float roughness, float ao)
 {
-    auto& mat = m_Scene.registry.get_or_emplace<MaterialComponent>(m_Entity);
-    mat.desc.type = MaterialType::PBR;
+    auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
+    mat.desc.type = AxisMaterialType::PBR;
     mat.desc.metallic = metallic;
     mat.desc.roughness = roughness;
     mat.desc.ao = ao;

@@ -8,6 +8,7 @@ layout (binding = 0) uniform sampler2D gPosition;
 layout (binding = 1) uniform sampler2D gNormal;
 layout (binding = 2) uniform sampler2D gAlbedoSpec;
 layout (binding = 3) uniform usampler2D gID;
+layout (binding = 4) uniform sampler2D gEmissive;
 
 
 layout(std140, binding = 20) uniform CameraData {
@@ -166,7 +167,8 @@ void main()
     }
 
 
-    vec3 color = Lo + Albedo * 0.01;
+    vec3 emissive = texture(gEmissive, TexCoords).rgb;
+    vec3 color = Lo + Albedo * 0.01 + emissive;
     
     FragColor = vec4(color, 1.0);
 }

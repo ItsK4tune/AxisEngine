@@ -24,15 +24,15 @@ struct MeshRendererComponent
 
 
 
-enum class MaterialType
+enum class AxisMaterialType
 {
     PHONG,
     PBR
 };
 
-struct MaterialDescriptor
+struct AxisMaterialDescriptor
 {
-    MaterialType type = MaterialType::PHONG;
+    AxisMaterialType type = AxisMaterialType::PHONG;
 
     float roughness = 0.5f;
     float metallic = 0.0f;
@@ -61,7 +61,7 @@ struct MaterialDescriptor
     ShaderPorts ports;
 };
 
-struct MaterialGPUState
+struct AxisMaterialGPUState
 {
     uint32_t albedoMap = 0;
     uint32_t normalMap = 0;
@@ -73,10 +73,10 @@ struct MaterialGPUState
     bool dirty = true;
 };
 
-struct MaterialComponent
+struct AxisMaterialComponent
 {
-    MaterialDescriptor desc;
-    MaterialGPUState gpu;
+    AxisMaterialDescriptor desc;
+    AxisMaterialGPUState gpu;
 };
 
 

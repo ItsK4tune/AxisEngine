@@ -73,12 +73,12 @@ layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
 // 5. Sampler Bindings (Standardized Units 0-15)
 // Material Units (0-9)
-layout (binding = 0) uniform sampler2D texture_diffuse1;
-layout (binding = 1) uniform sampler2D texture_normal1;
-layout (binding = 2) uniform sampler2D texture_metallic1;
-layout (binding = 3) uniform sampler2D texture_roughness1;
-layout (binding = 4) uniform sampler2D texture_ao1;
-layout (binding = 5) uniform sampler2D texture_emissive1;
+layout (binding = 0) uniform sampler2D u_AlbedoMap;
+layout (binding = 1) uniform sampler2D u_NormalMap;
+layout (binding = 2) uniform sampler2D u_MetallicMap;
+layout (binding = 3) uniform sampler2D u_RoughnessMap;
+layout (binding = 4) uniform sampler2D u_AOMap;
+layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
 // System Units (10-15)
 layout (binding = 10) uniform sampler2D shadowMapDir[2];
@@ -86,7 +86,7 @@ layout (binding = 12) uniform samplerCube shadowMapPoint[2];
 layout (binding = 14) uniform sampler2D shadowMapSpot[2];
 
 // 6. Common Uniforms
-uniform vec4 tintColor;
+uniform vec4 u_BaseColor;
 uniform bool debug_noTexture;
 uniform uint entityID;
 

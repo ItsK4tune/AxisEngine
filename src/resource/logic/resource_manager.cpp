@@ -228,17 +228,33 @@ std::shared_ptr<Model> ResourceManager::GetModelAuto(const std::string &nameOrPa
 
 std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string &nameOrPath, unsigned int fontSize)
 {
-    if (nameOrPath.empty()) return nullptr;
+    if (nameOrPath.empty()) {
+        if (nameOrPath != "time") return GetFontAuto("time", fontSize);
+        return nullptr;
+    }
+
     auto f = GetFont(nameOrPath);
     if (f) return f;
     
     bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
-    if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
+    if (!looksLikePath) {
+        if (nameOrPath != "time") return GetFontAuto("time", fontSize);
+        return nullptr;
+    }
+
+    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) {
+        if (nameOrPath != "time") return GetFontAuto("time", fontSize);
+        return nullptr;
+    }
+
     LoadFont(nameOrPath, nameOrPath, fontSize);
-    return GetFont(nameOrPath);
+    auto res = GetFont(nameOrPath);
+    if (res) return res;
+
+    if (nameOrPath != "time") return GetFontAuto("time", fontSize);
+    return nullptr;
 }
 
 std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &nameOrPath, IAudioEngine *engine)

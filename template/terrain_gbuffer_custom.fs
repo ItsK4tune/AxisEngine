@@ -1,8 +1,9 @@
 #version 430 core
-layout (location = 0) out vec4 gAlbedoSpec;
-layout (location = 1) out vec4 gNormal;
-layout (location = 2) out vec4 gPosition;
-layout (location = 3) out uvec4 gID;
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec3 gNormal;
+layout (location = 2) out vec4 gAlbedoSpec;
+layout (location = 3) out uint gEntityID;
+layout (location = 4) out vec3 gEmissive;
 
 in vec2 TexCoords;
 in vec3 WorldPos;
@@ -16,12 +17,12 @@ uniform sampler2D textureLayer1;
 uniform sampler2D textureLayer2;
 uniform sampler2D textureLayer3;
 
-uniform float textureScale;
+uniform float u_TextureScale;
 
 void main()
 {
     vec4 blend = texture(splatMap, TexCoords);
-    vec2 scaledUV = TexCoords * textureScale;
+    vec2 scaledUV = TexCoords * u_TextureScale;
     
     vec4 c0 = texture(textureLayer0, scaledUV);
     vec4 c1 = texture(textureLayer1, scaledUV);
@@ -32,8 +33,9 @@ void main()
     
     // CUSTOM LOGIC HERE
     
+    gPosition = WorldPos;
+    gNormal = normalize(Normal) * 0.5 + 0.5;
     gAlbedoSpec = vec4(finalColor, 1.0);
-    gNormal = vec4(normalize(Normal), 1.0);
-    gPosition = vec4(WorldPos, 1.0);
-    gID = uvec4(entityID, 0, 0, 0);
+    gEmissive = vec3(0.0);
+    gEntityID = entityID;
 }

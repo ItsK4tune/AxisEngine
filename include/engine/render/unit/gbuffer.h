@@ -24,6 +24,7 @@ public:
     uint32_t GetNormalTexture() const { return m_NormalTexture ? m_NormalTexture->Get() : 0; }
     uint32_t GetAlbedoSpecTexture() const { return m_AlbedoSpecTexture ? m_AlbedoSpecTexture->Get() : 0; }
     uint32_t GetIDTexture() const { return m_IDTexture ? m_IDTexture->Get() : 0; }
+    uint32_t GetEmissiveTexture() const { return m_EmissiveTexture ? m_EmissiveTexture->Get() : 0; }
     uint32_t GetDepthTexture() const { return m_DepthTexture ? m_DepthTexture->Get() : 0; }
     uint32_t GetFBO() const { return m_FBO ? m_FBO->Get() : 0; }
     int GetWidth() const { return m_Width; }
@@ -45,6 +46,7 @@ private:
     std::unique_ptr<GPUTexture> m_NormalTexture;
     std::unique_ptr<GPUTexture> m_AlbedoSpecTexture;
     std::unique_ptr<GPUTexture> m_IDTexture;
+    std::unique_ptr<GPUTexture> m_EmissiveTexture;
     std::unique_ptr<GPUTexture> m_DepthTexture;
 
     void CreateTextures();

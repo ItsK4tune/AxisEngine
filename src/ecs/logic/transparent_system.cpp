@@ -62,7 +62,7 @@ std::vector<entt::id_type> TransparentSystem::GetReadComponents() const
         entt::type_id<RotationComponent>().hash(),
         entt::type_id<ScaleComponent>().hash(),
         entt::type_id<WorldTransformComponent>().hash(),
-        entt::type_id<MaterialComponent>().hash()
+        entt::type_id<AxisMaterialComponent>().hash()
     };
 }
 

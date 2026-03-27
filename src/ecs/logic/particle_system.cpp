@@ -116,7 +116,7 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
                 if (!emitterComp.emitter.Texture) {
                     m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
                     m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);
-                    activeShader->setInt("sprite", 0);
+                    activeShader->setInt("u_AlbedoMap", 0);
                 }
                 emitterComp.emitter.Render(activeShader.get());
             }

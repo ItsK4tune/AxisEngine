@@ -163,6 +163,10 @@ private:
     std::vector<std::string> m_BonesUniforms;
     
     std::shared_ptr<Shader> m_UnlitShader;
+    std::shared_ptr<Shader> m_DeferredLitShader;
+    std::shared_ptr<Shader> m_DeferredUnlitShader;
+    std::shared_ptr<Shader> m_ErrorForwardShader;
+    std::shared_ptr<Shader> m_ErrorDeferredShader;
 
     FrustumCuller m_FrustumCuller;
     OcclusionCuller m_OcclusionCuller;

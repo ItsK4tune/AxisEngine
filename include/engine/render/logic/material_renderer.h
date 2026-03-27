@@ -7,7 +7,7 @@
 
 class IGraphicsContext;
 class Shader;
-struct MaterialComponent;
+struct AxisMaterialComponent;
 
 struct MaterialUniformLocations {
     int roughness = -1;
@@ -20,6 +20,8 @@ struct MaterialUniformLocations {
     int opacity = -1;
     int uvScale = -1;
     int uvOffset = -1;
+    int u_UVScale = -1;
+    int u_UVOffset = -1;
     
 
     int mat_roughness = -1;
@@ -30,6 +32,14 @@ struct MaterialUniformLocations {
     int mat_specular = -1;
     int mat_ambient = -1;
     int mat_opacity = -1;
+
+    int u_BaseColor = -1;
+    int u_Metallic = -1;
+    int u_Roughness = -1;
+    int u_AO = -1;
+    int u_Emission = -1;
+    int u_Shininess = -1;
+    int u_Specular = -1;
 
 
     int diffuseMap = -1;
@@ -47,6 +57,13 @@ struct MaterialUniformLocations {
     int mat_aoMap = -1;
     int mat_emissiveMap = -1;
 
+    int u_AlbedoMap = -1;
+    int u_NormalMap = -1;
+    int u_MetallicMap = -1;
+    int u_RoughnessMap = -1;
+    int u_AOMap = -1;
+    int u_EmissiveMap = -1;
+
 
     int irradianceMap = -1;
     int prefilterMap = -1;
@@ -59,7 +76,7 @@ struct MaterialUniformLocations {
 class MaterialRenderer {
 public:
     void Initialize(IGraphicsContext& context, unsigned int whiteTextureId, unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
-    bool SetupMaterialUniforms(Shader *shader, MaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe = false);
+    bool SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe = false);
 
     static void InvalidateSkyboxCache() {
         std::lock_guard<std::mutex> lock(s_SkyboxMutex);

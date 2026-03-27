@@ -281,6 +281,10 @@ public:
             case FramebufferAttachment::Color1: return GL_COLOR_ATTACHMENT1;
             case FramebufferAttachment::Color2: return GL_COLOR_ATTACHMENT2;
             case FramebufferAttachment::Color3: return GL_COLOR_ATTACHMENT3;
+            case FramebufferAttachment::Color4: return GL_COLOR_ATTACHMENT4;
+            case FramebufferAttachment::Color5: return GL_COLOR_ATTACHMENT5;
+            case FramebufferAttachment::Color6: return GL_COLOR_ATTACHMENT6;
+            case FramebufferAttachment::Color7: return GL_COLOR_ATTACHMENT7;
             case FramebufferAttachment::Depth: return GL_DEPTH_ATTACHMENT;
             case FramebufferAttachment::Stencil: return GL_STENCIL_ATTACHMENT;
             case FramebufferAttachment::DepthStencil: return GL_DEPTH_STENCIL_ATTACHMENT;

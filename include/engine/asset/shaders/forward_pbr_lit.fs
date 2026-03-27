@@ -2,18 +2,16 @@
 out vec4 FragColor;
 
 
-layout (binding = 0) uniform sampler2D texture_diffuse1;
-layout (binding = 1) uniform sampler2D texture_normal1;
-layout (binding = 2) uniform sampler2D texture_metallic1;
-layout (binding = 3) uniform sampler2D texture_roughness1;
-layout (binding = 4) uniform sampler2D texture_ao1;
-layout (binding = 5) uniform sampler2D texture_emissive1;
-
+layout (binding = 0) uniform sampler2D u_AlbedoMap;
+layout (binding = 1) uniform sampler2D u_NormalMap;
+layout (binding = 2) uniform sampler2D u_MetallicMap;
+layout (binding = 3) uniform sampler2D u_RoughnessMap;
+layout (binding = 4) uniform sampler2D u_AOMap;
+layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
 layout (binding = 6) uniform samplerCube irradianceMap;
 layout (binding = 7) uniform samplerCube prefilterMap;
 layout (binding = 8) uniform sampler2D brdfLUT;
-
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
@@ -64,25 +62,18 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 
-
-struct Material {
-    float roughness;
-    float metallic;
-    float ao;
-    vec3 emission;
-    float opacity;
-};
-uniform Material material;
-uniform vec4 tintColor;
+uniform float u_Roughness;
+uniform float u_Metallic;
+uniform float u_AO;
+uniform vec3 u_Emission;
+uniform vec4 u_BaseColor; // rgb: tint, a: opacity
 uniform bool debug_noTexture;
 
 const float PI = 3.14159265359;
-
 
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
@@ -98,15 +89,15 @@ void main()
     float ao;
 
     if (debug_noTexture) {
-        albedo = vec3(1.0) * tintColor.rgb;
-        metallic = 0.0;
-        roughness = 0.8;
-        ao = 1.0;
+        albedo = u_BaseColor.rgb;
+        metallic = u_Metallic;
+        roughness = u_Roughness;
+        ao = u_AO;
     } else {
-        albedo = pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2)) * tintColor.rgb;
-        metallic = texture(texture_metallic1, TexCoords).r * material.metallic;
-        roughness = texture(texture_roughness1, TexCoords).r * material.roughness;
-        ao = texture(texture_ao1, TexCoords).r * material.ao;
+        albedo = pow(texture(u_AlbedoMap, TexCoords).rgb, vec3(2.2)) * u_BaseColor.rgb;
+        metallic = texture(u_MetallicMap, TexCoords).r * u_Metallic;
+        roughness = texture(u_RoughnessMap, TexCoords).r * u_Roughness;
+        ao = texture(u_AOMap, TexCoords).r * u_AO;
     }
 
     vec3 N = normalize(Normal);
@@ -118,7 +109,6 @@ void main()
 
     vec3 Lo = vec3(0.0);
     
-
     for(int d = 0; d < light.numDirLights; d++) {
         vec3 L = normalize(-dirLights[d].direction);
         vec3 H = normalize(V + L);
@@ -131,7 +121,6 @@ void main()
         vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
     }
-
 
     for(int i = 0; i < light.nrPointLights; ++i) {
         vec3 L = normalize(pointLights[i].position - FragPos);
@@ -148,7 +137,6 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
     }
 
-
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
@@ -159,8 +147,8 @@ void main()
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
     vec3 ambient = (kD * diffuse + specular) * ao;
-    vec3 emissive = debug_noTexture ? vec3(0.0) : pow(texture(texture_emissive1, TexCoords).rgb, vec3(2.2)) * material.emission;
-    FragColor = vec4(ambient + Lo + emissive, material.opacity);
+    vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, TexCoords).rgb, vec3(2.2));
+    FragColor = vec4(ambient + Lo + emissive, u_BaseColor.a);
 }
 
 

@@ -209,10 +209,10 @@ void GameState::OnUpdate(float dt)
         }
     }
 
-    auto demoView = this->GetScene().registry.view<InfoComponent, MaterialComponent>();
+    auto demoView = this->GetScene().registry.view<InfoComponent, AxisMaterialComponent>();
     for (auto entity : demoView)
     {
-        auto [info, mat] = demoView.get<InfoComponent, MaterialComponent>(entity);
+        auto [info, mat] = demoView.get<InfoComponent, AxisMaterialComponent>(entity);
         if (info.tag == "enemy") mat.desc.ports.data[0] = 1.0f;
         else if (info.tag == "ally") mat.desc.ports.data[0] = 2.0f;
         else mat.desc.ports.data[0] = 0.0f;

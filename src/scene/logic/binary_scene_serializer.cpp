@@ -135,7 +135,7 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
             os.write(reinterpret_cast<const char*>(&mesh->castShadow), sizeof(mesh->castShadow));
         }
 
-        auto* mat = scene.registry.try_get<MaterialComponent>(entity);
+        auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity);
         bool hasMat = (mat != nullptr);
         os.write(reinterpret_cast<const char*>(&hasMat), sizeof(hasMat));
         if (hasMat)
@@ -308,7 +308,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         is.read(reinterpret_cast<char*>(&hasMat), sizeof(hasMat));
         if (hasMat)
         {
-            auto& m = scene.registry.emplace<MaterialComponent>(entity);
+            auto& m = scene.registry.emplace<AxisMaterialComponent>(entity);
             is.read(reinterpret_cast<char*>(&m.desc), sizeof(m.desc));
             m.gpu.dirty = true;
         }

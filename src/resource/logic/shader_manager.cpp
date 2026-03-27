@@ -25,7 +25,7 @@ void ShaderManager::Initialize() {
     };
 
     m_ErrorShader = loadErrorShader("Internal_Error_Shader", "error_forward.vs", "error_forward.fs");
-    m_ErrorGBufferShader = loadErrorShader("Internal_Error_GBuffer_Shader", "error_gbuffer.vs", "error_gbuffer.fs");
+    m_ErrorGBufferShader = loadErrorShader("Internal_Error_GBuffer_Shader", "error_deferred.vs", "error_deferred.fs");
 
     m_Cache.Add("Internal_Error_Shader", m_ErrorShader);
     m_Cache.Add("Internal_Error_GBuffer_Shader", m_ErrorGBufferShader);

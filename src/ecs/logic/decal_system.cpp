@@ -205,16 +205,6 @@ void DecalSystem::Render(Scene &scene)
     }
     
     auto view = scene.registry.view<DecalComponent>();
-    
-    if (view.begin() != view.end()) {
-        static bool loggedCount = false;
-        if (!loggedCount) {
-             size_t count = 0;
-             for (auto e : view) count++;
-            LOGGER_INFO("DecalSystem") << "Rendering " << count << " decals. Viewport: " << width << "x" << height;
-            loggedCount = true;
-        }
-    }
 
     std::vector<entt::entity> sortedEntities;
     for (auto entity : view) sortedEntities.push_back(entity);

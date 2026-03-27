@@ -2,18 +2,16 @@
 out vec4 FragColor;
 
 
-layout (binding = 0) uniform sampler2D texture_diffuse1;
-layout (binding = 1) uniform sampler2D texture_normal1;
-layout (binding = 2) uniform sampler2D texture_metallic1;
-layout (binding = 3) uniform sampler2D texture_roughness1;
-layout (binding = 4) uniform sampler2D texture_ao1;
-layout (binding = 5) uniform sampler2D texture_emissive1;
-
+layout (binding = 0) uniform sampler2D u_AlbedoMap;
+layout (binding = 1) uniform sampler2D u_NormalMap;
+layout (binding = 2) uniform sampler2D u_MetallicMap;
+layout (binding = 3) uniform sampler2D u_RoughnessMap;
+layout (binding = 4) uniform sampler2D u_AOMap;
+layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
 layout (binding = 6) uniform samplerCube irradianceMap;
 layout (binding = 7) uniform samplerCube prefilterMap;
 layout (binding = 8) uniform sampler2D brdfLUT;
-
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
@@ -64,11 +62,9 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-
 layout (binding = 10) uniform sampler2D shadowMapDir[2];
 layout (binding = 12) uniform samplerCube shadowMapPoint[2];
 layout (binding = 14) uniform sampler2D shadowMapSpot[2];
-
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -76,29 +72,20 @@ in vec2 TexCoords;
 in vec4 FragPosLightSpace[2];
 in vec4 FragPosLightSpaceSpot[2];
 
-
-struct Material {
-    float roughness;
-    float metallic;
-    float ao;
-    vec3 emission;
-    float opacity;
-};
-uniform Material material;
-uniform vec4 tintColor;
-uniform vec2 uvScale = vec2(1.0);
-uniform vec2 uvOffset = vec2(0.0);
+uniform float u_Roughness;
+uniform float u_Metallic;
+uniform float u_AO;
+uniform vec3 u_Emission;
+uniform vec4 u_BaseColor; // rgb: tint, a: opacity
+uniform vec2 u_UVScale = vec2(1.0);
+uniform vec2 u_UVOffset = vec2(0.0);
 uniform bool debug_noTexture;
 uniform bool u_isWireframe;
-
-
-
 
 uniform float u_ShadowBias;
 uniform int u_ShadowSoftness;
 
 const float PI = 3.14159265359;
-
 
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
@@ -110,22 +97,22 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, 
 
 void main()
 {
-    vec2 finalTexCoords = TexCoords * uvScale + uvOffset;
+    vec2 finalTexCoords = TexCoords * u_UVScale + u_UVOffset;
     vec3 albedo;
     float metallic;
     float roughness;
     float ao;
 
     if (debug_noTexture) {
-        albedo = vec3(1.0) * tintColor.rgb;
-        metallic = 0.0;
-        roughness = 0.8;
-        ao = 1.0;
+        albedo = u_BaseColor.rgb;
+        metallic = u_Metallic;
+        roughness = u_Roughness;
+        ao = u_AO;
     } else {
-        albedo = pow(texture(texture_diffuse1, finalTexCoords).rgb, vec3(2.2)) * tintColor.rgb;
-        metallic = texture(texture_metallic1, finalTexCoords).r * material.metallic;
-        roughness = texture(texture_roughness1, finalTexCoords).r * material.roughness;
-        ao = texture(texture_ao1, finalTexCoords).r * material.ao;
+        albedo = pow(texture(u_AlbedoMap, finalTexCoords).rgb, vec3(2.2)) * u_BaseColor.rgb;
+        metallic = texture(u_MetallicMap, finalTexCoords).r * u_Metallic;
+        roughness = texture(u_RoughnessMap, finalTexCoords).r * u_Roughness;
+        ao = texture(u_AOMap, finalTexCoords).r * u_AO;
     }
 
     vec3 N = normalize(Normal);
@@ -137,7 +124,6 @@ void main()
 
     vec3 Lo = vec3(0.0);
     
-
     for(int d = 0; d < light.numDirLights; d++) {
         vec3 L = normalize(-dirLights[d].direction);
         vec3 H = normalize(V + L);
@@ -160,7 +146,6 @@ void main()
         }
     }
 
-
     for(int i = 0; i < light.nrPointLights; ++i) {
         vec3 L = normalize(pointLights[i].position - FragPos);
         vec3 H = normalize(V + L);
@@ -176,9 +161,6 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
     }
 
-
-
-
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
@@ -189,10 +171,10 @@ void main()
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
     vec3 ambient = (kD * diffuse + specular) * ao;
-    vec3 emissive = debug_noTexture ? vec3(0.0) : pow(texture(texture_emissive1, finalTexCoords).rgb, vec3(2.2)) * material.emission;
+    vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, finalTexCoords).rgb, vec3(2.2));
+    
     vec3 finalColor = ambient + Lo + emissive;
-
-    FragColor = vec4(finalColor, material.opacity);
+    FragColor = vec4(finalColor, u_BaseColor.a);
 
     if (u_isWireframe) {
         FragColor = vec4(0.0, 1.0, 0.0, 1.0);

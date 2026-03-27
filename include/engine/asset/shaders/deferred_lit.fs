@@ -9,14 +9,14 @@ in vec2 TexCoords;
 in vec3 FragPos;
 in vec3 Normal;
 
-// 1. Standard Samplers
+
 layout (binding = 0) uniform sampler2D u_AlbedoMap;
 layout (binding = 1) uniform sampler2D u_NormalMap;
 layout (binding = 2) uniform sampler2D u_MetallicMap;
 layout (binding = 3) uniform sampler2D u_RoughnessMap;
+layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
-// 2. Standard UBOs
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
@@ -29,37 +29,38 @@ layout(std140, binding = 22) uniform GlobalData {
     vec2  u_Resolution;
 } globalData;
 
-// 3. Common Uniforms
 uniform float u_Roughness;
 uniform float u_Metallic;
-uniform vec4 u_BaseColor;
+uniform float u_AO;
+uniform vec3 u_Emission;
+uniform vec4 u_BaseColor; // rgb: tint, a: opacity
 uniform bool debug_noTexture;
 uniform uint entityID;
-uniform float u_CustomPorts[8];
+uniform bool u_isWireframe;
 
 void main()
 {    
-    // Output world position
     gPosition = FragPos;
-    
-    // Encode normal to [0, 1] range
     gNormal = normalize(Normal) * 0.5 + 0.5;
     
-    // Default Albedo
-    vec3 color = u_BaseColor.rgb;
-    if (!debug_noTexture) {
-        color *= pow(texture(u_AlbedoMap, TexCoords).rgb, vec3(2.2));
+    vec4 texColor;
+    float _roughness;
+    if (debug_noTexture) {
+        texColor = vec4(1.0);
+        _roughness = u_Roughness;
+    } else {
+        texColor = texture(u_AlbedoMap, TexCoords);
+        texColor.rgb = pow(texColor.rgb, vec3(2.2));
+        _roughness = texture(u_RoughnessMap, TexCoords).r * u_Roughness;
     }
     
-    // --- START CUSTOM LOGIC ---
-    // Example: change color based on custom port 0
-    if (u_CustomPorts[0] > 0.0) {
-        color *= vec3(1.0, 0.5, 0.5); 
-    }
-    // --- END CUSTOM LOGIC ---
-
-    gAlbedoSpec.rgb = color;
-    gAlbedoSpec.a = u_Roughness; // Store roughness in alpha
-    gEmissive = vec3(0.0); // Output emissive if needed
+    gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
+    gAlbedoSpec.a = _roughness;
     gEntityID = entityID;
+    gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
+
+    if (u_isWireframe) {
+        gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);
+        gEmissive = vec3(0.0);
+    }
 }

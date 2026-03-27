@@ -10,12 +10,12 @@
 // Forward declarations to avoid direct component dependency in header
 class Model;
 class Shader;
-struct MaterialComponent;
+struct AxisMaterialComponent;
 
 struct RenderItem {
     Model* model = nullptr;
     Shader* shader = nullptr;
-    MaterialComponent* material = nullptr;
+    AxisMaterialComponent* material = nullptr;
     glm::mat4 worldMatrix;
     glm::vec4 tintColor = glm::vec4(1.0f);
     AABB worldAABB;

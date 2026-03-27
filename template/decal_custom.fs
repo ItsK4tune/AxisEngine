@@ -8,8 +8,7 @@ uniform usampler2D gID;
 uniform usampler1D tagMap;
 
 uniform mat4 invModel;
-uniform float opacity;
-uniform vec4 tintColor;
+uniform vec4 u_BaseColor;
 uniform sampler2D gDepth;
 uniform uint allowedTagsMask;
 
@@ -33,7 +32,7 @@ void main()
     vec4 texColor = texture(decalAlbedo, decalUV);
     
     // CUSTOM LOGIC HERE
-    vec3 finalColor = texColor.rgb * tintColor.rgb;
+    vec3 finalColor = texColor.rgb * u_BaseColor.rgb;
     
-    gAlbedoSpec = vec4(finalColor, texColor.a * opacity * tintColor.a);
+    gAlbedoSpec = vec4(finalColor, texColor.a * u_BaseColor.a);
 }

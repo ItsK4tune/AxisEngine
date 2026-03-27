@@ -12,13 +12,13 @@ uniform sampler2D textureLayer1;
 uniform sampler2D textureLayer2;
 uniform sampler2D textureLayer3;
 
-uniform float textureScale;
+uniform float u_TextureScale;
 uniform vec3 camPos;
 
 void main()
 {
     vec4 blend = texture(splatMap, TexCoords);
-    vec2 scaledUV = TexCoords * textureScale;
+    vec2 scaledUV = TexCoords * u_TextureScale;
     
     vec4 c0 = texture(textureLayer0, scaledUV);
     vec4 c1 = texture(textureLayer1, scaledUV);

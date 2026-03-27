@@ -243,7 +243,7 @@ void ParticleEmitter::Render(Shader *shader)
     {
         tm.ActiveTexture(TextureUnit::Texture0);
         tm.BindTexture(TextureType::Texture2D, Texture->id);
-        shader->setInt("sprite", 0);
+        shader->setInt("u_AlbedoMap", 0);
     }
 
     std::vector<ParticleInstanceData> instanceData;

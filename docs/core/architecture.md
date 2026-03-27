@@ -50,7 +50,7 @@ Entities are lightweight `uint32_t` IDs. They contain no data. Use **[EntityBuil
 ### Components (Data)
 Pure data structures. Examples:
 - **Core**: `TransformComponent`, `InfoComponent`
-- **Render**: `MeshRendererComponent`, `MaterialComponent`, `CameraComponent`
+- **Render**: `MeshRendererComponent`, `AxisMaterialComponent`: Defines material properties and texture maps.
 - **Physics**: `RigidBodyComponent`, `CharacterControllerComponent`
 - **Logic**: `ScriptComponent`, `AnimationComponent`
 - **Effects**: `ParticleEmitterComponent`, `AudioSourceComponent`, `VideoPlayerComponent`

@@ -50,6 +50,8 @@ layout(std140, binding = 22) uniform GlobalData {
 // 4. Uniforms
 uniform mat4 model;
 uniform bool isInstanced;
+uniform vec2 u_UVScale = vec2(1.0);
+uniform vec2 u_UVOffset = vec2(0.0);
 
 const int MAX_BONES = 200;
 uniform mat4 finalBonesMatrices[MAX_BONES];
@@ -61,7 +63,7 @@ void main()
     // Default position calculation (Add animation logic if needed)
     FragPos = vec3(modelMatrix * vec4(aPos, 1.0));
     Normal = mat3(transpose(inverse(modelMatrix))) * aNormal;
-    TexCoords = aTexCoords;
+    TexCoords = aTexCoords * u_UVScale + u_UVOffset;
     
     // Shadow space calculations
     for(int i = 0; i < 2; i++)

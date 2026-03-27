@@ -404,9 +404,7 @@ void ComponentLoader::LoadUIText(Scene &scene, entt::entity entity, const YAMLNo
     std::string fontName = StripQuotes(node.GetChildValue("font"));
     if (fontName.empty()) fontName = StripQuotes(node.GetChildValue("Font"));
     
-    if (!fontName.empty()) {
-        txt.font = res.GetFontAuto(fontName, 60);
-    }
+    txt.font = res.GetFontAuto(fontName, 60);
     
     std::stringstream colorSS(node.GetChildValue("color", "1 1 1 1"));
     colorSS >> txt.color.r >> txt.color.g >> txt.color.b >> txt.color.a;
@@ -632,7 +630,7 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
 {
     LoaderUtils::ValidateKeys(node, {"Type", "Roughness", "Metallic", "AO", "Shininess", "Specular", "Emission", "Ambient", "Opacity", "AlphaCutoff", "BlendSrc", "BlendDst", "Albedo", "Diffuse", "Normal", "MetallicMap", "RoughnessMap", "AOMap", "EmissiveMap", "UVScale", "UVOffset"}, "Material");
 
-    MaterialComponent mat;
+    AxisMaterialComponent mat;
     std::string typeStr = node.GetChildValue("Type", "PHONG");
 
     mat.desc.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
@@ -665,7 +663,7 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
 
     if (typeStr == "PBR")
     {
-        mat.desc.type = MaterialType::PBR;
+        mat.desc.type = AxisMaterialType::PBR;
         mat.desc.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
         mat.desc.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
         mat.desc.ao = std::stof(node.GetChildValue("AO", "1.0"));
@@ -677,7 +675,7 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     }
     else
     {
-        mat.desc.type = MaterialType::PHONG;
+        mat.desc.type = AxisMaterialType::PHONG;
         mat.desc.shininess = std::stof(node.GetChildValue("Shininess", "32.0"));
 
         std::stringstream specSS(node.GetChildValue("Specular", "0.5 0.5 0.5"));
@@ -722,7 +720,7 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
 
     mat.gpu.dirty = false;
 
-    scene.registry.emplace<MaterialComponent>(entity, mat);
+    scene.registry.emplace<AxisMaterialComponent>(entity, mat);
 }
 
 void ComponentLoader::LoadPathFollower(Scene &scene, entt::entity entity, const YAMLNode &node)

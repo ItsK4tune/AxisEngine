@@ -63,7 +63,7 @@ axis_scene:
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: unlitShader
+        Shader: forward_unlit
         Order: 1
       Component: Material
         Type: PHONG

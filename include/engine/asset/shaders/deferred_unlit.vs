@@ -9,17 +9,16 @@ out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoords;
 
+uniform mat4 model;
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
     vec3 viewPos;
 } camera;
 
-uniform mat4 model;
-uniform bool isInstanced;
 layout(location = 10) in mat4 instanceMatrix;
-uniform vec2 u_UVScale = vec2(1.0);
-uniform vec2 u_UVOffset = vec2(0.0);
+uniform bool isInstanced;
 
 const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;
@@ -32,7 +31,8 @@ void main()
     bool hasBones = false;
     for(int i = 0 ; i < MAX_BONE_INFLUENCE ; i++)
     {
-        if(aBoneIds[i] == -1) continue;
+        if(aBoneIds[i] == -1) 
+            continue;
         if(aBoneIds[i] >= MAX_BONES) 
         {
             totalPosition = vec4(aPos,1.0f);
@@ -41,6 +41,7 @@ void main()
         }
         vec4 localPosition = finalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
         totalPosition += localPosition * aWeights[i];
+        
         vec3 localNormal = mat3(finalBonesMatrices[aBoneIds[i]]) * aNormal;
         totalNormal += localNormal * aWeights[i];
         hasBones = true;
@@ -55,7 +56,7 @@ void main()
 
     FragPos = vec3(modelMatrix * totalPosition);
     Normal = normalize(mat3(transpose(inverse(modelMatrix))) * totalNormal);  
-    TexCoords = aTexCoords * u_UVScale + u_UVOffset;
+    TexCoords = aTexCoords;
     
     gl_Position = camera.projection * camera.view * vec4(FragPos, 1.0);
 }

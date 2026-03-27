@@ -29,6 +29,7 @@ void GBuffer::Shutdown()
     m_NormalTexture.reset();
     m_AlbedoSpecTexture.reset();
     m_IDTexture.reset();
+    m_EmissiveTexture.reset();
     m_DepthTexture.reset();
     m_FBO.reset();
 }
@@ -56,9 +57,10 @@ void GBuffer::BindForWriting()
         FramebufferAttachment::Color0, 
         FramebufferAttachment::Color1, 
         FramebufferAttachment::Color2,
-        FramebufferAttachment::Color3 
+        FramebufferAttachment::Color3,
+        FramebufferAttachment::Color4
     };
-    rtm.DrawBuffers(4, attachments);
+    rtm.DrawBuffers(5, attachments);
 }
 
 void GBuffer::BindForReading()
@@ -119,13 +121,22 @@ void GBuffer::CreateTextures()
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color3, TextureType::Texture2D, m_IDTexture->Get(), 0);
 
 
+    m_EmissiveTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
+    tm.BindTexture(TextureType::Texture2D, m_EmissiveTexture->Get());
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::Float, nullptr);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
+    rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color4, TextureType::Texture2D, m_EmissiveTexture->Get(), 0);
+
+
     FramebufferAttachment attachments[] = { 
         FramebufferAttachment::Color0, 
         FramebufferAttachment::Color1, 
         FramebufferAttachment::Color2,
-        FramebufferAttachment::Color3 
+        FramebufferAttachment::Color3,
+        FramebufferAttachment::Color4
     };
-    rtm.DrawBuffers(4, attachments);
+    rtm.DrawBuffers(5, attachments);
 
     m_DepthTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_DepthTexture->Get());

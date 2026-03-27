@@ -150,6 +150,10 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     tm.BindTexture(TextureType::Texture2D, gBuffer.GetIDTexture());
     m_DeferredLightShader->setInt("gID", 3);
 
+    tm.ActiveTexture(TextureUnit::Texture4);
+    tm.BindTexture(TextureType::Texture2D, gBuffer.GetEmissiveTexture());
+    m_DeferredLightShader->setInt("gEmissive", 4);
+
     if (shadowSys) {
         bool enableShadows = shadowSys->GetRenderer().IsShadowsEnabled();
         if (enableShadows) {

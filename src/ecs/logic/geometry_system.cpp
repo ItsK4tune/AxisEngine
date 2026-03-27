@@ -37,7 +37,7 @@ void GeometrySystem::Initialize()
     auto& resources = sl.Require<ResourceManager>();
     auto& config = m_ConfigManager->GetConfig();
 
-    m_GBufferShader = resources.GetShader("gbuffer");
+    m_GBufferShader = resources.GetShader("deferred_lit");
 
     m_GBuffer.SetRenderScale(config.renderScale);
     m_GBuffer.Initialize(context, config.width, config.height);
@@ -131,14 +131,12 @@ void GeometrySystem::Render(Scene& scene)
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
 
     const auto& opaqueQueue = rs->GetRenderQueueObj().GetOpaqueQueue();
-    LOGGER_INFO("GeometrySystem") << "Queue size: " << opaqueQueue.size();
     if (!opaqueQueue.empty())
     {
         shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
         RenderCore* core = sl.Resolve<RenderCore>();
-        Shader* overrideShader = isDeferred ? m_GBufferShader.get() : nullptr;
         if (core) {
-            rs->ExecuteQueue(opaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), overrideShader); 
+            rs->ExecuteQueue(opaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr); 
         }
     }
     
@@ -189,7 +187,7 @@ std::vector<entt::id_type> GeometrySystem::GetReadComponents() const
         entt::type_id<RotationComponent>().hash(),
         entt::type_id<ScaleComponent>().hash(),
         entt::type_id<WorldTransformComponent>().hash(),
-        entt::type_id<MaterialComponent>().hash()
+        entt::type_id<AxisMaterialComponent>().hash()
     };
 }
 

@@ -104,7 +104,11 @@ void RenderSystem::Initialize()
     bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
     m_OcclusionCuller.Initialize(context, shaderLib.GetShader("occlusion"));
-    m_UnlitShader = shaderLib.GetShader("unlitShader");
+    m_UnlitShader = shaderLib.GetShader("forward_unlit");
+    m_DeferredLitShader = shaderLib.GetShader("deferred_lit");
+    m_DeferredUnlitShader = shaderLib.GetShader("deferred_unlit");
+    m_ErrorForwardShader = shaderLib.GetShader("error_forward");
+    m_ErrorDeferredShader = shaderLib.GetShader("error_deferred");
 }
 
 void RenderSystem::Update(Scene& scene, float dt)
@@ -336,7 +340,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         }
 
         bool isTransparent = false;
-        auto* material = scene.registry.try_get<MaterialComponent>(entity);
+        auto* material = scene.registry.try_get<AxisMaterialComponent>(entity);
         if (material && material->desc.opacity < 1.0f) isTransparent = true;
 
         uint64_t key = 0;
@@ -507,16 +511,26 @@ void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTra
 
     for (const auto& item : queue) {
         Model* model = item.model;
-        MaterialComponent* material = item.material;
+        AxisMaterialComponent* material = item.material;
         Shader* shader = item.shader;
 
         if (overrideShader) {
             shader = overrideShader;
         } else if (!shader) {
-            shader = m_UnlitShader.get();
+            if (m_CachedRenderPath == RenderPath::Deferred) {
+                shader = m_DeferredLitShader.get();
+            } else {
+                shader = m_UnlitShader.get();
+            }
+        } else if (m_CachedRenderPath == RenderPath::Deferred && shader == m_UnlitShader.get()) {
+            shader = m_DeferredUnlitShader.get();
         }
 
-        if (!shader || !model) continue;
+        if (!shader || !model) {
+            if (m_CachedRenderPath == RenderPath::Deferred) shader = m_ErrorDeferredShader.get();
+            else shader = m_ErrorForwardShader.get();
+            if (!shader || !model) continue;
+        }
 
         if (shader != lastShader) {
             shader->use();
@@ -559,11 +573,12 @@ std::vector<entt::id_type> RenderSystem::GetReadComponents() const
     return {
         entt::type_id<MeshRendererComponent>().hash(),
         entt::type_id<CameraComponent>().hash(),
+        entt::type_id<InfoComponent>().hash(),
         entt::type_id<PositionComponent>().hash(),
         entt::type_id<RotationComponent>().hash(),
         entt::type_id<ScaleComponent>().hash(),
         entt::type_id<WorldTransformComponent>().hash(),
-        entt::type_id<MaterialComponent>().hash(),
+        entt::type_id<AxisMaterialComponent>().hash(),
         entt::type_id<SkyboxRenderComponent>().hash(),
         entt::type_id<GPUDirLight>().hash(),
         entt::type_id<GPUPointLight>().hash(),

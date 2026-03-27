@@ -37,6 +37,8 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     locs.opacity = shader->GetUniformLocation("opacity");
     locs.uvScale = shader->GetUniformLocation("uvScale");
     locs.uvOffset = shader->GetUniformLocation("uvOffset");
+    locs.u_UVScale = shader->GetUniformLocation("u_UVScale");
+    locs.u_UVOffset = shader->GetUniformLocation("u_UVOffset");
 
     locs.mat_roughness = shader->GetUniformLocation("material.roughness");
     locs.mat_metallic = shader->GetUniformLocation("material.metallic");
@@ -66,11 +68,27 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     locs.brdfLUT = shader->GetUniformLocation("brdfLUT");
     locs.isWireframe = shader->GetUniformLocation("u_isWireframe");
 
+    // Standardized u_* names
+    locs.u_BaseColor = shader->GetUniformLocation("u_BaseColor");
+    locs.u_Metallic = shader->GetUniformLocation("u_Metallic");
+    locs.u_Roughness = shader->GetUniformLocation("u_Roughness");
+    locs.u_AO = shader->GetUniformLocation("u_AO");
+    locs.u_Emission = shader->GetUniformLocation("u_Emission");
+    locs.u_Shininess = shader->GetUniformLocation("u_Shininess");
+    locs.u_Specular = shader->GetUniformLocation("u_Specular");
+
+    locs.u_AlbedoMap = shader->GetUniformLocation("u_AlbedoMap");
+    locs.u_NormalMap = shader->GetUniformLocation("u_NormalMap");
+    locs.u_MetallicMap = shader->GetUniformLocation("u_MetallicMap");
+    locs.u_RoughnessMap = shader->GetUniformLocation("u_RoughnessMap");
+    locs.u_AOMap = shader->GetUniformLocation("u_AOMap");
+    locs.u_EmissiveMap = shader->GetUniformLocation("u_EmissiveMap");
+
     locs.initialized = true;
     return locs;
 }
 
-bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe) {
+bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe) {
     const auto& locs = GetLocations(shader);
     auto& tm = m_Context->GetTextureManager();
 
@@ -79,7 +97,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* 
     bool boundSomething = false;
     if (material) {
         auto &mat = *material;
-        if (mat.desc.type == MaterialType::PBR) {
+        if (mat.desc.type == AxisMaterialType::PBR) {
             shader->setFloat(locs.mat_roughness, mat.desc.roughness);
             shader->setFloat(locs.mat_metallic, mat.desc.metallic);
             shader->setFloat(locs.mat_ao, mat.desc.ao);
@@ -88,6 +106,12 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* 
             shader->setFloat(locs.metallic, mat.desc.metallic);
             shader->setFloat(locs.ao, mat.desc.ao);
             shader->setVec3(locs.emission, mat.desc.emission);
+
+            // Set standardized u_* names
+            if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, mat.desc.roughness);
+            if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, mat.desc.metallic);
+            if (locs.u_AO != -1) shader->setFloat(locs.u_AO, mat.desc.ao);
+            if (locs.u_Emission != -1) shader->setVec3(locs.u_Emission, mat.desc.emission);
 
             if (sceneData.irradianceMap != 0 && locs.irradianceMap != -1) {
                 tm.ActiveTexture(TextureUnit::Texture6);
@@ -120,9 +144,20 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* 
             shader->setFloat(locs.mat_metallic, 0.0f);
             shader->setFloat(locs.roughness, r);
             shader->setFloat(locs.metallic, 0.0f);
+
+            if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, r);
+            if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, 0.0f);
+            if (locs.u_Shininess != -1) shader->setFloat(locs.u_Shininess, mat.desc.shininess);
+            if (locs.u_Specular != -1) shader->setVec3(locs.u_Specular, mat.desc.specular);
         }
         shader->setFloat(locs.mat_opacity, mat.desc.opacity);
         shader->setFloat(locs.opacity, mat.desc.opacity);
+        if (locs.u_BaseColor != -1) {
+            glm::vec4 baseColor = glm::vec4(mat.desc.ambient, mat.desc.opacity);
+            shader->setVec4(locs.u_BaseColor, baseColor);
+        }
+        shader->setVec2(locs.u_UVScale, mat.desc.uvScale);
+        shader->setVec2(locs.u_UVOffset, mat.desc.uvOffset);
         shader->setVec2(locs.uvScale, mat.desc.uvScale);
         shader->setVec2(locs.uvOffset, mat.desc.uvOffset);
         shader->setCustomPorts(mat.desc.ports);
@@ -132,22 +167,22 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* 
             tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
             shader->setInt(locs.mat_diffuseMap, 0);
         } else {
-
-            auto setTex = [&](int texUnit, unsigned int texID, int loc1, int loc2) {
+            auto setTex = [&](int texUnit, unsigned int texID, int loc1, int loc2, int loc3 = -1) {
                 tm.ActiveTexture(static_cast<TextureUnit>(texUnit));
                 tm.BindTexture(TextureType::Texture2D, texID != 0 ? texID : (texUnit == 5 ? m_BlackTextureID : m_WhiteTextureID));
                 if (loc1 != -1) shader->setInt(loc1, texUnit);
                 if (loc2 != -1) shader->setInt(loc2, texUnit);
+                if (loc3 != -1) shader->setInt(loc3, texUnit);
             };
 
-            setTex(0, mat.gpu.albedoMap, locs.mat_diffuseMap, locs.diffuseMap);
+            setTex(0, mat.gpu.albedoMap, locs.mat_diffuseMap, locs.diffuseMap, locs.u_AlbedoMap);
             if (mat.gpu.albedoMap != 0) boundSomething = true;
             
-            setTex(1, mat.gpu.normalMap, locs.mat_normalMap, locs.normalMap);
-            setTex(2, mat.gpu.metallicMap, locs.mat_metallicMap, locs.metallicMap);
-            setTex(3, mat.gpu.roughnessMap, locs.mat_roughnessMap, locs.roughnessMap);
-            setTex(4, mat.gpu.aoMap, locs.mat_aoMap, locs.aoMap);
-            setTex(5, mat.gpu.emissiveMap, locs.mat_emissiveMap, locs.emissiveMap);
+            setTex(1, mat.gpu.normalMap, locs.mat_normalMap, locs.normalMap, locs.u_NormalMap);
+            setTex(2, mat.gpu.metallicMap, locs.mat_metallicMap, locs.metallicMap, locs.u_MetallicMap);
+            setTex(3, mat.gpu.roughnessMap, locs.mat_roughnessMap, locs.roughnessMap, locs.u_RoughnessMap);
+            setTex(4, mat.gpu.aoMap, locs.mat_aoMap, locs.aoMap, locs.u_AOMap);
+            setTex(5, mat.gpu.emissiveMap, locs.mat_emissiveMap, locs.emissiveMap, locs.u_EmissiveMap);
         }
         return boundSomething;
     } else {

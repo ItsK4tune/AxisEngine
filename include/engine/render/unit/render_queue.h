@@ -8,7 +8,7 @@ class Shader;
 class Model;
 #include <core/unit/aabb.h>
 class FrustumCuller;
-struct MaterialComponent;
+struct AxisMaterialComponent;
 
 #include <render/type/render_data.h>
 
