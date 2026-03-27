@@ -1,0 +1,105 @@
+﻿diff --git a/include/engine/asset/shaders/decal.fs b/include/engine/asset/shaders/decal.fs
+index 6f85bf0..cd613ad 100644
+--- a/include/engine/asset/shaders/decal.fs
++++ b/include/engine/asset/shaders/decal.fs
+@@ -21,7 +21,7 @@ void main()
+ 
+     uint tagValue = texture(gID, screenUV).r;
+     uint tagBit = texelFetch(tagMap, int(tagValue), 0).r;
+-    if ((tagBit & allowedTagsMask) == 0u) discard;
++    if (tagBit != 0u && (tagBit & allowedTagsMask) == 0u) discard;
+ 
+     vec4 clipPos = vec4(screenUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+     vec4 localPos = invModel * clipPos;
+diff --git a/src/ecs/logic/decal_system.cpp b/src/ecs/logic/decal_system.cpp
+index 376dc0c..af945a0 100644
+--- a/src/ecs/logic/decal_system.cpp
++++ b/src/ecs/logic/decal_system.cpp
+@@ -1,4 +1,5 @@
+ #include <ecs/logic/decal_system.h>
++#include <ecs/logic/system_factory.h>
+ #include <core/logic/event_system.h>
+ #include <core/type/event_types.h>
+ #include <render/interface/i_graphics_context.h>
+@@ -20,12 +21,16 @@
+ #include <resource/unit/shader.h>
+ #include <core/logic/service_locator.h>
+ #include <scene/logic/scene.h>
++#include <platform/logic/io_handler.h>
+ #include <render/unit/render_command.h>
+ #include <render/logic/render_core.h>
+ 
++REGISTER_SYSTEM(DecalSystem)
++
+ void DecalSystem::Initialize()
+ {
+     auto& sl = ServiceLocator::Instance();
++    sl.Register<DecalSystem>(this);
+     m_GraphicsContext = sl.Resolve<IGraphicsContext>();
+     m_RenderService = sl.Resolve<IRenderService>();
+     m_GeoService = sl.Resolve<IGeometryService>();
+@@ -95,6 +100,11 @@ void DecalSystem::Render(Scene &scene)
+     auto& bm = gc.GetBufferManager();
+     auto& tm = gc.GetTextureManager();
+     auto& sm = gc.GetRenderStateManager();
++    auto& io = ServiceLocator::Instance().Require<IOHandler>();
++    int width = io.GetMonitorManager().GetWidth();
++    int height = io.GetMonitorManager().GetHeight();
++    m_ScreenWidth = width;
++    m_ScreenHeight = height;
+ 
+     bool isDeferred = geoSys->IsDeferredRenderingEnabled();
+     Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();
+@@ -145,7 +155,7 @@ void DecalSystem::Render(Scene &scene)
+         sm.Disable(ServerCapability::CullFace);
+         sm.SetDepthFunc(CompareFunc::Lequal); // Changed from Less to Lequal
+         sm.SetDepthMask(false);
+-        sm.SetViewport(0, 0, m_ScreenWidth, m_ScreenHeight);
++        sm.SetViewport(0, 0, width, height);
+         sm.SetColorMask(true, true, true, true);
+     }
+ 
+@@ -170,10 +180,19 @@ void DecalSystem::Render(Scene &scene)
+         bm.BindBuffer(BufferType::ElementArrayBuffer, core.GetQuadEBO());
+     }
+     
+-    auto view = scene.registry.view<DecalComponent, PositionComponent>();
++    auto view = scene.registry.view<DecalComponent>();
+     
++    if (view.begin() != view.end()) {
++        static bool loggedCount = false;
++        if (!loggedCount) {
++             size_t count = 0;
++             for (auto e : view) count++;
++            LOGGER_INFO("DecalSystem") << "Rendering " << count << " decals. Viewport: " << width << "x" << height;
++            loggedCount = true;
++        }
++    }
++
+     std::vector<entt::entity> sortedEntities;
+-    sortedEntities.reserve(view.size_hint());
+     for (auto entity : view) sortedEntities.push_back(entity);
+ 
+     std::sort(sortedEntities.begin(), sortedEntities.end(), [&](entt::entity a, entt::entity b) {
+@@ -181,8 +200,10 @@ void DecalSystem::Render(Scene &scene)
+     });
+ 
+     for (auto entity : sortedEntities) {
+-        auto &decal = view.get<DecalComponent>(entity);
+-        auto &pos = view.get<PositionComponent>(entity);
++        auto &decal = scene.registry.get<DecalComponent>(entity);
++        auto *posComp = scene.registry.try_get<PositionComponent>(entity);
++        if (!posComp) continue;
++        auto &pos = *posComp;
+         
+         Shader* activeShader = shader;
+         if (!decal.customShader.empty()) {
+@@ -283,7 +304,7 @@ std::vector<entt::id_type> DecalSystem::GetWriteComponents() const
+ 
+ uint32_t DecalSystem::GetTagBit(const std::string &tag)
+ {
+-    if (tag.empty()) return 0;
++    if (tag.empty()) return 1; // Bit 0 is for default/untagged
+     auto it = m_TagBitMap.find(tag);
+     if (it != m_TagBitMap.end()) return it->second;
+ 

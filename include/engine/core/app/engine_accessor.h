@@ -1,12 +1,10 @@
 #pragma once
 
 #include <core/logic/service_locator.h>
-#include <ecs/logic/system_manager.h>
 #include <core/logic/logger.h>
 #include <platform/interface/cursor_mode.h>
 #include <string>
 #include <vector>
-
 
 struct Scene;
 class SceneManager;
@@ -21,73 +19,18 @@ class SystemManager;
 struct SceneRecord;
 struct AppConfig;
 
-
-
 class EngineAccessor {
 public:
     virtual ~EngineAccessor() = default;
-
 
     template <typename T>
     T& Get() const { return ServiceLocator::Instance().Require<T>(); }
 
     template <typename T>
     T& GetSystem() const { 
-        T* sys = ServiceLocator::Instance().Require<SystemManager>().GetSystem<T>();
-        if (!sys) {
-
-
-            LOGGER_ERROR("EngineAccessor") << "System not found or not registered: " << typeid(T).name();
-
-
-        }
-        return *sys; 
+        // Use Require directly to get a reference or throw a descriptive exception
+        return ServiceLocator::Instance().Require<T>();
     }
-
-
-    [[deprecated("Use GetSystem<RenderSystem>() instead")]]
-    class RenderSystem&       GetRenderSystem() const;
-    [[deprecated("Use GetSystem<PhysicsSystem>() instead")]]
-    class PhysicsSystem&      GetPhysicsSystem() const;
-    [[deprecated("Use GetSystem<AudioSystem>() instead")]]
-    class AudioSystem&        GetAudioSystem() const;
-    [[deprecated("Use GetSystem<UIRenderSystem>() instead")]]
-    class UIRenderSystem&     GetUIRenderSystem() const;
-    [[deprecated("Use GetSystem<ScriptableSystem>() instead")]]
-    class ScriptableSystem&   GetScriptSystem() const;
-    [[deprecated("Use GetSystem<ParticleSystem>() instead")]]
-    class ParticleSystem&     GetParticleSystem() const;
-    [[deprecated("Use GetSystem<SkyboxRenderSystem>() instead")]]
-    class SkyboxRenderSystem& GetSkyboxRenderSystem() const;
-    [[deprecated("Use GetSystem<AnimationSystem>() instead")]]
-    class AnimationSystem&    GetAnimationSystem() const;
-    [[deprecated("Use GetSystem<VideoSystem>() instead")]]
-    class VideoSystem&        GetVideoSystem() const;
-    [[deprecated("Use GetSystem<NavigationSystem>() instead")]]
-    class NavigationSystem&   GetNavigationSystem() const;
-
-
-    [[deprecated("Use Get<Scene>() instead")]]
-    Scene&           GetScene() const;
-    [[deprecated("Use Get<SceneManager>() instead")]]
-    SceneManager&    GetSceneManager() const;
-    [[deprecated("Use Get<ResourceManager>() instead")]]
-    ResourceManager& GetResourceManager() const;
-    [[deprecated("Use Get<AudioService>() instead")]]
-    AudioService&    GetAudioService() const;
-    [[deprecated("Use Get<IOHandler>() instead")]]
-    IOHandler&       GetIOHandler() const;
-    [[deprecated("Use Get<InputManager>() instead")]]
-    InputManager&    GetInputManager() const;
-    [[deprecated("Use Get<KeyboardManager>() instead")]]
-    KeyboardManager& GetKeyboard() const;
-    [[deprecated("Use Get<MouseManager>() instead")]]
-    MouseManager&    GetMouse() const;
-    [[deprecated("Use Get<RuntimeCore>() instead")]]
-    RuntimeCore&     GetRuntimeCore() const;
-    [[deprecated("Use Get<SystemManager>() instead")]]
-    SystemManager&   GetSystemManager() const;
-
 
     void LoadScene(const std::string& path, bool persistent = false);
     void LoadInputBindings(const std::string& path);
@@ -124,6 +67,28 @@ public:
 
     const AppConfig& GetConfig() const;
     void ApplyConfig(const AppConfig& config);
+
+    class RenderSystem& GetRenderSystem() const;
+    class PhysicsSystem& GetPhysicsSystem() const;
+    class AudioSystem& GetAudioSystem() const;
+    class UIRenderSystem& GetUIRenderSystem() const;
+    class ScriptableSystem& GetScriptSystem() const;
+    class ParticleSystem& GetParticleSystem() const;
+    class SkyboxRenderSystem& GetSkyboxRenderSystem() const;
+    class AnimationSystem& GetAnimationSystem() const;
+    class VideoSystem& GetVideoSystem() const;
+    class NavigationSystem& GetNavigationSystem() const;
+
+    Scene& GetScene() const;
+    class SceneManager& GetSceneManager() const;
+    class ResourceManager& GetResourceManager() const;
+    class AudioService& GetAudioService() const;
+    class IOHandler& GetIOHandler() const;
+    class InputManager& GetInputManager() const;
+    class KeyboardManager& GetKeyboard() const;
+    class MouseManager& GetMouse() const;
+    class RuntimeCore& GetRuntimeCore() const;
+    class SystemManager& GetSystemManager() const;
 
     void SetActiveScene(Scene* scene) { m_ActiveScene = scene; }
 

@@ -2,6 +2,7 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
+#include <ecs/unit/light_components.h>
 #include <core/logic/logger.h>
 #include <core/type/event_types.h>
 #include <render/unit/frustum.h>
@@ -11,6 +12,7 @@
 #include <thread>
 #include <core/logic/job_system.h>
 #include <ecs/logic/render_system.h>
+#include <ecs/logic/system_factory.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
@@ -27,6 +29,7 @@
 #include <core/logic/service_locator.h>
 #include <render/logic/render_core.h>
 #include <core/logic/event_system.h>
+REGISTER_SYSTEM(RenderSystem)
 #include <core/type/app_config.h>
 #include <core/logic/config_manager.h>
 
@@ -42,6 +45,8 @@
 void RenderSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<IRenderService>(this);
+    sl.Register<RenderSystem>(this);
     auto& context = sl.Require<IGraphicsContext>();
     auto& configManager = sl.Require<ConfigManager>();
     const AppConfig& config = configManager.GetConfig();
@@ -75,7 +80,11 @@ void RenderSystem::Initialize()
         this->SetDepthTest(cfg.depthTestEnabled);
     });
 
-    auto& core = sl.Require<RenderCore>();
+    m_RenderCore = std::make_unique<RenderCore>();
+    m_RenderCore->Initialize(context);
+    sl.Register<RenderCore>(m_RenderCore.get());
+
+    auto& core = *m_RenderCore;
     
     auto& bm = context.GetBufferManager();
     m_CameraUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
@@ -132,6 +141,7 @@ void RenderSystem::Shutdown()
 {
     LOGGER_INFO("RenderSystem") << "Shutting down RenderSystem";
     m_OcclusionCuller.Shutdown();
+    if (m_RenderCore) m_RenderCore->Shutdown();
 }
 
 void RenderSystem::SetFaceCulling(bool enabled, CullMode mode)
@@ -196,13 +206,19 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) {
+        LOGGER_WARN("RenderSystem") << "BuildRenderQueues: No active camera found!";
         m_QueuesBuilt = true; m_LastAlpha = alpha;
         return;
     }
 
     CameraComponent* cam = &scene.registry.get<CameraComponent>(camEntity);
     PositionComponent* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
-    glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
+    m_CameraPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
+    m_ViewMatrix = cam->viewMatrix;
+    m_ProjMatrix = cam->projectionMatrix;
+    m_NearPlane = cam->nearPlane;
+    m_FarPlane = cam->farPlane;
+    glm::vec3 camPos = m_CameraPos;
 
     if (width <= 0 || height <= 0) return;
 
@@ -278,19 +294,187 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         m_OcclusionCuller.UpdateResults(scene);
     }
 
-    m_RenderQueueObj.Build(scene, alpha, m_FrustumCuller, m_FrustumCullingEnabled, m_OcclusionCullingEnabled, 
-                           m_DistanceCullingSq, m_FilterLayerMask, cam->cullingMask, camPos);
+    m_RenderQueueObj.Clear();
+    m_RenderedCount = 0;
+
+    auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
+    for (auto entity : renderView) {
+        auto& world = renderView.get<WorldTransformComponent>(entity);
+        auto& renderer = renderView.get<MeshRendererComponent>(entity);
+        if (!renderer.model) continue;
+
+        glm::mat4 modelMatrix = world.GetInterpolated(alpha);
+        float distSqResult = glm::length2(camPos - glm::vec3(modelMatrix[3]));
+
+        if (m_DistanceCullingSq > 0.0f && distSqResult > m_DistanceCullingSq) continue;
+
+        AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
+        if (m_FrustumCullingEnabled) {
+            if (!m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound)) continue;
+        }
+
+        uint32_t layer = 1;
+        if (auto* info = scene.registry.try_get<InfoComponent>(entity)) layer = info->layer;
+        
+        if ((m_FilterLayerMask & layer) == 0 || (cam->cullingMask & layer) == 0) continue;
+
+        Model* activeModel = renderer.model.get();
+        Shader* itemShader = renderer.shader.lock().get();
+
+        if (auto* lod = scene.registry.try_get<LODComponent>(entity)) {
+            for (int j = 0; j < (int)lod->lodDistancesSq.size(); ++j) {
+                if (distSqResult > lod->lodDistancesSq[j] && j < (int)lod->lodModels.size() && lod->lodModels[j]) {
+                    activeModel = lod->lodModels[j].get();
+                } else break;
+            }
+        }
+
+        if (m_OcclusionCullingEnabled) {
+            if (auto* occ = scene.registry.try_get<OcclusionComponent>(entity)) {
+                if (!occ->isVisible) continue;
+            }
+        }
+
+        bool isTransparent = false;
+        auto* material = scene.registry.try_get<MaterialComponent>(entity);
+        if (material && material->desc.opacity < 1.0f) isTransparent = true;
+
+        uint64_t key = 0;
+        uint64_t sId = itemShader ? itemShader->getID() : 0;
+        if (!isTransparent) {
+            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
+            uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
+            uint64_t s = (uint64_t)(sId & 0xFFFF) << 32;
+            uint64_t m = (uint64_t)((uintptr_t)material & 0xFFFF) << 16;
+            uint64_t mod = (uint64_t)((uintptr_t)activeModel & 0xFF) << 8;
+            uint64_t d = (uint64_t)(glm::clamp(distSqResult * 0.1f, 0.0f, 255.0f)) & 0xFF;
+            key = l | o | s | m | mod | d;
+        } else {
+            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
+            float invDepth = 1000000.0f - distSqResult; 
+            if (invDepth < 0) invDepth = 0;
+            uint64_t d = (uint64_t)(invDepth) & 0x00FFFFFFFFFFFFFFULL;
+            key = l | d;
+        }
+
+        RenderItem item;
+        item.entityId = (uint32_t)entity;
+        item.model = activeModel;
+        item.shader = itemShader;
+        item.material = material;
+        item.worldMatrix = modelMatrix;
+        item.worldAABB = worldAABB;
+        item.layer = layer;
+        item.renderOrder = renderer.order;
+        item.distanceSq = distSqResult;
+        item.isTransparent = isTransparent;
+        item.sortKey = key;
+        item.castShadow = renderer.castShadow;
+        item.receiveShadow = renderer.receiveShadow;
+
+        item.tintColor = renderer.color;
+        if (auto* anim = scene.registry.try_get<AnimationComponent>(entity)) {
+            if (anim->animator) {
+                item.hasAnimation = true;
+                item.boneMatrices = anim->animator->GetFinalBoneMatrices();
+            }
+        }
+
+        if (isTransparent) m_RenderQueueObj.AddTransparent(item);
+        else m_RenderQueueObj.AddOpaque(item);
+        
+        if (renderer.castShadow) m_RenderQueueObj.AddShadow(item);
+    }
+
+    // Collect Lights
+    auto dirView = scene.registry.view<DirectionalLightComponent>();
+    for (auto entity : dirView) {
+        auto& light = dirView.get<DirectionalLightComponent>(entity);
+        if (!light.active) continue;
+        RenderLight rl;
+        rl.type = RenderLightType::Directional;
+        rl.color = light.color;
+        rl.intensity = light.intensity;
+        rl.castShadows = light.isCastShadow;
+        rl.ambient = glm::vec3(light.ambient);
+        rl.diffuse = glm::vec3(light.diffuse);
+        rl.specular = glm::vec3(light.specular);
+        rl.direction = light.direction;
+        if (auto* rot = scene.registry.try_get<RotationComponent>(entity)) 
+            rl.direction = rot->value * glm::vec3(0, -1, 0);
+        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity)) 
+            rl.version = w->version;
+        m_RenderQueueObj.AddLight(std::move(rl));
+    }
+
+    auto pointView = scene.registry.view<PointLightComponent, PositionComponent>();
+    for (auto entity : pointView) {
+        auto [light, pos] = pointView.get<PointLightComponent, PositionComponent>(entity);
+        if (!light.active) continue;
+        RenderLight rl;
+        rl.type = RenderLightType::Point;
+        rl.position = pos.value;
+        rl.color = light.color;
+        rl.intensity = light.intensity;
+        rl.range = light.radius;
+        rl.constant = light.constant;
+        rl.linear = light.linear;
+        rl.quadratic = light.quadratic;
+        rl.ambient = glm::vec3(light.ambient);
+        rl.diffuse = glm::vec3(light.diffuse);
+        rl.specular = glm::vec3(light.specular);
+        rl.castShadows = light.isCastShadow;
+        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity)) 
+            rl.version = w->version;
+        m_RenderQueueObj.AddLight(std::move(rl));
+    }
+
+    auto spotView = scene.registry.view<SpotLightComponent, PositionComponent, RotationComponent>();
+    for (auto entity : spotView) {
+        auto [light, pos, rot] = spotView.get<SpotLightComponent, PositionComponent, RotationComponent>(entity);
+        if (!light.active) continue;
+        RenderLight rl;
+        rl.type = RenderLightType::Spot;
+        rl.position = pos.value;
+        rl.direction = rot.value * glm::vec3(0, -1, 0);
+        rl.color = light.color;
+        rl.intensity = light.intensity;
+        rl.constant = light.constant;
+        rl.linear = light.linear;
+        rl.quadratic = light.quadratic;
+        rl.innerCutoff = light.cutOff;
+        rl.outerCutoff = light.outerCutOff;
+        rl.ambient = glm::vec3(light.ambient);
+        rl.diffuse = glm::vec3(light.diffuse);
+        rl.specular = glm::vec3(light.specular);
+        rl.castShadows = light.isCastShadow;
+        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity)) 
+            rl.version = w->version;
+        m_RenderQueueObj.AddLight(std::move(rl));
+    }
+
+    m_RenderQueueObj.Sort();
+
+    // Collect Skybox
+    m_IrradianceMap = 0;
+    m_PrefilterMap = 0;
+    m_BrdfLUT = 0;
+    auto skyView = scene.registry.view<SkyboxRenderComponent>();
+    for (auto skyEnt : skyView) {
+        auto& skyComp = skyView.get<SkyboxRenderComponent>(skyEnt);
+        if (skyComp.isPrimary && skyComp.skybox) {
+            m_IrradianceMap = skyComp.irradianceMap;
+            m_PrefilterMap = skyComp.prefilterMap;
+            m_BrdfLUT = skyComp.brdfLUT;
+            break;
+        }
+    }
 
     static bool firstFrame = true;
     if (firstFrame) {
-        LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque=" << m_RenderQueueObj.GetOpaqueQueue().size() 
-                                    << ", Transparent=" << m_RenderQueueObj.GetTransparentQueue().size()
-                                    << ", Camera=" << (uint32_t)camEntity;
-        
-        // Log camera matrices to see if they are zeros
-        LOGGER_INFO("RenderSystem") << "Camera View[0]: " << cam->viewMatrix[0][0] << ", " << cam->viewMatrix[0][1] << ", " << cam->viewMatrix[0][2];
-        LOGGER_INFO("RenderSystem") << "Camera Proj[0]: " << cam->projectionMatrix[0][0] << ", " << cam->projectionMatrix[0][1] << ", " << cam->projectionMatrix[0][2];
-        
+        LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque=" << (int)m_RenderQueueObj.GetOpaqueQueue().size() 
+                                    << ", Transparent=" << (int)m_RenderQueueObj.GetTransparentQueue().size()
+                                    << ", Camera=" << (uintptr_t)camEntity;
         firstFrame = false;
     }
 
@@ -300,7 +484,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     m_LastHeight = height;
 }
 
-void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader)
+void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader)
 {
     if (!materialRenderer) {
         auto& core = ServiceLocator::Instance().Require<RenderCore>();
@@ -309,12 +493,22 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
 
     Shader* lastShader = nullptr;
 
-    for (size_t i = 0; i < queue.size(); i++) {
-        const auto& item = queue[i];
-        entt::entity entity = item.entity;
-        Model* model = item.activeModel;
-        MaterialComponent* material = item.activeMaterial;
-        Shader* shader = item.activeShader;
+    RenderSceneData sceneData;
+    sceneData.cameraPosition = m_CameraPos;
+    sceneData.viewMatrix = m_ViewMatrix;
+    sceneData.projMatrix = m_ProjMatrix;
+    sceneData.nearPlane = m_NearPlane;
+    sceneData.farPlane = m_FarPlane;
+    sceneData.irradianceMap = m_IrradianceMap;
+    sceneData.prefilterMap = m_PrefilterMap;
+    sceneData.brdfLUT = m_BrdfLUT;
+
+    m_RenderedCount += (int)queue.size();
+
+    for (const auto& item : queue) {
+        Model* model = item.model;
+        MaterialComponent* material = item.material;
+        Shader* shader = item.shader;
 
         if (overrideShader) {
             shader = overrideShader;
@@ -328,7 +522,6 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
             shader->use();
             lastShader = shader;
 
-
             if (shadowRenderer && shadowRenderer->IsShadowsEnabled()) {
                 auto& shadow = shadowRenderer->GetShadow();
                 for (int j = 0; j < Shadow::MAX_DIR_LIGHTS_SHADOW; j++) {
@@ -341,32 +534,18 @@ void RenderSystem::ExecuteQueue(Scene& scene, const std::vector<RenderItem>& que
         }
 
         glm::mat4 mtx = item.worldMatrix;
-        bool isAnimated = false;
-        if (scene.registry.all_of<AnimationComponent>(entity)) {
-            auto& anim = scene.registry.get<AnimationComponent>(entity);
-            if (anim.animator) {
-                isAnimated = true;
-                auto bones = anim.animator->GetFinalBoneMatrices();
-                shader->setMat4Array("finalBonesMatrices", bones);
-            }
-        }
-
-        if (!isAnimated) {
+        if (item.hasAnimation) {
+            shader->setMat4Array("finalBonesMatrices", item.boneMatrices);
+        } else {
             mtx *= model->GetRootTransform();
         }
 
         shader->setMat4("model", mtx);
-        
-
-        glm::vec4 tc(1.0f);
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity)) {
-            tc = renderer->color;
-        }
-        shader->setVec4("tintColor", tc);
-        shader->setUInt("entityID", (uint32_t)entity);
+        shader->setVec4("tintColor", item.tintColor);
+        shader->setUInt("entityID", item.entityId);
         shader->setBool("isInstanced", false);
 
-        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, scene, m_DebugNoTexture, m_Wireframe);
+        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, m_DebugNoTexture, m_Wireframe);
         model->Draw(*shader, !matBound);
     }
 }

@@ -1,4 +1,5 @@
 #include <ecs/logic/video_system.h>
+#include <ecs/logic/system_factory.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/render_components.h>
@@ -9,6 +10,14 @@
 #include <memory>
 #include <core/logic/service_locator.h>
 #include <resource/logic/resource_manager.h>
+
+REGISTER_SYSTEM(VideoSystem)
+
+void VideoSystem::Initialize()
+{
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<VideoSystem>(this);
+}
 
 void VideoSystem::Update(Scene &scene, float dt)
 {

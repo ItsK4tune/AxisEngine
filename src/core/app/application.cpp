@@ -178,6 +178,7 @@ bool Application::Initialize(const AppConfig &config)
     IWindow *appWindow = GetWindow();
     appWindow->SetResizeCallback([this](int width, int height) {
         LOGGER_INFO("Application") << "Window resized to " << width << "x" << height;
+        EventSystem::Instance().Publish(WindowResizedEvent{width, height});
         OnResize(width, height);
     });
     appWindow->SetCursorPosCallback([this](double x, double y) {
@@ -325,37 +326,6 @@ void Application::OnResize(int width, int height)
 {
     if (m_ConfigManager) m_ConfigManager->SetResolution(width, height);
     m_IOHandler->OnResize(width, height);
-    
-    auto& sl = ServiceLocator::Instance();
-    auto* sm = sl.Resolve<SystemManager>();
-    if (!sm) return;
-
-    if (auto* pps = sm->GetSystem<PostProcessSystem>()) {
-        pps->GetPipeline().Resize(width, height);
-    }
-
-    if (auto* gs = sm->GetSystem<GeometrySystem>()) {
-        gs->GetGBuffer().Resize(width, height);
-    }
-    
-
-    if (m_Scene) {
-        auto view = m_Scene->registry.view<CameraComponent>();
-        float aspect = (float)width / (float)height;
-        for (auto entity : view) {
-            auto& camera = view.get<CameraComponent>(entity);
-            camera.aspectRatio = aspect;
-            camera.screenWidth = width;
-            camera.screenHeight = height;
-            if (!camera.isOrthographic) {
-                camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
-            } else {
-                float h = camera.orthoSize;
-                float w = h * aspect;
-                camera.projectionMatrix = glm::ortho(-w, w, -h, h, camera.nearPlane, camera.farPlane);
-            }
-        }
-    }
 }
 void Application::OnMouseMove(double xpos, double ypos)   { m_IOHandler->OnMouseMove(xpos, ypos); }
 void Application::OnMouseButton(int button, int action, int mods) { m_IOHandler->OnMouseButton(button, action, mods); }

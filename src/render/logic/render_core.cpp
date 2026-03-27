@@ -79,7 +79,7 @@ void RenderCore::InitQuad()
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
-    unsigned int indices[] = { 0, 1, 2, 2, 3, 0 };
+    unsigned int indices[] = { 0, 1, 3, 0, 3, 2 };
     m_QuadEBO = bm.CreateBuffer();
     bm.BindBuffer(BufferType::ElementArrayBuffer, m_QuadEBO);
     bm.BufferData(BufferType::ElementArrayBuffer, sizeof(indices), indices, BufferUsage::StaticDraw);

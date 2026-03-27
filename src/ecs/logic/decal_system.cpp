@@ -1,4 +1,5 @@
 #include <ecs/logic/decal_system.h>
+#include <ecs/logic/system_factory.h>
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>
 #include <render/interface/i_graphics_context.h>
@@ -20,12 +21,16 @@
 #include <resource/unit/shader.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
+#include <platform/logic/io_handler.h>
 #include <render/unit/render_command.h>
 #include <render/logic/render_core.h>
+
+REGISTER_SYSTEM(DecalSystem)
 
 void DecalSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<DecalSystem>(this);
     m_GraphicsContext = sl.Resolve<IGraphicsContext>();
     m_RenderService = sl.Resolve<IRenderService>();
     m_GeoService = sl.Resolve<IGeometryService>();
@@ -47,6 +52,11 @@ void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity
 
 void DecalSystem::Update(Scene &scene, float dt)
 {
+    static bool logUpdate = false;
+    if (!logUpdate) {
+        LOGGER_INFO("DecalSystem") << "DecalSystem::Update called for the first time.";
+        logUpdate = true;
+    }
     m_IsRenderedThisFrame = false;
     if (!m_Enabled) return;
     
@@ -80,14 +90,31 @@ void DecalSystem::RenderAlphaPass(Scene &scene, int width, int height, float alp
 
 void DecalSystem::Render(Scene &scene)
 {
-    if (m_IsRenderedThisFrame || !m_Enabled) return;
-    m_IsRenderedThisFrame = true;
+    static bool logEntry = false;
+    if (!logEntry) {
+        LOGGER_INFO("DecalSystem") << "DecalSystem::Render called for the first time.";
+        logEntry = true;
+    }
+    if (!m_Enabled) return;
     
+    auto& sl = ServiceLocator::Instance();
+    if (!m_GeoService) m_GeoService = sl.Resolve<IGeometryService>();
+    if (!m_RenderService) m_RenderService = sl.Resolve<IRenderService>();
+    if (!m_GraphicsContext) m_GraphicsContext = sl.Resolve<IGraphicsContext>();
+
     auto* geoSys = m_GeoService;
-    if (!geoSys) return;
+    if (!geoSys) {
+        static bool logGeo = false;
+        if (!logGeo) { LOGGER_ERROR("DecalSystem") << "GeoService not found!"; logGeo = true; }
+        return;
+    }
 
     auto camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity == entt::null) return;
+    if (camEntity == entt::null) {
+        static bool logCam = false;
+        if (!logCam) { LOGGER_WARN("DecalSystem") << "No active camera found!"; logCam = true; }
+        return;
+    }
     auto &cam = scene.registry.get<CameraComponent>(camEntity);
 
     auto& gc = *m_GraphicsContext;
@@ -95,6 +122,14 @@ void DecalSystem::Render(Scene &scene)
     auto& bm = gc.GetBufferManager();
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
+    auto& io = sl.Require<IOHandler>();
+    int width = io.GetMonitorManager().GetWidth();
+    int height = io.GetMonitorManager().GetHeight();
+    
+    // Safety check for viewport
+    if (width <= 0 || height <= 0) return;
+    m_ScreenWidth = width;
+    m_ScreenHeight = height;
 
     bool isDeferred = geoSys->IsDeferredRenderingEnabled();
     Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();
@@ -145,7 +180,7 @@ void DecalSystem::Render(Scene &scene)
         sm.Disable(ServerCapability::CullFace);
         sm.SetDepthFunc(CompareFunc::Lequal); // Changed from Less to Lequal
         sm.SetDepthMask(false);
-        sm.SetViewport(0, 0, m_ScreenWidth, m_ScreenHeight);
+        sm.SetViewport(0, 0, width, height);
         sm.SetColorMask(true, true, true, true);
     }
 
@@ -159,7 +194,6 @@ void DecalSystem::Render(Scene &scene)
     shader->setMat4("u_View", cam.viewMatrix);
     shader->setMat4("u_Projection", cam.projectionMatrix);
     
-    auto& sl = ServiceLocator::Instance();
     auto& core = sl.Require<RenderCore>();
     if (isDeferred) {
         sm.Enable(ServerCapability::CullFace);
@@ -170,10 +204,19 @@ void DecalSystem::Render(Scene &scene)
         bm.BindBuffer(BufferType::ElementArrayBuffer, core.GetQuadEBO());
     }
     
-    auto view = scene.registry.view<DecalComponent, PositionComponent>();
+    auto view = scene.registry.view<DecalComponent>();
     
+    if (view.begin() != view.end()) {
+        static bool loggedCount = false;
+        if (!loggedCount) {
+             size_t count = 0;
+             for (auto e : view) count++;
+            LOGGER_INFO("DecalSystem") << "Rendering " << count << " decals. Viewport: " << width << "x" << height;
+            loggedCount = true;
+        }
+    }
+
     std::vector<entt::entity> sortedEntities;
-    sortedEntities.reserve(view.size_hint());
     for (auto entity : view) sortedEntities.push_back(entity);
 
     std::sort(sortedEntities.begin(), sortedEntities.end(), [&](entt::entity a, entt::entity b) {
@@ -181,8 +224,10 @@ void DecalSystem::Render(Scene &scene)
     });
 
     for (auto entity : sortedEntities) {
-        auto &decal = view.get<DecalComponent>(entity);
-        auto &pos = view.get<PositionComponent>(entity);
+        auto &decal = scene.registry.get<DecalComponent>(entity);
+        auto *posComp = scene.registry.try_get<PositionComponent>(entity);
+        if (!posComp) continue;
+        auto &pos = *posComp;
         
         Shader* activeShader = shader;
         if (!decal.customShader.empty()) {
@@ -215,7 +260,7 @@ void DecalSystem::Render(Scene &scene)
         
         activeShader->setMat4("model", model);
         activeShader->setMat4("u_Model", model);
-        activeShader->setMat4("invModel", glm::inverse(cam.projectionMatrix * cam.viewMatrix * model));
+        activeShader->setMat4("invModel", glm::inverse(model));
         activeShader->setFloat("opacity", decal.opacity);
         activeShader->setFloat("u_Opacity", decal.opacity);
         activeShader->setFloat("u_Alpha", decal.opacity);
@@ -283,7 +328,7 @@ std::vector<entt::id_type> DecalSystem::GetWriteComponents() const
 
 uint32_t DecalSystem::GetTagBit(const std::string &tag)
 {
-    if (tag.empty()) return 0;
+    if (tag.empty()) return 1; // Bit 0 is for default/untagged
     auto it = m_TagBitMap.find(tag);
     if (it != m_TagBitMap.end()) return it->second;
 

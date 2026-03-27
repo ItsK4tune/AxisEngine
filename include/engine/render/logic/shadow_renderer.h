@@ -2,19 +2,18 @@
 
 #include <render/unit/shadow.h>
 #include <render/unit/frustum.h>
-#include <resource/interface/i_resource_libraries.h>
-#include <scene/logic/scene.h>
+#include <render/type/render_data.h>
 #include <vector>
 
 class ResourceManager;
-struct RenderItem;
+class IShaderLibrary;
 
 class ShadowRenderer
 {
 public:
     void Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib);
     void Shutdown();
-    void RenderShadows(Scene &scene, const std::vector<RenderItem>& shadowQueue);
+    void PerformShadowPass(const RenderSceneData& sceneData);
 
     void SetEnableShadows(bool enable) { m_EnableShadows = enable; }
     void SetShadowMode(int mode) { m_ShadowMode = mode; }
@@ -35,6 +34,8 @@ public:
     const glm::mat4* GetLightSpaceMatricesSpot() const { return m_LightSpaceMatrixSpot; }
     float GetFarPlanePoint() const { return m_FarPlanePoint; }
     float GetFarPlaneSpot() const { return m_FarPlaneSpot; }
+    float GetShadowProjectionSize() const { return m_ShadowProjectionSize; }
+    bool IsShadowFrustumCullingEnabled() const { return m_ShadowFrustumCullingEnabled; }
 
 private:
     Shadow m_Shadow;

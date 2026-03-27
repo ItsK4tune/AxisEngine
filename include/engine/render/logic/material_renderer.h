@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <scene/logic/scene.h>
+#include <render/type/render_data.h>
 #include <unordered_map>
 #include <shared_mutex>
 
@@ -59,8 +59,7 @@ struct MaterialUniformLocations {
 class MaterialRenderer {
 public:
     void Initialize(IGraphicsContext& context, unsigned int whiteTextureId, unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
-    bool SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene, bool debugNoTexture, bool isWireframe = false);
-    bool SetupMaterialUniforms(Shader *shader, MaterialComponent* material, Scene &scene, bool debugNoTexture, bool isWireframe = false);
+    bool SetupMaterialUniforms(Shader *shader, MaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe = false);
 
     static void InvalidateSkyboxCache() {
         std::lock_guard<std::mutex> lock(s_SkyboxMutex);

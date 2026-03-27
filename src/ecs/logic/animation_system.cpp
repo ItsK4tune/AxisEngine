@@ -2,8 +2,17 @@
 #include <ecs/logic/animation_system.h>
 #include <resource/unit/animator.h>
 #include <ecs/unit/render_components.h>
+#include <ecs/logic/system_factory.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
+
+void AnimationSystem::Initialize()
+{
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<AnimationSystem>(this);
+}
+
+REGISTER_SYSTEM(AnimationSystem)
 
 void AnimationSystem::Update(Scene &scene, float dt)
 {

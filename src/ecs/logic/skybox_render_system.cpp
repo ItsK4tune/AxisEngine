@@ -1,6 +1,7 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/logic/entity_manager.h>
 #include <ecs/logic/skybox_render_system.h>
+#include <ecs/logic/system_factory.h>
 #include <ecs/unit/render_components.h>
 #include <resource/unit/shader.h>
 #include <render/unit/skybox.h>
@@ -18,9 +19,13 @@
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>
 
+REGISTER_SYSTEM(SkyboxRenderSystem)
+
 void SkyboxRenderSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<ISkyboxService>(this);
+    sl.Register<SkyboxRenderSystem>(this);
     m_Context = &sl.Require<IGraphicsContext>();
     
     auto& configManager = sl.Require<ConfigManager>();
@@ -52,6 +57,12 @@ std::vector<entt::id_type> SkyboxRenderSystem::GetWriteComponents() const
 void SkyboxRenderSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
 {
     if (!m_Enabled || !m_Context) return;
+
+    static bool firstSkyboxLog = true;
+    if (firstSkyboxLog) {
+        LOGGER_INFO("SkyboxRenderSystem") << "RenderAlphaPass: Starting skybox render.";
+        firstSkyboxLog = false;
+    }
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null)

@@ -36,7 +36,8 @@ public:
     virtual unsigned int GetBlackTexture() const = 0;
     virtual unsigned int GetFlatNormalTexture() const = 0;
     
-    virtual void ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) = 0;
+    virtual void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0) = 0;
+    virtual void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) = 0;
     
     virtual void AddRenderedCount(int count) = 0;
     virtual AntiAliasingMode GetAntiAliasingMode() const = 0;
@@ -44,6 +45,16 @@ public:
     virtual glm::mat4 GetPrevViewProj() const = 0;
     virtual glm::mat4 GetCurrViewProj() const = 0;
     virtual glm::vec2 GetJitterOffset() const = 0;
+    
+    virtual glm::vec3 GetCameraPosition() const = 0;
+    virtual glm::mat4 GetViewMatrix() const = 0;
+    virtual glm::mat4 GetProjectionMatrix() const = 0;
+    virtual float GetNearPlane() const = 0;
+    virtual float GetFarPlane() const = 0;
+    
+    virtual unsigned int GetIrradianceMap() const = 0;
+    virtual unsigned int GetPrefilterMap() const = 0;
+    virtual unsigned int GetBrdfLUT() const = 0;
     
     virtual bool IsDebugNoTexture() const = 0;
     virtual void SetDebugNoTexture(bool enable) = 0;

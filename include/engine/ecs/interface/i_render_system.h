@@ -5,7 +5,6 @@ struct Scene;
 class Shader;
 class IRenderStateManager;
 
-
 class IRenderSystem : virtual public IBaseSystem
 {
 public:
@@ -16,10 +15,6 @@ public:
     virtual void RenderTransparentPass(Scene &scene, int width, int height, float alpha) {}
     virtual void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) {}
     virtual void RenderCapturePass(Scene &scene, int width, int height) {}
-
-
     virtual void Render(Scene &scene, Shader &shader, IRenderStateManager &renderState) {}
-
-    
     virtual void RenderDebug(Scene &scene, Shader &shader, int screenWidth, int screenHeight, IRenderStateManager &renderState) {}
 };

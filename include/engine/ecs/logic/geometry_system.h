@@ -19,8 +19,8 @@ public:
     int GetPriority() const override { return 80; }
     std::string GetName() const override { return "GeometrySystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
-    void Render(Scene &scene) override {}
-    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
+    void Render(Scene &scene) override;
+    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override {}
     
     GBuffer& GetGBuffer() override { return m_GBuffer; }
     void BindGBufferForWriting() override;

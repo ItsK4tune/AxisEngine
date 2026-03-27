@@ -21,10 +21,10 @@ void main()
 
     uint tagValue = texture(gID, screenUV).r;
     uint tagBit = texelFetch(tagMap, int(tagValue), 0).r;
-    if ((tagBit & allowedTagsMask) == 0u) discard;
+    if (tagBit != 0u && (tagBit & allowedTagsMask) == 0u) discard;
 
-    vec4 clipPos = vec4(screenUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-    vec4 localPos = invModel * clipPos;
+    vec3 worldPos = texture(gPosition, screenUV).rgb;
+    vec4 localPos = invModel * vec4(worldPos, 1.0);
     localPos /= localPos.w;
 
     if (abs(localPos.x) > 0.5 || abs(localPos.y) > 0.5 || abs(localPos.z) > 0.5) discard;

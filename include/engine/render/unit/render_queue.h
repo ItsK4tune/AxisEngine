@@ -10,33 +10,27 @@ class Model;
 class FrustumCuller;
 struct MaterialComponent;
 
-struct RenderItem {
-    entt::entity entity;
-    Model* activeModel;
-    Shader* activeShader;
-    MaterialComponent* activeMaterial;
-    glm::mat4 worldMatrix;
-    AABB worldAABB;
-    uint32_t layer;
-    int renderOrder;
-    float distSq;
-    bool isTransparent;
-    uint64_t sortKey;
-};
+#include <render/type/render_data.h>
 
 class RenderQueue {
 public:
-    void Build(Scene& scene, float alpha, 
-               const FrustumCuller& frustumCuller, bool frustumCullEnabled, 
-               bool occlusionCullEnabled, float distCullSq, 
-               uint32_t filterMask, uint32_t camMask, const glm::vec3& camPos);
+    void Clear() { m_OpaqueQueue.clear(); m_TransparentQueue.clear(); m_ShadowQueue.clear(); m_Lights.clear(); }
+    void AddOpaque(const RenderItem& item) { m_OpaqueQueue.push_back(item); }
+    void AddTransparent(const RenderItem& item) { m_TransparentQueue.push_back(item); }
+    void AddShadow(const RenderItem& item) { m_ShadowQueue.push_back(item); }
+    void AddLight(const RenderLight& light) { m_Lights.push_back(light); }
+    void AddLight(RenderLight&& light) { m_Lights.push_back(std::move(light)); }
+
+    void Sort();
 
     const std::vector<RenderItem>& GetOpaqueQueue() const { return m_OpaqueQueue; }
     const std::vector<RenderItem>& GetTransparentQueue() const { return m_TransparentQueue; }
     const std::vector<RenderItem>& GetShadowQueue() const { return m_ShadowQueue; }
+    const std::vector<RenderLight>& GetLights() const { return m_Lights; }
 
 private:
     std::vector<RenderItem> m_OpaqueQueue;
     std::vector<RenderItem> m_TransparentQueue;
     std::vector<RenderItem> m_ShadowQueue;
+    std::vector<RenderLight> m_Lights;
 };

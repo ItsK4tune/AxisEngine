@@ -1,7 +1,11 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/ui_components.h>
 #include <ecs/logic/ui_render_system.h>
+#include <ecs/logic/system_factory.h>
+#include <ecs/interface/i_ui_service.h>
 #include <platform/interface/input_codes.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/service_locator.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <platform/logic/io_handler.h>
@@ -44,6 +48,15 @@ UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screen
     glm::vec2 pos = finalMin + transform.pivot * size;
 
     return { finalMin, size };
+}
+
+REGISTER_SYSTEM(UIRenderSystem)
+
+void UIRenderSystem::Initialize()
+{
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<IUIService>(this);
+    sl.Register<UIRenderSystem>(this);
 }
 
 void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)

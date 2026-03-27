@@ -1,4 +1,5 @@
 #include <ecs/logic/scriptable_system.h>
+#include <ecs/logic/system_factory.h>
 #include <scene/type/scene_events.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/event_system.h>
@@ -12,8 +13,12 @@
 #include <platform/logic/io_handler.h>
 #include <core/logic/time_service.h>
 
+REGISTER_SYSTEM(ScriptableSystem)
+
 void ScriptableSystem::Initialize()
 {
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<ScriptableSystem>(this);
     auto& ev = EventSystem::Instance();
 
     m_SceneSubId = ev.Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {

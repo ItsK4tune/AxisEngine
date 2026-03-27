@@ -18,6 +18,6 @@ void main()
     Normal = normalize(mat3(transpose(inverse(model))) * vec3(0.0, 0.0, 1.0));
 
     // Apply a tiny z-offset to help with z-fighting
-    vec3 localPos = vec3(aPos.x, aPos.y, 0.001);
+    vec3 localPos = vec3(aPos.x, aPos.y, 0.01);
     gl_Position = projection * view * model * vec4(localPos, 1.0);
 }

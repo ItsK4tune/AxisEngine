@@ -1,4 +1,5 @@
 #include <ecs/logic/transparent_system.h>
+#include <ecs/logic/system_factory.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_geometry_service.h>
@@ -16,8 +17,12 @@
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_draw_context.h>
 
+REGISTER_SYSTEM(TransparentSystem)
+
 void TransparentSystem::Initialize()
 {
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<TransparentSystem>(this);
 }
 
 void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int height, float alpha)
@@ -43,7 +48,7 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
     auto* shadowSys = sl.Resolve<IShadowService>();
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
     auto& core = sl.Require<RenderCore>();
-    rs->ExecuteQueue(scene, rs->GetRenderQueueObj().GetTransparentQueue(), true, shadowRenderer, &core.GetMaterialRenderer());
+    rs->ExecuteQueue(rs->GetRenderQueueObj().GetTransparentQueue(), true, shadowRenderer, &core.GetMaterialRenderer());
 
     rsm.Disable(ServerCapability::Blend);
     rsm.SetDepthMask(true);

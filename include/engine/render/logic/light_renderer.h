@@ -2,24 +2,18 @@
 
 #include <glm/glm.hpp>
 #include <memory>
+#include <render/type/render_data.h>
 #include <render/type/graphics_types.h>
-#include <scene/logic/scene.h>
-#include <vector>
 
 class IBufferManager;
 class IGraphicsContext;
 class Shader;
 
-#define GLM_ENABLE_EXPERIMENTAL
-
-
-
-
 class LightRenderer
 {
 public:
     void Initialize(IGraphicsContext& context);
-    void UploadLightData(Scene &scene, Shader *shader);
+    void UploadLightData(const RenderSceneData& sceneData, Shader *shader);
 
     int GetDirLightCount() const { return (int)m_DirLights.size(); }
     int GetPointLightCount() const { return (int)m_PointLights.size(); }

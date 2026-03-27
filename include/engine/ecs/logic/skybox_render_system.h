@@ -16,7 +16,7 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 84; }
     std::string GetName() const override { return "SkyboxRenderSystem"; }
-    SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
+    SystemCategory GetCategory() const override { return SystemCategory::RenderAlpha; }
     void Render(Scene& scene) override {}
     void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
 

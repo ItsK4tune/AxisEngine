@@ -1,4 +1,5 @@
 #include <ecs/logic/audio_system.h>
+#include <ecs/logic/system_factory.h>
 #include <audio/logic/audio_service.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/core_components.h>
@@ -9,9 +10,12 @@
 #include <core/type/event_types.h>
 #include <core/type/app_config.h>
 
+REGISTER_SYSTEM(AudioSystem)
+
 void AudioSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<AudioSystem>(this);
     auto& configManager = sl.Require<ConfigManager>();
     m_GlobalVolume = configManager.GetConfig().masterVolume;
 

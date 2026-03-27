@@ -1,4 +1,5 @@
 #include <navigation/logic/navigation_system.h>
+#include <ecs/logic/system_factory.h>
 #include <navigation/logic/navmesh_generator.h>
 #include <navigation/logic/pathfinding.h>
 #include <ecs/unit/core_components.h>
@@ -8,6 +9,15 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <resource/logic/resource_manager.h>
+#include <resource/logic/resource_manager.h>
+
+REGISTER_SYSTEM(NavigationSystem)
+
+void NavigationSystem::Initialize()
+{
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<NavigationSystem>(this);
+}
 
 void NavigationSystem::Update(Scene& scene, float dt)
 {

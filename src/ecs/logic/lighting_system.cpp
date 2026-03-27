@@ -1,4 +1,6 @@
 #include <ecs/logic/lighting_system.h>
+#include <core/logic/logger.h>
+#include <ecs/logic/system_factory.h>
 #include <core/logic/service_locator.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/logic/render_core.h>
@@ -11,7 +13,9 @@
 #include <render/unit/shadow.h>
 #include <render/logic/shadow_renderer.h>
 #include <render/logic/light_renderer.h>
+#include <platform/logic/io_handler.h>
 #include <ecs/interface/i_render_service.h>
+#include <render/unit/render_queue.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <resource/logic/resource_manager.h>
@@ -23,9 +27,13 @@
 #include <algorithm>
 #include <string>
 
+REGISTER_SYSTEM(LightingSystem)
+
 void LightingSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<ILightingService>(this);
+    sl.Register<LightingSystem>(this);
     m_GraphicsContext = sl.Resolve<IGraphicsContext>();
     m_RenderService = sl.Resolve<IRenderService>();
     m_GeoService = sl.Resolve<IGeometryService>();
@@ -43,22 +51,42 @@ void LightingSystem::Shutdown()
 {
 }
 
-void LightingSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
+void LightingSystem::Render(Scene& scene)
 {
-    if (!m_Enabled)
-         return;
+    if (!m_Enabled) return;
+
+    auto& sl = ServiceLocator::Instance();
+    if (!m_GeoService) m_GeoService = sl.Resolve<IGeometryService>();
+    if (!m_RenderService) m_RenderService = sl.Resolve<IRenderService>();
+    if (!m_ShadowService) m_ShadowService = sl.Resolve<IShadowService>();
 
     auto* rs = m_RenderService;
     if (!rs) return;
 
+    auto* io = sl.Resolve<IOHandler>();
+    int width = io ? io->GetMonitorManager().GetWidth() : 800;
+    int height = io ? io->GetMonitorManager().GetHeight() : 600;
+
     if (rs->GetRenderPath() == RenderPath::Forward) {
-        m_LightRenderer.UploadLightData(scene, nullptr);
+        RenderSceneData sceneData;
+        sceneData.lights = rs->GetRenderQueueObj().GetLights();
+        sceneData.cameraPosition = rs->GetCameraPosition();
+        sceneData.viewMatrix = rs->GetViewMatrix();
+        sceneData.projMatrix = rs->GetProjectionMatrix();
+        sceneData.nearPlane = rs->GetNearPlane();
+        sceneData.farPlane = rs->GetFarPlane();
+
+        m_LightRenderer.UploadLightData(sceneData, nullptr);
         m_GraphicsContext->GetRenderStateManager().SetViewport(0, 0, width, height);
         return;
     }
 
-
     RenderDeferredLighting(scene, width, height);
+}
+
+void LightingSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
+{
+    Render(scene);
 }
 
 
@@ -94,7 +122,15 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     rsm.Disable(ServerCapability::CullFace);
     rsm.Disable(ServerCapability::Blend);
 
-    m_LightRenderer.UploadLightData(scene, m_DeferredLightShader.get());
+    RenderSceneData sceneData;
+    sceneData.lights = rs->GetRenderQueueObj().GetLights();
+    sceneData.cameraPosition = rs->GetCameraPosition();
+    sceneData.viewMatrix = rs->GetViewMatrix();
+    sceneData.projMatrix = rs->GetProjectionMatrix();
+    sceneData.nearPlane = rs->GetNearPlane();
+    sceneData.farPlane = rs->GetFarPlane();
+
+    m_LightRenderer.UploadLightData(sceneData, m_DeferredLightShader.get());
     m_DeferredLightShader->use();
     
 
@@ -124,8 +160,7 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         }
     }
 
-    auto& sl = ServiceLocator::Instance();
-    auto& core = sl.Require<RenderCore>();
+    auto& core = ServiceLocator::Instance().Require<RenderCore>();
     bm.BindVertexArray(core.GetQuadVAO());
     dc.DrawArrays(Primitive::TriangleStrip, 0, 4);
     bm.BindVertexArray(0);

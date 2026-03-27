@@ -1,6 +1,8 @@
 #include <ecs/logic/geometry_system.h>
+#include <ecs/logic/system_factory.h>
 #include <core/logic/logger.h>
 #include <ecs/interface/i_render_service.h>
+#include <ecs/logic/entity_manager.h>
 #include <core/logic/service_locator.h>
 #include <render/logic/render_core.h>
 #include <core/logic/config_manager.h>
@@ -22,9 +24,13 @@
 #include <render/logic/material_renderer.h>
 #include <algorithm>
 
+REGISTER_SYSTEM(GeometrySystem)
+
 void GeometrySystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<IGeometryService>(this);
+    sl.Register<GeometrySystem>(this);
     m_GraphicsContext = sl.Resolve<IGraphicsContext>();
     m_ConfigManager = sl.Resolve<ConfigManager>();
     auto& context = *m_GraphicsContext;
@@ -49,6 +55,12 @@ void GeometrySystem::Initialize()
              m_GBuffer.Resize(cfg.width, cfg.height);
         }
     });
+
+    EventSystem::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
+        if (e.width != m_GBuffer.GetWidth() || e.height != m_GBuffer.GetHeight()) {
+            m_GBuffer.Resize(e.width, e.height);
+        }
+    });
 }
 
 void GeometrySystem::Shutdown()
@@ -56,18 +68,33 @@ void GeometrySystem::Shutdown()
     m_GBuffer.Shutdown();
 }
 
-void GeometrySystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
+void GeometrySystem::Render(Scene& scene)
 {
     if (!m_Enabled) return;
 
+    if (!m_RenderService) m_RenderService = ServiceLocator::Instance().Resolve<IRenderService>();
     auto* rs = m_RenderService;
-    if (!rs) return;
+    if (!rs) {
+        static bool rsWarned = false;
+        if (!rsWarned) { LOGGER_ERROR("GeometrySystem") << "RenderService not found!"; rsWarned = true; }
+        return;
+    }
+
+    entt::entity camEntity = ::EntityManager::GetActiveCamera(scene);
+    auto* cam = scene.registry.try_get<CameraComponent>(camEntity);
+    if (!cam) {
+        static bool camWarned = false;
+        if (!camWarned) { LOGGER_WARN("GeometrySystem") << "No active camera found!"; camWarned = true; }
+        return;
+    }
 
     auto renderPath = rs->GetRenderPath();
     bool isDeferred = (renderPath == RenderPath::Deferred);
     m_IsDeferredCached = isDeferred;
 
     const auto& config = m_ConfigManager->GetConfig();
+    int width = config.width;
+    int height = config.height;
     float currentScale = config.renderScale;
 
     if (width != m_GBuffer.GetWidth() || height != m_GBuffer.GetHeight() || currentScale != m_GBuffer.GetRenderScale()) {
@@ -104,18 +131,14 @@ void GeometrySystem::RenderAlphaPass(Scene& scene, int width, int height, float 
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
 
     const auto& opaqueQueue = rs->GetRenderQueueObj().GetOpaqueQueue();
+    LOGGER_INFO("GeometrySystem") << "Queue size: " << opaqueQueue.size();
     if (!opaqueQueue.empty())
     {
-        static bool firstFrame = true;
-        if (firstFrame) {
-            LOGGER_INFO("GeometrySystem") << "Rendering opaque queue with " << opaqueQueue.size() << " items";
-            firstFrame = false;
-        }
-        auto& sl_local = ServiceLocator::Instance();
-        RenderCore* core = sl_local.Resolve<RenderCore>();
+        shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
+        RenderCore* core = sl.Resolve<RenderCore>();
         Shader* overrideShader = isDeferred ? m_GBufferShader.get() : nullptr;
         if (core) {
-            rs->ExecuteQueue(scene, opaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), overrideShader); 
+            rs->ExecuteQueue(opaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), overrideShader); 
         }
     }
     

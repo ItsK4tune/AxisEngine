@@ -1,6 +1,7 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/logic/physics_system.h>
+#include <ecs/logic/system_factory.h>
 #include <core/logic/config_manager.h>
 #include <ecs/logic/cached_query.h>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -23,10 +24,12 @@
 
 PhysicsSystem::PhysicsSystem() {}
 PhysicsSystem::~PhysicsSystem() {}
+REGISTER_SYSTEM(PhysicsSystem)
 
 void PhysicsSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<PhysicsSystem>(this);
     auto* phys = sl.Resolve<IPhysicsWorld>();
     auto& configManager = sl.Require<ConfigManager>();
     

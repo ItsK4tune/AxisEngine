@@ -1,4 +1,5 @@
 #include <ecs/logic/shadow_system.h>
+#include <ecs/logic/system_factory.h>
 #include <ecs/interface/i_render_service.h>
 #include <render/interface/i_graphics_context.h>
 #include <resource/logic/resource_manager.h>
@@ -9,11 +10,18 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
 #include <render/logic/frustum_culler.h>
+#include <ecs/unit/light_components.h>
+
 #include <render/unit/render_queue.h>
+#include <core/logic/config_manager.h>
+
+REGISTER_SYSTEM(ShadowSystem)
 
 void ShadowSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<IShadowService>(this);
+    sl.Register<ShadowSystem>(this);
     auto& context = sl.Require<IGraphicsContext>();
     auto& resources = sl.Require<ResourceManager>();
     auto& config = sl.Require<ConfigManager>().GetConfig();
@@ -63,7 +71,39 @@ void ShadowSystem::Render(Scene& scene)
     auto* rs = sl.Resolve<IRenderService>();
     if (!rs) return;
 
-    m_ShadowRenderer.RenderShadows(scene, rs->GetRenderQueueObj().GetShadowQueue());
+    RenderSceneData sceneData;
+    sceneData.shadowQueue = rs->GetRenderQueueObj().GetShadowQueue();
+    sceneData.lights = rs->GetRenderQueueObj().GetLights();
+    sceneData.cameraPosition = rs->GetCameraPosition();
+    sceneData.viewMatrix = rs->GetViewMatrix();
+    sceneData.projMatrix = rs->GetProjectionMatrix();
+    sceneData.nearPlane = rs->GetNearPlane();
+    sceneData.farPlane = rs->GetFarPlane();
+
+    int dirShadowCount = 0;
+    int spotShadowCount = 0;
+
+    for (auto& rl : sceneData.lights) {
+        if (!rl.castShadows) continue;
+
+        if (rl.type == RenderLightType::Directional && dirShadowCount < Shadow::MAX_DIR_LIGHTS_SHADOW) {
+            float projSize = m_ShadowRenderer.GetShadowProjectionSize();
+            glm::vec3 lightPos = -rl.direction * projSize;
+            glm::mat4 lightProjection = glm::ortho(-projSize, projSize, -projSize, projSize, 0.1f, 200.0f);
+            rl.viewProj = lightProjection * glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            rl.shadowMapIndex = dirShadowCount++;
+        }
+        else if (rl.type == RenderLightType::Spot && spotShadowCount < Shadow::MAX_SPOT_LIGHTS_SHADOW) {
+            float fov = glm::acos(rl.innerCutoff) * 2.0f;
+            if (fov <= 0.0f || !std::isfinite(fov)) fov = glm::radians(45.0f);
+            glm::mat4 spotProjection = glm::perspective(fov, 1.0f, 0.1f, m_ShadowRenderer.GetFarPlaneSpot());
+            glm::vec3 up = std::abs(glm::dot(rl.direction, glm::vec3(0,1,0))) > 0.99f ? glm::vec3(0,0,1) : glm::vec3(0,1,0);
+            rl.viewProj = spotProjection * glm::lookAt(rl.position, rl.position + rl.direction, up);
+            rl.shadowMapIndex = spotShadowCount++;
+        }
+    }
+
+    m_ShadowRenderer.PerformShadowPass(sceneData);
 }
 
 std::vector<entt::id_type> ShadowSystem::GetReadComponents() const

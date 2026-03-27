@@ -30,6 +30,7 @@ public:
     bool m_IsLinearTransformsDirty = true;
     void RebuildLinearTransforms(Scene& scene);
     void OnHierarchyChanged(entt::registry &reg, entt::entity entity);
+    void OnTransformChanged(entt::registry &reg, entt::entity entity);
 
     bool m_Enabled = true;
 };

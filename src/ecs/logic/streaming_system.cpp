@@ -1,4 +1,5 @@
 #include <ecs/logic/streaming_system.h>
+#include <ecs/logic/system_factory.h>
 #include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -7,6 +8,14 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <resource/logic/resource_manager.h>
+
+REGISTER_SYSTEM(StreamingSystem)
+
+void StreamingSystem::Initialize()
+{
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<StreamingSystem>(this);
+}
 
 void StreamingSystem::Update(Scene& scene, float dt)
 {

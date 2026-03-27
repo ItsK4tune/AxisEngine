@@ -3,6 +3,8 @@
 #include <platform/interface/input_codes.h>
 #include <iostream>
 #include <string>
+#include <core/logic/event_system.h>
+#include <core/type/event_types.h>
 
 InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse, const IWindow &window)
     : m_Keyboard(keyboard), m_Mouse(mouse), m_Window(window)
@@ -30,6 +32,16 @@ void InputManager::Update()
 {
 
 
+
+    for (const auto &[actionName, binding] : m_ActionMap)
+    {
+        if (GetActionDown(actionName))
+            EventSystem::Instance().Publish(InputActionPressedEvent{actionName});
+        else if (GetActionUp(actionName))
+            EventSystem::Instance().Publish(InputActionReleasedEvent{actionName});
+        else if (GetAction(actionName))
+            EventSystem::Instance().Publish(InputActionHeldEvent{actionName});
+    }
 
     for (const auto &[actionName, binding] : m_ActionMap)
     {

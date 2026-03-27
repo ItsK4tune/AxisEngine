@@ -3,6 +3,7 @@
 #include <ecs/logic/entity_manager.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/logic/particle_system.h>
+#include <ecs/logic/system_factory.h>
 #include <execution>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
@@ -15,9 +16,13 @@
 #include <ecs/interface/i_render_service.h>
 #include <render/interface/i_render_target_manager.h>
 
+REGISTER_SYSTEM(ParticleSystem)
+
 void ParticleSystem::Initialize()
 {
-    m_Context = &ServiceLocator::Instance().Require<IGraphicsContext>();
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<ParticleSystem>(this);
+    m_Context = &sl.Require<IGraphicsContext>();
     
 
     auto& tm = m_Context->GetTextureManager();

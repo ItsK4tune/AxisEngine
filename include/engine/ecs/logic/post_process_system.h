@@ -4,6 +4,7 @@
 #include <ecs/interface/i_ecs_system.h>
 #include <render/logic/post_process_pipeline.h>
 #include <memory>
+#include <core/logic/logger.h>
 
 struct Scene;
 

@@ -12,6 +12,14 @@
 
 
 struct SceneRecord;
+class IOHandler;
+class Scene;
+class ResourceManager;
+class SystemManager;
+class SceneManager;
+class RuntimeCore;
+class TimeService;
+class IWindow;
 
 
 
@@ -53,6 +61,16 @@ private:
     float m_TotalTime = 0.0f;
     int m_MaxSubSteps = 10;
     int m_ConfigSubId = -1;
+
+    // Cached pointers
+    IOHandler* m_IOHandler = nullptr;
+    Scene* m_Scene = nullptr;
+    ResourceManager* m_ResourceManager = nullptr;
+    SystemManager* m_SystemManager = nullptr;
+    SceneManager* m_SceneManager = nullptr;
+    RuntimeCore* m_RuntimeCore = nullptr;
+    TimeService* m_TimeService = nullptr;
+    IWindow* m_Window = nullptr;
 };
 
 

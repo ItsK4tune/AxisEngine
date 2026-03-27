@@ -15,14 +15,12 @@
 
 struct AppConfig
 {
-
     std::string title = "Axis Engine";
     LogLevel logLevel = LogLevel::Debug;
     int numJobThreads = -1;
     float timeScale = 1.0f;
     std::string iconPath = "";
     std::string audioDevice = "";
-
 
     int width = 800;
     int height = 600;
@@ -32,14 +30,12 @@ struct AppConfig
     int refreshRate = 0;
     int frameRateLimit = 0;
 
-
     GraphicsBackend graphicsBackend = GraphicsBackend::OpenGL;
     int msaaSamples = 4;
     int antialiasing = 1;
     float maxAnisotropy = 16.0f;
     float renderScale = 1.0f;
     bool asyncResourceLoading = true;
-    
 
     RenderPath renderPath = RenderPath::Forward;
     TonemappingMode tonemappingMode = TonemappingMode::ACES;
@@ -53,7 +49,6 @@ struct AppConfig
     float skyboxIntensity = 1.0f;
     float clearColor[4] = {0.1f, 0.1f, 0.1f, 1.0f};
 
-
     bool shadowsEnabled = true;
     int shadowMode = 1;
     int shadowMapResolution = 2048;
@@ -62,7 +57,6 @@ struct AppConfig
     float shadowDistanceCulling = 100.0f;
     float shadowBias = 0.005f;
     int shadowSoftness = 1;
-
 
     PhysicsBackend physicsBackend = PhysicsBackend::Bullet;
     PhysicsMode physicsMode = PhysicsMode::Balanced;
@@ -73,16 +67,13 @@ struct AppConfig
     float ccdThreshold = 0.0f;
     int solverIterations = 10;
 
-
     float mouseSensitivityX = 0.1f;
     float mouseSensitivityY = 0.1f;
     bool mouseInvertX = false;
     bool mouseInvertY = false;
 
-
     AudioBackend audioBackend = AudioBackend::IrrKlang;
     float masterVolume = 10.0f;
-
 
     bool cullFaceEnabled = true;
     bool depthTestEnabled = true;

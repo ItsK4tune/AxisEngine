@@ -70,12 +70,7 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     return locs;
 }
 
-bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, entt::entity entity, Scene &scene, bool debugNoTexture, bool isWireframe) {
-    auto *mat = scene.registry.try_get<MaterialComponent>(entity);
-    return SetupMaterialUniforms(shader, mat, scene, debugNoTexture, isWireframe);
-}
-
-bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* material, Scene &scene, bool debugNoTexture, bool isWireframe) {
+bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe) {
     const auto& locs = GetLocations(shader);
     auto& tm = m_Context->GetTextureManager();
 
@@ -94,44 +89,23 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, MaterialComponent* 
             shader->setFloat(locs.ao, mat.desc.ao);
             shader->setVec3(locs.emission, mat.desc.emission);
 
-
-            SkyboxCache sCache;
-            {
-                std::lock_guard<std::mutex> lock(s_SkyboxMutex);
-                if (!s_SkyboxCache.valid) {
-                    auto skyboxView = scene.registry.view<SkyboxRenderComponent>();
-                    for (auto skyEnt : skyboxView) {
-                        auto& skyComp = skyboxView.get<SkyboxRenderComponent>(skyEnt);
-                        if (skyComp.isPrimary && skyComp.skybox) {
-                            s_SkyboxCache.irradianceMap = skyComp.irradianceMap;
-                            s_SkyboxCache.prefilterMap = skyComp.prefilterMap;
-                            s_SkyboxCache.brdfLUT = skyComp.brdfLUT;
-                            s_SkyboxCache.valid = true;
-                            break;
-                        }
-                    }
-                }
-                sCache = s_SkyboxCache;
+            if (sceneData.irradianceMap != 0 && locs.irradianceMap != -1) {
+                tm.ActiveTexture(TextureUnit::Texture6);
+                tm.BindTexture(TextureType::TextureCubeMap, sceneData.irradianceMap);
+                shader->setInt(locs.irradianceMap, 6);
             }
-
-            if (sCache.valid) {
-                if (sCache.irradianceMap != 0 && locs.irradianceMap != -1) {
-                    tm.ActiveTexture(TextureUnit::Texture6);
-                    tm.BindTexture(TextureType::TextureCubeMap, sCache.irradianceMap);
-                    shader->setInt(locs.irradianceMap, 6);
-                }
-                if (sCache.prefilterMap != 0 && locs.prefilterMap != -1) {
-                    tm.ActiveTexture(TextureUnit::Texture7);
-                    tm.BindTexture(TextureType::TextureCubeMap, sCache.prefilterMap);
-                    shader->setInt(locs.prefilterMap, 7);
-                }
-                if (sCache.brdfLUT != 0 && locs.brdfLUT != -1) {
-                    tm.ActiveTexture(TextureUnit::Texture8);
-                    tm.BindTexture(TextureType::Texture2D, sCache.brdfLUT);
-                    shader->setInt(locs.brdfLUT, 8);
-                }
+            if (sceneData.prefilterMap != 0 && locs.prefilterMap != -1) {
+                tm.ActiveTexture(TextureUnit::Texture7);
+                tm.BindTexture(TextureType::TextureCubeMap, sceneData.prefilterMap);
+                shader->setInt(locs.prefilterMap, 7);
             }
-        } else {
+            if (sceneData.brdfLUT != 0 && locs.brdfLUT != -1) {
+                tm.ActiveTexture(TextureUnit::Texture8);
+                tm.BindTexture(TextureType::Texture2D, sceneData.brdfLUT);
+                shader->setInt(locs.brdfLUT, 8);
+            }
+        }
+ else {
             shader->setFloat(locs.mat_shininess, mat.desc.shininess);
             shader->setVec3(locs.mat_specular, mat.desc.specular);
             shader->setVec3(locs.mat_ambient, mat.desc.ambient);

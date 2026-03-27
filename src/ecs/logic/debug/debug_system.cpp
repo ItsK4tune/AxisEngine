@@ -8,6 +8,7 @@
 #include <ecs/logic/debug/modules/camera_debug_module.h>
 #include <core/logic/service_locator.h>
 #include <ecs/logic/debug/modules/shadow_debug_module.h>
+#include <ecs/logic/system_factory.h>
 
 #ifdef ENABLE_DEBUG_SYSTEM
 
@@ -23,9 +24,12 @@
 DebugSystem::DebugSystem() {}
 DebugSystem::~DebugSystem() {}
 
+REGISTER_SYSTEM(DebugSystem)
+
 void DebugSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<DebugSystem>(this);
     auto& res = sl.Require<ResourceManager>();
 
     m_TextShader = res.GetShader("debug_text");
@@ -125,23 +129,48 @@ void DebugSystem::Render(Scene &scene)
 
     rsm.SetPolygonMode(CullMode::FrontAndBack, PolygonMode::Fill);
 
-    std::vector<IDebugModule*> sortedModules;
-    for (auto& module : m_Modules) {
-        if (module->IsEnabled()) {
-            sortedModules.push_back(module.get());
+    std::vector<IDebugModule*> gizmoModules;
+    for (auto &module : m_Modules)
+    {
+        if (module->IsEnabled() && !dynamic_cast<OverlayDebugModule*>(module.get()))
+        {
+            gizmoModules.push_back(module.get());
         }
     }
 
-    std::sort(sortedModules.begin(), sortedModules.end(), [](IDebugModule* a, IDebugModule* b) {
+    std::sort(gizmoModules.begin(), gizmoModules.end(), [](IDebugModule* a, IDebugModule* b) {
         return a->GetRenderOrder() < b->GetRenderOrder();
     });
 
-    for (auto module : sortedModules)
+    for (auto module : gizmoModules)
     {
         module->Render(scene);
     }
 
     rsm.SetPolygonMode(CullMode::FrontAndBack, oldMode);
+}
+
+void DebugSystem::RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState)
+{
+    if (!m_Enabled) return;
+
+    std::vector<IDebugModule*> overlayModules;
+    for (auto &module : m_Modules)
+    {
+        if (module->IsEnabled() && dynamic_cast<OverlayDebugModule*>(module.get()))
+        {
+            overlayModules.push_back(module.get());
+        }
+    }
+
+    std::sort(overlayModules.begin(), overlayModules.end(), [](IDebugModule* a, IDebugModule* b) {
+        return a->GetRenderOrder() < b->GetRenderOrder();
+    });
+
+    for (auto module : overlayModules)
+    {
+        module->Render(scene);
+    }
 }
 
 #endif

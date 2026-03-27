@@ -1,5 +1,6 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/logic/transform_system.h>
+#include <ecs/logic/system_factory.h>
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
@@ -9,10 +10,14 @@
 #include <scene/type/scene_events.h>
 #include <deque>
 
+REGISTER_SYSTEM(TransformSystem)
+
 void TransformSystem::Initialize()
 {
+    auto& sl = ServiceLocator::Instance();
+    sl.Register<TransformSystem>(this);
     EventSystem::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
-
+        
         e.registry->on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
@@ -20,8 +25,21 @@ void TransformSystem::Initialize()
         e.registry->on_construct<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_destroy<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
 
+        e.registry->on_update<PositionComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+        e.registry->on_update<RotationComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+        e.registry->on_update<ScaleComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+
         m_IsLinearTransformsDirty = true;
+        RebuildLinearTransforms(*(Scene*)e.scene); 
     });
+}
+
+void TransformSystem::OnTransformChanged(entt::registry &reg, entt::entity entity)
+{
+    if (auto* world = reg.try_get<WorldTransformComponent>(entity))
+    {
+        world->isDirty = true;
+    }
 }
 
 void TransformSystem::OnHierarchyChanged(entt::registry &reg, entt::entity entity)
@@ -84,6 +102,7 @@ void TransformSystem::RebuildLinearTransforms(Scene& scene)
     }
 
     m_IsLinearTransformsDirty = false;
+    LOGGER_INFO("TransformSystem") << "Rebuilt linear transforms for " << m_LinearTransforms.size() << " entities";
 }
 
 void TransformSystem::Update(Scene& scene, float dt)

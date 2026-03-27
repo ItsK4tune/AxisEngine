@@ -50,7 +50,7 @@ public:
     void RenderTransparentPass(Scene &scene, int width, int height, float alpha) override;
     void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) override;
     
-    void ExecuteQueue(Scene& scene, const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) override;
+    void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) override;
 
     void SetMainFBO(uint32_t fbo) override { m_MainFBO = fbo; }
 
@@ -93,6 +93,16 @@ public:
 
     glm::mat4 GetPrevViewProj() const override { return m_PrevViewProj; }
     glm::mat4 GetCurrViewProj() const override { return m_CurrViewProj; }
+    
+    glm::vec3 GetCameraPosition() const override { return m_CameraPos; }
+    glm::mat4 GetViewMatrix() const override { return m_ViewMatrix; }
+    glm::mat4 GetProjectionMatrix() const override { return m_ProjMatrix; }
+    float GetNearPlane() const override { return m_NearPlane; }
+    float GetFarPlane() const override { return m_FarPlane; }
+    
+    unsigned int GetIrradianceMap() const override { return m_IrradianceMap; }
+    unsigned int GetPrefilterMap() const override { return m_PrefilterMap; }
+    unsigned int GetBrdfLUT() const override { return m_BrdfLUT; }
 
     StaticBatchManager &GetBatchManager() override { return m_BatchManager; }
     RenderQueue &GetRenderQueueObj() override { return m_RenderQueueObj; }
@@ -130,6 +140,16 @@ private:
     glm::mat4 m_PrevViewProj = glm::mat4(1.0f);
     glm::mat4 m_CurrViewProj = glm::mat4(1.0f);
     glm::mat4 m_JitteredProjection = glm::mat4(1.0f);
+    
+    glm::vec3 m_CameraPos = glm::vec3(0.0f);
+    glm::mat4 m_ViewMatrix = glm::mat4(1.0f);
+    glm::mat4 m_ProjMatrix = glm::mat4(1.0f);
+    float m_NearPlane = 0.1f;
+    float m_FarPlane = 1000.0f;
+
+    unsigned int m_IrradianceMap = 0;
+    unsigned int m_PrefilterMap = 0;
+    unsigned int m_BrdfLUT = 0;
 
     bool m_QueuesBuilt = false;
     float m_LastAlpha = -1.0f;
@@ -147,6 +167,7 @@ private:
     FrustumCuller m_FrustumCuller;
     OcclusionCuller m_OcclusionCuller;
     
+    std::unique_ptr<class RenderCore> m_RenderCore;
     CommandQueue m_CommandQueue;
     RenderCommandBuffer m_RenderCommandBuffer;
     uint32_t m_MainFBO = 0;

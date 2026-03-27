@@ -12,11 +12,10 @@ uniform vec4 tintColor;
 void main()
 {
     vec4 texColor = texture(decalAlbedo, TexCoords);
-    if (texColor.a < 0.5) discard;
+    if (texColor.a < 0.1) discard;
 
     vec3 albedo = pow(texColor.rgb, vec3(2.2)) * tintColor.rgb;
     
-
     vec3 lightDir = normalize(vec3(0.5, 1.0, 0.5));
     float diff = max(dot(normalize(Normal), lightDir), 0.2);
     

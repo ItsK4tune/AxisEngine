@@ -11,7 +11,7 @@ class StreamingSystem : public IUpdateSystem, public IECSSystem
 {
 public:
     StreamingSystem() : IBaseSystem() {}
-    virtual void Initialize() override {}
+    virtual void Initialize() override;
     virtual void Update(Scene& scene, float dt) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;

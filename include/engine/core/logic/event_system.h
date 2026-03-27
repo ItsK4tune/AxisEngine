@@ -9,6 +9,19 @@
 #include <unordered_map>
 #include <vector>
 
+namespace internal {
+    inline int GetNextEventId() {
+        static int id = 0;
+        return id++;
+    }
+}
+
+template<typename T>
+inline int GetEventId() {
+    static int id = internal::GetNextEventId();
+    return id;
+}
+
 class IEventDispatcher
 {
 public:
@@ -27,38 +40,46 @@ public:
         Callback callback;
     };
 
+    EventDispatcher() {
+        m_Listeners = std::make_shared<std::vector<Listener>>();
+    }
+
     void Register(int id, Callback cb)
     {
         std::lock_guard<std::mutex> lock(m_Mutex);
-        listeners.push_back({id, cb});
+        auto newListeners = std::make_shared<std::vector<Listener>>(*m_Listeners);
+        newListeners->push_back({id, cb});
+        m_Listeners = std::move(newListeners);
     }
 
     void Unregister(int id)
     {
         std::lock_guard<std::mutex> lock(m_Mutex);
-        listeners.erase(
-            std::remove_if(listeners.begin(), listeners.end(),
+        auto newListeners = std::make_shared<std::vector<Listener>>(*m_Listeners);
+        newListeners->erase(
+            std::remove_if(newListeners->begin(), newListeners->end(),
                            [id](const Listener &l)
                            { return l.id == id; }),
-            listeners.end());
+            newListeners->end());
+        m_Listeners = std::move(newListeners);
     }
 
     void Dispatch(const T &event)
     {
-        std::vector<Listener> localListeners;
+        std::shared_ptr<const std::vector<Listener>> localListeners;
         {
             std::lock_guard<std::mutex> lock(m_Mutex);
-            localListeners = listeners;
+            localListeners = m_Listeners;
         }
 
-        for (const auto &listener : localListeners)
+        for (const auto &listener : *localListeners)
         {
             listener.callback(event);
         }
     }
 
 private:
-    std::vector<Listener> listeners;
+    std::shared_ptr<const std::vector<Listener>> m_Listeners;
     std::mutex m_Mutex;
 };
 
@@ -73,30 +94,35 @@ public:
     template <typename T>
     int Subscribe(std::function<void(const T &)> callback)
     {
+        int eventId = GetEventId<T>();
+        
         std::lock_guard<std::mutex> lock(m_DispatchersMutex);
-        int id = nextListenerId++;
-        std::type_index typeIndex = std::type_index(typeid(T));
+        int listenerId = nextListenerId++;
 
-        if (dispatchers.find(typeIndex) == dispatchers.end())
-        {
-            dispatchers[typeIndex] = std::make_shared<EventDispatcher<T>>();
+        if (eventId >= (int)m_Dispatchers.size()) {
+            m_Dispatchers.resize(eventId + 1);
         }
 
-        auto *dispatcher = static_cast<EventDispatcher<T> *>(dispatchers[typeIndex].get());
-        dispatcher->Register(id, callback);
+        if (!m_Dispatchers[eventId])
+        {
+            m_Dispatchers[eventId] = std::make_shared<EventDispatcher<T>>();
+        }
 
-        return id;
+        auto *dispatcher = static_cast<EventDispatcher<T> *>(m_Dispatchers[eventId].get());
+        dispatcher->Register(listenerId, callback);
+
+        return listenerId;
     }
 
     template <typename T>
     void Unsubscribe(int listenerId)
     {
+        int eventId = GetEventId<T>();
+        
         std::lock_guard<std::mutex> lock(m_DispatchersMutex);
-        std::type_index typeIndex = std::type_index(typeid(T));
-
-        if (dispatchers.find(typeIndex) != dispatchers.end())
+        if (eventId < (int)m_Dispatchers.size() && m_Dispatchers[eventId])
         {
-            auto *dispatcher = static_cast<EventDispatcher<T> *>(dispatchers[typeIndex].get());
+            auto *dispatcher = static_cast<EventDispatcher<T> *>(m_Dispatchers[eventId].get());
             dispatcher->Unregister(listenerId);
         }
     }
@@ -104,14 +130,14 @@ public:
     template <typename T>
     void Publish(const T &event)
     {
+        int eventId = GetEventId<T>();
+        
         std::shared_ptr<IEventDispatcher> dispatcherPtr;
         {
             std::lock_guard<std::mutex> lock(m_DispatchersMutex);
-            std::type_index typeIndex = std::type_index(typeid(T));
-
-            if (dispatchers.find(typeIndex) != dispatchers.end())
+            if (eventId < (int)m_Dispatchers.size())
             {
-                dispatcherPtr = dispatchers[typeIndex];
+                dispatcherPtr = m_Dispatchers[eventId];
             }
         }
 
@@ -127,7 +153,7 @@ private:
     ~EventSystem() = default;
 
     int nextListenerId = 0;
-    std::unordered_map<std::type_index, std::shared_ptr<IEventDispatcher>> dispatchers;
+    std::vector<std::shared_ptr<IEventDispatcher>> m_Dispatchers;
     std::mutex m_DispatchersMutex;
 };
 

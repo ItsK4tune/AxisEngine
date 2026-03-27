@@ -1,14 +1,15 @@
 #pragma once
 
-#include <core/logic/config_loader.h>
-#include <ecs/logic/debug/debug_system.h>
 #include <ecs/interface/i_base_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <memory>
 #include <string>
 #include <vector>
-#include <set>
+#include <unordered_map>
+#include <typeindex>
+#include <bitset>
+#include <functional>
 
 class Application;
 class IPhysicsWorld;
@@ -18,8 +19,6 @@ struct Scene;
 struct ExecutionBatch {
     std::vector<IUpdateSystem*> systems;
 };
-
-class RenderCore;
 
 class SystemManager
 {
@@ -35,7 +34,7 @@ public:
 
     void RunUpdate(Scene &scene, float dt);
 
-    void RenderShadows(Scene &scene, float alpha);
+    void PerformRenderShadows(Scene &scene, int width, int height, float alpha);
     void RunRender(Scene &scene, int width, int height, float alpha);
 
     void UpdateDebugSystem(float realDeltaTime);
@@ -44,17 +43,14 @@ public:
     template<typename T>
     T* GetSystem() const
     {
-        for (const auto& sys : m_Systems)
-        {
-            if (T* casted = dynamic_cast<T*>(sys.get()))
-                return casted;
-        }
+        auto it = m_TypeCache.find(std::type_index(typeid(T)));
+        if (it != m_TypeCache.end())
+            return dynamic_cast<T*>(it->second);
         return nullptr;
     }
 
     IBaseSystem* GetSystem(const std::string& name) const;
     void RegisterSystem(std::unique_ptr<IBaseSystem> system);
-
 
     void RebuildExecutionBatches();
 
@@ -71,7 +67,15 @@ private:
     
     std::vector<ExecutionBatch> m_UpdateBatches;
 
-    std::unique_ptr<RenderCore> m_RenderCore;
+    std::unordered_map<std::type_index, IBaseSystem*> m_TypeCache;
+    
+    // Bitset optimization for SystemsConflict
+    struct SystemBitset {
+        std::bitset<128> read;
+        std::bitset<128> write;
+    };
+    std::unordered_map<IBaseSystem*, SystemBitset> m_SystemBitsets;
+    static uint32_t GetComponentBitIndex(entt::id_type id);
 
     bool SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const;
 };

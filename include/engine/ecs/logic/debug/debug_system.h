@@ -10,12 +10,6 @@
 
 struct Scene;
 
-
-
-
-
-
-
 #ifdef ENABLE_DEBUG_SYSTEM
 
 struct DebugConfig
@@ -47,7 +41,10 @@ public:
     void Update(Scene& scene, float dt) override { OnUpdate(dt); }
     void OnUpdate(float dt);
     
+    SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::RenderUI | SystemCategory::Update; }
+
     void Render(Scene& scene) override;
+    void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) override;
     
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
