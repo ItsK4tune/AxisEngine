@@ -124,7 +124,7 @@ axis_scene:
     
     Texture:
       Name: error_texture
-      Path: include/engine/asset/textures/error_checkerboard.ppm
+      Path: include/engine/asset/textures/error_checkerboard.tga
 
     Font:
       Name: time

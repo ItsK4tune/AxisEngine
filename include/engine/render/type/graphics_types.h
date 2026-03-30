@@ -88,6 +88,8 @@ enum class TextureType {
     Texture2D,
     TextureCubeMap,
     Texture3D,
+    Texture2DArray,
+    TextureCubeMapArray,
     CubeMapPositiveX,
     CubeMapNegativeX,
     CubeMapPositiveY,
@@ -350,8 +352,8 @@ struct GPUCameraData {
 };
 
 struct GPUGlobalLightData {
-    float lightSpaceMatricesDir[16 * 2];
-    float lightSpaceMatricesSpot[16 * 2];
+    float lightSpaceMatricesDir[16 * 16];
+    float lightSpaceMatricesSpot[16 * 16];
     int numDirLights;
     int nrPointLights;
     int nrSpotLights;

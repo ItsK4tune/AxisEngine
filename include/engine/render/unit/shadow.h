@@ -50,22 +50,22 @@ public:
     static ITextureManager& GetTextureManager() { return *s_TextureManager; }
     static IDrawContext& GetDrawContext() { return *s_DrawContext; }
 
-    static const int MAX_DIR_LIGHTS_SHADOW = 2;
-    static const int MAX_POINT_LIGHTS_SHADOW = 2;
-    static const int MAX_SPOT_LIGHTS_SHADOW = 2;
+    static const int MAX_DIR_LIGHTS_SHADOW = 16;
+    static const int MAX_POINT_LIGHTS_SHADOW = 16;
+    static const int MAX_SPOT_LIGHTS_SHADOW = 16;
 
 private:
     unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
     unsigned int SHADOW_POINT_WIDTH, SHADOW_POINT_HEIGHT;
 
     std::unique_ptr<GPUFramebuffer> m_ShadowFBO_Dir[MAX_DIR_LIGHTS_SHADOW];
-    std::unique_ptr<GPUTexture> m_ShadowMap_Dir[MAX_DIR_LIGHTS_SHADOW];
+    std::unique_ptr<GPUTexture> m_ShadowMapArray_Dir;
 
     std::unique_ptr<GPUFramebuffer> m_ShadowFBO_Point[MAX_POINT_LIGHTS_SHADOW];
-    std::unique_ptr<GPUTexture> m_ShadowMap_Point[MAX_POINT_LIGHTS_SHADOW];
+    std::unique_ptr<GPUTexture> m_ShadowMapArray_Point;
 
     std::unique_ptr<GPUFramebuffer> m_ShadowFBO_Spot[MAX_SPOT_LIGHTS_SHADOW];
-    std::unique_ptr<GPUTexture> m_ShadowMap_Spot[MAX_SPOT_LIGHTS_SHADOW];
+    std::unique_ptr<GPUTexture> m_ShadowMapArray_Spot;
 
     Shader* m_ShadowShaderDir = nullptr;
     Shader* m_ShadowShaderPoint = nullptr;

@@ -18,6 +18,8 @@ public:
                                       TextureType textarget, unsigned int Texture, int level) = 0;
     virtual void FramebufferTexture(FramebufferTarget target, FramebufferAttachment attachment,
                                     unsigned int Texture, int level) = 0;
+    virtual void FramebufferTextureLayer(FramebufferTarget target, FramebufferAttachment attachment,
+                                         unsigned int Texture, int level, int layer) = 0;
 
     virtual void BlitFramebuffer(int srcX0, int srcY0, int srcX1, int srcY1,
                                  int dstX0, int dstY0, int dstX1, int dstY1,

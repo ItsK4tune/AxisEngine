@@ -8,6 +8,10 @@
 #include <resource/logic/resource_manager.h>
 #include <core/logic/logger.h>
 #include <render/unit/command_queue.h>
+#include <core/logic/config_manager.h>
+#include <core/type/app_config.h>
+#include <core/type/lighting_mode.h>
+#include <core/logic/service_locator.h>
 
 void ShadowRenderer::Initialize(IGraphicsContext& context, IShaderLibrary &shaderLib)
 {
@@ -26,6 +30,9 @@ void ShadowRenderer::Shutdown()
 void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
 {
     if (m_ShadowMode == 0 || !m_EnableShadows) return;
+
+    auto& config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
+    LightingMode lightingMode = config.lightingMode;
 
     Shader *shaderDir = m_Shadow.GetShaderDir();
     Shader *shaderPoint = m_Shadow.GetShaderPoint();
@@ -76,7 +83,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             if (startIdx >= totalItems) break;
             size_t endIdx = std::min(startIdx + chunkSize, totalItems);
 
-            JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderDir, lightIdx, lightFrustum, camPos]() {
+            JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderDir, lightIdx, lightFrustum, camPos, lightingMode]() {
                 threadQueue.Submit([shaderDir, this, lightIdx]() {
                     shaderDir->use();
                     shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
@@ -86,6 +93,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                     
                     if (m_ShadowDistanceCullingSq > 0.0f && item.distanceSq > m_ShadowDistanceCullingSq) continue;
                     if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(item.worldAABB)) continue;
+
+                    // Bake mode: only static objects cast shadows
+                    if (lightingMode == LightingMode::Bake && !item.isStatic) continue;
 
                     Model* activeModel = item.model;
                     glm::mat4 worldMat = item.worldMatrix;
@@ -134,7 +144,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 size_t startIdx = i * chunkSize;
                 if (startIdx >= totalItems) break;
                 size_t endIdx = std::min(startIdx + chunkSize, totalItems);
-                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderPoint, shadowTransforms, farP, lightPos, camPos]() {
+                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderPoint, shadowTransforms, farP, lightPos, camPos, lightingMode]() {
                     threadQueue.Submit([shaderPoint, shadowTransforms, farP, lightPos]() {
                         shaderPoint->use();
                         for (int k = 0; k < 6; ++k) shaderPoint->setMat4("shadowMatrices[" + std::to_string(k) + "]", shadowTransforms[k]);
@@ -144,6 +154,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                     for (size_t k = startIdx; k < endIdx; ++k) {
                         const auto& item = shadowQueue[k];
                         if (m_ShadowDistanceCullingSq > 0.0f && item.distanceSq > m_ShadowDistanceCullingSq) continue;
+
+                        // Bake mode: only static objects cast shadows
+                        if (lightingMode == LightingMode::Bake && !item.isStatic) continue;
 
                         Model* activeModel = item.model;
                         glm::mat4 worldMat = item.worldMatrix;
@@ -184,7 +197,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 size_t startIdx = i * chunkSize;
                 if (startIdx >= totalItems) break;
                 size_t endIdx = std::min(startIdx + chunkSize, totalItems);
-                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderSpot, sIdx, lightFrustum, camPos]() {
+                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderSpot, sIdx, lightFrustum, camPos, lightingMode]() {
                     threadQueue.Submit([shaderSpot, this, sIdx]() {
                         shaderSpot->use();
                         shaderSpot->setMat4("lightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
@@ -193,6 +206,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                         const auto& item = shadowQueue[k];
                         if (m_ShadowDistanceCullingSq > 0.0f && item.distanceSq > m_ShadowDistanceCullingSq) continue;
                         if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(item.worldAABB)) continue;
+                        
+                        // Bake mode: only static objects cast shadows
+                        if (lightingMode == LightingMode::Bake && !item.isStatic) continue;
                         
                         Model* activeModel = item.model;
                         glm::mat4 worldMat = item.worldMatrix;

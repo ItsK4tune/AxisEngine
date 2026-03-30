@@ -56,6 +56,12 @@ public:
         glFramebufferTexture(GLTranslator::ToGL(target), GLTranslator::ToGL(attachment), Texture, level);
     }
 
+    void FramebufferTextureLayer(FramebufferTarget target, FramebufferAttachment attachment,
+                                 unsigned int Texture, int level, int layer) override
+    {
+        glFramebufferTextureLayer(GLTranslator::ToGL(target), GLTranslator::ToGL(attachment), Texture, level, layer);
+    }
+
     unsigned int CreateRenderbuffer() override
     {
         unsigned int rbo;

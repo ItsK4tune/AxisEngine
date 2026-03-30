@@ -8,8 +8,6 @@ layout (location = 6) in vec4 aWeights;
 out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoords;
-out vec4 FragPosLightSpace[2];
-out vec4 FragPosLightSpaceSpot[2];
 
 uniform mat4 model;
 
@@ -20,8 +18,8 @@ layout(std140, binding = 20) uniform CameraData {
 } camera;
 
 layout(std140, binding = 21) uniform LightData {
-    mat4 lightSpaceMatricesDir[2];
-    mat4 lightSpaceMatricesSpot[2];
+    mat4 lightSpaceMatricesDir[16];
+    mat4 lightSpaceMatricesSpot[16];
     int numDirLights;
     int nrPointLights;
     int nrSpotLights;
@@ -71,16 +69,5 @@ void main()
     TexCoords = aTexCoords;
     
 
-    for(int i = 0; i < 2; i++)
-    {
-        FragPosLightSpace[i] = light.lightSpaceMatricesDir[i] * vec4(FragPos, 1.0);
-    }
-
-
-    for(int i = 0; i < 2; i++)
-    {
-        FragPosLightSpaceSpot[i] = light.lightSpaceMatricesSpot[i] * vec4(FragPos, 1.0);
-    }
-    
     gl_Position = camera.projection * camera.view * vec4(FragPos, 1.0);
 }

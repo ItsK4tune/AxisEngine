@@ -1,8 +1,10 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
+#include <ecs/unit/physics_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/light_components.h>
+#include <ecs/unit/physics_components.h>
 #include <core/logic/logger.h>
 #include <core/type/event_types.h>
 #include <render/unit/frustum.h>
@@ -377,12 +379,26 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         item.receiveShadow = renderer.receiveShadow;
 
         item.tintColor = renderer.color;
+        bool hasAnimation = false;
         if (auto* anim = scene.registry.try_get<AnimationComponent>(entity)) {
             if (anim->animator) {
+                hasAnimation = true;
                 item.hasAnimation = true;
                 item.boneMatrices = anim->animator->GetFinalBoneMatrices();
             }
         }
+
+        bool hasPhysic = false;
+        bool isStaticPhysic = true;
+        if (auto* rb = scene.registry.try_get<RigidBodyComponent>(entity)) {
+            hasPhysic = true;
+            if (rb->body) {
+                isStaticPhysic = rb->body->IsStatic() && !rb->body->IsKinematic();
+            }
+        }
+
+        // Bake mode criteria: No animation, and no physics types other than static.
+        item.isStatic = (!hasAnimation) && (!hasPhysic || (hasPhysic && isStaticPhysic));
 
         if (isTransparent) m_RenderQueueObj.AddTransparent(item);
         else m_RenderQueueObj.AddOpaque(item);
@@ -538,10 +554,12 @@ void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTra
 
             if (shadowRenderer && shadowRenderer->IsShadowsEnabled()) {
                 auto& shadow = shadowRenderer->GetShadow();
-                for (int j = 0; j < Shadow::MAX_DIR_LIGHTS_SHADOW; j++) {
-                    shadow.BindTexture_Dir(j, 10 + j);
-                    shader->setInt(("shadowMapDir[" + std::to_string(j) + "]").c_str(), 10 + j);
-                }
+                shadow.BindTexture_Dir(0, 10);
+                shadow.BindTexture_Point(0, 11);
+                shadow.BindTexture_Spot(0, 12);
+                shader->setInt("shadowMapDir", 10);
+                shader->setInt("shadowMapPoint", 11);
+                shader->setInt("shadowMapSpot", 12);
                 shader->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
                 shader->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
             }

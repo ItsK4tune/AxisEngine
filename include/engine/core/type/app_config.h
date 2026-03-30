@@ -12,6 +12,7 @@
 #include <core/type/tonemapping_mode.h>
 #include <core/type/render_path.h>
 #include <core/type/physics_mode.h>
+#include <core/type/lighting_mode.h>
 
 struct AppConfig
 {
@@ -57,6 +58,8 @@ struct AppConfig
     float shadowDistanceCulling = 100.0f;
     float shadowBias = 0.005f;
     int shadowSoftness = 1;
+
+    LightingMode lightingMode = LightingMode::RealTime;
 
     PhysicsBackend physicsBackend = PhysicsBackend::Bullet;
     PhysicsMode physicsMode = PhysicsMode::Balanced;

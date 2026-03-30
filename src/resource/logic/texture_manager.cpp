@@ -11,33 +11,35 @@ TextureManager::TextureManager(ITextureManager& lowLevelManager)
     : m_LowLevelManager(lowLevelManager) {}
 
 void TextureManager::Initialize() {
-    // Load error texture from file
-    std::string errorTexturePath = "include/engine/asset/textures/error_checkerboard.ppm";
+    // 1. Create a hardcoded "Emergency" Error Texture first
+    unsigned char pinkBlack[] = { 
+        255, 0, 255, 255,  0, 0, 0, 255,
+        0, 0, 0, 255,      255, 0, 255, 255 
+    };
+    unsigned int errorID = m_LowLevelManager.GenTexture();
+    m_LowLevelManager.BindTexture(TextureType::Texture2D, errorID);
+    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 2, 2, 0, TextureFormat::RGBA, DataType::UnsignedByte, pinkBlack);
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
     
-    // We use a simplified load that doesn't trigger secondary fallbacks if possible, 
-    // but here we just use the existing Load method by name.
-    m_ErrorTexture = Load("Internal_Error_Texture", errorTexturePath, false, false);
-    
-    if (!m_ErrorTexture || m_ErrorTexture->id == 0) {
-        LOGGER_ERROR("TextureManager") << "CRITICAL: Failed to load external error texture!";
-        // Secondary fallback to hardcoded if file load fails
-        unsigned char pinkBlack[] = { 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255 };
-        unsigned int errorID = m_LowLevelManager.GenTexture();
-        m_LowLevelManager.BindTexture(TextureType::Texture2D, errorID);
-        m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 2, 2, 0, TextureFormat::RGBA, DataType::UnsignedByte, pinkBlack);
-        m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
-        m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
-        
-        m_ErrorTexture = std::make_shared<Texture>();
-        m_ErrorTexture->id = errorID;
-        m_ErrorTexture->width = 2;
-        m_ErrorTexture->height = 2;
-        m_ErrorTexture->nrComponents = 4;
-        m_ErrorTexture->path = "internal://error_texture";
-        m_Cache.Add("Internal_Error_Texture", m_ErrorTexture);
-    }
+    m_ErrorTexture = std::make_shared<Texture>();
+    m_ErrorTexture->id = errorID;
+    m_ErrorTexture->width = 2;
+    m_ErrorTexture->height = 2;
+    m_ErrorTexture->nrComponents = 4;
+    m_ErrorTexture->path = "internal://error_texture";
+    m_Cache.Add("Internal_Error_Texture", m_ErrorTexture);
 
-    LOGGER_INFO("TextureManager") << "Initialized Externalized Error Texture (Pink/Black Checkerboard)";
+    // 2. Try to load the higher quality external error texture
+    std::string errorTexturePath = "include/engine/asset/textures/error_checkerboard.tga";
+    auto externalError = Load("External_Error_Texture", errorTexturePath, false, false);
+    
+    if (externalError && externalError->id != 0 && externalError->path != "internal://error_texture") {
+        m_ErrorTexture = externalError;
+        LOGGER_INFO("TextureManager") << "Initialized Externalized Error Texture (from file)";
+    } else {
+        LOGGER_WARN("TextureManager") << "Could not load external error texture, using hardcoded fallback.";
+    }
 }
 
 TextureManager::~TextureManager() {

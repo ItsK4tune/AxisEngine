@@ -60,6 +60,13 @@ public:
         glTexImage2D(GLTranslator::ToGL(target), level, GLTranslator::ToGL(internalFormat), width, height, border, GLTranslator::ToGL(format), GLTranslator::ToGL(type), data);
     }
 
+    void TexImage3D(TextureType target, int level, InternalFormat internalFormat,
+                    int width, int height, int depth, int border,
+                    TextureFormat format, DataType type, const void *data) override
+    {
+        glTexImage3D(GLTranslator::ToGL(target), level, GLTranslator::ToGL(internalFormat), width, height, depth, border, GLTranslator::ToGL(format), GLTranslator::ToGL(type), data);
+    }
+
     void TexSubImage2D(TextureType target, int level, int xoffset, int yoffset,
                        int width, int height, TextureFormat format,
                        DataType type, const void *data) override

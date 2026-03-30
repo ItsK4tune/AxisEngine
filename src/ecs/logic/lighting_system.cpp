@@ -157,10 +157,12 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     if (shadowSys) {
         bool enableShadows = shadowSys->GetRenderer().IsShadowsEnabled();
         if (enableShadows) {
-            for (int i = 0; i < Shadow::MAX_DIR_LIGHTS_SHADOW; ++i) {
-                shadowSys->GetShadow().BindTexture_Dir(i, 10 + i);
-                m_DeferredLightShader->setInt("shadowMapDir[" + std::to_string(i) + "]", 10 + i);
-            }
+            shadowSys->GetShadow().BindTexture_Dir(0, 10);
+            shadowSys->GetShadow().BindTexture_Point(0, 11);
+            shadowSys->GetShadow().BindTexture_Spot(0, 12);
+            m_DeferredLightShader->setInt("shadowMapDir", 10);
+            m_DeferredLightShader->setInt("shadowMapPoint", 11);
+            m_DeferredLightShader->setInt("shadowMapSpot", 12);
         }
     }
 

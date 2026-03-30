@@ -55,6 +55,12 @@ void PostProcessSystem::Shutdown()
 void PostProcessSystem::RenderCapturePass(Scene &scene, int width, int height)
 {
     if (!m_Enabled) return;
+    
+    // Lazy resolve RenderService if needed
+    if (!m_RenderService) {
+        m_RenderService = ServiceLocator::Instance().Resolve<IRenderService>();
+    }
+
     if (width != m_Pipeline.GetWidth() || height != m_Pipeline.GetHeight()) {
         m_Pipeline.Resize(width, height);
     }
@@ -63,17 +69,11 @@ void PostProcessSystem::RenderCapturePass(Scene &scene, int width, int height)
     uint32_t captureFBO = m_Pipeline.GetCaptureFBO();
     if (m_RenderService) {
         m_RenderService->SetMainFBO(captureFBO);
-    } else {
-        static bool warned = false;
-        if (!warned) { LOGGER_ERROR("PostProcessSystem") << "m_RenderService is NULL in RenderCapturePass!"; warned = true; }
-        // Try to resolve again
-        m_RenderService = ServiceLocator::Instance().Resolve<IRenderService>();
-        if (m_RenderService) m_RenderService->SetMainFBO(captureFBO);
     }
     
     static bool firstCaptureLog = true;
-    if (firstCaptureLog) {
-        LOGGER_INFO("PostProcessSystem") << "BeginCapture: FBO=" << captureFBO;
+    if (firstCaptureLog && captureFBO != 0) {
+        LOGGER_INFO("PostProcessSystem") << "BeginCapture initialized: FBO=" << captureFBO;
         firstCaptureLog = false;
     }
 
@@ -93,6 +93,11 @@ void PostProcessSystem::Render(Scene& scene)
 {
     if (!m_Enabled)
          return;
+
+    // Lazy resolve RenderService if needed
+    if (!m_RenderService) {
+        m_RenderService = ServiceLocator::Instance().Resolve<IRenderService>();
+    }
 
     if (m_RenderService) {
         m_Pipeline.ApplyAntiAliasing(m_RenderService->GetAntiAliasingMode(), m_RenderService->GetPrevViewProj(), m_RenderService->GetCurrViewProj(), m_RenderService->GetJitterOffset());

@@ -30,6 +30,7 @@ struct RenderItem {
 
     // Animation data extracted from ECS during queue build
     bool hasAnimation = false;
+    bool isStatic = false;
     std::vector<glm::mat4> boneMatrices;
 };
 

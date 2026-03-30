@@ -65,6 +65,8 @@ public:
             case TextureType::Texture2D: return GL_TEXTURE_2D;
             case TextureType::TextureCubeMap: return GL_TEXTURE_CUBE_MAP;
             case TextureType::Texture3D: return GL_TEXTURE_3D;
+            case TextureType::Texture2DArray: return GL_TEXTURE_2D_ARRAY;
+            case TextureType::TextureCubeMapArray: return GL_TEXTURE_CUBE_MAP_ARRAY;
             case TextureType::CubeMapPositiveX: return GL_TEXTURE_CUBE_MAP_POSITIVE_X;
             case TextureType::CubeMapNegativeX: return GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
             case TextureType::CubeMapPositiveY: return GL_TEXTURE_CUBE_MAP_POSITIVE_Y;

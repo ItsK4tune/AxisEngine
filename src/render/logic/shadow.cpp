@@ -29,12 +29,13 @@ Shadow::~Shadow()
 
 void Shadow::Shutdown()
 {
-    auto& rtm = GetRenderTargetManager();
-    auto& tm = GetTextureManager();
+    m_ShadowMapArray_Dir.reset();
+    m_ShadowMapArray_Point.reset();
+    m_ShadowMapArray_Spot.reset();
 
-    for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i) { m_ShadowFBO_Dir[i].reset(); m_ShadowMap_Dir[i].reset(); }
-    for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i) { m_ShadowFBO_Point[i].reset(); m_ShadowMap_Point[i].reset(); }
-    for (int i = 0; i < MAX_SPOT_LIGHTS_SHADOW; ++i) { m_ShadowFBO_Spot[i].reset(); m_ShadowMap_Spot[i].reset(); }
+    for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i) m_ShadowFBO_Dir[i].reset();
+    for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i) m_ShadowFBO_Point[i].reset();
+    for (int i = 0; i < MAX_SPOT_LIGHTS_SHADOW; ++i) m_ShadowFBO_Spot[i].reset();
 }
 
 void Shadow::Initialize(IGraphicsContext& context, unsigned int width, unsigned int height, bool manualControl, unsigned int pointWidth, unsigned int pointHeight)
@@ -44,74 +45,65 @@ void Shadow::Initialize(IGraphicsContext& context, unsigned int width, unsigned 
     SHADOW_POINT_WIDTH = pointWidth;
     SHADOW_POINT_HEIGHT = pointHeight;
 
-    auto& rtm = GetRenderTargetManager();
-    auto& tm = GetTextureManager();
+    auto& tm = context.GetTextureManager();
+    auto& rtm = context.GetRenderTargetManager();
 
-    for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i)
-    {
+    // Directional Shadow Array
+    m_ShadowMapArray_Dir = std::make_unique<GPUTexture>(context, tm.GenTexture());
+    tm.BindTexture(TextureType::Texture2DArray, m_ShadowMapArray_Dir->Get());
+    tm.TexImage3D(TextureType::Texture2DArray, 0, InternalFormat::DepthComponent24, SHADOW_WIDTH, SHADOW_HEIGHT, MAX_DIR_LIGHTS_SHADOW, 0, TextureFormat::DepthComponent, DataType::Float, NULL);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::WrapS, (int)TextureWrap::ClampToBorder);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::WrapT, (int)TextureWrap::ClampToBorder);
+    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    tm.TexParameterfv(TextureType::Texture2DArray, TextureParameter::BorderColor, borderColor);
+
+    for (int i = 0; i < MAX_DIR_LIGHTS_SHADOW; ++i) {
         m_ShadowFBO_Dir[i] = std::make_unique<GPUFramebuffer>(context, rtm.GenFramebuffer());
-        m_ShadowMap_Dir[i] = std::make_unique<GPUTexture>(context, tm.GenTexture());
-
-        tm.BindTexture(TextureType::Texture2D, m_ShadowMap_Dir[i]->Get());
-        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::DepthComponent24, SHADOW_WIDTH, SHADOW_HEIGHT, 0, TextureFormat::DepthComponent, DataType::Float, NULL);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToBorder));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToBorder));
-        float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-        tm.TexParameterfv(TextureType::Texture2D, TextureParameter::BorderColor, borderColor);
-
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_ShadowFBO_Dir[i]->Get());
-        rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, TextureType::Texture2D, m_ShadowMap_Dir[i]->Get(), 0);
+        rtm.FramebufferTextureLayer(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, m_ShadowMapArray_Dir->Get(), 0, i);
         rtm.DrawBuffer(FramebufferAttachment::None);
         rtm.ReadBuffer(FramebufferAttachment::None);
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
     }
 
-    for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i)
-    {
+    // Point Shadow Array
+    m_ShadowMapArray_Point = std::make_unique<GPUTexture>(context, tm.GenTexture());
+    tm.BindTexture(TextureType::TextureCubeMapArray, m_ShadowMapArray_Point->Get());
+    tm.TexImage3D(TextureType::TextureCubeMapArray, 0, InternalFormat::DepthComponent24, SHADOW_POINT_WIDTH, SHADOW_POINT_HEIGHT, MAX_POINT_LIGHTS_SHADOW * 6, 0, TextureFormat::DepthComponent, DataType::Float, NULL);
+    tm.TexParameteri(TextureType::TextureCubeMapArray, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+    tm.TexParameteri(TextureType::TextureCubeMapArray, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
+    tm.TexParameteri(TextureType::TextureCubeMapArray, TextureParameter::WrapS, (int)TextureWrap::ClampToEdge);
+    tm.TexParameteri(TextureType::TextureCubeMapArray, TextureParameter::WrapT, (int)TextureWrap::ClampToEdge);
+    tm.TexParameteri(TextureType::TextureCubeMapArray, TextureParameter::WrapR, (int)TextureWrap::ClampToEdge);
+
+    for (int i = 0; i < MAX_POINT_LIGHTS_SHADOW; ++i) {
         m_ShadowFBO_Point[i] = std::make_unique<GPUFramebuffer>(context, rtm.GenFramebuffer());
-        m_ShadowMap_Point[i] = std::make_unique<GPUTexture>(context, tm.GenTexture());
-
-        tm.BindTexture(TextureType::TextureCubeMap, m_ShadowMap_Point[i]->Get());
-        for (unsigned int j = 0; j < 6; ++j)
-        {
-            tm.TexImage2D(static_cast<TextureType>(static_cast<int>(TextureType::CubeMapPositiveX) + j), 0, InternalFormat::DepthComponent24,
-                         SHADOW_POINT_WIDTH, SHADOW_POINT_HEIGHT, 0, TextureFormat::DepthComponent, DataType::Float, NULL);
-        }
-        tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
-        tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
-        tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToEdge));
-        tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToEdge));
-        tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::WrapR, static_cast<int>(TextureWrap::ClampToEdge));
-
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_ShadowFBO_Point[i]->Get());
-        rtm.FramebufferTexture(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, m_ShadowMap_Point[i]->Get(), 0);
+        rtm.FramebufferTexture(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, m_ShadowMapArray_Point->Get(), 0);
         rtm.DrawBuffer(FramebufferAttachment::None);
         rtm.ReadBuffer(FramebufferAttachment::None);
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
     }
 
-    for (int i = 0; i < MAX_SPOT_LIGHTS_SHADOW; ++i)
-    {
+    // Spot Shadow Array
+    m_ShadowMapArray_Spot = std::make_unique<GPUTexture>(context, tm.GenTexture());
+    tm.BindTexture(TextureType::Texture2DArray, m_ShadowMapArray_Spot->Get());
+    tm.TexImage3D(TextureType::Texture2DArray, 0, InternalFormat::DepthComponent24, SHADOW_WIDTH, SHADOW_HEIGHT, MAX_SPOT_LIGHTS_SHADOW, 0, TextureFormat::DepthComponent, DataType::Float, NULL);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::WrapS, (int)TextureWrap::ClampToBorder);
+    tm.TexParameteri(TextureType::Texture2DArray, TextureParameter::WrapT, (int)TextureWrap::ClampToBorder);
+    tm.TexParameterfv(TextureType::Texture2DArray, TextureParameter::BorderColor, borderColor);
+
+    for (int i = 0; i < MAX_SPOT_LIGHTS_SHADOW; ++i) {
         m_ShadowFBO_Spot[i] = std::make_unique<GPUFramebuffer>(context, rtm.GenFramebuffer());
-        m_ShadowMap_Spot[i] = std::make_unique<GPUTexture>(context, tm.GenTexture());
-
-        tm.BindTexture(TextureType::Texture2D, m_ShadowMap_Spot[i]->Get());
-        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::DepthComponent24, SHADOW_WIDTH, SHADOW_HEIGHT, 0, TextureFormat::DepthComponent, DataType::Float, NULL);
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToBorder));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToBorder));
-        float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-        tm.TexParameterfv(TextureType::Texture2D, TextureParameter::BorderColor, borderColor);
-
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_ShadowFBO_Spot[i]->Get());
-        rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, TextureType::Texture2D, m_ShadowMap_Spot[i]->Get(), 0);
+        rtm.FramebufferTextureLayer(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, m_ShadowMapArray_Spot->Get(), 0, i);
         rtm.DrawBuffer(FramebufferAttachment::None);
         rtm.ReadBuffer(FramebufferAttachment::None);
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
     }
+
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
 }
 
 void Shadow::BindFBO_Dir(int index)
@@ -148,30 +140,22 @@ void Shadow::UnbindFBO()
 
 void Shadow::BindTexture_Dir(int index, int unit)
 {
-    if (index >= 0 && index < MAX_DIR_LIGHTS_SHADOW)
-    {
-        auto& tm = GetTextureManager();
-        tm.ActiveTexture(static_cast<TextureUnit>((int)TextureUnit::Texture0 + unit));
-        tm.BindTexture(TextureType::Texture2D, m_ShadowMap_Dir[index]->Get());
-    }
+    // index is ignored as we bind the entire array
+    auto& tm = GetTextureManager();
+    tm.ActiveTexture(static_cast<TextureUnit>((int)TextureUnit::Texture0 + unit));
+    tm.BindTexture(TextureType::Texture2DArray, m_ShadowMapArray_Dir->Get());
 }
 
 void Shadow::BindTexture_Point(int index, int unit)
 {
-    if (index >= 0 && index < MAX_POINT_LIGHTS_SHADOW)
-    {
-        auto& tm = GetTextureManager();
-        tm.ActiveTexture(static_cast<TextureUnit>((int)TextureUnit::Texture0 + unit));
-        tm.BindTexture(TextureType::TextureCubeMap, m_ShadowMap_Point[index]->Get());
-    }
+    auto& tm = GetTextureManager();
+    tm.ActiveTexture(static_cast<TextureUnit>((int)TextureUnit::Texture0 + unit));
+    tm.BindTexture(TextureType::TextureCubeMapArray, m_ShadowMapArray_Point->Get());
 }
 
 void Shadow::BindTexture_Spot(int index, int unit)
 {
-    if (index >= 0 && index < MAX_SPOT_LIGHTS_SHADOW)
-    {
-        auto& tm = GetTextureManager();
-        tm.ActiveTexture(static_cast<TextureUnit>((int)TextureUnit::Texture0 + unit));
-        tm.BindTexture(TextureType::Texture2D, m_ShadowMap_Spot[index]->Get());
-    }
+    auto& tm = GetTextureManager();
+    tm.ActiveTexture(static_cast<TextureUnit>((int)TextureUnit::Texture0 + unit));
+    tm.BindTexture(TextureType::Texture2DArray, m_ShadowMapArray_Spot->Get());
 }
