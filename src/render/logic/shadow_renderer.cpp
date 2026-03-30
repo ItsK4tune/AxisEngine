@@ -68,6 +68,16 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         const auto* light = shadowCastingDirLights[lightIdx];
         m_LightSpaceMatrixDir[lightIdx] = light->viewProj;
 
+        // Bake mode optimization: skip if light version matches and already initialized
+        bool needsUpdate = (lightingMode != LightingMode::Bake) || 
+                           (light->version != m_LastLightVersionsDir[lightIdx]) || 
+                           (!m_ShadowMapInitializedDir[lightIdx]);
+
+        if (!needsUpdate) continue;
+
+        m_LastLightVersionsDir[lightIdx] = light->version;
+        m_ShadowMapInitializedDir[lightIdx] = true;
+
         shadowQueueMain.Submit([this, lightIdx]() { m_Shadow.BindFBO_Dir(lightIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
 
         Frustum lightFrustum;
@@ -120,6 +130,17 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         int numPointShadows = (std::min)((int)shadowCastingPointLights.size(), Shadow::MAX_POINT_LIGHTS_SHADOW);
         for (int pIdx = 0; pIdx < numPointShadows; ++pIdx) {
             const auto* light = shadowCastingPointLights[pIdx];
+
+            // Bake mode optimization
+            bool needsUpdate = (lightingMode != LightingMode::Bake) || 
+                               (light->version != m_LastLightVersionsPoint[pIdx]) || 
+                               (!m_ShadowMapInitializedPoint[pIdx]);
+
+            if (!needsUpdate) continue;
+
+            m_LastLightVersionsPoint[pIdx] = light->version;
+            m_ShadowMapInitializedPoint[pIdx] = true;
+
             glm::vec3 lightPos = light->position;
             float farP = m_FarPlanePoint;
             float aspect = (float)m_Shadow.GetShadowPointWidth() / (float)m_Shadow.GetShadowPointHeight();
@@ -182,6 +203,16 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         for (int sIdx = 0; sIdx < numSpotShadows; ++sIdx) {
             const auto* light = shadowCastingSpotLights[sIdx];
             m_LightSpaceMatrixSpot[sIdx] = light->viewProj;
+
+            // Bake mode optimization
+            bool needsUpdate = (lightingMode != LightingMode::Bake) || 
+                               (light->version != m_LastLightVersionsSpot[sIdx]) || 
+                               (!m_ShadowMapInitializedSpot[sIdx]);
+
+            if (!needsUpdate) continue;
+
+            m_LastLightVersionsSpot[sIdx] = light->version;
+            m_ShadowMapInitializedSpot[sIdx] = true;
 
             shadowQueueMain.Submit([this, sIdx]() { m_Shadow.BindFBO_Spot(sIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
 

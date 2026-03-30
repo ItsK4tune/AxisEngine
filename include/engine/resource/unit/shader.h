@@ -48,6 +48,7 @@ public:
     void setMat2(const std::string &name, const glm::mat2 &mat) const;
     void setMat3(const std::string &name, const glm::mat3 &mat) const;
     void setMat4(const std::string &name, const glm::mat4 &mat) const;
+    void setVec3Array(const std::string &name, const glm::vec3 *values, int count) const;
     void setMat4Array(const std::string &name, const std::vector<glm::mat4> &matrices) const;
     void setCustomPorts(const ShaderPorts& ports) const;
 
@@ -60,6 +61,7 @@ public:
     void setVec3(int location, const glm::vec3 &value) const;
     void setVec4(int location, const glm::vec4 &value) const;
     void setMat4(int location, const glm::mat4 &mat) const;
+    void setVec3Array(int location, const glm::vec3 *values, int count) const;
     void setMat4Array(int location, const std::vector<glm::mat4> &matrices) const;
     
     int GetUniformLocation(const std::string &name) const;

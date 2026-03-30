@@ -53,4 +53,12 @@ private:
     float m_ShadowBias = 0.005f;
     int m_ShadowSoftness = 1;
     bool m_DirLightLimitWarned = false;
+
+    // Multi-mode lighting support
+    uint32_t m_LastLightVersionsDir[Shadow::MAX_DIR_LIGHTS_SHADOW] = {0};
+    uint32_t m_LastLightVersionsPoint[Shadow::MAX_POINT_LIGHTS_SHADOW] = {0};
+    uint32_t m_LastLightVersionsSpot[Shadow::MAX_SPOT_LIGHTS_SHADOW] = {0};
+    bool m_ShadowMapInitializedDir[Shadow::MAX_DIR_LIGHTS_SHADOW] = {false};
+    bool m_ShadowMapInitializedPoint[Shadow::MAX_POINT_LIGHTS_SHADOW] = {false};
+    bool m_ShadowMapInitializedSpot[Shadow::MAX_SPOT_LIGHTS_SHADOW] = {false};
 };

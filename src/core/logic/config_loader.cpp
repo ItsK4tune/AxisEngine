@@ -274,6 +274,18 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
     else if (subCmd == "SOLVER_ITERATIONS") {
         ss >> config.solverIterations;
     }
+    else if (subCmd == "LIGHTING_MODE") {
+        std::string val; ss >> val;
+        config.lightingMode = ResolveEnum(val, {
+            {"BAKE", LightingMode::Bake},
+            {"LIGHT_PROBE", LightingMode::LightProbe},
+            {"LIGHTPROBE", LightingMode::LightProbe},
+            {"REFLECTION_PROBES", LightingMode::ReflectionProbes},
+            {"REFLECTIONPROBES", LightingMode::ReflectionProbes},
+            {"REAL_TIME", LightingMode::RealTime},
+            {"REALTIME", LightingMode::RealTime}
+        }, LightingMode::RealTime);
+    }
 }
 
 

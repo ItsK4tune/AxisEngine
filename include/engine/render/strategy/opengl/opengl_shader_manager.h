@@ -65,6 +65,7 @@ public:
     void SetUniformMatrix2fv(int location, const float *value) override { glUniformMatrix2fv(location, 1, GL_FALSE, value); }
     void SetUniformMatrix3fv(int location, const float *value) override { glUniformMatrix3fv(location, 1, GL_FALSE, value); }
     void SetUniformMatrix4fv(int location, const float *value) override { glUniformMatrix4fv(location, 1, GL_FALSE, value); }
+    void SetUniform3fvArray(int location, int count, const float *value) override { glUniform3fv(location, count, value); }
     void SetUniformMatrix4fvArray(int location, int count, const float *value) override { glUniformMatrix4fv(location, count, GL_FALSE, value); }
 
     void DispatchCompute(unsigned int numGroupsX, unsigned int numGroupsY, unsigned int numGroupsZ) override

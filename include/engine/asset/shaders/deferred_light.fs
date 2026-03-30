@@ -69,6 +69,45 @@ uniform int u_DebugMode;
 uniform float u_ShadowBias = 0.005;
 uniform int u_ShadowSoftness = 1;
 
+layout(binding = 15) uniform samplerCube reflectionProbe;
+uniform bool u_HasProbe = false;
+uniform vec3 u_ProbePos;
+uniform vec3 u_ProbeBoxMin;
+uniform vec3 u_ProbeBoxMax;
+
+vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
+    vec3 rbmax = (boxMax - pos) / dir;
+    vec3 rbmin = (boxMin - pos) / dir;
+    vec3 rbminmax = mix(rbmax, rbmin, step(vec3(0.0), dir)); // Adjusted mix logic for GLSL
+    float fa = min(min(rbminmax.x, rbminmax.y), rbminmax.z);
+    vec3 posonbox = pos + dir * fa;
+    return posonbox - probePos;
+}
+
+uniform vec3 u_SH[9];
+uniform bool u_HasLightProbe = false;
+uniform float u_LightProbeIntensity = 1.0;
+
+vec3 EvaluateSH(vec3 n) {
+    const float C1 = 0.429043;
+    const float C2 = 0.511664;
+    const float C3 = 0.743125;
+    const float C4 = 0.886227;
+    const float C5 = 0.247708;
+
+    return max(vec3(0.0), (
+        C4 * u_SH[0] -
+        C2 * n.y * u_SH[1] +
+        C2 * n.z * u_SH[2] -
+        C2 * n.x * u_SH[3] +
+        C1 * n.y * n.x * u_SH[4] -
+        C1 * n.y * n.z * u_SH[5] +
+        C3 * (n.z * n.z - 1.0/3.0) * u_SH[6] -
+        C1 * n.z * n.x * u_SH[7] +
+        C5 * (n.x * n.x - n.y * n.y) * u_SH[8]
+    ));
+}
+
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx);
 float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int lightIdx);
 float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx);
@@ -177,7 +216,20 @@ void main()
     }
 
     vec3 emissive = texture(gEmissive, TexCoords).rgb;
-    vec3 color = Lo + Albedo * 0.01 + emissive;
+    
+    vec3 reflectionColor = vec3(0.0);
+    if (u_HasProbe) {
+        vec3 R = reflect(-V, Normal);
+        vec3 projectedR = BoxProjection(R, FragPos, u_ProbePos, u_ProbeBoxMin, u_ProbeBoxMax);
+        reflectionColor = textureLod(reflectionProbe, projectedR, Roughness * 5.0).rgb;
+    }
+
+    vec3 ambientDiffuse = Albedo * 0.01;
+    if (u_HasLightProbe) {
+        ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
+    }
+
+    vec3 color = Lo + ambientDiffuse + emissive + reflectionColor * (1.0 - Roughness) * 0.5;
     
     FragColor = vec4(color, 1.0);
 }

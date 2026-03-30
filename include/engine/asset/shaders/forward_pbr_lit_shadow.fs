@@ -83,6 +83,45 @@ uniform bool u_isWireframe;
 uniform float u_ShadowBias = 0.005;
 uniform int u_ShadowSoftness = 1;
 
+layout(binding = 15) uniform samplerCube reflectionProbe;
+uniform bool u_HasProbe = false;
+uniform vec3 u_ProbePos;
+uniform vec3 u_ProbeBoxMin;
+uniform vec3 u_ProbeBoxMax;
+
+vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
+    vec3 rbmax = (boxMax - pos) / dir;
+    vec3 rbmin = (boxMin - pos) / dir;
+    vec3 rbminmax = mix(rbmax, rbmin, step(vec3(0.0), dir));
+    float fa = min(min(rbminmax.x, rbminmax.y), rbminmax.z);
+    vec3 posonbox = pos + dir * fa;
+    return posonbox - probePos;
+}
+
+uniform vec3 u_SH[9];
+uniform bool u_HasLightProbe = false;
+uniform float u_LightProbeIntensity = 1.0;
+
+vec3 EvaluateSH(vec3 n) {
+    const float C1 = 0.429043;
+    const float C2 = 0.511664;
+    const float C3 = 0.743125;
+    const float C4 = 0.886227;
+    const float C5 = 0.247708;
+
+    return max(vec3(0.0), (
+        C4 * u_SH[0] -
+        C2 * n.y * u_SH[1] +
+        C2 * n.z * u_SH[2] -
+        C2 * n.x * u_SH[3] +
+        C1 * n.y * n.x * u_SH[4] -
+        C1 * n.y * n.z * u_SH[5] +
+        C3 * (n.z * n.z - 1.0/3.0) * u_SH[6] -
+        C1 * n.z * n.x * u_SH[7] +
+        C5 * (n.x * n.x - n.y * n.y) * u_SH[8]
+    ));
+}
+
 const float PI = 3.14159265359;
 
 float DistributionGGX(vec3 N, vec3 H, float roughness);
@@ -199,9 +238,24 @@ void main()
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
-    vec3 irradiance = texture(irradianceMap, N).rgb;
+    
+    vec3 irradiance;
+    if (u_HasLightProbe) {
+        irradiance = EvaluateSH(N) * u_LightProbeIntensity;
+    } else {
+        irradiance = texture(irradianceMap, N).rgb;
+    }
+
     vec3 diffuse    = irradiance * albedo;
-    vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * 4.0).rgb;
+    
+    vec3 prefilteredColor;
+    if (u_HasProbe) {
+        vec3 projectedR = BoxProjection(R, FragPos, u_ProbePos, u_ProbeBoxMin, u_ProbeBoxMax);
+        prefilteredColor = textureLod(reflectionProbe, projectedR, roughness * 5.0).rgb;
+    } else {
+        prefilteredColor = textureLod(prefilterMap, R,  roughness * 4.0).rgb;
+    }
+
     vec2 envBRDF  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 

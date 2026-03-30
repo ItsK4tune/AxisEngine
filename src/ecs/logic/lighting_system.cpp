@@ -3,8 +3,10 @@
 #include <ecs/logic/system_factory.h>
 #include <core/logic/service_locator.h>
 #include <render/interface/i_graphics_context.h>
-#include <render/logic/render_core.h>
-#include <render/interface/i_texture_manager.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/unit/reflection_components.h>
+#include <ecs/unit/light_probe_components.h>
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_buffer_manager.h>
@@ -24,6 +26,11 @@
 #include <core/logic/config_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
+#include <scene/logic/scene.h>
+#include <render/logic/render_core.h>
+#include <resource/logic/shader_manager.h>
+#include <engine/ecs/unit/light_probe_components.h>
+#include <engine/ecs/unit/reflection_components.h>
 #include <algorithm>
 #include <string>
 
@@ -166,6 +173,59 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         }
     }
 
+    // Bind nearest reflection probe
+    auto reflectionView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
+    entt::entity nearestProbe = entt::null;
+    float minDistanceSq = std::numeric_limits<float>::max();
+    glm::vec3 camPos = ServiceLocator::Instance().Require<IRenderService>().GetCameraPosition();
+
+    for (auto entity : reflectionView) {
+        auto& pos = reflectionView.get<PositionComponent>(entity).value;
+        float distSq = glm::distance2(pos, camPos);
+        if (distSq < minDistanceSq) {
+            minDistanceSq = distSq;
+            nearestProbe = entity;
+        }
+    }
+
+    if (nearestProbe != entt::null) {
+        auto& probe = reflectionView.get<ReflectionProbeComponent>(nearestProbe);
+        auto& pos = reflectionView.get<PositionComponent>(nearestProbe).value;
+        
+        tm.ActiveTexture(TextureUnit::Texture15);
+        tm.BindTexture(TextureType::TextureCubeMap, probe.cubemapID);
+        m_DeferredLightShader->setInt("reflectionProbe", 15);
+        m_DeferredLightShader->setVec3("u_ProbePos", pos);
+        m_DeferredLightShader->setVec3("u_ProbeBoxMin", pos + probe.boxMin);
+        m_DeferredLightShader->setVec3("u_ProbeBoxMax", pos + probe.boxMax);
+        m_DeferredLightShader->setBool("u_HasProbe", true);
+    } else {
+        m_DeferredLightShader->setBool("u_HasProbe", false);
+    }
+
+    // Bind nearest light probe
+    auto lpView = scene.registry.view<PositionComponent, LightProbeComponent>();
+    entt::entity nearestLP = entt::null;
+    minDistanceSq = std::numeric_limits<float>::max();
+
+    for (auto entity : lpView) {
+        auto& pos = lpView.get<PositionComponent>(entity).value;
+        float distSq = glm::distance2(pos, camPos);
+        if (distSq < minDistanceSq) {
+            minDistanceSq = distSq;
+            nearestLP = entity;
+        }
+    }
+
+    if (nearestLP != entt::null) {
+        auto& lp = lpView.get<LightProbeComponent>(nearestLP);
+        m_DeferredLightShader->setVec3Array("u_SH", &lp.sh[0], 9);
+        m_DeferredLightShader->setFloat("u_LightProbeIntensity", lp.intensity);
+        m_DeferredLightShader->setBool("u_HasLightProbe", true);
+    } else {
+        m_DeferredLightShader->setBool("u_HasLightProbe", false);
+    }
+
     auto& core = ServiceLocator::Instance().Require<RenderCore>();
     bm.BindVertexArray(core.GetQuadVAO());
     dc.DrawArrays(Primitive::TriangleStrip, 0, 4);
@@ -181,7 +241,9 @@ std::vector<entt::id_type> LightingSystem::GetReadComponents() const
     return {
         entt::type_id<GPUDirLight>().hash(),
         entt::type_id<GPUPointLight>().hash(),
-        entt::type_id<GPUSpotLight>().hash()
+        entt::type_id<GPUSpotLight>().hash(),
+        entt::type_id<ReflectionProbeComponent>().hash(),
+        entt::type_id<LightProbeComponent>().hash()
     };
 }
 

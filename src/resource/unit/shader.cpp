@@ -249,6 +249,17 @@ void Shader::setMat4(int location, const glm::mat4 &mat) const
         m_ShaderManager.SetUniformMatrix4fv(location, &mat[0][0]);
 }
 
+void Shader::setVec3Array(const std::string &name, const glm::vec3 *values, int count) const
+{
+    setVec3Array(GetUniformLocation(name), values, count);
+}
+
+void Shader::setVec3Array(int location, const glm::vec3 *values, int count) const
+{
+    if (location != -1 && values != nullptr && count > 0)
+        m_ShaderManager.SetUniform3fvArray(location, count, &values[0][0]);
+}
+
 void Shader::setMat4Array(const std::string &name, const std::vector<glm::mat4> &matrices) const
 {
     setMat4Array(GetUniformLocation(name), matrices);
