@@ -58,23 +58,22 @@ void SkyboxRenderSystem::RenderAlphaPass(Scene &scene, int width, int height, fl
 {
     if (!m_Enabled || !m_Context) return;
 
-    static bool firstSkyboxLog = true;
-    if (firstSkyboxLog) {
-        LOGGER_INFO("SkyboxRenderSystem") << "RenderAlphaPass: Starting skybox render.";
-        firstSkyboxLog = false;
-    }
-
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity == entt::null)
-        return;
+    if (camEntity == entt::null) return;
 
     auto &camera = scene.registry.get<CameraComponent>(camEntity);
+    RenderAlphaPassWithCamera(scene, camera.viewMatrix, camera.projectionMatrix, width, height, m_LastFrameData.mainFBO);
+}
+
+void SkyboxRenderSystem::RenderAlphaPassWithCamera(Scene &scene, const glm::mat4& view, const glm::mat4& proj, int width, int height, uint32_t targetFBO)
+{
+    if (!m_Enabled || !m_Context) return;
 
     auto& rsm = m_Context->GetRenderStateManager();
     auto& tm = m_Context->GetTextureManager();
-    uint32_t mainFBO = m_LastFrameData.mainFBO;
     auto& rtm = m_Context->GetRenderTargetManager();
-    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
+    
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, targetFBO);
 
     rsm.SetViewport(0, 0, width, height);
     rsm.SetDepthFunc(CompareFunc::Lequal);
@@ -87,6 +86,10 @@ void SkyboxRenderSystem::RenderAlphaPass(Scene &scene, int width, int height, fl
         if (component.skybox && lockedShader)
         {
             lockedShader->use();
+            
+            // Set matrices explicitly for skybox
+            lockedShader->setMat4("view", glm::mat4(glm::mat3(view))); // Remove translation
+            lockedShader->setMat4("projection", proj);
 
             tm.ActiveTexture(TextureUnit::Texture0);
             tm.BindTexture(TextureType::TextureCubeMap, component.skybox->GetTextureID());

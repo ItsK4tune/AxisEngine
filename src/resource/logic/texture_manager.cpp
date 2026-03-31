@@ -175,7 +175,7 @@ void TextureManager::Update(float dt) {
                     if (data.keepCpuData) tex->pixelData = data.data;
                     else stbi_image_free(data.data);
                 }
-                LOGGER_INFO("Async texture loaded: ") << data.name;
+                LOGGER_INFO("TextureManager") << "Async texture loaded: " << data.name;
                 EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", true});
             } else {
                 if (auto tex = m_Cache.Get(data.name)) {

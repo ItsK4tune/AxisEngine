@@ -20,6 +20,7 @@ struct PostProcessEffect
     std::shared_ptr<Shader> shader;
     int x = 0, y = 0;
     int width = 0, height = 0;
+    int priority = 0;
 };
 
 class PostProcessPipeline
@@ -37,7 +38,8 @@ public:
     void ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4 &prevViewProj, const glm::mat4 &currViewProj, const glm::vec2 &jitterOffset);
 
     void AddEffect(std::shared_ptr<Shader> shader);
-    void AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h);
+    void AddEffect(std::shared_ptr<Shader> shader, int priority);
+    void AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h, int priority = 0);
 
     uint32_t GetDepthTexture() const { return m_DepthTexture ? m_DepthTexture->Get() : 0; }
     uint32_t GetCaptureFBO() const { return m_PingPong.fbo[0] ? m_PingPong.fbo[0]->Get() : 0; }
@@ -111,4 +113,5 @@ private:
     void InitQuad();
     void InitFramebuffers();
     void RenderBloom(uint32_t srcTexture);
+    void RenderEffectsRange(int minPriority, int maxPriority);
 };

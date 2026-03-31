@@ -114,6 +114,18 @@ axis_scene:
       Vertex: include/engine/asset/shaders/debug_line.vs
       Fragment: include/engine/asset/shaders/debug_line.fs
     Shader:
+      Name: vignette
+      Vertex: include/engine/asset/shaders/fxaa.vs
+      Fragment: include/engine/asset/shaders/vignette.fs
+    Shader:
+      Name: glitch
+      Vertex: include/engine/asset/shaders/fxaa.vs
+      Fragment: include/engine/asset/shaders/glitch.fs
+    Shader:
+      Name: film_grain
+      Vertex: include/engine/asset/shaders/fxaa.vs
+      Fragment: include/engine/asset/shaders/film_grain.fs
+    Shader:
       Name: error_forward
       Vertex: include/engine/asset/shaders/forward_unlit.vs
       Fragment: include/engine/asset/shaders/error_forward.fs

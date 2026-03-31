@@ -207,25 +207,93 @@ void PostProcessPipeline::EndCapture()
 
     rsm.Disable(ServerCapability::DepthTest);
 
-    int readIdx = 0;
-    int writeIdx = 1;
+    // 1. Pre-Bloom Effects (Priority < 0)
+    RenderEffectsRange(-9999, -1);
+
+    // 2. Engine Bloom
+    if (m_BloomEnabled) {
+        RenderBloom(m_PingPong.CurrentColor().Get());
+    }
+
+    // 3. Post-Bloom / Pre-HDR Effects (Priority 0 - 99)
+    RenderEffectsRange(0, 99);
+
+    // 4. Engine HDR / Tonemapping
+    bool hasLateEffects = false;
+    for (const auto& eff : m_Effects) {
+        if (eff.priority >= 100) {
+            hasLateEffects = true;
+            break;
+        }
+    }
+
+    if (hasLateEffects) {
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
+    } else {
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+        rsm.SetViewport(0, 0, m_Width, m_Height);
+    }
+    
+    dc.Clear(BufferBit::Color);
+
+    m_HDRFinalShader->use();
+    m_HDRFinalShader->setInt("screenTexture", 0);
+    m_HDRFinalShader->setInt("bloomBlur", 1);
+    m_HDRFinalShader->setFloat("exposure", m_Exposure);
+    m_HDRFinalShader->setFloat("bloomIntensity", m_BloomIntensity);
+    m_HDRFinalShader->setFloat("gamma", m_Gamma);
+    m_HDRFinalShader->setInt("tonemappingMode", m_TonemappingMode);
+
+    tm.ActiveTexture(TextureUnit::Texture0);
+    tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());
+
+    tm.ActiveTexture(TextureUnit::Texture1);
+    if (m_BloomEnabled && !m_BloomMips.empty()) {
+        tm.BindTexture(TextureType::Texture2D, m_BloomMips[0].texture->Get());
+    } else {
+        // Just bind some dummy if bloom is disabled
+        tm.BindTexture(TextureType::Texture2D, m_PingPong.PreviousColor().Get());
+    }
+
+    bm.BindVertexArray(m_QuadVAO.id);
+    dc.DrawArrays(Primitive::Triangles, 0, 6);
+
+    if (hasLateEffects) {
+        m_PingPong.Swap();
+        // 5. Post-HDR Effects (Priority >= 100)
+        RenderEffectsRange(100, 9999);
+
+        // Final blit to screen
+        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
+        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
+        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+    }
+
+    bm.BindVertexArray(0);
+    rsm.Enable(ServerCapability::DepthTest);
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+}
+
+void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority)
+{
+    auto& rtm = m_Context->GetRenderTargetManager();
+    auto& rsm = m_Context->GetRenderStateManager();
+    auto& tm = m_Context->GetTextureManager();
+    auto& bm = m_Context->GetBufferManager();
+    auto& dc = m_Context->GetDrawContext();
 
     for (const auto &effect : m_Effects)
     {
-        if (!effect.shader)
+        if (!effect.shader || effect.priority < minPriority || effect.priority > maxPriority)
             continue;
 
-        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.fbo[readIdx]->Get());
-        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_PingPong.fbo[writeIdx]->Get());
-        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
-
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[writeIdx]->Get());
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
 
         effect.shader->use();
         effect.shader->setInt("screenTexture", 0);
 
         tm.ActiveTexture(TextureUnit::Texture0);
-        tm.BindTexture(TextureType::Texture2D, m_PingPong.color[readIdx]->Get());
+        tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());
 
         bm.BindVertexArray(m_QuadVAO.id);
 
@@ -242,41 +310,8 @@ void PostProcessPipeline::EndCapture()
             rsm.Disable(ServerCapability::ScissorTest);
         }
 
-        readIdx = writeIdx;
-        writeIdx = 1 - readIdx;
+        m_PingPong.Swap();
     }
-
-    if (m_BloomEnabled) {
-        RenderBloom(m_PingPong.color[readIdx]->Get());
-    }
-
-    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
-    rsm.SetViewport(0, 0, m_Width, m_Height);
-    dc.Clear(BufferBit::Color);
-
-    m_HDRFinalShader->use();
-    m_HDRFinalShader->setInt("screenTexture", 0);
-    m_HDRFinalShader->setInt("bloomBlur", 1);
-    m_HDRFinalShader->setFloat("exposure", m_Exposure);
-    m_HDRFinalShader->setFloat("bloomIntensity", m_BloomIntensity);
-    m_HDRFinalShader->setFloat("gamma", m_Gamma);
-    m_HDRFinalShader->setInt("tonemappingMode", m_TonemappingMode);
-
-    tm.ActiveTexture(TextureUnit::Texture0);
-    tm.BindTexture(TextureType::Texture2D, m_PingPong.color[readIdx]->Get());
-
-    tm.ActiveTexture(TextureUnit::Texture1);
-    if (m_BloomEnabled && !m_BloomMips.empty()) {
-        tm.BindTexture(TextureType::Texture2D, m_BloomMips[0].texture->Get());
-    } else {
-        tm.BindTexture(TextureType::Texture2D, m_PingPong.color[writeIdx]->Get());
-    }
-
-    bm.BindVertexArray(m_QuadVAO.id);
-    dc.DrawArrays(Primitive::Triangles, 0, 6);
-
-    bm.BindVertexArray(0);
-    rsm.Enable(ServerCapability::DepthTest);
 }
 
 void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
@@ -419,17 +454,22 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
 
 void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader)
 {
-    if (shader)
-    {
-        m_Effects.push_back({shader, 0, 0, 0, 0});
-    }
+    AddEffect(shader, 1); // Default priority 1 (Post-Bloom)
 }
 
-void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h)
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int priority)
 {
     if (shader)
     {
-        m_Effects.push_back({shader, x, y, w, h});
+        m_Effects.push_back({shader, 0, 0, 0, 0, priority});
+    }
+}
+
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h, int priority)
+{
+    if (shader)
+    {
+        m_Effects.push_back({shader, x, y, w, h, priority});
     }
 }
 

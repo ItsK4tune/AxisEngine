@@ -17,9 +17,9 @@ public:
     std::string GetName() const override { return "LightingSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
     void Render(Scene &scene) override;
-    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
-    
-    void RenderDeferredLighting(Scene &scene, int width, int height);
+    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
+    void RenderDeferredLighting(Scene& scene, int width, int height) override;
+    void UploadLightData(const RenderSceneData& sceneData, Shader* shader = nullptr) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

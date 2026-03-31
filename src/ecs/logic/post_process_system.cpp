@@ -7,6 +7,8 @@
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
 #include <ecs/interface/i_render_service.h>
+#include <ecs/unit/post_process_component.h>
+#include <scene/logic/scene.h>
 
 REGISTER_SYSTEM(PostProcessSystem)
 
@@ -91,6 +93,7 @@ void PostProcessSystem::RenderAlphaPass(Scene &scene, int width, int height, flo
 
 void PostProcessSystem::Render(Scene& scene)
 {
+    m_Pipeline.ClearEffects();
     if (!m_Enabled)
          return;
 
@@ -101,6 +104,20 @@ void PostProcessSystem::Render(Scene& scene)
 
     if (m_RenderService) {
         m_Pipeline.ApplyAntiAliasing(m_RenderService->GetAntiAliasingMode(), m_RenderService->GetPrevViewProj(), m_RenderService->GetCurrViewProj(), m_RenderService->GetJitterOffset());
+    }
+
+    // Collect effects from components
+    auto view = scene.registry.view<PostProcessComponent>();
+    auto& res = ServiceLocator::Instance().Require<ResourceManager>();
+    for (auto entity : view) {
+        auto& pp = view.get<PostProcessComponent>(entity);
+        if (!pp.enabled) continue;
+        for (const auto& eff : pp.effects) {
+            auto shader = res.GetShader(eff.shaderName);
+            if (shader) {
+                m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority);
+            }
+        }
     }
     
     m_Pipeline.EndCapture();

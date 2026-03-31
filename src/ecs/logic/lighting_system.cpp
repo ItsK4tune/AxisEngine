@@ -96,6 +96,11 @@ void LightingSystem::RenderAlphaPass(Scene& scene, int width, int height, float 
     Render(scene);
 }
 
+void LightingSystem::UploadLightData(const RenderSceneData& sceneData, Shader* shader)
+{
+    m_LightRenderer.UploadLightData(sceneData, shader);
+}
+
 
 void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
 {
@@ -160,6 +165,10 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     tm.ActiveTexture(TextureUnit::Texture4);
     tm.BindTexture(TextureType::Texture2D, gBuffer.GetEmissiveTexture());
     m_DeferredLightShader->setInt("gEmissive", 4);
+
+    tm.ActiveTexture(TextureUnit::Texture5);
+    tm.BindTexture(TextureType::Texture2D, gBuffer.GetPBRParamsTexture());
+    m_DeferredLightShader->setInt("gPBRParams", 5);
 
     if (shadowSys) {
         bool enableShadows = shadowSys->GetRenderer().IsShadowsEnabled();

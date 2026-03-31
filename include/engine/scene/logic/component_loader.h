@@ -43,6 +43,10 @@ public:
     static void LoadCamera(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadPathFollower(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadDecal(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
+    static void LoadPostProcess(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
+    static void LoadReflective(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
+    static void LoadReflectionProbe(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
+    static void LoadTransform(Scene &scene, entt::entity entity, const YAMLNode &node);
 
     static void InitializeDefaultLoaders();
 

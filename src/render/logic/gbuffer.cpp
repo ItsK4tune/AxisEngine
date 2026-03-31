@@ -30,6 +30,7 @@ void GBuffer::Shutdown()
     m_AlbedoSpecTexture.reset();
     m_IDTexture.reset();
     m_EmissiveTexture.reset();
+    m_PBRParamsTexture.reset();
     m_DepthTexture.reset();
     m_FBO.reset();
 }
@@ -58,9 +59,10 @@ void GBuffer::BindForWriting()
         FramebufferAttachment::Color1, 
         FramebufferAttachment::Color2,
         FramebufferAttachment::Color3,
-        FramebufferAttachment::Color4
+        FramebufferAttachment::Color4,
+        FramebufferAttachment::Color5
     };
-    rtm.DrawBuffers(5, attachments);
+    rtm.DrawBuffers(6, attachments);
 }
 
 void GBuffer::BindForReading()
@@ -127,16 +129,24 @@ void GBuffer::CreateTextures()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color4, TextureType::Texture2D, m_EmissiveTexture->Get(), 0);
-
+    
+    // PBR Params: R: Metallic, G: Roughness, B: Reflectivity, A: Fresnel
+    m_PBRParamsTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
+    tm.BindTexture(TextureType::Texture2D, m_PBRParamsTexture->Get());
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, (int)(m_Width * m_RenderScale), (int)(m_Height * m_RenderScale), 0, TextureFormat::RGBA, DataType::Float, nullptr);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
+    rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color5, TextureType::Texture2D, m_PBRParamsTexture->Get(), 0);
 
     FramebufferAttachment attachments[] = { 
         FramebufferAttachment::Color0, 
         FramebufferAttachment::Color1, 
         FramebufferAttachment::Color2,
         FramebufferAttachment::Color3,
-        FramebufferAttachment::Color4
+        FramebufferAttachment::Color4,
+        FramebufferAttachment::Color5
     };
-    rtm.DrawBuffers(5, attachments);
+    rtm.DrawBuffers(6, attachments);
 
     m_DepthTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
     tm.BindTexture(TextureType::Texture2D, m_DepthTexture->Get());

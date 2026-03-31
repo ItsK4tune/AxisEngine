@@ -7,13 +7,19 @@
 #include <render/interface/i_texture_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_skybox_service.h>
+#include <ecs/interface/i_lighting_service.h>
 #include <scene/logic/scene.h>
 #include <render/logic/render_core.h>
+#include <core/logic/config_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 #include <core/logic/logger.h>
 #include <ecs/logic/system_factory.h>
+#include <render/unit/render_queue.h>
+#include <ecs/interface/i_shadow_service.h>
+#include <render/logic/shadow_renderer.h>
 
 REGISTER_SYSTEM(ReflectionProbeSystem)
 
@@ -42,12 +48,24 @@ void ReflectionProbeSystem::Shutdown()
 
 void ReflectionProbeSystem::Update(Scene& scene, float dt)
 {
+    // Update dirty state if needed, but don't capture here
+}
+
+void ReflectionProbeSystem::RenderCapturePass(Scene& scene, int width, int height)
+{
     auto view = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
     for (auto entity : view) {
         auto& probe = view.get<ReflectionProbeComponent>(entity);
         if (probe.isDirty || probe.type == ReflectionProbeType::Dynamic) {
-            CaptureProbe(scene, entity);
-            if (probe.type == ReflectionProbeType::Static) probe.isDirty = false;
+            if (probe.type == ReflectionProbeType::Static) {
+                // Capture all faces at once for static
+                for (int i = 0; i < 6; ++i) CaptureProbe(scene, entity, i);
+                probe.isDirty = false;
+            } else {
+                // Time-slicing: 1 face per frame for dynamic
+                CaptureProbe(scene, entity, (int)probe.currentFace);
+                probe.currentFace = (probe.currentFace + 1) % 6;
+            }
         }
     }
 }
@@ -77,7 +95,7 @@ unsigned int ReflectionProbeSystem::CreateCubemap(int resolution)
     return id;
 }
 
-void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity)
+void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int faceIndex)
 {
     auto& sl = ServiceLocator::Instance();
     auto& context = sl.Require<IGraphicsContext>();
@@ -97,37 +115,85 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity)
     rtm.RenderbufferStorage(InternalFormat::DepthComponent24, probe.resolution, probe.resolution);
     rtm.FramebufferRenderbuffer(FramebufferTarget::DrawFramebuffer, FramebufferAttachment::Depth, m_DepthRB);
     
-    glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, probe.radius);
+    auto* lightingService = sl.Resolve<ILightingService>();
     
+    glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
     glm::mat4 views[] = {
-        glm::lookAt(pos, pos + glm::vec3( 1, 0, 0), glm::vec3(0,-1, 0)),
-        glm::lookAt(pos, pos + glm::vec3(-1, 0, 0), glm::vec3(0,-1, 0)),
-        glm::lookAt(pos, pos + glm::vec3( 0, 1, 0), glm::vec3(0, 0, 1)),
-        glm::lookAt(pos, pos + glm::vec3( 0,-1, 0), glm::vec3(0, 0,-1)),
-        glm::lookAt(pos, pos + glm::vec3( 0, 0, 1), glm::vec3(0,-1, 0)),
-        glm::lookAt(pos, pos + glm::vec3( 0, 0,-1), glm::vec3(0,-1, 0))
+        glm::lookAt(pos, pos + glm::vec3(1, 0, 0),  glm::vec3(0, -1, 0)),
+        glm::lookAt(pos, pos + glm::vec3(-1, 0, 0), glm::vec3(0, -1, 0)),
+        glm::lookAt(pos, pos + glm::vec3(0, 1, 0),  glm::vec3(0, 0, 1)),
+        glm::lookAt(pos, pos + glm::vec3(0, -1, 0), glm::vec3(0, 0, -1)),
+        glm::lookAt(pos, pos + glm::vec3(0, 0, 1),  glm::vec3(0, -1, 0)),
+        glm::lookAt(pos, pos + glm::vec3(0, 0, -1), glm::vec3(0, -1, 0))
     };
     
     uint32_t oldFBO = renderService.GetMainFBO();
+    // Save original rendering state to restore later
+    auto& config = sl.Require<ConfigManager>().GetConfig();
+    int windowWidth = config.width;
+    int windowHeight = config.height;
+    
+    // Save Camera State to prevent POV Jumps
+    glm::vec3 originalCamPos = renderService.GetCameraPosition();
+    glm::mat4 originalView = renderService.GetViewMatrix();
+    glm::mat4 originalProj = renderService.GetProjectionMatrix();
+    float originalNear = renderService.GetNearPlane();
+    float originalFar = renderService.GetFarPlane();
+
     context.SetViewport(0, 0, probe.resolution, probe.resolution);
     
-    for (int i = 0; i < 6; ++i) {
-        rtm.FramebufferTexture2D(FramebufferTarget::DrawFramebuffer, FramebufferAttachment::Color0, 
-                                 (TextureType)((int)TextureType::CubeMapPositiveX + i), 
-                                 probe.cubemapID, 0);
-        
-        context.Clear(BufferBit::Color | BufferBit::Depth);
-        
-        // Temporarily set render system camera to probe perspective
-        // (This is a simplified approach, IRL we might need a dedicated capture pass)
-        renderService.BuildRenderQueues(scene, 1.0f, probe.resolution, probe.resolution);
-        // Note: Render will use current camera in IRenderService. For true cubemap capture, 
-        // we'd need to push a temporary camera state into IRenderService or similar.
+    // Invert winding order because reflection views are mirrored
+    context.GetRenderStateManager().SetFrontFace(FrontFace::CW);
+    
+    // Capture specific face
+    rtm.FramebufferTexture2D(FramebufferTarget::DrawFramebuffer, FramebufferAttachment::Color0, 
+                             (TextureType)((int)TextureType::CubeMapPositiveX + faceIndex), 
+                             probe.cubemapID, 0);
+    
+    context.Clear(BufferBit::Color | BufferBit::Depth);
+    
+    // 1. Render Skybox
+    if (auto* skyService = sl.Resolve<ISkyboxService>()) {
+        skyService->RenderAlphaPassWithCamera(scene, views[faceIndex], proj, probe.resolution, probe.resolution, m_CaptureFBO);
     }
     
-    tm.BindTexture(TextureType::TextureCubeMap, probe.cubemapID);
-    tm.GenerateMipmap(TextureType::TextureCubeMap);
-    tm.BindTexture(TextureType::TextureCubeMap, 0);
+    // 2. Build queues from probe perspective
+    renderService.BuildRenderQueuesWithCamera(scene, views[faceIndex], proj, pos, 1.0f, probe.resolution, probe.resolution, 0xFFFFFFFF, true, entity);
+    
+    // 3. Update lighting for this face
+    if (lightingService) {
+        RenderSceneData sceneData;
+        sceneData.viewMatrix = views[faceIndex];
+        sceneData.projMatrix = proj;
+        sceneData.cameraPosition = pos;
+        sceneData.lights = renderService.GetRenderQueueObj().GetLights();
+        lightingService->UploadLightData(sceneData);
+    }
+    
+    // 4. Render the scene
+    auto& opaque = renderService.GetRenderQueueObj().GetOpaqueQueue();
+    auto& transparent = renderService.GetRenderQueueObj().GetTransparentQueue();
+    
+    auto& core = sl.Require<RenderCore>();
+    // For probe captures, disable shadows by passing nullptr.
+    // Shadows from the main camera's perspective are incorrect for the probe.
+    ShadowRenderer* shadowRenderer = nullptr; 
+    
+    renderService.ExecuteQueue(opaque, false, shadowRenderer, &core.GetMaterialRenderer());
+    renderService.ExecuteQueue(transparent, true, shadowRenderer, &core.GetMaterialRenderer());
+    
+    // Generate mipmaps only after full update or on every few faces
+    if (faceIndex == 5 || probe.type == ReflectionProbeType::Static) {
+        tm.BindTexture(TextureType::TextureCubeMap, probe.cubemapID);
+        tm.GenerateMipmap(TextureType::TextureCubeMap);
+        tm.BindTexture(TextureType::TextureCubeMap, 0);
+    }
     
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, oldFBO);
+    // Restore original viewport and winding order
+    context.SetViewport(0, 0, windowWidth, windowHeight);
+    context.GetRenderStateManager().SetFrontFace(FrontFace::CCW);
+
+    // RESTORE CAMERA STATE to fix POV Jumping
+    renderService.BuildRenderQueuesWithCamera(scene, originalView, originalProj, originalCamPos, 1.0f, windowWidth, windowHeight);
 }

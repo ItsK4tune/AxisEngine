@@ -11,11 +11,17 @@
 class Model;
 class Shader;
 struct AxisMaterialComponent;
+struct ReflectiveComponent;
+struct ReflectionProbeComponent;
 
 struct RenderItem {
     Model* model = nullptr;
     Shader* shader = nullptr;
     AxisMaterialComponent* material = nullptr;
+    ReflectiveComponent* reflection = nullptr;
+    ReflectionProbeComponent* probe = nullptr;
+    glm::vec3 probePos = glm::vec3(0.0f);
+    float reflectionIntensity = 1.0f;
     glm::mat4 worldMatrix;
     glm::vec4 tintColor = glm::vec4(1.0f);
     AABB worldAABB;

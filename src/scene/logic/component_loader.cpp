@@ -4,6 +4,8 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/decal_component.h>
+#include <ecs/unit/post_process_component.h>
+#include <ecs/unit/reflection_components.h>
 #include <resource/unit/animator.h>
 #include <audio/logic/audio_service.h>
 #include <algorithm>
@@ -62,18 +64,20 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("UIRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIRenderer(s, e, n, r); });
     RegisterLoader("UIText", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIText(s, e, n, r); });
     RegisterLoader("SkyboxRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadSkyboxRenderer(s, e, n, r); });
-
-    RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAudioSource(s, e, n, r); });
+    RegisterLoader("ReflectionProbe", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadReflectionProbe(s, e, n, r); });
+    RegisterLoader("PostProcess", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadPostProcess(s, e, n, r); });
     RegisterLoader("VideoPlayer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadVideoPlayer(s, e, n); });
     RegisterLoader("ParticleEmitter", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadParticleEmitter(s, e, n, r); });
     RegisterLoader("Material", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadMaterial(s, e, n, r); });
     RegisterLoader("LOD", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLOD(s, e, n, r); });
     RegisterLoader("RigidBody", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { if (p) PhysicsLoader::LoadRigidBody(s, e, n, *p); });
     RegisterLoader("CharacterController", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { if (p) PhysicsLoader::LoadCharacterController(s, e, n, *p); });
-    RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) {  });
+    RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadTransform(s, e, n); });
     RegisterLoader("PathFollower", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { ComponentLoader::LoadPathFollower(s, e, n); });
     RegisterLoader("Decal", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadDecal(s, e, n, r); });
     RegisterLoader("UIFlex", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIFlex(s, e, n); });
+    RegisterLoader("Reflective", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadReflective(s, e, n, r); });
+    RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAudioSource(s, e, n, r); });
 }
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -190,6 +194,54 @@ void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAML
             LOGGER_WARN("ComponentLoader") << "Default animation not found: " << a.animations[0];
         }
     }
+}
+
+void ComponentLoader::LoadPostProcess(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
+{
+    LoaderUtils::ValidateKeys(node, {"Active", "Effects"}, "PostProcess");
+    auto &pp = scene.registry.emplace<PostProcessComponent>(entity);
+    pp.enabled = node.GetChildValue("Active", "true") == "true";
+
+    std::string effectsStr = node.GetChildValue("Effects");
+    if (!effectsStr.empty())
+    {
+        std::stringstream ss(effectsStr);
+        std::string segment;
+        while (ss >> segment)
+        {
+            std::vector<std::string> parts;
+            std::stringstream pss(segment);
+            std::string part;
+            while (std::getline(pss, part, ':')) {
+                parts.push_back(part);
+            }
+
+            PostProcessComponent::Effect effect;
+            if (parts.size() >= 1) effect.shaderName = parts[0];
+            if (parts.size() >= 2) {
+                try { effect.priority = std::stoi(parts[1]); } catch (...) {}
+            }
+            if (parts.size() >= 6) {
+                try {
+                    effect.x = std::stoi(parts[2]);
+                    effect.y = std::stoi(parts[3]);
+                    effect.w = std::stoi(parts[4]);
+                    effect.h = std::stoi(parts[5]);
+                } catch (...) {}
+            }
+            pp.effects.push_back(effect);
+        }
+    }
+}
+
+void ComponentLoader::LoadReflective(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
+{
+    LoaderUtils::ValidateKeys(node, {"Active", "Reflectivity", "FresnelPower", "FresnelBias"}, "Reflective");
+    auto &ref = scene.registry.emplace<ReflectiveComponent>(entity);
+    ref.enabled = node.GetChildValue("Active", "true") == "true";
+    ref.reflectivity = std::stof(node.GetChildValue("Reflectivity", "1.0"));
+    ref.fresnelPower = std::stof(node.GetChildValue("FresnelPower", "5.0"));
+    ref.fresnelBias = std::stof(node.GetChildValue("FresnelBias", "0.04"));
 }
 
 void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNode &node)
@@ -509,6 +561,29 @@ void ComponentLoader::LoadSkyboxRenderer(Scene &scene, entt::entity entity, cons
     EntityManager::SetActiveSkybox(scene, entity);
 }
 
+void ComponentLoader::LoadReflectionProbe(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
+{
+    LoaderUtils::ValidateKeys(node, {"Type", "Radius", "Resolution", "BoxProjection", "BoxMin", "BoxMax"}, "ReflectionProbe");
+
+    auto &comp = scene.registry.emplace<ReflectionProbeComponent>(entity);
+    
+    std::string typeStr = node.GetChildValue("Type", "Static");
+    comp.type = (typeStr == "Dynamic" || typeStr == "DYNAMIC") ? ReflectionProbeType::Dynamic : ReflectionProbeType::Static;
+    
+    comp.radius = std::stof(node.GetChildValue("Radius", "10.0"));
+    comp.resolution = std::stoi(node.GetChildValue("Resolution", "512"));
+    comp.boxProjection = node.GetChildValue("BoxProjection", "true") == "true";
+    
+    if (!node.GetChildValue("BoxMin").empty()) {
+        std::stringstream ss(node.GetChildValue("BoxMin"));
+        ss >> comp.boxMin.x >> comp.boxMin.y >> comp.boxMin.z;
+    }
+    if (!node.GetChildValue("BoxMax").empty()) {
+        std::stringstream ss(node.GetChildValue("BoxMax"));
+        ss >> comp.boxMax.x >> comp.boxMax.y >> comp.boxMax.z;
+    }
+}
+
 
 void ComponentLoader::LoadAudioSource(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
@@ -780,5 +855,33 @@ void ComponentLoader::LoadDecal(Scene &scene, entt::entity entity, const YAMLNod
         {
             d.targetTags.push_back(tag);
         }
+    }
+}
+
+void ComponentLoader::LoadTransform(Scene &scene, entt::entity entity, const YAMLNode &node)
+{
+    LoaderUtils::ValidateKeys(node, {"Position", "Rotation", "Scale"}, "Transform");
+
+    std::string posStr = node.GetChildValue("Position", "0 0 0");
+    std::string rotStr = node.GetChildValue("Rotation", "0 0 0");
+    std::string scaleStr = node.GetChildValue("Scale", "1 1 1");
+
+    std::stringstream ss;
+    ss << posStr << " " << rotStr << " " << scaleStr;
+
+    float x=0, y=0, z=0, rx=0, ry=0, rz=0, sx=1, sy=1, sz=1;
+    if (ss >> x >> y >> z >> rx >> ry >> rz >> sx >> sy >> sz)
+    {
+        auto &pos = scene.registry.get_or_emplace<PositionComponent>(entity);
+        pos.value = pos.prev = glm::vec3(x, y, z);
+
+        auto &rot = scene.registry.get_or_emplace<RotationComponent>(entity);
+        rot.value = rot.prev = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
+
+        auto &scale = scene.registry.get_or_emplace<ScaleComponent>(entity);
+        scale.value = scale.prev = glm::vec3(sx, sy, sz);
+
+        auto &world = scene.registry.get_or_emplace<WorldTransformComponent>(entity);
+        world.isDirty = true;
     }
 }

@@ -334,7 +334,15 @@ void SceneManager::_DestroySceneEntities(SceneRecord& rec)
 
 void SceneManager::_UnloadOrphanedResources(const SceneRecord& rec)
 {
-
+    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
+    
+    for (const auto& shader : rec.ownedShaders) resources.UnloadShader(shader);
+    for (const auto& model : rec.ownedModels) resources.UnloadModel(model);
+    for (const auto& texture : rec.ownedTextures) resources.UnloadTexture(texture);
+    for (const auto& font : rec.ownedFonts) resources.UnloadFont(font);
+    for (const auto& sky : rec.ownedSkyboxes) resources.UnloadSkybox(sky);
+    for (const auto& anim : rec.ownedAnimations) resources.UnloadAnimation(anim);
+    for (const auto& sound : rec.ownedSounds) resources.UnloadSound(sound);
 }
 
 void SceneManager::_RollbackConfig(const SceneRecord& removed)

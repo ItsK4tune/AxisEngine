@@ -22,6 +22,10 @@ axis_scene:
       Name: demoPortShader
       vertex: resources/shaders/demo_port.vs
       fragment: resources/shaders/demo_port.fs
+    Shader:
+      Name: dithering_bw
+      vertex: include/engine/asset/shaders/fxaa.vs
+      fragment: resources/shaders/dithering_bw.fs
 
     Audio:
       Name: bgm
@@ -155,4 +159,68 @@ axis_scene:
         Mass: 0.0
         BodyType: STATIC
         Rotation: 90.0 0.0 0.0
+
+    TransparentSphere:
+      Tag: transparent
+      Component: Transform
+        Position: 0.0 5.0 0.0
+        Scale: 2.0 2.0 2.0
+      Component: Renderer
+        Model: sphereModel
+        Shader: forward_phong_lit
+      Component: Material
+        Type: PHONG
+        Opacity: 0.5
+        Ambient: 0.0 1.0 1.0
+
+    GlobalPostProcess:
+      Component: Transform
+        Position: 0 0 0
+      Component: PostProcess
+        Active: true
+        Effects: dithering_bw:300
+
+    ReflectiveSphere:
+      Tag: reflective
+      Component: Transform
+        Position: 3.0 5.0 0.0
+        Scale: 2.0 2.0 2.0
+      Component: Renderer
+        Model: sphereModel
+        Shader: forward_phong_lit
+      Component: Material
+        Type: PHONG
+        Ambient: 1.0 1.0 1.0
+      Component: ReflectionProbe
+        Type: DYNAMIC
+        Radius: 20.0
+        Resolution: 256
+        BoxProjection: true
+      Component: Reflective
+        Active: true
+        Reflectivity: 0.9
+        FresnelPower: 5.0
+        FresnelBias: 0.05
+
+    ReflectiveCube:
+      Tag: reflective
+      Component: Transform
+        Position: -3.0 5.0 0.0
+        Scale: 2.0 2.0 2.0
+      Component: Renderer
+        Model: cubeModel
+        Shader: forward_phong_lit
+      Component: Material
+        Type: PHONG
+        Ambient: 1.0 1.0 1.0
+      Component: ReflectionProbe
+        Type: DYNAMIC
+        Radius: 20.0
+        Resolution: 256
+        BoxProjection: true
+      Component: Reflective
+        Active: true
+        Reflectivity: 0.8
+        FresnelPower: 3.0
+        FresnelBias: 0.1
 

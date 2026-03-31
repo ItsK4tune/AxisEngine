@@ -66,6 +66,25 @@ uniform vec3 u_Emission;
 uniform vec4 u_BaseColor; // rgb: tint, a: opacity
 uniform bool debug_noTexture;
 
+// Reflection data
+uniform float u_Reflectivity;
+uniform float u_ReflectionIntensity;
+uniform float u_FresnelPower;
+uniform float u_FresnelBias;
+uniform bool u_HasProbe;
+uniform vec3 u_ProbePos;
+uniform vec3 u_ProbeBoxMin;
+uniform vec3 u_ProbeBoxMax;
+layout (binding = 15) uniform samplerCube reflectionProbe;
+
+vec3 BoxProjection(vec3 dir, vec3 fragPos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
+    vec3 firstPlaneIntersect = (boxMax + probePos - fragPos) / dir;
+    vec3 secondPlaneIntersect = (boxMin + probePos - fragPos) / dir;
+    vec3 furthestPlane = max(firstPlaneIntersect, secondPlaneIntersect);
+    float distance = min(furthestPlane.x, min(furthestPlane.y, furthestPlane.z));
+    return dir * distance + (fragPos - probePos);
+}
+
 vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir);
@@ -93,7 +112,24 @@ void main()
         texColor.rgb = pow(texColor.rgb, vec3(2.2));
     }
     
-    FragColor = vec4(result + u_Emission + texture(u_EmissiveMap, TexCoords).rgb, texColor.a * u_BaseColor.a);
+    vec3 emissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
+    
+    vec3 reflectionColor = vec3(0.0);
+    if (u_HasProbe && u_Reflectivity > 0.0) {
+        vec3 R = reflect(-viewDir, norm);
+        vec3 projectedR = BoxProjection(R, FragPos, u_ProbePos, u_ProbeBoxMin, u_ProbeBoxMax);
+        reflectionColor = texture(reflectionProbe, projectedR).rgb;
+
+        // Simple Fresnel
+        float F0 = u_FresnelBias;
+        float cosTheta = max(dot(norm, viewDir), 0.0);
+        float F = F0 + (1.0 - F0) * pow(1.0 - cosTheta, u_FresnelPower);
+        
+        reflectionColor *= F * u_Reflectivity * u_ReflectionIntensity;
+    }
+    
+    vec3 color = result + emissive + reflectionColor;
+    FragColor = vec4(color, texColor.a * u_BaseColor.a);
 }
 
 vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)

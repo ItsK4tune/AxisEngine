@@ -21,4 +21,16 @@ struct ReflectionProbeComponent {
     bool boxProjection = true;
     glm::vec3 boxMin = glm::vec3(-5.0f);
     glm::vec3 boxMax = glm::vec3(5.0f);
+
+    uint32_t currentFace = 0;
+};
+
+/**
+ * @brief ReflectiveComponent defines how an object reflects the environment.
+ */
+struct ReflectiveComponent {
+    float reflectivity = 1.0f;
+    float fresnelPower = 5.0f;
+    float fresnelBias = 0.04f;
+    bool enabled = true;
 };

@@ -37,6 +37,7 @@ public:
     virtual unsigned int GetFlatNormalTexture() const = 0;
     
     virtual void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0) = 0;
+    virtual void BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float lodFactor = 1.0f, int width = 800, int height = 600, uint32_t cullingMask = 0xFFFFFFFF, bool isCapturingProbe = false, entt::entity excludeEntity = (entt::entity)0xFFFFFFFF) = 0;
     virtual void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) = 0;
     
     virtual void AddRenderedCount(int count) = 0;

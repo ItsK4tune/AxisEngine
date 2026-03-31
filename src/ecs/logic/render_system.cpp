@@ -5,6 +5,7 @@
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/physics_components.h>
+#include <ecs/unit/reflection_components.h>
 #include <core/logic/logger.h>
 #include <core/type/event_types.h>
 #include <render/unit/frustum.h>
@@ -189,49 +190,49 @@ void RenderSystem::SetDepthTest(bool enabled, CompareFunc func)
 
 void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int height)
 {
-    if (m_QueuesBuilt && m_LastAlpha == alpha && m_LastWidth == width && m_LastHeight == height) {
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    if (camEntity == entt::null) {
+        if (!m_QueuesBuilt) {
+            LOGGER_WARN("RenderSystem") << "BuildRenderQueues: No active camera found!";
+            m_QueuesBuilt = true; m_LastAlpha = alpha;
+        }
         return;
     }
 
-    MaterialRenderer::InvalidateSkyboxCache();
+    CameraComponent& cam = scene.registry.get<CameraComponent>(camEntity);
+    PositionComponent* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    glm::vec3 pos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
+    BuildRenderQueuesWithCamera(scene, cam.viewMatrix, cam.projectionMatrix, pos, alpha, width, height, cam.cullingMask);
+}
+
+void RenderSystem::BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float lodFactor, int width, int height, uint32_t cullingMask, bool isCapturingProbe, entt::entity excludeEntity)
+{
+    m_IsCapturingProbe = isCapturingProbe;
+    if (lodFactor <= 0.0f || lodFactor > 1.0f) {
+        // LOGGER_WARN("RenderSystem") << "Invalid alpha value: " << lodFactor;
+    }
 
     auto& sl = ServiceLocator::Instance();
     m_CachedRenderPath = sl.Require<ConfigManager>().GetConfig().renderPath;
 
     auto& context = sl.Require<IGraphicsContext>();
-    if ((m_LastWidth != width || m_LastHeight != height) && width > 0 && height > 0) {
-
-    }
     m_LastWidth = width;
     m_LastHeight = height;
 
-    if (alpha <= 0.0f || alpha > 1.0f) {
-        LOGGER_WARN("RenderSystem") << "Invalid alpha value: " << alpha;
-    }
-
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity == entt::null) {
-        LOGGER_WARN("RenderSystem") << "BuildRenderQueues: No active camera found!";
-        m_QueuesBuilt = true; m_LastAlpha = alpha;
-        return;
-    }
-
-    CameraComponent* cam = &scene.registry.get<CameraComponent>(camEntity);
-    PositionComponent* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
-    m_CameraPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
-    m_ViewMatrix = cam->viewMatrix;
-    m_ProjMatrix = cam->projectionMatrix;
-    m_NearPlane = cam->nearPlane;
-    m_FarPlane = cam->farPlane;
-    glm::vec3 camPos = m_CameraPos;
+    m_CameraPos = pos;
+    m_ViewMatrix = view;
+    m_ProjMatrix = proj;
+    
+    // Extract near/far from projection matrix if possible, or use defaults
+    m_NearPlane = proj[3][2] / (proj[2][2] - 1.0f);
+    m_FarPlane = proj[3][2] / (proj[2][2] + 1.0f);
 
     if (width <= 0 || height <= 0) return;
 
-
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            if (!std::isfinite(cam->projectionMatrix[i][j]) || !std::isfinite(cam->viewMatrix[i][j])) {
+            if (!std::isfinite(proj[i][j]) || !std::isfinite(view[i][j])) {
                 LOGGER_ERROR("RenderSystem") << "NaN detected in camera matrices. Skipping frame.";
                 return;
             }
@@ -240,10 +241,11 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
 
     if (!m_QueuesBuilt) { m_PrevViewProj = m_CurrViewProj; }
 
-    m_JitteredProjection = cam->projectionMatrix;
+    m_JitteredProjection = proj;
     m_JitterOffset = glm::vec2(0.0f);
 
-    if (m_AAMode == AntiAliasingMode::TAA) {
+    // Only apply TAA if rendering to main screen (width/height usually match window)
+    if (m_AAMode == AntiAliasingMode::TAA && width > 512) { 
         auto HaltonSequence = [](int index, int base) -> float {
             float result = 0.0f; float f = 1.0f; int i = index;
             while (i > 0) { f = f / base; result = result + f * (i % base); i = i / base; }
@@ -263,7 +265,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         if (!m_QueuesBuilt) m_FrameIndex++;
     }
 
-    m_CurrViewProj = m_JitteredProjection * cam->viewMatrix;
+    m_CurrViewProj = m_JitteredProjection * view;
     
 
     bool stable = true;
@@ -273,14 +275,14 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         }
     }
     if (!stable) {
-        m_CurrViewProj = cam->projectionMatrix * cam->viewMatrix;
+        m_CurrViewProj = proj * view;
     }
 
 
     GPUCameraData camData;
     std::memcpy(camData.projection, &m_JitteredProjection[0][0], 16 * sizeof(float));
-    std::memcpy(camData.view, &cam->viewMatrix[0][0], 16 * sizeof(float));
-    std::memcpy(camData.viewPos, &camPos[0], 3 * sizeof(float));
+    std::memcpy(camData.view, &view[0][0], 16 * sizeof(float));
+    std::memcpy(camData.viewPos, &pos[0], 3 * sizeof(float));
     camData.pad0 = 0.0f;
 
     auto& bm = context.GetBufferManager();
@@ -293,7 +295,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
 
-    glm::mat4 stableVP = cam->projectionMatrix * cam->viewMatrix;
+    glm::mat4 stableVP = proj * view;
     m_FrustumCuller.BuildFrustum(stableVP);
 
     if (m_OcclusionCullingEnabled) {
@@ -303,18 +305,36 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     m_RenderQueueObj.Clear();
     m_RenderedCount = 0;
 
+    // Pre-collect reflection probes for fast lookup
+    struct ProbeData {
+        ReflectionProbeComponent* component;
+        glm::vec3 position;
+    };
+    std::vector<ProbeData> probes;
+    auto probeView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
+    for (auto entity : probeView) {
+        auto [pos, probe] = probeView.get<PositionComponent, ReflectionProbeComponent>(entity);
+        probes.push_back({&probe, pos.value});
+    }
+
     auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
     for (auto entity : renderView) {
+        if (entity == excludeEntity) continue;
+
         auto& world = renderView.get<WorldTransformComponent>(entity);
+        glm::mat4 modelMatrix = world.GetInterpolated(lodFactor);
+        
         auto& renderer = renderView.get<MeshRendererComponent>(entity);
         if (!renderer.model) continue;
 
-        glm::mat4 modelMatrix = world.GetInterpolated(alpha);
-        float distSqResult = glm::length2(camPos - glm::vec3(modelMatrix[3]));
-
+        float distSqResult = glm::length2(pos - glm::vec3(modelMatrix[3]));
         if (m_DistanceCullingSq > 0.0f && distSqResult > m_DistanceCullingSq) continue;
 
         AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
+
+        // Skip objects that contain the probe (Self-occlusion fix using AABB)
+        if (m_IsCapturingProbe && worldAABB.Contains(pos)) continue;
+
         if (m_FrustumCullingEnabled) {
             if (!m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound)) continue;
         }
@@ -322,7 +342,7 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         uint32_t layer = 1;
         if (auto* info = scene.registry.try_get<InfoComponent>(entity)) layer = info->layer;
         
-        if ((m_FilterLayerMask & layer) == 0 || (cam->cullingMask & layer) == 0) continue;
+        if ((m_FilterLayerMask & layer) == 0 || (cullingMask & layer) == 0) continue;
 
         Model* activeModel = renderer.model.get();
         Shader* itemShader = renderer.shader.lock().get();
@@ -344,6 +364,8 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         bool isTransparent = false;
         auto* material = scene.registry.try_get<AxisMaterialComponent>(entity);
         if (material && material->desc.opacity < 1.0f) isTransparent = true;
+        
+        auto* reflection = scene.registry.try_get<ReflectiveComponent>(entity);
 
         uint64_t key = 0;
         uint64_t sId = itemShader ? itemShader->getID() : 0;
@@ -368,6 +390,26 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
         item.model = activeModel;
         item.shader = itemShader;
         item.material = material;
+        item.reflection = (reflection && reflection->enabled) ? reflection : nullptr;
+        
+        // Find nearest reflection probe
+        if (item.reflection) {
+            float minProbeDistSq = 1e30f; // approx max
+            for (auto& p : probes) {
+                float d = glm::distance2(glm::vec3(modelMatrix[3]), p.position);
+                if (d < minProbeDistSq) {
+                    minProbeDistSq = d;
+                    item.probe = p.component;
+                    item.probePos = p.position;
+                    
+                    // Calculate Distance-Dependent Intensity (DDI)
+                    float dist = glm::sqrt(d);
+                    float falloff = 1.0f - glm::clamp(dist / item.probe->radius, 0.0f, 1.0f);
+                    item.reflectionIntensity = falloff;
+                }
+            }
+        }
+
         item.worldMatrix = modelMatrix;
         item.worldAABB = worldAABB;
         item.layer = layer;
@@ -491,15 +533,14 @@ void RenderSystem::BuildRenderQueues(Scene &scene, float alpha, int width, int h
     }
 
     static bool firstFrame = true;
-    if (firstFrame) {
+    if (firstFrame && !m_IsCapturingProbe) {
         LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque=" << (int)m_RenderQueueObj.GetOpaqueQueue().size() 
-                                    << ", Transparent=" << (int)m_RenderQueueObj.GetTransparentQueue().size()
-                                    << ", Camera=" << (uintptr_t)camEntity;
+                                    << ", Transparent=" << (int)m_RenderQueueObj.GetTransparentQueue().size();
         firstFrame = false;
     }
 
     m_QueuesBuilt = true;
-    m_LastAlpha = alpha;
+    m_LastAlpha = lodFactor;
     m_LastWidth = width;
     m_LastHeight = height;
 }
@@ -576,6 +617,32 @@ void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTra
         shader->setVec4("tintColor", item.tintColor);
         shader->setUInt("entityID", item.entityId);
         shader->setBool("isInstanced", false);
+        
+        // Pass reflection data if available
+        if (item.reflection && !m_IsCapturingProbe) {
+            shader->setFloat("u_Reflectivity", item.reflection->reflectivity);
+            shader->setFloat("u_FresnelPower", item.reflection->fresnelPower);
+            shader->setFloat("u_FresnelBias", item.reflection->fresnelBias);
+            
+            if (item.probe && item.probe->cubemapID != 0) {
+                auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+                auto& texMgr = context.GetTextureManager();
+                texMgr.ActiveTexture(TextureUnit::Texture15);
+                texMgr.BindTexture(TextureType::TextureCubeMap, item.probe->cubemapID);
+                shader->setBool("u_HasProbe", true);
+                shader->setVec3("u_ProbePos", item.probePos);
+                shader->setVec3("u_ProbeBoxMin", item.probe->boxMin);
+                shader->setVec3("u_ProbeBoxMax", item.probe->boxMax);
+                shader->setFloat("u_ReflectionIntensity", item.reflectionIntensity);
+            } else {
+                shader->setBool("u_HasProbe", false);
+            }
+        } else {
+            shader->setFloat("u_Reflectivity", 0.0f);
+            shader->setFloat("u_FresnelPower", 5.0f);
+            shader->setFloat("u_FresnelBias", 0.04f);
+            shader->setBool("u_HasProbe", false);
+        }
 
         bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, m_DebugNoTexture, m_Wireframe);
         model->Draw(*shader, !matBound);

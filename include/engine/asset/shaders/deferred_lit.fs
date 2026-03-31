@@ -4,10 +4,15 @@ layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out uint gEntityID;
 layout (location = 4) out vec3 gEmissive;
+layout (location = 5) out vec4 gPBRParams;
 
 in vec2 TexCoords;
 in vec3 FragPos;
 in vec3 Normal;
+
+uniform float u_Reflectivity;
+uniform float u_FresnelPower;
+uniform float u_FresnelBias;
 
 
 layout (binding = 0) uniform sampler2D u_AlbedoMap;
@@ -58,6 +63,9 @@ void main()
     gAlbedoSpec.a = _roughness;
     gEntityID = entityID;
     gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
+    
+    // R: Metallic, G: Roughness, B: Reflectivity, A: FresnelPower (packed with bias)
+    gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, u_FresnelPower);
 
     if (u_isWireframe) {
         gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);

@@ -43,7 +43,8 @@ public:
     
     void Update(Scene& scene, float dt) override;
     
-    void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0);
+    void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0) override;
+    void BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float lodFactor = 1.0f, int width = 800, int height = 600, uint32_t cullingMask = 0xFFFFFFFF, bool isCapturingProbe = false, entt::entity excludeEntity = (entt::entity)0xFFFFFFFF) override;
     
     void Render(Scene& scene) override;
     void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
@@ -155,6 +156,7 @@ private:
     float m_LastAlpha = -1.0f;
     int m_LastWidth = -1;
     int m_LastHeight = -1;
+    bool m_IsCapturingProbe = false;
 
     GPUGlobalData m_GlobalData;
     std::unique_ptr<GPUUBO> m_CameraUBO;

@@ -9,6 +9,7 @@ layout (binding = 1) uniform sampler2D gNormal;
 layout (binding = 2) uniform sampler2D gAlbedoSpec;
 layout (binding = 3) uniform usampler2D gID;
 layout (binding = 4) uniform sampler2D gEmissive;
+layout (binding = 5) uniform sampler2D gPBRParams;
 
 
 layout(std140, binding = 20) uniform CameraData {
@@ -121,7 +122,6 @@ void main()
     Normal = normalize(Normal * 2.0 - 1.0);
     
     vec3 Albedo = texture(gAlbedoSpec, TexCoords).rgb;
-    float Roughness = texture(gAlbedoSpec, TexCoords).a;
     uint EntityID = texture(gID, TexCoords).r;
 
     if (u_DebugMode == 1) { FragColor = vec4(FragPos, 1.0); return; }
@@ -134,6 +134,13 @@ void main()
     }
 
     vec3 V = normalize(camera.viewPos - FragPos);
+    
+    vec4 PBRParams = texture(gPBRParams, TexCoords);
+    float Metallic = PBRParams.r;
+    float Roughness = PBRParams.g; // This is the new roughness
+    float Reflectivity = PBRParams.b;
+    float FresnelPower = PBRParams.a;
+
     vec3 Lo = vec3(0.0);
 
     for(int i = 0; i < light.numDirLights; ++i)
@@ -222,6 +229,13 @@ void main()
         vec3 R = reflect(-V, Normal);
         vec3 projectedR = BoxProjection(R, FragPos, u_ProbePos, u_ProbeBoxMin, u_ProbeBoxMax);
         reflectionColor = textureLod(reflectionProbe, projectedR, Roughness * 5.0).rgb;
+
+        vec3 F0 = vec3(0.04); 
+        F0 = mix(F0, Albedo, Metallic);
+        float cosTheta = max(dot(Normal, V), 0.0);
+        vec3 F = F0 + (1.0 - F0) * pow(1.0 - cosTheta, FresnelPower);
+
+        reflectionColor *= F * Reflectivity;
     }
 
     vec3 ambientDiffuse = Albedo * 0.01;
@@ -229,7 +243,7 @@ void main()
         ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
     }
 
-    vec3 color = Lo + ambientDiffuse + emissive + reflectionColor * (1.0 - Roughness) * 0.5;
+    vec3 color = Lo + ambientDiffuse + emissive + reflectionColor;
     
     FragColor = vec4(color, 1.0);
 }
