@@ -640,6 +640,32 @@ void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTra
         shader->setVec4("tintColor", item.tintColor);
         shader->setUInt("entityID", item.entityId);
         shader->setBool("isInstanced", false);
+        shader->setBool("u_ProbeUnlit", m_IsCapturingProbe);
+        
+        // Reflection Probe Binding & Cleanup
+        auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
+        auto& tm = context.GetTextureManager();
+        if (item.reflection && item.probe && !m_IsCapturingProbe) {
+            tm.ActiveTexture(TextureUnit::Texture15);
+            tm.BindTexture(TextureType::TextureCubeMap, item.probe->cubemapID);
+            shader->setInt("reflectionProbe", 15);
+            shader->setBool("u_HasReflection", true);
+            
+            // For Forward Reflection Shaders
+            shader->setBool("u_HasProbe", true);
+            shader->setVec3("u_ProbePos", item.probePos);
+            shader->setVec3("u_ProbeBoxMin", item.probe->boxMin);
+            shader->setVec3("u_ProbeBoxMax", item.probe->boxMax);
+        } else {
+            // Force Cleanup: Ensure no stale cubemap is bound to Unit 15
+            if (!m_IsCapturingProbe) {
+                tm.ActiveTexture(TextureUnit::Texture15);
+                tm.BindTexture(TextureType::TextureCubeMap, 0);
+                shader->setBool("u_HasReflection", false);
+                shader->setBool("u_HasProbe", false);
+                shader->setInt("u_ProbeCount", 0); // Explicitly zero out probe count
+            }
+        }
         
         // Dynamic Mapping for Reflection Probes (Zero-Code Re-routing)
         if (m_IsCapturingProbe) {

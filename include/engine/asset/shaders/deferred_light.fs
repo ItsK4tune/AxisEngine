@@ -254,7 +254,8 @@ void main()
                 weight = clamp(weight, 0.0, 1.0);
                 vec3 projectedR = BoxProjection(R, FragPos, u_Probes[i].pos, u_Probes[i].boxMin, u_Probes[i].boxMax);
                 if (dot(projectedR, projectedR) > 0.0) {
-                    vec3 sampleCol = textureLod(reflectionProbes[i], projectedR, Roughness * 5.0).rgb;
+                    // Sharpness: Use a smaller multiplier for Roughness mip-mapping
+                    vec3 sampleCol = textureLod(reflectionProbes[i], projectedR, Roughness * 2.0).rgb;
                     finalReflection += sampleCol * weight;
                     totalWeight += weight;
                 }
@@ -264,16 +265,17 @@ void main()
         if (totalWeight > 0.0) {
             reflectionColor = finalReflection / totalWeight;
         } else {
-            vec3 projectedR = BoxProjection(R, FragPos, u_Probes[0].pos, u_Probes[0].boxMin, u_Probes[0].boxMax);
-            reflectionColor = textureLod(reflectionProbes[0], projectedR, Roughness * 5.0).rgb;
+            vec3 projectedR = BoxProjection(R, FragPos, u_Probes[0].pos, u_Probes[0].pos + u_Probes[0].boxMin, u_Probes[0].pos + u_Probes[0].boxMax);
+            reflectionColor = textureLod(reflectionProbes[0], projectedR, Roughness * 2.0).rgb;
         }
 
-        vec3 F0 = vec3(0.04); 
-        // Enhance reflection saturation/vibrancy for dielectrics
-        F0 = mix(F0, Albedo, max(Metallic, Reflectivity * 0.2));
+        vec3 F0 = vec3(0.1); // Slightly higher base reflectivity for dielectric
+        F0 = mix(F0, Albedo, max(Metallic, Reflectivity * 0.5));
         float cosTheta = max(dot(Normal, V), 0.0);
         vec3 F = F0 + (1.0 - F0) * pow(1.0 - cosTheta, max(FresnelPower, 1.0));
-        reflectionColor *= F * Reflectivity * 1.5;
+        
+        // Intensity Boost: Increase from 1.5 to 2.5 to match Forward Mode vividness
+        reflectionColor *= F * Reflectivity * 2.5; 
     }
 
     vec3 ambientDiffuse = Albedo * 0.1;

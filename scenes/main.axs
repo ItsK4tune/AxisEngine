@@ -1,6 +1,6 @@
 axis_scene:
   Config:
-    RENDER_PATH: FORWARD
+    RENDER_PATH: DEFERRED
     WINDOW_MODE: WINDOWED
 
   Resources:
@@ -166,7 +166,7 @@ axis_scene:
     TransparentSphere:
       Tag: transparent
       Component: Transform
-        Position: 0.0 5.0 0.0
+        Position: 0.0 20.0 0.0
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
@@ -179,7 +179,7 @@ axis_scene:
     ReflectiveSphere:
       Tag: reflective
       Component: Transform
-        Position: 3.0 5.0 0.0
+        Position: -3.0 5.0 0.0
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
@@ -201,14 +201,15 @@ axis_scene:
     ReflectiveCube:
       Tag: reflective
       Component: Transform
-        Position: -3.0 5.0 0.0
+        Position: 3.0 5.0 0.0
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: cubeModel
-        Shader: forward_reflect
+        Shader: deferred_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
+        Roughness: 0.0
       Component: ReflectionProbe
         Type: DYNAMIC
         Radius: 20.0
@@ -216,7 +217,7 @@ axis_scene:
         BoxProjection: true
       Component: Reflective
         Active: true
-        Reflectivity: 0.8
+        Reflectivity: 1.0
         FresnelPower: 3.0
         FresnelBias: 0.1
 
