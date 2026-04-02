@@ -21,7 +21,6 @@
 #include <render/logic/frustum_culler.h>
 #include <render/unit/render_queue.h>
 #include <render/logic/material_renderer.h>
-#include <render/logic/material_renderer.h>
 #include <algorithm>
 
 REGISTER_SYSTEM(GeometrySystem)

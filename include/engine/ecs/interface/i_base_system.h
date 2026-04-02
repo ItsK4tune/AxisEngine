@@ -37,6 +37,7 @@ public:
 
     virtual void Initialize() {}
     virtual void Shutdown() {}
+    virtual void Reset() {}
     
     virtual bool IsEnabled() const = 0;
     virtual void SetEnabled(bool enabled) = 0;

@@ -10,21 +10,34 @@ in vec3 FragPos;
 in vec3 Normal;
 
 uniform sampler2D u_AlbedoMap;
-uniform vec4 u_BaseColor;
+uniform vec4 u_BaseColor = vec4(1.0);
 uniform uint entityID;
 uniform bool u_isWireframe;
+
+layout(std140, binding = 20) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec4 viewPos;
+    mat4 invProjection;
+    mat4 invView;
+    mat4 stableProjection;
+    mat4 invStableProjection;
+} camera;
 
 void main()
 {    
     gPosition = FragPos;
-    gNormal = normalize(Normal) * 0.5 + 0.5;
+    gNormal = normalize(Normal);
     
     vec4 texColor = texture(u_AlbedoMap, TexCoords);
     texColor.rgb = pow(texColor.rgb, vec3(2.2));
     
-    gAlbedoSpec = vec4(0.0, 0.0, 0.0, 1.0); // No lighting contribution
+    vec3 finalColor = texColor.rgb * u_BaseColor.rgb;
+    
+    // Write to Albedo so lighting/ambient pass can see it
+    gAlbedoSpec = vec4(finalColor, 1.0); // Roughness 1.0
     gEntityID = entityID;
-    gEmissive = texColor.rgb * u_BaseColor.rgb;
+    gEmissive = finalColor;
 
     if (u_isWireframe) {
         gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);

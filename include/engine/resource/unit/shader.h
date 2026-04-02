@@ -34,6 +34,9 @@ public:
     bool IsError() const { return m_IsError; }
     void SetError(bool error) { m_IsError = error; }
 
+    bool IsDeferred() const { return m_IsDeferred; }
+    void SetDeferred(bool deferred) { m_IsDeferred = deferred; }
+
 
     void setBool(const std::string &name, bool value) const;
     void setInt(const std::string &name, int value) const;
@@ -76,4 +79,5 @@ private:
     IShaderManager& m_ShaderManager;
     std::string m_Name;
     bool m_IsError = false;
+    bool m_IsDeferred = false;
 };

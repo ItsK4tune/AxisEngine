@@ -4,7 +4,6 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/light_components.h>
-#include <ecs/unit/physics_components.h>
 #include <ecs/unit/reflection_components.h>
 #include <core/logic/logger.h>
 #include <core/type/event_types.h>
@@ -110,6 +109,7 @@ void RenderSystem::Initialize()
     m_UnlitShader = shaderLib.GetShader("forward_unlit");
     m_DeferredLitShader = shaderLib.GetShader("deferred_lit");
     m_DeferredUnlitShader = shaderLib.GetShader("deferred_unlit");
+    m_ForwardPBRLitShader = shaderLib.GetShader("forward_pbr_lit");
     m_ErrorForwardShader = shaderLib.GetShader("error_forward");
     m_ErrorDeferredShader = shaderLib.GetShader("error_deferred");
 }
@@ -283,7 +283,16 @@ void RenderSystem::BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& vi
     std::memcpy(camData.projection, &m_JitteredProjection[0][0], 16 * sizeof(float));
     std::memcpy(camData.view, &view[0][0], 16 * sizeof(float));
     std::memcpy(camData.viewPos, &pos[0], 3 * sizeof(float));
-    camData.pad0 = 0.0f;
+    camData.viewPos[3] = 1.0f;
+
+    glm::mat4 invProj = glm::inverse(m_JitteredProjection);
+    glm::mat4 invView = glm::inverse(view);
+    std::memcpy(camData.invProjection, &invProj[0][0], 16 * sizeof(float));
+    std::memcpy(camData.invView, &invView[0][0], 16 * sizeof(float));
+
+    glm::mat4 invStableProj = glm::inverse(proj);
+    std::memcpy(camData.stableProjection, &proj[0][0], 16 * sizeof(float));
+    std::memcpy(camData.invStableProjection, &invStableProj[0][0], 16 * sizeof(float));
 
     auto& bm = context.GetBufferManager();
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
@@ -575,12 +584,26 @@ void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTra
             shader = overrideShader;
         } else if (!shader) {
             if (m_CachedRenderPath == RenderPath::Deferred) {
-                shader = m_DeferredLitShader.get();
+                if (m_IsCapturingProbe) {
+                    shader = m_ForwardPBRLitShader.get();
+                } else {
+                    shader = m_DeferredLitShader.get();
+                }
             } else {
                 shader = m_UnlitShader.get();
             }
-        } else if (m_CachedRenderPath == RenderPath::Deferred && shader == m_UnlitShader.get()) {
-            shader = m_DeferredUnlitShader.get();
+        } else if (m_CachedRenderPath == RenderPath::Deferred && !m_IsCapturingProbe) {
+            // Only translate core shaders if NOT capturing a probe
+            if (shader == m_UnlitShader.get()) {
+                shader = m_DeferredUnlitShader.get();
+            }
+        } else if (m_IsCapturingProbe) {
+            // If capturing a probe, swap deferred shaders to their forward equivalents
+            if (shader == m_DeferredLitShader.get()) {
+                shader = m_ForwardPBRLitShader.get();
+            } else if (shader == m_DeferredUnlitShader.get()) {
+                shader = m_UnlitShader.get();
+            }
         }
 
         if (!shader || !model) {
@@ -618,6 +641,22 @@ void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTra
         shader->setUInt("entityID", item.entityId);
         shader->setBool("isInstanced", false);
         
+        // Dynamic Mapping for Reflection Probes (Zero-Code Re-routing)
+        if (m_IsCapturingProbe) {
+            auto& sl = ServiceLocator::Instance();
+            auto& rtm = sl.Require<IGraphicsContext>().GetRenderTargetManager();
+            if (shader->IsDeferred()) {
+                // Reroute Shader Location 2 (Albedo) to Attachment 0 (Cube face)
+                // location 0 (Pos) -> None, 1 (Norm) -> None, 2 (Albedo) -> Color0
+                FramebufferAttachment atts[] = { FramebufferAttachment::None, FramebufferAttachment::None, FramebufferAttachment::Color0 };
+                rtm.DrawBuffers(3, atts);
+            } else {
+                // Forward Shader: location 0 -> Color0
+                FramebufferAttachment atts[] = { FramebufferAttachment::Color0 };
+                rtm.DrawBuffers(1, atts);
+            }
+        }
+        
         // Pass reflection data if available
         if (item.reflection && !m_IsCapturingProbe) {
             shader->setFloat("u_Reflectivity", item.reflection->reflectivity);
@@ -644,8 +683,16 @@ void RenderSystem::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTra
             shader->setBool("u_HasProbe", false);
         }
 
-        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, m_DebugNoTexture, m_Wireframe);
+        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor, m_DebugNoTexture, m_Wireframe);
         model->Draw(*shader, !matBound);
+
+        // Restore DrawBuffers mapping after draw
+        if (m_IsCapturingProbe) {
+             auto& sl = ServiceLocator::Instance();
+             auto& rtm = sl.Require<IGraphicsContext>().GetRenderTargetManager();
+             FramebufferAttachment atts[] = { FramebufferAttachment::Color0 };
+             rtm.DrawBuffers(1, atts);
+        }
     }
 }
 
@@ -682,12 +729,12 @@ std::vector<entt::id_type> RenderSystem::GetWriteComponents() const
 }
 void RenderSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
 {
-
+    // Implementation for alpha blended objects (if any)
 }
 
 void RenderSystem::RenderTransparentPass(Scene& scene, int width, int height, float alpha)
 {
-
+    // Implementation for transparent pass (already handled by ExecuteQueue in Render)
 }
 
 void RenderSystem::UpdateGlobalLightData(const GPUGlobalLightData& data)

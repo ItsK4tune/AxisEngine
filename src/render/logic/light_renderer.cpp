@@ -30,23 +30,11 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader *sh
     if (!m_Context) return;
     auto& bm = m_Context->GetBufferManager();
     
-    uint32_t currentCombinedVersion = 0;
-    size_t currentLightCount = sceneData.lights.size();
-
+    std::size_t currentCombinedVersion = 0;
+    std::size_t currentLightCount = sceneData.lights.size();
     for (const auto& light : sceneData.lights) {
         currentCombinedVersion += light.version;
     }
-
-    if (currentCombinedVersion == m_LastCombinedVersion && currentLightCount == m_LastLightCount)
-    {
-        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
-        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
-        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
-        return; 
-    }
-
-    m_LastCombinedVersion = currentCombinedVersion;
-    m_LastLightCount = currentLightCount;
 
     m_DirLights.clear();
     m_PointLights.clear();
@@ -84,22 +72,6 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader *sh
         }
     }
 
-    auto safeSize = [](size_t count, size_t unitSize) {
-        return (std::max)(count * unitSize, (size_t)16);
-    };
-
-    bm.BindBuffer(BufferType::ShaderStorageBuffer, m_DirLightSSBO->Get());
-    bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_DirLights.size(), sizeof(GPUDirLight)), m_DirLights.data(), BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
-
-    bm.BindBuffer(BufferType::ShaderStorageBuffer, m_PointLightSSBO->Get());
-    bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_PointLights.size(), sizeof(GPUPointLight)), m_PointLights.data(), BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
-
-    bm.BindBuffer(BufferType::ShaderStorageBuffer, m_SpotLightSSBO->Get());
-    bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_SpotLights.size(), sizeof(GPUSpotLight)), m_SpotLights.data(), BufferUsage::DynamicDraw);
-    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
-
     auto* shadowSys = ServiceLocator::Instance().Resolve<IShadowService>();
     auto* rs = ServiceLocator::Instance().Resolve<IRenderService>();
     if (shadowSys && rs)
@@ -119,4 +91,31 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader *sh
         
         rs->UpdateGlobalLightData(data);
     }
+
+    if (currentCombinedVersion == m_LastCombinedVersion && currentLightCount == m_LastLightCount)
+    {
+        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
+        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
+        bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
+        return; 
+    }
+
+    m_LastCombinedVersion = currentCombinedVersion;
+    m_LastLightCount = currentLightCount;
+
+    auto safeSize = [](size_t count, size_t unitSize) {
+        return (std::max)(count * unitSize, (size_t)16);
+    };
+
+    bm.BindBuffer(BufferType::ShaderStorageBuffer, m_DirLightSSBO->Get());
+    bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_DirLights.size(), sizeof(GPUDirLight)), m_DirLights.data(), BufferUsage::DynamicDraw);
+    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
+
+    bm.BindBuffer(BufferType::ShaderStorageBuffer, m_PointLightSSBO->Get());
+    bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_PointLights.size(), sizeof(GPUPointLight)), m_PointLights.data(), BufferUsage::DynamicDraw);
+    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
+
+    bm.BindBuffer(BufferType::ShaderStorageBuffer, m_SpotLightSSBO->Get());
+    bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_SpotLights.size(), sizeof(GPUSpotLight)), m_SpotLights.data(), BufferUsage::DynamicDraw);
+    bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
 }

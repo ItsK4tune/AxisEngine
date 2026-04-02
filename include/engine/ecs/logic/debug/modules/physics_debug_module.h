@@ -41,6 +41,9 @@ private:
     bool m_ShowPhysicsDebug = false;
     bool m_ShowAudioDebug = false;
     bool m_ShowParticleDebug = false;
+
+    uint32_t m_LineVAO = 0;
+    uint32_t m_LineVBO = 0;
 };
 
 #endif

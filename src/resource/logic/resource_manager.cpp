@@ -8,6 +8,8 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/axis_assert.h>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 
 ResourceManager::ResourceManager()
 {
@@ -19,8 +21,6 @@ ResourceManager::ResourceManager()
             ReloadTexture(e.name);
         } });
 }
-
-
 
 void ResourceManager::RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy)
 {
@@ -61,6 +61,7 @@ void ResourceManager::Initialize(IShaderManager& shaderManager, ITextureManager&
     m_SkyboxManager = std::make_unique<SkyboxManager>();
     m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);
     m_VideoManager = std::make_unique<VideoManager>();
+    m_FragmentManager = std::make_unique<FragmentAssetManager>();
 
     m_ShaderManager->Initialize();
     m_TextureManager->Initialize();
@@ -118,6 +119,24 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
 
     LOGGER_INFO("ResourceManager") << "Loading shader: " << name << " (" << vsPath << ", " << fsPath << ")";
     m_ShaderManager->Load(name, vShaderPath, fShaderPath, gShaderPath);
+    
+    auto shader = m_ShaderManager->Get(name);
+    if (shader) {
+        // Smart detection: check name OR content of the fragment shader
+        bool isDeferred = (name.find("deferred") != std::string::npos || fsPath.find("deferred") != std::string::npos);
+        if (!isDeferred) {
+            std::ifstream f(fShaderPath);
+            if (f.is_open()) {
+                std::stringstream buffer;
+                buffer << f.rdbuf();
+                std::string fsContent = buffer.str();
+                if (fsContent.find("gAlbedoSpec") != std::string::npos || fsContent.find("gPosition") != std::string::npos) {
+                    isDeferred = true;
+                }
+            }
+        }
+        shader->SetDeferred(isDeferred);
+    }
 
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
 }
@@ -177,6 +196,12 @@ void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std:
     m_SkyboxManager->Load(name, faces);
 }
 
+void ResourceManager::LoadFragment(const std::string &name, const std::string &path)
+{
+    LOGGER_INFO("ResourceManager") << "Loading fragment: " << name << " from " << path;
+    m_FragmentManager->Load(path);
+}
+
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
     m_UIModels[name] = std::make_shared<UIModel>(type);
@@ -188,6 +213,7 @@ void ResourceManager::UnloadFont(const std::string &name) { m_FontManager->Unloa
 void ResourceManager::UnloadSound(const std::string &name) { m_AudioManager->Unload(name); }
 void ResourceManager::UnloadSkybox(const std::string &name) { m_SkyboxManager->Unload(name); }
 void ResourceManager::UnloadAnimation(const std::string &name) { m_AnimationManager->Unload(name); }
+void ResourceManager::UnloadFragment(const std::string &name) { m_FragmentManager->Unload(name); }
 
 std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name) { return m_ShaderManager->Get(name); }
 std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name) { return m_TextureManager->Get(name); }
@@ -195,6 +221,8 @@ std::shared_ptr<Model> ResourceManager::GetModel(const std::string &name) { retu
 std::shared_ptr<Animation> ResourceManager::GetAnimation(const std::string &name) { return m_AnimationManager->Get(name); }
 std::shared_ptr<Font> ResourceManager::GetFont(const std::string &name) { return m_FontManager->Get(name); }
 std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name) { return m_AudioManager->Get(name); }
+std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name) { return m_SkyboxManager->Get(name); }
+std::shared_ptr<FragmentAsset> ResourceManager::GetFragment(const std::string &name) { return m_FragmentManager->Load(name); }
 
 std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &nameOrPath)
 {
@@ -272,11 +300,6 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &n
     return GetSound(nameOrPath);
 }
 
-std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name)
-{
-    return m_SkyboxManager->Get(name);
-}
-
 std::shared_ptr<UIModel> ResourceManager::GetUIModel(const std::string &name)
 {
     if (m_UIModels.find(name) != m_UIModels.end())
@@ -299,6 +322,7 @@ void ResourceManager::ClearResource()
     m_AnimationManager->Clear();
     m_SkyboxManager->Clear();
     m_VideoManager->Clear();
+    if (m_FragmentManager) m_FragmentManager->Clear();
 
     m_UIModels.clear();
 

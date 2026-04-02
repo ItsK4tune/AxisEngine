@@ -44,7 +44,8 @@ void ParticleSystem::Update(Scene &scene, float dt)
     std::vector<entt::entity> toDestroy;
     for (auto entity : view)
     {
-        auto [emitterComp, pos] = view.get<ParticleEmitterComponent, PositionComponent>(entity);
+        auto& emitterComp = scene.registry.get<ParticleEmitterComponent>(entity);
+        const auto& pos = scene.registry.get<PositionComponent>(entity);
 
         bool isSpawning = true;
         if (emitterComp.lifetime > 0.0f)

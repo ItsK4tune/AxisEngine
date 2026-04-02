@@ -14,6 +14,7 @@
 #include <iostream>
 #include <scene/logic/component_loader.h>
 #include <core/logic/loader_utils.h>
+#include <ecs/unit/fragment_component.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
@@ -57,9 +58,17 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("Renderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadRenderer(s, e, n, r); });
     RegisterLoader("Animator", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAnimator(s, e, n, r); });
     RegisterLoader("Camera", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadCamera(s, e, n); });
+    
+    // Standardized Lighting Names
+    RegisterLoader("DirectionalLight", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLightDir(s, e, n); });
+    RegisterLoader("PointLight", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLightPoint(s, e, n); });
+    RegisterLoader("SpotLight", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLightSpot(s, e, n); });
+    
+    // Legacy Lighting Names (Backup)
     RegisterLoader("LightDir", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLightDir(s, e, n); });
     RegisterLoader("LightPoint", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLightPoint(s, e, n); });
     RegisterLoader("LightSpot", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLightSpot(s, e, n); });
+    
     RegisterLoader("UITransform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUITransform(s, e, n); });
     RegisterLoader("UIRenderer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIRenderer(s, e, n, r); });
     RegisterLoader("UIText", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIText(s, e, n, r); });
@@ -70,7 +79,11 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("ParticleEmitter", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadParticleEmitter(s, e, n, r); });
     RegisterLoader("Material", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadMaterial(s, e, n, r); });
     RegisterLoader("LOD", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLOD(s, e, n, r); });
+    
+    // New Modular Physics Components
+    RegisterLoader("RigidShape", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { if (p) PhysicsLoader::LoadRigidShape(s, e, n, *p); });
     RegisterLoader("RigidBody", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { if (p) PhysicsLoader::LoadRigidBody(s, e, n, *p); });
+    
     RegisterLoader("CharacterController", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { if (p) PhysicsLoader::LoadCharacterController(s, e, n, *p); });
     RegisterLoader("Transform", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadTransform(s, e, n); });
     RegisterLoader("PathFollower", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { ComponentLoader::LoadPathFollower(s, e, n); });
@@ -78,6 +91,7 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("UIFlex", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadUIFlex(s, e, n); });
     RegisterLoader("Reflective", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadReflective(s, e, n, r); });
     RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAudioSource(s, e, n, r); });
+    RegisterLoader("Fragment", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadFragment(s, e, n); });
 }
 
 void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -95,22 +109,26 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
     colorSS >> cr >> cg >> cb >> ca;
     glm::vec4 color(cr, cg, cb, ca);
 
-    if (modelName.empty() || shaderName.empty())
-    {
-        LOGGER_WARN("ComponentLoader") << "Renderer component missing 'Model' or 'Shader' field";
-    }
+    std::string entityName = "Unknown";
+    if (scene.registry.all_of<InfoComponent>(entity))
+        entityName = scene.registry.get<InfoComponent>(entity).name;
+
+    LOGGER_INFO("ComponentLoader") << "[DEBUG] Renderer load on '" << entityName << "': Color(" << cr << ", " << cg << ", " << cb << ", " << ca << ")";
 
     auto &r = scene.registry.emplace<MeshRendererComponent>(entity);
-    
+    if (modelName.empty())
+    {
+        std::string keys = "";
+        for (auto& c : node.children) keys += c.key + ", ";
+        LOGGER_WARN("ComponentLoader") << "Renderer component on entity '" << entityName << "' missing 'Model' field. Found keys: " << keys;
+    }
+    else if (shaderName.empty())
+    {
+        LOGGER_INFO("ComponentLoader") << "Renderer component on entity '" << entityName << "' missing 'Shader' field. Falling back to default (Unlit).";
+    }
 
     r.model = res.GetModelAuto(modelName, false);
-
-
     r.shader = res.GetShader(shaderName);
-    if (r.shader.expired()) {
-
-
-    }
 
     r.order = order;
     r.castShadow = castShadow;
@@ -118,9 +136,9 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
     r.color = color;
 
     if (!r.model)
-        LOGGER_WARN("ComponentLoader") << "Renderer model not found: " << modelName;
+        LOGGER_WARN("ComponentLoader") << "Renderer model not found on entity '" << entityName << "': " << modelName;
     if (r.shader.expired())
-        LOGGER_WARN("ComponentLoader") << "Renderer shader not found: " << shaderName;
+        LOGGER_WARN("ComponentLoader") << "Renderer shader not found on entity '" << entityName << "': " << shaderName;
 }
 
 void ComponentLoader::LoadAnimator(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
@@ -711,6 +729,12 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     mat.desc.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
     mat.desc.alphaCutoff = std::stof(node.GetChildValue("AlphaCutoff", "0.5"));
 
+    std::string entityName = "Unknown";
+    if (scene.registry.all_of<InfoComponent>(entity))
+        entityName = scene.registry.get<InfoComponent>(entity).name;
+
+    LOGGER_INFO("ComponentLoader") << "[DEBUG] Material load on '" << entityName << "': Opacity=" << mat.desc.opacity;
+
     if (!node.GetChildValue("UVScale").empty()) {
         std::stringstream ss(node.GetChildValue("UVScale"));
         ss >> mat.desc.uvScale.x >> mat.desc.uvScale.y;
@@ -767,6 +791,8 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
         float ar = 1, ag = 1, ab = 1;
         ambSS >> ar >> ag >> ab;
         mat.desc.ambient = glm::vec3(ar, ag, ab);
+        
+        LOGGER_INFO("ComponentLoader") << "  -> Ambient(" << ar << ", " << ag << ", " << ab << ")";
     }
 
     auto loadTex = [&](const std::string &key, std::string &outPath) {
@@ -796,6 +822,22 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     mat.gpu.dirty = false;
 
     scene.registry.emplace<AxisMaterialComponent>(entity, mat);
+}
+
+void ComponentLoader::LoadFragment(Scene &scene, entt::entity entity, const YAMLNode &node)
+{
+    auto &frag = scene.registry.emplace<FragmentComponent>(entity);
+    frag.path = node.GetChildValue("Path");
+    
+    auto* overrideNode = const_cast<YAMLNode&>(node).GetChild("Override");
+    if (overrideNode)
+    {
+        // Wrap the override node in a root node so FragmentSystem can find it via GetChild("Override")
+        frag.overrideNode.children.push_back(*overrideNode);
+        frag.overrideNode.key = "Root";
+    }
+    
+    frag.instantiated = false;
 }
 
 void ComponentLoader::LoadPathFollower(Scene &scene, entt::entity entity, const YAMLNode &node)

@@ -16,6 +16,7 @@ void PostProcessSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<PostProcessSystem>(this);
+    sl.Register<PostProcessPipeline>(&m_Pipeline);
     auto& context = sl.Require<IGraphicsContext>();
     auto& resources = sl.Require<ResourceManager>();
     auto& config = sl.Require<ConfigManager>().GetConfig();

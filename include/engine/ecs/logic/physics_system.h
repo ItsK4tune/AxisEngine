@@ -39,9 +39,11 @@ public:
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
-    void Reset();
+    void Reset() override;
     void OnRigidBodyDestroyed(entt::registry& registry, entt::entity entity);
     void OnCharacterControllerDestroyed(entt::registry& registry, entt::entity entity);
+    void OnShapeConstructed(entt::registry& registry, entt::entity entity);
+    void InitializeRigidBodyDirect(Scene& scene, entt::entity entity, struct RigidShapeComponent& shape, struct RigidBodyComponent& rb, IPhysicsWorld& physics);
 
 
     struct RayHit Raycast(const glm::vec3& origin, const glm::vec3& direction, float distance);

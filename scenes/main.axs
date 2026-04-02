@@ -78,10 +78,11 @@ axis_scene:
         Speed: 1.0
         StartTime: 0.0
         Rate: 30.0
-      Component: RigidBody
+      Component: RigidShape
         Type: CAPSULE
         Radius: 1.0
         Height: 2.0
+      Component: RigidBody
         Mass: 1.0
         BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
@@ -105,10 +106,11 @@ axis_scene:
         Speed: 1.0
         StartTime: 0.0
         Rate: 30.0
-      Component: RigidBody
+      Component: RigidShape
         Type: CAPSULE
         Radius: 1.0
         Height: 2.0
+      Component: RigidBody
         Mass: 1.0
         BodyType: KINEMATIC
         Offset: 0.0 0.0 0.0
@@ -119,7 +121,7 @@ axis_scene:
         Position: 0.0 10.0 0.0
         Rotation: -45.0 -30.0 0.0
         Scale: 1.0 1.0 1.0
-      Component: LightDir
+      Component: DirectionalLight
         CastShadow: 1
         Color: 1.0 0.95 0.8
         Intensity: 0.8
@@ -133,7 +135,7 @@ axis_scene:
         Position: 0.0 10.0 0.0
         Rotation: -45.0 30.0 0.0
         Scale: 1.0 1.0 1.0
-      Component: LightDir
+      Component: DirectionalLight
         CastShadow: 1
         Color: 0.9 0.9 1.0
         Intensity: 0.6
@@ -153,12 +155,13 @@ axis_scene:
         Type: PHONG
         Shininess: 32
         Specular: 0.5 0.5 0.5
-      Component: RigidBody
+      Component: RigidShape
         Type: BOX
         Size: 10.0 10.0 0.1
+        Rotation: 90.0 0.0 0.0
+      Component: RigidBody
         Mass: 0.0
         BodyType: STATIC
-        Rotation: 90.0 0.0 0.0
 
     TransparentSphere:
       Tag: transparent
@@ -167,18 +170,11 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
-        Shader: forward_phong_lit
+        Shader: forward_transparent
       Component: Material
         Type: PHONG
         Opacity: 0.5
-        Ambient: 0.0 1.0 1.0
-
-    GlobalPostProcess:
-      Component: Transform
-        Position: 0 0 0
-      Component: PostProcess
-        Active: true
-        Effects: dithering_bw:300
+        Ambient: 0.2 0.2 0.2
 
     ReflectiveSphere:
       Tag: reflective
@@ -187,7 +183,7 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
-        Shader: forward_phong_lit
+        Shader: forward_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
@@ -209,7 +205,7 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: cubeModel
-        Shader: forward_phong_lit
+        Shader: forward_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
@@ -224,3 +220,59 @@ axis_scene:
         FresnelPower: 3.0
         FresnelBias: 0.1
 
+    Player_Car:
+      Tag: player
+      Component: Transform
+        Position: 2.0 0.0 5.0
+        Rotation: 0.0 0.0 0.0
+      Component: Fragment
+        Path: resources/objects/car.axs
+
+    Traffic_Car:
+      Tag: obstacle
+      Component: Transform
+        Position: 8.0 0.0 -5.0
+        Rotation: 0.0 180.0 0.0
+      Component: Fragment
+        Path: resources/objects/car.axs
+        Override:
+          Body:
+            Component: Renderer
+              Color: 0.8 0.1 0.1 1.0
+
+    RigidPhysic:
+      Tag: physics_test
+      Component: Transform
+        Position: 0.0 15.0 0.0
+      Component: Renderer
+        Model: sphereModel
+        Shader: forward_phong_lit
+      Component: Material
+        Type: PHONG
+        Ambient: 0.2 0.8 0.2
+      Component: RigidShape
+        Type: SPHERE
+        Radius: 1.0
+        Friction: 0.7
+        Restitution: 0.3
+      Component: RigidBody
+        Mass: 1.0
+        LinearDamping: 0.1
+        AngularDamping: 0.1
+
+    RigidBox:
+      Tag: physics_test
+      Component: Transform
+        Position: 2.0 20.0 0.0
+        Rotation: 45.0 45.0 0.0
+      Component: Renderer
+        Model: cubeModel
+        Shader: deferred_lit
+      Component: Material
+        Type: PHONG
+        Ambient: 0.8 0.2 0.2
+      Component: RigidShape
+        Type: BOX
+        Size: 1.0 1.0 1.0
+      Component: RigidBody
+        Mass: 2.0

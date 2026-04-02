@@ -1,7 +1,6 @@
 #version 430 core
 out vec4 FragColor;
 
-
 layout (binding = 0) uniform sampler2D u_AlbedoMap;
 layout (binding = 1) uniform sampler2D u_NormalMap;
 layout (binding = 2) uniform sampler2D u_MetallicMap;
@@ -9,14 +8,14 @@ layout (binding = 3) uniform sampler2D u_RoughnessMap;
 layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
-layout (binding = 6) uniform samplerCube irradianceMap;
-layout (binding = 7) uniform samplerCube prefilterMap;
-layout (binding = 8) uniform sampler2D brdfLUT;
-
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
-    vec3 viewPos;
+    vec4 viewPos;
+    mat4 invProjection;
+    mat4 invView;
+    mat4 stableProjection;
+    mat4 invStableProjection;
 } camera;
 
 layout(std140, binding = 21) uniform LightData {
@@ -74,7 +73,7 @@ uniform float u_Roughness;
 uniform float u_Metallic;
 uniform float u_AO;
 uniform vec3 u_Emission;
-uniform vec4 u_BaseColor; // rgb: tint, a: opacity
+uniform vec4 u_BaseColor;
 uniform vec2 u_UVScale = vec2(1.0);
 uniform vec2 u_UVOffset = vec2(0.0);
 uniform bool debug_noTexture;
@@ -83,52 +82,12 @@ uniform bool u_isWireframe;
 uniform float u_ShadowBias = 0.005;
 uniform int u_ShadowSoftness = 1;
 
-layout(binding = 15) uniform samplerCube reflectionProbe;
-uniform bool u_HasProbe = false;
-uniform vec3 u_ProbePos;
-uniform vec3 u_ProbeBoxMin;
-uniform vec3 u_ProbeBoxMax;
-
-vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
-    vec3 rbmax = (boxMax - pos) / dir;
-    vec3 rbmin = (boxMin - pos) / dir;
-    vec3 rbminmax = mix(rbmax, rbmin, step(vec3(0.0), dir));
-    float fa = min(min(rbminmax.x, rbminmax.y), rbminmax.z);
-    vec3 posonbox = pos + dir * fa;
-    return posonbox - probePos;
-}
-
-uniform vec3 u_SH[9];
-uniform bool u_HasLightProbe = false;
-uniform float u_LightProbeIntensity = 1.0;
-
-vec3 EvaluateSH(vec3 n) {
-    const float C1 = 0.429043;
-    const float C2 = 0.511664;
-    const float C3 = 0.743125;
-    const float C4 = 0.886227;
-    const float C5 = 0.247708;
-
-    return max(vec3(0.0), (
-        C4 * u_SH[0] -
-        C2 * n.y * u_SH[1] +
-        C2 * n.z * u_SH[2] -
-        C2 * n.x * u_SH[3] +
-        C1 * n.y * n.x * u_SH[4] -
-        C1 * n.y * n.z * u_SH[5] +
-        C3 * (n.z * n.z - 1.0/3.0) * u_SH[6] -
-        C1 * n.z * n.x * u_SH[7] +
-        C5 * (n.x * n.x - n.y * n.y) * u_SH[8]
-    ));
-}
-
 const float PI = 3.14159265359;
 
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx);
 float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int lightIdx);
 float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx);
@@ -154,8 +113,7 @@ void main()
     }
 
     vec3 N = normalize(Normal);
-    vec3 V = normalize(camera.viewPos - FragPos);
-    vec3 R = reflect(-V, N);
+    vec3 V = normalize(camera.viewPos.xyz - FragPos);
 
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
@@ -235,31 +193,7 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0) * (1.0 - shadow);
     }
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-    vec3 kS = F;
-    vec3 kD = (1.0 - kS) * (1.0 - metallic);
-    
-    vec3 irradiance;
-    if (u_HasLightProbe) {
-        irradiance = EvaluateSH(N) * u_LightProbeIntensity;
-    } else {
-        irradiance = texture(irradianceMap, N).rgb;
-    }
-
-    vec3 diffuse    = irradiance * albedo;
-    
-    vec3 prefilteredColor;
-    if (u_HasProbe) {
-        vec3 projectedR = BoxProjection(R, FragPos, u_ProbePos, u_ProbeBoxMin, u_ProbeBoxMax);
-        prefilteredColor = textureLod(reflectionProbe, projectedR, roughness * 5.0).rgb;
-    } else {
-        prefilteredColor = textureLod(prefilterMap, R,  roughness * 4.0).rgb;
-    }
-
-    vec2 envBRDF  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-
-    vec3 ambient = (kD * diffuse + specular) * ao;
+    vec3 ambient = albedo * 0.03 * ao;
     vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, finalTexCoords).rgb, vec3(2.2));
     
     vec3 finalColor = ambient + Lo + emissive;
@@ -269,7 +203,6 @@ void main()
         FragColor = vec4(0.0, 1.0, 0.0, 1.0);
     }
 }
-
 
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness*roughness; float a2 = a*a;
@@ -286,9 +219,6 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 }
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx) {
@@ -321,7 +251,7 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int lightIdx) {
        vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
        vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
     );
-    float viewDistance = length(camera.viewPos - fragPos);
+    float viewDistance = length(camera.viewPos.xyz - fragPos);
     float diskRadius = (1.0 + (viewDistance / light.farPlanePoint)) / 25.0;
     for(int i = 0; i < samples; ++i) {
         float closestDepth = texture(shadowMapPoint, vec4(fragToLight + sampleOffsetDirections[i] * diskRadius, lightIdx)).r;
@@ -347,3 +277,7 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx) {
     }
     return shadow / pow(pcfRange * 2 + 1, 2);
 }
+
+
+
+

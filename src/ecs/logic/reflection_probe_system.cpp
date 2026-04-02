@@ -12,6 +12,7 @@
 #include <scene/logic/scene.h>
 #include <render/logic/render_core.h>
 #include <core/logic/config_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
@@ -175,11 +176,10 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     auto& transparent = renderService.GetRenderQueueObj().GetTransparentQueue();
     
     auto& core = sl.Require<RenderCore>();
-    // For probe captures, disable shadows by passing nullptr.
-    // Shadows from the main camera's perspective are incorrect for the probe.
     ShadowRenderer* shadowRenderer = nullptr; 
     
-    renderService.ExecuteQueue(opaque, false, shadowRenderer, &core.GetMaterialRenderer());
+    // Final Render Queue Execution
+    renderService.ExecuteQueue(opaque, false, shadowRenderer, &core.GetMaterialRenderer(), nullptr);
     renderService.ExecuteQueue(transparent, true, shadowRenderer, &core.GetMaterialRenderer());
     
     // Generate mipmaps only after full update or on every few faces

@@ -1,6 +1,7 @@
-#version 430 core
+#version 430 core
+
+void main()
+{
+
+}
 
-void main()
-{
-
-}

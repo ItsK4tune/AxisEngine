@@ -22,6 +22,9 @@
 #include <glm/glm.hpp>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
+#include <render/interface/i_buffer_manager.h>
+#include <render/interface/i_draw_context.h>
+#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/debug/debug_system.h>
 #include <core/logic/service_locator.h>
 PhysicsDebugModule::PhysicsDebugModule() {}
@@ -49,46 +52,115 @@ void PhysicsDebugModule::Render(Scene &scene)
     if (DebugConfig::ShowPhysics)
     {
         auto* physics_sys = sl.Resolve<PhysicsSystem>();
-        auto debugShader = resources.GetShader("debugLine");
+        auto debugShader = resources.GetShader("debug_line");
         if (debugShader && physics_sys)
         {
             physics_sys->RenderDebug(scene, *debugShader, width, height, io.GetGraphicsContext().GetRenderStateManager());
         }
     }
 
+    if (!m_ShowAudioDebug && !m_ShowParticleDebug)
+        return;
+
+    auto debugShader = resources.GetShader("debug_line");
+    if (!debugShader) return;
+
+    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    if (camEntity == entt::null) return;
+
+    auto& cam = scene.registry.get<CameraComponent>(camEntity);
+    auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
+
+    float aspect = (float)width / (float)height;
+    if (aspect <= 0.0f) aspect = 1.0f;
+    glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
+    glm::mat4 view = glm::lookAt(camPos, camPos + cam.front, cam.worldUp);
+
+    debugShader->use();
+    debugShader->setMat4("projection", proj);
+    debugShader->setMat4("view", view);
+
+    std::vector<float> lineVertices;
+    auto addLine = [&](const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) {
+        lineVertices.push_back(start.x); lineVertices.push_back(start.y); lineVertices.push_back(start.z);
+        lineVertices.push_back(color.r); lineVertices.push_back(color.g); lineVertices.push_back(color.b);
+        lineVertices.push_back(end.x); lineVertices.push_back(end.y); lineVertices.push_back(end.z);
+        lineVertices.push_back(color.r); lineVertices.push_back(color.g); lineVertices.push_back(color.b);
+    };
+
     if (m_ShowAudioDebug)
     {
-        auto* physics_sys = sl.Resolve<PhysicsSystem>();
-        if (physics_sys) {
-            auto& pw = physics_sys->GetPhysicsWorld();
-            auto view = scene.registry.view<AudioSourceComponent>();
-            for (auto entity : view)
-            {
-                glm::vec3 pos(0.0f);
-                if (auto* tr = scene.registry.try_get<WorldTransformComponent>(entity))
-                    pos = glm::vec3(tr->worldMatrix[3]);
-                else if (auto* p = scene.registry.try_get<PositionComponent>(entity))
-                    pos = p->value;
-                
-
-                float s = 0.5f;
-                glm::vec3 c(1.0f, 0.0f, 1.0f);
-                pw.DrawLine(pos - glm::vec3(s, 0, 0), pos + glm::vec3(s, 0, 0), c);
-                pw.DrawLine(pos - glm::vec3(0, s, 0), pos + glm::vec3(0, s, 0), c);
-                pw.DrawLine(pos - glm::vec3(0, 0, s), pos + glm::vec3(0, 0, s), c);
-            }
+        auto viewAudio = scene.registry.view<AudioSourceComponent>();
+        for (auto entity : viewAudio)
+        {
+            glm::vec3 pos(0.0f);
+            if (auto* tr = scene.registry.try_get<WorldTransformComponent>(entity))
+                pos = glm::vec3(tr->worldMatrix[3]);
+            else if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+                pos = p->value;
+            
+            float s = 0.5f;
+            glm::vec3 c(1.0f, 0.0f, 1.0f);
+            addLine(pos - glm::vec3(s, 0, 0), pos + glm::vec3(s, 0, 0), c);
+            addLine(pos - glm::vec3(0, s, 0), pos + glm::vec3(0, s, 0), c);
+            addLine(pos - glm::vec3(0, 0, s), pos + glm::vec3(0, 0, s), c);
         }
     }
 
     if (m_ShowParticleDebug)
     {
-        auto view = scene.registry.view<ParticleEmitterComponent, WorldTransformComponent>();
-        for (auto entity : view)
+        auto viewParticle = scene.registry.view<ParticleEmitterComponent>();
+        for (auto entity : viewParticle)
         {
-            const auto &world = view.get<WorldTransformComponent>(entity);
-            glm::vec3 pos = glm::vec3(world.worldMatrix[3]);
+            glm::vec3 pos(0.0f);
+            if (auto* tr = scene.registry.try_get<WorldTransformComponent>(entity))
+                pos = glm::vec3(tr->worldMatrix[3]);
+            else if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+                pos = p->value;
+
+            float s = 1.0f;
+            glm::vec3 c(0.0f, 1.0f, 0.5f);
+            
+            // Draw a basic box around the emitter
+            glm::vec3 p1 = pos + glm::vec3(-s, -s, -s);
+            glm::vec3 p2 = pos + glm::vec3( s, -s, -s);
+            glm::vec3 p3 = pos + glm::vec3( s,  s, -s);
+            glm::vec3 p4 = pos + glm::vec3(-s,  s, -s);
+            glm::vec3 p5 = pos + glm::vec3(-s, -s,  s);
+            glm::vec3 p6 = pos + glm::vec3( s, -s,  s);
+            glm::vec3 p7 = pos + glm::vec3( s,  s,  s);
+            glm::vec3 p8 = pos + glm::vec3(-s,  s,  s);
+
+            addLine(p1, p2, c); addLine(p2, p3, c); addLine(p3, p4, c); addLine(p4, p1, c);
+            addLine(p5, p6, c); addLine(p6, p7, c); addLine(p7, p8, c); addLine(p8, p5, c);
+            addLine(p1, p5, c); addLine(p2, p6, c); addLine(p3, p7, c); addLine(p4, p8, c);
         }
     }
+
+    if (lineVertices.empty()) return;
+
+    auto* graphics = &io.GetGraphicsContext();
+    auto& bm = graphics->GetBufferManager();
+    auto& dc = graphics->GetDrawContext();
+
+    if (m_LineVAO == 0) m_LineVAO = bm.GenVertexArray();
+    if (m_LineVBO == 0) m_LineVBO = bm.GenBuffer();
+    
+    bm.BindVertexArray(m_LineVAO);
+    bm.BindBuffer(BufferType::ArrayBuffer, m_LineVBO);
+    bm.BufferData(BufferType::ArrayBuffer, lineVertices.size() * sizeof(float), lineVertices.data(), BufferUsage::StreamDraw);
+
+    bm.EnableVertexAttribArray(0);
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, 6 * sizeof(float), (void*)0);
+    bm.EnableVertexAttribArray(1);
+    bm.VertexAttribPointer(1, 3, DataType::Float, false, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    graphics->GetRenderStateManager().Disable(ServerCapability::DepthTest);
+    dc.DrawArrays(Primitive::Lines, 0, (int)(lineVertices.size() / 6));
+    graphics->GetRenderStateManager().Enable(ServerCapability::DepthTest);
+
+    bm.BindVertexArray(0);
 }
 
 void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)

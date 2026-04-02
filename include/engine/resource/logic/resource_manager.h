@@ -12,6 +12,7 @@
 #include <resource/logic/animation_manager.h>
 #include <resource/logic/resource_watcher.h>
 #include <resource/logic/model_instance_manager.h>
+#include <resource/logic/fragment_asset_manager.h>
 #include <resource/interface/i_resource_libraries.h>
 #include <resource/unit/ui_model.h>
 #include <mutex>
@@ -50,6 +51,7 @@ public:
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
     void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine);
     void LoadSkybox(const std::string& name, const std::vector<std::string>& faces);
+    void LoadFragment(const std::string& name, const std::string& path);
     void CreateUIModel(const std::string& name, UIType type);
 
     void UnloadShader(const std::string& name);
@@ -57,6 +59,7 @@ public:
     void UnloadSound(const std::string& name);
     void UnloadSkybox(const std::string& name);
     void UnloadAnimation(const std::string& name);
+    void UnloadFragment(const std::string& name);
 
     std::shared_ptr<Shader> GetShader(const std::string& name);
     std::shared_ptr<Texture> GetTexture(const std::string& name);
@@ -65,6 +68,7 @@ public:
     std::shared_ptr<Font> GetFont(const std::string& name);
     std::shared_ptr<IAudioSource> GetSound(const std::string& name);
     std::shared_ptr<Skybox> GetSkybox(const std::string& name);
+    std::shared_ptr<FragmentAsset> GetFragment(const std::string& name);
     std::shared_ptr<UIModel> GetUIModel(const std::string& name);
     bool HasUIModel(const std::string& name);
 
@@ -91,6 +95,7 @@ public:
     SkyboxManager& GetSkyboxManager()    { return *m_SkyboxManager; }
     AnimationManager& GetAnimationManager() { return *m_AnimationManager; }
     VideoManager& GetVideoManager()      { return *m_VideoManager; }
+    FragmentAssetManager& GetFragmentManager() { return *m_FragmentManager; }
 
     ModelInstanceManager& GetModelInstanceManager() { return m_ModelInstanceManager; }
 
@@ -107,6 +112,7 @@ private:
     std::unique_ptr<SkyboxManager>    m_SkyboxManager;
     std::unique_ptr<AnimationManager> m_AnimationManager;
     std::unique_ptr<VideoManager>     m_VideoManager;
+    std::unique_ptr<FragmentAssetManager> m_FragmentManager;
 
     ModelInstanceManager m_ModelInstanceManager;
     ResourceWatcher      m_ResourceWatcher;

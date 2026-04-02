@@ -133,6 +133,26 @@ axis_scene:
       Name: error_deferred
       Vertex: include/engine/asset/shaders/deferred_unlit.vs
       Fragment: include/engine/asset/shaders/error_deferred.fs
+    Shader:
+      Name: forward_reflect
+      Vertex: include/engine/asset/shaders/forward_phong_lit.vs
+      Fragment: include/engine/asset/shaders/forward_reflect.fs
+    Shader:
+      Name: forward_reflect_shadow
+      Vertex: include/engine/asset/shaders/forward_phong_lit_shadow.vs
+      Fragment: include/engine/asset/shaders/forward_reflect_shadow.fs
+    Shader:
+      Name: deferred_reflect
+      Vertex: include/engine/asset/shaders/deferred_lit.vs
+      Fragment: include/engine/asset/shaders/deferred_reflect.fs
+    Shader:
+      Name: forward_transparent
+      Vertex: include/engine/asset/shaders/forward_phong_lit.vs
+      Fragment: include/engine/asset/shaders/forward_transparent.fs
+    Shader:
+      Name: forward_pbr_env
+      Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
+      Fragment: include/engine/asset/shaders/forward_pbr_env.fs
     
     Texture:
       Name: error_texture

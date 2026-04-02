@@ -10,6 +10,8 @@ struct YAMLNode {
 
     YAMLNode* GetChild(const std::string& k);
     std::string GetChildValue(const std::string& k, const std::string& defaultVal = "") const;
+
+    static void Merge(YAMLNode& base, const YAMLNode& override);
 };
 
 class YAMLParser {

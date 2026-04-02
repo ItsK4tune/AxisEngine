@@ -12,8 +12,12 @@ out vec2 TexCoords;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
-    mat4 view;   
-    vec3 viewPos;
+    mat4 view;
+    vec4 viewPos;
+    mat4 invProjection;
+    mat4 invView;
+    mat4 stableProjection;
+    mat4 invStableProjection;
 } camera;
 
 uniform mat4 model;

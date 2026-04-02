@@ -2,6 +2,7 @@
 #include <core/logic/logger.h>
 #include <render/interface/i_graphics_context.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/filesystem.h>
 #include <ecs/interface/i_geometry_service.h>
 
 ShaderManager::ShaderManager(IShaderManager& lowLevelManager) 
@@ -13,8 +14,8 @@ void ShaderManager::Initialize() {
         shader->SetName(name);
         
         // Construct full paths relative to the engine's asset directory
-        std::string vsPath = "include/engine/asset/shaders/" + vsName;
-        std::string fsPath = "include/engine/asset/shaders/" + fsName;
+        std::string vsPath = FileSystem::getPath("include/engine/asset/shaders/" + vsName);
+        std::string fsPath = FileSystem::getPath("include/engine/asset/shaders/" + fsName);
         
         try {
             shader->load(vsPath.c_str(), fsPath.c_str());

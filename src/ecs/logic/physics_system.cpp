@@ -1,6 +1,7 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/logic/physics_system.h>
+// Forcing recompile - 2026-04-01-T11-55-00
 #include <ecs/logic/system_factory.h>
 #include <core/logic/config_manager.h>
 #include <ecs/logic/cached_query.h>
@@ -94,6 +95,9 @@ void PhysicsSystem::Update(Scene &scene, float dt)
 
         scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
         scene.registry.on_destroy<CharacterControllerComponent>().connect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
+        
+        // Listen for new shapes to initialize physics
+        scene.registry.on_construct<RigidShapeComponent>().connect<&PhysicsSystem::OnShapeConstructed>(this);
     }
     
     if (!m_transformSync)
@@ -103,6 +107,21 @@ void PhysicsSystem::Update(Scene &scene, float dt)
     }
 
     m_transformSync->SyncToPhysics();
+
+    // Check for newly added components that need assembly
+    auto viewShape = scene.registry.view<RigidShapeComponent>(entt::exclude<RigidBodyComponent>);
+    for (auto entity : viewShape) {
+        scene.registry.emplace<RigidBodyComponent>(entity); // Default to static if only shape exists
+    }
+
+    auto viewInit = scene.registry.view<RigidShapeComponent, RigidBodyComponent>();
+    for (auto entity : viewInit) {
+        auto& rb = viewInit.get<RigidBodyComponent>(entity);
+        if (!rb.body) {
+            InitializeRigidBodyDirect(scene, entity, viewInit.get<RigidShapeComponent>(entity), rb, *physicsWorld);
+        }
+    }
+
     physicsWorld->Update(dt);
     m_transformSync->SyncFromPhysics();
 
@@ -137,6 +156,7 @@ void PhysicsSystem::Reset()
     {
         m_LastScene->registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
         m_LastScene->registry.on_destroy<CharacterControllerComponent>().disconnect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
+        m_LastScene->registry.on_construct<RigidShapeComponent>().disconnect<&PhysicsSystem::OnShapeConstructed>(this);
     }
 
     m_transformSync.reset();
@@ -148,29 +168,89 @@ void PhysicsSystem::Reset()
 void PhysicsSystem::OnRigidBodyDestroyed(entt::registry &registry, entt::entity entity)
 {
     if (!m_LastPhysicsWorld) return;
-
-    if (registry.all_of<RigidBodyComponent>(entity))
+    auto &rb = registry.get<RigidBodyComponent>(entity);
+    if (rb.body)
     {
-        auto &rb = registry.get<RigidBodyComponent>(entity);
-        if (rb.body)
+        for (auto &constraint : rb.constraints)
         {
-            for (auto &constraint : rb.constraints)
-            {
-                if (constraint) m_LastPhysicsWorld->RemoveConstraint(constraint);
-            }
-            m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
+            if (constraint) m_LastPhysicsWorld->RemoveConstraint(constraint);
         }
+        m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
     }
 }
 
-void PhysicsSystem::OnCharacterControllerDestroyed(entt::registry& registry, entt::entity entity)
+void PhysicsSystem::OnCharacterControllerDestroyed(entt::registry &registry, entt::entity entity)
 {
     if (!m_LastPhysicsWorld) return;
-
-    if (registry.all_of<CharacterControllerComponent>(entity))
+    auto &cc = registry.get<CharacterControllerComponent>(entity);
+    if (cc.controller)
     {
-        auto& cc = registry.get<CharacterControllerComponent>(entity);
-        if (cc.controller) m_LastPhysicsWorld->RemoveCharacterController(cc.controller.get());
+        m_LastPhysicsWorld->RemoveCharacterController(cc.controller.get());
+    }
+}
+
+void PhysicsSystem::OnShapeConstructed(entt::registry& registry, entt::entity entity)
+{
+    // PhysicsSystem::Update will handle assembly
+}
+
+void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity, RigidShapeComponent& shape, RigidBodyComponent& rb, IPhysicsWorld& physics)
+{
+    auto* pos = scene.registry.try_get<PositionComponent>(entity);
+    auto* rot = scene.registry.try_get<RotationComponent>(entity);
+    glm::vec3 worldPos = pos ? pos->value : glm::vec3(0,0,0);
+    glm::quat worldRot = rot ? rot->value : glm::quat(1,0,0,0);
+
+    // Re-resolve world transform if possible
+    if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity)) {
+        glm::vec3 s, t, skew;
+        glm::quat r;
+        glm::vec4 perspective;
+        if (glm::decompose(world->worldMatrix, s, r, t, skew, perspective)) {
+            worldPos = t;
+            worldRot = r;
+        }
+    }
+
+    std::shared_ptr<ICollisionShape> finalShape = nullptr;
+    if (shape.type == "BOX") finalShape = physics.CreateBoxShape(shape.size);
+    else if (shape.type == "SPHERE") finalShape = physics.CreateSphereShape(shape.radius);
+    else if (shape.type == "CAPSULE") finalShape = physics.CreateCapsuleShape(shape.radius, shape.height);
+    else if (shape.type == "COMPOUND") {
+        auto compound = physics.CreateCompoundShape();
+        for (auto& cs : shape.children) {
+            std::shared_ptr<ICollisionShape> child = nullptr;
+            if (cs.type == "BOX") child = physics.CreateBoxShape(cs.size);
+            else if (cs.type == "SPHERE") child = physics.CreateSphereShape(cs.radius);
+            else if (cs.type == "CAPSULE") child = physics.CreateCapsuleShape(cs.radius, cs.height);
+            if (child) physics.AddChildShape(compound, child, cs.position, cs.rotation);
+        }
+        finalShape = compound;
+    }
+
+    bool hasOffset = glm::length(shape.offset) > 0.001f;
+    bool hasRotation = std::abs(1.0f - std::abs(shape.rotation.w)) > 0.0001f;
+    
+    if (finalShape && (hasOffset || hasRotation)) {
+        auto compound = physics.CreateCompoundShape();
+        physics.AddChildShape(compound, finalShape, shape.offset, shape.rotation);
+        finalShape = compound;
+    }
+
+    if (finalShape) {
+        float mass = rb.isStatic || rb.isKinematic ? 0.0f : rb.mass;
+        rb.body = physics.CreateRigidBody(mass, worldPos, worldRot, finalShape);
+
+        if (rb.body) {
+            rb.body->SetUserPointer((void*)(uintptr_t)entity);
+            if (rb.isKinematic) rb.body->SetKinematic(true);
+            rb.body->SetFriction(shape.friction);
+            rb.body->SetRestitution(shape.restitution);
+            rb.body->SetLinearFactor(rb.linearFactor);
+            rb.body->SetAngularFactor(rb.angularFactor);
+            rb.body->SetDamping(rb.linearDamping, rb.angularDamping);
+            physics.AddRigidBody(rb.body.get());
+        }
     }
 }
 

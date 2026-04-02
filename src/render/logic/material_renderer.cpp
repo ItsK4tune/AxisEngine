@@ -88,7 +88,7 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     return locs;
 }
 
-bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe) {
+bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, const glm::vec4& tintColor, bool debugNoTexture, bool isWireframe) {
     const auto& locs = GetLocations(shader);
     auto& tm = m_Context->GetTextureManager();
 
@@ -152,10 +152,12 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
         }
         shader->setFloat(locs.mat_opacity, mat.desc.opacity);
         shader->setFloat(locs.opacity, mat.desc.opacity);
+        
         if (locs.u_BaseColor != -1) {
-            glm::vec4 baseColor = glm::vec4(mat.desc.ambient, mat.desc.opacity);
+            glm::vec4 baseColor = glm::vec4(mat.desc.ambient, mat.desc.opacity) * tintColor;
             shader->setVec4(locs.u_BaseColor, baseColor);
         }
+        
         shader->setVec2(locs.u_UVScale, mat.desc.uvScale);
         shader->setVec2(locs.u_UVOffset, mat.desc.uvOffset);
         shader->setVec2(locs.uvScale, mat.desc.uvScale);
@@ -186,6 +188,17 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
         }
         return boundSomething;
     } else {
+        if (locs.u_BaseColor != -1) {
+            shader->setVec4(locs.u_BaseColor, tintColor);
+        }
+        
+        // Set standard fallback values
+        if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, 0.5f);
+        if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, 0.0f);
+        if (locs.u_Shininess != -1) shader->setFloat(locs.u_Shininess, 32.0f);
+        if (locs.u_Specular != -1) shader->setVec3(locs.u_Specular, glm::vec3(0.5f));
+        if (locs.u_Emission != -1) shader->setVec3(locs.u_Emission, glm::vec3(0.0f));
+
         shader->setFloat(locs.mat_roughness, 0.5f);
         shader->setFloat(locs.mat_metallic, 0.0f);
         shader->setFloat(locs.roughness, 0.5f);

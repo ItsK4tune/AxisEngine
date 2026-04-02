@@ -149,6 +149,13 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                     res.LoadAnimation(name, path, model);
                     result.loadedAnimations.push_back(name);
                 }
+                else if (resNode.key == "Fragment")
+                {
+                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path"}, "Resource:Fragment");
+                    std::string name = resNode.GetChildValue("Name");
+                    std::string path = resNode.GetChildValue("Path");
+                    res.LoadFragment(name, path);
+                }
                 else if (resNode.key == "Audio")
                 {
                     LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Volume", "Pitch", "Pan", "Speed"}, "Resource:Audio");

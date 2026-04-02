@@ -10,17 +10,6 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
-#include <ecs/logic/physics_system.h>
-#include <ecs/logic/render_system.h>
-#include <ecs/logic/post_process_system.h>
-#include <ecs/logic/geometry_system.h>
-#include <ecs/logic/audio_system.h>
-#include <ecs/logic/particle_system.h>
-#include <ecs/logic/animation_system.h>
-#include <ecs/logic/scriptable_system.h>
-#include <ecs/logic/skybox_render_system.h>
-#include <ecs/logic/ui_render_system.h>
-#include <ecs/logic/video_system.h>
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>
 #include <render/logic/post_process_pipeline.h>
@@ -86,7 +75,7 @@ void Application::Shutdown()
 
     if (m_SystemManager)
     {
-        m_SystemManager->GetSystem<PhysicsSystem>()->Reset();
+        if (auto* phys = m_SystemManager->GetSystem("PhysicsSystem")) phys->Reset();
         m_SystemManager->Shutdown();
     }
 
@@ -332,5 +321,5 @@ void Application::OnMouseButton(int button, int action, int mods) { m_IOHandler-
 void Application::OnScroll(double xoffset, double yoffset) { m_IOHandler->OnScroll(xoffset, yoffset); }
 
 PostProcessPipeline& Application::GetPostProcess() { 
-    return ServiceLocator::Instance().Require<SystemManager>().GetSystem<PostProcessSystem>()->GetPipeline(); 
+    return ServiceLocator::Instance().Require<PostProcessPipeline>(); 
 }

@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <sstream>
 #include <intrin.h>
+#include <core/app/runtime_core.h>
 
 #ifdef _WIN32
 #include <dxgi.h>
@@ -120,13 +121,18 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
         if (!shift) {
+            auto& core = ServiceLocator::Instance().Require<RuntimeCore>();
+            bool paused = core.GetStateMachine().GetCurrentState() == nullptr; // Simplistic check or just track it
+            // Actually, wait, EngineLoop handles pausing. Let's use TimeService to check if paused, and pass to core and timeservice.
             auto& timer = ServiceLocator::Instance().Require<TimeService>();
-            bool paused = !timer.IsPaused();
-            timer.SetPaused(paused);
+            bool nextPause = !timer.IsPaused();
+            core.SetPaused(nextPause);
+            
             std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
-            std::cout << "[Debug] Game Paused: " << (paused ? "YES" : "NO") << "\n";
+            std::cout << "[Debug] Game Paused: " << (nextPause ? "YES" : "NO") << "\n";
             std::cout << "======================================" << std::endl;
         } });
+
 
     ProcessKey(keyboard, Key::F12, m_F12Pressed, [this, &keyboard]()
                {
@@ -157,6 +163,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
         else
         {
             auto& timer = ServiceLocator::Instance().Require<TimeService>();
+            auto& core = ServiceLocator::Instance().Require<RuntimeCore>();
             float current = timer.GetTimeScale();
             float next = 1.0f;
             if (abs(current - 0.25f) < 0.01f) next = 0.5f;
@@ -166,7 +173,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
             else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
             else next = 1.0f;
 
-            timer.SetTimeScale(next);
+            core.SetTimeScale(next);
             std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
             std::cout << "[Debug] Time Scale: " << next << "x" << "\n";
             std::cout << "======================================" << std::endl;

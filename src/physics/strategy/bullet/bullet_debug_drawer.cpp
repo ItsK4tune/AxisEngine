@@ -70,6 +70,10 @@ void BulletDebugDrawer::Initialize()
 void BulletDebugDrawer::FrameStart()
 {
     m_Lines.clear();
+    if (m_VAO == 0 && s_BufferManager)
+    {
+        Initialize();
+    }
 }
 
 void BulletDebugDrawer::Flush()

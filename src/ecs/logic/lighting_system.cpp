@@ -107,26 +107,29 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     if (!m_DeferredLightShader) return;
 
     auto& context = *m_GraphicsContext;
-    auto& tm = context.GetTextureManager();
     auto& rsm = context.GetRenderStateManager();
     auto& dc = context.GetDrawContext();
     auto& rtm = context.GetRenderTargetManager();
     auto& bm = context.GetBufferManager();
 
-    auto* geoSys = m_GeoService;
-    if (!geoSys) return;
-    auto& gBuffer = geoSys->GetGBuffer();
-
-    auto* shadowSys = m_ShadowService;
+    // Clear main FBO before lighting pass if needed, though we usually overwrite
     auto* rs = m_RenderService;
     uint32_t mainFBO = rs ? rs->GetMainFBO() : 0;
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
+    // rtm.Clear(BufferBit::Color); // Usually not needed as we fill fragments
 
+    auto& tm = context.GetTextureManager();
+    auto* geoSys = m_GeoService;
+    auto* shadowSys = m_ShadowService;
+    if (!geoSys) return;
+    auto& gBuffer = geoSys->GetGBuffer();
 
     rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, gBuffer.GetFBO());
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, mainFBO);
     rtm.BlitFramebuffer(0, 0, gBuffer.GetScaledWidth(), gBuffer.GetScaledHeight(), 0, 0, width, height, BufferBit::Depth, TextureFilter::Nearest);
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
+    
+    context.SetViewport(0, 0, width, height);
 
     rsm.SetViewport(0, 0, width, height);
     rsm.Disable(ServerCapability::DepthTest);
@@ -170,6 +173,10 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     tm.BindTexture(TextureType::Texture2D, gBuffer.GetPBRParamsTexture());
     m_DeferredLightShader->setInt("gPBRParams", 5);
 
+    tm.ActiveTexture(TextureUnit::Texture6);
+    tm.BindTexture(TextureType::Texture2D, gBuffer.GetDepthTexture());
+    m_DeferredLightShader->setInt("gDepth", 6);
+
     if (shadowSys) {
         bool enableShadows = shadowSys->GetRenderer().IsShadowsEnabled();
         if (enableShadows) {
@@ -182,40 +189,49 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         }
     }
 
-    // Bind nearest reflection probe
+    // Bind nearest reflection probes (Up to 4)
+    struct ProbeEntry {
+        entt::entity entity;
+        float distSq;
+        glm::vec3 pos;
+    };
+    std::vector<ProbeEntry> probes;
     auto reflectionView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
-    entt::entity nearestProbe = entt::null;
-    float minDistanceSq = std::numeric_limits<float>::max();
-    glm::vec3 camPos = ServiceLocator::Instance().Require<IRenderService>().GetCameraPosition();
+    glm::vec3 camPos = rs->GetCameraPosition();
 
     for (auto entity : reflectionView) {
         auto& pos = reflectionView.get<PositionComponent>(entity).value;
-        float distSq = glm::distance2(pos, camPos);
-        if (distSq < minDistanceSq) {
-            minDistanceSq = distSq;
-            nearestProbe = entity;
-        }
+        probes.push_back({entity, glm::distance2(pos, camPos), pos});
     }
 
-    if (nearestProbe != entt::null) {
-        auto& probe = reflectionView.get<ReflectionProbeComponent>(nearestProbe);
-        auto& pos = reflectionView.get<PositionComponent>(nearestProbe).value;
-        
-        tm.ActiveTexture(TextureUnit::Texture15);
+    std::sort(probes.begin(), probes.end(), [](const ProbeEntry& a, const ProbeEntry& b) {
+        if (std::abs(a.distSq - b.distSq) < 0.0001f)
+            return a.entity < b.entity;
+        return a.distSq < b.distSq;
+    });
+
+    int probeCount = std::min((int)probes.size(), 4);
+    m_DeferredLightShader->setInt("u_ProbeCount", probeCount);
+
+    for (int i = 0; i < probeCount; ++i) {
+        auto entity = probes[i].entity;
+        auto& probe = reflectionView.get<ReflectionProbeComponent>(entity);
+        auto& pos = probes[i].pos;
+
+        tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture15) + i));
         tm.BindTexture(TextureType::TextureCubeMap, probe.cubemapID);
-        m_DeferredLightShader->setInt("reflectionProbe", 15);
-        m_DeferredLightShader->setVec3("u_ProbePos", pos);
-        m_DeferredLightShader->setVec3("u_ProbeBoxMin", pos + probe.boxMin);
-        m_DeferredLightShader->setVec3("u_ProbeBoxMax", pos + probe.boxMax);
-        m_DeferredLightShader->setBool("u_HasProbe", true);
-    } else {
-        m_DeferredLightShader->setBool("u_HasProbe", false);
+        
+        std::string base = "u_Probes[" + std::to_string(i) + "].";
+        m_DeferredLightShader->setInt("reflectionProbes[" + std::to_string(i) + "]", 15 + i);
+        m_DeferredLightShader->setVec3(base + "pos", pos);
+        m_DeferredLightShader->setVec3(base + "boxMin", pos + probe.boxMin);
+        m_DeferredLightShader->setVec3(base + "boxMax", pos + probe.boxMax);
     }
 
     // Bind nearest light probe
     auto lpView = scene.registry.view<PositionComponent, LightProbeComponent>();
     entt::entity nearestLP = entt::null;
-    minDistanceSq = std::numeric_limits<float>::max();
+    float minDistanceSq = std::numeric_limits<float>::max();
 
     for (auto entity : lpView) {
         auto& pos = lpView.get<PositionComponent>(entity).value;

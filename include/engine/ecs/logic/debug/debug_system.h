@@ -41,7 +41,7 @@ public:
     void Update(Scene& scene, float dt) override { OnUpdate(dt); }
     void OnUpdate(float dt);
     
-    SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::RenderUI | SystemCategory::Update; }
+    SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::RenderUI | SystemCategory::Update; }
 
     void Render(Scene& scene) override;
     void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) override;
@@ -49,7 +49,7 @@ public:
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
     std::string GetName() const override { return "DebugSystem"; }
-    int GetPriority() const override { return 1000; }
+    int GetPriority() const override { return -1; }
  
     std::vector<entt::id_type> GetReadComponents() const override { return {}; }
     std::vector<entt::id_type> GetWriteComponents() const override { return {}; }

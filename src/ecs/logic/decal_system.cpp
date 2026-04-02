@@ -248,6 +248,8 @@ void DecalSystem::Render(Scene &scene)
                           glm::mat4_cast(rotation) *
                           glm::scale(glm::mat4(1.0f), scale);
         
+        if (!isDeferred) model = glm::scale(model, glm::vec3(0.5f));
+        
         activeShader->setMat4("model", model);
         activeShader->setMat4("u_Model", model);
         activeShader->setMat4("invModel", glm::inverse(model));

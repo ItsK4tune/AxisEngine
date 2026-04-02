@@ -76,7 +76,7 @@ struct MaterialUniformLocations {
 class MaterialRenderer {
 public:
     void Initialize(IGraphicsContext& context, unsigned int whiteTextureId, unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
-    bool SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, bool debugNoTexture, bool isWireframe = false);
+    bool SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, const glm::vec4& tintColor, bool debugNoTexture = false, bool isWireframe = false);
 
     static void InvalidateSkyboxCache() {
         std::lock_guard<std::mutex> lock(s_SkyboxMutex);

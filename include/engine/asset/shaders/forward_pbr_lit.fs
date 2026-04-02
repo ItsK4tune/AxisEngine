@@ -1,7 +1,6 @@
 #version 430 core
 out vec4 FragColor;
 
-
 layout (binding = 0) uniform sampler2D u_AlbedoMap;
 layout (binding = 1) uniform sampler2D u_NormalMap;
 layout (binding = 2) uniform sampler2D u_MetallicMap;
@@ -9,19 +8,19 @@ layout (binding = 3) uniform sampler2D u_RoughnessMap;
 layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
-layout (binding = 6) uniform samplerCube irradianceMap;
-layout (binding = 7) uniform samplerCube prefilterMap;
-layout (binding = 8) uniform sampler2D brdfLUT;
-
 layout(std140, binding = 20) uniform CameraData {
     mat4 projection;
     mat4 view;
-    vec3 viewPos;
+    vec4 viewPos;
+    mat4 invProjection;
+    mat4 invView;
+    mat4 stableProjection;
+    mat4 invStableProjection;
 } camera;
 
 layout(std140, binding = 21) uniform LightData {
-    mat4 lightSpaceMatricesDir[2];
-    mat4 lightSpaceMatricesSpot[2];
+    mat4 lightSpaceMatricesDir[16];
+    mat4 lightSpaceMatricesSpot[16];
     int numDirLights;
     int nrPointLights;
     int nrSpotLights;
@@ -70,7 +69,7 @@ uniform float u_Roughness;
 uniform float u_Metallic;
 uniform float u_AO;
 uniform vec3 u_Emission;
-uniform vec4 u_BaseColor; // rgb: tint, a: opacity
+uniform vec4 u_BaseColor;
 uniform bool debug_noTexture;
 
 const float PI = 3.14159265359;
@@ -79,7 +78,6 @@ float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
 
 void main()
 {
@@ -101,8 +99,7 @@ void main()
     }
 
     vec3 N = normalize(Normal);
-    vec3 V = normalize(camera.viewPos - FragPos);
-    vec3 R = reflect(-V, N);
+    vec3 V = normalize(camera.viewPos.xyz - FragPos);
 
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
@@ -137,20 +134,10 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
     }
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-    vec3 kS = F;
-    vec3 kD = (1.0 - kS) * (1.0 - metallic);
-    vec3 irradiance = texture(irradianceMap, N).rgb;
-    vec3 diffuse    = irradiance * albedo;
-    vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * 4.0).rgb;
-    vec2 envBRDF  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-
-    vec3 ambient = (kD * diffuse + specular) * ao;
+    vec3 ambient = albedo * 0.03 * ao;
     vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, TexCoords).rgb, vec3(2.2));
     FragColor = vec4(ambient + Lo + emissive, u_BaseColor.a);
 }
-
 
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness*roughness; float a2 = a*a;
@@ -168,6 +155,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
+
+
+
+

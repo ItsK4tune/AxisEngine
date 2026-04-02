@@ -46,6 +46,7 @@ public:
     static void LoadPostProcess(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadReflective(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadReflectionProbe(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
+    static void LoadFragment(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadTransform(Scene &scene, entt::entity entity, const YAMLNode &node);
 
     static void InitializeDefaultLoaders();

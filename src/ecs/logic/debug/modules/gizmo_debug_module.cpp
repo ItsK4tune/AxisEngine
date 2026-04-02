@@ -78,7 +78,7 @@ void GizmoDebugModule::Render(Scene &scene)
     int width = io->GetMonitorManager().GetWidth();
     int height = io->GetMonitorManager().GetHeight();
 
-    auto debugShader = resources->GetShader("debugLine");
+    auto debugShader = resources->GetShader("debug_line");
     if (!debugShader) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);

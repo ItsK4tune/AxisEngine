@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/logic/cached_query.h>
@@ -10,12 +12,11 @@ struct Scene;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
 class PhysicsTransformSync
 {
 public:
     PhysicsTransformSync(Scene& scene, IPhysicsWorld& physics);
-    ~PhysicsTransformSync();
+    ~PhysicsTransformSync() = default;
 
     void Initialize();
     void SyncToPhysics();
@@ -27,14 +28,9 @@ public:
 private:
     void OnComponentChanged(entt::registry& registry, entt::entity entity);
 
-    glm::mat4 GetCachedWorldMatrix(entt::entity entity);
-
     Scene& m_Scene;
     IPhysicsWorld& m_Physics;
 
-    CachedQuery<RigidBodyComponent, WorldTransformComponent> m_simulationQuery;
-    CachedQuery<CharacterControllerComponent, WorldTransformComponent> m_ccQuery;
-    std::unordered_map<entt::entity, glm::mat4> m_worldMatrixCache;
+    CachedQuery<RigidBodyComponent, PositionComponent, RotationComponent, WorldTransformComponent> m_simulationQuery;
     std::unordered_map<entt::entity, uint32_t> m_LastSyncedVersions;
-    bool m_initialized = false;
 };

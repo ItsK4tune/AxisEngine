@@ -347,8 +347,11 @@ struct GpuHandle {
 struct GPUCameraData {
     float projection[16];
     float view[16];
-    float viewPos[3];
-    float pad0;
+    float viewPos[4];
+    float invProjection[16];
+    float invView[16];
+    float stableProjection[16];
+    float invStableProjection[16];
 };
 
 struct GPUGlobalLightData {

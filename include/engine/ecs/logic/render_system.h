@@ -5,7 +5,6 @@
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_update_system.h>
-#include <ecs/interface/i_ecs_system.h>
 #include <core/type/app_config.h>
 
 #include <ecs/unit/render_components.h>
@@ -167,6 +166,7 @@ private:
     std::shared_ptr<Shader> m_UnlitShader;
     std::shared_ptr<Shader> m_DeferredLitShader;
     std::shared_ptr<Shader> m_DeferredUnlitShader;
+    std::shared_ptr<Shader> m_ForwardPBRLitShader;
     std::shared_ptr<Shader> m_ErrorForwardShader;
     std::shared_ptr<Shader> m_ErrorDeferredShader;
 

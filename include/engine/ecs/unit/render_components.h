@@ -10,8 +10,6 @@
 #include <resource/unit/shader.h>
 #include <render/unit/skybox.h>
 
-
-
 struct MeshRendererComponent
 {
     std::shared_ptr<Model> model = nullptr;
@@ -21,7 +19,6 @@ struct MeshRendererComponent
     bool receiveShadow = true;
     glm::vec4 color = glm::vec4(1.0f);
 };
-
 
 
 enum class AxisMaterialType
@@ -79,8 +76,6 @@ struct AxisMaterialComponent
     AxisMaterialGPUState gpu;
 };
 
-
-
 struct SkyboxRenderComponent
 {
     std::shared_ptr<Skybox> skybox = nullptr;
@@ -93,23 +88,17 @@ struct SkyboxRenderComponent
     uint32_t brdfLUT = 0;
 };
 
-
-
 struct LODComponent
 {
     std::vector<std::shared_ptr<Model>> lodModels;
     std::vector<float> lodDistancesSq;
 };
 
-
-
 struct OcclusionComponent {
     uint32_t lastQueryId = 0;
     bool isVisible = true;
     bool queryPending = false;
 };
-
-
 
 struct StreamingComponent
 {

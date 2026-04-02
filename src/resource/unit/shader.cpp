@@ -122,15 +122,16 @@ void Shader::use()
             fallback = sm.Get("Internal_Error_Shader");
         }
 
-        if (fallback && fallback.get() != this) {
+        if (fallback && fallback.get() != this && !fallback->m_IsError) {
             fallback->use();
             return;
         }
     }
-    m_ShaderManager.UseProgram(ID);
+
+    if (ID != 0) {
+        m_ShaderManager.UseProgram(ID);
+    }
 }
-
-
 
 void Shader::setBool(const std::string &name, bool value) const
 {

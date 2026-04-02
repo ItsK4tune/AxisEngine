@@ -8,174 +8,107 @@
 #include <core/logic/logger.h>
 #include <core/logic/loader_utils.h>
 
+void PhysicsLoader::LoadRigidShape(Scene &scene, entt::entity entity, const YAMLNode &node, IPhysicsWorld &physics)
+{
+    LoaderUtils::ValidateKeys(node, {"Type", "Size", "Radius", "Height", "Offset", "Rotation", "Friction", "Restitution", "Shapes"}, "RigidShape");
+
+    auto &rs = scene.registry.get_or_emplace<RigidShapeComponent>(entity);
+    rs.type = node.GetChildValue("Type", "BOX");
+    
+    if (!node.GetChildValue("Size").empty()) {
+        std::stringstream ss(node.GetChildValue("Size"));
+        ss >> rs.size.x >> rs.size.y >> rs.size.z;
+    }
+    rs.radius = std::stof(node.GetChildValue("Radius", "0.5"));
+    rs.height = std::stof(node.GetChildValue("Height", "1.0"));
+    
+    if (!node.GetChildValue("Offset").empty()) {
+        std::stringstream ss(node.GetChildValue("Offset"));
+        ss >> rs.offset.x >> rs.offset.y >> rs.offset.z;
+    }
+    if (!node.GetChildValue("Rotation").empty()) {
+        std::stringstream ss(node.GetChildValue("Rotation"));
+        float rx, ry, rz; ss >> rx >> ry >> rz;
+        rs.rotation = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
+    }
+
+    rs.friction = std::stof(node.GetChildValue("Friction", "0.5"));
+    rs.restitution = std::stof(node.GetChildValue("Restitution", "0.0"));
+
+    if (auto* shapesNode = const_cast<YAMLNode*>(&node)->GetChild("Shapes")) {
+        for (auto& shapeNode : shapesNode->children) {
+            if (shapeNode.key != "Shape") continue;
+            RigidShapeComponent::ChildShape child;
+            child.type = shapeNode.GetChildValue("Type", "BOX");
+            
+            std::stringstream posSS(shapeNode.GetChildValue("Position", "0 0 0"));
+            posSS >> child.position.x >> child.position.y >> child.position.z;
+            
+            std::stringstream rotSS(shapeNode.GetChildValue("Rotation", "0 0 0"));
+            float rrx, rry, rrz; rotSS >> rrx >> rry >> rrz;
+            child.rotation = glm::quat(glm::radians(glm::vec3(rrx, rry, rrz)));
+
+            std::stringstream szSS(shapeNode.GetChildValue("Size", "1 1 1"));
+            szSS >> child.size.x >> child.size.y >> child.size.z;
+            
+            child.radius = std::stof(shapeNode.GetChildValue("Radius", "0.5"));
+            child.height = std::stof(shapeNode.GetChildValue("Height", "1.0"));
+            
+            rs.children.push_back(child);
+        }
+    }
+}
+
 void PhysicsLoader::LoadRigidBody(Scene &scene, entt::entity entity, const YAMLNode &node, IPhysicsWorld &physics)
 {
-    LoaderUtils::ValidateKeys(node, {"Type", "Mass", "Size", "Radius", "Height", "Offset", "Rotation", "Restitution", "AngularFactor", "LinearFactor", "BodyType", "Shapes"}, "RigidBody");
+    LoaderUtils::ValidateKeys(node, {"Mass", "BodyType", "LinearFactor", "AngularFactor", "LinearDamping", "AngularDamping", "LinearVelocity", "AngularVelocity", "AttachToParent", "ParentMatter", "ChildrenMatter", "CollisionEnabled", "Type", "Size", "Radius", "Height", "Offset", "Rotation", "Restitution", "Friction", "Shapes"}, "RigidBody");
 
-    std::string type = node.GetChildValue("Type", "BOX");
-    float mass = std::stof(node.GetChildValue("Mass", "1.0"));
-    if (mass < 0.0f) LOGGER_WARN("PhysicsLoader") << "RigidBody Mass should not be negative: " << mass;
-
-    auto &pos = scene.registry.get<PositionComponent>(entity);
-    auto &rot = scene.registry.get<RotationComponent>(entity);
-    auto &rb = scene.registry.emplace<RigidBodyComponent>(entity);
-
-    std::shared_ptr<ICollisionShape> finalShape = nullptr;
-
-    if (type == "COMPOUND")
-    {
-        auto compound = physics.CreateCompoundShape();
-        if (auto* shapesNode = const_cast<YAMLNode*>(&node)->GetChild("Shapes"))
-        {
-            for (auto& shapeNode : shapesNode->children)
-            {
-                if (shapeNode.key != "Shape") continue;
-                
-                std::string shapeType = shapeNode.GetChildValue("Type", "BOX");
-                
-                std::stringstream posSS(shapeNode.GetChildValue("Position", "0 0 0"));
-                float lx, ly, lz; posSS >> lx >> ly >> lz;
-                glm::vec3 localPos(lx, ly, lz);
-                
-                std::stringstream rotSS(shapeNode.GetChildValue("Rotation", "0 0 0"));
-                float lrx, lry, lrz; rotSS >> lrx >> lry >> lrz;
-                glm::quat localRot = glm::quat(glm::vec3(glm::radians(lrx), glm::radians(lry), glm::radians(lrz)));
-
-                std::shared_ptr<ICollisionShape> childShape = nullptr;
-
-                if (shapeType == "BOX")
-                {
-                    std::stringstream szSS(shapeNode.GetChildValue("Size", "1 1 1"));
-                    float x, y, z; szSS >> x >> y >> z;
-                    childShape = physics.CreateBoxShape(glm::vec3(x, y, z));
-                }
-                else if (shapeType == "SPHERE")
-                {
-                    float r = std::stof(shapeNode.GetChildValue("Radius", "1.0"));
-                    childShape = physics.CreateSphereShape(r);
-                }
-                else if (shapeType == "CAPSULE")
-                {
-                    float r = std::stof(shapeNode.GetChildValue("Radius", "0.5"));
-                    float h = std::stof(shapeNode.GetChildValue("Height", "1.0"));
-                    childShape = physics.CreateCapsuleShape(r, h);
-                }
-
-                if (childShape)
-                {
-                    physics.AddChildShape(compound, childShape, localPos, localRot);
-                }
-            }
-        }
-        finalShape = compound;
-    }
-    else if (type == "CAPSULE")
-    {
-        float r = std::stof(node.GetChildValue("Radius", "0.5"));
-        float h = std::stof(node.GetChildValue("Height", "1.0"));
-        finalShape = physics.CreateCapsuleShape(r, h);
-    }
-    else if (type == "BOX")
-    {
-        std::stringstream szSS(node.GetChildValue("Size", "1 1 1"));
-        float x, y, z; szSS >> x >> y >> z;
-        finalShape = physics.CreateBoxShape(glm::vec3(x, y, z));
+    // Check if we are loading the "unified" legacy format or just the dynamic part
+    bool isLegacy = !node.GetChildValue("Type").empty();
+    if (isLegacy) {
+        LoadRigidShape(scene, entity, node, physics);
     }
 
-    glm::vec3 centerOffset(0.0f);
-    if (!node.GetChildValue("Offset").empty()) {
-        std::stringstream offSS(node.GetChildValue("Offset"));
-        float ox, oy, oz; offSS >> ox >> oy >> oz;
-        centerOffset = glm::vec3(ox, oy, oz);
-    }
-
-    float restitution = std::stof(node.GetChildValue("Restitution", "0.0"));
+    auto &rb = scene.registry.get_or_emplace<RigidBodyComponent>(entity);
+    rb.mass = std::stof(node.GetChildValue("Mass", "1.0"));
     
-    bool hasRotFactor = false;
-    if (!node.GetChildValue("AngularFactor").empty()) {
-        std::stringstream angSS(node.GetChildValue("AngularFactor"));
-        float x, y, z; angSS >> x >> y >> z;
-        rb.angularFactor = glm::vec3(x, y, z);
-        hasRotFactor = true;
-    }
-    
-    bool hasPosFactor = false;
-    if (!node.GetChildValue("LinearFactor").empty()) {
-        std::stringstream linSS(node.GetChildValue("LinearFactor"));
-        float x, y, z; linSS >> x >> y >> z;
-        rb.linearFactor = glm::vec3(x, y, z);
-        hasPosFactor = true;
-    }
-
-    rb.isParentMatter = node.GetChildValue("ParentMatter", "false") == "true" || node.GetChildValue("ParentMatter", "0") == "1";
-    rb.isChildrenMatter = node.GetChildValue("ChildrenMatter", "false") == "true" || node.GetChildValue("ChildrenMatter", "0") == "1";
-    rb.isAttachedToParent = node.GetChildValue("AttachToParent", "false") == "true" || node.GetChildValue("AttachToParent", "0") == "1";
-
     std::string bodyType = node.GetChildValue("BodyType", "UNKNOWN");
+    if (bodyType == "STATIC") { rb.isStatic = true; rb.mass = 0.0f; }
+    else if (bodyType == "KINEMATIC") { rb.isKinematic = true; rb.mass = 0.0f; }
+    else if (bodyType == "DYNAMIC" || (bodyType == "UNKNOWN" && rb.mass > 0.0f)) { rb.isStatic = false; }
+    else if (bodyType == "UNKNOWN" && rb.mass <= 0.0f) { rb.isStatic = true; }
 
-    if (finalShape && glm::length(centerOffset) > 0.001f)
-    {
-        auto compound = physics.CreateCompoundShape();
-        physics.AddChildShape(compound, finalShape, centerOffset, glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        finalShape = compound;
+    if (!node.GetChildValue("LinearFactor").empty()) {
+        std::stringstream ss(node.GetChildValue("LinearFactor"));
+        ss >> rb.linearFactor.x >> rb.linearFactor.y >> rb.linearFactor.z;
+    }
+    if (!node.GetChildValue("AngularFactor").empty()) {
+        std::stringstream ss(node.GetChildValue("AngularFactor"));
+        ss >> rb.angularFactor.x >> rb.angularFactor.y >> rb.angularFactor.z;
+    }
+    
+    rb.linearDamping = std::stof(node.GetChildValue("LinearDamping", "0.0"));
+    rb.angularDamping = std::stof(node.GetChildValue("AngularDamping", "0.0"));
+
+    rb.isAttachedToParent = node.GetChildValue("AttachToParent", "false") == "true";
+    rb.isParentMatter = node.GetChildValue("ParentMatter", "false") == "true";
+    rb.isChildrenMatter = node.GetChildValue("ChildrenMatter", "false") == "true";
+    rb.isCollisionEnabled = node.GetChildValue("CollisionEnabled", "true") == "true";
+
+    // Initial velocities if any
+    glm::vec3 linVel(0.0f), angVel(0.0f);
+    if (!node.GetChildValue("LinearVelocity").empty()) {
+        std::stringstream ss(node.GetChildValue("LinearVelocity"));
+        ss >> linVel.x >> linVel.y >> linVel.z;
+    }
+    if (!node.GetChildValue("AngularVelocity").empty()) {
+        std::stringstream ss(node.GetChildValue("AngularVelocity"));
+        ss >> angVel.x >> angVel.y >> angVel.z;
     }
 
-    if (finalShape)
-    {
-        if (bodyType == "UNKNOWN")
-        {
-            if (mass > 0.0f) bodyType = "DYNAMIC";
-            else bodyType = "STATIC";
-        }
-
-        if (bodyType == "STATIC" || bodyType == "KINEMATIC") mass = 0.0f;
-
-        rb.body = physics.CreateRigidBody(mass, pos.value, rot.value, finalShape);
-
-        if (rb.body)
-        {
-            if (bodyType == "KINEMATIC") rb.body->SetKinematic(true);
-            rb.body->SetUserPointer((void *)(uintptr_t)entity);
-
-            if (type == "CAPSULE" || type == "PLAYER")
-            {
-                 if (!hasRotFactor) rb.angularFactor = glm::vec3(0, 1, 0);
-            }
-
-            rb.body->SetAngularFactor(rb.angularFactor);
-            rb.body->SetLinearFactor(rb.linearFactor);
-
-            if (restitution > 0.0f) rb.body->SetRestitution(restitution);
-
-            if (!node.GetChildValue("Friction").empty()) {
-                rb.body->SetFriction(std::stof(node.GetChildValue("Friction")));
-            }
-
-            float linDamping = std::stof(node.GetChildValue("LinearDamping", "0.0"));
-            float angDamping = std::stof(node.GetChildValue("AngularDamping", "0.0"));
-            if (linDamping > 0.0f || angDamping > 0.0f) {
-                rb.body->SetDamping(linDamping, angDamping);
-            }
-
-            if (!node.GetChildValue("Rotation").empty()) {
-                std::stringstream rotSS(node.GetChildValue("Rotation"));
-                float rx, ry, rz; rotSS >> rx >> ry >> rz;
-                rb.rotationOffset = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
-
-
-            }
-
-            if (!node.GetChildValue("Offset").empty()) {
-                std::stringstream offSS(node.GetChildValue("Offset"));
-                float ox, oy, oz; offSS >> ox >> oy >> oz;
-                rb.positionOffset = glm::vec3(ox, oy, oz);
-
-
-            }
-
-            physics.AddRigidBody(rb.body.get());
-        }
-    }
+    // We don't create the IRigidBody here anymore because it requires a Shape.
+    // The PhysicsSystem will handle IRigidBody creation when RigidShape and RigidBody are both present.
+    // Or if it's legacy, we could do it, but let's centralize it in the System for consistency.
 }
 
 void PhysicsLoader::LoadCharacterController(Scene &scene, entt::entity entity, const YAMLNode &node, IPhysicsWorld &physics)

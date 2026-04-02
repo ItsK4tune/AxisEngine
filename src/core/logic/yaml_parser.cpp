@@ -22,6 +22,54 @@ std::string YAMLNode::GetChildValue(const std::string &k, const std::string &def
     return defaultVal;
 }
 
+void YAMLNode::Merge(YAMLNode &base, const YAMLNode &override)
+{
+    for (const auto &overChild : override.children)
+    {
+        bool found = false;
+        for (auto &baseChild : base.children)
+        {
+            bool match = false;
+            // For components, we must match by value as well (the component name)
+            if (baseChild.key == overChild.key)
+            {
+                if (baseChild.key == "Component")
+                {
+                    if (baseChild.value == overChild.value)
+                    {
+                        match = true;
+                    }
+                }
+                else
+                {
+                    match = true;
+                }
+            }
+
+            if (match)
+            {
+                // Update value if provided (even if it has children)
+                if (!overChild.value.empty())
+                {
+                    baseChild.value = overChild.value;
+                }
+
+                if (!overChild.children.empty())
+                {
+                    Merge(baseChild, overChild);
+                }
+                
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            base.children.push_back(overChild);
+        }
+    }
+}
+
 namespace
 {
     YAMLNode *GetNodeAtPath(std::vector<YAMLNode> &roots, const std::vector<size_t> &path)
