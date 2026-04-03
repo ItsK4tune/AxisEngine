@@ -1,3 +1,4 @@
+#include <core/app/engine_accessor.h>
 #include <core/app/runtime_core.h>
 #include <core/type/app_config.h>
 #include <core/logic/config_loader.h>
@@ -5,16 +6,6 @@
 #include <ecs/logic/system_manager.h>
 #include <platform/logic/input_loader.h>
 #include <audio/logic/audio_service.h>
-#include <ecs/logic/animation_system.h>
-#include <ecs/logic/audio_system.h>
-#include <ecs/logic/particle_system.h>
-#include <ecs/logic/physics_system.h>
-#include <ecs/logic/render_system.h>
-#include <ecs/logic/scriptable_system.h>
-#include <ecs/logic/skybox_render_system.h>
-#include <ecs/logic/ui_render_system.h>
-#include <ecs/logic/video_system.h>
-#include <navigation/logic/navigation_system.h>
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
@@ -23,6 +14,29 @@
 #include <core/logic/event_system.h>
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
+
+// NOTE: Concrete ECS system headers are intentionally NOT included here.
+// Get*System() methods resolve via SystemManager::GetSystem<T>() which uses
+// a type_index cache populated at registration time. This eliminates the
+// Layer 2 (Core) → Layer 4 (ECS Systems) reverse dependency.
+
+// --- Forward-declared concrete system getters ---
+// These still return concrete types for backward compatibility with game code,
+// but the include dependency has been moved to the call site (game code).
+// Engine code should use Get<InterfaceType>() instead.
+
+// Include concrete system headers here so GetSystem<T>() template can resolve.
+// This is still in .cpp (not .h), so the header dependency is not leaked.
+#include <ecs/logic/render_system.h>
+#include <ecs/logic/physics_system.h>
+#include <ecs/logic/audio_system.h>
+#include <ecs/logic/ui_render_system.h>
+#include <ecs/logic/scriptable_system.h>
+#include <ecs/logic/particle_system.h>
+#include <ecs/logic/skybox_render_system.h>
+#include <ecs/logic/animation_system.h>
+#include <ecs/logic/video_system.h>
+#include <navigation/logic/navigation_system.h>
 
 RenderSystem&       EngineAccessor::GetRenderSystem() const       { return GetSystem<RenderSystem>(); }
 PhysicsSystem&      EngineAccessor::GetPhysicsSystem() const      { return GetSystem<PhysicsSystem>(); }
@@ -59,16 +73,12 @@ void EngineAccessor::QueuePopScene()                       { ServiceLocator::Ins
 std::vector<const SceneRecord*> EngineAccessor::GetScenes(){ return ServiceLocator::Instance().Require<SceneManager>().GetScenes(); }
 void EngineAccessor::SetCursorMode(CursorMode mode) { ServiceLocator::Instance().Require<IOHandler>().GetMouse().SetCursorMode(mode); }
 
-void EngineAccessor::EnablePhysics(bool e)    { GetPhysicsSystem().SetEnabled(e); }
-void EngineAccessor::EnableRender(bool e)    { GetRenderSystem().SetEnabled(e); }
-void EngineAccessor::EnableAudio(bool e)    { GetAudioSystem().SetEnabled(e); }
-void EngineAccessor::EnableScript(bool e)    { GetScriptSystem().SetEnabled(e); }
-void EngineAccessor::EnableAnimation(bool e)    { GetAnimationSystem().SetEnabled(e); }
-void EngineAccessor::EnableVideo(bool e)    { GetVideoSystem().SetEnabled(e); }
-void EngineAccessor::EnableUIRender(bool e)    { GetUIRenderSystem().SetEnabled(e); }
-void EngineAccessor::EnableParticle(bool e)    { GetParticleSystem().SetEnabled(e); }
-void EngineAccessor::EnableSkybox(bool e)    { GetSkyboxRenderSystem().SetEnabled(e); }
-void EngineAccessor::EnableNavigation(bool e) { GetNavigationSystem().SetEnabled(e); }
+void EngineAccessor::EnableSystem(const std::string& systemName, bool enable) {
+    auto& sm = Get<SystemManager>();
+    if (auto* sys = sm.GetSystem(systemName)) {
+        sys->SetEnabled(enable);
+    }
+}
 
 void EngineAccessor::EnableLogic(bool enable)
 {

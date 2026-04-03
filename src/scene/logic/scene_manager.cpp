@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <audio/logic/audio_service.h>
 #include <core/logic/config_manager.h>
+#include <physics/interface/i_physics_world.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
 #include <scene/type/scene_events.h>

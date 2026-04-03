@@ -12,6 +12,11 @@ class Shader;
 struct Scene;
 struct RenderItem;
 
+#include <ecs/interface/i_camera_service.h>
+#include <ecs/interface/i_render_state_service.h>
+#include <ecs/interface/i_render_queue_service.h>
+#include <ecs/interface/i_ibl_service.h>
+
 enum class AntiAliasingMode
 {
     NONE = 0,
@@ -19,57 +24,20 @@ enum class AntiAliasingMode
     TAA = 2
 };
 
-
-class IRenderService : virtual public IBaseSystem
+class IRenderService : virtual public IBaseSystem,
+                       public ICameraService,
+                       public IRenderStateService,
+                       public IRenderQueueService,
+                       public IIBLService
 {
 public:
     virtual ~IRenderService() = default;
     
-    virtual int GetRenderedCount() const = 0;
-    virtual uint32_t GetMainFBO() const = 0;
-    virtual void SetMainFBO(uint32_t fbo) = 0;
-    
-    virtual StaticBatchManager& GetBatchManager() = 0;
-    virtual RenderQueue& GetRenderQueueObj() = 0;
-    
-    virtual unsigned int GetWhiteTexture() const = 0;
-    virtual unsigned int GetBlackTexture() const = 0;
-    virtual unsigned int GetFlatNormalTexture() const = 0;
-    
-    virtual void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0) = 0;
-    virtual void BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float lodFactor = 1.0f, int width = 800, int height = 600, uint32_t cullingMask = 0xFFFFFFFF, bool isCapturingProbe = false, entt::entity excludeEntity = (entt::entity)0xFFFFFFFF) = 0;
-    virtual void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) = 0;
-    
-    virtual void AddRenderedCount(int count) = 0;
-    virtual AntiAliasingMode GetAntiAliasingMode() const = 0;
-    virtual void SetAntiAliasingMode(AntiAliasingMode mode) = 0;
-    virtual glm::mat4 GetPrevViewProj() const = 0;
-    virtual glm::mat4 GetCurrViewProj() const = 0;
-    virtual glm::vec2 GetJitterOffset() const = 0;
-    
-    virtual glm::vec3 GetCameraPosition() const = 0;
-    virtual glm::mat4 GetViewMatrix() const = 0;
-    virtual glm::mat4 GetProjectionMatrix() const = 0;
-    virtual float GetNearPlane() const = 0;
-    virtual float GetFarPlane() const = 0;
-    
-    virtual unsigned int GetIrradianceMap() const = 0;
-    virtual unsigned int GetPrefilterMap() const = 0;
-    virtual unsigned int GetBrdfLUT() const = 0;
-    
-    virtual bool IsDebugNoTexture() const = 0;
-    virtual void SetDebugNoTexture(bool enable) = 0;
-    
-    virtual bool IsWireframe() const = 0;
-    virtual void SetWireframe(bool enable) = 0;
-    
-    virtual bool IsOcclusionCullingEnabled() const = 0;
-    virtual void SetOcclusionCulling(bool enable) = 0;
-    
-    virtual void UpdateGlobalLightData(const GPUGlobalLightData& data) = 0;
-    
-    virtual RenderPath GetRenderPath() const = 0;
-    
-    virtual void SubmitCommand(const struct RenderDrawCommand& cmd) = 0;
-    virtual void FlushCommands() = 0;
+    // All methods are now inherited from:
+    // - ICameraService (GetCameraPosition, GetViewMatrix, etc.)
+    // - IRenderStateService (GetAntiAliasingMode, IsWireframe, etc.)
+    // - IRenderQueueService (BuildRenderQueues, SubmitCommand, etc.)
+    // - IIBLService (GetIrradianceMap, etc.)
+    // This solves the Interface Segregation Principle violation 
+    // while backward compatibility is preserved.
 };

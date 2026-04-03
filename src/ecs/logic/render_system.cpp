@@ -48,6 +48,10 @@ void RenderSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<IRenderService>(this);
+    sl.Register<ICameraService>(this);
+    sl.Register<IRenderStateService>(this);
+    sl.Register<IRenderQueueService>(this);
+    sl.Register<IIBLService>(this);
     sl.Register<RenderSystem>(this);
     auto& context = sl.Require<IGraphicsContext>();
     auto& configManager = sl.Require<ConfigManager>();

@@ -1,14 +1,14 @@
 #pragma once
 
-#include <audio/logic/audio_service.h>
 #include <core/logic/config_loader.h>
 #include <memory>
-#include <physics/interface/i_physics_world.h>
-#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/type/scene_record.h>
 #include <string>
 #include <vector>
+
+class IPhysicsWorld;
+class ResourceManager;
 
 namespace entt { enum class entity : uint32_t; }
 

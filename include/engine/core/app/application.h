@@ -65,24 +65,8 @@ public:
     }
 
     Scene &GetScene();
-    IPhysicsWorld &GetPhysicsWorld();
-    IOHandler &GetIOHandler();
     RuntimeCore &GetRuntimeCore();
     StateMachine &GetStateMachine();
-    SystemManager &GetSystemManager();
-    ResourceManager &GetResourceManager();
-    SceneManager &GetSceneManager();
-    AudioService &GetAudioService();
-    MonitorManager &GetMonitorManager();
-    KeyboardManager &GetKeyboard() const;
-    MouseManager &GetMouse() const;
-    InputManager &GetInputManager() const;
-    IGraphicsContext &GetGraphicsContext() const;
-    IWindow *GetWindow() const;
-    int GetWidth() const;
-    int GetHeight() const;
-
-    PostProcessPipeline &GetPostProcess();
 
     float GetTimeScale() const;
     void SetTimeScale(float timeScale);

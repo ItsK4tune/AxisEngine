@@ -295,46 +295,6 @@ void PhysicsSystem::RenderDebug(Scene &scene, Shader &shader, int screenWidth, i
     renderState.Enable(ServerCapability::DepthTest);
 }
 
-RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, const glm::vec3 &direction, float distance)
-{
-    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    return physicsWorld ? physicsWorld->Raycast(origin, direction, distance) : RayHit{};
-}
-
-RayHit PhysicsSystem::Raycast(const glm::vec3 &start, const glm::vec3 &end)
-{
-    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    if (!physicsWorld) return {};
-
-    glm::vec3 dir = end - start;
-    float dist = glm::length(dir);
-    if (dist < 0.0001f) return {};
-
-    return physicsWorld->Raycast(start, glm::normalize(dir), dist);
-}
-
-RayHit PhysicsSystem::Raycast(const glm::vec3 &origin, float yaw, float pitch, float distance)
-{
-    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    return physicsWorld ? physicsWorld->Raycast(origin, RaycastUtils::AngleToDirection(yaw, pitch), distance) : RayHit{};
-}
-
-RayHit PhysicsSystem::RaycastFromScreen(const glm::vec2 &screenPos, float distance)
-{
-    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-    if (!physicsWorld || !m_LastScene) return {};
-
-    entt::entity camEntity = EntityManager::GetActiveCamera(*m_LastScene);
-    if (camEntity == entt::null) return {};
-
-    auto &camera = m_LastScene->registry.get<CameraComponent>(camEntity);
-    auto &monitorManager = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager();
-    glm::vec2 viewportSize(monitorManager.GetWidth(), monitorManager.GetHeight());
-
-    Ray ray = RaycastUtils::CalculateRay(screenPos, viewportSize, camera.viewMatrix, camera.projectionMatrix);
-    return physicsWorld->Raycast(ray.origin, ray.direction, distance);
-}
-
 std::vector<entt::id_type> PhysicsSystem::GetReadComponents() const
 {
     return {

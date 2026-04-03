@@ -164,7 +164,7 @@ bool Application::Initialize(const AppConfig &config)
         context.SetDepthTest(false);
     context.SetCullFace(config.cullFaceEnabled);
 
-    IWindow *appWindow = GetWindow();
+    IWindow *appWindow = m_IOHandler->GetMonitorManager().GetWindow();
     appWindow->SetResizeCallback([this](int width, int height) {
         LOGGER_INFO("Application") << "Window resized to " << width << "x" << height;
         EventSystem::Instance().Publish(WindowResizedEvent{width, height});
@@ -275,25 +275,8 @@ void Application::Run()
 }
 
 Scene&           Application::GetScene()          { return *m_Scene; }
-IPhysicsWorld&   Application::GetPhysicsWorld()   { return *m_PhysicsWorld; }
-ResourceManager& Application::GetResourceManager(){ return *m_ResourceManager; }
-SceneManager&    Application::GetSceneManager()   { return *m_SceneManager; }
-AudioService&     Application::GetAudioService()    { return *m_AudioService; }
-
-IOHandler&       Application::GetIOHandler()      { return *m_IOHandler; }
-
-MonitorManager&  Application::GetMonitorManager() { return m_IOHandler->GetMonitorManager(); }
-KeyboardManager& Application::GetKeyboard() const { return m_IOHandler->GetKeyboard(); }
-MouseManager&    Application::GetMouse() const    { return m_IOHandler->GetMouse(); }
-InputManager&    Application::GetInputManager() const { return m_IOHandler->GetInputManager(); }
-IGraphicsContext& Application::GetGraphicsContext() const { return m_IOHandler->GetGraphicsContext(); }
-IWindow*         Application::GetWindow() const   { return m_IOHandler->GetMonitorManager().GetWindow(); }
-int              Application::GetWidth() const    { return m_IOHandler->GetMonitorManager().GetWidth(); }
-int              Application::GetHeight() const   { return m_IOHandler->GetMonitorManager().GetHeight(); }
-
 RuntimeCore&     Application::GetRuntimeCore()    { return *m_RuntimeCore; }
 StateMachine&    Application::GetStateMachine()   { return m_RuntimeCore->GetStateMachine(); }
-SystemManager&   Application::GetSystemManager()  { return *m_SystemManager; }
 
 
 
@@ -320,6 +303,4 @@ void Application::OnMouseMove(double xpos, double ypos)   { m_IOHandler->OnMouse
 void Application::OnMouseButton(int button, int action, int mods) { m_IOHandler->OnMouseButton(button, action, mods); }
 void Application::OnScroll(double xoffset, double yoffset) { m_IOHandler->OnScroll(xoffset, yoffset); }
 
-PostProcessPipeline& Application::GetPostProcess() { 
-    return ServiceLocator::Instance().Require<PostProcessPipeline>(); 
-}
+

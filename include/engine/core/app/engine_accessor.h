@@ -45,16 +45,20 @@ public:
     std::vector<const SceneRecord*> GetScenes();
     void SetCursorMode(CursorMode mode);
 
-    void EnablePhysics(bool enable);
-    void EnableRender(bool enable);
-    void EnableAudio(bool enable);
-    void EnableScript(bool enable);
-    void EnableAnimation(bool enable);
-    void EnableVideo(bool enable);
-    void EnableUIRender(bool enable);
-    void EnableParticle(bool enable);
-    void EnableSkybox(bool enable);
-    void EnableNavigation(bool enable);
+    // Generic system enable/disable — no concrete type dependency
+    void EnableSystem(const std::string& systemName, bool enable);
+
+    // Backward-compatible convenience wrappers (delegate to generic EnableSystem)
+    void EnablePhysics(bool enable)    { EnableSystem("PhysicsSystem", enable); }
+    void EnableRender(bool enable)     { EnableSystem("RenderSystem", enable); }
+    void EnableAudio(bool enable)      { EnableSystem("AudioSystem", enable); }
+    void EnableScript(bool enable)     { EnableSystem("ScriptableSystem", enable); }
+    void EnableAnimation(bool enable)  { EnableSystem("AnimationSystem", enable); }
+    void EnableVideo(bool enable)      { EnableSystem("VideoSystem", enable); }
+    void EnableUIRender(bool enable)   { EnableSystem("UIRenderSystem", enable); }
+    void EnableParticle(bool enable)   { EnableSystem("ParticleSystem", enable); }
+    void EnableSkybox(bool enable)     { EnableSystem("SkyboxRenderSystem", enable); }
+    void EnableNavigation(bool enable) { EnableSystem("NavigationSystem", enable); }
     void EnableLogic(bool enable);
 
     bool GetAction(const std::string &name) const;
