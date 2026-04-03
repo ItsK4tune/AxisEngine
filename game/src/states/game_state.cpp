@@ -30,7 +30,7 @@ void GameState::OnEnter()
     this->EnableAudio(true);
     this->EnableLogic(true);
 
-    this->GetRenderSystem().SetFilterLayerMask(1);
+    this->GetSystem<RenderSystem>().SetFilterLayerMask(1);
 }
 
 void GameState::OnUpdate(float dt)
@@ -63,7 +63,7 @@ void GameState::OnUpdate(float dt)
             rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
             glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
             
-            RayHit hit = this->GetPhysicsSystem().GetPhysicsWorld().Raycast(camPos, rayDir, 1000.0f);
+            RayHit hit = this->Get<IPhysicsWorld>().Raycast(camPos, rayDir, 1000.0f);
             if (hit.hasHit)
             {
                 auto* info = EntityManager::TryGetComponent<InfoComponent>(this->GetScene(), hit.entity);
@@ -80,7 +80,7 @@ void GameState::OnUpdate(float dt)
                         {
                             follower->lockXPitch = true;
                             follower->lockZRoll = true;
-                            this->GetNavigationSystem().MoveTo(this->GetScene(), m_SelectedEntity, hit.hitPoint);
+                            this->GetSystem<NavigationSystem>().MoveTo(this->GetScene(), m_SelectedEntity, hit.hitPoint);
                             LOGGER_INFO("GameState") << "Move Command: target=(" << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z << ")";
                         }
                     }
@@ -197,7 +197,7 @@ void GameState::OnUpdate(float dt)
             rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
             glm::vec3 rayDir = glm::normalize(glm::vec3(glm::inverse(camComp.viewMatrix) * rayEye));
             
-            RayHit hit = this->GetPhysicsSystem().GetPhysicsWorld().Raycast(camPos, rayDir, 1000.0f);
+            RayHit hit = this->Get<IPhysicsWorld>().Raycast(camPos, rayDir, 1000.0f);
             if (hit.hasHit)
             {
                 if (wheelMove > 0) this->GetAudioService().Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);

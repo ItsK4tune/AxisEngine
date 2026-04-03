@@ -73,16 +73,7 @@ public:
     const AppConfig& GetConfig() const;
     void ApplyConfig(const AppConfig& config);
 
-    class RenderSystem& GetRenderSystem() const;
-    class PhysicsSystem& GetPhysicsSystem() const;
-    class AudioSystem& GetAudioSystem() const;
-    class UIRenderSystem& GetUIRenderSystem() const;
-    class ScriptableSystem& GetScriptSystem() const;
-    class ParticleSystem& GetParticleSystem() const;
-    class SkyboxRenderSystem& GetSkyboxRenderSystem() const;
-    class AnimationSystem& GetAnimationSystem() const;
-    class VideoSystem& GetVideoSystem() const;
-    class NavigationSystem& GetNavigationSystem() const;
+
 
     Scene& GetScene() const;
     class SceneManager& GetSceneManager() const;

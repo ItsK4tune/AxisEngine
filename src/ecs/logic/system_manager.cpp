@@ -102,6 +102,13 @@ void SystemManager::InitializeSystems(ResourceManager &res, int width, int heigh
     m_RenderCaptureSystems.clear();
     m_PostProcessSystems.clear();
     
+    // Subscribe to events
+    EventSystem::Instance().Subscribe<SystemEnabledEvent>([this](const SystemEnabledEvent& e) {
+        if (auto* sys = this->GetSystem(e.systemName)) {
+            sys->SetEnabled(e.enabled);
+        }
+    });
+
     // Sort systems by priority before initialization if needed, 
     // but usually RegisterSystem and category flags are enough.
     

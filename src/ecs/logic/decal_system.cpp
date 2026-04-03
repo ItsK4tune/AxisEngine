@@ -213,6 +213,8 @@ void DecalSystem::Render(Scene &scene)
         return view.get<DecalComponent>(a).renderOrder < view.get<DecalComponent>(b).renderOrder;
     });
 
+    auto& res = ServiceLocator::Instance().Require<ResourceManager>();
+
     for (auto entity : sortedEntities) {
         auto &decal = scene.registry.get<DecalComponent>(entity);
         auto *posComp = scene.registry.try_get<PositionComponent>(entity);
@@ -221,7 +223,6 @@ void DecalSystem::Render(Scene &scene)
         
         Shader* activeShader = shader;
         if (!decal.customShader.empty()) {
-            auto& res = ServiceLocator::Instance().Require<ResourceManager>();
             if (auto custom = res.GetShader(decal.customShader)) {
                 activeShader = custom.get();
             }
@@ -253,9 +254,10 @@ void DecalSystem::Render(Scene &scene)
         activeShader->setMat4("model", model);
         activeShader->setMat4("u_Model", model);
         activeShader->setMat4("invModel", glm::inverse(model));
-        activeShader->setFloat("opacity", decal.opacity);
-        activeShader->setFloat("u_Opacity", decal.opacity);
-        activeShader->setFloat("u_Alpha", decal.opacity);
+        float finalOpacity = std::min(decal.opacity * 2.0f, 1.0f);
+        activeShader->setFloat("opacity", finalOpacity);
+        activeShader->setFloat("u_Opacity", finalOpacity);
+        activeShader->setFloat("u_Alpha", finalOpacity);
         
         if (isDeferred) {
             tm.ActiveTexture(TextureUnit::Texture3);

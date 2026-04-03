@@ -251,6 +251,30 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         m_DeferredLightShader->setBool("u_HasLightProbe", false);
     }
 
+    auto planarView = scene.registry.view<PlanarReflectionComponent>();
+    uint32_t planarTex = 0;
+    for (auto entity : planarView) {
+        auto& prc = planarView.get<PlanarReflectionComponent>(entity);
+        if (prc.reflectionTextureID) {
+            planarTex = prc.reflectionTextureID;
+            break;
+        }
+    }
+
+    if (planarTex > 0) {
+        tm.ActiveTexture(TextureUnit::Texture19);
+        tm.BindTexture(TextureType::Texture2D, planarTex);
+        m_DeferredLightShader->setInt("u_PlanarReflection", 19);
+        m_DeferredLightShader->setBool("u_HasPlanar", true);
+        
+        auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+        int w = io ? io->GetMonitorManager().GetWidth() : 800;
+        int h = io ? io->GetMonitorManager().GetHeight() : 600;
+        m_DeferredLightShader->setVec2("u_ScreenSize", glm::vec2(w, h));
+    } else {
+        m_DeferredLightShader->setBool("u_HasPlanar", false);
+    }
+
     auto& core = ServiceLocator::Instance().Require<RenderCore>();
     bm.BindVertexArray(core.GetQuadVAO());
     dc.DrawArrays(Primitive::TriangleStrip, 0, 4);

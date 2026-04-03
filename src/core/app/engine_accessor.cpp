@@ -27,27 +27,9 @@
 
 // Include concrete system headers here so GetSystem<T>() template can resolve.
 // This is still in .cpp (not .h), so the header dependency is not leaked.
-#include <ecs/logic/render_system.h>
-#include <ecs/logic/physics_system.h>
-#include <ecs/logic/audio_system.h>
-#include <ecs/logic/ui_render_system.h>
-#include <ecs/logic/scriptable_system.h>
-#include <ecs/logic/particle_system.h>
-#include <ecs/logic/skybox_render_system.h>
-#include <ecs/logic/animation_system.h>
-#include <ecs/logic/video_system.h>
-#include <navigation/logic/navigation_system.h>
 
-RenderSystem&       EngineAccessor::GetRenderSystem() const       { return GetSystem<RenderSystem>(); }
-PhysicsSystem&      EngineAccessor::GetPhysicsSystem() const      { return GetSystem<PhysicsSystem>(); }
-AudioSystem&        EngineAccessor::GetAudioSystem() const        { return GetSystem<AudioSystem>(); }
-UIRenderSystem&     EngineAccessor::GetUIRenderSystem() const     { return GetSystem<UIRenderSystem>(); }
-ScriptableSystem&   EngineAccessor::GetScriptSystem() const       { return GetSystem<ScriptableSystem>(); }
-ParticleSystem&     EngineAccessor::GetParticleSystem() const     { return GetSystem<ParticleSystem>(); }
-SkyboxRenderSystem& EngineAccessor::GetSkyboxRenderSystem() const { return GetSystem<SkyboxRenderSystem>(); }
-AnimationSystem&    EngineAccessor::GetAnimationSystem() const    { return GetSystem<AnimationSystem>(); }
-VideoSystem&        EngineAccessor::GetVideoSystem() const        { return GetSystem<VideoSystem>(); }
-NavigationSystem&   EngineAccessor::GetNavigationSystem() const   { return GetSystem<NavigationSystem>(); }
+
+
 
 
 Scene&           EngineAccessor::GetScene() const           { return *m_ActiveScene; }
@@ -74,10 +56,7 @@ std::vector<const SceneRecord*> EngineAccessor::GetScenes(){ return ServiceLocat
 void EngineAccessor::SetCursorMode(CursorMode mode) { ServiceLocator::Instance().Require<IOHandler>().GetMouse().SetCursorMode(mode); }
 
 void EngineAccessor::EnableSystem(const std::string& systemName, bool enable) {
-    auto& sm = Get<SystemManager>();
-    if (auto* sys = sm.GetSystem(systemName)) {
-        sys->SetEnabled(enable);
-    }
+    EventSystem::Instance().Publish(SystemEnabledEvent{systemName, enable});
 }
 
 void EngineAccessor::EnableLogic(bool enable)

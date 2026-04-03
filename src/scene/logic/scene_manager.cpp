@@ -94,6 +94,7 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     }
 
     m_LoadedScenes.push_back(std::move(rec));
+    EventSystem::Instance().Publish(SceneLoadedEvent{filePath});
 }
 
 void SceneManager::UnloadScene(const std::string& filePath)
@@ -319,6 +320,7 @@ void SceneManager::_UnloadRecord(SceneRecord& rec)
     LOGGER_INFO("SceneManager") << "Unloading scene: " << rec.filePath;
     _DestroySceneEntities(rec);
     _UnloadOrphanedResources(rec);
+    EventSystem::Instance().Publish(SceneUnloadedEvent{rec.filePath});
 }
 
 void SceneManager::_DestroySceneEntities(SceneRecord& rec)

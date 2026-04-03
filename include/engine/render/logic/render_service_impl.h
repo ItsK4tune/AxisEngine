@@ -154,4 +154,7 @@ private:
     CommandQueue m_CommandQueue;
     RenderCommandBuffer m_RenderCommandBuffer;
     uint32_t m_MainFBO = 0;
+
+    IGraphicsContext* m_Context = nullptr;
+    ConfigManager* m_ConfigManager = nullptr;
 };

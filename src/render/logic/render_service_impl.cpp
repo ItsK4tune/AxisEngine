@@ -60,6 +60,8 @@ void RenderServiceImpl::Initialize()
     const AppConfig& config = configManager.GetConfig();
     auto& shaderLib = sl.Require<ResourceManager>();
     
+    m_Context = &context;
+    m_ConfigManager = &configManager;
 
     this->SetInstanceBatching(config.instanceBatchingEnabled);
     this->SetFrustumCulling(config.frustumCullingEnabled);
@@ -122,7 +124,11 @@ void RenderServiceImpl::Initialize()
 
 void RenderServiceImpl::FetchRenderPath()
 {
-    m_CachedRenderPath = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().renderPath;
+    if (m_ConfigManager) {
+        m_CachedRenderPath = m_ConfigManager->GetConfig().renderPath;
+    } else {
+        m_CachedRenderPath = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().renderPath;
+    }
 }
 
 void RenderServiceImpl::Shutdown()
@@ -134,9 +140,8 @@ void RenderServiceImpl::Shutdown()
 
 void RenderServiceImpl::SetFaceCulling(bool enabled, CullMode mode)
 {
-    auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
-    auto &rsm = context.GetRenderStateManager();
+    if (!m_Context) return;
+    auto &rsm = m_Context->GetRenderStateManager();
 
     if (enabled)
     {
@@ -152,8 +157,8 @@ void RenderServiceImpl::SetFaceCulling(bool enabled, CullMode mode)
 
 void RenderServiceImpl::SetDepthTest(bool enabled, CompareFunc func)
 {
-    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto &rsm = context.GetRenderStateManager();
+    if (!m_Context) return;
+    auto &rsm = m_Context->GetRenderStateManager();
 
     if (enabled)
     {
@@ -194,10 +199,11 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const glm::mat
         // LOGGER_WARN("RenderSystem") << "Invalid alpha value: " << lodFactor;
     }
 
-    auto& sl = ServiceLocator::Instance();
-    m_CachedRenderPath = sl.Require<ConfigManager>().GetConfig().renderPath;
+    if (m_ConfigManager) {
+        m_CachedRenderPath = m_ConfigManager->GetConfig().renderPath;
+    }
 
-    auto& context = sl.Require<IGraphicsContext>();
+    IGraphicsContext& context = *m_Context;
     m_LastWidth = width;
     m_LastHeight = height;
 

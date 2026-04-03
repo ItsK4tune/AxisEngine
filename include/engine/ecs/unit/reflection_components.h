@@ -34,3 +34,11 @@ struct ReflectiveComponent {
     float fresnelBias = 0.04f;
     bool enabled = true;
 };
+
+struct PlanarReflectionComponent {
+    uint32_t reflectionTextureID = 0;
+    uint32_t reflectionFBO = 0;
+    int resolution = 1024;
+    bool isDirty = true;
+    bool isRendered = false; // Flag to sync rendering
+};

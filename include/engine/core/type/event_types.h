@@ -41,6 +41,13 @@ struct EntityTriggerEvent
 struct EngineInitializedEvent {};
 struct EngineShutdownEvent {};
 
+struct SystemEnabledEvent {
+    std::string systemName;
+    bool enabled;
+};
+
+
+
 
 
 struct ConfigChangedEvent { 

@@ -81,6 +81,10 @@ struct ProbeData {
 };
 uniform ProbeData u_Probes[4];
 
+layout(binding = 19) uniform sampler2D u_PlanarReflection;
+uniform bool u_HasPlanar;
+uniform vec2 u_ScreenSize;
+
 vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
     vec3 firstPlaneIntersect = (boxMax - pos) / dir;
     vec3 secondPlaneIntersect = (boxMin - pos) / dir;
@@ -125,6 +129,7 @@ vec3 WorldPosFromDepth(float depth) {
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx);
 float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int lightIdx);
 float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
 
 void main()
 {             
@@ -238,6 +243,11 @@ void main()
 
     vec3 emissive = texture(gEmissive, TexCoords).rgb;
     
+    vec3 ambientDiffuse = Albedo * 0.1;
+    if (u_HasLightProbe) {
+        ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
+    }
+
     vec3 reflectionColor = vec3(0.0);
     if (u_ProbeCount > 0 && Reflectivity > 0.01) {
         vec3 R = reflect(-V, Normal);
@@ -268,23 +278,36 @@ void main()
             vec3 projectedR = BoxProjection(R, FragPos, u_Probes[0].pos, u_Probes[0].pos + u_Probes[0].boxMin, u_Probes[0].pos + u_Probes[0].boxMax);
             reflectionColor = textureLod(reflectionProbes[0], projectedR, Roughness * 2.0).rgb;
         }
-
-        vec3 F0 = vec3(0.1); // Slightly higher base reflectivity for dielectric
-        F0 = mix(F0, Albedo, max(Metallic, Reflectivity * 0.5));
-        float cosTheta = max(dot(Normal, V), 0.0);
-        vec3 F = F0 + (1.0 - F0) * pow(1.0 - cosTheta, max(FresnelPower, 1.0));
+    }
+    
+    if (u_HasPlanar && Reflectivity > 0.01) {
+        // Planar reflection overrides box projection where applicable
+        // Normal distortion for water/mirror ripples
+        vec2 distortion = Normal.xz * Roughness * 0.1;
+        vec2 uv = TexCoords + distortion;
+        vec3 planarColor = texture(u_PlanarReflection, clamp(uv, 0.0, 1.0)).rgb;
         
-        // Intensity Boost: Increase from 1.5 to 2.5 to match Forward Mode vividness
-        reflectionColor *= F * Reflectivity * 2.5; 
+        // Simple blend based on roughness/reflectivity
+        reflectionColor = mix(reflectionColor, planarColor, Reflectivity * (1.0 - Roughness));
     }
 
-    vec3 ambientDiffuse = Albedo * 0.1;
-    if (u_HasLightProbe) {
-        ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
+    if (Reflectivity > 0.01) {
+        vec3 F0 = vec3(0.04);
+        F0 = mix(F0, Albedo, Metallic);
+        vec3 F = fresnelSchlickRoughness(max(dot(Normal, V), 0.0), F0, Roughness);
+        vec3 kS = F;
+        vec3 kD = (1.0 - kS) * (1.0 - Metallic);
+        
+        reflectionColor *= F * Reflectivity; 
+        ambientDiffuse *= kD;
     }
 
     vec3 color = Lo + ambientDiffuse + emissive + reflectionColor;
     FragColor = vec4(color, 1.0);
+}
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx) {
