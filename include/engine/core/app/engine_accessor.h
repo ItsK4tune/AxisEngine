@@ -28,8 +28,9 @@ public:
 
     template <typename T>
     T& GetSystem() const { 
-        // Use Require directly to get a reference or throw a descriptive exception
-        return ServiceLocator::Instance().Require<T>();
+        auto* sys = Get<SystemManager>().template GetSystem<T>();
+        if (!sys) throw std::runtime_error("System not found: " + std::string(typeid(T).name()));
+        return *sys;
     }
 
     void LoadScene(const std::string& path, bool persistent = false);

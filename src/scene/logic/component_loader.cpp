@@ -16,6 +16,7 @@
 #include <core/logic/loader_utils.h>
 #include <ecs/unit/fragment_component.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/config_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <physics/logic/physics_loader.h>
@@ -124,7 +125,14 @@ void ComponentLoader::LoadRenderer(Scene &scene, entt::entity entity, const YAML
     }
     else if (shaderName.empty())
     {
-        LOGGER_INFO("ComponentLoader") << "Renderer component on entity '" << entityName << "' missing 'Shader' field. Falling back to default (Unlit).";
+        auto* configManager = ServiceLocator::Instance().Resolve<ConfigManager>();
+        if (configManager && configManager->GetConfig().renderPath == RenderPath::Deferred) {
+            shaderName = "deferred_unlit";
+        } else {
+            shaderName = "forward_unlit";
+        }
+        LOGGER_INFO("ComponentLoader") << "Renderer component on entity '" << entityName 
+                                       << "' missing 'Shader' field. Falling back to " << shaderName << ".";
     }
 
     r.model = res.GetModelAuto(modelName, false);

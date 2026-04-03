@@ -159,7 +159,7 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     }
     
     // 2. Build queues from probe perspective
-    renderService.BuildRenderQueuesWithCamera(scene, views[faceIndex], proj, pos, 1.0f, probe.resolution, probe.resolution, 0xFFFFFFFF, true, entity);
+    renderService.BuildRenderQueuesWithCamera(scene, views[faceIndex], proj, pos, 0.1f, 1000.0f, 1.0f, probe.resolution, probe.resolution, 0xFFFFFFFF, true, entity);
     
     // 3. Update lighting for this face
     if (lightingService) {
@@ -195,5 +195,5 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     context.GetRenderStateManager().SetFrontFace(FrontFace::CCW);
 
     // RESTORE CAMERA STATE to fix POV Jumping
-    renderService.BuildRenderQueuesWithCamera(scene, originalView, originalProj, originalCamPos, 1.0f, windowWidth, windowHeight);
+    renderService.BuildRenderQueuesWithCamera(scene, originalView, originalProj, originalCamPos, originalNear, originalFar, 1.0f, windowWidth, windowHeight);
 }

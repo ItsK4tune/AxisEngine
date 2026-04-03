@@ -8,7 +8,7 @@
 #include <ecs/interface/i_scriptable.h>
 #include <ecs/unit/script_component.h>
 
-struct Scene;
+#include <scene/logic/scene.h>
 
 class Scriptable : public EngineAccessor, public IScriptable
 {

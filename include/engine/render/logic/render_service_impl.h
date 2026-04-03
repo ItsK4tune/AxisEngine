@@ -4,6 +4,7 @@
 #include <render/unit/command_queue.h>
 #include <render/logic/frustum_culler.h>
 #include <render/unit/render_queue.h>
+#include <render/unit/render_command.h>
 #include <render/logic/static_batch_manager.h>
 #include <render/logic/occlusion_culler.h>
 #include <resource/unit/shader.h>
@@ -65,7 +66,7 @@ public:
     StaticBatchManager& GetBatchManager() override { return m_BatchManager; }
     RenderQueue& GetRenderQueueObj() override { return m_RenderQueueObj; }
     void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0) override;
-    void BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float lodFactor = 1.0f, int width = 800, int height = 600, uint32_t cullingMask = 0xFFFFFFFF, bool isCapturingProbe = false, entt::entity excludeEntity = (entt::entity)0xFFFFFFFF) override;
+    void BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane, float lodFactor = 1.0f, int width = 800, int height = 600, uint32_t cullingMask = 0xFFFFFFFF, bool isCapturingProbe = false, entt::entity excludeEntity = (entt::entity)0xFFFFFFFF) override;
     void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) override;
     void SubmitCommand(const RenderDrawCommand& cmd) override;
     void FlushCommands() override;
@@ -82,6 +83,7 @@ public:
     void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
     void SetRenderOrderEnabled(bool enable) { m_RenderOrderEnabled = enable; }
     void SetFilterLayerMask(uint32_t mask) { m_FilterLayerMask = mask; }
+    void SetDistanceCulling(float distance) { m_DistanceCullingSq = distance * distance; }
     void SetDistanceCullingSq(float distanceSq) { m_DistanceCullingSq = distanceSq; }
     
     // For syncing with Update

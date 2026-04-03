@@ -167,7 +167,7 @@ void DecalSystem::Render(Scene &scene)
         sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         sm.Disable(ServerCapability::DepthTest);
         sm.SetDepthMask(false);
-        sm.Disable(ServerCapability::CullFace); 
+        sm.Enable(ServerCapability::CullFace); 
     } else {
         auto* rs = m_RenderService;
         if (rs && geoSys->IsDeferredRenderingEnabled()) return;

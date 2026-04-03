@@ -3,16 +3,14 @@
 #include <core/logic/config_loader.h>
 #include <core/logic/time_service.h>
 #include <core/app/runtime_core.h>
-#include <ecs/unit/core_components.h>
-#include <ecs/unit/script_component.h>
 #include <functional>
 #include <platform/interface/i_window.h>
-#include <scene/logic/scene.h>
 #include <script/logic/script_registry.h>
-#include <script/type/script_binding.h>
 #include <memory>
 #include <string>
 #include <vector>
+
+struct Scene;
 
 
 class AnimationSystem;
@@ -61,7 +59,7 @@ public:
     template <typename T, typename... Args>
     void PushState(Args &&...args)
     {
-        m_RuntimeCore->PushState(std::make_unique<T>(std::forward<Args>(args)...));
+        GetRuntimeCore().PushState(std::make_unique<T>(std::forward<Args>(args)...));
     }
 
     Scene &GetScene();
@@ -82,32 +80,20 @@ public:
     const AppConfig &GetConfig() const;
     void ApplyConfig(const AppConfig &config);
 
-private:
-    std::unique_ptr<Scene> m_Scene;
-    std::unique_ptr<IPhysicsWorld> m_PhysicsWorld;
-    std::unique_ptr<ResourceManager> m_ResourceManager;
-    std::unique_ptr<AudioService> m_AudioService;
-    std::unique_ptr<SceneManager> m_SceneManager;
+    ScriptRegistry* GetScriptRegistry();
 
-    std::unique_ptr<IOHandler> m_IOHandler;
-    std::unique_ptr<TimeService> m_TimeService;
-    std::unique_ptr<RuntimeCore> m_RuntimeCore;
-    std::unique_ptr<SystemManager> m_SystemManager;
-    std::unique_ptr<ConfigManager> m_ConfigManager;
-    std::unique_ptr<ScriptRegistry> m_ScriptRegistry;
-    std::unique_ptr<CollisionMatrix> m_CollisionMatrix;
-    uint32_t m_ConfigSubId = 0;
+private:
+    struct Impl;
+    std::unique_ptr<Impl> m_Impl;
 };
 
 template <typename T>
 inline void Application::RegisterScript(const std::string &name)
 {
-    if (m_ScriptRegistry) {
-        m_ScriptRegistry->Register<T>(name);
+    if (auto* reg = GetScriptRegistry()) {
+        reg->Register<T>(name);
     }
 }
-
-
 
 class IAudioEngine;
 
