@@ -164,8 +164,12 @@ void GeometrySystem::BeginDecalPass()
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_GBuffer.GetFBO());
     rsm.SetViewport(0, 0, (int)(m_GBuffer.GetWidth() * m_GBuffer.GetRenderScale()), (int)(m_GBuffer.GetHeight() * m_GBuffer.GetRenderScale()));
     
-    FramebufferAttachment att = FramebufferAttachment::Color2;
-    rtm.DrawBuffers(1, &att);
+    FramebufferAttachment attachments[] = { 
+        FramebufferAttachment::Color2, // Albedo (location 0)
+        FramebufferAttachment::Color1, // Normal (location 1)
+        FramebufferAttachment::Color5  // PBR Params (location 2)
+    };
+    rtm.DrawBuffers(3, attachments);
 }
 
 void GeometrySystem::EndDecalPass(uint32_t mainFBO)

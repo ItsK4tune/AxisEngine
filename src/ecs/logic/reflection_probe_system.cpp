@@ -143,9 +143,6 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
 
     context.SetViewport(0, 0, probe.resolution, probe.resolution);
     
-    // Invert winding order because reflection views are mirrored
-    context.GetRenderStateManager().SetFrontFace(FrontFace::CW);
-    
     // Capture specific face
     rtm.FramebufferTexture2D(FramebufferTarget::DrawFramebuffer, FramebufferAttachment::Color0, 
                              (TextureType)((int)TextureType::CubeMapPositiveX + faceIndex), 
@@ -153,13 +150,13 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     
     context.Clear(BufferBit::Color | BufferBit::Depth);
     
-    // 1. Render Skybox
+    // 1. Build queues from probe perspective (updates UBO)
+    renderService.BuildRenderQueuesWithCamera(scene, views[faceIndex], proj, pos, 0.1f, 1000.0f, 1.0f, probe.resolution, probe.resolution, 0xFFFFFFFF, true, entity);
+    
+    // 2. Render Skybox
     if (auto* skyService = sl.Resolve<ISkyboxService>()) {
         skyService->RenderAlphaPassWithCamera(scene, views[faceIndex], proj, probe.resolution, probe.resolution, m_CaptureFBO);
     }
-    
-    // 2. Build queues from probe perspective
-    renderService.BuildRenderQueuesWithCamera(scene, views[faceIndex], proj, pos, 0.1f, 1000.0f, 1.0f, probe.resolution, probe.resolution, 0xFFFFFFFF, true, entity);
     
     // 3. Update lighting for this face
     if (lightingService) {
@@ -190,10 +187,25 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     }
     
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, oldFBO);
-    // Restore original viewport and winding order
+    // Restore original viewport
     context.SetViewport(0, 0, windowWidth, windowHeight);
-    context.GetRenderStateManager().SetFrontFace(FrontFace::CCW);
 
-    // RESTORE CAMERA STATE to fix POV Jumping
-    renderService.BuildRenderQueuesWithCamera(scene, originalView, originalProj, originalCamPos, originalNear, originalFar, 1.0f, windowWidth, windowHeight);
+    // RESTORE CAMERA STATE (UBO only, avoid rebuilt queue overhead)
+    GPUCameraData restoreCam;
+    std::memcpy(restoreCam.projection, &originalProj[0][0], 16 * sizeof(float));
+    std::memcpy(restoreCam.view, &originalView[0][0], 16 * sizeof(float));
+    std::memcpy(restoreCam.viewPos, &originalCamPos[0], 3 * sizeof(float));
+    restoreCam.viewPos[3] = 1.0f;
+    glm::mat4 rInvProj = glm::inverse(originalProj);
+    glm::mat4 rInvView = glm::inverse(originalView);
+    std::memcpy(restoreCam.invProjection, &rInvProj[0][0], 16 * sizeof(float));
+    std::memcpy(restoreCam.invView, &rInvView[0][0], 16 * sizeof(float));
+    std::memcpy(restoreCam.stableProjection, &originalProj[0][0], 16 * sizeof(float));
+    std::memcpy(restoreCam.invStableProjection, &rInvProj[0][0], 16 * sizeof(float));
+    
+    // Upload original camera state back to GPU
+    renderService.UploadCameraUBO(restoreCam);
+    
+    // Also restore the internal camera variables on the CPU side to prevent drifting/jittering
+    renderService.RestoreCameraState(originalView, originalProj, originalCamPos, originalNear, originalFar);
 }

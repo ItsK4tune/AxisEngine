@@ -784,4 +784,24 @@ void RenderServiceImpl::FlushCommands()
     bm.BindVertexArray(0);
 }
 
+void RenderServiceImpl::UploadCameraUBO(const GPUCameraData& camData)
+{
+    if (!m_Context || !m_CameraUBO) return;
+    auto& bm = m_Context->GetBufferManager();
+    bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
+    bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUCameraData), &camData);
+}
+
+void RenderServiceImpl::RestoreCameraState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane)
+{
+    m_ViewMatrix = view;
+    m_ProjMatrix = proj;
+    m_CameraPos = pos;
+    m_NearPlane = nearPlane;
+    m_FarPlane = farPlane;
+    
+    // Also recalculate the current view-projection for things that rely on it
+    m_CurrViewProj = m_JitteredProjection * view;
+}
+
 

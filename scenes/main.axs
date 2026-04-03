@@ -1,6 +1,6 @@
 axis_scene:
   Config:
-    RENDER_PATH: FORWARD
+    RENDER_PATH: DEFERRED
     WINDOW_MODE: WINDOWED
 
   Resources:
@@ -202,10 +202,11 @@ axis_scene:
       Tag: reflective
       Component: Transform
         Position: 3.0 5.0 0.0
+        Rotation: 45.0 45.0 0.0
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: cubeModel
-        Shader: forward_reflect
+        Shader: deferred_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0

@@ -35,8 +35,8 @@ public:
     uint32_t GetGBufferID() const override { return m_GBuffer.GetIDTexture(); }
     uint32_t GetGBufferPosition() const override { return m_GBuffer.GetPositionTexture(); }
     uint32_t GetGBufferNormal() const override { return m_GBuffer.GetNormalTexture(); }
-    uint32_t GetGBufferWidth() const override { return (uint32_t)m_GBuffer.GetWidth(); }
-    uint32_t GetGBufferHeight() const override { return (uint32_t)m_GBuffer.GetHeight(); }
+    uint32_t GetGBufferWidth() const override { return (uint32_t)m_GBuffer.GetScaledWidth(); }
+    uint32_t GetGBufferHeight() const override { return (uint32_t)m_GBuffer.GetScaledHeight(); }
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

@@ -140,6 +140,11 @@ void DecalSystem::Render(Scene &scene)
     if (isDeferred) {
         UpdateTagMap(scene);
         geoSys->BeginDecalPass();
+        
+        // Use G-Buffer resolution for viewport and shaders
+        int gbWidth = (int)geoSys->GetGBufferWidth();
+        int gbHeight = (int)geoSys->GetGBufferHeight();
+        sm.SetViewport(0, 0, gbWidth, gbHeight);
 
         tm.ActiveTexture(TextureUnit::Texture0);
         tm.BindTexture(TextureType::Texture2D, geoSys->GetGBufferDepth());
@@ -159,13 +164,15 @@ void DecalSystem::Render(Scene &scene)
 
         tm.ActiveTexture(TextureUnit::Texture5);
         tm.BindTexture(TextureType::Texture2D, geoSys->GetGBufferNormal());
-        shader->setInt("gNormal", 5);
+        shader->setInt("gNormalTex", 5);
         
         sm.SetCullFace(CullMode::Front);
+        sm.Enable(ServerCapability::CullFace);
         sm.SetDepthFunc(CompareFunc::Always);
         sm.Enable(ServerCapability::Blend); 
         sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         sm.Disable(ServerCapability::DepthTest);
+        sm.SetDepthMask(false); 
         sm.SetDepthMask(false);
         sm.Enable(ServerCapability::CullFace); 
     } else {
@@ -254,7 +261,7 @@ void DecalSystem::Render(Scene &scene)
         activeShader->setMat4("model", model);
         activeShader->setMat4("u_Model", model);
         activeShader->setMat4("invModel", glm::inverse(model));
-        float finalOpacity = std::min(decal.opacity * 2.0f, 1.0f);
+        float finalOpacity = decal.opacity;
         activeShader->setFloat("opacity", finalOpacity);
         activeShader->setFloat("u_Opacity", finalOpacity);
         activeShader->setFloat("u_Alpha", finalOpacity);

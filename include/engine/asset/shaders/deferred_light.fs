@@ -86,8 +86,11 @@ uniform bool u_HasPlanar;
 uniform vec2 u_ScreenSize;
 
 vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
-    vec3 firstPlaneIntersect = (boxMax - pos) / dir;
-    vec3 secondPlaneIntersect = (boxMin - pos) / dir;
+    // Epsilon to prevent divide-by-zero/zigzag when dir components are near zero
+    // (Happens when reflection is parallel to a box face)
+    vec3 safeDir = mix(dir, vec3(1e-6), lessThan(abs(dir), vec3(1e-7))); 
+    vec3 firstPlaneIntersect = (boxMax - pos) / safeDir;
+    vec3 secondPlaneIntersect = (boxMin - pos) / safeDir;
     vec3 furthestPlane = max(firstPlaneIntersect, secondPlaneIntersect);
     float dist = min(furthestPlane.x, min(furthestPlane.y, furthestPlane.z));
     return dir * dist + (pos - probePos);
@@ -120,9 +123,11 @@ vec3 EvaluateSH(vec3 n) {
 vec3 WorldPosFromDepth(float depth) {
     float z = depth * 2.0 - 1.0;
     vec4 clipSpacePosition = vec4(TexCoords * 2.0 - 1.0, z, 1.0);
-    vec4 viewSpacePosition = camera.invStableProjection * clipSpacePosition;
+    vec4 viewSpacePosition = camera.invProjection * clipSpacePosition;
     viewSpacePosition /= viewSpacePosition.w;
-    vec4 worldSpacePosition = camera.invView * viewSpacePosition;
+    // Using invView * invProjection for absolute WorldPos
+    vec4 worldSpacePosition = camera.invView * (camera.invProjection * clipSpacePosition);
+    worldSpacePosition /= worldSpacePosition.w;
     return worldSpacePosition.xyz;
 }
 
@@ -179,11 +184,10 @@ void main()
         }
 
         vec3 radiance = dirLights[i].color * dirLights[i].intensity;
-        vec3 ambient  = dirLights[i].ambient * radiance * Albedo;
         vec3 diffuse  = dirLights[i].diffuse * radiance * diff * Albedo;
         vec3 specular = dirLights[i].specular * radiance * spec * 0.5; 
         
-        Lo += ambient + (1.0 - shadow) * (diffuse + specular);
+        Lo += (1.0 - shadow) * (diffuse + specular);
     }
     
     for(int i = 0; i < light.nrPointLights; ++i)
@@ -204,11 +208,10 @@ void main()
         }
 
         vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation;
-        vec3 ambient  = pointLights[i].ambient * radiance * Albedo;
         vec3 diffuse  = pointLights[i].diffuse * radiance * diff * Albedo;
         vec3 specular = pointLights[i].specular * radiance * spec * 0.5;
         
-        Lo += ambient + (1.0 - shadow) * (diffuse + specular);
+        Lo += (1.0 - shadow) * (diffuse + specular);
     }
 
     for(int i = 0; i < light.nrSpotLights; ++i)
@@ -234,16 +237,15 @@ void main()
         }
 
         vec3 radiance = spotLights[i].color * spotLights[i].intensity * attenuation * spotIntensity;
-        vec3 ambient  = spotLights[i].ambient * radiance * Albedo;
         vec3 diffuse  = spotLights[i].diffuse * radiance * diff * Albedo;
         vec3 specular = spotLights[i].specular * radiance * spec * 0.5;
         
-        Lo += ambient + (1.0 - shadow) * (diffuse + specular);
+        Lo += (1.0 - shadow) * (diffuse + specular);
     }
 
     vec3 emissive = texture(gEmissive, TexCoords).rgb;
     
-    vec3 ambientDiffuse = Albedo * 0.1;
+    vec3 ambientDiffuse = Albedo * 0.15; 
     if (u_HasLightProbe) {
         ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
     }
@@ -260,45 +262,53 @@ void main()
             vec3 distToEdge = min(minEdge, maxEdge);
             float weight = min(distToEdge.x, min(distToEdge.y, distToEdge.z));
             
-            if (weight > 0.0) {
-                weight = clamp(weight, 0.0, 1.0);
-                vec3 projectedR = BoxProjection(R, FragPos, u_Probes[i].pos, u_Probes[i].boxMin, u_Probes[i].boxMax);
-                if (dot(projectedR, projectedR) > 0.0) {
-                    // Sharpness: Use a smaller multiplier for Roughness mip-mapping
-                    vec3 sampleCol = textureLod(reflectionProbes[i], projectedR, Roughness * 2.0).rgb;
+            if (weight > -0.05) {
+                vec3 boxSize = u_Probes[i].boxMax - u_Probes[i].boxMin;
+                float volume = boxSize.x * boxSize.y * boxSize.z;
+                float priority = 1.0 / (volume + 0.0001);
+                
+                weight = smoothstep(-0.05, 0.1, weight) * priority; 
+                
+                vec3 L;
+                if (max(boxSize.x, max(boxSize.y, boxSize.z)) > 90.0) {
+                    L = R;
+                } else {
+                    L = BoxProjection(R, FragPos, u_Probes[i].pos, u_Probes[i].boxMin, u_Probes[i].boxMax);
+                }
+
+                if (dot(L, L) > 0.0) {
+                    vec3 sampleCol = textureLod(reflectionProbes[i], L, Roughness * 2.0).rgb;
                     finalReflection += sampleCol * weight;
                     totalWeight += weight;
                 }
             }
         }
         
-        if (totalWeight > 0.0) {
+        if (totalWeight > 0.0001) {
             reflectionColor = finalReflection / totalWeight;
         } else {
-            vec3 projectedR = BoxProjection(R, FragPos, u_Probes[0].pos, u_Probes[0].pos + u_Probes[0].boxMin, u_Probes[0].pos + u_Probes[0].boxMax);
-            reflectionColor = textureLod(reflectionProbes[0], projectedR, Roughness * 2.0).rgb;
+            // Raw fallback for skybox
+            reflectionColor = textureLod(reflectionProbes[0], R, Roughness * 2.0).rgb;
         }
     }
     
     if (u_HasPlanar && Reflectivity > 0.01) {
-        // Planar reflection overrides box projection where applicable
-        // Normal distortion for water/mirror ripples
         vec2 distortion = Normal.xz * Roughness * 0.1;
         vec2 uv = TexCoords + distortion;
         vec3 planarColor = texture(u_PlanarReflection, clamp(uv, 0.0, 1.0)).rgb;
         
-        // Simple blend based on roughness/reflectivity
-        reflectionColor = mix(reflectionColor, planarColor, Reflectivity * (1.0 - Roughness));
+        float planarMask = clamp((Normal.y - 0.9) * 20.0, 0.0, 1.0);
+        reflectionColor = mix(reflectionColor, planarColor, Reflectivity * (1.0 - Roughness) * planarMask);
     }
 
     if (Reflectivity > 0.01) {
-        vec3 F0 = vec3(0.04);
+        vec3 F0 = vec3(0.08); 
         F0 = mix(F0, Albedo, Metallic);
         vec3 F = fresnelSchlickRoughness(max(dot(Normal, V), 0.0), F0, Roughness);
         vec3 kS = F;
         vec3 kD = (1.0 - kS) * (1.0 - Metallic);
         
-        reflectionColor *= F * Reflectivity; 
+        reflectionColor *= F * Reflectivity * 1.5; 
         ambientDiffuse *= kD;
     }
 

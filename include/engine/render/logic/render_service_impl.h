@@ -39,6 +39,8 @@ public:
     glm::mat4 GetProjectionMatrix() const override { return m_ProjMatrix; }
     float GetNearPlane() const override { return m_NearPlane; }
     float GetFarPlane() const override { return m_FarPlane; }
+    void UploadCameraUBO(const GPUCameraData& camData) override;
+    void RestoreCameraState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane) override;
 
     // IRenderStateService
     AntiAliasingMode GetAntiAliasingMode() const override { return m_AAMode; }

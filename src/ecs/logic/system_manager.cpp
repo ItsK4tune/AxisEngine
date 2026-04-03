@@ -288,8 +288,18 @@ void SystemManager::RunRender(Scene &scene, int width, int height, float alpha)
     PerformRenderShadows(scene, width, height, alpha);
 
     // 2. Capture Pass (Optional)
+    bool captured = false;
     for (IRenderSystem* sys : m_RenderCaptureSystems) {
-        if (sys->IsEnabled()) sys->RenderCapturePass(scene, width, height);
+        if (sys->IsEnabled()) {
+            sys->RenderCapturePass(scene, width, height);
+            captured = true;
+        }
+    }
+
+    // 2.5 Rebuild Main Queue if any capture occurred (Capture passes override the global RenderQueueObj)
+    if (captured) {
+        auto* rs = sl.Resolve<IRenderService>();
+        if (rs) rs->BuildRenderQueues(scene, alpha, width, height);
     }
 
     // 3. Main Render Pass
