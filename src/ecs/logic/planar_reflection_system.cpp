@@ -10,6 +10,8 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/reflection_components.h>
 #include <ecs/logic/entity_manager.h>
+#include <scene/logic/scene_manager.h>
+#include <render/unit/render_queue.h>
 #include <core/logic/logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -24,13 +26,20 @@ void PlanarReflectionSystem::Initialize()
 void PlanarReflectionSystem::Shutdown()
 {
     if (!m_Context) return;
-    auto view = ServiceLocator::Instance().Require<SystemManager>().GetActiveScene()->registry.view<PlanarReflectionComponent>();
+    
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& tm = m_Context->GetTextureManager();
+
+    // Get the global scene/registry to clean up resources
+    auto& sl = ServiceLocator::Instance();
+    auto& scene = sl.Require<Scene>();
+    auto view = scene.registry.view<PlanarReflectionComponent>();
     for (auto entity : view) {
         auto& comp = view.get<PlanarReflectionComponent>(entity);
         if (comp.reflectionFBO) rtm.DeleteFramebuffer(comp.reflectionFBO);
         if (comp.reflectionTextureID) tm.DeleteTexture(comp.reflectionTextureID);
+        comp.reflectionFBO = 0;
+        comp.reflectionTextureID = 0;
     }
 }
 
@@ -39,7 +48,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
     if (!m_Enabled || !m_Context || !m_RenderService) return;
 
     auto view = scene.registry.view<PlanarReflectionComponent, PositionComponent, RotationComponent>();
-    if (view.empty()) return;
+    if (view.begin() == view.end()) return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) return;
@@ -62,21 +71,25 @@ void PlanarReflectionSystem::Render(Scene& scene)
         auto& rot = view.get<RotationComponent>(entity);
 
         if (prc.isDirty && prc.reflectionFBO == 0) {
-            prc.reflectionTextureID = tm.CreateTexture2D(prc.resolution, prc.resolution, 
-                TextureInternalFormat::RGB16F, TextureFormat::RGB, DataType::Float, nullptr, true);
+            prc.reflectionTextureID = tm.GenTexture();
             tm.BindTexture(TextureType::Texture2D, prc.reflectionTextureID);
-            tm.SetTextureWrap(TextureType::Texture2D, TextureWrap::ClampToEdge, TextureWrap::ClampToEdge);
-            tm.SetTextureFilter(TextureType::Texture2D, TextureFilter::Linear, TextureFilter::Linear);
+            tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, prc.resolution, prc.resolution, 0, 
+                TextureFormat::RGBA, DataType::Float, nullptr);
+            
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, (int)TextureWrap::ClampToEdge);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, (int)TextureWrap::ClampToEdge);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Linear);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Linear);
 
             uint32_t rbo = rtm.CreateRenderbuffer();
             rtm.BindRenderbuffer(rbo);
-            rtm.RenderbufferStorage(TextureInternalFormat::DepthComponent24, prc.resolution, prc.resolution);
+            rtm.RenderbufferStorage(InternalFormat::DepthComponent24, prc.resolution, prc.resolution);
 
             prc.reflectionFBO = rtm.CreateFramebuffer();
             rtm.BindFramebuffer(FramebufferTarget::Framebuffer, prc.reflectionFBO);
-            rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::ColorAttachment0, 
+            rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, 
                                     TextureType::Texture2D, prc.reflectionTextureID, 0);
-            rtm.FramebufferRenderbuffer(FramebufferTarget::Framebuffer, FramebufferAttachment::DepthAttachment, rbo);
+            rtm.FramebufferRenderbuffer(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, rbo);
             rtm.BindFramebuffer(FramebufferTarget::Framebuffer, currentFBO);
             prc.isDirty = false;
         }
@@ -109,8 +122,8 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, prc.reflectionFBO);
         rsm.SetViewport(0, 0, prc.resolution, prc.resolution);
-        rsm.SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        rtm.Clear(BufferBit::Color | BufferBit::Depth);
+        dc.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        dc.Clear(BufferBit::Color | BufferBit::Depth);
         
         rsm.SetCullFace(CullMode::Front); // Reverse winding since view is mirrored
         
@@ -119,7 +132,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
         m_RenderService->BuildRenderQueuesWithCamera(scene, refViewMat, cam.projectionMatrix, refCamPos, 
             cam.nearPlane, cam.farPlane, 1.0f, prc.resolution, prc.resolution, cam.cullingMask);
 
-        auto opaqueQ = m_RenderService->GetRenderQueueObj().GetOpaqueQueue();
+        const auto& opaqueQ = m_RenderService->GetRenderQueueObj().GetOpaqueQueue();
         m_RenderService->ExecuteQueue(opaqueQ, false, nullptr, nullptr, nullptr);
 
         rsm.SetCullFace(CullMode::Back);
