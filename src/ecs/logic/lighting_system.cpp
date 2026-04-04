@@ -189,34 +189,57 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         }
     }
 
-    // Bind nearest reflection probes (Up to 4)
+    // 1. Separate Global and Local probes
     struct ProbeEntry {
         entt::entity entity;
         float distSq;
         glm::vec3 pos;
+        float volume;
     };
-    std::vector<ProbeEntry> probes;
+    std::vector<ProbeEntry> allProbes;
     auto reflectionView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
     glm::vec3 camPos = rs->GetCameraPosition();
 
+    ProbeEntry globalProbe = { entt::null, 0.0f, glm::vec3(0.0f), -1.0f };
+
     for (auto entity : reflectionView) {
         auto& pos = reflectionView.get<PositionComponent>(entity).value;
-        probes.push_back({entity, glm::distance2(pos, camPos), pos});
+        auto& pr = reflectionView.get<ReflectionProbeComponent>(entity);
+        float vol = (pr.boxMax.x - pr.boxMin.x) * (pr.boxMax.y - pr.boxMin.y) * (pr.boxMax.z - pr.boxMin.z);
+        
+        allProbes.push_back({entity, glm::distance2(pos, camPos), pos, vol});
+        
+        if (vol > globalProbe.volume) {
+            globalProbe = allProbes.back();
+        }
     }
 
-    std::sort(probes.begin(), probes.end(), [](const ProbeEntry& a, const ProbeEntry& b) {
-        if (std::abs(a.distSq - b.distSq) < 0.0001f)
-            return a.entity < b.entity;
+    // 2. Filter out global from locals and sort locals by distance
+    std::vector<ProbeEntry> localProbes;
+    for (auto& p : allProbes) {
+        if (p.entity != globalProbe.entity) {
+            localProbes.push_back(p);
+        }
+    }
+
+    std::sort(localProbes.begin(), localProbes.end(), [](const ProbeEntry& a, const ProbeEntry& b) {
         return a.distSq < b.distSq;
     });
 
-    int probeCount = std::min((int)probes.size(), 4);
+    // 3. Assemble final list: [0] is Global, [1-3] are Locals
+    std::vector<ProbeEntry> finalProbes;
+    if (globalProbe.entity != entt::null) finalProbes.push_back(globalProbe);
+    for (int i = 0; i < localProbes.size() && finalProbes.size() < 4; ++i) {
+        finalProbes.push_back(localProbes[i]);
+    }
+
+    int probeCount = (int)finalProbes.size();
     m_DeferredLightShader->setInt("u_ProbeCount", probeCount);
 
     for (int i = 0; i < probeCount; ++i) {
-        auto entity = probes[i].entity;
+        auto entity = finalProbes[i].entity;
         auto& probe = reflectionView.get<ReflectionProbeComponent>(entity);
-        auto& pos = probes[i].pos;
+        auto& pos = finalProbes[i].pos;
 
         tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture15) + i));
         tm.BindTexture(TextureType::TextureCubeMap, probe.cubemapID);
@@ -226,6 +249,8 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         m_DeferredLightShader->setVec3(base + "pos", pos);
         m_DeferredLightShader->setVec3(base + "boxMin", pos + probe.boxMin);
         m_DeferredLightShader->setVec3(base + "boxMax", pos + probe.boxMax);
+        m_DeferredLightShader->setFloat(base + "blendDistance", probe.blendDistance);
+        m_DeferredLightShader->setBool(base + "boxProjection", probe.boxProjection);
     }
 
     // Bind nearest light probe

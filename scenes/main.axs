@@ -202,7 +202,6 @@ axis_scene:
       Tag: reflective
       Component: Transform
         Position: 3.0 5.0 0.0
-        Rotation: 45.0 45.0 0.0
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: cubeModel

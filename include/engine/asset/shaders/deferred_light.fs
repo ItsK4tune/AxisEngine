@@ -78,6 +78,8 @@ struct ProbeData {
     vec3 pos;
     vec3 boxMin;
     vec3 boxMax;
+    float blendDistance;
+    bool boxProjection;
 };
 uniform ProbeData u_Probes[4];
 
@@ -85,15 +87,12 @@ layout(binding = 19) uniform sampler2D u_PlanarReflection;
 uniform bool u_HasPlanar;
 uniform vec2 u_ScreenSize;
 
-vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
-    // Epsilon to prevent divide-by-zero/zigzag when dir components are near zero
-    // (Happens when reflection is parallel to a box face)
-    vec3 safeDir = mix(dir, vec3(1e-6), lessThan(abs(dir), vec3(1e-7))); 
-    vec3 firstPlaneIntersect = (boxMax - pos) / safeDir;
-    vec3 secondPlaneIntersect = (boxMin - pos) / safeDir;
+vec3 BoxProjection(vec3 dir, vec3 fragPos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
+    vec3 firstPlaneIntersect = (boxMax - fragPos) / dir;
+    vec3 secondPlaneIntersect = (boxMin - fragPos) / dir;
     vec3 furthestPlane = max(firstPlaneIntersect, secondPlaneIntersect);
     float dist = min(furthestPlane.x, min(furthestPlane.y, furthestPlane.z));
-    return dir * dist + (pos - probePos);
+    return dir * dist + (fragPos - probePos);
 }
 
 uniform vec3 u_SH[9];
@@ -253,43 +252,50 @@ void main()
     vec3 reflectionColor = vec3(0.0);
     if (u_ProbeCount > 0 && Reflectivity > 0.01) {
         vec3 R = reflect(-V, Normal);
-        vec3 finalReflection = vec3(0.0);
-        float totalWeight = 0.0;
         
+        vec3 finalLocalReflection = vec3(0.0);
+        float totalWeight = 0.0;
+        float maxBoxWeight = 0.0;
+        
+        // 2. Accumulate all probes with soft Winner-Takes-Most logic to eliminate GHOSTING
         for (int i = 0; i < u_ProbeCount; ++i) {
             vec3 minEdge = FragPos - u_Probes[i].boxMin;
             vec3 maxEdge = u_Probes[i].boxMax - FragPos;
             vec3 distToEdge = min(minEdge, maxEdge);
             float weight = min(distToEdge.x, min(distToEdge.y, distToEdge.z));
             
-            if (weight > -0.05) {
+            // Spatial weight with blend distance
+            float boxWeight = smoothstep(0.0, 1.0, weight / max(u_Probes[i].blendDistance, 0.01));
+            maxBoxWeight = max(maxBoxWeight, boxWeight);
+
+            if (boxWeight > 0.0) {
                 vec3 boxSize = u_Probes[i].boxMax - u_Probes[i].boxMin;
                 float volume = boxSize.x * boxSize.y * boxSize.z;
-                float priority = 1.0 / (volume + 0.0001);
                 
-                weight = smoothstep(-0.05, 0.1, weight) * priority; 
+                // Tie-breaker: Closer to probe center wins. 
+                // This kills ghosts in overlap zones where volumes are identical.
+                float distSq = dot(FragPos - u_Probes[i].pos, FragPos - u_Probes[i].pos);
+                float priority = (1.0 / (volume + 0.0001)) / (distSq + 0.0001);
                 
-                vec3 L;
-                if (max(boxSize.x, max(boxSize.y, boxSize.z)) > 90.0) {
-                    L = R;
-                } else {
-                    L = BoxProjection(R, FragPos, u_Probes[i].pos, u_Probes[i].boxMin, u_Probes[i].boxMax);
-                }
+                // Aggressive exponent to ensure only the best probe is visible.
+                float finalWeight = pow(boxWeight, 4.0) * priority;
+
+                vec3 L = (u_Probes[i].boxProjection) ? 
+                           BoxProjection(R, FragPos, u_Probes[i].pos, u_Probes[i].boxMin, u_Probes[i].boxMax) : R;
 
                 if (dot(L, L) > 0.0) {
-                    vec3 sampleCol = textureLod(reflectionProbes[i], L, Roughness * 2.0).rgb;
-                    finalReflection += sampleCol * weight;
-                    totalWeight += weight;
+                    finalLocalReflection += textureLod(reflectionProbes[i], L, Roughness * 2.0).rgb * finalWeight;
+                    totalWeight += finalWeight;
                 }
             }
         }
         
-        if (totalWeight > 0.0001) {
-            reflectionColor = finalReflection / totalWeight;
-        } else {
-            // Raw fallback for skybox
-            reflectionColor = textureLod(reflectionProbes[0], R, Roughness * 2.0).rgb;
-        }
+        // Final fallback for global atmosphere (always Slot 0 at infinity)
+        vec3 globalFallback = textureLod(reflectionProbes[0], R, Roughness * 2.0).rgb;
+        vec3 combinedLocal = (totalWeight > 0.000001) ? (finalLocalReflection / totalWeight) : globalFallback;
+        
+        // Final smooth blend between probe set and sky background
+        reflectionColor = mix(globalFallback, combinedLocal, maxBoxWeight);
     }
     
     if (u_HasPlanar && Reflectivity > 0.01) {
@@ -297,8 +303,11 @@ void main()
         vec2 uv = TexCoords + distortion;
         vec3 planarColor = texture(u_PlanarReflection, clamp(uv, 0.0, 1.0)).rgb;
         
-        float planarMask = clamp((Normal.y - 0.9) * 20.0, 0.0, 1.0);
-        reflectionColor = mix(reflectionColor, planarColor, Reflectivity * (1.0 - Roughness) * planarMask);
+        // Sharpened mask and transition to prevent 50/50 mix ghosting on tilted surfaces.
+        float planarMask = clamp((Normal.y - 0.95) * 40.0, 0.0, 1.0);
+        // Planar reflection overrides probes based on the mask. 
+        // We use planarMask directly to avoid mixing-ghosting on relatively smooth surfaces.
+        reflectionColor = mix(reflectionColor, planarColor, planarMask);
     }
 
     if (Reflectivity > 0.01) {

@@ -21,6 +21,7 @@ struct ReflectionProbeComponent {
     bool boxProjection = true;
     glm::vec3 boxMin = glm::vec3(-5.0f);
     glm::vec3 boxMax = glm::vec3(5.0f);
+    float blendDistance = 1.0f; // Soft-edge blending distance in meters
 
     uint32_t currentFace = 0;
 };
