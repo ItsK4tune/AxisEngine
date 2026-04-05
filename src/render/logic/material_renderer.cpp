@@ -83,6 +83,7 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     locs.u_RoughnessMap = shader->GetUniformLocation("u_RoughnessMap");
     locs.u_AOMap = shader->GetUniformLocation("u_AOMap");
     locs.u_EmissiveMap = shader->GetUniformLocation("u_EmissiveMap");
+    locs.u_SpecularMap = shader->GetUniformLocation("u_SpecularMap");
 
     locs.initialized = true;
     return locs;
@@ -185,6 +186,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
             setTex(3, mat.gpu.roughnessMap, locs.mat_roughnessMap, locs.roughnessMap, locs.u_RoughnessMap);
             setTex(4, mat.gpu.aoMap, locs.mat_aoMap, locs.aoMap, locs.u_AOMap);
             setTex(5, mat.gpu.emissiveMap, locs.mat_emissiveMap, locs.emissiveMap, locs.u_EmissiveMap);
+            setTex(6, mat.gpu.specularMap, -1, -1, locs.u_SpecularMap);
         }
         return boundSomething;
     } else {
@@ -229,8 +231,13 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
         shader->setInt(locs.roughnessMap, 3);
         shader->setInt(locs.aoMap, 4);
         shader->setInt(locs.emissiveMap, 5);
+        shader->setInt(locs.mat_emissiveMap, 5);
+        shader->setInt(locs.emissiveMap, 5);
+
+        tm.ActiveTexture(TextureUnit::Texture6);
+        tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+        if (locs.u_SpecularMap != -1) shader->setInt(locs.u_SpecularMap, 6);
+
         return false;
     }
 }
-
-

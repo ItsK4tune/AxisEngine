@@ -1,6 +1,6 @@
 axis_scene:
   Config:
-    RENDER_PATH: FORWARD
+    RENDER_PATH: DEFERRED
     WINDOW_MODE: WINDOWED
 
   Resources:
@@ -170,7 +170,7 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
-        Shader: forward_transparent
+        Shader: deferred_transparent
       Component: Material
         Type: PHONG
         Opacity: 0.5
@@ -239,7 +239,7 @@ axis_scene:
         Override:
           Body:
             Component: Renderer
-              Color: 0.8 0.1 0.1 1.0
+              Color: 0.1 0.8 0.1 1.0
 
     RigidPhysic:
       Tag: physics_test

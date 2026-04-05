@@ -51,6 +51,7 @@ struct AxisMaterialDescriptor
     std::string roughnessPath = "";
     std::string aoPath = "";
     std::string emissivePath = "";
+    std::string specularPath = "";
 
     BlendFactor blendSrc = BlendFactor::SrcAlpha;
     BlendFactor blendDst = BlendFactor::OneMinusSrcAlpha;
@@ -66,6 +67,7 @@ struct AxisMaterialGPUState
     uint32_t roughnessMap = 0;
     uint32_t aoMap = 0;
     uint32_t emissiveMap = 0;
+    uint32_t specularMap = 0;
 
     bool dirty = true;
 };

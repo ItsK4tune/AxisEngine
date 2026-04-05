@@ -314,7 +314,11 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     dc.DrawArrays(Primitive::TriangleStrip, 0, 4);
     bm.BindVertexArray(0);
 
-    // Unbind reflection probes to prevent texture leaking to subsequent passes (e.g. Transparent Pass)
+    // Unbind G-Buffer and reflection probes to prevent texture leaking to subsequent passes (e.g. Transparent Pass)
+    for (int i = 0; i <= 6; ++i) {
+        tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture0) + i));
+        tm.BindTexture(TextureType::Texture2D, 0);
+    }
     for (int i = 0; i < 4; ++i) {
         tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture15) + i));
         tm.BindTexture(TextureType::TextureCubeMap, 0);

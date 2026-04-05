@@ -148,7 +148,11 @@ axis_scene:
     Shader:
       Name: forward_transparent
       Vertex: include/engine/asset/shaders/forward_phong_lit.vs
-      Fragment: include/engine/asset/shaders/forward_transparent.fs
+      Fragment: include/engine/asset/shaders/transparent.fs
+    Shader:
+      Name: deferred_transparent
+      Vertex: include/engine/asset/shaders/deferred_lit.vs
+      Fragment: include/engine/asset/shaders/transparent.fs
     Shader:
       Name: forward_pbr_env
       Vertex: include/engine/asset/shaders/forward_pbr_lit.vs

@@ -63,6 +63,7 @@ struct MaterialUniformLocations {
     int u_RoughnessMap = -1;
     int u_AOMap = -1;
     int u_EmissiveMap = -1;
+    int u_SpecularMap = -1;
 
 
     int irradianceMap = -1;
