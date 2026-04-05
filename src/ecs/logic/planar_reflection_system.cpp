@@ -65,15 +65,28 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
     uint32_t currentFBO = m_RenderService->GetMainFBO();
 
+    int screenWidth = m_RenderService->GetLastWidth();
+    int screenHeight = m_RenderService->GetLastHeight();
+    if (screenWidth <= 0 || screenHeight <= 0) return;
+
     for (auto entity : view) {
         auto& prc = view.get<PlanarReflectionComponent>(entity);
         auto& pos = view.get<PositionComponent>(entity);
         auto& rot = view.get<RotationComponent>(entity);
 
-        if (prc.isDirty && prc.reflectionFBO == 0) {
+        // Dynamic resizing to match screen aspect ratio and resolution
+        if (prc.reflectionFBO == 0 || prc.resolution != (uint32_t)screenWidth || prc.resolution_y != (uint32_t)screenHeight) {
+            if (prc.reflectionFBO != 0) {
+                rtm.DeleteFramebuffer(prc.reflectionFBO);
+                tm.DeleteTexture(prc.reflectionTextureID);
+            }
+
+            prc.resolution = screenWidth;
+            prc.resolution_y = screenHeight;
+
             prc.reflectionTextureID = tm.GenTexture();
             tm.BindTexture(TextureType::Texture2D, prc.reflectionTextureID);
-            tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, prc.resolution, prc.resolution, 0, 
+            tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, prc.resolution, prc.resolution_y, 0, 
                 TextureFormat::RGBA, DataType::Float, nullptr);
             
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, (int)TextureWrap::ClampToEdge);
@@ -83,7 +96,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
             uint32_t rbo = rtm.CreateRenderbuffer();
             rtm.BindRenderbuffer(rbo);
-            rtm.RenderbufferStorage(InternalFormat::DepthComponent24, prc.resolution, prc.resolution);
+            rtm.RenderbufferStorage(InternalFormat::DepthComponent24, prc.resolution, prc.resolution_y);
 
             prc.reflectionFBO = rtm.CreateFramebuffer();
             rtm.BindFramebuffer(FramebufferTarget::Framebuffer, prc.reflectionFBO);
@@ -95,6 +108,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
         }
 
         glm::vec3 normal = glm::mat3_cast(rot.value) * glm::vec3(0, 1, 0);
+        prc.normal = normal;
         float d = -glm::dot(normal, pos.value);
 
         // Reflect camera pos
@@ -127,10 +141,36 @@ void PlanarReflectionSystem::Render(Scene& scene)
         
         rsm.SetCullFace(CullMode::Front); // Reverse winding since view is mirrored
         
-        // We render all opaque objects. 
-        // Note: we should handle clipping plane in shaders, but for basic planar we skip.
-        m_RenderService->BuildRenderQueuesWithCamera(scene, refViewMat, cam.projectionMatrix, refCamPos, 
-            cam.nearPlane, cam.farPlane, 1.0f, prc.resolution, prc.resolution, cam.cullingMask);
+        // 3. Calculate Oblique Projection Matrix to clip everything behind the mirror
+        // See: http://terathon.com/lengyel/Lengyel-Oblique.pdf
+        glm::mat4 obliqueProj = cam.projectionMatrix;
+        
+        // Plane in view space
+        glm::vec3 viewPlaneNormal = glm::normalize(glm::mat3(refViewMat) * normal);
+        glm::vec3 viewPlanePoint = glm::vec3(refViewMat * glm::vec4(pos.value, 1.0f));
+        float viewPlaneDist = -glm::dot(viewPlaneNormal, viewPlanePoint); 
+        glm::vec4 clipPlane = glm::vec4(viewPlaneNormal, viewPlaneDist);
+
+        // Calculate the "q" point (farthest point from the plane in the projection volume)
+        glm::vec4 q = glm::inverse(obliqueProj) * glm::vec4(
+            (clipPlane.x > 0.0f ? 1.0f : (clipPlane.x < 0.0f ? -1.0f : 0.0f)),
+            (clipPlane.y > 0.0f ? 1.0f : (clipPlane.y < 0.0f ? -1.0f : 0.0f)),
+            1.0f,
+            1.0f
+        );
+
+        // Scale clip plane
+        glm::vec4 c = clipPlane * (2.0f / glm::dot(clipPlane, q));
+
+        // Replace the third row of the projection matrix (the near plane)
+        obliqueProj[0][2] = c.x;
+        obliqueProj[1][2] = c.y;
+        obliqueProj[2][2] = c.z + 1.0f; // For OpenGL -1 to 1 depth range
+        obliqueProj[3][2] = c.w;
+
+        // Render to reflection texture
+        m_RenderService->BuildRenderQueuesWithCamera(scene, refViewMat, obliqueProj, refCamPos, 
+            cam.nearPlane, cam.farPlane, 1.0f, prc.resolution, prc.resolution, cam.cullingMask, true);
 
         const auto& opaqueQ = m_RenderService->GetRenderQueueObj().GetOpaqueQueue();
         m_RenderService->ExecuteQueue(opaqueQ, false, nullptr, nullptr, nullptr);

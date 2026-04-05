@@ -78,6 +78,10 @@ uniform vec3 u_ProbePos;
 uniform vec3 u_ProbeBoxMin;
 uniform vec3 u_ProbeBoxMax;
 layout (binding = 15) uniform samplerCube reflectionProbe;
+layout (binding = 19) uniform sampler2D u_PlanarReflections[4];
+uniform int u_PlanarCount;
+uniform vec3 u_PlanarNormals[4];
+uniform vec2 u_ScreenSize;
 
 vec3 BoxProjection(vec3 dir, vec3 fragPos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
     vec3 firstPlaneIntersect = (boxMax + probePos - fragPos) / dir;
@@ -117,15 +121,35 @@ void main()
     vec3 emissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
     
     vec3 reflectionColor = vec3(0.0);
-    if (u_HasProbe && u_Reflectivity > 0.0) {
+    float finalReflectivity = u_Reflectivity;
+
+    // 1. Planar Reflections (Higher priority)
+    float bestPlanarMask = 0.0;
+    if (u_PlanarCount > 0 && u_Reflectivity > 0.0) {
+        vec2 uv = gl_FragCoord.xy / u_ScreenSize;
+
+        for (int i = 0; i < u_PlanarCount; ++i) {
+            float mask = clamp((dot(norm, u_PlanarNormals[i]) - 0.98) * 50.0, 0.0, 1.0);
+            if (mask > 0.0) {
+                vec3 sampleColor = texture(u_PlanarReflections[i], uv).rgb;
+                reflectionColor += sampleColor * mask;
+                bestPlanarMask = max(bestPlanarMask, mask);
+            }
+        }
+    }
+
+    // 2. Fallback to Probes
+    if (u_HasProbe && u_Reflectivity > 0.0 && bestPlanarMask < 1.0) {
         vec3 R = reflect(-viewDir, norm);
         vec3 projectedR = BoxProjection(R, FragPos, u_ProbePos, u_ProbeBoxMin, u_ProbeBoxMax);
-        reflectionColor = texture(reflectionProbe, projectedR).rgb;
+        vec3 probeColor = texture(reflectionProbe, projectedR).rgb;
+        reflectionColor = mix(probeColor, reflectionColor, bestPlanarMask);
+    }
 
+    if (u_Reflectivity > 0.0) {
         float F0 = u_FresnelBias;
         float cosTheta = max(dot(norm, viewDir), 0.0);
         float F = F0 + (1.0 - F0) * pow(1.0 - cosTheta, u_FresnelPower);
-        
         reflectionColor *= F * u_Reflectivity * u_ReflectionIntensity;
     }
     

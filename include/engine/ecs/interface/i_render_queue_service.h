@@ -25,6 +25,9 @@ public:
     virtual uint32_t GetMainFBO() const = 0;
     virtual void SetMainFBO(uint32_t fbo) = 0;
 
+    virtual int GetLastWidth() const = 0;
+    virtual int GetLastHeight() const = 0;
+
     virtual StaticBatchManager& GetBatchManager() = 0;
     virtual RenderQueue& GetRenderQueueObj() = 0;
 

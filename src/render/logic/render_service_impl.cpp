@@ -626,11 +626,37 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         shader->setVec4("tintColor", item.tintColor);
         shader->setUInt("entityID", item.entityId);
         shader->setBool("isInstanced", false);
-        shader->setBool("u_ProbeUnlit", m_IsCapturingProbe);
-        
-        // Reflection Probe Binding & Cleanup
+        // Reflection and Textures
         auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
         auto& tm = context.GetTextureManager();
+
+        shader->setBool("u_ProbeUnlit", m_IsCapturingProbe);
+        shader->setVec2("u_ScreenSize", glm::vec2(m_LastWidth, m_LastHeight));
+        
+        // Planar Reflection Binding for Forward
+        auto& scene = ServiceLocator::Instance().Require<Scene>();
+        auto planarView = scene.registry.view<PlanarReflectionComponent>();
+        int planarCount = 0;
+        if (!m_IsCapturingProbe) {
+            for (auto planarEntity : planarView) {
+                auto& prc = planarView.get<PlanarReflectionComponent>(planarEntity);
+                if (prc.reflectionTextureID && prc.isRendered) {
+                    tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture19) + planarCount));
+                    tm.BindTexture(TextureType::Texture2D, prc.reflectionTextureID);
+                    
+                    std::string texBase = "u_PlanarReflections[" + std::to_string(planarCount) + "]";
+                    std::string normBase = "u_PlanarNormals[" + std::to_string(planarCount) + "]";
+                    shader->setInt(texBase, 19 + planarCount);
+                    shader->setVec3(normBase, prc.normal);
+                    
+                    planarCount++;
+                    if (planarCount >= 4) break;
+                }
+            }
+        }
+        shader->setInt("u_PlanarCount", planarCount);
+        
+        // Reflection Probe Binding & Cleanup
         if (item.reflection && item.probe && !m_IsCapturingProbe) {
             tm.ActiveTexture(TextureUnit::Texture15);
             tm.BindTexture(TextureType::TextureCubeMap, item.probe->cubemapID);

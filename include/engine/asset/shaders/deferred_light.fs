@@ -83,9 +83,10 @@ struct ProbeData {
 };
 uniform ProbeData u_Probes[4];
 
-layout(binding = 19) uniform sampler2D u_PlanarReflection;
-uniform bool u_HasPlanar;
+layout(binding = 19) uniform sampler2D u_PlanarReflections[4];
+uniform int u_PlanarCount;
 uniform vec2 u_ScreenSize;
+uniform vec3 u_PlanarNormals[4];
 
 vec3 BoxProjection(vec3 dir, vec3 fragPos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
     vec3 firstPlaneIntersect = (boxMax - fragPos) / dir;
@@ -298,16 +299,38 @@ void main()
         reflectionColor = mix(globalFallback, combinedLocal, maxBoxWeight);
     }
     
-    if (u_HasPlanar && Reflectivity > 0.01) {
-        vec2 distortion = Normal.xz * Roughness * 0.1;
-        vec2 uv = TexCoords + distortion;
-        vec3 planarColor = texture(u_PlanarReflection, clamp(uv, 0.0, 1.0)).rgb;
+    if (u_PlanarCount > 0 && Reflectivity > 0.01) {
+        vec3 bestPlanarColor = vec3(0.0);
+        float bestPlanarMask = 0.0;
         
-        // Sharpened mask and transition to prevent 50/50 mix ghosting on tilted surfaces.
-        float planarMask = clamp((Normal.y - 0.95) * 40.0, 0.0, 1.0);
-        // Planar reflection overrides probes based on the mask. 
-        // We use planarMask directly to avoid mixing-ghosting on relatively smooth surfaces.
-        reflectionColor = mix(reflectionColor, planarColor, planarMask);
+        vec2 uv = gl_FragCoord.xy / u_ScreenSize;
+        
+        for (int i = 0; i < u_PlanarCount; ++i) {
+            vec3 activeNormal = u_PlanarNormals[i];
+            float cosTheta = dot(Normal, activeNormal);
+            
+            // Mask for this specific mirror plane
+            float mask = clamp((cosTheta - 0.98) * 50.0, 0.0, 1.0);
+            
+            if (mask > 0.0) {
+                // Centered distortion using the specific plane normal
+                vec3 dN = Normal - activeNormal;
+                vec3 side = normalize(cross(activeNormal, abs(activeNormal.y) > 0.9 ? vec3(1,0,0) : vec3(0,1,0)));
+                vec3 up = cross(side, activeNormal);
+                vec2 distortion = vec2(dot(dN, side), dot(dN, up)) * Roughness * 0.1;
+                
+                vec2 uv = TexCoords + distortion;
+                vec3 sampleColor = texture(u_PlanarReflections[i], clamp(uv, 0.0, 1.0)).rgb;
+                
+                // Alpha-based accumulation for overlapping mirrors or transitions
+                bestPlanarColor += sampleColor * mask;
+                bestPlanarMask = max(bestPlanarMask, mask);
+            }
+        }
+        
+        if (bestPlanarMask > 0.0) {
+            reflectionColor = mix(reflectionColor, bestPlanarColor, bestPlanarMask);
+        }
     }
 
     if (Reflectivity > 0.01) {

@@ -9,6 +9,7 @@ int main() {
     config.width = 1280;
     config.height = 720;
     config.logLevel = LogLevel::Verbose;
+    config.antialiasing = 2;
 
     if (app->Initialize(config)) {
         app->PushState<GameState>();

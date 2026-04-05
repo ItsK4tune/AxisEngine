@@ -65,6 +65,8 @@ public:
     void AddRenderedCount(int count) override { m_RenderedCount += count; }
     uint32_t GetMainFBO() const override { return m_MainFBO; }
     void SetMainFBO(uint32_t fbo) override { m_MainFBO = fbo; }
+    int GetLastWidth() const override { return m_LastWidth; }
+    int GetLastHeight() const override { return m_LastHeight; }
     StaticBatchManager& GetBatchManager() override { return m_BatchManager; }
     RenderQueue& GetRenderQueueObj() override { return m_RenderQueueObj; }
     void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0) override;

@@ -277,28 +277,37 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     }
 
     auto planarView = scene.registry.view<PlanarReflectionComponent>();
-    uint32_t planarTex = 0;
+    int planarCount = 0;
+    std::vector<uint32_t> planarTextures;
+    std::vector<glm::vec3> planarNormals;
+
     for (auto entity : planarView) {
         auto& prc = planarView.get<PlanarReflectionComponent>(entity);
-        if (prc.reflectionTextureID) {
-            planarTex = prc.reflectionTextureID;
-            break;
+        if (prc.reflectionTextureID && prc.isRendered) {
+            planarTextures.push_back(prc.reflectionTextureID);
+            planarNormals.push_back(prc.normal);
+            planarCount++;
+            if (planarCount >= 4) break;
         }
     }
 
-    if (planarTex > 0) {
-        tm.ActiveTexture(TextureUnit::Texture19);
-        tm.BindTexture(TextureType::Texture2D, planarTex);
-        m_DeferredLightShader->setInt("u_PlanarReflection", 19);
-        m_DeferredLightShader->setBool("u_HasPlanar", true);
-        
-        auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
-        int w = io ? io->GetMonitorManager().GetWidth() : 800;
-        int h = io ? io->GetMonitorManager().GetHeight() : 600;
-        m_DeferredLightShader->setVec2("u_ScreenSize", glm::vec2(w, h));
-    } else {
-        m_DeferredLightShader->setBool("u_HasPlanar", false);
+    m_DeferredLightShader->setInt("u_PlanarCount", planarCount);
+    if (planarCount > 0) {
+        for (int i = 0; i < planarCount; ++i) {
+            tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture19) + i));
+            tm.BindTexture(TextureType::Texture2D, planarTextures[i]);
+            
+            std::string texBase = "u_PlanarReflections[" + std::to_string(i) + "]";
+            std::string normBase = "u_PlanarNormals[" + std::to_string(i) + "]";
+            m_DeferredLightShader->setInt(texBase, 19 + i);
+            m_DeferredLightShader->setVec3(normBase, planarNormals[i]);
+        }
     }
+
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+    int w = io ? io->GetMonitorManager().GetWidth() : 800;
+    int h = io ? io->GetMonitorManager().GetHeight() : 600;
+    m_DeferredLightShader->setVec2("u_ScreenSize", glm::vec2(w, h));
 
     auto& core = ServiceLocator::Instance().Require<RenderCore>();
     bm.BindVertexArray(core.GetQuadVAO());
