@@ -12,18 +12,18 @@ enum class ReflectionProbeType {
 
 struct ReflectionProbeComponent {
     ReflectionProbeType type = ReflectionProbeType::Static;
-    float radius = 10.0f;
     int resolution = 512;
     uint32_t cubemapID = 0;
     bool isDirty = true;
     
     // Parallax correction
     bool boxProjection = true;
-    glm::vec3 boxMin = glm::vec3(-5.0f);
-    glm::vec3 boxMax = glm::vec3(5.0f);
+    glm::vec3 boxMin = glm::vec3(-1000000.0f);
+    glm::vec3 boxMax = glm::vec3(1000000.0f);
     float blendDistance = 1.0f; // Soft-edge blending distance in meters
 
     uint32_t currentFace = 0;
+    int lastGpuIndex = -1; // New field for Deferred Reflection Binding
 };
 
 /**
@@ -34,6 +34,7 @@ struct ReflectiveComponent {
     float fresnelPower = 5.0f;
     float fresnelBias = 0.04f;
     bool enabled = true;
+    std::string targetProbe = "";
 };
 
 struct PlanarReflectionComponent {

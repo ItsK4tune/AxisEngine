@@ -13,6 +13,7 @@ in vec3 Normal;
 uniform float u_Reflectivity = 1.0;
 uniform float u_FresnelPower = 5.0;
 uniform float u_FresnelBias = 0.04;
+uniform int u_ProbeIndex = -1;
 
 layout (binding = 0) uniform sampler2D u_AlbedoMap;
 layout (binding = 1) uniform sampler2D u_NormalMap;
@@ -61,7 +62,9 @@ void main()
     gEntityID = entityID;
     gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
     
-    gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, u_FresnelPower);
+    // Packing: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 10.0
+    float packedReflection = float(u_ProbeIndex + 1) + (u_FresnelPower / 10.0);
+    gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, packedReflection);
 
     if (u_isWireframe) {
         gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);

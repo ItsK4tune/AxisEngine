@@ -387,22 +387,48 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const glm::mat
         item.material = material;
         item.reflection = (reflection && reflection->enabled) ? reflection : nullptr;
         
-        // Find nearest reflection probe
+        // Reflection Probe Selection
         if (item.reflection) {
-            float minProbeDistSq = 1e30f; // approx max
-            for (auto& p : probes) {
-                float d = glm::distance2(glm::vec3(modelMatrix[3]), p.position);
-                if (d < minProbeDistSq) {
-                    minProbeDistSq = d;
-                    item.probe = p.component;
-                    item.probePos = p.position;
-                    
-                    // Calculate Distance-Dependent Intensity (DDI)
-                    float dist = glm::sqrt(d);
-                    float falloff = 1.0f - glm::clamp(dist / item.probe->radius, 0.0f, 1.0f);
-                    item.reflectionIntensity = falloff;
+            bool probeFound = false;
+            
+            // 1. Try Target Probe (Name or Name:Tag)
+            if (!item.reflection->targetProbe.empty()) {
+                std::string target = item.reflection->targetProbe;
+                size_t colon = target.find(':');
+                std::string targetName = (colon == std::string::npos) ? target : target.substr(0, colon);
+                std::string targetTag = (colon == std::string::npos) ? "" : target.substr(colon + 1);
+
+                for (auto probeEntity : probeView) {
+                    auto* info = scene.registry.try_get<InfoComponent>(probeEntity);
+                    if (info && (info->name == targetName)) {
+                        if (targetTag.empty() || info->tag == targetTag) {
+                            auto [pPos, pComp] = probeView.get<PositionComponent, ReflectionProbeComponent>(probeEntity);
+                            item.probe = &pComp;
+                            item.probePos = pPos.value;
+                            probeFound = true;
+                            break;
+                        }
+                    }
                 }
             }
+
+            // 2. Fallback to Nearest Probe
+            if (!probeFound) {
+                float minProbeDistSq = 1e30f;
+                for (auto& p : probes) {
+                    float d = glm::distance2(glm::vec3(modelMatrix[3]), p.position);
+                    if (d < minProbeDistSq) {
+                        minProbeDistSq = d;
+                        item.probe = p.component;
+                        item.probePos = p.position;
+                        probeFound = true;
+                    }
+                }
+            }
+
+            // Standardize Intensity (since radius is removed)
+            item.reflectionIntensity = 1.0f;
+            if (item.probe) item.probeIndex = item.probe->lastGpuIndex;
         }
 
         item.worldMatrix = modelMatrix;
@@ -626,6 +652,10 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         shader->setVec4("tintColor", item.tintColor);
         shader->setUInt("entityID", item.entityId);
         shader->setBool("isInstanced", false);
+        
+        if (shader->GetName() == "deferred_reflect") {
+            shader->setInt("u_ProbeIndex", item.probeIndex);
+        }
         // Reflection and Textures
         auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
         auto& tm = context.GetTextureManager();

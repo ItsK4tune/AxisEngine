@@ -205,6 +205,7 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     for (auto entity : reflectionView) {
         auto& pos = reflectionView.get<PositionComponent>(entity).value;
         auto& pr = reflectionView.get<ReflectionProbeComponent>(entity);
+        pr.lastGpuIndex = -1; // Reset before selection
         float vol = (pr.boxMax.x - pr.boxMin.x) * (pr.boxMax.y - pr.boxMin.y) * (pr.boxMax.z - pr.boxMin.z);
         
         allProbes.push_back({entity, glm::distance2(pos, camPos), pos, vol});
@@ -240,6 +241,8 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         auto entity = finalProbes[i].entity;
         auto& probe = reflectionView.get<ReflectionProbeComponent>(entity);
         auto& pos = finalProbes[i].pos;
+        
+        probe.lastGpuIndex = i; // Mark GPU slot for Per-Object assignment logic
 
         tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture15) + i));
         tm.BindTexture(TextureType::TextureCubeMap, probe.cubemapID);

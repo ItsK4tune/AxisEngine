@@ -163,7 +163,10 @@ void main()
     float Metallic = PBRParams.r;
     float Roughness = PBRParams.g;
     float Reflectivity = PBRParams.b;
-    float FresnelPower = PBRParams.a;
+    
+    // Unpacking: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 10.0
+    int pIdx = int(PBRParams.a) - 1;
+    float FresnelPower = fract(PBRParams.a) * 10.0;
 
     vec3 Lo = vec3(0.0);
 
@@ -254,49 +257,48 @@ void main()
     if (u_ProbeCount > 0 && Reflectivity > 0.01) {
         vec3 R = reflect(-V, Normal);
         
-        vec3 finalLocalReflection = vec3(0.0);
-        float totalWeight = 0.0;
-        float maxBoxWeight = 0.0;
-        
-        // 2. Accumulate all probes with soft Winner-Takes-Most logic to eliminate GHOSTING
-        for (int i = 0; i < u_ProbeCount; ++i) {
-            vec3 minEdge = FragPos - u_Probes[i].boxMin;
-            vec3 maxEdge = u_Probes[i].boxMax - FragPos;
-            vec3 distToEdge = min(minEdge, maxEdge);
-            float weight = min(distToEdge.x, min(distToEdge.y, distToEdge.z));
+        // 1. Mandatory Probe Override from G-Buffer
+        if (pIdx >= 0 && pIdx < u_ProbeCount) {
+            vec3 L = (u_Probes[pIdx].boxProjection) ? 
+                        BoxProjection(R, FragPos, u_Probes[pIdx].pos, u_Probes[pIdx].boxMin, u_Probes[pIdx].boxMax) : R;
+            reflectionColor = textureLod(reflectionProbes[pIdx], L, Roughness * 2.0).rgb;
+        } 
+        else {
+            // 2. Fallback to Automatic Spatial Blending Logic
+            vec3 finalLocalReflection = vec3(0.0);
+            float totalWeight = 0.0;
+            float maxBoxWeight = 0.0;
             
-            // Spatial weight with blend distance
-            float boxWeight = smoothstep(0.0, 1.0, weight / max(u_Probes[i].blendDistance, 0.01));
-            maxBoxWeight = max(maxBoxWeight, boxWeight);
-
-            if (boxWeight > 0.0) {
-                vec3 boxSize = u_Probes[i].boxMax - u_Probes[i].boxMin;
-                float volume = boxSize.x * boxSize.y * boxSize.z;
+            for (int i = 0; i < u_ProbeCount; ++i) {
+                vec3 minEdge = FragPos - u_Probes[i].boxMin;
+                vec3 maxEdge = u_Probes[i].boxMax - FragPos;
+                vec3 distToEdge = min(minEdge, maxEdge);
+                float weight = min(distToEdge.x, min(distToEdge.y, distToEdge.z));
                 
-                // Tie-breaker: Closer to probe center wins. 
-                // This kills ghosts in overlap zones where volumes are identical.
-                float distSq = dot(FragPos - u_Probes[i].pos, FragPos - u_Probes[i].pos);
-                float priority = (1.0 / (volume + 0.0001)) / (distSq + 0.0001);
-                
-                // Aggressive exponent to ensure only the best probe is visible.
-                float finalWeight = pow(boxWeight, 4.0) * priority;
+                float boxWeight = smoothstep(0.0, 1.0, weight / max(u_Probes[i].blendDistance, 0.01));
+                maxBoxWeight = max(maxBoxWeight, boxWeight);
 
-                vec3 L = (u_Probes[i].boxProjection) ? 
-                           BoxProjection(R, FragPos, u_Probes[i].pos, u_Probes[i].boxMin, u_Probes[i].boxMax) : R;
+                if (boxWeight > 0.0) {
+                    vec3 boxSize = u_Probes[i].boxMax - u_Probes[i].boxMin;
+                    float volume = boxSize.x * boxSize.y * boxSize.z;
+                    float distSq = dot(FragPos - u_Probes[i].pos, FragPos - u_Probes[i].pos);
+                    float priority = (1.0 / (volume + 0.0001)) / (distSq + 0.0001);
+                    float finalWeight = pow(boxWeight, 4.0) * priority;
 
-                if (dot(L, L) > 0.0) {
-                    finalLocalReflection += textureLod(reflectionProbes[i], L, Roughness * 2.0).rgb * finalWeight;
-                    totalWeight += finalWeight;
+                    vec3 L = (u_Probes[i].boxProjection) ? 
+                            BoxProjection(R, FragPos, u_Probes[i].pos, u_Probes[i].boxMin, u_Probes[i].boxMax) : R;
+
+                    if (dot(L, L) > 0.0) {
+                        finalLocalReflection += textureLod(reflectionProbes[i], L, Roughness * 2.0).rgb * finalWeight;
+                        totalWeight += finalWeight;
+                    }
                 }
             }
+            
+            vec3 globalFallback = textureLod(reflectionProbes[0], R, Roughness * 2.0).rgb;
+            vec3 combinedLocal = (totalWeight > 0.000001) ? (finalLocalReflection / totalWeight) : globalFallback;
+            reflectionColor = mix(globalFallback, combinedLocal, maxBoxWeight);
         }
-        
-        // Final fallback for global atmosphere (always Slot 0 at infinity)
-        vec3 globalFallback = textureLod(reflectionProbes[0], R, Roughness * 2.0).rgb;
-        vec3 combinedLocal = (totalWeight > 0.000001) ? (finalLocalReflection / totalWeight) : globalFallback;
-        
-        // Final smooth blend between probe set and sky background
-        reflectionColor = mix(globalFallback, combinedLocal, maxBoxWeight);
     }
     
     if (u_PlanarCount > 0 && Reflectivity > 0.01) {

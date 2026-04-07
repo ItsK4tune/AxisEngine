@@ -183,13 +183,12 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
-        Shader: forward_reflect
+        Shader: deferred_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
       Component: ReflectionProbe
         Type: DYNAMIC
-        Radius: 20.0
         Resolution: 256
         BoxProjection: true
       Component: Reflective
@@ -205,16 +204,17 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: cubeModel
-        Shader: forward_reflect
+        Shader: deferred_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
         Roughness: 0.0
       Component: ReflectionProbe
         Type: DYNAMIC
-        Radius: 2000.0
         Resolution: 4096
         BoxProjection: true
+        BoxMin: -10.0 -10.0 -10.0
+        BoxMax: 10.0 10.0 10.0
       Component: Reflective
         Active: true
         Reflectivity: 1.0
@@ -277,3 +277,86 @@ axis_scene:
         Size: 1.0 1.0 1.0
       Component: RigidBody
         Mass: 2.0
+
+    # Demo: Central Reflection Probe
+    Main_Probe:
+      Component: Transform
+        Position: 0.0 5.0 0.0
+      Component: ReflectionProbe
+        Type: STATIC
+        Resolution: 512
+        BoxProjection: true
+        BoxMin: -10.0 -5.0 -10.0
+        BoxMax: 10.0 5.0 10.0
+
+    # Demo: 6 Reflective Planes (Room)
+    Room_Floor:
+      Component: Transform
+        Position: 0.0 0.0 0.0
+        Scale: 2.0 1.0 2.0
+      Component: Renderer
+        Model: planeModel
+        Shader: deferred_reflect
+      Component: Reflective
+        Reflectivity: 0.8
+        Probe: Main_Probe
+    
+    Room_Ceiling:
+      Component: Transform
+        Position: 0.0 10.0 0.0
+        Rotation: 180.0 0.0 0.0
+        Scale: 2.0 1.0 2.0
+      Component: Renderer
+        Model: planeModel
+        Shader: deferred_reflect
+      Component: Reflective
+        Reflectivity: 0.8
+        Probe: Main_Probe
+        
+    Room_Wall_North:
+      Component: Transform
+        Position: 0.0 5.0 10.0
+        Rotation: -90.0 0.0 0.0
+        Scale: 2.0 1.0 1.0
+      Component: Renderer
+        Model: planeModel
+        Shader: deferred_reflect
+      Component: Reflective
+        Reflectivity: 0.8
+        Probe: Main_Probe
+        
+    Room_Wall_South:
+      Component: Transform
+        Position: 0.0 5.0 -10.0
+        Rotation: 90.0 0.0 0.0
+        Scale: 2.0 1.0 1.0
+      Component: Renderer
+        Model: planeModel
+        Shader: deferred_reflect
+      Component: Reflective
+        Reflectivity: 0.8
+        Probe: Main_Probe
+        
+    Room_Wall_East:
+      Component: Transform
+        Position: 10.0 5.0 0.0
+        Rotation: 0.0 0.0 90.0
+        Scale: 1.0 1.0 2.0
+      Component: Renderer
+        Model: planeModel
+        Shader: deferred_reflect
+      Component: Reflective
+        Reflectivity: 0.8
+        Probe: Main_Probe
+        
+    Room_Wall_West:
+      Component: Transform
+        Position: -10.0 5.0 0.0
+        Rotation: 0.0 0.0 -90.0
+        Scale: 1.0 1.0 2.0
+      Component: Renderer
+        Model: planeModel
+        Shader: deferred_reflect
+      Component: Reflective
+        Reflectivity: 0.8
+        Probe: Main_Probe

@@ -262,12 +262,13 @@ void ComponentLoader::LoadPostProcess(Scene &scene, entt::entity entity, const Y
 
 void ComponentLoader::LoadReflective(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
 {
-    LoaderUtils::ValidateKeys(node, {"Active", "Reflectivity", "FresnelPower", "FresnelBias"}, "Reflective");
+    LoaderUtils::ValidateKeys(node, {"Active", "Reflectivity", "FresnelPower", "FresnelBias", "Probe"}, "Reflective");
     auto &ref = scene.registry.emplace<ReflectiveComponent>(entity);
     ref.enabled = node.GetChildValue("Active", "true") == "true";
     ref.reflectivity = std::stof(node.GetChildValue("Reflectivity", "1.0"));
     ref.fresnelPower = std::stof(node.GetChildValue("FresnelPower", "5.0"));
     ref.fresnelBias = std::stof(node.GetChildValue("FresnelBias", "0.04"));
+    ref.targetProbe = node.GetChildValue("Probe", "");
 }
 
 void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNode &node)
@@ -596,7 +597,6 @@ void ComponentLoader::LoadReflectionProbe(Scene &scene, entt::entity entity, con
     std::string typeStr = node.GetChildValue("Type", "Static");
     comp.type = (typeStr == "Dynamic" || typeStr == "DYNAMIC") ? ReflectionProbeType::Dynamic : ReflectionProbeType::Static;
     
-    comp.radius = std::stof(node.GetChildValue("Radius", "10.0"));
     comp.resolution = std::stoi(node.GetChildValue("Resolution", "512"));
     comp.boxProjection = node.GetChildValue("BoxProjection", "true") == "true";
     

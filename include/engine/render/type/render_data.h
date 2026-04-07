@@ -22,6 +22,7 @@ struct RenderItem {
     ReflectionProbeComponent* probe = nullptr;
     glm::vec3 probePos = glm::vec3(0.0f);
     float reflectionIntensity = 1.0f;
+    int probeIndex = -1; // New field for Deferred Reflection Binding
     glm::mat4 worldMatrix;
     glm::vec4 tintColor = glm::vec4(1.0f);
     AABB worldAABB;
