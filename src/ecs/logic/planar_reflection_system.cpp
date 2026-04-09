@@ -1,4 +1,5 @@
 #include <ecs/logic/planar_reflection_system.h>
+#include <render/type/render_view_params.h>
 #include <ecs/logic/system_factory.h>
 #include <core/logic/service_locator.h>
 #include <render/interface/i_graphics_context.h>
@@ -169,8 +170,18 @@ void PlanarReflectionSystem::Render(Scene& scene)
         obliqueProj[3][2] = c.w;
 
         // Render to reflection texture
-        m_RenderService->BuildRenderQueuesWithCamera(scene, refViewMat, obliqueProj, refCamPos, 
-            cam.nearPlane, cam.farPlane, 1.0f, prc.resolution, prc.resolution, cam.cullingMask, true);
+        RenderViewParams reflParams;
+        reflParams.view = refViewMat;
+        reflParams.projection = obliqueProj;
+        reflParams.cameraPos = refCamPos;
+        reflParams.nearPlane = cam.nearPlane;
+        reflParams.farPlane = cam.farPlane;
+        reflParams.lodFactor = 1.0f;
+        reflParams.width = prc.resolution;
+        reflParams.height = prc.resolution;
+        reflParams.cullingMask = cam.cullingMask;
+        reflParams.isCapturingProbe = true;
+        m_RenderService->BuildRenderQueuesWithCamera(scene, reflParams);
 
         const auto& opaqueQ = m_RenderService->GetRenderQueueObj().GetOpaqueQueue();
         m_RenderService->ExecuteQueue(opaqueQ, false, nullptr, nullptr, nullptr);

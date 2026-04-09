@@ -771,9 +771,9 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     if (typeStr == "PBR")
     {
         mat.desc.type = AxisMaterialType::PBR;
-        mat.desc.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
-        mat.desc.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
-        mat.desc.ao = std::stof(node.GetChildValue("AO", "1.0"));
+        mat.desc.pbr.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
+        mat.desc.pbr.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
+        mat.desc.pbr.ao = std::stof(node.GetChildValue("AO", "1.0"));
 
         std::stringstream emissSS(node.GetChildValue("Emission", "0 0 0"));
         float er, eg, eb;
@@ -783,12 +783,12 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
     else
     {
         mat.desc.type = AxisMaterialType::PHONG;
-        mat.desc.shininess = std::stof(node.GetChildValue("Shininess", "32.0"));
+        mat.desc.phong.shininess = std::stof(node.GetChildValue("Shininess", "32.0"));
 
         std::stringstream specSS(node.GetChildValue("Specular", "0.5 0.5 0.5"));
         float sr = 0, sg = 0, sb = 0;
         specSS >> sr >> sg >> sb;
-        mat.desc.specular = glm::vec3(sr, sg, sb);
+        mat.desc.phong.specular = glm::vec3(sr, sg, sb);
 
         std::stringstream emissSS(node.GetChildValue("Emission", "0 0 0"));
         float er = 0, eg = 0, eb = 0;
@@ -798,7 +798,7 @@ void ComponentLoader::LoadMaterial(Scene &scene, entt::entity entity, const YAML
         std::stringstream ambSS(node.GetChildValue("Ambient", "1 1 1"));
         float ar = 1, ag = 1, ab = 1;
         ambSS >> ar >> ag >> ab;
-        mat.desc.ambient = glm::vec3(ar, ag, ab);
+        mat.desc.phong.ambient = glm::vec3(ar, ag, ab);
         
         LOGGER_INFO("ComponentLoader") << "  -> Ambient(" << ar << ", " << ag << ", " << ab << ")";
     }

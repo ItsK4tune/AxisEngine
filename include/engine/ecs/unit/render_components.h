@@ -27,20 +27,30 @@ enum class AxisMaterialType
     PBR
 };
 
+struct PBRMaterialParams
+{
+    float roughness = 0.5f;
+    float metallic = 0.0f;
+    float ao = 1.0f;
+};
+
+struct PhongMaterialParams
+{
+    float shininess = 32.0f;
+    glm::vec3 specular = glm::vec3(0.5f);
+    glm::vec3 ambient = glm::vec3(1.0f);
+};
+
 struct AxisMaterialDescriptor
 {
     AxisMaterialType type = AxisMaterialType::PHONG;
 
-    float roughness = 0.5f;
-    float metallic = 0.0f;
-    float ao = 1.0f;
+    PBRMaterialParams pbr;
+    PhongMaterialParams phong;
+
     float opacity = 1.0f;
     float alphaCutoff = 0.5f;
     glm::vec3 emission = glm::vec3(0.0f);
-
-    float shininess = 32.0f;
-    glm::vec3 specular = glm::vec3(0.5f);
-    glm::vec3 ambient = glm::vec3(1.0f);
 
     glm::vec2 uvScale = glm::vec2(1.0f);
     glm::vec2 uvOffset = glm::vec2(0.0f);

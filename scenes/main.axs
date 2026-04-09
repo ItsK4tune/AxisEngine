@@ -1,6 +1,6 @@
 axis_scene:
   Config:
-    RENDER_PATH: DEFERRED
+    RENDER_PATH: FORWARD
     WINDOW_MODE: WINDOWED
 
   Resources:
@@ -183,7 +183,7 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
@@ -204,7 +204,7 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: cubeModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
@@ -296,7 +296,7 @@ axis_scene:
         Scale: 2.0 1.0 2.0
       Component: Renderer
         Model: planeModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Reflective
         Reflectivity: 0.8
         Probe: Main_Probe
@@ -308,7 +308,7 @@ axis_scene:
         Scale: 2.0 1.0 2.0
       Component: Renderer
         Model: planeModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Reflective
         Reflectivity: 0.8
         Probe: Main_Probe
@@ -320,7 +320,7 @@ axis_scene:
         Scale: 2.0 1.0 1.0
       Component: Renderer
         Model: planeModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Reflective
         Reflectivity: 0.8
         Probe: Main_Probe
@@ -332,7 +332,7 @@ axis_scene:
         Scale: 2.0 1.0 1.0
       Component: Renderer
         Model: planeModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Reflective
         Reflectivity: 0.8
         Probe: Main_Probe
@@ -344,7 +344,7 @@ axis_scene:
         Scale: 1.0 1.0 2.0
       Component: Renderer
         Model: planeModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Reflective
         Reflectivity: 0.8
         Probe: Main_Probe
@@ -356,7 +356,7 @@ axis_scene:
         Scale: 1.0 1.0 2.0
       Component: Renderer
         Model: planeModel
-        Shader: deferred_reflect
+        Shader: forward_reflect
       Component: Reflective
         Reflectivity: 0.8
         Probe: Main_Probe

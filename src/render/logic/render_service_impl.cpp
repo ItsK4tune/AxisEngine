@@ -189,12 +189,23 @@ void RenderServiceImpl::BuildRenderQueues(Scene &scene, float alpha, int width, 
     PositionComponent* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
     glm::vec3 pos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
-    BuildRenderQueuesWithCamera(scene, cam.viewMatrix, cam.projectionMatrix, pos, cam.nearPlane, cam.farPlane, alpha, width, height, cam.cullingMask);
+    RenderViewParams params;
+    params.view = cam.viewMatrix;
+    params.projection = cam.projectionMatrix;
+    params.cameraPos = pos;
+    params.nearPlane = cam.nearPlane;
+    params.farPlane = cam.farPlane;
+    params.lodFactor = alpha;
+    params.width = width;
+    params.height = height;
+    params.cullingMask = cam.cullingMask;
+    BuildRenderQueuesWithCamera(scene, params);
 }
 
-void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane, float lodFactor, int width, int height, uint32_t cullingMask, bool isCapturingProbe, entt::entity excludeEntity)
+void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params)
 {
-    m_IsCapturingProbe = isCapturingProbe;
+    m_IsCapturingProbe = params.isCapturingProbe;
+    float lodFactor = params.lodFactor;
     if (lodFactor <= 0.0f || lodFactor > 1.0f) {
         // LOGGER_WARN("RenderSystem") << "Invalid alpha value: " << lodFactor;
     }
@@ -204,15 +215,23 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const glm::mat
     }
 
     IGraphicsContext& context = *m_Context;
+    int width = params.width;
+    int height = params.height;
     m_LastWidth = width;
     m_LastHeight = height;
+
+    const glm::vec3& pos = params.cameraPos;
+    const glm::mat4& view = params.view;
+    const glm::mat4& proj = params.projection;
+    uint32_t cullingMask = params.cullingMask;
+    entt::entity excludeEntity = params.excludeEntity;
 
     m_CameraPos = pos;
     m_ViewMatrix = view;
     m_ProjMatrix = proj;
     
-    m_NearPlane = nearPlane;
-    m_FarPlane = farPlane;
+    m_NearPlane = params.nearPlane;
+    m_FarPlane = params.farPlane;
 
     if (width <= 0 || height <= 0) return;
 

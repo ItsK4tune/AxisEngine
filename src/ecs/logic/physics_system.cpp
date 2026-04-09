@@ -213,16 +213,16 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
     }
 
     std::shared_ptr<ICollisionShape> finalShape = nullptr;
-    if (shape.type == "BOX") finalShape = physics.CreateBoxShape(shape.size);
-    else if (shape.type == "SPHERE") finalShape = physics.CreateSphereShape(shape.radius);
-    else if (shape.type == "CAPSULE") finalShape = physics.CreateCapsuleShape(shape.radius, shape.height);
-    else if (shape.type == "COMPOUND") {
+    if (shape.type == ShapeType::Box) finalShape = physics.CreateBoxShape(shape.size);
+    else if (shape.type == ShapeType::Sphere) finalShape = physics.CreateSphereShape(shape.radius);
+    else if (shape.type == ShapeType::Capsule) finalShape = physics.CreateCapsuleShape(shape.radius, shape.height);
+    else if (shape.type == ShapeType::Compound) {
         auto compound = physics.CreateCompoundShape();
         for (auto& cs : shape.children) {
             std::shared_ptr<ICollisionShape> child = nullptr;
-            if (cs.type == "BOX") child = physics.CreateBoxShape(cs.size);
-            else if (cs.type == "SPHERE") child = physics.CreateSphereShape(cs.radius);
-            else if (cs.type == "CAPSULE") child = physics.CreateCapsuleShape(cs.radius, cs.height);
+            if (cs.type == ShapeType::Box) child = physics.CreateBoxShape(cs.size);
+            else if (cs.type == ShapeType::Sphere) child = physics.CreateSphereShape(cs.radius);
+            else if (cs.type == ShapeType::Capsule) child = physics.CreateCapsuleShape(cs.radius, cs.height);
             if (child) physics.AddChildShape(compound, child, cs.position, cs.rotation);
         }
         finalShape = compound;

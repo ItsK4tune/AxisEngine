@@ -99,19 +99,19 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
     if (material) {
         auto &mat = *material;
         if (mat.desc.type == AxisMaterialType::PBR) {
-            shader->setFloat(locs.mat_roughness, mat.desc.roughness);
-            shader->setFloat(locs.mat_metallic, mat.desc.metallic);
-            shader->setFloat(locs.mat_ao, mat.desc.ao);
+            shader->setFloat(locs.mat_roughness, mat.desc.pbr.roughness);
+            shader->setFloat(locs.mat_metallic, mat.desc.pbr.metallic);
+            shader->setFloat(locs.mat_ao, mat.desc.pbr.ao);
             shader->setVec3(locs.mat_emission, mat.desc.emission);
-            shader->setFloat(locs.roughness, mat.desc.roughness);
-            shader->setFloat(locs.metallic, mat.desc.metallic);
-            shader->setFloat(locs.ao, mat.desc.ao);
+            shader->setFloat(locs.roughness, mat.desc.pbr.roughness);
+            shader->setFloat(locs.metallic, mat.desc.pbr.metallic);
+            shader->setFloat(locs.ao, mat.desc.pbr.ao);
             shader->setVec3(locs.emission, mat.desc.emission);
 
             // Set standardized u_* names
-            if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, mat.desc.roughness);
-            if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, mat.desc.metallic);
-            if (locs.u_AO != -1) shader->setFloat(locs.u_AO, mat.desc.ao);
+            if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, mat.desc.pbr.roughness);
+            if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, mat.desc.pbr.metallic);
+            if (locs.u_AO != -1) shader->setFloat(locs.u_AO, mat.desc.pbr.ao);
             if (locs.u_Emission != -1) shader->setVec3(locs.u_Emission, mat.desc.emission);
 
             if (sceneData.irradianceMap != 0 && locs.irradianceMap != -1) {
@@ -131,16 +131,16 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
             }
         }
  else {
-            shader->setFloat(locs.mat_shininess, mat.desc.shininess);
-            shader->setVec3(locs.mat_specular, mat.desc.specular);
-            shader->setVec3(locs.mat_ambient, mat.desc.ambient);
+            shader->setFloat(locs.mat_shininess, mat.desc.phong.shininess);
+            shader->setVec3(locs.mat_specular, mat.desc.phong.specular);
+            shader->setVec3(locs.mat_ambient, mat.desc.phong.ambient);
             shader->setVec3(locs.mat_emission, mat.desc.emission);
-            shader->setFloat(locs.shininess, mat.desc.shininess);
-            shader->setVec3(locs.specular, mat.desc.specular);
-            shader->setVec3(locs.ambient, mat.desc.ambient);
+            shader->setFloat(locs.shininess, mat.desc.phong.shininess);
+            shader->setVec3(locs.specular, mat.desc.phong.specular);
+            shader->setVec3(locs.ambient, mat.desc.phong.ambient);
             shader->setVec3(locs.emission, mat.desc.emission);
             
-            float r = glm::clamp(1.0f - glm::sqrt(mat.desc.shininess / 128.0f), 0.05f, 1.0f);
+            float r = glm::clamp(1.0f - glm::sqrt(mat.desc.phong.shininess / 128.0f), 0.05f, 1.0f);
             shader->setFloat(locs.mat_roughness, r);
             shader->setFloat(locs.mat_metallic, 0.0f);
             shader->setFloat(locs.roughness, r);
@@ -148,14 +148,14 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
 
             if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, r);
             if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, 0.0f);
-            if (locs.u_Shininess != -1) shader->setFloat(locs.u_Shininess, mat.desc.shininess);
-            if (locs.u_Specular != -1) shader->setVec3(locs.u_Specular, mat.desc.specular);
+            if (locs.u_Shininess != -1) shader->setFloat(locs.u_Shininess, mat.desc.phong.shininess);
+            if (locs.u_Specular != -1) shader->setVec3(locs.u_Specular, mat.desc.phong.specular);
         }
         shader->setFloat(locs.mat_opacity, mat.desc.opacity);
         shader->setFloat(locs.opacity, mat.desc.opacity);
         
         if (locs.u_BaseColor != -1) {
-            glm::vec4 baseColor = glm::vec4(mat.desc.ambient, mat.desc.opacity) * tintColor;
+            glm::vec4 baseColor = glm::vec4(mat.desc.phong.ambient, mat.desc.opacity) * tintColor;
             shader->setVec4(locs.u_BaseColor, baseColor);
         }
         

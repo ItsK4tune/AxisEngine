@@ -1,4 +1,5 @@
 #include <ecs/logic/reflection_probe_system.h>
+#include <render/type/render_view_params.h>
 #include <ecs/unit/reflection_components.h>
 #include <ecs/unit/core_components.h>
 #include <core/logic/service_locator.h>
@@ -151,7 +152,19 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     context.Clear(BufferBit::Color | BufferBit::Depth);
     
     // 1. Build queues from probe perspective (updates UBO)
-    renderService.BuildRenderQueuesWithCamera(scene, views[faceIndex], proj, pos, 0.1f, 1000.0f, 1.0f, probe.resolution, probe.resolution, 0xFFFFFFFF, true, entity);
+    RenderViewParams probeParams;
+    probeParams.view = views[faceIndex];
+    probeParams.projection = proj;
+    probeParams.cameraPos = pos;
+    probeParams.nearPlane = 0.1f;
+    probeParams.farPlane = 1000.0f;
+    probeParams.lodFactor = 1.0f;
+    probeParams.width = probe.resolution;
+    probeParams.height = probe.resolution;
+    probeParams.cullingMask = 0xFFFFFFFF;
+    probeParams.isCapturingProbe = true;
+    probeParams.excludeEntity = entity;
+    renderService.BuildRenderQueuesWithCamera(scene, probeParams);
     
     // 2. Render Skybox
     if (auto* skyService = sl.Resolve<ISkyboxService>()) {

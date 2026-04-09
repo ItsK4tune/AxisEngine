@@ -13,7 +13,7 @@ void PhysicsLoader::LoadRigidShape(Scene &scene, entt::entity entity, const YAML
     LoaderUtils::ValidateKeys(node, {"Type", "Size", "Radius", "Height", "Offset", "Rotation", "Friction", "Restitution", "Shapes"}, "RigidShape");
 
     auto &rs = scene.registry.get_or_emplace<RigidShapeComponent>(entity);
-    rs.type = node.GetChildValue("Type", "BOX");
+    rs.type = ShapeTypeFromString(node.GetChildValue("Type", "BOX"));
     
     if (!node.GetChildValue("Size").empty()) {
         std::stringstream ss(node.GetChildValue("Size"));
@@ -39,7 +39,7 @@ void PhysicsLoader::LoadRigidShape(Scene &scene, entt::entity entity, const YAML
         for (auto& shapeNode : shapesNode->children) {
             if (shapeNode.key != "Shape") continue;
             RigidShapeComponent::ChildShape child;
-            child.type = shapeNode.GetChildValue("Type", "BOX");
+            child.type = ShapeTypeFromString(shapeNode.GetChildValue("Type", "BOX"));
             
             std::stringstream posSS(shapeNode.GetChildValue("Position", "0 0 0"));
             posSS >> child.position.x >> child.position.y >> child.position.z;

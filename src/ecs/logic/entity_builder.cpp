@@ -69,9 +69,9 @@ EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const 
 {
     auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
     mat.desc.type = AxisMaterialType::PHONG;
-    mat.desc.ambient = ambient;
-    mat.desc.specular = specular;
-    mat.desc.shininess = shininess;
+    mat.desc.phong.ambient = ambient;
+    mat.desc.phong.specular = specular;
+    mat.desc.phong.shininess = shininess;
     return *this;
 }
 
@@ -79,9 +79,9 @@ EntityBuilder& EntityBuilder::WithPBRMaterial(float metallic, float roughness, f
 {
     auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
     mat.desc.type = AxisMaterialType::PBR;
-    mat.desc.metallic = metallic;
-    mat.desc.roughness = roughness;
-    mat.desc.ao = ao;
+    mat.desc.pbr.metallic = metallic;
+    mat.desc.pbr.roughness = roughness;
+    mat.desc.pbr.ao = ao;
     return *this;
 }
 

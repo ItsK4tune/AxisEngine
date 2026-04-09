@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <physics/type/shape_type.h>
 #include <memory>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -15,7 +16,7 @@
 
 struct RigidShapeComponent
 {
-    std::string type = "BOX";
+    ShapeType type = ShapeType::Box;
     glm::vec3 size = glm::vec3(1.0f);
     float radius = 0.5f;
     float height = 1.0f;
@@ -28,7 +29,7 @@ struct RigidShapeComponent
     
     // For Compound shapes
     struct ChildShape {
-        std::string type;
+        ShapeType type = ShapeType::Box;
         glm::vec3 position;
         glm::quat rotation;
         glm::vec3 size;
