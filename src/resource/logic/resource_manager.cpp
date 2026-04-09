@@ -1,5 +1,5 @@
 #include <core/logic/job_system.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <iostream>
 #include <resource/logic/resource_manager.h>
@@ -13,7 +13,7 @@
 
 ResourceManager::ResourceManager()
 {
-    m_ReloadListenerId = EventSystem::Instance().Subscribe<ResourceReloadEvent>([this](const ResourceReloadEvent &e)
+    m_ReloadListenerId = EventManager::Instance().Subscribe<ResourceReloadEvent>([this](const ResourceReloadEvent &e)
                                                                                 {
         if (e.type == "SHADER") {
             ReloadShader(e.name);
@@ -62,6 +62,7 @@ void ResourceManager::Initialize(IShaderManager& shaderManager, ITextureManager&
     m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);
     m_VideoManager = std::make_unique<VideoManager>();
     m_FragmentManager = std::make_unique<FragmentAssetManager>();
+    m_UIModelManager = std::make_unique<UIModelManager>();
 
     m_ShaderManager->Initialize();
     m_TextureManager->Initialize();
@@ -79,8 +80,18 @@ ResourceManager::~ResourceManager()
 
 void ResourceManager::Shutdown()
 {
-    EventSystem::Instance().Unsubscribe<ResourceReloadEvent>(m_ReloadListenerId);
+    EventManager::Instance().Unsubscribe<ResourceReloadEvent>(m_ReloadListenerId);
     ClearResource();
+}
+
+void ResourceManager::SetTextureAsyncEnabled(bool enabled)
+{
+    if (m_TextureManager) m_TextureManager->SetAsyncEnabled(enabled);
+}
+
+void ResourceManager::SetTextureMaxAnisotropy(float max)
+{
+    if (m_TextureManager) m_TextureManager->SetMaxAnisotropy(max);
 }
 
 void ResourceManager::Update(float dt)
@@ -157,7 +168,7 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
 
     if (m_ModelManager->Load(name, fullPath, isStatic, false))
     {
-        EventSystem::Instance().Publish(ResourceLoadedEvent{name, "MODEL", true});
+        EventManager::Instance().Publish(ResourceLoadedEvent{name, "MODEL", true});
     }
 }
 
@@ -204,7 +215,7 @@ void ResourceManager::LoadFragment(const std::string &name, const std::string &p
 
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
-    m_UIModels[name] = std::make_shared<UIModel>(type);
+    m_UIModelManager->Create(name, type);
     LOGGER_INFO("ResourceManager") << "Created UI Model: " << name;
 }
 
@@ -302,14 +313,12 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &n
 
 std::shared_ptr<UIModel> ResourceManager::GetUIModel(const std::string &name)
 {
-    if (m_UIModels.find(name) != m_UIModels.end())
-        return m_UIModels[name];
-    return nullptr;
+    return m_UIModelManager->Get(name);
 }
 
 bool ResourceManager::HasUIModel(const std::string &name)
 {
-    return m_UIModels.find(name) != m_UIModels.end();
+    return m_UIModelManager->Has(name);
 }
 
 void ResourceManager::ClearResource()
@@ -324,7 +333,7 @@ void ResourceManager::ClearResource()
     m_VideoManager->Clear();
     if (m_FragmentManager) m_FragmentManager->Clear();
 
-    m_UIModels.clear();
+    if (m_UIModelManager) m_UIModelManager->Clear();
 
     LOGGER_INFO("ResourceManager") << "All resources cleared via specialized managers";
 }

@@ -5,10 +5,8 @@
 
 std::shared_ptr<FragmentAsset> FragmentAssetManager::Load(const std::string& path)
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
-    
-    if (m_Fragments.find(path) != m_Fragments.end())
-        return m_Fragments[path];
+    if (m_Cache.Has(path))
+        return m_Cache.Get(path);
 
     std::string fullPath = FileSystem::getPath(path);
     auto roots = YAMLParser::Parse(fullPath);
@@ -23,7 +21,7 @@ std::shared_ptr<FragmentAsset> FragmentAssetManager::Load(const std::string& pat
     asset->path = path;
     asset->rootNodes = roots;
     
-    m_Fragments[path] = asset;
+    m_Cache.Add(path, asset);
     
     LOGGER_INFO("FragmentAssetManager") << "Loaded fragment: " << path;
     return asset;
@@ -31,22 +29,17 @@ std::shared_ptr<FragmentAsset> FragmentAssetManager::Load(const std::string& pat
 
 std::shared_ptr<FragmentAsset> FragmentAssetManager::Get(const std::string& nameOrPath)
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
-    if (m_Fragments.find(nameOrPath) != m_Fragments.end())
-        return m_Fragments[nameOrPath];
-    return nullptr;
+    return m_Cache.Get(nameOrPath);
 }
 
 void FragmentAssetManager::Unload(const std::string& nameOrPath)
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
-    m_Fragments.erase(nameOrPath);
+    m_Cache.Remove(nameOrPath);
     LOGGER_INFO("FragmentAssetManager") << "Unloaded fragment: " << nameOrPath;
 }
 
 void FragmentAssetManager::Clear()
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
-    m_Fragments.clear();
+    m_Cache.Clear();
     LOGGER_INFO("FragmentAssetManager") << "Cleared all fragments";
 }

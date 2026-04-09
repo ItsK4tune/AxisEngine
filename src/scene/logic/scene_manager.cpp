@@ -9,7 +9,7 @@
 #include <resource/type/resource_events.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 
 namespace {
@@ -31,7 +31,7 @@ void SceneManager::Initialize()
 
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
-    EventSystem::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
+    EventManager::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
 
     LOGGER_INFO("SceneManager") << "Initialized";
 }
@@ -94,7 +94,7 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     }
 
     m_LoadedScenes.push_back(std::move(rec));
-    EventSystem::Instance().Publish(SceneLoadedEvent{filePath});
+    EventManager::Instance().Publish(SceneLoadedEvent{filePath});
 }
 
 void SceneManager::UnloadScene(const std::string& filePath)
@@ -105,9 +105,9 @@ void SceneManager::UnloadScene(const std::string& filePath)
 
     if (it != m_LoadedScenes.end())
     {
-        _UnloadRecord(*it);
+        Internal_UnloadRecord(*it);
         m_LoadedScenes.erase(it);
-        _ReindexScenes();
+        Internal_ReindexScenes();
     }
 }
 
@@ -120,9 +120,9 @@ void SceneManager::UnloadScene(const SceneRecord* rec)
 
     if (it != m_LoadedScenes.end())
     {
-        _UnloadRecord(*it);
+        Internal_UnloadRecord(*it);
         m_LoadedScenes.erase(it);
-        _ReindexScenes();
+        Internal_ReindexScenes();
     }
 }
 
@@ -134,9 +134,9 @@ void SceneManager::UnloadSceneByName(const std::string& name)
 
     if (it != m_LoadedScenes.end())
     {
-        _UnloadRecord(*it);
+        Internal_UnloadRecord(*it);
         m_LoadedScenes.erase(it);
-        _ReindexScenes();
+        Internal_ReindexScenes();
     }
 }
 
@@ -148,9 +148,9 @@ void SceneManager::UnloadSceneByOrder(int order)
 
     if (it != m_LoadedScenes.end())
     {
-        _UnloadRecord(*it);
+        Internal_UnloadRecord(*it);
         m_LoadedScenes.erase(it);
-        _ReindexScenes();
+        Internal_ReindexScenes();
     }
 }
 
@@ -162,9 +162,9 @@ void SceneManager::PopScene()
     {
         if (!m_LoadedScenes[i].persistent)
         {
-            _UnloadRecord(m_LoadedScenes[i]);
+            Internal_UnloadRecord(m_LoadedScenes[i]);
             m_LoadedScenes.erase(m_LoadedScenes.begin() + i);
-            _ReindexScenes();
+            Internal_ReindexScenes();
             return;
         }
     }
@@ -178,7 +178,7 @@ void SceneManager::ChangeScene(const std::string& filePath)
 
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
-    EventSystem::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
+    EventManager::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
 }
 
 void SceneManager::ClearAllScenes()
@@ -187,7 +187,7 @@ void SceneManager::ClearAllScenes()
     {
         if (!it->persistent)
         {
-            _UnloadRecord(*it);
+            Internal_UnloadRecord(*it);
             it = m_LoadedScenes.erase(it);
         }
         else
@@ -195,14 +195,14 @@ void SceneManager::ClearAllScenes()
             ++it;
         }
     }
-    _ReindexScenes();
+    Internal_ReindexScenes();
 }
 
 void SceneManager::ClearAllIncludingPersistent()
 {
     for (auto& rec : m_LoadedScenes)
     {
-        _UnloadRecord(rec);
+        Internal_UnloadRecord(rec);
     }
     m_LoadedScenes.clear();
     m_nextLoadOrder = 0;
@@ -315,15 +315,15 @@ void SceneManager::LogAllScenes() const
     }
 }
 
-void SceneManager::_UnloadRecord(SceneRecord& rec)
+void SceneManager::Internal_UnloadRecord(SceneRecord& rec)
 {
     LOGGER_INFO("SceneManager") << "Unloading scene: " << rec.filePath;
-    _DestroySceneEntities(rec);
-    _UnloadOrphanedResources(rec);
-    EventSystem::Instance().Publish(SceneUnloadedEvent{rec.filePath});
+    Internal_DestroySceneEntities(rec);
+    Internal_UnloadOrphanedResources(rec);
+    EventManager::Instance().Publish(SceneUnloadedEvent{rec.filePath});
 }
 
-void SceneManager::_DestroySceneEntities(SceneRecord& rec)
+void SceneManager::Internal_DestroySceneEntities(SceneRecord& rec)
 {
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     for (auto entity : rec.entities)
@@ -336,7 +336,7 @@ void SceneManager::_DestroySceneEntities(SceneRecord& rec)
     rec.entities.clear();
 }
 
-void SceneManager::_UnloadOrphanedResources(const SceneRecord& rec)
+void SceneManager::Internal_UnloadOrphanedResources(const SceneRecord& rec)
 {
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
     
@@ -349,7 +349,7 @@ void SceneManager::_UnloadOrphanedResources(const SceneRecord& rec)
     for (const auto& sound : rec.ownedSounds) resources.UnloadSound(sound);
 }
 
-void SceneManager::_RollbackConfig(const SceneRecord& removed)
+void SceneManager::Internal_RollbackConfig(const SceneRecord& removed)
 {
 
 
@@ -359,7 +359,7 @@ void SceneManager::_RollbackConfig(const SceneRecord& removed)
     }
 }
 
-void SceneManager::_ReindexScenes()
+void SceneManager::Internal_ReindexScenes()
 {
     m_nextLoadOrder = 0;
     for (auto& rec : m_LoadedScenes)

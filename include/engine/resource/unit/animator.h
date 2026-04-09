@@ -20,7 +20,7 @@ public:
     void PlayAnimation(std::shared_ptr<Animation> pAnimation);
     void PlayAnimation(const std::string &name);
 
-    void CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform, int depth);
+    void CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parentTransform, int depth);
     std::vector<glm::mat4> GetFinalBoneMatrices();
 
     void SetSpeed(float speed) { m_Speed = speed; }

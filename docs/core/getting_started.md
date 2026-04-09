@@ -282,10 +282,10 @@ If you need a system-wide manager (like an Achievement System) to listen to coll
 
 ```cpp
 #include <event/physics_events.h>
-#include <event/event_system.h>
+#include <event/event_manager.h>
 
 void SystemInit() {
-    EventSystem::Instance().Subscribe<EntityCollisionEvent>([](const auto& e) {
+    EventManager::Instance().Subscribe<EntityCollisionEvent>([](const auto& e) {
         if (e.type == CollisionEventType::Enter) {
             // Check if e.entityA or e.entityB is the player...
         }
@@ -298,11 +298,11 @@ Instead of polling `GetKeyboard().GetKeyDown(...)` every frame, AXIS Engine supp
 
 ```cpp
 #include <event/input_events.h>
-#include <event/event_system.h>
+#include <event/event_manager.h>
 
 void PlayerController::OnCreate() {
     // Other init...
-    EventSystem::Instance().Subscribe<KeyPressedEvent>([this](const auto& e) {
+    EventManager::Instance().Subscribe<KeyPressedEvent>([this](const auto& e) {
         if (e.key == GLFW_KEY_SPACE && e.mods == 0) {
             HandleJumpEvent();
         }

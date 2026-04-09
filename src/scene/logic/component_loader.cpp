@@ -284,11 +284,26 @@ void ComponentLoader::LoadCamera(Scene &scene, entt::entity entity, const YAMLNo
     if (c.fov <= 0.0f || c.fov >= 180.0f)
         LOGGER_WARN("ComponentLoader") << "Camera FOV out of bounds (0-180): " << c.fov;
 
-    c.yaw = std::stof(node.GetChildValue("Yaw", "-90.0"));
+    float yaw = std::stof(node.GetChildValue("Yaw", "-90.0"));
+    float pitch = std::stof(node.GetChildValue("Pitch", "0.0"));
+    if (pitch < -89.0f || pitch > 89.0f)
+        LOGGER_WARN("ComponentLoader") << "Camera Pitch out of bounds (-89 to 89): " << pitch;
 
-    c.pitch = std::stof(node.GetChildValue("Pitch", "0.0"));
-    if (c.pitch < -89.0f || c.pitch > 89.0f)
-        LOGGER_WARN("ComponentLoader") << "Camera Pitch out of bounds (-89 to 89): " << c.pitch;
+    // Convert Euler to Quaternion and update/emplace RotationComponent
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    
+    glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
+    glm::vec3 right = glm::normalize(glm::cross(glm::normalize(front), worldUp));
+    glm::vec3 up = glm::normalize(glm::cross(right, glm::normalize(front)));
+    
+    glm::quat rotation = glm::quatLookAt(glm::normalize(front), up);
+    
+    auto& rotComp = scene.registry.get_or_emplace<RotationComponent>(entity);
+    rotComp.value = rotation;
+    rotComp.prev = rotation;
 
     c.nearPlane = std::stof(node.GetChildValue("Near", "0.1"));
     c.farPlane = std::stof(node.GetChildValue("Far", "1000.0"));

@@ -27,18 +27,18 @@ public:
     ~SystemManager();
 
     void CreateSystems();
-    void InitializeSystems(ResourceManager &res, int width, int height);
+    void Initialize(ResourceManager &res, int width, int height);
     void Shutdown();
 
-    void RunFixedUpdate(Scene &scene, float fixedDt);
+    void FixedUpdate(Scene &scene, float fixedDt);
 
-    void RunUpdate(Scene &scene, float dt);
+    void Update(Scene &scene, float dt);
 
-    void PerformRenderShadows(Scene &scene, int width, int height, float alpha);
-    void RunRender(Scene &scene, int width, int height, float alpha);
+    void RenderShadows(Scene &scene, int width, int height, float alpha);
+    void Render(Scene &scene, int width, int height, float alpha);
 
-    void UpdateDebugSystem(float realDeltaTime);
-    void RenderDebugSystem(Scene& scene);
+    void UpdateDebug(float realDeltaTime);
+    void RenderDebug(Scene& scene);
 
     template<typename T>
     T* GetSystem() const

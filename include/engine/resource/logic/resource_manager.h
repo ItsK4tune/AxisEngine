@@ -13,6 +13,7 @@
 #include <resource/logic/resource_watcher.h>
 #include <resource/logic/model_instance_manager.h>
 #include <resource/logic/fragment_asset_manager.h>
+#include <resource/logic/ui_model_manager.h>
 #include <resource/interface/i_resource_libraries.h>
 #include <resource/unit/ui_model.h>
 #include <mutex>
@@ -37,7 +38,8 @@ public:
     void InitializePostLoad();
     void Shutdown();
     void Update(float dt);
-
+    void SetTextureAsyncEnabled(bool enabled);
+    void SetTextureMaxAnisotropy(float max);
 
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath, const std::string& gsPath = "");
     void LoadTexture(const std::string& name, const std::string& path, bool async = true, bool keepCpuData = false) override;
@@ -87,17 +89,7 @@ public:
 
 
 
-    ShaderManager& GetShaderManager()    { return *m_ShaderManager; }
-    TextureManager& GetTextureManager()  { return *m_TextureManager; }
-    ModelManager& GetModelManager()      { return *m_ModelManager; }
-    AudioAssetManager& GetAudioManager() { return *m_AudioManager; }
-    FontManager& GetFontManager()        { return *m_FontManager; }
-    SkyboxManager& GetSkyboxManager()    { return *m_SkyboxManager; }
-    AnimationManager& GetAnimationManager() { return *m_AnimationManager; }
-    VideoManager& GetVideoManager()      { return *m_VideoManager; }
-    FragmentAssetManager& GetFragmentManager() { return *m_FragmentManager; }
 
-    ModelInstanceManager& GetModelInstanceManager() { return m_ModelInstanceManager; }
 
 private:
     void ReloadShader(const std::string& name);
@@ -113,13 +105,12 @@ private:
     std::unique_ptr<AnimationManager> m_AnimationManager;
     std::unique_ptr<VideoManager>     m_VideoManager;
     std::unique_ptr<FragmentAssetManager> m_FragmentManager;
+    std::unique_ptr<UIModelManager>   m_UIModelManager;
 
     ModelInstanceManager m_ModelInstanceManager;
     ResourceWatcher      m_ResourceWatcher;
 
     std::mutex           m_ResourceMutex;
-
-    std::unordered_map<std::string, std::shared_ptr<UIModel>> m_UIModels;
 
     std::unordered_map<std::string, std::unique_ptr<ILoaderStrategy>> m_Strategies;
 

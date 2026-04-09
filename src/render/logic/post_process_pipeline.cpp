@@ -2,7 +2,7 @@
 #include <ecs/logic/render_system.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
 #include <render/interface/i_buffer_manager.h>

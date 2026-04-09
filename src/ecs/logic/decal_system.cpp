@@ -1,6 +1,6 @@
 #include <ecs/logic/decal_system.h>
 #include <ecs/logic/system_factory.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_shader_manager.h>

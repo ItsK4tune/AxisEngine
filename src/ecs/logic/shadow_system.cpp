@@ -4,7 +4,7 @@
 #include <render/interface/i_graphics_context.h>
 #include <resource/logic/resource_manager.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
 #include <ecs/unit/core_components.h>
@@ -37,7 +37,7 @@ void ShadowSystem::Initialize()
     m_ShadowRenderer.SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
     m_ShadowRenderer.SetShadowDistanceCulling(config.shadowDistanceCulling);
 
-    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
             return;
 

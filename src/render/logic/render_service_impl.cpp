@@ -30,7 +30,7 @@
 #include <render/interface/i_render_target_manager.h>
 #include <core/logic/service_locator.h>
 #include <render/logic/render_core.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 
 #include <core/type/app_config.h>
 #include <core/logic/config_manager.h>
@@ -74,7 +74,7 @@ void RenderServiceImpl::Initialize()
     this->SetDepthTest(config.depthTestEnabled);
 
 
-    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
             return;
 

@@ -1,7 +1,7 @@
 #include <ecs/logic/camera_system.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
@@ -14,7 +14,7 @@ void CameraSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<CameraSystem>(this);
-    EventSystem::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
+    EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
         auto* scene = ServiceLocator::Instance().Resolve<Scene>();
         if (!scene) return;
 

@@ -6,7 +6,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <scene/type/scene_events.h>
 #include <deque>
 
@@ -16,7 +16,7 @@ void TransformSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<TransformSystem>(this);
-    EventSystem::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
+    EventManager::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
         
         e.registry->on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);

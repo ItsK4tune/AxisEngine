@@ -4,7 +4,7 @@
 #include <core/logic/config_manager.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/app/state_machine.h>
 #include <core/logic/time_service.h>
@@ -25,15 +25,6 @@ EngineLoop::EngineLoop()
 void EngineLoop::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
-    m_IOHandler = &sl.Require<IOHandler>();
-    m_Scene = &sl.Require<Scene>();
-    m_ResourceManager = &sl.Require<ResourceManager>();
-    m_SystemManager = &sl.Require<SystemManager>();
-    m_SceneManager = &sl.Require<SceneManager>();
-    m_RuntimeCore = &sl.Require<RuntimeCore>();
-    m_TimeService = &sl.Require<TimeService>();
-    m_Window = m_IOHandler->GetMonitorManager().GetWindow();
-
     auto& configMgr = sl.Require<ConfigManager>();
     auto& appConfig = configMgr.GetConfig();
     
@@ -41,7 +32,7 @@ void EngineLoop::Initialize()
     SetMaxSubSteps(appConfig.maxSubSteps);
     SetTimeScale(appConfig.timeScale);
 
-    m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    m_ConfigSubscriptionId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         SetPhysicsStep(1.0f / e.config.physicsTickRate);
         SetMaxSubSteps(e.config.maxSubSteps);
         SetTimeScale(e.config.timeScale);
@@ -50,8 +41,8 @@ void EngineLoop::Initialize()
 
 void EngineLoop::Shutdown()
 {
-    if (m_ConfigSubId != -1) {
-        EventSystem::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigSubId);
+    if (m_ConfigSubscriptionId != -1) {
+        EventManager::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigSubscriptionId);
     }
 }
 
@@ -62,7 +53,7 @@ EngineLoop::~EngineLoop()
 void EngineLoop::Run()
 {
     LOGGER_INFO("EngineLoop") << "Starting engine loop";
-    while (!m_Window->ShouldClose())
+    while (!ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager().GetWindow()->ShouldClose())
     {
         ProcessFrame();
     }
@@ -70,13 +61,23 @@ void EngineLoop::Run()
 
 void EngineLoop::ProcessFrame()
 {
+    auto& sl = ServiceLocator::Instance();
+    auto& ioHandler = sl.Require<IOHandler>();
+    auto& window = *ioHandler.GetMonitorManager().GetWindow();
+    auto& timeService = sl.Require<TimeService>();
+    auto& resourceManager = sl.Require<ResourceManager>();
+    auto& systemManager = sl.Require<SystemManager>();
+    auto& runtimeCore = sl.Require<RuntimeCore>();
+    auto& scene = sl.Require<Scene>();
+    auto& sceneManager = sl.Require<SceneManager>();
+
     auto now = std::chrono::steady_clock::now();
     m_RealDeltaTime = std::chrono::duration<float>(now - m_LastFrameTime).count();
     m_DeltaTime = m_RealDeltaTime;
     m_LastFrameTime = now;
 
-    m_Window->PollEvents();
-    m_IOHandler->GetMouse().Update();
+    window.PollEvents();
+    ioHandler.GetMouse().Update();
 
     if (m_IsPaused)
     {
@@ -88,25 +89,24 @@ void EngineLoop::ProcessFrame()
     }
 
     m_TotalTime += m_RealDeltaTime;
-    m_TimeService->SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
+    timeService.SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
 
-    m_ResourceManager->Update(m_RealDeltaTime);
-    m_IOHandler->ProcessInput();
-    m_IOHandler->GetInputManager().Update();
+    resourceManager.Update(m_RealDeltaTime);
+    ioHandler.ProcessInput();
+    ioHandler.GetInputManager().Update();
 
-    m_SystemManager->UpdateDebugSystem(m_RealDeltaTime);
-
-    auto& stateMachine = m_RuntimeCore->GetStateMachine();
-    m_SystemManager->RunUpdate(*m_Scene, m_DeltaTime);
+    auto& stateMachine = runtimeCore.GetStateMachine();
+    systemManager.Update(scene, m_DeltaTime);
+    systemManager.UpdateDebug(m_RealDeltaTime);
 
     stateMachine.Update(m_DeltaTime);
-    m_IOHandler->GetMouse().EndFrame();
+    ioHandler.GetMouse().EndFrame();
 
     FixedUpdate();
     Render();
-    m_Window->SwapBuffers();
+    window.SwapBuffers();
 
-    int frameRateLimit = m_IOHandler->GetMonitorManager().GetFrameRateLimit();
+    int frameRateLimit = ioHandler.GetMonitorManager().GetFrameRateLimit();
     if (frameRateLimit > 0)
     {
         double targetFrameTime = 1.0 / (double)frameRateLimit;
@@ -130,22 +130,27 @@ void EngineLoop::ProcessFrame()
         }
     }
 
-    if (m_SceneManager->HasPendingScene())
+    if (sceneManager.HasPendingScene())
     {
-        m_SceneManager->UpdatePendingScene();
+        sceneManager.UpdatePendingScene();
     }
 }
 
 void EngineLoop::FixedUpdate()
 {
+    auto& sl = ServiceLocator::Instance();
+    auto& sysMgr = sl.Require<SystemManager>();
+    auto& rtCore = sl.Require<RuntimeCore>();
+    auto& scene = sl.Require<Scene>();
+
     m_Accumulator += m_DeltaTime;
     int physicsSteps = 0;
 
-    auto& stateMachine = m_RuntimeCore->GetStateMachine();
+    auto& stateMachine = rtCore.GetStateMachine();
 
     while (m_Accumulator >= m_FixedDeltaTime && physicsSteps < m_MaxSubSteps)
     {
-        m_SystemManager->RunFixedUpdate(*m_Scene, m_FixedDeltaTime);
+        sysMgr.FixedUpdate(scene, m_FixedDeltaTime);
         stateMachine.FixedUpdate(m_FixedDeltaTime);
 
         m_Accumulator -= m_FixedDeltaTime;
@@ -162,22 +167,28 @@ void EngineLoop::FixedUpdate()
 
 void EngineLoop::Render()
 {
-    m_SystemManager->PerformRenderShadows(
-        *m_Scene,
-        m_IOHandler->GetMonitorManager().GetWidth(),
-        m_IOHandler->GetMonitorManager().GetHeight(),
+    auto& sl = ServiceLocator::Instance();
+    auto& sysMgr = sl.Require<SystemManager>();
+    auto& io = sl.Require<IOHandler>();
+    auto& rtCore = sl.Require<RuntimeCore>();
+    auto& scene = sl.Require<Scene>();
+
+    sysMgr.RenderShadows(
+        scene,
+        io.GetMonitorManager().GetWidth(),
+        io.GetMonitorManager().GetHeight(),
         m_Alpha
     );
 
-    m_SystemManager->RunRender(
-        *m_Scene,
-        m_IOHandler->GetMonitorManager().GetWidth(),
-        m_IOHandler->GetMonitorManager().GetHeight(),
+    sysMgr.Render(
+        scene,
+        io.GetMonitorManager().GetWidth(),
+        io.GetMonitorManager().GetHeight(),
         m_Alpha
     );
 
-    m_RuntimeCore->GetStateMachine().Render();
-    m_SystemManager->RenderDebugSystem(*m_Scene);
+    rtCore.GetStateMachine().Render();
+    sysMgr.RenderDebug(scene);
 }
 
 void EngineLoop::SetPhysicsStep(float step)
@@ -194,9 +205,9 @@ void EngineLoop::SetTimeScale(float scale)
     m_TimeScale = scale;
     LOGGER_INFO("EngineLoop") << "Time scale set to: " << m_TimeScale;
 
-    if (m_TimeService)
+    if (ServiceLocator::Instance().Has<TimeService>())
     {
-        m_TimeService->SetTimeScale(scale);
+        ServiceLocator::Instance().Require<TimeService>().SetTimeScale(scale);
     }
 }
 
@@ -205,8 +216,8 @@ void EngineLoop::SetPaused(bool paused)
     m_IsPaused = paused;
     LOGGER_INFO("EngineLoop") << (m_IsPaused ? "Engine paused" : "Engine resumed");
 
-    if (m_TimeService)
+    if (ServiceLocator::Instance().Has<TimeService>())
     {
-        m_TimeService->SetPaused(paused);
+        ServiceLocator::Instance().Require<TimeService>().SetPaused(paused);
     }
 }

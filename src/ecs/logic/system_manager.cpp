@@ -1,7 +1,7 @@
 #include <ecs/logic/system_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/job_system.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/logic/config_manager.h>
 #include <core/type/event_types.h>
 #include <ecs/interface/i_base_system.h>
@@ -89,7 +89,7 @@ void SystemManager::CreateSystems()
     LOGGER_INFO("SystemManager") << "Created " << m_Systems.size() << " systems.";
 }
 
-void SystemManager::InitializeSystems(ResourceManager &res, int width, int height)
+void SystemManager::Initialize(ResourceManager &res, int width, int height)
 {
     LOGGER_INFO("SystemManager") << "Initializing systems...";
 
@@ -103,7 +103,7 @@ void SystemManager::InitializeSystems(ResourceManager &res, int width, int heigh
     m_PostProcessSystems.clear();
     
     // Subscribe to events
-    EventSystem::Instance().Subscribe<SystemEnabledEvent>([this](const SystemEnabledEvent& e) {
+    EventManager::Instance().Subscribe<SystemEnabledEvent>([this](const SystemEnabledEvent& e) {
         if (auto* sys = this->GetSystem(e.systemName)) {
             sys->SetEnabled(e.enabled);
         }
@@ -161,7 +161,7 @@ void SystemManager::Shutdown()
     }
 }
 
-void SystemManager::RunFixedUpdate(Scene& scene, float fixedDt)
+void SystemManager::FixedUpdate(Scene& scene, float fixedDt)
 {
     for (auto* sys : m_UpdateSystems) {
         if (sys->IsEnabled() && sys->GetPriority() < 20) {
@@ -170,7 +170,7 @@ void SystemManager::RunFixedUpdate(Scene& scene, float fixedDt)
     }
 }
 
-void SystemManager::RunUpdate(Scene& scene, float dt)
+void SystemManager::Update(Scene& scene, float dt)
 {
     // 1. Early Update (Priority < 30)
     for (auto* sys : m_UpdateSystems) {
@@ -279,13 +279,13 @@ uint32_t SystemManager::GetComponentBitIndex(entt::id_type id)
     return index;
 }
 
-void SystemManager::RunRender(Scene &scene, int width, int height, float alpha) 
+void SystemManager::Render(Scene &scene, int width, int height, float alpha) 
 {
     auto& sl = ServiceLocator::Instance();
     auto& graphicsContext = sl.Require<IGraphicsContext>();
     
     // 1. Shadow Pass
-    PerformRenderShadows(scene, width, height, alpha);
+    RenderShadows(scene, width, height, alpha);
 
     // 2. Capture Pass (Optional)
     bool captured = false;
@@ -329,17 +329,17 @@ void SystemManager::RunRender(Scene &scene, int width, int height, float alpha)
     }
 }
 
-void SystemManager::UpdateDebugSystem(float realDeltaTime)
+void SystemManager::UpdateDebug(float realDeltaTime)
 {
     // DebugSystem is now updated via standard m_UpdateSystems loop (Priority 1000)
 }
 
-void SystemManager::RenderDebugSystem(Scene& scene)
+void SystemManager::RenderDebug(Scene& scene)
 {
     // DebugSystem is now rendered via standard m_RenderSystems loop (Priority 1000)
 }
 
-void SystemManager::PerformRenderShadows(Scene& scene, int width, int height, float alpha)
+void SystemManager::RenderShadows(Scene& scene, int width, int height, float alpha)
 {
     auto& sl = ServiceLocator::Instance();
     auto* rs = sl.Resolve<IRenderService>();

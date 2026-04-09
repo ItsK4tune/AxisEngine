@@ -16,7 +16,7 @@
 #include <render/interface/i_render_target_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 
 REGISTER_SYSTEM(SkyboxRenderSystem)
@@ -31,13 +31,13 @@ void SkyboxRenderSystem::Initialize()
     auto& configManager = sl.Require<ConfigManager>();
     m_Intensity = configManager.GetConfig().skyboxIntensity;
 
-    m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    m_ConfigSubId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (e.bitmask & ConfigChangedEvent::Graphics) {
             m_Intensity = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().skyboxIntensity;
         }
     });
 
-    m_RenderDataSubId = EventSystem::Instance().Subscribe<FrameRenderDataEvent>([this](const FrameRenderDataEvent& e) {
+    m_RenderDataSubId = EventManager::Instance().Subscribe<FrameRenderDataEvent>([this](const FrameRenderDataEvent& e) {
         m_LastFrameData.mainFBO = e.data.mainFBO;
     });
 

@@ -7,7 +7,7 @@
 #include <script/logic/scriptable.h>
 #include <script/logic/physics_scriptable.h>
 #include <core/type/event_types.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
 
 PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene &scene, IPhysicsWorld &physics)
@@ -82,11 +82,11 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 if (trigger)
                 {
-                    EventSystem::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    EventManager::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
                 }
                 else
                 {
-                    EventSystem::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    EventManager::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
                 }
             };
 
@@ -144,11 +144,11 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 if (trigger)
                 {
-                    EventSystem::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
+                    EventManager::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
                 }
                 else
                 {
-                    EventSystem::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
+                    EventManager::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
                 }
             };
 

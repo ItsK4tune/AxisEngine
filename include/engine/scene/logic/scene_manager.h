@@ -59,11 +59,11 @@ private:
         bool persistent = false;
     };
 
-    void _DestroySceneEntities(SceneRecord& rec);
-    void _UnloadOrphanedResources(const SceneRecord& rec);
-    void _RollbackConfig(const SceneRecord& removed);
-    void _UnloadRecord(SceneRecord& rec);
-    void _ReindexScenes();
+    void Internal_DestroySceneEntities(SceneRecord& rec);
+    void Internal_UnloadOrphanedResources(const SceneRecord& rec);
+    void Internal_RollbackConfig(const SceneRecord& removed);
+    void Internal_UnloadRecord(SceneRecord& rec);
+    void Internal_ReindexScenes();
 
     int m_nextLoadOrder = 0;
     std::vector<SceneRecord> m_LoadedScenes;

@@ -2,7 +2,7 @@
 
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <mutex>
 
 
@@ -24,7 +24,7 @@ public:
             std::lock_guard<std::mutex> lock(m_Mutex);
             m_Config = config;
         }
-        EventSystem::Instance().Publish(ConfigChangedEvent{ m_Config, type });
+        EventManager::Instance().Publish(ConfigChangedEvent{ m_Config, type });
     }
 
     
@@ -35,7 +35,7 @@ public:
             m_Config.width = width;
             m_Config.height = height;
         }
-        EventSystem::Instance().Publish(ConfigChangedEvent{ m_Config, ConfigChangedEvent::Window });
+        EventManager::Instance().Publish(ConfigChangedEvent{ m_Config, ConfigChangedEvent::Window });
     }
 
     

@@ -21,7 +21,9 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/input_manager.h>
 #include <audio/logic/audio_service.h>
-#include <scene/logic/scene_manager.h>
+#include <core/logic/config_manager.h>
+#include <core/logic/event_manager.h>
+#include <core/type/event_types.h>
 
 void GameState::OnEnter()
 {
@@ -157,14 +159,16 @@ void GameState::OnUpdate(float dt)
     }
 
     if (input.GetActionDown("VolumeUp")) {
-        AppConfig cfg = this->Get<RuntimeCore>().GetConfig();
+        AppConfig cfg = this->Get<ConfigManager>().GetConfig();
         cfg.masterVolume = std::min(10.0f, cfg.masterVolume + 0.1f);
-        this->Get<RuntimeCore>().ApplyConfig(cfg);
+        this->Get<ConfigManager>().UpdateConfig(cfg);
+        EventManager::Instance().Publish(ConfigChangedEvent{cfg});
     }
     if (input.GetActionDown("VolumeDown")) {
-        AppConfig cfg = this->Get<RuntimeCore>().GetConfig();
+        AppConfig cfg = this->Get<ConfigManager>().GetConfig();
         cfg.masterVolume = std::max(0.0f, cfg.masterVolume - 0.1f);
-        this->Get<RuntimeCore>().ApplyConfig(cfg);
+        this->Get<ConfigManager>().UpdateConfig(cfg);
+        EventManager::Instance().Publish(ConfigChangedEvent{cfg});
     }
 
     if (input.GetActionDown("ToggleParticle")) {

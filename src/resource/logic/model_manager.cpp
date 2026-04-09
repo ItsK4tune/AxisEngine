@@ -2,7 +2,7 @@
 #include <resource/type/resource_events.h>
 #include <core/logic/axis_assert.h>
 #include <core/logic/logger.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/job_system.h>
 
@@ -77,7 +77,7 @@ void ModelManager::Update(float dt) {
                 it->model->UploadToGPU();
                 m_InstanceManager.RegisterModel(it->name, it->model);
                 LOGGER_INFO("ModelManager") << "Async model finished loading and uploaded to GPU: " << it->name;
-                EventSystem::Instance().Publish(ResourceLoadedEvent{it->name, "MODEL", true});
+                EventManager::Instance().Publish(ResourceLoadedEvent{it->name, "MODEL", true});
             }
             it = m_PendingModels.erase(it);
         } else {

@@ -18,13 +18,13 @@ The Event System enables decoupled communication using a **Publish-Subscribe** p
 struct PlayerHitEvent { int damage; };
 
 // 2. Publish
-EventSystem::Instance().Publish(PlayerHitEvent{ 10 });
+EventManager::Instance().Publish(PlayerHitEvent{ 10 });
 
 // 3. Subscribe (Recommended: ScopedSubscriber)
 class MyScript : public Scriptable {
     ScopedSubscriber<PlayerHitEvent> m_Listener;
     void OnCreate() override {
-        int token = EventSystem::Instance().Subscribe<PlayerHitEvent>(
+        int token = EventManager::Instance().Subscribe<PlayerHitEvent>(
             [this](const auto& e) { OnHit(e); }
         );
         m_Listener.Reset(token);

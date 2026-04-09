@@ -2,8 +2,7 @@
 
 #include <engine/resource/interface/i_asset_manager.h>
 #include <engine/resource/type/fragment_asset.h>
-#include <unordered_map>
-#include <mutex>
+#include <engine/resource/logic/resource_cache.h>
 
 class FragmentAssetManager : public IAssetManager<FragmentAsset>
 {
@@ -17,6 +16,5 @@ public:
     void Clear() override;
 
 private:
-    std::unordered_map<std::string, std::shared_ptr<FragmentAsset>> m_Fragments;
-    std::mutex m_Mutex;
+    ResourceCache<FragmentAsset> m_Cache;
 };

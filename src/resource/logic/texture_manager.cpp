@@ -3,7 +3,7 @@
 #include <core/logic/job_system.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <stb/stb_image.h>
 
@@ -118,11 +118,11 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
 
             m_Cache.Add(name, tex);
             LOGGER_INFO("TextureManager") << "Loaded texture: " << name;
-            EventSystem::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
+            EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
             return tex;
         } else {
             LOGGER_ERROR("TextureManager") << "Failed to load texture: " << path << ". Returning error texture.";
-            EventSystem::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
+            EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
             return m_ErrorTexture;
         }
     }
@@ -176,7 +176,7 @@ void TextureManager::Update(float dt) {
                     else stbi_image_free(data.data);
                 }
                 LOGGER_INFO("TextureManager") << "Async texture loaded: " << data.name;
-                EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", true});
+                EventManager::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", true});
             } else {
                 if (auto tex = m_Cache.Get(data.name)) {
                     if (m_ErrorTexture) {
@@ -187,7 +187,7 @@ void TextureManager::Update(float dt) {
                     }
                 }
                 LOGGER_ERROR("TextureManager") << "Failed async texture: " << data.name << ". Falling back to error texture.";
-                EventSystem::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", false});
+                EventManager::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", false});
             }
             it = m_AsyncLoads.erase(it);
         } else {

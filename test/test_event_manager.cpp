@@ -1,5 +1,5 @@
 #include "test_framework.h"
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <string>
 #include <vector>
 
@@ -15,9 +15,9 @@ struct AnotherEvent {
 
 // --- Tests ---
 
-TEST_CASE(EventSystem_SubscribeAndPublish)
+TEST_CASE(EventManager_SubscribeAndPublish)
 {
-    auto& es = EventSystem::Instance();
+    auto& es = EventManager::Instance();
     int received = 0;
 
     int id = es.Subscribe<TestEvent>([&](const TestEvent& e) {
@@ -30,9 +30,9 @@ TEST_CASE(EventSystem_SubscribeAndPublish)
     es.Unsubscribe<TestEvent>(id);
 }
 
-TEST_CASE(EventSystem_MultipleSubscribers)
+TEST_CASE(EventManager_MultipleSubscribers)
 {
-    auto& es = EventSystem::Instance();
+    auto& es = EventManager::Instance();
     std::vector<int> results;
 
     int id1 = es.Subscribe<TestEvent>([&](const TestEvent& e) {
@@ -51,9 +51,9 @@ TEST_CASE(EventSystem_MultipleSubscribers)
     es.Unsubscribe<TestEvent>(id2);
 }
 
-TEST_CASE(EventSystem_Unsubscribe)
+TEST_CASE(EventManager_Unsubscribe)
 {
-    auto& es = EventSystem::Instance();
+    auto& es = EventManager::Instance();
     int count = 0;
 
     int id = es.Subscribe<TestEvent>([&](const TestEvent&) {
@@ -69,9 +69,9 @@ TEST_CASE(EventSystem_Unsubscribe)
     REQUIRE_EQUAL(count, 1); // Should not increment
 }
 
-TEST_CASE(EventSystem_DifferentEventTypes)
+TEST_CASE(EventManager_DifferentEventTypes)
 {
-    auto& es = EventSystem::Instance();
+    auto& es = EventManager::Instance();
     int intResult = 0;
     std::string strResult;
 
@@ -92,9 +92,9 @@ TEST_CASE(EventSystem_DifferentEventTypes)
     es.Unsubscribe<AnotherEvent>(id2);
 }
 
-TEST_CASE(EventSystem_ScopedSubscriber)
+TEST_CASE(EventManager_ScopedSubscriber)
 {
-    auto& es = EventSystem::Instance();
+    auto& es = EventManager::Instance();
     int count = 0;
 
     {
@@ -109,9 +109,9 @@ TEST_CASE(EventSystem_ScopedSubscriber)
     REQUIRE_EQUAL(count, 1); // Should not increment
 }
 
-TEST_CASE(EventSystem_ScopedSubscriber_MoveSemantics)
+TEST_CASE(EventManager_ScopedSubscriber_MoveSemantics)
 {
-    auto& es = EventSystem::Instance();
+    auto& es = EventManager::Instance();
     int count = 0;
 
     ScopedSubscriber<TestEvent> sub1(

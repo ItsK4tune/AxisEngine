@@ -157,7 +157,7 @@ void Animator::PlayBlend(const std::string &nameA, const std::string &nameB, flo
     }
 }
 
-void Animator::CalculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform, int depth)
+void Animator::CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parentTransform, int depth)
 {
     if (depth > 100)
     {

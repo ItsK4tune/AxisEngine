@@ -19,7 +19,7 @@
 #include <platform/logic/monitor_manager.h>
 #include <ecs/logic/entity_manager.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/type/app_config.h>
 
@@ -42,7 +42,7 @@ void PhysicsSystem::Initialize()
         phys->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
     }
 
-    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Physics | ConfigChangedEvent::All)))
             return;
 

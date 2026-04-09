@@ -11,7 +11,7 @@
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
 
@@ -47,7 +47,7 @@ std::vector<const SceneRecord*> EngineAccessor::GetScenes(){ return ServiceLocat
 void EngineAccessor::SetCursorMode(CursorMode mode) { ServiceLocator::Instance().Require<IOHandler>().GetMouse().SetCursorMode(mode); }
 
 void EngineAccessor::EnableSystem(const std::string& systemName, bool enable) {
-    EventSystem::Instance().Publish(SystemEnabledEvent{systemName, enable});
+    EventManager::Instance().Publish(SystemEnabledEvent{systemName, enable});
 }
 
 void EngineAccessor::EnableLogic(bool enable)
@@ -63,14 +63,14 @@ bool EngineAccessor::GetAction(const std::string &name) const { return ServiceLo
 bool EngineAccessor::GetActionDown(const std::string &name) const { return ServiceLocator::Instance().Require<IOHandler>().GetInputManager().GetActionDown(name); }
 bool EngineAccessor::GetActionUp(const std::string &name) const { return ServiceLocator::Instance().Require<IOHandler>().GetInputManager().GetActionUp(name); }
 
-void EngineAccessor::SetTimeScale(float scale) { ServiceLocator::Instance().Require<RuntimeCore>().SetTimeScale(scale); }
-float EngineAccessor::GetTimeScale() const { return ServiceLocator::Instance().Require<RuntimeCore>().GetTimeScale(); }
-float EngineAccessor::GetRealDeltaTime() const { return ServiceLocator::Instance().Require<RuntimeCore>().GetRealDeltaTime(); }
+void EngineAccessor::SetTimeScale(float scale) { ServiceLocator::Instance().Require<RuntimeCore>().GetEngineLoop().SetTimeScale(scale); }
+float EngineAccessor::GetTimeScale() const { return ServiceLocator::Instance().Require<RuntimeCore>().GetEngineLoop().GetTimeScale(); }
+float EngineAccessor::GetRealDeltaTime() const { return ServiceLocator::Instance().Require<RuntimeCore>().GetEngineLoop().GetRealDeltaTime(); }
 
 const AppConfig& EngineAccessor::GetConfig() const { return ServiceLocator::Instance().Require<ConfigManager>().GetConfig(); }
 void EngineAccessor::ApplyConfig(const AppConfig& config) { 
     ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(config);
-    EventSystem::Instance().Publish(ConfigChangedEvent{config});
+    EventManager::Instance().Publish(ConfigChangedEvent{config});
 }
 
 

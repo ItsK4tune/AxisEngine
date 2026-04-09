@@ -55,7 +55,7 @@ void PhysicsDebugModule::Render(Scene &scene)
         auto debugShader = resources.GetShader("debug_line");
         if (debugShader && physics_sys)
         {
-            physics_sys->RenderDebug(scene, *debugShader, width, height, io.GetGraphicsContext().GetRenderStateManager());
+            physics_sys->RenderDebug(scene, *debugShader, width, height, sl.Require<IGraphicsContext>().GetRenderStateManager());
         }
     }
 
@@ -75,7 +75,11 @@ void PhysicsDebugModule::Render(Scene &scene)
     float aspect = (float)width / (float)height;
     if (aspect <= 0.0f) aspect = 1.0f;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-    glm::mat4 view = glm::lookAt(camPos, camPos + cam.front, cam.worldUp);
+    
+    auto& camRot = scene.registry.get<RotationComponent>(camEntity);
+    glm::vec3 front = camRot.value * glm::vec3(0, 0, -1);
+    glm::vec3 up = camRot.value * glm::vec3(0, 1, 0);
+    glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
 
     debugShader->use();
     debugShader->setMat4("projection", proj);
@@ -140,7 +144,7 @@ void PhysicsDebugModule::Render(Scene &scene)
 
     if (lineVertices.empty()) return;
 
-    auto* graphics = &io.GetGraphicsContext();
+    auto* graphics = &sl.Require<IGraphicsContext>();
     auto& bm = graphics->GetBufferManager();
     auto& dc = graphics->GetDrawContext();
 

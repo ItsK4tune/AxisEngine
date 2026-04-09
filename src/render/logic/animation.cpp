@@ -76,7 +76,7 @@ void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
     }
 }
 
-void Animation::ReadHierarchyData(AssimpNodeData &dest, const aiNode *src)
+void Animation::ReadHierarchyData(BoneNodeData &dest, const aiNode *src)
 {
     assert(src);
 
@@ -86,13 +86,13 @@ void Animation::ReadHierarchyData(AssimpNodeData &dest, const aiNode *src)
 
     for (int i = 0; i < src->mNumChildren; i++)
     {
-        AssimpNodeData newData;
+        BoneNodeData newData;
         ReadHierarchyData(newData, src->mChildren[i]);
         dest.children.push_back(newData);
     }
 }
 
-void Animation::BindNodesToBones(AssimpNodeData& node)
+void Animation::BindNodesToBones(BoneNodeData& node)
 {
     auto iter = m_BoneMap.find(node.name);
     if (iter != m_BoneMap.end()) {

@@ -66,19 +66,11 @@ public:
     RuntimeCore &GetRuntimeCore();
     StateMachine &GetStateMachine();
 
-    float GetTimeScale() const;
-    void SetTimeScale(float timeScale);
-    float GetRealDeltaTime() const;
-    bool IsPaused() const;
-    void SetPaused(bool paused);
 
-    void OnResize(int width, int height);
-    void OnMouseMove(double xpos, double ypos);
-    void OnMouseButton(int button, int action, int mods);
-    void OnScroll(double xoffset, double yoffset);
+
+
 
     const AppConfig &GetConfig() const;
-    void ApplyConfig(const AppConfig &config);
 
     ScriptRegistry* GetScriptRegistry();
 

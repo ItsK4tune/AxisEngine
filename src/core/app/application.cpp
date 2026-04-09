@@ -10,7 +10,7 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <render/logic/render_service_impl.h>
 #include <render/logic/post_process_pipeline.h>
@@ -46,6 +46,7 @@ struct Application::Impl
     std::unique_ptr<SceneManager> m_SceneManager;
 
     std::unique_ptr<IOHandler> m_IOHandler;
+    std::unique_ptr<IGraphicsContext> m_GraphicsContext;
     std::unique_ptr<TimeService> m_TimeService;
     std::unique_ptr<RuntimeCore> m_RuntimeCore;
     std::unique_ptr<SystemManager> m_SystemManager;
@@ -118,7 +119,7 @@ void Application::Shutdown()
     m_Impl->m_ConfigManager.reset();
     
     if (m_Impl->m_ConfigSubId != 0)
-        EventSystem::Instance().Unsubscribe<ConfigChangedEvent>(m_Impl->m_ConfigSubId);
+        EventManager::Instance().Unsubscribe<ConfigChangedEvent>(m_Impl->m_ConfigSubId);
 
     LOGGER_INFO("Application") << "Application shutdown completed.";
     LogManager::Instance().Shutdown();
@@ -143,11 +144,11 @@ bool Application::Initialize(const AppConfig &config)
     m_Impl->m_ScriptRegistry = std::make_unique<ScriptRegistry>();
     m_Impl->m_CollisionMatrix = std::make_unique<CollisionMatrix>();
 
-    auto graphicsContext = AppBuilder::CreateGraphicsContext(config);
+    m_Impl->m_GraphicsContext = AppBuilder::CreateGraphicsContext(config);
     auto audioEngine = AppBuilder::CreateAudioEngine(config);
     auto window = AppBuilder::MakeWindow();
 
-    m_Impl->m_IOHandler = std::make_unique<IOHandler>(std::move(graphicsContext));
+    m_Impl->m_IOHandler = std::make_unique<IOHandler>();
 
 
     m_Impl->m_AudioService = std::make_unique<AudioService>();
@@ -164,35 +165,49 @@ bool Application::Initialize(const AppConfig &config)
     auto& mm = m_Impl->m_IOHandler->GetMonitorManager();
     m_Impl->m_ConfigManager->SetResolution(mm.GetWidth(), mm.GetHeight());
 
-    auto &context = m_Impl->m_IOHandler->GetGraphicsContext();
+    if (!m_Impl->m_GraphicsContext->Initialize())
+    {
+        LOGGER_ERROR("Application") << "Failed to initialize graphics context";
+        return false;
+    }
+    m_Impl->m_GraphicsContext->SetDepthTest(true);
+
+    auto &context = *m_Impl->m_GraphicsContext;
     RendererInitializer::Initialize(context);
 
     if (!config.depthTestEnabled)
         context.SetDepthTest(false);
     context.SetCullFace(config.cullFaceEnabled);
 
+    auto* configMgr = m_Impl->m_ConfigManager.get();
+    auto* ioHandler = m_Impl->m_IOHandler.get();
+
+    auto* graphicsCtx = m_Impl->m_GraphicsContext.get();
+
     IWindow *appWindow = m_Impl->m_IOHandler->GetMonitorManager().GetWindow();
-    appWindow->SetResizeCallback([this](int width, int height) {
+    appWindow->SetResizeCallback([configMgr, ioHandler, graphicsCtx](int width, int height) {
         LOGGER_INFO("Application") << "Window resized to " << width << "x" << height;
-        EventSystem::Instance().Publish(WindowResizedEvent{width, height});
-        OnResize(width, height);
+        EventManager::Instance().Publish(WindowResizedEvent{width, height});
+        if (configMgr) configMgr->SetResolution(width, height);
+        ioHandler->OnResize(width, height);
+        if (graphicsCtx) graphicsCtx->SetViewport(0, 0, width, height);
     });
-    appWindow->SetCursorPosCallback([this](double x, double y) {
-        OnMouseMove(x, y);
-        EventSystem::Instance().Publish(MouseMovedEvent{x, y});
+    appWindow->SetCursorPosCallback([ioHandler](double x, double y) {
+        ioHandler->OnMouseMove(x, y);
+        EventManager::Instance().Publish(MouseMovedEvent{x, y});
     });
-    appWindow->SetMouseButtonCallback([this](int button, int action, int mods) {
-        OnMouseButton(button, action, mods);
-        if (action == 1) EventSystem::Instance().Publish(MouseButtonPressedEvent{button, mods});
-        else if (action == 0) EventSystem::Instance().Publish(MouseButtonReleasedEvent{button, mods});
+    appWindow->SetMouseButtonCallback([ioHandler](int button, int action, int mods) {
+        ioHandler->OnMouseButton(button, action, mods);
+        if (action == 1) EventManager::Instance().Publish(MouseButtonPressedEvent{button, mods});
+        else if (action == 0) EventManager::Instance().Publish(MouseButtonReleasedEvent{button, mods});
     });
-    appWindow->SetScrollCallback([this](double x, double y) {
-        OnScroll(x, y);
-        EventSystem::Instance().Publish(MouseScrolledEvent{x, y});
+    appWindow->SetScrollCallback([ioHandler](double x, double y) {
+        ioHandler->OnScroll(x, y);
+        EventManager::Instance().Publish(MouseScrolledEvent{x, y});
     });
-    appWindow->SetKeyCallback([this](int key, int scancode, int action, int mods) {
-        if (action == 1) EventSystem::Instance().Publish(KeyPressedEvent{key, mods});
-        else if (action == 0) EventSystem::Instance().Publish(KeyReleasedEvent{key, mods});
+    appWindow->SetKeyCallback([](int key, int scancode, int action, int mods) {
+        if (action == 1) EventManager::Instance().Publish(KeyPressedEvent{key, mods});
+        else if (action == 0) EventManager::Instance().Publish(KeyReleasedEvent{key, mods});
     });
 
     if (!config.audioDevice.empty() && config.audioDevice != "default")
@@ -204,8 +219,8 @@ bool Application::Initialize(const AppConfig &config)
     m_Impl->m_PhysicsWorld->Initialize();
     
     m_Impl->m_ResourceManager->Initialize(context.GetShaderManager(), context.GetTextureManager(), *m_Impl->m_AudioService->GetEngine());
-    m_Impl->m_ResourceManager->GetTextureManager().SetAsyncEnabled(config.asyncResourceLoading);
-    m_Impl->m_ResourceManager->GetTextureManager().SetMaxAnisotropy(config.maxAnisotropy);
+    m_Impl->m_ResourceManager->SetTextureAsyncEnabled(config.asyncResourceLoading);
+    m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(config.maxAnisotropy);
     m_Impl->m_Scene->InitializeManagers();
     
 
@@ -217,7 +232,7 @@ bool Application::Initialize(const AppConfig &config)
     sl.Register<IOHandler>(m_Impl->m_IOHandler.get());
     sl.Register<SystemManager>(m_Impl->m_SystemManager.get());
     sl.Register<RuntimeCore>(m_Impl->m_RuntimeCore.get());
-    sl.Register<IGraphicsContext>(&m_Impl->m_IOHandler->GetGraphicsContext());
+    sl.Register<IGraphicsContext>(m_Impl->m_GraphicsContext.get());
     sl.Register<ConfigManager>(m_Impl->m_ConfigManager.get());
     sl.Register<TimeService>(m_Impl->m_TimeService.get());
     sl.Register<ScriptRegistry>(m_Impl->m_ScriptRegistry.get());
@@ -232,7 +247,7 @@ bool Application::Initialize(const AppConfig &config)
     m_Impl->m_ScriptRegistry->Initialize();
     RegisterUserScripts();
 
-    m_Impl->m_ConfigSubId = EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    m_Impl->m_ConfigSubId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (m_Impl->m_IOHandler)
         {
             if (e.bitmask & ConfigChangedEvent::Window) {
@@ -245,7 +260,8 @@ bool Application::Initialize(const AppConfig &config)
                         e.config.refreshRate
                     );
                     mm.SetVsync(e.config.vsync);
-                    OnResize(mm.GetWidth(), mm.GetHeight());
+                    if (m_Impl->m_IOHandler) m_Impl->m_IOHandler->OnResize(mm.GetWidth(), mm.GetHeight());
+                    if (m_Impl->m_GraphicsContext) m_Impl->m_GraphicsContext->SetViewport(0, 0, mm.GetWidth(), mm.GetHeight());
                 }
             }
             
@@ -263,7 +279,7 @@ bool Application::Initialize(const AppConfig &config)
     m_Impl->m_SceneManager->LoadScene("include/engine/asset/load.axs");
     m_Impl->m_ResourceManager->InitializePostLoad();
 
-    m_Impl->m_SystemManager->InitializeSystems(*m_Impl->m_ResourceManager, config.width, config.height);
+    m_Impl->m_SystemManager->Initialize(*m_Impl->m_ResourceManager, config.width, config.height);
 
     if (!config.iconPath.empty())
     {
@@ -288,26 +304,5 @@ StateMachine&    Application::GetStateMachine()   { return m_Impl->m_RuntimeCore
 
 ScriptRegistry*  Application::GetScriptRegistry() { return m_Impl->m_ScriptRegistry.get(); }
 
-const AppConfig& Application::GetConfig() const { return m_Impl->m_ConfigManager->GetConfig(); }
-
-void Application::ApplyConfig(const AppConfig& config)
-{
-    m_Impl->m_ConfigManager->UpdateConfig(config);
-}
-
-float Application::GetTimeScale() const      { return m_Impl->m_RuntimeCore->GetTimeScale(); }
-void  Application::SetTimeScale(float ts)    { m_Impl->m_RuntimeCore->SetTimeScale(ts); }
-float Application::GetRealDeltaTime() const  { return m_Impl->m_RuntimeCore->GetRealDeltaTime(); }
-bool  Application::IsPaused() const          { return m_Impl->m_RuntimeCore->IsPaused(); }
-void  Application::SetPaused(bool paused)    { m_Impl->m_RuntimeCore->SetPaused(paused); }
-
-void Application::OnResize(int width, int height)
-{
-    if (m_Impl->m_ConfigManager) m_Impl->m_ConfigManager->SetResolution(width, height);
-    m_Impl->m_IOHandler->OnResize(width, height);
-}
-void Application::OnMouseMove(double xpos, double ypos)   { m_Impl->m_IOHandler->OnMouseMove(xpos, ypos); }
-void Application::OnMouseButton(int button, int action, int mods) { m_Impl->m_IOHandler->OnMouseButton(button, action, mods); }
-void Application::OnScroll(double xoffset, double yoffset) { m_Impl->m_IOHandler->OnScroll(xoffset, yoffset); }
 
 

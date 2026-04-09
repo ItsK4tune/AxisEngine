@@ -15,7 +15,7 @@ class IGraphicsContext;
 class IOHandler
 {
 public:
-    IOHandler(std::unique_ptr<IGraphicsContext> graphics);
+    IOHandler();
     ~IOHandler();
 
     bool Initialize(std::unique_ptr<IWindow> window, const std::string& title, int width, int height, int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit);
@@ -31,10 +31,7 @@ public:
     KeyboardManager& GetKeyboard() const { return *m_KeyboardManager; }
     MouseManager& GetMouse() const { return *m_MouseManager; }
     InputManager& GetInputManager() const { return *m_InputManager; }
-    IGraphicsContext& GetGraphicsContext() const;
 
-private:
-    std::unique_ptr<IGraphicsContext> m_Graphics;
     std::unique_ptr<MonitorManager> m_MonitorManager;
     std::unique_ptr<KeyboardManager> m_KeyboardManager;
     std::unique_ptr<MouseManager> m_MouseManager;

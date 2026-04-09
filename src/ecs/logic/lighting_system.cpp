@@ -21,7 +21,7 @@
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <resource/logic/resource_manager.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
 #include <ecs/unit/core_components.h>

@@ -3,7 +3,7 @@
 #include <render/interface/i_graphics_context.h>
 #include <resource/logic/resource_manager.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
 #include <ecs/interface/i_render_service.h>
@@ -23,7 +23,7 @@ void PostProcessSystem::Initialize()
 
     m_Pipeline.Initialize(context, config.width, config.height, resources);
 
-    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Window | ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
             return;
 
@@ -41,7 +41,7 @@ void PostProcessSystem::Initialize()
         }
     });
 
-    EventSystem::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
+    EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
         if (e.width != m_Pipeline.GetWidth() || e.height != m_Pipeline.GetHeight()) {
             m_Pipeline.Resize(e.width, e.height);
         }
@@ -85,7 +85,7 @@ void PostProcessSystem::RenderCapturePass(Scene &scene, int width, int height)
     data.width = width;
     data.height = height;
     data.alpha = 1.0f; // Post process usually full alpha
-    EventSystem::Instance().Publish<FrameRenderDataEvent>({data});
+    EventManager::Instance().Publish<FrameRenderDataEvent>({data});
 }
 
 void PostProcessSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
@@ -132,7 +132,7 @@ void PostProcessSystem::Render(Scene& scene)
     data.width = m_Pipeline.GetWidth();
     data.height = m_Pipeline.GetHeight();
     data.alpha = 1.0f;
-    EventSystem::Instance().Publish<FrameRenderDataEvent>({data});
+    EventManager::Instance().Publish<FrameRenderDataEvent>({data});
 }
 
 std::vector<entt::id_type> PostProcessSystem::GetReadComponents() const

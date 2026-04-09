@@ -1,6 +1,6 @@
 #include <ecs/logic/terrain_system.h>
 #include <ecs/logic/system_factory.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
 #include <ecs/interface/i_render_service.h>
@@ -27,7 +27,7 @@ REGISTER_SYSTEM(TerrainSystem)
 void TerrainSystem::Initialize() {
     auto& sl = ServiceLocator::Instance();
     sl.Register<TerrainSystem>(this);
-    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)) {
 
         }

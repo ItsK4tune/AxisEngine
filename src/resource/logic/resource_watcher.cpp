@@ -1,5 +1,5 @@
 #include <chrono>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <iostream>
 #include <resource/logic/resource_watcher.h>
 #include <resource/type/resource_events.h>
@@ -154,6 +154,6 @@ void ResourceWatcher::Update(float dt)
 
     for (const auto &event : eventsToProcess)
     {
-        EventSystem::Instance().Publish(event);
+        EventManager::Instance().Publish(event);
     }
 }

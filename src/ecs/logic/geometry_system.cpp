@@ -14,7 +14,7 @@
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_buffer_manager.h>
 #include <resource/logic/resource_manager.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -45,7 +45,7 @@ void GeometrySystem::Initialize()
     m_RenderService = sl.Resolve<IRenderService>();
     m_ShadowService = sl.Resolve<IShadowService>();
 
-    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
             return;
 
@@ -55,7 +55,7 @@ void GeometrySystem::Initialize()
         }
     });
 
-    EventSystem::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
+    EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
         if (e.width != m_GBuffer.GetWidth() || e.height != m_GBuffer.GetHeight()) {
             m_GBuffer.Resize(e.width, e.height);
         }

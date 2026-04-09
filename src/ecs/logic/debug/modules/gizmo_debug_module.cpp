@@ -90,7 +90,10 @@ void GizmoDebugModule::Render(Scene &scene)
 
     float aspect = (float)width / (float)height;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-    glm::mat4 view = glm::lookAt(camPos, camPos + cam.front, cam.worldUp);
+    auto& camRot = scene.registry.get<RotationComponent>(camEntity);
+    glm::vec3 front = camRot.value * glm::vec3(0, 0, -1);
+    glm::vec3 up = camRot.value * glm::vec3(0, 1, 0);
+    glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
 
     debugShader->use();
     debugShader->setMat4("projection", proj);
@@ -248,7 +251,11 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
 
         float aspect = (float)width / (float)height;
         glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-        glm::mat4 view = glm::lookAt(camPos.value, camPos.value + cam.front, cam.worldUp);
+        
+        auto& camRot = registry.get<RotationComponent>(camEntity);
+        glm::vec3 front = camRot.value * glm::vec3(0, 0, -1);
+        glm::vec3 up = camRot.value * glm::vec3(0, 1, 0);
+        glm::mat4 view = glm::lookAt(camPos.value, camPos.value + front, up);
         vp = proj * view;
     }
     else
@@ -456,7 +463,10 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
 
         float aspect = (float)width / (float)height;
         glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-        glm::mat4 view = glm::lookAt(camPos.value, camPos.value + cam.front, cam.worldUp);
+        auto& camRot = registry.get<RotationComponent>(camEntity);
+        glm::vec3 front = camRot.value * glm::vec3(0, 0, -1);
+        glm::vec3 up = camRot.value * glm::vec3(0, 1, 0);
+        glm::mat4 view = glm::lookAt(camPos.value, camPos.value + front, up);
         vp = proj * view;
     }
     else

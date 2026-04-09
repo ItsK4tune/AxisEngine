@@ -126,7 +126,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
             // Actually, wait, EngineLoop handles pausing. Let's use TimeService to check if paused, and pass to core and timeservice.
             auto& timer = ServiceLocator::Instance().Require<TimeService>();
             bool nextPause = !timer.IsPaused();
-            core.SetPaused(nextPause);
+            core.GetEngineLoop().SetPaused(nextPause);
             
             std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
             std::cout << "[Debug] Game Paused: " << (nextPause ? "YES" : "NO") << "\n";
@@ -173,7 +173,7 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
             else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
             else next = 1.0f;
 
-            core.SetTimeScale(next);
+            core.GetEngineLoop().SetTimeScale(next);
             std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
             std::cout << "[Debug] Time Scale: " << next << "x" << "\n";
             std::cout << "======================================" << std::endl;

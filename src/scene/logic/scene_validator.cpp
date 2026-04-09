@@ -114,7 +114,10 @@ namespace SceneHandlers
         cam.fov = 45.0f;
         cam.nearPlane = 0.1f;
         cam.farPlane = 1000.0f;
-        cam.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        
+        auto &rot = scene.registry.get_or_emplace<RotationComponent>(camEntity);
+        rot.value = glm::quatLookAt(glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+        rot.prev = rot.value;
         
         auto io = ServiceLocator::Instance().Resolve<IOHandler>();
         if (io) {

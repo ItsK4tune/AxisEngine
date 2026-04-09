@@ -2,7 +2,7 @@
 #include <ecs/logic/system_factory.h>
 #include <scene/type/scene_events.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/loader_utils.h>
 #include <scene/logic/component_loader.h>
@@ -19,7 +19,7 @@ void ScriptableSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<ScriptableSystem>(this);
-    auto& ev = EventSystem::Instance();
+    auto& ev = EventManager::Instance();
 
     m_SceneSubId = ev.Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
         OnSceneChanged(e);

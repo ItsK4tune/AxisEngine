@@ -56,21 +56,10 @@ private:
 
     float m_TimeScale = 1.0f;
     bool m_IsPaused = false;
-    bool m_MaxForceSync = true;
     float m_Alpha = 0.0f;
     float m_TotalTime = 0.0f;
     int m_MaxSubSteps = 10;
-    int m_ConfigSubId = -1;
-
-    // Cached pointers
-    IOHandler* m_IOHandler = nullptr;
-    Scene* m_Scene = nullptr;
-    ResourceManager* m_ResourceManager = nullptr;
-    SystemManager* m_SystemManager = nullptr;
-    SceneManager* m_SceneManager = nullptr;
-    RuntimeCore* m_RuntimeCore = nullptr;
-    TimeService* m_TimeService = nullptr;
-    IWindow* m_Window = nullptr;
+    int m_ConfigSubscriptionId = -1;
 };
 
 
@@ -91,17 +80,7 @@ public:
     void ChangeState(std::unique_ptr<class State> state);
     class State* GetCurrentState();
 
-    void SetTimeScale(float scale);
-    void SetPaused(bool paused);
-    void SetPhysicsStep(float step);
-    void SetMaxSubSteps(int steps) { m_EngineLoop.SetMaxSubSteps(steps); }
 
-    float GetTimeScale() const;
-    float GetRealDeltaTime() const;
-    bool IsPaused() const;
-
-    const AppConfig& GetConfig() const;
-    void ApplyConfig(const AppConfig& config);
 
     EngineLoop& GetEngineLoop() { return m_EngineLoop; }
     StateMachine& GetStateMachine() { return m_StateMachine; }

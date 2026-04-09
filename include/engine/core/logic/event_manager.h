@@ -83,13 +83,13 @@ private:
     std::mutex m_Mutex;
 };
 
-class EventSystem
+class EventManager
 {
 public:
-    static EventSystem &Instance();
+    static EventManager &Instance();
 
-    EventSystem(const EventSystem &) = delete;
-    EventSystem &operator=(const EventSystem &) = delete;
+    EventManager(const EventManager &) = delete;
+    EventManager &operator=(const EventManager &) = delete;
 
     template <typename T>
     int Subscribe(std::function<void(const T &)> callback)
@@ -149,8 +149,8 @@ public:
     }
 
 private:
-    EventSystem() = default;
-    ~EventSystem() = default;
+    EventManager() = default;
+    ~EventManager() = default;
 
     int nextListenerId = 0;
     std::vector<std::shared_ptr<IEventDispatcher>> m_Dispatchers;
@@ -192,7 +192,7 @@ public:
     {
         if (listenerId != -1)
         {
-            EventSystem::Instance().Unsubscribe<T>(listenerId);
+            EventManager::Instance().Unsubscribe<T>(listenerId);
             listenerId = -1;
         }
     }

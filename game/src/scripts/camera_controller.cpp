@@ -19,13 +19,13 @@ void CameraController::OnUpdate(float dt)
 
     if (mouse.GetCursorMode() == CursorMode::Locked || mouse.GetCursorMode() == CursorMode::LockedHidden)
     {
-        camera.yaw += mouse.GetXOffset() * mouseSensitivity;
-        camera.pitch += mouse.GetYOffset() * mouseSensitivity;
+        m_Yaw += mouse.GetXOffset() * mouseSensitivity;
+        m_Pitch += mouse.GetYOffset() * mouseSensitivity;
 
-        if (camera.pitch > 89.0f)
-            camera.pitch = 89.0f;
-        if (camera.pitch < -89.0f)
-            camera.pitch = -89.0f;
+        if (m_Pitch > 89.0f)
+            m_Pitch = 89.0f;
+        if (m_Pitch < -89.0f)
+            m_Pitch = -89.0f;
     }
 
     float scroll = mouse.GetScrollY();
@@ -39,31 +39,36 @@ void CameraController::OnUpdate(float dt)
     }
 
     glm::vec3 front;
-    front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-    front.y = sin(glm::radians(camera.pitch));
-    front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-    camera.front = glm::normalize(front);
-    camera.right = glm::normalize(glm::cross(camera.front, camera.worldUp));
-    camera.up = glm::normalize(glm::cross(camera.right, camera.front));
+    front.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+    front.y = sin(glm::radians(m_Pitch));
+    front.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+    glm::vec3 frontNormalized = glm::normalize(front);
+    glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
+    if (HasComponent<RotationComponent>()) {
+        auto& rot = GetComponent<RotationComponent>();
+        rot.value = glm::quatLookAt(frontNormalized, worldUp);
+    }
+    glm::vec3 right = glm::normalize(glm::cross(frontNormalized, worldUp));
+    glm::vec3 up = glm::normalize(glm::cross(right, frontNormalized));
 
     float velocity = moveSpeed * dt;
     if (keyboard.GetKey(Key::W))
-        posComp.value += camera.front * velocity;
+        posComp.value += frontNormalized * velocity;
     if (keyboard.GetKey(Key::S))
-        posComp.value -= camera.front * velocity;
+        posComp.value -= frontNormalized * velocity;
     if (keyboard.GetKey(Key::A))
-        posComp.value -= camera.right * velocity;
+        posComp.value -= right * velocity;
     if (keyboard.GetKey(Key::D))
-        posComp.value += camera.right * velocity;
+        posComp.value += right * velocity;
 
     if (keyboard.GetKey(Key::Space))
-        posComp.value += camera.worldUp * velocity;
+        posComp.value += worldUp * velocity;
     if (keyboard.GetKey(Key::LeftShift))
-        posComp.value -= camera.worldUp * velocity;
+        posComp.value -= worldUp * velocity;
 
     camera.aspectRatio = (float)Get<IOHandler>().GetMonitorManager().GetWidth() / (float)Get<IOHandler>().GetMonitorManager().GetHeight();
 
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
 
-    camera.viewMatrix = glm::lookAt(posComp.value, posComp.value + camera.front, camera.up);
+    camera.viewMatrix = glm::lookAt(posComp.value, posComp.value + frontNormalized, up);
 }

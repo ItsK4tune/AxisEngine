@@ -12,4 +12,6 @@ public:
 private:
     float mouseSensitivity = 0.1f;
     float moveSpeed = 10.0f;
+    float m_Yaw = -90.0f;
+    float m_Pitch = 0.0f;
 };

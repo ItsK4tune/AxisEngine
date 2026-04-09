@@ -407,11 +407,11 @@ struct Texture {
 
 #include <resource/unit/bone_info.h>
 
-struct AssimpNodeData {
+struct BoneNodeData {
     glm::mat4 transformation;
     std::string name;
     int childrenCount;
-    std::vector<AssimpNodeData> children;
+    std::vector<BoneNodeData> children;
 
     Bone* cachedBone = nullptr;
 };

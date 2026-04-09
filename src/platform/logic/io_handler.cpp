@@ -6,8 +6,7 @@
 #include <render/interface/i_graphics_context.h>
 #include <core/logic/logger.h>
 
-IOHandler::IOHandler(std::unique_ptr<IGraphicsContext> graphics)
-    : m_Graphics(std::move(graphics))
+IOHandler::IOHandler()
 {
     m_MonitorManager = std::make_unique<MonitorManager>();
 }
@@ -31,14 +30,6 @@ bool IOHandler::Initialize(std::unique_ptr<IWindow> window, const std::string& t
     m_MonitorManager->SetVsync(vsync);
     LOGGER_INFO("IOHandler") << "VSync initialized to: " << (vsync ? "ON" : "OFF");
     LOGGER_INFO("IOHandler") << "Frame Rate Limit initialized to: " << frameRateLimit;
-
-    if (!m_Graphics->Initialize())
-    {
-        LOGGER_ERROR("IOHandler") << "Failed to initialize graphics context";
-        return false;
-    }
-
-    m_Graphics->SetDepthTest(true);
 
     m_KeyboardManager = std::make_unique<KeyboardManager>(m_MonitorManager->GetWindow());
     m_MouseManager = std::make_unique<MouseManager>(m_MonitorManager->GetWindow());
@@ -81,7 +72,6 @@ void IOHandler::ProcessInput()
 void IOHandler::OnResize(int width, int height)
 {
     m_MonitorManager->OnResize(width, height);
-    m_Graphics->SetViewport(0, 0, width, height);
     if (m_MouseManager)
         m_MouseManager->SetWindowSize(width, height);
 }
@@ -104,7 +94,4 @@ void IOHandler::OnScroll(double xoffset, double yoffset)
         m_MouseManager->UpdateScroll(xoffset, yoffset);
 }
 
-IGraphicsContext& IOHandler::GetGraphicsContext() const
-{
-    return *m_Graphics;
-}
+

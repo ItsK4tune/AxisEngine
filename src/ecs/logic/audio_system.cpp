@@ -6,7 +6,7 @@
 #include <ecs/logic/entity_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
-#include <core/logic/event_system.h>
+#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/type/app_config.h>
 
@@ -19,7 +19,7 @@ void AudioSystem::Initialize()
     auto& configManager = sl.Require<ConfigManager>();
     m_GlobalVolume = configManager.GetConfig().masterVolume;
 
-    EventSystem::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All)) {
             m_GlobalVolume = e.config.masterVolume;
         }
@@ -37,11 +37,9 @@ void AudioSystem::Update(Scene &scene, float dt)
     {
         auto &cam = scene.registry.get<CameraComponent>(camEntity);
         auto &camPos = scene.registry.get<PositionComponent>(camEntity);
+        auto &camRot = scene.registry.get<RotationComponent>(camEntity);
 
-        glm::vec3 lookDir = glm::vec3(0.0f, 0.0f, -1.0f);
-        if (glm::length(cam.front) > 0.1f) {
-            lookDir = cam.front;
-        }
+        glm::vec3 lookDir = camRot.value * glm::vec3(0.0f, 0.0f, -1.0f);
 
         audioService->UpdateListener(camPos.value, lookDir);
     }
@@ -156,7 +154,11 @@ void AudioSystem::StopAll(Scene &scene)
 
 std::vector<entt::id_type> AudioSystem::GetReadComponents() const
 {
-    return {entt::type_id<CameraComponent>().hash(), entt::type_id<PositionComponent>().hash()};
+    return {
+        entt::type_id<CameraComponent>().hash(),
+        entt::type_id<PositionComponent>().hash(),
+        entt::type_id<RotationComponent>().hash()
+    };
 }
 
 std::vector<entt::id_type> AudioSystem::GetWriteComponents() const
