@@ -14,15 +14,8 @@
 #include <core/type/physics_mode.h>
 #include <core/type/lighting_mode.h>
 
-struct AppConfig
+struct WindowConfig
 {
-    std::string title = "Axis Engine";
-    LogLevel logLevel = LogLevel::Debug;
-    int numJobThreads = -1;
-    float timeScale = 1.0f;
-    std::string iconPath = "";
-    std::string audioDevice = "";
-
     int width = 800;
     int height = 600;
     WindowMode windowMode = WindowMode::Windowed;
@@ -30,14 +23,20 @@ struct AppConfig
     int monitorIndex = 0;
     int refreshRate = 0;
     int frameRateLimit = 0;
+};
 
+struct GraphicsConfig
+{
     GraphicsBackend graphicsBackend = GraphicsBackend::OpenGL;
     int msaaSamples = 4;
     int antialiasing = 1;
     float maxAnisotropy = 16.0f;
     float renderScale = 1.0f;
     bool asyncResourceLoading = true;
+};
 
+struct RenderConfig
+{
     RenderPath renderPath = RenderPath::Forward;
     TonemappingMode tonemappingMode = TonemappingMode::ACES;
     bool hdrEnabled = false;
@@ -49,7 +48,10 @@ struct AppConfig
     float bloomRadius = 0.005f;
     float skyboxIntensity = 1.0f;
     float clearColor[4] = {0.1f, 0.1f, 0.1f, 1.0f};
+};
 
+struct ShadowConfig
+{
     bool shadowsEnabled = true;
     int shadowMode = 1;
     int shadowMapResolution = 2048;
@@ -58,9 +60,10 @@ struct AppConfig
     float shadowDistanceCulling = 100.0f;
     float shadowBias = 0.005f;
     int shadowSoftness = 1;
+};
 
-    LightingMode lightingMode = LightingMode::RealTime;
-
+struct PhysicsConfig
+{
     PhysicsBackend physicsBackend = PhysicsBackend::Bullet;
     PhysicsMode physicsMode = PhysicsMode::Balanced;
     float gravity[3] = {0.0f, -9.81f, 0.0f};
@@ -69,15 +72,25 @@ struct AppConfig
     bool ccdEnabled = false;
     float ccdThreshold = 0.0f;
     int solverIterations = 10;
+};
 
+struct InputConfig
+{
     float mouseSensitivityX = 0.1f;
     float mouseSensitivityY = 0.1f;
     bool mouseInvertX = false;
     bool mouseInvertY = false;
+};
 
+struct AudioConfig
+{
     AudioBackend audioBackend = AudioBackend::IrrKlang;
     float masterVolume = 10.0f;
+    std::string audioDevice = "";
+};
 
+struct CullingConfig
+{
     bool cullFaceEnabled = true;
     bool depthTestEnabled = true;
     bool frustumCullingEnabled = true;
@@ -86,4 +99,113 @@ struct AppConfig
     bool renderOrderEnabled = false;
     uint32_t filterLayerMask = 0xFFFFFFFF;
     float distanceCulling = 0.0f;
+};
+
+struct AppConfig
+{
+    // Core
+    std::string title = "Axis Engine";
+    LogLevel logLevel = LogLevel::Debug;
+    int numJobThreads = -1;
+    float timeScale = 1.0f;
+    std::string iconPath = "";
+
+    // Sub-configs
+    WindowConfig window;
+    GraphicsConfig graphics;
+    RenderConfig render;
+    ShadowConfig shadow;
+    PhysicsConfig physics;
+    InputConfig input;
+    AudioConfig audio;
+    CullingConfig culling;
+    LightingMode lightingMode = LightingMode::RealTime;
+
+    // ─── Legacy accessors (inline, zero-cost) ───
+    // These keep existing code compiling during migration.
+    // TODO: Remove after all consumers migrate to sub-structs.
+    int& width = window.width;
+    int& height = window.height;
+    WindowMode& windowMode = window.windowMode;
+    bool& vsync = window.vsync;
+    int& monitorIndex = window.monitorIndex;
+    int& refreshRate = window.refreshRate;
+    int& frameRateLimit = window.frameRateLimit;
+
+    GraphicsBackend& graphicsBackend = graphics.graphicsBackend;
+    int& msaaSamples = graphics.msaaSamples;
+    int& antialiasing = graphics.antialiasing;
+    float& maxAnisotropy = graphics.maxAnisotropy;
+    float& renderScale = graphics.renderScale;
+    bool& asyncResourceLoading = graphics.asyncResourceLoading;
+
+    RenderPath& renderPath = render.renderPath;
+    TonemappingMode& tonemappingMode = render.tonemappingMode;
+    bool& hdrEnabled = render.hdrEnabled;
+    bool& bloomEnabled = render.bloomEnabled;
+    float& gamma = render.gamma;
+    float& exposure = render.exposure;
+    float& bloomIntensity = render.bloomIntensity;
+    float& bloomThreshold = render.bloomThreshold;
+    float& bloomRadius = render.bloomRadius;
+    float& skyboxIntensity = render.skyboxIntensity;
+    float (&clearColor)[4] = render.clearColor;
+
+    bool& shadowsEnabled = shadow.shadowsEnabled;
+    int& shadowMode = shadow.shadowMode;
+    int& shadowMapResolution = shadow.shadowMapResolution;
+    float& shadowProjectionSize = shadow.shadowProjectionSize;
+    bool& shadowFrustumCullingEnabled = shadow.shadowFrustumCullingEnabled;
+    float& shadowDistanceCulling = shadow.shadowDistanceCulling;
+    float& shadowBias = shadow.shadowBias;
+    int& shadowSoftness = shadow.shadowSoftness;
+
+    PhysicsBackend& physicsBackend = physics.physicsBackend;
+    PhysicsMode& physicsMode = physics.physicsMode;
+    float (&gravity)[3] = physics.gravity;
+    int& maxSubSteps = physics.maxSubSteps;
+    float& physicsTickRate = physics.physicsTickRate;
+    bool& ccdEnabled = physics.ccdEnabled;
+    float& ccdThreshold = physics.ccdThreshold;
+    int& solverIterations = physics.solverIterations;
+
+    float& mouseSensitivityX = input.mouseSensitivityX;
+    float& mouseSensitivityY = input.mouseSensitivityY;
+    bool& mouseInvertX = input.mouseInvertX;
+    bool& mouseInvertY = input.mouseInvertY;
+
+    AudioBackend& audioBackend = audio.audioBackend;
+    float& masterVolume = audio.masterVolume;
+    std::string& audioDevice = audio.audioDevice;
+
+    bool& cullFaceEnabled = culling.cullFaceEnabled;
+    bool& depthTestEnabled = culling.depthTestEnabled;
+    bool& frustumCullingEnabled = culling.frustumCullingEnabled;
+    bool& occlusionCullingEnabled = culling.occlusionCullingEnabled;
+    bool& instanceBatchingEnabled = culling.instanceBatchingEnabled;
+    bool& renderOrderEnabled = culling.renderOrderEnabled;
+    uint32_t& filterLayerMask = culling.filterLayerMask;
+    float& distanceCulling = culling.distanceCulling;
+
+    // Copy/move support (references need special handling)
+    AppConfig() = default;
+    AppConfig(const AppConfig& o) :
+        title(o.title), logLevel(o.logLevel), numJobThreads(o.numJobThreads),
+        timeScale(o.timeScale), iconPath(o.iconPath),
+        window(o.window), graphics(o.graphics), render(o.render),
+        shadow(o.shadow), physics(o.physics), input(o.input),
+        audio(o.audio), culling(o.culling), lightingMode(o.lightingMode) {}
+
+    AppConfig& operator=(const AppConfig& o) {
+        if (this == &o) return *this;
+        title = o.title; logLevel = o.logLevel; numJobThreads = o.numJobThreads;
+        timeScale = o.timeScale; iconPath = o.iconPath;
+        window = o.window; graphics = o.graphics; render = o.render;
+        shadow = o.shadow; physics = o.physics; input = o.input;
+        audio = o.audio; culling = o.culling; lightingMode = o.lightingMode;
+        return *this;
+    }
+
+    AppConfig(AppConfig&& o) noexcept = default;
+    AppConfig& operator=(AppConfig&& o) noexcept = default;
 };
