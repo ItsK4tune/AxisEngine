@@ -33,19 +33,10 @@
 
 
 Scene&           EngineAccessor::GetScene() const           { return *m_ActiveScene; }
-SceneManager&    EngineAccessor::GetSceneManager() const    { return Get<SceneManager>(); }
-ResourceManager& EngineAccessor::GetResourceManager() const { return Get<ResourceManager>(); }
-AudioService&    EngineAccessor::GetAudioService() const     { return Get<AudioService>(); }
-IOHandler&       EngineAccessor::GetIOHandler() const       { return Get<IOHandler>(); }
-InputManager&    EngineAccessor::GetInputManager() const    { return Get<IOHandler>().GetInputManager(); }
-KeyboardManager& EngineAccessor::GetKeyboard() const        { return Get<IOHandler>().GetKeyboard(); }
-MouseManager&    EngineAccessor::GetMouse() const           { return Get<IOHandler>().GetMouse(); }
-RuntimeCore&     EngineAccessor::GetRuntimeCore() const     { return Get<RuntimeCore>(); }
-SystemManager&   EngineAccessor::GetSystemManager() const  { return Get<SystemManager>(); }
 
 
 void EngineAccessor::LoadScene(const std::string& path, bool persistent) { ServiceLocator::Instance().Require<SceneManager>().LoadScene(path, persistent); }
-void EngineAccessor::LoadInputBindings(const std::string& path) { InputLoader::LoadBindings(path, GetInputManager()); }
+void EngineAccessor::LoadInputBindings(const std::string& path) { InputLoader::LoadBindings(path, Get<IOHandler>().GetInputManager()); }
 void EngineAccessor::QueueLoadScene(const std::string& path, bool persistent) { ServiceLocator::Instance().Require<SceneManager>().QueueLoadScene(path, persistent); }
 void EngineAccessor::UnloadScene(const std::string& path)  { ServiceLocator::Instance().Require<SceneManager>().UnloadScene(path); }
 void EngineAccessor::UnloadScene(const SceneRecord* rec)   { ServiceLocator::Instance().Require<SceneManager>().UnloadScene(rec); }

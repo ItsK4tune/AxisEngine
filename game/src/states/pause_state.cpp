@@ -8,6 +8,9 @@
 #include <ecs/logic/entity_manager.h>
 #include <ecs/logic/entity_builder.h>
 #include <core/logic/service_locator.h>
+#include <resource/logic/resource_manager.h>
+#include <platform/logic/io_handler.h>
+#include <scene/logic/scene_manager.h>
 
 void PauseState::OnEnter()
 {
@@ -24,7 +27,7 @@ void PauseState::OnEnter()
 
     this->SetCursorMode(CursorMode::Normal);
 
-    m_PausedTextEntity = EntityBuilder(this->GetScene(), this->GetResourceManager())
+    m_PausedTextEntity = EntityBuilder(this->GetScene(), this->Get<ResourceManager>())
         .WithName("PauseOverlay")
         .WithUITransform({400.0f, 300.0f}, {200.0f, 50.0f})
         .WithUIText("PAUSED", "time", 2.0f, {1.0f, 1.0f, 1.0f, 1.0f})
@@ -33,10 +36,10 @@ void PauseState::OnEnter()
 
 void PauseState::OnUpdate(float dt)
 {
-    auto& kb = this->GetKeyboard();
+    auto& kb = this->Get<IOHandler>().GetKeyboard();
     if (kb.IsKeyDown(Key::P))
     {
-        this->GetRuntimeCore().GetStateMachine().PopState();
+        this->Get<RuntimeCore>().GetStateMachine().PopState();
     }
 }
 

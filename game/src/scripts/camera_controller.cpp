@@ -1,6 +1,8 @@
 #include <scripts/camera_controller.h>
 #include <axis_component.h>
 #include <axis_platform.h>
+#include <platform/logic/io_handler.h>
+#include <platform/logic/input_manager.h>
 
 REGISTER_SCRIPT(CameraController)
 
@@ -12,8 +14,8 @@ void CameraController::OnUpdate(float dt)
     auto &posComp = GetComponent<PositionComponent>();
     auto &camera = GetComponent<CameraComponent>();
 
-    const auto &mouse = GetIOHandler().GetMouse();
-    const auto &keyboard = GetIOHandler().GetKeyboard();
+    const auto &mouse = Get<IOHandler>().GetMouse();
+    const auto &keyboard = Get<IOHandler>().GetKeyboard();
 
     if (mouse.GetCursorMode() == CursorMode::Locked || mouse.GetCursorMode() == CursorMode::LockedHidden)
     {
@@ -59,7 +61,7 @@ void CameraController::OnUpdate(float dt)
     if (keyboard.GetKey(Key::LeftShift))
         posComp.value -= camera.worldUp * velocity;
 
-    camera.aspectRatio = (float)GetIOHandler().GetMonitorManager().GetWidth() / (float)GetIOHandler().GetMonitorManager().GetHeight();
+    camera.aspectRatio = (float)Get<IOHandler>().GetMonitorManager().GetWidth() / (float)Get<IOHandler>().GetMonitorManager().GetHeight();
 
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
 

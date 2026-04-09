@@ -17,6 +17,11 @@
 #include <core/logic/service_locator.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/matrix.hpp>
+#include <resource/logic/resource_manager.h>
+#include <platform/logic/io_handler.h>
+#include <platform/logic/input_manager.h>
+#include <audio/logic/audio_service.h>
+#include <scene/logic/scene_manager.h>
 
 void GameState::OnEnter()
 {
@@ -35,11 +40,11 @@ void GameState::OnEnter()
 
 void GameState::OnUpdate(float dt)
 {
-    auto& input = this->GetInputManager();
+    auto& input = this->Get<IOHandler>().GetInputManager();
 
     if (input.GetActionDown("LoadNextScene")) this->QueueLoadScene("scenes/game2.axs");
     if (input.GetActionDown("ReloadScene")) this->QueuePopScene();
-    if (input.GetActionDown("Pause")) this->GetRuntimeCore().GetStateMachine().PushState(std::make_unique<PauseState>());
+    if (input.GetActionDown("Pause")) this->Get<RuntimeCore>().GetStateMachine().PushState(std::make_unique<PauseState>());
 
     if (input.GetActionDown("Select")) 
     {
@@ -50,10 +55,10 @@ void GameState::OnUpdate(float dt)
             glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(this->GetScene(), camEntity)) ? 
                                 EntityManager::GetComponent<PositionComponent>(this->GetScene(), camEntity).value : glm::vec3(0.0f);
             
-            float mouseX = this->GetMouse().GetLastX();
-            float mouseY = this->GetMouse().GetLastY();
-            float screenW = (float)this->GetIOHandler().GetMonitorManager().GetWidth();
-            float screenH = (float)this->GetIOHandler().GetMonitorManager().GetHeight();
+            float mouseX = this->Get<IOHandler>().GetMouse().GetLastX();
+            float mouseY = this->Get<IOHandler>().GetMouse().GetLastY();
+            float screenW = (float)this->Get<IOHandler>().GetMonitorManager().GetWidth();
+            float screenH = (float)this->Get<IOHandler>().GetMonitorManager().GetHeight();
             
             float x = (2.0f * mouseX) / std::max(1.0f, screenW) - 1.0f;
             float y = 1.0f - (2.0f * mouseY) / std::max(1.0f, screenH);
@@ -119,7 +124,7 @@ void GameState::OnUpdate(float dt)
                         
                         pComp.isActive = true; pComp.lifetime = 0.5f;
                         pComp.emitter.Initialize(300);
-                        pComp.emitter.Texture = this->GetResourceManager().GetTextureAuto("resources/textures/particle_star.png");
+                        pComp.emitter.Texture = this->Get<ResourceManager>().GetTextureAuto("resources/textures/particle_star.png");
                         pComp.emitter.SpawnRate = 400.0f; pComp.emitter.LifeTime = 0.8f;   
                         pComp.emitter.StartSize = 0.5f; pComp.emitter.EndSize = 0.0f;
                         pComp.emitter.MinVelocity = glm::vec3(-3, 1, -3); pComp.emitter.MaxVelocity = glm::vec3(3, 6, 3);
@@ -148,18 +153,18 @@ void GameState::OnUpdate(float dt)
     }
 
     if (input.GetActionDown("Toggle2DSound")) {
-        this->GetAudioService().GetEngine()->Play2D("resources/audios/2dsound.mp3", false);
+        this->Get<AudioService>().GetEngine()->Play2D("resources/audios/2dsound.mp3", false);
     }
 
     if (input.GetActionDown("VolumeUp")) {
-        AppConfig cfg = this->GetRuntimeCore().GetConfig();
+        AppConfig cfg = this->Get<RuntimeCore>().GetConfig();
         cfg.masterVolume = std::min(10.0f, cfg.masterVolume + 0.1f);
-        this->GetRuntimeCore().ApplyConfig(cfg);
+        this->Get<RuntimeCore>().ApplyConfig(cfg);
     }
     if (input.GetActionDown("VolumeDown")) {
-        AppConfig cfg = this->GetRuntimeCore().GetConfig();
+        AppConfig cfg = this->Get<RuntimeCore>().GetConfig();
         cfg.masterVolume = std::max(0.0f, cfg.masterVolume - 0.1f);
-        this->GetRuntimeCore().ApplyConfig(cfg);
+        this->Get<RuntimeCore>().ApplyConfig(cfg);
     }
 
     if (input.GetActionDown("ToggleParticle")) {
@@ -174,7 +179,7 @@ void GameState::OnUpdate(float dt)
         }
     }
 
-    float wheelMove = this->GetMouse().GetScrollY();
+    float wheelMove = this->Get<IOHandler>().GetMouse().GetScrollY();
     if (std::abs(wheelMove) > 0.1f)
     {
         entt::entity camEntity = EntityManager::GetActiveCamera(this->GetScene());
@@ -184,10 +189,10 @@ void GameState::OnUpdate(float dt)
             glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(this->GetScene(), camEntity)) ? 
                                 EntityManager::GetComponent<PositionComponent>(this->GetScene(), camEntity).value : glm::vec3(0.0f);
             
-            float mouseX = this->GetMouse().GetLastX();
-            float mouseY = this->GetMouse().GetLastY();
-            float screenW = (float)this->GetIOHandler().GetMonitorManager().GetWidth();
-            float screenH = (float)this->GetIOHandler().GetMonitorManager().GetHeight();
+            float mouseX = this->Get<IOHandler>().GetMouse().GetLastX();
+            float mouseY = this->Get<IOHandler>().GetMouse().GetLastY();
+            float screenW = (float)this->Get<IOHandler>().GetMonitorManager().GetWidth();
+            float screenH = (float)this->Get<IOHandler>().GetMonitorManager().GetHeight();
             
             float x = (2.0f * mouseX) / std::max(1.0f, screenW) - 1.0f;
             float y = 1.0f - (2.0f * mouseY) / std::max(1.0f, screenH);
@@ -200,7 +205,7 @@ void GameState::OnUpdate(float dt)
             RayHit hit = this->Get<IPhysicsWorld>().Raycast(camPos, rayDir, 1000.0f);
             if (hit.hasHit)
             {
-                if (wheelMove > 0) this->GetAudioService().Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);
+                if (wheelMove > 0) this->Get<AudioService>().Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);
                 else {
                     auto* info = EntityManager::TryGetComponent<InfoComponent>(this->GetScene(), hit.entity);
                     if (info && (info->name == "WallTest" || info->tag == "terrain"))
@@ -212,7 +217,7 @@ void GameState::OnUpdate(float dt)
                         
                         pComp.isActive = true; pComp.lifetime = 0.5f;
                         pComp.emitter.Initialize(300);
-                        pComp.emitter.Texture = this->GetResourceManager().GetTextureAuto("resources/textures/particle_star.png");
+                        pComp.emitter.Texture = this->Get<ResourceManager>().GetTextureAuto("resources/textures/particle_star.png");
                         pComp.emitter.SpawnRate = 400.0f; pComp.emitter.LifeTime = 0.8f;   
                         pComp.emitter.StartSize = 0.5f; pComp.emitter.EndSize = 0.0f;
                         pComp.emitter.MinVelocity = glm::vec3(-3, 1, -3); pComp.emitter.MaxVelocity = glm::vec3(3, 6, 3);
@@ -244,5 +249,5 @@ void GameState::OnRender() {}
 void GameState::OnExit()
 {
     m_SelectedEntity = entt::null;
-    this->GetSceneManager().ClearAllScenes();
+    this->Get<SceneManager>().ClearAllScenes();
 }

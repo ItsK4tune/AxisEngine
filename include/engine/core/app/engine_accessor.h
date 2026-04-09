@@ -23,6 +23,7 @@ class EngineAccessor {
 public:
     virtual ~EngineAccessor() = default;
 
+    // ─── Generic service access ───
     template <typename T>
     T& Get() const { return ServiceLocator::Instance().Require<T>(); }
 
@@ -33,8 +34,9 @@ public:
         return *sys;
     }
 
+    // ─── Scene management ───
+    Scene& GetScene() const;
     void LoadScene(const std::string& path, bool persistent = false);
-    void LoadInputBindings(const std::string& path);
     void QueueLoadScene(const std::string& path, bool persistent = false);
     void UnloadScene(const std::string& path);
     void UnloadScene(const SceneRecord* rec);
@@ -44,12 +46,16 @@ public:
     bool IsSceneLoaded(const std::string& path);
     void LogAllScenes();
     std::vector<const SceneRecord*> GetScenes();
+
+    // ─── Input ───
+    void LoadInputBindings(const std::string& path);
+    bool GetAction(const std::string &name) const;
+    bool GetActionDown(const std::string &name) const;
+    bool GetActionUp(const std::string &name) const;
     void SetCursorMode(CursorMode mode);
 
-    // Generic system enable/disable — no concrete type dependency
+    // ─── System control ───
     void EnableSystem(const std::string& systemName, bool enable);
-
-    // Backward-compatible convenience wrappers (delegate to generic EnableSystem)
     void EnablePhysics(bool enable)    { EnableSystem("PhysicsSystem", enable); }
     void EnableRender(bool enable)     { EnableSystem("RenderSystem", enable); }
     void EnableAudio(bool enable)      { EnableSystem("AudioSystem", enable); }
@@ -62,29 +68,17 @@ public:
     void EnableNavigation(bool enable) { EnableSystem("NavigationSystem", enable); }
     void EnableLogic(bool enable);
 
-    bool GetAction(const std::string &name) const;
-    bool GetActionDown(const std::string &name) const;
-    bool GetActionUp(const std::string &name) const;
-
+    // ─── Time ───
     void SetTimeScale(float scale);
     float GetTimeScale() const;
     float GetRealDeltaTime() const;
 
+    // ─── Config ───
     const AppConfig& GetConfig() const;
     void ApplyConfig(const AppConfig& config);
 
-
-
-    Scene& GetScene() const;
-    class SceneManager& GetSceneManager() const;
-    class ResourceManager& GetResourceManager() const;
-    class AudioService& GetAudioService() const;
-    class IOHandler& GetIOHandler() const;
-    class InputManager& GetInputManager() const;
-    class KeyboardManager& GetKeyboard() const;
-    class MouseManager& GetMouse() const;
-    class RuntimeCore& GetRuntimeCore() const;
-    class SystemManager& GetSystemManager() const;
+    // ─── Convenience accessors (delegate to Get<T>()) ───
+    // Removed via Hard-break. Use Get<T>() instead.
 
     void SetActiveScene(Scene* scene) { m_ActiveScene = scene; }
 
