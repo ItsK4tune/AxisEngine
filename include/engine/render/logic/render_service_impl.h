@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <render/type/render_service_state.h>
 
 class RenderCore;
 class IGraphicsContext;
@@ -27,34 +28,34 @@ public:
     void Shutdown();
 
     // From IBaseSystem (inherited by IRenderService)
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    bool IsEnabled() const override { return m_Flags.enabled; }
+    void SetEnabled(bool enable) override { m_Flags.enabled = enable; }
     std::string GetName() const override { return "RenderService"; }
     int GetPriority() const override { return 0; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
 
     // ICameraService
-    glm::vec3 GetCameraPosition() const override { return m_CameraPos; }
-    glm::mat4 GetViewMatrix() const override { return m_ViewMatrix; }
-    glm::mat4 GetProjectionMatrix() const override { return m_ProjMatrix; }
-    float GetNearPlane() const override { return m_NearPlane; }
-    float GetFarPlane() const override { return m_FarPlane; }
+    glm::vec3 GetCameraPosition() const override { return m_CameraState.position; }
+    glm::mat4 GetViewMatrix() const override { return m_CameraState.viewMatrix; }
+    glm::mat4 GetProjectionMatrix() const override { return m_CameraState.projectionMatrix; }
+    float GetNearPlane() const override { return m_CameraState.nearPlane; }
+    float GetFarPlane() const override { return m_CameraState.farPlane; }
     void UploadCameraUBO(const GPUCameraData& camData) override;
     void RestoreCameraState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane) override;
 
     // IRenderStateService
-    AntiAliasingMode GetAntiAliasingMode() const override { return m_AAMode; }
-    void SetAntiAliasingMode(AntiAliasingMode mode) override { m_AAMode = mode; }
-    glm::mat4 GetPrevViewProj() const override { return m_PrevViewProj; }
-    glm::mat4 GetCurrViewProj() const override { return m_CurrViewProj; }
-    glm::vec2 GetJitterOffset() const override { return m_JitterOffset; }
-    bool IsDebugNoTexture() const override { return m_DebugNoTexture; }
-    void SetDebugNoTexture(bool enable) override { m_DebugNoTexture = enable; }
-    bool IsWireframe() const override { return m_Wireframe; }
-    void SetWireframe(bool enable) override { m_Wireframe = enable; }
-    bool IsOcclusionCullingEnabled() const override { return m_OcclusionCullingEnabled; }
-    void SetOcclusionCulling(bool enable) override { m_OcclusionCullingEnabled = enable; }
-    RenderPath GetRenderPath() const override { return m_CachedRenderPath; }
+    AntiAliasingMode GetAntiAliasingMode() const override { return m_Flags.aaMode; }
+    void SetAntiAliasingMode(AntiAliasingMode mode) override { m_Flags.aaMode = mode; }
+    glm::mat4 GetPrevViewProj() const override { return m_GlobalState.prevViewProj; }
+    glm::mat4 GetCurrViewProj() const override { return m_GlobalState.currViewProj; }
+    glm::vec2 GetJitterOffset() const override { return m_GlobalState.jitterOffset; }
+    bool IsDebugNoTexture() const override { return m_Flags.debugNoTexture; }
+    void SetDebugNoTexture(bool enable) override { m_Flags.debugNoTexture = enable; }
+    bool IsWireframe() const override { return m_Flags.wireframe; }
+    void SetWireframe(bool enable) override { m_Flags.wireframe = enable; }
+    bool IsOcclusionCullingEnabled() const override { return m_Flags.occlusionCullingEnabled; }
+    void SetOcclusionCulling(bool enable) override { m_Flags.occlusionCullingEnabled = enable; }
+    RenderPath GetRenderPath() const override { return m_Flags.cachedRenderPath; }
     unsigned int GetWhiteTexture() const override;
     unsigned int GetBlackTexture() const override;
     unsigned int GetFlatNormalTexture() const override;
@@ -76,26 +77,27 @@ public:
     void FlushCommands() override;
 
     // IIBLService
-    unsigned int GetIrradianceMap() const override { return m_IrradianceMap; }
-    unsigned int GetPrefilterMap() const override { return m_PrefilterMap; }
-    unsigned int GetBrdfLUT() const override { return m_BrdfLUT; }
+    unsigned int GetIrradianceMap() const override { return m_IBLState.irradianceMap; }
+    unsigned int GetPrefilterMap() const override { return m_IBLState.prefilterMap; }
+    unsigned int GetBrdfLUT() const override { return m_IBLState.brdfLUT; }
 
     // Service-specific methods not in interface
     void SetFaceCulling(bool enabled, CullMode mode = CullMode::Back);
     void SetDepthTest(bool enabled, CompareFunc func = CompareFunc::Less);
-    void SetInstanceBatching(bool enable) { m_InstanceBatchingEnabled = enable; }
-    void SetFrustumCulling(bool enable) { m_FrustumCullingEnabled = enable; }
-    void SetRenderOrderEnabled(bool enable) { m_RenderOrderEnabled = enable; }
-    void SetFilterLayerMask(uint32_t mask) { m_FilterLayerMask = mask; }
-    void SetDistanceCulling(float distance) { m_DistanceCullingSq = distance * distance; }
-    void SetDistanceCullingSq(float distanceSq) { m_DistanceCullingSq = distanceSq; }
+    void SetInstanceBatching(bool enable) { m_Flags.instanceBatchingEnabled = enable; }
+    void SetFrustumCulling(bool enable) { m_Flags.frustumCullingEnabled = enable; }
+    void SetRenderOrderEnabled(bool enable) { m_Flags.renderOrderEnabled = enable; }
+    void SetFilterLayerMask(uint32_t mask) { m_Flags.filterLayerMask = mask; }
+    void SetDistanceCulling(float distance) { m_Flags.distanceCullingSq = distance * distance; }
+    void SetDistanceCullingSq(float distanceSq) { m_Flags.distanceCullingSq = distanceSq; }
     
     // For syncing with Update
-    void IncrementFrame() { m_FrameIndex++; }
+    void IncrementFrame() { m_GlobalState.frameIndex++; }
     void ResetRenderedCount() { m_RenderedCount = 0; }
     void ResetQueuesBuilt() { m_QueuesBuilt = false; }
     void AddTime(float dt) { m_GlobalData.time += dt; m_GlobalData.deltaTime = dt; }
     void FetchRenderPath();
+    void BeginFrame(const RenderViewParams& params);
 
 private:
     StaticBatchManager m_BatchManager;
@@ -103,35 +105,10 @@ private:
 
     int m_RenderedCount = 0;
 
-    bool m_Enabled = true;
-    bool m_InstanceBatchingEnabled = true;
-    bool m_FrustumCullingEnabled = true;
-    bool m_OcclusionCullingEnabled = false;
-    bool m_DebugNoTexture = false;
-    bool m_Wireframe = false;
-    bool m_RenderOrderEnabled = true;
-    uint32_t m_FilterLayerMask = 0xFFFFFFFF;
-
-    float m_DistanceCullingSq = 0.0f;
-    RenderPath m_CachedRenderPath = RenderPath::Deferred;
-
-    AntiAliasingMode m_AAMode = AntiAliasingMode::NONE;
-    glm::vec2 m_JitterOffset = glm::vec2(0.0f);
-    int m_FrameIndex = 0;
-
-    glm::mat4 m_PrevViewProj = glm::mat4(1.0f);
-    glm::mat4 m_CurrViewProj = glm::mat4(1.0f);
-    glm::mat4 m_JitteredProjection = glm::mat4(1.0f);
-    
-    glm::vec3 m_CameraPos = glm::vec3(0.0f);
-    glm::mat4 m_ViewMatrix = glm::mat4(1.0f);
-    glm::mat4 m_ProjMatrix = glm::mat4(1.0f);
-    float m_NearPlane = 0.1f;
-    float m_FarPlane = 1000.0f;
-
-    unsigned int m_IrradianceMap = 0;
-    unsigned int m_PrefilterMap = 0;
-    unsigned int m_BrdfLUT = 0;
+    RenderGlobalState m_GlobalState;
+    RenderCameraState m_CameraState;
+    RenderFlagsState m_Flags;
+    RenderIBLState m_IBLState;
 
     bool m_QueuesBuilt = false;
     float m_LastAlpha = -1.0f;

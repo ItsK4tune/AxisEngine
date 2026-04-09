@@ -125,9 +125,9 @@ void RenderServiceImpl::Initialize()
 void RenderServiceImpl::FetchRenderPath()
 {
     if (m_ConfigManager) {
-        m_CachedRenderPath = m_ConfigManager->GetConfig().renderPath;
+        m_Flags.cachedRenderPath = m_ConfigManager->GetConfig().renderPath;
     } else {
-        m_CachedRenderPath = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().renderPath;
+        m_Flags.cachedRenderPath = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().renderPath;
     }
 }
 
@@ -202,6 +202,88 @@ void RenderServiceImpl::BuildRenderQueues(Scene &scene, float alpha, int width, 
     BuildRenderQueuesWithCamera(scene, params);
 }
 
+void RenderServiceImpl::BeginFrame(const RenderViewParams& params)
+{
+    m_CameraState.position = params.cameraPos;
+    m_CameraState.viewMatrix = params.view;
+    m_CameraState.projectionMatrix = params.projection;
+    
+    m_CameraState.nearPlane = params.nearPlane;
+    m_CameraState.farPlane = params.farPlane;
+
+    if (params.width <= 0 || params.height <= 0) return;
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (!std::isfinite(params.projection[i][j]) || !std::isfinite(params.view[i][j])) {
+                LOGGER_ERROR("RenderSystem") << "NaN detected in camera matrices. Skipping frame.";
+                return;
+            }
+        }
+    }
+
+    if (!m_QueuesBuilt) { m_GlobalState.prevViewProj = m_GlobalState.currViewProj; }
+
+    m_GlobalState.jitteredProjection = params.projection;
+    m_GlobalState.jitterOffset = glm::vec2(0.0f);
+
+    if (m_Flags.aaMode == AntiAliasingMode::TAA && params.width > 512) { 
+        auto HaltonSequence = [](int index, int base) -> float {
+            float result = 0.0f; float f = 1.0f; int i = index;
+            while (i > 0) { f = f / base; result = result + f * (i % base); i = i / base; }
+            return result;
+        };
+        const int sampleCount = 8;
+        int frameIdx = m_GlobalState.frameIndex % sampleCount;
+        float jitterX = HaltonSequence(frameIdx + 1, 2) - 0.5f;
+        float jitterY = HaltonSequence(frameIdx + 1, 3) - 0.5f;
+        m_GlobalState.jitterOffset = glm::vec2(jitterX, jitterY);
+        
+        glm::mat4 jitterMatrix = glm::mat4(1.0f);
+        jitterMatrix[3][0] = jitterX * 2.0f / (float)params.width;
+        jitterMatrix[3][1] = jitterY * 2.0f / (float)params.height;
+        m_GlobalState.jitteredProjection = jitterMatrix * m_GlobalState.jitteredProjection;
+        
+        if (!m_QueuesBuilt) m_GlobalState.frameIndex++;
+    }
+
+    m_GlobalState.currViewProj = m_GlobalState.jitteredProjection * params.view;
+    
+    bool stable = true;
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (!std::isfinite(m_GlobalState.currViewProj[i][j])) stable = false;
+        }
+    }
+    if (!stable) {
+        m_GlobalState.currViewProj = params.projection * params.view;
+    }
+
+    GPUCameraData camData;
+    std::memcpy(camData.projection, &m_GlobalState.jitteredProjection[0][0], 16 * sizeof(float));
+    std::memcpy(camData.view, &params.view[0][0], 16 * sizeof(float));
+    std::memcpy(camData.viewPos, &params.cameraPos[0], 3 * sizeof(float));
+    camData.viewPos[3] = 1.0f;
+
+    glm::mat4 invProj = glm::inverse(m_GlobalState.jitteredProjection);
+    glm::mat4 invView = glm::inverse(params.view);
+    std::memcpy(camData.invProjection, &invProj[0][0], 16 * sizeof(float));
+    std::memcpy(camData.invView, &invView[0][0], 16 * sizeof(float));
+
+    glm::mat4 invStableProj = glm::inverse(params.projection);
+    std::memcpy(camData.stableProjection, &params.projection[0][0], 16 * sizeof(float));
+    std::memcpy(camData.invStableProjection, &invStableProj[0][0], 16 * sizeof(float));
+
+    auto& bm = m_Context->GetBufferManager();
+    bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
+    bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUCameraData), &camData);
+
+    m_GlobalData.resolution[0] = (float)params.width;
+    m_GlobalData.resolution[1] = (float)params.height;
+    bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
+    bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
+}
+
 void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params)
 {
     m_IsCapturingProbe = params.isCapturingProbe;
@@ -211,108 +293,19 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     }
 
     if (m_ConfigManager) {
-        m_CachedRenderPath = m_ConfigManager->GetConfig().renderPath;
+        m_Flags.cachedRenderPath = m_ConfigManager->GetConfig().renderPath;
     }
 
     IGraphicsContext& context = *m_Context;
-    int width = params.width;
-    int height = params.height;
-    m_LastWidth = width;
-    m_LastHeight = height;
+    m_LastWidth = params.width;
+    m_LastHeight = params.height;
 
-    const glm::vec3& pos = params.cameraPos;
-    const glm::mat4& view = params.view;
-    const glm::mat4& proj = params.projection;
-    uint32_t cullingMask = params.cullingMask;
-    entt::entity excludeEntity = params.excludeEntity;
+    BeginFrame(params);
 
-    m_CameraPos = pos;
-    m_ViewMatrix = view;
-    m_ProjMatrix = proj;
-    
-    m_NearPlane = params.nearPlane;
-    m_FarPlane = params.farPlane;
-
-    if (width <= 0 || height <= 0) return;
-
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            if (!std::isfinite(proj[i][j]) || !std::isfinite(view[i][j])) {
-                LOGGER_ERROR("RenderSystem") << "NaN detected in camera matrices. Skipping frame.";
-                return;
-            }
-        }
-    }
-
-    if (!m_QueuesBuilt) { m_PrevViewProj = m_CurrViewProj; }
-
-    m_JitteredProjection = proj;
-    m_JitterOffset = glm::vec2(0.0f);
-
-    // Only apply TAA if rendering to main screen (width/height usually match window)
-    if (m_AAMode == AntiAliasingMode::TAA && width > 512) { 
-        auto HaltonSequence = [](int index, int base) -> float {
-            float result = 0.0f; float f = 1.0f; int i = index;
-            while (i > 0) { f = f / base; result = result + f * (i % base); i = i / base; }
-            return result;
-        };
-        const int sampleCount = 8;
-        int frameIdx = m_FrameIndex % sampleCount;
-        float jitterX = HaltonSequence(frameIdx + 1, 2) - 0.5f;
-        float jitterY = HaltonSequence(frameIdx + 1, 3) - 0.5f;
-        m_JitterOffset = glm::vec2(jitterX, jitterY);
-        
-        glm::mat4 jitterMatrix = glm::mat4(1.0f);
-        jitterMatrix[3][0] = jitterX * 2.0f / (float)width;
-        jitterMatrix[3][1] = jitterY * 2.0f / (float)height;
-        m_JitteredProjection = jitterMatrix * m_JitteredProjection;
-        
-        if (!m_QueuesBuilt) m_FrameIndex++;
-    }
-
-    m_CurrViewProj = m_JitteredProjection * view;
-    
-
-    bool stable = true;
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            if (!std::isfinite(m_CurrViewProj[i][j])) stable = false;
-        }
-    }
-    if (!stable) {
-        m_CurrViewProj = proj * view;
-    }
-
-
-    GPUCameraData camData;
-    std::memcpy(camData.projection, &m_JitteredProjection[0][0], 16 * sizeof(float));
-    std::memcpy(camData.view, &view[0][0], 16 * sizeof(float));
-    std::memcpy(camData.viewPos, &pos[0], 3 * sizeof(float));
-    camData.viewPos[3] = 1.0f;
-
-    glm::mat4 invProj = glm::inverse(m_JitteredProjection);
-    glm::mat4 invView = glm::inverse(view);
-    std::memcpy(camData.invProjection, &invProj[0][0], 16 * sizeof(float));
-    std::memcpy(camData.invView, &invView[0][0], 16 * sizeof(float));
-
-    glm::mat4 invStableProj = glm::inverse(proj);
-    std::memcpy(camData.stableProjection, &proj[0][0], 16 * sizeof(float));
-    std::memcpy(camData.invStableProjection, &invStableProj[0][0], 16 * sizeof(float));
-
-    auto& bm = context.GetBufferManager();
-    bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
-    bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUCameraData), &camData);
-
-
-    m_GlobalData.resolution[0] = (float)width;
-    m_GlobalData.resolution[1] = (float)height;
-    bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
-    bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
-
-    glm::mat4 stableVP = proj * view;
+    glm::mat4 stableVP = params.projection * params.view;
     m_FrustumCuller.BuildFrustum(stableVP);
 
-    if (m_OcclusionCullingEnabled) {
+    if (m_Flags.occlusionCullingEnabled) {
         m_OcclusionCuller.UpdateResults(scene);
     }
 
@@ -333,7 +326,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
     auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
     for (auto entity : renderView) {
-        if (entity == excludeEntity) continue;
+        if (entity == params.excludeEntity) continue;
 
         auto& world = renderView.get<WorldTransformComponent>(entity);
         glm::mat4 modelMatrix = world.GetInterpolated(lodFactor);
@@ -341,22 +334,22 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         auto& renderer = renderView.get<MeshRendererComponent>(entity);
         if (!renderer.model) continue;
 
-        float distSqResult = glm::length2(pos - glm::vec3(modelMatrix[3]));
-        if (m_DistanceCullingSq > 0.0f && distSqResult > m_DistanceCullingSq) continue;
+        float distSqResult = glm::length2(params.cameraPos - glm::vec3(modelMatrix[3]));
+        if (m_Flags.distanceCullingSq > 0.0f && distSqResult > m_Flags.distanceCullingSq) continue;
 
         AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
 
         // Skip objects that contain the probe (Self-occlusion fix using AABB)
-        if (m_IsCapturingProbe && worldAABB.Contains(pos)) continue;
+        if (m_IsCapturingProbe && worldAABB.Contains(params.cameraPos)) continue;
 
-        if (m_FrustumCullingEnabled) {
+        if (m_Flags.frustumCullingEnabled) {
             if (!m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound)) continue;
         }
 
         uint32_t layer = 1;
         if (auto* info = scene.registry.try_get<InfoComponent>(entity)) layer = info->layer;
         
-        if ((m_FilterLayerMask & layer) == 0 || (cullingMask & layer) == 0) continue;
+        if ((m_Flags.filterLayerMask & layer) == 0 || (params.cullingMask & layer) == 0) continue;
 
         Model* activeModel = renderer.model.get();
         Shader* itemShader = renderer.shader.lock().get();
@@ -369,7 +362,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             }
         }
 
-        if (m_OcclusionCullingEnabled) {
+        if (m_Flags.occlusionCullingEnabled) {
             if (auto* occ = scene.registry.try_get<OcclusionComponent>(entity)) {
                 if (!occ->isVisible) continue;
             }
@@ -558,16 +551,16 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     m_RenderQueueObj.Sort();
 
     // Collect Skybox
-    m_IrradianceMap = 0;
-    m_PrefilterMap = 0;
-    m_BrdfLUT = 0;
+    m_IBLState.irradianceMap = 0;
+    m_IBLState.prefilterMap = 0;
+    m_IBLState.brdfLUT = 0;
     auto skyView = scene.registry.view<SkyboxRenderComponent>();
     for (auto skyEnt : skyView) {
         auto& skyComp = skyView.get<SkyboxRenderComponent>(skyEnt);
         if (skyComp.isPrimary && skyComp.skybox) {
-            m_IrradianceMap = skyComp.irradianceMap;
-            m_PrefilterMap = skyComp.prefilterMap;
-            m_BrdfLUT = skyComp.brdfLUT;
+            m_IBLState.irradianceMap = skyComp.irradianceMap;
+            m_IBLState.prefilterMap = skyComp.prefilterMap;
+            m_IBLState.brdfLUT = skyComp.brdfLUT;
             break;
         }
     }
@@ -581,8 +574,8 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
     m_QueuesBuilt = true;
     m_LastAlpha = lodFactor;
-    m_LastWidth = width;
-    m_LastHeight = height;
+    m_LastWidth = params.width;
+    m_LastHeight = params.height;
 }
 
 void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader)
@@ -595,14 +588,14 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
     Shader* lastShader = nullptr;
 
     RenderSceneData sceneData;
-    sceneData.cameraPosition = m_CameraPos;
-    sceneData.viewMatrix = m_ViewMatrix;
-    sceneData.projMatrix = m_ProjMatrix;
-    sceneData.nearPlane = m_NearPlane;
-    sceneData.farPlane = m_FarPlane;
-    sceneData.irradianceMap = m_IrradianceMap;
-    sceneData.prefilterMap = m_PrefilterMap;
-    sceneData.brdfLUT = m_BrdfLUT;
+    sceneData.cameraPosition = m_CameraState.position;
+    sceneData.viewMatrix = m_CameraState.viewMatrix;
+    sceneData.projMatrix = m_CameraState.projectionMatrix;
+    sceneData.nearPlane = m_CameraState.nearPlane;
+    sceneData.farPlane = m_CameraState.farPlane;
+    sceneData.irradianceMap = m_IBLState.irradianceMap;
+    sceneData.prefilterMap = m_IBLState.prefilterMap;
+    sceneData.brdfLUT = m_IBLState.brdfLUT;
 
     m_RenderedCount += (int)queue.size();
 
@@ -614,7 +607,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         if (overrideShader) {
             shader = overrideShader;
         } else if (!shader) {
-            if (m_CachedRenderPath == RenderPath::Deferred) {
+            if (m_Flags.cachedRenderPath == RenderPath::Deferred) {
                 if (m_IsCapturingProbe) {
                     shader = m_ForwardPBRLitShader.get();
                 } else {
@@ -623,7 +616,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
             } else {
                 shader = m_UnlitShader.get();
             }
-        } else if (m_CachedRenderPath == RenderPath::Deferred && !m_IsCapturingProbe) {
+        } else if (m_Flags.cachedRenderPath == RenderPath::Deferred && !m_IsCapturingProbe) {
             // Only translate core shaders if NOT capturing a probe
             if (shader == m_UnlitShader.get()) {
                 shader = m_DeferredUnlitShader.get();
@@ -638,7 +631,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         }
 
         if (!shader || !model) {
-            if (m_CachedRenderPath == RenderPath::Deferred) shader = m_ErrorDeferredShader.get();
+            if (m_Flags.cachedRenderPath == RenderPath::Deferred) shader = m_ErrorDeferredShader.get();
             else shader = m_ErrorForwardShader.get();
             if (!shader || !model) continue;
         }
@@ -770,7 +763,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
             shader->setBool("u_HasProbe", false);
         }
 
-        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor, m_DebugNoTexture, m_Wireframe);
+        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor, m_Flags.debugNoTexture, m_Flags.wireframe);
         model->Draw(*shader, !matBound);
 
         // Restore DrawBuffers mapping after draw
@@ -869,14 +862,14 @@ void RenderServiceImpl::UploadCameraUBO(const GPUCameraData& camData)
 
 void RenderServiceImpl::RestoreCameraState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane)
 {
-    m_ViewMatrix = view;
-    m_ProjMatrix = proj;
-    m_CameraPos = pos;
-    m_NearPlane = nearPlane;
-    m_FarPlane = farPlane;
+    m_CameraState.viewMatrix = view;
+    m_CameraState.projectionMatrix = proj;
+    m_CameraState.position = pos;
+    m_CameraState.nearPlane = nearPlane;
+    m_CameraState.farPlane = farPlane;
     
     // Also recalculate the current view-projection for things that rely on it
-    m_CurrViewProj = m_JitteredProjection * view;
+    m_GlobalState.currViewProj = m_GlobalState.jitteredProjection * view;
 }
 
 
