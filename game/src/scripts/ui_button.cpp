@@ -43,11 +43,11 @@ public:
             auto &video = view.get<VideoPlayerComponent>(entity);
             if (video.isPlaying)
             {
-                video.Pause();
+                PauseVideo(video);
             }
             else
             {
-                video.Play();
+                PlayVideo(video);
             }
             found = true;
         }

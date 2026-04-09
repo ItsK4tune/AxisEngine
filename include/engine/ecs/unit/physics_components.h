@@ -60,51 +60,41 @@ struct RigidBodyComponent
     
     float linearDamping = 0.0f;
     float angularDamping = 0.0f;
-
-    void SetRestitution(float restitution)
-    {
-        if (body)
-            body->SetRestitution(restitution);
-    }
-
-    void SetFriction(float friction)
-    {
-        if (body)
-            body->SetFriction(friction);
-    }
-
-    void SetLinearFactor(const glm::vec3 &factor)
-    {
-        linearFactor = factor;
-        if (body)
-            body->SetLinearFactor(factor);
-    }
-
-    void SetAngularFactor(const glm::vec3 &factor)
-    {
-        angularFactor = factor;
-        if (body)
-            body->SetAngularFactor(factor);
-    }
-
-    void SetLinearVelocity(const glm::vec3 &vel)
-    {
-        if (body)
-        {
-            body->SetLinearVelocity(vel);
-            body->Activate(true);
-        }
-    }
-
-    void SetAngularVelocity(const glm::vec3 &vel)
-    {
-        if (body)
-        {
-            body->SetAngularVelocity(vel);
-            body->Activate(true);
-        }
-    }
 };
+
+// ─── Free functions for RigidBodyComponent (ECS-compliant) ───
+
+inline void SetRestitution(RigidBodyComponent& rb, float restitution)
+{
+    if (rb.body) rb.body->SetRestitution(restitution);
+}
+
+inline void SetFriction(RigidBodyComponent& rb, float friction)
+{
+    if (rb.body) rb.body->SetFriction(friction);
+}
+
+inline void SetLinearFactor(RigidBodyComponent& rb, const glm::vec3& factor)
+{
+    rb.linearFactor = factor;
+    if (rb.body) rb.body->SetLinearFactor(factor);
+}
+
+inline void SetAngularFactor(RigidBodyComponent& rb, const glm::vec3& factor)
+{
+    rb.angularFactor = factor;
+    if (rb.body) rb.body->SetAngularFactor(factor);
+}
+
+inline void SetLinearVelocity(RigidBodyComponent& rb, const glm::vec3& vel)
+{
+    if (rb.body) { rb.body->SetLinearVelocity(vel); rb.body->Activate(true); }
+}
+
+inline void SetAngularVelocity(RigidBodyComponent& rb, const glm::vec3& vel)
+{
+    if (rb.body) { rb.body->SetAngularVelocity(vel); rb.body->Activate(true); }
+}
 
 struct CharacterControllerComponent
 {
@@ -116,16 +106,16 @@ struct CharacterControllerComponent
     glm::vec3 walkDirection = glm::vec3(0.0f);
     bool jumpRequested = false;
     bool isOnGround = false;
-    
-    void SetWorldTransform(const glm::vec3 &pos, const glm::quat &rot)
-    {
-        if (controller)
-            controller->SetWorldTransform(pos, rot);
-    }
-    
-    void GetWorldTransform(glm::vec3 &pos, glm::quat &rot)
-    {
-        if (controller)
-            controller->GetWorldTransform(pos, rot);
-    }
 };
+
+// ─── Free functions for CharacterControllerComponent (ECS-compliant) ───
+
+inline void SetWorldTransform(CharacterControllerComponent& cc, const glm::vec3& pos, const glm::quat& rot)
+{
+    if (cc.controller) cc.controller->SetWorldTransform(pos, rot);
+}
+
+inline void GetWorldTransform(CharacterControllerComponent& cc, glm::vec3& pos, glm::quat& rot)
+{
+    if (cc.controller) cc.controller->GetWorldTransform(pos, rot);
+}

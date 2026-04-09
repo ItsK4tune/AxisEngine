@@ -51,13 +51,15 @@ struct VideoPlayerComponent
     int maxDecodes = 1;
 
     std::shared_ptr<VideoDecoder> decoder = nullptr;
-
-    void Play();
-    void Pause();
-    void Stop();
-    void Replay();
-    void Seek(double time);
 };
+
+// ─── Free functions for VideoPlayerComponent (ECS-compliant) ───
+
+inline void PlayVideo(VideoPlayerComponent& vp) { vp.isPlaying = true; if (vp.decoder) vp.decoder->Play(); }
+inline void PauseVideo(VideoPlayerComponent& vp) { vp.isPlaying = false; if (vp.decoder) vp.decoder->Pause(); }
+inline void StopVideo(VideoPlayerComponent& vp) { vp.isPlaying = false; if (vp.decoder) vp.decoder->Stop(); }
+inline void ReplayVideo(VideoPlayerComponent& vp) { vp.isPlaying = true; if (vp.decoder) { vp.decoder->Seek(0); vp.decoder->Play(); } }
+inline void SeekVideo(VideoPlayerComponent& vp, double time) { if (vp.decoder) vp.decoder->Seek(time); }
 
 
 
