@@ -112,10 +112,21 @@ void SystemManager::Initialize(ResourceManager &res, int width, int height)
     // Sort systems by priority before initialization if needed, 
     // but usually RegisterSystem and category flags are enough.
     
+    auto& sl = ServiceLocator::Instance();
+    bool hasGraphics = sl.Has<IGraphicsContext>();
+
     for (auto& sys : m_Systems) {
+        SystemCategory cat = sys->GetCategory();
+        bool isRenderSystem = (cat & (SystemCategory::RenderAlpha | SystemCategory::RenderMain | SystemCategory::RenderTransparent | SystemCategory::RenderUI | SystemCategory::RenderCapture | SystemCategory::PostProcess)) != SystemCategory::None;
+        
+        if (isRenderSystem && !hasGraphics) {
+            LOGGER_INFO("SystemManager") << "Skipping initialization of Render System in Headless Mode: " << sys->GetName();
+            sys->SetEnabled(false);
+            continue;
+        }
+
         sys->Initialize();
         
-        SystemCategory cat = sys->GetCategory();
         LOGGER_INFO("SystemManager") << "Sys: " << sys->GetName() << " | Cat: " << (int)cat << " | Prio: " << sys->GetPriority();
         
         if ((cat & SystemCategory::Update) != SystemCategory::None) {

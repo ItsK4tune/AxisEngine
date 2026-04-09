@@ -286,6 +286,10 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
             {"REALTIME", LightingMode::RealTime}
         }, LightingMode::RealTime);
     }
+    else if (subCmd == "HEADLESS") {
+        int enable; ss >> enable;
+        config.headlessMode = (enable != 0);
+    }
 }
 
 

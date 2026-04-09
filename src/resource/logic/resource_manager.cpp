@@ -51,10 +51,11 @@ std::vector<std::string> ResourceManager::GetRegisteredLoaderTypes() const
     return types;
 }
 
-void ResourceManager::Initialize(IShaderManager& shaderManager, ITextureManager& textureManager, IAudioEngine& audioEngine)
+void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine& audioEngine)
 {
-    m_ShaderManager = std::make_unique<ShaderManager>(shaderManager);
-    m_TextureManager = std::make_unique<TextureManager>(textureManager);
+    if (shaderManager) m_ShaderManager = std::make_unique<ShaderManager>(*shaderManager);
+    if (textureManager) m_TextureManager = std::make_unique<TextureManager>(*textureManager);
+    
     m_ModelManager = std::make_unique<ModelManager>(m_ModelInstanceManager);
     m_AudioManager = std::make_unique<AudioAssetManager>(audioEngine);
     m_FontManager = std::make_unique<FontManager>();
@@ -64,8 +65,8 @@ void ResourceManager::Initialize(IShaderManager& shaderManager, ITextureManager&
     m_FragmentManager = std::make_unique<FragmentAssetManager>();
     m_UIModelManager = std::make_unique<UIModelManager>();
 
-    m_ShaderManager->Initialize();
-    m_TextureManager->Initialize();
+    if (m_ShaderManager) m_ShaderManager->Initialize();
+    if (m_TextureManager) m_TextureManager->Initialize();
     // ModelManager::Initialize requires cubeModel from load.axs, so it should be called after LoadScene
 }
 
@@ -96,8 +97,8 @@ void ResourceManager::SetTextureMaxAnisotropy(float max)
 
 void ResourceManager::Update(float dt)
 {
-    m_TextureManager->Update();
-    m_ModelManager->Update();
+    if (m_TextureManager) m_TextureManager->Update();
+    if (m_ModelManager) m_ModelManager->Update();
     m_ResourceWatcher.Update(dt);
 }
 
@@ -124,6 +125,8 @@ void ResourceManager::ReloadTexture(const std::string &name)
 
 void ResourceManager::LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
 {
+    if (!m_ShaderManager) return;
+
     std::string vShaderPath = FileSystem::getPath(vsPath);
     std::string fShaderPath = FileSystem::getPath(fsPath);
     std::string gShaderPath = gsPath.empty() ? "" : FileSystem::getPath(gsPath);
@@ -154,6 +157,7 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
 
 void ResourceManager::LoadTexture(const std::string &name, const std::string &path, bool async, bool keepCpuData)
 {
+    if (!m_TextureManager) return;
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading Texture: " << name << " from " << path << (async ? " (async)" : "") << (keepCpuData ? " (keep CPU data)" : "");
     m_TextureManager->Load(name, fullPath, async, keepCpuData);
@@ -226,14 +230,14 @@ void ResourceManager::UnloadSkybox(const std::string &name) { m_SkyboxManager->U
 void ResourceManager::UnloadAnimation(const std::string &name) { m_AnimationManager->Unload(name); }
 void ResourceManager::UnloadFragment(const std::string &name) { m_FragmentManager->Unload(name); }
 
-std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name) { return m_ShaderManager->Get(name); }
-std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name) { return m_TextureManager->Get(name); }
-std::shared_ptr<Model> ResourceManager::GetModel(const std::string &name) { return m_ModelManager->Get(name); }
-std::shared_ptr<Animation> ResourceManager::GetAnimation(const std::string &name) { return m_AnimationManager->Get(name); }
-std::shared_ptr<Font> ResourceManager::GetFont(const std::string &name) { return m_FontManager->Get(name); }
-std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name) { return m_AudioManager->Get(name); }
-std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name) { return m_SkyboxManager->Get(name); }
-std::shared_ptr<FragmentAsset> ResourceManager::GetFragment(const std::string &name) { return m_FragmentManager->Load(name); }
+std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name) { return m_ShaderManager ? m_ShaderManager->Get(name) : nullptr; }
+std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name) { return m_TextureManager ? m_TextureManager->Get(name) : nullptr; }
+std::shared_ptr<Model> ResourceManager::GetModel(const std::string &name) { return m_ModelManager ? m_ModelManager->Get(name) : nullptr; }
+std::shared_ptr<Animation> ResourceManager::GetAnimation(const std::string &name) { return m_AnimationManager ? m_AnimationManager->Get(name) : nullptr; }
+std::shared_ptr<Font> ResourceManager::GetFont(const std::string &name) { return m_FontManager ? m_FontManager->Get(name) : nullptr; }
+std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name) { return m_AudioManager ? m_AudioManager->Get(name) : nullptr; }
+std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name) { return m_SkyboxManager ? m_SkyboxManager->Get(name) : nullptr; }
+std::shared_ptr<FragmentAsset> ResourceManager::GetFragment(const std::string &name) { return m_FragmentManager ? m_FragmentManager->Load(name) : nullptr; }
 
 std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &nameOrPath)
 {

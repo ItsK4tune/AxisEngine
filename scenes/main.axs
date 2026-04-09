@@ -2,6 +2,7 @@ axis_scene:
   Config:
     RENDER_PATH: FORWARD
     WINDOW_MODE: WINDOWED
+    HEADLESS: 0
 
   Resources:
     Model:

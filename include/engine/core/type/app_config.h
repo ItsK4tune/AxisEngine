@@ -109,6 +109,7 @@ struct AppConfig
     int numJobThreads = -1;
     float timeScale = 1.0f;
     std::string iconPath = "";
+    bool headlessMode = false;
 
     // Sub-configs
     WindowConfig window;
@@ -191,7 +192,7 @@ struct AppConfig
     AppConfig() = default;
     AppConfig(const AppConfig& o) :
         title(o.title), logLevel(o.logLevel), numJobThreads(o.numJobThreads),
-        timeScale(o.timeScale), iconPath(o.iconPath),
+        timeScale(o.timeScale), iconPath(o.iconPath), headlessMode(o.headlessMode),
         window(o.window), graphics(o.graphics), render(o.render),
         shadow(o.shadow), physics(o.physics), input(o.input),
         audio(o.audio), culling(o.culling), lightingMode(o.lightingMode) {}
@@ -199,7 +200,7 @@ struct AppConfig
     AppConfig& operator=(const AppConfig& o) {
         if (this == &o) return *this;
         title = o.title; logLevel = o.logLevel; numJobThreads = o.numJobThreads;
-        timeScale = o.timeScale; iconPath = o.iconPath;
+        timeScale = o.timeScale; iconPath = o.iconPath; headlessMode = o.headlessMode;
         window = o.window; graphics = o.graphics; render = o.render;
         shadow = o.shadow; physics = o.physics; input = o.input;
         audio = o.audio; culling = o.culling; lightingMode = o.lightingMode;
