@@ -134,7 +134,7 @@ void OverlayDebugModule::Render(Scene &scene)
         for (char c : line)
         {
             const Character &ch = m_DebugFont->GetCharacter(c);
-            textWidth += (ch.Advance >> 6) * scale;
+            textWidth += (ch.advance >> 6) * scale;
         }
         float x = (float)width - textWidth - 10.0f;
 
@@ -208,10 +208,10 @@ void OverlayDebugModule::RenderText(const std::string &text, float x, float y, f
     {
         const Character &ch = m_DebugFont->GetCharacter(c);
 
-        float xpos = x + ch.Bearing.x * scale;
-        float ypos = y + (ch.Size.y - ch.Bearing.y) * scale;
-        float w = ch.Size.x * scale;
-        float h = ch.Size.y * scale;
+        float xpos = x + ch.bearing.x * scale;
+        float ypos = y + (ch.size.y - ch.bearing.y) * scale;
+        float w = ch.size.x * scale;
+        float h = ch.size.y * scale;
 
         std::vector<float> vertices = {
             xpos, ypos - h, 0.0f, 0.0f,
@@ -222,9 +222,9 @@ void OverlayDebugModule::RenderText(const std::string &text, float x, float y, f
             xpos + w, ypos, 1.0f, 1.0f,
             xpos + w, ypos - h, 1.0f, 0.0f};
 
-        m_TextQuad->DrawDynamic(*m_TextShader, ch.TextureID, color, vertices);
+        m_TextQuad->DrawDynamic(*m_TextShader, ch.textureID, color, vertices);
 
-        x += (ch.Advance >> 6) * scale;
+        x += (ch.advance >> 6) * scale;
     }
 }
 

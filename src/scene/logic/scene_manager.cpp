@@ -76,7 +76,7 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     rec.filePath = filePath;
     rec.name = SceneBasename(filePath);
     rec.persistent = persistent;
-    rec.loadOrder = m_nextLoadOrder++;
+    rec.loadOrder = m_NextLoadOrder++;
     rec.entities = std::move(res.entities);
     rec.ownedShaders = std::move(res.loadedShaders);
     rec.ownedModels = std::move(res.loadedModels);
@@ -205,33 +205,33 @@ void SceneManager::ClearAllIncludingPersistent()
         Internal_UnloadRecord(rec);
     }
     m_LoadedScenes.clear();
-    m_nextLoadOrder = 0;
+    m_NextLoadOrder = 0;
 }
 
 void SceneManager::QueueLoadScene(const std::string& path, bool persistent)
 {
-    m_pendingQueue.push_back({PendingOp::Load, path, persistent});
+    m_PendingQueue.push_back({PendingOp::Load, path, persistent});
 }
 
 void SceneManager::QueueUnloadScene(const std::string& path)
 {
-    m_pendingQueue.push_back({PendingOp::Unload, path, false});
+    m_PendingQueue.push_back({PendingOp::Unload, path, false});
 }
 
 void SceneManager::QueueChangeScene(const std::string& path)
 {
-    m_pendingQueue.push_back({PendingOp::Change, path, false});
+    m_PendingQueue.push_back({PendingOp::Change, path, false});
 }
 
 void SceneManager::QueuePopScene()
 {
-    m_pendingQueue.push_back({PendingOp::Pop, "", false});
+    m_PendingQueue.push_back({PendingOp::Pop, "", false});
 }
 
 void SceneManager::UpdatePendingScene()
 {
-    std::vector<PendingOp> ops = std::move(m_pendingQueue);
-    m_pendingQueue.clear();
+    std::vector<PendingOp> ops = std::move(m_PendingQueue);
+    m_PendingQueue.clear();
 
     for (const auto& op : ops)
     {
@@ -361,9 +361,9 @@ void SceneManager::Internal_RollbackConfig(const SceneRecord& removed)
 
 void SceneManager::Internal_ReindexScenes()
 {
-    m_nextLoadOrder = 0;
+    m_NextLoadOrder = 0;
     for (auto& rec : m_LoadedScenes)
     {
-        rec.loadOrder = m_nextLoadOrder++;
+        rec.loadOrder = m_NextLoadOrder++;
     }
 }

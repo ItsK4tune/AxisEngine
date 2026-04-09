@@ -97,7 +97,7 @@ public:
         int eventId = GetEventId<T>();
         
         std::lock_guard<std::mutex> lock(m_DispatchersMutex);
-        int listenerId = nextListenerId++;
+        int listenerId = m_NextListenerId++;
 
         if (eventId >= (int)m_Dispatchers.size()) {
             m_Dispatchers.resize(eventId + 1);
@@ -152,7 +152,7 @@ private:
     EventManager() = default;
     ~EventManager() = default;
 
-    int nextListenerId = 0;
+    int m_NextListenerId = 0;
     std::vector<std::shared_ptr<IEventDispatcher>> m_Dispatchers;
     std::mutex m_DispatchersMutex;
 };
@@ -162,7 +162,7 @@ class ScopedSubscriber
 {
 public:
     ScopedSubscriber() = default;
-    ScopedSubscriber(int id) : listenerId(id) {}
+    ScopedSubscriber(int id) : m_ListenerId(id) {}
 
     ~ScopedSubscriber()
     {
@@ -172,9 +172,9 @@ public:
     ScopedSubscriber(const ScopedSubscriber &) = delete;
     ScopedSubscriber &operator=(const ScopedSubscriber &) = delete;
 
-    ScopedSubscriber(ScopedSubscriber &&other) noexcept : listenerId(other.listenerId)
+    ScopedSubscriber(ScopedSubscriber &&other) noexcept : m_ListenerId(other.m_ListenerId)
     {
-        other.listenerId = -1;
+        other.m_ListenerId = -1;
     }
 
     ScopedSubscriber &operator=(ScopedSubscriber &&other) noexcept
@@ -182,27 +182,27 @@ public:
         if (this != &other)
         {
             Unsubscribe();
-            listenerId = other.listenerId;
-            other.listenerId = -1;
+            m_ListenerId = other.m_ListenerId;
+            other.m_ListenerId = -1;
         }
         return *this;
     }
 
     void Unsubscribe()
     {
-        if (listenerId != -1)
+        if (m_ListenerId != -1)
         {
-            EventManager::Instance().Unsubscribe<T>(listenerId);
-            listenerId = -1;
+            EventManager::Instance().Unsubscribe<T>(m_ListenerId);
+            m_ListenerId = -1;
         }
     }
 
     void Reset(int id)
     {
         Unsubscribe();
-        listenerId = id;
+        m_ListenerId = id;
     }
 
 private:
-    int listenerId = -1;
+    int m_ListenerId = -1;
 };

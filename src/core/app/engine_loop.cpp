@@ -53,8 +53,21 @@ EngineLoop::~EngineLoop()
 void EngineLoop::Run()
 {
     LOGGER_INFO("EngineLoop") << "Starting engine loop";
-    while (!ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager().GetWindow()->ShouldClose())
+    m_IsRunning = true;
+    
+    auto& sl = ServiceLocator::Instance();
+    auto ioHandler = sl.Resolve<IOHandler>();
+
+    while (m_IsRunning)
     {
+        if (ioHandler) {
+            auto window = ioHandler->GetMonitorManager().GetWindow();
+            if (window && window->ShouldClose()) {
+                m_IsRunning = false;
+                break;
+            }
+        }
+        
         ProcessFrame();
     }
 }
@@ -62,8 +75,7 @@ void EngineLoop::Run()
 void EngineLoop::ProcessFrame()
 {
     auto& sl = ServiceLocator::Instance();
-    auto& ioHandler = sl.Require<IOHandler>();
-    auto& window = *ioHandler.GetMonitorManager().GetWindow();
+    auto ioHandler = sl.Resolve<IOHandler>();
     auto& timeService = sl.Require<TimeService>();
     auto& resourceManager = sl.Require<ResourceManager>();
     auto& systemManager = sl.Require<SystemManager>();
@@ -76,8 +88,13 @@ void EngineLoop::ProcessFrame()
     m_DeltaTime = m_RealDeltaTime;
     m_LastFrameTime = now;
 
-    window.PollEvents();
-    ioHandler.GetMouse().Update();
+    if (ioHandler) {
+        auto window = ioHandler->GetMonitorManager().GetWindow();
+        if (window) {
+            window->PollEvents();
+        }
+        ioHandler->GetMouse().Update();
+    }
 
     if (m_IsPaused)
     {
@@ -92,39 +109,51 @@ void EngineLoop::ProcessFrame()
     timeService.SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
 
     resourceManager.Update(m_RealDeltaTime);
-    ioHandler.ProcessInput();
-    ioHandler.GetInputManager().Update();
+    
+    if (ioHandler) {
+        ioHandler->ProcessInput();
+        ioHandler->GetInputManager().Update();
+    }
 
     auto& stateMachine = runtimeCore.GetStateMachine();
     systemManager.Update(scene, m_DeltaTime);
     systemManager.UpdateDebug(m_RealDeltaTime);
 
     stateMachine.Update(m_DeltaTime);
-    ioHandler.GetMouse().EndFrame();
+    
+    if (ioHandler) {
+        ioHandler->GetMouse().EndFrame();
+    }
 
     FixedUpdate();
     Render();
-    window.SwapBuffers();
 
-    int frameRateLimit = ioHandler.GetMonitorManager().GetFrameRateLimit();
-    if (frameRateLimit > 0)
-    {
-        double targetFrameTime = 1.0 / (double)frameRateLimit;
-        auto frameEnd = std::chrono::steady_clock::now();
-        double frameElapsed = std::chrono::duration<double>(frameEnd - now).count();
-        if (frameElapsed < targetFrameTime)
-        {
-            double sleepTime = targetFrameTime - frameElapsed;
-            if (sleepTime > 0.0)
+    if (ioHandler) {
+        auto window = ioHandler->GetMonitorManager().GetWindow();
+        if (window) {
+            window->SwapBuffers();
+
+            int frameRateLimit = ioHandler->GetMonitorManager().GetFrameRateLimit();
+            if (frameRateLimit > 0)
             {
-                if (sleepTime > 0.002)
+                double targetFrameTime = 1.0 / (double)frameRateLimit;
+                auto frameEnd = std::chrono::steady_clock::now();
+                double frameElapsed = std::chrono::duration<double>(frameEnd - now).count();
+                if (frameElapsed < targetFrameTime)
                 {
-                    std::this_thread::sleep_for(std::chrono::duration<double>(sleepTime - 0.001));
-                }
+                    double sleepTime = targetFrameTime - frameElapsed;
+                    if (sleepTime > 0.0)
+                    {
+                        if (sleepTime > 0.002)
+                        {
+                            std::this_thread::sleep_for(std::chrono::duration<double>(sleepTime - 0.001));
+                        }
 
-                while (std::chrono::duration<double>(std::chrono::steady_clock::now() - now).count() < targetFrameTime)
-                {
-                    std::this_thread::yield();
+                        while (std::chrono::duration<double>(std::chrono::steady_clock::now() - now).count() < targetFrameTime)
+                        {
+                            std::this_thread::yield();
+                        }
+                    }
                 }
             }
         }
@@ -168,25 +197,21 @@ void EngineLoop::FixedUpdate()
 void EngineLoop::Render()
 {
     auto& sl = ServiceLocator::Instance();
+    if (!sl.Has<IGraphicsContext>()) return;
+
     auto& sysMgr = sl.Require<SystemManager>();
-    auto& io = sl.Require<IOHandler>();
+    auto io = sl.Resolve<IOHandler>();
     auto& rtCore = sl.Require<RuntimeCore>();
     auto& scene = sl.Require<Scene>();
 
-    sysMgr.RenderShadows(
-        scene,
-        io.GetMonitorManager().GetWidth(),
-        io.GetMonitorManager().GetHeight(),
-        m_Alpha
-    );
+    int width = 0, height = 0;
+    if (io) {
+        width = io->GetMonitorManager().GetWidth();
+        height = io->GetMonitorManager().GetHeight();
+    }
 
-    sysMgr.Render(
-        scene,
-        io.GetMonitorManager().GetWidth(),
-        io.GetMonitorManager().GetHeight(),
-        m_Alpha
-    );
-
+    sysMgr.RenderShadows(scene, width, height, m_Alpha);
+    sysMgr.Render(scene, width, height, m_Alpha);
     rtCore.GetStateMachine().Render();
     sysMgr.RenderDebug(scene);
 }

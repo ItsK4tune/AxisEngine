@@ -36,7 +36,7 @@ public:
     void QueueChangeScene(const std::string& path);
     void QueuePopScene();
     void UpdatePendingScene();
-    bool HasPendingScene() const { return !m_pendingQueue.empty(); }
+    bool HasPendingScene() const { return !m_PendingQueue.empty(); }
 
     bool IsLoaded(const std::string& filePath) const;
     const SceneRecord* GetScene(const std::string& filePath) const;
@@ -65,7 +65,7 @@ private:
     void Internal_UnloadRecord(SceneRecord& rec);
     void Internal_ReindexScenes();
 
-    int m_nextLoadOrder = 0;
+    int m_NextLoadOrder = 0;
     std::vector<SceneRecord> m_LoadedScenes;
-    std::vector<PendingOp>   m_pendingQueue;
+    std::vector<PendingOp>   m_PendingQueue;
 };

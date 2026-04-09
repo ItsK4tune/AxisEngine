@@ -10,10 +10,10 @@ class ITextureManager;
 
 
 struct Character {
-    unsigned int TextureID;
-    glm::ivec2   Size;
-    glm::ivec2   Bearing;
-    unsigned int Advance;
+    unsigned int textureID;
+    glm::ivec2   size;
+    glm::ivec2   bearing;
+    unsigned int advance;
 };
 
 class Font {
@@ -29,7 +29,7 @@ public:
 
 private:
     unsigned int m_FontSize = 16;
-    std::map<char, Character> Characters;
+    std::map<char, Character> m_Characters;
     static ITextureManager* s_TextureManager;
     static ITextureManager& GetTextureManager();
 };

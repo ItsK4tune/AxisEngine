@@ -25,8 +25,8 @@ Font::Font() {}
 
 Font::~Font() {
     if (s_TextureManager) {
-        for (auto const& [key, ch] : Characters) {
-            s_TextureManager->DeleteTextures(1, &ch.TextureID);
+        for (auto const& [key, ch] : m_Characters) {
+            s_TextureManager->DeleteTextures(1, &ch.textureID);
         }
     }
 }
@@ -84,7 +84,7 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
             glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
             static_cast<unsigned int>(face->glyph->advance.x)
         };
-        Characters.insert(std::pair<char, Character>(c, character));
+        m_Characters.insert(std::pair<char, Character>(c, character));
     }
 
     FT_Done_Face(face);
@@ -93,5 +93,5 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
 }
 
 const Character& Font::GetCharacter(char c) const {
-    return Characters.at(c);
+    return m_Characters.at(c);
 }

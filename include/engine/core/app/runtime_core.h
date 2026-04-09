@@ -42,6 +42,7 @@ public:
     float GetTimeScale() const { return m_TimeScale; }
     float GetRealDeltaTime() const { return m_RealDeltaTime; }
     bool IsPaused() const { return m_IsPaused; }
+    void Stop() { m_IsRunning = false; }
 
 private:
     void ProcessFrame();
@@ -60,6 +61,7 @@ private:
     float m_TotalTime = 0.0f;
     int m_MaxSubSteps = 10;
     int m_ConfigSubscriptionId = -1;
+    bool m_IsRunning = false;
 };
 
 

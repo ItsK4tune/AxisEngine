@@ -137,7 +137,7 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                     float currentWidth = 0;
                     for (char c : text) {
                         const Character &ch = textComp->font->GetCharacter(c);
-                        float charWidth = (ch.Advance >> 6) * scale;
+                        float charWidth = (ch.advance >> 6) * scale;
                         if (currentWidth + charWidth > textComp->maxWidth) {
                             lines.push_back(currentLine);
                             currentLine = c;
@@ -155,7 +155,7 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                 float startY = rect.pos.y;
                 for (const auto& line : lines) {
                     float lineWidth = 0;
-                    for (char c : line) lineWidth += (textComp->font->GetCharacter(c).Advance >> 6) * scale;
+                    for (char c : line) lineWidth += (textComp->font->GetCharacter(c).advance >> 6) * scale;
 
                     float startX = rect.pos.x;
                     if (textComp->alignment == TextAlignment::Center) startX += (rect.size.x - lineWidth) * 0.5f;
@@ -166,10 +166,10 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                     {
                         const Character &ch = textComp->font->GetCharacter(c);
 
-                        float xpos = x + ch.Bearing.x * scale;
-                        float ypos = startY + (ch.Size.y - ch.Bearing.y) * scale;
-                        float w = ch.Size.x * scale;
-                        float h = ch.Size.y * scale;
+                        float xpos = x + ch.bearing.x * scale;
+                        float ypos = startY + (ch.size.y - ch.bearing.y) * scale;
+                        float w = ch.size.x * scale;
+                        float h = ch.size.y * scale;
 
                         std::vector<float> vertices = {
                             xpos, ypos - h, 0.0f, 0.0f,
@@ -180,8 +180,8 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                             xpos + w, ypos, 1.0f, 1.0f,
                             xpos + w, ypos - h, 1.0f, 0.0f};
 
-                        textComp->model->DrawDynamic(*currentShader, ch.TextureID, textComp->color, vertices);
-                        x += (ch.Advance >> 6) * scale;
+                        textComp->model->DrawDynamic(*currentShader, ch.textureID, textComp->color, vertices);
+                        x += (ch.advance >> 6) * scale;
                     }
                     startY += textComp->font->GetFontSize() * 0.8f * scale; 
                 }
