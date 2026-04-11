@@ -21,8 +21,8 @@
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <core/logic/logger.h>
-#include <platform/logic/io_handler.h>
-#include <audio/logic/audio_service.h>
+#include <engine/platform/logic/io_handler.h>
+#include <engine/audio/logic/audio_service.h>
 #include <algorithm>
 
 SystemManager::SystemManager()
@@ -131,9 +131,15 @@ void SystemManager::Initialize(ResourceManager &res, int width, int height)
         uint32_t unmet = required & ~m_AvailableCapabilities;
         
         if (unmet != 0) {
-            LOGGER_INFO("SystemManager") << "Skipping system due to unmet requirements (" << unmet << "): " << sys->GetName();
-            sys->SetEnabled(false);
-            continue;
+            // Only force-disable in headless mode or if absolutely necessary.
+            // For now, we only alert but allow the system to try initializing anyway if not headless.
+            LOGGER_INFO("SystemManager") << "System requirements partially unmet (" << unmet << "): " << sys->GetName();
+            
+            if (sl.Require<ConfigManager>().IsHeadless()) {
+                LOGGER_WARN("SystemManager") << "Disabling system due to headless mode: " << sys->GetName();
+                sys->SetEnabled(false);
+                continue;
+            }
         }
 
         sys->Initialize();
@@ -360,7 +366,28 @@ void SystemManager::UpdateDebug(float realDeltaTime)
 
 void SystemManager::RenderDebug(Scene& scene)
 {
-    // DebugSystem is now rendered via standard m_RenderSystems loop (Priority 1000)
+    for (auto& sys : m_Systems) {
+        if (!sys->IsEnabled()) continue;
+        
+        // Explicitly drawing DebugSystem overlay if present
+        if (sys->GetName() == "DebugSystem") {
+            auto* context = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+            if (context) {
+                // Width/Height from window
+                auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+                if (io) {
+                    int w = io->GetMonitorManager().GetWidth();
+                    int h = io->GetMonitorManager().GetHeight();
+                    auto& rsm = context->GetRenderStateManager();
+                    
+                    // We call RenderUIPass directly for DebugSystem if it's the DebugSystem
+                    if (auto* renderSys = dynamic_cast<IRenderSystem*>(sys.get())) {
+                        renderSys->RenderUIPass(scene, (float)w, (float)h, rsm);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void SystemManager::RenderShadows(Scene& scene, int width, int height, float alpha)

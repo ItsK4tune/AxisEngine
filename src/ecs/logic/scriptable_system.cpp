@@ -206,6 +206,8 @@ void ScriptableSystem::Update(Scene &scene, float dt)
     {
         auto &script = view.get<ScriptComponent>(entity);
 
+        if (!script.instance && script.InstantiateScript)
+        {
             try {
                 script.instance = std::move(script.InstantiateScript());
                 if (script.instance) {
@@ -214,8 +216,9 @@ void ScriptableSystem::Update(Scene &scene, float dt)
                 }
             } catch (const std::exception& e) {
                 LOGGER_ERROR("ScriptableSystem") << "Script Initialization CRASH on entity " << (uint32_t)entity << ": " << e.what();
-                script.instance = nullptr; // Ensure it doesn't keep retrying or crashing in update
+                script.instance = nullptr; 
             }
+        }
 
         if (script.instance && script.instance->IsEnabled())
         {

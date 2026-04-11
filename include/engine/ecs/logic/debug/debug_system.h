@@ -41,8 +41,8 @@ public:
     void Update(Scene& scene, float dt) override { OnUpdate(dt); }
     void OnUpdate(float dt);
     
-    SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::RenderUI | SystemCategory::Update; }
-    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics | SystemRequirement::Input; }
+    SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::Update; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
 
     void Render(Scene& scene) override;
     void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) override;
@@ -71,8 +71,6 @@ private:
 };
 
 #else
-
-
 
 class NullDebugSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {

@@ -331,6 +331,7 @@ RuntimeCore&     Application::GetRuntimeCore()    { return *m_Impl->m_RuntimeCor
 StateMachine&    Application::GetStateMachine()   { return m_Impl->m_RuntimeCore->GetStateMachine(); }
 
 ScriptRegistry*  Application::GetScriptRegistry() { return m_Impl->m_ScriptRegistry.get(); }
-
-
-
+ 
+const AppConfig& Application::GetConfig() const {
+    return m_Impl->m_ConfigManager->GetConfig();
+}

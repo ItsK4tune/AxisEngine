@@ -69,6 +69,7 @@ void OverlayDebugModule::Render(Scene &scene)
     int width = io.GetMonitorManager().GetWidth();
     int height = io.GetMonitorManager().GetHeight();
 
+    graphics->SetDepthTest(false);
     graphics->SetBlending(true);
     graphics->SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
