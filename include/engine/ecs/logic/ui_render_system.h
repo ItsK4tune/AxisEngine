@@ -17,6 +17,7 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 90; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderUI | SystemCategory::Update; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     std::string GetName() const override { return "UIRenderSystem"; }
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;

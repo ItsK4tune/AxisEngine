@@ -3,10 +3,14 @@
 #include <render/interface/i_buffer_manager.h>
 #include <core/logic/logger.h>
 
-void RenderCore::Initialize(IGraphicsContext& context)
+void RenderCore::Initialize(IGraphicsContext* context)
 {
-    m_Context = &context;
-    auto& tm = context.GetTextureManager();
+    m_Context = context;
+    if (!m_Context) {
+        LOGGER_INFO("RenderCore") << "RenderCore features skipped (Headless)";
+        return;
+    }
+    auto& tm = m_Context->GetTextureManager();
 
     // 1. Textures
     m_WhiteTextureID = tm.GenTexture();

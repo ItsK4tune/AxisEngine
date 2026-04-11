@@ -36,7 +36,16 @@ Scene&           EngineAccessor::GetScene() const           { return *m_ActiveSc
 
 
 void EngineAccessor::LoadScene(const std::string& path, bool persistent) { ServiceLocator::Instance().Require<SceneManager>().LoadScene(path, persistent); }
-void EngineAccessor::LoadInputBindings(const std::string& path) { InputLoader::LoadBindings(path, Get<IOHandler>().GetInputManager()); }
+void EngineAccessor::LoadInputBindings(const std::string& path) {
+    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
+        InputLoader::LoadBindings(path, io->GetInputManager());
+}
+
+void EngineAccessor::SetCursorMode(CursorMode mode) {
+    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
+        io->GetMouse().SetCursorMode(mode);
+}
+
 void EngineAccessor::QueueLoadScene(const std::string& path, bool persistent) { ServiceLocator::Instance().Require<SceneManager>().QueueLoadScene(path, persistent); }
 void EngineAccessor::UnloadScene(const std::string& path)  { ServiceLocator::Instance().Require<SceneManager>().UnloadScene(path); }
 void EngineAccessor::UnloadScene(const SceneRecord* rec)   { ServiceLocator::Instance().Require<SceneManager>().UnloadScene(rec); }
@@ -44,7 +53,7 @@ void EngineAccessor::ChangeScene(const std::string& path)  { ServiceLocator::Ins
 void EngineAccessor::PopScene()                            { ServiceLocator::Instance().Require<SceneManager>().PopScene(); }
 void EngineAccessor::QueuePopScene()                       { ServiceLocator::Instance().Require<SceneManager>().QueuePopScene(); }
 std::vector<const SceneRecord*> EngineAccessor::GetScenes(){ return ServiceLocator::Instance().Require<SceneManager>().GetScenes(); }
-void EngineAccessor::SetCursorMode(CursorMode mode) { ServiceLocator::Instance().Require<IOHandler>().GetMouse().SetCursorMode(mode); }
+bool EngineAccessor::IsSceneLoaded(const std::string& path){ return ServiceLocator::Instance().Require<SceneManager>().IsLoaded(path); }
 
 void EngineAccessor::EnableSystem(const std::string& systemName, bool enable) {
     EventManager::Instance().Publish(SystemEnabledEvent{systemName, enable});
@@ -59,9 +68,18 @@ void EngineAccessor::EnableLogic(bool enable)
     EnableNavigation(enable);
 }
 
-bool EngineAccessor::GetAction(const std::string &name) const { return ServiceLocator::Instance().Require<IOHandler>().GetInputManager().GetAction(name); }
-bool EngineAccessor::GetActionDown(const std::string &name) const { return ServiceLocator::Instance().Require<IOHandler>().GetInputManager().GetActionDown(name); }
-bool EngineAccessor::GetActionUp(const std::string &name) const { return ServiceLocator::Instance().Require<IOHandler>().GetInputManager().GetActionUp(name); }
+bool EngineAccessor::GetAction(const std::string &name) const {
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+    return io ? io->GetInputManager().GetAction(name) : false;
+}
+bool EngineAccessor::GetActionDown(const std::string &name) const {
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+    return io ? io->GetInputManager().GetActionDown(name) : false;
+}
+bool EngineAccessor::GetActionUp(const std::string &name) const {
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+    return io ? io->GetInputManager().GetActionUp(name) : false;
+}
 
 void EngineAccessor::SetTimeScale(float scale) { ServiceLocator::Instance().Require<RuntimeCore>().GetEngineLoop().SetTimeScale(scale); }
 float EngineAccessor::GetTimeScale() const { return ServiceLocator::Instance().Require<RuntimeCore>().GetEngineLoop().GetTimeScale(); }

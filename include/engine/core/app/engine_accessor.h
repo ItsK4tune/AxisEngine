@@ -28,6 +28,12 @@ public:
     T& Get() const { return ServiceLocator::Instance().Require<T>(); }
 
     template <typename T>
+    T* Resolve() const { return ServiceLocator::Instance().Resolve<T>(); }
+
+    template <typename T>
+    bool Has() const { return ServiceLocator::Instance().Has<T>(); }
+
+    template <typename T>
     T& GetSystem() const { 
         auto* sys = Get<SystemManager>().template GetSystem<T>();
         if (!sys) throw std::runtime_error("System not found: " + std::string(typeid(T).name()));

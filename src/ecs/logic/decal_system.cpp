@@ -35,11 +35,14 @@ void DecalSystem::Initialize()
     m_RenderService = sl.Resolve<IRenderService>();
     m_GeoService = sl.Resolve<IGeometryService>();
     
-    auto& resources = sl.Require<ResourceManager>();
+    auto* resources = sl.Resolve<ResourceManager>();
+    if (!resources) {
+        LOGGER_WARN("DecalSystem") << "Skipping full initialization (missing ResourceManager)";
+        return;
+    }
     
-    m_DecalShader = resources.GetShader("decal");
-
-    m_ForwardShader = resources.GetShader("decal_forward");
+    m_DecalShader = resources->GetShader("decal");
+    m_ForwardShader = resources->GetShader("decal_forward");
 }
 
 void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity)
@@ -117,14 +120,16 @@ void DecalSystem::Render(Scene &scene)
     }
     auto &cam = scene.registry.get<CameraComponent>(camEntity);
 
+    if (!m_GraphicsContext) return;
     auto& gc = *m_GraphicsContext;
     auto& dc = gc.GetDrawContext();
     auto& bm = gc.GetBufferManager();
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
-    auto& io = sl.Require<IOHandler>();
-    int width = io.GetMonitorManager().GetWidth();
-    int height = io.GetMonitorManager().GetHeight();
+    
+    auto* io = sl.Resolve<IOHandler>();
+    int width = io ? io->GetMonitorManager().GetWidth() : 800;
+    int height = io ? io->GetMonitorManager().GetHeight() : 600;
     
     // Safety check for viewport
     if (width <= 0 || height <= 0) return;
@@ -201,14 +206,18 @@ void DecalSystem::Render(Scene &scene)
     shader->setMat4("u_View", cam.viewMatrix);
     shader->setMat4("u_Projection", cam.projectionMatrix);
     
-    auto& core = sl.Require<RenderCore>();
-    if (isDeferred) {
-        sm.Enable(ServerCapability::CullFace);
-        bm.BindVertexArray(core.GetCubeVAO());
-        bm.BindBuffer(BufferType::ElementArrayBuffer, core.GetCubeEBO());
+    auto* core = sl.Resolve<RenderCore>();
+    if (core) {
+        if (isDeferred) {
+            sm.Enable(ServerCapability::CullFace);
+            bm.BindVertexArray(core->GetCubeVAO());
+            bm.BindBuffer(BufferType::ElementArrayBuffer, core->GetCubeEBO());
+        } else {
+            bm.BindVertexArray(core->GetQuadVAO());
+            bm.BindBuffer(BufferType::ElementArrayBuffer, core->GetQuadEBO());
+        }
     } else {
-        bm.BindVertexArray(core.GetQuadVAO());
-        bm.BindBuffer(BufferType::ElementArrayBuffer, core.GetQuadEBO());
+        return;
     }
     
     auto view = scene.registry.view<DecalComponent>();
@@ -220,7 +229,8 @@ void DecalSystem::Render(Scene &scene)
         return view.get<DecalComponent>(a).renderOrder < view.get<DecalComponent>(b).renderOrder;
     });
 
-    auto& res = ServiceLocator::Instance().Require<ResourceManager>();
+    auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
+    if (!res) return;
 
     for (auto entity : sortedEntities) {
         auto &decal = scene.registry.get<DecalComponent>(entity);
@@ -230,7 +240,7 @@ void DecalSystem::Render(Scene &scene)
         
         Shader* activeShader = shader;
         if (!decal.customShader.empty()) {
-            if (auto custom = res.GetShader(decal.customShader)) {
+            if (auto custom = res->GetShader(decal.customShader)) {
                 activeShader = custom.get();
             }
         }
@@ -294,11 +304,12 @@ void DecalSystem::Render(Scene &scene)
 
 uint32_t DecalSystem::LoadDecalTexture(const std::string &path)
 {
-    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
-    auto tex = resources.GetTexture(path);
+    auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
+    if (!resources) return 0;
+    auto tex = resources->GetTexture(path);
     if (!tex) {
-        resources.LoadTexture(path, path, false);
-        tex = resources.GetTexture(path);
+        resources->LoadTexture(path, path, false);
+        tex = resources->GetTexture(path);
     }
     return tex ? tex->id : 0;
 }
@@ -347,6 +358,7 @@ uint32_t DecalSystem::GetBitmask(const std::vector<std::string> &tags)
 
 void DecalSystem::UpdateTagMap(Scene &scene)
 {
+    if (!m_GraphicsContext) return;
     auto& tm = m_GraphicsContext->GetTextureManager();
     if (m_TagMapTexture == 0) m_TagMapTexture = tm.GenTexture();
 

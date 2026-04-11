@@ -15,5 +15,5 @@ class AudioService;
 class SceneSerializer
 {
 public:
-    static SceneLoadResult Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld* phys, AudioService& audio);
+    static SceneLoadResult Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res, IPhysicsWorld* phys, AudioService* audio);
 };

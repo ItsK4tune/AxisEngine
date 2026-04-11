@@ -18,6 +18,7 @@ public:
     int GetPriority() const override { return 85; }
     std::string GetName() const override { return "ParticleSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderTransparent | SystemCategory::Update; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     void Update(Scene& scene, float dt) override;
     void Render(Scene& scene) override {}
     void RenderTransparentPass(Scene& scene, int width, int height, float alpha) override;

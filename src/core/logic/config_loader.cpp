@@ -47,10 +47,23 @@ namespace {
     }
 }
 
-void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config)
+void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config, bool headless)
 {
     std::string subCmd;
     ss >> subCmd;
+
+    // In headless mode, only load core + physics config
+    if (headless)
+    {
+        static const std::unordered_map<std::string, bool> s_HeadlessCritical = {
+            {"LOG_LEVEL", true}, {"JOB_THREADS", true}, {"TIME_SCALE", true}, {"HEADLESS", true},
+            {"PHYSICS_ENGINE", true}, {"PHYSICS_MODE", true}, {"GRAVITY", true},
+            {"MAX_SUBSTEPS", true}, {"PHYSICS_TICKRATE", true},
+            {"CCD_ENABLED", true}, {"CCD_THRESHOLD", true}, {"SOLVER_ITERATIONS", true}
+        };
+        if (s_HeadlessCritical.find(subCmd) == s_HeadlessCritical.end())
+            return; // skip non-critical config in headless
+    }
 
     if (subCmd == "GRAPHICS_API") {
         std::string val; ss >> val;

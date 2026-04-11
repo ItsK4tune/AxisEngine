@@ -18,7 +18,7 @@
 #include <audio/logic/audio_service.h>
 #include <audio/interface/i_audio_engine.h>
 
-SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld* phys, AudioService &sound)
+SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld* phys, AudioService* sound)
 {
     SceneLoadResult result;
     std::string fullPath = FileSystem::getPath(filepath);
@@ -64,7 +64,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
 
                 std::stringstream ss1;
                 ss1 << cfgNode.key << " " << cfgNode.value;
-                ConfigLoader::LoadConfig(ss1, tempConfig);
+                ConfigLoader::LoadConfig(ss1, tempConfig, configMgr.IsHeadless());
             }
             
             configMgr.UpdateConfig(tempConfig);
@@ -158,25 +158,29 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
                 }
                 else if (resNode.key == "Audio")
                 {
-                    LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Volume", "Pitch", "Pan", "Speed"}, "Resource:Audio");
-                    std::string name = resNode.GetChildValue("Name");
-                    std::string path = resNode.GetChildValue("Path");
-                    
-                    res.LoadSound(name, path, sound.GetEngine());
-                    auto source = res.GetSound(name);
-                    if (source)
-                    {
-                        float vol = std::stof(resNode.GetChildValue("Volume", "1.0"));
-                        float pitch = std::stof(resNode.GetChildValue("Pitch", "1.0"));
-                        float pan = std::stof(resNode.GetChildValue("Pan", "0.0"));
-                        float speed = std::stof(resNode.GetChildValue("Speed", "1.0"));
+                    if (sound) {
+                        LoaderUtils::ValidateKeys(resNode, {"Name", "Path", "Volume", "Pitch", "Pan", "Speed"}, "Resource:Audio");
+                        std::string name = resNode.GetChildValue("Name");
+                        std::string path = resNode.GetChildValue("Path");
+                        
+                        res.LoadSound(name, path, sound->GetEngine());
+                        auto source = res.GetSound(name);
+                        if (source)
+                        {
+                            float vol = std::stof(resNode.GetChildValue("Volume", "1.0"));
+                            float pitch = std::stof(resNode.GetChildValue("Pitch", "1.0"));
+                            float pan = std::stof(resNode.GetChildValue("Pan", "0.0"));
+                            float speed = std::stof(resNode.GetChildValue("Speed", "1.0"));
 
-                        source->SetDefaultVolume(vol);
-                        source->SetDefaultPitch(pitch);
-                        source->SetDefaultPan(pan);
-                        source->SetDefaultSpeed(speed);
+                            source->SetDefaultVolume(vol);
+                            source->SetDefaultPitch(pitch);
+                            source->SetDefaultPan(pan);
+                            source->SetDefaultSpeed(speed);
+                        }
+                        result.loadedSounds.push_back(name);
+                    } else {
+                        LOGGER_WARN("SceneSerializer") << "Skipping audio resource load: No AudioService available";
                     }
-                    result.loadedSounds.push_back(name);
                 }
             }
         }

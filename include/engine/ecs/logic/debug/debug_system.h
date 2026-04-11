@@ -42,6 +42,7 @@ public:
     void OnUpdate(float dt);
     
     SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::RenderUI | SystemCategory::Update; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics | SystemRequirement::Input; }
 
     void Render(Scene& scene) override;
     void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) override;

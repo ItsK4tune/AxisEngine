@@ -24,6 +24,7 @@ public:
     int GetPriority() const override { return 70; } 
     std::string GetName() const override { return "ReflectionProbeSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::Update | SystemCategory::RenderCapture; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
 
 private:
     void CaptureProbe(Scene& scene, entt::entity entity, int faceIndex);

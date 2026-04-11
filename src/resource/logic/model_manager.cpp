@@ -2,6 +2,8 @@
 #include <resource/type/resource_events.h>
 #include <core/logic/axis_assert.h>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <render/interface/i_graphics_context.h>
 #include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/job_system.h>
@@ -41,7 +43,9 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         auto model = std::make_shared<Model>();
         try {
             model->LoadCPU(path, isStatic);
-            model->UploadToGPU();
+            if (ServiceLocator::Instance().Has<IGraphicsContext>()) {
+                model->UploadToGPU();
+            }
             m_Cache.Add(name, model);
             m_InstanceManager.RegisterModel(name, model);
             LOGGER_INFO("ModelManager") << "Loaded model: " << name;

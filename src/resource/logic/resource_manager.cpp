@@ -53,6 +53,8 @@ std::vector<std::string> ResourceManager::GetRegisteredLoaderTypes() const
 
 void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine& audioEngine)
 {
+    m_HeadlessMode = (shaderManager == nullptr && textureManager == nullptr);
+
     if (shaderManager) m_ShaderManager = std::make_unique<ShaderManager>(*shaderManager);
     if (textureManager) m_TextureManager = std::make_unique<TextureManager>(*textureManager);
     
@@ -68,6 +70,16 @@ void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager*
     if (m_ShaderManager) m_ShaderManager->Initialize();
     if (m_TextureManager) m_TextureManager->Initialize();
     // ModelManager::Initialize requires cubeModel from load.axs, so it should be called after LoadScene
+}
+
+void ResourceManager::InitializeHeadless()
+{
+    m_HeadlessMode = true;
+    m_ModelManager = std::make_unique<ModelManager>(m_ModelInstanceManager);
+    m_FragmentManager = std::make_unique<FragmentAssetManager>();
+    m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);
+    // No ShaderManager, TextureManager, AudioManager, FontManager, SkyboxManager, VideoManager, UIModelManager in pure headless
+    LOGGER_INFO("ResourceManager") << "Initialized in HEADLESS mode (simulation resources only)";
 }
 
 void ResourceManager::InitializePostLoad()
@@ -104,18 +116,20 @@ void ResourceManager::Update(float dt)
 
 void ResourceManager::UnloadTexture(const std::string &name)
 {
-    m_TextureManager->Unload(name);
+    if (m_TextureManager) m_TextureManager->Unload(name);
 }
 
 void ResourceManager::UnloadModel(const std::string &name)
 {
-    m_ModelManager->Unload(name);
+    if (m_ModelManager) m_ModelManager->Unload(name);
 }
 
 void ResourceManager::ReloadShader(const std::string &name)
 {
-    LOGGER_INFO("HotReload") << "Reloading Shader: " << name;
-    m_ShaderManager->Reload(name);
+    if (m_ShaderManager) {
+        LOGGER_INFO("HotReload") << "Reloading Shader: " << name;
+        m_ShaderManager->Reload(name);
+    }
 }
 
 void ResourceManager::ReloadTexture(const std::string &name)
@@ -157,7 +171,7 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
 
 void ResourceManager::LoadTexture(const std::string &name, const std::string &path, bool async, bool keepCpuData)
 {
-    if (!m_TextureManager) return;
+    if (m_HeadlessMode || !m_TextureManager) return;
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading Texture: " << name << " from " << path << (async ? " (async)" : "") << (keepCpuData ? " (keep CPU data)" : "");
     m_TextureManager->Load(name, fullPath, async, keepCpuData);
@@ -167,8 +181,9 @@ void ResourceManager::LoadTexture(const std::string &name, const std::string &pa
 
 void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
 {
+    if (m_HeadlessMode) return;
     std::string fullPath = FileSystem::getPath(path);
-    LOGGER_INFO("ResourceManager") << "Loading model: " << name << " from " << fullPath;
+    LOGGER_INFO("ResourceManager") << "Loading model: " << name;
 
     if (m_ModelManager->Load(name, fullPath, isStatic, false))
     {
@@ -178,6 +193,7 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
 
 void ResourceManager::LoadModelAsync(const std::string &name, const std::string &path, bool isStatic)
 {
+    if (m_HeadlessMode) return;
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Async loading model: " << name;
 
@@ -186,6 +202,7 @@ void ResourceManager::LoadModelAsync(const std::string &name, const std::string 
 
 void ResourceManager::LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName)
 {
+    if (m_HeadlessMode) return;
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
     m_AnimationManager->Load(name, fullPath, modelName);
@@ -193,6 +210,7 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
 
 void ResourceManager::LoadFont(const std::string &name, const std::string &path, unsigned int fontSize)
 {
+    if (m_HeadlessMode || !m_FontManager) return;
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading font: " << name << " (" << fontSize << "px) from " << path;
     m_FontManager->Load(name, fullPath, fontSize);
@@ -200,6 +218,7 @@ void ResourceManager::LoadFont(const std::string &name, const std::string &path,
 
 void ResourceManager::LoadSound(const std::string &name, const std::string &path, IAudioEngine *engine)
 {
+    if (!m_AudioManager) return;
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading sound: " << name;
     m_AudioManager->Load(name, fullPath);
@@ -207,6 +226,7 @@ void ResourceManager::LoadSound(const std::string &name, const std::string &path
 
 void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
 {
+    if (m_HeadlessMode || !m_SkyboxManager) return;
     LOGGER_INFO("ResourceManager") << "Loading skybox: " << name;
     m_SkyboxManager->Load(name, faces);
 }
@@ -219,16 +239,17 @@ void ResourceManager::LoadFragment(const std::string &name, const std::string &p
 
 void ResourceManager::CreateUIModel(const std::string &name, UIType type)
 {
+    if (m_HeadlessMode || !m_UIModelManager) return;
     m_UIModelManager->Create(name, type);
     LOGGER_INFO("ResourceManager") << "Created UI Model: " << name;
 }
 
-void ResourceManager::UnloadShader(const std::string &name) { m_ShaderManager->Unload(name); }
-void ResourceManager::UnloadFont(const std::string &name) { m_FontManager->Unload(name); }
-void ResourceManager::UnloadSound(const std::string &name) { m_AudioManager->Unload(name); }
-void ResourceManager::UnloadSkybox(const std::string &name) { m_SkyboxManager->Unload(name); }
-void ResourceManager::UnloadAnimation(const std::string &name) { m_AnimationManager->Unload(name); }
-void ResourceManager::UnloadFragment(const std::string &name) { m_FragmentManager->Unload(name); }
+void ResourceManager::UnloadShader(const std::string &name) { if (m_ShaderManager) m_ShaderManager->Unload(name); }
+void ResourceManager::UnloadFont(const std::string &name) { if (m_FontManager) m_FontManager->Unload(name); }
+void ResourceManager::UnloadSound(const std::string &name) { if (m_AudioManager) m_AudioManager->Unload(name); }
+void ResourceManager::UnloadSkybox(const std::string &name) { if (m_SkyboxManager) m_SkyboxManager->Unload(name); }
+void ResourceManager::UnloadAnimation(const std::string &name) { if (m_AnimationManager) m_AnimationManager->Unload(name); }
+void ResourceManager::UnloadFragment(const std::string &name) { if (m_FragmentManager) m_FragmentManager->Unload(name); }
 
 std::shared_ptr<Shader> ResourceManager::GetShader(const std::string &name) { return m_ShaderManager ? m_ShaderManager->Get(name) : nullptr; }
 std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string &name) { return m_TextureManager ? m_TextureManager->Get(name) : nullptr; }
@@ -317,26 +338,27 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &n
 
 std::shared_ptr<UIModel> ResourceManager::GetUIModel(const std::string &name)
 {
+    if (!m_UIModelManager) return nullptr;
     return m_UIModelManager->Get(name);
 }
 
 bool ResourceManager::HasUIModel(const std::string &name)
 {
+    if (!m_UIModelManager) return false;
     return m_UIModelManager->Has(name);
 }
 
 void ResourceManager::ClearResource()
 {
-    m_ShaderManager->Clear();
-    m_TextureManager->Clear();
-    m_ModelManager->Clear();
-    m_AudioManager->Clear();
-    m_FontManager->Clear();
-    m_AnimationManager->Clear();
-    m_SkyboxManager->Clear();
-    m_VideoManager->Clear();
+    if (m_ShaderManager) m_ShaderManager->Clear();
+    if (m_TextureManager) m_TextureManager->Clear();
+    if (m_ModelManager) m_ModelManager->Clear();
+    if (m_AudioManager) m_AudioManager->Clear();
+    if (m_FontManager) m_FontManager->Clear();
+    if (m_AnimationManager) m_AnimationManager->Clear();
+    if (m_SkyboxManager) m_SkyboxManager->Clear();
+    if (m_VideoManager) m_VideoManager->Clear();
     if (m_FragmentManager) m_FragmentManager->Clear();
-
     if (m_UIModelManager) m_UIModelManager->Clear();
 
     LOGGER_INFO("ResourceManager") << "All resources cleared via specialized managers";

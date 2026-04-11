@@ -51,11 +51,12 @@ void PhysicsDebugModule::Render(Scene &scene)
 
     if (DebugConfig::ShowPhysics)
     {
+        auto* graphics = sl.Resolve<IGraphicsContext>();
         auto* physics_sys = sl.Resolve<PhysicsSystem>();
         auto debugShader = resources.GetShader("debug_line");
-        if (debugShader && physics_sys)
+        if (debugShader && physics_sys && graphics)
         {
-            physics_sys->RenderDebug(scene, *debugShader, width, height, sl.Require<IGraphicsContext>().GetRenderStateManager());
+            physics_sys->RenderDebug(scene, *debugShader, width, height, graphics->GetRenderStateManager());
         }
     }
 
@@ -144,7 +145,9 @@ void PhysicsDebugModule::Render(Scene &scene)
 
     if (lineVertices.empty()) return;
 
-    auto* graphics = &sl.Require<IGraphicsContext>();
+    auto* graphics = sl.Resolve<IGraphicsContext>();
+    if (!graphics) return;
+
     auto& bm = graphics->GetBufferManager();
     auto& dc = graphics->GetDrawContext();
 

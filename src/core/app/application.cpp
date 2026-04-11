@@ -30,6 +30,15 @@
 #include <script/logic/script_registry.h>
 #include <physics/logic/collision_matrix.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <csignal>
+
+static Application* s_Instance = nullptr;
+static void HandleQuitSignal(int sig) {
+    if (s_Instance) {
+        LOGGER_INFO("Application") << "Received termination signal (" << sig << "). Requesting graceful shutdown...";
+        s_Instance->GetRuntimeCore().GetEngineLoop().Stop();
+    }
+}
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
@@ -59,10 +68,14 @@ struct Application::Impl
 Application::Application()
     : m_Impl(std::make_unique<Impl>())
 {
+    s_Instance = this;
     m_Impl->m_Scene = std::make_unique<Scene>();
 }
 
-Application::~Application() = default;
+Application::~Application()
+{
+    s_Instance = nullptr;
+}
 
 void Application::Shutdown()
 {
@@ -132,7 +145,9 @@ bool Application::Initialize(const AppConfig &config)
     JobSystem::Instance().Initialize(config.numJobThreads);
     LogManager::Instance().Initialize(config.logLevel);
  
-
+    std::signal(SIGINT, HandleQuitSignal);
+    std::signal(SIGTERM, HandleQuitSignal);
+ 
     m_Impl->m_ResourceManager = std::make_unique<ResourceManager>();
     m_Impl->m_SceneManager = std::make_unique<SceneManager>();
     m_Impl->m_RuntimeCore = std::make_unique<RuntimeCore>();
@@ -219,19 +234,16 @@ bool Application::Initialize(const AppConfig &config)
     else
     {
         LOGGER_INFO("Application") << "Running in HEADLESS MODE. Graphics, Window, and Audio engine skipped.";
-        // Create a dummy AudioService to avoid null dereferences if systems expect it
-        m_Impl->m_AudioService = std::make_unique<AudioService>();
-        m_Impl->m_AudioService->Initialize(nullptr); 
+        m_Impl->m_AudioService = nullptr;
     }
  
     m_Impl->m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(config);
     m_Impl->m_PhysicsWorld->Initialize();
     
-    if (m_Impl->m_GraphicsContext) {
+    if (m_Impl->m_GraphicsContext && m_Impl->m_AudioService) {
         m_Impl->m_ResourceManager->Initialize(&m_Impl->m_GraphicsContext->GetShaderManager(), &m_Impl->m_GraphicsContext->GetTextureManager(), *m_Impl->m_AudioService->GetEngine());
     } else {
-        // Mock or skip low-level managers in headless mode
-        m_Impl->m_ResourceManager->Initialize(nullptr, nullptr, *m_Impl->m_AudioService->GetEngine());
+        m_Impl->m_ResourceManager->InitializeHeadless();
     }
 
     m_Impl->m_ResourceManager->SetTextureAsyncEnabled(config.asyncResourceLoading);
@@ -245,6 +257,7 @@ bool Application::Initialize(const AppConfig &config)
     sl.Register<ResourceManager>(m_Impl->m_ResourceManager.get());
     sl.Register<SceneManager>(m_Impl->m_SceneManager.get());
     if (m_Impl->m_IOHandler) sl.Register<IOHandler>(m_Impl->m_IOHandler.get());
+    if (m_Impl->m_AudioService) sl.Register<AudioService>(m_Impl->m_AudioService.get());
     sl.Register<SystemManager>(m_Impl->m_SystemManager.get());
     sl.Register<RuntimeCore>(m_Impl->m_RuntimeCore.get());
     if (m_Impl->m_GraphicsContext) sl.Register<IGraphicsContext>(m_Impl->m_GraphicsContext.get());
@@ -296,7 +309,7 @@ bool Application::Initialize(const AppConfig &config)
 
     m_Impl->m_SystemManager->Initialize(*m_Impl->m_ResourceManager, config.width, config.height);
 
-    if (!config.iconPath.empty())
+    if (!config.iconPath.empty() && m_Impl->m_IOHandler)
     {
         LOGGER_INFO("Application") << "Setting window icon from: " << config.iconPath;
         m_Impl->m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(config.iconPath));

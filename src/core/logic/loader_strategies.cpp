@@ -22,7 +22,7 @@ public:
         
         auto& configMgr = ServiceLocator::Instance().Require<ConfigManager>();
         AppConfig temp = configMgr.GetConfig();
-        ConfigLoader::LoadConfig(ss, temp);
+        ConfigLoader::LoadConfig(ss, temp, configMgr.IsHeadless());
         configMgr.UpdateConfig(temp);
         return true;
     }

@@ -17,11 +17,19 @@ void PostProcessSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<PostProcessSystem>(this);
     sl.Register<PostProcessPipeline>(&m_Pipeline);
-    auto& context = sl.Require<IGraphicsContext>();
-    auto& resources = sl.Require<ResourceManager>();
-    auto& config = sl.Require<ConfigManager>().GetConfig();
+    
+    auto* context = sl.Resolve<IGraphicsContext>();
+    auto* resources = sl.Resolve<ResourceManager>();
+    auto* configManager = sl.Resolve<ConfigManager>();
+    
+    if (!context || !resources || !configManager) {
+        LOGGER_WARN("PostProcessSystem") << "Skipping full initialization (missing Graphics, Resources, or Config)";
+        return;
+    }
 
-    m_Pipeline.Initialize(context, config.width, config.height, resources);
+    const auto& config = configManager->GetConfig();
+
+    m_Pipeline.Initialize(*context, config.width, config.height, *resources);
 
     EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
         if (!(e.bitmask & (ConfigChangedEvent::Window | ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
@@ -109,12 +117,14 @@ void PostProcessSystem::Render(Scene& scene)
 
     // Collect effects from components
     auto view = scene.registry.view<PostProcessComponent>();
-    auto& res = ServiceLocator::Instance().Require<ResourceManager>();
+    auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
+    if (!res) return;
+    
     for (auto entity : view) {
         auto& pp = view.get<PostProcessComponent>(entity);
         if (!pp.enabled) continue;
         for (const auto& eff : pp.effects) {
-            auto shader = res.GetShader(eff.shaderName);
+            auto shader = res->GetShader(eff.shaderName);
             if (shader) {
                 m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority);
             }

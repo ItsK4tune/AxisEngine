@@ -37,7 +37,7 @@ void LogManager::Initialize(LogLevel level) {
         localtime_s(&bt, &timeT);
 
         std::stringstream ss;
-        ss << "log_" << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S") << ".txt";
+        ss << "log_" << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S") << ".log";
         fs::path logPath = logsDir / ss.str();
 
         m_LogFile.open(logPath);

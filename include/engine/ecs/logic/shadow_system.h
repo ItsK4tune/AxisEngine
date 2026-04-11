@@ -16,6 +16,7 @@ public:
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 75; }
     std::string GetName() const override { return "ShadowSystem"; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     
     void Render(Scene& scene) override;
     

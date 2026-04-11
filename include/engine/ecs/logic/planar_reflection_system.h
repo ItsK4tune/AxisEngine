@@ -18,6 +18,7 @@ public:
     std::string GetName() const override { return "PlanarReflectionSystem"; }
     int GetPriority() const override { return 45; } // Before Lighting/Main render
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
 
 private:
     bool m_Enabled = true;

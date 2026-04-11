@@ -35,7 +35,10 @@ public:
 
     
     void Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine& audioEngine);
+    void InitializeHeadless(); // No GPU managers, no audio engine
     void InitializePostLoad();
+
+    bool IsHeadless() const { return m_HeadlessMode; }
     void Shutdown();
     void Update(float dt);
     void SetTextureAsyncEnabled(bool enabled);
@@ -114,5 +117,6 @@ private:
 
     std::unordered_map<std::string, std::unique_ptr<ILoaderStrategy>> m_Strategies;
 
+    bool m_HeadlessMode = false;
     int m_ReloadListenerId = -1;
 };

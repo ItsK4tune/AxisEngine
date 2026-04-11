@@ -16,6 +16,7 @@ public:
     int GetPriority() const override { return 83; }
     std::string GetName() const override { return "LightingSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     void Render(Scene &scene) override;
     void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
     void RenderDeferredLighting(Scene& scene, int width, int height) override;

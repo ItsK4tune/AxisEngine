@@ -11,7 +11,7 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
     entt::entity parent, 
     ResourceManager& res, 
     IPhysicsWorld* phys, 
-    AudioService& sound,
+    AudioService* sound,
     const YAMLNode* overrideNode)
 {
     std::map<std::string, entt::entity> instantiatedEntities;
@@ -19,7 +19,7 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
     
     // We use a temporary scene name or the fragment path
     std::string fragmentName = asset.path;
-
+ 
     for (auto& root : asset.rootNodes)
     {
         if (root.key == "Resources")
@@ -31,6 +31,8 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                     std::string name = resNode.GetChildValue("Name");
                     std::string vs = resNode.GetChildValue("vertex", resNode.GetChildValue("VS"));
                     std::string fs = resNode.GetChildValue("fragment", resNode.GetChildValue("FS"));
+                    std::string fs_override = resNode.GetChildValue("FS");
+                    if (fs.empty()) fs = fs_override;
                     std::string gs = resNode.GetChildValue("geometry", resNode.GetChildValue("GS"));
                     res.LoadShader(name, vs, fs, gs);
                 }
@@ -49,9 +51,13 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 }
                 else if (resNode.key == "Audio")
                 {
-                    std::string name = resNode.GetChildValue("Name");
-                    std::string path = resNode.GetChildValue("Path");
-                    res.LoadSound(name, path, sound.GetEngine());
+                    if (sound) {
+                        std::string name = resNode.GetChildValue("Name");
+                        std::string path = resNode.GetChildValue("Path");
+                        res.LoadSound(name, path, sound->GetEngine());
+                    } else {
+                        LOGGER_WARN("FragmentLoader") << "Skipping audio resource load: No AudioService available";
+                    }
                 }
                 // Add more resource types if needed
             }

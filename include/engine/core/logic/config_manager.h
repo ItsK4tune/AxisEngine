@@ -16,6 +16,7 @@ public:
     void Initialize(const AppConfig& config) {
         std::lock_guard<std::mutex> lock(m_Mutex);
         m_Config = config;
+        m_IsHeadless = config.headlessMode;
     }
 
     
@@ -23,6 +24,13 @@ public:
         {
             std::lock_guard<std::mutex> lock(m_Mutex);
             m_Config = config;
+            m_Config.headlessMode = m_IsHeadless; // preserve headless flag
+        }
+        // In headless mode, strip non-critical change categories
+        if (m_IsHeadless) {
+            type &= ~(ConfigChangedEvent::Graphics | ConfigChangedEvent::Window
+                    | ConfigChangedEvent::Audio | ConfigChangedEvent::Input);
+            if (type == ConfigChangedEvent::None) return;
         }
         EventManager::Instance().Publish(ConfigChangedEvent{ m_Config, type });
     }
@@ -47,4 +55,7 @@ public:
 private:
     AppConfig m_Config;
     mutable std::mutex m_Mutex;
+    bool m_IsHeadless = false;
+public:
+    bool IsHeadless() const { return m_IsHeadless; }
 };

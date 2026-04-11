@@ -28,6 +28,7 @@ public:
     int GetPriority() const override { return 80; }
     std::string GetName() const override { return "TerrainSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
 
     void Update(Scene &scene, float dt) override;
     void Render(Scene& scene) override {}

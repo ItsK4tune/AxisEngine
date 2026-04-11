@@ -37,12 +37,18 @@ void GameState::OnEnter()
     this->EnableAudio(true);
     this->EnableLogic(true);
 
-    this->GetSystem<RenderSystem>().SetFilterLayerMask(1);
+    if (auto* sysMgr = this->Resolve<SystemManager>()) {
+        if (auto* rs = sysMgr->GetSystem<RenderSystem>())
+            rs->SetFilterLayerMask(1);
+    }
 }
 
 void GameState::OnUpdate(float dt)
 {
-    auto& input = this->Get<IOHandler>().GetInputManager();
+    auto* io = this->Resolve<IOHandler>();
+    if (!io) return; // headless: no input processing
+
+    auto& input = io->GetInputManager();
 
     if (input.GetActionDown("LoadNextScene")) this->QueueLoadScene("scenes/game2.axs");
     if (input.GetActionDown("ReloadScene")) this->QueuePopScene();
@@ -57,10 +63,10 @@ void GameState::OnUpdate(float dt)
             glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(this->GetScene(), camEntity)) ? 
                                 EntityManager::GetComponent<PositionComponent>(this->GetScene(), camEntity).value : glm::vec3(0.0f);
             
-            float mouseX = this->Get<IOHandler>().GetMouse().GetLastX();
-            float mouseY = this->Get<IOHandler>().GetMouse().GetLastY();
-            float screenW = (float)this->Get<IOHandler>().GetMonitorManager().GetWidth();
-            float screenH = (float)this->Get<IOHandler>().GetMonitorManager().GetHeight();
+            float mouseX = io->GetMouse().GetLastX();
+            float mouseY = io->GetMouse().GetLastY();
+            float screenW = (float)io->GetMonitorManager().GetWidth();
+            float screenH = (float)io->GetMonitorManager().GetHeight();
             
             float x = (2.0f * mouseX) / std::max(1.0f, screenW) - 1.0f;
             float y = 1.0f - (2.0f * mouseY) / std::max(1.0f, screenH);
@@ -155,7 +161,9 @@ void GameState::OnUpdate(float dt)
     }
 
     if (input.GetActionDown("Toggle2DSound")) {
-        this->Get<AudioService>().GetEngine()->Play2D("resources/audios/2dsound.mp3", false);
+        auto* audioSvc = this->Resolve<AudioService>();
+        if (audioSvc && audioSvc->GetEngine())
+            audioSvc->GetEngine()->Play2D("resources/audios/2dsound.mp3", false);
     }
 
     if (input.GetActionDown("VolumeUp")) {
@@ -183,7 +191,7 @@ void GameState::OnUpdate(float dt)
         }
     }
 
-    float wheelMove = this->Get<IOHandler>().GetMouse().GetScrollY();
+    float wheelMove = io->GetMouse().GetScrollY();
     if (std::abs(wheelMove) > 0.1f)
     {
         entt::entity camEntity = EntityManager::GetActiveCamera(this->GetScene());
@@ -193,10 +201,10 @@ void GameState::OnUpdate(float dt)
             glm::vec3 camPos = (EntityManager::TryGetComponent<PositionComponent>(this->GetScene(), camEntity)) ? 
                                 EntityManager::GetComponent<PositionComponent>(this->GetScene(), camEntity).value : glm::vec3(0.0f);
             
-            float mouseX = this->Get<IOHandler>().GetMouse().GetLastX();
-            float mouseY = this->Get<IOHandler>().GetMouse().GetLastY();
-            float screenW = (float)this->Get<IOHandler>().GetMonitorManager().GetWidth();
-            float screenH = (float)this->Get<IOHandler>().GetMonitorManager().GetHeight();
+            float mouseX = io->GetMouse().GetLastX();
+            float mouseY = io->GetMouse().GetLastY();
+            float screenW = (float)io->GetMonitorManager().GetWidth();
+            float screenH = (float)io->GetMonitorManager().GetHeight();
             
             float x = (2.0f * mouseX) / std::max(1.0f, screenW) - 1.0f;
             float y = 1.0f - (2.0f * mouseY) / std::max(1.0f, screenH);
@@ -209,7 +217,10 @@ void GameState::OnUpdate(float dt)
             RayHit hit = this->Get<IPhysicsWorld>().Raycast(camPos, rayDir, 1000.0f);
             if (hit.hasHit)
             {
-                if (wheelMove > 0) this->Get<AudioService>().Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);
+                if (wheelMove > 0) {
+                    auto* audioSvc = this->Resolve<AudioService>();
+                    if (audioSvc) audioSvc->Play3D("resources/audios/3dsound.mp3", hit.hitPoint, false);
+                }
                 else {
                     auto* info = EntityManager::TryGetComponent<InfoComponent>(this->GetScene(), hit.entity);
                     if (info && (info->name == "WallTest" || info->tag == "terrain"))

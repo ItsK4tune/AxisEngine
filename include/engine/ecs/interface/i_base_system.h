@@ -29,11 +29,31 @@ inline SystemCategory operator&(SystemCategory a, SystemCategory b) {
     return static_cast<SystemCategory>(static_cast<int>(a) & static_cast<int>(b));
 }
 
+// Declares which engine services a system requires to initialize and run.
+// SystemManager skips systems whose requirements are not met (e.g. headless mode).
+enum class SystemRequirement : uint32_t {
+    None     = 0,
+    Graphics = 1 << 0,   // Needs IGraphicsContext
+    Audio    = 1 << 1,   // Needs IAudioEngine (real, not dummy)
+    Input    = 1 << 2,   // Needs IOHandler
+};
+
+inline SystemRequirement operator|(SystemRequirement a, SystemRequirement b) {
+    return static_cast<SystemRequirement>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
+inline SystemRequirement operator&(SystemRequirement a, SystemRequirement b) {
+    return static_cast<SystemRequirement>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}
+inline SystemRequirement operator~(SystemRequirement a) {
+    return static_cast<SystemRequirement>(~static_cast<uint32_t>(a));
+}
+
 class IBaseSystem {
 public:
     virtual ~IBaseSystem() = default;
     
     virtual SystemCategory GetCategory() const { return SystemCategory::Update; }
+    virtual SystemRequirement GetRequirements() const { return SystemRequirement::None; }
 
     virtual void Initialize() {}
     virtual void Shutdown() {}

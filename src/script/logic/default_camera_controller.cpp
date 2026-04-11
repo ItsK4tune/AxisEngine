@@ -22,8 +22,11 @@ void DefaultCameraController::OnUpdate(float dt)
     auto &posComp = GetComponent<PositionComponent>();
     auto &camera = GetComponent<CameraComponent>();
 
-    const auto &mouse = Get<IOHandler>().GetMouse();
-    const auto &keyboard = Get<IOHandler>().GetKeyboard();
+    auto* io = Resolve<IOHandler>();
+    if (!io) return;
+
+    const auto &mouse = io->GetMouse();
+    const auto &keyboard = io->GetKeyboard();
 
     float delta = GetRealDeltaTime();
 
@@ -95,7 +98,7 @@ void DefaultCameraController::OnUpdate(float dt)
     if (keyboard.GetKey(Key::LeftControl))
         posComp.value -= worldUp * speed;
 
-    camera.aspectRatio = (float)Get<IOHandler>().GetMonitorManager().GetWidth() / (float)Get<IOHandler>().GetMonitorManager().GetHeight();
+    camera.aspectRatio = (float)io->GetMonitorManager().GetWidth() / (float)io->GetMonitorManager().GetHeight();
     camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
     camera.viewMatrix = glm::lookAt(posComp.value, posComp.value + frontNormalized, up);
 }

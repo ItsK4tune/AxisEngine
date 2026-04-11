@@ -16,14 +16,17 @@ void AudioSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<AudioSystem>(this);
-    auto& configManager = sl.Require<ConfigManager>();
-    m_GlobalVolume = configManager.GetConfig().masterVolume;
+    
+    auto* configManager = sl.Resolve<ConfigManager>();
+    if (configManager) {
+        m_GlobalVolume = configManager->GetConfig().masterVolume;
 
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All)) {
-            m_GlobalVolume = e.config.masterVolume;
-        }
-    });
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All)) {
+                m_GlobalVolume = e.config.masterVolume;
+            }
+        });
+    }
 }
 
 void AudioSystem::Update(Scene &scene, float dt)

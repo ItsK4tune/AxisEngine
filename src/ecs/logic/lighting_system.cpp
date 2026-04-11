@@ -46,12 +46,17 @@ void LightingSystem::Initialize()
     m_GeoService = sl.Resolve<IGeometryService>();
     m_ShadowService = sl.Resolve<IShadowService>();
 
-    auto& context = *m_GraphicsContext;
-    auto& resources = sl.Require<ResourceManager>();
+    if (!m_GraphicsContext) {
+        LOGGER_WARN("LightingSystem") << "Skipping full initialization (missing GraphicsContext)";
+        return;
+    }
 
-    m_LightRenderer.Initialize(context);
+    auto* resources = sl.Resolve<ResourceManager>();
+    if (!resources) return;
+
+    m_LightRenderer.Initialize(*m_GraphicsContext);
     
-    m_DeferredLightShader = resources.GetShader("deferred_light");
+    m_DeferredLightShader = resources->GetShader("deferred_light");
 }
 
 void LightingSystem::Shutdown()
@@ -84,7 +89,9 @@ void LightingSystem::Render(Scene& scene)
         sceneData.farPlane = rs->GetFarPlane();
 
         m_LightRenderer.UploadLightData(sceneData, nullptr);
-        m_GraphicsContext->GetRenderStateManager().SetViewport(0, 0, width, height);
+        if (m_GraphicsContext) {
+            m_GraphicsContext->GetRenderStateManager().SetViewport(0, 0, width, height);
+        }
         return;
     }
 
@@ -104,7 +111,7 @@ void LightingSystem::UploadLightData(const RenderSceneData& sceneData, Shader* s
 
 void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
 {
-    if (!m_DeferredLightShader) return;
+    if (!m_DeferredLightShader || !m_GraphicsContext) return;
 
     auto& context = *m_GraphicsContext;
     auto& rsm = context.GetRenderStateManager();
@@ -312,10 +319,12 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     int h = io ? io->GetMonitorManager().GetHeight() : 600;
     m_DeferredLightShader->setVec2("u_ScreenSize", glm::vec2(w, h));
 
-    auto& core = ServiceLocator::Instance().Require<RenderCore>();
-    bm.BindVertexArray(core.GetQuadVAO());
-    dc.DrawArrays(Primitive::TriangleStrip, 0, 4);
-    bm.BindVertexArray(0);
+    auto* core = ServiceLocator::Instance().Resolve<RenderCore>();
+    if (core) {
+        bm.BindVertexArray(core->GetQuadVAO());
+        dc.DrawArrays(Primitive::TriangleStrip, 0, 4);
+        bm.BindVertexArray(0);
+    }
 
     // Unbind G-Buffer and reflection probes to prevent texture leaking to subsequent passes (e.g. Transparent Pass)
     for (int i = 0; i <= 6; ++i) {

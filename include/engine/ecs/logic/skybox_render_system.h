@@ -17,6 +17,7 @@ public:
     int GetPriority() const override { return 84; }
     std::string GetName() const override { return "SkyboxRenderSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderAlpha; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     void Render(Scene& scene) override {}
     void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
     void RenderAlphaPassWithCamera(Scene &scene, const glm::mat4& view, const glm::mat4& proj, int width, int height, uint32_t targetFBO = 0) override;

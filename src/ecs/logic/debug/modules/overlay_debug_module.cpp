@@ -59,17 +59,18 @@ void OverlayDebugModule::Render(Scene &scene)
         return;
 
     auto& sl = ServiceLocator::Instance();
+    auto* graphics = sl.Resolve<IGraphicsContext>();
+    if (!graphics) return;
+
     auto& io = sl.Require<IOHandler>();
-    auto& graphics = sl.Require<IGraphicsContext>();
     auto& systems = sl.Require<SystemManager>();
     auto& timer = sl.Require<TimeService>();
 
     int width = io.GetMonitorManager().GetWidth();
     int height = io.GetMonitorManager().GetHeight();
 
-    graphics.SetDepthTest(false);
-    graphics.SetBlending(true);
-    graphics.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+    graphics->SetBlending(true);
+    graphics->SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
     size_t totalEntities = scene.registry.storage<entt::entity>().size();
     int renderedEntities = 0;
@@ -142,8 +143,8 @@ void OverlayDebugModule::Render(Scene &scene)
         yStart += 25.0f;
     }
 
-    graphics.SetBlending(false);
-    graphics.SetDepthTest(true);
+    graphics->SetBlending(false);
+    graphics->SetDepthTest(true);
 }
 
 void OverlayDebugModule::ProcessInput(KeyboardManager &keyboard)

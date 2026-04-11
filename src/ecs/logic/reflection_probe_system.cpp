@@ -28,8 +28,13 @@ REGISTER_SYSTEM(ReflectionProbeSystem)
 void ReflectionProbeSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
-    auto& rtm = context.GetRenderTargetManager();
+    auto* context = sl.Resolve<IGraphicsContext>();
+    if (!context) {
+        LOGGER_WARN("ReflectionProbeSystem") << "Skipping full initialization (missing GraphicsContext)";
+        return;
+    }
+
+    auto& rtm = context->GetRenderTargetManager();
     
     m_CaptureFBO = rtm.GenFramebuffer();
     m_DepthRB = rtm.CreateRenderbuffer();
@@ -75,8 +80,9 @@ void ReflectionProbeSystem::RenderCapturePass(Scene& scene, int width, int heigh
 unsigned int ReflectionProbeSystem::CreateCubemap(int resolution)
 {
     auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
-    auto& tm = context.GetTextureManager();
+    auto* context = sl.Resolve<IGraphicsContext>();
+    if (!context) return 0;
+    auto& tm = context->GetTextureManager();
     
     unsigned int id = tm.GenTexture();
     tm.BindTexture(TextureType::TextureCubeMap, id);
@@ -100,10 +106,14 @@ unsigned int ReflectionProbeSystem::CreateCubemap(int resolution)
 void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int faceIndex)
 {
     auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
+    auto* context_ptr = sl.Resolve<IGraphicsContext>();
+    auto* renderService_ptr = sl.Resolve<IRenderService>();
+    if (!context_ptr || !renderService_ptr) return;
+
+    auto& context = *context_ptr;
     auto& rtm = context.GetRenderTargetManager();
     auto& tm = context.GetTextureManager();
-    auto& renderService = sl.Require<IRenderService>();
+    auto& renderService = *renderService_ptr;
     
     auto& pos = scene.registry.get<PositionComponent>(entity).value;
     auto& probe = scene.registry.get<ReflectionProbeComponent>(entity);
@@ -131,7 +141,9 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     
     uint32_t oldFBO = renderService.GetMainFBO();
     // Save original rendering state to restore later
-    auto& config = sl.Require<ConfigManager>().GetConfig();
+    auto* configManager = sl.Resolve<ConfigManager>();
+    if (!configManager) return;
+    const auto& config = configManager->GetConfig();
     int windowWidth = config.width;
     int windowHeight = config.height;
     
@@ -185,12 +197,14 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     auto& opaque = renderService.GetRenderQueueObj().GetOpaqueQueue();
     auto& transparent = renderService.GetRenderQueueObj().GetTransparentQueue();
     
-    auto& core = sl.Require<RenderCore>();
+    auto* core = sl.Resolve<RenderCore>();
     ShadowRenderer* shadowRenderer = nullptr; 
     
     // Final Render Queue Execution
-    renderService.ExecuteQueue(opaque, false, shadowRenderer, &core.GetMaterialRenderer(), nullptr);
-    renderService.ExecuteQueue(transparent, true, shadowRenderer, &core.GetMaterialRenderer());
+    if (core) {
+        renderService.ExecuteQueue(opaque, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
+        renderService.ExecuteQueue(transparent, true, shadowRenderer, &core->GetMaterialRenderer());
+    }
     
     // Generate mipmaps only after full update or on every few faces
     if (faceIndex == 5 || probe.type == ReflectionProbeType::Static) {

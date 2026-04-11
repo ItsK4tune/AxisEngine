@@ -19,6 +19,7 @@ public:
     int GetPriority() const override { return 95; }
     std::string GetName() const override { return "PostProcessSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::RenderCapture; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     
     void Render(Scene &scene) override;
     void RenderCapturePass(Scene &scene, int width, int height) override;

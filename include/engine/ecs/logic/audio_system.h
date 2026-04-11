@@ -18,6 +18,7 @@ public:
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
     int GetPriority() const override { return 70; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Audio; }
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

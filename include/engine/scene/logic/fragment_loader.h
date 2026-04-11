@@ -16,7 +16,7 @@ public:
         entt::entity parent, 
         ResourceManager& res, 
         IPhysicsWorld* phys, 
-        AudioService& sound,
+        AudioService* sound,
         const YAMLNode* overrideNode = nullptr
     );
 };

@@ -141,9 +141,14 @@ namespace SceneHandlers
             scriptComp.DestroyScript = [](ScriptComponent *nsc)
             { nsc->instance.reset(); };
 
-            scriptComp.instance->Initialize(camEntity, &scene);
-            scriptComp.instance->OnCreate();
-            LOGGER_INFO("SceneValidator") << "Attached 'DefaultCameraController' (Engine Fallback) to default camera.";
+            try {
+                scriptComp.instance->Initialize(camEntity, &scene);
+                scriptComp.instance->OnCreate();
+                LOGGER_INFO("SceneValidator") << "Attached 'DefaultCameraController' (Engine Fallback) to default camera.";
+            } catch (const std::exception& e) {
+                LOGGER_ERROR("SceneValidator") << "DefaultCameraController initialization CRASH: " << e.what();
+                scriptComp.instance = nullptr;
+            }
         }
         else
         {

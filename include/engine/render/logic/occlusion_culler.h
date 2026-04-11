@@ -10,7 +10,7 @@ class Shader;
 
 class OcclusionCuller {
 public:
-    void Initialize(IGraphicsContext& context, std::shared_ptr<Shader> shader);
+    void Initialize(IGraphicsContext* context, std::shared_ptr<Shader> shader);
     void Shutdown();
 
     void UpdateResults(Scene& scene);

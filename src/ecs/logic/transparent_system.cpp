@@ -34,9 +34,11 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
     auto* rs = sl.Resolve<IRenderService>();
     if (!rs) return;
 
-    auto& context = sl.Require<IGraphicsContext>();
-    auto& rsm = context.GetRenderStateManager();
-    auto& rtm = context.GetRenderTargetManager();
+    auto* context = sl.Resolve<IGraphicsContext>();
+    if (!context) return;
+
+    auto& rsm = context->GetRenderStateManager();
+    auto& rtm = context->GetRenderTargetManager();
     uint32_t mainFBO = rs->GetMainFBO();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
 
@@ -47,8 +49,10 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
 
     auto* shadowSys = sl.Resolve<IShadowService>();
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
-    auto& core = sl.Require<RenderCore>();
-    rs->ExecuteQueue(rs->GetRenderQueueObj().GetTransparentQueue(), true, shadowRenderer, &core.GetMaterialRenderer());
+    auto* core = sl.Resolve<RenderCore>();
+    if (core) {
+        rs->ExecuteQueue(rs->GetRenderQueueObj().GetTransparentQueue(), true, shadowRenderer, &core->GetMaterialRenderer());
+    }
 
     rsm.Disable(ServerCapability::Blend);
     rsm.SetDepthMask(true);

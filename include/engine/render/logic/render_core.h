@@ -8,7 +8,7 @@ public:
     RenderCore() = default;
     ~RenderCore() = default;
 
-    void Initialize(class IGraphicsContext& context);
+    void Initialize(class IGraphicsContext* context);
     void Shutdown();
 
     uint32_t GetWhiteTexture() const { return m_WhiteTextureID; }

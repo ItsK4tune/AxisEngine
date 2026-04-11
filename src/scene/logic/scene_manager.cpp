@@ -68,7 +68,7 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     auto& scene = sl.Require<Scene>();
     auto& resources = sl.Require<ResourceManager>();
     auto* physics = sl.Resolve<IPhysicsWorld>();
-    auto& audio = sl.Require<AudioService>();
+    auto* audio = sl.Resolve<AudioService>();
 
     SceneLoadResult res = SceneSerializer::Deserialize(filePath, scene, resources, physics, audio);
 

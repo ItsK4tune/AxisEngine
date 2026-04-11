@@ -32,11 +32,19 @@ void GeometrySystem::Initialize()
     sl.Register<GeometrySystem>(this);
     m_GraphicsContext = sl.Resolve<IGraphicsContext>();
     m_ConfigManager = sl.Resolve<ConfigManager>();
-    auto& context = *m_GraphicsContext;
-    auto& resources = sl.Require<ResourceManager>();
-    auto& config = m_ConfigManager->GetConfig();
+    
+    if (!m_GraphicsContext || !m_ConfigManager) {
+        LOGGER_WARN("GeometrySystem") << "Skipping full initialization (missing GraphicsContext or ConfigManager)";
+        return;
+    }
 
-    m_GBufferShader = resources.GetShader("deferred_lit");
+    auto& context = *m_GraphicsContext;
+    auto* resources = sl.Resolve<ResourceManager>();
+    if (!resources) return;
+
+    const auto& config = m_ConfigManager->GetConfig();
+
+    m_GBufferShader = resources->GetShader("deferred_lit");
 
     m_GBuffer.SetRenderScale(config.renderScale);
     m_GBuffer.Initialize(context, config.width, config.height);
@@ -101,6 +109,7 @@ void GeometrySystem::Render(Scene& scene)
         m_GBuffer.Resize(width, height);
     }
 
+    if (!m_GraphicsContext) return;
     auto& context = *m_GraphicsContext;
     auto& rsm = context.GetRenderStateManager();
     auto& dc = context.GetDrawContext();
@@ -114,8 +123,7 @@ void GeometrySystem::Render(Scene& scene)
     } else {
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, rs->GetMainFBO());
         rsm.SetViewport(0, 0, width, height);
-        auto& sl = ServiceLocator::Instance();
-        const auto& cfg = sl.Require<ConfigManager>().GetConfig();
+        const auto& cfg = m_ConfigManager->GetConfig();
         dc.ClearColor(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
         dc.Clear(BufferBit::Color | BufferBit::Depth);
     }
@@ -157,6 +165,7 @@ void GeometrySystem::UnbindGBuffer()
 
 void GeometrySystem::BeginDecalPass()
 {
+    if (!m_GraphicsContext) return;
     auto& context = *m_GraphicsContext;
     auto& rtm = context.GetRenderTargetManager();
     auto& rsm = context.GetRenderStateManager();
@@ -174,6 +183,7 @@ void GeometrySystem::BeginDecalPass()
 
 void GeometrySystem::EndDecalPass(uint32_t mainFBO)
 {
+    if (!m_GraphicsContext) return;
     auto& context = *m_GraphicsContext;
     auto& rtm = context.GetRenderTargetManager();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);

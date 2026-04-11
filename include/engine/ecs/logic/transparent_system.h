@@ -17,6 +17,7 @@ public:
     int GetPriority() const override { return 85; }
     std::string GetName() const override { return "TransparentSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderTransparent; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     void Render(Scene &scene) override {}
     void RenderTransparentPass(Scene &scene, int width, int height, float alpha) override;
 

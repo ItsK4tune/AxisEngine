@@ -32,6 +32,7 @@ public:
     int GetPriority() const override { return 79; }
     std::string GetName() const override { return "RenderSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update | SystemCategory::PostProcess; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     
     void Update(Scene& scene, float dt) override;
     

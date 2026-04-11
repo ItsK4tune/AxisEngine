@@ -66,12 +66,15 @@ void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float a
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
     auto& sl = ServiceLocator::Instance();
-    auto& gc = sl.Require<IGraphicsContext>();
+    auto* gc_ptr = sl.Resolve<IGraphicsContext>();
+    auto* resources = sl.Resolve<ResourceManager>();
+    if (!gc_ptr || !resources) return;
+
+    auto& gc = *gc_ptr;
     auto& dc = gc.GetDrawContext();
     auto& bm = gc.GetBufferManager();
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
-    auto& resources = sl.Require<ResourceManager>();
 
     FrustumCuller culler;
     culler.BuildFrustum(cam.projectionMatrix * cam.viewMatrix);
@@ -91,15 +94,15 @@ void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float a
         TerrainData& data = *it->second;
         Shader* actShader = data.terrainShader.get();
         if (!terrain.customShader.empty()) {
-            if (auto custom = resources.GetShader(terrain.customShader)) {
+            if (auto custom = resources->GetShader(terrain.customShader)) {
                 actShader = custom.get();
             }
         }
         
         if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
-             auto gbufShader = resources.GetShader("terrain_gbuffer");
+             auto gbufShader = resources->GetShader("terrain_gbuffer");
              if (!terrain.customShader.empty()) {
-                 if (auto custom = resources.GetShader(terrain.customShader + "_gbuffer")) {
+                 if (auto custom = resources->GetShader(terrain.customShader + "_gbuffer")) {
                      gbufShader = custom;
                  }
              }
@@ -167,11 +170,12 @@ void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float a
 
 void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain) {
     auto& sl = ServiceLocator::Instance();
-    auto& resources = sl.Require<ResourceManager>();
+    auto* resources = sl.Resolve<ResourceManager>();
+    if (!resources) return;
 
     auto data = std::make_unique<TerrainData>();
     
-    data->terrainShader = resources.GetShader("terrain");
+    data->terrainShader = resources->GetShader("terrain");
 
     if (!data->terrainShader) {
         LOGGER_ERROR("TerrainSystem") << "Cannot build terrain: shader failed to load.";
@@ -204,7 +208,7 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     
     auto physics_ptr = sl.Resolve<IPhysicsWorld>();
     if (terrain.generatePhysics && physics_ptr && !terrain.heightMapName.empty()) {
-        auto tex = resources.GetTexture(terrain.heightMapName);
+        auto tex = resources->GetTexture(terrain.heightMapName);
         if (tex) {
             if (tex->pixelData) {
                 std::vector<float> heights;
@@ -258,8 +262,9 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
 }
 
 void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset) {
-    auto& gc = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto& bm = gc.GetBufferManager();
+    auto* gc_ptr = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (!gc_ptr) return;
+    auto& bm = gc_ptr->GetBufferManager();
 
     std::vector<Vertex> vertices;
     int size = terrain.chunkSize;
@@ -307,8 +312,9 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
 
 void TerrainSystem::GenerateLODIndices(TerrainData& data, int chunkSize) {
     auto& sl = ServiceLocator::Instance();
-    auto& gc = sl.Require<IGraphicsContext>();
-    auto& bm = gc.GetBufferManager();
+    auto* gc_ptr = sl.Resolve<IGraphicsContext>();
+    if (!gc_ptr) return;
+    auto& bm = gc_ptr->GetBufferManager();
     
     for (int lod = 0; lod < 4; ++lod) {
         std::vector<unsigned int> indices;
@@ -343,8 +349,9 @@ void TerrainSystem::GenerateLODIndices(TerrainData& data, int chunkSize) {
 
 void TerrainSystem::CleanupTerrainData(TerrainData& data) {
     auto& sl = ServiceLocator::Instance();
-    auto& gc = sl.Require<IGraphicsContext>();
-    auto& bm = gc.GetBufferManager();
+    auto* gc_ptr = sl.Resolve<IGraphicsContext>();
+    if (!gc_ptr) return;
+    auto& bm = gc_ptr->GetBufferManager();
 
     for (auto& chunk : data.chunks) {
         bm.DeleteVertexArray(chunk.VAO);

@@ -21,6 +21,8 @@
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <core/logic/logger.h>
+#include <platform/logic/io_handler.h>
+#include <audio/logic/audio_service.h>
 #include <algorithm>
 
 SystemManager::SystemManager()
@@ -112,21 +114,31 @@ void SystemManager::Initialize(ResourceManager &res, int width, int height)
     // Sort systems by priority before initialization if needed, 
     // but usually RegisterSystem and category flags are enough.
     
+    // Build capability bitmask from available services
     auto& sl = ServiceLocator::Instance();
-    bool hasGraphics = sl.Has<IGraphicsContext>();
+    m_AvailableCapabilities = 0;
+    if (sl.Has<IGraphicsContext>()) m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Graphics);
+    if (sl.Has<IOHandler>())       m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Input);
+    
+    // Audio check: only available if service exists and engine is valid (dummy removal handles rest)
+    auto* audioSvc = sl.Resolve<AudioService>();
+    if (audioSvc && audioSvc->GetEngine()) {
+        m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Audio);
+    }
 
     for (auto& sys : m_Systems) {
-        SystemCategory cat = sys->GetCategory();
-        bool isRenderSystem = (cat & (SystemCategory::RenderAlpha | SystemCategory::RenderMain | SystemCategory::RenderTransparent | SystemCategory::RenderUI | SystemCategory::RenderCapture | SystemCategory::PostProcess)) != SystemCategory::None;
+        uint32_t required = static_cast<uint32_t>(sys->GetRequirements());
+        uint32_t unmet = required & ~m_AvailableCapabilities;
         
-        if (isRenderSystem && !hasGraphics) {
-            LOGGER_INFO("SystemManager") << "Skipping initialization of Render System in Headless Mode: " << sys->GetName();
+        if (unmet != 0) {
+            LOGGER_INFO("SystemManager") << "Skipping system due to unmet requirements (" << unmet << "): " << sys->GetName();
             sys->SetEnabled(false);
             continue;
         }
 
         sys->Initialize();
         
+        SystemCategory cat = sys->GetCategory();
         LOGGER_INFO("SystemManager") << "Sys: " << sys->GetName() << " | Cat: " << (int)cat << " | Prio: " << sys->GetPriority();
         
         if ((cat & SystemCategory::Update) != SystemCategory::None) {
@@ -293,7 +305,8 @@ uint32_t SystemManager::GetComponentBitIndex(entt::id_type id)
 void SystemManager::Render(Scene &scene, int width, int height, float alpha) 
 {
     auto& sl = ServiceLocator::Instance();
-    auto& graphicsContext = sl.Require<IGraphicsContext>();
+    auto* graphicsContext = sl.Resolve<IGraphicsContext>();
+    if (!graphicsContext) return;
     
     // 1. Shadow Pass
     RenderShadows(scene, width, height, alpha);
@@ -334,7 +347,7 @@ void SystemManager::Render(Scene &scene, int width, int height, float alpha)
     }
 
     // 7. UI Pass
-    IRenderStateManager* rsm = &graphicsContext.GetRenderStateManager();
+    IRenderStateManager* rsm = &graphicsContext->GetRenderStateManager();
     for (IRenderSystem* sys : m_RenderUISystems) {
         if (sys->IsEnabled()) sys->RenderUIPass(scene, (float)width, (float)height, *rsm);
     }

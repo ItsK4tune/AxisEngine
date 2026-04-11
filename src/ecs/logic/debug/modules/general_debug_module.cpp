@@ -121,16 +121,18 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
         if (!shift) {
-            auto& core = ServiceLocator::Instance().Require<RuntimeCore>();
-            bool paused = core.GetStateMachine().GetCurrentState() == nullptr; // Simplistic check or just track it
-            // Actually, wait, EngineLoop handles pausing. Let's use TimeService to check if paused, and pass to core and timeservice.
-            auto& timer = ServiceLocator::Instance().Require<TimeService>();
-            bool nextPause = !timer.IsPaused();
-            core.GetEngineLoop().SetPaused(nextPause);
+            auto& sl = ServiceLocator::Instance();
+            auto* core = sl.Resolve<RuntimeCore>();
+            auto* timer = sl.Resolve<TimeService>();
             
-            std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
-            std::cout << "[Debug] Game Paused: " << (nextPause ? "YES" : "NO") << "\n";
-            std::cout << "======================================" << std::endl;
+            if (core && timer) {
+                bool nextPause = !timer->IsPaused();
+                core->GetEngineLoop().SetPaused(nextPause);
+                
+                std::cout << "\n========== Game Pause (F11) ==========" << std::endl;
+                std::cout << "[Debug] Game Paused: " << (nextPause ? "YES" : "NO") << "\n";
+                std::cout << "======================================" << std::endl;
+            }
         } });
 
 
@@ -140,43 +142,49 @@ void GeneralDebugModule::ProcessInput(KeyboardManager &keyboard)
 
         if (shift)
         {
-            auto& io = ServiceLocator::Instance().Require<IOHandler>();
-            auto& mouse = io.GetMouse();
-            CursorMode current = mouse.GetCursorMode();
-            CursorMode next = CursorMode::Normal;
-            std::string modeName = "Normal";
+            auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+            if (io) {
+                auto& mouse = io->GetMouse();
+                CursorMode current = mouse.GetCursorMode();
+                CursorMode next = CursorMode::Normal;
+                std::string modeName = "Normal";
 
-            switch (current)
-            {
-            case CursorMode::Normal: next = CursorMode::Hidden; modeName = "Hidden"; break;
-            case CursorMode::Hidden: next = CursorMode::Locked; modeName = "Locked"; break;
-            case CursorMode::Locked: next = CursorMode::LockedHidden; modeName = "LockedHidden"; break;
-            case CursorMode::LockedHidden: next = CursorMode::Normal; modeName = "Normal"; break;
-            default: next = CursorMode::Normal; modeName = "Normal"; break;
+                switch (current)
+                {
+                case CursorMode::Normal: next = CursorMode::Hidden; modeName = "Hidden"; break;
+                case CursorMode::Hidden: next = CursorMode::Locked; modeName = "Locked"; break;
+                case CursorMode::Locked: next = CursorMode::LockedHidden; modeName = "LockedHidden"; break;
+                case CursorMode::LockedHidden: next = CursorMode::Normal; modeName = "Normal"; break;
+                default: next = CursorMode::Normal; modeName = "Normal"; break;
+                }
+
+                mouse.SetCursorMode(next);
+                std::cout << "\n========== Cursor Mode (Shift+F12) ==========" << std::endl;
+                std::cout << "[Debug] Cursor Mode: " << modeName << "\n";
+                std::cout << "============================================" << std::endl;
             }
-
-            mouse.SetCursorMode(next);
-            std::cout << "\n========== Cursor Mode (Shift+F12) ==========" << std::endl;
-            std::cout << "[Debug] Cursor Mode: " << modeName << "\n";
-            std::cout << "============================================" << std::endl;
         }
         else
         {
-            auto& timer = ServiceLocator::Instance().Require<TimeService>();
-            auto& core = ServiceLocator::Instance().Require<RuntimeCore>();
-            float current = timer.GetTimeScale();
-            float next = 1.0f;
-            if (abs(current - 0.25f) < 0.01f) next = 0.5f;
-            else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
-            else if (abs(current - 1.0f) < 0.01f) next = 1.5f;
-            else if (abs(current - 1.5f) < 0.01f) next = 2.0f;
-            else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
-            else next = 1.0f;
+            auto& sl = ServiceLocator::Instance();
+            auto* timer = sl.Resolve<TimeService>();
+            auto* core = sl.Resolve<RuntimeCore>();
+            
+            if (timer && core) {
+                float current = timer->GetTimeScale();
+                float next = 1.0f;
+                if (abs(current - 0.25f) < 0.01f) next = 0.5f;
+                else if (abs(current - 0.5f) < 0.01f) next = 1.0f;
+                else if (abs(current - 1.0f) < 0.01f) next = 1.5f;
+                else if (abs(current - 1.5f) < 0.01f) next = 2.0f;
+                else if (abs(current - 2.0f) < 0.01f) next = 0.25f;
+                else next = 1.0f;
 
-            core.GetEngineLoop().SetTimeScale(next);
-            std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
-            std::cout << "[Debug] Time Scale: " << next << "x" << "\n";
-            std::cout << "======================================" << std::endl;
+                core->GetEngineLoop().SetTimeScale(next);
+                std::cout << "\n========== Time Scale (F12) ==========" << std::endl;
+                std::cout << "[Debug] Time Scale: " << next << "x" << "\n";
+                std::cout << "======================================" << std::endl;
+            }
         } });
 }
 
@@ -198,38 +206,48 @@ void GeneralDebugModule::LogDevices()
         }
     };
 
-    auto& io = ServiceLocator::Instance().Require<IOHandler>();
-    auto &mons = io.GetMonitorManager();
-    std::string activeMonId = mons.GetCurrentDevice().id;
-    logHelper("Monitors", mons.GetAllDevices(), activeMonId);
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+    if (io) {
+        auto &mons = io->GetMonitorManager();
+        std::string activeMonId = mons.GetCurrentDevice().id;
+        logHelper("Monitors", mons.GetAllDevices(), activeMonId);
 
-    auto &inputs = io.GetInputManager();
-    auto allInputs = inputs.GetAllDevices();
-    std::cout << "Inputs:" << std::endl;
-    for (const auto &dev : allInputs)
-    {
-        bool isActive = dev.isDefault;
-        std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
+        auto &inputs = io->GetInputManager();
+        auto allInputs = inputs.GetAllDevices();
+        std::cout << "Inputs:" << std::endl;
+        for (const auto &dev : allInputs)
+        {
+            bool isActive = dev.isDefault;
+            std::cout << "  [" << (isActive ? "*" : " ") << "] " << dev.name << (dev.isDefault ? " (Default)" : "") << std::endl;
+        }
+    } else {
+        std::cout << "Inputs/Monitors: N/A (Headless)" << std::endl;
     }
 
-    auto &audio = ServiceLocator::Instance().Require<AudioService>();
+    auto* audio = ServiceLocator::Instance().Resolve<AudioService>();
     std::cout << "Audio:" << std::endl;
-    std::cout << "  [Active] " << (audio.IsInitialized() ? "Initialized" : "NOT Initialized") << std::endl;
+    if (audio) {
+        std::cout << "  [Active] " << (audio->IsInitialized() ? "Initialized" : "NOT Initialized") << std::endl;
+    } else {
+        std::cout << "  [Active] N/A (Headless)" << std::endl;
+    }
 
     std::cout << "============================================" << std::endl;
 }
 
 void GeneralDebugModule::LogSceneGraph()
 {
-    auto& scene = ServiceLocator::Instance().Require<Scene>();
+    auto* scene = ServiceLocator::Instance().Resolve<Scene>();
+    if (!scene) return;
+    
     std::cout << "\n========== SCENE GRAPH DUMP (F5) ==========" << std::endl;
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene->registry.view<InfoComponent>();
     int count = 0;
     for (auto entity : view)
     {
         const auto &info = view.get<InfoComponent>(entity);
         uint32_t sequentialId = (uint32_t)entity & 0xFFFFF; 
-
+ 
         std::cout << "[" << count++ << "] ID: " << sequentialId
                   << " | Name: " << info.name
                   << " | Tag: " << info.tag << std::endl;
@@ -283,8 +301,10 @@ void GeneralDebugModule::LogStats()
 
 void GeneralDebugModule::LogEntityStats()
 {
-    auto& scene = ServiceLocator::Instance().Require<Scene>();
-    auto &reg = scene.registry;
+    auto* scene = ServiceLocator::Instance().Resolve<Scene>();
+    if (!scene) return;
+    
+    auto &reg = scene->registry;
     size_t total = reg.storage<entt::entity>().size();
 
     size_t uiEntities = reg.view<UITransformComponent>().size();

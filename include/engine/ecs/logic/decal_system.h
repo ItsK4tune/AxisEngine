@@ -26,6 +26,7 @@ public:
     int GetPriority() const override { return 82; }
     std::string GetName() const override { return "DecalSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
     void Update(Scene &scene, float dt) override;
     void Render(Scene &scene) override;

@@ -4,8 +4,8 @@
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
 
-void MaterialRenderer::Initialize(IGraphicsContext& context, unsigned int whiteTextureId, unsigned int blackTextureId, unsigned int flatNormalTextureId) {
-    m_Context = &context;
+void MaterialRenderer::Initialize(IGraphicsContext* context, unsigned int whiteTextureId, unsigned int blackTextureId, unsigned int flatNormalTextureId) {
+    m_Context = context;
     m_WhiteTextureID = whiteTextureId;
     m_BlackTextureID = blackTextureId;
     m_FlatNormalTextureID = flatNormalTextureId;
@@ -90,6 +90,7 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
 }
 
 bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, const glm::vec4& tintColor, bool debugNoTexture, bool isWireframe) {
+    if (!m_Context) return false;
     const auto& locs = GetLocations(shader);
     auto& tm = m_Context->GetTextureManager();
 

@@ -22,7 +22,8 @@ void ParticleSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<ParticleSystem>(this);
-    m_Context = &sl.Require<IGraphicsContext>();
+    m_Context = sl.Resolve<IGraphicsContext>();
+    if (m_Context) {
     
 
     auto& tm = m_Context->GetTextureManager();
@@ -32,6 +33,7 @@ void ParticleSystem::Initialize()
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, white);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
+    }
 }
 
 void ParticleSystem::Update(Scene &scene, float dt)
@@ -95,9 +97,11 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
     rsm.SetDepthMask(false);
     rsm.Disable(ServerCapability::CullFace);
 
-    auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
+    auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
+    if (!resources) return;
+    
     auto view = scene.registry.view<ParticleEmitterComponent>();
-    auto defaultShader = resources.GetShader("particle"); // Assuming a default particle shader exists
+    auto defaultShader = resources->GetShader("particle"); // Assuming a default particle shader exists
     for (auto entity : view)
     {
         auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
@@ -105,7 +109,7 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
         {
             std::shared_ptr<Shader> activeShader = defaultShader;
             if (!emitterComp.customShader.empty()) {
-                if (auto custom = resources.GetShader(emitterComp.customShader)) {
+                if (auto custom = resources->GetShader(emitterComp.customShader)) {
                     activeShader = custom;
                 }
             }

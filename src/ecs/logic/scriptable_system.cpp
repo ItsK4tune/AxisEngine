@@ -206,14 +206,16 @@ void ScriptableSystem::Update(Scene &scene, float dt)
     {
         auto &script = view.get<ScriptComponent>(entity);
 
-        if (!script.instance)
-        {
-            script.instance = std::move(script.InstantiateScript());
-            if (script.instance) {
-                script.instance->Initialize(entity, &scene);
-                script.instance->OnCreate();
+            try {
+                script.instance = std::move(script.InstantiateScript());
+                if (script.instance) {
+                    script.instance->Initialize(entity, &scene);
+                    script.instance->OnCreate();
+                }
+            } catch (const std::exception& e) {
+                LOGGER_ERROR("ScriptableSystem") << "Script Initialization CRASH on entity " << (uint32_t)entity << ": " << e.what();
+                script.instance = nullptr; // Ensure it doesn't keep retrying or crashing in update
             }
-        }
 
         if (script.instance && script.instance->IsEnabled())
         {
@@ -226,7 +228,15 @@ void ScriptableSystem::Update(Scene &scene, float dt)
 
             if (effectiveDt > 0.0f || script.instance->CanRunWhenPaused())
             {
-                script.instance->OnUpdate(effectiveDt);
+                try {
+                    script.instance->OnUpdate(effectiveDt);
+                } catch (const std::exception& e) {
+                    LOGGER_ERROR("ScriptableSystem") << "Script Update CRASH on entity " << (uint32_t)entity << ": " << e.what();
+                    script.instance->SetEnabled(false); // Disable failing script
+                } catch (...) {
+                    LOGGER_ERROR("ScriptableSystem") << "Script Update UNKNOWN CRASH on entity " << (uint32_t)entity;
+                    script.instance->SetEnabled(false);
+                }
             }
         }
     }

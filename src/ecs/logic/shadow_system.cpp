@@ -14,6 +14,7 @@
 
 #include <render/unit/render_queue.h>
 #include <core/logic/config_manager.h>
+#include <core/logic/logger.h>
 
 REGISTER_SYSTEM(ShadowSystem)
 
@@ -22,12 +23,20 @@ void ShadowSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<IShadowService>(this);
     sl.Register<ShadowSystem>(this);
-    auto& context = sl.Require<IGraphicsContext>();
-    auto& resources = sl.Require<ResourceManager>();
-    auto& config = sl.Require<ConfigManager>().GetConfig();
+    
+    auto* context = sl.Resolve<IGraphicsContext>();
+    auto* resources = sl.Resolve<ResourceManager>();
+    auto* configManager = sl.Resolve<ConfigManager>();
+    
+    if (!context || !resources || !configManager) {
+        LOGGER_WARN("ShadowSystem") << "Skipping full initialization (missing Graphics, Resources, or Config)";
+        return;
+    }
 
-    m_ShadowRenderer.Initialize(context, resources);
-    m_ShadowRenderer.GetShadow().Initialize(context, config.shadowMapResolution, config.shadowMapResolution);
+    const auto& config = configManager->GetConfig();
+
+    m_ShadowRenderer.Initialize(*context, *resources);
+    m_ShadowRenderer.GetShadow().Initialize(*context, config.shadowMapResolution, config.shadowMapResolution);
     
     m_ShadowRenderer.SetEnableShadows(config.shadowsEnabled);
     m_ShadowRenderer.SetShadowMode(config.shadowMode);
@@ -52,7 +61,10 @@ void ShadowSystem::Initialize()
 
         if (cfg.shadowMapResolution != m_ShadowRenderer.GetShadow().GetShadowWidth()) {
             auto& sl_inner = ServiceLocator::Instance();
-            m_ShadowRenderer.GetShadow().Initialize(sl_inner.Require<IGraphicsContext>(), cfg.shadowMapResolution, cfg.shadowMapResolution);
+            auto* context_inner = sl_inner.Resolve<IGraphicsContext>();
+            if (context_inner) {
+                m_ShadowRenderer.GetShadow().Initialize(*context_inner, cfg.shadowMapResolution, cfg.shadowMapResolution);
+            }
         }
     });
 }

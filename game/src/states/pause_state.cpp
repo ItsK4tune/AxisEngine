@@ -36,7 +36,10 @@ void PauseState::OnEnter()
 
 void PauseState::OnUpdate(float dt)
 {
-    auto& kb = this->Get<IOHandler>().GetKeyboard();
+    auto* io = this->Resolve<IOHandler>();
+    if (!io) return;
+
+    auto& kb = io->GetKeyboard();
     if (kb.IsKeyDown(Key::P))
     {
         this->Get<RuntimeCore>().GetStateMachine().PopState();

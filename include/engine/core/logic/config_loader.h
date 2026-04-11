@@ -7,5 +7,5 @@
 class ConfigLoader
 {
 public:
-    static void LoadConfig(std::stringstream &ss, AppConfig &config);
+    static void LoadConfig(std::stringstream &ss, AppConfig &config, bool headless = false);
 };

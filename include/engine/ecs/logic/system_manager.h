@@ -68,6 +68,7 @@ private:
     std::vector<ExecutionBatch> m_UpdateBatches;
 
     std::unordered_map<std::type_index, IBaseSystem*> m_TypeCache;
+    uint32_t m_AvailableCapabilities = 0;
     
     // Bitset optimization for SystemsConflict
     struct SystemBitset {

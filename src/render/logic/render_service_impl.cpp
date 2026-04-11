@@ -55,14 +55,18 @@ void RenderServiceImpl::Initialize()
     sl.Register<IRenderStateService>(this);
     sl.Register<IRenderQueueService>(this);
     sl.Register<IIBLService>(this);
-    auto& context = sl.Require<IGraphicsContext>();
-    auto& configManager = sl.Require<ConfigManager>();
-    const AppConfig& config = configManager.GetConfig();
-    auto& shaderLib = sl.Require<ResourceManager>();
-    
-    m_Context = &context;
-    m_ConfigManager = &configManager;
 
+    auto* context_ptr = sl.Resolve<IGraphicsContext>();
+    auto* configMgr_ptr = sl.Resolve<ConfigManager>();
+    if (!configMgr_ptr) return; // Critical service
+
+    m_Context = context_ptr;
+    m_ConfigManager = configMgr_ptr;
+
+    auto& config = m_ConfigManager->GetConfig();
+    auto* shaderLib = sl.Resolve<ResourceManager>();
+    
+    // Core settings
     this->SetInstanceBatching(config.instanceBatchingEnabled);
     this->SetFrustumCulling(config.frustumCullingEnabled);
     this->SetOcclusionCulling(config.occlusionCullingEnabled);
@@ -72,6 +76,15 @@ void RenderServiceImpl::Initialize()
     this->SetFilterLayerMask(config.filterLayerMask);
     this->SetFaceCulling(config.cullFaceEnabled);
     this->SetDepthTest(config.depthTestEnabled);
+
+    // Skip GPU-dependent initialization if no context
+    if (!m_Context) {
+        LOGGER_INFO("RenderSystem") << "Initialized in HEADLESS mode (Rendering Services dormant)";
+        return;
+    }
+
+    auto& context = *m_Context;
+    auto& shaderLibRef = *shaderLib;
 
 
     EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
@@ -91,35 +104,38 @@ void RenderServiceImpl::Initialize()
     });
 
     m_RenderCore = std::make_unique<RenderCore>();
-    m_RenderCore->Initialize(context);
+    m_RenderCore->Initialize(m_Context);
     sl.Register<RenderCore>(m_RenderCore.get());
 
-    auto& core = *m_RenderCore;
-    
-    auto& bm = context.GetBufferManager();
-    m_CameraUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
-    bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
-    bm.BufferData(BufferType::UniformBuffer, sizeof(GPUCameraData), nullptr, BufferUsage::DynamicDraw);
+    if (m_Context) {
+        auto& core = *m_RenderCore;
+        auto& bm = m_Context->GetBufferManager();
+        m_CameraUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
+        bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
+        bm.BufferData(BufferType::UniformBuffer, sizeof(GPUCameraData), nullptr, BufferUsage::DynamicDraw);
 
-    m_GlobalLightUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
-    bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
-    bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalLightData), nullptr, BufferUsage::DynamicDraw);
+        m_GlobalLightUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
+        bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
+        bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalLightData), nullptr, BufferUsage::DynamicDraw);
 
-    m_GlobalDataUBO = std::make_unique<GPUUBO>(context, bm.CreateBuffer());
-    bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
-    bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
+        m_GlobalDataUBO = std::make_unique<GPUUBO>(*m_Context, bm.CreateBuffer());
+        bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
+        bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
 
-    bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
-    bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
-    bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
+        bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
+        bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
+        bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
 
-    m_OcclusionCuller.Initialize(context, shaderLib.GetShader("occlusion"));
-    m_UnlitShader = shaderLib.GetShader("forward_unlit");
-    m_DeferredLitShader = shaderLib.GetShader("deferred_lit");
-    m_DeferredUnlitShader = shaderLib.GetShader("deferred_unlit");
-    m_ForwardPBRLitShader = shaderLib.GetShader("forward_pbr_lit");
-    m_ErrorForwardShader = shaderLib.GetShader("error_forward");
-    m_ErrorDeferredShader = shaderLib.GetShader("error_deferred");
+        if (shaderLib) {
+            m_OcclusionCuller.Initialize(m_Context, shaderLib->GetShader("occlusion"));
+            m_UnlitShader = shaderLib->GetShader("forward_unlit");
+            m_DeferredLitShader = shaderLib->GetShader("deferred_lit");
+            m_DeferredUnlitShader = shaderLib->GetShader("deferred_unlit");
+            m_ForwardPBRLitShader = shaderLib->GetShader("forward_pbr_lit");
+            m_ErrorForwardShader = shaderLib->GetShader("error_forward");
+            m_ErrorDeferredShader = shaderLib->GetShader("error_deferred");
+        }
+    }
 }
 
 void RenderServiceImpl::FetchRenderPath()
@@ -127,7 +143,7 @@ void RenderServiceImpl::FetchRenderPath()
     if (m_ConfigManager) {
         m_Flags.cachedRenderPath = m_ConfigManager->GetConfig().renderPath;
     } else {
-        m_Flags.cachedRenderPath = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().renderPath;
+        m_Flags.cachedRenderPath = m_ConfigManager->GetConfig().renderPath;
     }
 }
 
@@ -176,6 +192,7 @@ void RenderServiceImpl::SetDepthTest(bool enabled, CompareFunc func)
 
 void RenderServiceImpl::BuildRenderQueues(Scene &scene, float alpha, int width, int height)
 {
+    if (!m_Context) return;
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity == entt::null) {
         if (!m_QueuesBuilt) {
@@ -274,6 +291,7 @@ void RenderServiceImpl::BeginFrame(const RenderViewParams& params)
     std::memcpy(camData.stableProjection, &params.projection[0][0], 16 * sizeof(float));
     std::memcpy(camData.invStableProjection, &invStableProj[0][0], 16 * sizeof(float));
 
+    if (!m_Context) return;
     auto& bm = m_Context->GetBufferManager();
     bm.BindBuffer(BufferType::UniformBuffer, m_CameraUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUCameraData), &camData);
@@ -580,8 +598,8 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
 void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader)
 {
-    if (!materialRenderer) {
-        auto& core = ServiceLocator::Instance().Require<RenderCore>();
+    if (m_RenderCore) {
+        auto& core = *m_RenderCore;
         materialRenderer = &core.GetMaterialRenderer();
     }
 
@@ -669,8 +687,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
             shader->setInt("u_ProbeIndex", item.probeIndex);
         }
         // Reflection and Textures
-        auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-        auto& tm = context.GetTextureManager();
+        if (!m_Context) continue;
+        auto& tm = m_Context->GetTextureManager();
 
         shader->setBool("u_ProbeUnlit", m_IsCapturingProbe);
         shader->setVec2("u_ScreenSize", glm::vec2(m_LastWidth, m_LastHeight));
@@ -723,8 +741,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         
         // Dynamic Mapping for Reflection Probes (Zero-Code Re-routing)
         if (m_IsCapturingProbe) {
-            auto& sl = ServiceLocator::Instance();
-            auto& rtm = sl.Require<IGraphicsContext>().GetRenderTargetManager();
+            auto& rtm = m_Context->GetRenderTargetManager();
             if (shader->IsDeferred()) {
                 // Reroute Shader Location 2 (Albedo) to Attachment 0 (Cube face)
                 // location 0 (Pos) -> None, 1 (Norm) -> None, 2 (Albedo) -> Color0
@@ -744,8 +761,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
             shader->setFloat("u_FresnelBias", item.reflection->fresnelBias);
             
             if (item.probe && item.probe->cubemapID != 0) {
-                auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-                auto& texMgr = context.GetTextureManager();
+                auto& texMgr = m_Context->GetTextureManager();
                 texMgr.ActiveTexture(TextureUnit::Texture15);
                 texMgr.BindTexture(TextureType::TextureCubeMap, item.probe->cubemapID);
                 shader->setBool("u_HasProbe", true);
@@ -768,24 +784,23 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
 
         // Restore DrawBuffers mapping after draw
         if (m_IsCapturingProbe) {
-             auto& sl = ServiceLocator::Instance();
-             auto& rtm = sl.Require<IGraphicsContext>().GetRenderTargetManager();
+             auto& rtm = m_Context->GetRenderTargetManager();
              FramebufferAttachment atts[] = { FramebufferAttachment::Color0 };
              rtm.DrawBuffers(1, atts);
         }
     }
 }
 
-unsigned int RenderServiceImpl::GetWhiteTexture() const { return ServiceLocator::Instance().Require<RenderCore>().GetWhiteTexture(); }
-unsigned int RenderServiceImpl::GetBlackTexture() const { return ServiceLocator::Instance().Require<RenderCore>().GetBlackTexture(); }
-unsigned int RenderServiceImpl::GetFlatNormalTexture() const { return ServiceLocator::Instance().Require<RenderCore>().GetFlatNormalTexture(); }
+unsigned int RenderServiceImpl::GetWhiteTexture() const { return m_RenderCore ? m_RenderCore->GetWhiteTexture() : 0; }
+unsigned int RenderServiceImpl::GetBlackTexture() const { return m_RenderCore ? m_RenderCore->GetBlackTexture() : 0; }
+unsigned int RenderServiceImpl::GetFlatNormalTexture() const { return m_RenderCore ? m_RenderCore->GetFlatNormalTexture() : 0; }
 
 
 
 void RenderServiceImpl::UpdateGlobalLightData(const GPUGlobalLightData& data)
 {
-    auto& context = ServiceLocator::Instance().Require<IGraphicsContext>();
-    auto& bm = context.GetBufferManager();
+    if (!m_Context) return;
+    auto& bm = m_Context->GetBufferManager();
     bm.BindBuffer(BufferType::UniformBuffer, m_GlobalLightUBO->Get());
     bm.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalLightData), &data);
 }
@@ -797,13 +812,14 @@ void RenderServiceImpl::SubmitCommand(const RenderDrawCommand& cmd)
 
 void RenderServiceImpl::FlushCommands()
 {
+    if (!m_Context) return;
+    
     m_RenderCommandBuffer.Sort();
     const auto& commands = m_RenderCommandBuffer.GetCommands();
     
     if (commands.empty()) return;
 
-    auto& sl = ServiceLocator::Instance();
-    auto& context = sl.Require<IGraphicsContext>();
+    auto& context = *m_Context;
     auto& rsm = context.GetRenderStateManager();
     auto& bm = context.GetBufferManager();
     auto& dc = context.GetDrawContext();

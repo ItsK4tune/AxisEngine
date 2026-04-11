@@ -30,17 +30,21 @@ void DebugSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<DebugSystem>(this);
-    auto& res = sl.Require<ResourceManager>();
-
-    m_TextShader = res.GetShader("debug_text");
-
-    if (!res.GetUIModel("debug_sys_model"))
-    {
-        res.CreateUIModel("debug_sys_model", ::UIType::Text);
+    auto* res = sl.Resolve<ResourceManager>();
+    if (!res) {
+        LOGGER_WARN("DebugSystem") << "Skipping full initialization (missing ResourceManager)";
+        return;
     }
 
-    m_DebugFont = res.GetFont("debug_font");
-    m_TextQuad = res.GetUIModel("debug_sys_model");
+    m_TextShader = res->GetShader("debug_text");
+
+    if (!res->GetUIModel("debug_sys_model"))
+    {
+        res->CreateUIModel("debug_sys_model", ::UIType::Text);
+    }
+
+    m_DebugFont = res->GetFont("debug_font");
+    m_TextQuad = res->GetUIModel("debug_sys_model");
 
     LOGGER_INFO("DebugSystem") << "Initializing debug modules...";
 
@@ -112,7 +116,10 @@ void DebugSystem::OnUpdate(float dt)
         }
     }
 
-    auto& keyboard = ServiceLocator::Instance().Require<IOHandler>().GetKeyboard();
+    auto& sl = ServiceLocator::Instance();
+    auto* io = sl.Resolve<IOHandler>();
+    if (!io) return;
+    auto& keyboard = io->GetKeyboard();
     for (auto &module : m_Modules)
     {
         if (module->IsEnabled())
@@ -124,7 +131,9 @@ void DebugSystem::OnUpdate(float dt)
 
 void DebugSystem::Render(Scene &scene)
 {
-    auto& rsm = ServiceLocator::Instance().Require<IGraphicsContext>().GetRenderStateManager();
+    auto* context = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (!context) return;
+    auto& rsm = context->GetRenderStateManager();
     auto oldMode = rsm.GetPolygonMode();
 
     rsm.SetPolygonMode(CullMode::FrontAndBack, PolygonMode::Fill);

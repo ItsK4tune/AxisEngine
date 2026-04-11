@@ -20,7 +20,6 @@ void FragmentSystem::Update(Scene& scene, float dt)
     auto* phys = sl.Resolve<IPhysicsWorld>();
     
     auto* audioSvc = sl.Resolve<AudioService>();
-    if (!audioSvc) return;
 
     auto view = scene.registry.view<FragmentComponent>();
     
@@ -41,7 +40,7 @@ void FragmentSystem::Update(Scene& scene, float dt)
         
         LOGGER_INFO("FragmentSystem") << "Instantiating fragment '" << comp.path << "' on entity " << (uint32_t)entity;
         
-        FragmentLoader::Instantiate(*asset, scene, entity, res, phys, *audioSvc, overrideNode);
+        FragmentLoader::Instantiate(*asset, scene, entity, res, phys, audioSvc, overrideNode);
         
         comp.instantiated = true;
     }

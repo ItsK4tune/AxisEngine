@@ -26,16 +26,19 @@ void SkyboxRenderSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<ISkyboxService>(this);
     sl.Register<SkyboxRenderSystem>(this);
-    m_Context = &sl.Require<IGraphicsContext>();
+    m_Context = sl.Resolve<IGraphicsContext>();
     
-    auto& configManager = sl.Require<ConfigManager>();
-    m_Intensity = configManager.GetConfig().skyboxIntensity;
+    auto* configManager = sl.Resolve<ConfigManager>();
+    if (configManager) {
+        m_Intensity = configManager->GetConfig().skyboxIntensity;
 
-    m_ConfigSubId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (e.bitmask & ConfigChangedEvent::Graphics) {
-            m_Intensity = ServiceLocator::Instance().Require<ConfigManager>().GetConfig().skyboxIntensity;
-        }
-    });
+        m_ConfigSubId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (e.bitmask & ConfigChangedEvent::Graphics) {
+                auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+                if (cm) m_Intensity = cm->GetConfig().skyboxIntensity;
+            }
+        });
+    }
 
     m_RenderDataSubId = EventManager::Instance().Subscribe<FrameRenderDataEvent>([this](const FrameRenderDataEvent& e) {
         m_LastFrameData.mainFBO = e.data.mainFBO;

@@ -19,6 +19,7 @@ public:
     int GetPriority() const override { return 80; }
     std::string GetName() const override { return "GeometrySystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     void Render(Scene &scene) override;
     void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override {}
     
