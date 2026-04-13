@@ -7,11 +7,11 @@ uniform sampler2D u_AlbedoMap;
 uniform vec4 u_BaseColor;
 
 uniform bool debug_noTexture;
-uniform bool u_isWireframe;
+uniform bool u_IsWireframe;
 
 void main()
 {    
-    if (u_isWireframe) {
+    if (u_IsWireframe) {
         FragColor = vec4(0.0, 1.0, 0.0, 1.0);
         return;
     }

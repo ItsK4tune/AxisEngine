@@ -8,16 +8,16 @@ layout (binding = 3) uniform sampler2D u_RoughnessMap;
 layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
-layout (binding = 6) uniform samplerCube irradianceMap;
-layout (binding = 7) uniform samplerCube prefilterMap;
-layout (binding = 8) uniform sampler2D brdfLUT;
+layout (binding = 6) uniform samplerCube u_IrradianceMap;
+layout (binding = 7) uniform samplerCube u_PrefilterMap;
+layout (binding = 8) uniform sampler2D u_BrdfLUT;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -36,18 +36,18 @@ layout(std140, binding = 21) uniform LightData {
 struct DirLight {
     vec3 direction; float shadowIndex;
     vec3 color; float intensity;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct PointLight {
     vec3 position; float shadowIndex;
     vec3 color; float intensity;
     float constant; float linear; float quadratic; float radius;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct SpotLight {
@@ -56,9 +56,9 @@ struct SpotLight {
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
     float quadratic; float pad2; float pad3; float pad4;
-    vec3 ambient; float pad5;
+    vec3 u_Ambient; float pad5;
     vec3 diffuse; float pad6;
-    vec3 specular; float pad7;
+    vec3 u_Specular; float pad7;
 };
 
 layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
@@ -84,7 +84,7 @@ uniform bool u_HasProbe;
 uniform vec3 u_ProbePos;
 uniform vec3 u_ProbeBoxMin;
 uniform vec3 u_ProbeBoxMax;
-layout (binding = 15) uniform samplerCube reflectionProbe;
+layout (binding = 15) uniform samplerCube u_ReflectionProbe;
 
 vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) {
     vec3 rbmax = (boxMax - pos) / dir;
@@ -120,29 +120,29 @@ vec3 EvaluateSH(vec3 n) {
 
 const float PI = 3.14159265359;
 
-float DistributionGGX(vec3 N, vec3 H, float roughness);
-float GeometrySchlickGGX(float NdotV, float roughness);
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
+float DistributionGGX(vec3 N, vec3 H, float u_Roughness);
+float GeometrySchlickGGX(float NdotV, float u_Roughness);
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float u_Roughness);
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness);
 
 void main()
 {
     vec3 albedo;
-    float metallic;
-    float roughness;
-    float ao;
+    float u_Metallic;
+    float u_Roughness;
+    float u_AO;
 
     if (debug_noTexture) {
         albedo = u_BaseColor.rgb;
-        metallic = u_Metallic;
-        roughness = u_Roughness;
-        ao = u_AO;
+        u_Metallic = u_Metallic;
+        u_Roughness = u_Roughness;
+        u_AO = u_AO;
     } else {
         albedo = pow(texture(u_AlbedoMap, TexCoords).rgb, vec3(2.2)) * u_BaseColor.rgb;
-        metallic = texture(u_MetallicMap, TexCoords).r * u_Metallic;
-        roughness = texture(u_RoughnessMap, TexCoords).r * u_Roughness;
-        ao = texture(u_AOMap, TexCoords).r * u_AO;
+        u_Metallic = texture(u_MetallicMap, TexCoords).r * u_Metallic;
+        u_Roughness = texture(u_RoughnessMap, TexCoords).r * u_Roughness;
+        u_AO = texture(u_AOMap, TexCoords).r * u_AO;
     }
 
     vec3 N = normalize(Normal);
@@ -150,7 +150,7 @@ void main()
     vec3 R = reflect(-V, N);
 
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, metallic);
+    F0 = mix(F0, albedo, u_Metallic);
 
     vec3 Lo = vec3(0.0);
     
@@ -158,13 +158,13 @@ void main()
         vec3 L = normalize(-dirLights[d].direction);
         vec3 H = normalize(V + L);
         vec3 radiance = dirLights[d].color * dirLights[d].intensity;
-        float NDF = DistributionGGX(N, H, roughness);
-        float G   = GeometrySmith(N, V, L, roughness);
+        float NDF = DistributionGGX(N, H, u_Roughness);
+        float G   = GeometrySmith(N, V, L, u_Roughness);
         vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-        vec3 specular = (NDF * G * F) / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001);
+        vec3 u_Specular = (NDF * G * F) / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001);
         vec3 kS = F;
-        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
-        Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - u_Metallic);
+        Lo += (kD * albedo / PI + u_Specular) * radiance * max(dot(N, L), 0.0);
     }
 
     for(int i = 0; i < light.nrPointLights; ++i) {
@@ -173,61 +173,61 @@ void main()
         float dist = length(pointLights[i].position - FragPos);
         float atten = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
         vec3 radiance = pointLights[i].color * pointLights[i].intensity * atten;
-        float NDF = DistributionGGX(N, H, roughness);
-        float G   = GeometrySmith(N, V, L, roughness);
+        float NDF = DistributionGGX(N, H, u_Roughness);
+        float G   = GeometrySmith(N, V, L, u_Roughness);
         vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-        vec3 specular = (NDF * G * F) / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001);
+        vec3 u_Specular = (NDF * G * F) / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001);
         vec3 kS = F;
-        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
-        Lo += (kD * albedo / PI + specular) * radiance * max(dot(N, L), 0.0);
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - u_Metallic);
+        Lo += (kD * albedo / PI + u_Specular) * radiance * max(dot(N, L), 0.0);
     }
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, u_Roughness);
     vec3 kS = F;
-    vec3 kD = (1.0 - kS) * (1.0 - metallic);
+    vec3 kD = (1.0 - kS) * (1.0 - u_Metallic);
     
     vec3 irradiance;
     if (u_HasLightProbe) {
         irradiance = EvaluateSH(N) * u_LightProbeIntensity;
     } else {
-        irradiance = texture(irradianceMap, N).rgb;
+        irradiance = texture(u_IrradianceMap, N).rgb;
     }
     vec3 diffuse = irradiance * albedo;
     
     vec3 prefilteredColor;
     if (u_HasProbe && u_Reflectivity > 0.0) {
         vec3 projectedR = BoxProjection(R, FragPos, u_ProbePos, u_ProbeBoxMin, u_ProbeBoxMax);
-        prefilteredColor = textureLod(reflectionProbe, projectedR, roughness * 5.0).rgb;
+        prefilteredColor = textureLod(u_ReflectionProbe, projectedR, u_Roughness * 5.0).rgb;
     } else {
-        prefilteredColor = textureLod(prefilterMap, R, roughness * 4.0).rgb;
+        prefilteredColor = textureLod(u_PrefilterMap, R, u_Roughness * 4.0).rgb;
     }
 
-    vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+    vec2 envBRDF = texture(u_BrdfLUT, vec2(max(dot(N, V), 0.0), u_Roughness)).rg;
+    vec3 u_Specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
-    vec3 ambient = (kD * diffuse + specular) * ao;
+    vec3 u_Ambient = (kD * diffuse + u_Specular) * u_AO;
     vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, TexCoords).rgb, vec3(2.2));
-    FragColor = vec4(ambient + Lo + emissive, u_BaseColor.a);
+    FragColor = vec4(u_Ambient + Lo + emissive, u_BaseColor.a);
 }
 
-float DistributionGGX(vec3 N, vec3 H, float roughness) {
-    float a = roughness*roughness; float a2 = a*a;
+float DistributionGGX(vec3 N, vec3 H, float u_Roughness) {
+    float a = u_Roughness*u_Roughness; float a2 = a*a;
     float NdotH = max(dot(N, H), 0.0);
     float denom = (NdotH * NdotH * (a2 - 1.0) + 1.0);
     return a2 / (PI * denom * denom);
 }
-float GeometrySchlickGGX(float NdotV, float roughness) {
-    float r = (roughness + 1.0); float k = (r*r) / 8.0;
+float GeometrySchlickGGX(float NdotV, float u_Roughness) {
+    float r = (u_Roughness + 1.0); float k = (r*r) / 8.0;
     return NdotV / (NdotV * (1.0 - k) + k);
 }
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
-    return GeometrySchlickGGX(max(dot(N, V), 0.0), roughness) * GeometrySchlickGGX(max(dot(N, L), 0.0), roughness);
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float u_Roughness) {
+    return GeometrySchlickGGX(max(dot(N, V), 0.0), u_Roughness) * GeometrySchlickGGX(max(dot(N, L), 0.0), u_Roughness);
 }
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness) {
+    return F0 + (max(vec3(1.0 - u_Roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 

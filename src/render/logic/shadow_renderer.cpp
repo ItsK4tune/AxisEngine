@@ -96,7 +96,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderDir, lightIdx, lightFrustum, camPos, lightingMode]() {
                 threadQueue.Submit([shaderDir, this, lightIdx]() {
                     shaderDir->use();
-                    shaderDir->setMat4("lightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
+                    shaderDir->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
                 });
                 for (size_t k = startIdx; k < endIdx; ++k) {
                     const auto& item = shadowQueue[k];
@@ -112,9 +112,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
 
                     if (activeModel) {
                         threadQueue.Submit([shaderDir, worldMat, activeModel, hasAnim = item.hasAnimation, bones = item.boneMatrices]() {
-                            shaderDir->setMat4("model", worldMat);
-                            shaderDir->setBool("hasAnimation", hasAnim);
-                            if (hasAnim) shaderDir->setMat4Array("finalBonesMatrices", bones);
+                            shaderDir->setMat4("u_Model", worldMat);
+                            shaderDir->setBool("u_HasAnimation", hasAnim);
+                            if (hasAnim) shaderDir->setMat4Array("u_FinalBonesMatrices", bones);
                             activeModel->Draw(*shaderDir);
                         });
                     }
@@ -168,9 +168,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderPoint, shadowTransforms, farP, lightPos, camPos, lightingMode]() {
                     threadQueue.Submit([shaderPoint, shadowTransforms, farP, lightPos]() {
                         shaderPoint->use();
-                        for (int k = 0; k < 6; ++k) shaderPoint->setMat4("shadowMatrices[" + std::to_string(k) + "]", shadowTransforms[k]);
-                        shaderPoint->setFloat("farPlane", farP);
-                        shaderPoint->setVec3("lightPos", lightPos);
+                        for (int k = 0; k < 6; ++k) shaderPoint->setMat4("u_ShadowMatrices[" + std::to_string(k) + "]", shadowTransforms[k]);
+                        shaderPoint->setFloat("u_FarPlane", farP);
+                        shaderPoint->setVec3("u_LightPos", lightPos);
                     });
                     for (size_t k = startIdx; k < endIdx; ++k) {
                         const auto& item = shadowQueue[k];
@@ -183,9 +183,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                         glm::mat4 worldMat = item.worldMatrix;
                         if (activeModel) {
                             threadQueue.Submit([shaderPoint, worldMat, activeModel, hasAnim = item.hasAnimation, bones = item.boneMatrices]() {
-                                shaderPoint->setMat4("model", worldMat);
-                                shaderPoint->setBool("hasAnimation", hasAnim);
-                                if (hasAnim) shaderPoint->setMat4Array("finalBonesMatrices", bones);
+                                shaderPoint->setMat4("u_Model", worldMat);
+                                shaderPoint->setBool("u_HasAnimation", hasAnim);
+                                if (hasAnim) shaderPoint->setMat4Array("u_FinalBonesMatrices", bones);
                                 activeModel->Draw(*shaderPoint);
                             });
                         }
@@ -231,7 +231,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderSpot, sIdx, lightFrustum, camPos, lightingMode]() {
                     threadQueue.Submit([shaderSpot, this, sIdx]() {
                         shaderSpot->use();
-                        shaderSpot->setMat4("lightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
+                        shaderSpot->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
                     });
                     for (size_t k = startIdx; k < endIdx; ++k) {
                         const auto& item = shadowQueue[k];
@@ -245,9 +245,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                         glm::mat4 worldMat = item.worldMatrix;
                         if (activeModel) {
                             threadQueue.Submit([shaderSpot, worldMat, activeModel, hasAnim = item.hasAnimation, bones = item.boneMatrices]() {
-                                shaderSpot->setMat4("model", worldMat);
-                                shaderSpot->setBool("hasAnimation", hasAnim);
-                                if (hasAnim) shaderSpot->setMat4Array("finalBonesMatrices", bones);
+                                shaderSpot->setMat4("u_Model", worldMat);
+                                shaderSpot->setBool("u_HasAnimation", hasAnim);
+                                if (hasAnim) shaderSpot->setMat4Array("u_FinalBonesMatrices", bones);
                                 activeModel->Draw(*shaderSpot);
                             });
                         }

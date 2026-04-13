@@ -663,9 +663,9 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                 shadow.BindTexture_Dir(0, 10);
                 shadow.BindTexture_Point(0, 11);
                 shadow.BindTexture_Spot(0, 12);
-                shader->setInt("shadowMapDir", 10);
-                shader->setInt("shadowMapPoint", 11);
-                shader->setInt("shadowMapSpot", 12);
+                shader->setInt("u_ShadowMapDir", 10);
+                shader->setInt("u_ShadowMapPoint", 11);
+                shader->setInt("u_ShadowMapSpot", 12);
                 shader->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
                 shader->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
             }
@@ -673,15 +673,15 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
 
         glm::mat4 mtx = item.worldMatrix;
         if (item.hasAnimation) {
-            shader->setMat4Array("finalBonesMatrices", item.boneMatrices);
+            shader->setMat4Array("u_FinalBonesMatrices", item.boneMatrices);
         } else {
             mtx *= model->GetRootTransform();
         }
 
-        shader->setMat4("model", mtx);
-        shader->setVec4("tintColor", item.tintColor);
-        shader->setUInt("entityID", item.entityId);
-        shader->setBool("isInstanced", false);
+        shader->setMat4("u_Model", mtx);
+        shader->setVec4("u_TintColor", item.tintColor);
+        shader->setUInt("u_EntityID", item.entityId);
+        shader->setBool("u_IsInstanced", false);
         
         if (shader->GetName() == "deferred_reflect") {
             shader->setInt("u_ProbeIndex", item.probeIndex);
@@ -720,7 +720,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         if (item.reflection && item.probe && !m_IsCapturingProbe) {
             tm.ActiveTexture(TextureUnit::Texture15);
             tm.BindTexture(TextureType::TextureCubeMap, item.probe->cubemapID);
-            shader->setInt("reflectionProbe", 15);
+            shader->setInt("u_ReflectionProbe", 15);
             shader->setBool("u_HasReflection", true);
             
             // For Forward Reflection Shaders
@@ -840,7 +840,7 @@ void RenderServiceImpl::FlushCommands()
         }
         
         if (cmd.shader) {
-            cmd.shader->setMat4("model", cmd.modelMatrix);
+            cmd.shader->setMat4("u_Model", cmd.modelMatrix);
             if (cmd.texture0 != 0) {
                 tm.ActiveTexture(TextureUnit::Texture0);
                 tm.BindTexture(TextureType::Texture2D, cmd.texture0);

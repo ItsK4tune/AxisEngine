@@ -29,11 +29,11 @@ layout (binding = 31) uniform sampler2D textureLayer3;
 
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -68,11 +68,11 @@ struct DirLight {
 
     vec3 color; float intensity;
 
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
 
     vec3 diffuse; float pad2;
 
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 
 };
 

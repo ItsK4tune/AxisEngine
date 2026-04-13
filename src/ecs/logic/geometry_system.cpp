@@ -176,9 +176,10 @@ void GeometrySystem::BeginDecalPass()
     FramebufferAttachment attachments[] = { 
         FramebufferAttachment::Color2, // Albedo (location 0)
         FramebufferAttachment::Color1, // Normal (location 1)
-        FramebufferAttachment::Color5  // PBR Params (location 2)
+        FramebufferAttachment::Color4, // Emissive (location 2)
+        FramebufferAttachment::Color5  // PBRParams (location 3)
     };
-    rtm.DrawBuffers(3, attachments);
+    rtm.DrawBuffers(4, attachments);
 }
 
 void GeometrySystem::EndDecalPass(uint32_t mainFBO)

@@ -17,11 +17,11 @@ layout (binding = 6) uniform sampler2D u_SpecularMap;
 
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -56,11 +56,11 @@ struct DirLight {
 
     vec3 color; float intensity;
 
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
 
     vec3 diffuse; float pad2;
 
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 
 };
 
@@ -74,11 +74,11 @@ struct PointLight {
 
     float constant; float linear; float quadratic; float radius;
 
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
 
     vec3 diffuse; float pad2;
 
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 
 };
 
@@ -96,11 +96,11 @@ struct SpotLight {
 
     float quadratic; float pad2; float pad3; float pad4;
 
-    vec3 ambient; float pad5;
+    vec3 u_Ambient; float pad5;
 
     vec3 diffuse; float pad6;
 
-    vec3 specular; float pad7;
+    vec3 u_Specular; float pad7;
 
 };
 
@@ -114,11 +114,11 @@ layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
 
 
-layout (binding = 10) uniform sampler2D shadowMapDir[2];
+layout (binding = 10) uniform sampler2D u_ShadowMapDir[2];
 
-layout (binding = 12) uniform samplerCube shadowMapPoint[2];
+layout (binding = 12) uniform samplerCube u_ShadowMapPoint[2];
 
-layout (binding = 14) uniform sampler2D shadowMapSpot[2];
+layout (binding = 14) uniform sampler2D u_ShadowMapSpot[2];
 
 
 
@@ -140,7 +140,7 @@ uniform vec3 u_Specular;
 
 uniform vec3 u_Emission;
 
-uniform vec4 u_BaseColor; // rgb: tint, a: opacity
+uniform vec4 u_BaseColor; // rgb: tint, a: u_Opacity
 
 uniform vec2 u_UVScale = vec2(1.0);
 
@@ -166,7 +166,7 @@ vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, in
 
 float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex);
 
-float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int index);
+float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int index);
 
 float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex);
 
@@ -258,17 +258,17 @@ vec3 CalcDirLightWithShadow(DirLight pLight, vec3 normal, vec3 viewDir, int ligh
 
 
 
-    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo;
+    vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo;
 
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo;
 
-    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * u_Specular;
+    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular;
 
 
 
     float shadow = light.u_ReceiveShadow != 0 ? ShadowCalculationDir(FragPosLightSpace[lightIndex], normal, lightDir, lightIndex) : 0.0;
 
-    return (ambient + (1.0 - shadow) * (diffuse + specular));
+    return (u_Ambient + (1.0 - shadow) * (diffuse + u_Specular));
 
 }
 
@@ -296,15 +296,15 @@ vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
 
 
 
-    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo;
+    vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo;
 
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo;
 
-    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * u_Specular;
+    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular;
 
 
 
-    return (ambient + diffuse + specular);
+    return (u_Ambient + diffuse + u_Specular);
 
 }
 
@@ -336,11 +336,11 @@ vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, 
 
 
 
-    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo * attenuation;
+    vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo * attenuation;
 
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo * attenuation;
 
-    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * u_Specular * attenuation;
+    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular * attenuation;
 
 
 
@@ -350,7 +350,7 @@ vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, 
 
         shadow = ShadowCalculationPoint(fragPos, pLight.position, index);
 
-    return (ambient + (1.0 - shadow) * (diffuse + specular));
+    return (u_Ambient + (1.0 - shadow) * (diffuse + u_Specular));
 
 }
 
@@ -390,11 +390,11 @@ vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, in
 
 
 
-    vec3 ambient  = pLight.color * pLight.ambient * pLight.intensity * albedo * attenuation * intensity;
+    vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo * attenuation * intensity;
 
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo * attenuation * intensity;
 
-    vec3 specular = pLight.color * pLight.specular * pLight.intensity * spec * specularMap * u_Specular * attenuation * intensity;
+    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular * attenuation * intensity;
 
 
 
@@ -408,7 +408,7 @@ vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, in
 
     }
 
-    return (ambient + (1.0 - shadow) * (diffuse + specular));
+    return (u_Ambient + (1.0 - shadow) * (diffuse + u_Specular));
 
 }
 
@@ -432,13 +432,13 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, i
 
     float shadow = 0.0;
 
-    vec2 texelSize = 1.0 / textureSize(shadowMapDir[shadowMapIndex], 0);
+    vec2 texelSize = 1.0 / textureSize(u_ShadowMapDir[shadowMapIndex], 0);
 
     
 
     if (u_ShadowSoftness == 0) {
 
-        float closestDepth = texture(shadowMapDir[shadowMapIndex], projCoords.xy).r;
+        float closestDepth = texture(u_ShadowMapDir[shadowMapIndex], projCoords.xy).r;
 
         shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
 
@@ -452,7 +452,7 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, i
 
             for(int y = -range; y <= range; ++y) {
 
-                float pcfDepth = texture(shadowMapDir[shadowMapIndex], projCoords.xy + vec2(x, y) * texelSize).r;
+                float pcfDepth = texture(u_ShadowMapDir[shadowMapIndex], projCoords.xy + vec2(x, y) * texelSize).r;
 
                 shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
 
@@ -470,13 +470,13 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, i
 
 
 
-float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int index)
+float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int index)
 
 {
 
-    vec3 fragToLight = fragPos - lightPos;
+    vec3 fragToLight = fragPos - u_LightPos;
 
-    float closestDepth = texture(shadowMapPoint[index], fragToLight).r;
+    float closestDepth = texture(u_ShadowMapPoint[index], fragToLight).r;
 
     closestDepth *= light.farPlanePoint;
 
@@ -498,7 +498,7 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, 
 
     if(projCoords.z > 1.0) return 0.0;
 
-    float closestDepth = texture(shadowMapSpot[shadowMapIndex], projCoords.xy).r;
+    float closestDepth = texture(u_ShadowMapSpot[shadowMapIndex], projCoords.xy).r;
 
     float currentDepth = projCoords.z;
 
@@ -506,13 +506,13 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, 
 
     float shadow = 0.0;
 
-    vec2 texelSize = 1.0 / textureSize(shadowMapSpot[shadowMapIndex], 0);
+    vec2 texelSize = 1.0 / textureSize(u_ShadowMapSpot[shadowMapIndex], 0);
 
     for(int x = -1; x <= 1; ++x) {
 
         for(int y = -1; y <= 1; ++y) {
 
-            float pcfDepth = texture(shadowMapSpot[shadowMapIndex], projCoords.xy + vec2(x, y) * texelSize).r;
+            float pcfDepth = texture(u_ShadowMapSpot[shadowMapIndex], projCoords.xy + vec2(x, y) * texelSize).r;
 
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
 

@@ -203,7 +203,7 @@ void OverlayDebugModule::RenderText(const std::string &text, float x, float y, f
 
     m_TextShader->use();
     glm::mat4 projection = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
-    m_TextShader->setMat4("projection", projection);
+    m_TextShader->setMat4("u_Projection", projection);
     m_TextShader->setInt("text", 0);
 
     for (char c : text)

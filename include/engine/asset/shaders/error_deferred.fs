@@ -7,7 +7,7 @@ layout (location = 4) out vec3 gEmissive;
 in vec2 TexCoords;
 in vec3 FragPos;
 in vec3 Normal;
-uniform uint entityID;
+uniform uint u_EntityID;
 void main() {
     gPosition = FragPos;
     gNormal = normalize(Normal);
@@ -15,7 +15,7 @@ void main() {
     float m = mod(check.x + check.y, 2.0);
     gAlbedoSpec = vec4(0.0, 0.0, 0.0, 1.0);
     gEmissive = mix(vec3(1.0, 0.0, 1.0), vec3(0.0, 0.0, 0.0), m);
-    gEntityID = entityID;
+    gEntityID = u_EntityID;
 }
 
 

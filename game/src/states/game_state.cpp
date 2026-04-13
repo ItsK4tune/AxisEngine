@@ -125,21 +125,21 @@ void GameState::OnUpdate(float dt)
                         LOGGER_INFO("GameState") << "Spawned Decal at " << hit.hitPoint.x << "," << hit.hitPoint.y << "," << hit.hitPoint.z;
 
                         // Spawn particles on click too
-                        auto particleEnt = EntityManager::CreateEntity(this->GetScene(), "Impact_Particle");
-                        auto& pPos = EntityManager::AddComponent<PositionComponent>(this->GetScene(), particleEnt);
-                        pPos.value = hit.hitPoint;
-                        auto& pComp = EntityManager::AddComponent<ParticleEmitterComponent>(this->GetScene(), particleEnt);
+                        // auto particleEnt = EntityManager::CreateEntity(this->GetScene(), "Impact_Particle");
+                        // auto& pPos = EntityManager::AddComponent<PositionComponent>(this->GetScene(), particleEnt);
+                        // pPos.value = hit.hitPoint;
+                        // auto& pComp = EntityManager::AddComponent<ParticleEmitterComponent>(this->GetScene(), particleEnt);
                         
-                        pComp.isActive = true; pComp.lifetime = 0.5f;
-                        pComp.emitter.Initialize(300);
-                        pComp.emitter.Texture = this->Get<ResourceManager>().GetTextureAuto("resources/textures/particle_star.png");
-                        pComp.emitter.SpawnRate = 400.0f; pComp.emitter.LifeTime = 0.8f;   
-                        pComp.emitter.StartSize = 0.5f; pComp.emitter.EndSize = 0.0f;
-                        pComp.emitter.MinVelocity = glm::vec3(-3, 1, -3); pComp.emitter.MaxVelocity = glm::vec3(3, 6, 3);
-                        pComp.emitter.StartColor = glm::vec4(1.0f, 0.8f, 0.4f, 1.0f); 
-                        pComp.emitter.EndColor = glm::vec4(1.0f, 0.2f, 0.0f, 0.0f);
-                        pComp.emitter.Shape = ParticleEmitter::EmissionShape::CONE;
-                        EntityManager::AddComponent<WorldTransformComponent>(this->GetScene(), particleEnt);
+                        // pComp.isActive = true; pComp.lifetime = 0.5f;
+                        // pComp.emitter.Initialize(300);
+                        // pComp.emitter.Texture = this->Get<ResourceManager>().GetTextureAuto("resources/textures/particle_star.png");
+                        // pComp.emitter.SpawnRate = 400.0f; pComp.emitter.LifeTime = 0.8f;   
+                        // pComp.emitter.StartSize = 0.5f; pComp.emitter.EndSize = 0.0f;
+                        // pComp.emitter.MinVelocity = glm::vec3(-3, 1, -3); pComp.emitter.MaxVelocity = glm::vec3(3, 6, 3);
+                        // pComp.emitter.StartColor = glm::vec4(1.0f, 0.8f, 0.4f, 1.0f); 
+                        // pComp.emitter.EndColor = glm::vec4(1.0f, 0.2f, 0.0f, 0.0f);
+                        // pComp.emitter.Shape = ParticleEmitter::EmissionShape::CONE;
+                        // EntityManager::AddComponent<WorldTransformComponent>(this->GetScene(), particleEnt);
                     }
                 }
             }

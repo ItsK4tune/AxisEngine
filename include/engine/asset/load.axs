@@ -49,11 +49,11 @@ axis_scene:
       Vertex: include/engine/asset/shaders/deferred_unlit.vs
       Fragment: include/engine/asset/shaders/deferred_unlit.fs
     Shader:
-      Name: decal
+      Name: deferred_decal
       Vertex: include/engine/asset/shaders/deferred_decal.vs
       Fragment: include/engine/asset/shaders/deferred_decal.fs
     Shader:
-      Name: decal_forward
+      Name: forward_decal
       Vertex: include/engine/asset/shaders/forward_decal.vs
       Fragment: include/engine/asset/shaders/forward_decal.fs
     Shader:

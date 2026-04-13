@@ -8,7 +8,7 @@ layout (location = 4) out vec3 gEmissive;
 in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
-uniform uint entityID;
+uniform uint u_EntityID;
 
 uniform sampler2D heightMap;
 uniform sampler2D splatMap;
@@ -37,5 +37,5 @@ void main()
     gNormal = normalize(Normal) * 0.5 + 0.5;
     gAlbedoSpec = vec4(finalColor, 1.0);
     gEmissive = vec3(0.0);
-    gEntityID = entityID;
+    gEntityID = u_EntityID;
 }

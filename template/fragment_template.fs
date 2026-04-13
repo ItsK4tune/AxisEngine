@@ -16,8 +16,8 @@ out vec4 FragColor;
 
 // 3. UBO Bindings (Standardized Range 20-22)
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec3 viewPos;
 } camera;
 
@@ -42,18 +42,18 @@ layout(std140, binding = 22) uniform GlobalData {
 struct DirLight {
     vec3 direction; float shadowIndex;
     vec3 color; float intensity;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct PointLight {
     vec3 position; float shadowIndex;
     vec3 color; float intensity;
     float constant; float linear; float quadratic; float radius;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct SpotLight {
@@ -62,9 +62,9 @@ struct SpotLight {
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
     float quadratic; float pad2; float pad3; float pad4;
-    vec3 ambient; float pad5;
+    vec3 u_Ambient; float pad5;
     vec3 diffuse; float pad6;
-    vec3 specular; float pad7;
+    vec3 u_Specular; float pad7;
 };
 
 layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
@@ -81,14 +81,14 @@ layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
 // System Units (10-15)
-layout (binding = 10) uniform sampler2D shadowMapDir[2];
-layout (binding = 12) uniform samplerCube shadowMapPoint[2];
-layout (binding = 14) uniform sampler2D shadowMapSpot[2];
+layout (binding = 10) uniform sampler2D u_ShadowMapDir[2];
+layout (binding = 12) uniform samplerCube u_ShadowMapPoint[2];
+layout (binding = 14) uniform sampler2D u_ShadowMapSpot[2];
 
 // 6. Common Uniforms
 uniform vec4 u_BaseColor;
 uniform bool debug_noTexture;
-uniform uint entityID;
+uniform uint u_EntityID;
 
 void main()
 {

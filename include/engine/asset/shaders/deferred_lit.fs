@@ -18,11 +18,11 @@ layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -31,10 +31,10 @@ uniform float u_Roughness;
 uniform float u_Metallic;
 uniform float u_AO;
 uniform vec3 u_Emission;
-uniform vec4 u_BaseColor; // rgb: tint, a: opacity
+uniform vec4 u_BaseColor; // rgb: tint, a: u_Opacity
 uniform bool debug_noTexture;
-uniform uint entityID;
-uniform bool u_isWireframe;
+uniform uint u_EntityID;
+uniform bool u_IsWireframe;
 uniform bool u_ProbeUnlit;
 uniform float u_Reflectivity;
 uniform float u_FresnelPower;
@@ -56,14 +56,14 @@ void main()
     }
     
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
-    gAlbedoSpec.a = _roughness; // Pack roughness into alpha
-    gEntityID = entityID;
+    gAlbedoSpec.a = _roughness; // Pack u_Roughness into alpha
+    gEntityID = u_EntityID;
     gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
     
     // R: Metallic, G: Roughness, B: Reflectivity, A: FresnelPower
     gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, u_FresnelPower);
 
-    if (u_isWireframe) {
+    if (u_IsWireframe) {
         gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);
         gEmissive = vec3(0.0);
     }

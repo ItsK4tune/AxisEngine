@@ -5,11 +5,11 @@ layout (location = 1) in vec3 aColor;
 out vec3 LineColor;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -17,7 +17,7 @@ layout(std140, binding = 20) uniform CameraData {
 void main()
 {
     LineColor = aColor;
-    gl_Position = camera.projection * camera.view * vec4(aPos, 1.0);
+    gl_Position = camera.u_Projection * camera.u_View * vec4(aPos, 1.0);
 }
 
 

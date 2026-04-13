@@ -25,8 +25,8 @@ out vec4 FragPosLightSpaceSpot[2];
 
 // 3. UBO Bindings (Standardized Range 20-22)
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec3 viewPos;
 } camera;
 
@@ -48,17 +48,17 @@ layout(std140, binding = 22) uniform GlobalData {
 } globalData;
 
 // 4. Uniforms
-uniform mat4 model;
-uniform bool isInstanced;
+uniform mat4 u_Model;
+uniform bool u_IsInstanced;
 uniform vec2 u_UVScale = vec2(1.0);
 uniform vec2 u_UVOffset = vec2(0.0);
 
 const int MAX_BONES = 200;
-uniform mat4 finalBonesMatrices[MAX_BONES];
+uniform mat4 u_FinalBonesMatrices[MAX_BONES];
 
 void main()
 {
-    mat4 modelMatrix = isInstanced ? instanceMatrix : model;
+    mat4 modelMatrix = u_IsInstanced ? instanceMatrix : u_Model;
     
     // Default position calculation (Add animation logic if needed)
     FragPos = vec3(modelMatrix * vec4(aPos, 1.0));
@@ -69,5 +69,5 @@ void main()
     for(int i = 0; i < 2; i++)
         FragPosLightSpace[i] = light.lightSpaceMatricesDir[i] * vec4(FragPos, 1.0);
         
-    gl_Position = camera.projection * camera.view * vec4(FragPos, 1.0);
+    gl_Position = camera.u_Projection * camera.u_View * vec4(FragPos, 1.0);
 }

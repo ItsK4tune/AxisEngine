@@ -11,14 +11,14 @@ out vec2 TexCoords;
 out vec4 FragPosLightSpace[2];
 out vec4 FragPosLightSpaceSpot[2];
 
-uniform mat4 model;
+uniform mat4 u_Model;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -35,11 +35,11 @@ layout(std140, binding = 21) uniform LightData {
 } light;
 
 layout(location = 10) in mat4 instanceMatrix;
-uniform bool isInstanced;
+uniform bool u_IsInstanced;
 
 const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;
-uniform mat4 finalBonesMatrices[MAX_BONES];
+uniform mat4 u_FinalBonesMatrices[MAX_BONES];
 
 void main()
 {
@@ -56,9 +56,9 @@ void main()
             totalNormal = aNormal;
             break;
         }
-        vec4 localPosition = finalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
+        vec4 localPosition = u_FinalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
         totalPosition += localPosition * aWeights[i];
-        vec3 localNormal = mat3(finalBonesMatrices[aBoneIds[i]]) * aNormal;
+        vec3 localNormal = mat3(u_FinalBonesMatrices[aBoneIds[i]]) * aNormal;
         totalNormal += localNormal * aWeights[i];
         hasBones = true;
     }
@@ -68,7 +68,7 @@ void main()
         totalNormal = aNormal;
     }
 
-    mat4 modelMatrix = isInstanced ? instanceMatrix : model;
+    mat4 modelMatrix = u_IsInstanced ? instanceMatrix : u_Model;
 
     FragPos = vec3(modelMatrix * totalPosition);
     Normal = mat3(transpose(inverse(modelMatrix))) * totalNormal;  
@@ -86,7 +86,7 @@ void main()
         FragPosLightSpaceSpot[i] = light.lightSpaceMatricesSpot[i] * vec4(FragPos, 1.0);
     }
     
-    gl_Position = camera.projection * camera.view * vec4(FragPos, 1.0);
+    gl_Position = camera.u_Projection * camera.u_View * vec4(FragPos, 1.0);
 }
 
 

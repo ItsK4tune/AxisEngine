@@ -7,11 +7,11 @@ layout (binding = 5) uniform sampler2D u_EmissiveMap;
 layout (binding = 6) uniform sampler2D u_SpecularMap;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -30,18 +30,18 @@ layout(std140, binding = 21) uniform LightData {
 struct DirLight {
     vec3 direction; float shadowIndex;
     vec3 color; float intensity;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct PointLight {
     vec3 position; float shadowIndex;
     vec3 color; float intensity;
     float constant; float linear; float quadratic; float radius;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct SpotLight {
@@ -50,9 +50,9 @@ struct SpotLight {
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
     float quadratic; float pad2; float pad3; float pad4;
-    vec3 ambient; float pad5;
+    vec3 u_Ambient; float pad5;
     vec3 diffuse; float pad6;
-    vec3 specular; float pad7;
+    vec3 u_Specular; float pad7;
 };
 
 layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
@@ -119,11 +119,11 @@ vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 V, vec3 albedo)
 
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(u_SpecularMap, TexCoords).rgb;
 
-    vec3 ambient  = pLight.ambient * pLight.color * pLight.intensity * albedo;
+    vec3 u_Ambient  = pLight.u_Ambient * pLight.color * pLight.intensity * albedo;
     vec3 diffuse  = pLight.diffuse * pLight.color * pLight.intensity * diff * albedo;
-    vec3 specular = pLight.specular * pLight.color * pLight.intensity * spec * specularMap * u_Specular;
+    vec3 u_Specular = pLight.u_Specular * pLight.color * pLight.intensity * spec * specularMap * u_Specular;
 
-    return (ambient + diffuse + specular);
+    return (u_Ambient + diffuse + u_Specular);
 }
 
 vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 V, vec3 albedo)
@@ -137,11 +137,11 @@ vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 V, vec3 a
 
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(u_SpecularMap, TexCoords).rgb;
 
-    vec3 ambient  = pLight.ambient * pLight.color * pLight.intensity * albedo * attenuation;
+    vec3 u_Ambient  = pLight.u_Ambient * pLight.color * pLight.intensity * albedo * attenuation;
     vec3 diffuse  = pLight.diffuse * pLight.color * pLight.intensity * diff * albedo * attenuation;
-    vec3 specular = pLight.specular * pLight.color * pLight.intensity * spec * specularMap * u_Specular * attenuation;
+    vec3 u_Specular = pLight.u_Specular * pLight.color * pLight.intensity * spec * specularMap * u_Specular * attenuation;
 
-    return (ambient + diffuse + specular);
+    return (u_Ambient + diffuse + u_Specular);
 }
 
 vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 V, vec3 albedo)
@@ -159,11 +159,11 @@ vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 V, vec3 alb
 
     vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(u_SpecularMap, TexCoords).rgb;
 
-    vec3 ambient  = pLight.ambient * pLight.color * pLight.intensity * albedo * attenuation * intensity;
+    vec3 u_Ambient  = pLight.u_Ambient * pLight.color * pLight.intensity * albedo * attenuation * intensity;
     vec3 diffuse  = pLight.diffuse * pLight.color * pLight.intensity * diff * albedo * attenuation * intensity;
-    vec3 specular = pLight.specular * pLight.color * pLight.intensity * spec * specularMap * u_Specular * attenuation * intensity;
+    vec3 u_Specular = pLight.u_Specular * pLight.color * pLight.intensity * spec * specularMap * u_Specular * attenuation * intensity;
 
-    return (ambient + diffuse + specular);
+    return (u_Ambient + diffuse + u_Specular);
 }
 
 

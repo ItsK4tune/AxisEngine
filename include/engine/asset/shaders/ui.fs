@@ -2,16 +2,16 @@
 in vec2 TexCoords;
 out vec4 color;
 
-uniform vec4 spriteColor;
+uniform vec4 u_SpriteColor;
 uniform sampler2D image;
-uniform bool hasTexture;
+uniform bool u_HasTexture;
 
 void main()
 {
-    if(hasTexture) {
-        color = texture(image, TexCoords) * spriteColor;
+    if(u_HasTexture) {
+        color = texture(image, TexCoords) * u_SpriteColor;
     } else {
-        color = spriteColor;
+        color = u_SpriteColor;
     }
 }
 

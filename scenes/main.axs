@@ -1,6 +1,6 @@
 axis_scene:
   Config:
-    RENDER_PATH: FORWARD
+    RENDER_PATH: DEFERRED
     WINDOW_MODE: WINDOWED
 
   Resources:
@@ -67,7 +67,7 @@ axis_scene:
         Scale: 1 1 1
       Component: Renderer
         Model: womanModel
-        Shader: forward_unlit
+        Shader: deferred_unlit
         Order: 1
       Component: Material
         Type: PHONG
@@ -183,7 +183,7 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: sphereModel
-        Shader: forward_reflect
+        Shader: deferred_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0
@@ -204,7 +204,7 @@ axis_scene:
         Scale: 2.0 2.0 2.0
       Component: Renderer
         Model: cubeModel
-        Shader: forward_reflect
+        Shader: deferred_reflect
       Component: Material
         Type: PHONG
         Ambient: 1.0 1.0 1.0

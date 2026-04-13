@@ -5,8 +5,8 @@ layout (triangle_strip, max_vertices = 3) out;
 
 // 1. UBO Bindings (Range 20-22)
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec3 viewPos;
 } camera;
 

@@ -3,12 +3,12 @@ layout (location = 0) in vec3 aPos;
 layout (location = 5) in ivec4 aBoneIds; 
 layout (location = 6) in vec4 aWeights;
 
-uniform mat4 model;
-uniform mat4 shadowMatrices[6];
+uniform mat4 u_Model;
+uniform mat4 u_ShadowMatrices[6];
 
 const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;
-uniform mat4 finalBonesMatrices[MAX_BONES];
+uniform mat4 u_FinalBonesMatrices[MAX_BONES];
 
 void main()
 {
@@ -23,7 +23,7 @@ void main()
             totalPosition = vec4(aPos,1.0f);
             break;
         }
-        vec4 localPosition = finalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
+        vec4 localPosition = u_FinalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
         totalPosition += localPosition * aWeights[i];
         hasBones = true;
     }
@@ -32,6 +32,6 @@ void main()
         totalPosition = vec4(aPos, 1.0f);
     }
     
-    gl_Position = model * totalPosition; 
+    gl_Position = u_Model * totalPosition; 
 }
 

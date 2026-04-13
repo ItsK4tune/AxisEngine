@@ -10,20 +10,20 @@ out vec3 Normal;
 out vec2 TexCoords;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec3 viewPos;
 } camera;
 
-uniform mat4 model;
-uniform bool isInstanced;
+uniform mat4 u_Model;
+uniform bool u_IsInstanced;
 layout(location = 10) in mat4 instanceMatrix;
 uniform vec2 u_UVScale = vec2(1.0);
 uniform vec2 u_UVOffset = vec2(0.0);
 
 const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;
-uniform mat4 finalBonesMatrices[MAX_BONES];
+uniform mat4 u_FinalBonesMatrices[MAX_BONES];
 
 void main()
 {
@@ -39,9 +39,9 @@ void main()
             totalNormal = aNormal;
             break;
         }
-        vec4 localPosition = finalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
+        vec4 localPosition = u_FinalBonesMatrices[aBoneIds[i]] * vec4(aPos,1.0f);
         totalPosition += localPosition * aWeights[i];
-        vec3 localNormal = mat3(finalBonesMatrices[aBoneIds[i]]) * aNormal;
+        vec3 localNormal = mat3(u_FinalBonesMatrices[aBoneIds[i]]) * aNormal;
         totalNormal += localNormal * aWeights[i];
         hasBones = true;
     }
@@ -51,11 +51,11 @@ void main()
         totalNormal = aNormal;
     }
 
-    mat4 modelMatrix = isInstanced ? instanceMatrix : model;
+    mat4 modelMatrix = u_IsInstanced ? instanceMatrix : u_Model;
 
     FragPos = vec3(modelMatrix * totalPosition);
     Normal = normalize(mat3(transpose(inverse(modelMatrix))) * totalNormal);  
     TexCoords = aTexCoords * u_UVScale + u_UVOffset;
     
-    gl_Position = camera.projection * camera.view * vec4(FragPos, 1.0);
+    gl_Position = camera.u_Projection * camera.u_View * vec4(FragPos, 1.0);
 }

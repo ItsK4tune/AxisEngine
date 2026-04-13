@@ -125,12 +125,12 @@ void UIModel::Draw(Shader &shader, const glm::vec4 &color, unsigned int textureI
     auto& dc = GetDrawContext();
     auto& bm = GetBufferManager();
 
-    shader.setVec4("spriteColor", color);
+    shader.setVec4("u_SpriteColor", color);
 
     unsigned int texToBind = (textureID != 0) ? textureID : m_TextureID;
     bool hasTex = (texToBind != 0);
 
-    shader.setBool("hasTexture", hasTex);
+    shader.setBool("u_HasTexture", hasTex);
     if (hasTex)
     {
         tm.ActiveTexture(TextureUnit::Texture0);
@@ -149,7 +149,7 @@ void UIModel::DrawDynamic(Shader &shader, unsigned int textureID, const glm::vec
     auto& dc = GetDrawContext();
     auto& bm = GetBufferManager();
 
-    shader.setVec4("textColor", color);
+    shader.setVec4("u_TextColor", color);
 
     tm.ActiveTexture(TextureUnit::Texture0);
     tm.BindTexture(TextureType::Texture2D, textureID);

@@ -4,6 +4,7 @@ layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out uint gEntityID;
 layout (location = 4) out vec3 gEmissive;
+layout (location = 5) out vec4 gPBRParams;
 
 in vec2 TexCoords;
 in vec3 FragPos;
@@ -11,15 +12,15 @@ in vec3 Normal;
 
 uniform sampler2D u_AlbedoMap;
 uniform vec4 u_BaseColor = vec4(1.0);
-uniform uint entityID;
-uniform bool u_isWireframe;
+uniform uint u_EntityID;
+uniform bool u_IsWireframe;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -34,12 +35,14 @@ void main()
     
     vec3 finalColor = texColor.rgb * u_BaseColor.rgb;
     
-    // Write to Albedo so lighting/ambient pass can see it
+    // Write to Albedo so lighting/u_Ambient pass can see it
     gAlbedoSpec = vec4(finalColor, 1.0); // Roughness 1.0
-    gEntityID = entityID;
+    gEntityID = u_EntityID;
     gEmissive = finalColor;
 
-    if (u_isWireframe) {
+    gPBRParams = vec4(0.0, 1.0, 0.0, 1.0); // Metallic=0, Roughness=1, Reflectivity=0
+
+    if (u_IsWireframe) {
         gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);
         gEmissive = vec3(0.0);
     }

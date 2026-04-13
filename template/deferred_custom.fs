@@ -18,8 +18,8 @@ layout (binding = 5) uniform sampler2D u_EmissiveMap;
 
 // 2. Standard UBOs
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec3 viewPos;
 } camera;
 
@@ -34,7 +34,7 @@ uniform float u_Roughness;
 uniform float u_Metallic;
 uniform vec4 u_BaseColor;
 uniform bool debug_noTexture;
-uniform uint entityID;
+uniform uint u_EntityID;
 uniform float u_CustomPorts[8];
 
 void main()
@@ -59,7 +59,7 @@ void main()
     // --- END CUSTOM LOGIC ---
 
     gAlbedoSpec.rgb = color;
-    gAlbedoSpec.a = u_Roughness; // Store roughness in alpha
+    gAlbedoSpec.a = u_Roughness; // Store u_Roughness in alpha
     gEmissive = vec3(0.0); // Output emissive if needed
-    gEntityID = entityID;
+    gEntityID = u_EntityID;
 }

@@ -98,7 +98,7 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                 {
                     currentShader = shaderPtr;
                     currentShader->use();
-                    currentShader->setMat4("projection", projection);
+                    currentShader->setMat4("u_Projection", projection);
                     currentShader->setInt("image", 0);
                 }
 
@@ -108,7 +108,7 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::translate(model, glm::vec3(rect.pos, 0.0f));
                 model = glm::scale(model, glm::vec3(rect.size, 1.0f));
-                currentShader->setMat4("model", model);
+                currentShader->setMat4("u_Model", model);
 
                 renderer->model->Draw(*currentShader, renderer->color, texID);
             }
@@ -123,7 +123,7 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                 {
                     currentShader = shaderPtr;
                     currentShader->use();
-                    currentShader->setMat4("projection", projection);
+                    currentShader->setMat4("u_Projection", projection);
                     currentShader->setInt("text", 0);
                 }
 

@@ -9,15 +9,15 @@ in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
 
-uniform uint entityID;
+uniform uint u_EntityID;
 
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -57,7 +57,7 @@ void main()
     
     gAlbedoSpec.rgb = albedo;
     gAlbedoSpec.a = 0.5;
-    gEntityID = entityID;
+    gEntityID = u_EntityID;
     gEmissive = vec3(0.0);
 }
 

@@ -12,11 +12,11 @@ layout (binding = 5) uniform sampler2D gPBRParams;
 layout (binding = 6) uniform sampler2D gDepth;
 
 layout(std140, binding = 20) uniform CameraData {
-    mat4 projection;
-    mat4 view;
+    mat4 u_Projection;
+    mat4 u_View;
     vec4 viewPos;
-    mat4 invProjection;
-    mat4 invView;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
 } camera;
@@ -35,18 +35,18 @@ layout(std140, binding = 21) uniform LightData {
 struct DirLight {
     vec3 direction; float shadowIndex;
     vec3 color; float intensity;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct PointLight {
     vec3 position; float shadowIndex;
     vec3 color; float intensity;
     float constant; float linear; float quadratic; float radius;
-    vec3 ambient; float pad1;
+    vec3 u_Ambient; float pad1;
     vec3 diffuse; float pad2;
-    vec3 specular; float pad3;
+    vec3 u_Specular; float pad3;
 };
 
 struct SpotLight {
@@ -55,18 +55,18 @@ struct SpotLight {
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
     float quadratic; float pad2; float pad3; float pad4;
-    vec3 ambient; float pad5;
+    vec3 u_Ambient; float pad5;
     vec3 diffuse; float pad6;
-    vec3 specular; float pad7;
+    vec3 u_Specular; float pad7;
 };
 
 layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
 
-layout(binding = 10) uniform sampler2DArray shadowMapDir;
-layout(binding = 11) uniform samplerCubeArray shadowMapPoint;
-layout(binding = 12) uniform sampler2DArray shadowMapSpot;
+layout(binding = 10) uniform sampler2DArray u_ShadowMapDir;
+layout(binding = 11) uniform samplerCubeArray u_ShadowMapPoint;
+layout(binding = 12) uniform sampler2DArray u_ShadowMapSpot;
 
 uniform int u_DebugMode; 
 uniform float u_ShadowBias = 0.005;
@@ -123,18 +123,18 @@ vec3 EvaluateSH(vec3 n) {
 vec3 WorldPosFromDepth(float depth) {
     float z = depth * 2.0 - 1.0;
     vec4 clipSpacePosition = vec4(TexCoords * 2.0 - 1.0, z, 1.0);
-    vec4 viewSpacePosition = camera.invProjection * clipSpacePosition;
+    vec4 viewSpacePosition = camera.u_InvProjection * clipSpacePosition;
     viewSpacePosition /= viewSpacePosition.w;
-    // Using invView * invProjection for absolute WorldPos
-    vec4 worldSpacePosition = camera.invView * (camera.invProjection * clipSpacePosition);
+    // Using u_InvView * u_InvProjection for absolute WorldPos
+    vec4 worldSpacePosition = camera.u_InvView * (camera.u_InvProjection * clipSpacePosition);
     worldSpacePosition /= worldSpacePosition.w;
     return worldSpacePosition.xyz;
 }
 
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx);
-float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int lightIdx);
+float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx);
 float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx);
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness);
 
 void main()
 {             
@@ -142,8 +142,9 @@ void main()
     if (depth >= 1.0) discard;
     vec3 FragPos = WorldPosFromDepth(depth);
 
-    vec3 Normal = texture(gNormal, TexCoords).rgb;
-    Normal = normalize(Normal);
+    vec4 normalSample = texture(gNormal, TexCoords);
+    vec3 Normal = normalize(normalSample.rgb);
+    bool receiveShadowFlag = (normalSample.a > 0.5); 
     
     vec3 Albedo = texture(gAlbedoSpec, TexCoords).rgb;
     uint EntityID = texture(gID, TexCoords).r;
@@ -168,6 +169,10 @@ void main()
     int pIdx = int(PBRParams.a) - 1;
     float FresnelPower = fract(PBRParams.a) * 10.0;
 
+    // Mask out specular lighting on pure matte surfaces (e.g. black decals, cracks)
+    float activeSpecularMask = 1.0; 
+    if (Reflectivity < 0.01 && Roughness > 0.99) activeSpecularMask = 0.0;
+
     vec3 Lo = vec3(0.0);
 
     for(int i = 0; i < light.numDirLights; ++i)
@@ -176,11 +181,12 @@ void main()
         vec3 H = normalize(V + L);
         
         float diff = max(dot(Normal, L), 0.0);
-        float spec = pow(max(dot(Normal, H), 0.0), 32.0);
+        float specPower = mix(128.0, 2.0, Roughness);
+        float spec = pow(max(dot(Normal, H), 0.0), specPower) * (1.0 - Roughness);
         
         float shadow = 0.0;
         int sIdx = int(dirLights[i].shadowIndex);
-        if (light.u_ReceiveShadow != 0 && sIdx >= 0 && sIdx < 16)
+        if (light.u_ReceiveShadow != 0 && receiveShadowFlag && sIdx >= 0 && sIdx < 16)
         {
             vec4 fragPosLightSpace = light.lightSpaceMatricesDir[sIdx] * vec4(FragPos, 1.0);
             shadow = ShadowCalculationDir(fragPosLightSpace, sIdx);
@@ -188,9 +194,9 @@ void main()
 
         vec3 radiance = dirLights[i].color * dirLights[i].intensity;
         vec3 diffuse  = dirLights[i].diffuse * radiance * diff * Albedo;
-        vec3 specular = dirLights[i].specular * radiance * spec * 0.5; 
+        vec3 u_Specular = dirLights[i].u_Specular * radiance * spec * 0.5 * activeSpecularMask;
         
-        Lo += (1.0 - shadow) * (diffuse + specular);
+        Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
     
     for(int i = 0; i < light.nrPointLights; ++i)
@@ -201,20 +207,21 @@ void main()
         float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
         
         float diff = max(dot(Normal, L), 0.0);
-        float spec = pow(max(dot(Normal, H), 0.0), 32.0);
+        float specPower = mix(128.0, 2.0, Roughness);
+        float spec = pow(max(dot(Normal, H), 0.0), specPower) * (1.0 - Roughness);
         
         float shadow = 0.0;
         int sIdx = int(pointLights[i].shadowIndex);
-        if (light.u_ReceiveShadow != 0 && sIdx >= 0 && sIdx < 16)
+        if (light.u_ReceiveShadow != 0 && receiveShadowFlag && sIdx >= 0 && sIdx < 16)
         {
             shadow = ShadowCalculationPoint(FragPos, pointLights[i].position, sIdx);
         }
 
         vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation;
         vec3 diffuse  = pointLights[i].diffuse * radiance * diff * Albedo;
-        vec3 specular = pointLights[i].specular * radiance * spec * 0.5;
+        vec3 u_Specular = pointLights[i].u_Specular * radiance * spec * 0.5 * activeSpecularMask;
         
-        Lo += (1.0 - shadow) * (diffuse + specular);
+        Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
 
     for(int i = 0; i < light.nrSpotLights; ++i)
@@ -229,11 +236,12 @@ void main()
         float spotIntensity = clamp((theta - spotLights[i].outerCutOff) / epsilon, 0.0, 1.0);
         
         float diff = max(dot(Normal, L), 0.0);
-        float spec = pow(max(dot(Normal, H), 0.0), 32.0);
+        float specPower = mix(128.0, 2.0, Roughness);
+        float spec = pow(max(dot(Normal, H), 0.0), specPower) * (1.0 - Roughness);
         
         float shadow = 0.0;
         int sIdx = int(spotLights[i].shadowIndex);
-        if (light.u_ReceiveShadow != 0 && sIdx >= 0 && sIdx < 16)
+        if (light.u_ReceiveShadow != 0 && receiveShadowFlag && sIdx >= 0 && sIdx < 16)
         {
             vec4 fragPosLightSpace = light.lightSpaceMatricesSpot[sIdx] * vec4(FragPos, 1.0);
             shadow = ShadowCalculationSpot(fragPosLightSpace, sIdx);
@@ -241,9 +249,9 @@ void main()
 
         vec3 radiance = spotLights[i].color * spotLights[i].intensity * attenuation * spotIntensity;
         vec3 diffuse  = spotLights[i].diffuse * radiance * diff * Albedo;
-        vec3 specular = spotLights[i].specular * radiance * spec * 0.5;
+        vec3 u_Specular = spotLights[i].u_Specular * radiance * spec * 0.5 * activeSpecularMask;
         
-        Lo += (1.0 - shadow) * (diffuse + specular);
+        Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
 
     vec3 emissive = texture(gEmissive, TexCoords).rgb;
@@ -342,7 +350,7 @@ void main()
         vec3 kS = F;
         vec3 kD = (1.0 - kS) * (1.0 - Metallic);
         
-        reflectionColor *= F * Reflectivity * 1.5; 
+        reflectionColor *= F * Reflectivity * 1.5 * activeSpecularMask; 
         ambientDiffuse *= kD;
     }
 
@@ -350,8 +358,8 @@ void main()
     FragColor = vec4(color, 1.0);
 }
 
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness) {
+    return F0 + (max(vec3(1.0 - u_Roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx) {
@@ -361,10 +369,10 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx) {
     float currentDepth = projCoords.z;
     float bias = u_ShadowBias;
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(shadowMapDir, 0).xy;
+    vec2 texelSize = 1.0 / textureSize(u_ShadowMapDir, 0).xy;
     for(int x = -u_ShadowSoftness; x <= u_ShadowSoftness; ++x) {
         for(int y = -u_ShadowSoftness; y <= u_ShadowSoftness; ++y) {
-            float pcfDepth = texture(shadowMapDir, vec3(projCoords.xy + vec2(x, y) * texelSize, lightIdx)).r;
+            float pcfDepth = texture(u_ShadowMapDir, vec3(projCoords.xy + vec2(x, y) * texelSize, lightIdx)).r;
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -372,8 +380,8 @@ float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx) {
     return shadow;
 }
 
-float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int lightIdx) {
-    vec3 fragToLight = fragPos - lightPos;
+float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
+    vec3 fragToLight = fragPos - u_LightPos;
     float currentDepth = length(fragToLight);
     float shadow = 0.0;
     float bias = u_ShadowBias * 10.0;
@@ -388,7 +396,7 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 lightPos, int lightIdx) {
     float viewDistance = length(camera.viewPos.xyz - fragPos);
     float diskRadius = (1.0 + (viewDistance / light.farPlanePoint)) / 25.0;
     for(int i = 0; i < samples; ++i) {
-        float closestDepth = texture(shadowMapPoint, vec4(fragToLight + sampleOffsetDirections[i] * diskRadius, lightIdx)).r;
+        float closestDepth = texture(u_ShadowMapPoint, vec4(fragToLight + sampleOffsetDirections[i] * diskRadius, lightIdx)).r;
         closestDepth *= light.farPlanePoint;
         if(currentDepth - bias > closestDepth) shadow += 1.0;
     }
@@ -403,10 +411,10 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx) {
     float currentDepth = projCoords.z;
     float bias = u_ShadowBias;
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(shadowMapSpot, 0).xy;
+    vec2 texelSize = 1.0 / textureSize(u_ShadowMapSpot, 0).xy;
     for(int x = -u_ShadowSoftness; x <= u_ShadowSoftness; ++x) {
         for(int y = -u_ShadowSoftness; y <= u_ShadowSoftness; ++y) {
-            float pcfDepth = texture(shadowMapSpot, vec3(projCoords.xy + vec2(x, y) * texelSize, lightIdx)).r;
+            float pcfDepth = texture(u_ShadowMapSpot, vec3(projCoords.xy + vec2(x, y) * texelSize, lightIdx)).r;
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
