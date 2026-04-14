@@ -25,6 +25,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <ecs/logic/debug/debug_system.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/localization_system.h>
+#include <core/logic/string_utils.h>
 
 OverlayDebugModule::OverlayDebugModule() {}
 OverlayDebugModule::~OverlayDebugModule() {}
@@ -84,7 +86,10 @@ void OverlayDebugModule::Render(Scene &scene)
 
     auto appendStats = [&]()
     {
-        ss << "FPS: " << m_CurrentFps << " (" << m_CurrentFrameTime << " ms)\n";
+        auto* l10n = sl.Resolve<LocalizationSystem>();
+        std::string fpsLabel = l10n ? l10n->GetFormat("HUD.Score", m_CurrentFps) : "FPS: " + std::to_string(m_CurrentFps);
+        
+        ss << fpsLabel << " (" << m_CurrentFrameTime << " ms)\n";
         ss << "Entities: " << totalEntities << " | Rendered: " << renderedEntities << "\n";
         ss << "TimeScale: " << timer.GetTimeScale() << "x | Paused: " << (timer.IsPaused() ? "YES" : "NO") << "\n";
     };
@@ -133,9 +138,10 @@ void OverlayDebugModule::Render(Scene &scene)
     while (std::getline(textStream, line))
     {
         float textWidth = 0.0f;
-        for (char c : line)
+        auto codepoints = StringUtils::GetCodepoints(line);
+        for (uint32_t cp : codepoints)
         {
-            const Character &ch = m_DebugFont->GetCharacter(c);
+            const Character &ch = m_DebugFont->GetCharacter(cp);
             textWidth += (ch.advance >> 6) * scale;
         }
         float x = (float)width - textWidth - 10.0f;
@@ -167,6 +173,18 @@ void OverlayDebugModule::ProcessInput(KeyboardManager &keyboard)
             std::cout << "============================================" << std::endl;
         } else {
             ToggleStatsOverlay();
+        } });
+
+    ProcessKey(keyboard, Key::L, m_LPressed, [this, &keyboard]()
+               {
+        if (keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift)) {
+            auto* l10n = ServiceLocator::Instance().Resolve<LocalizationSystem>();
+            if (l10n) {
+                static bool isVi = false;
+                isVi = !isVi;
+                l10n->SetLanguage(isVi ? "vi" : "en");
+                std::cout << "[Debug] Language switched to: " << (isVi ? "vi" : "en") << std::endl;
+            }
         } });
 }
 
@@ -206,9 +224,10 @@ void OverlayDebugModule::RenderText(const std::string &text, float x, float y, f
     m_TextShader->setMat4("u_Projection", projection);
     m_TextShader->setInt("text", 0);
 
-    for (char c : text)
+    auto codepoints = StringUtils::GetCodepoints(text);
+    for (uint32_t cp : codepoints)
     {
-        const Character &ch = m_DebugFont->GetCharacter(c);
+        const Character &ch = m_DebugFont->GetCharacter(cp);
 
         float xpos = x + ch.bearing.x * scale;
         float ypos = y + (ch.size.y - ch.bearing.y) * scale;

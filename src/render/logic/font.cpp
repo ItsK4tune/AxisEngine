@@ -53,38 +53,46 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
 
     tm.PixelStorei(PixelStoreParam::UnpackAlignment, 1);
 
-    for (unsigned char c = 0; c < 128; c++) {
-        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-            LOGGER_ERROR("Font") << "Failed to load Glyph";
-            continue;
+    std::vector<std::pair<unsigned int, unsigned int>> ranges = {
+        {0x0020, 0x007E}, // Basic Latin
+        {0x00A0, 0x00FF}, // Latin-1 Supplement (đ, ...)
+        {0x0100, 0x017F}, // Latin Extended-A
+        {0x1E00, 0x1EFF}  // Latin Extended Additional (Vietnamese tone marks)
+    };
+
+    for (const auto& range : ranges) {
+        for (unsigned int c = range.first; c <= range.second; c++) {
+            if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+                continue;
+            }
+
+            unsigned int Texture = tm.GenTexture();
+            tm.BindTexture(TextureType::Texture2D, Texture);
+            tm.TexImage2D(
+                TextureType::Texture2D,
+                0,
+                InternalFormat::R8,
+                face->glyph->bitmap.width,
+                face->glyph->bitmap.rows,
+                0,
+                TextureFormat::Red,
+                DataType::UnsignedByte,
+                face->glyph->bitmap.buffer
+            );
+
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToEdge));
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToEdge));
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Linear));
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
+
+            Character character = {
+                Texture,
+                glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+                glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+                static_cast<unsigned int>(face->glyph->advance.x)
+            };
+            m_Characters.insert(std::pair<unsigned int, Character>(c, character));
         }
-
-        unsigned int Texture = tm.GenTexture();
-        tm.BindTexture(TextureType::Texture2D, Texture);
-        tm.TexImage2D(
-            TextureType::Texture2D,
-            0,
-            InternalFormat::R8,
-            face->glyph->bitmap.width,
-            face->glyph->bitmap.rows,
-            0,
-            TextureFormat::Red,
-            DataType::UnsignedByte,
-            face->glyph->bitmap.buffer
-        );
-
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToEdge));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToEdge));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Linear));
-        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
-
-        Character character = {
-            Texture,
-            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            static_cast<unsigned int>(face->glyph->advance.x)
-        };
-        m_Characters.insert(std::pair<char, Character>(c, character));
     }
 
     FT_Done_Face(face);
@@ -92,6 +100,11 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize) {
     return true;
 }
 
-const Character& Font::GetCharacter(char c) const {
-    return m_Characters.at(c);
+const Character& Font::GetCharacter(unsigned int codepoint) const {
+    auto it = m_Characters.find(codepoint);
+    if (it != m_Characters.end()) {
+        return it->second;
+    }
+    // Fallback to space
+    return m_Characters.at(' ');
 }

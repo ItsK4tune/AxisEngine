@@ -22,14 +22,14 @@ public:
     ~Font();
 
     bool Load(const std::string& fontPath, unsigned int fontSize);
-    const Character& GetCharacter(char c) const;
+    const Character& GetCharacter(unsigned int codepoint) const;
     unsigned int GetFontSize() const { return m_FontSize; }
 
     static void SetTextureManager(ITextureManager& textureManager);
 
 private:
     unsigned int m_FontSize = 16;
-    std::map<char, Character> m_Characters;
+    std::map<unsigned int, Character> m_Characters;
     static ITextureManager* s_TextureManager;
     static ITextureManager& GetTextureManager();
 };

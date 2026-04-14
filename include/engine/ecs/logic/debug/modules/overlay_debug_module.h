@@ -42,6 +42,7 @@ private:
     bool m_Enabled = true;
 
     bool m_F10Pressed = false;
+    bool m_LPressed = false;
     bool m_ShowStatsOverlay = true;
     int m_OverlayMode = 1;
 
