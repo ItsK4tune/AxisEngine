@@ -6,3 +6,5 @@ out/
 build_engine.lock
 
 logs/
+
+imgui.ini

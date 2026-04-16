@@ -2,7 +2,7 @@
 #include <ecs/logic/debug/modules/physics_debug_module.h>
 #include <physics/interface/i_physics_world.h>
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 #include <core/app/application.h>
 #include <platform/logic/input_manager.h>
@@ -25,7 +25,7 @@
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <ecs/logic/entity_manager.h>
-#include <ecs/logic/debug/debug_system.h>
+#include <editor/editor_system.h>
 #include <core/logic/service_locator.h>
 PhysicsDebugModule::PhysicsDebugModule() {}
 PhysicsDebugModule::~PhysicsDebugModule() {}

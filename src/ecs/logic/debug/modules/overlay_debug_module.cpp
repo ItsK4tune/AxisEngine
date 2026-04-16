@@ -2,7 +2,7 @@
 #include <render/interface/i_graphics_context.h>
 #include <resource/unit/font.h>
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 #include <platform/logic/input_manager.h>
 #include <scene/logic/scene.h>
@@ -23,7 +23,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <ecs/logic/debug/debug_system.h>
+#include <editor/editor_system.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/localization_system.h>
 #include <core/logic/string_utils.h>

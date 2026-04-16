@@ -12,7 +12,7 @@
 class Application;
 class Font;
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 class OverlayDebugModule : public IDebugModule
 {

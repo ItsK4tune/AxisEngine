@@ -1,11 +1,11 @@
 #include <ecs/logic/debug/modules/shadow_debug_module.h>
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 #include <core/app/application.h>
 #include <render/interface/i_graphics_context.h>
 #include <ecs/logic/render_system.h>
-#include <ecs/logic/debug/debug_system.h>
+#include <editor/editor_system.h>
 #include <iostream>
 #include <platform/logic/input_manager.h>
 #include <core/logic/service_locator.h>

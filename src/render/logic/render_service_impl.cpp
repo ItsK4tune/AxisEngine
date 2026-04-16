@@ -35,8 +35,8 @@
 #include <core/type/app_config.h>
 #include <core/logic/config_manager.h>
 
-#ifdef ENABLE_DEBUG_SYSTEM
-#include <ecs/logic/debug/debug_system.h>
+#ifdef ENABLE_EDITOR
+#include <editor/editor_system.h>
 #endif
 
 #include <platform/logic/io_handler.h>

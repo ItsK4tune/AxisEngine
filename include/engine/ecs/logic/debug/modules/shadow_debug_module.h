@@ -5,7 +5,7 @@
 
 class Application;
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 
 

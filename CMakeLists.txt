@@ -9,11 +9,11 @@ if (NOT WIN32)
     message(FATAL_ERROR "AxisEngine currently only supports Windows.")
 endif()
 
-option(ENABLE_DEBUG_SYSTEM "Enable Runtime Debug System (F1/F2/F3)" ON)
+option(ENABLE_EDITOR "Enable Editor System (ImGui)" OFF)
 
-if(ENABLE_DEBUG_SYSTEM)
-    add_compile_definitions(ENABLE_DEBUG_SYSTEM)
-    message(STATUS "Debug System Enabled")
+if(ENABLE_EDITOR)
+    add_compile_definitions(ENABLE_EDITOR)
+    message(STATUS "Editor System Enabled")
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
@@ -33,6 +33,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/bullet
     ${CMAKE_SOURCE_DIR}/include/entt
     ${CMAKE_SOURCE_DIR}/include/engine
+    ${CMAKE_SOURCE_DIR}/include/imgui
     ${FREETYPE_INCLUDE_DIR}
     ${ASSIMP_INCLUDE_DIR}
     ${GLFW3_INCLUDE_DIR}

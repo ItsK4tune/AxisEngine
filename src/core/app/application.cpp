@@ -159,7 +159,15 @@ bool Application::Initialize(const AppConfig &config)
     m_Impl->m_ScriptRegistry = std::make_unique<ScriptRegistry>();
     m_Impl->m_CollisionMatrix = std::make_unique<CollisionMatrix>();
 
-    if (!config.headlessMode)
+    bool effectiveHeadless = config.headlessMode;
+#ifdef ENABLE_EDITOR
+    if (effectiveHeadless) {
+        LOGGER_INFO("Application") << "ENABLE_EDITOR active: overriding headless -> headfull (editor requires window).";
+        effectiveHeadless = false;
+    }
+#endif
+
+    if (!effectiveHeadless)
     {
         m_Impl->m_GraphicsContext = AppBuilder::CreateGraphicsContext(config);
         auto audioEngine = AppBuilder::CreateAudioEngine(config);

@@ -1,5 +1,5 @@
-#include <ecs/logic/debug/debug_system.h>
-#ifdef ENABLE_DEBUG_SYSTEM
+#include <editor/editor_system.h>
+#ifdef ENABLE_EDITOR
 
 bool DebugConfig::ShowWireframe = false;
 bool DebugConfig::ShowPhysics = false;

@@ -171,42 +171,42 @@ if "%clean_mode_choice%"=="1" set CLEAN_MODE=Strict
 if "%clean_mode_choice%"=="2" set CLEAN_MODE=Soft
 
 echo Selected Clean Mode: %CLEAN_MODE%
-goto SELECT_DEBUG_SYSTEM
+goto SELECT_EDITOR
 
 :RETRY_CLEAN_MODE
 echo [ERROR] Invalid selection!
 pause
 goto SELECT_CLEAN_MODE
 
-:SELECT_DEBUG_SYSTEM
+:SELECT_EDITOR
 cls
 echo.
 echo ==========================================
-echo           ENABLE DEBUG SYSTEM?
+echo           ENABLE EDITOR?
 echo ==========================================
 echo  1. No (Default)
-echo  2. Yes (Enables Debug Tools)
+echo  2. Yes (Enables Editor + ImGui)
 echo ------------------------------------------
 echo  B. Back
 echo ==========================================
-set "debug_sys_choice="
-set /p debug_sys_choice="Enter number (Default: 1): "
+set "editor_choice="
+set /p editor_choice="Enter number (Default: 1): "
 
-if "%debug_sys_choice%"=="" set debug_sys_choice=1
-if /i "%debug_sys_choice%"=="b" goto SELECT_CLEAN_MODE
+if "%editor_choice%"=="" set editor_choice=1
+if /i "%editor_choice%"=="b" goto SELECT_CLEAN_MODE
 
-echo %debug_sys_choice%| findstr /r "^[1-2]$" >nul
-if errorlevel 1 goto RETRY_DEBUG_SYSTEM
+echo %editor_choice%| findstr /r "^[1-2]$" >nul
+if errorlevel 1 goto RETRY_EDITOR
 
-set ENABLE_DEBUG_SYSTEM=OFF
-if "%debug_sys_choice%"=="2" set ENABLE_DEBUG_SYSTEM=ON
+set ENABLE_EDITOR=OFF
+if "%editor_choice%"=="2" set ENABLE_EDITOR=ON
 
 goto CONFIRM_CONFIG
 
-:RETRY_DEBUG_SYSTEM
+:RETRY_EDITOR
 echo [ERROR] Invalid selection!
 pause
-goto SELECT_DEBUG_SYSTEM
+goto SELECT_EDITOR
 
 
 :CONFIRM_CONFIG
@@ -226,7 +226,7 @@ if defined QUICK_BUILD (
     echo  Build Mode: QUICK
 ) else (
     echo  Clean Mode: %CLEAN_MODE%
-    echo  Debug Sys:  %ENABLE_DEBUG_SYSTEM%
+    echo  Editor:     %ENABLE_EDITOR%
 )
 echo ==========================================
 set "confirm="
@@ -235,7 +235,7 @@ if "%confirm%"=="" set confirm=y
 
 if /i "%confirm%"=="b" (
     if defined QUICK_BUILD goto SELECT_BUILD_TYPE
-    goto SELECT_DEBUG_SYSTEM
+    goto SELECT_EDITOR
 )
 if /i "%confirm%"=="n" goto SELECT_ACTION
 if /i "%confirm%"=="y" (
@@ -356,9 +356,9 @@ if %ERRORLEVEL% EQU 0 (
 
 if not defined QUICK_BUILD (
     if not defined GENERATOR (
-        "!CMAKE_CMD!" -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM!
+        "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR!
     ) else (
-        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_DEBUG_SYSTEM=!ENABLE_DEBUG_SYSTEM!
+        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR!
     )
 ) else (
     if not exist "build" (

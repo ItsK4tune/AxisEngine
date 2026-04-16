@@ -1,7 +1,7 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/logic/debug/modules/camera_debug_module.h>
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 #include <core/app/application.h>
 #include <platform/logic/input_manager.h>

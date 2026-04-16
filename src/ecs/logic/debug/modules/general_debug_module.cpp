@@ -1,6 +1,6 @@
 #include <ecs/logic/debug/modules/general_debug_module.h>
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>

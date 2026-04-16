@@ -15,12 +15,12 @@ void LogManager::Initialize(LogLevel level) {
 
 
     if (level == LogLevel::None) {
-#ifndef ENABLE_DEBUG_SYSTEM
+#ifndef ENABLE_EDITOR
         FreeConsole();
 #endif
     }
     else {
-#ifndef ENABLE_DEBUG_SYSTEM
+#ifndef ENABLE_EDITOR
         FreeConsole();
 #endif
         std::string logsDirStr = FileSystem::getPath("logs");
@@ -42,7 +42,7 @@ void LogManager::Initialize(LogLevel level) {
 
         m_LogFile.open(logPath);
         if (m_LogFile.is_open()) {
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
             m_TeeOut = std::make_unique<TeeBuf>(std::cout.rdbuf(), m_LogFile.rdbuf());
             m_TeeErr = std::make_unique<TeeBuf>(std::cerr.rdbuf(), m_LogFile.rdbuf());
 

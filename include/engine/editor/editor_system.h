@@ -10,7 +10,7 @@
 
 struct Scene;
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 struct DebugConfig
 {
@@ -26,17 +26,19 @@ struct DebugConfig
 #include <resource/unit/font.h>
 #include <resource/unit/shader.h>
 #include <resource/unit/ui_model.h>
+#include <editor/i_editor_panel.h>
+#include <editor/imgui_layer.h>
 
 class IDebugModule;
 
-class DebugSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
+class EditorSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
-    DebugSystem();
-    ~DebugSystem();
+    EditorSystem();
+    ~EditorSystem();
 
     void Initialize() override;
-    void Shutdown() override {}
+    void Shutdown() override;
     
     void Update(Scene& scene, float dt) override { OnUpdate(dt); }
     void OnUpdate(float dt);
@@ -49,30 +51,27 @@ public:
     
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetName() const override { return "DebugSystem"; }
+    std::string GetName() const override { return "EditorSystem"; }
     int GetPriority() const override { return -1; }
  
     std::vector<entt::id_type> GetReadComponents() const override { return {}; }
     std::vector<entt::id_type> GetWriteComponents() const override { return {}; }
 
 private:
-
     bool m_Enabled = true;
-    std::shared_ptr<Font> m_DebugFont = nullptr;
-    std::shared_ptr<Shader> m_TextShader = nullptr;
-    std::shared_ptr<UIModel> m_TextQuad = nullptr;
 
-    float m_FpsTimer = 0.0f;
-    int m_FrameCount = 0;
-    float m_CurrentFps = 0.0f;
-    float m_CurrentFrameTime = 0.0f;
+    ImGuiLayer m_ImGuiLayer;
+    std::vector<std::unique_ptr<IEditorPanel>> m_Panels;
 
+    // We still keep the underlying debug modules alive so the panels can proxy to them
     std::vector<std::unique_ptr<IDebugModule>> m_Modules;
+
+    void DrawMenuBar();
 };
 
 #else
 
-class NullDebugSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
+class NullEditorSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
     void Initialize() override {}
@@ -80,9 +79,10 @@ public:
     void Update(Scene&, float) override {}
     void OnUpdate(float) {}
     void Render(Scene&) override {}
+    void RenderUIPass(Scene&, float, float, IRenderStateManager&) override {}
     bool IsEnabled() const override { return false; }
     void SetEnabled(bool) override {}
-    std::string GetName() const override { return "NullDebugSystem"; }
+    std::string GetName() const override { return "EditorSystem"; }
     int GetPriority() const override { return 1000; }
     
     std::vector<entt::id_type> GetReadComponents() const override { return {}; }

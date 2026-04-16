@@ -1,6 +1,6 @@
 #include <ecs/logic/debug/modules/render_debug_module.h>
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 #include <core/app/application.h>
 #include <platform/logic/input_manager.h>
@@ -15,7 +15,7 @@
 #include <ecs/interface/i_shadow_service.h>
 #include <core/logic/service_locator.h>
 #include <ecs/logic/system_manager.h>
-#include <ecs/logic/debug/debug_system.h>
+#include <editor/editor_system.h>
 RenderDebugModule::RenderDebugModule() {}
 RenderDebugModule::~RenderDebugModule() {}
 

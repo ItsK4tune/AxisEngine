@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ecs/logic/debug/i_debug_module.h>
-#include <ecs/logic/debug/debug_system.h>
+#include <editor/editor_system.h>
 #include <entt/entity/entity.hpp>
 #include <functional>
 #include <glm/glm.hpp>
@@ -16,7 +16,7 @@
 
 class Application;
 
-#ifdef ENABLE_DEBUG_SYSTEM
+#ifdef ENABLE_EDITOR
 
 #define GLM_ENABLE_EXPERIMENTAL
 

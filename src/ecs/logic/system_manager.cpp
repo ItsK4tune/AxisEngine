@@ -370,7 +370,7 @@ void SystemManager::RenderDebug(Scene& scene)
         if (!sys->IsEnabled()) continue;
         
         // Explicitly drawing DebugSystem overlay if present
-        if (sys->GetName() == "DebugSystem") {
+        if (sys->GetName() == "EditorSystem") {
             auto* context = ServiceLocator::Instance().Resolve<IGraphicsContext>();
             if (context) {
                 // Width/Height from window
