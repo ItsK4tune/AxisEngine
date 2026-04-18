@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ecs/logic/debug/i_debug_module.h>
+#include <editor/i_editor_module.h>
 #include <editor/editor_system.h>
 #include <entt/entity/entity.hpp>
 #include <functional>
@@ -21,11 +21,11 @@ class Application;
 #define GLM_ENABLE_EXPERIMENTAL
 
 
-class GizmoDebugModule : public IDebugModule
+class GizmoEditorModule : public IEditorModule
 {
 public:
-    GizmoDebugModule();
-    ~GizmoDebugModule() override;
+    GizmoEditorModule();
+    ~GizmoEditorModule() override;
 
     virtual void Initialize() override;
     void OnUpdate(float dt) override;
@@ -34,7 +34,7 @@ public:
 
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetModuleName() const override { return "GizmoDebugModule"; }
+    std::string GetModuleName() const override { return "GizmoEditorModule"; }
     int GetRenderOrder() const override { return 20; }
 
     void SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad);

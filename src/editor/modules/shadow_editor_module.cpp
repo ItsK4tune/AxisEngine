@@ -1,4 +1,4 @@
-#include <ecs/logic/debug/modules/shadow_debug_module.h>
+#include <editor/modules/shadow_editor_module.h>
 
 #ifdef ENABLE_EDITOR
 
@@ -10,30 +10,30 @@
 #include <platform/logic/input_manager.h>
 #include <core/logic/service_locator.h>
 
-ShadowDebugModule::ShadowDebugModule() {}
-ShadowDebugModule::~ShadowDebugModule() {}
+ShadowEditorModule::ShadowEditorModule() {}
+ShadowEditorModule::~ShadowEditorModule() {}
 
-void ShadowDebugModule::Initialize()
+void ShadowEditorModule::Initialize()
 {
 }
 
-void ShadowDebugModule::OnUpdate(float dt)
+void ShadowEditorModule::OnUpdate(float dt)
 {
 }
 
-void ShadowDebugModule::Render(Scene &scene)
-{
-    if (!m_Enabled)
-        return;
-}
-
-void ShadowDebugModule::ProcessInput(KeyboardManager &keyboard)
+void ShadowEditorModule::Render(Scene &scene)
 {
     if (!m_Enabled)
         return;
 }
 
-void ShadowDebugModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
+void ShadowEditorModule::ProcessInput(KeyboardManager &keyboard)
+{
+    if (!m_Enabled)
+        return;
+}
+
+void ShadowEditorModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

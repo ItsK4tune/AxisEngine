@@ -9,10 +9,11 @@ class StatsPanel : public IEditorPanel
 {
 public:
     void Initialize() override {}
-    void SetStats(float fps, float frameTimeMs)
+    void OnUpdate(float dt) override
     {
-        m_Fps       = fps;
-        m_FrameTime = frameTimeMs;
+        const float alpha = 0.1f;
+        m_FrameTime = (dt * 1000.0f) * alpha + m_FrameTime * (1.0f - alpha);
+        m_Fps = (dt > 0.0f ? (1.0f / dt) : 0.0f) * alpha + m_Fps * (1.0f - alpha);
     }
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override { return "Stats"; }

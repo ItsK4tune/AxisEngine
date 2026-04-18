@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ecs/logic/debug/i_debug_module.h>
+#include <editor/i_editor_module.h>
 #include <functional>
 #include <platform/interface/input_codes.h>
 #include <string>
@@ -11,11 +11,11 @@ class Application;
 
 
 
-class PhysicsDebugModule : public IDebugModule
+class RenderEditorModule : public IEditorModule
 {
 public:
-    PhysicsDebugModule();
-    ~PhysicsDebugModule() override;
+    RenderEditorModule();
+    ~RenderEditorModule() override;
 
     virtual void Initialize() override;
     void OnUpdate(float dt) override;
@@ -24,26 +24,22 @@ public:
 
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetModuleName() const override { return "PhysicsDebugModule"; }
-    int GetRenderOrder() const override { return 10; }
+    std::string GetModuleName() const override { return "RenderEditorModule"; }
 
-    bool IsPhysicsDebugEnabled() const { return m_ShowPhysicsDebug; }
+    bool IsWireframeMode() const { return m_WireframeMode; }
+    bool IsNoTextureMode() const { return m_NoTextureMode; }
 
 private:
-    void TogglePhysicsDebug();
     void ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action);
 
     bool m_Enabled = true;
 
-    bool m_F8Pressed = false;
+    bool m_F6Pressed = false;
+    bool m_F7Pressed = false;
     bool m_F9Pressed = false;
 
-    bool m_ShowPhysicsDebug = false;
-    bool m_ShowAudioDebug = false;
-    bool m_ShowParticleDebug = false;
-
-    uint32_t m_LineVAO = 0;
-    uint32_t m_LineVBO = 0;
+    bool m_WireframeMode = false;
+    bool m_NoTextureMode = false;
 };
 
 #endif

@@ -101,6 +101,23 @@ struct CullingConfig
     float distanceCulling = 0.0f;
 };
 
+struct DebugConfig
+{
+    bool wireframeMode = false;
+    bool noTexture = false;
+    bool physicsDebug = false;
+#ifdef ENABLE_EDITOR
+    bool uiEnabled = true;
+#else
+    bool uiEnabled = false;
+#endif
+    bool gizmos = false;
+    bool lightGizmos = false;
+    bool entityNames = false;
+    bool audioDebug = false;
+    bool particleDebug = false;
+};
+
 struct AppConfig
 {
     // Core
@@ -120,6 +137,7 @@ struct AppConfig
     InputConfig input;
     AudioConfig audio;
     CullingConfig culling;
+    DebugConfig debug;
     LightingMode lightingMode = LightingMode::RealTime;
 
     // ─── Legacy accessors (inline, zero-cost) ───
@@ -195,7 +213,7 @@ struct AppConfig
         timeScale(o.timeScale), iconPath(o.iconPath), headlessMode(o.headlessMode),
         window(o.window), graphics(o.graphics), render(o.render),
         shadow(o.shadow), physics(o.physics), input(o.input),
-        audio(o.audio), culling(o.culling), lightingMode(o.lightingMode) {}
+        audio(o.audio), culling(o.culling), debug(o.debug), lightingMode(o.lightingMode) {}
 
     AppConfig& operator=(const AppConfig& o) {
         if (this == &o) return *this;
@@ -203,7 +221,7 @@ struct AppConfig
         timeScale = o.timeScale; iconPath = o.iconPath; headlessMode = o.headlessMode;
         window = o.window; graphics = o.graphics; render = o.render;
         shadow = o.shadow; physics = o.physics; input = o.input;
-        audio = o.audio; culling = o.culling; lightingMode = o.lightingMode;
+        audio = o.audio; culling = o.culling; debug = o.debug; lightingMode = o.lightingMode;
         return *this;
     }
 

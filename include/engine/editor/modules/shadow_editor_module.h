@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ecs/logic/debug/i_debug_module.h>
+#include <editor/i_editor_module.h>
 #include <string>
 
 class Application;
@@ -9,11 +9,11 @@ class Application;
 
 
 
-class ShadowDebugModule : public IDebugModule
+class ShadowEditorModule : public IEditorModule
 {
 public:
-    ShadowDebugModule();
-    ~ShadowDebugModule() override;
+    ShadowEditorModule();
+    ~ShadowEditorModule() override;
 
     virtual void Initialize() override;
     void OnUpdate(float dt) override;
@@ -23,7 +23,7 @@ public:
 
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetModuleName() const override { return "ShadowDebugModule"; }
+    std::string GetModuleName() const override { return "ShadowEditorModule"; }
 
 private:
     bool m_Enabled = true;

@@ -12,24 +12,16 @@ struct Scene;
 
 #ifdef ENABLE_EDITOR
 
-struct DebugConfig
-{
-    static bool ShowWireframe;
-    static bool ShowPhysics;
-    static bool ShowGizmos;
-    static bool ShowEntityNames;
-    static bool ShowLightGizmos;
-};
-
-
+// Legacy DebugConfig removed -- Use AppConfig::debug instead
 
 #include <resource/unit/font.h>
 #include <resource/unit/shader.h>
 #include <resource/unit/ui_model.h>
 #include <editor/i_editor_panel.h>
 #include <editor/imgui_layer.h>
+#include <platform/interface/cursor_mode.h>
 
-class IDebugModule;
+class IEditorModule;
 
 class EditorSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
@@ -64,7 +56,11 @@ private:
     std::vector<std::unique_ptr<IEditorPanel>> m_Panels;
 
     // We still keep the underlying debug modules alive so the panels can proxy to them
-    std::vector<std::unique_ptr<IDebugModule>> m_Modules;
+    std::vector<std::unique_ptr<IEditorModule>> m_Modules;
+
+    // Track cursor mode prior to hovering a panel
+    CursorMode m_PreHoverCursorMode;
+    bool m_WasHoveringPanel = false;
 
     void DrawMenuBar();
 };

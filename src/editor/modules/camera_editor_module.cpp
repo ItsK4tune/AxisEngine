@@ -1,5 +1,5 @@
 #include <ecs/unit/core_components.h>
-#include <ecs/logic/debug/modules/camera_debug_module.h>
+#include <editor/modules/camera_editor_module.h>
 
 #ifdef ENABLE_EDITOR
 
@@ -15,14 +15,14 @@
 #include <platform/logic/monitor_manager.h>
 #include <core/logic/logger.h>
 
-CameraDebugModule::CameraDebugModule() {}
-CameraDebugModule::~CameraDebugModule() {}
+CameraEditorModule::CameraEditorModule() {}
+CameraEditorModule::~CameraEditorModule() {}
 
-void CameraDebugModule::Initialize() {}
-void CameraDebugModule::OnUpdate(float dt) {}
-void CameraDebugModule::Render(Scene &scene) {}
+void CameraEditorModule::Initialize() {}
+void CameraEditorModule::OnUpdate(float dt) {}
+void CameraEditorModule::Render(Scene &scene) {}
 
-void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)
+void CameraEditorModule::ProcessInput(KeyboardManager &keyboard)
 {
     if (!m_Enabled) return;
 
@@ -33,7 +33,7 @@ void CameraDebugModule::ProcessInput(KeyboardManager &keyboard)
     });
 }
 
-void CameraDebugModule::ToggleDebugCamera()
+void CameraEditorModule::ToggleDebugCamera()
 {
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     auto &registry = scene.registry;
@@ -46,20 +46,17 @@ void CameraDebugModule::ToggleDebugCamera()
 
         if (registry.valid(m_LastActiveCamera) && registry.all_of<CameraComponent>(m_LastActiveCamera)) {
             registry.get<CameraComponent>(m_LastActiveCamera).isPrimary = true;
-            LOGGER_INFO("Debug") << "Switched to User Camera (Entity " << (uint32_t)m_LastActiveCamera << ")";
         }
         else {
             auto view = registry.view<CameraComponent>();
             for (auto entity : view) {
                 if (entity != m_DebugCamera) {
                     view.get<CameraComponent>(entity).isPrimary = true;
-                    LOGGER_INFO("Debug") << "Original camera missing. Switched to fallback (Entity " << (uint32_t)entity << ")";
                     break;
                 }
             }
         }
         m_IsDebugCameraActive = false;
-        LOGGER_INFO("Debug") << "Debug Camera: OFF";
     }
     else
     {
@@ -94,8 +91,6 @@ void CameraDebugModule::ToggleDebugCamera()
                 cam.screenWidth = lastCam.screenWidth; cam.screenHeight = lastCam.screenHeight;
                 cam.aspectRatio = lastCam.aspectRatio; cam.isOrthographic = lastCam.isOrthographic;
                 cam.orthoSize = lastCam.orthoSize;
-                
-                LOGGER_DEBUG("Debug") << "Inherited Camera Props: " << cam.screenWidth << "x" << cam.screenHeight;
             } else {
                 cam.fov = 45.0f; cam.nearPlane = 0.1f; cam.farPlane = 1000.0f;
                 auto& mm = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager();
@@ -123,11 +118,10 @@ void CameraDebugModule::ToggleDebugCamera()
             }
         }
         m_IsDebugCameraActive = true;
-        LOGGER_INFO("Debug") << "Debug Camera: ON (Shift+F11)";
     }
 }
 
-void CameraDebugModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
+void CameraEditorModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key)) {
         if (!pressedState) {

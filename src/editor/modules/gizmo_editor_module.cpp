@@ -1,5 +1,5 @@
 #include <ecs/unit/core_components.h>
-#include <ecs/logic/debug/modules/gizmo_debug_module.h>
+#include <editor/modules/gizmo_editor_module.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 
@@ -29,29 +29,49 @@
 #include <ecs/logic/entity_manager.h>
 #include <core/logic/service_locator.h>
 
-GizmoDebugModule::GizmoDebugModule() {}
-GizmoDebugModule::~GizmoDebugModule() {}
+GizmoEditorModule::GizmoEditorModule() {}
+GizmoEditorModule::~GizmoEditorModule() {}
 
-void GizmoDebugModule::Initialize()
+void GizmoEditorModule::Initialize()
 {
 }
 
-bool GizmoDebugModule::IsEntityNamesEnabled() const { return DebugConfig::ShowEntityNames; }
-bool GizmoDebugModule::IsTransformGizmosEnabled() const { return DebugConfig::ShowGizmos; }
-bool GizmoDebugModule::IsLightGizmosEnabled() const { return DebugConfig::ShowLightGizmos; }
+#include <core/logic/config_manager.h>
 
-void GizmoDebugModule::ToggleEntityNames() { DebugConfig::ShowEntityNames = !DebugConfig::ShowEntityNames; }
-void GizmoDebugModule::ToggleTransformGizmos() { DebugConfig::ShowGizmos = !DebugConfig::ShowGizmos; }
-void GizmoDebugModule::ToggleLightGizmos() { DebugConfig::ShowLightGizmos = !DebugConfig::ShowLightGizmos; }
+bool GizmoEditorModule::IsEntityNamesEnabled() const {
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    return cm ? cm->GetConfig().debug.entityNames : false;
+}
+bool GizmoEditorModule::IsTransformGizmosEnabled() const {
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    return cm ? cm->GetConfig().debug.gizmos : false;
+}
+bool GizmoEditorModule::IsLightGizmosEnabled() const {
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    return cm ? cm->GetConfig().debug.lightGizmos : false;
+}
 
-void GizmoDebugModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
+void GizmoEditorModule::ToggleEntityNames() {
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    if (cm) { auto c = cm->GetConfig(); c.debug.entityNames = !c.debug.entityNames; cm->UpdateConfig(c); }
+}
+void GizmoEditorModule::ToggleTransformGizmos() {
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    if (cm) { auto c = cm->GetConfig(); c.debug.gizmos = !c.debug.gizmos; cm->UpdateConfig(c); }
+}
+void GizmoEditorModule::ToggleLightGizmos() {
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    if (cm) { auto c = cm->GetConfig(); c.debug.lightGizmos = !c.debug.lightGizmos; cm->UpdateConfig(c); }
+}
+
+void GizmoEditorModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad)
 {
     m_DebugFont = font;
     m_TextShader = shader;
     m_TextQuad = quad;
 }
 
-void GizmoDebugModule::OnUpdate(float dt)
+void GizmoEditorModule::OnUpdate(float dt)
 {
     if (!m_Enabled)
         return;
@@ -64,9 +84,9 @@ void GizmoDebugModule::OnUpdate(float dt)
     UpdateLightLabels(*scene);
 }
 
-void GizmoDebugModule::Render(Scene &scene)
+void GizmoEditorModule::Render(Scene &scene)
 {
-    if (!m_Enabled || !DebugConfig::ShowGizmos)
+    if (!m_Enabled || !IsTransformGizmosEnabled())
         return;
 
     auto& sl = ServiceLocator::Instance();
@@ -158,58 +178,11 @@ void GizmoDebugModule::Render(Scene &scene)
     bm.BindVertexArray(0);
 }
 
-void GizmoDebugModule::ProcessInput(KeyboardManager &keyboard)
+void GizmoEditorModule::ProcessInput(KeyboardManager &keyboard)
 {
-    if (!m_Enabled)
-        return;
-
-    ProcessKey(keyboard, Key::F3, m_F3Pressed, [this, &keyboard]()
-               {
-        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift) {
-            ToggleEntityNames();
-            std::cout << "\n========== Entity Names (Shift+F3) ==========" << std::endl;
-            std::cout << "[Debug] Entity Names: " << (DebugConfig::ShowEntityNames ? "ON" : "OFF") << std::endl;
-            std::cout << "=============================================" << std::endl;
-        } });
-
-    ProcessKey(keyboard, Key::F4, m_F4Pressed, [this, &keyboard]()
-               {
-        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift) {
-            DebugConfig::ShowGizmos = !DebugConfig::ShowGizmos;
-            std::cout << "\n========== Transform Gizmos (Shift+F4) ==========" << std::endl;
-            std::cout << "[Debug] Transform Gizmos: " << (DebugConfig::ShowGizmos ? "ON" : "OFF") << std::endl;
-            std::cout << "=================================================" << std::endl;
-        } });
-
-    ProcessKey(keyboard, Key::F5, m_F5Pressed, [this, &keyboard]()
-               {
-        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift) {
-            ToggleLightGizmos();
-
-            auto& scene = ServiceLocator::Instance().Require<Scene>();
-            auto& reg = scene.registry;
-            int p = 0; for(auto e : reg.view<PointLightComponent>()) p++;
-            int s = 0; for(auto e : reg.view<SpotLightComponent>()) s++;
-
-            int d_total = 0;
-            int d_transform = 0;
-            for(auto e : reg.view<DirectionalLightComponent>()) {
-                d_total++;
-                if(reg.all_of<PositionComponent>(e)) d_transform++;
-            }
-
-            std::cout << "\n========== Light Gizmos (Shift+F5) ==========" << std::endl;
-            std::cout << "[Debug] Light Gizmos: " << (DebugConfig::ShowLightGizmos ? "ON" : "OFF") << std::endl;
-            std::cout << "[Debug] Stats: " << p << " Points, " << s << " Spots" << std::endl;
-            std::cout << "[Debug] Directional: " << d_total << " Total (" << d_transform << " with Transform)" << std::endl;
-            std::cout << "=============================================" << std::endl;
-        } });
 }
 
-void GizmoDebugModule::ClearDebugLabels(Scene &scene)
+void GizmoEditorModule::ClearDebugLabels(Scene &scene)
 {
     auto &registry = scene.registry;
     for (auto &pair : m_EntityLabelMap)
@@ -222,9 +195,9 @@ void GizmoDebugModule::ClearDebugLabels(Scene &scene)
     m_EntityLabelMap.clear();
 }
 
-void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
+void GizmoEditorModule::UpdateDebugLabels(Scene &scene)
 {
-    if (!DebugConfig::ShowEntityNames)
+    if (!IsEntityNamesEnabled())
     {
         if (!m_EntityLabelMap.empty())
         {
@@ -421,7 +394,7 @@ void GizmoDebugModule::UpdateDebugLabels(Scene &scene)
     m_EntityLabelMap = nextMap;
 }
 
-void GizmoDebugModule::ClearLightLabels(Scene &scene)
+void GizmoEditorModule::ClearLightLabels(Scene &scene)
 {
     auto &registry = scene.registry;
     for (auto &pair : m_LightLabelMap)
@@ -434,9 +407,9 @@ void GizmoDebugModule::ClearLightLabels(Scene &scene)
     m_LightLabelMap.clear();
 }
 
-void GizmoDebugModule::UpdateLightLabels(Scene &scene)
+void GizmoEditorModule::UpdateLightLabels(Scene &scene)
 {
-    if (!DebugConfig::ShowLightGizmos)
+    if (!IsLightGizmosEnabled())
     {
         if (!m_LightLabelMap.empty())
         {
@@ -627,7 +600,7 @@ void GizmoDebugModule::UpdateLightLabels(Scene &scene)
     m_LightLabelMap = nextMap;
 }
 
-void GizmoDebugModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
+void GizmoEditorModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

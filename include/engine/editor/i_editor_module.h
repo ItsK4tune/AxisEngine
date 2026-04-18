@@ -4,9 +4,9 @@
 #include <scene/logic/scene.h>
 #include <string>
 
-class IDebugModule {
+class IEditorModule {
 public:
-    virtual ~IDebugModule() = default;
+    virtual ~IEditorModule() = default;
     virtual void Initialize() = 0;
     virtual void OnUpdate(float dt) = 0;
     virtual void Render(Scene& scene) = 0;

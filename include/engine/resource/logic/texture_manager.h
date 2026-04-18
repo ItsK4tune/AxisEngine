@@ -37,6 +37,10 @@ public:
     
     void Clear() override;
 
+    std::vector<std::string> GetAllNames() const override {
+        return m_Cache.GetAllNames();
+    }
+
 
     void SetAsyncEnabled(bool enabled) { m_AsyncEnabled = enabled; }
     void SetMaxAnisotropy(float anisotropy) { m_MaxAnisotropy = anisotropy; }

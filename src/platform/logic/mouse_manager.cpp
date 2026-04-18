@@ -48,6 +48,7 @@ void MouseManager::Update()
     {
         m_Window->SetCursorPos(m_LockX, m_LockY);
     }
+    // Disabled: cursor visible, no position lock, data simply not used by game
 }
 
 void MouseManager::SetWindowSize(int width, int height)
@@ -95,6 +96,16 @@ void MouseManager::SetCursorMode(CursorMode mode)
         m_LockX = m_LastX;
         m_LockY = m_LastY;
     }
+
+#ifdef ENABLE_EDITOR
+    if (mode == CursorMode::Disabled) {
+        // Disabled = cursor visible, normal movement, but game ignores mouse data
+        // Treat like Normal from window perspective
+        m_Window->SetCursorMode(CursorMode::Normal);
+        m_Mode = CursorMode::Disabled;
+        return;
+    }
+#endif
 
     m_Window->SetCursorMode(mode);
     m_Mode = mode;

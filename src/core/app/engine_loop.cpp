@@ -218,17 +218,20 @@ void EngineLoop::Render()
 
 void EngineLoop::SetPhysicsStep(float step)
 {
-    if (step > 0.0f)
+    if (step > 0.0f && std::abs(m_FixedDeltaTime - step) > 0.0001f)
     {
         m_FixedDeltaTime = step;
-        LOGGER_INFO("EngineLoop") << "Fixed delta time set to: " << m_FixedDeltaTime;
+        LOGGER_DEBUG("EngineLoop") << "Fixed delta time set to: " << m_FixedDeltaTime;
     }
 }
 
 void EngineLoop::SetTimeScale(float scale)
 {
-    m_TimeScale = scale;
-    LOGGER_INFO("EngineLoop") << "Time scale set to: " << m_TimeScale;
+    if (std::abs(m_TimeScale - scale) > 0.0001f)
+    {
+        m_TimeScale = scale;
+        LOGGER_DEBUG("EngineLoop") << "Time scale set to: " << m_TimeScale;
+    }
 
     if (ServiceLocator::Instance().Has<TimeService>())
     {

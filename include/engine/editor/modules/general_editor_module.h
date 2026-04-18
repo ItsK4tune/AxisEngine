@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ecs/logic/debug/i_debug_module.h>
+#include <editor/i_editor_module.h>
 #include <core/type/app_config.h>
 #include <functional>
 #include <platform/interface/input_codes.h>
@@ -13,11 +13,11 @@ class Application;
 
 
 
-class GeneralDebugModule : public IDebugModule
+class GeneralEditorModule : public IEditorModule
 {
 public:
-    GeneralDebugModule();
-    ~GeneralDebugModule() override;
+    GeneralEditorModule() = default;
+    ~GeneralEditorModule() override = default;
 
     virtual void Initialize() override;
     void OnUpdate(float dt) override;
@@ -26,23 +26,13 @@ public:
 
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetModuleName() const override { return "GeneralDebugModule"; }
+    std::string GetModuleName() const override { return "GeneralEditorModule"; }
 
 private:
-    void LogDevices();
-    void LogSceneGraph();
-    void LogControls();
-    void LogStats();
-    void LogEntityStats();
     void ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action);
 
     bool m_Enabled = true;
 
-    bool m_F1Pressed = false;
-    bool m_F2Pressed = false;
-    bool m_F3Pressed = false;
-    bool m_F4Pressed = false;
-    bool m_F5Pressed = false;
     bool m_F11Pressed = false;
     bool m_F12Pressed = false;
 
@@ -50,9 +40,6 @@ private:
     int m_FrameCount = 0;
     float m_CurrentFps = 0.0f;
     float m_CurrentFrameTime = 0.0f;
-
-    std::string m_GpuName;
-    std::string m_CpuName;
 };
 
 #endif

@@ -23,6 +23,8 @@ public:
     
     virtual void Clear() = 0;
 
+    virtual std::vector<std::string> GetAllNames() const { return {}; }
+
     
     virtual void Update(float dt) {}
 

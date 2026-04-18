@@ -101,7 +101,8 @@ private:
     std::vector<PostProcessEffect> m_Effects;
 
     glm::vec4 m_ClearColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
-    bool m_BloomEnabled = true;
+    bool m_HDREnabled = false;
+    bool m_BloomEnabled = false;
     float m_BloomThreshold = 1.0f;
     float m_BloomIntensity = 1.0f;
     float m_BloomRadius = 0.005f;

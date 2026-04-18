@@ -77,6 +77,9 @@ public:
     std::shared_ptr<UIModel> GetUIModel(const std::string& name);
     bool HasUIModel(const std::string& name);
 
+    std::vector<std::string> GetLoadedTextures() const;
+    std::vector<std::string> GetLoadedModels() const;
+    std::vector<std::string> GetLoadedShaders() const;
 
     std::shared_ptr<Texture> GetTextureAuto(const std::string& nameOrPath);
     std::shared_ptr<Model> GetModelAuto(const std::string& nameOrPath, bool isStatic = false);

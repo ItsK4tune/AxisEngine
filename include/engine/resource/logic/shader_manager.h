@@ -30,6 +30,11 @@ public:
     
     void Unload(const std::string& nameOrPath) override;
     void Clear() override;
+    
+    std::vector<std::string> GetAllNames() const override {
+        return m_Cache.GetAllNames();
+    }
+    
     void Reload(const std::string& name);
     void ReloadAll();
     void Initialize() override;

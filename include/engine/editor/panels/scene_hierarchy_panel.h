@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include <entt/entt.hpp>
+
 struct Scene;
 
 class SceneHierarchyPanel : public IEditorPanel
@@ -14,9 +16,10 @@ public:
     std::string GetTitle() const override { return "Scene Hierarchy"; }
 
 private:
-    void DrawEntityNode(Scene& scene, uint32_t entityId, const std::string& name,
-                        const std::string& tag, bool hasChildren,
-                        const std::vector<uint32_t>& children);
-    uint32_t m_SelectedEntity = UINT32_MAX;
+    void DrawEntityNode(Scene& scene, entt::entity entity);
+    void DrawComponents(entt::registry& registry, entt::entity entity);
+
+private:
+    entt::entity m_SelectedEntity = entt::null;
 };
 #endif

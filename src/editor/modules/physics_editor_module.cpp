@@ -1,6 +1,7 @@
 #include <ecs/unit/core_components.h>
-#include <ecs/logic/debug/modules/physics_debug_module.h>
+#include <editor/modules/physics_editor_module.h>
 #include <physics/interface/i_physics_world.h>
+#include <core/logic/config_manager.h>
 
 #ifdef ENABLE_EDITOR
 
@@ -27,18 +28,18 @@
 #include <ecs/logic/entity_manager.h>
 #include <editor/editor_system.h>
 #include <core/logic/service_locator.h>
-PhysicsDebugModule::PhysicsDebugModule() {}
-PhysicsDebugModule::~PhysicsDebugModule() {}
+PhysicsEditorModule::PhysicsEditorModule() {}
+PhysicsEditorModule::~PhysicsEditorModule() {}
 
-void PhysicsDebugModule::Initialize()
+void PhysicsEditorModule::Initialize()
 {
 }
 
-void PhysicsDebugModule::OnUpdate(float dt)
+void PhysicsEditorModule::OnUpdate(float dt)
 {
 }
 
-void PhysicsDebugModule::Render(Scene &scene)
+void PhysicsEditorModule::Render(Scene &scene)
 {
     if (!m_Enabled)
         return;
@@ -49,7 +50,18 @@ void PhysicsDebugModule::Render(Scene &scene)
     int width = io.GetMonitorManager().GetWidth();
     int height = io.GetMonitorManager().GetHeight();
 
-    if (DebugConfig::ShowPhysics)
+    auto cm = sl.Resolve<ConfigManager>();
+    bool showPhysics = false;
+    bool showAudio = false;
+    bool showParticle = false;
+    if (cm) {
+        auto& conf = cm->GetConfig();
+        showPhysics = conf.debug.physicsDebug;
+        showAudio = conf.debug.audioDebug;
+        showParticle = conf.debug.particleDebug;
+    }
+    
+    if (showPhysics)
     {
         auto* graphics = sl.Resolve<IGraphicsContext>();
         auto* physics_sys = sl.Resolve<PhysicsSystem>();
@@ -60,7 +72,7 @@ void PhysicsDebugModule::Render(Scene &scene)
         }
     }
 
-    if (!m_ShowAudioDebug && !m_ShowParticleDebug)
+    if (!showAudio && !showParticle)
         return;
 
     auto debugShader = resources.GetShader("debug_line");
@@ -94,7 +106,7 @@ void PhysicsDebugModule::Render(Scene &scene)
         lineVertices.push_back(color.r); lineVertices.push_back(color.g); lineVertices.push_back(color.b);
     };
 
-    if (m_ShowAudioDebug)
+    if (showAudio)
     {
         auto viewAudio = scene.registry.view<AudioSourceComponent>();
         for (auto entity : viewAudio)
@@ -113,7 +125,7 @@ void PhysicsDebugModule::Render(Scene &scene)
         }
     }
 
-    if (m_ShowParticleDebug)
+    if (showParticle)
     {
         auto viewParticle = scene.registry.view<ParticleEmitterComponent>();
         for (auto entity : viewParticle)
@@ -170,7 +182,7 @@ void PhysicsDebugModule::Render(Scene &scene)
     bm.BindVertexArray(0);
 }
 
-void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
+void PhysicsEditorModule::ProcessInput(KeyboardManager &keyboard)
 {
     if (!m_Enabled)
         return;
@@ -179,11 +191,12 @@ void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
         if (shift) {
-            m_ShowAudioDebug = !m_ShowAudioDebug;
-            std::cout << "\n========== Audio Debug (Shift+F8) ==========" << std::endl;
-            std::cout << "[Debug] Audio Debug: " << (m_ShowAudioDebug ? "ON" : "OFF") << std::endl;
-            std::cout << "[Info] Shows 3D audio source positions" << std::endl;
-            std::cout << "==========================================" << std::endl;
+            auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+            if (cm) {
+                auto conf = cm->GetConfig();
+                conf.debug.audioDebug = !conf.debug.audioDebug;
+                cm->UpdateConfig(conf);
+            }
         } else {
             TogglePhysicsDebug();
         } });
@@ -192,23 +205,25 @@ void PhysicsDebugModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
         if (shift) {
-            m_ShowParticleDebug = !m_ShowParticleDebug;
-            std::cout << "\n========== Particle Debug (Shift+F9) ==========" << std::endl;
-            std::cout << "[Debug] Particle Debug: " << (m_ShowParticleDebug ? "ON" : "OFF") << std::endl;
-            std::cout << "[Info] Shows particle emitter boundaries" << std::endl;
-            std::cout << "=============================================" << std::endl;
+            auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+            if (cm) {
+                auto conf = cm->GetConfig();
+                conf.debug.particleDebug = !conf.debug.particleDebug;
+                cm->UpdateConfig(conf);
+            }
         } });
 }
 
-void PhysicsDebugModule::TogglePhysicsDebug()
+void PhysicsEditorModule::TogglePhysicsDebug()
 {
-    DebugConfig::ShowPhysics = !DebugConfig::ShowPhysics;
-    std::cout << "\n========== Physics Debug (F8) ==========" << std::endl;
-    std::cout << "[Debug] Physics Debug: " << (DebugConfig::ShowPhysics ? "ON" : "OFF") << std::endl;
-    std::cout << "========================================" << std::endl;
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    if (!cm) return;
+    auto conf = cm->GetConfig();
+    conf.debug.physicsDebug = !conf.debug.physicsDebug;
+    cm->UpdateConfig(conf);
 }
 
-void PhysicsDebugModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
+void PhysicsEditorModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

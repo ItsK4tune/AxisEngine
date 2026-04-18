@@ -3,6 +3,7 @@
 #include <editor/i_editor_panel.h>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 struct Scene;
 
@@ -11,17 +12,15 @@ class CodeEditorPanel : public IEditorPanel
 public:
     void Initialize() override {}
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Code Editor"; }
+    std::string GetTitle() const override { return "File Hierarchy"; }
 
 private:
-    void BrowseForFile();
-    void LoadFile(const std::string& path);
-    void SaveFile();
+    void DrawDirectory(const std::filesystem::path& dirPath);
+    void LoadFilePreview(const std::filesystem::path& filePath);
+    void OpenNativeEditor(const std::filesystem::path& filePath);
 
-    std::string              m_CurrentPath;
-    std::vector<char>        m_Buffer;
-    bool                     m_UnsavedChanges = false;
-    bool                     m_BrowseOpen     = false;
-    static constexpr size_t  k_BufferSize     = 1024 * 64;
+    std::string   m_CurrentPath = "l:/C++/AxisEngine";
+    std::string   m_PreviewContent;
+    std::string   m_SelectedFile;
 };
 #endif

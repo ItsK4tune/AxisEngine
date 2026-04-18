@@ -1,4 +1,5 @@
-#include <ecs/logic/debug/modules/render_debug_module.h>
+#include <editor/modules/render_editor_module.h>
+#include <core/logic/config_manager.h>
 
 #ifdef ENABLE_EDITOR
 
@@ -16,24 +17,24 @@
 #include <core/logic/service_locator.h>
 #include <ecs/logic/system_manager.h>
 #include <editor/editor_system.h>
-RenderDebugModule::RenderDebugModule() {}
-RenderDebugModule::~RenderDebugModule() {}
+RenderEditorModule::RenderEditorModule() {}
+RenderEditorModule::~RenderEditorModule() {}
 
-void RenderDebugModule::Initialize()
+void RenderEditorModule::Initialize()
 {
 }
 
-void RenderDebugModule::OnUpdate(float dt)
-{
-
-}
-
-void RenderDebugModule::Render(Scene &scene)
+void RenderEditorModule::OnUpdate(float dt)
 {
 
 }
 
-void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
+void RenderEditorModule::Render(Scene &scene)
+{
+
+}
+
+void RenderEditorModule::ProcessInput(KeyboardManager &keyboard)
 {
     if (!m_Enabled)
         return;
@@ -46,18 +47,15 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
             static bool skyboxEnabled = true;
             skyboxEnabled = !skyboxEnabled;
             systems.GetSystem<SkyboxRenderSystem>()->SetEnabled(skyboxEnabled);
-            std::cout << "\n========== Skybox Toggle (Shift+F6) ==========" << std::endl;
-            std::cout << "[Debug] Skybox: " << (skyboxEnabled ? "ON" : "OFF") << std::endl;
-            std::cout << "==============================================" << std::endl;
         } else {
-            DebugConfig::ShowWireframe = !DebugConfig::ShowWireframe;
+            auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+            if (!cm) return;
+            auto conf = cm->GetConfig();
+            conf.debug.wireframeMode = !conf.debug.wireframeMode;
+            cm->UpdateConfig(conf);
 
             auto* renderSys = ServiceLocator::Instance().Resolve<IRenderService>();
-            if (renderSys) renderSys->SetWireframe(DebugConfig::ShowWireframe);
-
-            std::cout << "\n========== Wireframe Mode (F6) ==========" << std::endl;
-            std::cout << "[Debug] Wireframe: " << (DebugConfig::ShowWireframe ? "ON" : "OFF") << std::endl;
-            std::cout << "=========================================" << std::endl;
+            if (renderSys) renderSys->SetWireframe(conf.debug.wireframeMode);
         } });
 
     ProcessKey(keyboard, Key::F7, m_F7Pressed, [this, &keyboard]()
@@ -68,18 +66,12 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
              auto* shadowSys = sl.Resolve<IShadowService>();
              bool shadow = shadowSys ? !shadowSys->IsShadowsEnabled() : false;
              if (shadowSys) shadowSys->SetEnableShadows(shadow);
-             std::cout << "\n========== Shadow Toggle (Shift+F7) ==========" << std::endl;
-             std::cout << "[Debug] Shadows: " << (shadow ? "ON" : "OFF") << std::endl;
-             std::cout << "============================================" << std::endl;
          } else {
              auto& sl = ServiceLocator::Instance();
              auto* renderSys = sl.Resolve<IRenderService>();
              m_NoTextureMode = !m_NoTextureMode;
              if (renderSys) renderSys->SetDebugNoTexture(m_NoTextureMode);
              sl.Require<SystemManager>().GetSystem<TerrainSystem>()->SetDebugNoTexture(m_NoTextureMode);
-             std::cout << "\n========== No Texture Mode (F7) ==========" << std::endl;
-             std::cout << "[Debug] No Texture Mode: " << (m_NoTextureMode ? "ON" : "OFF") << std::endl;
-             std::cout << "==========================================" << std::endl;
          } });
 
     ProcessKey(keyboard, Key::F9, m_F9Pressed, [this, &keyboard]()
@@ -92,13 +84,10 @@ void RenderDebugModule::ProcessInput(KeyboardManager &keyboard)
             static bool uiEnabled = true;
             uiEnabled = !uiEnabled;
             systems.GetSystem<UIRenderSystem>()->SetEnabled(uiEnabled);
-            std::cout << "\n========== UI System (F9) ==========" << std::endl;
-            std::cout << "[Debug] UI System: " << (uiEnabled ? "ON" : "OFF") << std::endl;
-            std::cout << "====================================" << std::endl;
         } });
 }
 
-void RenderDebugModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
+void RenderEditorModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

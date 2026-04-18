@@ -38,6 +38,19 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
     m_HDRFinalShader = shaderLib.GetShader("hdr_final");
 
     UpdateConfig();
+
+    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+        const auto& cfg = e.config;
+        m_ClearColor = glm::vec4(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
+        m_BloomEnabled = cfg.bloomEnabled;
+        m_BloomThreshold = cfg.bloomThreshold;
+        m_BloomIntensity = cfg.bloomIntensity;
+        m_BloomRadius = cfg.bloomRadius;
+        m_HDREnabled = cfg.hdrEnabled;
+        m_Exposure = cfg.hdrEnabled ? cfg.exposure : 1.0f;
+        m_Gamma = cfg.hdrEnabled ? cfg.gamma : 2.2f;
+        m_TonemappingMode = cfg.hdrEnabled ? (int)cfg.tonemappingMode : 0;
+    });
 }
 
 void PostProcessPipeline::InitFramebuffers()
@@ -128,9 +141,11 @@ void PostProcessPipeline::UpdateConfig()
     m_BloomThreshold = cfg.bloomThreshold;
     m_BloomIntensity = cfg.bloomIntensity;
     m_BloomRadius = cfg.bloomRadius;
-    m_Exposure = cfg.exposure;
-    m_Gamma = cfg.gamma;
-    m_TonemappingMode = (int)cfg.tonemappingMode;
+    m_HDREnabled = cfg.hdrEnabled;
+    // Only honor exposure/gamma/tonemapping when HDR is on
+    m_Exposure = cfg.hdrEnabled ? cfg.exposure : 1.0f;
+    m_Gamma = cfg.hdrEnabled ? cfg.gamma : 2.2f;
+    m_TonemappingMode = cfg.hdrEnabled ? (int)cfg.tonemappingMode : 0;
 }
 
 void PostProcessPipeline::Shutdown()
@@ -239,10 +254,13 @@ void PostProcessPipeline::EndCapture()
     m_HDRFinalShader->use();
     m_HDRFinalShader->setInt("screenTexture", 0);
     m_HDRFinalShader->setInt("bloomBlur", 1);
-    m_HDRFinalShader->setFloat("exposure", m_Exposure);
-    m_HDRFinalShader->setFloat("bloomIntensity", m_BloomIntensity);
-    m_HDRFinalShader->setFloat("gamma", m_Gamma);
-    m_HDRFinalShader->setInt("tonemappingMode", m_TonemappingMode);
+    // HDR off → linear pass (exposure=1, gamma=2.2, mode=0)
+    m_HDRFinalShader->setFloat("exposure", m_HDREnabled ? m_Exposure : 1.0f);
+    // Bloom off → zero intensity regardless of m_BloomIntensity value
+    m_HDRFinalShader->setFloat("bloomIntensity", (m_BloomEnabled && m_HDREnabled) ? m_BloomIntensity : 0.0f);
+    m_HDRFinalShader->setFloat("gamma", m_HDREnabled ? m_Gamma : 2.2f);
+    m_HDRFinalShader->setInt("tonemappingMode", m_HDREnabled ? m_TonemappingMode : 0);
+
 
     tm.ActiveTexture(TextureUnit::Texture0);
     tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());

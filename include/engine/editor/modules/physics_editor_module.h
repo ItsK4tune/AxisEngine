@@ -1,7 +1,6 @@
 #pragma once
 
-#include <ecs/logic/debug/i_debug_module.h>
-#include <entt/entity/entity.hpp>
+#include <editor/i_editor_module.h>
 #include <functional>
 #include <platform/interface/input_codes.h>
 #include <string>
@@ -12,11 +11,11 @@ class Application;
 
 
 
-class CameraDebugModule : public IDebugModule
+class PhysicsEditorModule : public IEditorModule
 {
 public:
-    CameraDebugModule();
-    ~CameraDebugModule() override;
+    PhysicsEditorModule();
+    ~PhysicsEditorModule() override;
 
     virtual void Initialize() override;
     void OnUpdate(float dt) override;
@@ -25,22 +24,26 @@ public:
 
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetModuleName() const override { return "CameraDebugModule"; }
+    std::string GetModuleName() const override { return "PhysicsEditorModule"; }
+    int GetRenderOrder() const override { return 10; }
 
-    bool IsDebugCameraActive() const { return m_IsDebugCameraActive; }
-    entt::entity GetDebugCamera() const { return m_DebugCamera; }
+    bool IsPhysicsDebugEnabled() const { return m_ShowPhysicsDebug; }
 
 private:
-    void ToggleDebugCamera();
+    void TogglePhysicsDebug();
     void ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action);
 
     bool m_Enabled = true;
 
-    bool m_F11Pressed = false;
+    bool m_F8Pressed = false;
+    bool m_F9Pressed = false;
 
-    bool m_IsDebugCameraActive = false;
-    entt::entity m_LastActiveCamera = entt::null;
-    entt::entity m_DebugCamera = entt::null;
+    bool m_ShowPhysicsDebug = false;
+    bool m_ShowAudioDebug = false;
+    bool m_ShowParticleDebug = false;
+
+    uint32_t m_LineVAO = 0;
+    uint32_t m_LineVBO = 0;
 };
 
 #endif

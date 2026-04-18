@@ -35,6 +35,10 @@ public:
     
     void Clear() override;
 
+    std::vector<std::string> GetAllNames() const override {
+        return m_Cache.GetAllNames();
+    }
+
     ModelInstanceManager& GetInstanceManager() { return m_InstanceManager; }
 
     void Initialize() override;

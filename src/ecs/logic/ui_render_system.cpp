@@ -11,6 +11,7 @@
 #include <platform/logic/io_handler.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
+#include <core/logic/config_manager.h>
 
 struct UIRect
 {
@@ -43,10 +44,19 @@ UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screen
     glm::vec2 finalMin = anchorMinPos + transform.offsetMin;
     glm::vec2 finalMax = anchorMaxPos + transform.offsetMax;
 
+    // Apply explicit position offset independently of the layout system
+    finalMin += transform.position;
+    finalMax += transform.position;
+
+    // If anchors are equal, use transform.size to strictly define bounds!
+    if (transform.anchorMin.x == transform.anchorMax.x) {
+        finalMax.x = finalMin.x + transform.size.x;
+    }
+    if (transform.anchorMin.y == transform.anchorMax.y) {
+        finalMax.y = finalMin.y + transform.size.y;
+    }
 
     glm::vec2 size = finalMax - finalMin;
-    glm::vec2 pos = finalMin + transform.pivot * size;
-
     return { finalMin, size };
 }
 
@@ -61,7 +71,9 @@ void UIRenderSystem::Initialize()
 
 void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenHeight, IRenderStateManager &renderState)
 {
-    if (!m_Enabled) return;
+    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    bool uiEnabled = cm ? cm->GetConfig().debug.uiEnabled : true;
+    if (!m_Enabled || !uiEnabled) return;
 
     renderState.SetViewport(0, 0, (int)screenWidth, (int)screenHeight);
     renderState.Disable(ServerCapability::DepthTest);
@@ -72,6 +84,9 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
     PolygonMode previousPolygonMode = renderState.GetPolygonMode();
     renderState.SetPolygonMode(CullMode::FrontAndBack, PolygonMode::Fill);
 
+
+    // Call UpdateLayout to enforce FlexLayout rules
+    UpdateLayout(scene, screenWidth, screenHeight);
 
     std::vector<entt::entity> sortedEntities;
     auto view = scene.registry.view<UITransformComponent>();
@@ -88,6 +103,10 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
     {
         auto &transform = view.get<UITransformComponent>(entity);
         UIRect rect = CalculateRect(scene.registry, entity, screenWidth, screenHeight);
+
+        // Apply Position natively in CalculateRect, but rotation happens here
+        glm::vec2 finalPos = rect.pos;
+        glm::vec2 finalSize = rect.size;
 
         if (auto *renderer = scene.registry.try_get<UIRendererComponent>(entity))
         {
@@ -106,8 +125,12 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                 if (renderer->texture) texID = renderer->texture->id;
 
                 glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, glm::vec3(rect.pos, 0.0f));
-                model = glm::scale(model, glm::vec3(rect.size, 1.0f));
+                model = glm::translate(model, glm::vec3(finalPos + transform.pivot * finalSize, 0.0f));
+                if (transform.rotation != 0.0f) {
+                    model = glm::rotate(model, glm::radians(transform.rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+                }
+                model = glm::translate(model, glm::vec3(-transform.pivot * finalSize, 0.0f));
+                model = glm::scale(model, glm::vec3(finalSize, 1.0f));
                 currentShader->setMat4("u_Model", model);
 
                 renderer->model->Draw(*currentShader, renderer->color, texID);
@@ -152,16 +175,32 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                     lines.push_back(text);
                 }
 
-                float startY = rect.pos.y;
+                float startY = finalPos.y;
                 for (const auto& line : lines) {
                     float lineWidth = 0;
                     for (char c : line) lineWidth += (textComp->font->GetCharacter(c).advance >> 6) * scale;
 
-                    float startX = rect.pos.x;
-                    if (textComp->alignment == TextAlignment::Center) startX += (rect.size.x - lineWidth) * 0.5f;
-                    else if (textComp->alignment == TextAlignment::Right) startX += (rect.size.x - lineWidth);
+                    float startX = finalPos.x;
+                    if (textComp->alignment == TextAlignment::Center) startX += (finalSize.x - lineWidth) * 0.5f;
+                    else if (textComp->alignment == TextAlignment::Right) startX += (finalSize.x - lineWidth);
 
                     float x = startX;
+                    
+                    glm::vec2 pivotPos = finalPos + transform.pivot * finalSize;
+                    float rotRads = glm::radians(transform.rotation);
+                    float cosR = cos(rotRads);
+                    float sinR = sin(rotRads);
+                    
+                    auto rotatePt = [&](float px, float py) -> glm::vec2 {
+                        if (transform.rotation == 0.0f) return {px, py};
+                        float dx = px - pivotPos.x;
+                        float dy = py - pivotPos.y;
+                        return {
+                            pivotPos.x + dx * cosR - dy * sinR,
+                            pivotPos.y + dx * sinR + dy * cosR
+                        };
+                    };
+
                     for (char c : line)
                     {
                         const Character &ch = textComp->font->GetCharacter(c);
@@ -171,14 +210,19 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
                         float w = ch.size.x * scale;
                         float h = ch.size.y * scale;
 
-                        std::vector<float> vertices = {
-                            xpos, ypos - h, 0.0f, 0.0f,
-                            xpos, ypos, 0.0f, 1.0f,
-                            xpos + w, ypos, 1.0f, 1.0f,
+                        glm::vec2 p1 = rotatePt(xpos, ypos - h);
+                        glm::vec2 p2 = rotatePt(xpos, ypos);
+                        glm::vec2 p3 = rotatePt(xpos + w, ypos);
+                        glm::vec2 p4 = rotatePt(xpos + w, ypos - h);
 
-                            xpos, ypos - h, 0.0f, 0.0f,
-                            xpos + w, ypos, 1.0f, 1.0f,
-                            xpos + w, ypos - h, 1.0f, 0.0f};
+                        std::vector<float> vertices = {
+                            p1.x, p1.y, 0.0f, 0.0f,
+                            p2.x, p2.y, 0.0f, 1.0f,
+                            p3.x, p3.y, 1.0f, 1.0f,
+
+                            p1.x, p1.y, 0.0f, 0.0f,
+                            p3.x, p3.y, 1.0f, 1.0f,
+                            p4.x, p4.y, 1.0f, 0.0f};
 
                         textComp->model->DrawDynamic(*currentShader, ch.textureID, textComp->color, vertices);
                         x += (ch.advance >> 6) * scale;
@@ -201,6 +245,7 @@ void UIRenderSystem::UpdateLayout(Scene &scene, float screenWidth, float screenH
     {
         auto &flex = view.get<UIFlexLayoutComponent>(entity);
         auto &hierarchy = view.get<HierarchyComponent>(entity);
+        auto &parentTransform = view.get<UITransformComponent>(entity);
         
         if (hierarchy.children.empty()) continue;
 
@@ -227,6 +272,16 @@ void UIRenderSystem::UpdateLayout(Scene &scene, float screenWidth, float screenH
                 childTransform.offsetMin = glm::vec2(-childTransform.size.x * 0.5f, currentOffset);
                 childTransform.offsetMax = glm::vec2(childTransform.size.x * 0.5f, currentOffset + childTransform.size.y);
                 currentOffset += childTransform.size.y + flex.spacing;
+            }
+        }
+
+        if (flex.autoSize) {
+            if (flex.direction == FlexDirection::Row) {
+                float totalWidth = currentOffset - flex.spacing + flex.padding.z;
+                parentTransform.size.x = totalWidth;
+            } else {
+                float totalHeight = currentOffset - flex.spacing + flex.padding.w;
+                parentTransform.size.y = totalHeight;
             }
         }
     }

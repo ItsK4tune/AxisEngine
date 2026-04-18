@@ -31,9 +31,10 @@ void DefaultCameraController::OnUpdate(float dt)
     float delta = GetRealDeltaTime();
 
     CursorMode mode = mouse.GetCursorMode();
-    bool canControl = true;
+    // Only rotate camera when cursor is not Disabled (panel hover)
+    bool canRotate = (mode != CursorMode::Disabled);
 
-    if (canControl)
+    if (canRotate)
     {
         const AppConfig& config = GetConfig();
         

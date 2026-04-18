@@ -1,12 +1,11 @@
 #include <editor/editor_system.h>
-#include <ecs/logic/debug/i_debug_module.h>
-#include <ecs/logic/debug/modules/general_debug_module.h>
-#include <ecs/logic/debug/modules/overlay_debug_module.h>
-#include <ecs/logic/debug/modules/render_debug_module.h>
-#include <ecs/logic/debug/modules/physics_debug_module.h>
-#include <ecs/logic/debug/modules/gizmo_debug_module.h>
-#include <ecs/logic/debug/modules/camera_debug_module.h>
-#include <ecs/logic/debug/modules/shadow_debug_module.h>
+#include <editor/i_editor_module.h>
+#include <editor/modules/general_editor_module.h>
+#include <editor/modules/render_editor_module.h>
+#include <editor/modules/physics_editor_module.h>
+#include <editor/modules/gizmo_editor_module.h>
+#include <editor/modules/camera_editor_module.h>
+#include <editor/modules/shadow_editor_module.h>
 #include <core/logic/service_locator.h>
 #include <ecs/logic/system_factory.h>
 
@@ -14,7 +13,11 @@
 
 #include <platform/logic/io_handler.h>
 #include <core/logic/logger.h>
+#include <core/app/runtime_core.h>
 #include <scene/logic/scene.h>
+#include <scene/logic/scene_manager.h>
+#include <filesystem>
+#include <map>
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <render/interface/i_graphics_context.h>
@@ -29,9 +32,10 @@
 #include <editor/panels/stats_panel.h>
 #include <editor/panels/tools_panel.h>
 #include <editor/panels/settings_panel.h>
-#include <editor/panels/code_editor_panel.h>
+#include <editor/panels/file_hierarchy_panel.h>
+#include <editor/panels/help_panel.h>
 
-EditorSystem::EditorSystem() {}
+EditorSystem::EditorSystem() : m_PreHoverCursorMode(CursorMode::Normal) {}
 EditorSystem::~EditorSystem() {}
 
 REGISTER_SYSTEM(EditorSystem)
@@ -56,33 +60,28 @@ void EditorSystem::Initialize()
 
     LOGGER_INFO("EditorSystem") << "Initializing legacy debug modules for backend...";
 
-    auto generalModule = std::make_unique<GeneralDebugModule>();
+    auto generalModule = std::make_unique<GeneralEditorModule>();
     generalModule->Initialize();
     m_Modules.push_back(std::move(generalModule));
 
-    auto overlayModule = std::make_unique<OverlayDebugModule>();
-    overlayModule->Initialize();
-    overlayModule->SetSharedResources(debugFont, textShader, textQuad);
-    m_Modules.push_back(std::move(overlayModule));
-
-    auto renderModule = std::make_unique<RenderDebugModule>();
+    auto renderModule = std::make_unique<RenderEditorModule>();
     renderModule->Initialize();
     m_Modules.push_back(std::move(renderModule));
 
-    auto physicsModule = std::make_unique<PhysicsDebugModule>();
+    auto physicsModule = std::make_unique<PhysicsEditorModule>();
     physicsModule->Initialize();
     m_Modules.push_back(std::move(physicsModule));
 
-    auto gizmoModule = std::make_unique<GizmoDebugModule>();
+    auto gizmoModule = std::make_unique<GizmoEditorModule>();
     gizmoModule->Initialize();
     gizmoModule->SetSharedResources(debugFont, textShader, textQuad);
     m_Modules.push_back(std::move(gizmoModule));
 
-    auto cameraModule = std::make_unique<CameraDebugModule>();
+    auto cameraModule = std::make_unique<CameraEditorModule>();
     cameraModule->Initialize();
     m_Modules.push_back(std::move(cameraModule));
 
-    auto shadowModule = std::make_unique<ShadowDebugModule>();
+    auto shadowModule = std::make_unique<ShadowEditorModule>();
     shadowModule->Initialize();
     m_Modules.push_back(std::move(shadowModule));
 
@@ -103,7 +102,8 @@ void EditorSystem::Initialize()
     m_Panels.push_back(std::make_unique<StatsPanel>());
     m_Panels.push_back(std::make_unique<ToolsPanel>());
     m_Panels.push_back(std::make_unique<SettingsPanel>());
-    m_Panels.push_back(std::make_unique<CodeEditorPanel>());
+    m_Panels.push_back(std::make_unique<FileHierarchyPanel>());
+    m_Panels.push_back(std::make_unique<HelpPanel>());
 
     for (auto& panel : m_Panels) {
         panel->Initialize();
@@ -136,6 +136,36 @@ void EditorSystem::OnUpdate(float dt)
     for (auto& panel : m_Panels) {
         if (panel->IsOpen()) {
             panel->OnUpdate(dt);
+        }
+    }
+
+    // Auto Reload Scene Feature
+    static float reloadTimer = 0.0f;
+    reloadTimer += dt;
+    if (reloadTimer >= 1.0f) {
+        reloadTimer = 0.0f;
+        auto& sm = ServiceLocator::Instance().Require<SceneManager>();
+        static std::map<std::string, std::filesystem::file_time_type> fileWrites;
+        for (const auto& rec : sm.GetAllScenes()) {
+            if (!rec.filePath.empty() && std::filesystem::exists(rec.filePath)) {
+                auto lwT = std::filesystem::last_write_time(rec.filePath);
+                if (fileWrites.find(rec.filePath) != fileWrites.end()) {
+                    if (lwT > fileWrites[rec.filePath]) {
+                        LOGGER_INFO("Editor") << "Auto-Reloading modified scene: " << rec.filePath;
+                        sm.QueueChangeScene(rec.filePath);
+                    }
+                }
+                fileWrites[rec.filePath] = lwT;
+            }
+        }
+    }
+
+    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>()) {
+        auto mode = io->GetMouse().GetCursorMode();
+        if (mode == CursorMode::Hidden || mode == CursorMode::Locked || mode == CursorMode::LockedHidden) {
+            ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+        } else {
+            ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
         }
     }
 }
@@ -188,6 +218,30 @@ void EditorSystem::RenderUIPass(Scene& scene, float width, float height, IRender
     }
 
     ImGui::End(); // DockSpace
+
+    // Auto-switch cursor to Disabled when hovering any editor panel
+    auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>();
+    if (ioHandler) {
+        auto& mouse = ioHandler->GetMouse();
+        bool hoveringPanel = ImGui::GetIO().WantCaptureMouse;
+        CursorMode mode = mouse.GetCursorMode();
+        
+        if (hoveringPanel && !m_WasHoveringPanel) {
+            // Just entered panel
+            m_PreHoverCursorMode = mode;
+            if (mode != CursorMode::Disabled) {
+                mouse.SetCursorMode(CursorMode::Disabled);
+            }
+            m_WasHoveringPanel = true;
+        } else if (!hoveringPanel && m_WasHoveringPanel) {
+            // Just exited panel
+            if (mode == CursorMode::Disabled) {
+                mouse.SetCursorMode(m_PreHoverCursorMode);
+            }
+            m_WasHoveringPanel = false;
+        }
+    }
+
     m_ImGuiLayer.EndFrame();
 }
 
@@ -197,19 +251,55 @@ void EditorSystem::DrawMenuBar()
     {
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("Exit")) {}
+            if (ImGui::MenuItem("Exit")) {
+                auto core = ServiceLocator::Instance().Resolve<RuntimeCore>();
+                if (core) core->GetEngineLoop().Stop();
+            }
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Windows"))
+        if (ImGui::BeginMenu("View"))
         {
             for (auto& panel : m_Panels) {
-                bool open = panel->IsOpen();
-                if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open)) {
-                    panel->SetOpen(open);
+                if (panel->GetTitle() == "Scene Hierarchy" || panel->GetTitle() == "Resource Browser" || panel->GetTitle() == "File Hierarchy") {
+                    bool open = panel->IsOpen();
+                    if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open)) panel->SetOpen(open);
+                }
+            }
+            ImGui::Separator();
+            for (auto& panel : m_Panels) {
+                if (panel->GetTitle() == "Stats" || panel->GetTitle() == "Settings" || panel->GetTitle() == "Tools") {
+                    bool open = panel->IsOpen();
+                    if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open)) panel->SetOpen(open);
                 }
             }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Help"))
+        {
+            for (auto& panel : m_Panels) {
+                if (panel->GetTitle() == "Help") {
+                    bool open = panel->IsOpen();
+                    if (ImGui::MenuItem("Debug Controls", nullptr, &open)) panel->SetOpen(open);
+                }
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("About AxisEngine")) {
+                ImGui::OpenPopup("About AxisEngine");
+            }
+            ImGui::EndMenu();
+        }
+        
+        // About Modal
+        if (ImGui::BeginPopupModal("About AxisEngine", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("AxisEngine - Advanced 5-Layer ECS Engine");
+            ImGui::Separator();
+            ImGui::Text("Developed by Duong.");
+            ImGui::Text("Build: Debug/Dev");
+            if (ImGui::Button("Close", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+            ImGui::EndPopup();
+        }
+
         ImGui::EndMenuBar();
     }
 }
