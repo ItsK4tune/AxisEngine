@@ -22,8 +22,9 @@
 #include <scene/logic/scene.h>
 #include <core/logic/logger.h>
 #include <engine/platform/logic/io_handler.h>
-#include <engine/audio/logic/audio_service.h>
+#include <audio/interface/i_audio_engine.h>
 #include <algorithm>
+#include <stdexcept>
 
 SystemManager::SystemManager()
 {
@@ -120,9 +121,8 @@ void SystemManager::Initialize(ResourceManager &res, int width, int height)
     if (sl.Has<IGraphicsContext>()) m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Graphics);
     if (sl.Has<IOHandler>())       m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Input);
     
-    // Audio check: only available if service exists and engine is valid (dummy removal handles rest)
-    auto* audioSvc = sl.Resolve<AudioService>();
-    if (audioSvc && audioSvc->GetEngine()) {
+    // Audio check: only available if IAudioEngine service is registered
+    if (sl.Has<IAudioEngine>()) {
         m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Audio);
     }
 
@@ -193,7 +193,7 @@ void SystemManager::Shutdown()
 void SystemManager::FixedUpdate(Scene& scene, float fixedDt)
 {
     for (auto* sys : m_UpdateSystems) {
-        if (sys->IsEnabled() && sys->GetPriority() < 20) {
+        if (sys->IsEnabled() && sys->WantsFixedUpdate()) {
             sys->FixedUpdate(scene, fixedDt);
         }
     }
@@ -271,6 +271,22 @@ void SystemManager::RebuildExecutionBatches()
 
         if (!added) {
             m_UpdateBatches.push_back({{sys}});
+        }
+    }
+
+    // Safety Audit: Verify compiled batches do not contain internal conflicts
+    for (size_t i = 0; i < m_UpdateBatches.size(); ++i) {
+        const auto& batch = m_UpdateBatches[i];
+        for (size_t j = 0; j < batch.systems.size(); ++j) {
+            for (size_t k = j + 1; k < batch.systems.size(); ++k) {
+                if (SystemsConflict(batch.systems[j], batch.systems[k])) {
+                    LOGGER_ERROR("SystemManager") << "ECS Safety Violation: " 
+                        << batch.systems[j]->GetName() << " and "
+                        << batch.systems[k]->GetName() 
+                        << " conflict in the same parallel batch!";
+                    throw std::runtime_error("SystemManager: Parallel batch contains conflicting ECS queries! Possible Data Race.");
+                }
+            }
         }
     }
 
@@ -369,18 +385,15 @@ void SystemManager::RenderDebug(Scene& scene)
     for (auto& sys : m_Systems) {
         if (!sys->IsEnabled()) continue;
         
-        // Explicitly drawing DebugSystem overlay if present
-        if (sys->GetName() == "EditorSystem") {
+        if ((sys->GetCategory() & SystemCategory::EditorOverlay) != SystemCategory::None) {
             auto* context = ServiceLocator::Instance().Resolve<IGraphicsContext>();
             if (context) {
-                // Width/Height from window
                 auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
                 if (io) {
                     int w = io->GetMonitorManager().GetWidth();
                     int h = io->GetMonitorManager().GetHeight();
                     auto& rsm = context->GetRenderStateManager();
                     
-                    // We call RenderUIPass directly for DebugSystem if it's the DebugSystem
                     if (auto* renderSys = dynamic_cast<IRenderSystem*>(sys.get())) {
                         renderSys->RenderUIPass(scene, (float)w, (float)h, rsm);
                     }

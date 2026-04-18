@@ -14,6 +14,7 @@ public:
     void OnUpdate(float dt) override {}
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override { return "File Hierarchy"; }
+    PanelGroup GetGroup() const override { return PanelGroup::Scene; }
 
 private:
     void DrawPreview();

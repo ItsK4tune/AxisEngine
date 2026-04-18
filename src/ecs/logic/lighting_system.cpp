@@ -100,7 +100,7 @@ void LightingSystem::Render(Scene& scene)
 
 void LightingSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
 {
-    Render(scene);
+    // LightingSystem doesn't have alpha geometry - no-op
 }
 
 void LightingSystem::UploadLightData(const RenderSceneData& sceneData, Shader* shader)

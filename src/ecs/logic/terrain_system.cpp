@@ -32,6 +32,9 @@ void TerrainSystem::Initialize() {
 
         }
     });
+    EventManager::Instance().Subscribe<DebugNoTextureChangedEvent>([this](const DebugNoTextureChangedEvent& e) {
+        SetDebugNoTexture(e.enabled);
+    });
 }
 
 void TerrainSystem::Shutdown() {

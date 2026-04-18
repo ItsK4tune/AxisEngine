@@ -6,9 +6,8 @@
 #include <Windows.h>
 #include <core/logic/logger_types.h>
 #include <core/type/event_types.h>
-#include <core/logic/service_locator.h>
-#include <core/logic/event_manager.h>
-
+#include <memory>
+#include <mutex>
 class TeeBuf : public std::streambuf {
 public:
     TeeBuf(std::streambuf* sb1, std::streambuf* sb2) : sb1(sb1), sb2(sb2) {}

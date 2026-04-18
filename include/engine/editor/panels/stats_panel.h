@@ -17,6 +17,7 @@ public:
     }
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override { return "Stats"; }
+    PanelGroup GetGroup() const override { return PanelGroup::Debug; }
 
 private:
     float m_Fps       = 0.0f;

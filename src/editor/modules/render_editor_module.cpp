@@ -5,18 +5,14 @@
 
 #include <core/app/application.h>
 #include <platform/logic/input_manager.h>
-#include <ecs/logic/render_system.h>
-#include <ecs/logic/terrain_system.h>
-#include <ecs/logic/skybox_render_system.h>
-#include <ecs/logic/ui_render_system.h>
 #include <iostream>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <core/logic/service_locator.h>
-#include <ecs/logic/system_manager.h>
-#include <editor/editor_system.h>
+#include <core/logic/event_manager.h>
+#include <core/type/event_types.h>
 RenderEditorModule::RenderEditorModule() {}
 RenderEditorModule::~RenderEditorModule() {}
 
@@ -43,10 +39,10 @@ void RenderEditorModule::ProcessInput(KeyboardManager &keyboard)
                {
         bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
         if (shift) {
-            auto& systems = ServiceLocator::Instance().Require<SystemManager>();
+            auto& sl = ServiceLocator::Instance();
             static bool skyboxEnabled = true;
             skyboxEnabled = !skyboxEnabled;
-            systems.GetSystem<SkyboxRenderSystem>()->SetEnabled(skyboxEnabled);
+            EventManager::Instance().Publish(SystemEnabledEvent{"SkyboxRenderSystem", skyboxEnabled});
         } else {
             auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
             if (!cm) return;
@@ -71,7 +67,7 @@ void RenderEditorModule::ProcessInput(KeyboardManager &keyboard)
              auto* renderSys = sl.Resolve<IRenderService>();
              m_NoTextureMode = !m_NoTextureMode;
              if (renderSys) renderSys->SetDebugNoTexture(m_NoTextureMode);
-             sl.Require<SystemManager>().GetSystem<TerrainSystem>()->SetDebugNoTexture(m_NoTextureMode);
+             EventManager::Instance().Publish(DebugNoTextureChangedEvent{m_NoTextureMode});
          } });
 
     ProcessKey(keyboard, Key::F9, m_F9Pressed, [this, &keyboard]()
@@ -80,10 +76,10 @@ void RenderEditorModule::ProcessInput(KeyboardManager &keyboard)
         if (shift) {
 
         } else {
-            auto& systems = ServiceLocator::Instance().Require<SystemManager>();
+            auto& sl = ServiceLocator::Instance();
             static bool uiEnabled = true;
             uiEnabled = !uiEnabled;
-            systems.GetSystem<UIRenderSystem>()->SetEnabled(uiEnabled);
+            EventManager::Instance().Publish(SystemEnabledEvent{"UIRenderSystem", uiEnabled});
         } });
 }
 

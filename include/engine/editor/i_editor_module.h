@@ -1,8 +1,9 @@
 #pragma once
 
-#include <platform/logic/input_manager.h>
-#include <scene/logic/scene.h>
 #include <string>
+
+struct Scene;
+class KeyboardManager;
 
 class IEditorModule {
 public:

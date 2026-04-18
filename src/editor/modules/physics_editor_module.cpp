@@ -8,8 +8,6 @@
 #include <core/app/application.h>
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
-#include <ecs/logic/physics_system.h>
-#include <scene/logic/scene.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/media_components.h>
 
@@ -26,8 +24,9 @@
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <ecs/logic/entity_manager.h>
-#include <editor/editor_system.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/event_manager.h>
+#include <core/type/event_types.h>
 PhysicsEditorModule::PhysicsEditorModule() {}
 PhysicsEditorModule::~PhysicsEditorModule() {}
 
@@ -63,13 +62,7 @@ void PhysicsEditorModule::Render(Scene &scene)
     
     if (showPhysics)
     {
-        auto* graphics = sl.Resolve<IGraphicsContext>();
-        auto* physics_sys = sl.Resolve<PhysicsSystem>();
-        auto debugShader = resources.GetShader("debug_line");
-        if (debugShader && physics_sys && graphics)
-        {
-            physics_sys->RenderDebug(scene, *debugShader, width, height, graphics->GetRenderStateManager());
-        }
+        EventManager::Instance().Publish(PhysicsDebugRenderEvent{&scene, width, height});
     }
 
     if (!showAudio && !showParticle)

@@ -18,7 +18,8 @@ enum class SystemCategory {
     AllRender = RenderAlpha | RenderMain | RenderTransparent | RenderUI,
     Core = 1 << 9,
     PostProcess = 1 << 10,
-    RenderCapture = 1 << 11
+    RenderCapture = 1 << 11,
+    EditorOverlay = 1 << 12
 };
 
 inline SystemCategory operator|(SystemCategory a, SystemCategory b) {
@@ -65,4 +66,5 @@ public:
     virtual void SetSleep(bool sleep) {}
     virtual int GetPriority() const { return 0; }
     virtual std::string GetName() const = 0;
+    virtual bool WantsFixedUpdate() const { return false; }
 };

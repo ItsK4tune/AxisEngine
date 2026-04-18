@@ -13,6 +13,7 @@ public:
     void Initialize() override {}
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override { return "File Hierarchy"; }
+    PanelGroup GetGroup() const override { return PanelGroup::Tools; }
 
 private:
     void DrawDirectory(const std::filesystem::path& dirPath);

@@ -11,6 +11,7 @@ public:
     void Initialize() override {}
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override { return "Resources"; }
+    PanelGroup GetGroup() const override { return PanelGroup::Scene; }
 
 private:
     int m_ActiveTab = 0;

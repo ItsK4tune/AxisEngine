@@ -22,6 +22,8 @@
 #include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/type/app_config.h>
+#include <resource/logic/resource_manager.h>
+#include <render/interface/i_graphics_context.h>
 
 PhysicsSystem::PhysicsSystem() {}
 PhysicsSystem::~PhysicsSystem() {}
@@ -53,6 +55,18 @@ void PhysicsSystem::Initialize()
             phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
             phys_inner->SetSolverIterations(cfg.solverIterations);
             phys_inner->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
+        }
+    });
+
+    EventManager::Instance().Subscribe<PhysicsDebugRenderEvent>([this](const PhysicsDebugRenderEvent& e) {
+        if (!m_Enabled || !e.scene) return;
+        auto& sl = ServiceLocator::Instance();
+        if (auto* graphics = sl.Resolve<IGraphicsContext>()) {
+            if (auto* resources = sl.Resolve<ResourceManager>()) {
+                if (auto debugShader = resources->GetShader("debug_line")) {
+                    RenderDebug(*e.scene, *debugShader, e.width, e.height, graphics->GetRenderStateManager());
+                }
+            }
         }
     });
 }

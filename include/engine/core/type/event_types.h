@@ -88,3 +88,13 @@ struct FrameRenderData {
 struct FrameRenderDataEvent {
     FrameRenderData data;
 };
+
+struct DebugNoTextureChangedEvent {
+    bool enabled;
+};
+
+struct PhysicsDebugRenderEvent {
+    struct Scene* scene;
+    int width;
+    int height;
+};

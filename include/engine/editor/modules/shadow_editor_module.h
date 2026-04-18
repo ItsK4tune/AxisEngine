@@ -2,8 +2,11 @@
 
 #include <editor/i_editor_module.h>
 #include <string>
+#include <functional>
+#include <platform/interface/input_codes.h>
 
 class Application;
+class KeyboardManager;
 
 #ifdef ENABLE_EDITOR
 

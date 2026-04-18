@@ -1,7 +1,6 @@
 #pragma once
 
 #include <editor/i_editor_module.h>
-#include <editor/editor_system.h>
 #include <entt/entity/entity.hpp>
 #include <functional>
 #include <glm/glm.hpp>

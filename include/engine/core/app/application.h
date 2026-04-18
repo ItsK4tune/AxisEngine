@@ -11,37 +11,9 @@
 #include <vector>
 
 struct Scene;
-
-
-class AnimationSystem;
-class AudioService;
-class AudioSystem;
-class IGraphicsContext;
-class InputManager;
-class IOHandler;
-class IPhysicsWorld;
-class KeyboardManager;
-class MonitorManager;
-class MouseManager;
-class ParticleSystem;
-class PhysicsSystem;
-class PostProcessPipeline;
-class RenderSystem;
-class ResourceManager;
-struct Scene;
-class SceneManager;
-class ScriptableSystem;
-class ConfigManager;
-class SkyboxRenderSystem;
-class State;
 class StateMachine;
-class SystemManager;
-class UIRenderSystem;
-class VideoSystem;
-
-
-
-class CollisionMatrix;
+class IGraphicsContext;
+class IPhysicsWorld;
 class Application
 {
 public:

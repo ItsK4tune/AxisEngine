@@ -35,7 +35,7 @@ public:
     void Update(Scene& scene, float dt) override { OnUpdate(dt); }
     void OnUpdate(float dt);
     
-    SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::Update; }
+    SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::Update | SystemCategory::EditorOverlay; }
     SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
 
     void Render(Scene& scene) override;
@@ -80,6 +80,8 @@ public:
     void SetEnabled(bool) override {}
     std::string GetName() const override { return "EditorSystem"; }
     int GetPriority() const override { return 1000; }
+    SystemCategory GetCategory() const override { return SystemCategory::EditorOverlay; }
+    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
     
     std::vector<entt::id_type> GetReadComponents() const override { return {}; }
     std::vector<entt::id_type> GetWriteComponents() const override { return {}; }

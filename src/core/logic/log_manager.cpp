@@ -8,7 +8,8 @@
 #include <mutex>
 #include <iostream>
 #include <stdexcept>
-
+#include <core/logic/service_locator.h>
+#include <core/logic/event_manager.h>
 
 void LogManager::Initialize(LogLevel level) {
     SetLogLevel(level);

@@ -29,6 +29,7 @@ public:
     int GetPriority() const override { return 10; }
     std::string GetName() const override { return "PhysicsSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::Physics | SystemCategory::Update; }
+    bool WantsFixedUpdate() const override { return true; }
     PhysicsSystem();
     ~PhysicsSystem();
     IPhysicsWorld& GetPhysicsWorld() const { return *m_LastPhysicsWorld; }

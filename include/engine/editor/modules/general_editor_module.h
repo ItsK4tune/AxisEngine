@@ -4,8 +4,9 @@
 #include <core/type/app_config.h>
 #include <functional>
 #include <platform/interface/input_codes.h>
-#include <scene/logic/scene.h>
 #include <string>
+
+struct Scene;
 
 class Application;
 

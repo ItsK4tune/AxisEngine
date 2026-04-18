@@ -14,6 +14,7 @@ public:
     void Initialize() override {}
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override { return "Scene Hierarchy"; }
+    PanelGroup GetGroup() const override { return PanelGroup::Scene; }
 
 private:
     void DrawEntityNode(Scene& scene, entt::entity entity);

@@ -22,6 +22,7 @@ public:
 
     std::string GetName() const override { return "TransformSystem"; }
     int GetPriority() const override { return 10; }
+    bool WantsFixedUpdate() const override { return true; }
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

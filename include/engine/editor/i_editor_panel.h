@@ -3,6 +3,8 @@
 #include <string>
 struct Scene;
 
+enum class PanelGroup { Scene, Debug, Tools, Help };
+
 class IEditorPanel
 {
 public:
@@ -11,6 +13,7 @@ public:
     virtual void OnUpdate(float dt) {}
     virtual void OnImGui(Scene& scene) = 0;
     virtual std::string GetTitle() const = 0;
+    virtual PanelGroup GetGroup() const = 0;
     virtual bool IsOpen() const { return m_Open; }
     virtual void SetOpen(bool v) { m_Open = v; }
 

@@ -43,7 +43,6 @@ REGISTER_SYSTEM(EditorSystem)
 void EditorSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
-    sl.Register<EditorSystem>(this);
     auto* res = sl.Resolve<ResourceManager>();
     if (!res) {
         LOGGER_WARN("EditorSystem") << "Skipping full initialization (missing ResourceManager)";
@@ -168,6 +167,27 @@ void EditorSystem::OnUpdate(float dt)
             ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
         }
     }
+
+    // Cursor management (moved from RenderUIPass — platform concern belongs in Update)
+    auto* ioHandler2 = ServiceLocator::Instance().Resolve<IOHandler>();
+    if (ioHandler2) {
+        auto& mouse = ioHandler2->GetMouse();
+        bool hoveringPanel = ImGui::GetIO().WantCaptureMouse;
+        CursorMode mode = mouse.GetCursorMode();
+        
+        if (hoveringPanel && !m_WasHoveringPanel) {
+            m_PreHoverCursorMode = mode;
+            if (mode != CursorMode::Disabled) {
+                mouse.SetCursorMode(CursorMode::Disabled);
+            }
+            m_WasHoveringPanel = true;
+        } else if (!hoveringPanel && m_WasHoveringPanel) {
+            if (mode == CursorMode::Disabled) {
+                mouse.SetCursorMode(m_PreHoverCursorMode);
+            }
+            m_WasHoveringPanel = false;
+        }
+    }
 }
 
 void EditorSystem::Render(Scene& scene)
@@ -219,29 +239,6 @@ void EditorSystem::RenderUIPass(Scene& scene, float width, float height, IRender
 
     ImGui::End(); // DockSpace
 
-    // Auto-switch cursor to Disabled when hovering any editor panel
-    auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>();
-    if (ioHandler) {
-        auto& mouse = ioHandler->GetMouse();
-        bool hoveringPanel = ImGui::GetIO().WantCaptureMouse;
-        CursorMode mode = mouse.GetCursorMode();
-        
-        if (hoveringPanel && !m_WasHoveringPanel) {
-            // Just entered panel
-            m_PreHoverCursorMode = mode;
-            if (mode != CursorMode::Disabled) {
-                mouse.SetCursorMode(CursorMode::Disabled);
-            }
-            m_WasHoveringPanel = true;
-        } else if (!hoveringPanel && m_WasHoveringPanel) {
-            // Just exited panel
-            if (mode == CursorMode::Disabled) {
-                mouse.SetCursorMode(m_PreHoverCursorMode);
-            }
-            m_WasHoveringPanel = false;
-        }
-    }
-
     m_ImGuiLayer.EndFrame();
 }
 
@@ -260,14 +257,14 @@ void EditorSystem::DrawMenuBar()
         if (ImGui::BeginMenu("View"))
         {
             for (auto& panel : m_Panels) {
-                if (panel->GetTitle() == "Scene Hierarchy" || panel->GetTitle() == "Resource Browser" || panel->GetTitle() == "File Hierarchy") {
+                if (panel->GetGroup() == PanelGroup::Scene) {
                     bool open = panel->IsOpen();
                     if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open)) panel->SetOpen(open);
                 }
             }
             ImGui::Separator();
             for (auto& panel : m_Panels) {
-                if (panel->GetTitle() == "Stats" || panel->GetTitle() == "Settings" || panel->GetTitle() == "Tools") {
+                if (panel->GetGroup() == PanelGroup::Debug || panel->GetGroup() == PanelGroup::Tools) {
                     bool open = panel->IsOpen();
                     if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open)) panel->SetOpen(open);
                 }
@@ -277,9 +274,9 @@ void EditorSystem::DrawMenuBar()
         if (ImGui::BeginMenu("Help"))
         {
             for (auto& panel : m_Panels) {
-                if (panel->GetTitle() == "Help") {
+                if (panel->GetGroup() == PanelGroup::Help) {
                     bool open = panel->IsOpen();
-                    if (ImGui::MenuItem("Debug Controls", nullptr, &open)) panel->SetOpen(open);
+                    if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open)) panel->SetOpen(open);
                 }
             }
             ImGui::Separator();
