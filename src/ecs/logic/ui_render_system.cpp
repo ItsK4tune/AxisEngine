@@ -36,24 +36,37 @@ UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screen
         }
     }
 
+    auto evalVec = [](const glm::vec2& v, const glm::bvec2& p, const glm::vec2& ref) {
+        return glm::vec2(
+            p.x ? (v.x * 0.01f * ref.x) : v.x,
+            p.y ? (v.y * 0.01f * ref.y) : v.y
+        );
+    };
 
-    glm::vec2 anchorMinPos = parentPos + transform.anchorMin * parentSize;
-    glm::vec2 anchorMaxPos = parentPos + transform.anchorMax * parentSize;
+    glm::vec2 evalAnchorMin = evalVec(transform.anchorMin, transform.anchorMinIsPercent, glm::vec2(1.0f));
+    glm::vec2 evalAnchorMax = evalVec(transform.anchorMax, transform.anchorMaxIsPercent, glm::vec2(1.0f));
 
+    glm::vec2 anchorMinPos = parentPos + evalAnchorMin * parentSize;
+    glm::vec2 anchorMaxPos = parentPos + evalAnchorMax * parentSize;
 
-    glm::vec2 finalMin = anchorMinPos + transform.offsetMin;
-    glm::vec2 finalMax = anchorMaxPos + transform.offsetMax;
+    glm::vec2 evalOffsetMin = evalVec(transform.offsetMin, transform.offsetMinIsPercent, parentSize);
+    glm::vec2 evalOffsetMax = evalVec(transform.offsetMax, transform.offsetMaxIsPercent, parentSize);
+
+    glm::vec2 finalMin = anchorMinPos + evalOffsetMin;
+    glm::vec2 finalMax = anchorMaxPos + evalOffsetMax;
 
     // Apply explicit position offset independently of the layout system
-    finalMin += transform.position;
-    finalMax += transform.position;
+    glm::vec2 evalPos = evalVec(transform.position, transform.positionIsPercent, parentSize);
+    finalMin += evalPos;
+    finalMax += evalPos;
 
-    // If anchors are equal, use transform.size to strictly define bounds!
-    if (transform.anchorMin.x == transform.anchorMax.x) {
-        finalMax.x = finalMin.x + transform.size.x;
+    // If anchors are equal, use evaluate size to strictly define bounds!
+    glm::vec2 evalSize = evalVec(transform.size, transform.sizeIsPercent, parentSize);
+    if (evalAnchorMin.x == evalAnchorMax.x) {
+        finalMax.x = finalMin.x + evalSize.x;
     }
-    if (transform.anchorMin.y == transform.anchorMax.y) {
-        finalMax.y = finalMin.y + transform.size.y;
+    if (evalAnchorMin.y == evalAnchorMax.y) {
+        finalMax.y = finalMin.y + evalSize.y;
     }
 
     glm::vec2 size = finalMax - finalMin;
@@ -85,8 +98,15 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
     renderState.SetPolygonMode(CullMode::FrontAndBack, PolygonMode::Fill);
 
 
-    // Call UpdateLayout to enforce FlexLayout rules
-    UpdateLayout(scene, screenWidth, screenHeight);
+    // Canvas Scaler: "Scale With Screen Size" based on 1920x1080 reference
+    const float REF_WIDTH = 1920.0f;
+    const float REF_HEIGHT = 1080.0f;
+    float scaleFactor = std::min(screenWidth / REF_WIDTH, screenHeight / REF_HEIGHT);
+    float virtualWidth = screenWidth / scaleFactor;
+    float virtualHeight = screenHeight / scaleFactor;
+
+    // Execute layout rules against virtual resolution
+    UpdateLayout(scene, virtualWidth, virtualHeight);
 
     std::vector<entt::entity> sortedEntities;
     auto view = scene.registry.view<UITransformComponent>();
@@ -96,13 +116,13 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
         return view.get<UITransformComponent>(a).zIndex < view.get<UITransformComponent>(b).zIndex;
     });
 
-    glm::mat4 projection = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -1.0f, 1.0f);
+    glm::mat4 projection = glm::ortho(0.0f, virtualWidth, virtualHeight, 0.0f, -1.0f, 1.0f);
     Shader *currentShader = nullptr;
 
     for (auto entity : sortedEntities)
     {
         auto &transform = view.get<UITransformComponent>(entity);
-        UIRect rect = CalculateRect(scene.registry, entity, screenWidth, screenHeight);
+        UIRect rect = CalculateRect(scene.registry, entity, virtualWidth, virtualHeight);
 
         // Apply Position natively in CalculateRect, but rotation happens here
         glm::vec2 finalPos = rect.pos;

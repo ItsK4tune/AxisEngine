@@ -7,35 +7,49 @@
 #include <resource/unit/ui_model.h>
 #include <resource/unit/font.h>
 
-
-
-enum class TextAlignment { Left, Center, Right };
-enum class VerticalAlignment { Top, Center, Bottom };
-enum class FlexDirection { Row, Column };
-
-
+enum class TextAlignment
+{
+    Left,
+    Center,
+    Right
+};
+enum class VerticalAlignment
+{
+    Top,
+    Center,
+    Bottom
+};
+enum class FlexDirection
+{
+    Row,
+    Column
+};
 
 struct UITransformComponent
 {
     glm::vec2 position = glm::vec2(0.0f);
+    glm::bvec2 positionIsPercent = glm::bvec2(false);
+
     glm::vec2 size = glm::vec2(100.0f, 100.0f);
+    glm::bvec2 sizeIsPercent = glm::bvec2(false);
+
     float rotation = 0.0f;
     int zIndex = 0;
 
     glm::vec2 pivot = glm::vec2(0.5f);
     
+    glm::vec2 anchorMin = glm::vec2(0.5f);
+    glm::bvec2 anchorMinIsPercent = glm::bvec2(false);
 
-    glm::vec2 anchorMin = glm::vec2(0.5f); 
     glm::vec2 anchorMax = glm::vec2(0.5f);
-    
+    glm::bvec2 anchorMaxIsPercent = glm::bvec2(false);
 
-    glm::vec2 offsetMin = glm::vec2(-50.0f, -50.0f); 
+    glm::vec2 offsetMin = glm::vec2(-50.0f, -50.0f);
+    glm::bvec2 offsetMinIsPercent = glm::bvec2(false);
+
     glm::vec2 offsetMax = glm::vec2(50.0f, 50.0f);
-
-    bool usePercentage = false;
+    glm::bvec2 offsetMaxIsPercent = glm::bvec2(false);
 };
-
-
 
 struct UIRendererComponent
 {
@@ -44,8 +58,6 @@ struct UIRendererComponent
     std::shared_ptr<Texture> texture = nullptr;
     glm::vec4 color = glm::vec4(1.0f);
 };
-
-
 
 struct UITextComponent
 {
@@ -61,8 +73,6 @@ struct UITextComponent
     bool wordWrap = false;
     float maxWidth = 0.0f;
 };
-
-
 
 struct UIFlexLayoutComponent
 {

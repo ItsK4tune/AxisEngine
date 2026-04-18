@@ -415,29 +415,41 @@ void ComponentLoader::LoadUITransform(Scene &scene, entt::entity entity, const Y
 {
     auto &ui = scene.registry.emplace<UITransformComponent>(entity);
 
-    std::stringstream posSS(node.GetChildValue("Position", "0 0"));
-    posSS >> ui.position.x >> ui.position.y;
+    auto parseVec2Percent = [](const std::string& str, glm::vec2& outVec, glm::bvec2& outPercent, const glm::vec2& defaultVec) {
+        if (str.empty()) {
+            outVec = defaultVec;
+            outPercent = glm::bvec2(false);
+            return;
+        }
+        std::stringstream ss(str);
+        std::string xStr, yStr;
+        ss >> xStr >> yStr;
+        
+        auto parseComp = [](const std::string& s, float& v, bool& p) {
+            if (s.empty()) return;
+            std::string t = s;
+            if (t.back() == '%') {
+                p = true;
+                t.pop_back();
+            } else p = false;
+            try { v = std::stof(t); } catch(...) {}
+        };
+        
+        parseComp(xStr, outVec.x, outPercent.x);
+        parseComp(yStr, outVec.y, outPercent.y);
+    };
 
-    std::stringstream sizeSS(node.GetChildValue("Size", "100 100"));
-    sizeSS >> ui.size.x >> ui.size.y;
+    parseVec2Percent(node.GetChildValue("Position"), ui.position, ui.positionIsPercent, glm::vec2(0.0f));
+    parseVec2Percent(node.GetChildValue("Size"), ui.size, ui.sizeIsPercent, glm::vec2(100.0f));
 
     ui.zIndex = std::stoi(node.GetChildValue("ZOrder", "0"));
     std::string zLabel = node.GetChildValue("zIndex");
     if (!zLabel.empty()) ui.zIndex = std::stoi(zLabel);
-    
-    ui.usePercentage = node.GetChildValue("UsePercentage", "0") == "1" || node.GetChildValue("UsePercentage", "true") == "true";
 
-    std::stringstream aminSS(node.GetChildValue("anchorMin", "0.5 0.5"));
-    aminSS >> ui.anchorMin.x >> ui.anchorMin.y;
-    
-    std::stringstream amaxSS(node.GetChildValue("anchorMax", "0.5 0.5"));
-    amaxSS >> ui.anchorMax.x >> ui.anchorMax.y;
-
-    std::stringstream ominSS(node.GetChildValue("offsetMin", "-50 -50"));
-    ominSS >> ui.offsetMin.x >> ui.offsetMin.y;
-
-    std::stringstream omaxSS(node.GetChildValue("offsetMax", "50 50"));
-    omaxSS >> ui.offsetMax.x >> ui.offsetMax.y;
+    parseVec2Percent(node.GetChildValue("anchorMin"), ui.anchorMin, ui.anchorMinIsPercent, glm::vec2(0.5f));
+    parseVec2Percent(node.GetChildValue("anchorMax"), ui.anchorMax, ui.anchorMaxIsPercent, glm::vec2(0.5f));
+    parseVec2Percent(node.GetChildValue("offsetMin"), ui.offsetMin, ui.offsetMinIsPercent, glm::vec2(-50.0f));
+    parseVec2Percent(node.GetChildValue("offsetMax"), ui.offsetMax, ui.offsetMaxIsPercent, glm::vec2(50.0f));
 
     std::stringstream pivotSS(node.GetChildValue("pivot", "0.5 0.5"));
     pivotSS >> ui.pivot.x >> ui.pivot.y;
