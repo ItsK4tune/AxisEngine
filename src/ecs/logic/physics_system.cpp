@@ -8,6 +8,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 #include <physics/interface/i_physics_world.h>
+#include <physics/interface/i_collision_shape.h>
 #include <physics/logic/collision_matrix.h>
 #include <physics/logic/physics_collision_dispatcher.h>
 #include <physics/logic/physics_transform_sync.h>
@@ -122,7 +123,10 @@ void PhysicsSystem::Update(Scene& scene, float dt)
             }
 
             auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
-            return matrix ? matrix->CanCollide(tagA, tagB, nameA, nameB) : true;
+            if (matrix) {
+                return matrix->CanCollide(tagA, tagB, nameA, nameB);
+            }
+            return true;
         });
 
         scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
@@ -263,6 +267,35 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
         finalShape = physics.CreateSphereShape(shape.radius);
     else if (shape.type == ShapeType::Capsule)
         finalShape = physics.CreateCapsuleShape(shape.radius, shape.height);
+    else if (shape.type == ShapeType::Cylinder)
+        finalShape = physics.CreateCylinderShape(shape.radius, shape.height);
+    else if (shape.type == ShapeType::Mesh)
+    {
+        if (auto* meshComp = scene.registry.try_get<MeshRendererComponent>(entity))
+        {
+            if (meshComp->model)
+            {
+                std::vector<float> vertices;
+                std::vector<uint32_t> indices;
+                for (auto& mesh : meshComp->model->meshes)
+                {
+                    uint32_t offset = (uint32_t)vertices.size() / 3;
+                    for (auto& v : mesh.vertices)
+                    {
+                        vertices.push_back(v.Position.x);
+                        vertices.push_back(v.Position.y);
+                        vertices.push_back(v.Position.z);
+                    }
+                    for (auto idx : mesh.indices)
+                    {
+                        indices.push_back(idx + offset);
+                    }
+                }
+                if (!vertices.empty())
+                    finalShape = physics.CreateMeshShape(vertices, indices);
+            }
+        }
+    }
     else if (shape.type == ShapeType::Compound)
     {
         auto compound = physics.CreateCompoundShape();
@@ -275,6 +308,8 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
                 child = physics.CreateSphereShape(cs.radius);
             else if (cs.type == ShapeType::Capsule)
                 child = physics.CreateCapsuleShape(cs.radius, cs.height);
+            else if (cs.type == ShapeType::Cylinder)
+                child = physics.CreateCylinderShape(cs.radius, cs.height);
             if (child)
                 physics.AddChildShape(compound, child, cs.position, cs.rotation);
         }
@@ -293,6 +328,25 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
 
     if (finalShape)
     {
+        // Fix scaling for Mesh shapes (apply asset-internal scale)
+        if (shape.type == ShapeType::Mesh)
+        {
+            if (auto* meshComp = scene.registry.try_get<MeshRendererComponent>(entity))
+            {
+                if (meshComp->model)
+                {
+                    glm::mat4 rootMtx = meshComp->model->GetRootTransform();
+                    glm::vec3 Rs, Rt, Rskew; glm::quat Rr; glm::vec4 Rperspective;
+                    if (glm::decompose(rootMtx, Rs, Rr, Rt, Rskew, Rperspective))
+                    {
+                        auto* scl = scene.registry.try_get<ScaleComponent>(entity);
+                        glm::vec3 totalScale = Rs * (scl ? scl->value : glm::vec3(1.0f));
+                        finalShape->SetLocalScaling(totalScale);
+                    }
+                }
+            }
+        }
+
         float mass = rb.isStatic || rb.isKinematic ? 0.0f : rb.mass;
         rb.body = physics.CreateRigidBody(mass, worldPos, worldRot, finalShape);
 
@@ -301,6 +355,8 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
             rb.body->SetUserPointer((void*)(uintptr_t)entity);
             if (rb.isKinematic)
                 rb.body->SetKinematic(true);
+            
+            rb.body->SetTrigger(rb.isTrigger);
             rb.body->SetFriction(shape.friction);
             rb.body->SetRestitution(shape.restitution);
             rb.body->SetLinearFactor(rb.linearFactor);

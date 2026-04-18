@@ -58,6 +58,7 @@ public:
     virtual std::shared_ptr<ICollisionShape> CreateBoxShape(const glm::vec3& halfExtents) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateCapsuleShape(float radius, float height) = 0;
+    virtual std::shared_ptr<ICollisionShape> CreateCylinderShape(float radius, float height) = 0;
     virtual std::shared_ptr<ICharacterController> CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight = 0.35f) = 0;
     virtual std::shared_ptr<ICollisionShape> CreateCompoundShape() = 0;
     virtual std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) = 0;

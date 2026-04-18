@@ -36,6 +36,7 @@ public:
 
     void SetKinematic(bool isKinematic) override;
     void SetStatic(bool isStatic) override;
+    void SetTrigger(bool isTrigger) override;
     void SetAlwaysActive(bool alwaysActive) override;
 
     void SetUserPointer(void* ptr) override;

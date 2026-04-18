@@ -310,6 +310,12 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCapsuleShape(float ra
     return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::Capsule);
 }
 
+std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCylinderShape(float radius, float height)
+{
+    btCylinderShape* shape = new btCylinderShape(btVector3(radius, height * 0.5f, radius));
+    return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::Cylinder);
+}
+
 std::shared_ptr<ICharacterController> BulletPhysicsWorld::CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight)
 {
     if (!shape) return nullptr;

@@ -241,7 +241,7 @@ axis_scene:
             Component: Renderer
               Color: 0.1 0.8 0.1 1.0
 
-    RigidPhysic:
+    RigidSphere:
       Tag: physics_test
       Component: Transform
         Position: 0.0 15.0 0.0
@@ -277,6 +277,27 @@ axis_scene:
         Size: 1.0 1.0 1.0
       Component: RigidBody
         Mass: 2.0
+
+    RigidPlane:
+      Tag: physics_test
+      Component: Transform
+        Position: 0.0 -15.0 0.0
+      Component: Renderer
+        Model: planeModel
+        Shader: deferred_lit
+      Component: Material
+        Type: PHONG
+        Ambient: 0.2 0.8 0.2
+      Component: RigidShape
+        Type: BOX
+        Size: 1.0 0.1 1.0
+        Friction: 0.7
+        Restitution: 0.3
+      Component: RigidBody
+        BodyType: STATIC
+        Mass: 1.0
+        LinearDamping: 0.1
+        AngularDamping: 0.1
 
     # Demo: Central Reflection Probe
     Main_Probe:

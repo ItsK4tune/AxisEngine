@@ -230,18 +230,144 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
     }
 
+    if (auto* shape = reg.try_get<RigidShapeComponent>(entity))
+    {
+        if (ImGui::CollapsingHeader("Rigid Shape"))
+        {
+            bool shapeChanged = false;
+            static const char* shapeTypes[] = {"Box", "Sphere", "Capsule", "Cylinder", "Mesh", "Heightfield", "Compound"};
+            int currentType = (int)shape->type;
+            if (ImGui::Combo("Shape Type", &currentType, shapeTypes, IM_ARRAYSIZE(shapeTypes)))
+            {
+                shape->type = (ShapeType)currentType;
+                shapeChanged = true;
+            }
+            if (shape->type == ShapeType::Box) shapeChanged |= ImGui::DragFloat3("Size", &shape->size.x, 0.1f);
+            if (shape->type == ShapeType::Sphere || shape->type == ShapeType::Capsule || shape->type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Radius", &shape->radius, 0.1f);
+            if (shape->type == ShapeType::Capsule || shape->type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Height", &shape->height, 0.1f);
+            
+            shapeChanged |= ImGui::DragFloat("Friction", &shape->friction, 0.05f, 0.0f, 1.0f);
+            shapeChanged |= ImGui::DragFloat("Restitution", &shape->restitution, 0.05f, 0.0f, 1.0f);
+            shapeChanged |= ImGui::DragFloat3("Offset", &shape->offset.x, 0.1f);
+            
+            glm::vec3 euler = glm::degrees(glm::eulerAngles(shape->rotation));
+            if (ImGui::DragFloat3("Rotation Offset", &euler.x, 0.5f)) {
+                shape->rotation = glm::quat(glm::radians(euler));
+                shapeChanged = true;
+            }
+
+            if (shape->type == ShapeType::Compound) {
+                ImGui::Separator();
+                ImGui::Text("Child Shapes (%d)", (int)shape->children.size());
+                if (ImGui::Button("Add Child Shape")) {
+                    shape->children.push_back({ShapeType::Box, glm::vec3(0.0f), glm::quat(1.0f,0.0f,0.0f,0.0f), glm::vec3(1.0f), 0.5f, 1.0f});
+                    shapeChanged = true;
+                }
+                
+                for (size_t i = 0; i < shape->children.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i));
+                    
+                    if (ImGui::TreeNode("Child", "Child %d", (int)i)) {
+                        auto& child = shape->children[i];
+                        int cType = (int)child.type;
+                        if (ImGui::Combo("Type", &cType, shapeTypes, IM_ARRAYSIZE(shapeTypes))) {
+                            child.type = (ShapeType)cType;
+                            shapeChanged = true;
+                        }
+                        
+                        if (child.type == ShapeType::Box) shapeChanged |= ImGui::DragFloat3("Size", &child.size.x, 0.1f);
+                        if (child.type == ShapeType::Sphere || child.type == ShapeType::Capsule || child.type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Radius", &child.radius, 0.1f);
+                        if (child.type == ShapeType::Capsule || child.type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Height", &child.height, 0.1f);
+                        
+                        shapeChanged |= ImGui::DragFloat3("Position", &child.position.x, 0.1f);
+                        
+                        glm::vec3 cEuler = glm::degrees(glm::eulerAngles(child.rotation));
+                        if (ImGui::DragFloat3("Rotation", &cEuler.x, 0.5f)) {
+                            child.rotation = glm::quat(glm::radians(cEuler));
+                            shapeChanged = true;
+                        }
+
+                        if (ImGui::Button("Remove")) {
+                            shape->children.erase(shape->children.begin() + i);
+                            shapeChanged = true;
+                            ImGui::TreePop();
+                            ImGui::PopID();
+                            break; 
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::Separator();
+            }
+
+            if (shapeChanged && reg.all_of<RigidBodyComponent>(entity)) {
+                auto rbCopy = reg.get<RigidBodyComponent>(entity);
+                reg.erase<RigidBodyComponent>(entity);
+                rbCopy.body = nullptr;
+                reg.emplace<RigidBodyComponent>(entity, rbCopy);
+            }
+        }
+    }
+
     if (auto* rb = reg.try_get<RigidBodyComponent>(entity))
     {
         if (ImGui::CollapsingHeader("Rigid Body"))
         {
-            ImGui::DragFloat("Mass", &rb->mass, 0.1f, 0.0f, 10000.0f);
-            ImGui::Checkbox("Kinematic", &rb->isKinematic);
-            ImGui::Checkbox("Static", &rb->isStatic);
-            ImGui::Checkbox("Trigger", &rb->isTrigger);
-            ImGui::DragFloat3("Linear Factor", &rb->linearFactor.x, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat3("Angular Factor", &rb->angularFactor.x, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat("Linear Damping", &rb->linearDamping, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat("Angular Damping", &rb->angularDamping, 0.01f, 0.0f, 1.0f);
+            bool rbChanged = false;
+            
+            int bodyType = 2; // Dynamic
+            if (rb->isStatic) bodyType = 0;
+            else if (rb->isKinematic) bodyType = 1;
+
+            const char* bodyTypes[] = { "Static", "Kinematic", "Dynamic" };
+            if (ImGui::Combo("Body Type", &bodyType, bodyTypes, IM_ARRAYSIZE(bodyTypes)))
+            {
+                rb->isStatic = (bodyType == 0);
+                rb->isKinematic = (bodyType == 1);
+                rbChanged = true;
+            }
+
+            rbChanged |= ImGui::DragFloat("Mass", &rb->mass, 0.1f, 0.0f, 10000.0f);
+            
+            bool canCollide = !rb->isTrigger;
+            if (ImGui::Checkbox("Can Collide", &canCollide)) {
+                rb->isTrigger = !canCollide;
+                rbChanged = true;
+            }
+
+            ImGui::Text("Lock Position:");
+            ImGui::SameLine();
+            bool lockX = rb->linearFactor.x < 0.5f;
+            bool lockY = rb->linearFactor.y < 0.5f;
+            bool lockZ = rb->linearFactor.z < 0.5f;
+            if (ImGui::Checkbox("X##L", &lockX)) { rb->linearFactor.x = lockX ? 0.0f : 1.0f; rbChanged = true; }
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Y##L", &lockY)) { rb->linearFactor.y = lockY ? 0.0f : 1.0f; rbChanged = true; }
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Z##L", &lockZ)) { rb->linearFactor.z = lockZ ? 0.0f : 1.0f; rbChanged = true; }
+
+            ImGui::Text("Lock Rotation:");
+            ImGui::SameLine();
+            bool lockRX = rb->angularFactor.x < 0.5f;
+            bool lockRY = rb->angularFactor.y < 0.5f;
+            bool lockRZ = rb->angularFactor.z < 0.5f;
+            if (ImGui::Checkbox("X##R", &lockRX)) { rb->angularFactor.x = lockRX ? 0.0f : 1.0f; rbChanged = true; }
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Y##R", &lockRY)) { rb->angularFactor.y = lockRY ? 0.0f : 1.0f; rbChanged = true; }
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Z##R", &lockRZ)) { rb->angularFactor.z = lockRZ ? 0.0f : 1.0f; rbChanged = true; }
+
+            rbChanged |= ImGui::DragFloat("Linear Damping", &rb->linearDamping, 0.01f, 0.0f, 1.0f);
+            rbChanged |= ImGui::DragFloat("Angular Damping", &rb->angularDamping, 0.01f, 0.0f, 1.0f);
+
+            if (rbChanged) {
+                auto rbCopy = *rb;
+                reg.erase<RigidBodyComponent>(entity);
+                rbCopy.body = nullptr;
+                reg.emplace<RigidBodyComponent>(entity, rbCopy);
+            }
         }
     }
 

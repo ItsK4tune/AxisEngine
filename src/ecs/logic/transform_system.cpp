@@ -120,11 +120,13 @@ void TransformSystem::Update(Scene& scene, float dt)
 
         auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
         glm::mat4 parentTransform(1.0f);
+        glm::mat4 parentPrevTransform(1.0f);
         if (hierarchy && hierarchy->parent != entt::null)
         {
             if (auto* pWorld = registry.try_get<WorldTransformComponent>(hierarchy->parent))
             {
                 parentTransform = pWorld->worldMatrix;
+                parentPrevTransform = pWorld->prevWorldMatrix;
             }
         }
 
@@ -139,7 +141,12 @@ void TransformSystem::Update(Scene& scene, float dt)
                                     glm::toMat4(rot->value) *
                                     glm::scale(glm::mat4(1.0f), scl->value);
 
+            glm::mat4 prevLocalMatrix = glm::translate(glm::mat4(1.0f), pos->prev) *
+                                        glm::toMat4(rot->prev) *
+                                        glm::scale(glm::mat4(1.0f), scl->prev);
+
             world->worldMatrix = parentTransform * localMatrix;
+            world->prevWorldMatrix = parentPrevTransform * prevLocalMatrix;
             world->isDirty = false;
             world->version++;
 

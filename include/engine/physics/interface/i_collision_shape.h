@@ -11,6 +11,7 @@ enum class CollisionShapeType
     Box,
     Sphere,
     Capsule,
+    Cylinder,
     Mesh,
     Heightfield,
     ConvexHull,

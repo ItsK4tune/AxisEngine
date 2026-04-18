@@ -34,6 +34,7 @@ public:
 
     virtual void SetKinematic(bool isKinematic) = 0;
     virtual void SetStatic(bool isStatic) = 0;
+    virtual void SetTrigger(bool isTrigger) = 0;
     virtual void SetAlwaysActive(bool alwaysActive) = 0;
 
     virtual void SetUserPointer(void* ptr) = 0;

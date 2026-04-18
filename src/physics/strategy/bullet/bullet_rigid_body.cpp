@@ -79,8 +79,11 @@ void BulletRigidBody::SetWorldTransform(const glm::vec3& pos, const glm::quat& r
         tr.setOrigin(btVector3(pos.x, pos.y, pos.z));
         tr.setRotation(btQuaternion(rot.x, rot.y, rot.z, rot.w));
         m_Body->setWorldTransform(tr);
+        m_Body->setInterpolationWorldTransform(tr); // Clear visual interpolation lag
         if(m_Body->getMotionState())
             m_Body->getMotionState()->setWorldTransform(tr);
+            
+        m_Body->clearForces(); // Ensure no lingering physics forces fight the teleport
     }
 }
 
@@ -145,6 +148,15 @@ void BulletRigidBody::SetStatic(bool isStatic)
         m_Body->setCollisionFlags(m_Body->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
     else
         m_Body->setCollisionFlags(m_Body->getCollisionFlags() & ~btCollisionObject::CF_STATIC_OBJECT);
+}
+
+void BulletRigidBody::SetTrigger(bool isTrigger)
+{
+    if (!m_Body) return;
+    if (isTrigger)
+        m_Body->setCollisionFlags(m_Body->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+    else
+        m_Body->setCollisionFlags(m_Body->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
 }
 
 void BulletRigidBody::SetAlwaysActive(bool alwaysActive)

@@ -80,6 +80,7 @@ public:
     std::shared_ptr<ICollisionShape> CreateBoxShape(const glm::vec3& halfExtents) override;
     std::shared_ptr<ICollisionShape> CreateSphereShape(float radius) override;
     std::shared_ptr<ICollisionShape> CreateCapsuleShape(float radius, float height) override;
+    std::shared_ptr<ICollisionShape> CreateCylinderShape(float radius, float height) override;
     std::shared_ptr<ICharacterController> CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight = 0.35f) override;
     std::shared_ptr<ICollisionShape> CreateCompoundShape() override;
     std::shared_ptr<ICollisionShape> CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices) override;
