@@ -27,6 +27,11 @@ void AudioSystem::Initialize()
             }
         });
     }
+
+    auto* scene = sl.Resolve<Scene>();
+    if (scene) {
+        scene->registry.on_destroy<AudioSourceComponent>().connect<&AudioSystem::OnAudioSourceDestroyed>(*this);
+    }
 }
 
 void AudioSystem::Update(Scene &scene, float dt)
@@ -138,6 +143,15 @@ void AudioSystem::Update(Scene &scene, float dt)
         {
             audio.sound = nullptr;
         }
+    }
+}
+
+void AudioSystem::OnAudioSourceDestroyed(entt::registry& registry, entt::entity entity)
+{
+    auto& audio = registry.get<AudioSourceComponent>(entity);
+    if (audio.sound) {
+        audio.sound->Stop();
+        audio.sound = nullptr;
     }
 }
 

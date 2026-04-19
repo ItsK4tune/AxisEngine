@@ -17,6 +17,11 @@ void VideoSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<VideoSystem>(this);
+
+    auto* scene = sl.Resolve<Scene>();
+    if (scene) {
+        scene->registry.on_destroy<VideoPlayerComponent>().connect<&VideoSystem::OnVideoPlayerDestroyed>(*this);
+    }
 }
 
 void VideoSystem::Update(Scene &scene, float dt)
@@ -118,6 +123,15 @@ void VideoSystem::Update(Scene &scene, float dt)
                 }
             }
         }
+    }
+}
+
+void VideoSystem::OnVideoPlayerDestroyed(entt::registry& registry, entt::entity entity)
+{
+    auto& video = registry.get<VideoPlayerComponent>(entity);
+    if (video.decoder) {
+        video.decoder->Stop();
+        video.decoder.reset();
     }
 }
 

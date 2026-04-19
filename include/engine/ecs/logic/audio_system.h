@@ -24,6 +24,8 @@ public:
     std::vector<entt::id_type> GetWriteComponents() const override;
 
 private:
+    void OnAudioSourceDestroyed(entt::registry& registry, entt::entity entity);
+
     bool m_Enabled = true;
     float m_GlobalVolume = 1.0f;
 };

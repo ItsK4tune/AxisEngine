@@ -381,3 +381,10 @@ axis_scene:
       Component: Reflective
         Reflectivity: 0.8
         Probe: Main_Probe
+
+    GlobalPostProcess:
+      Component: Transform
+        Position: 0 0 0
+      Component: PostProcess
+        Active: true
+        Effects: dithering_bw:300

@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <ecs/unit/core_components.h>
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
@@ -25,7 +26,12 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene 
     auto roots = YAMLParser::Parse(fullPath);
     if (roots.empty())
     {
-        LOGGER_ERROR("SceneSerializer") << "Failed to parse AXS file or file is empty: " << fullPath;
+        // Check if file actually exists and has content
+        if (!std::filesystem::exists(fullPath)) {
+            LOGGER_ERROR("SceneSerializer") << "AXS file does not exist: " << fullPath;
+        } else {
+            LOGGER_ERROR("SceneSerializer") << "Failed to parse AXS file (empty or malformed): " << fullPath << ". Scene might be locked by another process.";
+        }
         return result;
     }
 

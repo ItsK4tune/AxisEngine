@@ -21,5 +21,7 @@ public:
     std::vector<entt::id_type> GetWriteComponents() const override;
 
 private:
+    void OnVideoPlayerDestroyed(entt::registry& registry, entt::entity entity);
+
     bool m_Enabled = true;
 };

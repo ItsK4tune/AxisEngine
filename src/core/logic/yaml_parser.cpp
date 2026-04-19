@@ -74,11 +74,12 @@ namespace
 {
     YAMLNode *GetNodeAtPath(std::vector<YAMLNode> &roots, const std::vector<size_t> &path)
     {
-        if (path.empty())
+        if (path.empty() || path[0] >= roots.size())
             return nullptr;
         YAMLNode *current = &roots[path[0]];
         for (size_t i = 1; i < path.size(); ++i)
         {
+            if (path[i] >= current->children.size()) return nullptr;
             current = &current->children[path[i]];
         }
         return current;
@@ -106,14 +107,21 @@ std::vector<YAMLNode> YAMLParser::Parse(const std::string &filepath)
             continue;
 
         int indent = 0;
-        while (indent < (int)line.length() && (line[indent] == ' ' || line[indent] == '\t'))
+        int len = (int)line.length();
+        while (indent < len && (line[indent] == ' ' || line[indent] == '\t'))
         {
-            indent++;
-            if (line[indent - 1] == '\t')
+            if (line[indent] == '\t')
+            {
+                indent += 2;
+            }
+            else
             {
                 indent++;
             }
         }
+
+        // Clip indent to line length to prevent substr OOB
+        if (indent > len) indent = len;
 
         std::string content = line.substr(indent);
         if (content.empty() || content[0] == '#')
