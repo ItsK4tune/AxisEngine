@@ -27,6 +27,9 @@ void FragmentSystem::Update(Scene& scene, float dt)
 
     auto view = scene.registry.view<FragmentComponent>();
     
+    // Resolve SceneManager once ΓÇö needed for both cleanup and re-registration
+    auto* sceneMgr = sl.Resolve<SceneManager>();
+
     for (auto entity : view)
     {
         auto& comp = view.get<FragmentComponent>(entity);
@@ -41,6 +44,7 @@ void FragmentSystem::Update(Scene& scene, float dt)
                     auto cc = hc->children;
                     for (auto c : cc) destroyRecursive(c);
                 }
+                if (sceneMgr) sceneMgr->RemoveEntity(e);
                 scene.registry.destroy(e);
             };
 
@@ -74,7 +78,6 @@ void FragmentSystem::Update(Scene& scene, float dt)
 
         auto instantiated = FragmentLoader::Instantiate(*asset, scene, entity, res, phys, audioSvc, &virtualOverrideNode);
         
-        auto* sceneMgr = sl.Resolve<SceneManager>();
         for (auto const& [name, e] : instantiated) {
             if (auto* info = scene.registry.try_get<InfoComponent>(e)) {
                 if (!parentSceneName.empty()) info->sceneName = parentSceneName;
@@ -90,6 +93,7 @@ void FragmentSystem::Update(Scene& scene, float dt)
         // Force immediate transform update to prevent (0,0,0) clustering
         auto* ts = sl.Resolve<TransformSystem>();
         if (ts) {
+            ts->m_IsLinearTransformsDirty = true;
             ts->Update(scene, 0.0f);
         }
     }
