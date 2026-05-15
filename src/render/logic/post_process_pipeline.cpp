@@ -223,7 +223,7 @@ void PostProcessPipeline::EndCapture()
     rsm.Disable(ServerCapability::DepthTest);
 
     // 1. Pre-Bloom Effects (Priority < 0)
-    RenderEffectsRange(-9999, -1);
+    RenderEffectsRange(-9999, -1, false);
 
     // 2. Engine Bloom
     if (m_BloomEnabled) {
@@ -231,7 +231,7 @@ void PostProcessPipeline::EndCapture()
     }
 
     // 3. Post-Bloom / Pre-HDR Effects (Priority 0 - 99)
-    RenderEffectsRange(0, 99);
+    RenderEffectsRange(0, 99, false);
 
     // 4. Engine HDR / Tonemapping
     bool hasLateEffects = false;
@@ -242,7 +242,7 @@ void PostProcessPipeline::EndCapture()
         }
     }
 
-    if (hasLateEffects) {
+    if (hasLateEffects || HasUIEffects()) {
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
     } else {
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
@@ -254,13 +254,10 @@ void PostProcessPipeline::EndCapture()
     m_HDRFinalShader->use();
     m_HDRFinalShader->setInt("screenTexture", 0);
     m_HDRFinalShader->setInt("bloomBlur", 1);
-    // HDR off → linear pass (exposure=1, gamma=2.2, mode=0)
     m_HDRFinalShader->setFloat("exposure", m_HDREnabled ? m_Exposure : 1.0f);
-    // Bloom off → zero intensity regardless of m_BloomIntensity value
     m_HDRFinalShader->setFloat("bloomIntensity", (m_BloomEnabled && m_HDREnabled) ? m_BloomIntensity : 0.0f);
     m_HDRFinalShader->setFloat("gamma", m_HDREnabled ? m_Gamma : 2.2f);
     m_HDRFinalShader->setInt("tonemappingMode", m_HDREnabled ? m_TonemappingMode : 0);
-
 
     tm.ActiveTexture(TextureUnit::Texture0);
     tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());
@@ -269,30 +266,34 @@ void PostProcessPipeline::EndCapture()
     if (m_BloomEnabled && !m_BloomMips.empty()) {
         tm.BindTexture(TextureType::Texture2D, m_BloomMips[0].texture->Get());
     } else {
-        // Just bind some dummy if bloom is disabled
         tm.BindTexture(TextureType::Texture2D, m_PingPong.PreviousColor().Get());
     }
 
     bm.BindVertexArray(m_QuadVAO.id);
     dc.DrawArrays(Primitive::Triangles, 0, 6);
 
-    if (hasLateEffects) {
+    if (hasLateEffects || HasUIEffects()) {
         m_PingPong.Swap();
-        // 5. Post-HDR Effects (Priority >= 100)
-        RenderEffectsRange(100, 9999);
+        // 5. Post-HDR Effects (Priority >= 100, Pre-UI only)
+        RenderEffectsRange(100, 9999, false);
 
-        // Final blit to screen
-        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
-        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
-        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+        if (!HasUIEffects()) {
+            // Final blit to screen (if no UI effects to follow)
+            rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
+            rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
+            rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+        }
     }
 
     bm.BindVertexArray(0);
     rsm.Enable(ServerCapability::DepthTest);
-    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+
+    if (!HasUIEffects()) {
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+    }
 }
 
-void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority)
+void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, bool affectUI)
 {
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& rsm = m_Context->GetRenderStateManager();
@@ -302,10 +303,20 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority)
 
     for (const auto &effect : m_Effects)
     {
-        if (!effect.shader || effect.priority < minPriority || effect.priority > maxPriority)
+        if (!effect.shader || effect.priority < minPriority || effect.priority > maxPriority || effect.affectUI != affectUI)
             continue;
 
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
+
+        // If not full-screen, we must preserve the background
+        bool isPartial = effect.width > 0 && effect.height > 0 && (effect.width != m_Width || effect.height != m_Height);
+        if (isPartial)
+        {
+            rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
+            rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_PingPong.PreviousFBO().Get());
+            rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+            rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
+        }
 
         effect.shader->use();
         effect.shader->setInt("screenTexture", 0);
@@ -313,19 +324,55 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority)
         tm.ActiveTexture(TextureUnit::Texture0);
         tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());
 
-        bm.BindVertexArray(m_QuadVAO.id);
-
-        if (effect.width > 0 && effect.height > 0)
+        if (isPartial)
         {
-            rsm.Enable(ServerCapability::ScissorTest);
-            dc.Scissor(effect.x, m_Height - effect.y - effect.height, effect.width, effect.height);
+            // Calculate NDC coordinates for the sub-region quad
+            float x1 = (float)effect.x / m_Width * 2.0f - 1.0f;
+            float y1 = (float)(m_Height - effect.y - effect.height) / m_Height * 2.0f - 1.0f;
+            float x2 = (float)(effect.x + effect.width) / m_Width * 2.0f - 1.0f;
+            float y2 = (float)(m_Height - effect.y) / m_Height * 2.0f - 1.0f;
+
+            // Calculate UV coordinates mapping to the screen texture
+            float u1 = (float)effect.x / m_Width;
+            float v1 = (float)(m_Height - effect.y - effect.height) / m_Height;
+            float u2 = (float)(effect.x + effect.width) / m_Width;
+            float v2 = (float)(m_Height - effect.y) / m_Height;
+
+            float vertices[] = {
+                x1, y2, u1, v2,
+                x1, y1, u1, v1,
+                x2, y1, u2, v1,
+
+                x1, y2, u1, v2,
+                x2, y1, u2, v1,
+                x2, y2, u2, v2
+            };
+
+            // Use temporary buffer for this unique quad
+            static uint32_t tempVAO = 0, tempVBO = 0;
+            auto& bm = m_Context->GetBufferManager();
+            if (tempVAO == 0) {
+                tempVAO = bm.GenVertexArray();
+                tempVBO = bm.GenBuffer();
+            }
+            bm.BindVertexArray(tempVAO);
+            bm.BindBuffer(BufferType::ArrayBuffer, tempVBO);
+            bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::DynamicDraw);
+            bm.EnableVertexAttribArray(0);
+            bm.VertexAttribPointer(0, 2, DataType::Float, false, 4 * sizeof(float), (void*)0);
+            bm.EnableVertexAttribArray(1);
+            bm.VertexAttribPointer(1, 2, DataType::Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+            dc.SetViewport(0, 0, m_Width, m_Height); // Keep full viewport for correct NDC mapping
+            dc.DrawArrays(Primitive::Triangles, 0, 6);
+            bm.BindVertexArray(0);
         }
-
-        dc.DrawArrays(Primitive::Triangles, 0, 6);
-
-        if (effect.width > 0 && effect.height > 0)
+        else
         {
-            rsm.Disable(ServerCapability::ScissorTest);
+            dc.SetViewport(0, 0, m_Width, m_Height);
+            bm.BindVertexArray(m_QuadVAO.id);
+            dc.DrawArrays(Primitive::Triangles, 0, 6);
+            bm.BindVertexArray(0);
         }
 
         m_PingPong.Swap();
@@ -470,25 +517,45 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
 }
 
-void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader)
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, bool affectUI)
 {
-    AddEffect(shader, 1); // Default priority 1 (Post-Bloom)
+    AddEffect(shader, 0, 0, 0, 0, 0, affectUI);
 }
 
-void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int priority)
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int priority, bool affectUI)
+{
+    AddEffect(shader, 0, 0, 0, 0, priority, affectUI);
+}
+
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int x, int y, int width, int height, int priority, bool affectUI)
 {
     if (shader)
     {
-        m_Effects.push_back({shader, 0, 0, 0, 0, priority});
+        m_Effects.push_back({shader, x, y, width, height, priority, affectUI});
     }
 }
 
-void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h, int priority)
+bool PostProcessPipeline::HasUIEffects() const
 {
-    if (shader)
-    {
-        m_Effects.push_back({shader, x, y, w, h, priority});
+    for (const auto& eff : m_Effects) {
+        if (eff.affectUI) return true;
     }
+    return false;
+}
+
+void PostProcessPipeline::RenderUIEffects()
+{
+    if (!m_Context || !HasUIEffects()) return;
+
+    auto& rtm = m_Context->GetRenderTargetManager();
+    
+    // Render all effects marked as affectUI
+    RenderEffectsRange(-9999, 9999, true);
+
+    // Final blit to screen
+    rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
+    rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
+    rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
 }
 
 void PostProcessPipeline::ClearEffects()

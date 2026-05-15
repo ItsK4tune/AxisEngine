@@ -65,6 +65,6 @@ void main()
 
     // PBR parameters: Decals replace material properties where they are opaque
     // We use finalAlpha as the blend factor for PBR params too.
-    // R: Metallic, G: Roughness, B: Reflectivity, A: FresnelPower (default 5.0)
-    gPBRParams = vec4(u_Metallic, u_Roughness, u_Reflectivity, 5.0) * finalAlpha;
+    // R: Metallic, G: Roughness, B: Reflectivity, A: packed(noProbe + FresnelPower/100)
+    gPBRParams = vec4(u_Metallic, u_Roughness, u_Reflectivity, 0.05) * finalAlpha;
 }

@@ -7,6 +7,13 @@
 
 #include <core/unit/aabb.h>
 
+// Per-entity render path classification for unified pipeline
+enum class RenderMode {
+    Auto,          // System decides: opaque→deferred, transparent→forward
+    ForceForward,  // Always forward (particles, custom effects)
+    ForceDeferred  // Always deferred (terrain, decals)
+};
+
 // Forward declarations to avoid direct component dependency in header
 class Model;
 class Shader;
@@ -33,12 +40,13 @@ struct RenderItem {
     bool castShadow = true;
     bool receiveShadow = true;
     bool isTransparent = false;
+    RenderMode renderMode = RenderMode::Auto;
     uint64_t sortKey = 0;
 
     // Animation data extracted from ECS during queue build
     bool hasAnimation = false;
     bool isStatic = false;
-    std::vector<glm::mat4> boneMatrices;
+    const std::vector<glm::mat4>* boneMatrices = nullptr;
 };
 
 enum class RenderLightType {
@@ -71,7 +79,8 @@ struct RenderLight {
 };
 
 struct RenderSceneData {
-    std::vector<RenderItem> opaqueItems;
+    std::vector<RenderItem> deferredOpaqueItems; // GBuffer path
+    std::vector<RenderItem> forwardOpaqueItems;  // Forward path (forced or fallback)
     std::vector<RenderItem> transparentItems;
     std::vector<RenderItem> shadowQueue;
     std::vector<RenderLight> lights;

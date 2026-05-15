@@ -5,7 +5,6 @@
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
-#include <core/type/render_path.h>
 #include <core/type/tonemapping_mode.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
@@ -98,12 +97,6 @@ void SettingsPanel::OnImGui(Scene& scene)
     }
 
     if (ImGui::CollapsingHeader("Render")) {
-        static const char* renderPaths[] = { "Forward", "Deferred" };
-        int currentPath = (int)conf.render.renderPath;
-        if (ImGui::Combo("Render Path", &currentPath, renderPaths, IM_ARRAYSIZE(renderPaths))) {
-            conf.render.renderPath = (RenderPath)currentPath;
-            changed = true;
-        }
 
         ImGui::Separator();
         if (ImGui::Checkbox("HDR", &conf.render.hdrEnabled)) changed = true;

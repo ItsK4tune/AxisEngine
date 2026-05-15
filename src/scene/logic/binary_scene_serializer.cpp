@@ -54,7 +54,6 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
     os.write(reinterpret_cast<const char*>(&config.msaaSamples), 4 * 3);
     os.write(reinterpret_cast<const char*>(&config.renderScale), 4 * 1);
     os.write(reinterpret_cast<const char*>(&config.asyncResourceLoading), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.renderPath), sizeof(config.renderPath));
     os.write(reinterpret_cast<const char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
     os.write(reinterpret_cast<const char*>(&config.hdrEnabled), sizeof(bool) * 2);
     os.write(reinterpret_cast<const char*>(&config.gamma), 4 * 6);
@@ -235,7 +234,6 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         is.read(reinterpret_cast<char*>(&config.msaaSamples), 4 * 3);
         is.read(reinterpret_cast<char*>(&config.renderScale), 4 * 1);
         is.read(reinterpret_cast<char*>(&config.asyncResourceLoading), sizeof(bool));
-        is.read(reinterpret_cast<char*>(&config.renderPath), sizeof(config.renderPath));
         is.read(reinterpret_cast<char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
         is.read(reinterpret_cast<char*>(&config.hdrEnabled), sizeof(bool) * 2);
         is.read(reinterpret_cast<char*>(&config.gamma), 4 * 6);

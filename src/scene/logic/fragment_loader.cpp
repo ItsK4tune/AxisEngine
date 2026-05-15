@@ -112,8 +112,9 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 scene.registry.emplace<RotationComponent>(currentEntity);
                 scene.registry.emplace<ScaleComponent>(currentEntity);
                 scene.registry.emplace<HierarchyComponent>(currentEntity);
-                scene.registry.emplace<WorldTransformComponent>(currentEntity);
-                scene.registry.emplace<InfoComponent>(currentEntity, namespacedName, namespacedTag);
+                auto& wt = scene.registry.emplace<WorldTransformComponent>(currentEntity);
+                wt.isDirty = true;
+                scene.registry.emplace<InfoComponent>(currentEntity, entityName, entNode.GetChildValue("Tag", "default"));
 
                 auto& info = scene.registry.get<InfoComponent>(currentEntity);
                 info.sceneName = fragmentName;
@@ -121,10 +122,12 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 // Set parent to the provided parent by default
                 if (parent != entt::null)
                 {
-                    auto& hierarchy = scene.registry.get<HierarchyComponent>(currentEntity);
-                    hierarchy.parent = parent;
-                    auto& parentHierarchy = scene.registry.get_or_emplace<HierarchyComponent>(parent);
-                    parentHierarchy.children.push_back(currentEntity);
+                    scene.registry.patch<HierarchyComponent>(currentEntity, [&](auto& h) {
+                        h.parent = parent;
+                    });
+                    scene.registry.patch<HierarchyComponent>(parent, [&](auto& h) {
+                        h.children.push_back(currentEntity);
+                    });
                 }
 
                 // Handle Transform component if present
@@ -142,6 +145,21 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                         scene.registry.get<PositionComponent>(currentEntity).value = glm::vec3(x, y, z);
                         scene.registry.get<RotationComponent>(currentEntity).value = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
                         scene.registry.get<ScaleComponent>(currentEntity).value = glm::vec3(sx, sy, sz);
+
+                        if (scene.registry.all_of<WorldTransformComponent>(currentEntity)) {
+                            auto& wt = scene.registry.get<WorldTransformComponent>(currentEntity);
+                            wt.isDirty = true;
+                            
+                            // Immediately compute world matrix if parent is valid
+                            if (parent != entt::null && scene.registry.all_of<WorldTransformComponent>(parent)) {
+                                auto& parentWT = scene.registry.get<WorldTransformComponent>(parent);
+                                glm::mat4 local = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
+                                local *= glm::mat4_cast(glm::quat(glm::radians(glm::vec3(rx, ry, rz))));
+                                local = glm::scale(local, glm::vec3(sx, sy, sz));
+                                wt.worldMatrix = parentWT.worldMatrix * local;
+                                wt.isDirty = false;
+                            }
+                        }
                         break;
                     }
                 }
@@ -175,14 +193,17 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 // Remove from the default fragment parent if it was added
                 if (parent != entt::null)
                 {
-                    auto& ph = scene.registry.get<HierarchyComponent>(parent);
-                    ph.children.erase(std::remove(ph.children.begin(), ph.children.end(), entity), ph.children.end());
+                    scene.registry.patch<HierarchyComponent>(parent, [&](auto& ph) {
+                        ph.children.erase(std::remove(ph.children.begin(), ph.children.end(), entity), ph.children.end());
+                    });
                 }
 
-                auto& h = scene.registry.get<HierarchyComponent>(entity);
-                h.parent = internalParent;
-                auto& ph = scene.registry.get<HierarchyComponent>(internalParent);
-                ph.children.push_back(entity);
+                scene.registry.patch<HierarchyComponent>(entity, [&](auto& h) {
+                    h.parent = internalParent;
+                });
+                scene.registry.patch<HierarchyComponent>(internalParent, [&](auto& ph) {
+                    ph.children.push_back(entity);
+                });
             }
         }
     }

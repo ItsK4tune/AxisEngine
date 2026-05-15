@@ -11,6 +11,7 @@
 #include <core/logic/service_locator.h>
 #include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
+#include <ecs/unit/core_components.h>
 
 namespace {
     std::string SceneBasename(const std::string &filePath)
@@ -44,11 +45,49 @@ void SceneManager::Shutdown()
 
 void SceneManager::AddEntity(entt::entity entity, const std::string &sceneName)
 {
+    std::string normName = SceneSerializer::NormalizeSceneName(sceneName);
     for (auto &rec : m_LoadedScenes)
     {
-        if (rec.name == sceneName || rec.filePath == sceneName)
+        if (rec.name == normName || rec.name == sceneName || rec.filePath == sceneName)
         {
-            rec.entities.push_back(entity);
+            if (std::find(rec.entities.begin(), rec.entities.end(), entity) == rec.entities.end())
+            {
+                rec.entities.push_back(entity);
+                if (auto* info = ServiceLocator::Instance().Require<Scene>().registry.try_get<InfoComponent>(entity))
+                {
+                    info->isActive = rec.isActive;
+                }
+            }
+            return;
+        }
+    }
+}
+
+void SceneManager::SetSceneActive(const std::string& name, bool active, Scene& scene)
+{
+    std::string normName = SceneSerializer::NormalizeSceneName(name);
+    
+    auto PropagateActive = [&](auto self, entt::entity e, bool state) -> void {
+        if (!scene.registry.valid(e)) return;
+        if (auto* info = scene.registry.try_get<InfoComponent>(e)) {
+            info->isActive = state;
+        }
+        if (auto* hier = scene.registry.try_get<HierarchyComponent>(e)) {
+            for (auto child : hier->children) {
+                self(self, child, state);
+            }
+        }
+    };
+
+    for (auto& rec : m_LoadedScenes)
+    {
+        if (rec.name == normName || rec.name == name || rec.filePath == name)
+        {
+            rec.isActive = active;
+            for (auto e : rec.entities)
+            {
+                PropagateActive(PropagateActive, e, active);
+            }
             return;
         }
     }
@@ -70,7 +109,18 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     auto* physics = sl.Resolve<IPhysicsWorld>();
     auto* audio = sl.Resolve<AudioService>();
 
+    if (!std::filesystem::exists(filePath))
+    {
+        LOGGER_ERROR("SceneManager") << "Scene file not found: " << filePath;
+        return;
+    }
+
     SceneLoadResult res = SceneSerializer::Deserialize(filePath, scene, resources, physics, audio);
+    if (res.entities.empty() && !res.hasConfig)
+    {
+        LOGGER_ERROR("SceneManager") << "Failed to deserialize scene or scene is empty: " << filePath;
+        return;
+    }
 
     SceneRecord rec;
     rec.filePath = filePath;

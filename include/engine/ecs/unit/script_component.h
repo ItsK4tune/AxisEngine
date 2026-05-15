@@ -5,12 +5,13 @@
 #include <entt/entt.hpp>
 
 
-class IScriptable;
+#include <ecs/interface/i_scriptable.h>
 
 
 
 struct ScriptComponent
 {
+    std::string className;
     std::unique_ptr<IScriptable> instance;
     std::function<std::unique_ptr<IScriptable>()> InstantiateScript;
     std::function<void(ScriptComponent *)> DestroyScript;

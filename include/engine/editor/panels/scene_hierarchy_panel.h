@@ -1,9 +1,8 @@
 #pragma once
-#ifdef ENABLE_EDITOR
+
 #include <editor/i_editor_panel.h>
 #include <string>
 #include <vector>
-
 #include <entt/entt.hpp>
 
 struct Scene;
@@ -19,8 +18,8 @@ public:
 private:
     void DrawEntityNode(Scene& scene, entt::entity entity);
     void DrawComponents(entt::registry& registry, entt::entity entity);
+    void CreateNewEntity(Scene& scene, const std::string& sceneName);
 
 private:
     entt::entity m_SelectedEntity = entt::null;
 };
-#endif

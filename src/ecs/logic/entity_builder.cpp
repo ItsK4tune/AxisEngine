@@ -67,18 +67,16 @@ EntityBuilder& EntityBuilder::WithMaterial(const AxisMaterialComponent& material
 
 EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const glm::vec3& specular, float shininess)
 {
+    // Legacy support: convert to PBR roughly
     auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
-    mat.desc.type = AxisMaterialType::PHONG;
-    mat.desc.phong.ambient = ambient;
-    mat.desc.phong.specular = specular;
-    mat.desc.phong.shininess = shininess;
+    mat.desc.pbr.roughness = glm::clamp(1.0f - (shininess / 128.0f), 0.0f, 1.0f);
+    mat.desc.pbr.metallic = 0.0f;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithPBRMaterial(float metallic, float roughness, float ao)
 {
     auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
-    mat.desc.type = AxisMaterialType::PBR;
     mat.desc.pbr.metallic = metallic;
     mat.desc.pbr.roughness = roughness;
     mat.desc.pbr.ao = ao;

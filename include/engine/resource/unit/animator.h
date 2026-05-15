@@ -21,10 +21,11 @@ public:
     void PlayAnimation(const std::string &name);
 
     void CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parentTransform, int depth);
-    std::vector<glm::mat4> GetFinalBoneMatrices();
+    const std::vector<glm::mat4>& GetFinalBoneMatrices();
 
     void SetSpeed(float speed) { m_Speed = speed; }
     void SetTime(float timeInSeconds) { m_CurrentTime = timeInSeconds; }
+    float GetCurrentTime() const { return m_CurrentTime; }
     void SetUpdateRate(float updatesPerSecond) { m_UpdateRate = updatesPerSecond; }
 
     void SetIdentityMatrices(int boneCount);

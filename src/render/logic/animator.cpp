@@ -222,9 +222,8 @@ void Animator::CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parent
         CalculateBoneTransform(&node->children[i], globalTransformation, depth + 1);
 }
 
-std::vector<glm::mat4> Animator::GetFinalBoneMatrices()
+const std::vector<glm::mat4>& Animator::GetFinalBoneMatrices()
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
     return m_FinalBoneMatrices;
 }
 

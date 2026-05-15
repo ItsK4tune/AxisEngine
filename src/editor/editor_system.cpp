@@ -16,6 +16,7 @@
 #include <core/app/runtime_core.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
+#include <scene/logic/scene_serializer.h>
 #include <filesystem>
 #include <map>
 #include <platform/logic/input_manager.h>
@@ -138,6 +139,7 @@ void EditorSystem::OnUpdate(float dt)
         }
     }
 
+    /* Disable Auto-Reload to prevent performance drop and entity loss on save
     // Auto Reload Scene Feature
     static float reloadTimer = 0.0f;
     reloadTimer += dt;
@@ -158,6 +160,7 @@ void EditorSystem::OnUpdate(float dt)
             }
         }
     }
+    */
 
     if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>()) {
         auto mode = io->GetMouse().GetCursorMode();
@@ -248,6 +251,20 @@ void EditorSystem::DrawMenuBar()
     {
         if (ImGui::BeginMenu("File"))
         {
+            if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {
+                auto& sm = ServiceLocator::Instance().Require<SceneManager>();
+                auto& globalScene = ServiceLocator::Instance().Require<Scene>();
+                auto* resourceManager = ServiceLocator::Instance().Resolve<ResourceManager>();
+                if (resourceManager) {
+                    auto scenes = sm.GetAllScenes();
+                    for (const auto& sceneRecord : scenes) {
+                        if (!sceneRecord.filePath.empty()) {
+                            SceneSerializer::Serialize(sceneRecord.filePath, globalScene, *resourceManager, sceneRecord.name);
+                            LOGGER_INFO("EditorSystem") << "Saved scene: " << sceneRecord.name << " to " << sceneRecord.filePath;
+                        }
+                    }
+                }
+            }
             if (ImGui::MenuItem("Exit")) {
                 auto core = ServiceLocator::Instance().Resolve<RuntimeCore>();
                 if (core) core->GetEngineLoop().Stop();

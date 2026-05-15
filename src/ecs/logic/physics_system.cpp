@@ -170,10 +170,13 @@ void PhysicsSystem::Update(Scene& scene, float dt)
         m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, *physicsWorld);
     }
     m_collisionDispatcher->DispatchEvents();
-
-    auto viewCC = scene.registry.view<CharacterControllerComponent>();
+    
+    auto viewCC = scene.registry.view<CharacterControllerComponent, InfoComponent>();
     for (auto entity : viewCC)
     {
+        auto& info = viewCC.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
+
         auto& cc = viewCC.get<CharacterControllerComponent>(entity);
         if (cc.controller)
         {

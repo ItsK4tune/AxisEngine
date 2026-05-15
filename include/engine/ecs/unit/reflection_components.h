@@ -24,6 +24,7 @@ struct ReflectionProbeComponent {
 
     uint32_t currentFace = 0;
     int lastGpuIndex = -1; // New field for Deferred Reflection Binding
+    int lastResolution = 0; // Tracks allocated cubemap resolution for reallocation detection
 };
 
 /**

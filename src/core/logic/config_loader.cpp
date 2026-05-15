@@ -96,13 +96,6 @@ void ConfigLoader::LoadConfig(std::stringstream &ss, AppConfig &config, bool hea
             {"REINHARD", TonemappingMode::Reinhard}
         }, TonemappingMode::ACES);
     }
-    else if (subCmd == "RENDER_PATH") {
-        std::string val; ss >> val;
-        config.renderPath = ResolveEnum(val, {
-            {"FORWARD", RenderPath::Forward},
-            {"DEFERRED", RenderPath::Deferred}
-        }, RenderPath::Forward);
-    }
     else if (subCmd == "LOG_LEVEL") {
         std::string val; ss >> val;
         config.logLevel = ResolveEnum(val, {

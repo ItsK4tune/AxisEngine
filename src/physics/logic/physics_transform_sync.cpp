@@ -32,6 +32,12 @@ void PhysicsTransformSync::SyncToPhysics()
         auto &rb = m_Scene.registry.get<RigidBodyComponent>(entity);
         if (!rb.body) continue;
 
+        auto* info = m_Scene.registry.try_get<InfoComponent>(entity);
+        if (info && !info->isActive) {
+            if (rb.body->IsActive()) rb.body->Activate(false);
+            continue;
+        }
+
         auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
         if (!world) continue;
 
@@ -80,6 +86,9 @@ void PhysicsTransformSync::SyncFromPhysics()
         auto* scl = m_Scene.registry.try_get<ScaleComponent>(entity);
 
         if (!rb.body || !pos || !rot || !world || !scl) continue;
+        
+        auto* info = m_Scene.registry.try_get<InfoComponent>(entity);
+        if (info && !info->isActive) continue;
         
         // Anti-snapback: If the user is dragging the object in the editor, skip syncing from physics
         if (world->isDirty) continue;

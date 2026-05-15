@@ -58,12 +58,12 @@ void main()
     }
     
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
-    gAlbedoSpec.a = _roughness;
+    gAlbedoSpec.a = u_FresnelBias; // Pack FresnelBias here (roughness already in gPBRParams.g)
     gEntityID = u_EntityID;
     gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
     
-    // Packing: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 10.0
-    float packedReflection = float(u_ProbeIndex + 1) + (u_FresnelPower / 10.0);
+    // Packing: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 100.0
+    float packedReflection = float(u_ProbeIndex + 1) + clamp(u_FresnelPower / 100.0, 0.0, 0.99);
     gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, packedReflection);
 
     if (u_IsWireframe) {

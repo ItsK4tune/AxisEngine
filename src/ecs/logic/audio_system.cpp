@@ -52,14 +52,22 @@ void AudioSystem::Update(Scene &scene, float dt)
         audioService->UpdateListener(camPos.value, lookDir);
     }
 
-    auto view = scene.registry.view<AudioSourceComponent>();
-
+    auto view = scene.registry.view<AudioSourceComponent, InfoComponent>();
 
     audioService->GetEngine()->SetGlobalVolume(m_GlobalVolume);
 
     for (auto entity : view)
     {
         auto &audio = view.get<AudioSourceComponent>(entity);
+        auto &info = view.get<InfoComponent>(entity);
+        
+        if (!info.isActive) {
+            if (audio.sound) {
+                audio.sound->Stop();
+                audio.sound = nullptr;
+            }
+            continue;
+        }
 
         if (audio.playOnAwake && !audio.sound && !audio.shouldPlay)
         {

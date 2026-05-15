@@ -37,7 +37,6 @@ struct GraphicsConfig
 
 struct RenderConfig
 {
-    RenderPath renderPath = RenderPath::Forward;
     TonemappingMode tonemappingMode = TonemappingMode::ACES;
     bool hdrEnabled = false;
     bool bloomEnabled = false;
@@ -158,7 +157,6 @@ struct AppConfig
     float& renderScale = graphics.renderScale;
     bool& asyncResourceLoading = graphics.asyncResourceLoading;
 
-    RenderPath& renderPath = render.renderPath;
     TonemappingMode& tonemappingMode = render.tonemappingMode;
     bool& hdrEnabled = render.hdrEnabled;
     bool& bloomEnabled = render.bloomEnabled;

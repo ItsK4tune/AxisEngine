@@ -30,6 +30,22 @@ public:
         return path;
     }
 
+    static std::string getRelativePath(const std::string &path)
+    {
+        std::string root = getRoot();
+        if (root.empty()) return path;
+        
+        std::string normPath = path;
+        std::replace(normPath.begin(), normPath.end(), '\\', '/');
+        
+        if (normPath.find(root) == 0) {
+            std::string rel = normPath.substr(root.length());
+            if (!rel.empty() && rel[0] == '/') rel = rel.substr(1);
+            return rel;
+        }
+        return path;
+    }
+
 private:
     static std::string getRoot()
     {

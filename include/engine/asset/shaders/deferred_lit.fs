@@ -56,12 +56,13 @@ void main()
     }
     
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
-    gAlbedoSpec.a = _roughness; // Pack u_Roughness into alpha
+    gAlbedoSpec.a = 0.04; // Default FresnelBias for non-reflective objects (roughness stored in gPBRParams.g)
     gEntityID = u_EntityID;
     gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
     
-    // R: Metallic, G: Roughness, B: Reflectivity, A: FresnelPower
-    gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, u_FresnelPower);
+    // R: Metallic, G: Roughness, B: Reflectivity, A: packed(ProbeIndex+1 + FresnelPower/100)
+    float packedReflection = clamp(u_FresnelPower / 100.0, 0.0, 0.99); // ProbeIndex=-1 → int part = 0
+    gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, packedReflection);
 
     if (u_IsWireframe) {
         gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);

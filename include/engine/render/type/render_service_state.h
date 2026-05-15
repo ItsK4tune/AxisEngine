@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <core/type/render_path.h>
 #include <ecs/interface/i_render_service.h>
 
 struct RenderCameraState
@@ -24,7 +23,6 @@ struct RenderFlagsState
     bool renderOrderEnabled = true;
     uint32_t filterLayerMask = 0xFFFFFFFF;
     float distanceCullingSq = 0.0f;
-    RenderPath cachedRenderPath = RenderPath::Deferred;
     AntiAliasingMode aaMode = AntiAliasingMode::NONE;
 };
 

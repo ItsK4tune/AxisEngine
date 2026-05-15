@@ -12,6 +12,8 @@ struct PostProcessComponent {
         std::string shaderName;
         int priority = 1; // 0=Bloom, 100=HDR, 200=AA
         int x = 0, y = 0, w = 0, h = 0; // Viewport/Scissor (0 for full screen)
+        bool enabled = true;
+        bool affectUI = false;
     };
 
     bool enabled = true;

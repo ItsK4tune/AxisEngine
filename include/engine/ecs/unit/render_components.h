@@ -9,23 +9,21 @@
 #include <resource/unit/model.h>
 #include <resource/unit/shader.h>
 #include <render/unit/skybox.h>
+#include <render/type/render_data.h>
 
 struct MeshRendererComponent
 {
     std::shared_ptr<Model> model = nullptr;
     std::weak_ptr<Shader> shader;
+    std::string shaderName;
     int order = 0;
     bool castShadow = true;
     bool receiveShadow = true;
+    RenderMode renderMode = RenderMode::Auto;
     glm::vec4 color = glm::vec4(1.0f);
 };
 
 
-enum class AxisMaterialType
-{
-    PHONG,
-    PBR
-};
 
 struct PBRMaterialParams
 {
@@ -34,19 +32,9 @@ struct PBRMaterialParams
     float ao = 1.0f;
 };
 
-struct PhongMaterialParams
-{
-    float shininess = 32.0f;
-    glm::vec3 specular = glm::vec3(0.5f);
-    glm::vec3 ambient = glm::vec3(1.0f);
-};
-
 struct AxisMaterialDescriptor
 {
-    AxisMaterialType type = AxisMaterialType::PHONG;
-
     PBRMaterialParams pbr;
-    PhongMaterialParams phong;
 
     float opacity = 1.0f;
     float alphaCutoff = 0.5f;
@@ -66,6 +54,7 @@ struct AxisMaterialDescriptor
     BlendFactor blendSrc = BlendFactor::SrcAlpha;
     BlendFactor blendDst = BlendFactor::OneMinusSrcAlpha;
 
+    std::string type = "PBR";
     ShaderPorts ports;
 };
 
@@ -92,6 +81,7 @@ struct SkyboxRenderComponent
 {
     std::shared_ptr<Skybox> skybox = nullptr;
     std::weak_ptr<Shader> shader;
+    std::string shaderName;
     bool isPrimary = true;
 
 

@@ -37,9 +37,11 @@ struct MaterialUniformLocations {
     bool initialized = false;
 };
 
+class ResourceManager;
+
 class MaterialRenderer {
 public:
-    void Initialize(IGraphicsContext* context, unsigned int whiteTextureId, unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
+    void Initialize(IGraphicsContext* context, ResourceManager* resourceManager, unsigned int whiteTextureId, unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
     bool SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, const glm::vec4& tintColor, bool debugNoTexture = false, bool isWireframe = false);
 
     static void InvalidateSkyboxCache() {
@@ -49,6 +51,7 @@ public:
 
 private:
     IGraphicsContext* m_Context = nullptr;
+    ResourceManager* m_ResourceManager = nullptr;
     unsigned int m_WhiteTextureID = 0;
     unsigned int m_BlackTextureID = 0;
     unsigned int m_FlatNormalTextureID = 0;

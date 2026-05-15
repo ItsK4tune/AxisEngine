@@ -50,7 +50,7 @@ void GameState::OnUpdate(float dt)
 
     auto& input = io->GetInputManager();
 
-    if (input.GetActionDown("LoadNextScene")) this->QueueLoadScene("scenes/game2.axs");
+    // if (input.GetActionDown("LoadNextScene")) this->QueueLoadScene("scenes/game2.axs");
     if (input.GetActionDown("ReloadScene")) this->QueuePopScene();
     if (input.GetActionDown("Pause")) this->Get<RuntimeCore>().GetStateMachine().PushState(std::make_unique<PauseState>());
 

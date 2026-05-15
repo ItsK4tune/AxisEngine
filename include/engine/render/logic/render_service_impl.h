@@ -55,7 +55,6 @@ public:
     void SetWireframe(bool enable) override { m_Flags.wireframe = enable; }
     bool IsOcclusionCullingEnabled() const override { return m_Flags.occlusionCullingEnabled; }
     void SetOcclusionCulling(bool enable) override { m_Flags.occlusionCullingEnabled = enable; }
-    RenderPath GetRenderPath() const override { return m_Flags.cachedRenderPath; }
     unsigned int GetWhiteTexture() const override;
     unsigned int GetBlackTexture() const override;
     unsigned int GetFlatNormalTexture() const override;
@@ -96,7 +95,6 @@ public:
     void ResetRenderedCount() { m_RenderedCount = 0; }
     void ResetQueuesBuilt() { m_QueuesBuilt = false; }
     void AddTime(float dt) { m_GlobalData.time += dt; m_GlobalData.deltaTime = dt; }
-    void FetchRenderPath();
     void BeginFrame(const RenderViewParams& params);
 
 private:

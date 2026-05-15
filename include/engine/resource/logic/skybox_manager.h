@@ -34,6 +34,8 @@ public:
 
     
     void Clear() override;
+    
+    std::vector<std::string> GetAllNames() const { return m_Cache.GetAllNames(); }
 
 private:
     ResourceCache<Skybox> m_Cache;

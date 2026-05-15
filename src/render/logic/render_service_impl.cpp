@@ -104,7 +104,7 @@ void RenderServiceImpl::Initialize()
     });
 
     m_RenderCore = std::make_unique<RenderCore>();
-    m_RenderCore->Initialize(m_Context);
+    m_RenderCore->Initialize(m_Context, shaderLib);
     sl.Register<RenderCore>(m_RenderCore.get());
 
     if (m_Context) {
@@ -138,14 +138,6 @@ void RenderServiceImpl::Initialize()
     }
 }
 
-void RenderServiceImpl::FetchRenderPath()
-{
-    if (m_ConfigManager) {
-        m_Flags.cachedRenderPath = m_ConfigManager->GetConfig().renderPath;
-    } else {
-        m_Flags.cachedRenderPath = m_ConfigManager->GetConfig().renderPath;
-    }
-}
 
 void RenderServiceImpl::Shutdown()
 {
@@ -310,10 +302,6 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         // LOGGER_WARN("RenderSystem") << "Invalid alpha value: " << lodFactor;
     }
 
-    if (m_ConfigManager) {
-        m_Flags.cachedRenderPath = m_ConfigManager->GetConfig().renderPath;
-    }
-
     IGraphicsContext& context = *m_Context;
     m_LastWidth = params.width;
     m_LastHeight = params.height;
@@ -342,9 +330,13 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         probes.push_back({&probe, pos.value});
     }
 
-    auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
+    auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
+
     for (auto entity : renderView) {
         if (entity == params.excludeEntity) continue;
+
+        auto& info = renderView.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
 
         auto& world = renderView.get<WorldTransformComponent>(entity);
         glm::mat4 modelMatrix = world.GetInterpolated(lodFactor);
@@ -477,7 +469,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             if (anim->animator) {
                 hasAnimation = true;
                 item.hasAnimation = true;
-                item.boneMatrices = anim->animator->GetFinalBoneMatrices();
+                item.boneMatrices = &anim->animator->GetFinalBoneMatrices();
             }
         }
 
@@ -492,16 +484,25 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         // Bake mode criteria: No animation, and no physics types other than static.
         item.isStatic = (!hasAnimation) && (!hasPhysic || (hasPhysic && isStaticPhysic));
-
-        if (isTransparent) m_RenderQueueObj.AddTransparent(item);
-        else m_RenderQueueObj.AddOpaque(item);
-        
+        if (isTransparent) {
+            m_RenderQueueObj.AddTransparent(item);
+        } else {
+            // Unified: Deferred for Opaque by default, Forward if overridden
+            if (renderer.renderMode == RenderMode::ForceForward) {
+                m_RenderQueueObj.AddForwardOpaque(item);
+            } else {
+                m_RenderQueueObj.AddDeferredOpaque(item);
+            }
+        }
         if (renderer.castShadow) m_RenderQueueObj.AddShadow(item);
     }
 
     // Collect Lights
-    auto dirView = scene.registry.view<DirectionalLightComponent>();
+    auto dirView = scene.registry.view<DirectionalLightComponent, InfoComponent>();
     for (auto entity : dirView) {
+        auto& info = dirView.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
+
         auto& light = dirView.get<DirectionalLightComponent>(entity);
         if (!light.active) continue;
         RenderLight rl;
@@ -520,8 +521,11 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         m_RenderQueueObj.AddLight(std::move(rl));
     }
 
-    auto pointView = scene.registry.view<PointLightComponent, PositionComponent>();
+    auto pointView = scene.registry.view<PointLightComponent, PositionComponent, InfoComponent>();
     for (auto entity : pointView) {
+        auto& info = pointView.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
+
         auto [light, pos] = pointView.get<PointLightComponent, PositionComponent>(entity);
         if (!light.active) continue;
         RenderLight rl;
@@ -542,8 +546,11 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         m_RenderQueueObj.AddLight(std::move(rl));
     }
 
-    auto spotView = scene.registry.view<SpotLightComponent, PositionComponent, RotationComponent>();
+    auto spotView = scene.registry.view<SpotLightComponent, PositionComponent, RotationComponent, InfoComponent>();
     for (auto entity : spotView) {
+        auto& info = spotView.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
+
         auto [light, pos, rot] = spotView.get<SpotLightComponent, PositionComponent, RotationComponent>(entity);
         if (!light.active) continue;
         RenderLight rl;
@@ -585,7 +592,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
     static bool firstFrame = true;
     if (firstFrame && !m_IsCapturingProbe) {
-        LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque=" << (int)m_RenderQueueObj.GetOpaqueQueue().size() 
+        LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque=" << (int)(m_RenderQueueObj.GetDeferredOpaqueQueue().size() + m_RenderQueueObj.GetForwardOpaqueQueue().size()) 
                                     << ", Transparent=" << (int)m_RenderQueueObj.GetTransparentQueue().size();
         firstFrame = false;
     }
@@ -625,31 +632,26 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         if (overrideShader) {
             shader = overrideShader;
         } else if (!shader) {
-            if (m_Flags.cachedRenderPath == RenderPath::Deferred) {
+            if (isTransparentPass) {
+                shader = m_ForwardPBRLitShader.get();
+            } else {
                 if (m_IsCapturingProbe) {
                     shader = m_ForwardPBRLitShader.get();
                 } else {
                     shader = m_DeferredLitShader.get();
                 }
-            } else {
-                shader = m_UnlitShader.get();
-            }
-        } else if (m_Flags.cachedRenderPath == RenderPath::Deferred && !m_IsCapturingProbe) {
-            // Only translate core shaders if NOT capturing a probe
-            if (shader == m_UnlitShader.get()) {
-                shader = m_DeferredUnlitShader.get();
             }
         } else if (m_IsCapturingProbe) {
-            // If capturing a probe, swap deferred shaders to their forward equivalents
-            if (shader == m_DeferredLitShader.get()) {
-                shader = m_ForwardPBRLitShader.get();
-            } else if (shader == m_DeferredUnlitShader.get()) {
-                shader = m_UnlitShader.get();
-            }
+            // Probe fallback logic
+            if (shader == m_DeferredLitShader.get()) shader = m_ForwardPBRLitShader.get();
+            else if (shader == m_DeferredUnlitShader.get()) shader = m_UnlitShader.get();
+        } else if (!isTransparentPass) {
+            // Translate core shaders for Deferred G-Buffer pass
+            if (shader == m_UnlitShader.get()) shader = m_DeferredUnlitShader.get();
         }
 
         if (!shader || !model) {
-            if (m_Flags.cachedRenderPath == RenderPath::Deferred) shader = m_ErrorDeferredShader.get();
+            if (!isTransparentPass) shader = m_ErrorDeferredShader.get();
             else shader = m_ErrorForwardShader.get();
             if (!shader || !model) continue;
         }
@@ -672,8 +674,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         }
 
         glm::mat4 mtx = item.worldMatrix;
-        if (item.hasAnimation) {
-            shader->setMat4Array("u_FinalBonesMatrices", item.boneMatrices);
+        if (item.hasAnimation && item.boneMatrices) {
+            shader->setMat4Array("u_FinalBonesMatrices", *item.boneMatrices);
         } else {
             mtx *= model->GetRootTransform();
         }

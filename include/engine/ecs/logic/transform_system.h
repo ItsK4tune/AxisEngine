@@ -33,7 +33,7 @@ public:
     }
     int GetPriority() const override
     {
-        return 10;
+        return 90;
     }
     bool WantsFixedUpdate() const override
     {

@@ -29,7 +29,6 @@ void RenderSystem::Update(Scene& scene, float dt)
 {
     if (m_RenderService) 
     {
-        m_RenderService->FetchRenderPath();
         m_RenderService->ResetQueuesBuilt();
         m_RenderService->IncrementFrame();
         m_RenderService->ResetRenderedCount();

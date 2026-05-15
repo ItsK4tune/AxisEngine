@@ -41,12 +41,14 @@ void ParticleSystem::Update(Scene &scene, float dt)
     if (!m_Enabled)
         return;
 
-    auto view = scene.registry.view<ParticleEmitterComponent, PositionComponent>();
-
+    auto view = scene.registry.view<ParticleEmitterComponent, PositionComponent, InfoComponent>();
     std::vector<entt::entity> toDestroy;
     for (auto entity : view)
     {
-        auto& emitterComp = scene.registry.get<ParticleEmitterComponent>(entity);
+        auto& info = view.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
+
+        auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
         const auto& pos = scene.registry.get<PositionComponent>(entity);
 
         bool isSpawning = true;
@@ -100,12 +102,14 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
     auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
     if (!resources) return;
     
-    auto view = scene.registry.view<ParticleEmitterComponent>();
-    auto defaultShader = resources->GetShader("particle"); // Assuming a default particle shader exists
+    auto view = scene.registry.view<ParticleEmitterComponent, InfoComponent>();
+    auto defaultShader = resources->GetShader("particle");
     for (auto entity : view)
     {
+        auto& info = view.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
+
         auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
-        if (emitterComp.isActive)
         {
             std::shared_ptr<Shader> activeShader = defaultShader;
             if (!emitterComp.customShader.empty()) {
@@ -118,6 +122,10 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
             
             uint32_t activeCount = emitterComp.emitter.GetActiveParticleCount();
             if (activeCount > 0) {
+                if (!emitterComp.emitter.Texture && !emitterComp.textureName.empty()) {
+                    emitterComp.emitter.Texture = resources->GetTextureAuto(emitterComp.textureName);
+                }
+                
                 if (!emitterComp.emitter.Texture) {
                     m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
                     m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);

@@ -12,6 +12,7 @@ struct SceneRecord
     int  loadOrder = 0;
     bool persistent = false;
     bool inviolable = false;
+    bool isActive = true;
 
     std::vector<entt::entity> entities;
 

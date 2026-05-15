@@ -25,6 +25,7 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
 
     if (async) {
         auto model = std::make_shared<Model>();
+        model->SetName(name);
         m_Cache.Add(name, model);
 
         auto future = JobSystem::Instance().ExecuteAsync([this, model, path, isStatic, name]() {
@@ -41,6 +42,7 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         return model;
     } else {
         auto model = std::make_shared<Model>();
+        model->SetName(name);
         try {
             model->LoadCPU(path, isStatic);
             if (ServiceLocator::Instance().Has<IGraphicsContext>()) {

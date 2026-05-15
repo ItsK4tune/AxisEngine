@@ -36,11 +36,11 @@ void main()
     vec3 finalColor = texColor.rgb * u_BaseColor.rgb;
     
     // Write to Albedo so lighting/u_Ambient pass can see it
-    gAlbedoSpec = vec4(finalColor, 1.0); // Roughness 1.0
+    gAlbedoSpec = vec4(finalColor, 0.04); // Default FresnelBias (unlit, non-reflective)
     gEntityID = u_EntityID;
     gEmissive = finalColor;
 
-    gPBRParams = vec4(0.0, 1.0, 0.0, 1.0); // Metallic=0, Roughness=1, Reflectivity=0
+    gPBRParams = vec4(0.0, 1.0, 0.0, 0.05); // Metallic=0, Roughness=1, Reflectivity=0, packed(noProbe + 5/100)
 
     if (u_IsWireframe) {
         gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);

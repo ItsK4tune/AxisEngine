@@ -12,6 +12,16 @@ YAMLNode *YAMLNode::GetChild(const std::string &k)
     return nullptr;
 }
 
+const YAMLNode *YAMLNode::GetChild(const std::string &k) const
+{
+    for (const auto &c : children)
+    {
+        if (c.key == k)
+            return &c;
+    }
+    return nullptr;
+}
+
 std::string YAMLNode::GetChildValue(const std::string &k, const std::string &defaultVal) const
 {
     for (auto &c : children)
@@ -88,11 +98,21 @@ namespace
 
 std::vector<YAMLNode> YAMLParser::Parse(const std::string &filepath)
 {
-    std::vector<YAMLNode> roots;
     std::ifstream file(filepath);
     if (!file.is_open())
-        return roots;
+        return {};
+    return ParseStream(file);
+}
 
+std::vector<YAMLNode> YAMLParser::ParseString(const std::string &content)
+{
+    std::stringstream ss(content);
+    return ParseStream(ss);
+}
+
+std::vector<YAMLNode> YAMLParser::ParseStream(std::istream &stream)
+{
+    std::vector<YAMLNode> roots;
     struct IndentLevel
     {
         int indent;
@@ -101,7 +121,7 @@ std::vector<YAMLNode> YAMLParser::Parse(const std::string &filepath)
     std::vector<IndentLevel> stack;
 
     std::string line;
-    while (std::getline(file, line))
+    while (std::getline(stream, line))
     {
         if (line.empty())
             continue;
@@ -120,7 +140,6 @@ std::vector<YAMLNode> YAMLParser::Parse(const std::string &filepath)
             }
         }
 
-        // Clip indent to line length to prevent substr OOB
         if (indent > len) indent = len;
 
         std::string content = line.substr(indent);

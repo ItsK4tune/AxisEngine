@@ -109,8 +109,11 @@ void UIRenderSystem::RenderUIPass(Scene &scene, float screenWidth, float screenH
     UpdateLayout(scene, virtualWidth, virtualHeight);
 
     std::vector<entt::entity> sortedEntities;
-    auto view = scene.registry.view<UITransformComponent>();
-    for (auto entity : view) sortedEntities.push_back(entity);
+    auto view = scene.registry.view<UITransformComponent, InfoComponent>();
+    for (auto entity : view) {
+        if (view.get<InfoComponent>(entity).isActive)
+            sortedEntities.push_back(entity);
+    }
     
     std::sort(sortedEntities.begin(), sortedEntities.end(), [&](entt::entity a, entt::entity b) {
         return view.get<UITransformComponent>(a).zIndex < view.get<UITransformComponent>(b).zIndex;

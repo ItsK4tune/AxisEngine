@@ -137,6 +137,18 @@ void ResourceManager::ReloadTexture(const std::string &name)
     LOGGER_INFO("HotReload") << "Reloading Texture: " << name;
 }
 
+void ResourceManager::AddResourceDefinition(const std::string& type, const std::string& name, const std::unordered_map<std::string, std::string>& props)
+{
+    std::lock_guard<std::mutex> lock(m_ResourceMutex);
+    for (auto& def : m_ResourceDefinitions) {
+        if (def.type == type && def.name == name) {
+            def.properties = props;
+            return;
+        }
+    }
+    m_ResourceDefinitions.push_back({ type, name, props });
+}
+
 void ResourceManager::LoadShader(const std::string &name, const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
 {
     if (!m_ShaderManager) return;
@@ -167,6 +179,10 @@ void ResourceManager::LoadShader(const std::string &name, const std::string &vsP
     }
 
     m_ResourceWatcher.Watch(name, vShaderPath, "SHADER", vShaderPath, fShaderPath, gShaderPath);
+    
+    std::unordered_map<std::string, std::string> props = { {"Vertex", vsPath}, {"Fragment", fsPath} };
+    if (!gsPath.empty()) props["Geometry"] = gsPath;
+    AddResourceDefinition("Shader", name, props);
 }
 
 void ResourceManager::LoadTexture(const std::string &name, const std::string &path, bool async, bool keepCpuData)
@@ -177,6 +193,7 @@ void ResourceManager::LoadTexture(const std::string &name, const std::string &pa
     m_TextureManager->Load(name, fullPath, async, keepCpuData);
 
     m_ResourceWatcher.Watch(name, fullPath, "Texture");
+    AddResourceDefinition("Texture", name, { {"Path", path} });
 }
 
 void ResourceManager::LoadModel(const std::string &name, const std::string &path, bool isStatic)
@@ -188,6 +205,7 @@ void ResourceManager::LoadModel(const std::string &name, const std::string &path
     if (m_ModelManager->Load(name, fullPath, isStatic, false))
     {
         EventManager::Instance().Publish(ResourceLoadedEvent{name, "MODEL", true});
+        AddResourceDefinition("Model", name, { {"Path", path}, {"Static", isStatic ? "1" : "0"} });
     }
 }
 
@@ -198,6 +216,7 @@ void ResourceManager::LoadModelAsync(const std::string &name, const std::string 
     LOGGER_INFO("ResourceManager") << "Async loading model: " << name;
 
     m_ModelManager->Load(name, fullPath, isStatic, true);
+    AddResourceDefinition("Model", name, { {"Path", path}, {"Static", isStatic ? "1" : "0"} });
 }
 
 void ResourceManager::LoadAnimation(const std::string &name, const std::string &path, const std::string &modelName)
@@ -206,6 +225,8 @@ void ResourceManager::LoadAnimation(const std::string &name, const std::string &
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading animation: " << name << " for model " << modelName;
     m_AnimationManager->Load(name, fullPath, modelName);
+    
+    AddResourceDefinition("Animation", name, { {"Path", path}, {"Model", modelName} });
 }
 
 void ResourceManager::LoadFont(const std::string &name, const std::string &path, unsigned int fontSize)
@@ -214,6 +235,8 @@ void ResourceManager::LoadFont(const std::string &name, const std::string &path,
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading font: " << name << " (" << fontSize << "px) from " << path;
     m_FontManager->Load(name, fullPath, fontSize);
+    
+    AddResourceDefinition("Font", name, { {"Path", path}, {"Size", std::to_string(fontSize)} });
 }
 
 void ResourceManager::LoadSound(const std::string &name, const std::string &path, IAudioEngine *engine)
@@ -222,6 +245,8 @@ void ResourceManager::LoadSound(const std::string &name, const std::string &path
     std::string fullPath = FileSystem::getPath(path);
     LOGGER_INFO("ResourceManager") << "Loading sound: " << name;
     m_AudioManager->Load(name, fullPath);
+    
+    AddResourceDefinition("Sound", name, { {"Path", path} });
 }
 
 void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std::string> &faces)
@@ -229,6 +254,13 @@ void ResourceManager::LoadSkybox(const std::string &name, const std::vector<std:
     if (m_HeadlessMode || !m_SkyboxManager) return;
     LOGGER_INFO("ResourceManager") << "Loading skybox: " << name;
     m_SkyboxManager->Load(name, faces);
+    
+    std::unordered_map<std::string, std::string> props;
+    if (faces.size() >= 6) {
+        props["Right"] = faces[0]; props["Left"] = faces[1]; props["Top"] = faces[2];
+        props["Bottom"] = faces[3]; props["Front"] = faces[4]; props["Back"] = faces[5];
+    }
+    AddResourceDefinition("Skybox", name, props);
 }
 
 void ResourceManager::LoadFragment(const std::string &name, const std::string &path)
@@ -263,6 +295,8 @@ std::shared_ptr<FragmentAsset> ResourceManager::GetFragment(const std::string &n
 std::vector<std::string> ResourceManager::GetLoadedTextures() const { return m_TextureManager ? m_TextureManager->GetAllNames() : std::vector<std::string>{}; }
 std::vector<std::string> ResourceManager::GetLoadedModels() const { return m_ModelManager ? m_ModelManager->GetAllNames() : std::vector<std::string>{}; }
 std::vector<std::string> ResourceManager::GetLoadedShaders() const { return m_ShaderManager ? m_ShaderManager->GetAllNames() : std::vector<std::string>{}; }
+std::vector<std::string> ResourceManager::GetLoadedSounds() const { return m_AudioManager ? m_AudioManager->GetAllNames() : std::vector<std::string>{}; }
+std::vector<std::string> ResourceManager::GetLoadedSkyboxes() const { return m_SkyboxManager ? m_SkyboxManager->GetAllNames() : std::vector<std::string>{}; }
 
 std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &nameOrPath)
 {

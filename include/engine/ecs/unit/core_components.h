@@ -16,6 +16,7 @@ struct InfoComponent
     std::string sceneName = "";
     uint32_t layer = 1;
     int renderOrder = 0;
+    bool isActive = true;
 };
 
 

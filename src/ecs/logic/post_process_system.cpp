@@ -8,6 +8,7 @@
 #include <core/logic/config_manager.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/unit/post_process_component.h>
+#include <ecs/unit/core_components.h>
 #include <scene/logic/scene.h>
 
 REGISTER_SYSTEM(PostProcessSystem)
@@ -116,33 +117,45 @@ void PostProcessSystem::Render(Scene& scene)
     }
 
     // Collect effects from components
-    auto view = scene.registry.view<PostProcessComponent>();
+    auto view = scene.registry.view<PostProcessComponent, InfoComponent>();
     auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
     if (!res) return;
     
     for (auto entity : view) {
-        auto& pp = view.get<PostProcessComponent>(entity);
-        if (!pp.enabled) continue;
+        auto [pp, info] = view.get<PostProcessComponent, InfoComponent>(entity);
+        if (!pp.enabled || !info.isActive) continue;
         for (const auto& eff : pp.effects) {
+            if (!eff.enabled) continue;
             auto shader = res->GetShader(eff.shaderName);
             if (shader) {
-                m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority);
+                m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority, eff.affectUI);
             }
         }
     }
     
     m_Pipeline.EndCapture();
 
-    if (m_RenderService) {
+    if (m_RenderService && !m_Pipeline.HasUIEffects()) {
         m_RenderService->SetMainFBO(0);
     }
 
     FrameRenderData data;
-    data.mainFBO = 0;
+    data.mainFBO = m_Pipeline.HasUIEffects() ? m_Pipeline.GetCaptureFBO() : 0;
     data.width = m_Pipeline.GetWidth();
     data.height = m_Pipeline.GetHeight();
     data.alpha = 1.0f;
     EventManager::Instance().Publish<FrameRenderDataEvent>({data});
+}
+
+void PostProcessSystem::RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState)
+{
+    if (!m_Enabled || !m_Pipeline.HasUIEffects()) return;
+
+    m_Pipeline.RenderUIEffects();
+
+    if (m_RenderService) {
+        m_RenderService->SetMainFBO(0);
+    }
 }
 
 std::vector<entt::id_type> PostProcessSystem::GetReadComponents() const

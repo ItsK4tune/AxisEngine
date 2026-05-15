@@ -57,16 +57,6 @@ void IOHandler::ProcessInput()
     if (m_KeyboardManager->GetKey(Key::Escape))
         m_MonitorManager->GetWindow()->SetShouldClose(true);
     
-    bool superPressed = m_KeyboardManager->GetKey(Key::LeftSuper) || m_KeyboardManager->GetKey(Key::RightSuper);
-    bool altPressed = m_KeyboardManager->GetKey(Key::LeftAlt) || m_KeyboardManager->GetKey(Key::RightAlt);
-    bool enterDown = m_KeyboardManager->IsKeyDown(Key::Enter) || m_KeyboardManager->IsKeyDown(Key::KpEnter);
-
-    if ((superPressed || altPressed) && enterDown)
-    {
-        LOGGER_INFO("IOHandler") << "Toggle Fullscreen shortcut detected (" 
-                                 << (superPressed ? "Super" : "Alt") << " + Enter)";
-        m_MonitorManager->ToggleFullscreen();
-    }
 }
 
 void IOHandler::OnResize(int width, int height)

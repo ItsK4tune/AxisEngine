@@ -79,22 +79,6 @@ void LightingSystem::Render(Scene& scene)
     int width = io ? io->GetMonitorManager().GetWidth() : 800;
     int height = io ? io->GetMonitorManager().GetHeight() : 600;
 
-    if (rs->GetRenderPath() == RenderPath::Forward) {
-        RenderSceneData sceneData;
-        sceneData.lights = rs->GetRenderQueueObj().GetLights();
-        sceneData.cameraPosition = rs->GetCameraPosition();
-        sceneData.viewMatrix = rs->GetViewMatrix();
-        sceneData.projMatrix = rs->GetProjectionMatrix();
-        sceneData.nearPlane = rs->GetNearPlane();
-        sceneData.farPlane = rs->GetFarPlane();
-
-        m_LightRenderer.UploadLightData(sceneData, nullptr);
-        if (m_GraphicsContext) {
-            m_GraphicsContext->GetRenderStateManager().SetViewport(0, 0, width, height);
-        }
-        return;
-    }
-
     RenderDeferredLighting(scene, width, height);
 }
 

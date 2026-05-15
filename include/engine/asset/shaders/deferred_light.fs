@@ -146,7 +146,9 @@ void main()
     vec3 Normal = normalize(normalSample.rgb);
     bool receiveShadowFlag = (normalSample.a > 0.5); 
     
-    vec3 Albedo = texture(gAlbedoSpec, TexCoords).rgb;
+    vec4 albedoSpecSample = texture(gAlbedoSpec, TexCoords);
+    vec3 Albedo = albedoSpecSample.rgb;
+    float FresnelBias = albedoSpecSample.a; // Unpacked from deferred_reflect.fs
     uint EntityID = texture(gID, TexCoords).r;
 
     if (u_DebugMode == 1) { FragColor = vec4(FragPos, 1.0); return; }
@@ -165,9 +167,9 @@ void main()
     float Roughness = PBRParams.g;
     float Reflectivity = PBRParams.b;
     
-    // Unpacking: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 10.0
+    // Unpacking: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 100.0
     int pIdx = int(PBRParams.a) - 1;
-    float FresnelPower = fract(PBRParams.a) * 10.0;
+    float FresnelPower = fract(PBRParams.a) * 100.0;
 
     // Mask out specular lighting on pure matte surfaces (e.g. black decals, cracks)
     float activeSpecularMask = 1.0; 
@@ -344,7 +346,7 @@ void main()
     }
 
     if (Reflectivity > 0.01) {
-        vec3 F0 = vec3(0.08); 
+        vec3 F0 = vec3(max(FresnelBias, 0.04)); // Use per-object FresnelBias instead of hardcoded 0.08
         F0 = mix(F0, Albedo, Metallic);
         vec3 F = fresnelSchlickRoughness(max(dot(Normal, V), 0.0), F0, Roughness);
         vec3 kS = F;

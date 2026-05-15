@@ -11,7 +11,11 @@
 #include <algorithm>
 
 void RenderQueue::Sort() {
-    std::sort(m_OpaqueQueue.begin(), m_OpaqueQueue.end(), [](const RenderItem& lhs, const RenderItem& rhs) {
+    std::sort(m_DeferredOpaqueQueue.begin(), m_DeferredOpaqueQueue.end(), [](const RenderItem& lhs, const RenderItem& rhs) {
+        return lhs.sortKey < rhs.sortKey;
+    });
+
+    std::sort(m_ForwardOpaqueQueue.begin(), m_ForwardOpaqueQueue.end(), [](const RenderItem& lhs, const RenderItem& rhs) {
         return lhs.sortKey < rhs.sortKey;
     });
 

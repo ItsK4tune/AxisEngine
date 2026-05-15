@@ -3,7 +3,7 @@
 #include <render/interface/i_buffer_manager.h>
 #include <core/logic/logger.h>
 
-void RenderCore::Initialize(IGraphicsContext* context)
+void RenderCore::Initialize(IGraphicsContext* context, ResourceManager* resourceManager)
 {
     m_Context = context;
     if (!m_Context) {
@@ -35,7 +35,7 @@ void RenderCore::Initialize(IGraphicsContext* context)
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Linear);
 
     // 2. Material Renderer
-    m_MaterialRenderer.Initialize(context, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
+    m_MaterialRenderer.Initialize(context, resourceManager, m_WhiteTextureID, m_BlackTextureID, m_FlatNormalTextureID);
 
     // 3. Meshes
     InitQuad();

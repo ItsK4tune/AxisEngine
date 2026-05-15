@@ -114,7 +114,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                         threadQueue.Submit([shaderDir, worldMat, activeModel, hasAnim = item.hasAnimation, bones = item.boneMatrices]() {
                             shaderDir->setMat4("u_Model", worldMat);
                             shaderDir->setBool("u_HasAnimation", hasAnim);
-                            if (hasAnim) shaderDir->setMat4Array("u_FinalBonesMatrices", bones);
+                            if (hasAnim && bones) shaderDir->setMat4Array("u_FinalBonesMatrices", *bones);
                             activeModel->Draw(*shaderDir);
                         });
                     }
@@ -185,7 +185,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                             threadQueue.Submit([shaderPoint, worldMat, activeModel, hasAnim = item.hasAnimation, bones = item.boneMatrices]() {
                                 shaderPoint->setMat4("u_Model", worldMat);
                                 shaderPoint->setBool("u_HasAnimation", hasAnim);
-                                if (hasAnim) shaderPoint->setMat4Array("u_FinalBonesMatrices", bones);
+                                if (hasAnim && bones) shaderPoint->setMat4Array("u_FinalBonesMatrices", *bones);
                                 activeModel->Draw(*shaderPoint);
                             });
                         }
@@ -247,7 +247,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                             threadQueue.Submit([shaderSpot, worldMat, activeModel, hasAnim = item.hasAnimation, bones = item.boneMatrices]() {
                                 shaderSpot->setMat4("u_Model", worldMat);
                                 shaderSpot->setBool("u_HasAnimation", hasAnim);
-                                if (hasAnim) shaderSpot->setMat4Array("u_FinalBonesMatrices", bones);
+                                if (hasAnim && bones) shaderSpot->setMat4Array("u_FinalBonesMatrices", *bones);
                                 activeModel->Draw(*shaderSpot);
                             });
                         }

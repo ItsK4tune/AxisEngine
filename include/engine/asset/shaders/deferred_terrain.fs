@@ -56,7 +56,7 @@ void main()
     }
     
     gAlbedoSpec.rgb = albedo;
-    gAlbedoSpec.a = 0.5;
+    gAlbedoSpec.a = 0.04; // Default FresnelBias (terrain is non-reflective)
     gEntityID = u_EntityID;
     gEmissive = vec3(0.0);
 }

@@ -183,8 +183,11 @@ void PlanarReflectionSystem::Render(Scene& scene)
         reflParams.isCapturingProbe = true;
         m_RenderService->BuildRenderQueuesWithCamera(scene, reflParams);
 
-        const auto& opaqueQ = m_RenderService->GetRenderQueueObj().GetOpaqueQueue();
-        m_RenderService->ExecuteQueue(opaqueQ, false, nullptr, nullptr, nullptr);
+        const auto& defQ = m_RenderService->GetRenderQueueObj().GetDeferredOpaqueQueue();
+        m_RenderService->ExecuteQueue(defQ, false, nullptr, nullptr, nullptr);
+        
+        const auto& fwdQ = m_RenderService->GetRenderQueueObj().GetForwardOpaqueQueue();
+        m_RenderService->ExecuteQueue(fwdQ, false, nullptr, nullptr, nullptr);
 
         rsm.SetCullFace(CullMode::Back);
         m_RenderService->SetMainFBO(tempFB);

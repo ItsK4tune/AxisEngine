@@ -80,6 +80,8 @@ public:
     std::vector<std::string> GetLoadedTextures() const;
     std::vector<std::string> GetLoadedModels() const;
     std::vector<std::string> GetLoadedShaders() const;
+    std::vector<std::string> GetLoadedSounds() const;
+    std::vector<std::string> GetLoadedSkyboxes() const;
 
     std::shared_ptr<Texture> GetTextureAuto(const std::string& nameOrPath);
     std::shared_ptr<Model> GetModelAuto(const std::string& nameOrPath, bool isStatic = false);
@@ -88,6 +90,13 @@ public:
 
     void ClearResource();
 
+    struct ResourceDefinition {
+        std::string type; // "Shader", "Texture", "Model", "Font", "Skybox", "Sound"
+        std::string name;
+        std::unordered_map<std::string, std::string> properties;
+    };
+    const std::vector<ResourceDefinition>& GetResourceDefinitions() const { return m_ResourceDefinitions; }
+    void AddResourceDefinition(const std::string& type, const std::string& name, const std::unordered_map<std::string, std::string>& props);
 
     void RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy);
     bool LoadUnified(const std::string& type, const std::string& path);
@@ -119,6 +128,8 @@ private:
     std::mutex           m_ResourceMutex;
 
     std::unordered_map<std::string, std::unique_ptr<ILoaderStrategy>> m_Strategies;
+
+    std::vector<ResourceDefinition> m_ResourceDefinitions;
 
     bool m_HeadlessMode = false;
     int m_ReloadListenerId = -1;

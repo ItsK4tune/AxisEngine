@@ -48,7 +48,7 @@ void GeometrySystem::Initialize()
 
     m_GBuffer.SetRenderScale(config.renderScale);
     m_GBuffer.Initialize(context, config.width, config.height);
-    m_IsDeferredCached = (config.renderPath == RenderPath::Deferred);
+    m_IsDeferredCached = true;
 
     m_RenderService = sl.Resolve<IRenderService>();
     m_ShadowService = sl.Resolve<IShadowService>();
@@ -95,9 +95,8 @@ void GeometrySystem::Render(Scene& scene)
         return;
     }
 
-    auto renderPath = rs->GetRenderPath();
-    bool isDeferred = (renderPath == RenderPath::Deferred);
-    m_IsDeferredCached = isDeferred;
+    bool isDeferred = true;
+    m_IsDeferredCached = true;
 
     const auto& config = m_ConfigManager->GetConfig();
     int width = config.width;
@@ -115,18 +114,10 @@ void GeometrySystem::Render(Scene& scene)
     auto& dc = context.GetDrawContext();
     auto& rtm = context.GetRenderTargetManager();
 
-    if (isDeferred) {
-        BindGBufferForWriting();
-        rsm.SetViewport(0, 0, (int)(width * m_GBuffer.GetRenderScale()), (int)(height * m_GBuffer.GetRenderScale()));
-        dc.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        dc.Clear(BufferBit::Color | BufferBit::Depth);
-    } else {
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, rs->GetMainFBO());
-        rsm.SetViewport(0, 0, width, height);
-        const auto& cfg = m_ConfigManager->GetConfig();
-        dc.ClearColor(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
-        dc.Clear(BufferBit::Color | BufferBit::Depth);
-    }
+    BindGBufferForWriting();
+    rsm.SetViewport(0, 0, (int)(width * m_GBuffer.GetRenderScale()), (int)(height * m_GBuffer.GetRenderScale()));
+    dc.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    dc.Clear(BufferBit::Color | BufferBit::Depth);
 
     rsm.Enable(ServerCapability::DepthTest);
     rsm.SetDepthFunc(CompareFunc::Less);
@@ -137,20 +128,27 @@ void GeometrySystem::Render(Scene& scene)
     auto* shadowSys = sl.Resolve<IShadowService>();
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
 
-    const auto& opaqueQueue = rs->GetRenderQueueObj().GetOpaqueQueue();
-    if (!opaqueQueue.empty())
+    const auto& defOpaqueQueue = rs->GetRenderQueueObj().GetDeferredOpaqueQueue();
+    if (!defOpaqueQueue.empty())
     {
         shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
         RenderCore* core = sl.Resolve<RenderCore>();
         if (core) {
-            rs->ExecuteQueue(opaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr); 
+            rs->ExecuteQueue(defOpaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr); 
         }
     }
-    
-    if (isDeferred) {
-        UnbindGBuffer();
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, rs->GetMainFBO());
+
+    const auto& fwdOpaqueQueue = rs->GetRenderQueueObj().GetForwardOpaqueQueue();
+    if (!fwdOpaqueQueue.empty())
+    {
+        shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
+        RenderCore* core = sl.Resolve<RenderCore>();
+        if (core) {
+            rs->ExecuteQueue(fwdOpaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr); 
+        }
     }
+    UnbindGBuffer();
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, rs->GetMainFBO());
 }
 
 void GeometrySystem::BindGBufferForWriting()

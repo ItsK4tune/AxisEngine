@@ -2,6 +2,7 @@
 #include <ecs/logic/animation_system.h>
 #include <resource/unit/animator.h>
 #include <ecs/unit/render_components.h>
+#include <ecs/unit/core_components.h>
 #include <ecs/logic/system_factory.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
@@ -18,11 +19,14 @@ void AnimationSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled) return;
 
-    auto view = scene.registry.view<AnimationComponent, MeshRendererComponent>();
+    auto view = scene.registry.view<AnimationComponent, MeshRendererComponent, InfoComponent>();
 
     for (auto entity : view)
     {
-        auto &anim = scene.registry.get<AnimationComponent>(entity);
+        auto &info = view.get<InfoComponent>(entity);
+        if (!info.isActive) continue;
+
+        auto &anim = view.get<AnimationComponent>(entity);
         if (anim.animator)
         {
             glm::mat4 rootTransform = glm::mat4(1.0f);

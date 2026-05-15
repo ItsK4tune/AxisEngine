@@ -5,6 +5,6 @@
 
 struct FragmentComponent {
     std::string path;
-    YAMLNode overrideNode; 
+    std::string overrides; // Raw YAML string for overrides
     bool instantiated = false;
 };

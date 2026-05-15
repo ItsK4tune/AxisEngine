@@ -49,6 +49,11 @@ public:
     void LogScene(const std::string& filePath) const;
     void LogAllScenes() const;
 
+    void SetActiveScene(const std::string& name) { m_ActiveSceneName = name; }
+    std::string GetActiveScene() const { return m_ActiveSceneName; }
+
+    void SetSceneActive(const std::string& name, bool active, Scene& scene);
+
     IPhysicsWorld* GetPhysicsWorld();
 
 private:
@@ -66,6 +71,7 @@ private:
     void Internal_ReindexScenes();
 
     int m_NextLoadOrder = 0;
+    std::string m_ActiveSceneName = "main";
     std::vector<SceneRecord> m_LoadedScenes;
     std::vector<PendingOp>   m_PendingQueue;
 };

@@ -55,6 +55,7 @@ struct UIRendererComponent
 {
     std::shared_ptr<UIModel> model = nullptr;
     std::shared_ptr<Shader> shader = nullptr;
+    std::string shaderName = "";
     std::shared_ptr<Texture> texture = nullptr;
     glm::vec4 color = glm::vec4(1.0f);
 };
@@ -65,6 +66,7 @@ struct UITextComponent
     std::string fontName = "";
     std::shared_ptr<UIModel> model = nullptr;
     std::shared_ptr<Shader> shader = nullptr;
+    std::string shaderName = "";
     std::shared_ptr<Font> font = nullptr;
     glm::vec4 color = glm::vec4(1.0f);
     float scale = 1.0f;

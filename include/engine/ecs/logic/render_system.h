@@ -29,7 +29,7 @@ public:
     void Initialize() override;
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 79; }
+    int GetPriority() const override { return 100; }
     std::string GetName() const override { return "RenderSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update | SystemCategory::PostProcess; }
     SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }

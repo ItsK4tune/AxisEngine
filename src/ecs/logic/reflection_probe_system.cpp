@@ -118,8 +118,15 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     auto& pos = scene.registry.get<PositionComponent>(entity).value;
     auto& probe = scene.registry.get<ReflectionProbeComponent>(entity);
     
-    if (probe.cubemapID == 0) {
+    if (probe.cubemapID == 0 || probe.lastResolution != probe.resolution) {
+        // Resolution changed or first allocation — (re)create cubemap at correct size
+        if (probe.cubemapID != 0) {
+            tm.DeleteTexture(probe.cubemapID);
+            probe.cubemapID = 0;
+        }
         probe.cubemapID = CreateCubemap(probe.resolution);
+        probe.lastResolution = probe.resolution;
+        probe.isDirty = true;
     }
     
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_CaptureFBO);
@@ -194,7 +201,8 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     }
     
     // 4. Render the scene
-    auto& opaque = renderService.GetRenderQueueObj().GetOpaqueQueue();
+    auto& defOpaque = renderService.GetRenderQueueObj().GetDeferredOpaqueQueue();
+    auto& fwdOpaque = renderService.GetRenderQueueObj().GetForwardOpaqueQueue();
     auto& transparent = renderService.GetRenderQueueObj().GetTransparentQueue();
     
     auto* core = sl.Resolve<RenderCore>();
@@ -202,7 +210,8 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     
     // Final Render Queue Execution
     if (core) {
-        renderService.ExecuteQueue(opaque, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
+        renderService.ExecuteQueue(defOpaque, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
+        renderService.ExecuteQueue(fwdOpaque, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
         renderService.ExecuteQueue(transparent, true, shadowRenderer, &core->GetMaterialRenderer());
     }
     

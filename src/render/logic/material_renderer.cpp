@@ -3,9 +3,11 @@
 #include <resource/unit/shader.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
+#include <resource/logic/resource_manager.h>
 
-void MaterialRenderer::Initialize(IGraphicsContext* context, unsigned int whiteTextureId, unsigned int blackTextureId, unsigned int flatNormalTextureId) {
+void MaterialRenderer::Initialize(IGraphicsContext* context, ResourceManager* resourceManager, unsigned int whiteTextureId, unsigned int blackTextureId, unsigned int flatNormalTextureId) {
     m_Context = context;
+    m_ResourceManager = resourceManager;
     m_WhiteTextureID = whiteTextureId;
     m_BlackTextureID = blackTextureId;
     m_FlatNormalTextureID = flatNormalTextureId;
@@ -65,45 +67,52 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
     bool boundSomething = false;
     if (material) {
         auto &mat = *material;
-        if (mat.desc.type == AxisMaterialType::PBR) {
-            // Set standardized u_* names
-            if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, mat.desc.pbr.roughness);
-            if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, mat.desc.pbr.metallic);
-            if (locs.u_AO != -1) shader->setFloat(locs.u_AO, mat.desc.pbr.ao);
-            if (locs.u_Emission != -1) shader->setVec3(locs.u_Emission, mat.desc.emission);
 
-            if (sceneData.irradianceMap != 0 && locs.u_IrradianceMap != -1) {
-                tm.ActiveTexture(TextureUnit::Texture6);
-                tm.BindTexture(TextureType::TextureCubeMap, sceneData.irradianceMap);
-                shader->setInt(locs.u_IrradianceMap, 6);
-            }
-            if (sceneData.prefilterMap != 0 && locs.u_PrefilterMap != -1) {
-                tm.ActiveTexture(TextureUnit::Texture7);
-                tm.BindTexture(TextureType::TextureCubeMap, sceneData.prefilterMap);
-                shader->setInt(locs.u_PrefilterMap, 7);
-            }
-            if (sceneData.brdfLUT != 0 && locs.u_BrdfLUT != -1) {
-                tm.ActiveTexture(TextureUnit::Texture8);
-                tm.BindTexture(TextureType::Texture2D, sceneData.brdfLUT);
-                shader->setInt(locs.u_BrdfLUT, 8);
-            }
+        // 1. Sync GPU State if dirty
+        if (mat.gpu.dirty && m_ResourceManager) {
+            auto getTexID = [&](const std::string& path) -> uint32_t {
+                if (path.empty()) return 0;
+                auto tex = m_ResourceManager->GetTexture(path);
+                return tex ? tex->id : 0;
+            };
+            mat.gpu.albedoMap = getTexID(mat.desc.albedoPath);
+            mat.gpu.normalMap = getTexID(mat.desc.normalPath);
+            mat.gpu.metallicMap = getTexID(mat.desc.metallicPath);
+            mat.gpu.roughnessMap = getTexID(mat.desc.roughnessPath);
+            mat.gpu.aoMap = getTexID(mat.desc.aoPath);
+            mat.gpu.emissiveMap = getTexID(mat.desc.emissivePath);
+            mat.gpu.specularMap = getTexID(mat.desc.specularPath);
+            mat.gpu.dirty = false;
         }
-        else {
-            float r = glm::clamp(1.0f - glm::sqrt(mat.desc.phong.shininess / 128.0f), 0.05f, 1.0f);
-            if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, r);
-            if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, 0.0f);
-            if (locs.u_Shininess != -1) shader->setFloat(locs.u_Shininess, mat.desc.phong.shininess);
-            if (locs.u_Specular != -1) shader->setVec3(locs.u_Specular, mat.desc.phong.specular);
-            if (locs.u_Emission != -1) shader->setVec3(locs.u_Emission, mat.desc.emission);
+
+        // Set standardized u_* names
+        if (locs.u_Roughness != -1) shader->setFloat(locs.u_Roughness, mat.desc.pbr.roughness);
+        if (locs.u_Metallic != -1) shader->setFloat(locs.u_Metallic, mat.desc.pbr.metallic);
+        if (locs.u_AO != -1) shader->setFloat(locs.u_AO, mat.desc.pbr.ao);
+        if (locs.u_Emission != -1) shader->setVec3(locs.u_Emission, mat.desc.emission);
+
+        if (sceneData.irradianceMap != 0 && locs.u_IrradianceMap != -1) {
+            tm.ActiveTexture(TextureUnit::Texture6);
+            tm.BindTexture(TextureType::TextureCubeMap, sceneData.irradianceMap);
+            shader->setInt(locs.u_IrradianceMap, 6);
         }
+        if (sceneData.prefilterMap != 0 && locs.u_PrefilterMap != -1) {
+            tm.ActiveTexture(TextureUnit::Texture7);
+            tm.BindTexture(TextureType::TextureCubeMap, sceneData.prefilterMap);
+            shader->setInt(locs.u_PrefilterMap, 7);
+        }
+        if (sceneData.brdfLUT != 0 && locs.u_BrdfLUT != -1) {
+            tm.ActiveTexture(TextureUnit::Texture8);
+            tm.BindTexture(TextureType::Texture2D, sceneData.brdfLUT);
+            shader->setInt(locs.u_BrdfLUT, 8);
+        }
+        
         // BaseColor: must always be set when shader declares it
+        // Incorporate material opacity into alpha channel — shaders read u_BaseColor.a for final alpha
         if (locs.u_BaseColor != -1) {
-            if (mat.desc.type == AxisMaterialType::PBR) {
-                shader->setVec4(locs.u_BaseColor, tintColor);
-            } else {
-                glm::vec4 baseColor = glm::vec4(mat.desc.phong.ambient, mat.desc.opacity) * tintColor;
-                shader->setVec4(locs.u_BaseColor, baseColor);
-            }
+            glm::vec4 baseColor = tintColor;
+            baseColor.a *= mat.desc.opacity;
+            shader->setVec4(locs.u_BaseColor, baseColor);
         }
 
         if (locs.u_UVScale != -1) shader->setVec2(locs.u_UVScale, mat.desc.uvScale);
