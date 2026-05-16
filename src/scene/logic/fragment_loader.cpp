@@ -114,7 +114,7 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 scene.registry.emplace<HierarchyComponent>(currentEntity);
                 auto& wt = scene.registry.emplace<WorldTransformComponent>(currentEntity);
                 wt.isDirty = true;
-                scene.registry.emplace<InfoComponent>(currentEntity, entityName, entNode.GetChildValue("Tag", "default"));
+                scene.registry.emplace<InfoComponent>(currentEntity, namespacedName, namespacedTag);
 
                 auto& info = scene.registry.get<InfoComponent>(currentEntity);
                 info.sceneName = fragmentName;
@@ -135,30 +135,43 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 {
                     if (child.key == "Component" && child.value == "Transform")
                     {
-                        float x=0, y=0, z=0, rx=0, ry=0, rz=0, sx=1, sy=1, sz=1;
-                        std::stringstream ss;
-                        ss << child.GetChildValue("Position", "0 0 0") << " "
-                           << child.GetChildValue("Rotation", "0 0 0") << " "
-                           << child.GetChildValue("Scale", "1 1 1");
-                        ss >> x >> y >> z >> rx >> ry >> rz >> sx >> sy >> sz;
+                        std::string pStr = child.GetChildValue("Position", "0 0 0");
+                        std::string rStr = child.GetChildValue("Rotation", "0 0 0");
+                        std::string sStr = child.GetChildValue("Scale", "1 1 1");
+                        if (pStr.empty()) pStr = "0 0 0";
+                        if (rStr.empty()) rStr = "0 0 0";
+                        if (sStr.empty()) sStr = "1 1 1";
                         
-                        scene.registry.get<PositionComponent>(currentEntity).value = glm::vec3(x, y, z);
-                        scene.registry.get<RotationComponent>(currentEntity).value = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
-                        scene.registry.get<ScaleComponent>(currentEntity).value = glm::vec3(sx, sy, sz);
+                        float x=0, y=0, z=0;
+                        std::stringstream ssP(pStr); ssP >> x >> y >> z;
+                        
+                        float rx=0, ry=0, rz=0;
+                        std::stringstream ssR(rStr); ssR >> rx >> ry >> rz;
+                        
+                        float sx=1, sy=1, sz=1;
+                        std::stringstream ssS(sStr); ssS >> sx >> sy >> sz;
+                        
+                        auto& pComp = scene.registry.get<PositionComponent>(currentEntity);
+                        pComp.value = glm::vec3(x, y, z);
+                        pComp.prev = pComp.value;
 
+                        auto& rComp = scene.registry.get<RotationComponent>(currentEntity);
+                        rComp.value = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
+                        rComp.prev = rComp.value;
+
+                        auto& sComp = scene.registry.get<ScaleComponent>(currentEntity);
+                        sComp.value = glm::vec3(sx, sy, sz);
+                        sComp.prev = sComp.value;
+
+                        LOGGER_INFO("FragmentLoader") << "[DEBUG] Loaded Transform for '" << entityName 
+                            << "': Pos(" << x << "," << y << "," << z << ") Scale(" << sx << "," << sy << "," << sz << ")";
+
+                        // Mark dirty ΓÇö TransformSystem will compute the correct world matrix
+                        // AFTER deferred internal parenting is resolved.
+                        // Do NOT pre-compute here: `parent` is the fragment owner, not the
+                        // internal parent (which hasn't been linked yet).
                         if (scene.registry.all_of<WorldTransformComponent>(currentEntity)) {
-                            auto& wt = scene.registry.get<WorldTransformComponent>(currentEntity);
-                            wt.isDirty = true;
-                            
-                            // Immediately compute world matrix if parent is valid
-                            if (parent != entt::null && scene.registry.all_of<WorldTransformComponent>(parent)) {
-                                auto& parentWT = scene.registry.get<WorldTransformComponent>(parent);
-                                glm::mat4 local = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
-                                local *= glm::mat4_cast(glm::quat(glm::radians(glm::vec3(rx, ry, rz))));
-                                local = glm::scale(local, glm::vec3(sx, sy, sz));
-                                wt.worldMatrix = parentWT.worldMatrix * local;
-                                wt.isDirty = false;
-                            }
+                            scene.registry.get<WorldTransformComponent>(currentEntity).isDirty = true;
                         }
                         break;
                     }

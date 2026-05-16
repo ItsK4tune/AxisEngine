@@ -63,6 +63,19 @@ void SceneManager::AddEntity(entt::entity entity, const std::string &sceneName)
     }
 }
 
+void SceneManager::RemoveEntity(entt::entity entity)
+{
+    for (auto& rec : m_LoadedScenes)
+    {
+        auto it = std::find(rec.entities.begin(), rec.entities.end(), entity);
+        if (it != rec.entities.end())
+        {
+            rec.entities.erase(it);
+            return;
+        }
+    }
+}
+
 void SceneManager::SetSceneActive(const std::string& name, bool active, Scene& scene)
 {
     std::string normName = SceneSerializer::NormalizeSceneName(name);

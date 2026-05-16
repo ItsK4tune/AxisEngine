@@ -6,6 +6,8 @@
 #include <ecs/unit/decal_component.h>
 #include <ecs/unit/post_process_component.h>
 #include <ecs/unit/reflection_components.h>
+#include <ecs/unit/light_probe_components.h>
+#include <ecs/unit/terrain_component.h>
 #include <resource/unit/animator.h>
 #include <audio/logic/audio_service.h>
 #include <algorithm>
@@ -96,6 +98,9 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("AudioSource", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAudioSource(s, e, n, r); });
     RegisterLoader("Audio", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAudioSource(s, e, n, r); });
     RegisterLoader("Fragment", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadFragment(s, e, n); });
+    RegisterLoader("PlanarReflection", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadPlanarReflection(s, e, n); });
+    RegisterLoader("LightProbe", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadLightProbe(s, e, n); });
+    RegisterLoader("Terrain", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadTerrain(s, e, n, r); });
 }
 
 // Helper to serialize YAMLNode back to string for overrides
@@ -829,6 +834,12 @@ void ComponentLoader::LoadFragment(Scene &scene, entt::entity entity, const YAML
 
     if (overrideNode) {
         frag.overrides = SerializeYAML(*overrideNode);
+        LOGGER_INFO("ComponentLoader") << "[FRAG-LOAD] Entity " << (uint32_t)entity << " path='" << frag.path << "' overrides='" << frag.overrides << "'";
+    } else {
+        LOGGER_INFO("ComponentLoader") << "[FRAG-LOAD] Entity " << (uint32_t)entity << " path='" << frag.path << "' NO OVERRIDES (Override node not found). Node children:";
+        for (auto& c : node.children) {
+            LOGGER_INFO("ComponentLoader") << "  child key='" << c.key << "' value='" << c.value << "'";
+        }
     }
 }
 
@@ -843,5 +854,39 @@ void ComponentLoader::LoadDecal(Scene &scene, entt::entity entity, const YAMLNod
 {
     auto &d = scene.registry.emplace<DecalComponent>(entity);
     d.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
+    d.roughness = std::stof(node.GetChildValue("Roughness", "1.0"));
+    d.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
+    d.reflectivity = std::stof(node.GetChildValue("Reflectivity", "0.0"));
+    
+    std::stringstream ss(node.GetChildValue("TintColor", "1 1 1 1"));
+    ss >> d.tintColor.r >> d.tintColor.g >> d.tintColor.b >> d.tintColor.a;
+    d.customShader = node.GetChildValue("Shader");
+}
+
+void ComponentLoader::LoadPlanarReflection(Scene &scene, entt::entity entity, const YAMLNode &node)
+{
+    auto &pr = scene.registry.emplace<PlanarReflectionComponent>(entity);
+    pr.resolution = std::stoi(node.GetChildValue("Resolution", "1024"));
+    std::stringstream ss(node.GetChildValue("Normal", "0 1 0"));
+    ss >> pr.normal.x >> pr.normal.y >> pr.normal.z;
+}
+
+void ComponentLoader::LoadLightProbe(Scene &scene, entt::entity entity, const YAMLNode &node)
+{
+    auto &lp = scene.registry.emplace<LightProbeComponent>(entity);
+    lp.intensity = std::stof(node.GetChildValue("Intensity", "1.0"));
+    lp.radius = std::stof(node.GetChildValue("Radius", "5.0"));
+}
+
+void ComponentLoader::LoadTerrain(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res)
+{
+    auto &t = scene.registry.emplace<TerrainComponent>(entity);
+    t.heightMapName = node.GetChildValue("HeightMap");
+    std::stringstream ss(node.GetChildValue("Size", "512 50 512"));
+    ss >> t.terrainSize.x >> t.terrainSize.y >> t.terrainSize.z;
+    t.resolution = std::stoi(node.GetChildValue("Resolution", "1024"));
+    t.textureScale = std::stof(node.GetChildValue("TextureScale", "1.0"));
+    t.castShadows = node.GetChildValue("CastShadows", "true") == "true";
+    t.customShader = node.GetChildValue("Shader");
 }
 

@@ -23,6 +23,13 @@
 #include <core/logic/loader_utils.h>
 #include <audio/logic/audio_service.h>
 #include <audio/interface/i_audio_engine.h>
+#include <ecs/unit/reflection_components.h>
+#include <ecs/unit/light_probe_components.h>
+#include <ecs/unit/terrain_component.h>
+#include <ecs/unit/decal_component.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/media_components.h>
+#include <ecs/unit/light_components.h>
 
 SceneLoadResult SceneSerializer::Deserialize(const std::string &filepath, Scene &scene, ResourceManager &res, IPhysicsWorld* phys, AudioService* sound)
 {
@@ -227,10 +234,12 @@ static std::string Vec4Str(const glm::vec4& v) {
     std::ostringstream ss; ss << FloatStr(v.x) << " " << FloatStr(v.y) << " " << FloatStr(v.z) << " " << FloatStr(v.w); return ss.str();
 }
 
-static void WriteKV(std::ofstream& f, int indent, const std::string& key, const std::string& val) {
-    for (int i = 0; i < indent; ++i) f << "  ";
-    f << key << ": " << val << "\n";
-}
+#define SerialWriteKV(f, indent, key, val) \
+    do { \
+        for (int i = 0; i < (indent); ++i) (f) << "  "; \
+        (f) << (key) << ": " << (val) << "\n"; \
+    } while (0)
+
 
 static std::string Vec2PercentStr(const glm::vec2& v, const glm::bvec2& p) {
     std::ostringstream ss;
@@ -317,15 +326,15 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     f << name << ":\n";
     int ci = indent + 1, ti = ci + 1;
 
-    if (info && !info->tag.empty() && info->tag != "default") WriteKV(f, ci, "Tag", info->tag);
-    if (info && !info->isActive) WriteKV(f, ci, "Active", "false");
+    if (info && !info->tag.empty() && info->tag != "default") SerialWriteKV(f, ci, "Tag", info->tag);
+    if (info && !info->isActive) SerialWriteKV(f, ci, "Active", "false");
 
     // Parent link if parent is in a different scene
     if (auto* h = reg.try_get<HierarchyComponent>(entity)) {
         if (h->parent != entt::null) {
             if (auto* pInfo = reg.try_get<InfoComponent>(h->parent)) {
                 if (SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene) {
-                    WriteKV(f, ci, "Parent", pInfo->name);
+                    SerialWriteKV(f, ci, "Parent", pInfo->name);
                 }
             }
         }
@@ -337,42 +346,42 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     auto* scale = reg.try_get<ScaleComponent>(entity);
     if (pos || rot || scale) {
         WriteComponentHeader(f, ci, "Transform");
-        if (pos) WriteKV(f, ti, "Position", Vec3Str(pos->value));
-        if (rot) WriteKV(f, ti, "Rotation", Vec3Str(glm::degrees(glm::eulerAngles(rot->value))));
-        if (scale) WriteKV(f, ti, "Scale", Vec3Str(scale->value));
+        if (pos) SerialWriteKV(f, ti, "Position", Vec3Str(pos->value));
+        if (rot) SerialWriteKV(f, ti, "Rotation", Vec3Str(glm::degrees(glm::eulerAngles(rot->value))));
+        if (scale) SerialWriteKV(f, ti, "Scale", Vec3Str(scale->value));
     }
 
     // MeshRenderer
     if (auto* mr = reg.try_get<MeshRendererComponent>(entity)) {
         WriteComponentHeader(f, ci, "Renderer");
-        WriteKV(f, ti, "Model", mr->model ? mr->model->GetName() : "");
-        if (!mr->shaderName.empty()) WriteKV(f, ti, "Shader", mr->shaderName);
-        WriteKV(f, ti, "Order", std::to_string(mr->order));
-        WriteKV(f, ti, "CastShadow", mr->castShadow ? "true" : "false");
-        WriteKV(f, ti, "ReceiveShadow", mr->receiveShadow ? "true" : "false");
-        WriteKV(f, ti, "Color", Vec4Str(mr->color));
-        WriteKV(f, ti, "RenderMode", std::to_string((int)mr->renderMode));
+        SerialWriteKV(f, ti, "Model", mr->model ? mr->model->GetName() : "");
+        if (!mr->shaderName.empty()) SerialWriteKV(f, ti, "Shader", mr->shaderName);
+        SerialWriteKV(f, ti, "Order", std::to_string(mr->order));
+        SerialWriteKV(f, ti, "CastShadow", mr->castShadow ? "true" : "false");
+        SerialWriteKV(f, ti, "ReceiveShadow", mr->receiveShadow ? "true" : "false");
+        SerialWriteKV(f, ti, "Color", Vec4Str(mr->color));
+        SerialWriteKV(f, ti, "RenderMode", std::to_string((int)mr->renderMode));
     }
 
     // Material
     if (auto* mat = reg.try_get<AxisMaterialComponent>(entity)) {
         WriteComponentHeader(f, ci, "Material");
-        WriteKV(f, ti, "Opacity", FloatStr(mat->desc.opacity));
-        WriteKV(f, ti, "Roughness", FloatStr(mat->desc.pbr.roughness));
-        WriteKV(f, ti, "Metallic", FloatStr(mat->desc.pbr.metallic));
-        WriteKV(f, ti, "AO", FloatStr(mat->desc.pbr.ao));
-        WriteKV(f, ti, "AlphaCutoff", FloatStr(mat->desc.alphaCutoff));
-        WriteKV(f, ti, "Emission", Vec3Str(mat->desc.emission));
-        WriteKV(f, ti, "UVScale", Vec2Str(mat->desc.uvScale));
-        WriteKV(f, ti, "UVOffset", Vec2Str(mat->desc.uvOffset));
+        SerialWriteKV(f, ti, "Opacity", FloatStr(mat->desc.opacity));
+        SerialWriteKV(f, ti, "Roughness", FloatStr(mat->desc.pbr.roughness));
+        SerialWriteKV(f, ti, "Metallic", FloatStr(mat->desc.pbr.metallic));
+        SerialWriteKV(f, ti, "AO", FloatStr(mat->desc.pbr.ao));
+        SerialWriteKV(f, ti, "AlphaCutoff", FloatStr(mat->desc.alphaCutoff));
+        SerialWriteKV(f, ti, "Emission", Vec3Str(mat->desc.emission));
+        SerialWriteKV(f, ti, "UVScale", Vec2Str(mat->desc.uvScale));
+        SerialWriteKV(f, ti, "UVOffset", Vec2Str(mat->desc.uvOffset));
 
-        if (!mat->desc.albedoPath.empty()) WriteKV(f, ti, "Albedo", SceneSerializer::NormalizePath(mat->desc.albedoPath));
-        if (!mat->desc.normalPath.empty()) WriteKV(f, ti, "Normal", SceneSerializer::NormalizePath(mat->desc.normalPath));
-        if (!mat->desc.metallicPath.empty()) WriteKV(f, ti, "MetallicMap", SceneSerializer::NormalizePath(mat->desc.metallicPath));
-        if (!mat->desc.roughnessPath.empty()) WriteKV(f, ti, "RoughnessMap", SceneSerializer::NormalizePath(mat->desc.roughnessPath));
-        if (!mat->desc.aoPath.empty()) WriteKV(f, ti, "AO_Map", SceneSerializer::NormalizePath(mat->desc.aoPath));
-        if (!mat->desc.emissivePath.empty()) WriteKV(f, ti, "EmissiveMap", SceneSerializer::NormalizePath(mat->desc.emissivePath));
-        if (!mat->desc.specularPath.empty()) WriteKV(f, ti, "SpecularMap", SceneSerializer::NormalizePath(mat->desc.specularPath));
+        if (!mat->desc.albedoPath.empty()) SerialWriteKV(f, ti, "Albedo", SceneSerializer::NormalizePath(mat->desc.albedoPath));
+        if (!mat->desc.normalPath.empty()) SerialWriteKV(f, ti, "Normal", SceneSerializer::NormalizePath(mat->desc.normalPath));
+        if (!mat->desc.metallicPath.empty()) SerialWriteKV(f, ti, "MetallicMap", SceneSerializer::NormalizePath(mat->desc.metallicPath));
+        if (!mat->desc.roughnessPath.empty()) SerialWriteKV(f, ti, "RoughnessMap", SceneSerializer::NormalizePath(mat->desc.roughnessPath));
+        if (!mat->desc.aoPath.empty()) SerialWriteKV(f, ti, "AO_Map", SceneSerializer::NormalizePath(mat->desc.aoPath));
+        if (!mat->desc.emissivePath.empty()) SerialWriteKV(f, ti, "EmissiveMap", SceneSerializer::NormalizePath(mat->desc.emissivePath));
+        if (!mat->desc.specularPath.empty()) SerialWriteKV(f, ti, "SpecularMap", SceneSerializer::NormalizePath(mat->desc.specularPath));
     }
 
     // Animator
@@ -380,63 +389,73 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         WriteComponentHeader(f, ci, "Animator");
         std::string anims;
         for (auto& a : anim->animations) anims += a + " ";
-        if (!anims.empty()) WriteKV(f, ti, "Animation", anims);
-        WriteKV(f, ti, "Speed", FloatStr(anim->speed));
-        WriteKV(f, ti, "StartTime", FloatStr(anim->startTime));
-        WriteKV(f, ti, "Rate", FloatStr(anim->rate));
-        WriteKV(f, ti, "BlendFactor", FloatStr(anim->blendFactor));
+        if (!anims.empty()) SerialWriteKV(f, ti, "Animation", anims);
+        SerialWriteKV(f, ti, "Speed", FloatStr(anim->speed));
+        SerialWriteKV(f, ti, "StartTime", FloatStr(anim->startTime));
+        SerialWriteKV(f, ti, "Rate", FloatStr(anim->rate));
+        SerialWriteKV(f, ti, "BlendFactor", FloatStr(anim->blendFactor));
     }
 
     // Lights
     if (auto* l = reg.try_get<DirectionalLightComponent>(entity)) {
         WriteComponentHeader(f, ci, "DirectionalLight");
-        WriteKV(f, ti, "Active", l->active ? "true" : "false");
-        WriteKV(f, ti, "Color", Vec3Str(l->color));
-        WriteKV(f, ti, "Intensity", FloatStr(l->intensity));
-        WriteKV(f, ti, "Ambient", FloatStr(l->ambient));
-        WriteKV(f, ti, "Diffuse", FloatStr(l->diffuse));
-        WriteKV(f, ti, "Specular", FloatStr(l->specular));
+        SerialWriteKV(f, ti, "Active", l->active ? "true" : "false");
+        SerialWriteKV(f, ti, "Color", Vec3Str(l->color));
+        SerialWriteKV(f, ti, "Intensity", FloatStr(l->intensity));
+        SerialWriteKV(f, ti, "Ambient", FloatStr(l->ambient));
+        SerialWriteKV(f, ti, "Diffuse", FloatStr(l->diffuse));
+        SerialWriteKV(f, ti, "Specular", FloatStr(l->specular));
     }
     if (auto* l = reg.try_get<PointLightComponent>(entity)) {
         WriteComponentHeader(f, ci, "PointLight");
-        WriteKV(f, ti, "Active", l->active ? "true" : "false");
-        WriteKV(f, ti, "Color", Vec3Str(l->color));
-        WriteKV(f, ti, "Intensity", FloatStr(l->intensity));
-        WriteKV(f, ti, "Radius", FloatStr(l->radius));
+        SerialWriteKV(f, ti, "Active", l->active ? "true" : "false");
+        SerialWriteKV(f, ti, "Color", Vec3Str(l->color));
+        SerialWriteKV(f, ti, "Intensity", FloatStr(l->intensity));
+        SerialWriteKV(f, ti, "Radius", FloatStr(l->radius));
     }
 
     // Physics
     if (auto* rs = reg.try_get<RigidShapeComponent>(entity)) {
         WriteComponentHeader(f, ci, "RigidShape");
-        WriteKV(f, ti, "Type", ShapeTypeToString(rs->type));
-        WriteKV(f, ti, "Size", Vec3Str(rs->size));
-        WriteKV(f, ti, "Radius", FloatStr(rs->radius));
-        WriteKV(f, ti, "Height", FloatStr(rs->height));
-        WriteKV(f, ti, "Friction", FloatStr(rs->friction));
-        WriteKV(f, ti, "Restitution", FloatStr(rs->restitution));
-        if (glm::length(rs->offset) > 0.0001f) WriteKV(f, ti, "Offset", Vec3Str(rs->offset));
+        SerialWriteKV(f, ti, "Type", ShapeTypeToString(rs->type));
+        SerialWriteKV(f, ti, "Size", Vec3Str(rs->size));
+        SerialWriteKV(f, ti, "Radius", FloatStr(rs->radius));
+        SerialWriteKV(f, ti, "Height", FloatStr(rs->height));
+        SerialWriteKV(f, ti, "Friction", FloatStr(rs->friction));
+        SerialWriteKV(f, ti, "Restitution", FloatStr(rs->restitution));
+        if (glm::length(rs->offset) > 0.0001f) SerialWriteKV(f, ti, "Offset", Vec3Str(rs->offset));
         glm::vec3 euler = glm::degrees(glm::eulerAngles(rs->rotation));
-        if (glm::length(euler) > 0.0001f) WriteKV(f, ti, "Rotation", Vec3Str(euler));
+        if (glm::length(euler) > 0.0001f) SerialWriteKV(f, ti, "Rotation", Vec3Str(euler));
     }
     if (auto* rb = reg.try_get<RigidBodyComponent>(entity)) {
         WriteComponentHeader(f, ci, "RigidBody");
-        WriteKV(f, ti, "Mass", FloatStr(rb->mass));
-        WriteKV(f, ti, "BodyType", rb->isStatic ? "STATIC" : (rb->isKinematic ? "KINEMATIC" : "DYNAMIC"));
-        WriteKV(f, ti, "LinearDamping", FloatStr(rb->linearDamping));
-        WriteKV(f, ti, "AngularDamping", FloatStr(rb->angularDamping));
-        if (rb->isTrigger) WriteKV(f, ti, "IsTrigger", "true");
+        SerialWriteKV(f, ti, "Mass", FloatStr(rb->mass));
+        SerialWriteKV(f, ti, "BodyType", rb->isStatic ? "STATIC" : (rb->isKinematic ? "KINEMATIC" : "DYNAMIC"));
+        SerialWriteKV(f, ti, "LinearDamping", FloatStr(rb->linearDamping));
+        SerialWriteKV(f, ti, "AngularDamping", FloatStr(rb->angularDamping));
+        if (rb->isTrigger) SerialWriteKV(f, ti, "IsTrigger", "true");
     }
 
     if (auto* frag = reg.try_get<FragmentComponent>(entity)) {
+        LOGGER_INFO("SceneSerializer") << "[FRAG-SAVE] Entity '" << name << "' has Fragment. path='" << frag->path << "' overrides.size=" << frag->overrides.size() << " overrides='" << frag->overrides << "'";
         WriteComponentHeader(f, ci, "Fragment");
-        WriteKV(f, ti, "Path", SceneSerializer::NormalizePath(frag->path));
+        SerialWriteKV(f, ti, "Path", SceneSerializer::NormalizePath(frag->path));
         if (!frag->overrides.empty()) {
-            f << std::string((ti) * 2, ' ') << "Overrides:\n";
-            std::stringstream ss(frag->overrides);
-            std::string line;
-            while (std::getline(ss, line)) {
-                if (line.empty()) continue;
-                f << std::string((ti + 1) * 2, ' ') << line << "\n";
+            // Parse the override string back into nodes for structural serialization
+            auto overrideRoots = YAMLParser::ParseString(frag->overrides);
+            if (!overrideRoots.empty()) {
+                f << std::string(ti * 2, ' ') << "Overrides:\n";
+                std::function<void(const YAMLNode&, int)> writeOverrideNode = [&](const YAMLNode& n, int depth) {
+                    f << std::string(depth * 2, ' ') << n.key;
+                    if (!n.value.empty()) f << ": " << n.value;
+                    f << (n.value.empty() ? ":" : "") << "\n";
+                    for (const auto& child : n.children) {
+                        writeOverrideNode(child, depth + 1);
+                    }
+                };
+                for (const auto& root : overrideRoots) {
+                    writeOverrideNode(root, ti + 1);
+                }
             }
         }
     }
@@ -444,35 +463,35 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     // Audio
     if (auto* audio = reg.try_get<AudioSourceComponent>(entity)) {
         WriteComponentHeader(f, ci, "AudioSource");
-        if (!audio->resourceName.empty()) WriteKV(f, ti, "Audio", audio->resourceName);
-        WriteKV(f, ti, "PlayOnAwake", audio->playOnAwake ? "true" : "false");
-        WriteKV(f, ti, "Loop", audio->loop ? "true" : "false");
-        WriteKV(f, ti, "Volume", FloatStr(audio->volume));
-        WriteKV(f, ti, "Pitch", FloatStr(audio->pitch));
-        WriteKV(f, ti, "Speed", FloatStr(audio->speed));
-        WriteKV(f, ti, "Is3d", audio->is3D ? "true" : "false");
+        if (!audio->resourceName.empty()) SerialWriteKV(f, ti, "Audio", audio->resourceName);
+        SerialWriteKV(f, ti, "PlayOnAwake", audio->playOnAwake ? "true" : "false");
+        SerialWriteKV(f, ti, "Loop", audio->loop ? "true" : "false");
+        SerialWriteKV(f, ti, "Volume", FloatStr(audio->volume));
+        SerialWriteKV(f, ti, "Pitch", FloatStr(audio->pitch));
+        SerialWriteKV(f, ti, "Speed", FloatStr(audio->speed));
+        SerialWriteKV(f, ti, "Is3d", audio->is3D ? "true" : "false");
     }
 
     // Particle Emitter
     if (auto* pe = reg.try_get<ParticleEmitterComponent>(entity)) {
         WriteComponentHeader(f, ci, "ParticleEmitter");
-        WriteKV(f, ti, "Active", pe->isActive ? "true" : "false");
-        if (!pe->textureName.empty()) WriteKV(f, ti, "Texture", pe->textureName);
-        if (!pe->customShader.empty()) WriteKV(f, ti, "Shader", pe->customShader);
-        WriteKV(f, ti, "SpawnRate", FloatStr(pe->emitter.SpawnRate));
-        WriteKV(f, ti, "Lifetime", FloatStr(pe->emitter.LifeTime));
-        WriteKV(f, ti, "StartSize", FloatStr(pe->emitter.StartSize));
-        WriteKV(f, ti, "EndSize", FloatStr(pe->emitter.EndSize));
-        WriteKV(f, ti, "StartColor", Vec4Str(pe->emitter.StartColor));
-        WriteKV(f, ti, "EndColor", Vec4Str(pe->emitter.EndColor));
-        WriteKV(f, ti, "MinVelocity", Vec3Str(pe->emitter.MinVelocity));
-        WriteKV(f, ti, "MaxVelocity", Vec3Str(pe->emitter.MaxVelocity));
+        SerialWriteKV(f, ti, "Active", pe->isActive ? "true" : "false");
+        if (!pe->textureName.empty()) SerialWriteKV(f, ti, "Texture", pe->textureName);
+        if (!pe->customShader.empty()) SerialWriteKV(f, ti, "Shader", pe->customShader);
+        SerialWriteKV(f, ti, "SpawnRate", FloatStr(pe->emitter.SpawnRate));
+        SerialWriteKV(f, ti, "Lifetime", FloatStr(pe->emitter.LifeTime));
+        SerialWriteKV(f, ti, "StartSize", FloatStr(pe->emitter.StartSize));
+        SerialWriteKV(f, ti, "EndSize", FloatStr(pe->emitter.EndSize));
+        SerialWriteKV(f, ti, "StartColor", Vec4Str(pe->emitter.StartColor));
+        SerialWriteKV(f, ti, "EndColor", Vec4Str(pe->emitter.EndColor));
+        SerialWriteKV(f, ti, "MinVelocity", Vec3Str(pe->emitter.MinVelocity));
+        SerialWriteKV(f, ti, "MaxVelocity", Vec3Str(pe->emitter.MaxVelocity));
     }
 
     // PostProcess
     if (auto* pp = reg.try_get<PostProcessComponent>(entity)) {
         WriteComponentHeader(f, ci, "PostProcess");
-        WriteKV(f, ti, "Active", pp->enabled ? "true" : "false");
+        SerialWriteKV(f, ti, "Active", pp->enabled ? "true" : "false");
         std::string effects;
         for (auto& eff : pp->effects) {
             effects += eff.shaderName + ":" + std::to_string(eff.priority) + ":" + 
@@ -480,63 +499,130 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
                        FloatStr(eff.w) + ":" + FloatStr(eff.h) + ":" +
                        (eff.affectUI ? "1" : "0") + " ";
         }
-        if (!effects.empty()) WriteKV(f, ti, "Effects", effects);
+        if (!effects.empty()) SerialWriteKV(f, ti, "Effects", effects);
     }
 
     // UI
     if (auto* uit = reg.try_get<UITransformComponent>(entity)) {
         WriteComponentHeader(f, ci, "UITransform");
-        WriteKV(f, ti, "position", Vec2PercentStr(uit->position, uit->positionIsPercent));
-        WriteKV(f, ti, "size", Vec2PercentStr(uit->size, uit->sizeIsPercent));
-        WriteKV(f, ti, "zIndex", std::to_string(uit->zIndex));
-        WriteKV(f, ti, "pivot", Vec2Str(uit->pivot));
-        WriteKV(f, ti, "anchorMin", Vec2PercentStr(uit->anchorMin, uit->anchorMinIsPercent));
-        WriteKV(f, ti, "anchorMax", Vec2PercentStr(uit->anchorMax, uit->anchorMaxIsPercent));
-        WriteKV(f, ti, "offsetMin", Vec2PercentStr(uit->offsetMin, uit->offsetMinIsPercent));
-        WriteKV(f, ti, "offsetMax", Vec2PercentStr(uit->offsetMax, uit->offsetMaxIsPercent));
+        SerialWriteKV(f, ti, "position", Vec2PercentStr(uit->position, uit->positionIsPercent));
+        SerialWriteKV(f, ti, "size", Vec2PercentStr(uit->size, uit->sizeIsPercent));
+        SerialWriteKV(f, ti, "zIndex", std::to_string(uit->zIndex));
+        SerialWriteKV(f, ti, "pivot", Vec2Str(uit->pivot));
+        SerialWriteKV(f, ti, "anchorMin", Vec2PercentStr(uit->anchorMin, uit->anchorMinIsPercent));
+        SerialWriteKV(f, ti, "anchorMax", Vec2PercentStr(uit->anchorMax, uit->anchorMaxIsPercent));
+        SerialWriteKV(f, ti, "offsetMin", Vec2PercentStr(uit->offsetMin, uit->offsetMinIsPercent));
+        SerialWriteKV(f, ti, "offsetMax", Vec2PercentStr(uit->offsetMax, uit->offsetMaxIsPercent));
     }
 
     if (auto* uir = reg.try_get<UIRendererComponent>(entity)) {
         WriteComponentHeader(f, ci, "UIRenderer");
-        WriteKV(f, ti, "color", Vec4Str(uir->color));
-        if (uir->texture) WriteKV(f, ti, "texture", SceneSerializer::NormalizePath(uir->texture->path));
-        if (!uir->shaderName.empty()) WriteKV(f, ti, "shader", uir->shaderName);
+        SerialWriteKV(f, ti, "color", Vec4Str(uir->color));
+        if (uir->texture) SerialWriteKV(f, ti, "texture", SceneSerializer::NormalizePath(uir->texture->path));
+        if (!uir->shaderName.empty()) SerialWriteKV(f, ti, "shader", uir->shaderName);
     }
 
     if (auto* uitext = reg.try_get<UITextComponent>(entity)) {
         WriteComponentHeader(f, ci, "UIText");
-        WriteKV(f, ti, "text", "\"" + uitext->text + "\"");
-        WriteKV(f, ti, "color", Vec4Str(uitext->color));
-        WriteKV(f, ti, "scale", FloatStr(uitext->scale));
-        if (uitext->font) WriteKV(f, ti, "fontSize", std::to_string(uitext->font->GetFontSize()));
-        WriteKV(f, ti, "alignment", (uitext->alignment == TextAlignment::Center ? "Center" : (uitext->alignment == TextAlignment::Right ? "Right" : "Left")));
-        WriteKV(f, ti, "wordWrap", uitext->wordWrap ? "true" : "false");
-        WriteKV(f, ti, "maxWidth", FloatStr(uitext->maxWidth));
-        if (!uitext->fontName.empty()) WriteKV(f, ti, "font", uitext->fontName);
+        SerialWriteKV(f, ti, "text", "\"" + uitext->text + "\"");
+        SerialWriteKV(f, ti, "color", Vec4Str(uitext->color));
+        SerialWriteKV(f, ti, "scale", FloatStr(uitext->scale));
+        if (uitext->font) SerialWriteKV(f, ti, "fontSize", std::to_string(uitext->font->GetFontSize()));
+        SerialWriteKV(f, ti, "alignment", (uitext->alignment == TextAlignment::Center ? "Center" : (uitext->alignment == TextAlignment::Right ? "Right" : "Left")));
+        SerialWriteKV(f, ti, "wordWrap", uitext->wordWrap ? "true" : "false");
+        SerialWriteKV(f, ti, "maxWidth", FloatStr(uitext->maxWidth));
+        if (!uitext->fontName.empty()) SerialWriteKV(f, ti, "font", uitext->fontName);
     }
 
     if (auto* uif = reg.try_get<UIFlexLayoutComponent>(entity)) {
         WriteComponentHeader(f, ci, "UIFlex");
-        WriteKV(f, ti, "direction", uif->direction == FlexDirection::Row ? "Row" : "Column");
-        WriteKV(f, ti, "spacing", FloatStr(uif->spacing));
-        WriteKV(f, ti, "autoSize", uif->autoSize ? "true" : "false");
-        WriteKV(f, ti, "padding", Vec4Str(uif->padding));
+        SerialWriteKV(f, ti, "direction", uif->direction == FlexDirection::Row ? "Row" : "Column");
+        SerialWriteKV(f, ti, "spacing", FloatStr(uif->spacing));
+        SerialWriteKV(f, ti, "autoSize", uif->autoSize ? "true" : "false");
+        SerialWriteKV(f, ti, "padding", Vec4Str(uif->padding));
     }
 
     if (auto* sky = reg.try_get<SkyboxRenderComponent>(entity)) {
         WriteComponentHeader(f, ci, "SkyboxRenderer");
-        if (sky->skybox) WriteKV(f, ti, "Skybox", sky->skybox->GetName());
-        if (!sky->shaderName.empty()) WriteKV(f, ti, "Shader", sky->shaderName);
+        if (sky->skybox) SerialWriteKV(f, ti, "Skybox", sky->skybox->GetName());
+        if (!sky->shaderName.empty()) SerialWriteKV(f, ti, "Shader", sky->shaderName);
+    }
+
+    // Reflection
+    if (auto* rp = reg.try_get<ReflectionProbeComponent>(entity)) {
+        WriteComponentHeader(f, ci, "ReflectionProbe");
+        SerialWriteKV(f, ti, "Type", rp->type == ReflectionProbeType::Dynamic ? "Dynamic" : "Static");
+        SerialWriteKV(f, ti, "Resolution", std::to_string(rp->resolution));
+        SerialWriteKV(f, ti, "BoxProjection", rp->boxProjection ? "true" : "false");
+        SerialWriteKV(f, ti, "BoxMin", Vec3Str(rp->boxMin));
+        SerialWriteKV(f, ti, "BoxMax", Vec3Str(rp->boxMax));
+        SerialWriteKV(f, ti, "BlendDistance", FloatStr(rp->blendDistance));
+    }
+    if (auto* ref = reg.try_get<ReflectiveComponent>(entity)) {
+        WriteComponentHeader(f, ci, "Reflective");
+        SerialWriteKV(f, ti, "Active", ref->enabled ? "true" : "false");
+        SerialWriteKV(f, ti, "Reflectivity", FloatStr(ref->reflectivity));
+        SerialWriteKV(f, ti, "FresnelPower", FloatStr(ref->fresnelPower));
+        SerialWriteKV(f, ti, "FresnelBias", FloatStr(ref->fresnelBias));
+        if (!ref->targetProbe.empty()) SerialWriteKV(f, ti, "Probe", ref->targetProbe);
+    }
+    if (auto* pr = reg.try_get<PlanarReflectionComponent>(entity)) {
+        WriteComponentHeader(f, ci, "PlanarReflection");
+        SerialWriteKV(f, ti, "Resolution", std::to_string(pr->resolution));
+        SerialWriteKV(f, ti, "Normal", Vec3Str(pr->normal));
+    }
+
+    // Decal
+    if (auto* d = reg.try_get<DecalComponent>(entity)) {
+        WriteComponentHeader(f, ci, "Decal");
+        SerialWriteKV(f, ti, "Opacity", FloatStr(d->opacity));
+        SerialWriteKV(f, ti, "Roughness", FloatStr(d->roughness));
+        SerialWriteKV(f, ti, "Metallic", FloatStr(d->metallic));
+        SerialWriteKV(f, ti, "Reflectivity", FloatStr(d->reflectivity));
+        SerialWriteKV(f, ti, "TintColor", Vec4Str(d->tintColor));
+        if (!d->customShader.empty()) SerialWriteKV(f, ti, "Shader", d->customShader);
+    }
+
+    // Light Probe
+    if (auto* lp = reg.try_get<LightProbeComponent>(entity)) {
+        WriteComponentHeader(f, ci, "LightProbe");
+        SerialWriteKV(f, ti, "Intensity", FloatStr(lp->intensity));
+        SerialWriteKV(f, ti, "Radius", FloatStr(lp->radius));
+    }
+
+    // Terrain
+    if (auto* t = reg.try_get<TerrainComponent>(entity)) {
+        WriteComponentHeader(f, ci, "Terrain");
+        if (!t->heightMapName.empty()) SerialWriteKV(f, ti, "HeightMap", t->heightMapName);
+        SerialWriteKV(f, ti, "Size", Vec3Str(t->terrainSize));
+        SerialWriteKV(f, ti, "Resolution", std::to_string(t->resolution));
+        SerialWriteKV(f, ti, "TextureScale", FloatStr(t->textureScale));
+        SerialWriteKV(f, ti, "CastShadows", t->castShadows ? "true" : "false");
+        if (!t->customShader.empty()) SerialWriteKV(f, ti, "Shader", t->customShader);
+    }
+
+    // LOD
+    if (auto* lod = reg.try_get<LODComponent>(entity)) {
+        WriteComponentHeader(f, ci, "LOD");
+        std::string models, dists;
+        for (auto& m : lod->lodModels) if (m) models += m->GetName() + " ";
+        for (float d : lod->lodDistancesSq) dists += FloatStr(sqrtf(d)) + " ";
+        if (!models.empty()) SerialWriteKV(f, ti, "Models", models);
+        if (!dists.empty()) SerialWriteKV(f, ti, "Distances", dists);
+    }
+
+    // Script
+    if (auto* sc = reg.try_get<ScriptComponent>(entity)) {
+        WriteComponentHeader(f, ci, "Script");
+        if (!sc->className.empty()) SerialWriteKV(f, ti, "Class", sc->className);
     }
 
     // Parent
     if (auto* h = reg.try_get<HierarchyComponent>(entity)) {
         if (h->parent != entt::null) {
             if (auto* pInfo = reg.try_get<InfoComponent>(h->parent)) {
-                // If parent belongs to a DIFFERENT scene, we MUST write the Parent name
-                // so the deserializer can link them back.
                 if (SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene) {
-                    WriteKV(f, indent + 1, "Parent", pInfo->name);
+                    SerialWriteKV(f, indent + 1, "Parent", pInfo->name);
                 }
             }
         }
@@ -544,11 +630,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
             if (auto* cInfo = reg.try_get<InfoComponent>(child)) {
                 if (!cInfo->sceneName.empty() && !targetScene.empty() && SceneSerializer::NormalizeSceneName(cInfo->sceneName) != targetScene) continue;
             }
-            
-            // CRITICAL: If the current entity is a Fragment, DO NOT serialize its children!
-            // They will be re-instantiated by the FragmentSystem on load.
             if (reg.all_of<FragmentComponent>(entity)) continue;
-
             SerializeEntity(f, reg, child, indent + 1, sceneName);
         }
     }
@@ -568,8 +650,57 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
     if (rec && rec->hasConfig) {
         AppConfig cfg = configMgr.GetConfig();
         f << "  Config:\n";
-        WriteKV(f, 2, "WINDOW_WIDTH", std::to_string(cfg.window.width));
-        WriteKV(f, 2, "WINDOW_HEIGHT", std::to_string(cfg.window.height));
+        SerialWriteKV(f, 2, "WINDOW_WIDTH", std::to_string(cfg.window.width));
+        SerialWriteKV(f, 2, "WINDOW_HEIGHT", std::to_string(cfg.window.height));
+        
+        auto WindowModeToStr = [](WindowMode mode) {
+            switch(mode) {
+                case WindowMode::Fullscreen: return "FULLSCREEN";
+                case WindowMode::Borderless: return "BORDERLESS";
+                case WindowMode::BorderlessFullscreen: return "BORDERLESS_FULLSCREEN";
+                default: return "WINDOWED";
+            }
+        };
+        SerialWriteKV(f, 2, "WINDOW_MODE", WindowModeToStr(cfg.window.windowMode));
+        SerialWriteKV(f, 2, "VSYNC", cfg.window.vsync ? "1" : "0");
+
+        SerialWriteKV(f, 2, "MSAA", std::to_string(cfg.graphics.msaaSamples));
+        SerialWriteKV(f, 2, "RENDER_SCALE", FloatStr(cfg.graphics.renderScale));
+
+        SerialWriteKV(f, 2, "HDR_ENABLED", cfg.render.hdrEnabled ? "1" : "0");
+        SerialWriteKV(f, 2, "BLOOM_ENABLED", cfg.render.bloomEnabled ? "1" : "0");
+        SerialWriteKV(f, 2, "GAMMA", FloatStr(cfg.render.gamma));
+        SerialWriteKV(f, 2, "EXPOSURE", FloatStr(cfg.render.exposure));
+        SerialWriteKV(f, 2, "SKYBOX_INTENSITY", FloatStr(cfg.render.skyboxIntensity));
+
+        auto TonemappingToStr = [](TonemappingMode mode) {
+            switch(mode) {
+                case TonemappingMode::ACES: return "ACES";
+                case TonemappingMode::Reinhard: return "REINHARD";
+                default: return "NONE";
+            }
+        };
+        SerialWriteKV(f, 2, "TONEMAPPING", TonemappingToStr(cfg.render.tonemappingMode));
+        SerialWriteKV(f, 2, "SHADOWS_ENABLED", cfg.shadow.shadowsEnabled ? "1" : "0");
+        SerialWriteKV(f, 2, "SHADOW_RESOLUTION", std::to_string(cfg.shadow.shadowMapResolution));
+        SerialWriteKV(f, 2, "SHADOW_BIAS", FloatStr(cfg.shadow.shadowBias));
+        SerialWriteKV(f, 2, "SHADOW_SOFTNESS", std::to_string(cfg.shadow.shadowSoftness));
+
+        SerialWriteKV(f, 2, "VOLUME", FloatStr(cfg.audio.masterVolume));
+
+        SerialWriteKV(f, 2, "GRAVITY", Vec3Str(glm::vec3(cfg.physics.gravity[0], cfg.physics.gravity[1], cfg.physics.gravity[2])));
+        SerialWriteKV(f, 2, "MAX_SUBSTEPS", std::to_string(cfg.physics.maxSubSteps));
+        SerialWriteKV(f, 2, "PHYSICS_TICKRATE", FloatStr(cfg.physics.physicsTickRate));
+
+        auto LightingModeToStr = [](LightingMode mode) {
+            switch(mode) {
+                case LightingMode::Bake: return "BAKE";
+                case LightingMode::LightProbe: return "LIGHT_PROBE";
+                case LightingMode::ReflectionProbes: return "REFLECTION_PROBES";
+                default: return "REAL_TIME";
+            }
+        };
+        SerialWriteKV(f, 2, "LIGHTING_MODE", LightingModeToStr(cfg.lightingMode));
     }
 
     UsedResources ur;
@@ -609,6 +740,8 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
         return false;
     };
 
+    std::map<std::string, std::set<std::string>> serializedPathsByType;
+
     for (const auto& def : res.GetResourceDefinitions()) {
         bool used = false;
         if (def.type == "Shader") used = ur.shaders.count(def.name) || (rec && std::find(rec->ownedShaders.begin(), rec->ownedShaders.end(), def.name) != rec->ownedShaders.end());
@@ -625,6 +758,18 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
         if (!used) continue;
         if (IsOwnedByOther(def.name, def.type)) continue;
 
+        // Deduplication by path
+        if (def.properties.count("Path")) {
+            std::string p = SceneSerializer::NormalizePath(def.properties.at("Path"));
+            // For fonts, we need both path and size to uniquely identify
+            if (def.type == "Font" && def.properties.count("Size")) p += ":" + def.properties.at("Size");
+            
+            if (serializedPathsByType[def.type].count(p)) {
+                continue; 
+            }
+            serializedPathsByType[def.type].insert(p);
+        }
+
         f << "    " << def.type << ":\n";
         f << "      Name: " << def.name << "\n";
         for (const auto& prop : def.properties) {
@@ -634,7 +779,7 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
                 prop.first == "Right" || prop.first == "Left" || prop.first == "Top" || prop.first == "Bottom" || prop.first == "Front" || prop.first == "Back") {
                 val = SceneSerializer::NormalizePath(val);
             }
-            WriteKV(f, 3, prop.first, val);
+            SerialWriteKV(f, 3, prop.first, val);
         }
     }
 
@@ -651,7 +796,13 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
                 }
             }
         }
-        if (isRootInScene) SerializeEntity(f, scene.registry, entity, 2, normName);
+        if (isRootInScene) {
+            if (scene.registry.all_of<FragmentComponent>(entity)) {
+                auto& fc = scene.registry.get<FragmentComponent>(entity);
+                LOGGER_INFO("SceneSerializer") << "[FRAG-ROOT] Writing root fragment entity '" << info.name << "' overrides.size=" << fc.overrides.size();
+            }
+            SerializeEntity(f, scene.registry, entity, 2, normName);
+        }
     }
     return true;
 }

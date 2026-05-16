@@ -48,6 +48,9 @@ public:
     static void LoadReflectionProbe(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
     static void LoadFragment(Scene &scene, entt::entity entity, const YAMLNode &node);
     static void LoadTransform(Scene &scene, entt::entity entity, const YAMLNode &node);
+    static void LoadPlanarReflection(Scene &scene, entt::entity entity, const YAMLNode &node);
+    static void LoadLightProbe(Scene &scene, entt::entity entity, const YAMLNode &node);
+    static void LoadTerrain(Scene &scene, entt::entity entity, const YAMLNode &node, ResourceManager &res);
 
     static void InitializeDefaultLoaders();
 

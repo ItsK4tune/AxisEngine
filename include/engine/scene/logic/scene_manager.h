@@ -19,6 +19,7 @@ public:
     void Initialize();
 
     void AddEntity(entt::entity entity, const std::string& sceneName);
+    void RemoveEntity(entt::entity entity);
 
     void LoadScene(const std::string& filePath, bool persistent = false);
     void UnloadScene(const std::string& filePath);

@@ -7,6 +7,7 @@
 #include <core/logic/logger.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/axis_assert.h>
+#include <audio/interface/i_audio_source.h>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -304,11 +305,25 @@ std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &name
     auto t = GetTexture(nameOrPath);
     if (t) return t;
     
+    // Check if any existing texture has this path
+    std::string fullPath = FileSystem::getPath(nameOrPath);
+    {
+        std::lock_guard<std::mutex> lock(m_ResourceMutex);
+        for (const auto& def : m_ResourceDefinitions) {
+            if (def.type == "Texture" && def.properties.count("Path")) {
+                if (FileSystem::getPath(def.properties.at("Path")) == fullPath) {
+                    return GetTexture(def.name);
+                }
+            }
+        }
+    }
+
     bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
+    if (!std::filesystem::exists(fullPath)) return nullptr;
+    
     LoadTexture(nameOrPath, nameOrPath);
     return GetTexture(nameOrPath);
 }
@@ -319,11 +334,24 @@ std::shared_ptr<Model> ResourceManager::GetModelAuto(const std::string &nameOrPa
     auto m = GetModel(nameOrPath);
     if (m) return m;
     
+    // Check if any existing model has this path
+    std::string fullPath = FileSystem::getPath(nameOrPath);
+    {
+        std::lock_guard<std::mutex> lock(m_ResourceMutex);
+        for (const auto& def : m_ResourceDefinitions) {
+            if (def.type == "Model" && def.properties.count("Path")) {
+                if (FileSystem::getPath(def.properties.at("Path")) == fullPath) {
+                    return GetModel(def.name);
+                }
+            }
+        }
+    }
+
     bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
+    if (!std::filesystem::exists(fullPath)) return nullptr;
     LoadModel(nameOrPath, nameOrPath, isStatic);
     return GetModel(nameOrPath);
 }
@@ -338,6 +366,19 @@ std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string &nameOrPath
     auto f = GetFont(nameOrPath);
     if (f) return f;
     
+    // Check if any existing font has this path and size
+    std::string fullPath = FileSystem::getPath(nameOrPath);
+    {
+        std::lock_guard<std::mutex> lock(m_ResourceMutex);
+        for (const auto& def : m_ResourceDefinitions) {
+            if (def.type == "Font") {
+                if (FileSystem::getPath(def.properties.at("Path")) == fullPath && std::stoi(def.properties.at("Size")) == (int)fontSize) {
+                    return GetFont(def.name);
+                }
+            }
+        }
+    }
+
     bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
@@ -346,7 +387,7 @@ std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string &nameOrPath
         return nullptr;
     }
 
-    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) {
+    if (!std::filesystem::exists(fullPath)) {
         if (nameOrPath != "time") return GetFontAuto("time", fontSize);
         return nullptr;
     }
@@ -365,11 +406,24 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string &n
     auto s = GetSound(nameOrPath);
     if (s) return s;
     
+    // Check if any existing sound has this path
+    std::string fullPath = FileSystem::getPath(nameOrPath);
+    {
+        std::lock_guard<std::mutex> lock(m_ResourceMutex);
+        for (const auto& def : m_ResourceDefinitions) {
+            if ((def.type == "Sound" || def.type == "Audio") && def.properties.count("Path")) {
+                if (FileSystem::getPath(def.properties.at("Path")) == fullPath) {
+                    return GetSound(def.name);
+                }
+            }
+        }
+    }
+
     bool looksLikePath = nameOrPath.find('/') != std::string::npos ||
                          nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
     if (!looksLikePath) return nullptr;
-    if (!std::filesystem::exists(FileSystem::getPath(nameOrPath))) return nullptr;
+    if (!std::filesystem::exists(fullPath)) return nullptr;
     LoadSound(nameOrPath, nameOrPath, engine);
     return GetSound(nameOrPath);
 }

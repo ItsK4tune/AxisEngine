@@ -30,6 +30,18 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+namespace {
+    std::string SerializeYAMLNode(const YAMLNode& n, int indent) {
+        std::string res = std::string(indent * 2, ' ') + n.key;
+        if (!n.value.empty()) res += ": " + n.value;
+        res += (n.value.empty() ? ":" : "") + std::string("\n");
+        for (const auto& child : n.children) {
+            res += SerializeYAMLNode(child, indent + 1);
+        }
+        return res;
+    }
+}
+
 void SceneHierarchyPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
@@ -204,6 +216,7 @@ static void DrawComponent(const std::string& name, entt::registry& reg, entt::en
         ImGui::PopStyleVar();
         
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - lineHeight - 4.0f);
+        ImGui::PushID((void*)typeid(T).hash_code());
         if (ImGui::Button("+", ImVec2{ lineHeight, lineHeight }))
         {
             ImGui::OpenPopup("ComponentSettings");
@@ -217,6 +230,7 @@ static void DrawComponent(const std::string& name, entt::registry& reg, entt::en
 
             ImGui::EndPopup();
         }
+        ImGui::PopID();
 
         if (open)
         {
@@ -920,12 +934,206 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::Text("Status: %s", frag.instantiated ? "Instantiated" : "Pending");
         
         ImGui::Separator();
-        ImGui::Text("Overrides (YAML):");
-        static char overrideBuf[2048];
-        strncpy(overrideBuf, frag.overrides.c_str(), sizeof(overrideBuf) - 1);
-        if (ImGui::InputTextMultiline("##Overrides", overrideBuf, sizeof(overrideBuf), ImVec2(-1, 100))) {
-            frag.overrides = overrideBuf;
-            // Note: We don't auto-reload on every keystroke to avoid flickering
+        ImGui::Text("Overrides:");
+        
+        auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
+        auto asset = rm.GetFragment(frag.path);
+        
+        if (asset) {
+            std::vector<YAMLNode> overrideRoots;
+            if (!frag.overrides.empty()) {
+                overrideRoots = YAMLParser::ParseString(frag.overrides);
+            }
+            
+            const YAMLNode* entitiesNode = nullptr;
+            for (auto& root : asset->rootNodes) {
+                if (root.key == "Entities") {
+                    entitiesNode = &root;
+                    break;
+                }
+            }
+            
+            bool changed = false;
+            if (entitiesNode) {
+                for (auto& entNode : entitiesNode->children) {
+                    if (ImGui::TreeNode(entNode.key.c_str())) {
+                        YAMLNode* targetEntityOverride = nullptr;
+                        for (auto& root : overrideRoots) {
+                            if (root.key == entNode.key) {
+                                targetEntityOverride = &root;
+                                break;
+                            }
+                        }
+                    
+                    for (auto& compNode : entNode.children) {
+                        if (compNode.key == "Component") {
+                            std::string compName = compNode.value;
+                            bool isOverridden = false;
+                            YAMLNode* targetCompOverride = nullptr;
+                            
+                            if (targetEntityOverride) {
+                                for (auto& c : targetEntityOverride->children) {
+                                    if (c.key == "Component" && c.value == compName) {
+                                        isOverridden = true;
+                                        targetCompOverride = &c;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            bool toggled = isOverridden;
+                            if (ImGui::Checkbox(compName.c_str(), &toggled)) {
+                                changed = true;
+                                if (toggled) {
+                                    if (!targetEntityOverride) {
+                                        overrideRoots.push_back(YAMLNode{entNode.key, "", {}});
+                                        targetEntityOverride = &overrideRoots.back();
+                                    }
+                                    targetEntityOverride->children.push_back(YAMLNode{"Component", compName, {}});
+                                    targetCompOverride = &targetEntityOverride->children.back();
+                                } else {
+                                    if (targetEntityOverride) {
+                                        for (auto it = targetEntityOverride->children.begin(); it != targetEntityOverride->children.end();) {
+                                            if (it->key == "Component" && it->value == compName) {
+                                                it = targetEntityOverride->children.erase(it);
+                                            } else {
+                                                ++it;
+                                            }
+                                        }
+                                            
+                                        if (targetEntityOverride->children.empty()) {
+                                            for (auto it = overrideRoots.begin(); it != overrideRoots.end();) {
+                                                if (it->key == entNode.key) {
+                                                    it = overrideRoots.erase(it);
+                                                } else {
+                                                    ++it;
+                                                }
+                                            }
+                                            targetEntityOverride = nullptr;
+                                        }
+                                    }
+                                    targetCompOverride = nullptr;
+                                }
+                            }
+                            
+                            if (toggled && targetCompOverride) {
+                                ImGui::Indent();
+                                ImGui::PushID((entNode.key + compName).c_str());
+                                
+                                if (compName == "Renderer") {
+                                    std::string colorStr = targetCompOverride->GetChildValue("Color", "1 1 1 1");
+                                    float c[4] = {1, 1, 1, 1};
+                                    std::stringstream ss(colorStr); ss >> c[0] >> c[1] >> c[2] >> c[3];
+                                    if (ImGui::ColorEdit4("Color", c)) {
+                                        char buf[64];
+                                        snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f", c[0], c[1], c[2], c[3]);
+                                        bool found = false;
+                                        for (auto& prop : targetCompOverride->children) {
+                                            if (prop.key == "Color") { prop.value = buf; found = true; break; }
+                                        }
+                                        if (!found) targetCompOverride->children.push_back({"Color", buf, {}});
+                                        changed = true;
+                                    }
+                                } else if (compName == "Transform") {
+                                    auto drawVec3 = [&](const char* label, const char* key, const char* def) {
+                                        std::string valStr = targetCompOverride->GetChildValue(key, def);
+                                        float v[3] = {0, 0, 0};
+                                        if (std::string(def) == "1 1 1") { v[0]=1; v[1]=1; v[2]=1; }
+                                        std::stringstream ss(valStr); ss >> v[0] >> v[1] >> v[2];
+                                        if (ImGui::DragFloat3(label, v, 0.1f)) {
+                                            char buf[64];
+                                            snprintf(buf, sizeof(buf), "%.3f %.3f %.3f", v[0], v[1], v[2]);
+                                            bool found = false;
+                                            for (auto& prop : targetCompOverride->children) {
+                                                if (prop.key == key) { prop.value = buf; found = true; break; }
+                                            }
+                                            if (!found) targetCompOverride->children.push_back({key, buf, {}});
+                                            changed = true;
+                                        }
+                                    };
+                                    drawVec3("Position", "Position", "0 0 0");
+                                    drawVec3("Rotation", "Rotation", "0 0 0");
+                                    drawVec3("Scale", "Scale", "1 1 1");
+                                } else if (compName == "Material") {
+                                    auto drawFloat = [&](const char* label, const char* key, const char* def) {
+                                        std::string valStr = targetCompOverride->GetChildValue(key, def);
+                                        float v = 0.0f;
+                                        std::stringstream ssF(valStr); ssF >> v;
+                                        if (ImGui::DragFloat(label, &v, 0.01f)) {
+                                            char buf[64]; snprintf(buf, sizeof(buf), "%.3f", v);
+                                            bool found = false;
+                                            for (auto& prop : targetCompOverride->children) {
+                                                if (prop.key == key) { prop.value = buf; found = true; break; }
+                                            }
+                                            if (!found) targetCompOverride->children.push_back({key, buf, {}});
+                                            changed = true;
+                                        }
+                                    };
+                                    drawFloat("Opacity", "Opacity", "1.0");
+                                    drawFloat("Roughness", "Roughness", "0.5");
+                                    drawFloat("Metallic", "Metallic", "0.0");
+                                    drawFloat("AO", "AO", "1.0");
+                                    
+                                    std::string emStr = targetCompOverride->GetChildValue("Emission", "0 0 0");
+                                    float em[3] = {0, 0, 0};
+                                    std::stringstream ssEm(emStr); ssEm >> em[0] >> em[1] >> em[2];
+                                    if (ImGui::ColorEdit3("Emission", em)) {
+                                        char buf[64]; snprintf(buf, sizeof(buf), "%.3f %.3f %.3f", em[0], em[1], em[2]);
+                                        bool found = false;
+                                        for (auto& prop : targetCompOverride->children) {
+                                            if (prop.key == "Emission") { prop.value = buf; found = true; break; }
+                                        }
+                                        if (!found) targetCompOverride->children.push_back({"Emission", buf, {}});
+                                        changed = true;
+                                    }
+                                    auto drawVec2 = [&](const char* label, const char* key, const char* def) {
+                                        std::string valStr = targetCompOverride->GetChildValue(key, def);
+                                        float v[2] = {0, 0};
+                                        if (std::string(def) == "1 1") { v[0]=1; v[1]=1; }
+                                        std::stringstream ssV(valStr); ssV >> v[0] >> v[1];
+                                        if (ImGui::DragFloat2(label, v, 0.01f)) {
+                                            char buf[64]; snprintf(buf, sizeof(buf), "%.3f %.3f", v[0], v[1]);
+                                            bool found = false;
+                                            for (auto& prop : targetCompOverride->children) {
+                                                if (prop.key == key) { prop.value = buf; found = true; break; }
+                                            }
+                                            if (!found) targetCompOverride->children.push_back({key, buf, {}});
+                                            changed = true;
+                                        }
+                                    };
+                                    drawVec2("UV Scale", "UVScale", "1 1");
+                                    drawVec2("UV Offset", "UVOffset", "0 0");
+                                } else {
+                                    std::string compStr = "";
+                                    for (const auto& prop : targetCompOverride->children) {
+                                        compStr += prop.key + ": " + prop.value + "\n";
+                                    }
+                                    char compBuf[1024];
+                                    strncpy(compBuf, compStr.c_str(), sizeof(compBuf) - 1);
+                                    if (ImGui::InputTextMultiline("##props", compBuf, sizeof(compBuf), ImVec2(-1, 80))) {
+                                        targetCompOverride->children = YAMLParser::ParseString(compBuf);
+                                        changed = true;
+                                    }
+                                }
+                                
+                                ImGui::PopID();
+                                ImGui::Unindent();
+                            }
+                        }
+                    }
+                    ImGui::TreePop();
+                }
+            }
+            }
+            
+            if (changed) {
+                frag.overrides = "";
+                for (const auto& root : overrideRoots) {
+                    frag.overrides += SerializeYAMLNode(root, 0);
+                }
+            }
+        } else {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Fragment Asset Not Found");
         }
 
         if (ImGui::Button("Reload & Apply Overrides")) {
