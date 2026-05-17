@@ -76,12 +76,17 @@ public:
     std::shared_ptr<FragmentAsset> GetFragment(const std::string& name);
     std::shared_ptr<UIModel> GetUIModel(const std::string& name);
     bool HasUIModel(const std::string& name);
+    std::shared_ptr<VideoDecoder> GetVideo(const std::string& name);
 
     std::vector<std::string> GetLoadedTextures() const;
     std::vector<std::string> GetLoadedModels() const;
     std::vector<std::string> GetLoadedShaders() const;
     std::vector<std::string> GetLoadedSounds() const;
     std::vector<std::string> GetLoadedSkyboxes() const;
+    std::vector<std::string> GetLoadedAnimations() const;
+    std::vector<std::string> GetLoadedVideos() const;
+    std::vector<std::string> GetLoadedFonts() const;
+    std::vector<std::string> GetLoadedFragments() const;
 
     std::shared_ptr<Texture> GetTextureAuto(const std::string& nameOrPath);
     std::shared_ptr<Model> GetModelAuto(const std::string& nameOrPath, bool isStatic = false);

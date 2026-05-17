@@ -2,6 +2,7 @@
 #include <editor/modules/physics_editor_module.h>
 #include <physics/interface/i_physics_world.h>
 #include <core/logic/config_manager.h>
+#include <editor/panels/scene_hierarchy_panel.h>
 
 #ifdef ENABLE_EDITOR
 
@@ -65,7 +66,12 @@ void PhysicsEditorModule::Render(Scene &scene)
         EventManager::Instance().Publish(PhysicsDebugRenderEvent{&scene, width, height});
     }
 
-    if (!showAudio && !showParticle)
+    bool showGrid = false;
+    if (cm) {
+        showGrid = cm->GetConfig().debug.gridIndicatorEnabled;
+    }
+
+    if (!showAudio && !showParticle && !showGrid)
         return;
 
     auto debugShader = resources.GetShader("debug_line");
@@ -148,6 +154,184 @@ void PhysicsEditorModule::Render(Scene &scene)
         }
     }
 
+    // Draw 3D Grid Indicator reflecting Grid Snap step centered at Camera (snapped chunks)
+    if (auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>()) {
+        auto conf = cm->GetConfig();
+        if (conf.debug.gridIndicatorEnabled) {
+            float tSnap = conf.debug.gridSnapTranslation;
+            if (tSnap < 0.1f) tSnap = 0.1f; // Safety clamp
+
+            // Snap grid center to nearest multiple of tSnap to ensure lines align perfectly with snapped coordinates
+            float snapX = std::round(camPos.x / tSnap) * tSnap;
+            float snapZ = std::round(camPos.z / tSnap) * tSnap;
+
+            float extent = 200.0f;
+            if (tSnap < 0.5f) {
+                extent = 100.0f; // Snug grid for fine step to maintain performance
+            } else if (tSnap > 2.0f) {
+                extent = 500.0f; // Large grid for huge step
+            }
+
+            glm::vec3 gridColor(0.20f, 0.20f, 0.20f);
+            glm::vec3 axisColorX(0.7f, 0.2f, 0.2f); // Red for X-axis
+            glm::vec3 axisColorZ(0.2f, 0.2f, 0.7f); // Blue for Z-axis
+            glm::vec3 axisColorY(0.2f, 0.7f, 0.2f); // Green for Y-axis
+
+            // Draw grid lines parallel to Z axis (incrementing X) - all lines are exact multiples of tSnap
+            int halfLines = static_cast<int>(extent / tSnap);
+            for (int i = -halfLines; i <= halfLines; ++i) {
+                float x = snapX + i * tSnap;
+                glm::vec3 start(x, 0.0f, snapZ - extent);
+                glm::vec3 end(x, 0.0f, snapZ + extent);
+                glm::vec3 color = (std::abs(x) < 0.001f) ? axisColorZ : gridColor;
+                addLine(start, end, color);
+            }
+
+            // Draw grid lines parallel to X axis (incrementing Z) - all lines are exact multiples of tSnap
+            for (int i = -halfLines; i <= halfLines; ++i) {
+                float z = snapZ + i * tSnap;
+                glm::vec3 start(snapX - extent, 0.0f, z);
+                glm::vec3 end(snapX + extent, 0.0f, z);
+                glm::vec3 color = (std::abs(z) < 0.001f) ? axisColorX : gridColor;
+                addLine(start, end, color);
+            }
+
+            // Draw absolute Y-axis line at X=0, Z=0
+            addLine(glm::vec3(0.0f, -extent, 0.0f), glm::vec3(0.0f, extent, 0.0f), axisColorY);
+        }
+    }
+
+    // Draw Rotation, Scale, and Translation visual indicators for Selected Entity
+    if (SceneHierarchyPanel::s_SelectedEntity != entt::null && scene.registry.valid(SceneHierarchyPanel::s_SelectedEntity)) {
+        glm::vec3 pos(0.0f);
+        if (auto* tr = scene.registry.try_get<WorldTransformComponent>(SceneHierarchyPanel::s_SelectedEntity))
+            pos = glm::vec3(tr->worldMatrix[3]);
+        else if (auto* p = scene.registry.try_get<PositionComponent>(SceneHierarchyPanel::s_SelectedEntity))
+            pos = p->value;
+
+        auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>();
+        if (ioHandler) {
+            auto& keyboard = ioHandler->GetKeyboard();
+            bool alt = keyboard.GetKey(Key::LeftAlt) || keyboard.GetKey(Key::RightAlt);
+            bool ctrl = keyboard.GetKey(Key::LeftControl) || keyboard.GetKey(Key::RightControl);
+            bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
+
+            float indicatorScale = 1.0f;
+            if (auto* s = scene.registry.try_get<ScaleComponent>(SceneHierarchyPanel::s_SelectedEntity)) {
+                indicatorScale = glm::max(0.5f, glm::max(s->value.x, glm::max(s->value.y, s->value.z)));
+            }
+
+            // Helper to draw pitch/yaw/roll circles
+            auto drawRotationIndicator = [&](const glm::vec3& center, float radius) {
+                const int segments = 32;
+                // Red circle: Pitch (YZ plane)
+                for (int i = 0; i < segments; ++i) {
+                    float theta1 = (i / (float)segments) * glm::two_pi<float>();
+                    float theta2 = ((i + 1) / (float)segments) * glm::two_pi<float>();
+                    glm::vec3 p1 = center + glm::vec3(0.0f, radius * std::cos(theta1), radius * std::sin(theta1));
+                    glm::vec3 p2 = center + glm::vec3(0.0f, radius * std::cos(theta2), radius * std::sin(theta2));
+                    addLine(p1, p2, glm::vec3(0.9f, 0.1f, 0.1f));
+                }
+                // Green circle: Yaw (XZ plane)
+                for (int i = 0; i < segments; ++i) {
+                    float theta1 = (i / (float)segments) * glm::two_pi<float>();
+                    float theta2 = ((i + 1) / (float)segments) * glm::two_pi<float>();
+                    glm::vec3 p1 = center + glm::vec3(radius * std::cos(theta1), 0.0f, radius * std::sin(theta1));
+                    glm::vec3 p2 = center + glm::vec3(radius * std::cos(theta2), 0.0f, radius * std::sin(theta2));
+                    addLine(p1, p2, glm::vec3(0.1f, 0.9f, 0.1f));
+                }
+                // Blue circle: Roll (XY plane)
+                for (int i = 0; i < segments; ++i) {
+                    float theta1 = (i / (float)segments) * glm::two_pi<float>();
+                    float theta2 = ((i + 1) / (float)segments) * glm::two_pi<float>();
+                    glm::vec3 p1 = center + glm::vec3(radius * std::cos(theta1), radius * std::sin(theta1), 0.0f);
+                    glm::vec3 p2 = center + glm::vec3(radius * std::cos(theta2), radius * std::sin(theta2), 0.0f);
+                    addLine(p1, p2, glm::vec3(0.1f, 0.1f, 0.9f));
+                }
+            };
+
+            // Helper to draw scale handles
+            auto drawScaleIndicator = [&](const glm::vec3& center, float length) {
+                glm::vec3 xEnd = center + glm::vec3(length, 0.0f, 0.0f);
+                glm::vec3 yEnd = center + glm::vec3(0.0f, length, 0.0f);
+                glm::vec3 zEnd = center + glm::vec3(0.0f, 0.0f, length);
+
+                addLine(center, xEnd, glm::vec3(0.9f, 0.1f, 0.1f));
+                addLine(center, yEnd, glm::vec3(0.1f, 0.9f, 0.1f));
+                addLine(center, zEnd, glm::vec3(0.1f, 0.1f, 0.9f));
+
+                float boxSize = 0.06f * length;
+                auto addMiniBox = [&](const glm::vec3& pBox, const glm::vec3& color) {
+                    glm::vec3 p1 = pBox + glm::vec3(-boxSize, -boxSize, -boxSize);
+                    glm::vec3 p2 = pBox + glm::vec3( boxSize, -boxSize, -boxSize);
+                    glm::vec3 p3 = pBox + glm::vec3( boxSize,  boxSize, -boxSize);
+                    glm::vec3 p4 = pBox + glm::vec3(-boxSize,  boxSize, -boxSize);
+                    glm::vec3 p5 = pBox + glm::vec3(-boxSize, -boxSize,  boxSize);
+                    glm::vec3 p6 = pBox + glm::vec3( boxSize, -boxSize,  boxSize);
+                    glm::vec3 p7 = pBox + glm::vec3( boxSize,  boxSize,  boxSize);
+                    glm::vec3 p8 = pBox + glm::vec3(-boxSize,  boxSize,  boxSize);
+
+                    addLine(p1, p2, color); addLine(p2, p3, color); addLine(p3, p4, color); addLine(p4, p1, color);
+                    addLine(p5, p6, color); addLine(p6, p7, color); addLine(p7, p8, color); addLine(p8, p5, color);
+                    addLine(p1, p5, color); addLine(p2, p6, color); addLine(p3, p7, color); addLine(p4, p8, color);
+                };
+
+                addMiniBox(xEnd, glm::vec3(0.9f, 0.1f, 0.1f));
+                addMiniBox(yEnd, glm::vec3(0.1f, 0.9f, 0.1f));
+                addMiniBox(zEnd, glm::vec3(0.1f, 0.1f, 0.9f));
+            };
+
+            if (alt && ctrl && !shift) {
+                drawRotationIndicator(pos, indicatorScale * 1.5f);
+            }
+            else if (alt && shift && !ctrl) {
+                drawScaleIndicator(pos, indicatorScale * 1.6f);
+            }
+            else if (alt && !ctrl && !shift) {
+                float len = indicatorScale * 1.6f;
+                glm::vec3 xEnd = pos + glm::vec3(len, 0.0f, 0.0f);
+                glm::vec3 yEnd = pos + glm::vec3(0.0f, len, 0.0f);
+                glm::vec3 zEnd = pos + glm::vec3(0.0f, 0.0f, len);
+
+                addLine(pos, xEnd, glm::vec3(0.9f, 0.1f, 0.1f));
+                addLine(pos, yEnd, glm::vec3(0.1f, 0.9f, 0.1f));
+                addLine(pos, zEnd, glm::vec3(0.1f, 0.1f, 0.9f));
+
+                float arr = 0.04f * len;
+                addLine(xEnd, xEnd - glm::vec3(arr * 2.0f, -arr, -arr), glm::vec3(0.9f, 0.1f, 0.1f));
+                addLine(xEnd, xEnd - glm::vec3(arr * 2.0f, arr, -arr), glm::vec3(0.9f, 0.1f, 0.1f));
+                addLine(xEnd, xEnd - glm::vec3(arr * 2.0f, arr, arr), glm::vec3(0.9f, 0.1f, 0.1f));
+                addLine(xEnd, xEnd - glm::vec3(arr * 2.0f, -arr, arr), glm::vec3(0.9f, 0.1f, 0.1f));
+
+                addLine(yEnd, yEnd - glm::vec3(-arr, arr * 2.0f, -arr), glm::vec3(0.1f, 0.9f, 0.1f));
+                addLine(yEnd, yEnd - glm::vec3(arr, arr * 2.0f, -arr), glm::vec3(0.1f, 0.9f, 0.1f));
+                addLine(yEnd, yEnd - glm::vec3(arr, arr * 2.0f, arr), glm::vec3(0.1f, 0.9f, 0.1f));
+                addLine(yEnd, yEnd - glm::vec3(-arr, arr * 2.0f, arr), glm::vec3(0.1f, 0.9f, 0.1f));
+
+                addLine(zEnd, zEnd - glm::vec3(-arr, -arr, arr * 2.0f), glm::vec3(0.1f, 0.1f, 0.9f));
+                addLine(zEnd, zEnd - glm::vec3(arr, -arr, arr * 2.0f), glm::vec3(0.1f, 0.1f, 0.9f));
+                addLine(zEnd, zEnd - glm::vec3(arr, arr, arr * 2.0f), glm::vec3(0.1f, 0.1f, 0.9f));
+                addLine(zEnd, zEnd - glm::vec3(-arr, arr, arr * 2.0f), glm::vec3(0.1f, 0.1f, 0.9f));
+            }
+            else {
+                float s = indicatorScale * 0.7f;
+                glm::vec3 c(0.9f, 0.9f, 0.2f);
+                glm::vec3 p1 = pos + glm::vec3(-s, -s, -s);
+                glm::vec3 p2 = pos + glm::vec3( s, -s, -s);
+                glm::vec3 p3 = pos + glm::vec3( s,  s, -s);
+                glm::vec3 p4 = pos + glm::vec3(-s,  s, -s);
+                glm::vec3 p5 = pos + glm::vec3(-s, -s,  s);
+                glm::vec3 p6 = pos + glm::vec3( s, -s,  s);
+                glm::vec3 p7 = pos + glm::vec3( s,  s,  s);
+                glm::vec3 p8 = pos + glm::vec3(-s,  s,  s);
+
+                addLine(p1, p2, c); addLine(p2, p3, c); addLine(p3, p4, c); addLine(p4, p1, c);
+                addLine(p5, p6, c); addLine(p6, p7, c); addLine(p7, p8, c); addLine(p8, p5, c);
+                addLine(p1, p5, c); addLine(p2, p6, c); addLine(p3, p7, c); addLine(p4, p8, c);
+            }
+        }
+    }
+
     if (lineVertices.empty()) return;
 
     auto* graphics = sl.Resolve<IGraphicsContext>();
@@ -204,6 +388,10 @@ void PhysicsEditorModule::ProcessInput(KeyboardManager &keyboard)
                 conf.debug.particleDebug = !conf.debug.particleDebug;
                 cm->UpdateConfig(conf);
             }
+        } else {
+            static bool uiEnabled = true;
+            uiEnabled = !uiEnabled;
+            EventManager::Instance().Publish(SystemEnabledEvent{"UIRenderSystem", uiEnabled});
         } });
 }
 

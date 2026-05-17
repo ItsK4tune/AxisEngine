@@ -16,7 +16,7 @@ public:
 
     std::string GetName() const override { return "AudioSystem"; }
     bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    void SetEnabled(bool enable) override;
     int GetPriority() const override { return 70; }
     SystemRequirement GetRequirements() const override { return SystemRequirement::Audio; }
 

@@ -190,3 +190,16 @@ std::vector<entt::id_type> AudioSystem::GetWriteComponents() const
 {
     return {entt::type_id<AudioSourceComponent>().hash()};
 }
+
+void AudioSystem::SetEnabled(bool enable)
+{
+    m_Enabled = enable;
+    auto* audioService = ServiceLocator::Instance().Resolve<AudioService>();
+    if (audioService && audioService->GetEngine()) {
+        if (!enable) {
+            audioService->GetEngine()->SetGlobalVolume(0.0f);
+        } else {
+            audioService->GetEngine()->SetGlobalVolume(m_GlobalVolume);
+        }
+    }
+}

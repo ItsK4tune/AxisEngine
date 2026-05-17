@@ -121,6 +121,13 @@ void LogManager::Log(LogType type, const std::string& tag, const std::string& me
     }
 
     (*outStream) << "[" << levelStr << "] [" << tag << "] " << message << std::endl;
+
+#ifdef ENABLE_EDITOR
+    // Feed editor console panel
+    if (m_EditorLogCallback) {
+        m_EditorLogCallback(type, tag, message);
+    }
+#endif
 }
 
 

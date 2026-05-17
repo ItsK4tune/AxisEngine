@@ -28,6 +28,7 @@ public:
 
     
     void Clear() override;
+    std::vector<std::string> GetAllNames() const { return m_Cache.GetAllNames(); }
 
 private:
     ResourceCache<VideoDecoder> m_Cache;

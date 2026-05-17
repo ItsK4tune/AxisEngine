@@ -14,8 +14,10 @@ public:
     void Initialize() override;
     void Shutdown() override;
     
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enable) override { m_Enabled = enable; }
+    bool IsEnabled() const override { return m_EffectsEnabled; }
+    void SetEnabled(bool enable) override { m_EffectsEnabled = enable; }
+    bool AreEffectsEnabled() const { return m_EffectsEnabled; }
+    void SetEffectsEnabled(bool enable) { m_EffectsEnabled = enable; }
     int GetPriority() const override { return 95; }
     std::string GetName() const override { return "PostProcessSystem"; }
     SystemCategory GetCategory() const override { return SystemCategory::PostProcess | SystemCategory::RenderCapture | SystemCategory::RenderUI; }
@@ -33,7 +35,7 @@ public:
     std::vector<entt::id_type> GetWriteComponents() const override;
 
 private:
-    bool m_Enabled = true;
+    bool m_EffectsEnabled = true;
     PostProcessPipeline m_Pipeline;
     class IRenderService* m_RenderService = nullptr;
 };

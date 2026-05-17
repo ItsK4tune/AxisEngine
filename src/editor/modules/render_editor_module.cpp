@@ -43,15 +43,6 @@ void RenderEditorModule::ProcessInput(KeyboardManager &keyboard)
             static bool skyboxEnabled = true;
             skyboxEnabled = !skyboxEnabled;
             EventManager::Instance().Publish(SystemEnabledEvent{"SkyboxRenderSystem", skyboxEnabled});
-        } else {
-            auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-            if (!cm) return;
-            auto conf = cm->GetConfig();
-            conf.debug.wireframeMode = !conf.debug.wireframeMode;
-            cm->UpdateConfig(conf);
-
-            auto* renderSys = ServiceLocator::Instance().Resolve<IRenderService>();
-            if (renderSys) renderSys->SetWireframe(conf.debug.wireframeMode);
         } });
 
     ProcessKey(keyboard, Key::F7, m_F7Pressed, [this, &keyboard]()
@@ -62,25 +53,7 @@ void RenderEditorModule::ProcessInput(KeyboardManager &keyboard)
              auto* shadowSys = sl.Resolve<IShadowService>();
              bool shadow = shadowSys ? !shadowSys->IsShadowsEnabled() : false;
              if (shadowSys) shadowSys->SetEnableShadows(shadow);
-         } else {
-             auto& sl = ServiceLocator::Instance();
-             auto* renderSys = sl.Resolve<IRenderService>();
-             m_NoTextureMode = !m_NoTextureMode;
-             if (renderSys) renderSys->SetDebugNoTexture(m_NoTextureMode);
-             EventManager::Instance().Publish(DebugNoTextureChangedEvent{m_NoTextureMode});
          } });
-
-    ProcessKey(keyboard, Key::F9, m_F9Pressed, [this, &keyboard]()
-               {
-        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift) {
-
-        } else {
-            auto& sl = ServiceLocator::Instance();
-            static bool uiEnabled = true;
-            uiEnabled = !uiEnabled;
-            EventManager::Instance().Publish(SystemEnabledEvent{"UIRenderSystem", uiEnabled});
-        } });
 }
 
 void RenderEditorModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)

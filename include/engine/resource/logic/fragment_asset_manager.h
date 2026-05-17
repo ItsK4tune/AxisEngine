@@ -14,6 +14,7 @@ public:
     std::shared_ptr<FragmentAsset> Get(const std::string& nameOrPath) override;
     void Unload(const std::string& nameOrPath) override;
     void Clear() override;
+    std::vector<std::string> GetAllNames() const { return m_Cache.GetAllNames(); }
 
 private:
     ResourceCache<FragmentAsset> m_Cache;

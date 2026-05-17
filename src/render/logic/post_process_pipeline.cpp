@@ -142,7 +142,6 @@ void PostProcessPipeline::UpdateConfig()
     m_BloomIntensity = cfg.bloomIntensity;
     m_BloomRadius = cfg.bloomRadius;
     m_HDREnabled = cfg.hdrEnabled;
-    // Only honor exposure/gamma/tonemapping when HDR is on
     m_Exposure = cfg.hdrEnabled ? cfg.exposure : 1.0f;
     m_Gamma = cfg.hdrEnabled ? cfg.gamma : 2.2f;
     m_TonemappingMode = cfg.hdrEnabled ? (int)cfg.tonemappingMode : 0;
@@ -255,7 +254,7 @@ void PostProcessPipeline::EndCapture()
     m_HDRFinalShader->setInt("screenTexture", 0);
     m_HDRFinalShader->setInt("bloomBlur", 1);
     m_HDRFinalShader->setFloat("exposure", m_HDREnabled ? m_Exposure : 1.0f);
-    m_HDRFinalShader->setFloat("bloomIntensity", (m_BloomEnabled && m_HDREnabled) ? m_BloomIntensity : 0.0f);
+    m_HDRFinalShader->setFloat("bloomIntensity", m_BloomEnabled ? m_BloomIntensity : 0.0f);
     m_HDRFinalShader->setFloat("gamma", m_HDREnabled ? m_Gamma : 2.2f);
     m_HDRFinalShader->setInt("tonemappingMode", m_HDREnabled ? m_TonemappingMode : 0);
 
@@ -398,7 +397,7 @@ void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
         tm.ActiveTexture(TextureUnit::Texture0);
         tm.BindTexture(TextureType::Texture2D, currentSrc);
         m_BloomDownsampleShader->setInt("srcTexture", 0);
-        m_BloomDownsampleShader->setFloat("threshold", m_BloomThreshold);
+        m_BloomDownsampleShader->setFloat("threshold", (currentSrc == srcTexture) ? m_BloomThreshold : 0.0f);
 
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[1]->Get());
         rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D, mip.texture->Get(), 0);

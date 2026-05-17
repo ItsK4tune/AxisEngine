@@ -56,9 +56,7 @@ private:
 
     bool m_Enabled = true;
 
-    bool m_F3Pressed = false;
-    bool m_F4Pressed = false;
-    bool m_F5Pressed = false;
+
 
 
     std::unordered_map<entt::entity, entt::entity> m_EntityLabelMap;

@@ -44,8 +44,6 @@ void StatsPanel::OnImGui(Scene& scene)
             auto conf = cm->GetConfig();
             
             auto boolStr = [](bool v) { return v ? "ON" : "OFF"; };
-            
-            ImGui::Text("Wireframe Mode  : %s", boolStr(conf.debug.wireframeMode));
             ImGui::Text("Entity Names    : %s", boolStr(conf.debug.entityNames));
             ImGui::Text("Transform Gizmos: %s", boolStr(conf.debug.gizmos));
             ImGui::Text("Light Gizmos    : %s", boolStr(conf.debug.lightGizmos));

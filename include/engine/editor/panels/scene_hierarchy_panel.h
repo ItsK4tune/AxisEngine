@@ -19,7 +19,13 @@ private:
     void DrawEntityNode(Scene& scene, entt::entity entity);
     void DrawComponents(entt::registry& registry, entt::entity entity);
     void CreateNewEntity(Scene& scene, const std::string& sceneName);
+    void DuplicateEntity(Scene& scene, entt::entity entity);
 
+public:
+    static entt::entity s_SelectedEntity;
+    static bool s_FocusRequested;
+    static entt::entity s_FocusTargetEntity;
 private:
-    entt::entity m_SelectedEntity = entt::null;
+    char m_SearchFilter[256] = "";
+    bool m_CtrlDPressed = false;
 };

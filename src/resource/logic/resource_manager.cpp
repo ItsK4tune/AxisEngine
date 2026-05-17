@@ -292,12 +292,17 @@ std::shared_ptr<Font> ResourceManager::GetFont(const std::string &name) { return
 std::shared_ptr<IAudioSource> ResourceManager::GetSound(const std::string &name) { return m_AudioManager ? m_AudioManager->Get(name) : nullptr; }
 std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string &name) { return m_SkyboxManager ? m_SkyboxManager->Get(name) : nullptr; }
 std::shared_ptr<FragmentAsset> ResourceManager::GetFragment(const std::string &name) { return m_FragmentManager ? m_FragmentManager->Load(name) : nullptr; }
+std::shared_ptr<VideoDecoder> ResourceManager::GetVideo(const std::string &name) { return m_VideoManager ? m_VideoManager->Get(name) : nullptr; }
 
 std::vector<std::string> ResourceManager::GetLoadedTextures() const { return m_TextureManager ? m_TextureManager->GetAllNames() : std::vector<std::string>{}; }
 std::vector<std::string> ResourceManager::GetLoadedModels() const { return m_ModelManager ? m_ModelManager->GetAllNames() : std::vector<std::string>{}; }
 std::vector<std::string> ResourceManager::GetLoadedShaders() const { return m_ShaderManager ? m_ShaderManager->GetAllNames() : std::vector<std::string>{}; }
 std::vector<std::string> ResourceManager::GetLoadedSounds() const { return m_AudioManager ? m_AudioManager->GetAllNames() : std::vector<std::string>{}; }
 std::vector<std::string> ResourceManager::GetLoadedSkyboxes() const { return m_SkyboxManager ? m_SkyboxManager->GetAllNames() : std::vector<std::string>{}; }
+std::vector<std::string> ResourceManager::GetLoadedAnimations() const { return m_AnimationManager ? m_AnimationManager->GetAllNames() : std::vector<std::string>{}; }
+std::vector<std::string> ResourceManager::GetLoadedVideos() const { return m_VideoManager ? m_VideoManager->GetAllNames() : std::vector<std::string>{}; }
+std::vector<std::string> ResourceManager::GetLoadedFonts() const { return m_FontManager ? m_FontManager->GetAllNames() : std::vector<std::string>{}; }
+std::vector<std::string> ResourceManager::GetLoadedFragments() const { return m_FragmentManager ? m_FragmentManager->GetAllNames() : std::vector<std::string>{}; }
 
 std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string &nameOrPath)
 {

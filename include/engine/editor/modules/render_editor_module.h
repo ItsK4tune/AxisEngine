@@ -27,7 +27,6 @@ public:
     std::string GetModuleName() const override { return "RenderEditorModule"; }
 
     bool IsWireframeMode() const { return m_WireframeMode; }
-    bool IsNoTextureMode() const { return m_NoTextureMode; }
 
 private:
     void ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action);
@@ -36,10 +35,8 @@ private:
 
     bool m_F6Pressed = false;
     bool m_F7Pressed = false;
-    bool m_F9Pressed = false;
 
     bool m_WireframeMode = false;
-    bool m_NoTextureMode = false;
 };
 
 #endif

@@ -115,6 +115,11 @@ struct DebugConfig
     bool entityNames = false;
     bool audioDebug = false;
     bool particleDebug = false;
+    bool gridSnapEnabled = false;
+    bool gridIndicatorEnabled = false;
+    float gridSnapTranslation = 1.0f;
+    float gridSnapRotation = 15.0f;
+    float gridSnapScale = 0.25f;
 };
 
 struct AppConfig

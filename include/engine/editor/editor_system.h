@@ -20,6 +20,7 @@ struct Scene;
 #include <editor/i_editor_panel.h>
 #include <editor/imgui_layer.h>
 #include <platform/interface/cursor_mode.h>
+#include <platform/interface/input_codes.h>
 
 class IEditorModule;
 
@@ -44,10 +45,13 @@ public:
     bool IsEnabled() const override { return m_Enabled; }
     void SetEnabled(bool enabled) override { m_Enabled = enabled; }
     std::string GetName() const override { return "EditorSystem"; }
-    int GetPriority() const override { return -1; }
+    int GetPriority() const override { return 100; }
  
     std::vector<entt::id_type> GetReadComponents() const override { return {}; }
     std::vector<entt::id_type> GetWriteComponents() const override { return {}; }
+
+    static void PushUndoState(Scene& scene);
+    static void PerformUndo(Scene& scene);
 
 private:
     bool m_Enabled = true;
@@ -61,6 +65,7 @@ private:
     // Track cursor mode prior to hovering a panel
     CursorMode m_PreHoverCursorMode;
     bool m_WasHoveringPanel = false;
+    bool m_CtrlSPressed = false;
 
     void DrawMenuBar();
 };

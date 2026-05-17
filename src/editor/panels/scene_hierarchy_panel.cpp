@@ -1,4 +1,5 @@
 #include <editor/panels/scene_hierarchy_panel.h>
+#include <editor/editor_system.h>
 #ifdef ENABLE_EDITOR
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
@@ -25,6 +26,8 @@
 #include <ecs/logic/entity_manager.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
+#include <platform/logic/io_handler.h>
+#include <platform/logic/input_manager.h>
 #include <unordered_map>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>
@@ -41,6 +44,10 @@ namespace {
         return res;
     }
 }
+
+entt::entity SceneHierarchyPanel::s_SelectedEntity = entt::null;
+bool SceneHierarchyPanel::s_FocusRequested = false;
+entt::entity SceneHierarchyPanel::s_FocusTargetEntity = entt::null;
 
 void SceneHierarchyPanel::OnImGui(Scene& scene)
 {
@@ -70,6 +77,34 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
                 sname = sn;
             sceneGroups[sname].push_back(entity);
         }
+    }
+
+    // Search filter
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##EntitySearch", "Search entities...", m_SearchFilter, IM_ARRAYSIZE(m_SearchFilter));
+    std::string filterLower = m_SearchFilter;
+    std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(), ::tolower);
+
+    // Ctrl+D duplicate shortcut
+    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>()) {
+        auto& kb = io->GetKeyboard();
+        bool ctrl = kb.GetKey(Key::LeftControl) || kb.GetKey(Key::RightControl);
+        if (ctrl && kb.GetKey(Key::D) && !m_CtrlDPressed && s_SelectedEntity != entt::null && registry.valid(s_SelectedEntity)) {
+            m_CtrlDPressed = true;
+            EditorSystem::PushUndoState(scene);
+            DuplicateEntity(scene, s_SelectedEntity);
+        }
+        if (!kb.GetKey(Key::D)) m_CtrlDPressed = false;
+
+        // Delete (Delete)
+        static bool deletePressed = false;
+        if (kb.GetKey(Key::Delete) && !deletePressed && s_SelectedEntity != entt::null && registry.valid(s_SelectedEntity)) {
+            deletePressed = true;
+            EditorSystem::PushUndoState(scene);
+            registry.destroy(s_SelectedEntity);
+            s_SelectedEntity = entt::null;
+        }
+        if (!kb.GetKey(Key::Delete)) deletePressed = false;
     }
 
     ImGui::Columns(2, "HierarchyInspector", true);
@@ -109,6 +144,16 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
         if (isOpen) {
             for (auto entity : entities)
             {
+                // Apply search filter
+                if (!filterLower.empty()) {
+                    std::string ename = "";
+                    if (registry.all_of<InfoComponent>(entity)) {
+                        ename = registry.get<InfoComponent>(entity).name;
+                    }
+                    std::string enameLower = ename;
+                    std::transform(enameLower.begin(), enameLower.end(), enameLower.begin(), ::tolower);
+                    if (enameLower.find(filterLower) == std::string::npos) continue;
+                }
                 DrawEntityNode(scene, entity);
             }
             ImGui::TreePop();
@@ -120,9 +165,9 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
     ImGui::NextColumn();
 
     ImGui::BeginChild("InspectorView");
-    if (m_SelectedEntity != entt::null && registry.valid(m_SelectedEntity))
+    if (s_SelectedEntity != entt::null && registry.valid(s_SelectedEntity))
     {
-        DrawComponents(registry, m_SelectedEntity);
+        DrawComponents(registry, s_SelectedEntity);
     }
     else
     {
@@ -155,7 +200,7 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     }
 
     ImGuiTreeNodeFlags flags =
-        ((m_SelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
+        ((s_SelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
     flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
 
     if (!hasChildren)
@@ -172,15 +217,25 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     if (hasOverride) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 0.6f, 1.0f, 1.0f));
     bool opened = ImGui::TreeNodeEx((void*)(uint64_t)entityId, flags, "%s", name.c_str());
     if (hasOverride) ImGui::PopStyleColor();
+    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+    {
+        s_SelectedEntity = entity;
+        s_FocusRequested = true;
+        s_FocusTargetEntity = entity;
+    }
     if (ImGui::IsItemClicked())
     {
-        m_SelectedEntity = entity;
+        s_SelectedEntity = entity;
     }
 
     bool entityDeleted = false;
     if (ImGui::BeginPopupContextItem())
     {
         if (ImGui::MenuItem("Delete Entity")) entityDeleted = true;
+        if (ImGui::MenuItem("Duplicate Entity", "Ctrl+D")) {
+            EditorSystem::PushUndoState(scene);
+            DuplicateEntity(scene, entity);
+        }
         ImGui::EndPopup();
     }
 
@@ -195,7 +250,8 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
 
     if (entityDeleted)
     {
-        if (m_SelectedEntity == entity) m_SelectedEntity = entt::null;
+        EditorSystem::PushUndoState(scene);
+        if (s_SelectedEntity == entity) s_SelectedEntity = entt::null;
         registry.destroy(entity);
     }
 }
@@ -239,7 +295,11 @@ static void DrawComponent(const std::string& name, entt::registry& reg, entt::en
         }
 
         if (removeComponent)
-            reg.remove<T>(entity);
+            {
+                auto& globalScene = ServiceLocator::Instance().Require<Scene>();
+                EditorSystem::PushUndoState(globalScene);
+                reg.remove<T>(entity);
+            }
     }
 }
 
@@ -317,6 +377,7 @@ static bool DrawResourceDropdown(const char* label, std::shared_ptr<T>& currentR
 
 void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entity)
 {
+    auto& scene = ServiceLocator::Instance().Require<Scene>();
     if (auto* info = reg.try_get<InfoComponent>(entity))
     {
         if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen))
@@ -1143,7 +1204,10 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
 
     // ====== PHASE 3: Add Component ======
     ImGui::Separator();
-    if (ImGui::Button("+ Add Component")) ImGui::OpenPopup("AddComponentPopup");
+    if (ImGui::Button("+ Add Component")) {
+        EditorSystem::PushUndoState(scene);
+        ImGui::OpenPopup("AddComponentPopup");
+    }
     if (ImGui::BeginPopup("AddComponentPopup")) {
         if (!reg.try_get<CameraComponent>(entity) && ImGui::Selectable("Camera"))
             reg.emplace<CameraComponent>(entity);
@@ -1202,10 +1266,80 @@ void SceneHierarchyPanel::CreateNewEntity(Scene& scene, const std::string& scene
     scene.registry.emplace<WorldTransformComponent>(entity);
     scene.registry.emplace<InfoComponent>(entity, "New Entity", "default");
     
-    auto& info = scene.registry.get<InfoComponent>(entity);
-    info.sceneName = targetScene;
+    // Assign to correct scene
+    scene.registry.get<InfoComponent>(entity).sceneName = targetScene;
     sm.AddEntity(entity, targetScene);
-    m_SelectedEntity = entity;
+    s_SelectedEntity = entity;
+}
+
+void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity) {
+    if (srcEntity == entt::null || !scene.registry.valid(srcEntity)) return;
+
+    auto newEntity = scene.registry.create();
+    auto& reg = scene.registry;
+
+    // Helper macro to copy component if exists
+    #define COPY_COMP(Type) if (reg.all_of<Type>(srcEntity)) reg.emplace<Type>(newEntity, reg.get<Type>(srcEntity))
+
+    COPY_COMP(InfoComponent);
+    if (reg.all_of<InfoComponent>(newEntity)) {
+        reg.get<InfoComponent>(newEntity).name += " (Copy)";
+    }
+
+    COPY_COMP(PositionComponent);
+    COPY_COMP(RotationComponent);
+    COPY_COMP(ScaleComponent);
+    COPY_COMP(WorldTransformComponent);
+    COPY_COMP(MeshRendererComponent);
+    COPY_COMP(AxisMaterialComponent);
+    COPY_COMP(DirectionalLightComponent);
+    COPY_COMP(PointLightComponent);
+    COPY_COMP(SpotLightComponent);
+    COPY_COMP(CameraComponent);
+    if (reg.all_of<ScriptComponent>(srcEntity)) {
+        auto& srcSc = reg.get<ScriptComponent>(srcEntity);
+        auto& newSc = reg.emplace<ScriptComponent>(newEntity);
+        newSc.className = srcSc.className;
+        newSc.InstantiateScript = srcSc.InstantiateScript;
+        newSc.DestroyScript = srcSc.DestroyScript;
+    }
+    COPY_COMP(UITextComponent);
+    COPY_COMP(AudioSourceComponent);
+    COPY_COMP(RigidShapeComponent);
+    COPY_COMP(RigidBodyComponent);
+    COPY_COMP(SkyboxRenderComponent);
+    COPY_COMP(FragmentComponent);
+    COPY_COMP(AnimationComponent);
+    if (reg.all_of<ParticleEmitterComponent>(srcEntity)) {
+        auto& srcPe = reg.get<ParticleEmitterComponent>(srcEntity);
+        auto& dstPe = reg.emplace<ParticleEmitterComponent>(newEntity);
+        dstPe.isActive = srcPe.isActive;
+        dstPe.emissionRate = srcPe.emissionRate;
+        dstPe.lifetime = srcPe.lifetime;
+        dstPe.speed = srcPe.speed;
+        dstPe.size = srcPe.size;
+        dstPe.direction = srcPe.direction;
+        dstPe.spread = srcPe.spread;
+        dstPe.startColor = srcPe.startColor;
+        dstPe.endColor = srcPe.endColor;
+        dstPe.textureName = srcPe.textureName;
+        dstPe.customShader = srcPe.customShader;
+    }
+    COPY_COMP(PostProcessComponent);
+    COPY_COMP(DecalComponent);
+    COPY_COMP(TerrainComponent);
+    COPY_COMP(LightProbeComponent);
+    COPY_COMP(ReflectionProbeComponent);
+    // Setup hierarchy properly (don't copy children directly, just attach to same parent)
+    reg.emplace<HierarchyComponent>(newEntity);
+    if (reg.all_of<HierarchyComponent>(srcEntity)) {
+        auto parent = reg.get<HierarchyComponent>(srcEntity).parent;
+        if (parent != entt::null) {
+            EntityManager::AddChild(scene, parent, newEntity, false);
+        }
+    }
+
+    s_SelectedEntity = newEntity;
 }
 
 #endif

@@ -8,6 +8,7 @@
 #include <core/type/event_types.h>
 #include <memory>
 #include <mutex>
+#include <functional>
 class TeeBuf : public std::streambuf {
 public:
     TeeBuf(std::streambuf* sb1, std::streambuf* sb2) : sb1(sb1), sb2(sb2) {}
@@ -42,6 +43,11 @@ public:
 
     void Log(LogType type, const std::string& tag, const std::string& message);
 
+#ifdef ENABLE_EDITOR
+    using LogCallback = std::function<void(LogType, const std::string&, const std::string&)>;
+    void SetEditorLogCallback(LogCallback cb) { m_EditorLogCallback = std::move(cb); }
+#endif
+
 
 private:
     LogManager() = default;
@@ -58,4 +64,7 @@ private:
     int m_ConfigListenerId = -1;
     LogLevel m_LogLevel = LogLevel::None;
     std::mutex m_LogMutex;
+#ifdef ENABLE_EDITOR
+    LogCallback m_EditorLogCallback;
+#endif
 };

@@ -66,8 +66,6 @@ void PostProcessSystem::Shutdown()
 
 void PostProcessSystem::RenderCapturePass(Scene &scene, int width, int height)
 {
-    if (!m_Enabled) return;
-    
     // Lazy resolve RenderService if needed
     if (!m_RenderService) {
         m_RenderService = ServiceLocator::Instance().Resolve<IRenderService>();
@@ -104,8 +102,6 @@ void PostProcessSystem::RenderAlphaPass(Scene &scene, int width, int height, flo
 void PostProcessSystem::Render(Scene& scene)
 {
     m_Pipeline.ClearEffects();
-    if (!m_Enabled)
-         return;
 
     // Lazy resolve RenderService if needed
     if (!m_RenderService) {
@@ -116,19 +112,21 @@ void PostProcessSystem::Render(Scene& scene)
         m_Pipeline.ApplyAntiAliasing(m_RenderService->GetAntiAliasingMode(), m_RenderService->GetPrevViewProj(), m_RenderService->GetCurrViewProj(), m_RenderService->GetJitterOffset());
     }
 
-    // Collect effects from components
-    auto view = scene.registry.view<PostProcessComponent, InfoComponent>();
-    auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
-    if (!res) return;
-    
-    for (auto entity : view) {
-        auto [pp, info] = view.get<PostProcessComponent, InfoComponent>(entity);
-        if (!pp.enabled || !info.isActive) continue;
-        for (const auto& eff : pp.effects) {
-            if (!eff.enabled) continue;
-            auto shader = res->GetShader(eff.shaderName);
-            if (shader) {
-                m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority, eff.affectUI);
+    // Only collect custom component effects if system is enabled
+    if (m_EffectsEnabled) {
+        auto view = scene.registry.view<PostProcessComponent, InfoComponent>();
+        auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
+        if (res) {
+            for (auto entity : view) {
+                auto [pp, info] = view.get<PostProcessComponent, InfoComponent>(entity);
+                if (!pp.enabled || !info.isActive) continue;
+                for (const auto& eff : pp.effects) {
+                    if (!eff.enabled) continue;
+                    auto shader = res->GetShader(eff.shaderName);
+                    if (shader) {
+                        m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority, eff.affectUI);
+                    }
+                }
             }
         }
     }
@@ -149,7 +147,7 @@ void PostProcessSystem::Render(Scene& scene)
 
 void PostProcessSystem::RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState)
 {
-    if (!m_Enabled || !m_Pipeline.HasUIEffects()) return;
+    if (!m_EffectsEnabled || !m_Pipeline.HasUIEffects()) return;
 
     m_Pipeline.RenderUIEffects();
 

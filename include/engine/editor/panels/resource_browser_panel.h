@@ -5,6 +5,10 @@
 
 struct Scene;
 
+#include <memory>
+
+class ISound;
+
 class ResourceBrowserPanel : public IEditorPanel
 {
 public:
@@ -15,5 +19,13 @@ public:
 
 private:
     int m_ActiveTab = 0;
+    std::string m_SelectedName;
+    std::string m_SelectedType;
+    float m_RotX = -0.5f;
+    float m_RotY = 0.5f;
+    float m_ZoomFactor = 1.0f;
+    std::shared_ptr<ISound> m_ActiveSound;
+    std::string m_CachedShaderCode;
+    std::string m_CachedShaderPath;
 };
 #endif

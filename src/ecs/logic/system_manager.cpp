@@ -336,7 +336,7 @@ void SystemManager::Render(Scene &scene, int width, int height, float alpha)
     // 2. Capture Pass (Optional)
     bool captured = false;
     for (IRenderSystem* sys : m_RenderCaptureSystems) {
-        if (sys->IsEnabled()) {
+        if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem") {
             sys->RenderCapturePass(scene, width, height);
             captured = true;
         }
@@ -350,7 +350,7 @@ void SystemManager::Render(Scene &scene, int width, int height, float alpha)
 
     // 3. Main Render Pass
     for (IRenderSystem* sys : m_RenderMainSystems) {
-        if (sys->IsEnabled()) sys->Render(scene);
+        if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem") sys->Render(scene);
     }
 
     // 4. Alpha Pass
@@ -365,13 +365,13 @@ void SystemManager::Render(Scene &scene, int width, int height, float alpha)
 
     // 6. PostProcess
     for (IRenderSystem* sys : m_PostProcessSystems) {
-        if (sys->IsEnabled()) sys->Render(scene);
+        if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem") sys->Render(scene);
     }
 
     // 7. UI Pass
     IRenderStateManager* rsm = &graphicsContext->GetRenderStateManager();
     for (IRenderSystem* sys : m_RenderUISystems) {
-        if (sys->IsEnabled()) sys->RenderUIPass(scene, (float)width, (float)height, *rsm);
+        if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem") sys->RenderUIPass(scene, (float)width, (float)height, *rsm);
     }
 }
 
