@@ -13,47 +13,26 @@ LocalizationSystem::~LocalizationSystem() {}
 void LocalizationSystem::Initialize()
 {
     ServiceLocator::Instance().Register<LocalizationSystem>(this);
-    
-    // Default to English, then try to load from config if available
-    SetLanguage("en");
-    
-    LOGGER_INFO("LocalizationSystem") << "Initialized with default language: " << m_CurrentLanguage;
+    LOGGER_INFO("LocalizationSystem") << "Initialized (no default language loaded)";
 }
 
 void LocalizationSystem::Shutdown()
 {
-    m_Entries.clear();
+    m_Languages.clear();
 }
 
-void LocalizationSystem::SetLanguage(const std::string& langCode)
+void LocalizationSystem::LoadLanguage(const std::string& path, const std::string& name)
 {
-    m_CurrentLanguage = langCode;
-    m_Entries.clear();
+    std::string langName = name.empty() ? path : name;
     
-    std::string path = "resources/i18n/" + langCode + ".axs";
-    if (std::filesystem::exists(path))
-    {
-        LoadLanguageFile(path);
-        LOGGER_INFO("LocalizationSystem") << "Loaded language: " << langCode << " (" << m_Entries.size() << " entries)";
-    }
-    else
+    if (!std::filesystem::exists(path))
     {
         LOGGER_WARN("LocalizationSystem") << "Language file not found: " << path;
+        return;
     }
-}
-
-std::string LocalizationSystem::Get(const std::string& key) const
-{
-    auto it = m_Entries.find(key);
-    if (it != m_Entries.end())
-        return it->second;
     
-    return "[MISSING: " + key + "]";
-}
-
-void LocalizationSystem::LoadLanguageFile(const std::string& path)
-{
     std::vector<YAMLNode> roots = YAMLParser::Parse(path);
+    std::unordered_map<std::string, std::string> entries;
     for (const auto& root : roots)
     {
         if (root.key == "axis_localization")
@@ -62,14 +41,47 @@ void LocalizationSystem::LoadLanguageFile(const std::string& path)
             {
                 if (section.key == "Entries")
                 {
-                    FlattenNode(section, "");
+                    FlattenNode(section, "", entries);
                 }
             }
         }
     }
+    
+    m_Languages[langName] = std::move(entries);
+    
+    if (m_CurrentLanguage.empty())
+    {
+        m_CurrentLanguage = langName;
+    }
+    
+    LOGGER_INFO("LocalizationSystem") << "Loaded language: " << langName << " (" << m_Languages[langName].size() << " entries)";
 }
 
-void LocalizationSystem::FlattenNode(const YAMLNode& node, const std::string& prefix)
+void LocalizationSystem::SetLanguage(const std::string& langCode)
+{
+    m_CurrentLanguage = langCode;
+    LOGGER_INFO("LocalizationSystem") << "Language active set to: " << m_CurrentLanguage;
+}
+
+std::string LocalizationSystem::GetLanguage() const
+{
+    return m_CurrentLanguage;
+}
+
+std::string LocalizationSystem::Get(const std::string& key) const
+{
+    auto langIt = m_Languages.find(m_CurrentLanguage);
+    if (langIt != m_Languages.end())
+    {
+        auto entryIt = langIt->second.find(key);
+        if (entryIt != langIt->second.end())
+            return entryIt->second;
+    }
+    
+    return "[MISSING: " + key + "]";
+}
+
+void LocalizationSystem::FlattenNode(const YAMLNode& node, const std::string& prefix, std::unordered_map<std::string, std::string>& outEntries)
 {
     for (const auto& child : node.children)
     {
@@ -77,11 +89,11 @@ void LocalizationSystem::FlattenNode(const YAMLNode& node, const std::string& pr
         
         if (child.children.empty())
         {
-            m_Entries[newKey] = child.value;
+            outEntries[newKey] = child.value;
         }
         else
         {
-            FlattenNode(child, newKey);
+            FlattenNode(child, newKey, outEntries);
         }
     }
 }

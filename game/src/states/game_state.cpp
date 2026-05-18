@@ -27,6 +27,12 @@
 
 void GameState::OnEnter()
 {
+    this->LoadLanguage("resources/i18n/en.axs", "en");
+    this->LoadLanguage("resources/i18n/vi.axs", "vi");
+    this->SetLanguage("vi");
+    
+    LOGGER_INFO("GameState") << "L10n test: " << this->GetTranslation("System.Welcome");
+
     this->LoadScene("scenes/main.axs");
     this->LoadScene("scenes/ui.axs");
     this->SetCursorMode(CursorMode::Normal);

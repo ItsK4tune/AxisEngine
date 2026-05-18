@@ -23,7 +23,9 @@ public:
     virtual std::string GetName() const override { return "LocalizationSystem"; }
 
     // Localization API
+    void LoadLanguage(const std::string& path, const std::string& name = "");
     void SetLanguage(const std::string& langCode);
+    std::string GetLanguage() const;
     std::string Get(const std::string& key) const;
     
     template<typename... Args>
@@ -35,8 +37,7 @@ public:
     }
 
 private:
-    void LoadLanguageFile(const std::string& path);
-    void FlattenNode(const struct YAMLNode& node, const std::string& prefix);
+    void FlattenNode(const struct YAMLNode& node, const std::string& prefix, std::unordered_map<std::string, std::string>& outEntries);
     
     std::string FormatString(const std::string& format, const std::vector<std::string>& args) const;
     
@@ -48,7 +49,7 @@ private:
         return ss.str();
     }
 
-    std::unordered_map<std::string, std::string> m_Entries;
-    std::string m_CurrentLanguage = "en";
+    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_Languages;
+    std::string m_CurrentLanguage;
     bool m_Enabled = true;
 };

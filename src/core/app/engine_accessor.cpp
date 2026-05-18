@@ -46,6 +46,28 @@ void EngineAccessor::SetCursorMode(CursorMode mode) {
         io->GetMouse().SetCursorMode(mode);
 }
 
+void EngineAccessor::LoadLanguage(const std::string& path, const std::string& name) {
+    if (auto* loc = Resolve<LocalizationSystem>())
+        loc->LoadLanguage(path, name);
+}
+
+void EngineAccessor::SetLanguage(const std::string& name) {
+    if (auto* loc = Resolve<LocalizationSystem>())
+        loc->SetLanguage(name);
+}
+
+std::string EngineAccessor::GetLanguage() const {
+    if (auto* loc = Resolve<LocalizationSystem>())
+        return loc->GetLanguage();
+    return "";
+}
+
+std::string EngineAccessor::GetTranslation(const std::string& key) const {
+    if (auto* loc = Resolve<LocalizationSystem>())
+        return loc->Get(key);
+    return "[MISSING: " + key + "]";
+}
+
 void EngineAccessor::QueueLoadScene(const std::string& path, bool persistent) { ServiceLocator::Instance().Require<SceneManager>().QueueLoadScene(path, persistent); }
 void EngineAccessor::UnloadScene(const std::string& path)  { ServiceLocator::Instance().Require<SceneManager>().UnloadScene(path); }
 void EngineAccessor::UnloadScene(const SceneRecord* rec)   { ServiceLocator::Instance().Require<SceneManager>().UnloadScene(rec); }

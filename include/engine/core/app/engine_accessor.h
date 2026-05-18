@@ -3,6 +3,7 @@
 #include <core/logic/service_locator.h>
 #include <core/logic/logger.h>
 #include <platform/interface/cursor_mode.h>
+#include <core/logic/localization_system.h>
 #include <string>
 #include <vector>
 
@@ -59,6 +60,21 @@ public:
     bool GetActionDown(const std::string &name) const;
     bool GetActionUp(const std::string &name) const;
     void SetCursorMode(CursorMode mode);
+
+    // ─── Localization ───
+    void LoadLanguage(const std::string& path, const std::string& name = "");
+    void SetLanguage(const std::string& name);
+    std::string GetLanguage() const;
+    std::string GetTranslation(const std::string& key) const;
+
+    template<typename... Args>
+    std::string GetTranslation(const std::string& key, Args... args) const
+    {
+        if (auto* loc = Resolve<LocalizationSystem>()) {
+            return loc->GetFormat(key, args...);
+        }
+        return "[MISSING: " + key + "]";
+    }
 
     // ─── System control ───
     void EnableSystem(const std::string& systemName, bool enable);
