@@ -5,6 +5,8 @@
 #include <platform/interface/mouse.h>
 #include <entt/entt.hpp>
 #include <string>
+#include <vector>
+#include <functional>
 #include <ecs/interface/i_scriptable.h>
 #include <ecs/unit/script_component.h>
 
@@ -99,10 +101,24 @@ public:
         return nullptr;
     }
 
+    entt::entity Spawn(const std::string& name = "unnamed", const std::string& tag = "default");
+    entt::entity Spawn(const std::string& name, const glm::vec3& position, const glm::vec3& rotation = glm::vec3(0.0f), const glm::vec3& scale = glm::vec3(1.0f));
+    void Destroy(entt::entity entity);
+
+    void Invoke(std::function<void()> callback, float delay);
+    void UpdateInvokes(float dt);
+
 protected:
     entt::entity m_Entity;
     
 private:
+    struct PendingInvoke
+    {
+        std::function<void()> callback;
+        float delay;
+    };
+    std::vector<PendingInvoke> m_PendingInvokes;
+
     bool m_Enabled = true;
     bool m_RunWhenPaused = false;
 };

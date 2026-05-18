@@ -5,6 +5,7 @@
 #include <ecs/unit/physics_components.h>
 #include <core/logic/service_locator.h>
 #include <physics/logic/collision_matrix.h>
+#include <ecs/logic/entity_manager.h>
 
 
 
@@ -82,4 +83,50 @@ void Scriptable::IgnoreNameCollision(const std::string& name1, const std::string
 {
     auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
     if (matrix) matrix->IgnoreNameCollision(name1, name2);
+}
+
+entt::entity Scriptable::Spawn(const std::string& name, const std::string& tag)
+{
+    return EntityManager::CreateEntity(GetScene(), name, tag);
+}
+
+entt::entity Scriptable::Spawn(const std::string& name, const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale)
+{
+    return EntityManager::CreateEntityWithTransform(GetScene(), name, position, rotation, scale);
+}
+
+void Scriptable::Destroy(entt::entity entity)
+{
+    EntityManager::Destroy(GetScene(), entity);
+}
+
+void Scriptable::Invoke(std::function<void()> callback, float delay)
+{
+    if (callback)
+    {
+        m_PendingInvokes.push_back({callback, delay});
+    }
+}
+
+void Scriptable::UpdateInvokes(float dt)
+{
+    for (auto it = m_PendingInvokes.begin(); it != m_PendingInvokes.end(); )
+    {
+        it->delay -= dt;
+        if (it->delay <= 0.0f)
+        {
+            try {
+                if (it->callback) it->callback();
+            } catch (const std::exception& e) {
+                LOGGER_ERROR("Scriptable") << "Invoke callback CRASH on entity " << (uint32_t)m_Entity << ": " << e.what();
+            } catch (...) {
+                LOGGER_ERROR("Scriptable") << "Invoke callback UNKNOWN CRASH on entity " << (uint32_t)m_Entity;
+            }
+            it = m_PendingInvokes.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }

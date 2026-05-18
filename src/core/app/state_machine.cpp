@@ -15,6 +15,10 @@ void StateMachine::Shutdown()
 
 void StateMachine::PushState(std::unique_ptr<State> state)
 {
+    if (!m_States.empty())
+    {
+        m_States.top()->OnPause();
+    }
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     state->SetActiveScene(&scene);
     state->OnEnter();
@@ -27,6 +31,10 @@ void StateMachine::PopState()
     {
         m_States.top()->OnExit();
         m_States.pop();
+        if (!m_States.empty())
+        {
+            m_States.top()->OnResume();
+        }
     }
 }
 

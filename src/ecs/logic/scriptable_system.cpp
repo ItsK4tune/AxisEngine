@@ -9,6 +9,7 @@
 #include <ecs/interface/i_script_registry.h>
 #include <ecs/interface/i_scriptable.h>
 #include <ecs/unit/script_component.h>
+#include <script/logic/scriptable.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/ui_components.h>
 #include <platform/logic/io_handler.h>
@@ -266,6 +267,10 @@ void ScriptableSystem::Update(Scene &scene, float dt)
             if (effectiveDt > 0.0f || script.instance->CanRunWhenPaused())
             {
                 try {
+                    if (auto* s = dynamic_cast<Scriptable*>(script.instance.get()))
+                    {
+                        s->UpdateInvokes(effectiveDt);
+                    }
                     script.instance->OnUpdate(effectiveDt);
                 } catch (const std::exception& e) {
                     LOGGER_ERROR("ScriptableSystem") << "Script Update CRASH on entity " << (uint32_t)entity << ": " << e.what();

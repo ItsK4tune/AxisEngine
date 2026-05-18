@@ -213,6 +213,11 @@ void GizmoEditorModule::UpdateDebugLabels(Scene &scene)
     int width = io->GetMonitorManager().GetWidth();
     int height = io->GetMonitorManager().GetHeight();
 
+    const float REF_WIDTH = 1920.0f;
+    const float REF_HEIGHT = 1080.0f;
+    float scaleFactor = std::min((float)width / REF_WIDTH, (float)height / REF_HEIGHT);
+    if (scaleFactor < 0.0001f) scaleFactor = 1.0f;
+
     auto &registry = scene.registry;
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
@@ -339,7 +344,7 @@ void GizmoEditorModule::UpdateDebugLabels(Scene &scene)
 
                 uiTr.anchorMin = glm::vec2(0.0f);
                 uiTr.anchorMax = glm::vec2(0.0f);
-                uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
+                uiTr.offsetMin = (screenPos / scaleFactor) - glm::vec2(textW / 2.0f, 0.0f);
                 uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
                 uiTr.zIndex = 100;
 
@@ -425,6 +430,11 @@ void GizmoEditorModule::UpdateLightLabels(Scene &scene)
     int width = io->GetMonitorManager().GetWidth();
     int height = io->GetMonitorManager().GetHeight();
 
+    const float REF_WIDTH = 1920.0f;
+    const float REF_HEIGHT = 1080.0f;
+    float scaleFactor = std::min((float)width / REF_WIDTH, (float)height / REF_HEIGHT);
+    if (scaleFactor < 0.0001f) scaleFactor = 1.0f;
+
     auto &registry = scene.registry;
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
 
@@ -507,7 +517,7 @@ void GizmoEditorModule::UpdateLightLabels(Scene &scene)
 
                 uiTr.anchorMin = glm::vec2(0.0f);
                 uiTr.anchorMax = glm::vec2(0.0f);
-                uiTr.offsetMin = screenPos - glm::vec2(textW / 2.0f, 0.0f);
+                uiTr.offsetMin = (screenPos / scaleFactor) - glm::vec2(textW / 2.0f, 0.0f);
                 uiTr.offsetMax = uiTr.offsetMin + glm::vec2(textW, 20.0f * text.scale);
                 uiTr.zIndex = 90;
 

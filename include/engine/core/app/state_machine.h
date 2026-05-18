@@ -17,6 +17,9 @@ public:
     virtual void OnRender() = 0;
     virtual void OnRenderDebug() {}
     virtual void OnExit() = 0;
+
+    virtual void OnPause() {}
+    virtual void OnResume() {}
 };
 
 
