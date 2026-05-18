@@ -1,10 +1,10 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <vector>
-#include <string>
 #include <entt/entt.hpp>
+#include <glm/glm.hpp>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 struct NavMeshNode
 {

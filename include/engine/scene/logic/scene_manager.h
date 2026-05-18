@@ -1,16 +1,19 @@
 #pragma once
 
 #include <core/logic/config_loader.h>
-#include <memory>
 #include <scene/logic/scene.h>
 #include <scene/type/scene_record.h>
+#include <memory>
 #include <string>
 #include <vector>
 
 class IPhysicsWorld;
 class ResourceManager;
 
-namespace entt { enum class entity : uint32_t; }
+namespace entt
+{
+enum class entity : uint32_t;
+}
 
 class SceneManager
 {
@@ -37,21 +40,36 @@ public:
     void QueueChangeScene(const std::string& path);
     void QueuePopScene();
     void UpdatePendingScene();
-    bool HasPendingScene() const { return !m_PendingQueue.empty(); }
+    bool HasPendingScene() const
+    {
+        return !m_PendingQueue.empty();
+    }
 
     bool IsLoaded(const std::string& filePath) const;
     const SceneRecord* GetScene(const std::string& filePath) const;
     const SceneRecord* GetSceneByName(const std::string& name) const;
     const SceneRecord* GetSceneByOrder(int order) const;
-    const std::vector<SceneRecord>& GetAllScenes() const { return m_LoadedScenes; }
+    const std::vector<SceneRecord>& GetAllScenes() const
+    {
+        return m_LoadedScenes;
+    }
     std::vector<const SceneRecord*> GetScenes() const;
-    int GetSceneCount() const { return static_cast<int>(m_LoadedScenes.size()); }
+    int GetSceneCount() const
+    {
+        return static_cast<int>(m_LoadedScenes.size());
+    }
 
     void LogScene(const std::string& filePath) const;
     void LogAllScenes() const;
 
-    void SetActiveScene(const std::string& name) { m_ActiveSceneName = name; }
-    std::string GetActiveScene() const { return m_ActiveSceneName; }
+    void SetActiveScene(const std::string& name)
+    {
+        m_ActiveSceneName = name;
+    }
+    std::string GetActiveScene() const
+    {
+        return m_ActiveSceneName;
+    }
 
     void SetSceneActive(const std::string& name, bool active, Scene& scene);
 
@@ -60,7 +78,13 @@ public:
 private:
     struct PendingOp
     {
-        enum Type { Load, Unload, Change, Pop } type;
+        enum Type
+        {
+            Load,
+            Unload,
+            Change,
+            Pop
+        } type;
         std::string path;
         bool persistent = false;
     };
@@ -74,5 +98,5 @@ private:
     int m_NextLoadOrder = 0;
     std::string m_ActiveSceneName = "main";
     std::vector<SceneRecord> m_LoadedScenes;
-    std::vector<PendingOp>   m_PendingQueue;
+    std::vector<PendingOp> m_PendingQueue;
 };

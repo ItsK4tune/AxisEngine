@@ -1,16 +1,17 @@
 #pragma once
 
+#include <physics/interface/i_character_controller.h>
+#include <physics/strategy/bullet/bullet_collision_shape.h>
 #include <btBulletDynamicsCommon.h>
 #include <BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <BulletDynamics/Character/btKinematicCharacterController.h>
 #include <memory>
-#include <physics/interface/i_character_controller.h>
-#include <physics/strategy/bullet/bullet_collision_shape.h>
 
 class BulletCharacterController : public ICharacterController
 {
 public:
-    BulletCharacterController(btPairCachingGhostObject* ghostObject, btKinematicCharacterController* controller, std::shared_ptr<ICollisionShape> shape);
+    BulletCharacterController(btPairCachingGhostObject* ghostObject, btKinematicCharacterController* controller,
+                              std::shared_ptr<ICollisionShape> shape);
     ~BulletCharacterController();
 
     void SetWalkDirection(const glm::vec3& dir) override;
@@ -29,8 +30,14 @@ public:
     void SetUserPointer(void* ptr) override;
     void* GetUserPointer() const override;
 
-    btKinematicCharacterController* GetRawController() const { return m_Controller; }
-    btPairCachingGhostObject* GetGhostObject() const { return m_GhostObject; }
+    btKinematicCharacterController* GetRawController() const
+    {
+        return m_Controller;
+    }
+    btPairCachingGhostObject* GetGhostObject() const
+    {
+        return m_GhostObject;
+    }
 
 private:
     btPairCachingGhostObject* m_GhostObject;

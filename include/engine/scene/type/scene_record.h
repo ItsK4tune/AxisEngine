@@ -9,7 +9,7 @@ struct SceneRecord
 {
     std::string name;
     std::string filePath;
-    int  loadOrder = 0;
+    int loadOrder = 0;
     bool persistent = false;
     bool inviolable = false;
     bool isActive = true;

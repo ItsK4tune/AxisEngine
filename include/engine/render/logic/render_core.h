@@ -1,9 +1,10 @@
 #pragma once
-#include <render/logic/material_renderer.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/logic/material_renderer.h>
 #include <render/type/graphics_types.h>
 
-class RenderCore {
+class RenderCore
+{
 public:
     RenderCore() = default;
     ~RenderCore() = default;
@@ -11,17 +12,41 @@ public:
     void Initialize(class IGraphicsContext* context, class ResourceManager* resourceManager);
     void Shutdown();
 
-    uint32_t GetWhiteTexture() const { return m_WhiteTextureID; }
-    uint32_t GetBlackTexture() const { return m_BlackTextureID; }
-    uint32_t GetFlatNormalTexture() const { return m_FlatNormalTextureID; }
+    uint32_t GetWhiteTexture() const
+    {
+        return m_WhiteTextureID;
+    }
+    uint32_t GetBlackTexture() const
+    {
+        return m_BlackTextureID;
+    }
+    uint32_t GetFlatNormalTexture() const
+    {
+        return m_FlatNormalTextureID;
+    }
 
-    uint32_t GetQuadVAO() const { return m_QuadVAO; }
-    uint32_t GetQuadEBO() const { return m_QuadEBO; }
-    
-    uint32_t GetCubeVAO() const { return m_CubeVAO; }
-    uint32_t GetCubeEBO() const { return m_CubeEBO; }
+    uint32_t GetQuadVAO() const
+    {
+        return m_QuadVAO;
+    }
+    uint32_t GetQuadEBO() const
+    {
+        return m_QuadEBO;
+    }
 
-    MaterialRenderer& GetMaterialRenderer() { return m_MaterialRenderer; }
+    uint32_t GetCubeVAO() const
+    {
+        return m_CubeVAO;
+    }
+    uint32_t GetCubeEBO() const
+    {
+        return m_CubeEBO;
+    }
+
+    MaterialRenderer& GetMaterialRenderer()
+    {
+        return m_MaterialRenderer;
+    }
 
 private:
     uint32_t m_WhiteTextureID = 0;

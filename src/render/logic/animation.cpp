@@ -1,15 +1,15 @@
+#include <resource/unit/animation.h>
+#include <core/logic/logger.h>
+#include <render/logic/assimp_glm_helpers.h>
+#include <resource/unit/model.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
-#include <resource/unit/animation.h>
-#include <resource/unit/model.h>
-#include <render/logic/assimp_glm_helpers.h>
-#include <core/logic/logger.h>
 
-Animation::Animation(const std::string &animationPath, Model &model)
+Animation::Animation(const std::string& animationPath, Model& model)
 {
     Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
-    
+    const aiScene* scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
+
     if (!scene || !scene->mRootNode || scene->mNumAnimations == 0)
     {
         LOGGER_ERROR("Animation") << "Failed to load animation or no animations found in: " << animationPath;
@@ -28,20 +28,21 @@ Animation::Animation(const std::string &animationPath, Model &model)
     BindNodesToBones(m_RootNode);
 }
 
-Bone *Animation::FindBone(const std::string &name)
+Bone* Animation::FindBone(const std::string& name)
 {
-    if (m_BoneMap.find(name) != m_BoneMap.end()) {
+    if (m_BoneMap.find(name) != m_BoneMap.end())
+    {
         return m_BoneMap[name];
     }
     return nullptr;
 }
 
-void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
+void Animation::ReadMissingBones(const aiAnimation* animation, Model& model)
 {
     int size = animation->mNumChannels;
 
-    std::unordered_map<std::string, BoneInfo> &boneInfoMap = model.GetBoneInfoMap();
-    int &boneCount = model.GetBoneCount();
+    std::unordered_map<std::string, BoneInfo>& boneInfoMap = model.GetBoneInfoMap();
+    int& boneCount = model.GetBoneCount();
 
     m_Bones.reserve(size);
 
@@ -64,19 +65,19 @@ void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
             }
         }
 
-        m_Bones.push_back(Bone(channel->mNodeName.data,
-                               boneInfoMap[channel->mNodeName.data].id, channel));
+        m_Bones.push_back(Bone(channel->mNodeName.data, boneInfoMap[channel->mNodeName.data].id, channel));
     }
 
     m_BoneInfoMap = boneInfoMap;
 
     m_BoneMap.clear();
-    for (auto& bone : m_Bones) {
+    for (auto& bone : m_Bones)
+    {
         m_BoneMap[bone.GetBoneName()] = &bone;
     }
 }
 
-void Animation::ReadHierarchyData(BoneNodeData &dest, const aiNode *src)
+void Animation::ReadHierarchyData(BoneNodeData& dest, const aiNode* src)
 {
     assert(src);
 
@@ -95,11 +96,13 @@ void Animation::ReadHierarchyData(BoneNodeData &dest, const aiNode *src)
 void Animation::BindNodesToBones(BoneNodeData& node)
 {
     auto iter = m_BoneMap.find(node.name);
-    if (iter != m_BoneMap.end()) {
+    if (iter != m_BoneMap.end())
+    {
         node.cachedBone = iter->second;
     }
 
-    for (auto& child : node.children) {
+    for (auto& child : node.children)
+    {
         BindNodesToBones(child);
     }
 }

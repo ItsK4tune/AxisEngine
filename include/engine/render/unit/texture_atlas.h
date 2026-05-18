@@ -1,15 +1,14 @@
 #pragma once
 
+#include <resource/unit/mesh.h>
 #include <glm/glm.hpp>
 #include <map>
-#include <resource/unit/mesh.h>
 #include <string>
 #include <vector>
 
 class ITextureManager;
 
 #define GLM_ENABLE_EXPERIMENTAL
-
 
 class TextureAtlas
 {
@@ -27,10 +26,12 @@ public:
     TextureAtlas();
     ~TextureAtlas();
 
-    bool CreateAtlas(const std::vector<std::string>& texturePaths,
-                     int atlasWidth = 2048, int atlasHeight = 2048);
+    bool CreateAtlas(const std::vector<std::string>& texturePaths, int atlasWidth = 2048, int atlasHeight = 2048);
 
-    unsigned int GetAtlasTexture() const { return m_AtlasID; }
+    unsigned int GetAtlasTexture() const
+    {
+        return m_AtlasID;
+    }
     AtlasRegion GetRegion(const std::string& textureName) const;
 
     glm::vec4 TransformUV(const std::string& textureName, const glm::vec2& uv);
@@ -59,8 +60,7 @@ private:
         int width, height, channels;
     };
 
-    bool PackTextures(const std::vector<TextureData>& textures,
-                     std::vector<Rect>& outRects);
+    bool PackTextures(const std::vector<TextureData>& textures, std::vector<Rect>& outRects);
 
     static ITextureManager* s_TextureManager;
     static ITextureManager& GetTextureManager();

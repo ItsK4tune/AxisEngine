@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <entt/entt.hpp>
+#include <glm/glm.hpp>
 #include <cstdint>
 
 struct RenderViewParams

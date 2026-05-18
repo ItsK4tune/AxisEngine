@@ -1,5 +1,5 @@
-#include <core/logic/service_locator.h>
 #include <script/logic/script_registry.h>
+#include <core/logic/service_locator.h>
 
 std::unique_ptr<IScriptable> ScriptRegistry::Create(const std::string& name)
 {
@@ -8,7 +8,7 @@ std::unique_ptr<IScriptable> ScriptRegistry::Create(const std::string& name)
     {
         return staticMap[name]();
     }
-    
+
     if (m_FactoryMap.find(name) != m_FactoryMap.end())
     {
         return m_FactoryMap[name]();
@@ -21,8 +21,8 @@ void ScriptRegistry::Initialize()
 {
     ServiceLocator::Instance().Register<IScriptRegistry>(this);
 
-    auto &staticMap = GetStaticFactoryMap();
-    for (auto &pair : staticMap)
+    auto& staticMap = GetStaticFactoryMap();
+    for (auto& pair : staticMap)
     {
         if (m_FactoryMap.find(pair.first) == m_FactoryMap.end())
         {

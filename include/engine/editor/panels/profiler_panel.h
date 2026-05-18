@@ -1,20 +1,28 @@
 #pragma once
 #ifdef ENABLE_EDITOR
 #include <editor/i_editor_panel.h>
+#include <chrono>
 #include <string>
 #include <vector>
-#include <chrono>
 
 struct Scene;
 
 class ProfilerPanel : public IEditorPanel
 {
 public:
-    void Initialize() override {}
+    void Initialize() override
+    {
+    }
     void OnUpdate(float dt) override;
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Profiler & Stats"; }
-    PanelGroup GetGroup() const override { return PanelGroup::Debug; }
+    std::string GetTitle() const override
+    {
+        return "Profiler & Stats";
+    }
+    PanelGroup GetGroup() const override
+    {
+        return PanelGroup::Debug;
+    }
 
 private:
     static constexpr int HISTORY_SIZE = 120;

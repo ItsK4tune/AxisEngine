@@ -1,10 +1,10 @@
 #include <resource/unit/ui_model.h>
-#include <render/type/graphics_types.h>
+#include <core/logic/logger.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
+#include <render/type/graphics_types.h>
 #include <iostream>
-#include <core/logic/logger.h>
 
 IBufferManager* UIModel::s_BufferManager = nullptr;
 ITextureManager* UIModel::s_TextureManager = nullptr;
@@ -19,7 +19,8 @@ void UIModel::SetManagers(IBufferManager& bufferManager, ITextureManager& textur
 
 IBufferManager& UIModel::GetBufferManager()
 {
-    if (!s_BufferManager) {
+    if (!s_BufferManager)
+    {
         LOGGER_ERROR("UIModel") << "BufferManager not set!";
         throw std::runtime_error("BufferManager not set in UIModel");
     }
@@ -28,7 +29,8 @@ IBufferManager& UIModel::GetBufferManager()
 
 ITextureManager& UIModel::GetTextureManager()
 {
-    if (!s_TextureManager) {
+    if (!s_TextureManager)
+    {
         LOGGER_ERROR("UIModel") << "TextureManager not set!";
         throw std::runtime_error("TextureManager not set in UIModel");
     }
@@ -37,7 +39,8 @@ ITextureManager& UIModel::GetTextureManager()
 
 IDrawContext& UIModel::GetDrawContext()
 {
-    if (!s_DrawContext) {
+    if (!s_DrawContext)
+    {
         LOGGER_ERROR("UIModel") << "DrawContext not set!";
         throw std::runtime_error("DrawContext not set in UIModel");
     }
@@ -60,8 +63,10 @@ UIModel::~UIModel()
 {
     if (s_BufferManager)
     {
-        if (VAO) s_BufferManager->DeleteVertexArrays(1, &VAO);
-        if (VBO) s_BufferManager->DeleteBuffers(1, &VBO);
+        if (VAO)
+            s_BufferManager->DeleteVertexArrays(1, &VAO);
+        if (VBO)
+            s_BufferManager->DeleteBuffers(1, &VBO);
     }
 }
 
@@ -74,17 +79,13 @@ void UIModel::SetTexture(unsigned int textureID)
 
 void UIModel::InitQuad()
 {
-    if (!s_BufferManager) return;
+    if (!s_BufferManager)
+        return;
     auto& bm = GetBufferManager();
 
-    float vertices[] = {
-        0.0f, 1.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
+    float vertices[] = {0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 
-        0.0f, 1.0f, 0.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 0.0f, 1.0f, 0.0f};
+                        0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f};
 
     VAO = bm.GenVertexArray();
     VBO = bm.GenBuffer();
@@ -94,14 +95,15 @@ void UIModel::InitQuad()
     bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::StaticDraw);
 
     bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 4, DataType::Float, false, 4 * sizeof(float), (void *)0);
+    bm.VertexAttribPointer(0, 4, DataType::Float, false, 4 * sizeof(float), (void*)0);
 
     bm.BindVertexArray(0);
 }
 
 void UIModel::InitDynamic()
 {
-    if (!s_BufferManager) return;
+    if (!s_BufferManager)
+        return;
     auto& bm = GetBufferManager();
 
     VAO = bm.GenVertexArray();
@@ -116,7 +118,7 @@ void UIModel::InitDynamic()
     bm.BindVertexArray(0);
 }
 
-void UIModel::Draw(Shader &shader, const glm::vec4 &color, unsigned int textureID)
+void UIModel::Draw(Shader& shader, const glm::vec4& color, unsigned int textureID)
 {
     if (m_Type == UIType::Transparent || !s_TextureManager || !s_DrawContext || !s_BufferManager)
         return;
@@ -142,9 +144,11 @@ void UIModel::Draw(Shader &shader, const glm::vec4 &color, unsigned int textureI
     bm.BindVertexArray(0);
 }
 
-void UIModel::DrawDynamic(Shader &shader, unsigned int textureID, const glm::vec4 &color, const std::vector<float> &vertices)
+void UIModel::DrawDynamic(Shader& shader, unsigned int textureID, const glm::vec4& color,
+                          const std::vector<float>& vertices)
 {
-    if (!s_TextureManager || !s_DrawContext || !s_BufferManager) return;
+    if (!s_TextureManager || !s_DrawContext || !s_BufferManager)
+        return;
     auto& tm = GetTextureManager();
     auto& dc = GetDrawContext();
     auto& bm = GetBufferManager();

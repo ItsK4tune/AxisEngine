@@ -1,10 +1,11 @@
 #pragma once
 
+#include <platform/interface/i_window.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <platform/interface/i_window.h>
 
-class GLFWWindow : public IWindow {
+class GLFWWindow : public IWindow
+{
 public:
     GLFWWindow();
     ~GLFWWindow() override;
@@ -41,11 +42,26 @@ public:
     void GetCursorPos(double& x, double& y) const override;
     void SetCursorPos(double x, double y) override;
 
-    void SetResizeCallback(const ResizeCallback& callback) override { m_ResizeCallback = callback; }
-    void SetKeyCallback(const KeyCallback& callback) override { m_KeyCallback = callback; }
-    void SetMouseButtonCallback(const MouseButtonCallback& callback) override { m_MouseButtonCallback = callback; }
-    void SetCursorPosCallback(const MousePositionCallback& callback) override { m_CursorPosCallback = callback; }
-    void SetScrollCallback(const ScrollCallback& callback) override { m_ScrollCallback = callback; }
+    void SetResizeCallback(const ResizeCallback& callback) override
+    {
+        m_ResizeCallback = callback;
+    }
+    void SetKeyCallback(const KeyCallback& callback) override
+    {
+        m_KeyCallback = callback;
+    }
+    void SetMouseButtonCallback(const MouseButtonCallback& callback) override
+    {
+        m_MouseButtonCallback = callback;
+    }
+    void SetCursorPosCallback(const MousePositionCallback& callback) override
+    {
+        m_CursorPosCallback = callback;
+    }
+    void SetScrollCallback(const ScrollCallback& callback) override
+    {
+        m_ScrollCallback = callback;
+    }
 
 private:
     GLFWwindow* m_Window = nullptr;
@@ -65,5 +81,4 @@ private:
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
     int MapInputKeyToGLFW(int key);
-
 };

@@ -1,11 +1,11 @@
 #pragma once
 
 #include <core/unit/aabb.h>
-#include <glm/glm.hpp>
-#include <memory>
 #include <resource/unit/bone_info.h>
 #include <resource/unit/mesh.h>
 #include <resource/unit/shader.h>
+#include <glm/glm.hpp>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -16,7 +16,7 @@ class Model
 {
 public:
     Model() = default;
-    Model(std::string const &path, bool isStatic = false, bool gamma = false);
+    Model(std::string const& path, bool isStatic = false, bool gamma = false);
     ~Model();
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
@@ -28,22 +28,43 @@ public:
     bool gammaCorrection = false;
     AABB aabb;
 
-    void Draw(Shader &shader, bool bindTextures = true);
-    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, bool bindTextures = true);
+    void Draw(Shader& shader, bool bindTextures = true);
+    void DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, bool bindTextures = true);
 
-    std::unordered_map<std::string, BoneInfo> &GetBoneInfoMap();
-    int &GetBoneCount();
+    std::unordered_map<std::string, BoneInfo>& GetBoneInfoMap();
+    int& GetBoneCount();
 
-    void AddTexture(const Texture& tex) { textures_loaded.push_back(tex); }
+    void AddTexture(const Texture& tex)
+    {
+        textures_loaded.push_back(tex);
+    }
 
-    std::string GetName() const { return m_Name; }
-    void SetName(const std::string& name) { m_Name = name; }
+    std::string GetName() const
+    {
+        return m_Name;
+    }
+    void SetName(const std::string& name)
+    {
+        m_Name = name;
+    }
 
     void UploadToGPU();
-    bool IsReadyToRender() const { return m_ReadyToRender; }
-    bool IsStatic() const { return m_IsStatic; }
-    void SetStatic(bool isStatic) { m_IsStatic = isStatic; }
-    glm::mat4 GetRootTransform() const { return m_RootTransform; }
+    bool IsReadyToRender() const
+    {
+        return m_ReadyToRender;
+    }
+    bool IsStatic() const
+    {
+        return m_IsStatic;
+    }
+    void SetStatic(bool isStatic)
+    {
+        m_IsStatic = isStatic;
+    }
+    glm::mat4 GetRootTransform() const
+    {
+        return m_RootTransform;
+    }
 
 private:
     std::vector<Texture> textures_loaded;
@@ -54,6 +75,6 @@ private:
     glm::mat4 m_RootTransform = glm::mat4(1.0f);
     std::string m_Name;
 
-    void loadModel(std::string const &path, bool isStatic);
+    void loadModel(std::string const& path, bool isStatic);
     void ComputeAABB();
 };

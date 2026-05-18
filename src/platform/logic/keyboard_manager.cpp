@@ -1,10 +1,11 @@
 #include <platform/logic/keyboard_manager.h>
-KeyboardManager::KeyboardManager(IWindow *window)
+
+KeyboardManager::KeyboardManager(IWindow* window)
 {
     SetWindow(window);
 }
 
-void KeyboardManager::SetWindow(IWindow *window)
+void KeyboardManager::SetWindow(IWindow* window)
 {
     m_Window = window;
 }
@@ -16,7 +17,7 @@ void KeyboardManager::Update()
 
     m_PreviousState = m_CurrentState;
 
-    for (auto &pair : m_PreviousState)
+    for (auto& pair : m_PreviousState)
     {
         m_CurrentState[pair.first] = m_Window->GetKey(pair.first);
     }
@@ -46,7 +47,7 @@ bool KeyboardManager::IsKeyDown(Key key) const
 
     if (itCurr == m_CurrentState.end() && m_Window)
     {
-        const_cast<KeyboardManager *>(this)->m_CurrentState[key] = currentlyPressed;
+        const_cast<KeyboardManager*>(this)->m_CurrentState[key] = currentlyPressed;
     }
 
     return currentlyPressed && !previouslyPressed;

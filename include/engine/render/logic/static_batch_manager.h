@@ -1,10 +1,10 @@
 #pragma once
 
+#include <resource/unit/model.h>
+#include <resource/unit/shader.h>
 #include <glm/glm.hpp>
 #include <map>
 #include <memory>
-#include <resource/unit/model.h>
-#include <resource/unit/shader.h>
 #include <string>
 #include <vector>
 
@@ -12,7 +12,6 @@ class IBufferManager;
 class IDrawContext;
 
 #define GLM_ENABLE_EXPERIMENTAL
-
 
 class StaticBatchManager
 {
@@ -46,13 +45,11 @@ public:
 private:
     std::map<std::string, BatchData> m_Batches;
 
-    void MergeMeshes(const std::vector<std::shared_ptr<Model>>& models,
-                     const std::vector<glm::mat4>& transforms,
-                     std::vector<StaticVertex>& outVertices,
-                     std::vector<unsigned int>& outIndices);
+    void MergeMeshes(const std::vector<std::shared_ptr<Model>>& models, const std::vector<glm::mat4>& transforms,
+                     std::vector<StaticVertex>& outVertices, std::vector<unsigned int>& outIndices);
 
     void CreateGPUBuffers(BatchData& batch, const std::vector<StaticVertex>& vertices,
-                         const std::vector<unsigned int>& indices);
+                          const std::vector<unsigned int>& indices);
 
     static IBufferManager* s_BufferManager;
     static IDrawContext* s_DrawContext;

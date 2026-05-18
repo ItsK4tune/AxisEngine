@@ -1,15 +1,16 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <render/type/render_data.h>
-#include <unordered_map>
+#include <glm/glm.hpp>
 #include <shared_mutex>
+#include <unordered_map>
 
 class IGraphicsContext;
 class Shader;
 struct AxisMaterialComponent;
 
-struct MaterialUniformLocations {
+struct MaterialUniformLocations
+{
     int u_UVScale = -1;
     int u_UVOffset = -1;
 
@@ -39,46 +40,50 @@ struct MaterialUniformLocations {
 
 class ResourceManager;
 
-class MaterialRenderer {
+class MaterialRenderer
+{
 public:
-    void Initialize(IGraphicsContext* context, ResourceManager* resourceManager, unsigned int whiteTextureId, unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
-    bool SetupMaterialUniforms(Shader *shader, AxisMaterialComponent* material, const RenderSceneData& sceneData, const glm::vec4& tintColor, bool debugNoTexture = false, bool isWireframe = false);
+    void Initialize(IGraphicsContext* context, ResourceManager* resourceManager, unsigned int whiteTextureId,
+                    unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
+    bool SetupMaterialUniforms(Shader* shader, AxisMaterialComponent* material, const RenderSceneData& sceneData,
+                               const glm::vec4& tintColor, bool debugNoTexture = false, bool isWireframe = false);
 
-    static void InvalidateSkyboxCache() {
+    void ResetTextureState()
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            m_LastBoundTextures[i] = (unsigned int)-1;
+        }
+    }
+
+    static void InvalidateSkyboxCache()
+    {
         std::lock_guard<std::mutex> lock(s_SkyboxMutex);
         s_SkyboxCache.valid = false;
     }
 
 private:
+    struct SkyboxCache
+    {
+        unsigned int irradianceMap = 0;
+        unsigned int prefilterMap = 0;
+        unsigned int brdfLUT = 0;
+        bool valid = false;
+    };
+
+    const MaterialUniformLocations& GetLocations(const Shader* shader) const;
+
     IGraphicsContext* m_Context = nullptr;
     ResourceManager* m_ResourceManager = nullptr;
     unsigned int m_WhiteTextureID = 0;
     unsigned int m_BlackTextureID = 0;
     unsigned int m_FlatNormalTextureID = 0;
 
-
     mutable std::unordered_map<unsigned int, MaterialUniformLocations> m_LocationsCache;
     mutable std::shared_mutex m_CacheMutex;
 
-
-    struct SkyboxCache {
-        unsigned int irradianceMap = 0;
-        unsigned int prefilterMap = 0;
-        unsigned int brdfLUT = 0;
-        bool valid = false;
-    };
     static SkyboxCache s_SkyboxCache;
     static std::mutex s_SkyboxMutex;
-    const MaterialUniformLocations& GetLocations(const Shader* shader) const;
 
-    // State tracking to prevent redundant binds
     unsigned int m_LastBoundTextures[8] = {0};
-
-public:
-    void ResetTextureState() {
-        for (int i = 0; i < 8; ++i) {
-            m_LastBoundTextures[i] = (unsigned int)-1;
-        }
-    }
 };
-

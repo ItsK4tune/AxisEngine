@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -14,7 +15,6 @@ extern "C" {
 #include <vector>
 
 class ITextureManager;
-
 
 class VideoDecoder
 {
@@ -32,23 +32,59 @@ public:
 
     void Update(float dt);
 
-    unsigned int GetTextureID() const { return m_TextureID; }
-    int GetWidth() const { return m_Width; }
-    int GetHeight() const { return m_Height; }
-    double GetDuration() const { return m_FormatCtx ? (double)m_FormatCtx->duration / AV_TIME_BASE : 0.0; }
-    double GetCurrentTime() const { return m_CurrentTime; }
-    bool IsPlaying() const { return m_State == State::Playing; }
+    unsigned int GetTextureID() const
+    {
+        return m_TextureID;
+    }
+    int GetWidth() const
+    {
+        return m_Width;
+    }
+    int GetHeight() const
+    {
+        return m_Height;
+    }
+    double GetDuration() const
+    {
+        return m_FormatCtx ? (double)m_FormatCtx->duration / AV_TIME_BASE : 0.0;
+    }
+    double GetCurrentTime() const
+    {
+        return m_CurrentTime;
+    }
+    bool IsPlaying() const
+    {
+        return m_State == State::Playing;
+    }
 
     void SetOutputSize(int width, int height);
 
-    void SetLoop(bool loop) { m_Loop = loop; }
-    bool IsLooping() const { return m_Loop; }
+    void SetLoop(bool loop)
+    {
+        m_Loop = loop;
+    }
+    bool IsLooping() const
+    {
+        return m_Loop;
+    }
 
-    float GetSpeed() const { return (float)m_Speed; }
-    void SetSpeed(float speed) { m_Speed = speed; }
+    float GetSpeed() const
+    {
+        return (float)m_Speed;
+    }
+    void SetSpeed(float speed)
+    {
+        m_Speed = speed;
+    }
 
-    int GetMaxDecodeSteps() const { return m_MaxDecodeSteps; }
-    void SetMaxDecodeSteps(int steps) { m_MaxDecodeSteps = steps; }
+    int GetMaxDecodeSteps() const
+    {
+        return m_MaxDecodeSteps;
+    }
+    void SetMaxDecodeSteps(int steps)
+    {
+        m_MaxDecodeSteps = steps;
+    }
 
     static void SetTextureManager(ITextureManager& textureManager);
 
@@ -74,7 +110,12 @@ private:
     double m_Speed = 1.0;
     bool m_Loop = true;
 
-    enum class State { Stopped, Playing, Paused };
+    enum class State
+    {
+        Stopped,
+        Playing,
+        Paused
+    };
     State m_State = State::Stopped;
 
     std::string m_Filepath;

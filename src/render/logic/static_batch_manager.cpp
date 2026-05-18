@@ -1,8 +1,8 @@
-#include <fstream>
 #include <render/logic/static_batch_manager.h>
+#include <core/logic/logger.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
-#include <core/logic/logger.h>
+#include <fstream>
 
 IBufferManager* StaticBatchManager::s_BufferManager = nullptr;
 IDrawContext* StaticBatchManager::s_DrawContext = nullptr;
@@ -15,7 +15,8 @@ void StaticBatchManager::SetManagers(IBufferManager& bufferManager, IDrawContext
 
 IBufferManager& StaticBatchManager::GetBufferManager()
 {
-    if (!s_BufferManager) {
+    if (!s_BufferManager)
+    {
         LOGGER_ERROR("StaticBatchManager") << "BufferManager not set!";
         throw std::runtime_error("BufferManager not set in StaticBatchManager");
     }
@@ -24,7 +25,8 @@ IBufferManager& StaticBatchManager::GetBufferManager()
 
 IDrawContext& StaticBatchManager::GetDrawContext()
 {
-    if (!s_DrawContext) {
+    if (!s_DrawContext)
+    {
         LOGGER_ERROR("StaticBatchManager") << "DrawContext not set!";
         throw std::runtime_error("DrawContext not set in StaticBatchManager");
     }
@@ -61,14 +63,12 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
 
     m_Batches[name] = batch;
 
-    LOGGER_INFO("StaticBatchManager") << "Created batch: " << name
-              << " (" << mergedVertices.size() << " vertices, "
-              << mergedIndices.size() << " indices)";
+    LOGGER_INFO("StaticBatchManager") << "Created batch: " << name << " (" << mergedVertices.size() << " vertices, "
+                                      << mergedIndices.size() << " indices)";
 }
 
 void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& models,
-                                     const std::vector<glm::mat4>& transforms,
-                                     std::vector<StaticVertex>& outVertices,
+                                     const std::vector<glm::mat4>& transforms, std::vector<StaticVertex>& outVertices,
                                      std::vector<unsigned int>& outIndices)
 {
     unsigned int indexOffset = 0;
@@ -80,7 +80,8 @@ void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& 
 
         for (const auto& mesh : model->meshes)
         {
-            if (mesh.m_IsSkinned) {
+            if (mesh.m_IsSkinned)
+            {
                 LOGGER_WARN("StaticBatchManager") << "Attempted to static-batch a skinned mesh. Skipping.";
                 continue;
             }
@@ -111,9 +112,10 @@ void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& 
 }
 
 void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<StaticVertex>& vertices,
-                                         const std::vector<unsigned int>& indices)
+                                          const std::vector<unsigned int>& indices)
 {
-    if (!s_BufferManager) return;
+    if (!s_BufferManager)
+        return;
     auto& bm = GetBufferManager();
 
     batch.vertexCount = vertices.size();
@@ -126,10 +128,12 @@ void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<St
     bm.BindVertexArray(batch.vao);
 
     bm.BindBuffer(BufferType::ArrayBuffer, batch.vbo);
-    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(StaticVertex), vertices.data(), BufferUsage::StaticDraw);
+    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(StaticVertex), vertices.data(),
+                  BufferUsage::StaticDraw);
 
     bm.BindBuffer(BufferType::ElementArrayBuffer, batch.ebo);
-    bm.BufferData(BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), BufferUsage::StaticDraw);
+    bm.BufferData(BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(),
+                  BufferUsage::StaticDraw);
 
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, DataType::Float, false, sizeof(StaticVertex), (void*)0);
@@ -138,14 +142,16 @@ void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<St
     bm.VertexAttribPointer(1, 3, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, Normal));
 
     bm.EnableVertexAttribArray(2);
-    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, TexCoords));
+    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(StaticVertex),
+                           (void*)offsetof(StaticVertex, TexCoords));
 
     bm.BindVertexArray(0);
 }
 
 void StaticBatchManager::RenderBatch(const std::string& name)
 {
-    if (!s_BufferManager || !s_DrawContext) return;
+    if (!s_BufferManager || !s_DrawContext)
+        return;
 
     auto it = m_Batches.find(name);
     if (it == m_Batches.end())
@@ -157,17 +163,20 @@ void StaticBatchManager::RenderBatch(const std::string& name)
     const BatchData& batch = it->second;
 
     GetBufferManager().BindVertexArray(batch.vao);
-    GetDrawContext().DrawElements(Primitive::Triangles, static_cast<unsigned int>(batch.indexCount), DataType::UnsignedInt, 0);
+    GetDrawContext().DrawElements(Primitive::Triangles, static_cast<unsigned int>(batch.indexCount),
+                                  DataType::UnsignedInt, 0);
     GetBufferManager().BindVertexArray(0);
 }
 
 void StaticBatchManager::RenderAllBatches()
 {
-    if (!s_BufferManager || !s_DrawContext) return;
+    if (!s_BufferManager || !s_DrawContext)
+        return;
     for (const auto& [name, batch] : m_Batches)
     {
         GetBufferManager().BindVertexArray(batch.vao);
-        GetDrawContext().DrawElements(Primitive::Triangles, static_cast<unsigned int>(batch.indexCount), DataType::UnsignedInt, 0);
+        GetDrawContext().DrawElements(Primitive::Triangles, static_cast<unsigned int>(batch.indexCount),
+                                      DataType::UnsignedInt, 0);
     }
     GetBufferManager().BindVertexArray(0);
 }

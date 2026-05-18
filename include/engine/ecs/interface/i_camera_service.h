@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <render/type/graphics_types.h>
+#include <glm/glm.hpp>
 
 class ICameraService
 {
@@ -14,5 +14,6 @@ public:
     virtual float GetNearPlane() const = 0;
     virtual float GetFarPlane() const = 0;
     virtual void UploadCameraUBO(const GPUCameraData& camData) = 0;
-    virtual void RestoreCameraState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane) = 0;
+    virtual void RestoreCameraState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane,
+                                    float farPlane) = 0;
 };

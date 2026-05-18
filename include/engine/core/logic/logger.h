@@ -6,7 +6,8 @@
 #include <sstream>
 #include <string>
 
-class Logger {
+class Logger
+{
 public:
     static void Initialize();
     static void SetLogLevel(LogLevel level);
@@ -15,29 +16,34 @@ public:
     static void Log(LogType type, const std::string& tag, const std::string& message);
 
     template <typename T>
-    static void LogStream(std::stringstream& ss, T&& t) {
+    static void LogStream(std::stringstream& ss, T&& t)
+    {
         ss << std::forward<T>(t);
     }
 
     template <typename T, typename... Args>
-    static void LogStream(std::stringstream& ss, T&& t, Args&&... args) {
+    static void LogStream(std::stringstream& ss, T&& t, Args&&... args)
+    {
         ss << std::forward<T>(t);
         LogStream(ss, std::forward<Args>(args)...);
     }
-
 };
 
-class LogStreamer {
+class LogStreamer
+{
 public:
-    LogStreamer(LogType type, const std::string& tag)
-        : m_Type(type), m_Tag(tag) {}
+    LogStreamer(LogType type, const std::string& tag) : m_Type(type), m_Tag(tag)
+    {
+    }
 
-    ~LogStreamer() {
+    ~LogStreamer()
+    {
         Logger::Log(m_Type, m_Tag, m_Stream.str());
     }
 
-    template<typename T>
-    LogStreamer& operator<<(const T& value) {
+    template <typename T>
+    LogStreamer& operator<<(const T& value)
+    {
         m_Stream << value;
         return *this;
     }
@@ -48,8 +54,8 @@ private:
     std::stringstream m_Stream;
 };
 
-#define LOGGER_ERROR(Tag)  LogStreamer(LogType::Error, Tag)
-#define LOGGER_WARN(Tag)   LogStreamer(LogType::Warning, Tag)
-#define LOGGER_INFO(Tag)   LogStreamer(LogType::Info, Tag)
-#define LOGGER_LOG(Tag)    LogStreamer(LogType::Info, Tag)
-#define LOGGER_DEBUG(Tag)  LogStreamer(LogType::Debug, Tag)
+#define LOGGER_ERROR(Tag) LogStreamer(LogType::Error, Tag)
+#define LOGGER_WARN(Tag) LogStreamer(LogType::Warning, Tag)
+#define LOGGER_INFO(Tag) LogStreamer(LogType::Info, Tag)
+#define LOGGER_LOG(Tag) LogStreamer(LogType::Info, Tag)
+#define LOGGER_DEBUG(Tag) LogStreamer(LogType::Debug, Tag)

@@ -1,12 +1,12 @@
-#include <resource/unit/shader.h>
 #include <render/unit/skybox.h>
-#include <render/type/graphics_types.h>
+#include <core/logic/logger.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
-#include <iostream>
+#include <render/type/graphics_types.h>
+#include <resource/unit/shader.h>
 #include <stb/stb_image.h>
-#include <core/logic/logger.h>
+#include <iostream>
 
 IBufferManager* Skybox::s_BufferManager = nullptr;
 ITextureManager* Skybox::s_TextureManager = nullptr;
@@ -21,7 +21,8 @@ void Skybox::SetManagers(IBufferManager& bufferManager, ITextureManager& texture
 
 IBufferManager& Skybox::GetBufferManager()
 {
-    if (!s_BufferManager) {
+    if (!s_BufferManager)
+    {
         LOGGER_ERROR("Skybox") << "BufferManager not set!";
 
         throw std::runtime_error("BufferManager not set in Skybox");
@@ -31,7 +32,8 @@ IBufferManager& Skybox::GetBufferManager()
 
 ITextureManager& Skybox::GetTextureManager()
 {
-    if (!s_TextureManager) {
+    if (!s_TextureManager)
+    {
         LOGGER_ERROR("Skybox") << "TextureManager not set!";
         throw std::runtime_error("TextureManager not set in Skybox");
     }
@@ -40,7 +42,8 @@ ITextureManager& Skybox::GetTextureManager()
 
 IDrawContext& Skybox::GetDrawContext()
 {
-    if (!s_DrawContext) {
+    if (!s_DrawContext)
+    {
         LOGGER_ERROR("Skybox") << "DrawContext not set!";
         throw std::runtime_error("DrawContext not set in Skybox");
     }
@@ -56,19 +59,28 @@ Skybox::~Skybox()
 {
     if (s_BufferManager)
     {
-        try {
-            if (m_VAO) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
-            if (m_VBO) s_BufferManager->DeleteBuffers(1, &m_VBO);
-        } catch (...) {
+        try
+        {
+            if (m_VAO)
+                s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+            if (m_VBO)
+                s_BufferManager->DeleteBuffers(1, &m_VBO);
+        }
+        catch (...)
+        {
             LOGGER_ERROR("Skybox") << "Destructor: CRASH during buffer deletion";
         }
     }
 
     if (s_TextureManager)
     {
-        try {
-            if (m_TextureID) s_TextureManager->DeleteTextures(1, &m_TextureID);
-        } catch (...) {
+        try
+        {
+            if (m_TextureID)
+                s_TextureManager->DeleteTextures(1, &m_TextureID);
+        }
+        catch (...)
+        {
             LOGGER_ERROR("Skybox") << "Destructor: CRASH during Texture deletion";
         }
     }
@@ -76,24 +88,23 @@ Skybox::~Skybox()
 
 void Skybox::Initialize()
 {
-    float vertices[] = {
-        -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
+    float vertices[] = {-1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
+                        1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
 
-        -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
-        -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
+                        -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
+                        -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
 
-        1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f,
+                        1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
+                        1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
 
-        -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
+                        -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+                        1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
 
-        -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f,
+                        -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
+                        1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f};
+                        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
+                        1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f};
 
     if (s_BufferManager)
     {
@@ -106,13 +117,13 @@ void Skybox::Initialize()
         bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::StaticDraw);
 
         bm.EnableVertexAttribArray(0);
-        bm.VertexAttribPointer(0, 3, DataType::Float, false, 3 * sizeof(float), (void *)0);
+        bm.VertexAttribPointer(0, 3, DataType::Float, false, 3 * sizeof(float), (void*)0);
 
         bm.BindVertexArray(0);
     }
 }
 
-void Skybox::Draw(Shader &shader)
+void Skybox::Draw(Shader& shader)
 {
     if (s_BufferManager && s_DrawContext)
     {
@@ -124,9 +135,10 @@ void Skybox::Draw(Shader &shader)
 
 #include <core/logic/filesystem.h>
 
-void Skybox::LoadCubemap(const std::vector<std::string> &faces)
+void Skybox::LoadCubemap(const std::vector<std::string>& faces)
 {
-    if (!s_TextureManager) return;
+    if (!s_TextureManager)
+        return;
     auto& tm = GetTextureManager();
 
     m_TextureID = tm.GenTexture();
@@ -137,7 +149,7 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
     for (unsigned int i = 0; i < 6; ++i)
     {
         int width = 0, height = 0, channels = 0;
-        unsigned char *data = nullptr;
+        unsigned char* data = nullptr;
         InternalFormat internalFormat = InternalFormat::RGB8;
         TextureFormat dataFormat = TextureFormat::RGB;
 
@@ -150,7 +162,8 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
             {
                 if (width != height)
                 {
-                    LOGGER_WARN("Skybox") << "Warning: cubemap face not square: " << faces[i] << ", using fallback color.";
+                    LOGGER_WARN("Skybox")
+                        << "Warning: cubemap face not square: " << faces[i] << ", using fallback color.";
                     stbi_image_free(data);
                     data = nullptr;
                 }
@@ -158,22 +171,22 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
                 {
                     switch (channels)
                     {
-                    case 1:
-                        dataFormat = TextureFormat::Red;
-                        const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
-                        break;
-                    case 3:
-                        dataFormat = TextureFormat::RGB;
-                        const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
-                        break;
-                    case 4:
-                        dataFormat = TextureFormat::RGBA;
-                        const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGBA8;
-                        break;
-                    default:
-                        dataFormat = TextureFormat::RGB;
-                        const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
-                        break;
+                        case 1:
+                            dataFormat = TextureFormat::Red;
+                            const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
+                            break;
+                        case 3:
+                            dataFormat = TextureFormat::RGB;
+                            const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
+                            break;
+                        case 4:
+                            dataFormat = TextureFormat::RGBA;
+                            const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGBA8;
+                            break;
+                        default:
+                            dataFormat = TextureFormat::RGB;
+                            const_cast<InternalFormat&>(internalFormat) = InternalFormat::RGB8;
+                            break;
                     }
 
                     tm.PixelStorei(PixelStoreParam::UnpackAlignment, (dataFormat == TextureFormat::RGB) ? 1 : 4);
@@ -190,13 +203,12 @@ void Skybox::LoadCubemap(const std::vector<std::string> &faces)
         if (!data)
         {
             unsigned char red[3] = {255, 0, 0};
-            tm.TexImage2D(faceTarget,
-                         0, InternalFormat::RGB8, 1, 1, 0, TextureFormat::RGB, DataType::UnsignedByte, red);
+            tm.TexImage2D(faceTarget, 0, InternalFormat::RGB8, 1, 1, 0, TextureFormat::RGB, DataType::UnsignedByte,
+                          red);
         }
         else
         {
-            tm.TexImage2D(faceTarget,
-                         0, internalFormat, width, height, 0, dataFormat, DataType::UnsignedByte, data);
+            tm.TexImage2D(faceTarget, 0, internalFormat, width, height, 0, dataFormat, DataType::UnsignedByte, data);
             stbi_image_free(data);
         }
     }

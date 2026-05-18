@@ -1,8 +1,8 @@
 #pragma once
 
+#include <ecs/logic/cached_query.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
-#include <ecs/logic/cached_query.h>
 #include <ecs/unit/render_components.h>
 #include <glm/glm.hpp>
 #include <unordered_map>

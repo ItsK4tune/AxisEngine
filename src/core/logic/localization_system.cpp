@@ -1,14 +1,18 @@
 #include <core/logic/localization_system.h>
-#include <core/logic/yaml_parser.h>
-#include <core/logic/service_locator.h>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/yaml_parser.h>
 #include <ecs/logic/system_factory.h>
 #include <filesystem>
 
 REGISTER_SYSTEM(LocalizationSystem)
 
-LocalizationSystem::LocalizationSystem() {}
-LocalizationSystem::~LocalizationSystem() {}
+LocalizationSystem::LocalizationSystem()
+{
+}
+LocalizationSystem::~LocalizationSystem()
+{
+}
 
 void LocalizationSystem::Initialize()
 {
@@ -24,13 +28,13 @@ void LocalizationSystem::Shutdown()
 void LocalizationSystem::LoadLanguage(const std::string& path, const std::string& name)
 {
     std::string langName = name.empty() ? path : name;
-    
+
     if (!std::filesystem::exists(path))
     {
         LOGGER_WARN("LocalizationSystem") << "Language file not found: " << path;
         return;
     }
-    
+
     std::vector<YAMLNode> roots = YAMLParser::Parse(path);
     std::unordered_map<std::string, std::string> entries;
     for (const auto& root : roots)
@@ -46,15 +50,16 @@ void LocalizationSystem::LoadLanguage(const std::string& path, const std::string
             }
         }
     }
-    
+
     m_Languages[langName] = std::move(entries);
-    
+
     if (m_CurrentLanguage.empty())
     {
         m_CurrentLanguage = langName;
     }
-    
-    LOGGER_INFO("LocalizationSystem") << "Loaded language: " << langName << " (" << m_Languages[langName].size() << " entries)";
+
+    LOGGER_INFO("LocalizationSystem") << "Loaded language: " << langName << " (" << m_Languages[langName].size()
+                                      << " entries)";
 }
 
 void LocalizationSystem::SetLanguage(const std::string& langCode)
@@ -77,16 +82,17 @@ std::string LocalizationSystem::Get(const std::string& key) const
         if (entryIt != langIt->second.end())
             return entryIt->second;
     }
-    
+
     return "[MISSING: " + key + "]";
 }
 
-void LocalizationSystem::FlattenNode(const YAMLNode& node, const std::string& prefix, std::unordered_map<std::string, std::string>& outEntries)
+void LocalizationSystem::FlattenNode(const YAMLNode& node, const std::string& prefix,
+                                     std::unordered_map<std::string, std::string>& outEntries)
 {
     for (const auto& child : node.children)
     {
         std::string newKey = prefix.empty() ? child.key : prefix + "." + child.key;
-        
+
         if (child.children.empty())
         {
             outEntries[newKey] = child.value;

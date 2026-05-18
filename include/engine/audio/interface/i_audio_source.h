@@ -9,7 +9,7 @@ public:
 
     virtual void SetDefaultVolume(float volume) = 0;
     virtual float GetDefaultVolume() const = 0;
-    
+
     virtual void SetDefaultPitch(float pitch) = 0;
     virtual float GetDefaultPitch() const = 0;
 

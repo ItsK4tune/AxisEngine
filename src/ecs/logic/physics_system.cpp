@@ -1,30 +1,32 @@
+#include <ecs/logic/physics_system.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
-#include <ecs/logic/physics_system.h>
+
 // Forcing recompile - 2026-04-01-T11-55-00
-#include <ecs/logic/system_factory.h>
 #include <core/logic/config_manager.h>
 #include <ecs/logic/cached_query.h>
+#include <ecs/logic/system_factory.h>
+
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/matrix_decompose.hpp>
-#include <physics/interface/i_physics_world.h>
+#include <core/logic/event_manager.h>
+#include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <core/type/app_config.h>
+#include <core/type/event_types.h>
+#include <ecs/logic/entity_manager.h>
 #include <physics/interface/i_collision_shape.h>
+#include <physics/interface/i_physics_world.h>
 #include <physics/logic/collision_matrix.h>
 #include <physics/logic/physics_collision_dispatcher.h>
 #include <physics/logic/physics_transform_sync.h>
-#include <script/logic/scriptable.h>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
-#include <core/logic/logger.h>
 #include <physics/unit/ray.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <ecs/logic/entity_manager.h>
-#include <core/logic/service_locator.h>
-#include <core/logic/event_manager.h>
-#include <core/type/event_types.h>
-#include <core/type/app_config.h>
-#include <resource/logic/resource_manager.h>
 #include <render/interface/i_graphics_context.h>
+#include <resource/logic/resource_manager.h>
+#include <script/logic/scriptable.h>
+#include <glm/gtx/matrix_decompose.hpp>
 
 PhysicsSystem::PhysicsSystem()
 {
@@ -123,7 +125,8 @@ void PhysicsSystem::Update(Scene& scene, float dt)
             }
 
             auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
-            if (matrix) {
+            if (matrix)
+            {
                 return matrix->CanCollide(tagA, tagB, nameA, nameB);
             }
             return true;
@@ -170,12 +173,13 @@ void PhysicsSystem::Update(Scene& scene, float dt)
         m_collisionDispatcher = std::make_unique<PhysicsCollisionDispatcher>(scene, *physicsWorld);
     }
     m_collisionDispatcher->DispatchEvents();
-    
+
     auto viewCC = scene.registry.view<CharacterControllerComponent, InfoComponent>();
     for (auto entity : viewCC)
     {
         auto& info = viewCC.get<InfoComponent>(entity);
-        if (!info.isActive) continue;
+        if (!info.isActive)
+            continue;
 
         auto& cc = viewCC.get<CharacterControllerComponent>(entity);
         if (cc.controller)
@@ -285,7 +289,8 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
                     uint32_t offset = (uint32_t)vertices.size() / 3;
                     for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; ++vIdx)
                     {
-                        const float* pos = reinterpret_cast<const float*>(mesh.m_VertexData.data() + vIdx * mesh.m_VertexStride);
+                        const float* pos =
+                            reinterpret_cast<const float*>(mesh.m_VertexData.data() + vIdx * mesh.m_VertexStride);
                         vertices.push_back(pos[0]);
                         vertices.push_back(pos[1]);
                         vertices.push_back(pos[2]);
@@ -340,7 +345,9 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
                 if (meshComp->model)
                 {
                     glm::mat4 rootMtx = meshComp->model->GetRootTransform();
-                    glm::vec3 Rs, Rt, Rskew; glm::quat Rr; glm::vec4 Rperspective;
+                    glm::vec3 Rs, Rt, Rskew;
+                    glm::quat Rr;
+                    glm::vec4 Rperspective;
                     if (glm::decompose(rootMtx, Rs, Rr, Rt, Rskew, Rperspective))
                     {
                         auto* scl = scene.registry.try_get<ScaleComponent>(entity);
@@ -359,7 +366,7 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
             rb.body->SetUserPointer((void*)(uintptr_t)entity);
             if (rb.isKinematic)
                 rb.body->SetKinematic(true);
-            
+
             rb.body->SetTrigger(rb.isTrigger);
             rb.body->SetFriction(shape.friction);
             rb.body->SetRestitution(shape.restitution);

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <physics/unit/ray.h>
+#include <glm/glm.hpp>
 
 class IPhysicsWorld;
 class Scene;

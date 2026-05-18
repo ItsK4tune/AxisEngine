@@ -1,9 +1,9 @@
 #pragma once
 
-#include <editor/i_editor_module.h>
 #include <core/type/app_config.h>
-#include <functional>
+#include <editor/i_editor_module.h>
 #include <platform/interface/input_codes.h>
+#include <functional>
 #include <string>
 
 struct Scene;
@@ -11,8 +11,6 @@ struct Scene;
 class Application;
 
 #ifdef ENABLE_EDITOR
-
-
 
 class GeneralEditorModule : public IEditorModule
 {
@@ -22,15 +20,24 @@ public:
 
     virtual void Initialize() override;
     void OnUpdate(float dt) override;
-    void Render(Scene &scene) override;
-    void ProcessInput(KeyboardManager &keyboard) override;
+    void Render(Scene& scene) override;
+    void ProcessInput(KeyboardManager& keyboard) override;
 
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetModuleName() const override { return "GeneralEditorModule"; }
+    bool IsEnabled() const override
+    {
+        return m_Enabled;
+    }
+    void SetEnabled(bool enabled) override
+    {
+        m_Enabled = enabled;
+    }
+    std::string GetModuleName() const override
+    {
+        return "GeneralEditorModule";
+    }
 
 private:
-    void ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action);
+    void ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState, std::function<void()> action);
 
     bool m_Enabled = true;
 

@@ -1,25 +1,21 @@
 #include <engine/scene/logic/fragment_loader.h>
-#include <scene/logic/component_loader.h>
 #include <core/logic/loader_utils.h>
 #include <core/logic/logger.h>
 #include <ecs/unit/core_components.h>
+#include <scene/logic/component_loader.h>
 #include <scene/logic/scene_validator.h>
 
-std::map<std::string, entt::entity> FragmentLoader::Instantiate(
-    const FragmentAsset& asset, 
-    Scene& scene, 
-    entt::entity parent, 
-    ResourceManager& res, 
-    IPhysicsWorld* phys, 
-    AudioService* sound,
-    const YAMLNode* overrideNode)
+std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAsset& asset, Scene& scene,
+                                                                entt::entity parent, ResourceManager& res,
+                                                                IPhysicsWorld* phys, AudioService* sound,
+                                                                const YAMLNode* overrideNode)
 {
     std::map<std::string, entt::entity> instantiatedEntities;
     std::map<entt::entity, std::vector<std::string>> deferredChildren;
-    
+
     // We use a temporary scene name or the fragment path
     std::string fragmentName = asset.path;
- 
+
     for (auto& root : asset.rootNodes)
     {
         if (root.key == "Resources")
@@ -32,7 +28,8 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                     std::string vs = resNode.GetChildValue("vertex", resNode.GetChildValue("VS"));
                     std::string fs = resNode.GetChildValue("fragment", resNode.GetChildValue("FS"));
                     std::string fs_override = resNode.GetChildValue("FS");
-                    if (fs.empty()) fs = fs_override;
+                    if (fs.empty())
+                        fs = fs_override;
                     std::string gs = resNode.GetChildValue("geometry", resNode.GetChildValue("GS"));
                     res.LoadShader(name, vs, fs, gs);
                 }
@@ -51,11 +48,14 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 }
                 else if (resNode.key == "Audio")
                 {
-                    if (sound) {
+                    if (sound)
+                    {
                         std::string name = resNode.GetChildValue("Name");
                         std::string path = resNode.GetChildValue("Path");
                         res.LoadSound(name, path, sound->GetEngine());
-                    } else {
+                    }
+                    else
+                    {
                         LOGGER_WARN("FragmentLoader") << "Skipping audio resource load: No AudioService available";
                     }
                 }
@@ -76,9 +76,9 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
             ComponentLoader::InitializeDefaultLoaders();
             for (auto& entNodeRaw : root.children)
             {
-                YAMLNode entNode = entNodeRaw; // Clone node to apply overrides
+                YAMLNode entNode = entNodeRaw;  // Clone node to apply overrides
                 std::string entityName = entNode.key;
-                
+
                 // Apply Overrides if any
                 if (overrideNode)
                 {
@@ -87,13 +87,16 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                     {
                         LOGGER_INFO("FragmentLoader") << "Applying overrides to entity '" << entityName << "'";
                         YAMLNode::Merge(entNode, *entOverride);
-                        
+
                         // Debug merged children
-                        for (auto& c : entNode.children) {
-                            if (c.key == "Component") {
+                        for (auto& c : entNode.children)
+                        {
+                            if (c.key == "Component")
+                            {
                                 std::string subKeys = "";
                                 for (auto& sc : c.children) subKeys += sc.key + ", ";
-                                LOGGER_INFO("FragmentLoader") << " Merged component '" << c.value << "' keys: " << subKeys;
+                                LOGGER_INFO("FragmentLoader")
+                                    << " Merged component '" << c.value << "' keys: " << subKeys;
                             }
                         }
                     }
@@ -106,7 +109,7 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 std::string namespacedTag = tagPrefix + entityTag;
 
                 entt::entity currentEntity = scene.registry.create();
-                instantiatedEntities[entityName] = currentEntity; // KEEP LOCAL NAME FOR MAPPING
+                instantiatedEntities[entityName] = currentEntity;  // KEEP LOCAL NAME FOR MAPPING
 
                 scene.registry.emplace<PositionComponent>(currentEntity);
                 scene.registry.emplace<RotationComponent>(currentEntity);
@@ -122,12 +125,9 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                 // Set parent to the provided parent by default
                 if (parent != entt::null)
                 {
-                    scene.registry.patch<HierarchyComponent>(currentEntity, [&](auto& h) {
-                        h.parent = parent;
-                    });
-                    scene.registry.patch<HierarchyComponent>(parent, [&](auto& h) {
-                        h.children.push_back(currentEntity);
-                    });
+                    scene.registry.patch<HierarchyComponent>(currentEntity, [&](auto& h) { h.parent = parent; });
+                    scene.registry.patch<HierarchyComponent>(parent,
+                                                             [&](auto& h) { h.children.push_back(currentEntity); });
                 }
 
                 // Handle Transform component if present
@@ -138,19 +138,25 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                         std::string pStr = child.GetChildValue("Position", "0 0 0");
                         std::string rStr = child.GetChildValue("Rotation", "0 0 0");
                         std::string sStr = child.GetChildValue("Scale", "1 1 1");
-                        if (pStr.empty()) pStr = "0 0 0";
-                        if (rStr.empty()) rStr = "0 0 0";
-                        if (sStr.empty()) sStr = "1 1 1";
-                        
-                        float x=0, y=0, z=0;
-                        std::stringstream ssP(pStr); ssP >> x >> y >> z;
-                        
-                        float rx=0, ry=0, rz=0;
-                        std::stringstream ssR(rStr); ssR >> rx >> ry >> rz;
-                        
-                        float sx=1, sy=1, sz=1;
-                        std::stringstream ssS(sStr); ssS >> sx >> sy >> sz;
-                        
+                        if (pStr.empty())
+                            pStr = "0 0 0";
+                        if (rStr.empty())
+                            rStr = "0 0 0";
+                        if (sStr.empty())
+                            sStr = "1 1 1";
+
+                        float x = 0, y = 0, z = 0;
+                        std::stringstream ssP(pStr);
+                        ssP >> x >> y >> z;
+
+                        float rx = 0, ry = 0, rz = 0;
+                        std::stringstream ssR(rStr);
+                        ssR >> rx >> ry >> rz;
+
+                        float sx = 1, sy = 1, sz = 1;
+                        std::stringstream ssS(sStr);
+                        ssS >> sx >> sy >> sz;
+
                         auto& pComp = scene.registry.get<PositionComponent>(currentEntity);
                         pComp.value = glm::vec3(x, y, z);
                         pComp.prev = pComp.value;
@@ -163,14 +169,16 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
                         sComp.value = glm::vec3(sx, sy, sz);
                         sComp.prev = sComp.value;
 
-                        LOGGER_INFO("FragmentLoader") << "[DEBUG] Loaded Transform for '" << entityName 
-                            << "': Pos(" << x << "," << y << "," << z << ") Scale(" << sx << "," << sy << "," << sz << ")";
+                        LOGGER_INFO("FragmentLoader")
+                            << "[DEBUG] Loaded Transform for '" << entityName << "': Pos(" << x << "," << y << "," << z
+                            << ") Scale(" << sx << "," << sy << "," << sz << ")";
 
                         // Mark dirty ΓÇö TransformSystem will compute the correct world matrix
                         // AFTER deferred internal parenting is resolved.
                         // Do NOT pre-compute here: `parent` is the fragment owner, not the
                         // internal parent (which hasn't been linked yet).
-                        if (scene.registry.all_of<WorldTransformComponent>(currentEntity)) {
+                        if (scene.registry.all_of<WorldTransformComponent>(currentEntity))
+                        {
                             scene.registry.get<WorldTransformComponent>(currentEntity).isDirty = true;
                         }
                         break;
@@ -184,9 +192,11 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
 
                 for (auto& compNode : entNode.children)
                 {
-                    if (compNode.key != "Component") continue;
+                    if (compNode.key != "Component")
+                        continue;
                     std::string compType = compNode.value;
-                    if (compType == "Transform") continue; // Already handled
+                    if (compType == "Transform")
+                        continue;  // Already handled
 
                     ComponentLoader::Load(compType, scene, currentEntity, compNode, res, phys);
                 }
@@ -202,21 +212,19 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(
             if (instantiatedEntities.find(parentName) != instantiatedEntities.end())
             {
                 entt::entity internalParent = instantiatedEntities[parentName];
-                
+
                 // Remove from the default fragment parent if it was added
                 if (parent != entt::null)
                 {
                     scene.registry.patch<HierarchyComponent>(parent, [&](auto& ph) {
-                        ph.children.erase(std::remove(ph.children.begin(), ph.children.end(), entity), ph.children.end());
+                        ph.children.erase(std::remove(ph.children.begin(), ph.children.end(), entity),
+                                          ph.children.end());
                     });
                 }
 
-                scene.registry.patch<HierarchyComponent>(entity, [&](auto& h) {
-                    h.parent = internalParent;
-                });
-                scene.registry.patch<HierarchyComponent>(internalParent, [&](auto& ph) {
-                    ph.children.push_back(entity);
-                });
+                scene.registry.patch<HierarchyComponent>(entity, [&](auto& h) { h.parent = internalParent; });
+                scene.registry.patch<HierarchyComponent>(internalParent,
+                                                         [&](auto& ph) { ph.children.push_back(entity); });
             }
         }
     }

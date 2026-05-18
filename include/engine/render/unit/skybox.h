@@ -16,25 +16,43 @@ public:
 
     void Draw(Shader& shader);
     void LoadCubemap(const std::vector<std::string>& faces);
-    unsigned int GetTextureID() const { return m_TextureID; }
+    unsigned int GetTextureID() const
+    {
+        return m_TextureID;
+    }
 
-    std::string GetName() const { return m_Name; }
-    void SetName(const std::string& name) { m_Name = name; }
+    std::string GetName() const
+    {
+        return m_Name;
+    }
+    void SetName(const std::string& name)
+    {
+        m_Name = name;
+    }
 
     static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
-    
-    unsigned int GetIrradianceMap() const { return m_IrradianceMap; }
-    unsigned int GetPrefilterMap() const { return m_PrefilterMap; }
-    unsigned int GetBrdfLUT() const { return m_BrdfLUT; }
 
-    void SetIBLMaps(unsigned int irradiance, unsigned int prefilter, unsigned int brdf) {
+    unsigned int GetIrradianceMap() const
+    {
+        return m_IrradianceMap;
+    }
+    unsigned int GetPrefilterMap() const
+    {
+        return m_PrefilterMap;
+    }
+    unsigned int GetBrdfLUT() const
+    {
+        return m_BrdfLUT;
+    }
+
+    void SetIBLMaps(unsigned int irradiance, unsigned int prefilter, unsigned int brdf)
+    {
         m_IrradianceMap = irradiance;
         m_PrefilterMap = prefilter;
         m_BrdfLUT = brdf;
     }
 
 private:
-
     static IBufferManager* s_BufferManager;
     static ITextureManager* s_TextureManager;
     static IDrawContext* s_DrawContext;
@@ -47,7 +65,6 @@ private:
     unsigned int m_VAO = 0;
     unsigned int m_VBO = 0;
     unsigned int m_TextureID = 0;
-
 
     unsigned int m_IrradianceMap = 0;
     unsigned int m_PrefilterMap = 0;

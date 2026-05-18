@@ -1,17 +1,18 @@
 #pragma once
 
+#include <physics/interface/i_collision_shape.h>
+#include <physics/interface/i_rigid_body.h>
 #include <btBulletDynamicsCommon.h>
 #include <functional>
 #include <iostream>
 #include <memory>
-#include <physics/interface/i_collision_shape.h>
-#include <physics/interface/i_rigid_body.h>
 
 class BulletRigidBody : public IRigidBody
 {
 public:
-    BulletRigidBody(btRigidBody* body, std::shared_ptr<ICollisionShape> shape)
-        : m_Body(body), m_Shape(shape) {}
+    BulletRigidBody(btRigidBody* body, std::shared_ptr<ICollisionShape> shape) : m_Body(body), m_Shape(shape)
+    {
+    }
     ~BulletRigidBody();
 
     void SetLinearVelocity(const glm::vec3& vel) override;
@@ -46,7 +47,10 @@ public:
     void SetAngularFactor(const glm::vec3& factor) override;
     void SetDamping(float linearDamping, float angularDamping) override;
 
-    btRigidBody* GetRaw() const { return m_Body; }
+    btRigidBody* GetRaw() const
+    {
+        return m_Body;
+    }
 
 private:
     btRigidBody* m_Body = nullptr;

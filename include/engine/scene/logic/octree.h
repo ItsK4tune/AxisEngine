@@ -1,10 +1,10 @@
 #pragma once
 
-#include <scene/type/scene_types.h>
 #include <core/unit/aabb.h>
+#include <render/unit/frustum.h>
+#include <scene/type/scene_types.h>
 #include <entt/entt.hpp>
 #include <memory>
-#include <render/unit/frustum.h>
 #include <vector>
 
 struct OctreeElement
@@ -22,12 +22,15 @@ public:
     void Insert(entt::entity entity, const AABB& aabb);
     void Remove(entt::entity entity);
     void Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const;
-    
+
     void Rebuild(const std::vector<OctreeElement>& elements);
 
 private:
     void Subdivide();
-    bool IsLeaf() const { return m_Children[0] == nullptr; }
+    bool IsLeaf() const
+    {
+        return m_Children[0] == nullptr;
+    }
     int GetChildIndex(const AABB& itemAABB) const;
 
     AABB m_Boundary;
@@ -45,7 +48,7 @@ public:
     void Insert(entt::entity entity, const AABB& aabb);
     void Remove(entt::entity entity);
     void Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const;
-    
+
     void Rebuild(const std::vector<OctreeElement>& elements);
 
 private:

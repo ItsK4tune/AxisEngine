@@ -1,6 +1,7 @@
 #pragma once
 
-enum class Key {
+enum class Key
+{
     Unknown = -1,
     Space,
     Apostrophe,

@@ -1,15 +1,15 @@
 #pragma once
 
+#include <render/type/graphics_types.h>
+#include <render/type/render_data.h>
+#include <render/unit/skybox.h>
+#include <resource/unit/model.h>
+#include <resource/unit/shader.h>
 #include <glm/glm.hpp>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
-#include <cstdint>
-#include <render/type/graphics_types.h>
-#include <resource/unit/model.h>
-#include <resource/unit/shader.h>
-#include <render/unit/skybox.h>
-#include <render/type/render_data.h>
 
 struct MeshRendererComponent
 {
@@ -22,8 +22,6 @@ struct MeshRendererComponent
     RenderMode renderMode = RenderMode::Auto;
     glm::vec4 color = glm::vec4(1.0f);
 };
-
-
 
 struct PBRMaterialParams
 {
@@ -84,7 +82,6 @@ struct SkyboxRenderComponent
     std::string shaderName;
     bool isPrimary = true;
 
-
     uint32_t irradianceMap = 0;
     uint32_t prefilterMap = 0;
     uint32_t brdfLUT = 0;
@@ -96,7 +93,8 @@ struct LODComponent
     std::vector<float> lodDistancesSq;
 };
 
-struct OcclusionComponent {
+struct OcclusionComponent
+{
     uint32_t lastQueryId = 0;
     bool isVisible = true;
     bool queryPending = false;

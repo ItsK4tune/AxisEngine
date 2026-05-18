@@ -1,6 +1,7 @@
 #pragma once
 
-enum class CursorMode {
+enum class CursorMode
+{
     Normal,
     Hidden,
     Locked,

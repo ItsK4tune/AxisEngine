@@ -1,7 +1,7 @@
 #include <engine/resource/logic/fragment_asset_manager.h>
-#include <core/logic/yaml_parser.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
+#include <core/logic/yaml_parser.h>
 
 std::shared_ptr<FragmentAsset> FragmentAssetManager::Load(const std::string& path)
 {
@@ -10,7 +10,7 @@ std::shared_ptr<FragmentAsset> FragmentAssetManager::Load(const std::string& pat
 
     std::string fullPath = FileSystem::getPath(path);
     auto roots = YAMLParser::Parse(fullPath);
-    
+
     if (roots.empty())
     {
         LOGGER_ERROR("FragmentAssetManager") << "Failed to parse AXS fragment: " << fullPath;
@@ -20,9 +20,9 @@ std::shared_ptr<FragmentAsset> FragmentAssetManager::Load(const std::string& pat
     auto asset = std::make_shared<FragmentAsset>();
     asset->path = path;
     asset->rootNodes = roots;
-    
+
     m_Cache.Add(path, asset);
-    
+
     LOGGER_INFO("FragmentAssetManager") << "Loaded fragment: " << path;
     return asset;
 }

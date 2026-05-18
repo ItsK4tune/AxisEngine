@@ -1,19 +1,20 @@
 #include <editor/panels/stats_panel.h>
+
 #ifdef ENABLE_EDITOR
-#include <imgui.h>
-#include <scene/logic/scene.h>
-#include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
+#include <core/logic/service_locator.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/unit/core_components.h>
-#include <ecs/unit/render_components.h>
 #include <ecs/unit/physics_components.h>
+#include <ecs/unit/render_components.h>
 #include <ecs/unit/ui_components.h>
+#include <scene/logic/scene.h>
+#include <imgui.h>
 
 void StatsPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
-    
+
     ImGui::Text("FPS: %.1f", m_Fps);
     ImGui::Text("Frame Time: %.3f ms", m_FrameTime);
     ImGui::Separator();
@@ -28,21 +29,26 @@ void StatsPanel::OnImGui(Scene& scene)
     ImGui::Text("Mesh Renderers: %zu", meshEntities);
     ImGui::Text("Physics Bodies: %zu", physicsEntities);
     ImGui::Text("UI Elements: %zu", uiEntities);
-    
+
     ImGui::Separator();
     auto rs = ServiceLocator::Instance().Resolve<IRenderService>();
-    if (rs) {
+    if (rs)
+    {
         ImGui::Text("Rendered Entities: %d", rs->GetRenderedCount());
-    } else {
+    }
+    else
+    {
         ImGui::Text("Render Service: offline");
     }
 
     ImGui::Separator();
-    if (ImGui::CollapsingHeader("Debug Tools", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Debug Tools", ImGuiTreeNodeFlags_DefaultOpen))
+    {
         auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-        if (cm) {
+        if (cm)
+        {
             auto conf = cm->GetConfig();
-            
+
             auto boolStr = [](bool v) { return v ? "ON" : "OFF"; };
             ImGui::Text("Entity Names    : %s", boolStr(conf.debug.entityNames));
             ImGui::Text("Transform Gizmos: %s", boolStr(conf.debug.gizmos));
@@ -55,16 +61,20 @@ void StatsPanel::OnImGui(Scene& scene)
         }
     }
 
-    if (ImGui::CollapsingHeader("Scene Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Scene Graph", ImGuiTreeNodeFlags_DefaultOpen))
+    {
         auto view = scene.registry.view<InfoComponent>();
-        for (auto entity : view) {
-            const auto &info = view.get<InfoComponent>(entity);
-            uint32_t sequentialId = (uint32_t)entity & 0xFFFFF; 
-            
+        for (auto entity : view)
+        {
+            const auto& info = view.get<InfoComponent>(entity);
+            uint32_t sequentialId = (uint32_t)entity & 0xFFFFF;
+
             std::string label = "[" + std::to_string(sequentialId) + "] " + info.name;
-            if (!info.tag.empty()) label += " (" + info.tag + ")";
-            
-            if (ImGui::Selectable(label.c_str())) {
+            if (!info.tag.empty())
+                label += " (" + info.tag + ")";
+
+            if (ImGui::Selectable(label.c_str()))
+            {
                 // Potential selection logic here if shared across panels
             }
         }

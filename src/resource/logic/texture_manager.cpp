@@ -1,27 +1,27 @@
 #include <resource/logic/texture_manager.h>
-#include <resource/type/resource_events.h>
-#include <core/logic/job_system.h>
-#include <core/logic/filesystem.h>
-#include <core/logic/logger.h>
 #include <core/logic/event_manager.h>
+#include <core/logic/filesystem.h>
+#include <core/logic/job_system.h>
+#include <core/logic/logger.h>
 #include <core/type/event_types.h>
+#include <resource/type/resource_events.h>
 #include <stb/stb_image.h>
 
-TextureManager::TextureManager(ITextureManager& lowLevelManager) 
-    : m_LowLevelManager(lowLevelManager) {}
+TextureManager::TextureManager(ITextureManager& lowLevelManager) : m_LowLevelManager(lowLevelManager)
+{
+}
 
-void TextureManager::Initialize() {
+void TextureManager::Initialize()
+{
     // 1. Create a hardcoded "Emergency" Error Texture first
-    unsigned char pinkBlack[] = { 
-        255, 0, 255, 255,  0, 0, 0, 255,
-        0, 0, 0, 255,      255, 0, 255, 255 
-    };
+    unsigned char pinkBlack[] = {255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255};
     unsigned int errorID = m_LowLevelManager.GenTexture();
     m_LowLevelManager.BindTexture(TextureType::Texture2D, errorID);
-    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 2, 2, 0, TextureFormat::RGBA, DataType::UnsignedByte, pinkBlack);
+    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 2, 2, 0, TextureFormat::RGBA,
+                                 DataType::UnsignedByte, pinkBlack);
     m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
     m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
-    
+
     m_ErrorTexture = std::make_shared<Texture>();
     m_ErrorTexture->id = errorID;
     m_ErrorTexture->width = 2;
@@ -33,21 +33,28 @@ void TextureManager::Initialize() {
     // 2. Try to load the higher quality external error texture
     std::string errorTexturePath = "include/engine/asset/textures/error_checkerboard.tga";
     auto externalError = Load("External_Error_Texture", errorTexturePath, false, false);
-    
-    if (externalError && externalError->id != 0 && externalError->path != "internal://error_texture") {
+
+    if (externalError && externalError->id != 0 && externalError->path != "internal://error_texture")
+    {
         m_ErrorTexture = externalError;
         LOGGER_INFO("TextureManager") << "Initialized Externalized Error Texture (from file)";
-    } else {
+    }
+    else
+    {
         LOGGER_WARN("TextureManager") << "Could not load external error texture, using hardcoded fallback.";
     }
 }
 
-TextureManager::~TextureManager() {
+TextureManager::~TextureManager()
+{
     Clear();
 }
 
-std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std::string& path, bool async, bool keepCpuData) {
-    if (auto existing = m_Cache.Get(name)) {
+std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std::string& path, bool async,
+                                              bool keepCpuData)
+{
+    if (auto existing = m_Cache.Get(name))
+    {
         return existing;
     }
 
@@ -56,7 +63,8 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
     {
         std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
         auto it = m_PathToTextureMap.find(fullPath);
-        if (it != m_PathToTextureMap.end()) {
+        if (it != m_PathToTextureMap.end())
+        {
             auto tex = it->second;
             m_Cache.Add(name, tex);
             m_NameToPathMap[name] = fullPath;
@@ -66,7 +74,8 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
         }
     }
 
-    if (async && m_AsyncEnabled) {
+    if (async && m_AsyncEnabled)
+    {
         auto promise = std::make_shared<std::promise<TextureData>>();
         {
             std::lock_guard<std::mutex> lock(m_AsyncMutex);
@@ -94,35 +103,58 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             data.data = stbi_load(fullPath.c_str(), &data.width, &data.height, &data.nrComponents, 0);
             promise->set_value(data);
         });
-        
+
         return tex;
-    } else {
+    }
+    else
+    {
         int width, height, nrComponents;
         stbi_set_flip_vertically_on_load(true);
         unsigned char* data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, 0);
 
-        if (data) {
+        if (data)
+        {
             unsigned int textureID = m_LowLevelManager.GenTexture();
-            
+
             TextureFormat format = TextureFormat::RGBA;
             InternalFormat iFormat = InternalFormat::RGBA8;
 
-            if (nrComponents == 1) { format = TextureFormat::Red; iFormat = InternalFormat::R8; }
-            else if (nrComponents == 3) { format = TextureFormat::RGB; iFormat = InternalFormat::RGB8; }
-            else if (nrComponents == 4) { format = TextureFormat::RGBA; iFormat = InternalFormat::RGBA8; }
+            if (nrComponents == 1)
+            {
+                format = TextureFormat::Red;
+                iFormat = InternalFormat::R8;
+            }
+            else if (nrComponents == 3)
+            {
+                format = TextureFormat::RGB;
+                iFormat = InternalFormat::RGB8;
+            }
+            else if (nrComponents == 4)
+            {
+                format = TextureFormat::RGBA;
+                iFormat = InternalFormat::RGBA8;
+            }
 
             m_LowLevelManager.BindTexture(TextureType::Texture2D, textureID);
-            m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format, DataType::UnsignedByte, data);
+            m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format,
+                                         DataType::UnsignedByte, data);
             m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
 
+            m_LowLevelManager.TexParameteri(
+                TextureType::Texture2D, TextureParameter::WrapS,
+                static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
+            m_LowLevelManager.TexParameteri(
+                TextureType::Texture2D, TextureParameter::WrapT,
+                static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
+            m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
+                                            static_cast<int>(TextureFilter::LinearMipmapLinear));
+            m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
+                                            static_cast<int>(TextureFilter::Linear));
 
-            m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
-            m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
-            m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
-            m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
-
-            if (m_MaxAnisotropy > 1.0f) {
-                m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy, m_MaxAnisotropy);
+            if (m_MaxAnisotropy > 1.0f)
+            {
+                m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy,
+                                                m_MaxAnisotropy);
             }
 
             auto tex = std::make_shared<Texture>();
@@ -133,8 +165,10 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             tex->nrComponents = nrComponents;
             tex->type = "texture_diffuse";
 
-            if (keepCpuData) tex->pixelData = data;
-            else stbi_image_free(data);
+            if (keepCpuData)
+                tex->pixelData = data;
+            else
+                stbi_image_free(data);
 
             m_Cache.Add(name, tex);
 
@@ -148,7 +182,9 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             LOGGER_INFO("TextureManager") << "Loaded texture: " << name;
             EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
             return tex;
-        } else {
+        }
+        else
+        {
             LOGGER_ERROR("TextureManager") << "Failed to load texture: " << path << ". Returning error texture.";
             EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
             return m_ErrorTexture;
@@ -156,19 +192,25 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
     }
 }
 
-std::shared_ptr<Texture> TextureManager::Get(const std::string& name) {
+std::shared_ptr<Texture> TextureManager::Get(const std::string& name)
+{
     return m_Cache.Get(name);
 }
 
-void TextureManager::Unload(const std::string& name) {
+void TextureManager::Unload(const std::string& name)
+{
     std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
-    if (auto tex = m_Cache.Get(name)) {
+    if (auto tex = m_Cache.Get(name))
+    {
         auto pathIt = m_NameToPathMap.find(name);
-        if (pathIt != m_NameToPathMap.end()) {
+        if (pathIt != m_NameToPathMap.end())
+        {
             std::string fullPath = pathIt->second;
             m_PathReferenceCounts[fullPath]--;
-            if (m_PathReferenceCounts[fullPath] <= 0) {
-                if (tex->id != 0) {
+            if (m_PathReferenceCounts[fullPath] <= 0)
+            {
+                if (tex->id != 0)
+                {
                     m_LowLevelManager.DeleteTextures(1, &tex->id);
                 }
                 m_PathToTextureMap.erase(fullPath);
@@ -176,8 +218,11 @@ void TextureManager::Unload(const std::string& name) {
                 LOGGER_INFO("TextureManager") << "Fully unloaded physical texture from GPU: " << fullPath;
             }
             m_NameToPathMap.erase(pathIt);
-        } else {
-            if (tex->id != 0) {
+        }
+        else
+        {
+            if (tex->id != 0)
+            {
                 m_LowLevelManager.DeleteTextures(1, &tex->id);
             }
         }
@@ -186,63 +231,96 @@ void TextureManager::Unload(const std::string& name) {
     }
 }
 
-void TextureManager::Update(float dt) {
+void TextureManager::Update(float dt)
+{
     std::lock_guard<std::mutex> lock(m_AsyncMutex);
     auto it = m_AsyncLoads.begin();
-    while (it != m_AsyncLoads.end()) {
-        if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+    while (it != m_AsyncLoads.end())
+    {
+        if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+        {
             TextureData data = it->get();
-            if (data.data) {
+            if (data.data)
+            {
                 unsigned int textureID = m_LowLevelManager.GenTexture();
 
                 TextureFormat format = TextureFormat::RGBA;
                 InternalFormat iFormat = InternalFormat::RGBA8;
-                if (data.nrComponents == 1) { format = TextureFormat::Red; iFormat = InternalFormat::R8; }
-                else if (data.nrComponents == 3) { format = TextureFormat::RGB; iFormat = InternalFormat::RGB8; }
-                else if (data.nrComponents == 4) { format = TextureFormat::RGBA; iFormat = InternalFormat::RGBA8; }
-
-                m_LowLevelManager.BindTexture(TextureType::Texture2D, textureID);
-                m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, data.width, data.height, 0, format, DataType::UnsignedByte, data.data);
-                m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
-                m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
-                m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
-
-                if (m_MaxAnisotropy > 1.0f) {
-                    m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy, m_MaxAnisotropy);
+                if (data.nrComponents == 1)
+                {
+                    format = TextureFormat::Red;
+                    iFormat = InternalFormat::R8;
+                }
+                else if (data.nrComponents == 3)
+                {
+                    format = TextureFormat::RGB;
+                    iFormat = InternalFormat::RGB8;
+                }
+                else if (data.nrComponents == 4)
+                {
+                    format = TextureFormat::RGBA;
+                    iFormat = InternalFormat::RGBA8;
                 }
 
-                if (auto tex = m_Cache.Get(data.name)) {
+                m_LowLevelManager.BindTexture(TextureType::Texture2D, textureID);
+                m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, data.width, data.height, 0, format,
+                                             DataType::UnsignedByte, data.data);
+                m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
+                m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
+                                                static_cast<int>(TextureFilter::LinearMipmapLinear));
+                m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
+                                                static_cast<int>(TextureFilter::Linear));
+
+                if (m_MaxAnisotropy > 1.0f)
+                {
+                    m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy,
+                                                    m_MaxAnisotropy);
+                }
+
+                if (auto tex = m_Cache.Get(data.name))
+                {
                     tex->id = textureID;
                     tex->width = data.width;
                     tex->height = data.height;
                     tex->nrComponents = data.nrComponents;
-                    if (data.keepCpuData) tex->pixelData = data.data;
-                    else stbi_image_free(data.data);
+                    if (data.keepCpuData)
+                        tex->pixelData = data.data;
+                    else
+                        stbi_image_free(data.data);
                 }
                 LOGGER_INFO("TextureManager") << "Async texture loaded: " << data.name;
                 EventManager::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", true});
-            } else {
-                if (auto tex = m_Cache.Get(data.name)) {
-                    if (m_ErrorTexture) {
+            }
+            else
+            {
+                if (auto tex = m_Cache.Get(data.name))
+                {
+                    if (m_ErrorTexture)
+                    {
                         tex->id = m_ErrorTexture->id;
                         tex->width = m_ErrorTexture->width;
                         tex->height = m_ErrorTexture->height;
                         tex->nrComponents = m_ErrorTexture->nrComponents;
                     }
                 }
-                LOGGER_ERROR("TextureManager") << "Failed async texture: " << data.name << ". Falling back to error texture.";
+                LOGGER_ERROR("TextureManager")
+                    << "Failed async texture: " << data.name << ". Falling back to error texture.";
                 EventManager::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", false});
             }
             it = m_AsyncLoads.erase(it);
-        } else {
+        }
+        else
+        {
             ++it;
         }
     }
 }
 
-void TextureManager::Clear() {
+void TextureManager::Clear()
+{
     auto names = m_Cache.GetAllNames();
-    for (const auto& name : names) {
+    for (const auto& name : names)
+    {
         Unload(name);
     }
     m_Cache.Clear();

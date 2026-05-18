@@ -1,6 +1,6 @@
 #include <render/strategy/opengl/opengl_render_state_manager.h>
-#include <glad/glad.h>
 #include <render/strategy/opengl/opengl_translator.h>
+#include <glad/glad.h>
 
 void OpenGLRenderStateManager::Enable(ServerCapability cap)
 {
@@ -110,7 +110,10 @@ void OpenGLRenderStateManager::SetViewport(int x, int y, int width, int height)
 {
     if (m_ViewportX != x || m_ViewportY != y || m_ViewportW != width || m_ViewportH != height)
     {
-        m_ViewportX = x; m_ViewportY = y; m_ViewportW = width; m_ViewportH = height;
+        m_ViewportX = x;
+        m_ViewportY = y;
+        m_ViewportW = width;
+        m_ViewportH = height;
         glViewport(x, y, width, height);
     }
 }
@@ -119,7 +122,10 @@ void OpenGLRenderStateManager::SetScissor(int x, int y, int width, int height)
 {
     if (m_ScissorX != x || m_ScissorY != y || m_ScissorW != width || m_ScissorH != height)
     {
-        m_ScissorX = x; m_ScissorY = y; m_ScissorW = width; m_ScissorH = height;
+        m_ScissorX = x;
+        m_ScissorY = y;
+        m_ScissorW = width;
+        m_ScissorH = height;
         glScissor(x, y, width, height);
     }
 }
@@ -161,13 +167,15 @@ void OpenGLRenderStateManager::SetColorMask(bool r, bool g, bool b, bool a)
 {
     if (m_ColorMaskR != r || m_ColorMaskG != g || m_ColorMaskB != b || m_ColorMaskA != a)
     {
-        m_ColorMaskR = r; m_ColorMaskG = g; m_ColorMaskB = b; m_ColorMaskA = a;
-        glColorMask(r ? GL_TRUE : GL_FALSE, g ? GL_TRUE : GL_FALSE,
-                    b ? GL_TRUE : GL_FALSE, a ? GL_TRUE : GL_FALSE);
+        m_ColorMaskR = r;
+        m_ColorMaskG = g;
+        m_ColorMaskB = b;
+        m_ColorMaskA = a;
+        glColorMask(r ? GL_TRUE : GL_FALSE, g ? GL_TRUE : GL_FALSE, b ? GL_TRUE : GL_FALSE, a ? GL_TRUE : GL_FALSE);
     }
 }
 
-const char *OpenGLRenderStateManager::GetBackendName() const
+const char* OpenGLRenderStateManager::GetBackendName() const
 {
     return "OpenGL";
 }

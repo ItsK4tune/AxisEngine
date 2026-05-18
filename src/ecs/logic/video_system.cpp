@@ -1,15 +1,15 @@
 #include <ecs/logic/video_system.h>
-#include <ecs/logic/system_factory.h>
-#include <ecs/unit/media_components.h>
-#include <ecs/unit/ui_components.h>
-#include <ecs/unit/render_components.h>
-#include <ecs/unit/core_components.h>
-#include <iostream>
-#include <string>
 #include <core/logic/logger.h>
-#include <memory>
 #include <core/logic/service_locator.h>
+#include <ecs/logic/system_factory.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/media_components.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/ui_components.h>
 #include <resource/logic/resource_manager.h>
+#include <iostream>
+#include <memory>
+#include <string>
 
 REGISTER_SYSTEM(VideoSystem)
 
@@ -19,12 +19,13 @@ void VideoSystem::Initialize()
     sl.Register<VideoSystem>(this);
 
     auto* scene = sl.Resolve<Scene>();
-    if (scene) {
+    if (scene)
+    {
         scene->registry.on_destroy<VideoPlayerComponent>().connect<&VideoSystem::OnVideoPlayerDestroyed>(*this);
     }
 }
 
-void VideoSystem::Update(Scene &scene, float dt)
+void VideoSystem::Update(Scene& scene, float dt)
 {
     if (!m_Enabled)
         return;
@@ -34,7 +35,7 @@ void VideoSystem::Update(Scene &scene, float dt)
 
     for (auto entity : view)
     {
-        auto &video = view.get<VideoPlayerComponent>(entity);
+        auto& video = view.get<VideoPlayerComponent>(entity);
         if (!video.isLoaded)
         {
             if (!video.decoder)
@@ -51,11 +52,12 @@ void VideoSystem::Update(Scene &scene, float dt)
 
                 if (scene.registry.all_of<UITransformComponent>(entity))
                 {
-                    auto &ui = scene.registry.get<UITransformComponent>(entity);
+                    auto& ui = scene.registry.get<UITransformComponent>(entity);
                     if (ui.size.x > 0 && ui.size.y > 0)
                     {
                         video.decoder->SetOutputSize((int)ui.size.x, (int)ui.size.y);
-                        LOGGER_INFO("VideoSystem") << "Auto-scaling video to UI size: " << ui.size.x << "x" << ui.size.y;
+                        LOGGER_INFO("VideoSystem")
+                            << "Auto-scaling video to UI size: " << ui.size.x << "x" << ui.size.y;
                     }
                 }
 
@@ -87,7 +89,7 @@ void VideoSystem::Update(Scene &scene, float dt)
 
             video.decoder->Update(dt);
 
-            if (auto *uiRenderer = scene.registry.try_get<UIRendererComponent>(entity))
+            if (auto* uiRenderer = scene.registry.try_get<UIRendererComponent>(entity))
             {
                 if (!uiRenderer->model)
                 {
@@ -106,11 +108,11 @@ void VideoSystem::Update(Scene &scene, float dt)
                 }
             }
 
-            if (auto *renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
             {
                 if (renderer->model)
                 {
-                    for (auto &mesh : renderer->model->meshes)
+                    for (auto& mesh : renderer->model->meshes)
                     {
                         Texture videoTex;
                         videoTex.id = video.decoder->GetTextureID();
@@ -129,7 +131,8 @@ void VideoSystem::Update(Scene &scene, float dt)
 void VideoSystem::OnVideoPlayerDestroyed(entt::registry& registry, entt::entity entity)
 {
     auto& video = registry.get<VideoPlayerComponent>(entity);
-    if (video.decoder) {
+    if (video.decoder)
+    {
         video.decoder->Stop();
         video.decoder.reset();
     }
@@ -142,9 +145,6 @@ std::vector<entt::id_type> VideoSystem::GetReadComponents() const
 
 std::vector<entt::id_type> VideoSystem::GetWriteComponents() const
 {
-    return {
-        entt::type_id<VideoPlayerComponent>().hash(),
-        entt::type_id<UIRendererComponent>().hash(),
-        entt::type_id<MeshRendererComponent>().hash()
-    };
+    return {entt::type_id<VideoPlayerComponent>().hash(), entt::type_id<UIRendererComponent>().hash(),
+            entt::type_id<MeshRendererComponent>().hash()};
 }

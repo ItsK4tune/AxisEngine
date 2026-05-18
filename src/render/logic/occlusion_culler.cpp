@@ -1,43 +1,48 @@
-#include <ecs/unit/core_components.h>
 #include <render/logic/occlusion_culler.h>
-#include <render/interface/i_graphics_context.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/render_components.h>
 #include <render/interface/i_buffer_manager.h>
+#include <render/interface/i_draw_context.h>
+#include <render/interface/i_graphics_context.h>
 #include <render/interface/i_query_manager.h>
 #include <render/interface/i_render_state_manager.h>
-#include <render/interface/i_draw_context.h>
 #include <resource/unit/shader.h>
-#include <ecs/unit/render_components.h>
+
 void OcclusionCuller::Initialize(IGraphicsContext* context, std::shared_ptr<Shader> shader)
 {
     m_Context = context;
     m_Shader = shader;
-    if (m_Context) InitOcclusionCube();
+    if (m_Context)
+        InitOcclusionCube();
 }
 
-void OcclusionCuller::Shutdown() {
-    if (!m_Context) return;
+void OcclusionCuller::Shutdown()
+{
+    if (!m_Context)
+        return;
     auto& bm = m_Context->GetBufferManager();
     auto& qm = m_Context->GetQueryManager();
 
-    if (m_CubeVAO != 0) bm.DeleteVertexArray(m_CubeVAO);
-    if (m_CubeVBO != 0) bm.DeleteBuffer(m_CubeVBO);
-    if (m_CubeEBO != 0) bm.DeleteBuffer(m_CubeEBO);
+    if (m_CubeVAO != 0)
+        bm.DeleteVertexArray(m_CubeVAO);
+    if (m_CubeVBO != 0)
+        bm.DeleteBuffer(m_CubeVBO);
+    if (m_CubeEBO != 0)
+        bm.DeleteBuffer(m_CubeEBO);
 
-    for (uint32_t queryId : m_OcclusionQueries) {
+    for (uint32_t queryId : m_OcclusionQueries)
+    {
         qm.DeleteQuery(queryId);
     }
     m_OcclusionQueries.clear();
 }
 
-void OcclusionCuller::InitOcclusionCube() {
-    float vertices[] = {
-        -1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f,  1.0f, -1.0f, -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f
-    };
-    unsigned int indices[] = {
-        0, 1, 2, 2, 3, 0,  4, 5, 6, 6, 7, 4,  0, 4, 7, 7, 3, 0,
-        1, 5, 6, 6, 2, 1,  0, 1, 5, 5, 4, 0,  3, 2, 6, 6, 7, 3
-    };
+void OcclusionCuller::InitOcclusionCube()
+{
+    float vertices[] = {-1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
+                        -1.0f, -1.0f, 1.0f,  1.0f, -1.0f, 1.0f,  1.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 1.0f};
+    unsigned int indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 0, 4, 7, 7, 3, 0,
+                              1, 5, 6, 6, 2, 1, 0, 1, 5, 5, 4, 0, 3, 2, 6, 6, 7, 3};
 
     auto& bm = m_Context->GetBufferManager();
     m_CubeVAO = bm.GenVertexArray();
@@ -54,15 +59,20 @@ void OcclusionCuller::InitOcclusionCube() {
     bm.BindVertexArray(0);
 }
 
-void OcclusionCuller::UpdateResults(Scene& scene) {
-    if (!m_Context) return;
+void OcclusionCuller::UpdateResults(Scene& scene)
+{
+    if (!m_Context)
+        return;
     auto& qm = m_Context->GetQueryManager();
     auto view = scene.registry.view<OcclusionComponent>();
 
-    for (auto entity : view) {
+    for (auto entity : view)
+    {
         auto& occ = view.get<OcclusionComponent>(entity);
-        if (occ.queryPending && occ.lastQueryId != 0) {
-            if (qm.IsResultAvailable(occ.lastQueryId)) {
+        if (occ.queryPending && occ.lastQueryId != 0)
+        {
+            if (qm.IsResultAvailable(occ.lastQueryId))
+            {
                 uint32_t samples = qm.GetQueryResult(occ.lastQueryId);
                 occ.isVisible = (samples > 0);
                 occ.queryPending = false;
@@ -71,8 +81,10 @@ void OcclusionCuller::UpdateResults(Scene& scene) {
     }
 }
 
-void OcclusionCuller::RenderQueries(Scene& scene, const glm::mat4& proj, const glm::mat4& view, float alpha) {
-    if (!m_Shader || m_CubeVAO == 0 || !m_Context) return;
+void OcclusionCuller::RenderQueries(Scene& scene, const glm::mat4& proj, const glm::mat4& view, float alpha)
+{
+    if (!m_Shader || m_CubeVAO == 0 || !m_Context)
+        return;
 
     auto& rsm = m_Context->GetRenderStateManager();
     auto& qm = m_Context->GetQueryManager();
@@ -89,35 +101,38 @@ void OcclusionCuller::RenderQueries(Scene& scene, const glm::mat4& proj, const g
 
     auto occView = scene.registry.view<WorldTransformComponent, MeshRendererComponent, OcclusionComponent>();
 
-    for (auto entity : occView) {
+    for (auto entity : occView)
+    {
         auto& world = occView.get<WorldTransformComponent>(entity);
         auto& renderer = occView.get<MeshRendererComponent>(entity);
         auto& occ = occView.get<OcclusionComponent>(entity);
 
-        if (!renderer.model || occ.queryPending) continue;
+        if (!renderer.model || occ.queryPending)
+            continue;
 
-        if (occ.lastQueryId == 0) {
+        if (occ.lastQueryId == 0)
+        {
             occ.lastQueryId = qm.GenQuery();
             AddQuery(occ.lastQueryId);
         }
 
         glm::mat4 modelMatrix = world.GetInterpolated(alpha);
-        
+
         AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
-        
+
         glm::vec3 center = worldAABB.GetCenter();
         glm::vec3 size = worldAABB.GetSize();
-        
+
         glm::mat4 cubeModel(1.0f);
         cubeModel = glm::translate(cubeModel, center);
         cubeModel = glm::scale(cubeModel, size * 0.5f);
-        
+
         m_Shader->setMat4("model", cubeModel);
 
         qm.BeginQuery(QueryType::SamplesPassed, occ.lastQueryId);
         m_Context->GetDrawContext().DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, 0);
         qm.EndQuery(QueryType::SamplesPassed);
-        
+
         occ.queryPending = true;
     }
 

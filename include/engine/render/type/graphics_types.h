@@ -1,11 +1,9 @@
 #pragma once
 
+#include <glm/glm.hpp>
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <glm/glm.hpp>
-
-
 
 class IGraphicsContext;
 class IBufferManager;
@@ -13,10 +11,8 @@ class ITextureManager;
 class IRenderTargetManager;
 class Bone;
 
-
-
-
-enum class Primitive {
+enum class Primitive
+{
     Points,
     Lines,
     LineLoop,
@@ -26,7 +22,8 @@ enum class Primitive {
     TriangleFan
 };
 
-enum class DataType {
+enum class DataType
+{
     Byte,
     UnsignedByte,
     Short,
@@ -37,9 +34,8 @@ enum class DataType {
     Double
 };
 
-
-
-enum class BufferType {
+enum class BufferType
+{
     ArrayBuffer,
     ElementArrayBuffer,
     UniformBuffer,
@@ -54,7 +50,8 @@ enum class BufferType {
     AtomicCounterBuffer
 };
 
-enum class BufferUsage {
+enum class BufferUsage
+{
     StreamDraw,
     StreamRead,
     StreamCopy,
@@ -66,24 +63,26 @@ enum class BufferUsage {
     DynamicCopy
 };
 
-enum class BufferBit {
+enum class BufferBit
+{
     None = 0,
     Color = 1,
     Depth = 2,
     Stencil = 4
 };
 
-inline BufferBit operator|(BufferBit a, BufferBit b) {
+inline BufferBit operator|(BufferBit a, BufferBit b)
+{
     return static_cast<BufferBit>(static_cast<int>(a) | static_cast<int>(b));
 }
 
-inline bool operator&(BufferBit a, BufferBit b) {
+inline bool operator&(BufferBit a, BufferBit b)
+{
     return (static_cast<int>(a) & static_cast<int>(b)) != 0;
 }
 
-
-
-enum class TextureType {
+enum class TextureType
+{
     Texture1D,
     Texture2D,
     TextureCubeMap,
@@ -98,7 +97,8 @@ enum class TextureType {
     CubeMapNegativeZ
 };
 
-enum class TextureFormat {
+enum class TextureFormat
+{
     Red,
     RG,
     RGB,
@@ -108,7 +108,8 @@ enum class TextureFormat {
     Red_Integer
 };
 
-enum class InternalFormat {
+enum class InternalFormat
+{
     R8,
     RGB8,
     RGBA8,
@@ -118,14 +119,16 @@ enum class InternalFormat {
     Depth24Stencil8
 };
 
-enum class TextureWrap {
+enum class TextureWrap
+{
     Repeat,
     MirroredRepeat,
     ClampToEdge,
     ClampToBorder
 };
 
-enum class TextureFilter {
+enum class TextureFilter
+{
     Nearest,
     Linear,
     NearestMipmapNearest,
@@ -134,7 +137,8 @@ enum class TextureFilter {
     LinearMipmapLinear
 };
 
-enum class TextureParameter {
+enum class TextureParameter
+{
     MinFilter,
     MagFilter,
     WrapS,
@@ -144,7 +148,8 @@ enum class TextureParameter {
     TextureMaxAnisotropy
 };
 
-enum class TextureUnit {
+enum class TextureUnit
+{
     Texture0,
     Texture1,
     Texture2,
@@ -179,16 +184,16 @@ enum class TextureUnit {
     Texture31
 };
 
-
-
-enum class CullMode {
+enum class CullMode
+{
     None,
     Front,
     Back,
     FrontAndBack
 };
 
-enum class CompareFunc {
+enum class CompareFunc
+{
     Never,
     Less,
     Equal,
@@ -199,7 +204,8 @@ enum class CompareFunc {
     Always
 };
 
-enum class StencilOp {
+enum class StencilOp
+{
     Keep,
     Zero,
     Replace,
@@ -210,18 +216,21 @@ enum class StencilOp {
     Invert
 };
 
-enum class PolygonMode {
+enum class PolygonMode
+{
     Point,
     Line,
     Fill
 };
 
-enum class PixelStoreParam {
+enum class PixelStoreParam
+{
     UnpackAlignment,
     PackAlignment
 };
 
-enum class ServerCapability {
+enum class ServerCapability
+{
     Blend,
     CullFace,
     DepthTest,
@@ -230,7 +239,8 @@ enum class ServerCapability {
     Multisample
 };
 
-enum class BlendFactor {
+enum class BlendFactor
+{
     Zero,
     One,
     SrcColor,
@@ -247,12 +257,14 @@ enum class BlendFactor {
     OneMinusConstantAlpha
 };
 
-enum class FrontFace {
+enum class FrontFace
+{
     CW,
     CCW
 };
 
-enum class BlendEquation {
+enum class BlendEquation
+{
     Add,
     Subtract,
     ReverseSubtract,
@@ -260,22 +272,23 @@ enum class BlendEquation {
     Max
 };
 
-
-
-enum class ShaderType {
+enum class ShaderType
+{
     Vertex,
     Fragment,
     Geometry,
     Compute
 };
 
-enum class FramebufferTarget {
+enum class FramebufferTarget
+{
     Framebuffer,
     ReadFramebuffer,
     DrawFramebuffer
 };
 
-enum class FramebufferAttachment {
+enum class FramebufferAttachment
+{
     None,
     Color0,
     Color1,
@@ -290,7 +303,8 @@ enum class FramebufferAttachment {
     DepthStencil
 };
 
-enum class MemoryBarrierBit {
+enum class MemoryBarrierBit
+{
     None = 0,
     ShaderImageAccess = 1,
     VertexAttribArray = 2,
@@ -302,11 +316,13 @@ enum class MemoryBarrierBit {
     All = 127
 };
 
-inline MemoryBarrierBit operator|(MemoryBarrierBit a, MemoryBarrierBit b) {
+inline MemoryBarrierBit operator|(MemoryBarrierBit a, MemoryBarrierBit b)
+{
     return static_cast<MemoryBarrierBit>(static_cast<int>(a) | static_cast<int>(b));
 }
 
-enum class FramebufferStatus {
+enum class FramebufferStatus
+{
     Complete,
     Undefined,
     IncompleteAttachment,
@@ -319,9 +335,8 @@ enum class FramebufferStatus {
     Unknown
 };
 
-
-
-enum class QueryType {
+enum class QueryType
+{
     SamplesPassed,
     AnySamplesPassed,
     AnySamplesPassedConservative,
@@ -331,20 +346,37 @@ enum class QueryType {
     TransformFeedbackPrimitivesWritten
 };
 
-
-
-struct GpuHandle {
+struct GpuHandle
+{
     uint32_t id = 0;
     GpuHandle() = default;
-    GpuHandle(uint32_t handleId) : id(handleId) {}
-    operator uint32_t() const { return id; }
-    bool IsValid() const { return id != 0; }
-    void Reset() { id = 0; }
-    bool operator==(const GpuHandle& other) const { return id == other.id; }
-    bool operator!=(const GpuHandle& other) const { return id != other.id; }
+    GpuHandle(uint32_t handleId) : id(handleId)
+    {
+    }
+    operator uint32_t() const
+    {
+        return id;
+    }
+    bool IsValid() const
+    {
+        return id != 0;
+    }
+    void Reset()
+    {
+        id = 0;
+    }
+    bool operator==(const GpuHandle& other) const
+    {
+        return id == other.id;
+    }
+    bool operator!=(const GpuHandle& other) const
+    {
+        return id != other.id;
+    }
 };
 
-struct GPUCameraData {
+struct GPUCameraData
+{
     float projection[16];
     float view[16];
     float viewPos[4];
@@ -354,7 +386,8 @@ struct GPUCameraData {
     float invStableProjection[16];
 };
 
-struct GPUGlobalLightData {
+struct GPUGlobalLightData
+{
     float lightSpaceMatricesDir[16 * 16];
     float lightSpaceMatricesSpot[16 * 16];
     int numDirLights;
@@ -367,37 +400,38 @@ struct GPUGlobalLightData {
     float pad1;
 };
 
-
-
-struct ShaderPorts {
+struct ShaderPorts
+{
     float data[8] = {0.0f};
 };
 
-struct GPUGlobalData {
+struct GPUGlobalData
+{
     float time;
     float deltaTime;
     float resolution[2];
     float pad[12];
 };
 
-
-
 constexpr int MAX_BONE_INFLUENCE = 4;
 
-struct StaticVertex {
+struct StaticVertex
+{
     glm::vec3 Position;
     glm::vec3 Normal;
     glm::vec2 TexCoords;
 };
 
-struct SkinnedVertex {
+struct SkinnedVertex
+{
     glm::vec3 Position;
     glm::vec3 Normal;
     glm::vec2 TexCoords;
     int m_BoneIDs[MAX_BONE_INFLUENCE];
     float m_Weights[MAX_BONE_INFLUENCE];
 };
-struct Texture {
+struct Texture
+{
     unsigned int id = 0;
     std::string type;
     std::string path;
@@ -406,11 +440,10 @@ struct Texture {
     int width = 0, height = 0, nrComponents = 0;
 };
 
-
-
 #include <resource/unit/bone_info.h>
 
-struct BoneNodeData {
+struct BoneNodeData
+{
     glm::mat4 transformation;
     std::string name;
     int childrenCount;
@@ -419,9 +452,8 @@ struct BoneNodeData {
     Bone* cachedBone = nullptr;
 };
 
-
-
-struct GPUDirLight {
+struct GPUDirLight
+{
     glm::vec3 direction;
     float shadowIndex;
     glm::vec3 color;
@@ -434,7 +466,8 @@ struct GPUDirLight {
     float pad3;
 };
 
-struct GPUPointLight {
+struct GPUPointLight
+{
     glm::vec3 position;
     float shadowIndex;
     glm::vec3 color;
@@ -451,7 +484,8 @@ struct GPUPointLight {
     float pad3;
 };
 
-struct GPUSpotLight {
+struct GPUSpotLight
+{
     glm::vec3 position;
     float pad0;
     glm::vec3 direction;
@@ -474,103 +508,136 @@ struct GPUSpotLight {
     float pad7;
 };
 
-
-
-class GPUFramebuffer {
+class GPUFramebuffer
+{
 public:
-    GPUFramebuffer(IGraphicsContext& context, uint32_t handleId)
-        : m_Context(context) { m_Handle.id = handleId; }
+    GPUFramebuffer(IGraphicsContext& context, uint32_t handleId) : m_Context(context)
+    {
+        m_Handle.id = handleId;
+    }
 
     ~GPUFramebuffer();
 
     GPUFramebuffer(const GPUFramebuffer&) = delete;
     GPUFramebuffer& operator=(const GPUFramebuffer&) = delete;
 
-    GPUFramebuffer(GPUFramebuffer&& other) noexcept
-        : m_Context(other.m_Context), m_Handle(other.m_Handle) {
+    GPUFramebuffer(GPUFramebuffer&& other) noexcept : m_Context(other.m_Context), m_Handle(other.m_Handle)
+    {
         other.m_Handle.Reset();
     }
     GPUFramebuffer& operator=(GPUFramebuffer&& other) noexcept;
 
-    uint32_t Get() const { return m_Handle.id; }
-    void Release() { m_Handle.Reset(); }
+    uint32_t Get() const
+    {
+        return m_Handle.id;
+    }
+    void Release()
+    {
+        m_Handle.Reset();
+    }
 
 private:
     IGraphicsContext& m_Context;
     GpuHandle m_Handle;
 };
 
-class GPUSSBO {
+class GPUSSBO
+{
 public:
-    GPUSSBO(IGraphicsContext& context, uint32_t handleId)
-        : m_Context(context) { m_Handle.id = handleId; }
+    GPUSSBO(IGraphicsContext& context, uint32_t handleId) : m_Context(context)
+    {
+        m_Handle.id = handleId;
+    }
 
     ~GPUSSBO();
 
     GPUSSBO(const GPUSSBO&) = delete;
     GPUSSBO& operator=(const GPUSSBO&) = delete;
 
-    GPUSSBO(GPUSSBO&& other) noexcept
-        : m_Context(other.m_Context), m_Handle(other.m_Handle) {
+    GPUSSBO(GPUSSBO&& other) noexcept : m_Context(other.m_Context), m_Handle(other.m_Handle)
+    {
         other.m_Handle.Reset();
     }
     GPUSSBO& operator=(GPUSSBO&& other) noexcept;
 
-    uint32_t Get() const { return m_Handle.id; }
-    void Release() { m_Handle.Reset(); }
+    uint32_t Get() const
+    {
+        return m_Handle.id;
+    }
+    void Release()
+    {
+        m_Handle.Reset();
+    }
 
 private:
     IGraphicsContext& m_Context;
     GpuHandle m_Handle;
 };
 
-class GPUTexture {
+class GPUTexture
+{
 public:
-    GPUTexture(IGraphicsContext& context, uint32_t handleId)
-        : m_Context(context) { m_Handle.id = handleId; }
+    GPUTexture(IGraphicsContext& context, uint32_t handleId) : m_Context(context)
+    {
+        m_Handle.id = handleId;
+    }
 
     ~GPUTexture();
 
     GPUTexture(const GPUTexture&) = delete;
     GPUTexture& operator=(const GPUTexture&) = delete;
 
-    GPUTexture(GPUTexture&& other) noexcept
-        : m_Context(other.m_Context), m_Handle(other.m_Handle) {
+    GPUTexture(GPUTexture&& other) noexcept : m_Context(other.m_Context), m_Handle(other.m_Handle)
+    {
         other.m_Handle.Reset();
     }
     GPUTexture& operator=(GPUTexture&& other) noexcept;
 
-    uint32_t Get() const { return m_Handle.id; }
-    void Release() { m_Handle.Reset(); }
+    uint32_t Get() const
+    {
+        return m_Handle.id;
+    }
+    void Release()
+    {
+        m_Handle.Reset();
+    }
 
 private:
     IGraphicsContext& m_Context;
     GpuHandle m_Handle;
 };
 
-class GPUUBO {
+class GPUUBO
+{
 public:
-    GPUUBO(IGraphicsContext& context, uint32_t handleId)
-        : m_Context(context) { m_Handle.id = handleId; }
+    GPUUBO(IGraphicsContext& context, uint32_t handleId) : m_Context(context)
+    {
+        m_Handle.id = handleId;
+    }
 
     ~GPUUBO();
 
     GPUUBO(const GPUUBO&) = delete;
     GPUUBO& operator=(const GPUUBO&) = delete;
 
-    GPUUBO(GPUUBO&& other) noexcept
-        : m_Context(other.m_Context), m_Handle(other.m_Handle) {
+    GPUUBO(GPUUBO&& other) noexcept : m_Context(other.m_Context), m_Handle(other.m_Handle)
+    {
         other.m_Handle.Reset();
     }
     GPUUBO& operator=(GPUUBO&& other) noexcept;
 
-    uint32_t Get() const { return m_Handle.id; }
-    void Release() { m_Handle.Reset(); }
+    uint32_t Get() const
+    {
+        return m_Handle.id;
+    }
+    void Release()
+    {
+        m_Handle.Reset();
+    }
 
 private:
     IGraphicsContext& m_Context;
     GpuHandle m_Handle;
 };
-
 
 constexpr int BLOOM_MIP_COUNT = 6;

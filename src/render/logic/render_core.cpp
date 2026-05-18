@@ -1,12 +1,13 @@
 #include <render/logic/render_core.h>
-#include <render/interface/i_texture_manager.h>
-#include <render/interface/i_buffer_manager.h>
 #include <core/logic/logger.h>
+#include <render/interface/i_buffer_manager.h>
+#include <render/interface/i_texture_manager.h>
 
 void RenderCore::Initialize(IGraphicsContext* context, ResourceManager* resourceManager)
 {
     m_Context = context;
-    if (!m_Context) {
+    if (!m_Context)
+    {
         LOGGER_INFO("RenderCore") << "RenderCore features skipped (Headless)";
         return;
     }
@@ -15,22 +16,25 @@ void RenderCore::Initialize(IGraphicsContext* context, ResourceManager* resource
     // 1. Textures
     m_WhiteTextureID = tm.GenTexture();
     tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
-    unsigned char white[] = { 255, 255, 255, 255 };
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, white);
+    unsigned char white[] = {255, 255, 255, 255};
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
+                  DataType::UnsignedByte, white);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 
     m_BlackTextureID = tm.GenTexture();
     tm.BindTexture(TextureType::Texture2D, m_BlackTextureID);
-    unsigned char black[] = { 0, 0, 0, 255 };
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, black);
+    unsigned char black[] = {0, 0, 0, 255};
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
+                  DataType::UnsignedByte, black);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 
     m_FlatNormalTextureID = tm.GenTexture();
     tm.BindTexture(TextureType::Texture2D, m_FlatNormalTextureID);
-    unsigned char flatNormal[] = { 128, 128, 255, 255 };
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, flatNormal);
+    unsigned char flatNormal[] = {128, 128, 255, 255};
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
+                  DataType::UnsignedByte, flatNormal);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Linear);
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Linear);
 
@@ -46,16 +50,23 @@ void RenderCore::Initialize(IGraphicsContext* context, ResourceManager* resource
 
 void RenderCore::Shutdown()
 {
-    if (!m_Context) return;
+    if (!m_Context)
+        return;
     auto& bm = m_Context->GetBufferManager();
     auto& tm = m_Context->GetTextureManager();
 
-    if (m_QuadVAO) bm.DeleteVertexArray(m_QuadVAO);
-    if (m_QuadVBO) bm.DeleteBuffer(m_QuadVBO);
-    if (m_QuadEBO) bm.DeleteBuffer(m_QuadEBO);
-    if (m_CubeVAO) bm.DeleteVertexArray(m_CubeVAO);
-    if (m_CubeVBO) bm.DeleteBuffer(m_CubeVBO);
-    if (m_CubeEBO) bm.DeleteBuffer(m_CubeEBO);
+    if (m_QuadVAO)
+        bm.DeleteVertexArray(m_QuadVAO);
+    if (m_QuadVBO)
+        bm.DeleteBuffer(m_QuadVBO);
+    if (m_QuadEBO)
+        bm.DeleteBuffer(m_QuadEBO);
+    if (m_CubeVAO)
+        bm.DeleteVertexArray(m_CubeVAO);
+    if (m_CubeVBO)
+        bm.DeleteBuffer(m_CubeVBO);
+    if (m_CubeEBO)
+        bm.DeleteBuffer(m_CubeEBO);
 
     tm.DeleteTexture(m_WhiteTextureID);
     tm.DeleteTexture(m_BlackTextureID);
@@ -65,10 +76,8 @@ void RenderCore::Shutdown()
 void RenderCore::InitQuad()
 {
     float quadVertices[] = {
-        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-         1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+        1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f,  -1.0f, 0.0f, 1.0f, 0.0f,
     };
     auto& bm = m_Context->GetBufferManager();
     m_QuadVAO = bm.CreateVertexArray();
@@ -77,13 +86,13 @@ void RenderCore::InitQuad()
     bm.BindVertexArray(m_QuadVAO);
     bm.BindBuffer(BufferType::ArrayBuffer, m_QuadVBO);
     bm.BufferData(BufferType::ArrayBuffer, sizeof(quadVertices), &quadVertices, BufferUsage::StaticDraw);
-    
+
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, DataType::Float, false, 5 * sizeof(float), (void*)0);
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
-    unsigned int indices[] = { 0, 1, 3, 0, 3, 2 };
+    unsigned int indices[] = {0, 1, 3, 0, 3, 2};
     m_QuadEBO = bm.CreateBuffer();
     bm.BindBuffer(BufferType::ElementArrayBuffer, m_QuadEBO);
     bm.BufferData(BufferType::ElementArrayBuffer, sizeof(indices), indices, BufferUsage::StaticDraw);
@@ -91,28 +100,21 @@ void RenderCore::InitQuad()
 
 void RenderCore::InitCube()
 {
-    float vertices[] = {
-        -0.5f, -0.5f,  0.5f,  0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f, -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,  0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f, -0.5f,  0.5f, -0.5f
-    };
-    unsigned int indices[] = {
-        0, 1, 2, 2, 3, 0, 1, 5, 6, 6, 2, 1,
-        7, 6, 5, 5, 4, 7, 4, 0, 3, 3, 7, 4,
-        4, 5, 1, 1, 0, 4, 3, 2, 6, 6, 7, 3
-    };
+    float vertices[] = {-0.5f, -0.5f, 0.5f,  0.5f, -0.5f, 0.5f,  0.5f, 0.5f, 0.5f,  -0.5f, 0.5f, 0.5f,
+                        -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f};
+    unsigned int indices[] = {0, 1, 2, 2, 3, 0, 1, 5, 6, 6, 2, 1, 7, 6, 5, 5, 4, 7,
+                              4, 0, 3, 3, 7, 4, 4, 5, 1, 1, 0, 4, 3, 2, 6, 6, 7, 3};
     auto& bm = m_Context->GetBufferManager();
     m_CubeVAO = bm.CreateVertexArray();
     m_CubeVBO = bm.CreateBuffer();
     m_CubeEBO = bm.CreateBuffer();
-    
+
     bm.BindVertexArray(m_CubeVAO);
     bm.BindBuffer(BufferType::ArrayBuffer, m_CubeVBO);
     bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::StaticDraw);
     bm.BindBuffer(BufferType::ElementArrayBuffer, m_CubeEBO);
     bm.BufferData(BufferType::ElementArrayBuffer, sizeof(indices), indices, BufferUsage::StaticDraw);
-    
+
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, DataType::Float, false, 3 * sizeof(float), (void*)0);
 }

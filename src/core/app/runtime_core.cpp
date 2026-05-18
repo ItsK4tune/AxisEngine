@@ -1,6 +1,6 @@
 #include <core/app/runtime_core.h>
-#include <core/logic/config_manager.h>
 #include <core/app/state_machine.h>
+#include <core/logic/config_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <ecs/logic/system_manager.h>
@@ -12,9 +12,7 @@ RuntimeCore::RuntimeCore()
 void RuntimeCore::Initialize()
 {
     auto& config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
-    
 
-    
     m_EngineLoop.Initialize();
     m_StateMachine.Initialize();
 
@@ -52,4 +50,3 @@ State* RuntimeCore::GetCurrentState()
 {
     return m_StateMachine.GetCurrentState();
 }
-

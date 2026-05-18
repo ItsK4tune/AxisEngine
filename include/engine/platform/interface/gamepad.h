@@ -1,6 +1,7 @@
 #pragma once
 
-enum class Gamepad {
+enum class Gamepad
+{
     ButtonA = 0,
     ButtonB = 1,
     ButtonX = 2,

@@ -1,8 +1,8 @@
 #pragma once
 #ifdef ENABLE_EDITOR
 #include <editor/i_editor_panel.h>
-#include <string>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 struct Scene;
@@ -11,10 +11,18 @@ class FileHierarchyPanel : public IEditorPanel
 {
 public:
     void Initialize() override;
-    void OnUpdate(float dt) override {}
+    void OnUpdate(float dt) override
+    {
+    }
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "File Hierarchy"; }
-    PanelGroup GetGroup() const override { return PanelGroup::Scene; }
+    std::string GetTitle() const override
+    {
+        return "File Hierarchy";
+    }
+    PanelGroup GetGroup() const override
+    {
+        return PanelGroup::Scene;
+    }
 
 private:
     void DrawPreview();

@@ -1,16 +1,16 @@
-#include <ecs/unit/physics_components.h>
-#include <ecs/unit/script_component.h>
 #include <physics/logic/physics_collision_dispatcher.h>
-#include <scene/logic/scene.h>
-#include <physics/interface/i_physics_world.h>
-#include <ecs/unit/core_components.h>
-#include <script/logic/scriptable.h>
-#include <script/logic/physics_scriptable.h>
-#include <core/type/event_types.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
+#include <core/type/event_types.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/unit/script_component.h>
+#include <physics/interface/i_physics_world.h>
+#include <scene/logic/scene.h>
+#include <script/logic/physics_scriptable.h>
+#include <script/logic/scriptable.h>
 
-PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene &scene, IPhysicsWorld &physics)
+PhysicsCollisionDispatcher::PhysicsCollisionDispatcher(Scene& scene, IPhysicsWorld& physics)
     : m_Scene(scene), m_Physics(physics)
 {
     LOGGER_INFO("Physics") << "PhysicsCollisionDispatcher initialized";
@@ -21,14 +21,14 @@ PhysicsCollisionDispatcher::~PhysicsCollisionDispatcher()
 }
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
 #include <script/logic/physics_scriptable.h>
+#include <glm/glm.hpp>
 #include <unordered_set>
 
 void PhysicsCollisionDispatcher::DispatchEvents()
 {
     auto currentCollisionsList = m_Physics.GetActiveCollisions();
-    
+
     std::unordered_set<CollisionPair, CollisionPairHash> currentCollisions;
     currentCollisions.reserve(currentCollisionsList.size());
 
@@ -47,14 +47,13 @@ void PhysicsCollisionDispatcher::DispatchEvents()
             bool isTrigger = info.isTrigger;
             bool isStay = m_activeCollisions.count({eA, eB}) > 0;
 
-            auto Notify = [&](entt::entity target, entt::entity other, bool trigger, bool stay)
-            {
+            auto Notify = [&](entt::entity target, entt::entity other, bool trigger, bool stay) {
                 if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
                     return;
 
                 if (m_Scene.registry.all_of<ScriptComponent>(target))
                 {
-                    auto &s = m_Scene.registry.get<ScriptComponent>(target);
+                    auto& s = m_Scene.registry.get<ScriptComponent>(target);
                     if (s.instance)
                     {
                         if (trigger)
@@ -82,11 +81,15 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 if (trigger)
                 {
-                    EventManager::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    EventManager::Instance().Publish(
+                        EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other),
+                                           stay ? CollisionEventType::Stay : CollisionEventType::Enter});
                 }
                 else
                 {
-                    EventManager::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), stay ? CollisionEventType::Stay : CollisionEventType::Enter});
+                    EventManager::Instance().Publish(
+                        EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other),
+                                             stay ? CollisionEventType::Stay : CollisionEventType::Enter});
                 }
             };
 
@@ -95,7 +98,7 @@ void PhysicsCollisionDispatcher::DispatchEvents()
         }
     }
 
-    for (const auto &pair : m_activeCollisions)
+    for (const auto& pair : m_activeCollisions)
     {
         if (currentCollisions.count(pair) == 0)
         {
@@ -119,14 +122,13 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                         isTrigger = true;
             }
 
-            auto NotifyExit = [&](entt::entity target, entt::entity other, bool trigger)
-            {
+            auto NotifyExit = [&](entt::entity target, entt::entity other, bool trigger) {
                 if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
                     return;
 
                 if (m_Scene.registry.all_of<ScriptComponent>(target))
                 {
-                    auto &s = m_Scene.registry.get<ScriptComponent>(target);
+                    auto& s = m_Scene.registry.get<ScriptComponent>(target);
                     if (s.instance)
                     {
                         if (trigger)
@@ -144,11 +146,13 @@ void PhysicsCollisionDispatcher::DispatchEvents()
 
                 if (trigger)
                 {
-                    EventManager::Instance().Publish(EntityTriggerEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
+                    EventManager::Instance().Publish(EntityTriggerEvent{
+                        static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
                 }
                 else
                 {
-                    EventManager::Instance().Publish(EntityCollisionEvent{static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
+                    EventManager::Instance().Publish(EntityCollisionEvent{
+                        static_cast<uint32_t>(target), static_cast<uint32_t>(other), CollisionEventType::Exit});
                 }
             };
 

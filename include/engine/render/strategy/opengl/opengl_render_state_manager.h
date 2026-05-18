@@ -33,7 +33,7 @@ public:
 
     void SetColorMask(bool r, bool g, bool b, bool a) override;
 
-    const char *GetBackendName() const override;
+    const char* GetBackendName() const override;
 
 private:
     std::unordered_map<ServerCapability, bool> m_Capabilities;

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <ecs/interface/i_update_system.h>
 #include <ecs/interface/i_ecs_system.h>
-
+#include <ecs/interface/i_update_system.h>
 #include <ecs/unit/core_components.h>
 #include <scene/logic/scene.h>
 

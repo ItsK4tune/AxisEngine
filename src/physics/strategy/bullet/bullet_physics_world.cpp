@@ -1,25 +1,29 @@
-#include <physics/strategy/bullet/bullet_constraint.h>
-#include <physics/strategy/bullet/bullet_debug_drawer.h>
 #include <physics/strategy/bullet/bullet_physics_world.h>
-#include <physics/strategy/bullet/bullet_character_controller.h>
-#include <BulletCollision/CollisionDispatch/btGhostObject.h>
-#include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <core/logic/logger.h>
 #include <physics/interface/i_collision_shape.h>
+#include <physics/strategy/bullet/bullet_character_controller.h>
+#include <physics/strategy/bullet/bullet_constraint.h>
+#include <physics/strategy/bullet/bullet_debug_drawer.h>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
+#include <BulletCollision/CollisionDispatch/btGhostObject.h>
+#include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
 
-
-struct IgnoreEntityRayCallback : public btCollisionWorld::ClosestRayResultCallback {
+struct IgnoreEntityRayCallback : public btCollisionWorld::ClosestRayResultCallback
+{
     entt::entity m_Ignore;
     IgnoreEntityRayCallback(const btVector3& start, const btVector3& end, entt::entity ignore)
-        : btCollisionWorld::ClosestRayResultCallback(start, end), m_Ignore(ignore) {}
+        : btCollisionWorld::ClosestRayResultCallback(start, end), m_Ignore(ignore)
+    {
+    }
 
-    virtual btScalar addSingleResult(btCollisionWorld::LocalRayResult& rayResult, bool normalInWorldSpace) override {
-        if (m_Ignore != entt::null && rayResult.m_collisionObject->getUserPointer()) {
-
+    virtual btScalar addSingleResult(btCollisionWorld::LocalRayResult& rayResult, bool normalInWorldSpace) override
+    {
+        if (m_Ignore != entt::null && rayResult.m_collisionObject->getUserPointer())
+        {
             entt::entity hitEnt = (entt::entity)((uintptr_t)rayResult.m_collisionObject->getUserPointer() - 1);
-            if (hitEnt == m_Ignore) return 1.0; 
+            if (hitEnt == m_Ignore)
+                return 1.0;
         }
         return btCollisionWorld::ClosestRayResultCallback::addSingleResult(rayResult, normalInWorldSpace);
     }
@@ -40,8 +44,8 @@ void BulletPhysicsWorld::Initialize()
     m_Dispatcher = std::make_unique<CustomCollisionDispatcher>(m_CollisionConfig.get());
     m_OverlappingPairCache = std::make_unique<btDbvtBroadphase>();
     m_Solver = std::make_unique<btSequentialImpulseConstraintSolver>();
-    m_DynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
-        m_Dispatcher.get(), m_OverlappingPairCache.get(), m_Solver.get(), m_CollisionConfig.get());
+    m_DynamicsWorld = std::make_unique<btDiscreteDynamicsWorld>(m_Dispatcher.get(), m_OverlappingPairCache.get(),
+                                                                m_Solver.get(), m_CollisionConfig.get());
 
     m_DynamicsWorld->getPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
 
@@ -106,7 +110,8 @@ void BulletPhysicsWorld::SetCCDEnabled(bool enabled, float threshold)
 
 void BulletPhysicsWorld::AddRigidBody(IRigidBody* body)
 {
-    if (!m_DynamicsWorld || !body) return;
+    if (!m_DynamicsWorld || !body)
+        return;
 
     BulletRigidBody* bBody = static_cast<BulletRigidBody*>(body);
     if (bBody->GetRaw())
@@ -117,30 +122,32 @@ void BulletPhysicsWorld::AddRigidBody(IRigidBody* body)
 
 void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
 {
-    if (!m_DynamicsWorld || !body) return;
+    if (!m_DynamicsWorld || !body)
+        return;
 
     BulletRigidBody* bBody = static_cast<BulletRigidBody*>(body);
     btRigidBody* rawBody = bBody->GetRaw();
     if (rawBody)
     {
-
         btDispatcher* dispatcher = m_DynamicsWorld->getDispatcher();
-        if (dispatcher) {
-            for (int i = dispatcher->getNumManifolds() - 1; i >= 0; i--) {
+        if (dispatcher)
+        {
+            for (int i = dispatcher->getNumManifolds() - 1; i >= 0; i--)
+            {
                 btPersistentManifold* manifold = dispatcher->getManifoldByIndexInternal(i);
-                if (manifold && (manifold->getBody0() == rawBody || manifold->getBody1() == rawBody)) {
+                if (manifold && (manifold->getBody0() == rawBody || manifold->getBody1() == rawBody))
+                {
                     dispatcher->clearManifold(manifold);
                 }
             }
         }
 
-
         btBroadphaseProxy* handle = rawBody->getBroadphaseHandle();
         auto pairCache = m_DynamicsWorld->getPairCache();
-        if (handle && pairCache && dispatcher) {
+        if (handle && pairCache && dispatcher)
+        {
             pairCache->cleanProxyFromPairs(handle, dispatcher);
         }
-
 
         m_DynamicsWorld->removeRigidBody(rawBody);
     }
@@ -148,19 +155,22 @@ void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
 
 void BulletPhysicsWorld::AddCharacterController(ICharacterController* controller)
 {
-    if (!m_DynamicsWorld || !controller) return;
+    if (!m_DynamicsWorld || !controller)
+        return;
 
     BulletCharacterController* bCC = static_cast<BulletCharacterController*>(controller);
     if (bCC->GetRawController() && bCC->GetGhostObject())
     {
-        m_DynamicsWorld->addCollisionObject(bCC->GetGhostObject(), btBroadphaseProxy::CharacterFilter, btBroadphaseProxy::StaticFilter | btBroadphaseProxy::DefaultFilter);
+        m_DynamicsWorld->addCollisionObject(bCC->GetGhostObject(), btBroadphaseProxy::CharacterFilter,
+                                            btBroadphaseProxy::StaticFilter | btBroadphaseProxy::DefaultFilter);
         m_DynamicsWorld->addAction(bCC->GetRawController());
     }
 }
 
 void BulletPhysicsWorld::RemoveCharacterController(ICharacterController* controller)
 {
-    if (!m_DynamicsWorld || !controller) return;
+    if (!m_DynamicsWorld || !controller)
+        return;
 
     BulletCharacterController* bCC = static_cast<BulletCharacterController*>(controller);
     if (bCC->GetRawController() && bCC->GetGhostObject())
@@ -177,9 +187,12 @@ void BulletPhysicsWorld::DebugDraw()
 
     if (m_DynamicsWorld)
     {
-        try {
+        try
+        {
             m_DynamicsWorld->debugDrawWorld();
-        } catch (...) {
+        }
+        catch (...)
+        {
             LOGGER_ERROR("BulletPhysicsWorld") << "Crash caught during debugDrawWorld";
         }
     }
@@ -191,17 +204,21 @@ void BulletPhysicsWorld::DebugDraw()
 RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist, entt::entity ignore)
 {
     RayHit hit;
-    if (m_DynamicsWorld == nullptr) return hit;
+    if (m_DynamicsWorld == nullptr)
+        return hit;
 
     glm::vec3 end = origin + (dir * maxDist);
     btVector3 btStart(origin.x, origin.y, origin.z);
     btVector3 btEnd(end.x, end.y, end.z);
 
     IgnoreEntityRayCallback rayCallback(btStart, btEnd, ignore);
-    
-    try {
+
+    try
+    {
         m_DynamicsWorld->rayTest(btStart, btEnd, rayCallback);
-    } catch (...) {
+    }
+    catch (...)
+    {
         LOGGER_ERROR("BulletPhysicsWorld") << "Crash caught during rayTest";
         return hit;
     }
@@ -210,13 +227,14 @@ RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir
     {
         hit.hasHit = true;
         hit.distance = rayCallback.m_closestHitFraction * maxDist;
-        hit.hitPoint = glm::vec3(rayCallback.m_hitPointWorld.x(), rayCallback.m_hitPointWorld.y(), rayCallback.m_hitPointWorld.z());
-        hit.hitNormal = glm::vec3(rayCallback.m_hitNormalWorld.x(), rayCallback.m_hitNormalWorld.y(), rayCallback.m_hitNormalWorld.z());
+        hit.hitPoint = glm::vec3(rayCallback.m_hitPointWorld.x(), rayCallback.m_hitPointWorld.y(),
+                                 rayCallback.m_hitPointWorld.z());
+        hit.hitNormal = glm::vec3(rayCallback.m_hitNormalWorld.x(), rayCallback.m_hitNormalWorld.y(),
+                                  rayCallback.m_hitNormalWorld.z());
 
         const btCollisionObject* obj = rayCallback.m_collisionObject;
         if (obj && obj->getUserPointer())
         {
-
             hit.entity = (entt::entity)((uintptr_t)obj->getUserPointer() - 1);
         }
     }
@@ -228,17 +246,15 @@ void BulletPhysicsWorld::DrawLine(const glm::vec3& from, const glm::vec3& to, co
 {
     if (m_CurrentDebugDrawer)
     {
-        m_CurrentDebugDrawer->drawLine(
-            btVector3(from.x, from.y, from.z),
-            btVector3(to.x, to.y, to.z),
-            btVector3(color.x, color.y, color.z)
-        );
+        m_CurrentDebugDrawer->drawLine(btVector3(from.x, from.y, from.z), btVector3(to.x, to.y, to.z),
+                                       btVector3(color.x, color.y, color.z));
     }
 }
 
 void BulletPhysicsWorld::SyncRigidBody(IRigidBody* body, const glm::vec3& pos, const glm::quat& rot)
 {
-    if (!body) return;
+    if (!body)
+        return;
     BulletRigidBody* bBody = static_cast<BulletRigidBody*>(body);
     btRigidBody* rawBody = bBody->GetRaw();
     if (rawBody)
@@ -260,9 +276,12 @@ void BulletPhysicsWorld::SetCollisionFilter(CollisionFilterCallback callback)
     }
 }
 
-std::shared_ptr<IRigidBody> BulletPhysicsWorld::CreateRigidBody(float mass, const glm::vec3& startPos, const glm::quat& startRot, std::shared_ptr<ICollisionShape> shape)
+std::shared_ptr<IRigidBody> BulletPhysicsWorld::CreateRigidBody(float mass, const glm::vec3& startPos,
+                                                                const glm::quat& startRot,
+                                                                std::shared_ptr<ICollisionShape> shape)
 {
-    if (!shape) return nullptr;
+    if (!shape)
+        return nullptr;
 
     BulletCollisionShape* bShape = static_cast<BulletCollisionShape*>(shape.get());
 
@@ -316,17 +335,20 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCylinderShape(float r
     return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::Cylinder);
 }
 
-std::shared_ptr<ICharacterController> BulletPhysicsWorld::CreateCharacterController(std::shared_ptr<ICollisionShape> shape, float stepHeight)
+std::shared_ptr<ICharacterController> BulletPhysicsWorld::CreateCharacterController(
+    std::shared_ptr<ICollisionShape> shape, float stepHeight)
 {
-    if (!shape) return nullptr;
+    if (!shape)
+        return nullptr;
 
     BulletCollisionShape* bShape = static_cast<BulletCollisionShape*>(shape.get());
-    
+
     btPairCachingGhostObject* ghostObject = new btPairCachingGhostObject();
     ghostObject->setCollisionShape(bShape->GetRaw());
     ghostObject->setCollisionFlags(btCollisionObject::CF_CHARACTER_OBJECT);
-    
-    btKinematicCharacterController* controller = new btKinematicCharacterController(ghostObject, static_cast<btConvexShape*>(bShape->GetRaw()), stepHeight);
+
+    btKinematicCharacterController* controller =
+        new btKinematicCharacterController(ghostObject, static_cast<btConvexShape*>(bShape->GetRaw()), stepHeight);
 
     return std::make_shared<BulletCharacterController>(ghostObject, controller, shape);
 }
@@ -337,21 +359,17 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateCompoundShape()
     return std::make_shared<BulletCollisionShape>(shape, CollisionShapeType::CompoundHull);
 }
 
-std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateMeshShape(const std::vector<float>& vertices, const std::vector<uint32_t>& indices)
+std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateMeshShape(const std::vector<float>& vertices,
+                                                                     const std::vector<uint32_t>& indices)
 {
-    if (vertices.empty() || indices.empty()) return nullptr;
+    if (vertices.empty() || indices.empty())
+        return nullptr;
 
     std::vector<float> vs = vertices;
     std::vector<uint32_t> is = indices;
 
     btTriangleIndexVertexArray* meshInterface = new btTriangleIndexVertexArray(
-        is.size() / 3,
-        (int*)is.data(),
-        3 * sizeof(uint32_t),
-        vs.size() / 3,
-        (float*)vs.data(),
-        3 * sizeof(float)
-    );
+        is.size() / 3, (int*)is.data(), 3 * sizeof(uint32_t), vs.size() / 3, (float*)vs.data(), 3 * sizeof(float));
 
     bool useQuantizedAabbCompression = true;
     btBvhTriangleMeshShape* bvhShape = new btBvhTriangleMeshShape(meshInterface, useQuantizedAabbCompression);
@@ -359,35 +377,40 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateMeshShape(const std::
     return std::make_shared<BulletMeshCollisionShape>(bvhShape, meshInterface, std::move(vs), std::move(is));
 }
 
-std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateHeightfieldShape(const std::vector<float>& heights, int width, int length, float minHeight, float maxHeight)
+std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateHeightfieldShape(const std::vector<float>& heights,
+                                                                            int width, int length, float minHeight,
+                                                                            float maxHeight)
 {
-    if (heights.empty()) {
+    if (heights.empty())
+    {
         LOGGER_ERROR("BulletPhysicsWorld") << "Cannot create heightfield: heights vector is empty.";
         return nullptr;
     }
 
-    LOGGER_INFO("BulletPhysicsWorld") << "Creating Heightfield: " << width << "x" << length << ", range [" << minHeight << ", " << maxHeight << "]";
-
+    LOGGER_INFO("BulletPhysicsWorld") << "Creating Heightfield: " << width << "x" << length << ", range [" << minHeight
+                                      << ", " << maxHeight << "]";
 
     auto hData = heights;
     auto wrapper = std::make_shared<BulletHeightfieldCollisionShape>(nullptr, std::move(hData));
-    
 
     float* dataPtr = wrapper->GetHeightDataPointer();
 
-    btHeightfieldTerrainShape* heightfieldShape = new btHeightfieldTerrainShape(
-        width, length, dataPtr, 1.0f, minHeight, maxHeight, 1, PHY_FLOAT, false);
+    btHeightfieldTerrainShape* heightfieldShape =
+        new btHeightfieldTerrainShape(width, length, dataPtr, 1.0f, minHeight, maxHeight, 1, PHY_FLOAT, false);
 
     wrapper->SetShape(heightfieldShape);
 
-    LOGGER_INFO("BulletPhysicsWorld") << "btHeightfieldTerrainShape created at " << (void*)heightfieldShape << " with data at " << (void*)dataPtr;
+    LOGGER_INFO("BulletPhysicsWorld") << "btHeightfieldTerrainShape created at " << (void*)heightfieldShape
+                                      << " with data at " << (void*)dataPtr;
 
     return wrapper;
 }
 
-void BulletPhysicsWorld::AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child, const glm::vec3& pos, const glm::quat& rot)
+void BulletPhysicsWorld::AddChildShape(std::shared_ptr<ICollisionShape> parent, std::shared_ptr<ICollisionShape> child,
+                                       const glm::vec3& pos, const glm::quat& rot)
 {
-    if (!parent || !child) return;
+    if (!parent || !child)
+        return;
 
     BulletCollisionShape* bParent = static_cast<BulletCollisionShape*>(parent.get());
     BulletCollisionShape* bChild = static_cast<BulletCollisionShape*>(child.get());
@@ -408,7 +431,8 @@ void BulletPhysicsWorld::AddChildShape(std::shared_ptr<ICollisionShape> parent, 
 
 void BulletPhysicsWorld::AddConstraint(std::shared_ptr<IConstraint> constraint)
 {
-    if (!m_DynamicsWorld || !constraint) return;
+    if (!m_DynamicsWorld || !constraint)
+        return;
     BulletConstraint* bConst = static_cast<BulletConstraint*>(constraint.get());
     if (bConst->GetRaw())
     {
@@ -418,7 +442,8 @@ void BulletPhysicsWorld::AddConstraint(std::shared_ptr<IConstraint> constraint)
 
 void BulletPhysicsWorld::RemoveConstraint(std::shared_ptr<IConstraint> constraint)
 {
-    if (!m_DynamicsWorld || !constraint) return;
+    if (!m_DynamicsWorld || !constraint)
+        return;
     BulletConstraint* bConst = static_cast<BulletConstraint*>(constraint.get());
     if (bConst->GetRaw())
     {
@@ -426,46 +451,54 @@ void BulletPhysicsWorld::RemoveConstraint(std::shared_ptr<IConstraint> constrain
     }
 }
 
-std::shared_ptr<IConstraint> BulletPhysicsWorld::CreatePoint2PointConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB)
+std::shared_ptr<IConstraint> BulletPhysicsWorld::CreatePoint2PointConstraint(std::shared_ptr<IRigidBody> rbA,
+                                                                             std::shared_ptr<IRigidBody> rbB,
+                                                                             const glm::vec3& pivotInA,
+                                                                             const glm::vec3& pivotInB)
 {
-    if (!rbA || !rbB) return nullptr;
+    if (!rbA || !rbB)
+        return nullptr;
     BulletRigidBody* bA = static_cast<BulletRigidBody*>(rbA.get());
     BulletRigidBody* bB = static_cast<BulletRigidBody*>(rbB.get());
-    if (!bA->GetRaw() || !bB->GetRaw()) return nullptr;
+    if (!bA->GetRaw() || !bB->GetRaw())
+        return nullptr;
 
-    btPoint2PointConstraint* p2p = new btPoint2PointConstraint(
-        *bA->GetRaw(), 
-        *bB->GetRaw(), 
-        btVector3(pivotInA.x, pivotInA.y, pivotInA.z), 
-        btVector3(pivotInB.x, pivotInB.y, pivotInB.z)
-    );
+    btPoint2PointConstraint* p2p =
+        new btPoint2PointConstraint(*bA->GetRaw(), *bB->GetRaw(), btVector3(pivotInA.x, pivotInA.y, pivotInA.z),
+                                    btVector3(pivotInB.x, pivotInB.y, pivotInB.z));
     return std::make_shared<BulletConstraint>(p2p);
 }
 
-std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateHingeConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::vec3& axisInA, const glm::vec3& axisInB)
+std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateHingeConstraint(
+    std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA,
+    const glm::vec3& pivotInB, const glm::vec3& axisInA, const glm::vec3& axisInB)
 {
-    if (!rbA || !rbB) return nullptr;
+    if (!rbA || !rbB)
+        return nullptr;
     BulletRigidBody* bA = static_cast<BulletRigidBody*>(rbA.get());
     BulletRigidBody* bB = static_cast<BulletRigidBody*>(rbB.get());
-    if (!bA->GetRaw() || !bB->GetRaw()) return nullptr;
+    if (!bA->GetRaw() || !bB->GetRaw())
+        return nullptr;
 
-    btHingeConstraint* hinge = new btHingeConstraint(
-        *bA->GetRaw(),
-        *bB->GetRaw(),
-        btVector3(pivotInA.x, pivotInA.y, pivotInA.z),
-        btVector3(pivotInB.x, pivotInB.y, pivotInB.z),
-        btVector3(axisInA.x, axisInA.y, axisInA.z),
-        btVector3(axisInB.x, axisInB.y, axisInB.z)
-    );
+    btHingeConstraint* hinge =
+        new btHingeConstraint(*bA->GetRaw(), *bB->GetRaw(), btVector3(pivotInA.x, pivotInA.y, pivotInA.z),
+                              btVector3(pivotInB.x, pivotInB.y, pivotInB.z), btVector3(axisInA.x, axisInA.y, axisInA.z),
+                              btVector3(axisInB.x, axisInB.y, axisInB.z));
     return std::make_shared<BulletConstraint>(hinge);
 }
 
-std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateFixedConstraint(std::shared_ptr<IRigidBody> rbA, std::shared_ptr<IRigidBody> rbB, const glm::vec3& pivotInA, const glm::vec3& pivotInB, const glm::quat& rotInA, const glm::quat& rotInB)
+std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateFixedConstraint(std::shared_ptr<IRigidBody> rbA,
+                                                                       std::shared_ptr<IRigidBody> rbB,
+                                                                       const glm::vec3& pivotInA,
+                                                                       const glm::vec3& pivotInB,
+                                                                       const glm::quat& rotInA, const glm::quat& rotInB)
 {
-    if (!rbA || !rbB) return nullptr;
+    if (!rbA || !rbB)
+        return nullptr;
     BulletRigidBody* bA = static_cast<BulletRigidBody*>(rbA.get());
     BulletRigidBody* bB = static_cast<BulletRigidBody*>(rbB.get());
-    if (!bA->GetRaw() || !bB->GetRaw()) return nullptr;
+    if (!bA->GetRaw() || !bB->GetRaw())
+        return nullptr;
 
     btTransform frameInA, frameInB;
     frameInA.setIdentity();
@@ -476,19 +509,15 @@ std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateFixedConstraint(std::shar
     frameInB.setOrigin(BulletGLMHelpers::convert(pivotInB));
     frameInB.setRotation(BulletGLMHelpers::convert(rotInB));
 
-    btFixedConstraint* fixed = new btFixedConstraint(
-        *bA->GetRaw(),
-        *bB->GetRaw(),
-        frameInA,
-        frameInB
-    );
+    btFixedConstraint* fixed = new btFixedConstraint(*bA->GetRaw(), *bB->GetRaw(), frameInA, frameInB);
     return std::make_shared<BulletConstraint>(fixed);
 }
 
 std::vector<CollisionInfo> BulletPhysicsWorld::GetActiveCollisions()
 {
     std::vector<CollisionInfo> collisions;
-    if (!m_DynamicsWorld) return collisions;
+    if (!m_DynamicsWorld)
+        return collisions;
 
     int numManifolds = m_DynamicsWorld->getDispatcher()->getNumManifolds();
     for (int i = 0; i < numManifolds; i++)

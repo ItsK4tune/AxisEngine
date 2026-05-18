@@ -1,22 +1,22 @@
 #include <platform/logic/input_manager.h>
+#include <core/logic/event_manager.h>
+#include <core/type/event_types.h>
 #include <platform/interface/i_window.h>
 #include <platform/interface/input_codes.h>
 #include <iostream>
 #include <string>
-#include <core/logic/event_manager.h>
-#include <core/type/event_types.h>
 
-InputManager::InputManager(const KeyboardManager &keyboard, const MouseManager &mouse, const IWindow &window)
+InputManager::InputManager(const KeyboardManager& keyboard, const MouseManager& mouse, const IWindow& window)
     : m_Keyboard(keyboard), m_Mouse(mouse), m_Window(window)
 {
 }
 
-void InputManager::BindAction(const std::string &actionName, InputType type, int code)
+void InputManager::BindAction(const std::string& actionName, InputType type, int code)
 {
     m_ActionMap[actionName].bindings.push_back({type, code});
 }
 
-void InputManager::UnbindAction(const std::string &actionName)
+void InputManager::UnbindAction(const std::string& actionName)
 {
     m_ActionMap.erase(actionName);
     m_PreviousState.erase(actionName);
@@ -34,7 +34,8 @@ void InputManager::Update()
     float yOffset = m_Mouse.GetYOffset();
     if ((xOffset != 0.0f || yOffset != 0.0f) && EventManager::Instance().HasListeners<MouseMovedEvent>())
     {
-        EventManager::Instance().Publish(MouseMovedEvent{ static_cast<double>(m_Mouse.GetLastX()), static_cast<double>(m_Mouse.GetLastY()) });
+        EventManager::Instance().Publish(
+            MouseMovedEvent{static_cast<double>(m_Mouse.GetLastX()), static_cast<double>(m_Mouse.GetLastY())});
     }
 
     bool hasPressedListeners = EventManager::Instance().HasListeners<InputActionPressedEvent>();
@@ -43,7 +44,7 @@ void InputManager::Update()
 
     if (hasPressedListeners || hasReleasedListeners || hasHeldListeners)
     {
-        for (const auto &[actionName, binding] : m_ActionMap)
+        for (const auto& [actionName, binding] : m_ActionMap)
         {
             if (hasPressedListeners && GetActionDown(actionName))
                 EventManager::Instance().Publish(InputActionPressedEvent{actionName});
@@ -54,71 +55,96 @@ void InputManager::Update()
         }
     }
 
-    for (const auto &[actionName, binding] : m_ActionMap)
+    for (const auto& [actionName, binding] : m_ActionMap)
     {
         m_PreviousState[actionName] = GetAction(actionName);
     }
 }
 
-bool InputManager::GetAction(const std::string &actionName) const
+bool InputManager::GetAction(const std::string& actionName) const
 {
     auto it = m_ActionMap.find(actionName);
-    if (it == m_ActionMap.end()) return false;
+    if (it == m_ActionMap.end())
+        return false;
 
-    for (const auto &binding : it->second.bindings)
+    for (const auto& binding : it->second.bindings)
     {
         if (binding.type == InputType::Key)
         {
-            if (m_Keyboard.GetKey(static_cast<Key>(binding.code))) return true;
+            if (m_Keyboard.GetKey(static_cast<Key>(binding.code)))
+                return true;
         }
         else if (binding.type == InputType::MouseButton)
         {
             Mouse btn = static_cast<Mouse>(binding.code);
-            if (btn == Mouse::WheelUp)   { if (m_Mouse.IsWheelUp()) return true; }
-            else if (btn == Mouse::WheelDown) { if (m_Mouse.IsWheelDown()) return true; }
-            else if (m_Mouse.IsButtonPressed(btn)) return true;
+            if (btn == Mouse::WheelUp)
+            {
+                if (m_Mouse.IsWheelUp())
+                    return true;
+            }
+            else if (btn == Mouse::WheelDown)
+            {
+                if (m_Mouse.IsWheelDown())
+                    return true;
+            }
+            else if (m_Mouse.IsButtonPressed(btn))
+                return true;
         }
     }
     return false;
 }
 
-bool InputManager::GetActionDown(const std::string &actionName) const
+bool InputManager::GetActionDown(const std::string& actionName) const
 {
     auto it = m_ActionMap.find(actionName);
-    if (it == m_ActionMap.end()) return false;
+    if (it == m_ActionMap.end())
+        return false;
 
-    for (const auto &binding : it->second.bindings)
+    for (const auto& binding : it->second.bindings)
     {
         if (binding.type == InputType::Key)
         {
-            if (const_cast<KeyboardManager &>(m_Keyboard).IsKeyDown(static_cast<Key>(binding.code))) return true;
+            if (const_cast<KeyboardManager&>(m_Keyboard).IsKeyDown(static_cast<Key>(binding.code)))
+                return true;
         }
         else if (binding.type == InputType::MouseButton)
         {
             Mouse btn = static_cast<Mouse>(binding.code);
-            if (btn == Mouse::WheelUp)   { if (m_Mouse.IsWheelUp()) return true; }
-            else if (btn == Mouse::WheelDown) { if (m_Mouse.IsWheelDown()) return true; }
-            else if (m_Mouse.IsMouseClicked(btn)) return true;
+            if (btn == Mouse::WheelUp)
+            {
+                if (m_Mouse.IsWheelUp())
+                    return true;
+            }
+            else if (btn == Mouse::WheelDown)
+            {
+                if (m_Mouse.IsWheelDown())
+                    return true;
+            }
+            else if (m_Mouse.IsMouseClicked(btn))
+                return true;
         }
     }
     return false;
 }
 
-bool InputManager::GetActionUp(const std::string &actionName) const
+bool InputManager::GetActionUp(const std::string& actionName) const
 {
     auto it = m_ActionMap.find(actionName);
-    if (it == m_ActionMap.end()) return false;
+    if (it == m_ActionMap.end())
+        return false;
 
-    for (const auto &binding : it->second.bindings)
+    for (const auto& binding : it->second.bindings)
     {
         if (binding.type == InputType::Key)
         {
-            if (m_Keyboard.GetKeyUp(static_cast<Key>(binding.code))) return true;
+            if (m_Keyboard.GetKeyUp(static_cast<Key>(binding.code)))
+                return true;
         }
         else if (binding.type == InputType::MouseButton)
         {
             Mouse btn = static_cast<Mouse>(binding.code);
-            if (m_Mouse.IsMouseReleased(btn)) return true;
+            if (m_Mouse.IsMouseReleased(btn))
+                return true;
         }
     }
     return false;
@@ -139,7 +165,7 @@ DeviceInfo InputManager::GetCurrentDevice() const
     return info;
 }
 
-bool InputManager::SetActiveDevice(const std::string &deviceId)
+bool InputManager::SetActiveDevice(const std::string& deviceId)
 {
     return true;
 }

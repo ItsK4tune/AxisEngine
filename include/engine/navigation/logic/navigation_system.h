@@ -1,21 +1,33 @@
 #pragma once
 
-#include <ecs/interface/i_update_system.h>
-#include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_ecs_system.h>
-#include <scene/logic/scene.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_update_system.h>
 #include <navigation/unit/navmesh_component.h>
 #include <navigation/unit/pathfollower_component.h>
+#include <scene/logic/scene.h>
 
 class NavigationSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
     void Initialize() override;
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 5; }
-    std::string GetName() const override { return "NavigationSystem"; }
-    
+    bool IsEnabled() const override
+    {
+        return m_Enabled;
+    }
+    void SetEnabled(bool enable) override
+    {
+        m_Enabled = enable;
+    }
+    int GetPriority() const override
+    {
+        return 5;
+    }
+    std::string GetName() const override
+    {
+        return "NavigationSystem";
+    }
+
     NavigationSystem() = default;
     ~NavigationSystem() = default;
 
@@ -27,15 +39,26 @@ public:
 
     void AddWalkableTag(const std::string& tag);
     void ClearWalkableTags();
-    const std::vector<std::string>& GetWalkableTags() const { return m_WalkableTags; }
+    const std::vector<std::string>& GetWalkableTags() const
+    {
+        return m_WalkableTags;
+    }
 
-    void SetShowDebug(bool show) { m_ShowDebug = show; }
-    bool IsShowDebug() const { return m_ShowDebug; }
+    void SetShowDebug(bool show)
+    {
+        m_ShowDebug = show;
+    }
+    bool IsShowDebug() const
+    {
+        return m_ShowDebug;
+    }
 
     void AddCarveTag(const std::string& tag);
     void ClearCarveTags();
-    const std::vector<std::string>& GetCarveTags() const { return m_CarveTags; }
-
+    const std::vector<std::string>& GetCarveTags() const
+    {
+        return m_CarveTags;
+    }
 
     void StopMoving(Scene& scene, entt::entity entity);
     bool IsMoving(Scene& scene, entt::entity entity);
@@ -44,17 +67,17 @@ public:
     void MoveTo(Scene& scene, entt::entity entity, const glm::vec3& position);
     bool HasTarget(Scene& scene, entt::entity entity);
 
-
     void SetPathfindingCriteria(Scene& scene, entt::entity entity, PathfindingCriteria criteria);
     void SetPreferredTags(Scene& scene, entt::entity entity, const std::vector<std::string>& tags);
-    void SetCustomCostFunction(Scene& scene, entt::entity entity, std::function<float(uint32_t, uint32_t, const NavMeshComponent&)> func);
+    void SetCustomCostFunction(Scene& scene, entt::entity entity,
+                               std::function<float(uint32_t, uint32_t, const NavMeshComponent&)> func);
 
 private:
     void UpdatePathFollowing(Scene& scene, float dt);
     void UpdateNavMesh(Scene& scene);
-    
+
     bool m_Enabled = true;
     bool m_ShowDebug = false;
-    std::vector<std::string> m_WalkableTags = { "walkable" };
-    std::vector<std::string> m_CarveTags = { "obstacle" };
+    std::vector<std::string> m_WalkableTags = {"walkable"};
+    std::vector<std::string> m_CarveTags = {"obstacle"};
 };

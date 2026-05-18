@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstddef>
 #include <render/type/graphics_types.h>
+#include <cstddef>
 
 class ITextureManager
 {
@@ -16,24 +16,20 @@ public:
 
     virtual void TexParameteri(TextureType target, TextureParameter pname, int param) = 0;
     virtual void TexParameterf(TextureType target, TextureParameter pname, float param) = 0;
-    virtual void TexParameterfv(TextureType target, TextureParameter pname, const float *params) = 0;
+    virtual void TexParameterfv(TextureType target, TextureParameter pname, const float* params) = 0;
     virtual void GenerateMipmap(TextureType target) = 0;
 
-    virtual void TexImage1D(TextureType target, int level, InternalFormat internalFormat,
-                            int width, int border,
-                            TextureFormat format, DataType type, const void *data) = 0;
-    virtual void TexImage2D(TextureType target, int level, InternalFormat internalFormat,
-                            int width, int height, int border,
-                            TextureFormat format, DataType type, const void *data) = 0;
-    virtual void TexImage3D(TextureType target, int level, InternalFormat internalFormat,
-                            int width, int height, int depth, int border,
-                            TextureFormat format, DataType type, const void *data) = 0;
-    virtual void TexSubImage2D(TextureType target, int level, int xoffset, int yoffset,
-                               int width, int height, TextureFormat format,
-                               DataType type, const void *data) = 0;
+    virtual void TexImage1D(TextureType target, int level, InternalFormat internalFormat, int width, int border,
+                            TextureFormat format, DataType type, const void* data) = 0;
+    virtual void TexImage2D(TextureType target, int level, InternalFormat internalFormat, int width, int height,
+                            int border, TextureFormat format, DataType type, const void* data) = 0;
+    virtual void TexImage3D(TextureType target, int level, InternalFormat internalFormat, int width, int height,
+                            int depth, int border, TextureFormat format, DataType type, const void* data) = 0;
+    virtual void TexSubImage2D(TextureType target, int level, int xoffset, int yoffset, int width, int height,
+                               TextureFormat format, DataType type, const void* data) = 0;
 
     virtual void ActiveTexture(TextureUnit unit) = 0;
     virtual void PixelStorei(PixelStoreParam pname, int param) = 0;
 
-    virtual const char *GetBackendName() const = 0;
+    virtual const char* GetBackendName() const = 0;
 };

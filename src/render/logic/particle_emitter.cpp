@@ -1,16 +1,16 @@
 #include <render/logic/particle_emitter.h>
-
-#include <render/interface/i_buffer_manager.h>
-#include <render/interface/i_texture_manager.h>
-#include <render/interface/i_draw_context.h>
 #include <core/logic/logger.h>
+#include <render/interface/i_buffer_manager.h>
+#include <render/interface/i_draw_context.h>
+#include <render/interface/i_texture_manager.h>
 #include <render/type/graphics_types.h>
 
 IBufferManager* ParticleEmitter::s_BufferManager = nullptr;
 ITextureManager* ParticleEmitter::s_TextureManager = nullptr;
 IDrawContext* ParticleEmitter::s_DrawContext = nullptr;
 
-void ParticleEmitter::SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext)
+void ParticleEmitter::SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager,
+                                  IDrawContext& drawContext)
 {
     s_BufferManager = &bufferManager;
     s_TextureManager = &textureManager;
@@ -19,7 +19,8 @@ void ParticleEmitter::SetManagers(IBufferManager& bufferManager, ITextureManager
 
 IBufferManager& ParticleEmitter::GetBufferManager()
 {
-    if (!s_BufferManager) {
+    if (!s_BufferManager)
+    {
         LOGGER_ERROR("ParticleEmitter") << "BufferManager not set!";
         throw std::runtime_error("BufferManager not set in ParticleEmitter");
     }
@@ -28,7 +29,8 @@ IBufferManager& ParticleEmitter::GetBufferManager()
 
 ITextureManager& ParticleEmitter::GetTextureManager()
 {
-    if (!s_TextureManager) {
+    if (!s_TextureManager)
+    {
         LOGGER_ERROR("ParticleEmitter") << "TextureManager not set!";
         throw std::runtime_error("TextureManager not set in ParticleEmitter");
     }
@@ -37,7 +39,8 @@ ITextureManager& ParticleEmitter::GetTextureManager()
 
 IDrawContext& ParticleEmitter::GetDrawContext()
 {
-    if (!s_DrawContext) {
+    if (!s_DrawContext)
+    {
         LOGGER_ERROR("ParticleEmitter") << "DrawContext not set!";
         throw std::runtime_error("DrawContext not set in ParticleEmitter");
     }
@@ -46,24 +49,29 @@ IDrawContext& ParticleEmitter::GetDrawContext()
 
 ParticleEmitter::ParticleEmitter() : m_VAO(0), m_VBO(0), m_instanceVBO(0)
 {
-
 }
 
 ParticleEmitter::~ParticleEmitter()
 {
     if (s_BufferManager)
     {
-        try {
-            if (m_VAO != 0) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
-            if (m_VBO != 0) s_BufferManager->DeleteBuffers(1, &m_VBO);
-            if (m_instanceVBO != 0) s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
-        } catch (...) {
+        try
+        {
+            if (m_VAO != 0)
+                s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+            if (m_VBO != 0)
+                s_BufferManager->DeleteBuffers(1, &m_VBO);
+            if (m_instanceVBO != 0)
+                s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
+        }
+        catch (...)
+        {
             LOGGER_ERROR("ParticleEmitter") << "Destructor: CRASH during buffer deletion";
         }
     }
 }
 
-ParticleEmitter::ParticleEmitter(ParticleEmitter &&other) noexcept
+ParticleEmitter::ParticleEmitter(ParticleEmitter&& other) noexcept
     : m_Particles(std::move(other.m_Particles)),
       m_MaxParticles(other.m_MaxParticles),
       m_LastUsedParticle(other.m_LastUsedParticle),
@@ -89,15 +97,18 @@ ParticleEmitter::ParticleEmitter(ParticleEmitter &&other) noexcept
     other.m_instanceVBO = 0;
 }
 
-ParticleEmitter &ParticleEmitter::operator=(ParticleEmitter &&other) noexcept
+ParticleEmitter& ParticleEmitter::operator=(ParticleEmitter&& other) noexcept
 {
     if (this != &other)
     {
         if (s_BufferManager)
         {
-            if (m_VAO != 0) s_BufferManager->DeleteVertexArrays(1, &m_VAO);
-            if (m_VBO != 0) s_BufferManager->DeleteBuffers(1, &m_VBO);
-            if (m_instanceVBO != 0) s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
+            if (m_VAO != 0)
+                s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+            if (m_VBO != 0)
+                s_BufferManager->DeleteBuffers(1, &m_VBO);
+            if (m_instanceVBO != 0)
+                s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
         }
 
         m_Particles = std::move(other.m_Particles);
@@ -130,19 +141,16 @@ ParticleEmitter &ParticleEmitter::operator=(ParticleEmitter &&other) noexcept
 
 void ParticleEmitter::Initialize(unsigned int maxParticles)
 {
-    if (!s_BufferManager) return;
+    if (!s_BufferManager)
+        return;
     m_MaxParticles = maxParticles;
     m_Particles.resize(m_MaxParticles);
 
     auto& bm = GetBufferManager();
 
-    float quadVertices[] = {
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.0f, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.0f, 1.0f, 1.0f};
+    float quadVertices[] = {-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.5f,  -0.5f, 0.0f, 1.0f, 0.0f,
+                            0.5f,  0.5f,  0.0f, 1.0f, 1.0f, -0.5f, 0.5f,  0.0f, 0.0f, 1.0f,
+                            -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.5f,  0.5f,  0.0f, 1.0f, 1.0f};
 
     m_VAO = bm.GenVertexArray();
     m_VBO = bm.GenBuffer();
@@ -154,24 +162,28 @@ void ParticleEmitter::Initialize(unsigned int maxParticles)
     bm.BufferData(BufferType::ArrayBuffer, sizeof(quadVertices), quadVertices, BufferUsage::StaticDraw);
 
     bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, 5 * sizeof(float), (void *)0);
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, 5 * sizeof(float), (void*)0);
     bm.EnableVertexAttribArray(1);
 
-    bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+    bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     bm.BindBuffer(BufferType::ArrayBuffer, m_instanceVBO);
-    bm.BufferData(BufferType::ArrayBuffer, m_MaxParticles * sizeof(ParticleInstanceData), nullptr, BufferUsage::StreamDraw);
+    bm.BufferData(BufferType::ArrayBuffer, m_MaxParticles * sizeof(ParticleInstanceData), nullptr,
+                  BufferUsage::StreamDraw);
 
     bm.EnableVertexAttribArray(2);
-    bm.VertexAttribPointer(2, 4, DataType::Float, false, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, color));
+    bm.VertexAttribPointer(2, 4, DataType::Float, false, sizeof(ParticleInstanceData),
+                           (void*)offsetof(ParticleInstanceData, color));
     bm.VertexAttribDivisor(2, 1);
 
     bm.EnableVertexAttribArray(3);
-    bm.VertexAttribPointer(3, 3, DataType::Float, false, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, offset));
+    bm.VertexAttribPointer(3, 3, DataType::Float, false, sizeof(ParticleInstanceData),
+                           (void*)offsetof(ParticleInstanceData, offset));
     bm.VertexAttribDivisor(3, 1);
 
     bm.EnableVertexAttribArray(4);
-    bm.VertexAttribPointer(4, 1, DataType::Float, false, sizeof(ParticleInstanceData), (void *)offsetof(ParticleInstanceData, scale));
+    bm.VertexAttribPointer(4, 1, DataType::Float, false, sizeof(ParticleInstanceData),
+                           (void*)offsetof(ParticleInstanceData, scale));
     bm.VertexAttribDivisor(4, 1);
 
     bm.BindVertexArray(0);
@@ -193,7 +205,7 @@ float RandomFloat(float min, float max)
     return distribution(generator);
 }
 
-void ParticleEmitter::Update(float dt, const glm::vec3 &offset, bool spawn)
+void ParticleEmitter::Update(float dt, const glm::vec3& offset, bool spawn)
 {
     if (spawn)
     {
@@ -210,7 +222,7 @@ void ParticleEmitter::Update(float dt, const glm::vec3 &offset, bool spawn)
 
     for (unsigned int i = 0; i < m_MaxParticles; ++i)
     {
-        Particle &p = m_Particles[i];
+        Particle& p = m_Particles[i];
         p.Life -= dt;
         if (p.Life > 0.0f)
         {
@@ -226,15 +238,18 @@ void ParticleEmitter::Update(float dt, const glm::vec3 &offset, bool spawn)
 unsigned int ParticleEmitter::GetActiveParticleCount() const
 {
     unsigned int count = 0;
-    for (const auto& p : m_Particles) {
-        if (p.Life > 0.0f) count++;
+    for (const auto& p : m_Particles)
+    {
+        if (p.Life > 0.0f)
+            count++;
     }
     return count;
 }
 
-void ParticleEmitter::Render(Shader *shader)
+void ParticleEmitter::Render(Shader* shader)
 {
-    if (!s_TextureManager || !s_BufferManager || !s_DrawContext) return;
+    if (!s_TextureManager || !s_BufferManager || !s_DrawContext)
+        return;
     auto& tm = GetTextureManager();
     auto& bm = GetBufferManager();
     auto& dc = GetDrawContext();
@@ -249,7 +264,7 @@ void ParticleEmitter::Render(Shader *shader)
     std::vector<ParticleInstanceData> instanceData;
     instanceData.reserve(m_MaxParticles);
 
-    for (const auto &particle : m_Particles)
+    for (const auto& particle : m_Particles)
     {
         if (particle.Life > 0.0f)
         {
@@ -265,7 +280,8 @@ void ParticleEmitter::Render(Shader *shader)
         return;
 
     bm.BindBuffer(BufferType::ArrayBuffer, m_instanceVBO);
-    bm.BufferSubData(BufferType::ArrayBuffer, 0, instanceData.size() * sizeof(ParticleInstanceData), instanceData.data());
+    bm.BufferSubData(BufferType::ArrayBuffer, 0, instanceData.size() * sizeof(ParticleInstanceData),
+                     instanceData.data());
     bm.BindBuffer(BufferType::ArrayBuffer, 0);
 
     bm.BindVertexArray(m_VAO);
@@ -294,7 +310,7 @@ unsigned int ParticleEmitter::FirstUnusedParticle()
     return 0;
 }
 
-void ParticleEmitter::RespawnParticle(Particle &particle, const glm::vec3 &offset)
+void ParticleEmitter::RespawnParticle(Particle& particle, const glm::vec3& offset)
 {
     float rX = RandomFloat(-0.5f, 0.5f);
     float rY = RandomFloat(-0.5f, 0.5f);

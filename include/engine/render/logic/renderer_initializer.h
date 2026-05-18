@@ -5,5 +5,5 @@ class IGraphicsContext;
 class RendererInitializer
 {
 public:
-    static void Initialize(IGraphicsContext &context);
+    static void Initialize(IGraphicsContext& context);
 };

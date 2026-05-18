@@ -1,14 +1,15 @@
-#include <ecs/unit/core_components.h>
 #include <ecs/logic/transform_system.h>
 #include <ecs/logic/system_factory.h>
+#include <ecs/unit/core_components.h>
 #include <glm/gtc/matrix_transform.hpp>
+
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
+#include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_manager.h>
 #include <scene/type/scene_events.h>
 #include <deque>
+#include <glm/gtx/quaternion.hpp>
 
 REGISTER_SYSTEM(TransformSystem)
 
@@ -17,11 +18,10 @@ void TransformSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<TransformSystem>(this);
     EventManager::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
-        
         e.registry->on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-        
+
         e.registry->on_construct<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
         e.registry->on_destroy<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
 
@@ -30,11 +30,11 @@ void TransformSystem::Initialize()
         e.registry->on_update<ScaleComponent>().connect<&TransformSystem::OnTransformChanged>(this);
 
         m_IsLinearTransformsDirty = true;
-        RebuildLinearTransforms(*(Scene*)e.scene); 
+        RebuildLinearTransforms(*(Scene*)e.scene);
     });
 }
 
-void TransformSystem::OnTransformChanged(entt::registry &reg, entt::entity entity)
+void TransformSystem::OnTransformChanged(entt::registry& reg, entt::entity entity)
 {
     if (auto* world = reg.try_get<WorldTransformComponent>(entity))
     {
@@ -42,7 +42,7 @@ void TransformSystem::OnTransformChanged(entt::registry &reg, entt::entity entit
     }
 }
 
-void TransformSystem::OnHierarchyChanged(entt::registry &reg, entt::entity entity)
+void TransformSystem::OnHierarchyChanged(entt::registry& reg, entt::entity entity)
 {
     m_IsLinearTransformsDirty = true;
 }
@@ -70,7 +70,7 @@ void TransformSystem::RebuildLinearTransforms(Scene& scene)
     std::vector<entt::entity> roots;
     auto& registry = scene.registry;
     auto transformView = registry.view<WorldTransformComponent>();
-    
+
     for (auto entity : transformView)
     {
         auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
@@ -116,7 +116,8 @@ void TransformSystem::Update(Scene& scene, float dt)
     for (auto entity : m_LinearTransforms)
     {
         auto* world = registry.try_get<WorldTransformComponent>(entity);
-        if (!world) continue;
+        if (!world)
+            continue;
 
         auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
         glm::mat4 parentTransform(1.0f);
@@ -135,14 +136,13 @@ void TransformSystem::Update(Scene& scene, float dt)
             auto* pos = registry.try_get<PositionComponent>(entity);
             auto* rot = registry.try_get<RotationComponent>(entity);
             auto* scl = registry.try_get<ScaleComponent>(entity);
-            if (!pos || !rot || !scl) continue;
+            if (!pos || !rot || !scl)
+                continue;
 
-            glm::mat4 localMatrix = glm::translate(glm::mat4(1.0f), pos->value) *
-                                    glm::toMat4(rot->value) *
+            glm::mat4 localMatrix = glm::translate(glm::mat4(1.0f), pos->value) * glm::toMat4(rot->value) *
                                     glm::scale(glm::mat4(1.0f), scl->value);
 
-            glm::mat4 prevLocalMatrix = glm::translate(glm::mat4(1.0f), pos->prev) *
-                                        glm::toMat4(rot->prev) *
+            glm::mat4 prevLocalMatrix = glm::translate(glm::mat4(1.0f), pos->prev) * glm::toMat4(rot->prev) *
                                         glm::scale(glm::mat4(1.0f), scl->prev);
 
             world->worldMatrix = parentTransform * localMatrix;
@@ -166,20 +166,12 @@ void TransformSystem::Update(Scene& scene, float dt)
 
 std::vector<entt::id_type> TransformSystem::GetReadComponents() const
 {
-    return {
-        entt::type_id<PositionComponent>().hash(),
-        entt::type_id<RotationComponent>().hash(),
-        entt::type_id<ScaleComponent>().hash(),
-        entt::type_id<HierarchyComponent>().hash()
-    };
+    return {entt::type_id<PositionComponent>().hash(), entt::type_id<RotationComponent>().hash(),
+            entt::type_id<ScaleComponent>().hash(), entt::type_id<HierarchyComponent>().hash()};
 }
 
 std::vector<entt::id_type> TransformSystem::GetWriteComponents() const
 {
-    return {
-        entt::type_id<WorldTransformComponent>().hash(),
-        entt::type_id<PositionComponent>().hash(),
-        entt::type_id<RotationComponent>().hash(),
-        entt::type_id<ScaleComponent>().hash()
-    };
+    return {entt::type_id<WorldTransformComponent>().hash(), entt::type_id<PositionComponent>().hash(),
+            entt::type_id<RotationComponent>().hash(), entt::type_id<ScaleComponent>().hash()};
 }

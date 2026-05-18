@@ -1,14 +1,14 @@
 #include <ecs/logic/audio_system.h>
-#include <ecs/logic/system_factory.h>
 #include <audio/logic/audio_service.h>
-#include <ecs/unit/media_components.h>
-#include <ecs/unit/core_components.h>
-#include <ecs/logic/entity_manager.h>
-#include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
-#include <core/type/event_types.h>
+#include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
+#include <core/type/event_types.h>
+#include <ecs/logic/entity_manager.h>
+#include <ecs/logic/system_factory.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/media_components.h>
 
 REGISTER_SYSTEM(AudioSystem)
 
@@ -16,25 +16,28 @@ void AudioSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<AudioSystem>(this);
-    
+
     auto* configManager = sl.Resolve<ConfigManager>();
-    if (configManager) {
+    if (configManager)
+    {
         m_GlobalVolume = configManager->GetConfig().masterVolume;
 
         EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All)) {
+            if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All))
+            {
                 m_GlobalVolume = e.config.masterVolume;
             }
         });
     }
 
     auto* scene = sl.Resolve<Scene>();
-    if (scene) {
+    if (scene)
+    {
         scene->registry.on_destroy<AudioSourceComponent>().connect<&AudioSystem::OnAudioSourceDestroyed>(*this);
     }
 }
 
-void AudioSystem::Update(Scene &scene, float dt)
+void AudioSystem::Update(Scene& scene, float dt)
 {
     auto* audioService = ServiceLocator::Instance().Resolve<AudioService>();
     if (!audioService)
@@ -43,9 +46,9 @@ void AudioSystem::Update(Scene &scene, float dt)
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
     if (camEntity != entt::null)
     {
-        auto &cam = scene.registry.get<CameraComponent>(camEntity);
-        auto &camPos = scene.registry.get<PositionComponent>(camEntity);
-        auto &camRot = scene.registry.get<RotationComponent>(camEntity);
+        auto& cam = scene.registry.get<CameraComponent>(camEntity);
+        auto& camPos = scene.registry.get<PositionComponent>(camEntity);
+        auto& camRot = scene.registry.get<RotationComponent>(camEntity);
 
         glm::vec3 lookDir = camRot.value * glm::vec3(0.0f, 0.0f, -1.0f);
 
@@ -58,11 +61,13 @@ void AudioSystem::Update(Scene &scene, float dt)
 
     for (auto entity : view)
     {
-        auto &audio = view.get<AudioSourceComponent>(entity);
-        auto &info = view.get<InfoComponent>(entity);
-        
-        if (!info.isActive) {
-            if (audio.sound) {
+        auto& audio = view.get<AudioSourceComponent>(entity);
+        auto& info = view.get<InfoComponent>(entity);
+
+        if (!info.isActive)
+        {
+            if (audio.sound)
+            {
                 audio.sound->Stop();
                 audio.sound = nullptr;
             }
@@ -89,7 +94,7 @@ void AudioSystem::Update(Scene &scene, float dt)
             {
                 if (audio.is3D)
                 {
-                    PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+                    PositionComponent* posComp = scene.registry.try_get<PositionComponent>(entity);
                     glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
                     audio.sound = audioService->GetEngine()->Play3D(audio.source.get(), pos, audio.loop);
                 }
@@ -100,10 +105,9 @@ void AudioSystem::Update(Scene &scene, float dt)
             }
             else if (!audio.filePath.empty())
             {
-
                 if (audio.is3D)
                 {
-                    PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+                    PositionComponent* posComp = scene.registry.try_get<PositionComponent>(entity);
                     glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
                     audio.sound = audioService->GetEngine()->Play3D(audio.filePath, pos, audio.loop);
                 }
@@ -115,11 +119,11 @@ void AudioSystem::Update(Scene &scene, float dt)
 
             if (audio.sound)
             {
-
                 audio.sound->SetVolume(audio.volume);
                 audio.sound->SetPitch(audio.pitch * audio.speed);
                 audio.sound->SetPan(audio.pan);
-                if (audio.is3D) {
+                if (audio.is3D)
+                {
                     audio.sound->SetMinDistance(audio.minDistance);
                     audio.sound->SetMaxDistance(audio.maxDistance);
                     audio.sound->SetVelocity(audio.velocity);
@@ -129,14 +133,13 @@ void AudioSystem::Update(Scene &scene, float dt)
 
         if (audio.sound && !audio.sound->IsFinished())
         {
-
             audio.sound->SetVolume(audio.volume);
             audio.sound->SetPitch(audio.pitch * audio.speed);
             audio.sound->SetPan(audio.pan);
 
             if (audio.is3D)
             {
-                PositionComponent *posComp = scene.registry.try_get<PositionComponent>(entity);
+                PositionComponent* posComp = scene.registry.try_get<PositionComponent>(entity);
                 if (posComp)
                 {
                     audio.sound->SetPosition(posComp->value);
@@ -157,18 +160,19 @@ void AudioSystem::Update(Scene &scene, float dt)
 void AudioSystem::OnAudioSourceDestroyed(entt::registry& registry, entt::entity entity)
 {
     auto& audio = registry.get<AudioSourceComponent>(entity);
-    if (audio.sound) {
+    if (audio.sound)
+    {
         audio.sound->Stop();
         audio.sound = nullptr;
     }
 }
 
-void AudioSystem::StopAll(Scene &scene)
+void AudioSystem::StopAll(Scene& scene)
 {
     auto view = scene.registry.view<AudioSourceComponent>();
     for (auto entity : view)
     {
-        auto &audio = view.get<AudioSourceComponent>(entity);
+        auto& audio = view.get<AudioSourceComponent>(entity);
         if (audio.sound)
         {
             audio.sound->Stop();
@@ -179,11 +183,8 @@ void AudioSystem::StopAll(Scene &scene)
 
 std::vector<entt::id_type> AudioSystem::GetReadComponents() const
 {
-    return {
-        entt::type_id<CameraComponent>().hash(),
-        entt::type_id<PositionComponent>().hash(),
-        entt::type_id<RotationComponent>().hash()
-    };
+    return {entt::type_id<CameraComponent>().hash(), entt::type_id<PositionComponent>().hash(),
+            entt::type_id<RotationComponent>().hash()};
 }
 
 std::vector<entt::id_type> AudioSystem::GetWriteComponents() const
@@ -195,10 +196,14 @@ void AudioSystem::SetEnabled(bool enable)
 {
     m_Enabled = enable;
     auto* audioService = ServiceLocator::Instance().Resolve<AudioService>();
-    if (audioService && audioService->GetEngine()) {
-        if (!enable) {
+    if (audioService && audioService->GetEngine())
+    {
+        if (!enable)
+        {
             audioService->GetEngine()->SetGlobalVolume(0.0f);
-        } else {
+        }
+        else
+        {
             audioService->GetEngine()->SetGlobalVolume(m_GlobalVolume);
         }
     }

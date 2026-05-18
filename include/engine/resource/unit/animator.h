@@ -1,9 +1,9 @@
 #pragma once
 
 #include <assimp/scene.h>
+#include <resource/unit/animation.h>
 #include <glm/glm.hpp>
 #include <mutex>
-#include <resource/unit/animation.h>
 #include <unordered_map>
 #include <vector>
 
@@ -16,25 +16,43 @@ public:
     ~Animator() = default;
 
     void UpdateAnimation(float dt, const glm::mat4& rootTransform = glm::mat4(1.0f));
-    void AddAnimation(const std::string &name, std::shared_ptr<Animation> animation);
+    void AddAnimation(const std::string& name, std::shared_ptr<Animation> animation);
     void PlayAnimation(std::shared_ptr<Animation> pAnimation);
-    void PlayAnimation(const std::string &name);
+    void PlayAnimation(const std::string& name);
 
-    void CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parentTransform, int depth);
+    void CalculateBoneTransform(const BoneNodeData* node, glm::mat4 parentTransform, int depth);
     const std::vector<glm::mat4>& GetFinalBoneMatrices();
 
-    void SetSpeed(float speed) { m_Speed = speed; }
-    void SetTime(float timeInSeconds) { m_CurrentTime = timeInSeconds; }
-    float GetCurrentTime() const { return m_CurrentTime; }
-    void SetUpdateRate(float updatesPerSecond) { m_UpdateRate = updatesPerSecond; }
+    void SetSpeed(float speed)
+    {
+        m_Speed = speed;
+    }
+    void SetTime(float timeInSeconds)
+    {
+        m_CurrentTime = timeInSeconds;
+    }
+    float GetCurrentTime() const
+    {
+        return m_CurrentTime;
+    }
+    void SetUpdateRate(float updatesPerSecond)
+    {
+        m_UpdateRate = updatesPerSecond;
+    }
 
     void SetIdentityMatrices(int boneCount);
 
-    float GetDuration() const { return m_CurrentAnimation ? m_CurrentAnimation->GetDuration() : 0.0f; }
+    float GetDuration() const
+    {
+        return m_CurrentAnimation ? m_CurrentAnimation->GetDuration() : 0.0f;
+    }
 
-    void CrossFade(const std::string &name, float transitionDuration);
-    void PlayBlend(const std::string &nameA, const std::string &nameB, float factor);
-    void SetBlendFactor(float factor) { m_BlendFactor = factor; }
+    void CrossFade(const std::string& name, float transitionDuration);
+    void PlayBlend(const std::string& nameA, const std::string& nameB, float factor);
+    void SetBlendFactor(float factor)
+    {
+        m_BlendFactor = factor;
+    }
 
 private:
     std::vector<glm::mat4> m_FinalBoneMatrices;

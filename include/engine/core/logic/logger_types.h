@@ -1,6 +1,7 @@
 #pragma once
 
-enum class LogLevel {
+enum class LogLevel
+{
     None,
     Minimal,
     Flex,
@@ -8,7 +9,8 @@ enum class LogLevel {
     Debug
 };
 
-enum class LogType {
+enum class LogType
+{
     Info,
     Warning,
     Error,

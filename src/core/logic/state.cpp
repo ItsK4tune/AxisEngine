@@ -1,3 +1,4 @@
+#include <core/app/state_machine.h>
 #include <ecs/logic/particle_system.h>
 #include <ecs/logic/physics_system.h>
 #include <ecs/logic/render_system.h>
@@ -8,4 +9,3 @@
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
-#include <core/app/state_machine.h>

@@ -1,15 +1,17 @@
-#include "test_framework.h"
 #include <core/logic/event_manager.h>
+#include "test_framework.h"
 #include <string>
 #include <vector>
 
 // --- Test event types ---
 
-struct TestEvent {
+struct TestEvent
+{
     int value;
 };
 
-struct AnotherEvent {
+struct AnotherEvent
+{
     std::string message;
 };
 
@@ -20,9 +22,7 @@ TEST_CASE(EventManager_SubscribeAndPublish)
     auto& es = EventManager::Instance();
     int received = 0;
 
-    int id = es.Subscribe<TestEvent>([&](const TestEvent& e) {
-        received = e.value;
-    });
+    int id = es.Subscribe<TestEvent>([&](const TestEvent& e) { received = e.value; });
 
     es.Publish(TestEvent{42});
     REQUIRE_EQUAL(received, 42);
@@ -35,12 +35,8 @@ TEST_CASE(EventManager_MultipleSubscribers)
     auto& es = EventManager::Instance();
     std::vector<int> results;
 
-    int id1 = es.Subscribe<TestEvent>([&](const TestEvent& e) {
-        results.push_back(e.value);
-    });
-    int id2 = es.Subscribe<TestEvent>([&](const TestEvent& e) {
-        results.push_back(e.value * 10);
-    });
+    int id1 = es.Subscribe<TestEvent>([&](const TestEvent& e) { results.push_back(e.value); });
+    int id2 = es.Subscribe<TestEvent>([&](const TestEvent& e) { results.push_back(e.value * 10); });
 
     es.Publish(TestEvent{5});
     REQUIRE_EQUAL((int)results.size(), 2);
@@ -56,9 +52,7 @@ TEST_CASE(EventManager_Unsubscribe)
     auto& es = EventManager::Instance();
     int count = 0;
 
-    int id = es.Subscribe<TestEvent>([&](const TestEvent&) {
-        count++;
-    });
+    int id = es.Subscribe<TestEvent>([&](const TestEvent&) { count++; });
 
     es.Publish(TestEvent{1});
     REQUIRE_EQUAL(count, 1);
@@ -66,7 +60,7 @@ TEST_CASE(EventManager_Unsubscribe)
     es.Unsubscribe<TestEvent>(id);
 
     es.Publish(TestEvent{2});
-    REQUIRE_EQUAL(count, 1); // Should not increment
+    REQUIRE_EQUAL(count, 1);  // Should not increment
 }
 
 TEST_CASE(EventManager_DifferentEventTypes)
@@ -75,12 +69,8 @@ TEST_CASE(EventManager_DifferentEventTypes)
     int intResult = 0;
     std::string strResult;
 
-    int id1 = es.Subscribe<TestEvent>([&](const TestEvent& e) {
-        intResult = e.value;
-    });
-    int id2 = es.Subscribe<AnotherEvent>([&](const AnotherEvent& e) {
-        strResult = e.message;
-    });
+    int id1 = es.Subscribe<TestEvent>([&](const TestEvent& e) { intResult = e.value; });
+    int id2 = es.Subscribe<AnotherEvent>([&](const AnotherEvent& e) { strResult = e.message; });
 
     es.Publish(TestEvent{99});
     es.Publish(AnotherEvent{"hello"});
@@ -98,15 +88,13 @@ TEST_CASE(EventManager_ScopedSubscriber)
     int count = 0;
 
     {
-        ScopedSubscriber<TestEvent> sub(
-            es.Subscribe<TestEvent>([&](const TestEvent&) { count++; })
-        );
+        ScopedSubscriber<TestEvent> sub(es.Subscribe<TestEvent>([&](const TestEvent&) { count++; }));
         es.Publish(TestEvent{1});
         REQUIRE_EQUAL(count, 1);
-    } // ScopedSubscriber goes out of scope, auto-unsubscribes
+    }  // ScopedSubscriber goes out of scope, auto-unsubscribes
 
     es.Publish(TestEvent{2});
-    REQUIRE_EQUAL(count, 1); // Should not increment
+    REQUIRE_EQUAL(count, 1);  // Should not increment
 }
 
 TEST_CASE(EventManager_ScopedSubscriber_MoveSemantics)
@@ -114,9 +102,7 @@ TEST_CASE(EventManager_ScopedSubscriber_MoveSemantics)
     auto& es = EventManager::Instance();
     int count = 0;
 
-    ScopedSubscriber<TestEvent> sub1(
-        es.Subscribe<TestEvent>([&](const TestEvent&) { count++; })
-    );
+    ScopedSubscriber<TestEvent> sub1(es.Subscribe<TestEvent>([&](const TestEvent&) { count++; }));
 
     ScopedSubscriber<TestEvent> sub2(std::move(sub1));
 

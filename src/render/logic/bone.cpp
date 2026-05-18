@@ -1,11 +1,9 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <resource/unit/bone.h>
-#include <list>
 #include <render/logic/assimp_glm_helpers.h>
+#include <list>
 
-Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
-    : m_Name(name),
-      m_ID(ID)
+Bone::Bone(const std::string& name, int ID, const aiNodeAnim* channel) : m_Name(name), m_ID(ID)
 {
     m_NumPositions = channel->mNumPositionKeys;
 
@@ -42,9 +40,18 @@ Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
     }
 }
 
-glm::vec3 Bone::GetPosition(float animationTime) const { return InterpolatePosition(animationTime); }
-glm::quat Bone::GetRotation(float animationTime) const { return InterpolateRotation(animationTime); }
-glm::vec3 Bone::GetScale(float animationTime) const { return InterpolateScaling(animationTime); }
+glm::vec3 Bone::GetPosition(float animationTime) const
+{
+    return InterpolatePosition(animationTime);
+}
+glm::quat Bone::GetRotation(float animationTime) const
+{
+    return InterpolateRotation(animationTime);
+}
+glm::vec3 Bone::GetScale(float animationTime) const
+{
+    return InterpolateScaling(animationTime);
+}
 
 glm::mat4 Bone::GetTransform(float animationTime)
 {
@@ -54,8 +61,14 @@ glm::mat4 Bone::GetTransform(float animationTime)
     return translation * rotation * scale;
 }
 
-std::string Bone::GetBoneName() const { return m_Name; }
-int Bone::GetBoneID() const { return m_ID; }
+std::string Bone::GetBoneName() const
+{
+    return m_Name;
+}
+int Bone::GetBoneID() const
+{
+    return m_ID;
+}
 
 int Bone::GetPositionIndex(float animationTime) const
 {
@@ -104,8 +117,7 @@ glm::vec3 Bone::InterpolatePosition(float animationTime) const
 
     int p0Index = GetPositionIndex(animationTime);
     int p1Index = p0Index + 1;
-    float scaleFactor = GetScaleFactor(m_Positions[p0Index].timeStamp,
-                                       m_Positions[p1Index].timeStamp, animationTime);
+    float scaleFactor = GetScaleFactor(m_Positions[p0Index].timeStamp, m_Positions[p1Index].timeStamp, animationTime);
     return glm::mix(m_Positions[p0Index].position, m_Positions[p1Index].position, scaleFactor);
 }
 
@@ -120,8 +132,7 @@ glm::quat Bone::InterpolateRotation(float animationTime) const
 
     int p0Index = GetRotationIndex(animationTime);
     int p1Index = p0Index + 1;
-    float scaleFactor = GetScaleFactor(m_Rotations[p0Index].timeStamp,
-                                       m_Rotations[p1Index].timeStamp, animationTime);
+    float scaleFactor = GetScaleFactor(m_Rotations[p0Index].timeStamp, m_Rotations[p1Index].timeStamp, animationTime);
     return glm::normalize(glm::slerp(m_Rotations[p0Index].orientation, m_Rotations[p1Index].orientation, scaleFactor));
 }
 
@@ -134,7 +145,6 @@ glm::vec3 Bone::InterpolateScaling(float animationTime) const
 
     int p0Index = GetScaleIndex(animationTime);
     int p1Index = p0Index + 1;
-    float scaleFactor = GetScaleFactor(m_Scales[p0Index].timeStamp,
-                                       m_Scales[p1Index].timeStamp, animationTime);
+    float scaleFactor = GetScaleFactor(m_Scales[p0Index].timeStamp, m_Scales[p1Index].timeStamp, animationTime);
     return glm::mix(m_Scales[p0Index].scale, m_Scales[p1Index].scale, scaleFactor);
 }

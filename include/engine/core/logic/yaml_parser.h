@@ -1,10 +1,11 @@
 #pragma once
 
+#include <istream>
 #include <string>
 #include <vector>
-#include <istream>
 
-struct YAMLNode {
+struct YAMLNode
+{
     std::string key;
     std::string value;
     std::vector<YAMLNode> children;
@@ -16,7 +17,8 @@ struct YAMLNode {
     static void Merge(YAMLNode& base, const YAMLNode& override);
 };
 
-class YAMLParser {
+class YAMLParser
+{
 public:
     static std::vector<YAMLNode> Parse(const std::string& filepath);
     static std::vector<YAMLNode> ParseString(const std::string& content);

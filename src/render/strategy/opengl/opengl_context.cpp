@@ -1,7 +1,7 @@
-#include <glad/glad.h>
 #include <render/strategy/opengl/opengl_context.h>
-#include <GLFW/glfw3.h>
 #include <core/logic/logger.h>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 bool OpenGLContext::Initialize()
 {

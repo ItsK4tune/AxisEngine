@@ -1,26 +1,28 @@
 #include <core/logic/log_manager.h>
+#include <core/logic/event_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
-#include <filesystem>
-#include <chrono>
-#include <iomanip>
-#include <sstream>
-#include <mutex>
-#include <iostream>
-#include <stdexcept>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_manager.h>
+#include <iomanip>
+#include <chrono>
+#include <filesystem>
+#include <iostream>
+#include <mutex>
+#include <sstream>
+#include <stdexcept>
 
-void LogManager::Initialize(LogLevel level) {
+void LogManager::Initialize(LogLevel level)
+{
     SetLogLevel(level);
 
-
-    if (level == LogLevel::None) {
+    if (level == LogLevel::None)
+    {
 #ifndef ENABLE_EDITOR
         FreeConsole();
 #endif
     }
-    else {
+    else
+    {
 #ifndef ENABLE_EDITOR
         FreeConsole();
 #endif
@@ -28,7 +30,8 @@ void LogManager::Initialize(LogLevel level) {
         namespace fs = std::filesystem;
         fs::path logsDir = fs::path(logsDirStr);
 
-        if (!fs::is_directory(logsDir)) {
+        if (!fs::is_directory(logsDir))
+        {
             fs::create_directories(logsDir);
         }
 
@@ -42,7 +45,8 @@ void LogManager::Initialize(LogLevel level) {
         fs::path logPath = logsDir / ss.str();
 
         m_LogFile.open(logPath);
-        if (m_LogFile.is_open()) {
+        if (m_LogFile.is_open())
+        {
 #ifdef ENABLE_EDITOR
             m_TeeOut = std::make_unique<TeeBuf>(std::cout.rdbuf(), m_LogFile.rdbuf());
             m_TeeErr = std::make_unique<TeeBuf>(std::cerr.rdbuf(), m_LogFile.rdbuf());
@@ -61,50 +65,64 @@ void LogManager::Initialize(LogLevel level) {
 
     SetUnhandledExceptionFilter(CrashHandler);
 
-
-    if (auto* es = ServiceLocator::Instance().Resolve<EventManager>()) {
-        m_ConfigListenerId = es->Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& ev) {
-            this->OnConfigChanged(ev);
-        });
+    if (auto* es = ServiceLocator::Instance().Resolve<EventManager>())
+    {
+        m_ConfigListenerId =
+            es->Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& ev) { this->OnConfigChanged(ev); });
     }
 }
 
-void LogManager::Shutdown() {
-    if (m_ConfigListenerId != -1) {
-        if (auto* es = ServiceLocator::Instance().Resolve<EventManager>()) {
+void LogManager::Shutdown()
+{
+    if (m_ConfigListenerId != -1)
+    {
+        if (auto* es = ServiceLocator::Instance().Resolve<EventManager>())
+        {
             es->Unsubscribe<ConfigChangedEvent>(m_ConfigListenerId);
         }
         m_ConfigListenerId = -1;
     }
-    if (m_OldOut) std::cout.rdbuf(m_OldOut);
-    if (m_OldErr) std::cerr.rdbuf(m_OldErr);
-    if (m_LogFile.is_open()) m_LogFile.close();
+    if (m_OldOut)
+        std::cout.rdbuf(m_OldOut);
+    if (m_OldErr)
+        std::cerr.rdbuf(m_OldErr);
+    if (m_LogFile.is_open())
+        m_LogFile.close();
 }
 
-void LogManager::OnConfigChanged(const ConfigChangedEvent& event) {
-    if (event.bitmask & (ConfigChangedEvent::General | ConfigChangedEvent::All)) {
+void LogManager::OnConfigChanged(const ConfigChangedEvent& event)
+{
+    if (event.bitmask & (ConfigChangedEvent::General | ConfigChangedEvent::All))
+    {
         SetLogLevel(event.config.logLevel);
     }
 }
 
-void LogManager::Log(LogType type, const std::string& tag, const std::string& message) {
-    if (m_LogLevel == LogLevel::None) {
-        if (type == LogType::Error) {
+void LogManager::Log(LogType type, const std::string& tag, const std::string& message)
+{
+    if (m_LogLevel == LogLevel::None)
+    {
+        if (type == LogType::Error)
+        {
             throw std::runtime_error("[" + tag + "] " + message);
         }
         return;
     }
 
-    if (m_LogLevel == LogLevel::Minimal && type != LogType::Error) return;
-    if (m_LogLevel == LogLevel::Flex && (type == LogType::Info || type == LogType::Debug)) return;
-    if (m_LogLevel == LogLevel::Verbose && type == LogType::Debug) return;
+    if (m_LogLevel == LogLevel::Minimal && type != LogType::Error)
+        return;
+    if (m_LogLevel == LogLevel::Flex && (type == LogType::Info || type == LogType::Debug))
+        return;
+    if (m_LogLevel == LogLevel::Verbose && type == LogType::Debug)
+        return;
 
     std::lock_guard<std::mutex> lock(m_LogMutex);
 
     std::string levelStr;
     std::ostream* outStream = &std::cout;
 
-    switch (type) {
+    switch (type)
+    {
         case LogType::Info:
             levelStr = "INFO";
             break;
@@ -124,20 +142,25 @@ void LogManager::Log(LogType type, const std::string& tag, const std::string& me
 
 #ifdef ENABLE_EDITOR
     // Feed editor console panel
-    if (m_EditorLogCallback) {
+    if (m_EditorLogCallback)
+    {
         m_EditorLogCallback(type, tag, message);
     }
 #endif
 }
 
-
-LONG WINAPI LogManager::CrashHandler(EXCEPTION_POINTERS* exceptionInfo) {
+LONG WINAPI LogManager::CrashHandler(EXCEPTION_POINTERS* exceptionInfo)
+{
     auto& logFile = Instance().m_LogFile;
-    if (logFile.is_open()) {
+    if (logFile.is_open())
+    {
         logFile << "Unhandled Exception Caught!\n";
-        if (exceptionInfo && exceptionInfo->ExceptionRecord) {
-            logFile << "Exception Code: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionCode << std::dec << "\n";
-            logFile << "Faulting Address: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionAddress << std::dec << "\n";
+        if (exceptionInfo && exceptionInfo->ExceptionRecord)
+        {
+            logFile << "Exception Code: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionCode << std::dec
+                    << "\n";
+            logFile << "Faulting Address: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionAddress
+                    << std::dec << "\n";
         }
         logFile.flush();
     }

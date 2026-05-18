@@ -1,9 +1,9 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <memory>
 #include <resource/unit/mesh.h>
 #include <resource/unit/shader.h>
+#include <glm/glm.hpp>
+#include <memory>
 #include <vector>
 
 class IBufferManager;
@@ -11,7 +11,6 @@ class IDrawContext;
 class ITextureManager;
 
 #define GLM_ENABLE_EXPERIMENTAL
-
 
 struct Particle
 {
@@ -23,7 +22,7 @@ struct Particle
     float Size;
     float CameraDistance;
 
-    bool operator<(const Particle &that) const
+    bool operator<(const Particle& that) const
     {
         return this->CameraDistance > that.CameraDistance;
     }
@@ -42,15 +41,15 @@ public:
     ParticleEmitter();
     ~ParticleEmitter();
 
-    ParticleEmitter(const ParticleEmitter &) = delete;
-    ParticleEmitter &operator=(const ParticleEmitter &) = delete;
+    ParticleEmitter(const ParticleEmitter&) = delete;
+    ParticleEmitter& operator=(const ParticleEmitter&) = delete;
 
-    ParticleEmitter(ParticleEmitter &&other) noexcept;
-    ParticleEmitter &operator=(ParticleEmitter &&other) noexcept;
+    ParticleEmitter(ParticleEmitter&& other) noexcept;
+    ParticleEmitter& operator=(ParticleEmitter&& other) noexcept;
 
     void Initialize(unsigned int maxParticles = 500);
-    void Update(float dt, const glm::vec3 &offset = glm::vec3(0.0f), bool spawn = true);
-    void Render(Shader *shader);
+    void Update(float dt, const glm::vec3& offset = glm::vec3(0.0f), bool spawn = true);
+    void Render(Shader* shader);
 
     unsigned int GetActiveParticleCount() const;
 
@@ -91,7 +90,7 @@ private:
     static IDrawContext* s_DrawContext;
 
     unsigned int FirstUnusedParticle();
-    void RespawnParticle(Particle &particle, const glm::vec3 &offset);
+    void RespawnParticle(Particle& particle, const glm::vec3& offset);
 
     static IBufferManager& GetBufferManager();
     static ITextureManager& GetTextureManager();

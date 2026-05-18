@@ -1,12 +1,11 @@
-#include <chrono>
-#include <core/logic/event_manager.h>
-#include <iostream>
 #include <resource/logic/resource_watcher.h>
-#include <resource/type/resource_events.h>
+#include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
+#include <resource/type/resource_events.h>
+#include <chrono>
+#include <iostream>
 
-ResourceWatcher::ResourceWatcher()
-    : m_Running(true)
+ResourceWatcher::ResourceWatcher() : m_Running(true)
 {
     m_WatcherThread = std::thread(&ResourceWatcher::WatcherLoop, this);
 }
@@ -23,12 +22,12 @@ ResourceWatcher::~ResourceWatcher()
         m_WatcherThread.join();
 }
 
-void ResourceWatcher::Watch(const std::string &name, const std::string &path, const std::string &type)
+void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type)
 {
     bool alreadyWatched = false;
     {
         std::lock_guard<std::mutex> lock(m_Mutex);
-        for (auto &w : m_Watchers)
+        for (auto& w : m_Watchers)
         {
             if (w.name == name && w.type == type)
             {
@@ -58,8 +57,8 @@ void ResourceWatcher::Watch(const std::string &name, const std::string &path, co
     }
 }
 
-void ResourceWatcher::Watch(const std::string &name, const std::string &path, const std::string &type,
-                            const std::string &vsPath, const std::string &fsPath, const std::string &gsPath)
+void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type,
+                            const std::string& vsPath, const std::string& fsPath, const std::string& gsPath)
 {
     WatchEntry entry;
     entry.name = name;
@@ -87,9 +86,7 @@ void ResourceWatcher::WatcherLoop()
     {
         {
             std::unique_lock<std::mutex> lock(m_StopMutex);
-            m_StopCV.wait_for(lock, std::chrono::milliseconds(500),
-                              [this]()
-                              { return !m_Running.load(); });
+            m_StopCV.wait_for(lock, std::chrono::milliseconds(500), [this]() { return !m_Running.load(); });
         }
 
         if (!m_Running)
@@ -101,7 +98,7 @@ void ResourceWatcher::WatcherLoop()
             watchersCopy = m_Watchers;
         }
 
-        for (auto &watcher : watchersCopy)
+        for (auto& watcher : watchersCopy)
         {
             try
             {
@@ -111,11 +108,12 @@ void ResourceWatcher::WatcherLoop()
                 auto currentWriteTime = std::filesystem::last_write_time(watcher.filePath);
                 if (currentWriteTime > watcher.lastWriteTime)
                 {
-
                     {
                         std::lock_guard<std::mutex> lock(m_Mutex);
-                        for (auto& w : m_Watchers) {
-                            if (w.name == watcher.name && w.type == watcher.type) {
+                        for (auto& w : m_Watchers)
+                        {
+                            if (w.name == watcher.name && w.type == watcher.type)
+                            {
                                 w.lastWriteTime = currentWriteTime;
                                 break;
                             }
@@ -133,7 +131,7 @@ void ResourceWatcher::WatcherLoop()
                     m_PendingReloads.push_back(e);
                 }
             }
-            catch (const std::filesystem::filesystem_error &)
+            catch (const std::filesystem::filesystem_error&)
             {
             }
         }
@@ -152,7 +150,7 @@ void ResourceWatcher::Update(float dt)
         }
     }
 
-    for (const auto &event : eventsToProcess)
+    for (const auto& event : eventsToProcess)
     {
         EventManager::Instance().Publish(event);
     }

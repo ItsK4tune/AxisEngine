@@ -1,35 +1,39 @@
-#include <ecs/unit/core_components.h>
 #include <editor/modules/physics_editor_module.h>
-#include <physics/interface/i_physics_world.h>
 #include <core/logic/config_manager.h>
+#include <ecs/unit/core_components.h>
 #include <editor/panels/scene_hierarchy_panel.h>
+#include <physics/interface/i_physics_world.h>
 
 #ifdef ENABLE_EDITOR
 
 #include <core/app/application.h>
-#include <platform/logic/input_manager.h>
-#include <resource/logic/resource_manager.h>
-#include <ecs/unit/render_components.h>
+#include <ecs/logic/system_manager.h>
 #include <ecs/unit/media_components.h>
-
+#include <ecs/unit/render_components.h>
+#include <platform/interface/i_window.h>
+#include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <ecs/logic/system_manager.h>
-#include <platform/interface/i_window.h>
+#include <resource/logic/resource_manager.h>
 #include <iostream>
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-#include <render/interface/i_graphics_context.h>
-#include <render/interface/i_render_state_manager.h>
+#include <core/logic/event_manager.h>
+#include <core/logic/service_locator.h>
+#include <core/type/event_types.h>
+#include <ecs/logic/entity_manager.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
-#include <ecs/logic/entity_manager.h>
-#include <core/logic/service_locator.h>
-#include <core/logic/event_manager.h>
-#include <core/type/event_types.h>
-PhysicsEditorModule::PhysicsEditorModule() {}
-PhysicsEditorModule::~PhysicsEditorModule() {}
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_render_state_manager.h>
+#include <glm/glm.hpp>
+
+PhysicsEditorModule::PhysicsEditorModule()
+{
+}
+PhysicsEditorModule::~PhysicsEditorModule()
+{
+}
 
 void PhysicsEditorModule::Initialize()
 {
@@ -39,7 +43,7 @@ void PhysicsEditorModule::OnUpdate(float dt)
 {
 }
 
-void PhysicsEditorModule::Render(Scene &scene)
+void PhysicsEditorModule::Render(Scene& scene)
 {
     if (!m_Enabled)
         return;
@@ -54,20 +58,22 @@ void PhysicsEditorModule::Render(Scene &scene)
     bool showPhysics = false;
     bool showAudio = false;
     bool showParticle = false;
-    if (cm) {
+    if (cm)
+    {
         auto& conf = cm->GetConfig();
         showPhysics = conf.debug.physicsDebug;
         showAudio = conf.debug.audioDebug;
         showParticle = conf.debug.particleDebug;
     }
-    
+
     if (showPhysics)
     {
         EventManager::Instance().Publish(PhysicsDebugRenderEvent{&scene, width, height});
     }
 
     bool showGrid = false;
-    if (cm) {
+    if (cm)
+    {
         showGrid = cm->GetConfig().debug.gridIndicatorEnabled;
     }
 
@@ -75,19 +81,22 @@ void PhysicsEditorModule::Render(Scene &scene)
         return;
 
     auto debugShader = resources.GetShader("debug_line");
-    if (!debugShader) return;
+    if (!debugShader)
+        return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity == entt::null) return;
+    if (camEntity == entt::null)
+        return;
 
     auto& cam = scene.registry.get<CameraComponent>(camEntity);
     auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
     float aspect = (float)width / (float)height;
-    if (aspect <= 0.0f) aspect = 1.0f;
+    if (aspect <= 0.0f)
+        aspect = 1.0f;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-    
+
     auto& camRot = scene.registry.get<RotationComponent>(camEntity);
     glm::vec3 front = camRot.value * glm::vec3(0, 0, -1);
     glm::vec3 up = camRot.value * glm::vec3(0, 1, 0);
@@ -99,10 +108,18 @@ void PhysicsEditorModule::Render(Scene &scene)
 
     std::vector<float> lineVertices;
     auto addLine = [&](const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) {
-        lineVertices.push_back(start.x); lineVertices.push_back(start.y); lineVertices.push_back(start.z);
-        lineVertices.push_back(color.r); lineVertices.push_back(color.g); lineVertices.push_back(color.b);
-        lineVertices.push_back(end.x); lineVertices.push_back(end.y); lineVertices.push_back(end.z);
-        lineVertices.push_back(color.r); lineVertices.push_back(color.g); lineVertices.push_back(color.b);
+        lineVertices.push_back(start.x);
+        lineVertices.push_back(start.y);
+        lineVertices.push_back(start.z);
+        lineVertices.push_back(color.r);
+        lineVertices.push_back(color.g);
+        lineVertices.push_back(color.b);
+        lineVertices.push_back(end.x);
+        lineVertices.push_back(end.y);
+        lineVertices.push_back(end.z);
+        lineVertices.push_back(color.r);
+        lineVertices.push_back(color.g);
+        lineVertices.push_back(color.b);
     };
 
     if (showAudio)
@@ -115,7 +132,7 @@ void PhysicsEditorModule::Render(Scene &scene)
                 pos = glm::vec3(tr->worldMatrix[3]);
             else if (auto* p = scene.registry.try_get<PositionComponent>(entity))
                 pos = p->value;
-            
+
             float s = 0.5f;
             glm::vec3 c(1.0f, 0.0f, 1.0f);
             addLine(pos - glm::vec3(s, 0, 0), pos + glm::vec3(s, 0, 0), c);
@@ -137,49 +154,65 @@ void PhysicsEditorModule::Render(Scene &scene)
 
             float s = 1.0f;
             glm::vec3 c(0.0f, 1.0f, 0.5f);
-            
+
             // Draw a basic box around the emitter
             glm::vec3 p1 = pos + glm::vec3(-s, -s, -s);
-            glm::vec3 p2 = pos + glm::vec3( s, -s, -s);
-            glm::vec3 p3 = pos + glm::vec3( s,  s, -s);
-            glm::vec3 p4 = pos + glm::vec3(-s,  s, -s);
-            glm::vec3 p5 = pos + glm::vec3(-s, -s,  s);
-            glm::vec3 p6 = pos + glm::vec3( s, -s,  s);
-            glm::vec3 p7 = pos + glm::vec3( s,  s,  s);
-            glm::vec3 p8 = pos + glm::vec3(-s,  s,  s);
+            glm::vec3 p2 = pos + glm::vec3(s, -s, -s);
+            glm::vec3 p3 = pos + glm::vec3(s, s, -s);
+            glm::vec3 p4 = pos + glm::vec3(-s, s, -s);
+            glm::vec3 p5 = pos + glm::vec3(-s, -s, s);
+            glm::vec3 p6 = pos + glm::vec3(s, -s, s);
+            glm::vec3 p7 = pos + glm::vec3(s, s, s);
+            glm::vec3 p8 = pos + glm::vec3(-s, s, s);
 
-            addLine(p1, p2, c); addLine(p2, p3, c); addLine(p3, p4, c); addLine(p4, p1, c);
-            addLine(p5, p6, c); addLine(p6, p7, c); addLine(p7, p8, c); addLine(p8, p5, c);
-            addLine(p1, p5, c); addLine(p2, p6, c); addLine(p3, p7, c); addLine(p4, p8, c);
+            addLine(p1, p2, c);
+            addLine(p2, p3, c);
+            addLine(p3, p4, c);
+            addLine(p4, p1, c);
+            addLine(p5, p6, c);
+            addLine(p6, p7, c);
+            addLine(p7, p8, c);
+            addLine(p8, p5, c);
+            addLine(p1, p5, c);
+            addLine(p2, p6, c);
+            addLine(p3, p7, c);
+            addLine(p4, p8, c);
         }
     }
 
     // Draw 3D Grid Indicator reflecting Grid Snap step centered at Camera (snapped chunks)
-    if (auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>()) {
+    if (auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>())
+    {
         auto conf = cm->GetConfig();
-        if (conf.debug.gridIndicatorEnabled) {
+        if (conf.debug.gridIndicatorEnabled)
+        {
             float tSnap = conf.debug.gridSnapTranslation;
-            if (tSnap < 0.1f) tSnap = 0.1f; // Safety clamp
+            if (tSnap < 0.1f)
+                tSnap = 0.1f;  // Safety clamp
 
             // Snap grid center to nearest multiple of tSnap to ensure lines align perfectly with snapped coordinates
             float snapX = std::round(camPos.x / tSnap) * tSnap;
             float snapZ = std::round(camPos.z / tSnap) * tSnap;
 
             float extent = 200.0f;
-            if (tSnap < 0.5f) {
-                extent = 100.0f; // Snug grid for fine step to maintain performance
-            } else if (tSnap > 2.0f) {
-                extent = 500.0f; // Large grid for huge step
+            if (tSnap < 0.5f)
+            {
+                extent = 100.0f;  // Snug grid for fine step to maintain performance
+            }
+            else if (tSnap > 2.0f)
+            {
+                extent = 500.0f;  // Large grid for huge step
             }
 
             glm::vec3 gridColor(0.20f, 0.20f, 0.20f);
-            glm::vec3 axisColorX(0.7f, 0.2f, 0.2f); // Red for X-axis
-            glm::vec3 axisColorZ(0.2f, 0.2f, 0.7f); // Blue for Z-axis
-            glm::vec3 axisColorY(0.2f, 0.7f, 0.2f); // Green for Y-axis
+            glm::vec3 axisColorX(0.7f, 0.2f, 0.2f);  // Red for X-axis
+            glm::vec3 axisColorZ(0.2f, 0.2f, 0.7f);  // Blue for Z-axis
+            glm::vec3 axisColorY(0.2f, 0.7f, 0.2f);  // Green for Y-axis
 
             // Draw grid lines parallel to Z axis (incrementing X) - all lines are exact multiples of tSnap
             int halfLines = static_cast<int>(extent / tSnap);
-            for (int i = -halfLines; i <= halfLines; ++i) {
+            for (int i = -halfLines; i <= halfLines; ++i)
+            {
                 float x = snapX + i * tSnap;
                 glm::vec3 start(x, 0.0f, snapZ - extent);
                 glm::vec3 end(x, 0.0f, snapZ + extent);
@@ -188,7 +221,8 @@ void PhysicsEditorModule::Render(Scene &scene)
             }
 
             // Draw grid lines parallel to X axis (incrementing Z) - all lines are exact multiples of tSnap
-            for (int i = -halfLines; i <= halfLines; ++i) {
+            for (int i = -halfLines; i <= halfLines; ++i)
+            {
                 float z = snapZ + i * tSnap;
                 glm::vec3 start(snapX - extent, 0.0f, z);
                 glm::vec3 end(snapX + extent, 0.0f, z);
@@ -202,7 +236,9 @@ void PhysicsEditorModule::Render(Scene &scene)
     }
 
     // Draw Rotation, Scale, and Translation visual indicators for Selected Entity
-    if (SceneHierarchyPanel::s_SelectedEntity != entt::null && scene.registry.valid(SceneHierarchyPanel::s_SelectedEntity)) {
+    if (SceneHierarchyPanel::s_SelectedEntity != entt::null &&
+        scene.registry.valid(SceneHierarchyPanel::s_SelectedEntity))
+    {
         glm::vec3 pos(0.0f);
         if (auto* tr = scene.registry.try_get<WorldTransformComponent>(SceneHierarchyPanel::s_SelectedEntity))
             pos = glm::vec3(tr->worldMatrix[3]);
@@ -210,14 +246,16 @@ void PhysicsEditorModule::Render(Scene &scene)
             pos = p->value;
 
         auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>();
-        if (ioHandler) {
+        if (ioHandler)
+        {
             auto& keyboard = ioHandler->GetKeyboard();
             bool alt = keyboard.GetKey(Key::LeftAlt) || keyboard.GetKey(Key::RightAlt);
             bool ctrl = keyboard.GetKey(Key::LeftControl) || keyboard.GetKey(Key::RightControl);
             bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
 
             float indicatorScale = 1.0f;
-            if (auto* s = scene.registry.try_get<ScaleComponent>(SceneHierarchyPanel::s_SelectedEntity)) {
+            if (auto* s = scene.registry.try_get<ScaleComponent>(SceneHierarchyPanel::s_SelectedEntity))
+            {
                 indicatorScale = glm::max(0.5f, glm::max(s->value.x, glm::max(s->value.y, s->value.z)));
             }
 
@@ -225,7 +263,8 @@ void PhysicsEditorModule::Render(Scene &scene)
             auto drawRotationIndicator = [&](const glm::vec3& center, float radius) {
                 const int segments = 32;
                 // Red circle: Pitch (YZ plane)
-                for (int i = 0; i < segments; ++i) {
+                for (int i = 0; i < segments; ++i)
+                {
                     float theta1 = (i / (float)segments) * glm::two_pi<float>();
                     float theta2 = ((i + 1) / (float)segments) * glm::two_pi<float>();
                     glm::vec3 p1 = center + glm::vec3(0.0f, radius * std::cos(theta1), radius * std::sin(theta1));
@@ -233,7 +272,8 @@ void PhysicsEditorModule::Render(Scene &scene)
                     addLine(p1, p2, glm::vec3(0.9f, 0.1f, 0.1f));
                 }
                 // Green circle: Yaw (XZ plane)
-                for (int i = 0; i < segments; ++i) {
+                for (int i = 0; i < segments; ++i)
+                {
                     float theta1 = (i / (float)segments) * glm::two_pi<float>();
                     float theta2 = ((i + 1) / (float)segments) * glm::two_pi<float>();
                     glm::vec3 p1 = center + glm::vec3(radius * std::cos(theta1), 0.0f, radius * std::sin(theta1));
@@ -241,7 +281,8 @@ void PhysicsEditorModule::Render(Scene &scene)
                     addLine(p1, p2, glm::vec3(0.1f, 0.9f, 0.1f));
                 }
                 // Blue circle: Roll (XY plane)
-                for (int i = 0; i < segments; ++i) {
+                for (int i = 0; i < segments; ++i)
+                {
                     float theta1 = (i / (float)segments) * glm::two_pi<float>();
                     float theta2 = ((i + 1) / (float)segments) * glm::two_pi<float>();
                     glm::vec3 p1 = center + glm::vec3(radius * std::cos(theta1), radius * std::sin(theta1), 0.0f);
@@ -263,17 +304,26 @@ void PhysicsEditorModule::Render(Scene &scene)
                 float boxSize = 0.06f * length;
                 auto addMiniBox = [&](const glm::vec3& pBox, const glm::vec3& color) {
                     glm::vec3 p1 = pBox + glm::vec3(-boxSize, -boxSize, -boxSize);
-                    glm::vec3 p2 = pBox + glm::vec3( boxSize, -boxSize, -boxSize);
-                    glm::vec3 p3 = pBox + glm::vec3( boxSize,  boxSize, -boxSize);
-                    glm::vec3 p4 = pBox + glm::vec3(-boxSize,  boxSize, -boxSize);
-                    glm::vec3 p5 = pBox + glm::vec3(-boxSize, -boxSize,  boxSize);
-                    glm::vec3 p6 = pBox + glm::vec3( boxSize, -boxSize,  boxSize);
-                    glm::vec3 p7 = pBox + glm::vec3( boxSize,  boxSize,  boxSize);
-                    glm::vec3 p8 = pBox + glm::vec3(-boxSize,  boxSize,  boxSize);
+                    glm::vec3 p2 = pBox + glm::vec3(boxSize, -boxSize, -boxSize);
+                    glm::vec3 p3 = pBox + glm::vec3(boxSize, boxSize, -boxSize);
+                    glm::vec3 p4 = pBox + glm::vec3(-boxSize, boxSize, -boxSize);
+                    glm::vec3 p5 = pBox + glm::vec3(-boxSize, -boxSize, boxSize);
+                    glm::vec3 p6 = pBox + glm::vec3(boxSize, -boxSize, boxSize);
+                    glm::vec3 p7 = pBox + glm::vec3(boxSize, boxSize, boxSize);
+                    glm::vec3 p8 = pBox + glm::vec3(-boxSize, boxSize, boxSize);
 
-                    addLine(p1, p2, color); addLine(p2, p3, color); addLine(p3, p4, color); addLine(p4, p1, color);
-                    addLine(p5, p6, color); addLine(p6, p7, color); addLine(p7, p8, color); addLine(p8, p5, color);
-                    addLine(p1, p5, color); addLine(p2, p6, color); addLine(p3, p7, color); addLine(p4, p8, color);
+                    addLine(p1, p2, color);
+                    addLine(p2, p3, color);
+                    addLine(p3, p4, color);
+                    addLine(p4, p1, color);
+                    addLine(p5, p6, color);
+                    addLine(p6, p7, color);
+                    addLine(p7, p8, color);
+                    addLine(p8, p5, color);
+                    addLine(p1, p5, color);
+                    addLine(p2, p6, color);
+                    addLine(p3, p7, color);
+                    addLine(p4, p8, color);
                 };
 
                 addMiniBox(xEnd, glm::vec3(0.9f, 0.1f, 0.1f));
@@ -281,13 +331,16 @@ void PhysicsEditorModule::Render(Scene &scene)
                 addMiniBox(zEnd, glm::vec3(0.1f, 0.1f, 0.9f));
             };
 
-            if (alt && ctrl && !shift) {
+            if (alt && ctrl && !shift)
+            {
                 drawRotationIndicator(pos, indicatorScale * 1.5f);
             }
-            else if (alt && shift && !ctrl) {
+            else if (alt && shift && !ctrl)
+            {
                 drawScaleIndicator(pos, indicatorScale * 1.6f);
             }
-            else if (alt && !ctrl && !shift) {
+            else if (alt && !ctrl && !shift)
+            {
                 float len = indicatorScale * 1.6f;
                 glm::vec3 xEnd = pos + glm::vec3(len, 0.0f, 0.0f);
                 glm::vec3 yEnd = pos + glm::vec3(0.0f, len, 0.0f);
@@ -313,39 +366,54 @@ void PhysicsEditorModule::Render(Scene &scene)
                 addLine(zEnd, zEnd - glm::vec3(arr, arr, arr * 2.0f), glm::vec3(0.1f, 0.1f, 0.9f));
                 addLine(zEnd, zEnd - glm::vec3(-arr, arr, arr * 2.0f), glm::vec3(0.1f, 0.1f, 0.9f));
             }
-            else {
+            else
+            {
                 float s = indicatorScale * 0.7f;
                 glm::vec3 c(0.9f, 0.9f, 0.2f);
                 glm::vec3 p1 = pos + glm::vec3(-s, -s, -s);
-                glm::vec3 p2 = pos + glm::vec3( s, -s, -s);
-                glm::vec3 p3 = pos + glm::vec3( s,  s, -s);
-                glm::vec3 p4 = pos + glm::vec3(-s,  s, -s);
-                glm::vec3 p5 = pos + glm::vec3(-s, -s,  s);
-                glm::vec3 p6 = pos + glm::vec3( s, -s,  s);
-                glm::vec3 p7 = pos + glm::vec3( s,  s,  s);
-                glm::vec3 p8 = pos + glm::vec3(-s,  s,  s);
+                glm::vec3 p2 = pos + glm::vec3(s, -s, -s);
+                glm::vec3 p3 = pos + glm::vec3(s, s, -s);
+                glm::vec3 p4 = pos + glm::vec3(-s, s, -s);
+                glm::vec3 p5 = pos + glm::vec3(-s, -s, s);
+                glm::vec3 p6 = pos + glm::vec3(s, -s, s);
+                glm::vec3 p7 = pos + glm::vec3(s, s, s);
+                glm::vec3 p8 = pos + glm::vec3(-s, s, s);
 
-                addLine(p1, p2, c); addLine(p2, p3, c); addLine(p3, p4, c); addLine(p4, p1, c);
-                addLine(p5, p6, c); addLine(p6, p7, c); addLine(p7, p8, c); addLine(p8, p5, c);
-                addLine(p1, p5, c); addLine(p2, p6, c); addLine(p3, p7, c); addLine(p4, p8, c);
+                addLine(p1, p2, c);
+                addLine(p2, p3, c);
+                addLine(p3, p4, c);
+                addLine(p4, p1, c);
+                addLine(p5, p6, c);
+                addLine(p6, p7, c);
+                addLine(p7, p8, c);
+                addLine(p8, p5, c);
+                addLine(p1, p5, c);
+                addLine(p2, p6, c);
+                addLine(p3, p7, c);
+                addLine(p4, p8, c);
             }
         }
     }
 
-    if (lineVertices.empty()) return;
+    if (lineVertices.empty())
+        return;
 
     auto* graphics = sl.Resolve<IGraphicsContext>();
-    if (!graphics) return;
+    if (!graphics)
+        return;
 
     auto& bm = graphics->GetBufferManager();
     auto& dc = graphics->GetDrawContext();
 
-    if (m_LineVAO == 0) m_LineVAO = bm.GenVertexArray();
-    if (m_LineVBO == 0) m_LineVBO = bm.GenBuffer();
-    
+    if (m_LineVAO == 0)
+        m_LineVAO = bm.GenVertexArray();
+    if (m_LineVBO == 0)
+        m_LineVBO = bm.GenBuffer();
+
     bm.BindVertexArray(m_LineVAO);
     bm.BindBuffer(BufferType::ArrayBuffer, m_LineVBO);
-    bm.BufferData(BufferType::ArrayBuffer, lineVertices.size() * sizeof(float), lineVertices.data(), BufferUsage::StreamDraw);
+    bm.BufferData(BufferType::ArrayBuffer, lineVertices.size() * sizeof(float), lineVertices.data(),
+                  BufferUsage::StreamDraw);
 
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, DataType::Float, false, 6 * sizeof(float), (void*)0);
@@ -359,52 +427,62 @@ void PhysicsEditorModule::Render(Scene &scene)
     bm.BindVertexArray(0);
 }
 
-void PhysicsEditorModule::ProcessInput(KeyboardManager &keyboard)
+void PhysicsEditorModule::ProcessInput(KeyboardManager& keyboard)
 {
     if (!m_Enabled)
         return;
 
-    ProcessKey(keyboard, Key::F8, m_F8Pressed, [this, &keyboard]()
-               {
+    ProcessKey(keyboard, Key::F8, m_F8Pressed, [this, &keyboard]() {
         bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift) {
+        if (shift)
+        {
             auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-            if (cm) {
+            if (cm)
+            {
                 auto conf = cm->GetConfig();
                 conf.debug.audioDebug = !conf.debug.audioDebug;
                 cm->UpdateConfig(conf);
             }
-        } else {
+        }
+        else
+        {
             TogglePhysicsDebug();
-        } });
+        }
+    });
 
-    ProcessKey(keyboard, Key::F9, m_F9Pressed, [this, &keyboard]()
-               {
+    ProcessKey(keyboard, Key::F9, m_F9Pressed, [this, &keyboard]() {
         bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift) {
+        if (shift)
+        {
             auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-            if (cm) {
+            if (cm)
+            {
                 auto conf = cm->GetConfig();
                 conf.debug.particleDebug = !conf.debug.particleDebug;
                 cm->UpdateConfig(conf);
             }
-        } else {
+        }
+        else
+        {
             static bool uiEnabled = true;
             uiEnabled = !uiEnabled;
             EventManager::Instance().Publish(SystemEnabledEvent{"UIRenderSystem", uiEnabled});
-        } });
+        }
+    });
 }
 
 void PhysicsEditorModule::TogglePhysicsDebug()
 {
     auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    if (!cm) return;
+    if (!cm)
+        return;
     auto conf = cm->GetConfig();
     conf.debug.physicsDebug = !conf.debug.physicsDebug;
     cm->UpdateConfig(conf);
 }
 
-void PhysicsEditorModule::ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action)
+void PhysicsEditorModule::ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState,
+                                     std::function<void()> action)
 {
     if (keyboard.GetKey(key))
     {

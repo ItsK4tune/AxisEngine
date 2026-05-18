@@ -1,10 +1,10 @@
 #include <platform/logic/io_handler.h>
-#include <platform/logic/monitor_manager.h>
-#include <platform/logic/keyboard_manager.h>
-#include <platform/logic/mouse_manager.h>
-#include <platform/logic/input_manager.h>
-#include <render/interface/i_graphics_context.h>
 #include <core/logic/logger.h>
+#include <platform/logic/input_manager.h>
+#include <platform/logic/keyboard_manager.h>
+#include <platform/logic/monitor_manager.h>
+#include <platform/logic/mouse_manager.h>
+#include <render/interface/i_graphics_context.h>
 
 IOHandler::IOHandler()
 {
@@ -15,7 +15,8 @@ IOHandler::~IOHandler()
 {
 }
 
-bool IOHandler::Initialize(std::unique_ptr<IWindow> window, const std::string& title, int width, int height, int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit)
+bool IOHandler::Initialize(std::unique_ptr<IWindow> window, const std::string& title, int width, int height,
+                           int windowMode, int monitorIndex, int refreshRate, bool vsync, int frameRateLimit)
 {
     m_MonitorManager->SetWindowTitle(title);
     m_MonitorManager->SetWindowConfiguration(width, height, (WindowMode)windowMode, monitorIndex, refreshRate);
@@ -33,7 +34,8 @@ bool IOHandler::Initialize(std::unique_ptr<IWindow> window, const std::string& t
 
     m_KeyboardManager = std::make_unique<KeyboardManager>(m_MonitorManager->GetWindow());
     m_MouseManager = std::make_unique<MouseManager>(m_MonitorManager->GetWindow());
-    m_InputManager = std::make_unique<InputManager>(*m_KeyboardManager, *m_MouseManager, *m_MonitorManager->GetWindow());
+    m_InputManager =
+        std::make_unique<InputManager>(*m_KeyboardManager, *m_MouseManager, *m_MonitorManager->GetWindow());
 
     m_MouseManager->SetLastPosition(width / 2.0, height / 2.0);
     m_MouseManager->SetWindowSize(width, height);
@@ -56,7 +58,6 @@ void IOHandler::ProcessInput()
 
     if (m_KeyboardManager->GetKey(Key::Escape))
         m_MonitorManager->GetWindow()->SetShouldClose(true);
-    
 }
 
 void IOHandler::OnResize(int width, int height)
@@ -83,5 +84,3 @@ void IOHandler::OnScroll(double xoffset, double yoffset)
     if (m_MouseManager)
         m_MouseManager->UpdateScroll(xoffset, yoffset);
 }
-
-

@@ -15,8 +15,19 @@ public:
     {
     }
 
-    bool IsEnabled() const override { return true; }
-    void SetEnabled(bool) override {}
-    int GetPriority() const override { return 15; }
-    std::string GetName() const override { return "DummyTestSystem"; }
+    bool IsEnabled() const override
+    {
+        return true;
+    }
+    void SetEnabled(bool) override
+    {
+    }
+    int GetPriority() const override
+    {
+        return 15;
+    }
+    std::string GetName() const override
+    {
+        return "DummyTestSystem";
+    }
 };

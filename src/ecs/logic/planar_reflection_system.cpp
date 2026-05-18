@@ -1,19 +1,19 @@
 #include <ecs/logic/planar_reflection_system.h>
-#include <render/type/render_view_params.h>
-#include <ecs/logic/system_factory.h>
+#include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <render/interface/i_graphics_context.h>
 #include <ecs/interface/i_render_service.h>
-#include <render/interface/i_render_target_manager.h>
-#include <render/interface/i_render_state_manager.h>
-#include <render/interface/i_draw_context.h>
-#include <render/interface/i_texture_manager.h>
+#include <ecs/logic/entity_manager.h>
+#include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/reflection_components.h>
-#include <ecs/logic/entity_manager.h>
-#include <scene/logic/scene_manager.h>
+#include <render/interface/i_draw_context.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_render_state_manager.h>
+#include <render/interface/i_render_target_manager.h>
+#include <render/interface/i_texture_manager.h>
+#include <render/type/render_view_params.h>
 #include <render/unit/render_queue.h>
-#include <core/logic/logger.h>
+#include <scene/logic/scene_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 REGISTER_SYSTEM(PlanarReflectionSystem)
@@ -26,8 +26,9 @@ void PlanarReflectionSystem::Initialize()
 
 void PlanarReflectionSystem::Shutdown()
 {
-    if (!m_Context) return;
-    
+    if (!m_Context)
+        return;
+
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& tm = m_Context->GetTextureManager();
 
@@ -35,10 +36,13 @@ void PlanarReflectionSystem::Shutdown()
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
     auto view = scene.registry.view<PlanarReflectionComponent>();
-    for (auto entity : view) {
+    for (auto entity : view)
+    {
         auto& comp = view.get<PlanarReflectionComponent>(entity);
-        if (comp.reflectionFBO) rtm.DeleteFramebuffer(comp.reflectionFBO);
-        if (comp.reflectionTextureID) tm.DeleteTexture(comp.reflectionTextureID);
+        if (comp.reflectionFBO)
+            rtm.DeleteFramebuffer(comp.reflectionFBO);
+        if (comp.reflectionTextureID)
+            tm.DeleteTexture(comp.reflectionTextureID);
         comp.reflectionFBO = 0;
         comp.reflectionTextureID = 0;
     }
@@ -46,17 +50,21 @@ void PlanarReflectionSystem::Shutdown()
 
 void PlanarReflectionSystem::Render(Scene& scene)
 {
-    if (!m_Enabled || !m_Context || !m_RenderService) return;
+    if (!m_Enabled || !m_Context || !m_RenderService)
+        return;
 
     auto view = scene.registry.view<PlanarReflectionComponent, PositionComponent, RotationComponent>();
-    if (view.begin() == view.end()) return;
+    if (view.begin() == view.end())
+        return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity == entt::null) return;
+    if (camEntity == entt::null)
+        return;
 
     auto& cam = scene.registry.get<CameraComponent>(camEntity);
     auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
-    if (!camPosComp) return;
+    if (!camPosComp)
+        return;
     glm::vec3 camPos = camPosComp->value;
 
     auto& rtm = m_Context->GetRenderTargetManager();
@@ -68,16 +76,21 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
     int screenWidth = m_RenderService->GetLastWidth();
     int screenHeight = m_RenderService->GetLastHeight();
-    if (screenWidth <= 0 || screenHeight <= 0) return;
+    if (screenWidth <= 0 || screenHeight <= 0)
+        return;
 
-    for (auto entity : view) {
+    for (auto entity : view)
+    {
         auto& prc = view.get<PlanarReflectionComponent>(entity);
         auto& pos = view.get<PositionComponent>(entity);
         auto& rot = view.get<RotationComponent>(entity);
 
         // Dynamic resizing to match screen aspect ratio and resolution
-        if (prc.reflectionFBO == 0 || prc.resolution != (uint32_t)screenWidth || prc.resolution_y != (uint32_t)screenHeight) {
-            if (prc.reflectionFBO != 0) {
+        if (prc.reflectionFBO == 0 || prc.resolution != (uint32_t)screenWidth ||
+            prc.resolution_y != (uint32_t)screenHeight)
+        {
+            if (prc.reflectionFBO != 0)
+            {
                 rtm.DeleteFramebuffer(prc.reflectionFBO);
                 tm.DeleteTexture(prc.reflectionTextureID);
             }
@@ -87,9 +100,9 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
             prc.reflectionTextureID = tm.GenTexture();
             tm.BindTexture(TextureType::Texture2D, prc.reflectionTextureID);
-            tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, prc.resolution, prc.resolution_y, 0, 
-                TextureFormat::RGBA, DataType::Float, nullptr);
-            
+            tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, prc.resolution, prc.resolution_y, 0,
+                          TextureFormat::RGBA, DataType::Float, nullptr);
+
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, (int)TextureWrap::ClampToEdge);
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, (int)TextureWrap::ClampToEdge);
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Linear);
@@ -101,8 +114,8 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
             prc.reflectionFBO = rtm.CreateFramebuffer();
             rtm.BindFramebuffer(FramebufferTarget::Framebuffer, prc.reflectionFBO);
-            rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, 
-                                    TextureType::Texture2D, prc.reflectionTextureID, 0);
+            rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0,
+                                     TextureType::Texture2D, prc.reflectionTextureID, 0);
             rtm.FramebufferRenderbuffer(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, rbo);
             rtm.BindFramebuffer(FramebufferTarget::Framebuffer, currentFBO);
             prc.isDirty = false;
@@ -114,7 +127,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
         // Reflect camera pos
         glm::vec3 refCamPos = camPos - 2.0f * (glm::dot(normal, camPos) + d) * normal;
-        
+
         // Reflected view matrix
         glm::mat4 reflectionMat = glm::mat4(1.0f);
         reflectionMat[0][0] = 1 - 2 * normal.x * normal.x;
@@ -139,26 +152,23 @@ void PlanarReflectionSystem::Render(Scene& scene)
         rsm.SetViewport(0, 0, prc.resolution, prc.resolution);
         dc.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         dc.Clear(BufferBit::Color | BufferBit::Depth);
-        
-        rsm.SetCullFace(CullMode::Front); // Reverse winding since view is mirrored
-        
+
+        rsm.SetCullFace(CullMode::Front);  // Reverse winding since view is mirrored
+
         // 3. Calculate Oblique Projection Matrix to clip everything behind the mirror
         // See: http://terathon.com/lengyel/Lengyel-Oblique.pdf
         glm::mat4 obliqueProj = cam.projectionMatrix;
-        
+
         // Plane in view space
         glm::vec3 viewPlaneNormal = glm::normalize(glm::mat3(refViewMat) * normal);
         glm::vec3 viewPlanePoint = glm::vec3(refViewMat * glm::vec4(pos.value, 1.0f));
-        float viewPlaneDist = -glm::dot(viewPlaneNormal, viewPlanePoint); 
+        float viewPlaneDist = -glm::dot(viewPlaneNormal, viewPlanePoint);
         glm::vec4 clipPlane = glm::vec4(viewPlaneNormal, viewPlaneDist);
 
         // Calculate the "q" point (farthest point from the plane in the projection volume)
-        glm::vec4 q = glm::inverse(obliqueProj) * glm::vec4(
-            (clipPlane.x > 0.0f ? 1.0f : (clipPlane.x < 0.0f ? -1.0f : 0.0f)),
-            (clipPlane.y > 0.0f ? 1.0f : (clipPlane.y < 0.0f ? -1.0f : 0.0f)),
-            1.0f,
-            1.0f
-        );
+        glm::vec4 q = glm::inverse(obliqueProj) *
+                      glm::vec4((clipPlane.x > 0.0f ? 1.0f : (clipPlane.x < 0.0f ? -1.0f : 0.0f)),
+                                (clipPlane.y > 0.0f ? 1.0f : (clipPlane.y < 0.0f ? -1.0f : 0.0f)), 1.0f, 1.0f);
 
         // Scale clip plane
         glm::vec4 c = clipPlane * (2.0f / glm::dot(clipPlane, q));
@@ -166,7 +176,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
         // Replace the third row of the projection matrix (the near plane)
         obliqueProj[0][2] = c.x;
         obliqueProj[1][2] = c.y;
-        obliqueProj[2][2] = c.z + 1.0f; // For OpenGL -1 to 1 depth range
+        obliqueProj[2][2] = c.z + 1.0f;  // For OpenGL -1 to 1 depth range
         obliqueProj[3][2] = c.w;
 
         // Render to reflection texture
@@ -185,7 +195,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
         const auto& defQ = m_RenderService->GetRenderQueueObj().GetDeferredOpaqueQueue();
         m_RenderService->ExecuteQueue(defQ, false, nullptr, nullptr, nullptr);
-        
+
         const auto& fwdQ = m_RenderService->GetRenderQueueObj().GetForwardOpaqueQueue();
         m_RenderService->ExecuteQueue(fwdQ, false, nullptr, nullptr, nullptr);
 

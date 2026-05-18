@@ -1,14 +1,14 @@
 #pragma once
 
 #include <editor/i_editor_module.h>
-#include <entt/entity/entity.hpp>
-#include <functional>
-#include <glm/glm.hpp>
-#include <memory>
 #include <platform/interface/input_codes.h>
 #include <resource/unit/font.h>
 #include <resource/unit/shader.h>
 #include <resource/unit/ui_model.h>
+#include <entt/entity/entity.hpp>
+#include <glm/glm.hpp>
+#include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,7 +19,6 @@ class Application;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
 class GizmoEditorModule : public IEditorModule
 {
 public:
@@ -28,13 +27,25 @@ public:
 
     virtual void Initialize() override;
     void OnUpdate(float dt) override;
-    void Render(Scene &scene) override;
-    void ProcessInput(KeyboardManager &keyboard) override;
+    void Render(Scene& scene) override;
+    void ProcessInput(KeyboardManager& keyboard) override;
 
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enabled) override { m_Enabled = enabled; }
-    std::string GetModuleName() const override { return "GizmoEditorModule"; }
-    int GetRenderOrder() const override { return 20; }
+    bool IsEnabled() const override
+    {
+        return m_Enabled;
+    }
+    void SetEnabled(bool enabled) override
+    {
+        m_Enabled = enabled;
+    }
+    std::string GetModuleName() const override
+    {
+        return "GizmoEditorModule";
+    }
+    int GetRenderOrder() const override
+    {
+        return 20;
+    }
 
     void SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader, std::shared_ptr<UIModel> quad);
 
@@ -47,17 +58,14 @@ private:
     void ToggleTransformGizmos();
     void ToggleLightGizmos();
 
-    void UpdateDebugLabels(Scene &scene);
-    void ClearDebugLabels(Scene &scene);
-    void UpdateLightLabels(Scene &scene);
-    void ClearLightLabels(Scene &scene);
+    void UpdateDebugLabels(Scene& scene);
+    void ClearDebugLabels(Scene& scene);
+    void UpdateLightLabels(Scene& scene);
+    void ClearLightLabels(Scene& scene);
 
-    void ProcessKey(KeyboardManager &keyboard, Key key, bool &pressedState, std::function<void()> action);
+    void ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState, std::function<void()> action);
 
     bool m_Enabled = true;
-
-
-
 
     std::unordered_map<entt::entity, entt::entity> m_EntityLabelMap;
     std::unordered_map<entt::entity, entt::entity> m_LightLabelMap;

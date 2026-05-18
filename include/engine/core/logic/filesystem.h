@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <string>
+
 #ifndef _WIN32
 #include <unistd.h>
+
 #endif
 #include <windows.h>
 
@@ -17,7 +19,7 @@
 class FileSystem
 {
 public:
-    static std::string getPath(const std::string &path)
+    static std::string getPath(const std::string& path)
     {
         std::string root = getRoot();
 
@@ -30,17 +32,20 @@ public:
         return path;
     }
 
-    static std::string getRelativePath(const std::string &path)
+    static std::string getRelativePath(const std::string& path)
     {
         std::string root = getRoot();
-        if (root.empty()) return path;
-        
+        if (root.empty())
+            return path;
+
         std::string normPath = path;
         std::replace(normPath.begin(), normPath.end(), '\\', '/');
-        
-        if (normPath.find(root) == 0) {
+
+        if (normPath.find(root) == 0)
+        {
             std::string rel = normPath.substr(root.length());
-            if (!rel.empty() && rel[0] == '/') rel = rel.substr(1);
+            if (!rel.empty() && rel[0] == '/')
+                rel = rel.substr(1);
             return rel;
         }
         return path;
@@ -72,8 +77,6 @@ private:
                 return cachedRoot;
             }
 
-
-
             size_t buildPos = path.rfind("/build/");
             if (buildPos != std::string::npos)
             {
@@ -95,7 +98,7 @@ private:
                 cachedRoot = path.substr(0, binPos);
                 return cachedRoot;
             }
-            
+
             size_t buildPos = path.rfind("/build/");
             if (buildPos != std::string::npos)
             {

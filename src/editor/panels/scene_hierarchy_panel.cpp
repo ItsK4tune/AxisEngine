@@ -1,49 +1,55 @@
 #include <editor/panels/scene_hierarchy_panel.h>
 #include <editor/editor_system.h>
+
 #ifdef ENABLE_EDITOR
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
-#include <scene/logic/scene.h>
-#include <ecs/interface/i_ecs_system.h>
-#include <ecs/unit/core_components.h>
-#include <ecs/unit/render_components.h>
-#include <ecs/unit/light_components.h>
-#include <ecs/unit/physics_components.h>
-#include <ecs/unit/script_component.h>
-#include <ecs/unit/ui_components.h>
-#include <ecs/unit/media_components.h>
-#include <ecs/unit/post_process_component.h>
-#include <ecs/unit/decal_component.h>
-#include <ecs/unit/terrain_component.h>
-#include <ecs/unit/light_probe_components.h>
-#include <ecs/unit/reflection_components.h>
-#include <engine/ecs/unit/fragment_component.h>
 #include <core/logic/service_locator.h>
-#include <resource/logic/resource_manager.h>
-#include <glm/gtc/type_ptr.hpp>
-#include <script/logic/scriptable.h>
-#include <script/logic/script_registry.h>
+#include <ecs/interface/i_ecs_system.h>
 #include <ecs/logic/entity_manager.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/decal_component.h>
+#include <ecs/unit/light_components.h>
+#include <ecs/unit/light_probe_components.h>
+#include <ecs/unit/media_components.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/unit/post_process_component.h>
+#include <ecs/unit/reflection_components.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/script_component.h>
+#include <ecs/unit/terrain_component.h>
+#include <ecs/unit/ui_components.h>
+#include <engine/ecs/unit/fragment_component.h>
+#include <platform/logic/input_manager.h>
+#include <platform/logic/io_handler.h>
+#include <resource/logic/resource_manager.h>
+#include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
-#include <platform/logic/io_handler.h>
-#include <platform/logic/input_manager.h>
+#include <script/logic/script_registry.h>
+#include <script/logic/scriptable.h>
+#include <glm/gtc/type_ptr.hpp>
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <unordered_map>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtc/quaternion.hpp>
 
-namespace {
-    std::string SerializeYAMLNode(const YAMLNode& n, int indent) {
-        std::string res = std::string(indent * 2, ' ') + n.key;
-        if (!n.value.empty()) res += ": " + n.value;
-        res += (n.value.empty() ? ":" : "") + std::string("\n");
-        for (const auto& child : n.children) {
-            res += SerializeYAMLNode(child, indent + 1);
-        }
-        return res;
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
+
+namespace
+{
+std::string SerializeYAMLNode(const YAMLNode& n, int indent)
+{
+    std::string res = std::string(indent * 2, ' ') + n.key;
+    if (!n.value.empty())
+        res += ": " + n.value;
+    res += (n.value.empty() ? ":" : "") + std::string("\n");
+    for (const auto& child : n.children)
+    {
+        res += SerializeYAMLNode(child, indent + 1);
     }
+    return res;
 }
+}  // namespace
 
 entt::entity SceneHierarchyPanel::s_SelectedEntity = entt::null;
 bool SceneHierarchyPanel::s_FocusRequested = false;
@@ -86,25 +92,32 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
     std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(), ::tolower);
 
     // Ctrl+D duplicate shortcut
-    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>()) {
+    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
+    {
         auto& kb = io->GetKeyboard();
         bool ctrl = kb.GetKey(Key::LeftControl) || kb.GetKey(Key::RightControl);
-        if (ctrl && kb.GetKey(Key::D) && !m_CtrlDPressed && s_SelectedEntity != entt::null && registry.valid(s_SelectedEntity)) {
+        if (ctrl && kb.GetKey(Key::D) && !m_CtrlDPressed && s_SelectedEntity != entt::null &&
+            registry.valid(s_SelectedEntity))
+        {
             m_CtrlDPressed = true;
             EditorSystem::PushUndoState(scene);
             DuplicateEntity(scene, s_SelectedEntity);
         }
-        if (!kb.GetKey(Key::D)) m_CtrlDPressed = false;
+        if (!kb.GetKey(Key::D))
+            m_CtrlDPressed = false;
 
         // Delete (Delete)
         static bool deletePressed = false;
-        if (kb.GetKey(Key::Delete) && !deletePressed && s_SelectedEntity != entt::null && registry.valid(s_SelectedEntity)) {
+        if (kb.GetKey(Key::Delete) && !deletePressed && s_SelectedEntity != entt::null &&
+            registry.valid(s_SelectedEntity))
+        {
             deletePressed = true;
             EditorSystem::PushUndoState(scene);
             registry.destroy(s_SelectedEntity);
             s_SelectedEntity = entt::null;
         }
-        if (!kb.GetKey(Key::Delete)) deletePressed = false;
+        if (!kb.GetKey(Key::Delete))
+            deletePressed = false;
     }
 
     ImGui::Columns(2, "HierarchyInspector", true);
@@ -117,42 +130,52 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
     {
         ImGui::PushID(sname.c_str());
         auto* rec = sm.GetSceneByName(sname);
-        
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-        if (rec && rec->isActive) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
-        bool isOpen = ImGui::TreeNodeEx((void*)(intptr_t)sname.length(), flags, sname.c_str());
-        if (rec && rec->isActive) ImGui::PopStyleColor();
-        
-        if (ImGui::BeginPopupContextItem()) {
 
-            if (ImGui::MenuItem(rec->isActive ? "Deactivate Scene" : "Activate Scene")) {
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (rec && rec->isActive)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+        bool isOpen = ImGui::TreeNodeEx((void*)(intptr_t)sname.length(), flags, sname.c_str());
+        if (rec && rec->isActive)
+            ImGui::PopStyleColor();
+
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem(rec->isActive ? "Deactivate Scene" : "Activate Scene"))
+            {
                 sm.SetSceneActive(sname, !rec->isActive, scene);
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("Save Scene")) {
+            if (ImGui::MenuItem("Save Scene"))
+            {
                 auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
-                if (rec && res) {
+                if (rec && res)
+                {
                     SceneSerializer::Serialize(rec->filePath, scene, *res, sname);
                 }
             }
-            if (ImGui::MenuItem("Add Entity")) {
+            if (ImGui::MenuItem("Add Entity"))
+            {
                 CreateNewEntity(scene, sname);
             }
             ImGui::EndPopup();
         }
 
-        if (isOpen) {
+        if (isOpen)
+        {
             for (auto entity : entities)
             {
                 // Apply search filter
-                if (!filterLower.empty()) {
+                if (!filterLower.empty())
+                {
                     std::string ename = "";
-                    if (registry.all_of<InfoComponent>(entity)) {
+                    if (registry.all_of<InfoComponent>(entity))
+                    {
                         ename = registry.get<InfoComponent>(entity).name;
                     }
                     std::string enameLower = ename;
                     std::transform(enameLower.begin(), enameLower.end(), enameLower.begin(), ::tolower);
-                    if (enameLower.find(filterLower) == std::string::npos) continue;
+                    if (enameLower.find(filterLower) == std::string::npos)
+                        continue;
                 }
                 DrawEntityNode(scene, entity);
             }
@@ -210,13 +233,16 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
 
     bool isFragment = registry.all_of<FragmentComponent>(entity);
     bool hasOverride = false;
-    if (isFragment) {
+    if (isFragment)
+    {
         hasOverride = !registry.get<FragmentComponent>(entity).overrides.empty();
     }
 
-    if (hasOverride) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 0.6f, 1.0f, 1.0f));
+    if (hasOverride)
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 0.6f, 1.0f, 1.0f));
     bool opened = ImGui::TreeNodeEx((void*)(uint64_t)entityId, flags, "%s", name.c_str());
-    if (hasOverride) ImGui::PopStyleColor();
+    if (hasOverride)
+        ImGui::PopStyleColor();
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
     {
         s_SelectedEntity = entity;
@@ -231,8 +257,10 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     bool entityDeleted = false;
     if (ImGui::BeginPopupContextItem())
     {
-        if (ImGui::MenuItem("Delete Entity")) entityDeleted = true;
-        if (ImGui::MenuItem("Duplicate Entity", "Ctrl+D")) {
+        if (ImGui::MenuItem("Delete Entity"))
+            entityDeleted = true;
+        if (ImGui::MenuItem("Duplicate Entity", "Ctrl+D"))
+        {
             EditorSystem::PushUndoState(scene);
             DuplicateEntity(scene, entity);
         }
@@ -251,29 +279,32 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     if (entityDeleted)
     {
         EditorSystem::PushUndoState(scene);
-        if (s_SelectedEntity == entity) s_SelectedEntity = entt::null;
+        if (s_SelectedEntity == entity)
+            s_SelectedEntity = entt::null;
         registry.destroy(entity);
     }
 }
 
-template<typename T, typename UIFunction>
+template <typename T, typename UIFunction>
 static void DrawComponent(const std::string& name, entt::registry& reg, entt::entity entity, UIFunction uiFunction)
 {
-    const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
-    
+    const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed |
+                                             ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap |
+                                             ImGuiTreeNodeFlags_FramePadding;
+
     if (auto* component = reg.try_get<T>(entity))
     {
         ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{4, 4});
         float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
         ImGui::Separator();
         bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, "%s", name.c_str());
         ImGui::PopStyleVar();
-        
+
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - lineHeight - 4.0f);
         ImGui::PushID((void*)typeid(T).hash_code());
-        if (ImGui::Button("+", ImVec2{ lineHeight, lineHeight }))
+        if (ImGui::Button("+", ImVec2{lineHeight, lineHeight}))
         {
             ImGui::OpenPopup("ComponentSettings");
         }
@@ -295,29 +326,32 @@ static void DrawComponent(const std::string& name, entt::registry& reg, entt::en
         }
 
         if (removeComponent)
-            {
-                auto& globalScene = ServiceLocator::Instance().Require<Scene>();
-                EditorSystem::PushUndoState(globalScene);
-                reg.remove<T>(entity);
-            }
+        {
+            auto& globalScene = ServiceLocator::Instance().Require<Scene>();
+            EditorSystem::PushUndoState(globalScene);
+            reg.remove<T>(entity);
+        }
     }
 }
 
-static bool DrawResourceDropdownStr(const char* label, std::string& currentName, const std::vector<std::string>& resources)
+static bool DrawResourceDropdownStr(const char* label, std::string& currentName,
+                                    const std::vector<std::string>& resources)
 {
     bool changed = false;
     std::string displayName = currentName.empty() ? "None" : currentName;
     if (ImGui::BeginCombo(label, displayName.c_str()))
     {
         static char searchBuf[256] = "";
-        
+
         // Fixed area for Search and Sort
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##Search", "Search...", searchBuf, IM_ARRAYSIZE(searchBuf));
-        
-        static int sortMode = 0; // 0: Default, 1: A-Z, 2: Z-A
-        ImGui::RadioButton("Default", &sortMode, 0); ImGui::SameLine();
-        ImGui::RadioButton("A-Z", &sortMode, 1); ImGui::SameLine();
+
+        static int sortMode = 0;  // 0: Default, 1: A-Z, 2: Z-A
+        ImGui::RadioButton("Default", &sortMode, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("A-Z", &sortMode, 1);
+        ImGui::SameLine();
         ImGui::RadioButton("Z-A", &sortMode, 2);
 
         ImGui::Separator();
@@ -326,9 +360,12 @@ static bool DrawResourceDropdownStr(const char* label, std::string& currentName,
         if (ImGui::BeginChild("##DropdownScroll", ImVec2(0, 200), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
         {
             std::vector<std::string> sortedResources = resources;
-            if (sortMode == 1) {
+            if (sortMode == 1)
+            {
                 std::sort(sortedResources.begin(), sortedResources.end());
-            } else if (sortMode == 2) {
+            }
+            else if (sortMode == 2)
+            {
                 std::sort(sortedResources.begin(), sortedResources.end(), std::greater<std::string>());
             }
 
@@ -338,15 +375,22 @@ static bool DrawResourceDropdownStr(const char* label, std::string& currentName,
             if (searchStr.empty() || std::string("none").find(searchStr) != std::string::npos)
             {
                 bool isSelected = currentName.empty();
-                if (ImGui::Selectable("None", isSelected)) { currentName = ""; changed = true; ImGui::CloseCurrentPopup(); }
-                if (isSelected) ImGui::SetItemDefaultFocus();
+                if (ImGui::Selectable("None", isSelected))
+                {
+                    currentName = "";
+                    changed = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                if (isSelected)
+                    ImGui::SetItemDefaultFocus();
             }
 
             for (const auto& resName : sortedResources)
             {
                 std::string lowerName = resName;
                 std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
-                if (!searchStr.empty() && lowerName.find(searchStr) == std::string::npos) continue;
+                if (!searchStr.empty() && lowerName.find(searchStr) == std::string::npos)
+                    continue;
 
                 bool isSelected = (currentName == resName);
                 if (ImGui::Selectable(resName.c_str(), isSelected))
@@ -355,7 +399,8 @@ static bool DrawResourceDropdownStr(const char* label, std::string& currentName,
                     changed = true;
                     ImGui::CloseCurrentPopup();
                 }
-                if (isSelected) ImGui::SetItemDefaultFocus();
+                if (isSelected)
+                    ImGui::SetItemDefaultFocus();
             }
             ImGui::EndChild();
         }
@@ -364,11 +409,14 @@ static bool DrawResourceDropdownStr(const char* label, std::string& currentName,
     return changed;
 }
 
-template<typename T>
-static bool DrawResourceDropdown(const char* label, std::shared_ptr<T>& currentResource, const std::vector<std::string>& resourceNames, std::function<std::shared_ptr<T>(const std::string&)> getter)
+template <typename T>
+static bool DrawResourceDropdown(const char* label, std::shared_ptr<T>& currentResource,
+                                 const std::vector<std::string>& resourceNames,
+                                 std::function<std::shared_ptr<T>(const std::string&)> getter)
 {
     std::string currentName = currentResource ? currentResource->GetName() : "";
-    if (DrawResourceDropdownStr(label, currentName, resourceNames)) {
+    if (DrawResourceDropdownStr(label, currentName, resourceNames))
+    {
         currentResource = currentName.empty() ? nullptr : getter(currentName);
         return true;
     }
@@ -430,20 +478,18 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
     }
 
-    DrawComponent<CameraComponent>("Camera", reg, entity, [](auto& cam)
-    {
+    DrawComponent<CameraComponent>("Camera", reg, entity, [](auto& cam) {
         ImGui::Checkbox("Primary", &cam.isPrimary);
         ImGui::DragFloat("FOV", &cam.fov, 0.1f);
         ImGui::DragFloat("Near Clip", &cam.nearPlane, 0.1f);
         ImGui::DragFloat("Far Clip", &cam.farPlane, 0.1f);
     });
 
-    DrawComponent<MeshRendererComponent>("Mesh Renderer", reg, entity, [](auto& mesh)
-    {
+    DrawComponent<MeshRendererComponent>("Mesh Renderer", reg, entity, [](auto& mesh) {
         ImGui::ColorEdit4("Color", &mesh.color.r);
         ImGui::Checkbox("Cast Shadow", &mesh.castShadow);
         ImGui::Checkbox("Receive Shadow", &mesh.receiveShadow);
-        
+
         static const char* renderModes[] = {"Auto", "Force Forward", "Force Deferred"};
         int currentMode = (int)mesh.renderMode;
         if (ImGui::Combo("Render Mode", &currentMode, renderModes, IM_ARRAYSIZE(renderModes)))
@@ -455,10 +501,13 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         auto modelNames = rm.GetLoadedModels();
         auto shaderNames = rm.GetLoadedShaders();
 
-        DrawResourceDropdown<Model>("Model", mesh.model, modelNames, [&rm](const std::string& name) { return rm.GetModel(name); });
-        
+        DrawResourceDropdown<Model>("Model", mesh.model, modelNames,
+                                    [&rm](const std::string& name) { return rm.GetModel(name); });
+
         std::shared_ptr<Shader> currentShader = mesh.shader.lock();
-        if (DrawResourceDropdown<Shader>("Shader", currentShader, shaderNames, [&rm](const std::string& name) { return rm.GetShader(name); })) {
+        if (DrawResourceDropdown<Shader>("Shader", currentShader, shaderNames,
+                                         [&rm](const std::string& name) { return rm.GetShader(name); }))
+        {
             mesh.shader = currentShader;
         }
 
@@ -495,57 +544,73 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             shape.type = (ShapeType)currentType;
             shapeChanged = true;
         }
-        if (shape.type == ShapeType::Box) shapeChanged |= ImGui::DragFloat3("Size", &shape.size.x, 0.1f);
-        if (shape.type == ShapeType::Sphere || shape.type == ShapeType::Capsule || shape.type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Radius", &shape.radius, 0.1f);
-        if (shape.type == ShapeType::Capsule || shape.type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Height", &shape.height, 0.1f);
-        
+        if (shape.type == ShapeType::Box)
+            shapeChanged |= ImGui::DragFloat3("Size", &shape.size.x, 0.1f);
+        if (shape.type == ShapeType::Sphere || shape.type == ShapeType::Capsule || shape.type == ShapeType::Cylinder)
+            shapeChanged |= ImGui::DragFloat("Radius", &shape.radius, 0.1f);
+        if (shape.type == ShapeType::Capsule || shape.type == ShapeType::Cylinder)
+            shapeChanged |= ImGui::DragFloat("Height", &shape.height, 0.1f);
+
         shapeChanged |= ImGui::DragFloat("Friction", &shape.friction, 0.05f, 0.0f, 1.0f);
         shapeChanged |= ImGui::DragFloat("Restitution", &shape.restitution, 0.05f, 0.0f, 1.0f);
         shapeChanged |= ImGui::DragFloat3("Offset", &shape.offset.x, 0.1f);
-        
+
         glm::vec3 euler = glm::degrees(glm::eulerAngles(shape.rotation));
-        if (ImGui::DragFloat3("Rotation Offset", &euler.x, 0.5f)) {
+        if (ImGui::DragFloat3("Rotation Offset", &euler.x, 0.5f))
+        {
             shape.rotation = glm::quat(glm::radians(euler));
             shapeChanged = true;
         }
 
-        if (shape.type == ShapeType::Compound) {
+        if (shape.type == ShapeType::Compound)
+        {
             ImGui::Separator();
             ImGui::Text("Child Shapes (%d)", (int)shape.children.size());
-            if (ImGui::Button("Add Child Shape")) {
-                shape.children.push_back({ShapeType::Box, glm::vec3(0.0f), glm::quat(1.0f,0.0f,0.0f,0.0f), glm::vec3(1.0f), 0.5f, 1.0f});
+            if (ImGui::Button("Add Child Shape"))
+            {
+                shape.children.push_back(
+                    {ShapeType::Box, glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f), 0.5f, 1.0f});
                 shapeChanged = true;
             }
-            
-            for (size_t i = 0; i < shape.children.size(); ++i) {
+
+            for (size_t i = 0; i < shape.children.size(); ++i)
+            {
                 ImGui::PushID(static_cast<int>(i));
-                
-                if (ImGui::TreeNode("Child", "Child %d", (int)i)) {
+
+                if (ImGui::TreeNode("Child", "Child %d", (int)i))
+                {
                     auto& child = shape.children[i];
                     int cType = (int)child.type;
-                    if (ImGui::Combo("Type", &cType, shapeTypes, IM_ARRAYSIZE(shapeTypes))) {
+                    if (ImGui::Combo("Type", &cType, shapeTypes, IM_ARRAYSIZE(shapeTypes)))
+                    {
                         child.type = (ShapeType)cType;
                         shapeChanged = true;
                     }
-                    
-                    if (child.type == ShapeType::Box) shapeChanged |= ImGui::DragFloat3("Size", &child.size.x, 0.1f);
-                    if (child.type == ShapeType::Sphere || child.type == ShapeType::Capsule || child.type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Radius", &child.radius, 0.1f);
-                    if (child.type == ShapeType::Capsule || child.type == ShapeType::Cylinder) shapeChanged |= ImGui::DragFloat("Height", &child.height, 0.1f);
-                    
+
+                    if (child.type == ShapeType::Box)
+                        shapeChanged |= ImGui::DragFloat3("Size", &child.size.x, 0.1f);
+                    if (child.type == ShapeType::Sphere || child.type == ShapeType::Capsule ||
+                        child.type == ShapeType::Cylinder)
+                        shapeChanged |= ImGui::DragFloat("Radius", &child.radius, 0.1f);
+                    if (child.type == ShapeType::Capsule || child.type == ShapeType::Cylinder)
+                        shapeChanged |= ImGui::DragFloat("Height", &child.height, 0.1f);
+
                     shapeChanged |= ImGui::DragFloat3("Position", &child.position.x, 0.1f);
-                    
+
                     glm::vec3 cEuler = glm::degrees(glm::eulerAngles(child.rotation));
-                    if (ImGui::DragFloat3("Rotation", &cEuler.x, 0.5f)) {
+                    if (ImGui::DragFloat3("Rotation", &cEuler.x, 0.5f))
+                    {
                         child.rotation = glm::quat(glm::radians(cEuler));
                         shapeChanged = true;
                     }
 
-                    if (ImGui::Button("Remove")) {
+                    if (ImGui::Button("Remove"))
+                    {
                         shape.children.erase(shape.children.begin() + i);
                         shapeChanged = true;
                         ImGui::TreePop();
                         ImGui::PopID();
-                        break; 
+                        break;
                     }
 
                     ImGui::TreePop();
@@ -555,7 +620,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             ImGui::Separator();
         }
 
-        if (shapeChanged && reg.all_of<RigidBodyComponent>(entity)) {
+        if (shapeChanged && reg.all_of<RigidBodyComponent>(entity))
+        {
             auto rbCopy = reg.get<RigidBodyComponent>(entity);
             reg.erase<RigidBodyComponent>(entity);
             rbCopy.body = nullptr;
@@ -565,12 +631,14 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
 
     DrawComponent<RigidBodyComponent>("Rigid Body", reg, entity, [&reg, entity](auto& rb) {
         bool rbChanged = false;
-        
-        int bodyType = 2; // Dynamic
-        if (rb.isStatic) bodyType = 0;
-        else if (rb.isKinematic) bodyType = 1;
 
-        const char* bodyTypes[] = { "Static", "Kinematic", "Dynamic" };
+        int bodyType = 2;  // Dynamic
+        if (rb.isStatic)
+            bodyType = 0;
+        else if (rb.isKinematic)
+            bodyType = 1;
+
+        const char* bodyTypes[] = {"Static", "Kinematic", "Dynamic"};
         if (ImGui::Combo("Body Type", &bodyType, bodyTypes, IM_ARRAYSIZE(bodyTypes)))
         {
             rb.isStatic = (bodyType == 0);
@@ -579,9 +647,10 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
 
         rbChanged |= ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.0f, 10000.0f);
-        
+
         bool canCollide = !rb.isTrigger;
-        if (ImGui::Checkbox("Can Collide", &canCollide)) {
+        if (ImGui::Checkbox("Can Collide", &canCollide))
+        {
             rb.isTrigger = !canCollide;
             rbChanged = true;
         }
@@ -591,27 +660,52 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         bool lockX = rb.linearFactor.x < 0.5f;
         bool lockY = rb.linearFactor.y < 0.5f;
         bool lockZ = rb.linearFactor.z < 0.5f;
-        if (ImGui::Checkbox("X##L", &lockX)) { rb.linearFactor.x = lockX ? 0.0f : 1.0f; rbChanged = true; }
+        if (ImGui::Checkbox("X##L", &lockX))
+        {
+            rb.linearFactor.x = lockX ? 0.0f : 1.0f;
+            rbChanged = true;
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("Y##L", &lockY)) { rb.linearFactor.y = lockY ? 0.0f : 1.0f; rbChanged = true; }
+        if (ImGui::Checkbox("Y##L", &lockY))
+        {
+            rb.linearFactor.y = lockY ? 0.0f : 1.0f;
+            rbChanged = true;
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("Z##L", &lockZ)) { rb.linearFactor.z = lockZ ? 0.0f : 1.0f; rbChanged = true; }
+        if (ImGui::Checkbox("Z##L", &lockZ))
+        {
+            rb.linearFactor.z = lockZ ? 0.0f : 1.0f;
+            rbChanged = true;
+        }
 
         ImGui::Text("Lock Rotation:");
         ImGui::SameLine();
         bool lockRX = rb.angularFactor.x < 0.5f;
         bool lockRY = rb.angularFactor.y < 0.5f;
         bool lockRZ = rb.angularFactor.z < 0.5f;
-        if (ImGui::Checkbox("X##R", &lockRX)) { rb.angularFactor.x = lockRX ? 0.0f : 1.0f; rbChanged = true; }
+        if (ImGui::Checkbox("X##R", &lockRX))
+        {
+            rb.angularFactor.x = lockRX ? 0.0f : 1.0f;
+            rbChanged = true;
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("Y##R", &lockRY)) { rb.angularFactor.y = lockRY ? 0.0f : 1.0f; rbChanged = true; }
+        if (ImGui::Checkbox("Y##R", &lockRY))
+        {
+            rb.angularFactor.y = lockRY ? 0.0f : 1.0f;
+            rbChanged = true;
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("Z##R", &lockRZ)) { rb.angularFactor.z = lockRZ ? 0.0f : 1.0f; rbChanged = true; }
+        if (ImGui::Checkbox("Z##R", &lockRZ))
+        {
+            rb.angularFactor.z = lockRZ ? 0.0f : 1.0f;
+            rbChanged = true;
+        }
 
         rbChanged |= ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 1.0f);
         rbChanged |= ImGui::DragFloat("Angular Damping", &rb.angularDamping, 0.01f, 0.0f, 1.0f);
 
-        if (rbChanged) {
+        if (rbChanged)
+        {
             auto rbCopy = rb;
             reg.erase<RigidBodyComponent>(entity);
             rbCopy.body = nullptr;
@@ -630,7 +724,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::ColorEdit3("Emission", &mat.desc.emission.r);
         ImGui::DragFloat2("UV Scale", &mat.desc.uvScale.x, 0.01f);
         ImGui::DragFloat2("UV Offset", &mat.desc.uvOffset.x, 0.01f);
-        
+
         ImGui::Separator();
         ImGui::DragFloat("Roughness", &mat.desc.pbr.roughness, 0.01f, 0.0f, 1.0f);
         ImGui::DragFloat("Metallic", &mat.desc.pbr.metallic, 0.01f, 0.0f, 1.0f);
@@ -708,28 +802,35 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
 
     DrawComponent<ScriptComponent>("Script", reg, entity, [&reg, entity](auto& script) {
         std::vector<std::string> scriptNames;
-        for (const auto& pair : ScriptRegistry::GetStaticFactoryMap()) {
+        for (const auto& pair : ScriptRegistry::GetStaticFactoryMap())
+        {
             scriptNames.push_back(pair.first);
         }
-        
+
         std::string currentScript = script.className;
-        if (DrawResourceDropdownStr("Script Class", currentScript, scriptNames)) {
-            if (script.instance && script.DestroyScript) {
+        if (DrawResourceDropdownStr("Script Class", currentScript, scriptNames))
+        {
+            if (script.instance && script.DestroyScript)
+            {
                 script.DestroyScript(&script);
                 script.instance.reset();
             }
 
             script.className = currentScript;
-            if (currentScript.empty() || currentScript == "None") {
+            if (currentScript.empty() || currentScript == "None")
+            {
                 script.InstantiateScript = nullptr;
-            } else {
+            }
+            else
+            {
                 auto& factoryMap = ScriptRegistry::GetStaticFactoryMap();
-                if (factoryMap.count(currentScript)) {
+                if (factoryMap.count(currentScript))
+                {
                     auto factory = factoryMap.at(currentScript);
                     script.InstantiateScript = factory;
                     script.DestroyScript = [](ScriptComponent* sc) { sc->instance.reset(); };
                     script.instance = script.InstantiateScript();
-                    
+
                     auto& globalScene = ServiceLocator::Instance().Require<Scene>();
                     script.instance->Initialize(entity, &globalScene);
                     script.instance->OnCreate();
@@ -738,17 +839,16 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
     });
 
-
-
     DrawComponent<ReflectiveComponent>("Reflective", reg, entity, [&reg](auto& ref) {
         ImGui::Checkbox("Enabled##Ref", &ref.enabled);
         ImGui::DragFloat("Reflectivity", &ref.reflectivity, 0.01f, 0.0f, 1.0f);
         ImGui::DragFloat("Fresnel Power", &ref.fresnelPower, 0.1f, 0.0f, 50.0f);
         ImGui::DragFloat("Fresnel Bias", &ref.fresnelBias, 0.01f, 0.0f, 1.0f);
-        
+
         std::vector<std::string> probeNames;
         auto view = reg.view<InfoComponent, ReflectionProbeComponent>();
-        for (auto e : view) {
+        for (auto e : view)
+        {
             probeNames.push_back(view.get<InfoComponent>(e).name);
         }
         DrawResourceDropdownStr("Target Probe", ref.targetProbe, probeNames);
@@ -765,38 +865,48 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::DragFloat3("Box Min", &probe.boxMin.x, 0.1f);
         ImGui::DragFloat3("Box Max", &probe.boxMax.x, 0.1f);
         ImGui::DragFloat("Blend Distance", &probe.blendDistance, 0.1f, 0.0f, 50.0f);
-        if (ImGui::Button("Refresh Probe")) probe.isDirty = true;
+        if (ImGui::Button("Refresh Probe"))
+            probe.isDirty = true;
         ImGui::Text("Cubemap ID: %u", probe.cubemapID);
     });
 
     DrawComponent<AudioSourceComponent>("Audio Source", reg, entity, [](auto& audio) {
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto soundNames = rm.GetLoadedSounds();
-        
+
         std::shared_ptr<IAudioSource> currentSound = audio.source;
-        if (DrawResourceDropdown<IAudioSource>("Sound", currentSound, soundNames, [&rm](const std::string& name) { return rm.GetSound(name); })) {
+        if (DrawResourceDropdown<IAudioSource>("Sound", currentSound, soundNames,
+                                               [&rm](const std::string& name) { return rm.GetSound(name); }))
+        {
             audio.source = currentSound;
             audio.resourceName = currentSound ? currentSound->GetName() : "";
         }
-        
+
         ImGui::Checkbox("Play On Awake", &audio.playOnAwake);
         ImGui::Checkbox("Loop##Audio", &audio.loop);
         ImGui::Checkbox("3D##Audio", &audio.is3D);
         ImGui::DragFloat("Volume##Audio", &audio.volume, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Pitch##Audio", &audio.pitch, 0.01f, 0.1f, 4.0f);
         ImGui::DragFloat("Pan##Audio", &audio.pan, 0.01f, -1.0f, 1.0f);
-        if (audio.is3D) {
+        if (audio.is3D)
+        {
             ImGui::DragFloat("Min Distance", &audio.minDistance, 0.1f);
             ImGui::DragFloat("Max Distance", &audio.maxDistance, 0.1f);
         }
-        
-        if (audio.sound) {
-            if (ImGui::Button("Play")) audio.shouldPlay = true;
+
+        if (audio.sound)
+        {
+            if (ImGui::Button("Play"))
+                audio.shouldPlay = true;
             ImGui::SameLine();
-            if (ImGui::Button("Pause")) audio.sound->Pause();
+            if (ImGui::Button("Pause"))
+                audio.sound->Pause();
             ImGui::SameLine();
-            if (ImGui::Button("Stop")) audio.sound->Stop();
-        } else {
+            if (ImGui::Button("Stop"))
+                audio.sound->Stop();
+        }
+        else
+        {
             ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "No active ISound source");
         }
     });
@@ -808,7 +918,6 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::DragFloat("Volume##Video", &video.volume, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Speed##Video", &video.speed, 0.01f, 0.1f, 4.0f);
     });
-
 
     DrawComponent<ParticleEmitterComponent>("Particle Emitter", reg, entity, [](auto& pe) {
         ImGui::Checkbox("Active##Part", &pe.isActive);
@@ -823,7 +932,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
 
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto textureNames = rm.GetLoadedTextures();
-        if (DrawResourceDropdownStr("Texture", pe.textureName, textureNames)) {
+        if (DrawResourceDropdownStr("Texture", pe.textureName, textureNames))
+        {
             pe.emitter.Texture = rm.GetTexture(pe.textureName);
         }
     });
@@ -832,13 +942,14 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::Checkbox("Enabled##PP", &pp.enabled);
         ImGui::Separator();
         ImGui::Text("Effects: %d", (int)pp.effects.size());
-        
+
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto shaderNames = rm.GetLoadedShaders();
 
         static std::string newEffectShader = "";
         DrawResourceDropdownStr("New Effect", newEffectShader, shaderNames);
-        if (ImGui::Button("Add Effect") && !newEffectShader.empty()) {
+        if (ImGui::Button("Add Effect") && !newEffectShader.empty())
+        {
             PostProcessComponent::Effect newEff;
             newEff.shaderName = newEffectShader;
             newEff.priority = 100;
@@ -846,29 +957,45 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             newEffectShader = "";
         }
 
-        for (size_t i = 0; i < pp.effects.size(); ++i) {
+        for (size_t i = 0; i < pp.effects.size(); ++i)
+        {
             auto& eff = pp.effects[i];
             ImGui::PushID((int)i);
-            if (ImGui::TreeNode(eff.shaderName.c_str())) {
+            if (ImGui::TreeNode(eff.shaderName.c_str()))
+            {
                 ImGui::Checkbox("Enabled", &eff.enabled);
                 ImGui::Checkbox("Affect UI", &eff.affectUI);
 
                 ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.2f);
-                ImGui::DragInt("##X", &eff.x); if (ImGui::IsItemHovered()) ImGui::SetTooltip("X (Drag)"); ImGui::SameLine();
-                ImGui::DragInt("##Y", &eff.y); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Y (Drag)"); ImGui::SameLine();
-                ImGui::DragInt("##W", &eff.w); if (ImGui::IsItemHovered()) ImGui::SetTooltip("W (Drag)"); ImGui::SameLine();
-                ImGui::DragInt("##H", &eff.h); if (ImGui::IsItemHovered()) ImGui::SetTooltip("H (Drag)");
+                ImGui::DragInt("##X", &eff.x);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("X (Drag)");
+                ImGui::SameLine();
+                ImGui::DragInt("##Y", &eff.y);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Y (Drag)");
+                ImGui::SameLine();
+                ImGui::DragInt("##W", &eff.w);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("W (Drag)");
+                ImGui::SameLine();
+                ImGui::DragInt("##H", &eff.h);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("H (Drag)");
                 ImGui::PopItemWidth();
-                
-                if (ImGui::Button("Move Up") && i > 0) {
-                    std::swap(pp.effects[i], pp.effects[i-1]);
+
+                if (ImGui::Button("Move Up") && i > 0)
+                {
+                    std::swap(pp.effects[i], pp.effects[i - 1]);
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Move Down") && i < pp.effects.size() - 1) {
-                    std::swap(pp.effects[i], pp.effects[i+1]);
+                if (ImGui::Button("Move Down") && i < pp.effects.size() - 1)
+                {
+                    std::swap(pp.effects[i], pp.effects[i + 1]);
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Remove")) {
+                if (ImGui::Button("Remove"))
+                {
                     pp.effects.erase(pp.effects.begin() + i);
                     ImGui::TreePop();
                     ImGui::PopID();
@@ -881,18 +1008,22 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     });
 
     DrawComponent<AnimationComponent>("Animator", reg, entity, [](auto& anim) {
-        if (ImGui::Button("Add Clip")) anim.animations.push_back("new_animation");
+        if (ImGui::Button("Add Clip"))
+            anim.animations.push_back("new_animation");
 
-        for (int i = 0; i < (int)anim.animations.size(); ++i) {
+        for (int i = 0; i < (int)anim.animations.size(); ++i)
+        {
             char buf[128];
             strncpy(buf, anim.animations[i].c_str(), sizeof(buf));
             ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 30);
-            if (ImGui::InputText(("##Clip" + std::to_string(i)).c_str(), buf, sizeof(buf))) {
+            if (ImGui::InputText(("##Clip" + std::to_string(i)).c_str(), buf, sizeof(buf)))
+            {
                 anim.animations[i] = buf;
             }
             ImGui::PopItemWidth();
             ImGui::SameLine();
-            if (ImGui::Button(("X##" + std::to_string(i)).c_str())) {
+            if (ImGui::Button(("X##" + std::to_string(i)).c_str()))
+            {
                 anim.animations.erase(anim.animations.begin() + i);
                 i--;
             }
@@ -904,19 +1035,25 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::DragFloat("Rate", &anim.rate, 1.0f, 0.0f, 240.0f);
         ImGui::DragFloat("Blend Factor", &anim.blendFactor, 0.01f, 0.0f, 1.0f);
 
-        if (anim.animator) {
+        if (anim.animator)
+        {
             ImGui::TextColored(ImVec4(0, 1, 0, 1), "Status: Running");
             ImGui::Text("Current Time: %.2f", anim.animator->GetCurrentTime());
-            
+
             static int selectedPreview = 0;
-            if (selectedPreview >= (int)anim.animations.size()) selectedPreview = 0;
-            if (!anim.animations.empty()) {
+            if (selectedPreview >= (int)anim.animations.size())
+                selectedPreview = 0;
+            if (!anim.animations.empty())
+            {
                 std::vector<const char*> clips;
-                for(const auto& s : anim.animations) clips.push_back(s.c_str());
+                for (const auto& s : anim.animations) clips.push_back(s.c_str());
                 ImGui::Combo("Preview Clip", &selectedPreview, clips.data(), (int)clips.size());
-                if (ImGui::Button("Play Preview")) anim.animator->PlayAnimation(anim.animations[selectedPreview]);
+                if (ImGui::Button("Play Preview"))
+                    anim.animator->PlayAnimation(anim.animations[selectedPreview]);
             }
-        } else {
+        }
+        else
+        {
             ImGui::TextColored(ImVec4(1, 1, 0, 1), "Status: No Animator (Check Model)");
         }
     });
@@ -928,10 +1065,12 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::ColorEdit4("Tint##Decal", &decal.tintColor.r);
         ImGui::DragFloat("Lifetime##Decal", &decal.lifetime, 0.1f);
         int ro = (int)decal.renderOrder;
-        if (ImGui::DragInt("Render Order##Decal", &ro, 1, 0, 255)) decal.renderOrder = (uint32_t)ro;
+        if (ImGui::DragInt("Render Order##Decal", &ro, 1, 0, 255))
+            decal.renderOrder = (uint32_t)ro;
         const char* lightModes[] = {"None", "Light", "Light+Shadow"};
         int lm = (int)decal.lightingMode;
-        if (ImGui::Combo("Lighting##Decal", &lm, lightModes, 3)) decal.lightingMode = lm;
+        if (ImGui::Combo("Lighting##Decal", &lm, lightModes, 3))
+            decal.lightingMode = lm;
     });
 
     DrawComponent<TerrainComponent>("Terrain", reg, entity, [](auto& terrain) {
@@ -946,7 +1085,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
 
     DrawComponent<LODComponent>("LOD", reg, entity, [](auto& lod) {
         ImGui::Text("LOD Levels: %d", (int)lod.lodModels.size());
-        for (size_t i = 0; i < lod.lodModels.size(); ++i) {
+        for (size_t i = 0; i < lod.lodModels.size(); ++i)
+        {
             float dist = (i < lod.lodDistancesSq.size()) ? sqrtf(lod.lodDistancesSq[i]) : 0.0f;
             ImGui::Text("  L%d: %s (dist: %.1f)", (int)i, lod.lodModels[i] ? "Loaded" : "None", dist);
         }
@@ -962,24 +1102,31 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto skyboxNames = rm.GetLoadedSkyboxes();
         auto shaderNames = rm.GetLoadedShaders();
-        
-        if (ImGui::Checkbox("Is Primary", &skyboxComp.isPrimary)) {
-            if (skyboxComp.isPrimary) {
+
+        if (ImGui::Checkbox("Is Primary", &skyboxComp.isPrimary))
+        {
+            if (skyboxComp.isPrimary)
+            {
                 auto& scene = ServiceLocator::Instance().Require<Scene>();
                 ::EntityManager::SetActiveSkybox(scene, entity);
             }
         }
-        
+
         std::shared_ptr<Skybox> currentSkybox = skyboxComp.skybox;
-        if (DrawResourceDropdown<Skybox>("Skybox", currentSkybox, skyboxNames, [&rm](const std::string& name) { return rm.GetSkybox(name); })) {
+        if (DrawResourceDropdown<Skybox>("Skybox", currentSkybox, skyboxNames,
+                                         [&rm](const std::string& name) { return rm.GetSkybox(name); }))
+        {
             skyboxComp.skybox = currentSkybox;
-            if (skyboxComp.shader.expired() || skyboxComp.shader.lock() == nullptr) {
+            if (skyboxComp.shader.expired() || skyboxComp.shader.lock() == nullptr)
+            {
                 skyboxComp.shader = rm.GetShader("axis_skybox");
             }
         }
-        
+
         std::shared_ptr<Shader> currentShader = skyboxComp.shader.lock();
-        if (DrawResourceDropdown<Shader>("Shader", currentShader, shaderNames, [&rm](const std::string& name) { return rm.GetShader(name); })) {
+        if (DrawResourceDropdown<Shader>("Shader", currentShader, shaderNames,
+                                         [&rm](const std::string& name) { return rm.GetShader(name); }))
+        {
             skyboxComp.shader = currentShader;
         }
     });
@@ -987,228 +1134,334 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     DrawComponent<FragmentComponent>("Fragment", reg, entity, [](auto& frag) {
         char buffer[512];
         strncpy(buffer, frag.path.c_str(), sizeof(buffer) - 1);
-        if (ImGui::InputText("Scene Path", buffer, sizeof(buffer))) {
+        if (ImGui::InputText("Scene Path", buffer, sizeof(buffer)))
+        {
             frag.path = buffer;
             frag.instantiated = false;
         }
-        
+
         ImGui::Text("Status: %s", frag.instantiated ? "Instantiated" : "Pending");
-        
+
         ImGui::Separator();
         ImGui::Text("Overrides:");
-        
+
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto asset = rm.GetFragment(frag.path);
-        
-        if (asset) {
+
+        if (asset)
+        {
             std::vector<YAMLNode> overrideRoots;
-            if (!frag.overrides.empty()) {
+            if (!frag.overrides.empty())
+            {
                 overrideRoots = YAMLParser::ParseString(frag.overrides);
             }
-            
+
             const YAMLNode* entitiesNode = nullptr;
-            for (auto& root : asset->rootNodes) {
-                if (root.key == "Entities") {
+            for (auto& root : asset->rootNodes)
+            {
+                if (root.key == "Entities")
+                {
                     entitiesNode = &root;
                     break;
                 }
             }
-            
+
             bool changed = false;
-            if (entitiesNode) {
-                for (auto& entNode : entitiesNode->children) {
-                    if (ImGui::TreeNode(entNode.key.c_str())) {
+            if (entitiesNode)
+            {
+                for (auto& entNode : entitiesNode->children)
+                {
+                    if (ImGui::TreeNode(entNode.key.c_str()))
+                    {
                         YAMLNode* targetEntityOverride = nullptr;
-                        for (auto& root : overrideRoots) {
-                            if (root.key == entNode.key) {
+                        for (auto& root : overrideRoots)
+                        {
+                            if (root.key == entNode.key)
+                            {
                                 targetEntityOverride = &root;
                                 break;
                             }
                         }
-                    
-                    for (auto& compNode : entNode.children) {
-                        if (compNode.key == "Component") {
-                            std::string compName = compNode.value;
-                            bool isOverridden = false;
-                            YAMLNode* targetCompOverride = nullptr;
-                            
-                            if (targetEntityOverride) {
-                                for (auto& c : targetEntityOverride->children) {
-                                    if (c.key == "Component" && c.value == compName) {
-                                        isOverridden = true;
-                                        targetCompOverride = &c;
-                                        break;
+
+                        for (auto& compNode : entNode.children)
+                        {
+                            if (compNode.key == "Component")
+                            {
+                                std::string compName = compNode.value;
+                                bool isOverridden = false;
+                                YAMLNode* targetCompOverride = nullptr;
+
+                                if (targetEntityOverride)
+                                {
+                                    for (auto& c : targetEntityOverride->children)
+                                    {
+                                        if (c.key == "Component" && c.value == compName)
+                                        {
+                                            isOverridden = true;
+                                            targetCompOverride = &c;
+                                            break;
+                                        }
                                     }
                                 }
-                            }
-                            
-                            bool toggled = isOverridden;
-                            if (ImGui::Checkbox(compName.c_str(), &toggled)) {
-                                changed = true;
-                                if (toggled) {
-                                    if (!targetEntityOverride) {
-                                        overrideRoots.push_back(YAMLNode{entNode.key, "", {}});
-                                        targetEntityOverride = &overrideRoots.back();
-                                    }
-                                    targetEntityOverride->children.push_back(YAMLNode{"Component", compName, {}});
-                                    targetCompOverride = &targetEntityOverride->children.back();
-                                } else {
-                                    if (targetEntityOverride) {
-                                        for (auto it = targetEntityOverride->children.begin(); it != targetEntityOverride->children.end();) {
-                                            if (it->key == "Component" && it->value == compName) {
-                                                it = targetEntityOverride->children.erase(it);
-                                            } else {
-                                                ++it;
-                                            }
+
+                                bool toggled = isOverridden;
+                                if (ImGui::Checkbox(compName.c_str(), &toggled))
+                                {
+                                    changed = true;
+                                    if (toggled)
+                                    {
+                                        if (!targetEntityOverride)
+                                        {
+                                            overrideRoots.push_back(YAMLNode{entNode.key, "", {}});
+                                            targetEntityOverride = &overrideRoots.back();
                                         }
-                                            
-                                        if (targetEntityOverride->children.empty()) {
-                                            for (auto it = overrideRoots.begin(); it != overrideRoots.end();) {
-                                                if (it->key == entNode.key) {
-                                                    it = overrideRoots.erase(it);
-                                                } else {
+                                        targetEntityOverride->children.push_back(YAMLNode{"Component", compName, {}});
+                                        targetCompOverride = &targetEntityOverride->children.back();
+                                    }
+                                    else
+                                    {
+                                        if (targetEntityOverride)
+                                        {
+                                            for (auto it = targetEntityOverride->children.begin();
+                                                 it != targetEntityOverride->children.end();)
+                                            {
+                                                if (it->key == "Component" && it->value == compName)
+                                                {
+                                                    it = targetEntityOverride->children.erase(it);
+                                                }
+                                                else
+                                                {
                                                     ++it;
                                                 }
                                             }
-                                            targetEntityOverride = nullptr;
+
+                                            if (targetEntityOverride->children.empty())
+                                            {
+                                                for (auto it = overrideRoots.begin(); it != overrideRoots.end();)
+                                                {
+                                                    if (it->key == entNode.key)
+                                                    {
+                                                        it = overrideRoots.erase(it);
+                                                    }
+                                                    else
+                                                    {
+                                                        ++it;
+                                                    }
+                                                }
+                                                targetEntityOverride = nullptr;
+                                            }
                                         }
+                                        targetCompOverride = nullptr;
                                     }
-                                    targetCompOverride = nullptr;
                                 }
-                            }
-                            
-                            if (toggled && targetCompOverride) {
-                                ImGui::Indent();
-                                ImGui::PushID((entNode.key + compName).c_str());
-                                
-                                if (compName == "Renderer") {
-                                    std::string colorStr = targetCompOverride->GetChildValue("Color", "1 1 1 1");
-                                    float c[4] = {1, 1, 1, 1};
-                                    std::stringstream ss(colorStr); ss >> c[0] >> c[1] >> c[2] >> c[3];
-                                    if (ImGui::ColorEdit4("Color", c)) {
-                                        char buf[64];
-                                        snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f", c[0], c[1], c[2], c[3]);
-                                        bool found = false;
-                                        for (auto& prop : targetCompOverride->children) {
-                                            if (prop.key == "Color") { prop.value = buf; found = true; break; }
-                                        }
-                                        if (!found) targetCompOverride->children.push_back({"Color", buf, {}});
-                                        changed = true;
-                                    }
-                                } else if (compName == "Transform") {
-                                    auto drawVec3 = [&](const char* label, const char* key, const char* def) {
-                                        std::string valStr = targetCompOverride->GetChildValue(key, def);
-                                        float v[3] = {0, 0, 0};
-                                        if (std::string(def) == "1 1 1") { v[0]=1; v[1]=1; v[2]=1; }
-                                        std::stringstream ss(valStr); ss >> v[0] >> v[1] >> v[2];
-                                        if (ImGui::DragFloat3(label, v, 0.1f)) {
+
+                                if (toggled && targetCompOverride)
+                                {
+                                    ImGui::Indent();
+                                    ImGui::PushID((entNode.key + compName).c_str());
+
+                                    if (compName == "Renderer")
+                                    {
+                                        std::string colorStr = targetCompOverride->GetChildValue("Color", "1 1 1 1");
+                                        float c[4] = {1, 1, 1, 1};
+                                        std::stringstream ss(colorStr);
+                                        ss >> c[0] >> c[1] >> c[2] >> c[3];
+                                        if (ImGui::ColorEdit4("Color", c))
+                                        {
                                             char buf[64];
-                                            snprintf(buf, sizeof(buf), "%.3f %.3f %.3f", v[0], v[1], v[2]);
+                                            snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f", c[0], c[1], c[2], c[3]);
                                             bool found = false;
-                                            for (auto& prop : targetCompOverride->children) {
-                                                if (prop.key == key) { prop.value = buf; found = true; break; }
+                                            for (auto& prop : targetCompOverride->children)
+                                            {
+                                                if (prop.key == "Color")
+                                                {
+                                                    prop.value = buf;
+                                                    found = true;
+                                                    break;
+                                                }
                                             }
-                                            if (!found) targetCompOverride->children.push_back({key, buf, {}});
+                                            if (!found)
+                                                targetCompOverride->children.push_back({"Color", buf, {}});
                                             changed = true;
                                         }
-                                    };
-                                    drawVec3("Position", "Position", "0 0 0");
-                                    drawVec3("Rotation", "Rotation", "0 0 0");
-                                    drawVec3("Scale", "Scale", "1 1 1");
-                                } else if (compName == "Material") {
-                                    auto drawFloat = [&](const char* label, const char* key, const char* def) {
-                                        std::string valStr = targetCompOverride->GetChildValue(key, def);
-                                        float v = 0.0f;
-                                        std::stringstream ssF(valStr); ssF >> v;
-                                        if (ImGui::DragFloat(label, &v, 0.01f)) {
-                                            char buf[64]; snprintf(buf, sizeof(buf), "%.3f", v);
-                                            bool found = false;
-                                            for (auto& prop : targetCompOverride->children) {
-                                                if (prop.key == key) { prop.value = buf; found = true; break; }
+                                    }
+                                    else if (compName == "Transform")
+                                    {
+                                        auto drawVec3 = [&](const char* label, const char* key, const char* def) {
+                                            std::string valStr = targetCompOverride->GetChildValue(key, def);
+                                            float v[3] = {0, 0, 0};
+                                            if (std::string(def) == "1 1 1")
+                                            {
+                                                v[0] = 1;
+                                                v[1] = 1;
+                                                v[2] = 1;
                                             }
-                                            if (!found) targetCompOverride->children.push_back({key, buf, {}});
+                                            std::stringstream ss(valStr);
+                                            ss >> v[0] >> v[1] >> v[2];
+                                            if (ImGui::DragFloat3(label, v, 0.1f))
+                                            {
+                                                char buf[64];
+                                                snprintf(buf, sizeof(buf), "%.3f %.3f %.3f", v[0], v[1], v[2]);
+                                                bool found = false;
+                                                for (auto& prop : targetCompOverride->children)
+                                                {
+                                                    if (prop.key == key)
+                                                    {
+                                                        prop.value = buf;
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
+                                                if (!found)
+                                                    targetCompOverride->children.push_back({key, buf, {}});
+                                                changed = true;
+                                            }
+                                        };
+                                        drawVec3("Position", "Position", "0 0 0");
+                                        drawVec3("Rotation", "Rotation", "0 0 0");
+                                        drawVec3("Scale", "Scale", "1 1 1");
+                                    }
+                                    else if (compName == "Material")
+                                    {
+                                        auto drawFloat = [&](const char* label, const char* key, const char* def) {
+                                            std::string valStr = targetCompOverride->GetChildValue(key, def);
+                                            float v = 0.0f;
+                                            std::stringstream ssF(valStr);
+                                            ssF >> v;
+                                            if (ImGui::DragFloat(label, &v, 0.01f))
+                                            {
+                                                char buf[64];
+                                                snprintf(buf, sizeof(buf), "%.3f", v);
+                                                bool found = false;
+                                                for (auto& prop : targetCompOverride->children)
+                                                {
+                                                    if (prop.key == key)
+                                                    {
+                                                        prop.value = buf;
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
+                                                if (!found)
+                                                    targetCompOverride->children.push_back({key, buf, {}});
+                                                changed = true;
+                                            }
+                                        };
+                                        drawFloat("Opacity", "Opacity", "1.0");
+                                        drawFloat("Roughness", "Roughness", "0.5");
+                                        drawFloat("Metallic", "Metallic", "0.0");
+                                        drawFloat("AO", "AO", "1.0");
+
+                                        std::string emStr = targetCompOverride->GetChildValue("Emission", "0 0 0");
+                                        float em[3] = {0, 0, 0};
+                                        std::stringstream ssEm(emStr);
+                                        ssEm >> em[0] >> em[1] >> em[2];
+                                        if (ImGui::ColorEdit3("Emission", em))
+                                        {
+                                            char buf[64];
+                                            snprintf(buf, sizeof(buf), "%.3f %.3f %.3f", em[0], em[1], em[2]);
+                                            bool found = false;
+                                            for (auto& prop : targetCompOverride->children)
+                                            {
+                                                if (prop.key == "Emission")
+                                                {
+                                                    prop.value = buf;
+                                                    found = true;
+                                                    break;
+                                                }
+                                            }
+                                            if (!found)
+                                                targetCompOverride->children.push_back({"Emission", buf, {}});
                                             changed = true;
                                         }
-                                    };
-                                    drawFloat("Opacity", "Opacity", "1.0");
-                                    drawFloat("Roughness", "Roughness", "0.5");
-                                    drawFloat("Metallic", "Metallic", "0.0");
-                                    drawFloat("AO", "AO", "1.0");
-                                    
-                                    std::string emStr = targetCompOverride->GetChildValue("Emission", "0 0 0");
-                                    float em[3] = {0, 0, 0};
-                                    std::stringstream ssEm(emStr); ssEm >> em[0] >> em[1] >> em[2];
-                                    if (ImGui::ColorEdit3("Emission", em)) {
-                                        char buf[64]; snprintf(buf, sizeof(buf), "%.3f %.3f %.3f", em[0], em[1], em[2]);
-                                        bool found = false;
-                                        for (auto& prop : targetCompOverride->children) {
-                                            if (prop.key == "Emission") { prop.value = buf; found = true; break; }
-                                        }
-                                        if (!found) targetCompOverride->children.push_back({"Emission", buf, {}});
-                                        changed = true;
-                                    }
-                                    auto drawVec2 = [&](const char* label, const char* key, const char* def) {
-                                        std::string valStr = targetCompOverride->GetChildValue(key, def);
-                                        float v[2] = {0, 0};
-                                        if (std::string(def) == "1 1") { v[0]=1; v[1]=1; }
-                                        std::stringstream ssV(valStr); ssV >> v[0] >> v[1];
-                                        if (ImGui::DragFloat2(label, v, 0.01f)) {
-                                            char buf[64]; snprintf(buf, sizeof(buf), "%.3f %.3f", v[0], v[1]);
-                                            bool found = false;
-                                            for (auto& prop : targetCompOverride->children) {
-                                                if (prop.key == key) { prop.value = buf; found = true; break; }
+                                        auto drawVec2 = [&](const char* label, const char* key, const char* def) {
+                                            std::string valStr = targetCompOverride->GetChildValue(key, def);
+                                            float v[2] = {0, 0};
+                                            if (std::string(def) == "1 1")
+                                            {
+                                                v[0] = 1;
+                                                v[1] = 1;
                                             }
-                                            if (!found) targetCompOverride->children.push_back({key, buf, {}});
+                                            std::stringstream ssV(valStr);
+                                            ssV >> v[0] >> v[1];
+                                            if (ImGui::DragFloat2(label, v, 0.01f))
+                                            {
+                                                char buf[64];
+                                                snprintf(buf, sizeof(buf), "%.3f %.3f", v[0], v[1]);
+                                                bool found = false;
+                                                for (auto& prop : targetCompOverride->children)
+                                                {
+                                                    if (prop.key == key)
+                                                    {
+                                                        prop.value = buf;
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
+                                                if (!found)
+                                                    targetCompOverride->children.push_back({key, buf, {}});
+                                                changed = true;
+                                            }
+                                        };
+                                        drawVec2("UV Scale", "UVScale", "1 1");
+                                        drawVec2("UV Offset", "UVOffset", "0 0");
+                                    }
+                                    else
+                                    {
+                                        std::string compStr = "";
+                                        for (const auto& prop : targetCompOverride->children)
+                                        {
+                                            compStr += prop.key + ": " + prop.value + "\n";
+                                        }
+                                        char compBuf[1024];
+                                        strncpy(compBuf, compStr.c_str(), sizeof(compBuf) - 1);
+                                        if (ImGui::InputTextMultiline("##props", compBuf, sizeof(compBuf),
+                                                                      ImVec2(-1, 80)))
+                                        {
+                                            targetCompOverride->children = YAMLParser::ParseString(compBuf);
                                             changed = true;
                                         }
-                                    };
-                                    drawVec2("UV Scale", "UVScale", "1 1");
-                                    drawVec2("UV Offset", "UVOffset", "0 0");
-                                } else {
-                                    std::string compStr = "";
-                                    for (const auto& prop : targetCompOverride->children) {
-                                        compStr += prop.key + ": " + prop.value + "\n";
                                     }
-                                    char compBuf[1024];
-                                    strncpy(compBuf, compStr.c_str(), sizeof(compBuf) - 1);
-                                    if (ImGui::InputTextMultiline("##props", compBuf, sizeof(compBuf), ImVec2(-1, 80))) {
-                                        targetCompOverride->children = YAMLParser::ParseString(compBuf);
-                                        changed = true;
-                                    }
+
+                                    ImGui::PopID();
+                                    ImGui::Unindent();
                                 }
-                                
-                                ImGui::PopID();
-                                ImGui::Unindent();
                             }
                         }
+                        ImGui::TreePop();
                     }
-                    ImGui::TreePop();
                 }
             }
-            }
-            
-            if (changed) {
+
+            if (changed)
+            {
                 frag.overrides = "";
-                for (const auto& root : overrideRoots) {
+                for (const auto& root : overrideRoots)
+                {
                     frag.overrides += SerializeYAMLNode(root, 0);
                 }
             }
-        } else {
+        }
+        else
+        {
             ImGui::TextColored(ImVec4(1, 0, 0, 1), "Fragment Asset Not Found");
         }
 
-        if (ImGui::Button("Reload & Apply Overrides")) {
+        if (ImGui::Button("Reload & Apply Overrides"))
+        {
             frag.instantiated = false;
         }
     });
 
     // ====== PHASE 3: Add Component ======
     ImGui::Separator();
-    if (ImGui::Button("+ Add Component")) {
+    if (ImGui::Button("+ Add Component"))
+    {
         EditorSystem::PushUndoState(scene);
         ImGui::OpenPopup("AddComponentPopup");
     }
-    if (ImGui::BeginPopup("AddComponentPopup")) {
+    if (ImGui::BeginPopup("AddComponentPopup"))
+    {
         if (!reg.try_get<CameraComponent>(entity) && ImGui::Selectable("Camera"))
             reg.emplace<CameraComponent>(entity);
         if (!reg.try_get<MeshRendererComponent>(entity) && ImGui::Selectable("Mesh Renderer"))
@@ -1253,10 +1506,12 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     }
 }
 
-void SceneHierarchyPanel::CreateNewEntity(Scene& scene, const std::string& sceneName) {
+void SceneHierarchyPanel::CreateNewEntity(Scene& scene, const std::string& sceneName)
+{
     auto& sm = ServiceLocator::Instance().Require<SceneManager>();
     std::string targetScene = sceneName.empty() ? sm.GetActiveScene() : sceneName;
-    if (targetScene.empty()) targetScene = "main";
+    if (targetScene.empty())
+        targetScene = "main";
 
     auto entity = scene.registry.create();
     scene.registry.emplace<PositionComponent>(entity);
@@ -1265,24 +1520,29 @@ void SceneHierarchyPanel::CreateNewEntity(Scene& scene, const std::string& scene
     scene.registry.emplace<HierarchyComponent>(entity);
     scene.registry.emplace<WorldTransformComponent>(entity);
     scene.registry.emplace<InfoComponent>(entity, "New Entity", "default");
-    
+
     // Assign to correct scene
     scene.registry.get<InfoComponent>(entity).sceneName = targetScene;
     sm.AddEntity(entity, targetScene);
     s_SelectedEntity = entity;
 }
 
-void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity) {
-    if (srcEntity == entt::null || !scene.registry.valid(srcEntity)) return;
+void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
+{
+    if (srcEntity == entt::null || !scene.registry.valid(srcEntity))
+        return;
 
     auto newEntity = scene.registry.create();
     auto& reg = scene.registry;
 
-    // Helper macro to copy component if exists
-    #define COPY_COMP(Type) if (reg.all_of<Type>(srcEntity)) reg.emplace<Type>(newEntity, reg.get<Type>(srcEntity))
+// Helper macro to copy component if exists
+#define COPY_COMP(Type)              \
+    if (reg.all_of<Type>(srcEntity)) \
+    reg.emplace<Type>(newEntity, reg.get<Type>(srcEntity))
 
     COPY_COMP(InfoComponent);
-    if (reg.all_of<InfoComponent>(newEntity)) {
+    if (reg.all_of<InfoComponent>(newEntity))
+    {
         reg.get<InfoComponent>(newEntity).name += " (Copy)";
     }
 
@@ -1296,7 +1556,8 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity) 
     COPY_COMP(PointLightComponent);
     COPY_COMP(SpotLightComponent);
     COPY_COMP(CameraComponent);
-    if (reg.all_of<ScriptComponent>(srcEntity)) {
+    if (reg.all_of<ScriptComponent>(srcEntity))
+    {
         auto& srcSc = reg.get<ScriptComponent>(srcEntity);
         auto& newSc = reg.emplace<ScriptComponent>(newEntity);
         newSc.className = srcSc.className;
@@ -1310,7 +1571,8 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity) 
     COPY_COMP(SkyboxRenderComponent);
     COPY_COMP(FragmentComponent);
     COPY_COMP(AnimationComponent);
-    if (reg.all_of<ParticleEmitterComponent>(srcEntity)) {
+    if (reg.all_of<ParticleEmitterComponent>(srcEntity))
+    {
         auto& srcPe = reg.get<ParticleEmitterComponent>(srcEntity);
         auto& dstPe = reg.emplace<ParticleEmitterComponent>(newEntity);
         dstPe.isActive = srcPe.isActive;
@@ -1332,9 +1594,11 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity) 
     COPY_COMP(ReflectionProbeComponent);
     // Setup hierarchy properly (don't copy children directly, just attach to same parent)
     reg.emplace<HierarchyComponent>(newEntity);
-    if (reg.all_of<HierarchyComponent>(srcEntity)) {
+    if (reg.all_of<HierarchyComponent>(srcEntity))
+    {
         auto parent = reg.get<HierarchyComponent>(srcEntity).parent;
-        if (parent != entt::null) {
+        if (parent != entt::null)
+        {
             EntityManager::AddChild(scene, parent, newEntity, false);
         }
     }

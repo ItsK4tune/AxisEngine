@@ -1,6 +1,7 @@
 #pragma once
 
-enum class LogLevel {
+enum class LogLevel
+{
     None,
     Minimal,
     Flex,

@@ -1,30 +1,30 @@
+#include <audio/logic/audio_service.h>
 #include <core/app/runtime_core.h>
-#include <core/logic/service_locator.h>
-#include <ecs/logic/system_manager.h>
+#include <core/app/state_machine.h>
 #include <core/logic/config_manager.h>
+#include <core/logic/event_manager.h>
+#include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/time_service.h>
+#include <core/type/event_types.h>
+#include <ecs/logic/system_manager.h>
+#include <platform/interface/i_window.h>
+#include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
-#include <core/logic/event_manager.h>
-#include <core/type/event_types.h>
-#include <core/app/state_machine.h>
-#include <core/logic/time_service.h>
+#include <render/interface/i_graphics_context.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
-#include <resource/logic/resource_manager.h>
-#include <platform/logic/input_manager.h>
-#include <audio/logic/audio_service.h>
-#include <render/interface/i_graphics_context.h>
-#include <platform/interface/i_window.h>
-#include <core/logic/logger.h>
 
 #ifdef _WIN32
 #include <windows.h>
+
 typedef MMRESULT(WINAPI* LPTIMEBEGINPERIOD)(UINT);
 typedef MMRESULT(WINAPI* LPTIMEENDPERIOD)(UINT);
 #endif
 
-EngineLoop::EngineLoop()
-    : m_LastFrameTime(std::chrono::steady_clock::now())
+EngineLoop::EngineLoop() : m_LastFrameTime(std::chrono::steady_clock::now())
 {
 }
 
@@ -43,16 +43,17 @@ void EngineLoop::Initialize()
     auto& sl = ServiceLocator::Instance();
     auto& configMgr = sl.Require<ConfigManager>();
     auto& appConfig = configMgr.GetConfig();
-    
+
     SetPhysicsStep(1.0f / appConfig.physicsTickRate);
     SetMaxSubSteps(appConfig.maxSubSteps);
     SetTimeScale(appConfig.timeScale);
 
-    m_ConfigSubscriptionId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        SetPhysicsStep(1.0f / e.config.physicsTickRate);
-        SetMaxSubSteps(e.config.maxSubSteps);
-        SetTimeScale(e.config.timeScale);
-    });
+    m_ConfigSubscriptionId =
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            SetPhysicsStep(1.0f / e.config.physicsTickRate);
+            SetMaxSubSteps(e.config.maxSubSteps);
+            SetTimeScale(e.config.timeScale);
+        });
 }
 
 void EngineLoop::Shutdown()
@@ -67,7 +68,8 @@ void EngineLoop::Shutdown()
     }
 #endif
 
-    if (m_ConfigSubscriptionId != -1) {
+    if (m_ConfigSubscriptionId != -1)
+    {
         EventManager::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigSubscriptionId);
     }
 }
@@ -80,20 +82,22 @@ void EngineLoop::Run()
 {
     LOGGER_INFO("EngineLoop") << "Starting engine loop";
     m_IsRunning = true;
-    
+
     auto& sl = ServiceLocator::Instance();
     auto ioHandler = sl.Resolve<IOHandler>();
 
     while (m_IsRunning)
     {
-        if (ioHandler) {
+        if (ioHandler)
+        {
             auto window = ioHandler->GetMonitorManager().GetWindow();
-            if (window && window->ShouldClose()) {
+            if (window && window->ShouldClose())
+            {
                 m_IsRunning = false;
                 break;
             }
         }
-        
+
         ProcessFrame();
     }
 }
@@ -114,9 +118,11 @@ void EngineLoop::ProcessFrame()
     m_DeltaTime = m_RealDeltaTime;
     m_LastFrameTime = now;
 
-    if (ioHandler) {
+    if (ioHandler)
+    {
         auto window = ioHandler->GetMonitorManager().GetWindow();
-        if (window) {
+        if (window)
+        {
             window->PollEvents();
         }
         ioHandler->GetMouse().Update();
@@ -135,8 +141,9 @@ void EngineLoop::ProcessFrame()
     timeService.SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
 
     resourceManager.Update(m_RealDeltaTime);
-    
-    if (ioHandler) {
+
+    if (ioHandler)
+    {
         ioHandler->ProcessInput();
         ioHandler->GetInputManager().Update();
     }
@@ -146,17 +153,20 @@ void EngineLoop::ProcessFrame()
     systemManager.UpdateDebug(m_RealDeltaTime);
 
     stateMachine.Update(m_DeltaTime);
-    
-    if (ioHandler) {
+
+    if (ioHandler)
+    {
         ioHandler->GetMouse().EndFrame();
     }
 
     FixedUpdate();
     Render();
 
-    if (ioHandler) {
+    if (ioHandler)
+    {
         auto window = ioHandler->GetMonitorManager().GetWindow();
-        if (window) {
+        if (window)
+        {
             window->SwapBuffers();
 
             int frameRateLimit = ioHandler->GetMonitorManager().GetFrameRateLimit();
@@ -175,7 +185,8 @@ void EngineLoop::ProcessFrame()
                             std::this_thread::sleep_for(std::chrono::duration<double>(sleepTime - 0.001));
                         }
 
-                        while (std::chrono::duration<double>(std::chrono::steady_clock::now() - now).count() < targetFrameTime)
+                        while (std::chrono::duration<double>(std::chrono::steady_clock::now() - now).count() <
+                               targetFrameTime)
                         {
                             std::this_thread::yield();
                         }
@@ -223,7 +234,8 @@ void EngineLoop::FixedUpdate()
 void EngineLoop::Render()
 {
     auto& sl = ServiceLocator::Instance();
-    if (!sl.Has<IGraphicsContext>()) return;
+    if (!sl.Has<IGraphicsContext>())
+        return;
 
     auto& sysMgr = sl.Require<SystemManager>();
     auto io = sl.Resolve<IOHandler>();
@@ -231,7 +243,8 @@ void EngineLoop::Render()
     auto& scene = sl.Require<Scene>();
 
     int width = 0, height = 0;
-    if (io) {
+    if (io)
+    {
         width = io->GetMonitorManager().GetWidth();
         height = io->GetMonitorManager().GetHeight();
     }

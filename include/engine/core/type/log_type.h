@@ -1,6 +1,7 @@
 #pragma once
 
-enum class LogType {
+enum class LogType
+{
     Info,
     Warning,
     Error,

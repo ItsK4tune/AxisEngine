@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <render/type/graphics_types.h>
+#include <glm/glm.hpp>
 
 enum class AntiAliasingMode;
 
@@ -25,7 +25,6 @@ public:
 
     virtual bool IsOcclusionCullingEnabled() const = 0;
     virtual void SetOcclusionCulling(bool enable) = 0;
-
 
     virtual unsigned int GetWhiteTexture() const = 0;
     virtual unsigned int GetBlackTexture() const = 0;

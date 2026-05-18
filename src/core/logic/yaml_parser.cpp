@@ -2,9 +2,9 @@
 #include <fstream>
 #include <sstream>
 
-YAMLNode *YAMLNode::GetChild(const std::string &k)
+YAMLNode* YAMLNode::GetChild(const std::string& k)
 {
-    for (auto &c : children)
+    for (auto& c : children)
     {
         if (c.key == k)
             return &c;
@@ -12,9 +12,9 @@ YAMLNode *YAMLNode::GetChild(const std::string &k)
     return nullptr;
 }
 
-const YAMLNode *YAMLNode::GetChild(const std::string &k) const
+const YAMLNode* YAMLNode::GetChild(const std::string& k) const
 {
-    for (const auto &c : children)
+    for (const auto& c : children)
     {
         if (c.key == k)
             return &c;
@@ -22,9 +22,9 @@ const YAMLNode *YAMLNode::GetChild(const std::string &k) const
     return nullptr;
 }
 
-std::string YAMLNode::GetChildValue(const std::string &k, const std::string &defaultVal) const
+std::string YAMLNode::GetChildValue(const std::string& k, const std::string& defaultVal) const
 {
-    for (auto &c : children)
+    for (auto& c : children)
     {
         if (c.key == k)
             return c.value;
@@ -32,12 +32,12 @@ std::string YAMLNode::GetChildValue(const std::string &k, const std::string &def
     return defaultVal;
 }
 
-void YAMLNode::Merge(YAMLNode &base, const YAMLNode &override)
+void YAMLNode::Merge(YAMLNode& base, const YAMLNode& override)
 {
-    for (const auto &overChild : override.children)
+    for (const auto& overChild : override.children)
     {
         bool found = false;
-        for (auto &baseChild : base.children)
+        for (auto& baseChild : base.children)
         {
             bool match = false;
             // For components, we must match by value as well (the component name)
@@ -58,7 +58,6 @@ void YAMLNode::Merge(YAMLNode &base, const YAMLNode &override)
 
             if (match)
             {
-                // Update value if provided (even if it has children)
                 if (!overChild.value.empty())
                 {
                     baseChild.value = overChild.value;
@@ -68,7 +67,7 @@ void YAMLNode::Merge(YAMLNode &base, const YAMLNode &override)
                 {
                     Merge(baseChild, overChild);
                 }
-                
+
                 found = true;
                 break;
             }
@@ -82,21 +81,22 @@ void YAMLNode::Merge(YAMLNode &base, const YAMLNode &override)
 
 namespace
 {
-    YAMLNode *GetNodeAtPath(std::vector<YAMLNode> &roots, const std::vector<size_t> &path)
+YAMLNode* GetNodeAtPath(std::vector<YAMLNode>& roots, const std::vector<size_t>& path)
+{
+    if (path.empty() || path[0] >= roots.size())
+        return nullptr;
+    YAMLNode* current = &roots[path[0]];
+    for (size_t i = 1; i < path.size(); ++i)
     {
-        if (path.empty() || path[0] >= roots.size())
+        if (path[i] >= current->children.size())
             return nullptr;
-        YAMLNode *current = &roots[path[0]];
-        for (size_t i = 1; i < path.size(); ++i)
-        {
-            if (path[i] >= current->children.size()) return nullptr;
-            current = &current->children[path[i]];
-        }
-        return current;
+        current = &current->children[path[i]];
     }
+    return current;
 }
+}  // namespace
 
-std::vector<YAMLNode> YAMLParser::Parse(const std::string &filepath)
+std::vector<YAMLNode> YAMLParser::Parse(const std::string& filepath)
 {
     std::ifstream file(filepath);
     if (!file.is_open())
@@ -104,13 +104,13 @@ std::vector<YAMLNode> YAMLParser::Parse(const std::string &filepath)
     return ParseStream(file);
 }
 
-std::vector<YAMLNode> YAMLParser::ParseString(const std::string &content)
+std::vector<YAMLNode> YAMLParser::ParseString(const std::string& content)
 {
     std::stringstream ss(content);
     return ParseStream(ss);
 }
 
-std::vector<YAMLNode> YAMLParser::ParseStream(std::istream &stream)
+std::vector<YAMLNode> YAMLParser::ParseStream(std::istream& stream)
 {
     std::vector<YAMLNode> roots;
     struct IndentLevel
@@ -140,7 +140,8 @@ std::vector<YAMLNode> YAMLParser::ParseStream(std::istream &stream)
             }
         }
 
-        if (indent > len) indent = len;
+        if (indent > len)
+            indent = len;
 
         std::string content = line.substr(indent);
         if (content.empty() || content[0] == '#')
@@ -191,7 +192,7 @@ std::vector<YAMLNode> YAMLParser::ParseStream(std::istream &stream)
         }
         else
         {
-            YAMLNode *parent = GetNodeAtPath(roots, stack.back().path);
+            YAMLNode* parent = GetNodeAtPath(roots, stack.back().path);
             if (parent)
             {
                 parent->children.push_back(newNode);

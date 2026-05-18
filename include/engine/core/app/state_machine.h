@@ -4,8 +4,6 @@
 #include <memory>
 #include <stack>
 
-
-
 class State : public EngineAccessor
 {
 public:
@@ -13,16 +11,22 @@ public:
 
     virtual void OnEnter() = 0;
     virtual void OnUpdate(float dt) = 0;
-    virtual void OnFixedUpdate(float fixedDt) {}
+    virtual void OnFixedUpdate(float fixedDt)
+    {
+    }
     virtual void OnRender() = 0;
-    virtual void OnRenderDebug() {}
+    virtual void OnRenderDebug()
+    {
+    }
     virtual void OnExit() = 0;
 
-    virtual void OnPause() {}
-    virtual void OnResume() {}
+    virtual void OnPause()
+    {
+    }
+    virtual void OnResume()
+    {
+    }
 };
-
-
 
 class StateMachine
 {
@@ -37,7 +41,7 @@ public:
     void Clear();
     void ChangeState(std::unique_ptr<State> state);
 
-    State *GetCurrentState();
+    State* GetCurrentState();
 
     void Update(float dt);
     void FixedUpdate(float fixedDt);

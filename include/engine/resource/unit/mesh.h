@@ -1,9 +1,9 @@
 #pragma once
 
 #include <core/unit/aabb.h>
-#include <glm/glm.hpp>
-#include <resource/unit/shader.h>
 #include <render/type/graphics_types.h>
+#include <resource/unit/shader.h>
+#include <glm/glm.hpp>
 #include <string>
 #include <vector>
 
@@ -13,9 +13,7 @@ class ITextureManager;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
 #define MAX_BONE_INFLUENCE 4
-
 
 class Mesh
 {
@@ -30,19 +28,31 @@ public:
     unsigned int VAO;
     AABB aabb;
 
-    Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStride, bool isSkinned, 
+    Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStride, bool isSkinned,
          std::vector<unsigned int> indices, std::vector<Texture> textures, bool setupGPU = true);
     ~Mesh();
     void setupMesh();
-    void Draw(Shader &shader, bool bindTextures = true);
-    void DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, bool bindTextures = true);
+    void Draw(Shader& shader, bool bindTextures = true);
+    void DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, bool bindTextures = true);
 
-    bool IsInitialized() const { return m_Initialized; }
+    bool IsInitialized() const
+    {
+        return m_Initialized;
+    }
 
     static void SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* draw);
-    static IBufferManager& GetBufferManager() { return *s_BufferManager; }
-    static ITextureManager& GetTextureManager() { return *s_TextureManager; }
-    static IDrawContext& GetDrawContext() { return *s_DrawContext; }
+    static IBufferManager& GetBufferManager()
+    {
+        return *s_BufferManager;
+    }
+    static ITextureManager& GetTextureManager()
+    {
+        return *s_TextureManager;
+    }
+    static IDrawContext& GetDrawContext()
+    {
+        return *s_DrawContext;
+    }
 
 private:
     unsigned int VBO, EBO, instanceVBO;

@@ -20,7 +20,7 @@ public:
 
     virtual void GetWorldTransform(glm::vec3& pos, glm::quat& rot) const = 0;
     virtual void SetWorldTransform(const glm::vec3& pos, const glm::quat& rot) = 0;
-    
+
     virtual void Activate(bool forceActivation = false) = 0;
 
     virtual void SetUserPointer(void* ptr) = 0;

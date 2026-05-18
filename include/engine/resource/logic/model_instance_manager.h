@@ -1,11 +1,11 @@
 #pragma once
 
+#include <resource/type/model_instance.h>
+#include <resource/unit/model.h>
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <memory>
 #include <mutex>
-#include <resource/unit/model.h>
-#include <resource/type/model_instance.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -26,7 +26,10 @@ public:
     const std::vector<ModelInstance>& GetInstances(const std::string& modelPath);
 
     void ClearAllInstances();
-    void Clear() { ClearAllInstances(); }
+    void Clear()
+    {
+        ClearAllInstances();
+    }
     void UnloadUnusedModels();
     bool UnloadModel(const std::string& name);
 

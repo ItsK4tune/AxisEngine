@@ -1,9 +1,11 @@
 #include <cmath>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/matrix_transform.hpp>
-#include <render/unit/camera.h>
 
-Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
+#define GLM_ENABLE_EXPERIMENTAL
+#include <render/unit/camera.h>
+#include <glm/gtc/matrix_transform.hpp>
+
+Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
+    : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
 {
     Position = position;
     WorldUp = up;
@@ -12,7 +14,8 @@ Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) : Front
     updateCameraVectors();
 }
 
-Camera::Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
+Camera::Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch)
+    : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
 {
     Position = glm::vec3(posX, posY, posZ);
     WorldUp = glm::vec3(upX, upY, upZ);
@@ -26,7 +29,8 @@ glm::mat4 Camera::GetViewMatrix()
     return glm::lookAt(Position, Position + Front, Up);
 }
 
-glm::vec3 Camera::GetScreenRay(float mouseX, float mouseY, float screenWidth, float screenHeight, const glm::mat4& projectionMatrix)
+glm::vec3 Camera::GetScreenRay(float mouseX, float mouseY, float screenWidth, float screenHeight,
+                               const glm::mat4& projectionMatrix)
 {
     float x = (2.0f * mouseX) / screenWidth - 1.0f;
     float y = 1.0f - (2.0f * mouseY) / screenHeight;
@@ -40,9 +44,9 @@ glm::vec3 Camera::GetScreenRay(float mouseX, float mouseY, float screenWidth, fl
 
     glm::mat4 invView = glm::inverse(GetViewMatrix());
     glm::vec4 rayWorld = invView * rayEye;
-    
+
     glm::vec3 rayDir = glm::normalize(glm::vec3(rayWorld));
-    
+
     return rayDir;
 }
 

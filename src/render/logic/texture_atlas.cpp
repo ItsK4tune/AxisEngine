@@ -1,11 +1,11 @@
-#include <algorithm>
-#include <fstream>
 #include <render/unit/texture_atlas.h>
-#include <render/interface/i_texture_manager.h>
-#include <iostream>
-#include <stb/stb_image.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
+#include <render/interface/i_texture_manager.h>
+#include <stb/stb_image.h>
+#include <algorithm>
+#include <fstream>
+#include <iostream>
 
 ITextureManager* TextureAtlas::s_TextureManager = nullptr;
 
@@ -16,15 +16,15 @@ void TextureAtlas::SetTextureManager(ITextureManager& textureManager)
 
 ITextureManager& TextureAtlas::GetTextureManager()
 {
-    if (!s_TextureManager) {
+    if (!s_TextureManager)
+    {
         LOGGER_ERROR("TextureAtlas") << "TextureManager not set!";
         throw std::runtime_error("TextureManager not set in TextureAtlas");
     }
     return *s_TextureManager;
 }
 
-TextureAtlas::TextureAtlas()
-    : m_AtlasID(0), m_Width(0), m_Height(0)
+TextureAtlas::TextureAtlas() : m_AtlasID(0), m_Width(0), m_Height(0)
 {
 }
 
@@ -33,10 +33,10 @@ TextureAtlas::~TextureAtlas()
     Clear();
 }
 
-bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
-                               int atlasWidth, int atlasHeight)
+bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths, int atlasWidth, int atlasHeight)
 {
-    if (!s_TextureManager) return false;
+    if (!s_TextureManager)
+        return false;
     auto& tm = GetTextureManager();
 
     m_Width = atlasWidth;
@@ -98,8 +98,8 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
         AtlasRegion region;
         region.name = textureNames[i];
         region.uvMin = glm::vec2((float)rects[i].x / m_Width, (float)rects[i].y / m_Height);
-        region.uvMax = glm::vec2((float)(rects[i].x + rects[i].width) / m_Width,
-                                 (float)(rects[i].y + rects[i].height) / m_Height);
+        region.uvMax =
+            glm::vec2((float)(rects[i].x + rects[i].width) / m_Width, (float)(rects[i].y + rects[i].height) / m_Height);
         region.uvScale = glm::vec2((float)rects[i].width / m_Width, (float)rects[i].height / m_Height);
         region.uvOffset = region.uvMin;
         region.width = rects[i].width;
@@ -111,12 +111,14 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths,
     m_AtlasID = tm.GenTexture();
     tm.BindTexture(TextureType::Texture2D, m_AtlasID);
 
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, m_Width, m_Height, 0, TextureFormat::RGBA, DataType::UnsignedByte, atlasData.data());
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, m_Width, m_Height, 0, TextureFormat::RGBA,
+                  DataType::UnsignedByte, atlasData.data());
     tm.GenerateMipmap(TextureType::Texture2D);
 
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::Repeat));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::Repeat));
-    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::LinearMipmapLinear));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
+                     static_cast<int>(TextureFilter::LinearMipmapLinear));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
 
     tm.BindTexture(TextureType::Texture2D, 0);
@@ -141,12 +143,11 @@ bool TextureAtlas::PackTextures(const std::vector<TextureData>& textures, std::v
     std::vector<IndexedTexture> indexed;
     for (size_t i = 0; i < textures.size(); i++)
     {
-        indexed.push_back({ (int)i, textures[i].width, textures[i].height });
+        indexed.push_back({(int)i, textures[i].width, textures[i].height});
     }
 
-    std::sort(indexed.begin(), indexed.end(), [](const IndexedTexture& a, const IndexedTexture& b) {
-        return a.height > b.height;
-    });
+    std::sort(indexed.begin(), indexed.end(),
+              [](const IndexedTexture& a, const IndexedTexture& b) { return a.height > b.height; });
 
     outRects.resize(textures.size());
 
@@ -169,7 +170,7 @@ bool TextureAtlas::PackTextures(const std::vector<TextureData>& textures, std::v
             return false;
         }
 
-        outRects[tex.index] = { currentX, currentY, tex.width, tex.height };
+        outRects[tex.index] = {currentX, currentY, tex.width, tex.height};
         currentX += tex.width;
         shelfHeight = (std::max)(shelfHeight, tex.height);
     }

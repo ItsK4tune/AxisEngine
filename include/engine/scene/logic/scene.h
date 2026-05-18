@@ -1,9 +1,9 @@
 #pragma once
 
+#include <scene/logic/octree.h>
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <memory>
-#include <scene/logic/octree.h>
 #include <string>
 
 class SceneManager;
@@ -16,7 +16,10 @@ struct Scene
     ~Scene();
 
     entt::registry registry;
-    Octree* GetOctree() { return m_Octree.get(); }
+    Octree* GetOctree()
+    {
+        return m_Octree.get();
+    }
 
     void InitializeManagers();
     void ShutdownManagers();

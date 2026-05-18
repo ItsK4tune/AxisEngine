@@ -1,68 +1,76 @@
 #include <ecs/logic/terrain_system.h>
-#include <ecs/logic/system_factory.h>
-#include <core/logic/event_manager.h>
-#include <core/type/event_types.h>
 #include <core/logic/config_manager.h>
-#include <ecs/interface/i_render_service.h>
+#include <core/logic/event_manager.h>
+#include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <core/type/event_types.h>
 #include <ecs/interface/i_geometry_service.h>
-#include <render/interface/i_graphics_context.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/logic/entity_manager.h>
+#include <ecs/logic/system_factory.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/terrain_component.h>
+#include <physics/interface/i_physics_world.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_shader_manager.h>
 #include <render/interface/i_texture_manager.h>
-#include <render/interface/i_render_state_manager.h>
 #include <render/logic/frustum_culler.h>
 #include <resource/logic/resource_manager.h>
-#include <ecs/unit/core_components.h>
-#include <ecs/logic/entity_manager.h>
-#include <core/logic/logger.h>
-#include <glm/gtc/matrix_transform.hpp>
 #include <resource/unit/shader.h>
-#include <physics/interface/i_physics_world.h>
-#include <ecs/unit/terrain_component.h>
-#include <core/logic/service_locator.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 REGISTER_SYSTEM(TerrainSystem)
 
-void TerrainSystem::Initialize() {
+void TerrainSystem::Initialize()
+{
     auto& sl = ServiceLocator::Instance();
     sl.Register<TerrainSystem>(this);
     EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)) {
-
+        if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All))
+        {
         }
     });
-    EventManager::Instance().Subscribe<DebugNoTextureChangedEvent>([this](const DebugNoTextureChangedEvent& e) {
-        SetDebugNoTexture(e.enabled);
-    });
+    EventManager::Instance().Subscribe<DebugNoTextureChangedEvent>(
+        [this](const DebugNoTextureChangedEvent& e) { SetDebugNoTexture(e.enabled); });
 }
 
-void TerrainSystem::Shutdown() {
-    for (auto& pair : m_TerrainCache) {
+void TerrainSystem::Shutdown()
+{
+    for (auto& pair : m_TerrainCache)
+    {
         CleanupTerrainData(*pair.second);
     }
     m_TerrainCache.clear();
 }
 
-void TerrainSystem::Update(Scene &scene, float dt) {
-    if (!m_Enabled) return;
+void TerrainSystem::Update(Scene& scene, float dt)
+{
+    if (!m_Enabled)
+        return;
 
     auto view = scene.registry.view<TerrainComponent>();
-    for (auto entity : view) {
-        auto &terrain = view.get<TerrainComponent>(entity);
-        if (terrain.needsRebuild) {
+    for (auto entity : view)
+    {
+        auto& terrain = view.get<TerrainComponent>(entity);
+        if (terrain.needsRebuild)
+        {
             LOGGER_INFO("TerrainSystem") << "Rebuilding terrain for entity " << (uint32_t)entity;
             BuildTerrain(entity, terrain);
         }
     }
 }
 
-void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float alpha)
+void TerrainSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
 {
-    if (!m_Enabled) return;
+    if (!m_Enabled)
+        return;
 
     entt::entity camEntity = EntityManager::GetActiveCamera(scene);
-    if (camEntity == entt::null) return;
+    if (camEntity == entt::null)
+        return;
 
     auto& cam = scene.registry.get<CameraComponent>(camEntity);
     auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
@@ -71,7 +79,8 @@ void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float a
     auto& sl = ServiceLocator::Instance();
     auto* gc_ptr = sl.Resolve<IGraphicsContext>();
     auto* resources = sl.Resolve<ResourceManager>();
-    if (!gc_ptr || !resources) return;
+    if (!gc_ptr || !resources)
+        return;
 
     auto& gc = *gc_ptr;
     auto& dc = gc.GetDrawContext();
@@ -85,51 +94,60 @@ void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float a
     auto* geoSys = sl.Resolve<IGeometryService>();
 
     auto view = scene.registry.view<TerrainComponent, PositionComponent>();
-    for (auto entity : view) {
-        auto &terrain = view.get<TerrainComponent>(entity);
-        auto &pos = view.get<PositionComponent>(entity);
-        
+    for (auto entity : view)
+    {
+        auto& terrain = view.get<TerrainComponent>(entity);
+        auto& pos = view.get<PositionComponent>(entity);
+
         auto it = m_TerrainCache.find(entity);
-        if (it == m_TerrainCache.end()) {
+        if (it == m_TerrainCache.end())
+        {
             continue;
         }
 
         TerrainData& data = *it->second;
         Shader* actShader = data.terrainShader.get();
-        if (!terrain.customShader.empty()) {
-            if (auto custom = resources->GetShader(terrain.customShader)) {
+        if (!terrain.customShader.empty())
+        {
+            if (auto custom = resources->GetShader(terrain.customShader))
+            {
                 actShader = custom.get();
             }
         }
-        
-        if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
-             auto gbufShader = resources->GetShader("terrain_gbuffer");
-             if (!terrain.customShader.empty()) {
-                 if (auto custom = resources->GetShader(terrain.customShader + "_gbuffer")) {
-                     gbufShader = custom;
-                 }
-             }
 
-             if (gbufShader) actShader = gbufShader.get();
-             geoSys->BindGBufferForWriting();
+        if (geoSys && geoSys->IsDeferredRenderingEnabled())
+        {
+            auto gbufShader = resources->GetShader("terrain_gbuffer");
+            if (!terrain.customShader.empty())
+            {
+                if (auto custom = resources->GetShader(terrain.customShader + "_gbuffer"))
+                {
+                    gbufShader = custom;
+                }
+            }
+
+            if (gbufShader)
+                actShader = gbufShader.get();
+            geoSys->BindGBufferForWriting();
         }
 
-        if (!actShader) continue;
+        if (!actShader)
+            continue;
 
         actShader->use();
         actShader->setMat4("view", cam.viewMatrix);
         actShader->setMat4("projection", cam.projectionMatrix);
         actShader->setVec3("camPos", camPos);
-        
+
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos.value);
         actShader->setMat4("model", model);
         actShader->setUInt("entityID", static_cast<unsigned int>(entity));
-        
+
         actShader->setFloat("maxHeight", terrain.maxHeight);
         actShader->setVec2("terrainSize", glm::vec2(terrain.terrainSize.x, terrain.terrainSize.z));
         actShader->setFloat("textureScale", terrain.textureScale);
         actShader->setBool("debug_noTexture", m_DebugNoTexture);
-        
+
         tm.ActiveTexture(TextureUnit::Texture26);
         tm.BindTexture(TextureType::Texture2D, terrain.heightMap);
         actShader->setInt("heightMap", 26);
@@ -138,49 +156,61 @@ void TerrainSystem::RenderAlphaPass(Scene &scene, int width, int height, float a
         tm.BindTexture(TextureType::Texture2D, terrain.splatMap);
         actShader->setInt("splatMap", 27);
 
-        for (size_t i = 0; i < terrain.diffuseLayers.size() && i < 4; ++i) {
+        for (size_t i = 0; i < terrain.diffuseLayers.size() && i < 4; ++i)
+        {
             tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture28) + i));
             tm.BindTexture(TextureType::Texture2D, terrain.diffuseLayers[i]);
             std::string name = "textureLayer" + std::to_string(i);
             actShader->setInt(name.c_str(), 28 + (int)i);
         }
 
-        for (auto& chunk : data.chunks) {
-            if (!culler.IsVisible(chunk.minBound + pos.value, chunk.maxBound + pos.value)) {
+        for (auto& chunk : data.chunks)
+        {
+            if (!culler.IsVisible(chunk.minBound + pos.value, chunk.maxBound + pos.value))
+            {
                 continue;
             }
 
             float dist = glm::distance(camPos, (chunk.minBound + chunk.maxBound) * 0.5f + pos.value);
             int lod = 0;
-            if (dist > 300.0f) lod = 3;
-            else if (dist > 150.0f) lod = 2;
-            else if (dist > 75.0f) lod = 1;
+            if (dist > 300.0f)
+                lod = 3;
+            else if (dist > 150.0f)
+                lod = 2;
+            else if (dist > 75.0f)
+                lod = 1;
 
-            if (lod >= (int)data.lodEBOs.size()) continue;
+            if (lod >= (int)data.lodEBOs.size())
+                continue;
 
             bm.BindVertexArray(chunk.VAO);
             bm.BindBuffer(BufferType::ElementArrayBuffer, data.lodEBOs[lod]);
             dc.DrawElements(Primitive::Triangles, data.lodIndexCounts[lod], DataType::UnsignedInt, nullptr);
             auto* rs = sl.Resolve<IRenderService>();
-            if (rs) rs->AddRenderedCount(1);
+            if (rs)
+                rs->AddRenderedCount(1);
         }
 
-        if (geoSys && geoSys->IsDeferredRenderingEnabled()) {
+        if (geoSys && geoSys->IsDeferredRenderingEnabled())
+        {
             geoSys->UnbindGBuffer();
         }
     }
 }
 
-void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain) {
+void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
+{
     auto& sl = ServiceLocator::Instance();
     auto* resources = sl.Resolve<ResourceManager>();
-    if (!resources) return;
+    if (!resources)
+        return;
 
     auto data = std::make_unique<TerrainData>();
-    
+
     data->terrainShader = resources->GetShader("terrain");
 
-    if (!data->terrainShader) {
+    if (!data->terrainShader)
+    {
         LOGGER_ERROR("TerrainSystem") << "Cannot build terrain: shader failed to load.";
         return;
     }
@@ -190,8 +220,10 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     int numChunksX = (terrain.resolution - 1) / (terrain.chunkSize - 1);
     int numChunksZ = (terrain.resolution - 1) / (terrain.chunkSize - 1);
 
-    for (int z = 0; z < numChunksZ; ++z) {
-        for (int x = 0; x < numChunksX; ++x) {
+    for (int z = 0; z < numChunksZ; ++z)
+    {
+        for (int x = 0; x < numChunksX; ++x)
+        {
             TerrainChunk chunk;
             chunk.gridPos = glm::ivec2(x, z);
             CreateChunkMesh(chunk, terrain, x * (terrain.chunkSize - 1), z * (terrain.chunkSize - 1));
@@ -200,73 +232,91 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     }
 
     auto cacheIt = m_TerrainCache.find(entity);
-    if (cacheIt != m_TerrainCache.end() && cacheIt->second) {
+    if (cacheIt != m_TerrainCache.end() && cacheIt->second)
+    {
         CleanupTerrainData(*cacheIt->second);
     }
 
     m_TerrainCache[entity] = std::move(data);
-    
+
     bool needsRetry = false;
-    LOGGER_INFO("TerrainSystem") << "Checking physics generation for entity " << (uint32_t)entity << ": generate=" << terrain.generatePhysics << ", mapName=" << terrain.heightMapName;
-    
+    LOGGER_INFO("TerrainSystem") << "Checking physics generation for entity " << (uint32_t)entity
+                                 << ": generate=" << terrain.generatePhysics << ", mapName=" << terrain.heightMapName;
+
     auto physics_ptr = sl.Resolve<IPhysicsWorld>();
-    if (terrain.generatePhysics && physics_ptr && !terrain.heightMapName.empty()) {
+    if (terrain.generatePhysics && physics_ptr && !terrain.heightMapName.empty())
+    {
         auto tex = resources->GetTexture(terrain.heightMapName);
-        if (tex) {
-            if (tex->pixelData) {
+        if (tex)
+        {
+            if (tex->pixelData)
+            {
                 std::vector<float> heights;
                 heights.reserve(tex->width * tex->height);
-                
-                for (int i = 0; i < tex->width * tex->height; ++i) {
+
+                for (int i = 0; i < tex->width * tex->height; ++i)
+                {
                     float hValue = (float)tex->pixelData[i * tex->nrComponents] / 255.0f;
                     heights.push_back(hValue * terrain.maxHeight);
                 }
-                
-                if (terrain.physicsBody) {
+
+                if (terrain.physicsBody)
+                {
                     physics_ptr->RemoveRigidBody(terrain.physicsBody.get());
                     terrain.physicsBody.reset();
                 }
 
-                if (terrain.collisionShape) {
+                if (terrain.collisionShape)
+                {
                     terrain.collisionShape.reset();
                 }
 
-                terrain.collisionShape = physics_ptr->CreateHeightfieldShape(
-                    heights, tex->width, tex->height, 0.0f, terrain.maxHeight);
-                
-                if (terrain.collisionShape) {
+                terrain.collisionShape =
+                    physics_ptr->CreateHeightfieldShape(heights, tex->width, tex->height, 0.0f, terrain.maxHeight);
+
+                if (terrain.collisionShape)
+                {
                     float scaleX = terrain.terrainSize.x / (float)(tex->width > 1 ? tex->width - 1 : 1);
                     float scaleZ = terrain.terrainSize.z / (float)(tex->height > 1 ? tex->height - 1 : 1);
                     terrain.collisionShape->SetLocalScaling(glm::vec3(scaleX, 1.0f, scaleZ));
 
                     glm::vec3 basePos(0.0f);
 
-                    
-                    glm::vec3 centerPos = basePos + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f, terrain.terrainSize.z * 0.5f);
+                    glm::vec3 centerPos = basePos + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f,
+                                                              terrain.terrainSize.z * 0.5f);
 
-                    terrain.physicsBody = physics_ptr->CreateRigidBody(0.0f, centerPos, glm::quat(1,0,0,0), terrain.collisionShape);
-                    
-                    if (terrain.physicsBody) {
+                    terrain.physicsBody =
+                        physics_ptr->CreateRigidBody(0.0f, centerPos, glm::quat(1, 0, 0, 0), terrain.collisionShape);
+
+                    if (terrain.physicsBody)
+                    {
                         terrain.physicsBody->SetUserPointer((void*)((uintptr_t)entity + 1));
                         physics_ptr->AddRigidBody(terrain.physicsBody.get());
                     }
                 }
-            } else {
+            }
+            else
+            {
                 needsRetry = true;
             }
-        } else {
+        }
+        else
+        {
             needsRetry = true;
         }
     }
 
-    if (!needsRetry) {
+    if (!needsRetry)
+    {
         terrain.needsRebuild = false;
     }
 }
 
-void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset) {
+void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset)
+{
     auto* gc_ptr = ServiceLocator::Instance().Resolve<IGraphicsContext>();
-    if (!gc_ptr) return;
+    if (!gc_ptr)
+        return;
     auto& bm = gc_ptr->GetBufferManager();
 
     std::vector<StaticVertex> vertices;
@@ -277,17 +327,19 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
     chunk.minBound = glm::vec3(xOffset * stepX, 0.0f, zOffset * stepZ);
     chunk.maxBound = glm::vec3((xOffset + size - 1) * stepX, terrain.maxHeight, (zOffset + size - 1) * stepZ);
 
-    for (int z = 0; z < size; ++z) {
-        for (int x = 0; x < size; ++x) {
+    for (int z = 0; z < size; ++z)
+    {
+        for (int x = 0; x < size; ++x)
+        {
             StaticVertex v;
             float worldX = (xOffset + x) * stepX;
             float worldZ = (zOffset + z) * stepZ;
-            
+
             v.Position = glm::vec3(worldX, 0.0f, worldZ);
             v.Normal = glm::vec3(0.0f, 1.0f, 0.0f);
-            v.TexCoords = glm::vec2((float)(xOffset + x) / (float)(terrain.resolution - 1), 
-                                   (float)(zOffset + z) / (float)(terrain.resolution - 1));
-            
+            v.TexCoords = glm::vec2((float)(xOffset + x) / (float)(terrain.resolution - 1),
+                                    (float)(zOffset + z) / (float)(terrain.resolution - 1));
+
             vertices.push_back(v);
         }
     }
@@ -297,79 +349,88 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
 
     bm.BindVertexArray(chunk.VAO);
     bm.BindBuffer(BufferType::ArrayBuffer, chunk.VBO);
-    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(StaticVertex), vertices.data(), BufferUsage::StaticDraw);
+    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(StaticVertex), vertices.data(),
+                  BufferUsage::StaticDraw);
 
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 3, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, Position));
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 3, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, Normal));
     bm.EnableVertexAttribArray(2);
-    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, TexCoords));
+    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(StaticVertex),
+                           (void*)offsetof(StaticVertex, TexCoords));
 }
 
-void TerrainSystem::GenerateLODIndices(TerrainData& data, int chunkSize) {
+void TerrainSystem::GenerateLODIndices(TerrainData& data, int chunkSize)
+{
     auto& sl = ServiceLocator::Instance();
     auto* gc_ptr = sl.Resolve<IGraphicsContext>();
-    if (!gc_ptr) return;
+    if (!gc_ptr)
+        return;
     auto& bm = gc_ptr->GetBufferManager();
-    
-    for (int lod = 0; lod < 4; ++lod) {
+
+    for (int lod = 0; lod < 4; ++lod)
+    {
         std::vector<unsigned int> indices;
         int step = 1 << lod;
-        
-        for (int z = 0; z < chunkSize - 1; z += step) {
-            for (int x = 0; x < chunkSize - 1; x += step) {
+
+        for (int z = 0; z < chunkSize - 1; z += step)
+        {
+            for (int x = 0; x < chunkSize - 1; x += step)
+            {
                 int nextX = x + step;
                 int nextZ = z + step;
-                
-                if (nextX >= chunkSize) nextX = chunkSize - 1;
-                if (nextZ >= chunkSize) nextZ = chunkSize - 1;
+
+                if (nextX >= chunkSize)
+                    nextX = chunkSize - 1;
+                if (nextZ >= chunkSize)
+                    nextZ = chunkSize - 1;
 
                 indices.push_back(z * chunkSize + x);
                 indices.push_back(nextZ * chunkSize + x);
                 indices.push_back(z * chunkSize + nextX);
-                
+
                 indices.push_back(z * chunkSize + nextX);
                 indices.push_back(nextZ * chunkSize + x);
                 indices.push_back(nextZ * chunkSize + nextX);
             }
         }
-        
+
         unsigned int ebo = bm.CreateBuffer();
         bm.BindBuffer(BufferType::ElementArrayBuffer, ebo);
-        bm.BufferData(BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), BufferUsage::StaticDraw);
-        
+        bm.BufferData(BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(),
+                      BufferUsage::StaticDraw);
+
         data.lodEBOs.push_back(ebo);
         data.lodIndexCounts.push_back((int)indices.size());
     }
 }
 
-void TerrainSystem::CleanupTerrainData(TerrainData& data) {
+void TerrainSystem::CleanupTerrainData(TerrainData& data)
+{
     auto& sl = ServiceLocator::Instance();
     auto* gc_ptr = sl.Resolve<IGraphicsContext>();
-    if (!gc_ptr) return;
+    if (!gc_ptr)
+        return;
     auto& bm = gc_ptr->GetBufferManager();
 
-    for (auto& chunk : data.chunks) {
+    for (auto& chunk : data.chunks)
+    {
         bm.DeleteVertexArray(chunk.VAO);
         bm.DeleteBuffer(chunk.VBO);
     }
-    for (auto ebo : data.lodEBOs) {
+    for (auto ebo : data.lodEBOs)
+    {
         bm.DeleteBuffer(ebo);
     }
 }
 
 std::vector<entt::id_type> TerrainSystem::GetReadComponents() const
 {
-    return {
-        entt::type_id<TerrainComponent>().hash(),
-        entt::type_id<PositionComponent>().hash()
-    };
+    return {entt::type_id<TerrainComponent>().hash(), entt::type_id<PositionComponent>().hash()};
 }
 
 std::vector<entt::id_type> TerrainSystem::GetWriteComponents() const
 {
-    return {
-        entt::type_id<TerrainComponent>().hash()
-    };
+    return {entt::type_id<TerrainComponent>().hash()};
 }

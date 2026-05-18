@@ -1,9 +1,9 @@
-#include <assimp/Importer.hpp>
 #include <resource/unit/animator.h>
+#include <core/logic/logger.h>
 #include <resource/unit/bone.h>
+#include <assimp/Importer.hpp>
 #include <iostream>
 #include <map>
-#include <core/logic/logger.h>
 
 Animator::Animator(std::shared_ptr<Animation> animation)
 {
@@ -20,15 +20,16 @@ Animator::Animator(std::shared_ptr<Animation> animation)
     }
 }
 
-namespace {
-    glm::mat4 ComposeTransform(const glm::vec3 &t, const glm::quat &r, const glm::vec3 &s)
-    {
-        glm::mat4 translation = glm::translate(glm::mat4(1.0f), t);
-        glm::mat4 rotation = glm::toMat4(r);
-        glm::mat4 scale = glm::scale(glm::mat4(1.0f), s);
-        return translation * rotation * scale;
-    }
+namespace
+{
+glm::mat4 ComposeTransform(const glm::vec3& t, const glm::quat& r, const glm::vec3& s)
+{
+    glm::mat4 translation = glm::translate(glm::mat4(1.0f), t);
+    glm::mat4 rotation = glm::toMat4(r);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), s);
+    return translation * rotation * scale;
 }
+}  // namespace
 
 void Animator::UpdateAnimation(float dt, const glm::mat4& rootTransform)
 {
@@ -83,7 +84,7 @@ void Animator::UpdateAnimation(float dt, const glm::mat4& rootTransform)
     }
 }
 
-void Animator::AddAnimation(const std::string &name, std::shared_ptr<Animation> animation)
+void Animator::AddAnimation(const std::string& name, std::shared_ptr<Animation> animation)
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
     if (animation)
@@ -94,13 +95,14 @@ void Animator::AddAnimation(const std::string &name, std::shared_ptr<Animation> 
 
 void Animator::PlayAnimation(std::shared_ptr<Animation> pAnimation)
 {
-    if (!pAnimation) return;
+    if (!pAnimation)
+        return;
     std::lock_guard<std::mutex> lock(m_Mutex);
     m_CurrentAnimation = pAnimation;
     m_CurrentTime = 0.0f;
 }
 
-void Animator::PlayAnimation(const std::string &name)
+void Animator::PlayAnimation(const std::string& name)
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_AnimationsMap.find(name) != m_AnimationsMap.end())
@@ -119,7 +121,7 @@ void Animator::PlayAnimation(const std::string &name)
     }
 }
 
-void Animator::CrossFade(const std::string &name, float transitionDuration)
+void Animator::CrossFade(const std::string& name, float transitionDuration)
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_AnimationsMap.find(name) == m_AnimationsMap.end())
@@ -145,7 +147,7 @@ void Animator::CrossFade(const std::string &name, float transitionDuration)
         m_TransitionSpeed = 1.0f / transitionDuration;
 }
 
-void Animator::PlayBlend(const std::string &nameA, const std::string &nameB, float factor)
+void Animator::PlayBlend(const std::string& nameA, const std::string& nameB, float factor)
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_AnimationsMap.count(nameA) && m_AnimationsMap.count(nameB))
@@ -157,7 +159,7 @@ void Animator::PlayBlend(const std::string &nameA, const std::string &nameB, flo
     }
 }
 
-void Animator::CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parentTransform, int depth)
+void Animator::CalculateBoneTransform(const BoneNodeData* node, glm::mat4 parentTransform, int depth)
 {
     if (depth > 100)
     {
@@ -167,13 +169,13 @@ void Animator::CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parent
     std::string nodeName = node->name;
     glm::mat4 nodeTransform = node->transformation;
 
-    Bone *boneA = node->cachedBone;
+    Bone* boneA = node->cachedBone;
 
     if (boneA)
     {
         if (m_NextAnimation && (m_BlendFactor > 0.001f))
         {
-            Bone *boneB = m_NextAnimation->FindBone(nodeName);
+            Bone* boneB = m_NextAnimation->FindBone(nodeName);
 
             if (boneB)
             {
@@ -204,7 +206,7 @@ void Animator::CalculateBoneTransform(const BoneNodeData *node, glm::mat4 parent
 
     glm::mat4 globalTransformation = parentTransform * nodeTransform;
 
-    const auto &boneInfoMap = m_CurrentAnimation->GetBoneIDMap();
+    const auto& boneInfoMap = m_CurrentAnimation->GetBoneIDMap();
     auto it = boneInfoMap.find(nodeName);
 
     if (it != boneInfoMap.end())
@@ -233,6 +235,5 @@ void Animator::SetIdentityMatrices(int boneCount)
     if (m_FinalBoneMatrices.size() < (size_t)boneCount)
         m_FinalBoneMatrices.resize(boneCount, glm::mat4(1.0f));
 
-    for (int i = 0; i < boneCount; ++i)
-        m_FinalBoneMatrices[i] = glm::mat4(1.0f);
+    for (int i = 0; i < boneCount; ++i) m_FinalBoneMatrices[i] = glm::mat4(1.0f);
 }

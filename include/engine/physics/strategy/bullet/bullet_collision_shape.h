@@ -1,13 +1,14 @@
 #pragma once
 
-#include <btBulletDynamicsCommon.h>
 #include <physics/interface/i_collision_shape.h>
+#include <btBulletDynamicsCommon.h>
 
 class BulletCollisionShape : public ICollisionShape
 {
 public:
-    BulletCollisionShape(btCollisionShape* shape, CollisionShapeType type)
-        : m_Shape(shape), m_Type(type) {}
+    BulletCollisionShape(btCollisionShape* shape, CollisionShapeType type) : m_Shape(shape), m_Type(type)
+    {
+    }
 
     virtual ~BulletCollisionShape();
 
@@ -16,8 +17,14 @@ public:
     void SetLocalScaling(const glm::vec3& scaling) override;
     glm::vec3 GetLocalScaling() const override;
 
-    btCollisionShape* GetRaw() const { return m_Shape; }
-    void SetShape(btCollisionShape* shape) { m_Shape = shape; }
+    btCollisionShape* GetRaw() const
+    {
+        return m_Shape;
+    }
+    void SetShape(btCollisionShape* shape)
+    {
+        m_Shape = shape;
+    }
 
 protected:
     btCollisionShape* m_Shape = nullptr;
@@ -27,7 +34,8 @@ protected:
 class BulletMeshCollisionShape : public BulletCollisionShape
 {
 public:
-    BulletMeshCollisionShape(btCollisionShape* shape, btTriangleIndexVertexArray* indexVertexArray, std::vector<float>&& vertices, std::vector<uint32_t>&& indices);
+    BulletMeshCollisionShape(btCollisionShape* shape, btTriangleIndexVertexArray* indexVertexArray,
+                             std::vector<float>&& vertices, std::vector<uint32_t>&& indices);
     ~BulletMeshCollisionShape();
 
 private:
@@ -42,7 +50,10 @@ public:
     BulletHeightfieldCollisionShape(btCollisionShape* shape, const std::vector<float>& heights);
     ~BulletHeightfieldCollisionShape();
 
-    float* GetHeightDataPointer() { return m_AlignedHeights.size() > 0 ? &m_AlignedHeights[0] : nullptr; }
+    float* GetHeightDataPointer()
+    {
+        return m_AlignedHeights.size() > 0 ? &m_AlignedHeights[0] : nullptr;
+    }
 
 private:
     btAlignedObjectArray<float> m_AlignedHeights;

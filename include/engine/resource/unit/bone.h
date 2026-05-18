@@ -28,7 +28,7 @@ struct KeyScale
 class Bone
 {
 public:
-    Bone(const std::string &name, int ID, const aiNodeAnim *channel);
+    Bone(const std::string& name, int ID, const aiNodeAnim* channel);
 
     glm::mat4 GetTransform(float animationTime);
     std::string GetBoneName() const;

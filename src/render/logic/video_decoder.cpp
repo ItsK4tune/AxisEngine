@@ -1,6 +1,6 @@
 #include <render/logic/video_decoder.h>
-#include <render/interface/i_texture_manager.h>
 #include <core/logic/logger.h>
+#include <render/interface/i_texture_manager.h>
 
 ITextureManager* VideoDecoder::s_TextureManager = nullptr;
 
@@ -11,7 +11,8 @@ void VideoDecoder::SetTextureManager(ITextureManager& textureManager)
 
 ITextureManager& VideoDecoder::GetTextureManager()
 {
-    if (!s_TextureManager) {
+    if (!s_TextureManager)
+    {
         LOGGER_ERROR("VideoDecoder") << "TextureManager not set!";
         throw std::runtime_error("TextureManager not set in VideoDecoder");
     }
@@ -31,7 +32,7 @@ VideoDecoder::~VideoDecoder()
     av_frame_free(&m_RGBFrame);
 }
 
-bool VideoDecoder::Load(const std::string &filepath)
+bool VideoDecoder::Load(const std::string& filepath)
 {
     Unload();
     m_Filepath = filepath;
@@ -65,8 +66,8 @@ bool VideoDecoder::Load(const std::string &filepath)
         return false;
     }
 
-    AVCodecParameters *codecPar = m_FormatCtx->streams[m_VideoStreamIndex]->codecpar;
-    const AVCodec *codec = avcodec_find_decoder(codecPar->codec_id);
+    AVCodecParameters* codecPar = m_FormatCtx->streams[m_VideoStreamIndex]->codecpar;
+    const AVCodec* codec = avcodec_find_decoder(codecPar->codec_id);
     if (!codec)
     {
         LOGGER_ERROR("VideoDecoder") << "Unsupported codec";
@@ -128,17 +129,16 @@ void VideoDecoder::SetOutputSize(int width, int height)
 
     if (m_SwsCtx)
         sws_freeContext(m_SwsCtx);
-    m_SwsCtx = sws_getContext(
-        m_Width, m_Height, m_CodecCtx->pix_fmt,
-        m_OutputWidth, m_OutputHeight, AV_PIX_FMT_RGBA,
-        SWS_BILINEAR, nullptr, nullptr, nullptr);
+    m_SwsCtx = sws_getContext(m_Width, m_Height, m_CodecCtx->pix_fmt, m_OutputWidth, m_OutputHeight, AV_PIX_FMT_RGBA,
+                              SWS_BILINEAR, nullptr, nullptr, nullptr);
 
     if (m_RGBFrame->data[0])
         av_freep(&m_RGBFrame->data[0]);
 
     int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGBA, m_OutputWidth, m_OutputHeight, 1);
-    uint8_t *buffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
-    av_image_fill_arrays(m_RGBFrame->data, m_RGBFrame->linesize, buffer, AV_PIX_FMT_RGBA, m_OutputWidth, m_OutputHeight, 1);
+    uint8_t* buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+    av_image_fill_arrays(m_RGBFrame->data, m_RGBFrame->linesize, buffer, AV_PIX_FMT_RGBA, m_OutputWidth, m_OutputHeight,
+                         1);
 
     InitTexture();
 }
@@ -172,7 +172,8 @@ void VideoDecoder::Unload()
 
 void VideoDecoder::InitTexture()
 {
-    if (!s_TextureManager) return;
+    if (!s_TextureManager)
+        return;
     auto& tm = GetTextureManager();
 
     if (m_TextureID == 0)
@@ -182,7 +183,8 @@ void VideoDecoder::InitTexture()
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::Repeat));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Linear));
     tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, m_OutputWidth, m_OutputHeight, 0, TextureFormat::RGBA, DataType::UnsignedByte, nullptr);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, m_OutputWidth, m_OutputHeight, 0,
+                  TextureFormat::RGBA, DataType::UnsignedByte, nullptr);
 }
 
 void VideoDecoder::Play()
@@ -242,7 +244,7 @@ void VideoDecoder::Update(float dt)
 
 bool VideoDecoder::DecodeFrame()
 {
-    AVPacket *packet = av_packet_alloc();
+    AVPacket* packet = av_packet_alloc();
     bool frameRead = false;
 
     while (av_read_frame(m_FormatCtx, packet) >= 0)
@@ -277,14 +279,13 @@ void VideoDecoder::UploadFrame()
     if (!m_SwsCtx || !m_Frame || !m_RGBFrame || !s_TextureManager)
         return;
 
-    sws_scale(m_SwsCtx,
-              (const uint8_t *const *)m_Frame->data, m_Frame->linesize,
-              0, m_Height,
-              m_RGBFrame->data, m_RGBFrame->linesize);
+    sws_scale(m_SwsCtx, (const uint8_t* const*)m_Frame->data, m_Frame->linesize, 0, m_Height, m_RGBFrame->data,
+              m_RGBFrame->linesize);
 
     auto& tm = GetTextureManager();
     tm.BindTexture(TextureType::Texture2D, m_TextureID);
-    tm.TexSubImage2D(TextureType::Texture2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, TextureFormat::RGBA, DataType::UnsignedByte, m_RGBFrame->data[0]);
+    tm.TexSubImage2D(TextureType::Texture2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, TextureFormat::RGBA,
+                     DataType::UnsignedByte, m_RGBFrame->data[0]);
 }
 
 void VideoDecoder::Seek(double timestamp)

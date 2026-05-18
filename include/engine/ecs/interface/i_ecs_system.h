@@ -1,14 +1,20 @@
 #pragma once
 
 #include <ecs/interface/i_base_system.h>
-#include <vector>
 #include <entt/entt.hpp>
+#include <vector>
 
-
-class IECSSystem : virtual public IBaseSystem {
+class IECSSystem : virtual public IBaseSystem
+{
 public:
     virtual ~IECSSystem() = default;
 
-    virtual std::vector<entt::id_type> GetReadComponents() const { return {}; }
-    virtual std::vector<entt::id_type> GetWriteComponents() const { return {}; }
+    virtual std::vector<entt::id_type> GetReadComponents() const
+    {
+        return {};
+    }
+    virtual std::vector<entt::id_type> GetWriteComponents() const
+    {
+        return {};
+    }
 };

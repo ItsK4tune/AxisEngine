@@ -1,17 +1,17 @@
 #pragma once
 
-#include <resource/unit/shader.h>
-#include <render/type/graphics_types.h>
-#include <memory>
-#include <vector>
-#include <string>
-#include <map>
-#include <entt/entt.hpp>
-#include <resource/interface/i_shader_library.h>
-#include <ecs/interface/i_update_system.h>
-#include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_ecs_system.h>
+#include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <render/type/graphics_types.h>
+#include <resource/interface/i_shader_library.h>
+#include <resource/unit/shader.h>
 #include <scene/logic/scene.h>
+#include <entt/entt.hpp>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 class IGraphicsContext;
 
@@ -19,22 +19,45 @@ class DecalSystem : public IUpdateSystem, public IRenderSystem, public IECSSyste
 {
 public:
     void Initialize() override;
-    void Shutdown() override {}
-    
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 82; }
-    std::string GetName() const override { return "DecalSystem"; }
-    SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update; }
-    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
-    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
-    void Update(Scene &scene, float dt) override;
-    void Render(Scene &scene) override;
+    void Shutdown() override
+    {
+    }
+
+    bool IsEnabled() const override
+    {
+        return m_Enabled;
+    }
+    void SetEnabled(bool enable) override
+    {
+        m_Enabled = enable;
+    }
+    int GetPriority() const override
+    {
+        return 82;
+    }
+    std::string GetName() const override
+    {
+        return "DecalSystem";
+    }
+    SystemCategory GetCategory() const override
+    {
+        return SystemCategory::RenderMain | SystemCategory::Update;
+    }
+    SystemRequirement GetRequirements() const override
+    {
+        return SystemRequirement::Graphics;
+    }
+    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
+    void Update(Scene& scene, float dt) override;
+    void Render(Scene& scene) override;
 
     uint32_t LoadDecalTexture(const std::string& path);
     void FlushDecals(Scene& scene);
 
-    void SetAllowedTags(const std::vector<std::string>& tags) { m_AllowedTags = tags; }
+    void SetAllowedTags(const std::vector<std::string>& tags)
+    {
+        m_AllowedTags = tags;
+    }
     uint32_t GetTagBit(const std::string& tag);
 
     std::vector<entt::id_type> GetReadComponents() const override;
@@ -45,7 +68,7 @@ private:
     bool m_Enabled = true;
     std::shared_ptr<Shader> m_DecalShader;
     std::shared_ptr<Shader> m_ForwardShader;
-    
+
     std::vector<std::string> m_AllowedTags;
     std::map<std::string, uint32_t> m_TagBitMap;
     unsigned int m_TagMapTexture = 0;

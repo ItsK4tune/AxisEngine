@@ -2,15 +2,15 @@
 
 // Forcing recompile - 2026-04-01-T11-53-00
 
-#include <string>
-#include <vector>
-#include <physics/type/shape_type.h>
-#include <memory>
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <physics/interface/i_rigid_body.h>
 #include <physics/interface/i_character_controller.h>
 #include <physics/interface/i_constraint.h>
+#include <physics/interface/i_rigid_body.h>
+#include <physics/type/shape_type.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <memory>
+#include <string>
+#include <vector>
 
 #define GLM_ENABLE_EXPERIMENTAL
 
@@ -20,15 +20,16 @@ struct RigidShapeComponent
     glm::vec3 size = glm::vec3(1.0f);
     float radius = 0.5f;
     float height = 1.0f;
-    
+
     glm::vec3 offset = glm::vec3(0.0f);
     glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
     float friction = 0.5f;
     float restitution = 0.0f;
-    
+
     // For Compound shapes
-    struct ChildShape {
+    struct ChildShape
+    {
         ShapeType type = ShapeType::Box;
         glm::vec3 position;
         glm::quat rotation;
@@ -57,7 +58,7 @@ struct RigidBodyComponent
 
     glm::vec3 linearFactor = glm::vec3(1.0f);
     glm::vec3 angularFactor = glm::vec3(1.0f);
-    
+
     float linearDamping = 0.0f;
     float angularDamping = 0.0f;
 };
@@ -66,34 +67,46 @@ struct RigidBodyComponent
 
 inline void SetRestitution(RigidBodyComponent& rb, float restitution)
 {
-    if (rb.body) rb.body->SetRestitution(restitution);
+    if (rb.body)
+        rb.body->SetRestitution(restitution);
 }
 
 inline void SetFriction(RigidBodyComponent& rb, float friction)
 {
-    if (rb.body) rb.body->SetFriction(friction);
+    if (rb.body)
+        rb.body->SetFriction(friction);
 }
 
 inline void SetLinearFactor(RigidBodyComponent& rb, const glm::vec3& factor)
 {
     rb.linearFactor = factor;
-    if (rb.body) rb.body->SetLinearFactor(factor);
+    if (rb.body)
+        rb.body->SetLinearFactor(factor);
 }
 
 inline void SetAngularFactor(RigidBodyComponent& rb, const glm::vec3& factor)
 {
     rb.angularFactor = factor;
-    if (rb.body) rb.body->SetAngularFactor(factor);
+    if (rb.body)
+        rb.body->SetAngularFactor(factor);
 }
 
 inline void SetLinearVelocity(RigidBodyComponent& rb, const glm::vec3& vel)
 {
-    if (rb.body) { rb.body->SetLinearVelocity(vel); rb.body->Activate(true); }
+    if (rb.body)
+    {
+        rb.body->SetLinearVelocity(vel);
+        rb.body->Activate(true);
+    }
 }
 
 inline void SetAngularVelocity(RigidBodyComponent& rb, const glm::vec3& vel)
 {
-    if (rb.body) { rb.body->SetAngularVelocity(vel); rb.body->Activate(true); }
+    if (rb.body)
+    {
+        rb.body->SetAngularVelocity(vel);
+        rb.body->Activate(true);
+    }
 }
 
 struct CharacterControllerComponent
@@ -102,7 +115,7 @@ struct CharacterControllerComponent
 
     float stepHeight = 0.35f;
     float maxSlope = 45.0f;
-    
+
     glm::vec3 walkDirection = glm::vec3(0.0f);
     bool jumpRequested = false;
     bool isOnGround = false;
@@ -112,10 +125,12 @@ struct CharacterControllerComponent
 
 inline void SetWorldTransform(CharacterControllerComponent& cc, const glm::vec3& pos, const glm::quat& rot)
 {
-    if (cc.controller) cc.controller->SetWorldTransform(pos, rot);
+    if (cc.controller)
+        cc.controller->SetWorldTransform(pos, rot);
 }
 
 inline void GetWorldTransform(CharacterControllerComponent& cc, glm::vec3& pos, glm::quat& rot)
 {
-    if (cc.controller) cc.controller->GetWorldTransform(pos, rot);
+    if (cc.controller)
+        cc.controller->GetWorldTransform(pos, rot);
 }

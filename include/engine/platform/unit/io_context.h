@@ -10,11 +10,11 @@ class MouseManager;
 
 struct IOContext
 {
-    IWindow&          window;
-    KeyboardManager&  keyboard;
-    MouseManager&     mouse;
-    InputManager&     input;
-    MonitorManager&   monitor;
+    IWindow& window;
+    KeyboardManager& keyboard;
+    MouseManager& mouse;
+    InputManager& input;
+    MonitorManager& monitor;
     IGraphicsContext& graphics;
-    IOHandler&        ioHandler;
+    IOHandler& ioHandler;
 };

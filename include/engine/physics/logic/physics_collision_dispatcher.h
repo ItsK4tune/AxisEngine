@@ -12,7 +12,7 @@ struct CollisionPair
     entt::entity a;
     entt::entity b;
 
-    bool operator==(const CollisionPair &other) const
+    bool operator==(const CollisionPair& other) const
     {
         return (a == other.a && b == other.b) || (a == other.b && b == other.a);
     }
@@ -20,7 +20,7 @@ struct CollisionPair
 
 struct CollisionPairHash
 {
-    std::size_t operator()(const CollisionPair &k) const
+    std::size_t operator()(const CollisionPair& k) const
     {
         return std::hash<uint32_t>()((uint32_t)k.a) ^ std::hash<uint32_t>()((uint32_t)k.b);
     }

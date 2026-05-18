@@ -1,12 +1,11 @@
 #pragma once
 
-#include <shared_mutex>
+#include <atomic>
 #include <typeindex>
-#include <unordered_map>
+#include <shared_mutex>
 #include <stdexcept>
 #include <string>
-#include <atomic>
-
+#include <unordered_map>
 
 class ServiceLocator
 {
@@ -20,7 +19,6 @@ public:
     ServiceLocator(const ServiceLocator&) = delete;
     ServiceLocator& operator=(const ServiceLocator&) = delete;
 
-    
     template <typename T>
     void Register(T* service)
     {
@@ -31,7 +29,6 @@ public:
         TypeCache<T>::valid.store(true, std::memory_order_release);
     }
 
-    
     template <typename T>
     void Unregister()
     {
@@ -41,20 +38,20 @@ public:
         TypeCache<T>::valid.store(false, std::memory_order_release);
     }
 
-    
     template <typename T>
     T* Resolve() const
     {
         // Fast path: per-type atomic cache (no lock, no map lookup)
         // Version check ensures cache is invalidated after ClearAll()
         uint64_t globalVer = m_Version.load(std::memory_order_acquire);
-        if (TypeCache<T>::version.load(std::memory_order_acquire) == globalVer
-            && TypeCache<T>::valid.load(std::memory_order_acquire))
+        if (TypeCache<T>::version.load(std::memory_order_acquire) == globalVer &&
+            TypeCache<T>::valid.load(std::memory_order_acquire))
             return TypeCache<T>::ptr.load(std::memory_order_acquire);
         // Slow path: first lookup or stale cache, populate cache
         std::shared_lock<std::shared_mutex> lock(m_Mutex);
         auto it = m_Services.find(std::type_index(typeid(T)));
-        if (it != m_Services.end()) {
+        if (it != m_Services.end())
+        {
             T* result = static_cast<T*>(it->second);
             TypeCache<T>::ptr.store(result, std::memory_order_release);
             TypeCache<T>::valid.store(true, std::memory_order_release);
@@ -67,7 +64,6 @@ public:
         return nullptr;
     }
 
-    
     template <typename T>
     T& Require() const
     {
@@ -77,7 +73,6 @@ public:
         return *service;
     }
 
-    
     template <typename T>
     bool Has() const
     {
@@ -85,7 +80,6 @@ public:
         return m_Services.find(std::type_index(typeid(T))) != m_Services.end();
     }
 
-    
     template <typename T>
     void Register(const std::string& name, T* service)
     {
@@ -93,7 +87,6 @@ public:
         m_NamedServices[name] = static_cast<void*>(service);
     }
 
-    
     template <typename T>
     T* Resolve(const std::string& name) const
     {
@@ -104,7 +97,6 @@ public:
         return nullptr;
     }
 
-    
     template <typename T>
     T& Require(const std::string& name) const
     {
@@ -114,14 +106,12 @@ public:
         return *service;
     }
 
-    
     bool Has(const std::string& name) const
     {
         std::shared_lock<std::shared_mutex> lock(m_Mutex);
         return m_NamedServices.find(name) != m_NamedServices.end();
     }
 
-    
     void ClearAll()
     {
         std::unique_lock<std::shared_mutex> lock(m_Mutex);
@@ -142,10 +132,10 @@ private:
 
     // Per-type atomic cache: eliminates lock+map lookup for hot-path Resolve<T>()
     template <typename T>
-    struct TypeCache {
+    struct TypeCache
+    {
         static inline std::atomic<T*> ptr{nullptr};
         static inline std::atomic<bool> valid{false};
         static inline std::atomic<uint64_t> version{0};
     };
 };
-

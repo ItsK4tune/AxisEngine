@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
-#include <glm/glm.hpp>
 #include <render/type/render_view_params.h>
+#include <glm/glm.hpp>
+#include <vector>
 
 class RenderQueue;
 class StaticBatchManager;
@@ -11,7 +11,10 @@ class MaterialRenderer;
 class Shader;
 struct Scene;
 struct RenderItem;
-namespace entt { enum class entity : uint32_t; }
+namespace entt
+{
+enum class entity : uint32_t;
+}
 
 struct RenderDrawCommand;
 
@@ -32,9 +35,11 @@ public:
     virtual StaticBatchManager& GetBatchManager() = 0;
     virtual RenderQueue& GetRenderQueueObj() = 0;
 
-    virtual void BuildRenderQueues(Scene &scene, float alpha, int width = 0, int height = 0) = 0;
+    virtual void BuildRenderQueues(Scene& scene, float alpha, int width = 0, int height = 0) = 0;
     virtual void BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params) = 0;
-    virtual void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) = 0;
+    virtual void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass,
+                              ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer,
+                              Shader* overrideShader = nullptr) = 0;
 
     virtual void SubmitCommand(const RenderDrawCommand& cmd) = 0;
     virtual void FlushCommands() = 0;

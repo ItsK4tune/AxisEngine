@@ -1,21 +1,19 @@
-#include <ecs/unit/physics_components.h>
-#include <ecs/unit/script_component.h>
-#include <ecs/unit/render_components.h>
 #include <ecs/logic/entity_builder.h>
-#include <script/logic/scriptable.h>
 #include <ecs/logic/entity_manager.h>
-#include <resource/unit/animator.h>
-#include <resource/logic/resource_manager.h>
-#include <physics/interface/i_rigid_body.h>
-#include <physics/interface/i_character_controller.h>
-#include <ecs/unit/ui_components.h>
-#include <ecs/unit/media_components.h>
 #include <ecs/unit/light_components.h>
+#include <ecs/unit/media_components.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/script_component.h>
+#include <ecs/unit/ui_components.h>
 #include <navigation/unit/pathfollower_component.h>
+#include <physics/interface/i_character_controller.h>
+#include <physics/interface/i_rigid_body.h>
+#include <resource/logic/resource_manager.h>
+#include <resource/unit/animator.h>
+#include <script/logic/scriptable.h>
 
-
-EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources)
-    : m_Scene(scene), m_Resources(resources)
+EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources) : m_Scene(scene), m_Resources(resources)
 {
     m_Entity = m_Scene.registry.create();
 }
@@ -44,7 +42,8 @@ EntityBuilder& EntityBuilder::WithLayer(uint32_t layer)
 EntityBuilder& EntityBuilder::WithTransform(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scale)
 {
     m_Scene.registry.emplace_or_replace<PositionComponent>(m_Entity, pos, pos);
-    m_Scene.registry.emplace_or_replace<RotationComponent>(m_Entity, glm::quat(glm::radians(rot)), glm::quat(glm::radians(rot)));
+    m_Scene.registry.emplace_or_replace<RotationComponent>(m_Entity, glm::quat(glm::radians(rot)),
+                                                           glm::quat(glm::radians(rot)));
     m_Scene.registry.emplace_or_replace<ScaleComponent>(m_Entity, scale, scale);
     m_Scene.registry.emplace_or_replace<WorldTransformComponent>(m_Entity);
     return *this;
@@ -97,7 +96,8 @@ EntityBuilder& EntityBuilder::WithCharacterController(std::shared_ptr<ICharacter
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithPathFollower(float moveSpeed, float rotationSpeed, float maxRotationSpeed, float rotationAcceleration, const glm::vec3& rotationOffset)
+EntityBuilder& EntityBuilder::WithPathFollower(float moveSpeed, float rotationSpeed, float maxRotationSpeed,
+                                               float rotationAcceleration, const glm::vec3& rotationOffset)
 {
     auto& follower = m_Scene.registry.get_or_emplace<PathFollowerComponent>(m_Entity);
     follower.moveSpeed = moveSpeed;
@@ -117,26 +117,27 @@ EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::v
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::string& fontName, float scale, const glm::vec4& color)
+EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::string& fontName, float scale,
+                                         const glm::vec4& color)
 {
     auto& res = m_Resources;
     auto& textComp = m_Scene.registry.get_or_emplace<UITextComponent>(m_Entity);
-    
+
     textComp.text = text;
     textComp.fontName = fontName;
     textComp.scale = scale;
     textComp.color = color;
-    
+
     textComp.font = res.GetFont(fontName);
     textComp.shader = res.GetShader("ui_text");
-    
+
     std::string uniqueModelName = "ui_text_model_" + std::to_string((uint32_t)m_Entity);
     if (!res.HasUIModel(uniqueModelName))
     {
         res.CreateUIModel(uniqueModelName, ::UIType::Text);
     }
     textComp.model = res.GetUIModel(uniqueModelName);
-    
+
     return *this;
 }
 
@@ -184,16 +185,16 @@ EntityBuilder& EntityBuilder::WithUIRenderer(const std::string& textureName, con
 {
     auto& res = m_Resources;
     auto& renderer = m_Scene.registry.get_or_emplace<UIRendererComponent>(m_Entity);
-    
+
     renderer.color = color;
     renderer.shader = res.GetShader("ui");
-    
+
     if (!res.GetUIModel(textureName))
     {
         res.CreateUIModel(textureName, ::UIType::Texture);
     }
     renderer.model = res.GetUIModel(textureName);
-    
+
     return *this;
 }
 
@@ -201,8 +202,9 @@ EntityBuilder& EntityBuilder::WithParent(entt::entity parent)
 {
     auto& hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(m_Entity);
     hierarchy.parent = parent;
-    
-    if (parent != entt::null) {
+
+    if (parent != entt::null)
+    {
         auto& p_hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(parent);
         p_hierarchy.children.push_back(m_Entity);
     }
@@ -233,7 +235,7 @@ EntityBuilder& EntityBuilder::WithAnimation(const std::string& animationName)
     auto& res = m_Resources;
     auto& anim = m_Scene.registry.get_or_emplace<AnimationComponent>(m_Entity);
     anim.animations.push_back(animationName);
-    
+
     auto a = res.GetAnimation(animationName);
     if (a)
     {

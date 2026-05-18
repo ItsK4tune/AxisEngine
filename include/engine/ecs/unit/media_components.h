@@ -1,19 +1,17 @@
 #pragma once
 
+#include <audio/interface/i_audio_source.h>
+#include <audio/interface/i_sound.h>
+#include <render/logic/particle_emitter.h>
+#include <render/logic/video_decoder.h>
+#include <resource/unit/animation.h>
+#include <resource/unit/animator.h>
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
 #include <vector>
-#include <audio/interface/i_audio_source.h>
-#include <audio/interface/i_sound.h>
-#include <render/logic/video_decoder.h>
-#include <resource/unit/animation.h>
-#include <resource/unit/animator.h>
-#include <render/logic/particle_emitter.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
-
-
 
 struct AudioSourceComponent
 {
@@ -21,7 +19,7 @@ struct AudioSourceComponent
     std::shared_ptr<IAudioSource> source = nullptr;
     std::string filePath = "";
     std::string resourceName = "";
-    
+
     bool playOnAwake = false;
     bool shouldPlay = false;
     bool loop = false;
@@ -36,8 +34,6 @@ struct AudioSourceComponent
     float maxDistance = 100.0f;
     glm::vec3 velocity = glm::vec3(0.0f);
 };
-
-
 
 struct VideoPlayerComponent
 {
@@ -55,13 +51,38 @@ struct VideoPlayerComponent
 
 // ─── Free functions for VideoPlayerComponent (ECS-compliant) ───
 
-inline void PlayVideo(VideoPlayerComponent& vp) { vp.isPlaying = true; if (vp.decoder) vp.decoder->Play(); }
-inline void PauseVideo(VideoPlayerComponent& vp) { vp.isPlaying = false; if (vp.decoder) vp.decoder->Pause(); }
-inline void StopVideo(VideoPlayerComponent& vp) { vp.isPlaying = false; if (vp.decoder) vp.decoder->Stop(); }
-inline void ReplayVideo(VideoPlayerComponent& vp) { vp.isPlaying = true; if (vp.decoder) { vp.decoder->Seek(0); vp.decoder->Play(); } }
-inline void SeekVideo(VideoPlayerComponent& vp, double time) { if (vp.decoder) vp.decoder->Seek(time); }
-
-
+inline void PlayVideo(VideoPlayerComponent& vp)
+{
+    vp.isPlaying = true;
+    if (vp.decoder)
+        vp.decoder->Play();
+}
+inline void PauseVideo(VideoPlayerComponent& vp)
+{
+    vp.isPlaying = false;
+    if (vp.decoder)
+        vp.decoder->Pause();
+}
+inline void StopVideo(VideoPlayerComponent& vp)
+{
+    vp.isPlaying = false;
+    if (vp.decoder)
+        vp.decoder->Stop();
+}
+inline void ReplayVideo(VideoPlayerComponent& vp)
+{
+    vp.isPlaying = true;
+    if (vp.decoder)
+    {
+        vp.decoder->Seek(0);
+        vp.decoder->Play();
+    }
+}
+inline void SeekVideo(VideoPlayerComponent& vp, double time)
+{
+    if (vp.decoder)
+        vp.decoder->Seek(time);
+}
 
 struct AnimationComponent
 {
@@ -74,8 +95,6 @@ struct AnimationComponent
     std::shared_ptr<Animator> animator = nullptr;
     std::vector<glm::mat4> boneMatrices;
 };
-
-
 
 struct ParticleEmitterComponent
 {

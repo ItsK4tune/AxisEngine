@@ -1,7 +1,8 @@
-#include <axis_app.h>
 #include <states/game_state.h>
+#include <axis_app.h>
 
-int main() {
+int main()
+{
     auto app = std::make_shared<Application>();
 
     AppConfig config;
@@ -12,7 +13,8 @@ int main() {
     config.antialiasing = 2;
     config.headlessMode = false;
 
-    if (app->Initialize(config)) {
+    if (app->Initialize(config))
+    {
         app->PushState<GameState>();
         app->Run();
     }

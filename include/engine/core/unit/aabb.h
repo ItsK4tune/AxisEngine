@@ -1,7 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <glm/glm.hpp>
+#include <algorithm>
 
 #define GLM_ENABLE_EXPERIMENTAL
 
@@ -11,15 +11,22 @@ struct AABB
     glm::vec3 maxBound = glm::vec3(0.0f);
 
     AABB() = default;
-    AABB(const glm::vec3& min, const glm::vec3& max) : minBound(min), maxBound(max) {}
+    AABB(const glm::vec3& min, const glm::vec3& max) : minBound(min), maxBound(max)
+    {
+    }
 
-    glm::vec3 GetCenter() const { return (minBound + maxBound) * 0.5f; }
-    glm::vec3 GetExtent() const { return (maxBound - minBound) * 0.5f; }
+    glm::vec3 GetCenter() const
+    {
+        return (minBound + maxBound) * 0.5f;
+    }
+    glm::vec3 GetExtent() const
+    {
+        return (maxBound - minBound) * 0.5f;
+    }
 
     bool Contains(const glm::vec3& point) const
     {
-        return (point.x >= minBound.x && point.x <= maxBound.x) &&
-               (point.y >= minBound.y && point.y <= maxBound.y) &&
+        return (point.x >= minBound.x && point.x <= maxBound.x) && (point.y >= minBound.y && point.y <= maxBound.y) &&
                (point.z >= minBound.z && point.z <= maxBound.z);
     }
 
@@ -50,10 +57,10 @@ struct AABB
         glm::vec3 worldCenter = glm::vec3(matrix * glm::vec4(center, 1.0f));
 
         glm::mat3 rot = glm::mat3(matrix);
-        glm::vec3 worldExtent = glm::vec3(
-            std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
-            std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
-            std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
+        glm::vec3 worldExtent =
+            glm::vec3(std::abs(rot[0][0]) * extent.x + std::abs(rot[1][0]) * extent.y + std::abs(rot[2][0]) * extent.z,
+                      std::abs(rot[0][1]) * extent.x + std::abs(rot[1][1]) * extent.y + std::abs(rot[2][1]) * extent.z,
+                      std::abs(rot[0][2]) * extent.x + std::abs(rot[1][2]) * extent.y + std::abs(rot[2][2]) * extent.z);
 
         return AABB(worldCenter - worldExtent, worldCenter + worldExtent);
     }
@@ -71,7 +78,10 @@ struct AABB
         return std::sqrt(DistanceSq(point));
     }
 
-    glm::vec3 GetSize() const { return maxBound - minBound; }
+    glm::vec3 GetSize() const
+    {
+        return maxBound - minBound;
+    }
 
     static AABB FromCenterSize(const glm::vec3& center, const glm::vec3& size)
     {

@@ -1,18 +1,16 @@
 #pragma once
 
+#include <core/logic/logger_types.h>
+#include <core/type/audio_backend.h>
+#include <core/type/graphics_backend.h>
+#include <core/type/lighting_mode.h>
+#include <core/type/physics_backend.h>
+#include <core/type/physics_mode.h>
+#include <core/type/render_path.h>
+#include <core/type/tonemapping_mode.h>
+#include <platform/type/window_mode.h>
 #include <cstdint>
 #include <string>
-#include <core/logic/logger_types.h>
-
-#include <platform/type/window_mode.h>
-
-#include <core/type/graphics_backend.h>
-#include <core/type/physics_backend.h>
-#include <core/type/audio_backend.h>
-#include <core/type/tonemapping_mode.h>
-#include <core/type/render_path.h>
-#include <core/type/physics_mode.h>
-#include <core/type/lighting_mode.h>
 
 struct WindowConfig
 {
@@ -211,20 +209,46 @@ struct AppConfig
 
     // Copy/move support (references need special handling)
     AppConfig() = default;
-    AppConfig(const AppConfig& o) :
-        title(o.title), logLevel(o.logLevel), numJobThreads(o.numJobThreads),
-        timeScale(o.timeScale), iconPath(o.iconPath), headlessMode(o.headlessMode),
-        window(o.window), graphics(o.graphics), render(o.render),
-        shadow(o.shadow), physics(o.physics), input(o.input),
-        audio(o.audio), culling(o.culling), debug(o.debug), lightingMode(o.lightingMode) {}
+    AppConfig(const AppConfig& o)
+        : title(o.title),
+          logLevel(o.logLevel),
+          numJobThreads(o.numJobThreads),
+          timeScale(o.timeScale),
+          iconPath(o.iconPath),
+          headlessMode(o.headlessMode),
+          window(o.window),
+          graphics(o.graphics),
+          render(o.render),
+          shadow(o.shadow),
+          physics(o.physics),
+          input(o.input),
+          audio(o.audio),
+          culling(o.culling),
+          debug(o.debug),
+          lightingMode(o.lightingMode)
+    {
+    }
 
-    AppConfig& operator=(const AppConfig& o) {
-        if (this == &o) return *this;
-        title = o.title; logLevel = o.logLevel; numJobThreads = o.numJobThreads;
-        timeScale = o.timeScale; iconPath = o.iconPath; headlessMode = o.headlessMode;
-        window = o.window; graphics = o.graphics; render = o.render;
-        shadow = o.shadow; physics = o.physics; input = o.input;
-        audio = o.audio; culling = o.culling; debug = o.debug; lightingMode = o.lightingMode;
+    AppConfig& operator=(const AppConfig& o)
+    {
+        if (this == &o)
+            return *this;
+        title = o.title;
+        logLevel = o.logLevel;
+        numJobThreads = o.numJobThreads;
+        timeScale = o.timeScale;
+        iconPath = o.iconPath;
+        headlessMode = o.headlessMode;
+        window = o.window;
+        graphics = o.graphics;
+        render = o.render;
+        shadow = o.shadow;
+        physics = o.physics;
+        input = o.input;
+        audio = o.audio;
+        culling = o.culling;
+        debug = o.debug;
+        lightingMode = o.lightingMode;
         return *this;
     }
 

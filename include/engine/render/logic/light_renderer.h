@@ -1,9 +1,9 @@
 #pragma once
 
+#include <render/type/graphics_types.h>
+#include <render/type/render_data.h>
 #include <glm/glm.hpp>
 #include <memory>
-#include <render/type/render_data.h>
-#include <render/type/graphics_types.h>
 
 class IBufferManager;
 class IGraphicsContext;
@@ -13,11 +13,20 @@ class LightRenderer
 {
 public:
     void Initialize(IGraphicsContext& context);
-    void UploadLightData(const RenderSceneData& sceneData, Shader *shader);
+    void UploadLightData(const RenderSceneData& sceneData, Shader* shader);
 
-    int GetDirLightCount() const { return (int)m_DirLights.size(); }
-    int GetPointLightCount() const { return (int)m_PointLights.size(); }
-    int GetSpotLightCount() const { return (int)m_SpotLights.size(); }
+    int GetDirLightCount() const
+    {
+        return (int)m_DirLights.size();
+    }
+    int GetPointLightCount() const
+    {
+        return (int)m_PointLights.size();
+    }
+    int GetSpotLightCount() const
+    {
+        return (int)m_SpotLights.size();
+    }
 
 private:
     std::unique_ptr<GPUSSBO> m_DirLightSSBO;

@@ -10,5 +10,6 @@ class PhysicsLoader
 public:
     static void LoadRigidShape(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld& physics);
     static void LoadRigidBody(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld& physics);
-    static void LoadCharacterController(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld& physics);
+    static void LoadCharacterController(Scene& scene, entt::entity entity, const YAMLNode& node,
+                                        IPhysicsWorld& physics);
 };

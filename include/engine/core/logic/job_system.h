@@ -2,8 +2,8 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <functional>
 #include <future>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -27,15 +27,14 @@ public:
     using JobCounter = std::atomic<uint32_t>;
 
     void Execute(std::function<void()> job, JobCounter* counter = nullptr);
-    
+
     template <typename F, typename... Args>
     auto ExecuteAsync(F&& f, Args&&... args) -> std::future<typename std::invoke_result_t<F, Args...>>
     {
         using return_type = typename std::invoke_result_t<F, Args...>;
 
         auto task = std::make_shared<std::packaged_task<return_type()>>(
-            std::bind(std::forward<F>(f), std::forward<Args>(args)...)
-        );
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
         std::future<return_type> res = task->get_future();
         Execute([task]() { (*task)(); });
@@ -45,9 +44,12 @@ public:
 
     void Wait();
     void Wait(JobCounter* counter);
-    
+
     bool IsBusy();
-    uint32_t GetThreadCount() const { return (uint32_t)m_Workers.size(); }
+    uint32_t GetThreadCount() const
+    {
+        return (uint32_t)m_Workers.size();
+    }
 
 private:
     JobSystem() = default;
@@ -66,7 +68,7 @@ private:
 
     std::mutex m_QueueMutex;
     std::condition_variable m_Condition;
-    
+
     // Separate mutex for wait/counter notifications to avoid blocking workers
     std::mutex m_WaitMutex;
     std::condition_variable m_WaitCondition;

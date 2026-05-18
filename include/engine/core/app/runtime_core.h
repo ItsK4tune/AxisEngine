@@ -1,15 +1,14 @@
 #pragma once
 
-#include <core/logic/config_loader.h>
-#include <core/app/state_machine.h>
 #include <core/app/engine_accessor.h>
+#include <core/app/state_machine.h>
+#include <core/logic/config_loader.h>
 #include <platform/interface/cursor_mode.h>
 #include <chrono>
-#include <string>
-#include <vector>
 #include <functional>
 #include <memory>
-
+#include <string>
+#include <vector>
 
 struct SceneRecord;
 class IOHandler;
@@ -20,8 +19,6 @@ class SceneManager;
 class RuntimeCore;
 class TimeService;
 class IWindow;
-
-
 
 class EngineLoop
 {
@@ -35,14 +32,29 @@ public:
     void Shutdown();
 
     void SetPhysicsStep(float step);
-    void SetMaxSubSteps(int steps) { m_MaxSubSteps = steps; }
+    void SetMaxSubSteps(int steps)
+    {
+        m_MaxSubSteps = steps;
+    }
     void SetTimeScale(float scale);
     void SetPaused(bool paused);
 
-    float GetTimeScale() const { return m_TimeScale; }
-    float GetRealDeltaTime() const { return m_RealDeltaTime; }
-    bool IsPaused() const { return m_IsPaused; }
-    void Stop() { m_IsRunning = false; }
+    float GetTimeScale() const
+    {
+        return m_TimeScale;
+    }
+    float GetRealDeltaTime() const
+    {
+        return m_RealDeltaTime;
+    }
+    bool IsPaused() const
+    {
+        return m_IsPaused;
+    }
+    void Stop()
+    {
+        m_IsRunning = false;
+    }
 
 private:
     void ProcessFrame();
@@ -64,8 +76,6 @@ private:
     bool m_IsRunning = false;
 };
 
-
-
 class RuntimeCore
 {
 public:
@@ -82,10 +92,14 @@ public:
     void ChangeState(std::unique_ptr<class State> state);
     class State* GetCurrentState();
 
-
-
-    EngineLoop& GetEngineLoop() { return m_EngineLoop; }
-    StateMachine& GetStateMachine() { return m_StateMachine; }
+    EngineLoop& GetEngineLoop()
+    {
+        return m_EngineLoop;
+    }
+    StateMachine& GetStateMachine()
+    {
+        return m_StateMachine;
+    }
 
 private:
     EngineLoop m_EngineLoop;

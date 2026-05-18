@@ -1,8 +1,8 @@
 #pragma once
 
+#include <physics/interface/i_physics_backend.h>
 #include <btBulletDynamicsCommon.h>
 #include <memory>
-#include <physics/interface/i_physics_backend.h>
 
 class BulletBackend : public IPhysicsBackend
 {
@@ -12,9 +12,15 @@ public:
     void StepSimulation(float dt, int maxSubSteps = 1) override;
 
     void* GetWorld() override;
-    std::string GetName() const override { return "Bullet"; }
+    std::string GetName() const override
+    {
+        return "Bullet";
+    }
 
-    btDiscreteDynamicsWorld* GetDynamicsWorld() { return m_World.get(); }
+    btDiscreteDynamicsWorld* GetDynamicsWorld()
+    {
+        return m_World.get();
+    }
 
 private:
     std::unique_ptr<btDefaultCollisionConfiguration> m_CollisionConfig;

@@ -4,14 +4,13 @@
 #include <functional>
 #include <vector>
 
-template<typename... Components>
+template <typename... Components>
 class CachedQuery
 {
 public:
     using UpdateCallback = std::function<void(entt::registry&)>;
 
-    CachedQuery()
-        : m_Dirty(true), m_SignalsConnected(false)
+    CachedQuery() : m_Dirty(true), m_SignalsConnected(false)
     {
     }
 

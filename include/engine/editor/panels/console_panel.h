@@ -1,14 +1,15 @@
 #pragma once
 #ifdef ENABLE_EDITOR
-#include <editor/i_editor_panel.h>
 #include <core/logic/logger_types.h>
+#include <editor/i_editor_panel.h>
+#include <mutex>
 #include <string>
 #include <vector>
-#include <mutex>
 
 struct Scene;
 
-struct LogEntry {
+struct LogEntry
+{
     LogType type;
     std::string tag;
     std::string message;
@@ -21,8 +22,14 @@ public:
 
     void Initialize() override;
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Console"; }
-    PanelGroup GetGroup() const override { return PanelGroup::Debug; }
+    std::string GetTitle() const override
+    {
+        return "Console";
+    }
+    PanelGroup GetGroup() const override
+    {
+        return PanelGroup::Debug;
+    }
 
     // Called from LogManager hook
     void PushLog(LogType type, const std::string& tag, const std::string& message);

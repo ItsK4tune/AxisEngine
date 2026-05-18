@@ -2,7 +2,8 @@
 
 #include <render/interface/i_query_manager.h>
 
-class OpenGLQueryManager : public IQueryManager {
+class OpenGLQueryManager : public IQueryManager
+{
 public:
     uint32_t GenQuery() override;
     void DeleteQuery(uint32_t queryId) override;

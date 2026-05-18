@@ -1,11 +1,11 @@
 #pragma once
 
 #include <ecs/interface/i_base_system.h>
+#include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include <functional>
-#include <map>
 
 class SystemFactory
 {
@@ -20,8 +20,8 @@ private:
     static std::map<std::string, Creator>& GetRegistry();
 };
 
-#define REGISTER_SYSTEM(SystemType) \
-    static bool SystemType##_Registered = []() { \
+#define REGISTER_SYSTEM(SystemType)                                                            \
+    static bool SystemType##_Registered = []() {                                               \
         SystemFactory::Register(#SystemType, []() { return std::make_unique<SystemType>(); }); \
-        return true; \
+        return true;                                                                           \
     }();

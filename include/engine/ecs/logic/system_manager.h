@@ -1,22 +1,23 @@
 #pragma once
 
 #include <ecs/interface/i_base_system.h>
-#include <ecs/interface/i_update_system.h>
 #include <ecs/interface/i_render_system.h>
+#include <ecs/interface/i_update_system.h>
+#include <bitset>
+#include <typeindex>
+#include <functional>
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_map>
-#include <typeindex>
-#include <bitset>
-#include <functional>
+#include <vector>
 
 class Application;
 class IPhysicsWorld;
 class ResourceManager;
 struct Scene;
 
-struct ExecutionBatch {
+struct ExecutionBatch
+{
     std::vector<IUpdateSystem*> systems;
 };
 
@@ -27,20 +28,20 @@ public:
     ~SystemManager();
 
     void CreateSystems();
-    void Initialize(ResourceManager &res, int width, int height);
+    void Initialize(ResourceManager& res, int width, int height);
     void Shutdown();
 
-    void FixedUpdate(Scene &scene, float fixedDt);
+    void FixedUpdate(Scene& scene, float fixedDt);
 
-    void Update(Scene &scene, float dt);
+    void Update(Scene& scene, float dt);
 
-    void RenderShadows(Scene &scene, int width, int height, float alpha);
-    void Render(Scene &scene, int width, int height, float alpha);
+    void RenderShadows(Scene& scene, int width, int height, float alpha);
+    void Render(Scene& scene, int width, int height, float alpha);
 
     void UpdateDebug(float realDeltaTime);
     void RenderDebug(Scene& scene);
 
-    template<typename T>
+    template <typename T>
     T* GetSystem() const
     {
         auto it = m_TypeCache.find(std::type_index(typeid(T)));
@@ -64,14 +65,15 @@ private:
     std::vector<IRenderSystem*> m_RenderUISystems;
     std::vector<IRenderSystem*> m_RenderCaptureSystems;
     std::vector<IRenderSystem*> m_PostProcessSystems;
-    
+
     std::vector<ExecutionBatch> m_UpdateBatches;
 
     std::unordered_map<std::type_index, IBaseSystem*> m_TypeCache;
     uint32_t m_AvailableCapabilities = 0;
-    
+
     // Bitset optimization for SystemsConflict
-    struct SystemBitset {
+    struct SystemBitset
+    {
         std::bitset<128> read;
         std::bitset<128> write;
     };

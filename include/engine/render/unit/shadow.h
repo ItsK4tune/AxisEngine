@@ -1,9 +1,9 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <memory>
 #include <render/type/graphics_types.h>
 #include <resource/unit/shader.h>
+#include <glm/glm.hpp>
+#include <memory>
 #include <vector>
 
 class IDrawContext;
@@ -13,8 +13,8 @@ class ITextureManager;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
-class Shadow {
+class Shadow
+{
 public:
     Shadow();
     ~Shadow();
@@ -32,23 +32,62 @@ public:
     void BindTexture_Point(int index, int unit);
     void BindTexture_Spot(int index, int unit);
 
-    unsigned int GetShadowWidth() const { return SHADOW_WIDTH; }
-    unsigned int GetShadowHeight() const { return SHADOW_HEIGHT; }
-    unsigned int GetShadowPointWidth() const { return SHADOW_POINT_WIDTH; }
-    unsigned int GetShadowPointHeight() const { return SHADOW_POINT_HEIGHT; }
+    unsigned int GetShadowWidth() const
+    {
+        return SHADOW_WIDTH;
+    }
+    unsigned int GetShadowHeight() const
+    {
+        return SHADOW_HEIGHT;
+    }
+    unsigned int GetShadowPointWidth() const
+    {
+        return SHADOW_POINT_WIDTH;
+    }
+    unsigned int GetShadowPointHeight() const
+    {
+        return SHADOW_POINT_HEIGHT;
+    }
 
-    Shader* GetShaderDir() { return m_ShadowShaderDir; }
-    Shader* GetShaderPoint() { return m_ShadowShaderPoint; }
-    Shader* GetShaderSpot() { return m_ShadowShaderSpot; }
+    Shader* GetShaderDir()
+    {
+        return m_ShadowShaderDir;
+    }
+    Shader* GetShaderPoint()
+    {
+        return m_ShadowShaderPoint;
+    }
+    Shader* GetShaderSpot()
+    {
+        return m_ShadowShaderSpot;
+    }
 
-    void SetShaderDir(Shader* shader) { m_ShadowShaderDir = shader; }
-    void SetShaderPoint(Shader* shader) { m_ShadowShaderPoint = shader; }
-    void SetShaderSpot(Shader* shader) { m_ShadowShaderSpot = shader; }
+    void SetShaderDir(Shader* shader)
+    {
+        m_ShadowShaderDir = shader;
+    }
+    void SetShaderPoint(Shader* shader)
+    {
+        m_ShadowShaderPoint = shader;
+    }
+    void SetShaderSpot(Shader* shader)
+    {
+        m_ShadowShaderSpot = shader;
+    }
 
     static void SetManagers(IRenderTargetManager* rtm, ITextureManager* tm, IDrawContext* dc);
-    static IRenderTargetManager& GetRenderTargetManager() { return *s_RenderTargetManager; }
-    static ITextureManager& GetTextureManager() { return *s_TextureManager; }
-    static IDrawContext& GetDrawContext() { return *s_DrawContext; }
+    static IRenderTargetManager& GetRenderTargetManager()
+    {
+        return *s_RenderTargetManager;
+    }
+    static ITextureManager& GetTextureManager()
+    {
+        return *s_TextureManager;
+    }
+    static IDrawContext& GetDrawContext()
+    {
+        return *s_DrawContext;
+    }
 
     static const int MAX_DIR_LIGHTS_SHADOW = 16;
     static const int MAX_POINT_LIGHTS_SHADOW = 16;

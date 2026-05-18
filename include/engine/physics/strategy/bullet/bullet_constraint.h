@@ -1,13 +1,14 @@
 #pragma once
 
-#include <btBulletDynamicsCommon.h>
 #include <physics/interface/i_constraint.h>
+#include <btBulletDynamicsCommon.h>
 
 class BulletConstraint : public IConstraint
 {
 public:
-    BulletConstraint(btTypedConstraint* constraint)
-        : m_Constraint(constraint) {}
+    BulletConstraint(btTypedConstraint* constraint) : m_Constraint(constraint)
+    {
+    }
 
     ~BulletConstraint()
     {
@@ -18,7 +19,10 @@ public:
         }
     }
 
-    btTypedConstraint* GetRaw() const { return m_Constraint; }
+    btTypedConstraint* GetRaw() const
+    {
+        return m_Constraint;
+    }
 
     void SetBreakingImpulseThreshold(float threshold) override
     {

@@ -1,20 +1,19 @@
-#include <ecs/unit/core_components.h>
-#include <algorithm>
-#include <ecs/logic/entity_manager.h>
-#include <ecs/unit/media_components.h>
 #include <ecs/logic/particle_system.h>
+#include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
-#include <execution>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/media_components.h>
+#include <platform/logic/io_handler.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
-#include <core/logic/logger.h>
-#include <vector>
-
-#include <platform/logic/io_handler.h>
-#include <core/logic/service_locator.h>
-#include <resource/logic/resource_manager.h>
-#include <ecs/interface/i_render_service.h>
 #include <render/interface/i_render_target_manager.h>
+#include <resource/logic/resource_manager.h>
+#include <execution>
+#include <algorithm>
+#include <vector>
 
 REGISTER_SYSTEM(ParticleSystem)
 
@@ -23,20 +22,20 @@ void ParticleSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<ParticleSystem>(this);
     m_Context = sl.Resolve<IGraphicsContext>();
-    if (m_Context) {
-    
-
-    auto& tm = m_Context->GetTextureManager();
-    m_DefaultTexture = tm.GenTexture();
-    tm.BindTexture(TextureType::Texture2D, m_DefaultTexture);
-    unsigned char white[] = { 255, 255, 255, 255 };
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA, DataType::UnsignedByte, white);
-    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
-    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
+    if (m_Context)
+    {
+        auto& tm = m_Context->GetTextureManager();
+        m_DefaultTexture = tm.GenTexture();
+        tm.BindTexture(TextureType::Texture2D, m_DefaultTexture);
+        unsigned char white[] = {255, 255, 255, 255};
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
+                      DataType::UnsignedByte, white);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
     }
 }
 
-void ParticleSystem::Update(Scene &scene, float dt)
+void ParticleSystem::Update(Scene& scene, float dt)
 {
     if (!m_Enabled)
         return;
@@ -46,9 +45,10 @@ void ParticleSystem::Update(Scene &scene, float dt)
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive) continue;
+        if (!info.isActive)
+            continue;
 
-        auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
+        auto& emitterComp = view.get<ParticleEmitterComponent>(entity);
         const auto& pos = scene.registry.get<PositionComponent>(entity);
 
         bool isSpawning = true;
@@ -63,24 +63,26 @@ void ParticleSystem::Update(Scene &scene, float dt)
 
         emitterComp.emitter.Update(dt, pos.value, isSpawning);
 
-
         if (!isSpawning && emitterComp.emitter.GetActiveParticleCount() == 0)
         {
-            if (scene.registry.any_of<InfoComponent>(entity)) {
+            if (scene.registry.any_of<InfoComponent>(entity))
+            {
                 auto& info = scene.registry.get<InfoComponent>(entity);
-                if (info.name.find("Impact_Particle") != std::string::npos) {
+                if (info.name.find("Impact_Particle") != std::string::npos)
+                {
                     toDestroy.push_back(entity);
                 }
             }
         }
     }
 
-    for (auto entity : toDestroy) {
+    for (auto entity : toDestroy)
+    {
         scene.registry.destroy(entity);
     }
 }
 
-void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, float alpha)
+void ParticleSystem::RenderTransparentPass(Scene& scene, int width, int height, float alpha)
 {
     if (!m_Enabled || !m_Context)
         return;
@@ -89,7 +91,7 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
     auto* rs = sl.Resolve<IRenderService>();
     uint32_t fbo = rs ? rs->GetMainFBO() : 0;
     m_Context->GetRenderTargetManager().BindFramebuffer(FramebufferTarget::Framebuffer, fbo);
-    
+
     auto& rsm = m_Context->GetRenderStateManager();
 
     rsm.Enable(ServerCapability::Blend);
@@ -100,33 +102,41 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
     rsm.Disable(ServerCapability::CullFace);
 
     auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
-    if (!resources) return;
-    
+    if (!resources)
+        return;
+
     auto view = scene.registry.view<ParticleEmitterComponent, InfoComponent>();
     auto defaultShader = resources->GetShader("particle");
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive) continue;
+        if (!info.isActive)
+            continue;
 
-        auto &emitterComp = view.get<ParticleEmitterComponent>(entity);
+        auto& emitterComp = view.get<ParticleEmitterComponent>(entity);
         {
             std::shared_ptr<Shader> activeShader = defaultShader;
-            if (!emitterComp.customShader.empty()) {
-                if (auto custom = resources->GetShader(emitterComp.customShader)) {
+            if (!emitterComp.customShader.empty())
+            {
+                if (auto custom = resources->GetShader(emitterComp.customShader))
+                {
                     activeShader = custom;
                 }
             }
-            if (!activeShader) continue;
+            if (!activeShader)
+                continue;
             activeShader->use();
-            
+
             uint32_t activeCount = emitterComp.emitter.GetActiveParticleCount();
-            if (activeCount > 0) {
-                if (!emitterComp.emitter.Texture && !emitterComp.textureName.empty()) {
+            if (activeCount > 0)
+            {
+                if (!emitterComp.emitter.Texture && !emitterComp.textureName.empty())
+                {
                     emitterComp.emitter.Texture = resources->GetTextureAuto(emitterComp.textureName);
                 }
-                
-                if (!emitterComp.emitter.Texture) {
+
+                if (!emitterComp.emitter.Texture)
+                {
                     m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
                     m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);
                     activeShader->setInt("u_AlbedoMap", 0);
@@ -143,17 +153,11 @@ void ParticleSystem::RenderTransparentPass(Scene &scene, int width, int height, 
 
 std::vector<entt::id_type> ParticleSystem::GetReadComponents() const
 {
-    return {
-        entt::type_id<ParticleEmitterComponent>().hash(),
-        entt::type_id<PositionComponent>().hash(),
-        entt::type_id<RotationComponent>().hash(),
-        entt::type_id<CameraComponent>().hash()
-    };
+    return {entt::type_id<ParticleEmitterComponent>().hash(), entt::type_id<PositionComponent>().hash(),
+            entt::type_id<RotationComponent>().hash(), entt::type_id<CameraComponent>().hash()};
 }
 
 std::vector<entt::id_type> ParticleSystem::GetWriteComponents() const
 {
-    return {
-        entt::type_id<ParticleEmitterComponent>().hash()
-    };
+    return {entt::type_id<ParticleEmitterComponent>().hash()};
 }

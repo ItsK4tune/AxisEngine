@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <platform/interface/action.h>
 #include <platform/interface/cursor_mode.h>
 #include <platform/interface/gamepad.h>
@@ -9,8 +8,10 @@
 #include <platform/type/device_info.h>
 #include <platform/type/monitor_info.h>
 #include <platform/type/window_mode.h>
+#include <functional>
 
-class IWindow {
+class IWindow
+{
 public:
     virtual ~IWindow() = default;
 

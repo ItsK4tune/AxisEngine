@@ -1,19 +1,28 @@
-#include "test_framework.h"
 #include <core/logic/service_locator.h>
+#include "test_framework.h"
 
 // --- Mock services for testing ---
 
-struct MockRenderer {
+struct MockRenderer
+{
     int drawCalls = 0;
-    void Draw() { drawCalls++; }
+    void Draw()
+    {
+        drawCalls++;
+    }
 };
 
-struct MockPhysics {
+struct MockPhysics
+{
     bool running = false;
-    void Step() { running = true; }
+    void Step()
+    {
+        running = true;
+    }
 };
 
-struct MockAudio {
+struct MockAudio
+{
     float volume = 1.0f;
 };
 

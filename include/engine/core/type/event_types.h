@@ -1,26 +1,60 @@
 #pragma once
 
-#include <string>
 #include <core/logic/logger_types.h>
 #include <core/type/app_config.h>
+#include <string>
 
+struct InputActionPressedEvent
+{
+    std::string actionName;
+};
+struct InputActionReleasedEvent
+{
+    std::string actionName;
+};
+struct InputActionHeldEvent
+{
+    std::string actionName;
+};
 
+struct KeyPressedEvent
+{
+    int key;
+    int mods;
+};
+struct KeyReleasedEvent
+{
+    int key;
+    int mods;
+};
 
-struct InputActionPressedEvent { std::string actionName; };
-struct InputActionReleasedEvent { std::string actionName; };
-struct InputActionHeldEvent { std::string actionName; };
+struct MouseMovedEvent
+{
+    double x;
+    double y;
+};
+struct MouseButtonPressedEvent
+{
+    int button;
+    int mods;
+};
+struct MouseButtonReleasedEvent
+{
+    int button;
+    int mods;
+};
+struct MouseScrolledEvent
+{
+    double xOffset;
+    double yOffset;
+};
 
-struct KeyPressedEvent { int key; int mods; };
-struct KeyReleasedEvent { int key; int mods; };
-
-struct MouseMovedEvent { double x; double y; };
-struct MouseButtonPressedEvent { int button; int mods; };
-struct MouseButtonReleasedEvent { int button; int mods; };
-struct MouseScrolledEvent { double xOffset; double yOffset; };
-
-
-
-enum class CollisionEventType { Enter, Stay, Exit };
+enum class CollisionEventType
+{
+    Enter,
+    Stay,
+    Exit
+};
 
 struct EntityCollisionEvent
 {
@@ -36,22 +70,23 @@ struct EntityTriggerEvent
     CollisionEventType type;
 };
 
+struct EngineInitializedEvent
+{
+};
+struct EngineShutdownEvent
+{
+};
 
-
-struct EngineInitializedEvent {};
-struct EngineShutdownEvent {};
-
-struct SystemEnabledEvent {
+struct SystemEnabledEvent
+{
     std::string systemName;
     bool enabled;
 };
 
-
-
-
-
-struct ConfigChangedEvent { 
-    enum ChangeType {
+struct ConfigChangedEvent
+{
+    enum ChangeType
+    {
         None = 0,
         Graphics = 1 << 0,
         Window = 1 << 1,
@@ -64,36 +99,49 @@ struct ConfigChangedEvent {
     uint32_t bitmask = All;
     AppConfig config;
 
-    ConfigChangedEvent(const AppConfig& cfg, uint32_t mask = All) 
-        : config(cfg), bitmask(mask) {}
+    ConfigChangedEvent(const AppConfig& cfg, uint32_t mask = All) : config(cfg), bitmask(mask)
+    {
+    }
 };
 
+struct WindowResizedEvent
+{
+    int width;
+    int height;
+};
+struct WindowFocusEvent
+{
+    bool focused;
+};
 
+struct RenderFrameBeginEvent
+{
+    float dt;
+};
+struct RenderFrameEndEvent
+{
+};
 
-struct WindowResizedEvent { int width; int height; };
-struct WindowFocusEvent { bool focused; };
-
-
-
-struct RenderFrameBeginEvent { float dt; };
-struct RenderFrameEndEvent {};
-
-struct FrameRenderData {
+struct FrameRenderData
+{
     uint32_t mainFBO = 0;
     int width = 0;
     int height = 0;
     float alpha = 0.0f;
 };
 
-struct FrameRenderDataEvent {
+struct FrameRenderDataEvent
+{
     FrameRenderData data;
 };
 
-struct DebugNoTextureChangedEvent {
+struct DebugNoTextureChangedEvent
+{
     bool enabled;
 };
 
-struct PhysicsDebugRenderEvent {
+struct PhysicsDebugRenderEvent
+{
     struct Scene* scene;
     int width;
     int height;

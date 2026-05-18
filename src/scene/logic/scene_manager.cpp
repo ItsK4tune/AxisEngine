@@ -1,38 +1,40 @@
-#include <algorithm>
+#include <scene/logic/scene_manager.h>
 #include <audio/logic/audio_service.h>
 #include <core/logic/config_manager.h>
-#include <physics/interface/i_physics_world.h>
-#include <scene/logic/scene_manager.h>
-#include <scene/logic/scene_serializer.h>
-#include <scene/type/scene_events.h>
-#include <resource/logic/resource_manager.h>
-#include <resource/type/resource_events.h>
+#include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <ecs/unit/core_components.h>
+#include <physics/interface/i_physics_world.h>
+#include <resource/logic/resource_manager.h>
+#include <resource/type/resource_events.h>
+#include <scene/logic/scene_serializer.h>
+#include <scene/type/scene_events.h>
+#include <algorithm>
 
-namespace {
-    std::string SceneBasename(const std::string &filePath)
-    {
-        size_t slash = filePath.find_last_of("/\\");
-        std::string name = (slash != std::string::npos) ? filePath.substr(slash + 1) : filePath;
-        size_t dot = name.rfind('.');
-        if (dot != std::string::npos)
-            name = name.substr(0, dot);
-        return name;
-    }
+namespace
+{
+std::string SceneBasename(const std::string& filePath)
+{
+    size_t slash = filePath.find_last_of("/\\");
+    std::string name = (slash != std::string::npos) ? filePath.substr(slash + 1) : filePath;
+    size_t dot = name.rfind('.');
+    if (dot != std::string::npos)
+        name = name.substr(0, dot);
+    return name;
 }
+}  // namespace
 
-SceneManager::SceneManager() {}
+SceneManager::SceneManager()
+{
+}
 
 void SceneManager::Initialize()
 {
-
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
-    EventManager::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
+    EventManager::Instance().Publish(SceneChangedEvent{&scene.registry, &scene});
 
     LOGGER_INFO("SceneManager") << "Initialized";
 }
@@ -43,10 +45,10 @@ void SceneManager::Shutdown()
     LOGGER_INFO("SceneManager") << "Shutdown";
 }
 
-void SceneManager::AddEntity(entt::entity entity, const std::string &sceneName)
+void SceneManager::AddEntity(entt::entity entity, const std::string& sceneName)
 {
     std::string normName = SceneSerializer::NormalizeSceneName(sceneName);
-    for (auto &rec : m_LoadedScenes)
+    for (auto& rec : m_LoadedScenes)
     {
         if (rec.name == normName || rec.name == sceneName || rec.filePath == sceneName)
         {
@@ -79,14 +81,18 @@ void SceneManager::RemoveEntity(entt::entity entity)
 void SceneManager::SetSceneActive(const std::string& name, bool active, Scene& scene)
 {
     std::string normName = SceneSerializer::NormalizeSceneName(name);
-    
+
     auto PropagateActive = [&](auto self, entt::entity e, bool state) -> void {
-        if (!scene.registry.valid(e)) return;
-        if (auto* info = scene.registry.try_get<InfoComponent>(e)) {
+        if (!scene.registry.valid(e))
+            return;
+        if (auto* info = scene.registry.try_get<InfoComponent>(e))
+        {
             info->isActive = state;
         }
-        if (auto* hier = scene.registry.try_get<HierarchyComponent>(e)) {
-            for (auto child : hier->children) {
+        if (auto* hier = scene.registry.try_get<HierarchyComponent>(e))
+        {
+            for (auto child : hier->children)
+            {
                 self(self, child, state);
             }
         }
@@ -162,9 +168,8 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
 
 void SceneManager::UnloadScene(const std::string& filePath)
 {
-    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
-        return r.filePath == filePath || r.name == filePath;
-    });
+    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(),
+                           [&](const SceneRecord& r) { return r.filePath == filePath || r.name == filePath; });
 
     if (it != m_LoadedScenes.end())
     {
@@ -176,10 +181,10 @@ void SceneManager::UnloadScene(const std::string& filePath)
 
 void SceneManager::UnloadScene(const SceneRecord* rec)
 {
-    if (!rec) return;
-    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
-        return &r == rec;
-    });
+    if (!rec)
+        return;
+    auto it =
+        std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) { return &r == rec; });
 
     if (it != m_LoadedScenes.end())
     {
@@ -191,9 +196,8 @@ void SceneManager::UnloadScene(const SceneRecord* rec)
 
 void SceneManager::UnloadSceneByName(const std::string& name)
 {
-    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
-        return r.name == name;
-    });
+    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(),
+                           [&](const SceneRecord& r) { return r.name == name; });
 
     if (it != m_LoadedScenes.end())
     {
@@ -205,9 +209,8 @@ void SceneManager::UnloadSceneByName(const std::string& name)
 
 void SceneManager::UnloadSceneByOrder(int order)
 {
-    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& r) {
-        return r.loadOrder == order;
-    });
+    auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(),
+                           [&](const SceneRecord& r) { return r.loadOrder == order; });
 
     if (it != m_LoadedScenes.end())
     {
@@ -219,7 +222,8 @@ void SceneManager::UnloadSceneByOrder(int order)
 
 void SceneManager::PopScene()
 {
-    if (m_LoadedScenes.empty()) return;
+    if (m_LoadedScenes.empty())
+        return;
 
     for (int i = (int)m_LoadedScenes.size() - 1; i >= 0; --i)
     {
@@ -237,16 +241,15 @@ void SceneManager::ChangeScene(const std::string& filePath)
 {
     ClearAllScenes();
     LoadScene(filePath, false);
-    
 
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
-    EventManager::Instance().Publish(SceneChangedEvent{ &scene.registry, &scene });
+    EventManager::Instance().Publish(SceneChangedEvent{&scene.registry, &scene});
 }
 
 void SceneManager::ClearAllScenes()
 {
-    for (auto it = m_LoadedScenes.begin(); it != m_LoadedScenes.end(); )
+    for (auto it = m_LoadedScenes.begin(); it != m_LoadedScenes.end();)
     {
         if (!it->persistent)
         {
@@ -300,18 +303,18 @@ void SceneManager::UpdatePendingScene()
     {
         switch (op.type)
         {
-        case PendingOp::Load:
-            LoadScene(op.path, op.persistent);
-            break;
-        case PendingOp::Pop:
-            PopScene();
-            break;
-        case PendingOp::Change:
-            ChangeScene(op.path);
-            break;
-        case PendingOp::Unload:
-            UnloadScene(op.path);
-            break;
+            case PendingOp::Load:
+                LoadScene(op.path, op.persistent);
+                break;
+            case PendingOp::Pop:
+                PopScene();
+                break;
+            case PendingOp::Change:
+                ChangeScene(op.path);
+                break;
+            case PendingOp::Unload:
+                UnloadScene(op.path);
+                break;
         }
     }
 }
@@ -325,7 +328,8 @@ const SceneRecord* SceneManager::GetScene(const std::string& filePath) const
 {
     for (const auto& rec : m_LoadedScenes)
     {
-        if (rec.filePath == filePath || rec.name == filePath) return &rec;
+        if (rec.filePath == filePath || rec.name == filePath)
+            return &rec;
     }
     return nullptr;
 }
@@ -334,21 +338,23 @@ const SceneRecord* SceneManager::GetSceneByName(const std::string& name) const
 {
     for (const auto& rec : m_LoadedScenes)
     {
-        if (rec.name == name) return &rec;
+        if (rec.name == name)
+            return &rec;
     }
     return nullptr;
 }
 
-IPhysicsWorld* SceneManager::GetPhysicsWorld() 
-{ 
-    return ServiceLocator::Instance().Resolve<IPhysicsWorld>(); 
+IPhysicsWorld* SceneManager::GetPhysicsWorld()
+{
+    return ServiceLocator::Instance().Resolve<IPhysicsWorld>();
 }
 
 const SceneRecord* SceneManager::GetSceneByOrder(int order) const
 {
     for (const auto& rec : m_LoadedScenes)
     {
-        if (rec.loadOrder == order) return &rec;
+        if (rec.loadOrder == order)
+            return &rec;
     }
     return nullptr;
 }
@@ -365,7 +371,8 @@ void SceneManager::LogScene(const std::string& filePath) const
     const SceneRecord* rec = GetScene(filePath);
     if (rec)
     {
-        LOGGER_INFO("SceneManager") << "Scene: " << rec->name << " (" << rec->filePath << "), Entities: " << rec->entities.size();
+        LOGGER_INFO("SceneManager") << "Scene: " << rec->name << " (" << rec->filePath
+                                    << "), Entities: " << rec->entities.size();
     }
 }
 
@@ -374,7 +381,8 @@ void SceneManager::LogAllScenes() const
     LOGGER_INFO("SceneManager") << "Loaded Scenes (" << m_LoadedScenes.size() << "):";
     for (const auto& rec : m_LoadedScenes)
     {
-        LOGGER_INFO("SceneManager") << " - " << rec.name << " (Order: " << rec.loadOrder << ", Persistent: " << (rec.persistent ? "Yes" : "No") << ")";
+        LOGGER_INFO("SceneManager") << " - " << rec.name << " (Order: " << rec.loadOrder
+                                    << ", Persistent: " << (rec.persistent ? "Yes" : "No") << ")";
     }
 }
 
@@ -402,7 +410,7 @@ void SceneManager::Internal_DestroySceneEntities(SceneRecord& rec)
 void SceneManager::Internal_UnloadOrphanedResources(const SceneRecord& rec)
 {
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
-    
+
     for (const auto& shader : rec.ownedShaders) resources.UnloadShader(shader);
     for (const auto& model : rec.ownedModels) resources.UnloadModel(model);
     for (const auto& texture : rec.ownedTextures) resources.UnloadTexture(texture);
@@ -414,8 +422,6 @@ void SceneManager::Internal_UnloadOrphanedResources(const SceneRecord& rec)
 
 void SceneManager::Internal_RollbackConfig(const SceneRecord& removed)
 {
-
-
     if (removed.hasConfig)
     {
         LOGGER_INFO("SceneManager") << "Scene with config removed: " << removed.name;

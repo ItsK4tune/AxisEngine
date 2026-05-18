@@ -1,9 +1,9 @@
 #pragma once
 
-#include <atomic>
-#include <condition_variable>
 #include <core/type/event_types.h>
 #include <resource/type/resource_events.h>
+#include <atomic>
+#include <condition_variable>
 #include <filesystem>
 #include <functional>
 #include <mutex>
@@ -20,8 +20,8 @@ public:
     ~ResourceWatcher();
 
     void Watch(const std::string& name, const std::string& path, const std::string& type);
-    void Watch(const std::string& name, const std::string& path, const std::string& type,
-               const std::string& vsPath, const std::string& fsPath, const std::string& gsPath);
+    void Watch(const std::string& name, const std::string& path, const std::string& type, const std::string& vsPath,
+               const std::string& fsPath, const std::string& gsPath);
 
     void Update(float dt);
 

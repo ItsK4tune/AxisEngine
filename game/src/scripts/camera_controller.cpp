@@ -1,8 +1,8 @@
 #include <scripts/camera_controller.h>
+#include <platform/logic/input_manager.h>
+#include <platform/logic/io_handler.h>
 #include <axis_component.h>
 #include <axis_platform.h>
-#include <platform/logic/io_handler.h>
-#include <platform/logic/input_manager.h>
 
 REGISTER_SCRIPT(CameraController)
 
@@ -11,11 +11,11 @@ void CameraController::OnUpdate(float dt)
     if (!HasComponent<PositionComponent>() || !HasComponent<CameraComponent>())
         return;
 
-    auto &posComp = GetComponent<PositionComponent>();
-    auto &camera = GetComponent<CameraComponent>();
+    auto& posComp = GetComponent<PositionComponent>();
+    auto& camera = GetComponent<CameraComponent>();
 
-    const auto &mouse = Get<IOHandler>().GetMouse();
-    const auto &keyboard = Get<IOHandler>().GetKeyboard();
+    const auto& mouse = Get<IOHandler>().GetMouse();
+    const auto& keyboard = Get<IOHandler>().GetKeyboard();
 
     if (mouse.GetCursorMode() == CursorMode::Locked || mouse.GetCursorMode() == CursorMode::LockedHidden)
     {
@@ -44,7 +44,8 @@ void CameraController::OnUpdate(float dt)
     front.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
     glm::vec3 frontNormalized = glm::normalize(front);
     glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
-    if (HasComponent<RotationComponent>()) {
+    if (HasComponent<RotationComponent>())
+    {
         auto& rot = GetComponent<RotationComponent>();
         rot.value = glm::quatLookAt(frontNormalized, worldUp);
     }
@@ -66,9 +67,11 @@ void CameraController::OnUpdate(float dt)
     if (keyboard.GetKey(Key::LeftShift))
         posComp.value -= worldUp * velocity;
 
-    camera.aspectRatio = (float)Get<IOHandler>().GetMonitorManager().GetWidth() / (float)Get<IOHandler>().GetMonitorManager().GetHeight();
+    camera.aspectRatio = (float)Get<IOHandler>().GetMonitorManager().GetWidth() /
+                         (float)Get<IOHandler>().GetMonitorManager().GetHeight();
 
-    camera.projectionMatrix = glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
+    camera.projectionMatrix =
+        glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
 
     camera.viewMatrix = glm::lookAt(posComp.value, posComp.value + frontNormalized, up);
 }

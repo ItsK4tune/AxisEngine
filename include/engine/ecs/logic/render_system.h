@@ -1,18 +1,17 @@
 #pragma once
 
-#include <ecs/interface/i_render_system.h>
-#include <render/unit/render_command.h>
+#include <core/type/app_config.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
-#include <core/type/app_config.h>
-
 #include <ecs/unit/render_components.h>
-#include <glm/glm.hpp>
 #include <render/interface/i_query_manager.h>
-#include <scene/logic/scene.h>
-#include <vector>
 #include <render/type/graphics_types.h>
+#include <render/unit/render_command.h>
+#include <scene/logic/scene.h>
+#include <glm/glm.hpp>
+#include <vector>
 
 class IGraphicsContext;
 class ResourceManager;
@@ -27,20 +26,38 @@ public:
     virtual ~RenderSystem();
 
     void Initialize() override;
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enable) override { m_Enabled = enable; }
-    int GetPriority() const override { return 100; }
-    std::string GetName() const override { return "RenderSystem"; }
-    SystemCategory GetCategory() const override { return SystemCategory::RenderMain | SystemCategory::Update | SystemCategory::PostProcess; }
-    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
-    
+    bool IsEnabled() const override
+    {
+        return m_Enabled;
+    }
+    void SetEnabled(bool enable) override
+    {
+        m_Enabled = enable;
+    }
+    int GetPriority() const override
+    {
+        return 100;
+    }
+    std::string GetName() const override
+    {
+        return "RenderSystem";
+    }
+    SystemCategory GetCategory() const override
+    {
+        return SystemCategory::RenderMain | SystemCategory::Update | SystemCategory::PostProcess;
+    }
+    SystemRequirement GetRequirements() const override
+    {
+        return SystemRequirement::Graphics;
+    }
+
     void Update(Scene& scene, float dt) override;
-    
+
     void Render(Scene& scene) override;
-    void RenderAlphaPass(Scene &scene, int width, int height, float alpha) override;
-    void RenderTransparentPass(Scene &scene, int width, int height, float alpha) override;
-    void RenderUIPass(Scene &scene, float width, float height, IRenderStateManager &renderState) override;
-    
+    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
+    void RenderTransparentPass(Scene& scene, int width, int height, float alpha) override;
+    void RenderUIPass(Scene& scene, float width, float height, IRenderStateManager& renderState) override;
+
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
 
