@@ -56,6 +56,11 @@ private:
         bool keepCpuData = false;
     };
 
+    std::unordered_map<std::string, std::shared_ptr<Texture>> m_PathToTextureMap;
+    std::unordered_map<std::string, int> m_PathReferenceCounts;
+    std::unordered_map<std::string, std::string> m_NameToPathMap;
+    std::mutex m_DeduplicationMutex;
+
     ITextureManager& m_LowLevelManager;
     ResourceCache<Texture> m_Cache;
     

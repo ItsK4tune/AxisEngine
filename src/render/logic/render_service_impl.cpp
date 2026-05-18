@@ -462,6 +462,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         item.sortKey = key;
         item.castShadow = renderer.castShadow;
         item.receiveShadow = renderer.receiveShadow;
+        item.renderMode = renderer.renderMode;
 
         item.tintColor = renderer.color;
         bool hasAnimation = false;
@@ -605,10 +606,16 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
 void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer, Shader* overrideShader)
 {
+    if (queue.empty()) return;
+
     if (m_RenderCore) {
         auto& core = *m_RenderCore;
         materialRenderer = &core.GetMaterialRenderer();
     }
+
+    if (!m_Context) return;
+    auto& tm = m_Context->GetTextureManager();
+    auto& rtm = m_Context->GetRenderTargetManager();
 
     Shader* lastShader = nullptr;
 
@@ -624,6 +631,40 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
 
     m_RenderedCount += (int)queue.size();
 
+    // --- Pre-collect planar reflection data ONCE before the draw loop ---
+    struct PlanarEntry {
+        unsigned int textureID;
+        glm::vec3 normal;
+    };
+    PlanarEntry planarEntries[4];
+    int planarCount = 0;
+    char planarTexNames[4][48];
+    char planarNormNames[4][48];
+
+    if (!m_IsCapturingProbe) {
+        auto& scene = ServiceLocator::Instance().Require<Scene>();
+        auto planarView = scene.registry.view<PlanarReflectionComponent>();
+        for (auto planarEntity : planarView) {
+            auto& prc = planarView.get<PlanarReflectionComponent>(planarEntity);
+            if (prc.reflectionTextureID && prc.isRendered) {
+                planarEntries[planarCount] = { prc.reflectionTextureID, prc.normal };
+                snprintf(planarTexNames[planarCount], sizeof(planarTexNames[0]), "u_PlanarReflections[%d]", planarCount);
+                snprintf(planarNormNames[planarCount], sizeof(planarNormNames[0]), "u_PlanarNormals[%d]", planarCount);
+                planarCount++;
+                if (planarCount >= 4) break;
+            }
+        }
+    }
+
+    // --- Pre-compute per-frame constants ---
+    glm::vec2 screenSize((float)m_LastWidth, (float)m_LastHeight);
+    bool isCapturing = m_IsCapturingProbe;
+
+    // --- Reflection state tracking to skip redundant uniform sets ---
+    bool lastHadReflection = false;
+    bool lastHadProbe = false;
+    unsigned int lastProbeCubemap = 0;
+
     for (const auto& item : queue) {
         Model* model = item.model;
         AxisMaterialComponent* material = item.material;
@@ -632,27 +673,20 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         if (overrideShader) {
             shader = overrideShader;
         } else if (!shader) {
-            if (isTransparentPass) {
+            if (isTransparentPass || item.renderMode == RenderMode::ForceForward) {
                 shader = m_ForwardPBRLitShader.get();
             } else {
-                if (m_IsCapturingProbe) {
-                    shader = m_ForwardPBRLitShader.get();
-                } else {
-                    shader = m_DeferredLitShader.get();
-                }
+                shader = isCapturing ? m_ForwardPBRLitShader.get() : m_DeferredLitShader.get();
             }
-        } else if (m_IsCapturingProbe) {
-            // Probe fallback logic
+        } else if (isCapturing) {
             if (shader == m_DeferredLitShader.get()) shader = m_ForwardPBRLitShader.get();
             else if (shader == m_DeferredUnlitShader.get()) shader = m_UnlitShader.get();
-        } else if (!isTransparentPass) {
-            // Translate core shaders for Deferred G-Buffer pass
+        } else if (!isTransparentPass && item.renderMode != RenderMode::ForceForward) {
             if (shader == m_UnlitShader.get()) shader = m_DeferredUnlitShader.get();
         }
 
         if (!shader || !model) {
-            if (!isTransparentPass) shader = m_ErrorDeferredShader.get();
-            else shader = m_ErrorForwardShader.get();
+            shader = isTransparentPass ? m_ErrorForwardShader.get() : m_ErrorDeferredShader.get();
             if (!shader || !model) continue;
         }
 
@@ -671,6 +705,26 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                 shader->setFloat("u_ShadowBias", shadowRenderer->GetShadowBias());
                 shader->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
             }
+
+            // Per-frame uniforms: set once per shader bind, not per item
+            shader->setBool("u_ProbeUnlit", isCapturing);
+            shader->setVec2("u_ScreenSize", screenSize);
+
+            // Bind pre-collected planar reflections once per shader bind
+            if (!isCapturing) {
+                for (int p = 0; p < planarCount; ++p) {
+                    tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture19) + p));
+                    tm.BindTexture(TextureType::Texture2D, planarEntries[p].textureID);
+                    shader->setInt(planarTexNames[p], 19 + p);
+                    shader->setVec3(planarNormNames[p], planarEntries[p].normal);
+                }
+            }
+            shader->setInt("u_PlanarCount", planarCount);
+
+            // Reset reflection tracking on shader change
+            lastHadReflection = false;
+            lastHadProbe = false;
+            lastProbeCubemap = 0;
         }
 
         glm::mat4 mtx = item.worldMatrix;
@@ -685,108 +739,75 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         shader->setUInt("u_EntityID", item.entityId);
         shader->setBool("u_IsInstanced", false);
         
-        if (shader->GetName() == "deferred_reflect") {
+        if (item.probeIndex >= 0) {
             shader->setInt("u_ProbeIndex", item.probeIndex);
         }
-        // Reflection and Textures
-        if (!m_Context) continue;
-        auto& tm = m_Context->GetTextureManager();
+        
+        // Reflection Probe Binding — only set uniforms on state transitions
+        bool curHasReflection = (item.reflection && item.probe && !isCapturing);
+        unsigned int curProbeCubemap = curHasReflection ? item.probe->cubemapID : 0;
 
-        shader->setBool("u_ProbeUnlit", m_IsCapturingProbe);
-        shader->setVec2("u_ScreenSize", glm::vec2(m_LastWidth, m_LastHeight));
-        
-        // Planar Reflection Binding for Forward
-        auto& scene = ServiceLocator::Instance().Require<Scene>();
-        auto planarView = scene.registry.view<PlanarReflectionComponent>();
-        int planarCount = 0;
-        if (!m_IsCapturingProbe) {
-            for (auto planarEntity : planarView) {
-                auto& prc = planarView.get<PlanarReflectionComponent>(planarEntity);
-                if (prc.reflectionTextureID && prc.isRendered) {
-                    tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture19) + planarCount));
-                    tm.BindTexture(TextureType::Texture2D, prc.reflectionTextureID);
-                    
-                    std::string texBase = "u_PlanarReflections[" + std::to_string(planarCount) + "]";
-                    std::string normBase = "u_PlanarNormals[" + std::to_string(planarCount) + "]";
-                    shader->setInt(texBase, 19 + planarCount);
-                    shader->setVec3(normBase, prc.normal);
-                    
-                    planarCount++;
-                    if (planarCount >= 4) break;
-                }
+        if (curHasReflection) {
+            if (curProbeCubemap != lastProbeCubemap) {
+                tm.ActiveTexture(TextureUnit::Texture15);
+                tm.BindTexture(TextureType::TextureCubeMap, curProbeCubemap);
             }
-        }
-        shader->setInt("u_PlanarCount", planarCount);
-        
-        // Reflection Probe Binding & Cleanup
-        if (item.reflection && item.probe && !m_IsCapturingProbe) {
-            tm.ActiveTexture(TextureUnit::Texture15);
-            tm.BindTexture(TextureType::TextureCubeMap, item.probe->cubemapID);
-            shader->setInt("u_ReflectionProbe", 15);
-            shader->setBool("u_HasReflection", true);
-            
-            // For Forward Reflection Shaders
-            shader->setBool("u_HasProbe", true);
+            if (!lastHadReflection) {
+                shader->setInt("u_ReflectionProbe", 15);
+                shader->setBool("u_HasReflection", true);
+                shader->setBool("u_HasProbe", true);
+            }
             shader->setVec3("u_ProbePos", item.probePos);
             shader->setVec3("u_ProbeBoxMin", item.probe->boxMin);
             shader->setVec3("u_ProbeBoxMax", item.probe->boxMax);
-        } else {
-            // Force Cleanup: Ensure no stale cubemap is bound to Unit 15
-            if (!m_IsCapturingProbe) {
-                tm.ActiveTexture(TextureUnit::Texture15);
-                tm.BindTexture(TextureType::TextureCubeMap, 0);
-                shader->setBool("u_HasReflection", false);
-                shader->setBool("u_HasProbe", false);
-                shader->setInt("u_ProbeCount", 0); // Explicitly zero out probe count
-            }
+        } else if (lastHadReflection && !isCapturing) {
+            // State transition: had reflection -> no reflection. Cleanup once.
+            tm.ActiveTexture(TextureUnit::Texture15);
+            tm.BindTexture(TextureType::TextureCubeMap, 0);
+            shader->setBool("u_HasReflection", false);
+            shader->setBool("u_HasProbe", false);
+            shader->setInt("u_ProbeCount", 0);
         }
+
+        lastHadReflection = curHasReflection;
+        lastProbeCubemap = curProbeCubemap;
         
         // Dynamic Mapping for Reflection Probes (Zero-Code Re-routing)
-        if (m_IsCapturingProbe) {
-            auto& rtm = m_Context->GetRenderTargetManager();
+        if (isCapturing) {
             if (shader->IsDeferred()) {
-                // Reroute Shader Location 2 (Albedo) to Attachment 0 (Cube face)
-                // location 0 (Pos) -> None, 1 (Norm) -> None, 2 (Albedo) -> Color0
                 FramebufferAttachment atts[] = { FramebufferAttachment::None, FramebufferAttachment::None, FramebufferAttachment::Color0 };
                 rtm.DrawBuffers(3, atts);
             } else {
-                // Forward Shader: location 0 -> Color0
                 FramebufferAttachment atts[] = { FramebufferAttachment::Color0 };
                 rtm.DrawBuffers(1, atts);
             }
         }
         
-        // Pass reflection data if available
-        if (item.reflection && !m_IsCapturingProbe) {
+        // Reflection data uniforms — only when item has reflection
+        if (item.reflection && !isCapturing) {
             shader->setFloat("u_Reflectivity", item.reflection->reflectivity);
             shader->setFloat("u_FresnelPower", item.reflection->fresnelPower);
             shader->setFloat("u_FresnelBias", item.reflection->fresnelBias);
             
             if (item.probe && item.probe->cubemapID != 0) {
-                auto& texMgr = m_Context->GetTextureManager();
-                texMgr.ActiveTexture(TextureUnit::Texture15);
-                texMgr.BindTexture(TextureType::TextureCubeMap, item.probe->cubemapID);
-                shader->setBool("u_HasProbe", true);
-                shader->setVec3("u_ProbePos", item.probePos);
-                shader->setVec3("u_ProbeBoxMin", item.probe->boxMin);
-                shader->setVec3("u_ProbeBoxMax", item.probe->boxMax);
                 shader->setFloat("u_ReflectionIntensity", item.reflectionIntensity);
-            } else {
+            }
+        } else if (!isCapturing) {
+            // Only set defaults if previous item had reflection (avoid redundant sets)
+            if (lastHadProbe) {
+                shader->setFloat("u_Reflectivity", 0.0f);
+                shader->setFloat("u_FresnelPower", 5.0f);
+                shader->setFloat("u_FresnelBias", 0.04f);
                 shader->setBool("u_HasProbe", false);
             }
-        } else {
-            shader->setFloat("u_Reflectivity", 0.0f);
-            shader->setFloat("u_FresnelPower", 5.0f);
-            shader->setFloat("u_FresnelBias", 0.04f);
-            shader->setBool("u_HasProbe", false);
         }
+        lastHadProbe = (item.reflection != nullptr);
 
         bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor, m_Flags.debugNoTexture, m_Flags.wireframe);
         model->Draw(*shader, !matBound);
 
         // Restore DrawBuffers mapping after draw
-        if (m_IsCapturingProbe) {
-             auto& rtm = m_Context->GetRenderTargetManager();
+        if (isCapturing) {
              FramebufferAttachment atts[] = { FramebufferAttachment::Color0 };
              rtm.DrawBuffers(1, atts);
         }
@@ -850,11 +871,12 @@ void RenderServiceImpl::FlushCommands()
             }
             cmd.shader->setVec4("u_TintColor", cmd.tintColor);
             
-            for (const auto& kv : cmd.uintUniforms) {
-                cmd.shader->setUInt(kv.first, kv.second);
-            }
-            for (const auto& kv : cmd.floatUniforms) {
-                cmd.shader->setFloat(kv.first, kv.second);
+            for (int u = 0; u < cmd.uniformCount; ++u) {
+                const auto& slot = cmd.uniforms[u];
+                if (slot.type == RenderDrawCommand::UniformSlot::UINT)
+                    cmd.shader->setUInt(slot.location, slot.uintVal);
+                else if (slot.type == RenderDrawCommand::UniformSlot::FLOAT)
+                    cmd.shader->setFloat(slot.location, slot.floatVal);
             }
         }
         

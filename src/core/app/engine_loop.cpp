@@ -17,6 +17,12 @@
 #include <platform/interface/i_window.h>
 #include <core/logic/logger.h>
 
+#ifdef _WIN32
+#include <windows.h>
+typedef MMRESULT(WINAPI* LPTIMEBEGINPERIOD)(UINT);
+typedef MMRESULT(WINAPI* LPTIMEENDPERIOD)(UINT);
+#endif
+
 EngineLoop::EngineLoop()
     : m_LastFrameTime(std::chrono::steady_clock::now())
 {
@@ -24,6 +30,16 @@ EngineLoop::EngineLoop()
 
 void EngineLoop::Initialize()
 {
+#ifdef _WIN32
+    if (HMODULE hWinmm = LoadLibraryA("winmm.dll"))
+    {
+        if (auto pTimeBeginPeriod = (LPTIMEBEGINPERIOD)GetProcAddress(hWinmm, "timeBeginPeriod"))
+        {
+            pTimeBeginPeriod(1);
+        }
+    }
+#endif
+
     auto& sl = ServiceLocator::Instance();
     auto& configMgr = sl.Require<ConfigManager>();
     auto& appConfig = configMgr.GetConfig();
@@ -41,6 +57,16 @@ void EngineLoop::Initialize()
 
 void EngineLoop::Shutdown()
 {
+#ifdef _WIN32
+    if (HMODULE hWinmm = LoadLibraryA("winmm.dll"))
+    {
+        if (auto pTimeEndPeriod = (LPTIMEENDPERIOD)GetProcAddress(hWinmm, "timeEndPeriod"))
+        {
+            pTimeEndPeriod(1);
+        }
+    }
+#endif
+
     if (m_ConfigSubscriptionId != -1) {
         EventManager::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigSubscriptionId);
     }

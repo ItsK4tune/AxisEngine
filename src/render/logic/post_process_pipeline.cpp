@@ -162,6 +162,8 @@ void PostProcessPipeline::Shutdown()
     m_BloomMips.clear();
     if (m_QuadVAO.IsValid()) { bm.DeleteVertexArrays(1, &m_QuadVAO.id); m_QuadVAO.Reset(); }
     if (m_QuadVBO.IsValid()) { bm.DeleteBuffers(1, &m_QuadVBO.id); m_QuadVBO.Reset(); }
+    if (m_PartialVAO.IsValid()) { bm.DeleteVertexArrays(1, &m_PartialVAO.id); m_PartialVAO.Reset(); }
+    if (m_PartialVBO.IsValid()) { bm.DeleteBuffers(1, &m_PartialVBO.id); m_PartialVBO.Reset(); }
 }
 
 void PostProcessPipeline::Resize(int width, int height)
@@ -347,15 +349,14 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
                 x2, y2, u2, v2
             };
 
-            // Use temporary buffer for this unique quad
-            static uint32_t tempVAO = 0, tempVBO = 0;
+            // Use class-managed buffer for this unique quad
             auto& bm = m_Context->GetBufferManager();
-            if (tempVAO == 0) {
-                tempVAO = bm.GenVertexArray();
-                tempVBO = bm.GenBuffer();
+            if (m_PartialVAO.id == 0) {
+                m_PartialVAO.id = bm.GenVertexArray();
+                m_PartialVBO.id = bm.GenBuffer();
             }
-            bm.BindVertexArray(tempVAO);
-            bm.BindBuffer(BufferType::ArrayBuffer, tempVBO);
+            bm.BindVertexArray(m_PartialVAO.id);
+            bm.BindBuffer(BufferType::ArrayBuffer, m_PartialVBO.id);
             bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::DynamicDraw);
             bm.EnableVertexAttribArray(0);
             bm.VertexAttribPointer(0, 2, DataType::Float, false, 4 * sizeof(float), (void*)0);

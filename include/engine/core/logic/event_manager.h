@@ -26,6 +26,7 @@ class IEventDispatcher
 {
 public:
     virtual ~IEventDispatcher() = default;
+    virtual bool HasListeners() const = 0;
 };
 
 template <typename T>
@@ -78,9 +79,15 @@ public:
         }
     }
 
+    bool HasListeners() const override
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        return !m_Listeners->empty();
+    }
+
 private:
     std::shared_ptr<const std::vector<Listener>> m_Listeners;
-    std::mutex m_Mutex;
+    mutable std::mutex m_Mutex;
 };
 
 class EventManager
@@ -146,6 +153,27 @@ public:
             auto *dispatcher = static_cast<EventDispatcher<T> *>(dispatcherPtr.get());
             dispatcher->Dispatch(event);
         }
+    }
+
+    template <typename T>
+    bool HasListeners()
+    {
+        int eventId = GetEventId<T>();
+        
+        std::shared_ptr<IEventDispatcher> dispatcherPtr;
+        {
+            std::lock_guard<std::mutex> lock(m_DispatchersMutex);
+            if (eventId < (int)m_Dispatchers.size())
+            {
+                dispatcherPtr = m_Dispatchers[eventId];
+            }
+        }
+        
+        if (dispatcherPtr)
+        {
+            return dispatcherPtr->HasListeners();
+        }
+        return false;
     }
 
 private:

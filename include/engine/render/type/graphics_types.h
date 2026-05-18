@@ -384,16 +384,19 @@ struct GPUGlobalData {
 
 constexpr int MAX_BONE_INFLUENCE = 4;
 
-struct Vertex {
+struct StaticVertex {
     glm::vec3 Position;
     glm::vec3 Normal;
     glm::vec2 TexCoords;
-    glm::vec3 Tangent;
-    glm::vec3 Bitangent;
+};
+
+struct SkinnedVertex {
+    glm::vec3 Position;
+    glm::vec3 Normal;
+    glm::vec2 TexCoords;
     int m_BoneIDs[MAX_BONE_INFLUENCE];
     float m_Weights[MAX_BONE_INFLUENCE];
 };
-
 struct Texture {
     unsigned int id = 0;
     std::string type;

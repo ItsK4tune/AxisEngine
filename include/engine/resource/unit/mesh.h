@@ -20,13 +20,18 @@ class ITextureManager;
 class Mesh
 {
 public:
-    std::vector<Vertex> vertices;
+    std::vector<uint8_t> m_VertexData;
+    size_t m_VertexCount;
+    size_t m_VertexStride;
+    bool m_IsSkinned;
+
     std::vector<unsigned int> indices;
     std::vector<Texture> textures;
     unsigned int VAO;
     AABB aabb;
 
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures, bool setupGPU = true);
+    Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStride, bool isSkinned, 
+         std::vector<unsigned int> indices, std::vector<Texture> textures, bool setupGPU = true);
     ~Mesh();
     void setupMesh();
     void Draw(Shader &shader, bool bindTextures = true);
@@ -42,6 +47,7 @@ public:
 private:
     unsigned int VBO, EBO, instanceVBO;
     bool m_Initialized = false;
+    size_t m_InstanceBufferCapacity = 0;
 
     static IBufferManager* s_BufferManager;
     static ITextureManager* s_TextureManager;

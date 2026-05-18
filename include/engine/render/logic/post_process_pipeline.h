@@ -101,6 +101,8 @@ private:
 
     GpuHandle m_QuadVAO;
     GpuHandle m_QuadVBO;
+    GpuHandle m_PartialVAO;
+    GpuHandle m_PartialVBO;
 
     std::vector<PostProcessEffect> m_Effects;
 

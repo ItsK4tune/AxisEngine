@@ -56,7 +56,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         shadowCastingSpotLights.empty()) return;
 
     glm::vec3 camPos = sceneData.cameraPosition;
-    CommandQueue shadowQueueMain;
+    m_MainQueue.Clear();
     JobSystem::JobCounter counter(0);
 
     const auto& shadowQueue = sceneData.shadowQueue;
@@ -78,7 +78,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         m_LastLightVersionsDir[lightIdx] = light->version;
         m_ShadowMapInitializedDir[lightIdx] = true;
 
-        shadowQueueMain.Submit([this, lightIdx]() { m_Shadow.BindFBO_Dir(lightIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
+        m_MainQueue.Submit([this, lightIdx]() { m_Shadow.BindFBO_Dir(lightIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
 
         Frustum lightFrustum;
         if (m_ShadowFrustumCullingEnabled) lightFrustum.Update(m_LightSpaceMatrixDir[lightIdx]);
@@ -86,14 +86,15 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         size_t totalItems = shadowQueue.size();
         uint32_t numThreads = JobSystem::Instance().GetThreadCount();
         size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
-        std::vector<CommandQueue> threadQueues(numThreads);
+        m_ThreadQueues.resize(numThreads);
+        for (auto& tq : m_ThreadQueues) tq.Clear();
 
         for (size_t i = 0; i < numThreads; ++i) {
             size_t startIdx = i * chunkSize;
             if (startIdx >= totalItems) break;
             size_t endIdx = std::min(startIdx + chunkSize, totalItems);
 
-            JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderDir, lightIdx, lightFrustum, camPos, lightingMode]() {
+            JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderDir, lightIdx, lightFrustum, camPos, lightingMode]() {
                 threadQueue.Submit([shaderDir, this, lightIdx]() {
                     shaderDir->use();
                     shaderDir->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
@@ -122,7 +123,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             }, &counter);
         }
         JobSystem::Instance().Wait(&counter);
-        for (auto& tq : threadQueues) shadowQueueMain.Merge(tq);
+        for (auto& tq : m_ThreadQueues) m_MainQueue.Merge(tq);
     }
 
     // Point Lights
@@ -154,18 +155,19 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0,0,-1), glm::vec3(0,-1,0))
             };
 
-            shadowQueueMain.Submit([this, pIdx]() { m_Shadow.BindFBO_Point(pIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
+            m_MainQueue.Submit([this, pIdx]() { m_Shadow.BindFBO_Point(pIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
 
             size_t totalItems = shadowQueue.size();
             uint32_t numThreads = JobSystem::Instance().GetThreadCount();
             size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
-            std::vector<CommandQueue> threadQueues(numThreads);
+            m_ThreadQueues.resize(numThreads);
+            for (auto& tq : m_ThreadQueues) tq.Clear();
 
             for (size_t i = 0; i < numThreads; ++i) {
                 size_t startIdx = i * chunkSize;
                 if (startIdx >= totalItems) break;
                 size_t endIdx = std::min(startIdx + chunkSize, totalItems);
-                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderPoint, shadowTransforms, farP, lightPos, camPos, lightingMode]() {
+                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderPoint, shadowTransforms, farP, lightPos, camPos, lightingMode]() {
                     threadQueue.Submit([shaderPoint, shadowTransforms, farP, lightPos]() {
                         shaderPoint->use();
                         for (int k = 0; k < 6; ++k) shaderPoint->setMat4("u_ShadowMatrices[" + std::to_string(k) + "]", shadowTransforms[k]);
@@ -193,7 +195,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 }, &counter);
             }
             JobSystem::Instance().Wait(&counter);
-            for (auto& tq : threadQueues) shadowQueueMain.Merge(tq);
+            for (auto& tq : m_ThreadQueues) m_MainQueue.Merge(tq);
         }
     }
 
@@ -214,7 +216,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             m_LastLightVersionsSpot[sIdx] = light->version;
             m_ShadowMapInitializedSpot[sIdx] = true;
 
-            shadowQueueMain.Submit([this, sIdx]() { m_Shadow.BindFBO_Spot(sIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
+            m_MainQueue.Submit([this, sIdx]() { m_Shadow.BindFBO_Spot(sIdx); m_Shadow.GetDrawContext().Clear(BufferBit::Depth); });
 
             Frustum lightFrustum;
             if (m_ShadowFrustumCullingEnabled) lightFrustum.Update(m_LightSpaceMatrixSpot[sIdx]);
@@ -222,13 +224,14 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             size_t totalItems = shadowQueue.size();
             uint32_t numThreads = JobSystem::Instance().GetThreadCount();
             size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
-            std::vector<CommandQueue> threadQueues(numThreads);
+            m_ThreadQueues.resize(numThreads);
+            for (auto& tq : m_ThreadQueues) tq.Clear();
 
             for (size_t i = 0; i < numThreads; ++i) {
                 size_t startIdx = i * chunkSize;
                 if (startIdx >= totalItems) break;
                 size_t endIdx = std::min(startIdx + chunkSize, totalItems);
-                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = threadQueues[i], shaderSpot, sIdx, lightFrustum, camPos, lightingMode]() {
+                JobSystem::Instance().Execute([this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderSpot, sIdx, lightFrustum, camPos, lightingMode]() {
                     threadQueue.Submit([shaderSpot, this, sIdx]() {
                         shaderSpot->use();
                         shaderSpot->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
@@ -255,10 +258,10 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 }, &counter);
             }
             JobSystem::Instance().Wait(&counter);
-            for (auto& tq : threadQueues) shadowQueueMain.Merge(tq);
+            for (auto& tq : m_ThreadQueues) m_MainQueue.Merge(tq);
         }
     }
 
-    shadowQueueMain.Submit([this]() { m_Shadow.UnbindFBO(); });
-    shadowQueueMain.Execute();
+    m_MainQueue.Submit([this]() { m_Shadow.UnbindFBO(); });
+    m_MainQueue.Execute();
 }

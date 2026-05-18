@@ -269,7 +269,7 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
     if (!gc_ptr) return;
     auto& bm = gc_ptr->GetBufferManager();
 
-    std::vector<Vertex> vertices;
+    std::vector<StaticVertex> vertices;
     int size = terrain.chunkSize;
     float stepX = terrain.terrainSize.x / (float)(terrain.resolution - 1);
     float stepZ = terrain.terrainSize.z / (float)(terrain.resolution - 1);
@@ -279,13 +279,7 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
 
     for (int z = 0; z < size; ++z) {
         for (int x = 0; x < size; ++x) {
-            Vertex v;
-            for (int i = 0; i < MAX_BONE_INFLUENCE; ++i) {
-                v.m_BoneIDs[i] = 0;
-                v.m_Weights[i] = 0.0f;
-            }
-            v.Tangent = glm::vec3(1, 0, 0);
-            v.Bitangent = glm::vec3(0, 0, 1);
+            StaticVertex v;
             float worldX = (xOffset + x) * stepX;
             float worldZ = (zOffset + z) * stepZ;
             
@@ -303,14 +297,14 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
 
     bm.BindVertexArray(chunk.VAO);
     bm.BindBuffer(BufferType::ArrayBuffer, chunk.VBO);
-    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(Vertex), vertices.data(), BufferUsage::StaticDraw);
+    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(StaticVertex), vertices.data(), BufferUsage::StaticDraw);
 
     bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Position));
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, Position));
     bm.EnableVertexAttribArray(1);
-    bm.VertexAttribPointer(1, 3, DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+    bm.VertexAttribPointer(1, 3, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, Normal));
     bm.EnableVertexAttribArray(2);
-    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, TexCoords));
 }
 
 void TerrainSystem::GenerateLODIndices(TerrainData& data, int chunkSize) {

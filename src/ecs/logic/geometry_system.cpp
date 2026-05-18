@@ -138,15 +138,6 @@ void GeometrySystem::Render(Scene& scene)
         }
     }
 
-    const auto& fwdOpaqueQueue = rs->GetRenderQueueObj().GetForwardOpaqueQueue();
-    if (!fwdOpaqueQueue.empty())
-    {
-        shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
-        RenderCore* core = sl.Resolve<RenderCore>();
-        if (core) {
-            rs->ExecuteQueue(fwdOpaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr); 
-        }
-    }
     UnbindGBuffer();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, rs->GetMainFBO());
 }

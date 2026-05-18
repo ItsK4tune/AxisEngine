@@ -6,8 +6,11 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
-#include <map>
-#include <string>
+#include <cstring>
+
+// Fixed-slot uniform storage — eliminates per-draw heap allocation
+// Slots are pre-assigned by convention. Add new slots at the end.
+static constexpr int MAX_DRAW_CMD_UNIFORMS = 8;
 
 struct RenderDrawCommand {
     int layer = 0;           // For UI/Transparent sorting (lower is first)
@@ -23,9 +26,36 @@ struct RenderDrawCommand {
     uint32_t texture0 = 0;
     glm::vec4 tintColor = glm::vec4(1.0f);
     
-    std::map<std::string, uint32_t> uintUniforms;
-    std::map<std::string, float> floatUniforms;
-    
+    // Fixed-slot uniforms — zero allocation, O(1) access
+    struct UniformSlot {
+        int location = -1;    // pre-resolved via Shader::GetUniformLocation
+        union {
+            uint32_t uintVal;
+            float floatVal;
+        };
+        enum Type : uint8_t { UNUSED = 0, UINT, FLOAT } type = UNUSED;
+    };
+    UniformSlot uniforms[MAX_DRAW_CMD_UNIFORMS];
+    int uniformCount = 0;
+
+    void SetUniformUInt(int location, uint32_t value) {
+        if (uniformCount < MAX_DRAW_CMD_UNIFORMS && location != -1) {
+            auto& slot = uniforms[uniformCount++];
+            slot.location = location;
+            slot.uintVal = value;
+            slot.type = UniformSlot::UINT;
+        }
+    }
+
+    void SetUniformFloat(int location, float value) {
+        if (uniformCount < MAX_DRAW_CMD_UNIFORMS && location != -1) {
+            auto& slot = uniforms[uniformCount++];
+            slot.location = location;
+            slot.floatVal = value;
+            slot.type = UniformSlot::FLOAT;
+        }
+    }
+
     // Commands can be sorted: Layer -> Shader -> VAO
     bool operator<(const RenderDrawCommand& other) const {
         if (layer != other.layer) return layer < other.layer;

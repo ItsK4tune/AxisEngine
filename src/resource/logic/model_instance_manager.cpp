@@ -116,7 +116,7 @@ bool ModelInstanceManager::UnloadModel(const std::string& name)
     auto it = m_ModelPools.find(name);
     if (it != m_ModelPools.end())
     {
-        if (it->second.model.use_count() == 1 && it->second.instances.empty())
+        if (it->second.instances.empty())
         {
             m_ModelPools.erase(it);
             LOGGER_INFO("ModelInstanceManager") << "Unloaded model: " << name;
@@ -124,7 +124,7 @@ bool ModelInstanceManager::UnloadModel(const std::string& name)
         }
         else
         {
-            LOGGER_WARN("ModelInstanceManager") << "Cannot unload model '" << name << "': still in use (UseCount: " << it->second.model.use_count() << ", Instances: " << it->second.instances.size() << ")";
+            LOGGER_WARN("ModelInstanceManager") << "Cannot unload model '" << name << "': still in use (Instances: " << it->second.instances.size() << ")";
             return false;
         }
     }

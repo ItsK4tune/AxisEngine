@@ -48,10 +48,10 @@ private:
 
     void MergeMeshes(const std::vector<std::shared_ptr<Model>>& models,
                      const std::vector<glm::mat4>& transforms,
-                     std::vector<Vertex>& outVertices,
+                     std::vector<StaticVertex>& outVertices,
                      std::vector<unsigned int>& outIndices);
 
-    void CreateGPUBuffers(BatchData& batch, const std::vector<Vertex>& vertices,
+    void CreateGPUBuffers(BatchData& batch, const std::vector<StaticVertex>& vertices,
                          const std::vector<unsigned int>& indices);
 
     static IBufferManager* s_BufferManager;

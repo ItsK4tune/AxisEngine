@@ -20,7 +20,7 @@
 namespace
 {
 
-    void SetVertexBoneDataToDefault(Vertex &Vertex)
+    void SetVertexBoneDataToDefault(SkinnedVertex &Vertex)
     {
         for (int i = 0; i < MAX_BONE_INFLUENCE; i++)
         {
@@ -29,7 +29,7 @@ namespace
         }
     }
 
-    void SetVertexBoneData(Vertex &Vertex, int boneID, float weight)
+    void SetVertexBoneData(SkinnedVertex &Vertex, int boneID, float weight)
     {
         for (int i = 0; i < MAX_BONE_INFLUENCE; ++i)
         {
@@ -201,7 +201,7 @@ namespace
         return textures;
     }
 
-    void ExtractBoneWeightForVertices(std::vector<Vertex> &vertices, aiMesh *mesh,
+    void ExtractBoneWeightForVertices(std::vector<SkinnedVertex> &vertices, aiMesh *mesh,
                                       std::unordered_map<std::string, BoneInfo> &boneInfoMap,
                                       int &boneCount)
     {
@@ -252,35 +252,40 @@ namespace
                      std::vector<Texture> &textures_loaded, const std::string &directory,
                      std::unordered_map<std::string, BoneInfo> &boneInfoMap, int &boneCount, bool deferred)
     {
-        std::vector<Vertex> vertices;
+        bool hasBones = mesh->HasBones();
+        std::vector<uint8_t> vertexData;
+        size_t vertexStride = hasBones ? sizeof(SkinnedVertex) : sizeof(StaticVertex);
+        vertexData.resize(mesh->mNumVertices * vertexStride);
+
         std::vector<unsigned int> indices;
         std::vector<Texture> textures;
 
-        vertices.reserve(mesh->mNumVertices);
         indices.reserve(mesh->mNumFaces * 3);
 
-        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-        {
-            Vertex Vertex;
-            SetVertexBoneDataToDefault(Vertex);
-            Vertex.Position = AssimpGLMHelpers::GetGLMVec(mesh->mVertices[i]);
-            Vertex.Normal = AssimpGLMHelpers::GetGLMVec(mesh->mNormals[i]);
-            if (mesh->HasNormals())
-                Vertex.Normal = AssimpGLMHelpers::GetGLMVec(mesh->mNormals[i]);
-            if (mesh->mTextureCoords[0])
+        if (hasBones) {
+            SkinnedVertex* skinnedData = reinterpret_cast<SkinnedVertex*>(vertexData.data());
+            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
             {
-                glm::vec2 vec;
-                vec.x = mesh->mTextureCoords[0][i].x;
-                vec.y = mesh->mTextureCoords[0][i].y;
-                Vertex.TexCoords = vec;
-                Vertex.Tangent = AssimpGLMHelpers::GetGLMVec(mesh->mTangents[i]);
-                Vertex.Bitangent = AssimpGLMHelpers::GetGLMVec(mesh->mBitangents[i]);
+                SkinnedVertex& v = skinnedData[i];
+                SetVertexBoneDataToDefault(v);
+                v.Position = AssimpGLMHelpers::GetGLMVec(mesh->mVertices[i]);
+                v.Normal = mesh->HasNormals() ? AssimpGLMHelpers::GetGLMVec(mesh->mNormals[i]) : glm::vec3(0);
+                v.TexCoords = mesh->mTextureCoords[0] ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y) : glm::vec2(0);
             }
-            else
+            // Temporarily wrap for bone extraction
+            std::vector<SkinnedVertex> wrap(skinnedData, skinnedData + mesh->mNumVertices);
+            ExtractBoneWeightForVertices(wrap, mesh, boneInfoMap, boneCount);
+            // Copy back
+            std::copy(wrap.begin(), wrap.end(), skinnedData);
+        } else {
+            StaticVertex* staticData = reinterpret_cast<StaticVertex*>(vertexData.data());
+            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
             {
-                Vertex.TexCoords = glm::vec2(0.0f, 0.0f);
+                StaticVertex& v = staticData[i];
+                v.Position = AssimpGLMHelpers::GetGLMVec(mesh->mVertices[i]);
+                v.Normal = mesh->HasNormals() ? AssimpGLMHelpers::GetGLMVec(mesh->mNormals[i]) : glm::vec3(0);
+                v.TexCoords = mesh->mTextureCoords[0] ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y) : glm::vec2(0);
             }
-            vertices.push_back(Vertex);
         }
 
         for (unsigned int i = 0; i < mesh->mNumFaces; i++)
@@ -401,8 +406,7 @@ namespace
             textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
         }
 
-        ExtractBoneWeightForVertices(vertices, mesh, boneInfoMap, boneCount);
-        return Mesh(vertices, indices, textures, !deferred);
+        return Mesh(std::move(vertexData), mesh->mNumVertices, vertexStride, hasBones, std::move(indices), std::move(textures), !deferred);
     }
 
     void processNode(aiNode *node, const aiScene *scene,
@@ -501,7 +505,6 @@ void Model::loadModel(std::string const &path, bool isStatic)
 
     unsigned int flags = aiProcess_Triangulate |
                          aiProcess_GenSmoothNormals |
-                         aiProcess_CalcTangentSpace |
                          aiProcess_FlipUVs;
 
     if (m_IsStatic)

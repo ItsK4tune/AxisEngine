@@ -7,6 +7,7 @@
 #include <core/logic/event_manager.h>
 #include <core/type/event_types.h>
 #include <core/logic/job_system.h>
+#include <core/logic/filesystem.h>
 
 ModelManager::ModelManager(ModelInstanceManager& instanceManager) 
     : m_InstanceManager(instanceManager) {}
@@ -23,10 +24,33 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         return existing;
     }
 
+    std::string fullPath = FileSystem::getPath(path);
+
+    {
+        std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+        auto it = m_PathToModelMap.find(fullPath);
+        if (it != m_PathToModelMap.end()) {
+            auto model = it->second;
+            m_Cache.Add(name, model);
+            m_NameToPathMap[name] = fullPath;
+            m_PathReferenceCounts[fullPath]++;
+            m_InstanceManager.RegisterModel(name, model);
+            LOGGER_INFO("ModelManager") << "Deduplicated model load for path: " << path << " under name: " << name;
+            return model;
+        }
+    }
+
     if (async) {
         auto model = std::make_shared<Model>();
         model->SetName(name);
         m_Cache.Add(name, model);
+
+        {
+            std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+            m_PathToModelMap[fullPath] = model;
+            m_PathReferenceCounts[fullPath] = 1;
+            m_NameToPathMap[name] = fullPath;
+        }
 
         auto future = JobSystem::Instance().ExecuteAsync([this, model, path, isStatic, name]() {
             try {
@@ -50,6 +74,14 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
             }
             m_Cache.Add(name, model);
             m_InstanceManager.RegisterModel(name, model);
+
+            {
+                std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+                m_PathToModelMap[fullPath] = model;
+                m_PathReferenceCounts[fullPath] = 1;
+                m_NameToPathMap[name] = fullPath;
+            }
+
             LOGGER_INFO("ModelManager") << "Loaded model: " << name;
             return model;
         } catch (...) {
@@ -68,8 +100,24 @@ std::shared_ptr<Model> ModelManager::Get(const std::string& name) {
 }
 
 void ModelManager::Unload(const std::string& name) {
+    std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+    auto pathIt = m_NameToPathMap.find(name);
+    if (pathIt != m_NameToPathMap.end()) {
+        std::string fullPath = pathIt->second;
+        m_PathReferenceCounts[fullPath]--;
+        if (m_PathReferenceCounts[fullPath] <= 0) {
+            m_PathToModelMap.erase(fullPath);
+            m_PathReferenceCounts.erase(fullPath);
+            m_InstanceManager.UnloadModel(name);
+            LOGGER_INFO("ModelManager") << "Fully unloaded physical model: " << fullPath;
+        } else {
+            m_InstanceManager.UnloadModel(name);
+        }
+        m_NameToPathMap.erase(pathIt);
+    } else {
+        m_InstanceManager.UnloadModel(name);
+    }
     m_Cache.Remove(name);
-    m_InstanceManager.UnloadModel(name);
 }
 
 void ModelManager::Update(float dt) {
@@ -93,7 +141,19 @@ void ModelManager::Update(float dt) {
 }
 
 void ModelManager::Clear() {
+    auto names = m_Cache.GetAllNames();
+    for (const auto& name : names) {
+        Unload(name);
+    }
     m_Cache.Clear();
+
+    {
+        std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+        m_PathToModelMap.clear();
+        m_PathReferenceCounts.clear();
+        m_NameToPathMap.clear();
+    }
+
     std::lock_guard<std::mutex> lock(m_PendingMutex);
     m_PendingModels.clear();
 }

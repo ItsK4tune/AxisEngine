@@ -30,17 +30,28 @@ void InputManager::FlushBindings()
 
 void InputManager::Update()
 {
-
-
-
-    for (const auto &[actionName, binding] : m_ActionMap)
+    float xOffset = m_Mouse.GetXOffset();
+    float yOffset = m_Mouse.GetYOffset();
+    if ((xOffset != 0.0f || yOffset != 0.0f) && EventManager::Instance().HasListeners<MouseMovedEvent>())
     {
-        if (GetActionDown(actionName))
-            EventManager::Instance().Publish(InputActionPressedEvent{actionName});
-        else if (GetActionUp(actionName))
-            EventManager::Instance().Publish(InputActionReleasedEvent{actionName});
-        else if (GetAction(actionName))
-            EventManager::Instance().Publish(InputActionHeldEvent{actionName});
+        EventManager::Instance().Publish(MouseMovedEvent{ static_cast<double>(m_Mouse.GetLastX()), static_cast<double>(m_Mouse.GetLastY()) });
+    }
+
+    bool hasPressedListeners = EventManager::Instance().HasListeners<InputActionPressedEvent>();
+    bool hasReleasedListeners = EventManager::Instance().HasListeners<InputActionReleasedEvent>();
+    bool hasHeldListeners = EventManager::Instance().HasListeners<InputActionHeldEvent>();
+
+    if (hasPressedListeners || hasReleasedListeners || hasHeldListeners)
+    {
+        for (const auto &[actionName, binding] : m_ActionMap)
+        {
+            if (hasPressedListeners && GetActionDown(actionName))
+                EventManager::Instance().Publish(InputActionPressedEvent{actionName});
+            else if (hasReleasedListeners && GetActionUp(actionName))
+                EventManager::Instance().Publish(InputActionReleasedEvent{actionName});
+            else if (hasHeldListeners && GetAction(actionName))
+                EventManager::Instance().Publish(InputActionHeldEvent{actionName});
+        }
     }
 
     for (const auto &[actionName, binding] : m_ActionMap)

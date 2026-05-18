@@ -66,6 +66,9 @@ private:
 
     std::mutex m_QueueMutex;
     std::condition_variable m_Condition;
+    
+    // Separate mutex for wait/counter notifications to avoid blocking workers
+    std::mutex m_WaitMutex;
     std::condition_variable m_WaitCondition;
     std::condition_variable m_CounterCondition;
 

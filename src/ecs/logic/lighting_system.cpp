@@ -180,52 +180,55 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         }
     }
 
-    // 1. Separate Global and Local probes
+    // 1. Collect probes into fixed-size buffer (max 4 GPU slots)
+    static constexpr int MAX_PROBES = 32; // reasonable upper bound for scene probes
     struct ProbeEntry {
         entt::entity entity;
         float distSq;
         glm::vec3 pos;
         float volume;
     };
-    std::vector<ProbeEntry> allProbes;
+    ProbeEntry allProbes[MAX_PROBES];
+    int numProbes = 0;
     auto reflectionView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
     glm::vec3 camPos = rs->GetCameraPosition();
 
     ProbeEntry globalProbe = { entt::null, 0.0f, glm::vec3(0.0f), -1.0f };
 
     for (auto entity : reflectionView) {
+        if (numProbes >= MAX_PROBES) break;
         auto& pos = reflectionView.get<PositionComponent>(entity).value;
         auto& pr = reflectionView.get<ReflectionProbeComponent>(entity);
-        pr.lastGpuIndex = -1; // Reset before selection
+        pr.lastGpuIndex = -1;
         float vol = (pr.boxMax.x - pr.boxMin.x) * (pr.boxMax.y - pr.boxMin.y) * (pr.boxMax.z - pr.boxMin.z);
         
-        allProbes.push_back({entity, glm::distance2(pos, camPos), pos, vol});
+        allProbes[numProbes] = {entity, glm::distance2(pos, camPos), pos, vol};
         
         if (vol > globalProbe.volume) {
-            globalProbe = allProbes.back();
+            globalProbe = allProbes[numProbes];
         }
+        numProbes++;
     }
 
-    // 2. Filter out global from locals and sort locals by distance
-    std::vector<ProbeEntry> localProbes;
-    for (auto& p : allProbes) {
-        if (p.entity != globalProbe.entity) {
-            localProbes.push_back(p);
-        }
+    // 2. Build final list: [0] is Global, [1-3] are closest locals
+    ProbeEntry finalProbes[4];
+    int probeCount = 0;
+    if (globalProbe.entity != entt::null) {
+        finalProbes[probeCount++] = globalProbe;
     }
-
-    std::sort(localProbes.begin(), localProbes.end(), [](const ProbeEntry& a, const ProbeEntry& b) {
+    // Simple insertion of 3 nearest non-global probes (avoid sort for tiny N)
+    // Sort all probes by distance (closest first)
+    std::sort(allProbes, allProbes + numProbes, [](const ProbeEntry& a, const ProbeEntry& b) {
         return a.distSq < b.distSq;
     });
 
-    // 3. Assemble final list: [0] is Global, [1-3] are Locals
-    std::vector<ProbeEntry> finalProbes;
-    if (globalProbe.entity != entt::null) finalProbes.push_back(globalProbe);
-    for (int i = 0; i < localProbes.size() && finalProbes.size() < 4; ++i) {
-        finalProbes.push_back(localProbes[i]);
+    // Add up to 3 closest non-global probes
+    for (int i = 0; i < numProbes && probeCount < 4; ++i) {
+        if (allProbes[i].entity != globalProbe.entity) {
+            finalProbes[probeCount++] = allProbes[i];
+        }
     }
 
-    int probeCount = (int)finalProbes.size();
     m_DeferredLightShader->setInt("u_ProbeCount", probeCount);
 
     for (int i = 0; i < probeCount; ++i) {
@@ -322,6 +325,17 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
 
     rsm.SetDepthMask(true);
     rsm.Enable(ServerCapability::DepthTest);
+
+    // Render Forward Opaque objects directly to Main FBO using blitted depth buffer
+    if (rs) {
+        const auto& fwdOpaqueQueue = rs->GetRenderQueueObj().GetForwardOpaqueQueue();
+        if (!fwdOpaqueQueue.empty()) {
+            auto* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
+            if (core) {
+                rs->ExecuteQueue(fwdOpaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
+            }
+        }
+    }
 }
 
 

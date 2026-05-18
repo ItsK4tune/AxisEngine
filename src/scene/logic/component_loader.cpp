@@ -79,7 +79,6 @@ void ComponentLoader::InitializeDefaultLoaders()
     RegisterLoader("ReflectionProbe", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadReflectionProbe(s, e, n, r); });
     RegisterLoader("PostProcess", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadPostProcess(s, e, n, r); });
     RegisterLoader("VideoPlayer", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadVideoPlayer(s, e, n); });
-    RegisterLoader("Animator", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAnimator(s, e, n, r); });
     RegisterLoader("Animation", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadAnimator(s, e, n, r); });
     RegisterLoader("ParticleEmitter", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadParticleEmitter(s, e, n, r); });
     RegisterLoader("Material", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) { LoadMaterial(s, e, n, r); });

@@ -14,6 +14,14 @@ struct AxisMaterialComponent;
 
 class RenderQueue {
 public:
+    RenderQueue() {
+        m_DeferredOpaqueQueue.reserve(2000);
+        m_ForwardOpaqueQueue.reserve(500);
+        m_TransparentQueue.reserve(500);
+        m_ShadowQueue.reserve(3000);
+        m_Lights.reserve(256);
+    }
+
     void Clear() { m_DeferredOpaqueQueue.clear(); m_ForwardOpaqueQueue.clear(); m_TransparentQueue.clear(); m_ShadowQueue.clear(); m_Lights.clear(); }
     void AddDeferredOpaque(const RenderItem& item) { m_DeferredOpaqueQueue.push_back(item); }
     void AddForwardOpaque(const RenderItem& item) { m_ForwardOpaqueQueue.push_back(item); }

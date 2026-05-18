@@ -126,8 +126,10 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
 
         for (const auto& mesh : renderer.model->meshes) {
             uint32_t baseIndex = (uint32_t)result.vertices.size();
-            for (const auto& v : mesh.vertices) {
-                glm::vec4 worldPos = transform.worldMatrix * glm::vec4(v.Position, 1.0f);
+            for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; ++vIdx) {
+                const float* posPtr = reinterpret_cast<const float*>(mesh.m_VertexData.data() + vIdx * mesh.m_VertexStride);
+                glm::vec3 pos(posPtr[0], posPtr[1], posPtr[2]);
+                glm::vec4 worldPos = transform.worldMatrix * glm::vec4(pos, 1.0f);
                 result.vertices.push_back(glm::vec3(worldPos));
             }
             for (unsigned int idx : mesh.indices) {

@@ -38,13 +38,35 @@ void GBuffer::Shutdown()
 void GBuffer::Resize(int width, int height)
 {
     if (m_Width == width && m_Height == height) {
-
-
-
+        return;
     }
     m_Width = width;
     m_Height = height;
-    CreateTextures();
+
+    // If textures haven't been created yet, do a full creation
+    if (!m_PositionTexture) {
+        CreateTextures();
+        return;
+    }
+
+    // Reuse existing GPU handles — just re-upload dimensions
+    if (!m_Context) return;
+    auto& tm = m_Context->GetTextureManager();
+    int sw = (int)(m_Width * m_RenderScale);
+    int sh = (int)(m_Height * m_RenderScale);
+
+    auto resizeTex2D = [&](GPUTexture& tex, InternalFormat fmt, TextureFormat tfmt, DataType dtype) {
+        tm.BindTexture(TextureType::Texture2D, tex.Get());
+        tm.TexImage2D(TextureType::Texture2D, 0, fmt, sw, sh, 0, tfmt, dtype, nullptr);
+    };
+
+    resizeTex2D(*m_PositionTexture, InternalFormat::RGBA16F, TextureFormat::RGBA, DataType::Float);
+    resizeTex2D(*m_NormalTexture, InternalFormat::RGBA16F, TextureFormat::RGBA, DataType::Float);
+    resizeTex2D(*m_AlbedoSpecTexture, InternalFormat::RGBA8, TextureFormat::RGBA, DataType::UnsignedByte);
+    resizeTex2D(*m_IDTexture, InternalFormat::R32UI, TextureFormat::Red_Integer, DataType::UnsignedInt);
+    resizeTex2D(*m_EmissiveTexture, InternalFormat::RGBA16F, TextureFormat::RGBA, DataType::Float);
+    resizeTex2D(*m_PBRParamsTexture, InternalFormat::RGBA16F, TextureFormat::RGBA, DataType::Float);
+    resizeTex2D(*m_DepthTexture, InternalFormat::DepthComponent24, TextureFormat::DepthComponent, DataType::Float);
 }
 
 void GBuffer::BindForWriting()

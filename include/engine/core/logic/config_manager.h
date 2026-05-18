@@ -4,7 +4,7 @@
 #include <core/type/event_types.h>
 #include <core/logic/event_manager.h>
 #include <mutex>
-
+#include <shared_mutex>
 
 class ConfigManager
 {
@@ -14,7 +14,7 @@ public:
 
     
     void Initialize(const AppConfig& config) {
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Config = config;
         m_IsHeadless = config.headlessMode;
     }
@@ -22,7 +22,7 @@ public:
     
     void UpdateConfig(const AppConfig& config, uint32_t type = ConfigChangedEvent::All) {
         {
-            std::lock_guard<std::mutex> lock(m_Mutex);
+            std::unique_lock<std::shared_mutex> lock(m_Mutex);
             m_Config = config;
             m_Config.headlessMode = m_IsHeadless; // preserve headless flag
         }
@@ -38,7 +38,7 @@ public:
     
     void SetResolution(int width, int height) {
         {
-            std::lock_guard<std::mutex> lock(m_Mutex);
+            std::unique_lock<std::shared_mutex> lock(m_Mutex);
             if (m_Config.width == width && m_Config.height == height) return;
             m_Config.width = width;
             m_Config.height = height;
@@ -48,13 +48,13 @@ public:
 
     
     const AppConfig& GetConfig() const {
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::shared_lock<std::shared_mutex> lock(m_Mutex);
         return m_Config;
     }
 
 private:
     AppConfig m_Config;
-    mutable std::mutex m_Mutex;
+    mutable std::shared_mutex m_Mutex;
     bool m_IsHeadless = false;
 public:
     bool IsHeadless() const { return m_IsHeadless; }

@@ -19,33 +19,33 @@ void Mesh::SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* 
     s_DrawContext = draw;
 }
 
-Mesh::Mesh(std::vector<Vertex> vertices,
-           std::vector<unsigned int> indices,
-           std::vector<Texture> textures,
-           bool setupGPU)
+Mesh::Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStride, bool isSkinned, 
+           std::vector<unsigned int> indices, std::vector<Texture> textures, bool setupGPU)
+    : m_VertexData(std::move(vertexData)), m_VertexCount(vertexCount), m_VertexStride(vertexStride), m_IsSkinned(isSkinned),
+      indices(std::move(indices)), textures(std::move(textures)), VAO(0), VBO(0), EBO(0), instanceVBO(0)
 {
-    this->vertices = vertices;
-    this->indices = indices;
-    this->textures = textures;
-
     if (setupGPU)
     {
         setupMesh();
     }
 
-    if (!vertices.empty())
+    if (m_VertexCount > 0)
     {
-        aabb.minBound = vertices[0].Position;
-        aabb.maxBound = vertices[0].Position;
-        for (const auto &v : vertices)
+        // Read the first position to initialize AABB
+        const float* firstPos = reinterpret_cast<const float*>(m_VertexData.data());
+        aabb.minBound = glm::vec3(firstPos[0], firstPos[1], firstPos[2]);
+        aabb.maxBound = aabb.minBound;
+        
+        for (size_t i = 0; i < m_VertexCount; ++i)
         {
-            aabb.minBound.x = (std::min)(aabb.minBound.x, v.Position.x);
-            aabb.minBound.y = (std::min)(aabb.minBound.y, v.Position.y);
-            aabb.minBound.z = (std::min)(aabb.minBound.z, v.Position.z);
+            const float* pos = reinterpret_cast<const float*>(m_VertexData.data() + i * m_VertexStride);
+            aabb.minBound.x = (std::min)(aabb.minBound.x, pos[0]);
+            aabb.minBound.y = (std::min)(aabb.minBound.y, pos[1]);
+            aabb.minBound.z = (std::min)(aabb.minBound.z, pos[2]);
 
-            aabb.maxBound.x = (std::max)(aabb.maxBound.x, v.Position.x);
-            aabb.maxBound.y = (std::max)(aabb.maxBound.y, v.Position.y);
-            aabb.maxBound.z = (std::max)(aabb.maxBound.z, v.Position.z);
+            aabb.maxBound.x = (std::max)(aabb.maxBound.x, pos[0]);
+            aabb.maxBound.y = (std::max)(aabb.maxBound.y, pos[1]);
+            aabb.maxBound.z = (std::max)(aabb.maxBound.z, pos[2]);
         }
     }
 }
@@ -82,21 +82,24 @@ void Mesh::Draw(Shader &shader, bool bindTextures)
         {
             tm.ActiveTexture(static_cast<TextureUnit>(i));
 
-            std::string number;
-            std::string name = textures[i].type;
+            // Build uniform name — these strings are small and SSO-eligible
+            const char* prefix = "";
+            int num = 0;
+            const auto& type = textures[i].type;
 
-            if (name == "texture_diffuse")
-                number = std::to_string(diffuseNr++);
-            else if (name == "texture_specular")
-                number = std::to_string(specularNr++);
-            else if (name == "texture_normal")
-                number = std::to_string(normalNr++);
-            else if (name == "texture_height")
-                number = std::to_string(heightNr++);
+            if (type == "texture_diffuse") { prefix = "texture_diffuse"; num = diffuseNr++; }
+            else if (type == "texture_specular") { prefix = "texture_specular"; num = specularNr++; }
+            else if (type == "texture_normal") { prefix = "texture_normal"; num = normalNr++; }
+            else if (type == "texture_height") { prefix = "texture_height"; num = heightNr++; }
 
-            std::string fullName = name + number;
-            shader.setInt(fullName.c_str(), i);
-            shader.setInt(("material." + fullName).c_str(), i);
+            // Use Shader's internal location cache — only does GL lookup once per name
+            char fullName[64];
+            snprintf(fullName, sizeof(fullName), "%s%d", prefix, num);
+            shader.setInt(fullName, i);
+
+            char materialName[80];
+            snprintf(materialName, sizeof(materialName), "material.%s%d", prefix, num);
+            shader.setInt(materialName, i);
             
             tm.BindTexture(TextureType::Texture2D, textures[i].id);
         }
@@ -104,15 +107,10 @@ void Mesh::Draw(Shader &shader, bool bindTextures)
 
     shader.setBool("isInstanced", false);
 
-    static int meshDrawCount = 0;
-    meshDrawCount++;
-    bool logThisMesh = (meshDrawCount <= 10);
+
 
     bm.BindVertexArray(VAO);
     dm.DrawElements(Primitive::Triangles, static_cast<int>(indices.size()), DataType::UnsignedInt, 0);
-    bm.BindVertexArray(0);
-
-    tm.ActiveTexture(TextureUnit::Texture0);
 }
 
 void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, bool bindTextures)
@@ -132,21 +130,22 @@ void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, b
         {
             tm.ActiveTexture(static_cast<TextureUnit>(i));
 
-            std::string number;
-            std::string name = textures[i].type;
+            const char* prefix = "";
+            int num = 0;
+            const auto& type = textures[i].type;
 
-            if (name == "texture_diffuse")
-                number = std::to_string(diffuseNr++);
-            else if (name == "texture_specular")
-                number = std::to_string(specularNr++);
-            else if (name == "texture_normal")
-                number = std::to_string(normalNr++);
-            else if (name == "texture_height")
-                number = std::to_string(heightNr++);
+            if (type == "texture_diffuse") { prefix = "texture_diffuse"; num = diffuseNr++; }
+            else if (type == "texture_specular") { prefix = "texture_specular"; num = specularNr++; }
+            else if (type == "texture_normal") { prefix = "texture_normal"; num = normalNr++; }
+            else if (type == "texture_height") { prefix = "texture_height"; num = heightNr++; }
 
-            std::string fullName = name + number;
-            shader.setInt(fullName.c_str(), i);
-            shader.setInt(("material." + fullName).c_str(), i);
+            char fullName[64];
+            snprintf(fullName, sizeof(fullName), "%s%d", prefix, num);
+            shader.setInt(fullName, i);
+
+            char materialName[80];
+            snprintf(materialName, sizeof(materialName), "material.%s%d", prefix, num);
+            shader.setInt(materialName, i);
             
             tm.BindTexture(TextureType::Texture2D, textures[i].id);
         }
@@ -155,15 +154,23 @@ void Mesh::DrawInstanced(Shader &shader, const std::vector<glm::mat4> &models, b
     shader.setBool("isInstanced", true);
 
     bm.BindBuffer(BufferType::ArrayBuffer, instanceVBO);
-    bm.BufferData(BufferType::ArrayBuffer, models.size() * sizeof(glm::mat4), models.data(), BufferUsage::DynamicDraw);
+    size_t requiredSize = models.size() * sizeof(glm::mat4);
+    if (requiredSize > m_InstanceBufferCapacity)
+    {
+        m_InstanceBufferCapacity = requiredSize;
+        bm.BufferData(BufferType::ArrayBuffer, m_InstanceBufferCapacity, models.data(), BufferUsage::DynamicDraw);
+    }
+    else
+    {
+        bm.BufferData(BufferType::ArrayBuffer, m_InstanceBufferCapacity, NULL, BufferUsage::DynamicDraw); // Orphan
+        bm.BufferSubData(BufferType::ArrayBuffer, 0, requiredSize, models.data());
+    }
     bm.BindBuffer(BufferType::ArrayBuffer, 0);
 
     bm.BindVertexArray(VAO);
     dm.DrawElementsInstanced(Primitive::Triangles, static_cast<int>(indices.size()), DataType::UnsignedInt, 0, static_cast<int>(models.size()));
-    bm.BindVertexArray(0);
 
     shader.setBool("isInstanced", false);
-    tm.ActiveTexture(TextureUnit::Texture0);
 }
 
 void Mesh::setupMesh()
@@ -178,36 +185,38 @@ void Mesh::setupMesh()
     bm.BindVertexArray(VAO);
 
     bm.BindBuffer(BufferType::ArrayBuffer, VBO);
-    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(Vertex), vertices.data(), BufferUsage::StaticDraw);
+    bm.BufferData(BufferType::ArrayBuffer, m_VertexData.size(), m_VertexData.data(), BufferUsage::StaticDraw);
 
     bm.BindBuffer(BufferType::ElementArrayBuffer, EBO);
     bm.BufferData(BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), BufferUsage::StaticDraw);
 
+    // Positions (12B)
     bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Position));
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, m_VertexStride, (void *)0);
 
+    // Normals (12B)
     bm.EnableVertexAttribArray(1);
-    bm.VertexAttribPointer(1, 3, DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Normal));
+    bm.VertexAttribPointer(1, 3, DataType::Float, false, m_VertexStride, (void *)12);
 
+    // TexCoords (8B)
     bm.EnableVertexAttribArray(2);
-    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, TexCoords));
+    bm.VertexAttribPointer(2, 2, DataType::Float, false, m_VertexStride, (void *)24);
 
-    bm.EnableVertexAttribArray(3);
-    bm.VertexAttribPointer(3, 3, DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Tangent));
+    if (m_IsSkinned) {
+        // Bones (16B)
+        bm.EnableVertexAttribArray(5);
+        bm.VertexAttribIPointer(5, 4, DataType::Int, m_VertexStride, (void *)32);
 
-    bm.EnableVertexAttribArray(4);
-    bm.VertexAttribPointer(4, 3, DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, Bitangent));
-
-    bm.EnableVertexAttribArray(5);
-    bm.VertexAttribIPointer(5, 4, DataType::Int, sizeof(Vertex), (void *)offsetof(Vertex, m_BoneIDs));
-
-    bm.EnableVertexAttribArray(6);
-    bm.VertexAttribPointer(6, 4, DataType::Float, false, sizeof(Vertex), (void *)offsetof(Vertex, m_Weights));
+        // Weights (16B)
+        bm.EnableVertexAttribArray(6);
+        bm.VertexAttribPointer(6, 4, DataType::Float, false, m_VertexStride, (void *)48);
+    }
 
     instanceVBO = bm.CreateBuffer();
     bm.BindBuffer(BufferType::ArrayBuffer, instanceVBO);
     glm::mat4 identity(1.0f);
     bm.BufferData(BufferType::ArrayBuffer, sizeof(glm::mat4), &identity, BufferUsage::StaticDraw);
+    m_InstanceBufferCapacity = sizeof(glm::mat4);
 
     std::size_t vec4Size = sizeof(glm::vec4);
 

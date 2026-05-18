@@ -215,7 +215,6 @@ bool Application::Initialize(const AppConfig &config)
         
         appWindow->SetCursorPosCallback([ioHandler](double x, double y) {
             if (ioHandler) ioHandler->OnMouseMove(x, y);
-            EventManager::Instance().Publish(MouseMovedEvent{x, y});
         });
         
         appWindow->SetMouseButtonCallback([ioHandler](int button, int action, int mods) {

@@ -11,6 +11,7 @@ void MaterialRenderer::Initialize(IGraphicsContext* context, ResourceManager* re
     m_WhiteTextureID = whiteTextureId;
     m_BlackTextureID = blackTextureId;
     m_FlatNormalTextureID = flatNormalTextureId;
+    ResetTextureState();
 }
 
 MaterialRenderer::SkyboxCache MaterialRenderer::s_SkyboxCache;
@@ -92,18 +93,27 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
         if (locs.u_Emission != -1) shader->setVec3(locs.u_Emission, mat.desc.emission);
 
         if (sceneData.irradianceMap != 0 && locs.u_IrradianceMap != -1) {
-            tm.ActiveTexture(TextureUnit::Texture6);
-            tm.BindTexture(TextureType::TextureCubeMap, sceneData.irradianceMap);
+            if (m_LastBoundTextures[6] != sceneData.irradianceMap) {
+                tm.ActiveTexture(TextureUnit::Texture6);
+                tm.BindTexture(TextureType::TextureCubeMap, sceneData.irradianceMap);
+                m_LastBoundTextures[6] = sceneData.irradianceMap;
+            }
             shader->setInt(locs.u_IrradianceMap, 6);
         }
         if (sceneData.prefilterMap != 0 && locs.u_PrefilterMap != -1) {
-            tm.ActiveTexture(TextureUnit::Texture7);
-            tm.BindTexture(TextureType::TextureCubeMap, sceneData.prefilterMap);
+            if (m_LastBoundTextures[7] != sceneData.prefilterMap) {
+                tm.ActiveTexture(TextureUnit::Texture7);
+                tm.BindTexture(TextureType::TextureCubeMap, sceneData.prefilterMap);
+                m_LastBoundTextures[7] = sceneData.prefilterMap;
+            }
             shader->setInt(locs.u_PrefilterMap, 7);
         }
         if (sceneData.brdfLUT != 0 && locs.u_BrdfLUT != -1) {
-            tm.ActiveTexture(TextureUnit::Texture8);
-            tm.BindTexture(TextureType::Texture2D, sceneData.brdfLUT);
+            if (m_LastBoundTextures[8] != sceneData.brdfLUT) {
+                tm.ActiveTexture(TextureUnit::Texture8);
+                tm.BindTexture(TextureType::Texture2D, sceneData.brdfLUT);
+                m_LastBoundTextures[8] = sceneData.brdfLUT;
+            }
             shader->setInt(locs.u_BrdfLUT, 8);
         }
         
@@ -120,13 +130,20 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
         shader->setCustomPorts(mat.desc.ports);
 
         if (debugNoTexture) {
-            tm.ActiveTexture(TextureUnit::Texture0);
-            tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+            if (m_LastBoundTextures[0] != m_WhiteTextureID) {
+                tm.ActiveTexture(TextureUnit::Texture0);
+                tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+                m_LastBoundTextures[0] = m_WhiteTextureID;
+            }
             if (locs.u_AlbedoMap != -1) shader->setInt(locs.u_AlbedoMap, 0);
         } else {
             auto setTex = [&](int texUnit, unsigned int texID, int loc) {
-                tm.ActiveTexture(static_cast<TextureUnit>(texUnit));
-                tm.BindTexture(TextureType::Texture2D, texID != 0 ? texID : (texUnit == 5 ? m_BlackTextureID : m_WhiteTextureID));
+                unsigned int targetTex = texID != 0 ? texID : (texUnit == 5 ? m_BlackTextureID : m_WhiteTextureID);
+                if (m_LastBoundTextures[texUnit] != targetTex) {
+                    tm.ActiveTexture(static_cast<TextureUnit>(texUnit));
+                    tm.BindTexture(TextureType::Texture2D, targetTex);
+                    m_LastBoundTextures[texUnit] = targetTex;
+                }
                 if (loc != -1) shader->setInt(loc, texUnit);
             };
 
@@ -155,13 +172,20 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
 
         shader->setCustomPorts(ShaderPorts());
         
-        tm.ActiveTexture(TextureUnit::Texture0);
-        tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+        if (m_LastBoundTextures[0] != m_WhiteTextureID) {
+            tm.ActiveTexture(TextureUnit::Texture0);
+            tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+            m_LastBoundTextures[0] = m_WhiteTextureID;
+        }
         if (locs.u_AlbedoMap != -1) shader->setInt(locs.u_AlbedoMap, 0);
         
         for(int i = 1; i <= 5; ++i) {
-            tm.ActiveTexture(static_cast<TextureUnit>(i));
-            tm.BindTexture(TextureType::Texture2D, i == 5 ? m_BlackTextureID : m_WhiteTextureID);
+            unsigned int target = (i == 5) ? m_BlackTextureID : m_WhiteTextureID;
+            if (m_LastBoundTextures[i] != target) {
+                tm.ActiveTexture(static_cast<TextureUnit>(i));
+                tm.BindTexture(TextureType::Texture2D, target);
+                m_LastBoundTextures[i] = target;
+            }
         }
         if (locs.u_NormalMap != -1) shader->setInt(locs.u_NormalMap, 1);
         if (locs.u_MetallicMap != -1) shader->setInt(locs.u_MetallicMap, 2);
@@ -169,8 +193,11 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader *shader, AxisMaterialCompone
         if (locs.u_AOMap != -1) shader->setInt(locs.u_AOMap, 4);
         if (locs.u_EmissiveMap != -1) shader->setInt(locs.u_EmissiveMap, 5);
 
-        tm.ActiveTexture(TextureUnit::Texture6);
-        tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+        if (m_LastBoundTextures[6] != m_WhiteTextureID) {
+            tm.ActiveTexture(TextureUnit::Texture6);
+            tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
+            m_LastBoundTextures[6] = m_WhiteTextureID;
+        }
         if (locs.u_SpecularMap != -1) shader->setInt(locs.u_SpecularMap, 6);
 
         return false;

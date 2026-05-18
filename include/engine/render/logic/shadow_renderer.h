@@ -3,6 +3,7 @@
 #include <render/unit/shadow.h>
 #include <render/unit/frustum.h>
 #include <render/type/render_data.h>
+#include <render/unit/command_queue.h>
 #include <vector>
 
 class ResourceManager;
@@ -61,4 +62,8 @@ private:
     bool m_ShadowMapInitializedDir[Shadow::MAX_DIR_LIGHTS_SHADOW] = {false};
     bool m_ShadowMapInitializedPoint[Shadow::MAX_POINT_LIGHTS_SHADOW] = {false};
     bool m_ShadowMapInitializedSpot[Shadow::MAX_SPOT_LIGHTS_SHADOW] = {false};
+
+    // Thread-local queues to prevent vector reallocation per frame
+    CommandQueue m_MainQueue;
+    std::vector<CommandQueue> m_ThreadQueues;
 };

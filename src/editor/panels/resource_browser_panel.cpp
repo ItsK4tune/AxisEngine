@@ -213,7 +213,7 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                 size_t vertCount = 0;
                 size_t triCount = 0;
                 for (const auto& m : model->meshes) {
-                    vertCount += m.vertices.size();
+                    vertCount += m.m_VertexCount;
                     triCount += m.indices.size() / 3;
                 }
                 ImGui::Text("Meshes Count: %d", (int)model->meshes.size());
@@ -261,9 +261,11 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                     glm::vec3 minB(1e9f), maxB(-1e9f);
                     bool hasVerts = false;
                     for (const auto& m : model->meshes) {
-                        for (const auto& v : m.vertices) {
-                            minB = glm::min(minB, v.Position);
-                            maxB = glm::max(maxB, v.Position);
+                        for (size_t vIdx = 0; vIdx < m.m_VertexCount; ++vIdx) {
+                            const float* posPtr = reinterpret_cast<const float*>(m.m_VertexData.data() + vIdx * m.m_VertexStride);
+                            glm::vec3 pos(posPtr[0], posPtr[1], posPtr[2]);
+                            minB = glm::min(minB, pos);
+                            maxB = glm::max(maxB, pos);
                             hasVerts = true;
                         }
                     }
@@ -303,18 +305,22 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                 int lineCount = 0;
                 int maxLines = 1500;
                 for (const auto& mesh : model->meshes) {
-                    if (mesh.vertices.empty() || mesh.indices.empty()) continue;
+                    if (mesh.m_VertexCount == 0 || mesh.indices.empty()) continue;
                     size_t totalTriangles = mesh.indices.size() / 3;
                     int step = std::max(1, (int)totalTriangles / (maxLines / 3));
                     for (size_t t = 0; t < totalTriangles && lineCount < maxLines; t += step) {
                         size_t idx0 = mesh.indices[3 * t];
                         size_t idx1 = mesh.indices[3 * t + 1];
                         size_t idx2 = mesh.indices[3 * t + 2];
-                        if (idx0 >= mesh.vertices.size() || idx1 >= mesh.vertices.size() || idx2 >= mesh.vertices.size()) continue;
+                        if (idx0 >= mesh.m_VertexCount || idx1 >= mesh.m_VertexCount || idx2 >= mesh.m_VertexCount) continue;
 
-                        glm::vec3 p0 = mesh.vertices[idx0].Position - center;
-                        glm::vec3 p1 = mesh.vertices[idx1].Position - center;
-                        glm::vec3 p2 = mesh.vertices[idx2].Position - center;
+                        auto getPos = [&](size_t idx) -> glm::vec3 {
+                            const float* ptr = reinterpret_cast<const float*>(mesh.m_VertexData.data() + idx * mesh.m_VertexStride);
+                            return glm::vec3(ptr[0], ptr[1], ptr[2]);
+                        };
+                        glm::vec3 p0 = getPos(idx0) - center;
+                        glm::vec3 p1 = getPos(idx1) - center;
+                        glm::vec3 p2 = getPos(idx2) - center;
 
                         glm::vec3 rp0 = RotatePoint(p0, m_RotX, m_RotY);
                         glm::vec3 rp1 = RotatePoint(p1, m_RotX, m_RotY);

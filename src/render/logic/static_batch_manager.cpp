@@ -49,7 +49,7 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
         return;
     }
 
-    std::vector<Vertex> mergedVertices;
+    std::vector<StaticVertex> mergedVertices;
     std::vector<unsigned int> mergedIndices;
 
     MergeMeshes(models, transforms, mergedVertices, mergedIndices);
@@ -68,7 +68,7 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
 
 void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& models,
                                      const std::vector<glm::mat4>& transforms,
-                                     std::vector<Vertex>& outVertices,
+                                     std::vector<StaticVertex>& outVertices,
                                      std::vector<unsigned int>& outIndices)
 {
     unsigned int indexOffset = 0;
@@ -80,17 +80,22 @@ void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& 
 
         for (const auto& mesh : model->meshes)
         {
-            for (const auto& v : mesh.vertices)
+            if (mesh.m_IsSkinned) {
+                LOGGER_WARN("StaticBatchManager") << "Attempted to static-batch a skinned mesh. Skipping.";
+                continue;
+            }
+
+            glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
+            const StaticVertex* staticVerts = reinterpret_cast<const StaticVertex*>(mesh.m_VertexData.data());
+
+            for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; vIdx++)
             {
-                Vertex transformedVertex = v;
+                const StaticVertex& v = staticVerts[vIdx];
+                StaticVertex transformedVertex = v;
 
                 glm::vec4 transformedPos = transform * glm::vec4(v.Position, 1.0f);
                 transformedVertex.Position = glm::vec3(transformedPos);
-
-                glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
                 transformedVertex.Normal = normalMatrix * v.Normal;
-                transformedVertex.Tangent = normalMatrix * v.Tangent;
-                transformedVertex.Bitangent = normalMatrix * v.Bitangent;
 
                 outVertices.push_back(transformedVertex);
             }
@@ -100,12 +105,12 @@ void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& 
                 outIndices.push_back(index + indexOffset);
             }
 
-            indexOffset += mesh.vertices.size();
+            indexOffset += mesh.m_VertexCount;
         }
     }
 }
 
-void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<Vertex>& vertices,
+void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<StaticVertex>& vertices,
                                          const std::vector<unsigned int>& indices)
 {
     if (!s_BufferManager) return;
@@ -121,25 +126,19 @@ void StaticBatchManager::CreateGPUBuffers(BatchData& batch, const std::vector<Ve
     bm.BindVertexArray(batch.vao);
 
     bm.BindBuffer(BufferType::ArrayBuffer, batch.vbo);
-    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(Vertex), vertices.data(), BufferUsage::StaticDraw);
+    bm.BufferData(BufferType::ArrayBuffer, vertices.size() * sizeof(StaticVertex), vertices.data(), BufferUsage::StaticDraw);
 
     bm.BindBuffer(BufferType::ElementArrayBuffer, batch.ebo);
     bm.BufferData(BufferType::ElementArrayBuffer, indices.size() * sizeof(unsigned int), indices.data(), BufferUsage::StaticDraw);
 
     bm.EnableVertexAttribArray(0);
-    bm.VertexAttribPointer(0, 3, DataType::Float, false, sizeof(Vertex), (void*)0);
+    bm.VertexAttribPointer(0, 3, DataType::Float, false, sizeof(StaticVertex), (void*)0);
 
     bm.EnableVertexAttribArray(1);
-    bm.VertexAttribPointer(1, 3, DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+    bm.VertexAttribPointer(1, 3, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, Normal));
 
     bm.EnableVertexAttribArray(2);
-    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-
-    bm.EnableVertexAttribArray(3);
-    bm.VertexAttribPointer(3, 3, DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-
-    bm.EnableVertexAttribArray(4);
-    bm.VertexAttribPointer(4, 3, DataType::Float, false, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+    bm.VertexAttribPointer(2, 2, DataType::Float, false, sizeof(StaticVertex), (void*)offsetof(StaticVertex, TexCoords));
 
     bm.BindVertexArray(0);
 }
@@ -199,11 +198,11 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
         return false;
     }
 
-    std::vector<Vertex> vertices(header.vertexCount);
+    std::vector<StaticVertex> vertices(header.vertexCount);
     std::vector<unsigned int> indices(header.indexCount);
 
-    file.read(reinterpret_cast<char*>(vertices.data()), vertices.size() * sizeof(Vertex));
-    file.read(reinterpret_cast<char*>(indices.data()), indices.size() * sizeof(unsigned int));
+    file.read(reinterpret_cast<char*>(vertices.data()), header.vertexCount * sizeof(StaticVertex));
+    file.read(reinterpret_cast<char*>(indices.data()), header.indexCount * sizeof(unsigned int));
 
     file.close();
 

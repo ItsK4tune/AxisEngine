@@ -31,7 +31,6 @@ public:
     void OnKeyReleased(const KeyReleasedEvent& e);
     void OnMouseButtonPressed(const MouseButtonPressedEvent& e);
     void OnMouseButtonReleased(const MouseButtonReleasedEvent& e);
-    void OnMouseMoved(const MouseMovedEvent& e);
 
     static void LoadScript(Scene &scene, entt::entity entity, const YAMLNode &node);
 

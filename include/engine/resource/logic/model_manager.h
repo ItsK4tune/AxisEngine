@@ -44,6 +44,11 @@ public:
     void Initialize() override;
 
 private:
+    std::unordered_map<std::string, std::shared_ptr<Model>> m_PathToModelMap;
+    std::unordered_map<std::string, int> m_PathReferenceCounts;
+    std::unordered_map<std::string, std::string> m_NameToPathMap;
+    std::mutex m_DeduplicationMutex;
+
     ModelInstanceManager& m_InstanceManager;
     ResourceCache<Model> m_Cache;
     std::shared_ptr<Model> m_ErrorModel;

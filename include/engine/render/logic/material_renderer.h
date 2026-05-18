@@ -69,7 +69,16 @@ private:
     };
     static SkyboxCache s_SkyboxCache;
     static std::mutex s_SkyboxMutex;
-
     const MaterialUniformLocations& GetLocations(const Shader* shader) const;
+
+    // State tracking to prevent redundant binds
+    unsigned int m_LastBoundTextures[8] = {0};
+
+public:
+    void ResetTextureState() {
+        for (int i = 0; i < 8; ++i) {
+            m_LastBoundTextures[i] = (unsigned int)-1;
+        }
+    }
 };
 

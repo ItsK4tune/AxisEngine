@@ -32,7 +32,6 @@ void ScriptableSystem::Initialize()
     m_EventSubs.push_back(ev.Subscribe<KeyReleasedEvent>([this](const KeyReleasedEvent& e) { OnKeyReleased(e); }));
     m_EventSubs.push_back(ev.Subscribe<MouseButtonPressedEvent>([this](const MouseButtonPressedEvent& e) { OnMouseButtonPressed(e); }));
     m_EventSubs.push_back(ev.Subscribe<MouseButtonReleasedEvent>([this](const MouseButtonReleasedEvent& e) { OnMouseButtonReleased(e); }));
-    m_EventSubs.push_back(ev.Subscribe<MouseMovedEvent>([this](const MouseMovedEvent& e) { OnMouseMoved(e); }));
 
     ComponentLoader::RegisterLoader("Script", [](Scene &s, entt::entity e, const YAMLNode &n, ResourceManager &r, IPhysicsWorld *p) {
         ScriptableSystem::LoadScript(s, e, n);
@@ -152,26 +151,7 @@ void ScriptableSystem::OnMouseButtonReleased(const MouseButtonReleasedEvent& e)
     }
 }
 
-void ScriptableSystem::OnMouseMoved(const MouseMovedEvent& e)
-{
-    if (!m_ActiveScene || !m_Enabled) return;
-    
-    auto view = m_ActiveScene->registry.view<ScriptComponent, UITransformComponent, InfoComponent>();
-    for (auto entity : view) {
-        auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive) continue;
 
-        auto& sc = view.get<ScriptComponent>(entity);
-        auto& ui = view.get<UITransformComponent>(entity);
-
-        if (!sc.instance || !sc.instance->IsEnabled()) continue;
-
-        bool isInside = (e.x >= ui.position.x && e.x <= ui.position.x + ui.size.x &&
-                         e.y >= ui.position.y && e.y <= ui.position.y + ui.size.y);
-        
-        if (isInside) sc.instance->OnMouseOver();
-    }
-}
 
 void ScriptableSystem::OnScriptComponentDestroyed(entt::registry &reg, entt::entity entity)
 {
@@ -219,6 +199,36 @@ void ScriptableSystem::Update(Scene &scene, float dt)
 {
     if (!m_Enabled)
         return;
+
+    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
+    {
+        const auto& mouse = io->GetMouse();
+        if (mouse.GetXOffset() != 0.0f || mouse.GetYOffset() != 0.0f)
+        {
+            double mouseX = mouse.GetLastX();
+            double mouseY = mouse.GetLastY();
+
+            auto uiView = scene.registry.view<ScriptComponent, UITransformComponent, InfoComponent>();
+            for (auto entity : uiView)
+            {
+                auto& info = uiView.get<InfoComponent>(entity);
+                if (!info.isActive) continue;
+
+                auto& sc = uiView.get<ScriptComponent>(entity);
+                auto& ui = uiView.get<UITransformComponent>(entity);
+
+                if (!sc.instance || !sc.instance->IsEnabled()) continue;
+
+                bool isInside = (mouseX >= ui.position.x && mouseX <= ui.position.x + ui.size.x &&
+                                 mouseY >= ui.position.y && mouseY <= ui.position.y + ui.size.y);
+                
+                if (isInside)
+                {
+                    sc.instance->OnMouseOver();
+                }
+            }
+        }
+    }
 
     auto view = scene.registry.view<ScriptComponent, InfoComponent>();
     auto& sl = ServiceLocator::Instance();

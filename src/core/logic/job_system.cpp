@@ -72,25 +72,26 @@ void JobSystem::Execute(std::function<void()> job, JobCounter* counter)
 
 void JobSystem::Wait()
 {
-    std::unique_lock<std::mutex> lock(m_QueueMutex);
+    // Use separate wait mutex — does NOT block workers from dequeuing
+    std::unique_lock<std::mutex> lock(m_WaitMutex);
     m_WaitCondition.wait(lock, [this]() {
-        return m_JobQueue.empty() && (m_ActiveJobs.load(std::memory_order_relaxed) == 0);
+        return m_ActiveJobs.load(std::memory_order_acquire) == 0;
     });
 }
 
 void JobSystem::Wait(JobCounter* counter)
 {
     if (!counter) return;
-    std::unique_lock<std::mutex> lock(m_QueueMutex);
+    // Use separate wait mutex — does NOT block workers from dequeuing
+    std::unique_lock<std::mutex> lock(m_WaitMutex);
     m_CounterCondition.wait(lock, [counter]() {
-        return counter->load(std::memory_order_relaxed) == 0;
+        return counter->load(std::memory_order_acquire) == 0;
     });
 }
 
 bool JobSystem::IsBusy()
 {
-    std::unique_lock<std::mutex> lock(m_QueueMutex);
-    return !m_JobQueue.empty() || m_ActiveJobs.load(std::memory_order_relaxed) > 0;
+    return m_ActiveJobs.load(std::memory_order_relaxed) > 0;
 }
 
 void JobSystem::WorkerLoop()
@@ -112,6 +113,7 @@ void JobSystem::WorkerLoop()
             job = std::move(m_JobQueue.front());
             m_JobQueue.pop();
         }
+        // Lock is released here — other workers can dequeue immediately
 
         try {
             if (job.task)
@@ -123,17 +125,20 @@ void JobSystem::WorkerLoop()
             std::cerr << "[JobSystem] CRITICAL: Unknown exception in worker thread" << std::endl;
         }
 
+        bool activeZero = (m_ActiveJobs.fetch_sub(1, std::memory_order_acq_rel) == 1);
+        bool counterZero = false;
         if (job.counter)
         {
-            job.counter->fetch_sub(1, std::memory_order_release);
+            counterZero = (job.counter->fetch_sub(1, std::memory_order_acq_rel) == 1);
         }
 
-        m_ActiveJobs.fetch_sub(1, std::memory_order_release);
-
+        if (activeZero || counterZero)
         {
-            std::lock_guard<std::mutex> lock(m_QueueMutex);
-            m_WaitCondition.notify_all();
-            m_CounterCondition.notify_all();
+            std::lock_guard<std::mutex> lock(m_WaitMutex);
+            if (activeZero)
+                m_WaitCondition.notify_all();
+            if (counterZero)
+                m_CounterCondition.notify_all();
         }
     }
 }

@@ -140,7 +140,8 @@ void EditorSystem::Shutdown()
 
 void EditorSystem::OnUpdate(float dt)
 {
-    auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>();
+    auto& sl = ServiceLocator::Instance();
+    auto* ioHandler = sl.Resolve<IOHandler>();
     if (!ioHandler) return;
 
     KeyboardManager& kb = ioHandler->GetKeyboard();
@@ -163,15 +164,14 @@ void EditorSystem::OnUpdate(float dt)
 
 
     // Cursor & input management
-    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>()) {
-        auto mode = io->GetMouse().GetCursorMode();
-        if (mode == CursorMode::Hidden || mode == CursorMode::Locked || mode == CursorMode::LockedHidden) {
-            ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-        } else {
-            ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
-        }
+    auto mode = ioHandler->GetMouse().GetCursorMode();
+    if (mode == CursorMode::Hidden || mode == CursorMode::Locked || mode == CursorMode::LockedHidden) {
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+    } else {
+        ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+    }
 
-        auto& mouse = io->GetMouse();
+    auto& mouse = ioHandler->GetMouse();
         bool hoveringPanel = ImGui::GetIO().WantCaptureMouse;
         CursorMode curMode = mouse.GetCursorMode();
         
@@ -189,17 +189,16 @@ void EditorSystem::OnUpdate(float dt)
         }
 
         // === Keyboard Shortcuts ===
-        auto& kb = io->GetKeyboard();
-        bool ctrl = kb.GetKey(Key::LeftControl) || kb.GetKey(Key::RightControl);
-        bool shift = kb.GetKey(Key::LeftShift) || kb.GetKey(Key::RightShift);
+    bool ctrl = kb.GetKey(Key::LeftControl) || kb.GetKey(Key::RightControl);
+    bool shift = kb.GetKey(Key::LeftShift) || kb.GetKey(Key::RightShift);
 
         // Ctrl+S — Save all scenes
-        if (ctrl && kb.GetKey(Key::S) && !m_CtrlSPressed) {
-            m_CtrlSPressed = true;
-            auto& sm = ServiceLocator::Instance().Require<SceneManager>();
-            auto& globalScene = ServiceLocator::Instance().Require<Scene>();
-            auto* resourceManager = ServiceLocator::Instance().Resolve<ResourceManager>();
-            if (resourceManager) {
+    if (ctrl && kb.GetKey(Key::S) && !m_CtrlSPressed) {
+        m_CtrlSPressed = true;
+        auto& sm = sl.Require<SceneManager>();
+        auto& globalScene = sl.Require<Scene>();
+        auto* resourceManager = sl.Resolve<ResourceManager>();
+        if (resourceManager) {
                 for (const auto& rec : sm.GetAllScenes()) {
                     if (!rec.filePath.empty()) {
                         SceneSerializer::Serialize(rec.filePath, globalScene, *resourceManager, rec.name);
@@ -211,28 +210,28 @@ void EditorSystem::OnUpdate(float dt)
         if (!kb.GetKey(Key::S)) m_CtrlSPressed = false;
 
         // Ctrl+Z — Undo
-        static bool z_pressed = false;
-        if (ctrl && kb.GetKey(Key::Z) && !z_pressed) {
-            z_pressed = true;
-            auto& globalScene = ServiceLocator::Instance().Require<Scene>();
-            PerformUndo(globalScene);
-        }
+    static bool z_pressed = false;
+    if (ctrl && kb.GetKey(Key::Z) && !z_pressed) {
+        z_pressed = true;
+        auto& globalScene = sl.Require<Scene>();
+        PerformUndo(globalScene);
+    }
         if (!kb.GetKey(Key::Z)) z_pressed = false;
 
         // Ctrl+D — Duplicate selected entity
         // (handled in SceneHierarchyPanel via shared selection)
         
         // --- Nudge Tool ---
-        static float s_NudgeTimer = 0.0f;
-        s_NudgeTimer -= dt;
-        bool alt = kb.GetKey(Key::LeftAlt) || kb.GetKey(Key::RightAlt);
-        if (alt && SceneHierarchyPanel::s_SelectedEntity != entt::null && s_NudgeTimer <= 0.0f) {
-            auto& globalScene = ServiceLocator::Instance().Require<Scene>();
-            auto& reg = globalScene.registry;
-            if (reg.valid(SceneHierarchyPanel::s_SelectedEntity)) {
-                auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-                if (cm) {
-                    auto conf = cm->GetConfig();
+    static float s_NudgeTimer = 0.0f;
+    s_NudgeTimer -= dt;
+    bool alt = kb.GetKey(Key::LeftAlt) || kb.GetKey(Key::RightAlt);
+    if (alt && SceneHierarchyPanel::s_SelectedEntity != entt::null && s_NudgeTimer <= 0.0f) {
+        auto& globalScene = sl.Require<Scene>();
+        auto& reg = globalScene.registry;
+        if (reg.valid(SceneHierarchyPanel::s_SelectedEntity)) {
+            auto cm = sl.Resolve<ConfigManager>();
+            if (cm) {
+                const auto& conf = cm->GetConfig();
                     float tSnap = conf.debug.gridSnapTranslation;
                     float rSnap = glm::radians(conf.debug.gridSnapRotation);
                     float sSnap = conf.debug.gridSnapScale;
@@ -434,7 +433,6 @@ void EditorSystem::OnUpdate(float dt)
         } else {
             for (int i = 0; i < 9; ++i) s_NumKeysPressed[i] = false;
         }
-    }
 }
 
 void EditorSystem::Render(Scene& scene)

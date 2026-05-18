@@ -261,6 +261,7 @@ struct ImGui_ImplGlfw_Data
 #endif
 
     // Chain GLFW callbacks: our callbacks will call the user's previously installed callbacks, if any.
+    GLFWwindowposfun        PrevUserCallbackWindowPos;
     GLFWwindowfocusfun      PrevUserCallbackWindowFocus;
     GLFWcursorposfun        PrevUserCallbackCursorPos;
     GLFWcursorenterfun      PrevUserCallbackCursorEnter;
@@ -281,6 +282,11 @@ struct ImGui_ImplGlfw_Data
     PFN_XChangeWindowAttributes XChangeWindowAttributes;
     PFN_XFlush                  XFlush;
 #endif
+
+    // Cached window position to avoid expensive glfwGetWindowPos() calls per cursor event
+    int                         CachedWindowX;
+    int                         CachedWindowY;
+    bool                        WindowPosCached;
 
     ImGui_ImplGlfw_Data()   { memset((void*)this, 0, sizeof(*this)); }
 };
@@ -575,6 +581,17 @@ void ImGui_ImplGlfw_WindowFocusCallback(GLFWwindow* window, int focused)
     io.AddFocusEvent(focused != 0);
 }
 
+void ImGui_ImplGlfw_MainWindowPosCallback(GLFWwindow* window, int x, int y)
+{
+    ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData(window);
+    if (bd->PrevUserCallbackWindowPos != nullptr && ImGui_ImplGlfw_ShouldChainCallback(bd, window))
+        bd->PrevUserCallbackWindowPos(window, x, y);
+
+    bd->CachedWindowX = x;
+    bd->CachedWindowY = y;
+    bd->WindowPosCached = true;
+}
+
 void ImGui_ImplGlfw_CursorPosCallback(GLFWwindow* window, double x, double y)
 {
     ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData(window);
@@ -584,10 +601,14 @@ void ImGui_ImplGlfw_CursorPosCallback(GLFWwindow* window, double x, double y)
     ImGuiIO& io = ImGui::GetIO(bd->Context);
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
-        int window_x, window_y;
-        glfwGetWindowPos(window, &window_x, &window_y);
-        x += window_x;
-        y += window_y;
+        // Use cached window position instead of expensive glfwGetWindowPos() syscall
+        if (!bd->WindowPosCached)
+        {
+            glfwGetWindowPos(window, &bd->CachedWindowX, &bd->CachedWindowY);
+            bd->WindowPosCached = true;
+        }
+        x += bd->CachedWindowX;
+        y += bd->CachedWindowY;
     }
     io.AddMousePosEvent((float)x, (float)y);
     bd->LastValidMousePos = ImVec2((float)x, (float)y);
@@ -659,6 +680,7 @@ void ImGui_ImplGlfw_InstallCallbacks(GLFWwindow* window)
     IM_ASSERT(bd->InstalledCallbacks == false && "Callbacks already installed!");
     IM_ASSERT(bd->Window == window);
 
+    bd->PrevUserCallbackWindowPos = glfwSetWindowPosCallback(window, ImGui_ImplGlfw_MainWindowPosCallback);
     bd->PrevUserCallbackWindowFocus = glfwSetWindowFocusCallback(window, ImGui_ImplGlfw_WindowFocusCallback);
     bd->PrevUserCallbackCursorEnter = glfwSetCursorEnterCallback(window, ImGui_ImplGlfw_CursorEnterCallback);
     bd->PrevUserCallbackCursorPos = glfwSetCursorPosCallback(window, ImGui_ImplGlfw_CursorPosCallback);
@@ -676,6 +698,7 @@ void ImGui_ImplGlfw_RestoreCallbacks(GLFWwindow* window)
     IM_ASSERT(bd->InstalledCallbacks == true && "Callbacks not installed!");
     IM_ASSERT(bd->Window == window);
 
+    glfwSetWindowPosCallback(window, bd->PrevUserCallbackWindowPos);
     glfwSetWindowFocusCallback(window, bd->PrevUserCallbackWindowFocus);
     glfwSetCursorEnterCallback(window, bd->PrevUserCallbackCursorEnter);
     glfwSetCursorPosCallback(window, bd->PrevUserCallbackCursorPos);

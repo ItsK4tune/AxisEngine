@@ -53,6 +53,19 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
 
     std::string fullPath = FileSystem::getPath(path);
 
+    {
+        std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+        auto it = m_PathToTextureMap.find(fullPath);
+        if (it != m_PathToTextureMap.end()) {
+            auto tex = it->second;
+            m_Cache.Add(name, tex);
+            m_NameToPathMap[name] = fullPath;
+            m_PathReferenceCounts[fullPath]++;
+            LOGGER_INFO("TextureManager") << "Deduplicated texture load for path: " << path << " under name: " << name;
+            return tex;
+        }
+    }
+
     if (async && m_AsyncEnabled) {
         auto promise = std::make_shared<std::promise<TextureData>>();
         {
@@ -64,6 +77,13 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
         tex->id = 0;
         tex->path = path;
         m_Cache.Add(name, tex);
+
+        {
+            std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+            m_PathToTextureMap[fullPath] = tex;
+            m_PathReferenceCounts[fullPath] = 1;
+            m_NameToPathMap[name] = fullPath;
+        }
 
         JobSystem::Instance().Execute([promise, name, fullPath, keepCpuData]() {
             TextureData data;
@@ -117,6 +137,14 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             else stbi_image_free(data);
 
             m_Cache.Add(name, tex);
+
+            {
+                std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+                m_PathToTextureMap[fullPath] = tex;
+                m_PathReferenceCounts[fullPath] = 1;
+                m_NameToPathMap[name] = fullPath;
+            }
+
             LOGGER_INFO("TextureManager") << "Loaded texture: " << name;
             EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
             return tex;
@@ -133,12 +161,28 @@ std::shared_ptr<Texture> TextureManager::Get(const std::string& name) {
 }
 
 void TextureManager::Unload(const std::string& name) {
+    std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
     if (auto tex = m_Cache.Get(name)) {
-        if (tex->id != 0) {
-            m_LowLevelManager.DeleteTextures(1, &tex->id);
+        auto pathIt = m_NameToPathMap.find(name);
+        if (pathIt != m_NameToPathMap.end()) {
+            std::string fullPath = pathIt->second;
+            m_PathReferenceCounts[fullPath]--;
+            if (m_PathReferenceCounts[fullPath] <= 0) {
+                if (tex->id != 0) {
+                    m_LowLevelManager.DeleteTextures(1, &tex->id);
+                }
+                m_PathToTextureMap.erase(fullPath);
+                m_PathReferenceCounts.erase(fullPath);
+                LOGGER_INFO("TextureManager") << "Fully unloaded physical texture from GPU: " << fullPath;
+            }
+            m_NameToPathMap.erase(pathIt);
+        } else {
+            if (tex->id != 0) {
+                m_LowLevelManager.DeleteTextures(1, &tex->id);
+            }
         }
         m_Cache.Remove(name);
-        LOGGER_INFO("TextureManager") << "Unloaded texture: " << name;
+        LOGGER_INFO("TextureManager") << "Removed texture name alias from cache: " << name;
     }
 }
 
@@ -202,6 +246,14 @@ void TextureManager::Clear() {
         Unload(name);
     }
     m_Cache.Clear();
+
+    {
+        std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+        m_PathToTextureMap.clear();
+        m_PathReferenceCounts.clear();
+        m_NameToPathMap.clear();
+    }
+
     std::lock_guard<std::mutex> lock(m_AsyncMutex);
     m_AsyncLoads.clear();
 }

@@ -283,11 +283,12 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
                 for (auto& mesh : meshComp->model->meshes)
                 {
                     uint32_t offset = (uint32_t)vertices.size() / 3;
-                    for (auto& v : mesh.vertices)
+                    for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; ++vIdx)
                     {
-                        vertices.push_back(v.Position.x);
-                        vertices.push_back(v.Position.y);
-                        vertices.push_back(v.Position.z);
+                        const float* pos = reinterpret_cast<const float*>(mesh.m_VertexData.data() + vIdx * mesh.m_VertexStride);
+                        vertices.push_back(pos[0]);
+                        vertices.push_back(pos[1]);
+                        vertices.push_back(pos[2]);
                     }
                     for (auto idx : mesh.indices)
                     {
