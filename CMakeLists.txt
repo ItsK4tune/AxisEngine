@@ -17,6 +17,14 @@ if(ENABLE_EDITOR)
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+
+foreach(OUTPUTCONFIG IN ITEMS DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/bin)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/lib)
+endforeach()
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})
 
@@ -46,21 +54,27 @@ include_directories(
 
 link_directories(${CMAKE_SOURCE_DIR}/lib)
 
-file(GLOB_RECURSE ENGINE_SOURCES
-    ${CMAKE_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_SOURCE_DIR}/src/*.c
+include(${CMAKE_SOURCE_DIR}/cmake/sources.cmake)
+
+# Engine Core Library
+add_library(axis_engine STATIC ${AXIS_ENGINE_SOURCES})
+add_library(Axis::Engine ALIAS axis_engine)
+
+target_include_directories(axis_engine PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/bullet>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/entt>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/engine>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/imgui>
+    $<BUILD_INTERFACE:${FREETYPE_INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${ASSIMP_INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${GLFW3_INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${GLM_INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${BULLET_INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${IRRKLANG_INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${FFMPEG_INCLUDE_DIRS}>
+    $<INSTALL_INTERFACE:include>
 )
-
-file(GLOB_RECURSE GAME_SOURCES
-    ${CMAKE_SOURCE_DIR}/game/src/*.cpp
-    # Windows resource files containing the app icon
-    ${CMAKE_SOURCE_DIR}/include/engine/asset/project/app.rc
-    ${CMAKE_SOURCE_DIR}/include/engine/asset/project/resource.h
-)
-
-add_executable(AxisEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
-target_compile_options(AxisEngine PRIVATE /FS)
-
 
 set(BULLET_LIBS
     BulletDynamics$<$<CONFIG:Debug>:_Debug>
@@ -68,7 +82,7 @@ set(BULLET_LIBS
     LinearMath$<$<CONFIG:Debug>:_Debug>
 )
 
-target_link_libraries(AxisEngine 
+target_link_libraries(axis_engine PUBLIC
     glfw3 
     opengl32 
     assimp-vc143-mt
@@ -78,12 +92,58 @@ target_link_libraries(AxisEngine
     ${FFMPEG_LIBRARIES}
 )
 
-file(GLOB DLLS "${CMAKE_SOURCE_DIR}/dlls/*.dll")
-foreach(DLL ${DLLS})
-    add_custom_command(TARGET AxisEngine POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${DLL}
-        $<TARGET_FILE_DIR:AxisEngine>
+# Editor Library
+if(ENABLE_EDITOR)
+    add_library(axis_editor STATIC ${AXIS_EDITOR_SOURCES})
+    add_library(Axis::Editor ALIAS axis_editor)
+    
+    target_include_directories(axis_editor PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
     )
-endforeach()
-# Forcing CMake refresh
+    
+    target_link_libraries(axis_editor PUBLIC axis_engine)
+endif()
+
+# Installation & Export Setup
+include(GNUInstallDirs)
+
+install(TARGETS axis_engine
+    EXPORT AxisEngineTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+if(ENABLE_EDITOR)
+    install(TARGETS axis_editor
+        EXPORT AxisEngineTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+endif()
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(EXPORT AxisEngineTargets
+    FILE AxisEngineTargets.cmake
+    NAMESPACE Axis::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine
+)
+
+# Generate Config file
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    ${CMAKE_SOURCE_DIR}/cmake/AxisEngineConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine
+)

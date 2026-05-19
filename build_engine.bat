@@ -281,7 +281,7 @@ echo ==========================================
 echo        CLEANING BIN AND BUILD...
 echo ==========================================
 
-taskkill /F /IM AxisEngine.exe >nul 2>&1
+taskkill /F /IM MyGame.exe >nul 2>&1
 taskkill /F /IM cmake.exe >nul 2>&1
 taskkill /F /IM MSBuild.exe >nul 2>&1
 taskkill /F /IM cl.exe >nul 2>&1
@@ -324,8 +324,8 @@ if exist "bin\%BUILD_TYPE%" (
         echo [DELETED] 'bin\%BUILD_TYPE%' folder.
     )
 ) else (
-    if exist "bin\AxisEngine.exe" (
-        del /f /q "bin\AxisEngine.exe"
+    if exist "bin\MyGame.exe" (
+        del /f /q "bin\MyGame.exe"
     )
 )
 
@@ -383,31 +383,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :RUN_GAME
-title Axis Engine Builder - Running...
 echo.
 echo ==========================================
-echo          RUNNING GAME ENGINE
+echo        BUILD SUCCESS: LIBS GENERATED
 echo ==========================================
-
-set EXE_PATH=bin\%BUILD_TYPE%\AxisEngine.exe
-
-if exist "bin\%BUILD_TYPE%\AxisEngine.exe" (
-    set EXE_PATH=bin\%BUILD_TYPE%\AxisEngine.exe
-) else (
-    if exist "bin\AxisEngine.exe" (
-        set EXE_PATH=bin\AxisEngine.exe
-    )
-)
-
-if exist "%EXE_PATH%" (
-    "%EXE_PATH%"
-    if !ERRORLEVEL! NEQ 0 (
-        echo.
-        echo [ERROR] Game exited with error code: !ERRORLEVEL!
-    )
-) else (
-    echo [ERROR] Executable not found!
-)
+echo Libraries (axis_engine.lib, etc.) are located in: lib\
 
 :EXIT_SCRIPT
 exit /b %ERRORLEVEL%
