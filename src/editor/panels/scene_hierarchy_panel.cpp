@@ -16,6 +16,7 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/script_component.h>
 #include <ecs/unit/terrain_component.h>
+#include <ecs/unit/network_components.h>
 #include <ecs/unit/ui_components.h>
 #include <engine/ecs/unit/fragment_component.h>
 #include <platform/logic/input_manager.h>
@@ -140,11 +141,14 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
 
         if (ImGui::BeginPopupContextItem())
         {
-            if (ImGui::MenuItem(rec->isActive ? "Deactivate Scene" : "Activate Scene"))
+            if (rec)
             {
-                sm.SetSceneActive(sname, !rec->isActive, scene);
+                if (ImGui::MenuItem(rec->isActive ? "Deactivate Scene" : "Activate Scene"))
+                {
+                    sm.SetSceneActive(sname, !rec->isActive, scene);
+                }
+                ImGui::Separator();
             }
-            ImGui::Separator();
             if (ImGui::MenuItem("Save Scene"))
             {
                 auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
@@ -1453,6 +1457,18 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
     });
 
+    DrawComponent<NetworkComponent>("Network", reg, entity, [](auto& net) {
+        int nid = (int)net.networkId;
+        if (ImGui::DragInt("Network ID", &nid, 1, 0, 999999))
+            net.networkId = (uint32_t)nid;
+        
+        int oid = (int)net.ownerId;
+        if (ImGui::DragInt("Owner ID", &oid, 1, 0, 999999))
+            net.ownerId = (uint32_t)oid;
+
+        ImGui::Checkbox("Is Local", &net.isLocal);
+    });
+
     // ====== PHASE 3: Add Component ======
     ImGui::Separator();
     if (ImGui::Button("+ Add Component"))
@@ -1502,6 +1518,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             reg.emplace<LightProbeComponent>(entity);
         if (!reg.try_get<FragmentComponent>(entity) && ImGui::Selectable("Fragment"))
             reg.emplace<FragmentComponent>(entity);
+        if (!reg.try_get<NetworkComponent>(entity) && ImGui::Selectable("Network"))
+            reg.emplace<NetworkComponent>(entity);
         ImGui::EndPopup();
     }
 }
@@ -1570,6 +1588,7 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
     COPY_COMP(RigidBodyComponent);
     COPY_COMP(SkyboxRenderComponent);
     COPY_COMP(FragmentComponent);
+    COPY_COMP(NetworkComponent);
     COPY_COMP(AnimationComponent);
     if (reg.all_of<ParticleEmitterComponent>(srcEntity))
     {

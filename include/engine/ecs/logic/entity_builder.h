@@ -16,7 +16,7 @@ struct AxisMaterialComponent;
 class EntityBuilder
 {
 public:
-    EntityBuilder(Scene& scene, ResourceManager& resources);
+    EntityBuilder(Scene& scene, ResourceManager& resources, const std::string& sceneName);
 
     template <typename T, typename... Args>
     EntityBuilder& With(Args&&... args)
@@ -28,6 +28,7 @@ public:
     EntityBuilder& WithName(const std::string& name);
     EntityBuilder& WithTag(const std::string& tag);
     EntityBuilder& WithLayer(uint32_t layer);
+    EntityBuilder& WithScene(const std::string& sceneName);
 
     EntityBuilder& WithTransform(const glm::vec3& pos = glm::vec3(0.0f), const glm::vec3& rot = glm::vec3(0.0f),
                                  const glm::vec3& scale = glm::vec3(1.0f));

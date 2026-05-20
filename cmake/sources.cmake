@@ -43,6 +43,7 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/transparent_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/ui_render_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/video_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/network/logic/network_system.cpp
     ${CMAKE_SOURCE_DIR}/src/external/glad.c
     ${CMAKE_SOURCE_DIR}/src/external/stb_image.cpp
     ${CMAKE_SOURCE_DIR}/src/navigation/logic/navigation_system.cpp
@@ -143,6 +144,7 @@ set(AXIS_EDITOR_SOURCES
     ${CMAKE_SOURCE_DIR}/src/editor/panels/settings_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/editor/panels/stats_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/editor/panels/state_panel.cpp
+    ${CMAKE_SOURCE_DIR}/src/editor/panels/network_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/editor/panels/tools_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/external/imgui.cpp
     ${CMAKE_SOURCE_DIR}/src/external/imgui_demo.cpp

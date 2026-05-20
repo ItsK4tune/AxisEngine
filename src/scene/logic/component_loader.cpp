@@ -17,6 +17,7 @@
 #include <ecs/unit/reflection_components.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/terrain_component.h>
+#include <ecs/unit/network_components.h>
 #include <ecs/unit/ui_components.h>
 #include <navigation/unit/pathfollower_component.h>
 #include <physics/logic/physics_loader.h>
@@ -163,6 +164,9 @@ void ComponentLoader::InitializeDefaultLoaders()
     });
     RegisterLoader("Terrain", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
         LoadTerrain(s, e, n, r);
+    });
+    RegisterLoader("Network", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+        LoadNetwork(s, e, n);
     });
 }
 
@@ -1045,4 +1049,12 @@ void ComponentLoader::LoadTerrain(Scene& scene, entt::entity entity, const YAMLN
     t.textureScale = std::stof(node.GetChildValue("TextureScale", "1.0"));
     t.castShadows = node.GetChildValue("CastShadows", "true") == "true";
     t.customShader = node.GetChildValue("Shader");
+}
+
+void ComponentLoader::LoadNetwork(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    auto& net = scene.registry.emplace<NetworkComponent>(entity);
+    net.networkId = std::stoul(node.GetChildValue("NetworkId", "0"));
+    net.ownerId = std::stoul(node.GetChildValue("OwnerId", "0"));
+    net.isLocal = node.GetChildValue("IsLocal", "false") == "true";
 }

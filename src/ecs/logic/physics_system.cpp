@@ -337,7 +337,12 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
 
     if (finalShape)
     {
-        // Fix scaling for Mesh shapes (apply asset-internal scale)
+        glm::vec3 totalScale(1.0f);
+        if (auto* scl = scene.registry.try_get<ScaleComponent>(entity))
+        {
+            totalScale = scl->value;
+        }
+
         if (shape.type == ShapeType::Mesh)
         {
             if (auto* meshComp = scene.registry.try_get<MeshRendererComponent>(entity))
@@ -350,13 +355,12 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
                     glm::vec4 Rperspective;
                     if (glm::decompose(rootMtx, Rs, Rr, Rt, Rskew, Rperspective))
                     {
-                        auto* scl = scene.registry.try_get<ScaleComponent>(entity);
-                        glm::vec3 totalScale = Rs * (scl ? scl->value : glm::vec3(1.0f));
-                        finalShape->SetLocalScaling(totalScale);
+                        totalScale *= Rs;
                     }
                 }
             }
         }
+        finalShape->SetLocalScaling(totalScale);
 
         float mass = rb.isStatic || rb.isKinematic ? 0.0f : rb.mass;
         rb.body = physics.CreateRigidBody(mass, worldPos, worldRot, finalShape);

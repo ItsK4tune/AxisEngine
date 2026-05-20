@@ -47,6 +47,7 @@
 #include <editor/panels/settings_panel.h>
 #include <editor/panels/stats_panel.h>
 #include <editor/panels/state_panel.h>
+#include <editor/panels/network_panel.h>
 #include <editor/panels/tools_panel.h>
 
 EditorSystem::EditorSystem() : m_PreHoverCursorMode(CursorMode::Normal)
@@ -120,6 +121,7 @@ void EditorSystem::Initialize()
     m_Panels.push_back(std::make_unique<ConsolePanel>());
     m_Panels.push_back(std::make_unique<ProfilerPanel>());
     m_Panels.push_back(std::make_unique<StatePanel>());
+    m_Panels.push_back(std::make_unique<NetworkPanel>());
 
     for (auto& panel : m_Panels)
     {
@@ -675,13 +677,13 @@ void EditorSystem::OnUpdate(float dt)
             f12_pressed = false;
     }
 
-    // Panel toggle shortcuts (Ctrl+1 to Ctrl+9)
-    static bool s_NumKeysPressed[9] = {false};
-    Key numKeys[] = {Key::_1, Key::_2, Key::_3, Key::_4, Key::_5, Key::_6, Key::_7, Key::_8, Key::_9};
+    // Panel toggle shortcuts (Ctrl+1 to Ctrl+9, and Ctrl+0 for NetworkPanel)
+    static bool s_NumKeysPressed[10] = {false};
+    Key numKeys[] = {Key::_1, Key::_2, Key::_3, Key::_4, Key::_5, Key::_6, Key::_7, Key::_8, Key::_9, Key::_0};
 
     if (ctrl)
     {
-        for (int i = 0; i < std::min((int)m_Panels.size(), 9); ++i)
+        for (int i = 0; i < std::min((int)m_Panels.size(), 10); ++i)
         {
             if (kb.GetKey(numKeys[i]) && !s_NumKeysPressed[i])
             {
@@ -696,7 +698,7 @@ void EditorSystem::OnUpdate(float dt)
     }
     else
     {
-        for (int i = 0; i < 9; ++i) s_NumKeysPressed[i] = false;
+        for (int i = 0; i < 10; ++i) s_NumKeysPressed[i] = false;
     }
 }
 

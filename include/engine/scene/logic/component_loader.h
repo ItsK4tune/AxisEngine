@@ -53,6 +53,7 @@ public:
     static void LoadPlanarReflection(Scene& scene, entt::entity entity, const YAMLNode& node);
     static void LoadLightProbe(Scene& scene, entt::entity entity, const YAMLNode& node);
     static void LoadTerrain(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res);
+    static void LoadNetwork(Scene& scene, entt::entity entity, const YAMLNode& node);
 
     static void InitializeDefaultLoaders();
 

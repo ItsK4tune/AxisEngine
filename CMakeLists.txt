@@ -35,6 +35,7 @@ find_package(Bullet REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(IrrKlang REQUIRED)
 find_package(FFMPEG REQUIRED)
+find_package(Enet REQUIRED)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
@@ -49,6 +50,7 @@ include_directories(
     ${BULLET_INCLUDE_DIR}
     ${IRRKLANG_INCLUDE_DIR}
     ${FFMPEG_INCLUDE_DIRS}
+    ${ENET_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/game/include
 )
 
@@ -73,6 +75,7 @@ target_include_directories(axis_engine PUBLIC
     $<BUILD_INTERFACE:${BULLET_INCLUDE_DIR}>
     $<BUILD_INTERFACE:${IRRKLANG_INCLUDE_DIR}>
     $<BUILD_INTERFACE:${FFMPEG_INCLUDE_DIRS}>
+    $<BUILD_INTERFACE:${ENET_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -90,6 +93,9 @@ target_link_libraries(axis_engine PUBLIC
     freetype
     irrKlang
     ${FFMPEG_LIBRARIES}
+    ${ENET_LIBRARIES}
+    winmm
+    ws2_32
 )
 
 # Editor Library

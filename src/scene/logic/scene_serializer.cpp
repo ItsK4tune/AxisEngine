@@ -18,6 +18,7 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/script_component.h>
 #include <ecs/unit/terrain_component.h>
+#include <ecs/unit/network_components.h>
 #include <engine/platform/logic/io_handler.h>
 #include <physics/logic/physics_collision_dispatcher.h>
 #include <physics/logic/physics_loader.h>
@@ -754,6 +755,14 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         WriteComponentHeader(f, ci, "Script");
         if (!sc->className.empty())
             SerialWriteKV(f, ti, "Class", sc->className);
+    }
+
+    if (auto* net = reg.try_get<NetworkComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "Network");
+        SerialWriteKV(f, ti, "NetworkId", std::to_string(net->networkId));
+        SerialWriteKV(f, ti, "OwnerId", std::to_string(net->ownerId));
+        SerialWriteKV(f, ti, "IsLocal", net->isLocal ? "true" : "false");
     }
 
     // Parent

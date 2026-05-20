@@ -12,10 +12,21 @@
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/animator.h>
 #include <script/logic/scriptable.h>
+#include <core/logic/service_locator.h>
+#include <scene/logic/scene_manager.h>
 
-EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources) : m_Scene(scene), m_Resources(resources)
+EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources, const std::string& sceneName)
+    : m_Scene(scene), m_Resources(resources)
 {
     m_Entity = m_Scene.registry.create();
+
+    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    info.sceneName = sceneName;
+
+    if (auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>())
+    {
+        sceneMgr->AddEntity(m_Entity, sceneName);
+    }
 }
 
 EntityBuilder& EntityBuilder::WithName(const std::string& name)
@@ -36,6 +47,23 @@ EntityBuilder& EntityBuilder::WithLayer(uint32_t layer)
 {
     auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
     info.layer = layer;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithScene(const std::string& sceneName)
+{
+    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    std::string oldScene = info.sceneName;
+    info.sceneName = sceneName;
+
+    if (auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>())
+    {
+        if (!oldScene.empty() && oldScene != sceneName)
+        {
+            sceneMgr->RemoveEntity(m_Entity);
+        }
+        sceneMgr->AddEntity(m_Entity, sceneName);
+    }
     return *this;
 }
 

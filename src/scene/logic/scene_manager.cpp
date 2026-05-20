@@ -63,6 +63,22 @@ void SceneManager::AddEntity(entt::entity entity, const std::string& sceneName)
             return;
         }
     }
+
+    // Create a new SceneRecord dynamically if it doesn't exist
+    SceneRecord newRec;
+    newRec.name = normName.empty() ? sceneName : normName;
+    newRec.filePath = sceneName;
+    newRec.loadOrder = m_NextLoadOrder++;
+    newRec.persistent = false;
+    newRec.isActive = true;
+    newRec.entities.push_back(entity);
+
+    if (auto* info = ServiceLocator::Instance().Require<Scene>().registry.try_get<InfoComponent>(entity))
+    {
+        info->isActive = newRec.isActive;
+    }
+
+    m_LoadedScenes.push_back(std::move(newRec));
 }
 
 void SceneManager::RemoveEntity(entt::entity entity)
