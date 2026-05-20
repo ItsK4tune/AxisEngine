@@ -1,6 +1,7 @@
 #pragma once
 
-enum class PhysicsBackend {
+enum class PhysicsBackend
+{
     Bullet,
     PhysX
 };

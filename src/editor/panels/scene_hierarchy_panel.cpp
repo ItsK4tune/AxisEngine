@@ -1461,7 +1461,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         int nid = (int)net.networkId;
         if (ImGui::DragInt("Network ID", &nid, 1, 0, 999999))
             net.networkId = (uint32_t)nid;
-        
+
         int oid = (int)net.ownerId;
         if (ImGui::DragInt("Owner ID", &oid, 1, 0, 999999))
             net.ownerId = (uint32_t)oid;

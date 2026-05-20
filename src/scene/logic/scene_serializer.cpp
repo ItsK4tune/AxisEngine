@@ -31,6 +31,22 @@
 #include <filesystem>
 #include <set>
 
+SceneSerializer::SceneSerializer(ResourceManager& res, IPhysicsWorld* phys, AudioService* audio)
+    : m_Res(res), m_Phys(phys), m_Audio(audio)
+{
+}
+
+bool SceneSerializer::Serialize(const std::string& filepath, const Scene& scene)
+{
+    return Serialize(filepath, const_cast<Scene&>(scene), m_Res, "");
+}
+
+bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene)
+{
+    SceneLoadResult res = Deserialize(filepath, scene, m_Res, m_Phys, m_Audio);
+    return !res.entities.empty() || res.hasConfig;
+}
+
 SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res,
                                              IPhysicsWorld* phys, AudioService* sound)
 {
@@ -1035,5 +1051,6 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
             SerializeEntity(f, scene.registry, entity, 2, normName);
         }
     }
+
     return true;
 }

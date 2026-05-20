@@ -3,11 +3,12 @@
 
 struct Scene;
 
-
 class IUpdateSystem : virtual public IBaseSystem
 {
 public:
     virtual ~IUpdateSystem() = default;
-    virtual void Update(Scene &scene, float dt) = 0;
-    virtual void FixedUpdate(Scene &scene, float fixedDt) {}
+    virtual void Update(Scene& scene, float dt) = 0;
+    virtual void FixedUpdate(Scene& scene, float fixedDt)
+    {
+    }
 };

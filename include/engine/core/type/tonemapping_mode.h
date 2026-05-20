@@ -1,6 +1,7 @@
 #pragma once
 
-enum class TonemappingMode {
+enum class TonemappingMode
+{
     None,
     ACES,
     Reinhard

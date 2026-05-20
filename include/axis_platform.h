@@ -2,7 +2,6 @@
 
 #include <axis_commons.h>
 
-
 #include <platform/interface/i_window.h>
 #include <platform/interface/cursor_mode.h>
 #include <platform/interface/input_codes.h>
@@ -10,7 +9,6 @@
 #include <platform/logic/input_manager.h>
 #include <platform/logic/monitor_manager.h>
 #include <platform/unit/io_context.h>
-
 
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>

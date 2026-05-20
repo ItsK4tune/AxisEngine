@@ -6,9 +6,11 @@
 
 REGISTER_SYSTEM(NetworkSystem)
 
-bool NetworkSystem::Init() {
+bool NetworkSystem::Init()
+{
     int res = enet_initialize();
-    if (res != 0) {
+    if (res != 0)
+    {
         LOGGER_ERROR("NetworkSystem") << "enet_initialize failed with code: " << res;
         return false;
     }
@@ -16,42 +18,54 @@ bool NetworkSystem::Init() {
     return true;
 }
 
-void NetworkSystem::ShutdownGlobal() {
+void NetworkSystem::ShutdownGlobal()
+{
     enet_deinitialize();
     LOGGER_INFO("NetworkSystem") << "enet_deinitialize called";
 }
 
-NetworkSystem::NetworkSystem() {}
+NetworkSystem::NetworkSystem()
+{
+}
 
-NetworkSystem::~NetworkSystem() {
+NetworkSystem::~NetworkSystem()
+{
     Stop();
 }
 
-void NetworkSystem::Initialize() {
+void NetworkSystem::Initialize()
+{
     Init();
 }
 
-void NetworkSystem::Shutdown() {
+void NetworkSystem::Shutdown()
+{
     Stop();
 }
 
-void NetworkSystem::Update(Scene& scene, float dt) {
-    if (enabled) {
-        UpdateEvents(0); // Poll events inside the main game update loop
+void NetworkSystem::Update(Scene& scene, float dt)
+{
+    if (enabled)
+    {
+        UpdateEvents(0);  // Poll events inside the main game update loop
     }
 }
 
-bool NetworkSystem::StartServer(const NetworkConfig& config) {
+bool NetworkSystem::StartServer(const NetworkConfig& config)
+{
     Stop();
 
-    LOGGER_INFO("NetworkSystem") << "Starting server on port " << config.port << " with max clients: " << config.maxClients;
+    LOGGER_INFO("NetworkSystem") << "Starting server on port " << config.port
+                                 << " with max clients: " << config.maxClients;
 
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = config.port;
 
-    host = enet_host_create(&address, config.maxClients, config.channels, config.incomingBandwidth, config.outgoingBandwidth);
-    if (!host) {
+    host = enet_host_create(&address, config.maxClients, config.channels, config.incomingBandwidth,
+                            config.outgoingBandwidth);
+    if (!host)
+    {
         LOGGER_ERROR("NetworkSystem") << "Failed to create ENet server host on port " << config.port;
         return false;
     }
@@ -62,13 +76,15 @@ bool NetworkSystem::StartServer(const NetworkConfig& config) {
     return true;
 }
 
-bool NetworkSystem::StartClient(const NetworkConfig& config) {
+bool NetworkSystem::StartClient(const NetworkConfig& config)
+{
     Stop();
 
     LOGGER_INFO("NetworkSystem") << "Connecting client to " << config.host << ":" << config.port;
 
     host = enet_host_create(nullptr, 1, config.channels, config.incomingBandwidth, config.outgoingBandwidth);
-    if (!host) {
+    if (!host)
+    {
         LOGGER_ERROR("NetworkSystem") << "Failed to create ENet client host";
         return false;
     }
@@ -78,8 +94,10 @@ bool NetworkSystem::StartClient(const NetworkConfig& config) {
     address.port = config.port;
 
     serverPeer = enet_host_connect(host, &address, config.channels, 0);
-    if (!serverPeer) {
-        LOGGER_ERROR("NetworkSystem") << "Failed to initiate ENet client connection to " << config.host << ":" << config.port;
+    if (!serverPeer)
+    {
+        LOGGER_ERROR("NetworkSystem") << "Failed to initiate ENet client connection to " << config.host << ":"
+                                      << config.port;
         enet_host_destroy(host);
         host = nullptr;
         return false;
@@ -91,10 +109,13 @@ bool NetworkSystem::StartClient(const NetworkConfig& config) {
     return true;
 }
 
-void NetworkSystem::Stop() {
-    if (!host) return;
+void NetworkSystem::Stop()
+{
+    if (!host)
+        return;
 
-    if (isClient && serverPeer) {
+    if (isClient && serverPeer)
+    {
         enet_peer_disconnect_now(serverPeer, 0);
         serverPeer = nullptr;
     }
@@ -105,27 +126,34 @@ void NetworkSystem::Stop() {
     isClient = false;
 }
 
-void NetworkSystem::UpdateEvents(uint32_t timeoutMs) {
-    if (!host) return;
+void NetworkSystem::UpdateEvents(uint32_t timeoutMs)
+{
+    if (!host)
+        return;
 
     ENetEvent event;
-    while (enet_host_service(host, &event, timeoutMs) > 0) {
-        switch (event.type) {
+    while (enet_host_service(host, &event, timeoutMs) > 0)
+    {
+        switch (event.type)
+        {
             case ENET_EVENT_TYPE_CONNECT:
-                if (onConnect) {
+                if (onConnect)
+                {
                     onConnect(event.peer);
                 }
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
-                if (onMessage) {
+                if (onMessage)
+                {
                     onMessage(event.peer, event.packet->data, event.packet->dataLength, event.channelID);
                 }
                 enet_packet_destroy(event.packet);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
-                if (onDisconnect) {
+                if (onDisconnect)
+                {
                     onDisconnect(event.peer);
                 }
                 break;
@@ -136,15 +164,19 @@ void NetworkSystem::UpdateEvents(uint32_t timeoutMs) {
     }
 }
 
-void NetworkSystem::SendPacket(ENetPeer* peer, const void* data, size_t size, bool reliable, uint8_t channel) {
-    if (!peer) return;
+void NetworkSystem::SendPacket(ENetPeer* peer, const void* data, size_t size, bool reliable, uint8_t channel)
+{
+    if (!peer)
+        return;
     uint32_t flags = reliable ? ENET_PACKET_FLAG_RELIABLE : 0;
     ENetPacket* packet = enet_packet_create(data, size, flags);
     enet_peer_send(peer, channel, packet);
 }
 
-void NetworkSystem::BroadcastPacket(const void* data, size_t size, bool reliable, uint8_t channel) {
-    if (!host) return;
+void NetworkSystem::BroadcastPacket(const void* data, size_t size, bool reliable, uint8_t channel)
+{
+    if (!host)
+        return;
     uint32_t flags = reliable ? ENET_PACKET_FLAG_RELIABLE : 0;
     ENetPacket* packet = enet_packet_create(data, size, flags);
     enet_host_broadcast(host, channel, packet);

@@ -1,4 +1,5 @@
 #include <core/app/application.h>
+#include <core/logic/data_manager.h>
 #include <audio/logic/audio_service.h>
 #include <core/logic/axis_assert.h>
 #include <core/logic/config_manager.h>
@@ -17,7 +18,7 @@
 #include <physics/interface/i_physics_world.h>
 #include <physics/logic/collision_matrix.h>
 #include <platform/interface/i_window.h>
-#include <platform/logic/input_loader.h>
+#include <platform/logic/input_serializer.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/monitor_manager.h>
 #include <platform/unit/io_context.h>
@@ -64,6 +65,7 @@ struct Application::Impl
     std::unique_ptr<ConfigManager> m_ConfigManager;
     std::unique_ptr<ScriptRegistry> m_ScriptRegistry;
     std::unique_ptr<CollisionMatrix> m_CollisionMatrix;
+    std::unique_ptr<DataManager> m_DataManager;
     uint32_t m_ConfigSubId = 0;
 };
 
@@ -120,6 +122,7 @@ void Application::Shutdown()
     m_Impl->m_RuntimeCore.reset();
     m_Impl->m_AudioService.reset();
     m_Impl->m_PhysicsWorld.reset();
+    m_Impl->m_DataManager.reset();
 
     if (m_Impl->m_Scene)
     {
@@ -162,6 +165,7 @@ bool Application::Initialize(const AppConfig& config)
 
     m_Impl->m_ScriptRegistry = std::make_unique<ScriptRegistry>();
     m_Impl->m_CollisionMatrix = std::make_unique<CollisionMatrix>();
+    m_Impl->m_DataManager = std::make_unique<DataManager>();
 
     bool effectiveHeadless = config.headlessMode;
 #ifdef ENABLE_EDITOR
@@ -295,6 +299,7 @@ bool Application::Initialize(const AppConfig& config)
     sl.Register<TimeService>(m_Impl->m_TimeService.get());
     sl.Register<ScriptRegistry>(m_Impl->m_ScriptRegistry.get());
     sl.Register<CollisionMatrix>(m_Impl->m_CollisionMatrix.get());
+    sl.Register<DataManager>(m_Impl->m_DataManager.get());
 
     m_Impl->m_RenderService = std::make_unique<RenderServiceImpl>();
     m_Impl->m_RenderService->Initialize();

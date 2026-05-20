@@ -1,8 +1,7 @@
 #include <render/unit/frustum.h>
 
-void Frustum::Update(const glm::mat4 &vp)
+void Frustum::Update(const glm::mat4& vp)
 {
-
     planes[0].normal.x = vp[0][3] + vp[0][0];
     planes[0].normal.y = vp[1][3] + vp[1][0];
     planes[0].normal.z = vp[2][3] + vp[2][0];
@@ -39,7 +38,7 @@ void Frustum::Update(const glm::mat4 &vp)
     }
 }
 
-bool Frustum::IsBoxVisible(const glm::vec3 &minBound, const glm::vec3 &maxBound) const
+bool Frustum::IsBoxVisible(const glm::vec3& minBound, const glm::vec3& maxBound) const
 {
     for (int i = 0; i < 6; ++i)
     {

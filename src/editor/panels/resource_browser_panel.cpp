@@ -258,7 +258,8 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
             scanDir("include/scripts");
 
             if (scripts.empty())
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No scripts found in src/scripts or include/scripts.");
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                                   "No scripts found in src/scripts or include/scripts.");
             for (const auto& item : scripts)
             {
                 bool selected = (m_SelectedName == item.first && m_SelectedType == "Scriptable");
@@ -776,8 +777,7 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                 ImGui::Spacing();
                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "Source Code Preview:");
                 ImGui::InputTextMultiline("##SourcePreview", const_cast<char*>(m_CachedShaderCode.c_str()),
-                                          m_CachedShaderCode.size() + 1, ImVec2(0, 450),
-                                          ImGuiInputTextFlags_ReadOnly);
+                                          m_CachedShaderCode.size() + 1, ImVec2(0, 450), ImGuiInputTextFlags_ReadOnly);
             }
         }
     }

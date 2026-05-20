@@ -13,12 +13,30 @@ public:
     void Shutdown() override;
     void Render(Scene& scene) override;
 
-    bool IsEnabled() const override { return m_Enabled; }
-    void SetEnabled(bool enable) override { m_Enabled = enable; }
-    std::string GetName() const override { return "PlanarReflectionSystem"; }
-    int GetPriority() const override { return 45; } // Before Lighting/Main render
-    SystemCategory GetCategory() const override { return SystemCategory::RenderMain; }
-    SystemRequirement GetRequirements() const override { return SystemRequirement::Graphics; }
+    bool IsEnabled() const override
+    {
+        return m_Enabled;
+    }
+    void SetEnabled(bool enable) override
+    {
+        m_Enabled = enable;
+    }
+    std::string GetName() const override
+    {
+        return "PlanarReflectionSystem";
+    }
+    int GetPriority() const override
+    {
+        return 45;
+    }  // Before Lighting/Main render
+    SystemCategory GetCategory() const override
+    {
+        return SystemCategory::RenderMain;
+    }
+    SystemRequirement GetRequirements() const override
+    {
+        return SystemRequirement::Graphics;
+    }
 
 private:
     bool m_Enabled = true;

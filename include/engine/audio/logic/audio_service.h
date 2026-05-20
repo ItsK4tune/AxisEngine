@@ -9,18 +9,14 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
 class AudioService
 {
 public:
     AudioService() = default;
     ~AudioService();
 
-    
     bool Initialize(std::unique_ptr<IAudioEngine> engine);
     void Shutdown();
-
-
 
     std::shared_ptr<ISound> Play2D(const std::string& path, bool loop = false);
     std::shared_ptr<ISound> Play3D(const std::string& path, glm::vec3 pos, bool loop = false);
@@ -30,10 +26,14 @@ public:
     void SetGlobalVolume(float volume);
     void StopAll();
 
-
-
-    IAudioEngine* GetEngine() const { return m_Engine.get(); }
-    bool IsInitialized() const { return m_Engine != nullptr; }
+    IAudioEngine* GetEngine() const
+    {
+        return m_Engine.get();
+    }
+    bool IsInitialized() const
+    {
+        return m_Engine != nullptr;
+    }
 
 private:
     std::unique_ptr<IAudioEngine> m_Engine;

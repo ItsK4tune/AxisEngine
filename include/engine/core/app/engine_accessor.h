@@ -66,7 +66,10 @@ public:
     void LogAllScenes();
     std::vector<const SceneRecord*> GetScenes();
 
-    void LoadInputBindings(const std::string& path);
+    bool LoadInputBindings(const std::string& path);
+    bool SaveInputBindings(const std::string& path);
+    bool LoadDataNodes(const std::string& path);
+    bool SaveDataNodes(const std::string& path);
     bool GetAction(const std::string& name) const;
     bool GetActionDown(const std::string& name) const;
     bool GetActionUp(const std::string& name) const;

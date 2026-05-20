@@ -33,9 +33,9 @@ void ToolsPanel::OnImGui(Scene& scene)
                               : (mode == CursorMode::Disabled) ? "Disabled (Panel)"
                               : (mode == CursorMode::Normal)   ? "Normal"
                               : (mode == CursorMode::Hidden)   ? "Hidden"
-                              : "LockedHidden";
+                                                               : "LockedHidden";
         ImGui::Text("Cursor: %s", modeStr);
-        
+
         bool forceFree = mouse.IsForceFree();
         if (ImGui::Checkbox("Force Free Cursor (F6)", &forceFree))
         {

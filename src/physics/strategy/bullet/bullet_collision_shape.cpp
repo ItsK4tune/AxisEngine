@@ -2,8 +2,8 @@
 
 BulletCollisionShape::~BulletCollisionShape()
 {
-
-    if (m_Shape && m_Type != CollisionShapeType::Heightfield) {
+    if (m_Shape && m_Type != CollisionShapeType::Heightfield)
+    {
         delete m_Shape;
         m_Shape = nullptr;
     }
@@ -30,8 +30,10 @@ glm::vec3 BulletCollisionShape::GetLocalScaling() const
     return glm::vec3(1.0f);
 }
 
-BulletMeshCollisionShape::BulletMeshCollisionShape(btCollisionShape* shape, btTriangleIndexVertexArray* indexVertexArray, std::vector<float>&& vertices, std::vector<uint32_t>&& indices)
-    : BulletCollisionShape(shape, CollisionShapeType::Mesh), 
+BulletMeshCollisionShape::BulletMeshCollisionShape(btCollisionShape* shape,
+                                                   btTriangleIndexVertexArray* indexVertexArray,
+                                                   std::vector<float>&& vertices, std::vector<uint32_t>&& indices)
+    : BulletCollisionShape(shape, CollisionShapeType::Mesh),
       m_IndexVertexArray(indexVertexArray),
       m_Vertices(std::move(vertices)),
       m_Indices(std::move(indices))
@@ -47,18 +49,21 @@ BulletMeshCollisionShape::~BulletMeshCollisionShape()
     }
 }
 
-BulletHeightfieldCollisionShape::BulletHeightfieldCollisionShape(btCollisionShape* shape, const std::vector<float>& heights)
+BulletHeightfieldCollisionShape::BulletHeightfieldCollisionShape(btCollisionShape* shape,
+                                                                 const std::vector<float>& heights)
     : BulletCollisionShape(shape, CollisionShapeType::Heightfield)
 {
     m_AlignedHeights.resize(heights.size());
-    for (size_t i = 0; i < heights.size(); ++i) {
+    for (size_t i = 0; i < heights.size(); ++i)
+    {
         m_AlignedHeights[i] = heights[i];
     }
 }
 
 BulletHeightfieldCollisionShape::~BulletHeightfieldCollisionShape()
 {
-    if (m_Shape) {
+    if (m_Shape)
+    {
         delete m_Shape;
         m_Shape = nullptr;
     }

@@ -27,13 +27,13 @@ public:
 
     virtual void Clear(BufferBit flags) = 0;
 
-    virtual IBufferManager &GetBufferManager() = 0;
-    virtual ITextureManager &GetTextureManager() = 0;
-    virtual IShaderManager &GetShaderManager() = 0;
-    virtual IRenderTargetManager &GetRenderTargetManager() = 0;
-    virtual IRenderStateManager &GetRenderStateManager() = 0;
-    virtual IDrawContext &GetDrawContext() = 0;
-    virtual IQueryManager &GetQueryManager() = 0;
+    virtual IBufferManager& GetBufferManager() = 0;
+    virtual ITextureManager& GetTextureManager() = 0;
+    virtual IShaderManager& GetShaderManager() = 0;
+    virtual IRenderTargetManager& GetRenderTargetManager() = 0;
+    virtual IRenderStateManager& GetRenderStateManager() = 0;
+    virtual IDrawContext& GetDrawContext() = 0;
+    virtual IQueryManager& GetQueryManager() = 0;
 
     virtual std::string GetName() const = 0;
 };

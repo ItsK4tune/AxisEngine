@@ -1,6 +1,7 @@
 #pragma once
 
-enum class PhysicsMode {
+enum class PhysicsMode
+{
     Fast,
     Balanced,
     Accurate

@@ -1,14 +1,6 @@
 axis_scene:
   Resources:
     Shader:
-      Name: forward_phong_lit
-      Vertex: include/engine/asset/shaders/forward_phong_lit.vs
-      Fragment: include/engine/asset/shaders/forward_phong_lit.fs
-    Shader:
-      Name: forward_phong_lit_shadow
-      Vertex: include/engine/asset/shaders/forward_phong_lit_shadow.vs
-      Fragment: include/engine/asset/shaders/forward_phong_lit_shadow.fs
-    Shader:
       Name: forward_pbr_lit
       Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
       Fragment: include/engine/asset/shaders/forward_pbr_lit.fs
@@ -135,11 +127,11 @@ axis_scene:
       Fragment: include/engine/asset/shaders/error_deferred.fs
     Shader:
       Name: forward_reflect
-      Vertex: include/engine/asset/shaders/forward_phong_lit.vs
+      Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
       Fragment: include/engine/asset/shaders/forward_reflect.fs
     Shader:
       Name: forward_reflect_shadow
-      Vertex: include/engine/asset/shaders/forward_phong_lit_shadow.vs
+      Vertex: include/engine/asset/shaders/forward_pbr_lit_shadow.vs
       Fragment: include/engine/asset/shaders/forward_reflect_shadow.fs
     Shader:
       Name: deferred_reflect
@@ -147,7 +139,7 @@ axis_scene:
       Fragment: include/engine/asset/shaders/deferred_reflect.fs
     Shader:
       Name: forward_transparent
-      Vertex: include/engine/asset/shaders/forward_phong_lit.vs
+      Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
       Fragment: include/engine/asset/shaders/transparent.fs
     Shader:
       Name: deferred_transparent

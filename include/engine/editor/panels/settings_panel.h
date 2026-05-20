@@ -10,8 +10,14 @@ class SettingsPanel : public IEditorPanel
 public:
     void Initialize() override;
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Settings [Ctrl+4]"; }
-    PanelGroup GetGroup() const override { return PanelGroup::Debug; }
+    std::string GetTitle() const override
+    {
+        return "Settings [Ctrl+4]";
+    }
+    PanelGroup GetGroup() const override
+    {
+        return PanelGroup::Debug;
+    }
 
 private:
     std::string m_CpuName = "Unknown CPU";

@@ -16,6 +16,8 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/core/logic/log_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/logger.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/state.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/logic/data_node_serializer.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/logic/data_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/yaml_parser.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/animation_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/audio_system.cpp
@@ -61,7 +63,7 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_debug_drawer.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_physics_world.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_rigid_body.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/input_loader.cpp
+    ${CMAKE_SOURCE_DIR}/src/platform/logic/input_serializer.cpp
     ${CMAKE_SOURCE_DIR}/src/platform/logic/input_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/platform/logic/io_handler.cpp
     ${CMAKE_SOURCE_DIR}/src/platform/logic/keyboard_manager.cpp

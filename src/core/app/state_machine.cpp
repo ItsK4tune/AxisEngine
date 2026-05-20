@@ -2,7 +2,9 @@
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene.h>
 
-StateMachine::StateMachine() {}
+StateMachine::StateMachine()
+{
+}
 
 void StateMachine::Initialize()
 {
@@ -52,25 +54,25 @@ void StateMachine::ChangeState(std::unique_ptr<State> state)
     PushState(std::move(state));
 }
 
-State *StateMachine::GetCurrentState()
+State* StateMachine::GetCurrentState()
 {
     return m_States.empty() ? nullptr : m_States.top().get();
 }
 
 void StateMachine::Update(float dt)
 {
-    if (State *s = GetCurrentState())
+    if (State* s = GetCurrentState())
         s->OnUpdate(dt);
 }
 
 void StateMachine::FixedUpdate(float fixedDt)
 {
-    if (State *s = GetCurrentState())
+    if (State* s = GetCurrentState())
         s->OnFixedUpdate(fixedDt);
 }
 
 void StateMachine::Render()
 {
-    if (State *s = GetCurrentState())
+    if (State* s = GetCurrentState())
         s->OnRender();
 }

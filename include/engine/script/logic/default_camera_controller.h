@@ -20,7 +20,7 @@ private:
 
     float m_Yaw = -90.0f;
     float m_Pitch = 0.0f;
-    float m_Distance = 10.0f; // Distance from pivot when orbiting
+    float m_Distance = 10.0f;  // Distance from pivot when orbiting
 
     glm::vec3 m_Velocity = glm::vec3(0.0f);
     glm::vec3 m_Pivot = glm::vec3(0.0f);

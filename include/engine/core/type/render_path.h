@@ -1,6 +1,7 @@
 #pragma once
 
-enum class RenderPath {
+enum class RenderPath
+{
     Forward,
     Deferred
 };

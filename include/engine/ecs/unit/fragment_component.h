@@ -3,8 +3,9 @@
 #include <engine/core/logic/yaml_parser.h>
 #include <string>
 
-struct FragmentComponent {
+struct FragmentComponent
+{
     std::string path;
-    std::string overrides; // Raw YAML string for overrides
+    std::string overrides;  // Raw YAML string for overrides
     bool instantiated = false;
 };

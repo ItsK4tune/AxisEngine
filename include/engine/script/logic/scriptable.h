@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/app/engine_accessor.h>
+#include <core/logic/data_node.h>
 #include <ecs/interface/i_scriptable.h>
 #include <ecs/unit/script_component.h>
 #include <platform/interface/key.h>
@@ -121,6 +122,12 @@ public:
     bool IsCollisionEnabled() const;
     void IgnoreTagCollision(const std::string& tag1, const std::string& tag2);
     void IgnoreNameCollision(const std::string& name1, const std::string& name2);
+
+    void SetDataNode(const std::string& key, const DataNode& data);
+    DataNode GetDataNode(const std::string& key) const;
+    bool HasDataNode(const std::string& key) const;
+    void SetDataNodeValue(const std::string& key, const std::string& value);
+    std::string GetDataNodeValue(const std::string& key, const std::string& defaultVal = "") const;
 
     template <typename T>
     T& GetComponent()

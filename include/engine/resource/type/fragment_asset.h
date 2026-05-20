@@ -4,7 +4,8 @@
 #include <string>
 #include <vector>
 
-struct FragmentAsset {
+struct FragmentAsset
+{
     std::string path;
     std::vector<YAMLNode> rootNodes;
 };

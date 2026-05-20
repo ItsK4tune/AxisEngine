@@ -1,6 +1,7 @@
 #pragma once
 
-enum class GraphicsBackend {
+enum class GraphicsBackend
+{
     OpenGL,
     Vulkan,
     DirectX

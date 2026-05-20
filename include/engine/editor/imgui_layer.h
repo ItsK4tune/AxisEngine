@@ -11,7 +11,10 @@ public:
     void BeginFrame();
     void EndFrame();
     void Shutdown();
-    bool IsInitialized() const { return m_Initialized; }
+    bool IsInitialized() const
+    {
+        return m_Initialized;
+    }
 
 private:
     bool m_Initialized = false;

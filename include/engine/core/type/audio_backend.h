@@ -1,6 +1,7 @@
 #pragma once
 
-enum class AudioBackend {
+enum class AudioBackend
+{
     IrrKlang,
     FMOD,
     OpenAL

@@ -1,7 +1,9 @@
 #include <physics/strategy/bullet/bullet_character_controller.h>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
 
-BulletCharacterController::BulletCharacterController(btPairCachingGhostObject* ghostObject, btKinematicCharacterController* controller, std::shared_ptr<ICollisionShape> shape)
+BulletCharacterController::BulletCharacterController(btPairCachingGhostObject* ghostObject,
+                                                     btKinematicCharacterController* controller,
+                                                     std::shared_ptr<ICollisionShape> shape)
     : m_GhostObject(ghostObject), m_Controller(controller), m_Shape(shape)
 {
 }

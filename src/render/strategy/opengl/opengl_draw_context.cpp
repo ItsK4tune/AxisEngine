@@ -34,7 +34,7 @@ void OpenGLDrawContext::DrawArrays(Primitive mode, int first, int count)
     glDrawArrays(GLTranslator::ToGL(mode), first, count);
 }
 
-void OpenGLDrawContext::DrawElements(Primitive mode, int count, DataType type, const void *indices)
+void OpenGLDrawContext::DrawElements(Primitive mode, int count, DataType type, const void* indices)
 {
     glDrawElements(GLTranslator::ToGL(mode), count, GLTranslator::ToGL(type), indices);
 }
@@ -44,12 +44,13 @@ void OpenGLDrawContext::DrawArraysInstanced(Primitive mode, int first, int count
     glDrawArraysInstanced(GLTranslator::ToGL(mode), first, count, instancecount);
 }
 
-void OpenGLDrawContext::DrawElementsInstanced(Primitive mode, int count, DataType type, const void *indices, int instancecount)
+void OpenGLDrawContext::DrawElementsInstanced(Primitive mode, int count, DataType type, const void* indices,
+                                              int instancecount)
 {
     glDrawElementsInstanced(GLTranslator::ToGL(mode), count, GLTranslator::ToGL(type), indices, instancecount);
 }
 
-const char *OpenGLDrawContext::GetBackendName() const
+const char* OpenGLDrawContext::GetBackendName() const
 {
     return "OpenGL";
 }

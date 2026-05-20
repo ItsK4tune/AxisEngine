@@ -1,8 +1,11 @@
 #include <platform/logic/mouse_manager.h>
 
-MouseManager::MouseManager(IWindow *window)
-    : m_LastX(400.0), m_LastY(300.0),
-      m_XOffset(0.0f), m_YOffset(0.0f), m_ScrollY(0.0f),
+MouseManager::MouseManager(IWindow* window)
+    : m_LastX(400.0),
+      m_LastY(300.0),
+      m_XOffset(0.0f),
+      m_YOffset(0.0f),
+      m_ScrollY(0.0f),
       m_FirstMouse(true),
       m_ForceFree(false),
       m_Mode(CursorMode::Normal)
@@ -66,7 +69,8 @@ void MouseManager::UpdateScroll(double xoffset, double yoffset)
 void MouseManager::UpdateButton(Mouse button, int action, int mods)
 {
     size_t btnIdx = (size_t)button;
-    if (btnIdx >= 16) return;
+    if (btnIdx >= 16)
+        return;
 
     if (action == 1)
     {
@@ -108,7 +112,8 @@ void MouseManager::SetCursorMode(CursorMode mode)
     }
 
 #ifdef ENABLE_EDITOR
-    if (mode == CursorMode::Disabled) {
+    if (mode == CursorMode::Disabled)
+    {
         // Disabled = cursor visible, normal movement, but game ignores mouse data
         // Treat like Normal from window perspective
         m_Window->SetCursorMode(CursorMode::Normal);

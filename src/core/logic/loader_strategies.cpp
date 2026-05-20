@@ -5,7 +5,7 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <physics/logic/physics_loader.h>
-#include <platform/logic/input_loader.h>
+#include <platform/logic/input_serializer.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
 #include <scene/logic/component_loader.h>
@@ -41,8 +41,12 @@ public:
     bool Load(const std::string& path) override
     {
         auto& sl = ServiceLocator::Instance();
-        auto& input = sl.Require<InputManager>();
-        return InputLoader::LoadBindings(FileSystem::getPath(path), input);
+        if (auto* io = sl.Resolve<IOHandler>())
+        {
+            InputSerializer serializer;
+            return serializer.Deserialize(FileSystem::getPath(path), io->GetInputManager());
+        }
+        return false;
     }
     const char* GetName() const override
     {

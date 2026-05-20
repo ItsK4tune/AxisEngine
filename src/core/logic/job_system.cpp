@@ -74,19 +74,16 @@ void JobSystem::Wait()
 {
     // Use separate wait mutex — does NOT block workers from dequeuing
     std::unique_lock<std::mutex> lock(m_WaitMutex);
-    m_WaitCondition.wait(lock, [this]() {
-        return m_ActiveJobs.load(std::memory_order_acquire) == 0;
-    });
+    m_WaitCondition.wait(lock, [this]() { return m_ActiveJobs.load(std::memory_order_acquire) == 0; });
 }
 
 void JobSystem::Wait(JobCounter* counter)
 {
-    if (!counter) return;
+    if (!counter)
+        return;
     // Use separate wait mutex — does NOT block workers from dequeuing
     std::unique_lock<std::mutex> lock(m_WaitMutex);
-    m_CounterCondition.wait(lock, [counter]() {
-        return counter->load(std::memory_order_acquire) == 0;
-    });
+    m_CounterCondition.wait(lock, [counter]() { return counter->load(std::memory_order_acquire) == 0; });
 }
 
 bool JobSystem::IsBusy()
@@ -103,9 +100,7 @@ void JobSystem::WorkerLoop()
         {
             std::unique_lock<std::mutex> lock(m_QueueMutex);
 
-            m_Condition.wait(lock, [this]() {
-                return !m_JobQueue.empty() || !m_IsRunning;
-            });
+            m_Condition.wait(lock, [this]() { return !m_JobQueue.empty() || !m_IsRunning; });
 
             if (!m_IsRunning && m_JobQueue.empty())
                 return;
@@ -115,13 +110,17 @@ void JobSystem::WorkerLoop()
         }
         // Lock is released here — other workers can dequeue immediately
 
-        try {
+        try
+        {
             if (job.task)
                 job.task();
-        } catch (const std::exception& e) {
-
+        }
+        catch (const std::exception& e)
+        {
             std::cerr << "[JobSystem] CRITICAL: Unhandled exception in worker thread: " << e.what() << std::endl;
-        } catch (...) {
+        }
+        catch (...)
+        {
             std::cerr << "[JobSystem] CRITICAL: Unknown exception in worker thread" << std::endl;
         }
 

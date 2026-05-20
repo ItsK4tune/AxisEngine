@@ -7,7 +7,7 @@
 class MouseManager
 {
 public:
-    MouseManager(IWindow *window);
+    MouseManager(IWindow* window);
 
     void UpdatePosition(double xpos, double ypos);
     void UpdateScroll(double xoffset, double yoffset);
@@ -25,44 +25,106 @@ public:
     float GetLastX() const;
     float GetLastY() const;
 
+    bool IsButtonPressed(Mouse button) const
+    {
+        return m_CurrentButtons.test((size_t)button);
+    }
+    bool IsMouseClicked(Mouse button) const
+    {
+        return m_CurrentButtons.test((size_t)button) && !m_PreviousButtons.test((size_t)button);
+    }
+    bool IsMouseReleased(Mouse button) const
+    {
+        return !m_CurrentButtons.test((size_t)button) && m_PreviousButtons.test((size_t)button);
+    }
 
-    bool IsButtonPressed(Mouse button) const  { return m_CurrentButtons.test((size_t)button); }
-    bool IsMouseClicked(Mouse button) const   { return m_CurrentButtons.test((size_t)button) && !m_PreviousButtons.test((size_t)button); }
-    bool IsMouseReleased(Mouse button) const  { return !m_CurrentButtons.test((size_t)button) && m_PreviousButtons.test((size_t)button); }
+    bool IsLeftButtonPressed() const
+    {
+        return IsButtonPressed(Mouse::Left);
+    }
+    bool IsRightButtonPressed() const
+    {
+        return IsButtonPressed(Mouse::Right);
+    }
+    bool IsMiddleButtonPressed() const
+    {
+        return IsButtonPressed(Mouse::Middle);
+    }
+    bool IsLeftMouseClicked() const
+    {
+        return IsMouseClicked(Mouse::Left);
+    }
+    bool IsRightMouseClicked() const
+    {
+        return IsMouseClicked(Mouse::Right);
+    }
+    bool IsMiddleMouseClicked() const
+    {
+        return IsMouseClicked(Mouse::Middle);
+    }
+    bool IsLeftMouseReleased() const
+    {
+        return IsMouseReleased(Mouse::Left);
+    }
+    bool IsRightMouseReleased() const
+    {
+        return IsMouseReleased(Mouse::Right);
+    }
+    bool IsMiddleMouseReleased() const
+    {
+        return IsMouseReleased(Mouse::Middle);
+    }
 
-
-    bool IsLeftButtonPressed() const { return IsButtonPressed(Mouse::Left); }
-    bool IsRightButtonPressed() const { return IsButtonPressed(Mouse::Right); }
-    bool IsMiddleButtonPressed() const { return IsButtonPressed(Mouse::Middle); }
-    bool IsLeftMouseClicked() const { return IsMouseClicked(Mouse::Left); }
-    bool IsRightMouseClicked() const { return IsMouseClicked(Mouse::Right); }
-    bool IsMiddleMouseClicked() const { return IsMouseClicked(Mouse::Middle); }
-    bool IsLeftMouseReleased() const { return IsMouseReleased(Mouse::Left); }
-    bool IsRightMouseReleased() const { return IsMouseReleased(Mouse::Right); }
-    bool IsMiddleMouseReleased() const { return IsMouseReleased(Mouse::Middle); }
-
-    bool IsMouse4ButtonPressed() const { return IsButtonPressed(Mouse::Button4); }
-    bool IsMouse4MouseClicked() const { return IsMouseClicked(Mouse::Button4); }
-    bool IsMouse4MouseReleased() const { return IsMouseReleased(Mouse::Button4); }
-    bool IsMouse5ButtonPressed() const { return IsButtonPressed(Mouse::Button5); }
-    bool IsMouse5MouseClicked() const { return IsMouseClicked(Mouse::Button5); }
-    bool IsMouse5MouseReleased() const { return IsMouseReleased(Mouse::Button5); }
+    bool IsMouse4ButtonPressed() const
+    {
+        return IsButtonPressed(Mouse::Button4);
+    }
+    bool IsMouse4MouseClicked() const
+    {
+        return IsMouseClicked(Mouse::Button4);
+    }
+    bool IsMouse4MouseReleased() const
+    {
+        return IsMouseReleased(Mouse::Button4);
+    }
+    bool IsMouse5ButtonPressed() const
+    {
+        return IsButtonPressed(Mouse::Button5);
+    }
+    bool IsMouse5MouseClicked() const
+    {
+        return IsMouseClicked(Mouse::Button5);
+    }
+    bool IsMouse5MouseReleased() const
+    {
+        return IsMouseReleased(Mouse::Button5);
+    }
 
     bool IsWheelUp() const;
     bool IsWheelDown() const;
 
     void SetWindowSize(int width, int height);
     void SetLastPosition(double x, double y);
-    void SetLockPosition(double x, double y) { m_LockX = x; m_LockY = y; }
+    void SetLockPosition(double x, double y)
+    {
+        m_LockX = x;
+        m_LockY = y;
+    }
 
-    void SetForceFree(bool force) { m_ForceFree = force; }
-    bool IsForceFree() const { return m_ForceFree; }
+    void SetForceFree(bool force)
+    {
+        m_ForceFree = force;
+    }
+    bool IsForceFree() const
+    {
+        return m_ForceFree;
+    }
 
 private:
     friend class IOHandler;
-    void SetWindow(IWindow *window);
+    void SetWindow(IWindow* window);
 
-    IWindow *m_Window = nullptr;
+    IWindow* m_Window = nullptr;
     int m_WindowWidth = 800;
     int m_WindowHeight = 600;
 

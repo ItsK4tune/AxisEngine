@@ -1,7 +1,8 @@
 #include <resource/logic/model_instance_manager.h>
 #include <core/logic/logger.h>
 
-std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path, bool isStatic)
+std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& name, const std::string& path,
+                                                            bool isStatic)
 {
     std::lock_guard<std::recursive_mutex> lock(m_PoolMutex);
     auto it = m_ModelPools.find(name);
@@ -19,7 +20,8 @@ std::shared_ptr<Model> ModelInstanceManager::GetOrLoadModel(const std::string& n
 
     m_ModelPools[name] = pool;
 
-    LOGGER_INFO("ModelInstanceManager") << "Loaded model '" << name << "': " << path << (isStatic ? " (STATIC)" : " (DYNAMIC)");
+    LOGGER_INFO("ModelInstanceManager") << "Loaded model '" << name << "': " << path
+                                        << (isStatic ? " (STATIC)" : " (DYNAMIC)");
 
     return model;
 }
@@ -64,11 +66,9 @@ void ModelInstanceManager::RemoveInstance(const std::string& modelPath, entt::en
         return;
 
     auto& instances = it->second.instances;
-    instances.erase(
-        std::remove_if(instances.begin(), instances.end(),
-            [entity](const ModelInstance& inst) { return inst.entity == entity; }),
-        instances.end()
-    );
+    instances.erase(std::remove_if(instances.begin(), instances.end(),
+                                   [entity](const ModelInstance& inst) { return inst.entity == entity; }),
+                    instances.end());
 }
 
 const std::vector<ModelInstance>& ModelInstanceManager::GetInstances(const std::string& modelPath)
@@ -124,7 +124,8 @@ bool ModelInstanceManager::UnloadModel(const std::string& name)
         }
         else
         {
-            LOGGER_WARN("ModelInstanceManager") << "Cannot unload model '" << name << "': still in use (Instances: " << it->second.instances.size() << ")";
+            LOGGER_WARN("ModelInstanceManager") << "Cannot unload model '" << name
+                                                << "': still in use (Instances: " << it->second.instances.size() << ")";
             return false;
         }
     }

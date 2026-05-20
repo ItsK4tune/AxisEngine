@@ -40,19 +40,22 @@ void AudioService::Shutdown()
 
 std::shared_ptr<ISound> AudioService::Play2D(const std::string& path, bool loop)
 {
-    if (!m_Engine) return nullptr;
+    if (!m_Engine)
+        return nullptr;
     return m_Engine->Play2D(path, loop);
 }
 
 std::shared_ptr<ISound> AudioService::Play3D(const std::string& path, glm::vec3 pos, bool loop)
 {
-    if (!m_Engine) return nullptr;
+    if (!m_Engine)
+        return nullptr;
     return m_Engine->Play3D(path, pos, loop);
 }
 
 std::shared_ptr<ISound> AudioService::Play2D(std::shared_ptr<IAudioSource> source, bool loop)
 {
-    if (!m_Engine || !source) return nullptr;
+    if (!m_Engine || !source)
+        return nullptr;
     return m_Engine->Play2D(source.get(), loop);
 }
 

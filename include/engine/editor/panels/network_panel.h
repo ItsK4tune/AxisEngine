@@ -8,9 +8,17 @@ struct Scene;
 class NetworkPanel : public IEditorPanel
 {
 public:
-    void Initialize() override {}
+    void Initialize() override
+    {
+    }
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Network Controller"; }
-    PanelGroup GetGroup() const override { return PanelGroup::Tools; }
+    std::string GetTitle() const override
+    {
+        return "Network Controller";
+    }
+    PanelGroup GetGroup() const override
+    {
+        return PanelGroup::Tools;
+    }
 };
 #endif

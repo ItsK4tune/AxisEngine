@@ -4,8 +4,6 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-
-
 struct DirectionalLightComponent
 {
     glm::vec3 direction = glm::normalize(glm::vec3(-0.2f, -1.0f, -0.3f));
@@ -17,8 +15,6 @@ struct DirectionalLightComponent
     bool active = true;
     bool isCastShadow = true;
 };
-
-
 
 struct PointLightComponent
 {
@@ -34,8 +30,6 @@ struct PointLightComponent
     bool active = true;
     bool isCastShadow = false;
 };
-
-
 
 struct SpotLightComponent
 {

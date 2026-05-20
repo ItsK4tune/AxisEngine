@@ -1,5 +1,6 @@
 #include <script/logic/scriptable.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/data_manager.h>
 #include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
@@ -126,4 +127,44 @@ void Scriptable::UpdateInvokes(float dt)
             ++it;
         }
     }
+}
+
+void Scriptable::SetDataNode(const std::string& key, const DataNode& data)
+{
+    if (auto dm = ServiceLocator::Instance().Resolve<DataManager>())
+        dm->SetDataNode(key, data);
+}
+
+DataNode Scriptable::GetDataNode(const std::string& key) const
+{
+    if (auto dm = ServiceLocator::Instance().Resolve<DataManager>())
+        return dm->GetDataNode(key);
+    return {};
+}
+
+bool Scriptable::HasDataNode(const std::string& key) const
+{
+    if (auto dm = ServiceLocator::Instance().Resolve<DataManager>())
+        return dm->HasDataNode(key);
+    return false;
+}
+
+void Scriptable::SetDataNodeValue(const std::string& key, const std::string& value)
+{
+    if (auto dm = ServiceLocator::Instance().Resolve<DataManager>())
+    {
+        DataNode data;
+        data.value = value;
+        dm->SetDataNode(key, data);
+    }
+}
+
+std::string Scriptable::GetDataNodeValue(const std::string& key, const std::string& defaultVal) const
+{
+    if (auto dm = ServiceLocator::Instance().Resolve<DataManager>())
+    {
+        if (dm->HasDataNode(key))
+            return dm->GetDataNode(key).value;
+    }
+    return defaultVal;
 }

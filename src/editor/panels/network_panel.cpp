@@ -57,8 +57,10 @@ void NetworkPanel::OnImGui(Scene& scene)
                     ImGui::Separator();
                     ImGui::Text("Performance Metrics:");
                     ImGui::Text("- Connected Peers: %zu", host->connectedPeers);
-                    ImGui::Text("- Total Sent: %.2f KB (%u packets)", (float)host->totalSentData / 1024.0f, host->totalSentPackets);
-                    ImGui::Text("- Total Received: %.2f KB (%u packets)", (float)host->totalReceivedData / 1024.0f, host->totalReceivedPackets);
+                    ImGui::Text("- Total Sent: %.2f KB (%u packets)", (float)host->totalSentData / 1024.0f,
+                                host->totalSentPackets);
+                    ImGui::Text("- Total Received: %.2f KB (%u packets)", (float)host->totalReceivedData / 1024.0f,
+                                host->totalReceivedPackets);
                 }
 
                 ImGui::Separator();
@@ -104,7 +106,8 @@ void NetworkPanel::OnImGui(Scene& scene)
             if (host && netSys->IsServer())
             {
                 ImGui::Text("Connected Clients (%zu/%zu):", host->connectedPeers, host->peerCount);
-                if (ImGui::BeginTable("PeersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
+                if (ImGui::BeginTable("PeersTable", 6,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
                 {
                     ImGui::TableSetupColumn("ID");
                     ImGui::TableSetupColumn("Address");
@@ -136,7 +139,8 @@ void NetworkPanel::OnImGui(Scene& scene)
                         ImGui::Text("%.1f%%", (float)peer->packetLoss * 100.0f / 65536.0f);
 
                         ImGui::TableSetColumnIndex(4);
-                        ImGui::Text("%.1f KB / %.1f KB", (float)peer->totalDataSent / 1024.0f, (float)peer->totalDataReceived / 1024.0f);
+                        ImGui::Text("%.1f KB / %.1f KB", (float)peer->totalDataSent / 1024.0f,
+                                    (float)peer->totalDataReceived / 1024.0f);
 
                         ImGui::TableSetColumnIndex(5);
                         ImGui::PushID(static_cast<int>(i));
@@ -160,7 +164,8 @@ void NetworkPanel::OnImGui(Scene& scene)
         if (ImGui::BeginTabItem("Replicated Entities"))
         {
             ImGui::Text("Entities containing NetworkComponent:");
-            if (ImGui::BeginTable("NetEntitiesTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
+            if (ImGui::BeginTable("NetEntitiesTable", 5,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
             {
                 ImGui::TableSetupColumn("Net ID");
                 ImGui::TableSetupColumn("Entity Name");
@@ -176,7 +181,7 @@ void NetworkPanel::OnImGui(Scene& scene)
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    
+
                     bool isSelected = (SceneHierarchyPanel::s_SelectedEntity == entity);
                     char label[32];
                     sprintf_s(label, "%u", netComp.networkId);

@@ -33,5 +33,5 @@ public:
 
     virtual void SetColorMask(bool r, bool g, bool b, bool a) = 0;
 
-    virtual const char *GetBackendName() const = 0;
+    virtual const char* GetBackendName() const = 0;
 };

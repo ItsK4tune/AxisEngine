@@ -4,7 +4,8 @@ BulletRigidBody::~BulletRigidBody()
 {
     if (m_Body)
     {
-        if (m_Body->getMotionState()) delete m_Body->getMotionState();
+        if (m_Body->getMotionState())
+            delete m_Body->getMotionState();
         delete m_Body;
     }
 }
@@ -79,11 +80,11 @@ void BulletRigidBody::SetWorldTransform(const glm::vec3& pos, const glm::quat& r
         tr.setOrigin(btVector3(pos.x, pos.y, pos.z));
         tr.setRotation(btQuaternion(rot.x, rot.y, rot.z, rot.w));
         m_Body->setWorldTransform(tr);
-        m_Body->setInterpolationWorldTransform(tr); // Clear visual interpolation lag
-        if(m_Body->getMotionState())
+        m_Body->setInterpolationWorldTransform(tr);  // Clear visual interpolation lag
+        if (m_Body->getMotionState())
             m_Body->getMotionState()->setWorldTransform(tr);
-            
-        m_Body->clearForces(); // Ensure no lingering physics forces fight the teleport
+
+        m_Body->clearForces();  // Ensure no lingering physics forces fight the teleport
     }
 }
 
@@ -128,7 +129,8 @@ bool BulletRigidBody::IsTrigger() const
 
 void BulletRigidBody::SetKinematic(bool isKinematic)
 {
-    if (!m_Body) return;
+    if (!m_Body)
+        return;
     if (isKinematic)
     {
         m_Body->setCollisionFlags(m_Body->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
@@ -143,7 +145,8 @@ void BulletRigidBody::SetKinematic(bool isKinematic)
 
 void BulletRigidBody::SetStatic(bool isStatic)
 {
-    if (!m_Body) return;
+    if (!m_Body)
+        return;
     if (isStatic)
         m_Body->setCollisionFlags(m_Body->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
     else
@@ -152,7 +155,8 @@ void BulletRigidBody::SetStatic(bool isStatic)
 
 void BulletRigidBody::SetTrigger(bool isTrigger)
 {
-    if (!m_Body) return;
+    if (!m_Body)
+        return;
     if (isTrigger)
         m_Body->setCollisionFlags(m_Body->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
     else
@@ -161,7 +165,8 @@ void BulletRigidBody::SetTrigger(bool isTrigger)
 
 void BulletRigidBody::SetAlwaysActive(bool alwaysActive)
 {
-    if (!m_Body) return;
+    if (!m_Body)
+        return;
     if (alwaysActive)
         m_Body->setActivationState(DISABLE_DEACTIVATION);
     else

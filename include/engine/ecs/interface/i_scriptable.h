@@ -12,8 +12,8 @@ class IScriptable
 public:
     virtual ~IScriptable() = default;
 
-    virtual void Initialize(entt::entity entity, Scene *scene) = 0;
-    
+    virtual void Initialize(entt::entity entity, Scene* scene) = 0;
+
     virtual void OnCreate() = 0;
     virtual void OnUpdate(float dt) = 0;
     virtual void OnDestroy() = 0;
@@ -21,7 +21,6 @@ public:
     virtual void OnEnable() = 0;
     virtual void OnDisable() = 0;
     virtual void OnReset() = 0;
-
 
     virtual void OnCollisionEnter(entt::entity other) = 0;
     virtual void OnCollisionExit(entt::entity other) = 0;

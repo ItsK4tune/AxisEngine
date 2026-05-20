@@ -1,28 +1,34 @@
 #include <resource/logic/font_manager.h>
 #include <core/logic/logger.h>
 
-std::shared_ptr<Font> FontManager::Load(const std::string& name, const std::string& path, unsigned int fontSize) {
-    if (auto existing = m_Cache.Get(name)) return existing;
+std::shared_ptr<Font> FontManager::Load(const std::string& name, const std::string& path, unsigned int fontSize)
+{
+    if (auto existing = m_Cache.Get(name))
+        return existing;
 
     auto font = std::make_shared<Font>();
-    if (font->Load(path, fontSize)) {
+    if (font->Load(path, fontSize))
+    {
         m_Cache.Add(name, font);
         LOGGER_INFO("FontManager") << "Loaded font: " << name << " (Size: " << fontSize << ")";
         return font;
     }
-    
+
     LOGGER_ERROR("FontManager") << "Failed to load font: " << path;
     return nullptr;
 }
 
-std::shared_ptr<Font> FontManager::Get(const std::string& nameOrPath) {
+std::shared_ptr<Font> FontManager::Get(const std::string& nameOrPath)
+{
     return m_Cache.Get(nameOrPath);
 }
 
-void FontManager::Unload(const std::string& nameOrPath) {
+void FontManager::Unload(const std::string& nameOrPath)
+{
     m_Cache.Remove(nameOrPath);
 }
 
-void FontManager::Clear() {
+void FontManager::Clear()
+{
     m_Cache.Clear();
 }

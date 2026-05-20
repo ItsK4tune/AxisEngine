@@ -22,8 +22,10 @@ std::unique_ptr<IBaseSystem> SystemFactory::Create(const std::string& name)
 std::vector<std::unique_ptr<IBaseSystem>> SystemFactory::CreateAll()
 {
     std::vector<std::unique_ptr<IBaseSystem>> systems;
-    for (auto& pair : GetRegistry()) {
-        if (auto sys = pair.second()) {
+    for (auto& pair : GetRegistry())
+    {
+        if (auto sys = pair.second())
+        {
             systems.push_back(std::move(sys));
         }
     }

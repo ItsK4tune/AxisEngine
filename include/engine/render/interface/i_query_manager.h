@@ -2,7 +2,8 @@
 
 #include <render/type/graphics_types.h>
 
-class IQueryManager {
+class IQueryManager
+{
 public:
     virtual ~IQueryManager() = default;
 

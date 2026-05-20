@@ -5,28 +5,17 @@
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/data_manager.h>
+#include <core/logic/data_node_serializer.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
 #include <ecs/logic/system_manager.h>
 #include <engine/platform/logic/io_handler.h>
-#include <platform/logic/input_loader.h>
+#include <platform/logic/input_serializer.h>
 #include <platform/logic/input_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
-
-// NOTE: Concrete ECS system headers are intentionally NOT included here.
-// Get*System() methods resolve via SystemManager::GetSystem<T>() which uses
-// a type_index cache populated at registration time. This eliminates the
-// Layer 2 (Core) → Layer 4 (ECS Systems) reverse dependency.
-
-// --- Forward-declared concrete system getters ---
-// These still return concrete types for backward compatibility with game code,
-// but the include dependency has been moved to the call site (game code).
-// Engine code should use Get<InterfaceType>() instead.
-
-// Include concrete system headers here so GetSystem<T>() template can resolve.
-// This is still in .cpp (not .h), so the header dependency is not leaked.
 
 Scene& EngineAccessor::GetScene() const
 {
@@ -37,10 +26,41 @@ void EngineAccessor::LoadScene(const std::string& path, bool persistent)
 {
     ServiceLocator::Instance().Require<SceneManager>().LoadScene(path, persistent);
 }
-void EngineAccessor::LoadInputBindings(const std::string& path)
+bool EngineAccessor::LoadInputBindings(const std::string& path)
 {
     if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
-        InputLoader::LoadBindings(path, io->GetInputManager());
+    {
+        InputSerializer serializer;
+        return serializer.Deserialize(path, io->GetInputManager());
+    }
+    return false;
+}
+bool EngineAccessor::SaveInputBindings(const std::string& path)
+{
+    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
+    {
+        InputSerializer serializer;
+        return serializer.Serialize(path, io->GetInputManager());
+    }
+    return false;
+}
+bool EngineAccessor::LoadDataNodes(const std::string& path)
+{
+    if (auto* dm = ServiceLocator::Instance().Resolve<DataManager>())
+    {
+        DataNodeSerializer serializer;
+        return serializer.Deserialize(path, dm->GetDataNodes());
+    }
+    return false;
+}
+bool EngineAccessor::SaveDataNodes(const std::string& path)
+{
+    if (auto* dm = ServiceLocator::Instance().Resolve<DataManager>())
+    {
+        DataNodeSerializer serializer;
+        return serializer.Serialize(path, dm->GetDataNodes());
+    }
+    return false;
 }
 
 void EngineAccessor::SetCursorMode(CursorMode mode)
