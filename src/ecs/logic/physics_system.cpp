@@ -363,7 +363,7 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
 
         if (rb.body)
         {
-            rb.body->SetUserPointer((void*)(uintptr_t)entity);
+            rb.body->SetUserPointer((void*)((uintptr_t)entity + 1));
             if (rb.isKinematic)
                 rb.body->SetKinematic(true);
 

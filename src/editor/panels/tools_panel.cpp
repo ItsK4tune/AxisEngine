@@ -33,18 +33,38 @@ void ToolsPanel::OnImGui(Scene& scene)
                               : (mode == CursorMode::Disabled) ? "Disabled (Panel)"
                               : (mode == CursorMode::Normal)   ? "Normal"
                               : (mode == CursorMode::Hidden)   ? "Hidden"
-                                                               : "LockedHidden";
+                              : "LockedHidden";
         ImGui::Text("Cursor: %s", modeStr);
-        ImGui::SameLine();
-        if (mode == CursorMode::Locked || mode == CursorMode::LockedHidden)
+        
+        bool forceFree = mouse.IsForceFree();
+        if (ImGui::Checkbox("Force Free Cursor (F6)", &forceFree))
         {
-            if (ImGui::SmallButton("Free"))
-                mouse.SetCursorMode(CursorMode::Normal);
-        }
-        else
-        {
-            if (ImGui::SmallButton("Lock (FPS)"))
-                mouse.SetCursorMode(CursorMode::Locked);
+            mouse.SetForceFree(forceFree);
+            if (forceFree)
+            {
+                mouse.SetCursorMode(CursorMode::Disabled);
+            }
+            else
+            {
+                auto* core = ServiceLocator::Instance().Resolve<RuntimeCore>();
+                if (core)
+                {
+                    auto& sm = core->GetStateMachine();
+                    State* curr = sm.GetCurrentState();
+                    if (curr)
+                    {
+                        std::string rawName = typeid(*curr).name();
+                        if (rawName.find("AimGameState") != std::string::npos)
+                        {
+                            mouse.SetCursorMode(CursorMode::LockedHidden);
+                        }
+                        else
+                        {
+                            mouse.SetCursorMode(CursorMode::Normal);
+                        }
+                    }
+                }
+            }
         }
     }
     ImGui::Separator();
@@ -127,15 +147,15 @@ void ToolsPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("Debug Vis", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        if (ImGui::Checkbox("Physics Debug", &conf.debug.physicsDebug))
+        if (ImGui::Checkbox("Physics Debug (F8)", &conf.debug.physicsDebug))
             changed = true;
-        if (ImGui::Checkbox("Entity Names", &conf.debug.entityNames))
+        if (ImGui::Checkbox("Entity Names (F1)", &conf.debug.entityNames))
             changed = true;
-        if (ImGui::Checkbox("Gizmos", &conf.debug.gizmos))
+        if (ImGui::Checkbox("Gizmos (F2)", &conf.debug.gizmos))
             changed = true;
-        if (ImGui::Checkbox("Grid Snapping", &conf.debug.gridSnapEnabled))
+        if (ImGui::Checkbox("Grid Snapping (Ctrl+G)", &conf.debug.gridSnapEnabled))
             changed = true;
-        if (ImGui::Checkbox("Grid Indicator", &conf.debug.gridIndicatorEnabled))
+        if (ImGui::Checkbox("Grid Indicator (Shift+G)", &conf.debug.gridIndicatorEnabled))
             changed = true;
         if (conf.debug.gridSnapEnabled || conf.debug.gridIndicatorEnabled)
         {
@@ -146,9 +166,7 @@ void ToolsPanel::OnImGui(Scene& scene)
             if (ImGui::SliderFloat("Scale Snap", &conf.debug.gridSnapScale, 0.05f, 5.0f))
                 changed = true;
         }
-        if (ImGui::Checkbox("Light Gizmos", &conf.debug.lightGizmos))
-            changed = true;
-        if (ImGui::Checkbox("UI Enabled", &conf.debug.uiEnabled))
+        if (ImGui::Checkbox("Light Gizmos (F3)", &conf.debug.lightGizmos))
             changed = true;
     }
 

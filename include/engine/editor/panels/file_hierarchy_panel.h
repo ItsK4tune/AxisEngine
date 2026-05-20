@@ -17,7 +17,7 @@ public:
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
-        return "File Hierarchy";
+        return "File Hierarchy [Ctrl+5]";
     }
     PanelGroup GetGroup() const override
     {

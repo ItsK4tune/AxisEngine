@@ -114,6 +114,10 @@ EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::v
     uiTransform.position = pos;
     uiTransform.size = size;
     uiTransform.zIndex = zIndex;
+    uiTransform.anchorMin = glm::vec2(0.0f);
+    uiTransform.anchorMax = glm::vec2(0.0f);
+    uiTransform.offsetMin = glm::vec2(0.0f);
+    uiTransform.offsetMax = glm::vec2(0.0f);
     return *this;
 }
 
@@ -129,7 +133,7 @@ EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::str
     textComp.color = color;
 
     textComp.font = res.GetFont(fontName);
-    textComp.shader = res.GetShader("ui_text");
+    textComp.shader = res.GetShader("textShader");
 
     std::string uniqueModelName = "ui_text_model_" + std::to_string((uint32_t)m_Entity);
     if (!res.HasUIModel(uniqueModelName))
@@ -187,7 +191,7 @@ EntityBuilder& EntityBuilder::WithUIRenderer(const std::string& textureName, con
     auto& renderer = m_Scene.registry.get_or_emplace<UIRendererComponent>(m_Entity);
 
     renderer.color = color;
-    renderer.shader = res.GetShader("ui");
+    renderer.shader = res.GetShader("uiShader");
 
     if (!res.GetUIModel(textureName))
     {

@@ -55,6 +55,9 @@ public:
     void SetLastPosition(double x, double y);
     void SetLockPosition(double x, double y) { m_LockX = x; m_LockY = y; }
 
+    void SetForceFree(bool force) { m_ForceFree = force; }
+    bool IsForceFree() const { return m_ForceFree; }
+
 private:
     friend class IOHandler;
     void SetWindow(IWindow *window);
@@ -74,6 +77,7 @@ private:
     float m_ScrollY = 0;
 
     bool m_FirstMouse = true;
+    bool m_ForceFree = false;
     CursorMode m_Mode;
 
     std::bitset<16> m_CurrentButtons;

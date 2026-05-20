@@ -17,7 +17,17 @@ void HelpPanel::OnImGui(Scene& scene)
         ImGui::Text("Ctrl+R    : Reload Active Scene");
         ImGui::Text("Ctrl+G    : Toggle Grid Snapping");
         ImGui::Text("Shift+G   : Toggle Grid Indicator");
-        ImGui::Text("Ctrl+1..9 : Toggle Panels 1-9");
+        ImGui::Separator();
+        ImGui::Text("PANEL TOGGLES:");
+        ImGui::Text("  Ctrl+1  : Scene Hierarchy");
+        ImGui::Text("  Ctrl+2  : Resource Browser");
+        ImGui::Text("  Ctrl+3  : Tools Panel");
+        ImGui::Text("  Ctrl+4  : Settings Panel");
+        ImGui::Text("  Ctrl+5  : File Hierarchy");
+        ImGui::Text("  Ctrl+6  : Help Panel");
+        ImGui::Text("  Ctrl+7  : Console Panel");
+        ImGui::Text("  Ctrl+8  : Profiler & Stats");
+        ImGui::Text("  Ctrl+9  : State Machine");
         ImGui::Separator();
         ImGui::Text("Alt + Arrows / PgUp/PgDn            : Nudge Position (X/Z, Y)");
         ImGui::Text("Ctrl + Alt + Arrows / PgUp/PgDn     : Nudge Rotation (Yaw/Pitch, Roll)");
@@ -57,6 +67,8 @@ void HelpPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("GAME CONTROL", ImGuiTreeNodeFlags_DefaultOpen))
     {
+        ImGui::Text("F6        : Force Free Cursor (Interact with Panels)");
+        ImGui::Text("F10       : Exit Game Match (AimGameState / ResultState)");
         ImGui::Text("F11       : Pause/Resume Game");
         ImGui::Text("Shift+F11 : Toggle Debug Camera (Free Cam)");
         ImGui::Text("F12       : Cycle Time Scale (0.25x -> 2x)");

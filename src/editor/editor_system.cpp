@@ -46,6 +46,7 @@
 #include <editor/panels/scene_hierarchy_panel.h>
 #include <editor/panels/settings_panel.h>
 #include <editor/panels/stats_panel.h>
+#include <editor/panels/state_panel.h>
 #include <editor/panels/tools_panel.h>
 
 EditorSystem::EditorSystem() : m_PreHoverCursorMode(CursorMode::Normal)
@@ -118,6 +119,7 @@ void EditorSystem::Initialize()
     m_Panels.push_back(std::make_unique<HelpPanel>());
     m_Panels.push_back(std::make_unique<ConsolePanel>());
     m_Panels.push_back(std::make_unique<ProfilerPanel>());
+    m_Panels.push_back(std::make_unique<StatePanel>());
 
     for (auto& panel : m_Panels)
     {
@@ -595,6 +597,43 @@ void EditorSystem::OnUpdate(float dt)
         else if (!kb.GetKey(Key::F5))
             f5_pressed = false;
 
+        // Toggle Force Free Cursor (F6)
+        static bool f6_pressed = false;
+        if (kb.GetKey(Key::F6) && !shift && !f6_pressed)
+        {
+            f6_pressed = true;
+            auto& mouse = ioHandler->GetMouse();
+            bool nextForceFree = !mouse.IsForceFree();
+            mouse.SetForceFree(nextForceFree);
+            if (nextForceFree)
+            {
+                mouse.SetCursorMode(CursorMode::Disabled);
+            }
+            else
+            {
+                auto* core = ServiceLocator::Instance().Resolve<RuntimeCore>();
+                if (core)
+                {
+                    auto& sm = core->GetStateMachine();
+                    State* curr = sm.GetCurrentState();
+                    if (curr)
+                    {
+                        std::string rawName = typeid(*curr).name();
+                        if (rawName.find("AimGameState") != std::string::npos)
+                        {
+                            mouse.SetCursorMode(CursorMode::LockedHidden);
+                        }
+                        else
+                        {
+                            mouse.SetCursorMode(CursorMode::Normal);
+                        }
+                    }
+                }
+            }
+        }
+        else if (!kb.GetKey(Key::F6))
+            f6_pressed = false;
+
         // Pause/Resume Engine (F11)
         if (kb.GetKey(Key::F11) && !f11_pressed)
         {
@@ -712,6 +751,30 @@ void EditorSystem::RenderUIPass(Scene& scene, float width, float height, IRender
         }
     }
 
+    if (m_ShowAboutPopup)
+    {
+        ImGui::OpenPopup("About AxisEngine");
+        m_ShowAboutPopup = false;
+    }
+
+    if (ImGui::BeginPopupModal("About AxisEngine", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("AxisEngine - Advanced 5-Layer ECS Engine");
+        ImGui::Text("Version: 1.0.0 (Stable)");
+        ImGui::Separator();
+        ImGui::Text("Developed by: Duong");
+        ImGui::Text("Architecture: Core, ECS, Platform, Render, Script/Editor");
+        ImGui::Text("Tech Stack: EnTT, OpenGL 3.3+, GLFW, Jolt Physics, irrKlang, ImGui");
+        ImGui::Separator();
+        ImGui::Text("Copyright (c) 2026. All rights reserved.");
+        ImGui::Spacing();
+        if (ImGui::Button("Close", ImVec2(120, 0)))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     ImGui::End();  // DockSpace
 
     m_ImGuiLayer.EndFrame();
@@ -743,7 +806,7 @@ void EditorSystem::DrawMenuBar()
                     }
                 }
             }
-            if (ImGui::MenuItem("Exit"))
+            if (ImGui::MenuItem("Exit", "Alt+F4"))
             {
                 auto core = ServiceLocator::Instance().Resolve<RuntimeCore>();
                 if (core)
@@ -788,23 +851,9 @@ void EditorSystem::DrawMenuBar()
             ImGui::Separator();
             if (ImGui::MenuItem("About AxisEngine"))
             {
-                ImGui::OpenPopup("About AxisEngine");
+                m_ShowAboutPopup = true;
             }
             ImGui::EndMenu();
-        }
-
-        // About Modal
-        if (ImGui::BeginPopupModal("About AxisEngine", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            ImGui::Text("AxisEngine - Advanced 5-Layer ECS Engine");
-            ImGui::Separator();
-            ImGui::Text("Developed by Duong.");
-            ImGui::Text("Build: Debug/Dev");
-            if (ImGui::Button("Close", ImVec2(120, 0)))
-            {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
         }
 
         ImGui::EndMenuBar();

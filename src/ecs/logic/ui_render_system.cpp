@@ -82,9 +82,7 @@ void UIRenderSystem::Initialize()
 
 void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenHeight, IRenderStateManager& renderState)
 {
-    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    bool uiEnabled = cm ? cm->GetConfig().debug.uiEnabled : true;
-    if (!m_Enabled || !uiEnabled)
+    if (!m_Enabled)
         return;
 
     renderState.SetViewport(0, 0, (int)screenWidth, (int)screenHeight);

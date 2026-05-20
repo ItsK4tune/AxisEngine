@@ -14,13 +14,14 @@ class ResourceBrowserPanel : public IEditorPanel
 public:
     void Initialize() override {}
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Resources"; }
+    std::string GetTitle() const override { return "Resources [Ctrl+2]"; }
     PanelGroup GetGroup() const override { return PanelGroup::Scene; }
 
 private:
     int m_ActiveTab = 0;
     std::string m_SelectedName;
     std::string m_SelectedType;
+    std::string m_SelectedPath;
     float m_RotX = -0.5f;
     float m_RotY = 0.5f;
     float m_ZoomFactor = 1.0f;

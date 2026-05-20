@@ -9,7 +9,7 @@ public:
     ~HelpPanel() override = default;
 
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Help"; }
+    std::string GetTitle() const override { return "Help [Ctrl+6]"; }
     PanelGroup GetGroup() const override { return PanelGroup::Help; }
 };
 #endif

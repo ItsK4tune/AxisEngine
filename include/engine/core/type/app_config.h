@@ -106,7 +106,7 @@ struct DebugConfig
 #ifdef ENABLE_EDITOR
     bool uiEnabled = true;
 #else
-    bool uiEnabled = false;
+    bool uiEnabled = true;
 #endif
     bool gizmos = false;
     bool lightGizmos = false;

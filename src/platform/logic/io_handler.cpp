@@ -55,9 +55,6 @@ void IOHandler::ProcessInput()
 {
     if (m_KeyboardManager)
         m_KeyboardManager->Update();
-
-    if (m_KeyboardManager->GetKey(Key::Escape))
-        m_MonitorManager->GetWindow()->SetShouldClose(true);
 }
 
 void IOHandler::OnResize(int width, int height)

@@ -88,6 +88,7 @@ private:
     CursorMode m_PreHoverCursorMode;
     bool m_WasHoveringPanel = false;
     bool m_CtrlSPressed = false;
+    bool m_ShowAboutPopup = false;
 
     void DrawMenuBar();
 };

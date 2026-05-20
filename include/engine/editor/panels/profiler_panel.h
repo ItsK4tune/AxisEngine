@@ -17,7 +17,7 @@ public:
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
-        return "Profiler & Stats";
+        return "Profiler & Stats [Ctrl+8]";
     }
     PanelGroup GetGroup() const override
     {

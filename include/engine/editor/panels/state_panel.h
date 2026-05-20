@@ -5,13 +5,12 @@
 
 struct Scene;
 
-class ToolsPanel : public IEditorPanel
+class StatePanel : public IEditorPanel
 {
 public:
     void Initialize() override {}
     void OnImGui(Scene& scene) override;
-    std::string GetTitle() const override { return "Tools [Ctrl+3]"; }
-    PanelGroup GetGroup() const override { return PanelGroup::Tools; }
-
+    std::string GetTitle() const override { return "State Machine [Ctrl+9]"; }
+    PanelGroup GetGroup() const override { return PanelGroup::Debug; }
 };
 #endif

@@ -142,6 +142,7 @@ set(AXIS_EDITOR_SOURCES
     ${CMAKE_SOURCE_DIR}/src/editor/panels/scene_hierarchy_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/editor/panels/settings_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/editor/panels/stats_panel.cpp
+    ${CMAKE_SOURCE_DIR}/src/editor/panels/state_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/editor/panels/tools_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/external/imgui.cpp
     ${CMAKE_SOURCE_DIR}/src/external/imgui_demo.cpp

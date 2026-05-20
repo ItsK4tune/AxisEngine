@@ -464,9 +464,15 @@ void PhysicsEditorModule::ProcessInput(KeyboardManager& keyboard)
         }
         else
         {
-            static bool uiEnabled = true;
-            uiEnabled = !uiEnabled;
-            EventManager::Instance().Publish(SystemEnabledEvent{"UIRenderSystem", uiEnabled});
+            auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
+            if (sysMgr)
+            {
+                auto* uiSys = sysMgr->GetSystem("UIRenderSystem");
+                if (uiSys)
+                {
+                    EventManager::Instance().Publish(SystemEnabledEvent{"UIRenderSystem", !uiSys->IsEnabled()});
+                }
+            }
         }
     });
 }

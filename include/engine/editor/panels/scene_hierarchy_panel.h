@@ -20,7 +20,7 @@ public:
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
-        return "Scene Hierarchy";
+        return "Scene Hierarchy [Ctrl+1]";
     }
     PanelGroup GetGroup() const override
     {

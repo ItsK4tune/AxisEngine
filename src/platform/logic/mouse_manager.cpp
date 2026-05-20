@@ -4,6 +4,7 @@ MouseManager::MouseManager(IWindow *window)
     : m_LastX(400.0), m_LastY(300.0),
       m_XOffset(0.0f), m_YOffset(0.0f), m_ScrollY(0.0f),
       m_FirstMouse(true),
+      m_ForceFree(false),
       m_Mode(CursorMode::Normal)
 {
     SetWindow(window);
@@ -90,6 +91,15 @@ void MouseManager::SetCursorMode(CursorMode mode)
 {
     if (!m_Window)
         return;
+
+    if (m_ForceFree && (mode == CursorMode::Locked || mode == CursorMode::LockedHidden))
+    {
+#ifdef ENABLE_EDITOR
+        mode = CursorMode::Disabled;
+#else
+        mode = CursorMode::Normal;
+#endif
+    }
 
     if (mode == CursorMode::Locked && m_Mode != CursorMode::Locked)
     {

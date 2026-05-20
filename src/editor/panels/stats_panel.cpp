@@ -1,4 +1,5 @@
 #include <editor/panels/stats_panel.h>
+#include <ecs/logic/system_manager.h>
 
 #ifdef ENABLE_EDITOR
 #include <core/logic/config_manager.h>
@@ -54,7 +55,15 @@ void StatsPanel::OnImGui(Scene& scene)
             ImGui::Text("Transform Gizmos: %s", boolStr(conf.debug.gizmos));
             ImGui::Text("Light Gizmos    : %s", boolStr(conf.debug.lightGizmos));
             ImGui::Text("Physics Debug   : %s", boolStr(conf.debug.physicsDebug));
-            ImGui::Text("UI Enabled      : %s", boolStr(conf.debug.uiEnabled));
+            auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
+            bool uiSysEnabled = true;
+            if (sysMgr)
+            {
+                auto* uiSys = sysMgr->GetSystem("UIRenderSystem");
+                if (uiSys)
+                    uiSysEnabled = uiSys->IsEnabled();
+            }
+            ImGui::Text("UI Enabled      : %s", boolStr(uiSysEnabled));
             ImGui::Separator();
             ImGui::Text("Audio Debug     : %s", boolStr(conf.debug.audioDebug));
             ImGui::Text("Particle Debug  : %s", boolStr(conf.debug.particleDebug));

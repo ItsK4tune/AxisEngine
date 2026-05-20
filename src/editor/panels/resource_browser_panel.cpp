@@ -21,6 +21,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 static glm::vec3 RotatePoint(const glm::vec3& p, float rotX, float rotY)
 {
@@ -226,6 +228,84 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                 {
                     m_SelectedName = name;
                     m_SelectedType = "Fragment";
+                }
+            }
+            ImGui::EndTabItem();
+        }
+
+        // 10. Scriptable
+        if (ImGui::BeginTabItem("Scriptable"))
+        {
+            m_ActiveTab = 9;
+            std::vector<std::pair<std::string, std::string>> scripts;
+            auto scanDir = [&](const std::string& dir) {
+                if (fs::exists(dir))
+                {
+                    for (const auto& entry : fs::directory_iterator(dir))
+                    {
+                        if (entry.is_regular_file())
+                        {
+                            std::string ext = entry.path().extension().string();
+                            if (ext == ".cpp" || ext == ".h" || ext == ".hpp")
+                            {
+                                scripts.push_back({entry.path().filename().string(), entry.path().string()});
+                            }
+                        }
+                    }
+                }
+            };
+            scanDir("src/scripts");
+            scanDir("include/scripts");
+
+            if (scripts.empty())
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No scripts found in src/scripts or include/scripts.");
+            for (const auto& item : scripts)
+            {
+                bool selected = (m_SelectedName == item.first && m_SelectedType == "Scriptable");
+                if (ImGui::Selectable(item.first.c_str(), selected))
+                {
+                    m_SelectedName = item.first;
+                    m_SelectedType = "Scriptable";
+                    m_SelectedPath = item.second;
+                }
+            }
+            ImGui::EndTabItem();
+        }
+
+        // 11. State
+        if (ImGui::BeginTabItem("State"))
+        {
+            m_ActiveTab = 10;
+            std::vector<std::pair<std::string, std::string>> states;
+            auto scanDir = [&](const std::string& dir) {
+                if (fs::exists(dir))
+                {
+                    for (const auto& entry : fs::directory_iterator(dir))
+                    {
+                        if (entry.is_regular_file())
+                        {
+                            std::string ext = entry.path().extension().string();
+                            if (ext == ".cpp" || ext == ".h" || ext == ".hpp")
+                            {
+                                states.push_back({entry.path().filename().string(), entry.path().string()});
+                            }
+                        }
+                    }
+                }
+            };
+            scanDir("src/states");
+            scanDir("include/states");
+
+            if (states.empty())
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No states found in src/states or include/states.");
+            for (const auto& item : states)
+            {
+                bool selected = (m_SelectedName == item.first && m_SelectedType == "State");
+                if (ImGui::Selectable(item.first.c_str(), selected))
+                {
+                    m_SelectedName = item.first;
+                    m_SelectedType = "State";
+                    m_SelectedPath = item.second;
                 }
             }
             ImGui::EndTabItem();
@@ -669,6 +749,35 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
             if (frag)
             {
                 ImGui::Text("Fragment Path: %s", frag->path.c_str());
+            }
+        }
+        else if (m_SelectedType == "Scriptable" || m_SelectedType == "State")
+        {
+            ImGui::Text("File Path: %s", m_SelectedPath.c_str());
+
+            if (!m_SelectedPath.empty())
+            {
+                if (m_CachedShaderPath != m_SelectedPath)
+                {
+                    m_CachedShaderPath = m_SelectedPath;
+                    std::ifstream file(m_SelectedPath);
+                    if (file.is_open())
+                    {
+                        std::stringstream ss;
+                        ss << file.rdbuf();
+                        m_CachedShaderCode = ss.str();
+                    }
+                    else
+                    {
+                        m_CachedShaderCode = "// Failed to load file content.";
+                    }
+                }
+
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "Source Code Preview:");
+                ImGui::InputTextMultiline("##SourcePreview", const_cast<char*>(m_CachedShaderCode.c_str()),
+                                          m_CachedShaderCode.size() + 1, ImVec2(0, 450),
+                                          ImGuiInputTextFlags_ReadOnly);
             }
         }
     }

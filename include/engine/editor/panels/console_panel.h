@@ -24,7 +24,7 @@ public:
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
-        return "Console";
+        return "Console [Ctrl+7]";
     }
     PanelGroup GetGroup() const override
     {
