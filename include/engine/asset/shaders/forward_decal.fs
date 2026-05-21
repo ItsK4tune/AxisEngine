@@ -6,6 +6,7 @@ in vec3 FragPos;
 in vec3 Normal;
 
 uniform sampler2D u_DecalAlbedo;
+uniform bool u_HasDecalTexture;
 uniform float u_Opacity;
 uniform vec4 u_TintColor;
 uniform int u_LightingMode; // 0=NONE, 1=LIGHT, 2=LIGHT+SHADOW
@@ -80,7 +81,7 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx);
 
 void main()
 {
-    vec4 texColor = texture(u_DecalAlbedo, TexCoords);
+    vec4 texColor = u_HasDecalTexture ? texture(u_DecalAlbedo, TexCoords) : vec4(1.0);
     if (texColor.a < 0.1) discard;
 
     vec3 Albedo = pow(texColor.rgb, vec3(2.2)) * u_TintColor.rgb;

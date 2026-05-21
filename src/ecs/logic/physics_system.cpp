@@ -254,16 +254,19 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
     glm::vec3 worldPos = pos ? pos->value : glm::vec3(0, 0, 0);
     glm::quat worldRot = rot ? rot->value : glm::quat(1, 0, 0, 0);
 
-    // Re-resolve world transform if possible
+    // Re-resolve world transform if possible, but only if it has been computed
     if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
     {
-        glm::vec3 s, t, skew;
-        glm::quat r;
-        glm::vec4 perspective;
-        if (glm::decompose(world->worldMatrix, s, r, t, skew, perspective))
+        if (world->version > 0)
         {
-            worldPos = t;
-            worldRot = r;
+            glm::vec3 s, t, skew;
+            glm::quat r;
+            glm::vec4 perspective;
+            if (glm::decompose(world->worldMatrix, s, r, t, skew, perspective))
+            {
+                worldPos = t;
+                worldRot = r;
+            }
         }
     }
 

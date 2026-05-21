@@ -358,6 +358,7 @@ void DecalSystem::Render(Scene& scene)
             tm.ActiveTexture(TextureUnit::Texture3);
             tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
             activeShader->setInt("u_DecalAlbedo", 3);
+            activeShader->setBool("u_HasDecalTexture", decal.albedoMap != 0);
             dc.DrawElements(Primitive::Triangles, 36, DataType::UnsignedInt, 0);
         }
         else
@@ -365,6 +366,7 @@ void DecalSystem::Render(Scene& scene)
             tm.ActiveTexture(TextureUnit::Texture0);
             tm.BindTexture(TextureType::Texture2D, decal.albedoMap);
             activeShader->setInt("u_DecalAlbedo", 0);
+            activeShader->setBool("u_HasDecalTexture", decal.albedoMap != 0);
             dc.DrawElements(Primitive::Triangles, 6, DataType::UnsignedInt, 0);
         }
     }

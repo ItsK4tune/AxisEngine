@@ -58,12 +58,36 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
     LOGGER_INFO("NetworkSystem") << "Starting server on port " << config.port
                                  << " with max clients: " << config.maxClients;
 
-    ENetAddress address;
-    address.host = ENET_HOST_ANY;
+    ENetAddress address{};
+    if (!config.host.empty())
+    {
+        if (enet_address_set_host_ip(&address, config.host.c_str()) != 0 &&
+            enet_address_set_host(&address, config.host.c_str()) != 0)
+        {
+            LOGGER_ERROR("NetworkSystem") << "Failed to resolve bind host " << config.host;
+            return false;
+        }
+    }
+    else
+    {
+        address.host = ENET_HOST_ANY;
+    }
     address.port = config.port;
+    address.sin6_scope_id = 0;
 
     host = enet_host_create(&address, config.maxClients, config.channels, config.incomingBandwidth,
                             config.outgoingBandwidth);
+    if (!host && !config.host.empty())
+    {
+        LOGGER_WARN("NetworkSystem") << "Failed to bind " << config.host << ":" << config.port
+                                     << ", retrying on all local interfaces";
+        ENetAddress fallbackAddress{};
+        fallbackAddress.host = ENET_HOST_ANY;
+        fallbackAddress.port = config.port;
+        fallbackAddress.sin6_scope_id = 0;
+        host = enet_host_create(&fallbackAddress, config.maxClients, config.channels, config.incomingBandwidth,
+                                config.outgoingBandwidth);
+    }
     if (!host)
     {
         LOGGER_ERROR("NetworkSystem") << "Failed to create ENet server host on port " << config.port;
@@ -89,9 +113,17 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
         return false;
     }
 
-    ENetAddress address;
-    enet_address_set_host(&address, config.host.c_str());
+    ENetAddress address{};
+    const char* hostName = config.host.empty() ? "127.0.0.1" : config.host.c_str();
+    if (enet_address_set_host_ip(&address, hostName) != 0 && enet_address_set_host(&address, hostName) != 0)
+    {
+        LOGGER_ERROR("NetworkSystem") << "Failed to resolve host " << hostName;
+        enet_host_destroy(host);
+        host = nullptr;
+        return false;
+    }
     address.port = config.port;
+    address.sin6_scope_id = 0;
 
     serverPeer = enet_host_connect(host, &address, config.channels, 0);
     if (!serverPeer)
@@ -106,6 +138,29 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
     LOGGER_INFO("NetworkSystem") << "Client connection initiated, waiting for handshake...";
     isServer = false;
     isClient = true;
+
+    ENetEvent event;
+    if (enet_host_service(host, &event, 500) > 0)
+    {
+        if (event.type == ENET_EVENT_TYPE_CONNECT)
+        {
+            serverPeer = event.peer;
+            if (onConnect)
+                onConnect(event.peer);
+        }
+        else if (event.type == ENET_EVENT_TYPE_RECEIVE)
+        {
+            if (onMessage)
+                onMessage(event.peer, event.packet->data, event.packet->dataLength, event.channelID);
+            enet_packet_destroy(event.packet);
+        }
+        else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
+        {
+            serverPeer = nullptr;
+            if (onDisconnect)
+                onDisconnect(event.peer);
+        }
+    }
     return true;
 }
 
@@ -122,6 +177,7 @@ void NetworkSystem::Stop()
 
     enet_host_destroy(host);
     host = nullptr;
+    serverPeer = nullptr;
     isServer = false;
     isClient = false;
 }
@@ -137,6 +193,10 @@ void NetworkSystem::UpdateEvents(uint32_t timeoutMs)
         switch (event.type)
         {
             case ENET_EVENT_TYPE_CONNECT:
+                if (isClient)
+                {
+                    serverPeer = event.peer;
+                }
                 if (onConnect)
                 {
                     onConnect(event.peer);
@@ -152,6 +212,10 @@ void NetworkSystem::UpdateEvents(uint32_t timeoutMs)
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
+                if (event.peer == serverPeer)
+                {
+                    serverPeer = nullptr;
+                }
                 if (onDisconnect)
                 {
                     onDisconnect(event.peer);
@@ -170,7 +234,10 @@ void NetworkSystem::SendPacket(ENetPeer* peer, const void* data, size_t size, bo
         return;
     uint32_t flags = reliable ? ENET_PACKET_FLAG_RELIABLE : 0;
     ENetPacket* packet = enet_packet_create(data, size, flags);
-    enet_peer_send(peer, channel, packet);
+    if (enet_peer_send(peer, channel, packet) == 0 && host)
+    {
+        enet_host_flush(host);
+    }
 }
 
 void NetworkSystem::BroadcastPacket(const void* data, size_t size, bool reliable, uint8_t channel)
@@ -180,4 +247,54 @@ void NetworkSystem::BroadcastPacket(const void* data, size_t size, bool reliable
     uint32_t flags = reliable ? ENET_PACKET_FLAG_RELIABLE : 0;
     ENetPacket* packet = enet_packet_create(data, size, flags);
     enet_host_broadcast(host, channel, packet);
+    enet_host_flush(host);
+}
+
+ENetPeer* NetworkSystem::GetFirstConnectedPeer()
+{
+    if (!host || !host->peers)
+        return nullptr;
+
+    for (size_t i = 0; i < host->peerCount; ++i)
+    {
+        ENetPeer* peer = &host->peers[i];
+        if (peer->state == ENET_PEER_STATE_CONNECTED)
+            return peer;
+    }
+    return nullptr;
+}
+
+size_t NetworkSystem::GetConnectedPeerCount() const
+{
+    if (!host || !host->peers)
+        return 0;
+
+    size_t count = 0;
+    for (size_t i = 0; i < host->peerCount; ++i)
+    {
+        if (host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+            ++count;
+    }
+    return count;
+}
+
+const char* NetworkSystem::GetClientPeerState() const
+{
+    if (!serverPeer)
+        return "none";
+
+    switch (serverPeer->state)
+    {
+        case ENET_PEER_STATE_DISCONNECTED: return "disconnected";
+        case ENET_PEER_STATE_CONNECTING: return "connecting";
+        case ENET_PEER_STATE_ACKNOWLEDGING_CONNECT: return "ack_connect";
+        case ENET_PEER_STATE_CONNECTION_PENDING: return "pending";
+        case ENET_PEER_STATE_CONNECTION_SUCCEEDED: return "succeeded";
+        case ENET_PEER_STATE_CONNECTED: return "connected";
+        case ENET_PEER_STATE_DISCONNECT_LATER: return "disconnect_later";
+        case ENET_PEER_STATE_DISCONNECTING: return "disconnecting";
+        case ENET_PEER_STATE_ACKNOWLEDGING_DISCONNECT: return "ack_disconnect";
+        case ENET_PEER_STATE_ZOMBIE: return "zombie";
+        default: return "unknown";
+    }
 }

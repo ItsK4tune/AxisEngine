@@ -12,6 +12,7 @@
 #include <ecs/unit/ui_components.h>
 #include <render/unit/frustum.h>
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -34,6 +35,48 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
 #include <cstring>
+
+namespace
+{
+uint64_t CombineHash(uint64_t seed, uint64_t value)
+{
+    return seed ^ (value + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2));
+}
+
+uint64_t HashMaterialForBatch(const AxisMaterialComponent* material)
+{
+    if (!material)
+        return 0;
+
+    const auto& d = material->desc;
+    uint64_t h = 1469598103934665603ULL;
+    auto hashFloat = [](float value) { return static_cast<uint64_t>(std::hash<float>{}(value)); };
+    auto hashString = [](const std::string& value) { return static_cast<uint64_t>(std::hash<std::string>{}(value)); };
+
+    h = CombineHash(h, hashFloat(d.pbr.metallic));
+    h = CombineHash(h, hashFloat(d.pbr.roughness));
+    h = CombineHash(h, hashFloat(d.pbr.ao));
+    h = CombineHash(h, hashFloat(d.opacity));
+    h = CombineHash(h, hashFloat(d.emission.x));
+    h = CombineHash(h, hashFloat(d.emission.y));
+    h = CombineHash(h, hashFloat(d.emission.z));
+    h = CombineHash(h, hashFloat(d.uvScale.x));
+    h = CombineHash(h, hashFloat(d.uvScale.y));
+    h = CombineHash(h, hashFloat(d.uvOffset.x));
+    h = CombineHash(h, hashFloat(d.uvOffset.y));
+    h = CombineHash(h, hashString(d.albedoPath));
+    h = CombineHash(h, hashString(d.normalPath));
+    h = CombineHash(h, hashString(d.metallicPath));
+    h = CombineHash(h, hashString(d.roughnessPath));
+    h = CombineHash(h, hashString(d.aoPath));
+    h = CombineHash(h, hashString(d.emissivePath));
+    h = CombineHash(h, hashString(d.specularPath));
+    h = CombineHash(h, static_cast<uint64_t>(d.blendSrc));
+    h = CombineHash(h, static_cast<uint64_t>(d.blendDst));
+    h = CombineHash(h, hashString(d.type));
+    return h;
+}
+}
 
 #ifdef ENABLE_EDITOR
 #include <editor/editor_system.h>
@@ -379,8 +422,12 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         if (!info.isActive)
             continue;
 
+        uint32_t layer = info.layer;
+        if ((m_Flags.filterLayerMask & layer) == 0 || (params.cullingMask & layer) == 0)
+            continue;
+
         auto& world = renderView.get<WorldTransformComponent>(entity);
-        glm::mat4 modelMatrix = world.GetInterpolated(lodFactor);
+        glm::mat4 modelMatrix = (lodFactor >= 0.9999f) ? world.worldMatrix : world.GetInterpolated(lodFactor);
 
         auto& renderer = renderView.get<MeshRendererComponent>(entity);
         if (!renderer.model)
@@ -401,13 +448,6 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             if (!m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
                 continue;
         }
-
-        uint32_t layer = 1;
-        if (auto* info = scene.registry.try_get<InfoComponent>(entity))
-            layer = info->layer;
-
-        if ((m_Flags.filterLayerMask & layer) == 0 || (params.cullingMask & layer) == 0)
-            continue;
 
         Model* activeModel = renderer.model.get();
         Shader* itemShader = renderer.shader.lock().get();
@@ -441,6 +481,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         auto* reflection = scene.registry.try_get<ReflectiveComponent>(entity);
 
+        uint64_t materialBatchKey = HashMaterialForBatch(material);
         uint64_t key = 0;
         uint64_t sId = itemShader ? itemShader->getID() : 0;
         if (!isTransparent)
@@ -448,7 +489,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             uint64_t l = (uint64_t)(layer & 0xFF) << 56;
             uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
             uint64_t s = (uint64_t)(sId & 0xFFFF) << 32;
-            uint64_t m = (uint64_t)((uintptr_t)material & 0xFFFF) << 16;
+            uint64_t m = (materialBatchKey & 0xFFFF) << 16;
             uint64_t mod = (uint64_t)((uintptr_t)activeModel & 0xFF) << 8;
             uint64_t d = (uint64_t)(glm::clamp(distSqResult * 0.1f, 0.0f, 255.0f)) & 0xFF;
             key = l | o | s | m | mod | d;
@@ -456,11 +497,12 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         else
         {
             uint64_t l = (uint64_t)(layer & 0xFF) << 56;
+            uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
             float invDepth = 1000000.0f - distSqResult;
             if (invDepth < 0)
                 invDepth = 0;
-            uint64_t d = (uint64_t)(invDepth) & 0x00FFFFFFFFFFFFFFULL;
-            key = l | d;
+            uint64_t d = (uint64_t)(invDepth) & 0x0000FFFFFFFFFFFFULL;
+            key = l | o | d;
         }
 
         RenderItem item;
@@ -468,6 +510,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         item.model = activeModel;
         item.shader = itemShader;
         item.material = material;
+        item.materialBatchKey = materialBatchKey;
         item.reflection = (reflection && reflection->enabled) ? reflection : nullptr;
 
         // Reflection Probe Selection
@@ -772,8 +815,12 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
     bool lastHadProbe = false;
     unsigned int lastProbeCubemap = 0;
 
-    for (const auto& item : queue)
+    std::vector<glm::mat4> instanceMatrices;
+    instanceMatrices.reserve(1024);
+
+    for (size_t itemIndex = 0; itemIndex < queue.size(); ++itemIndex)
     {
+        const auto& item = queue[itemIndex];
         Model* model = item.model;
         AxisMaterialComponent* material = item.material;
         Shader* shader = item.shader;
@@ -868,6 +915,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         shader->setVec4("u_TintColor", item.tintColor);
         shader->setUInt("u_EntityID", item.entityId);
         shader->setBool("u_IsInstanced", false);
+        shader->setFloat("u_ReceiveShadowFlag", item.receiveShadow ? 1.0f : 0.0f);
 
         if (item.probeIndex >= 0)
         {
@@ -951,7 +999,46 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
 
         bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor,
                                                                 m_Flags.debugNoTexture, m_Flags.wireframe);
-        model->Draw(*shader, !matBound);
+
+        auto canInstanceWith = [&](const RenderItem& other) {
+            return m_Flags.instanceBatchingEnabled && !isTransparentPass && !overrideShader && !item.hasAnimation &&
+                   !other.hasAnimation && !item.reflection && !other.reflection && item.probeIndex < 0 &&
+                   other.probeIndex < 0 && other.model == item.model && other.shader == item.shader &&
+                   other.materialBatchKey == item.materialBatchKey && other.renderMode == item.renderMode &&
+                   other.tintColor == item.tintColor && other.castShadow == item.castShadow &&
+                   other.receiveShadow == item.receiveShadow;
+        };
+
+        size_t batchCount = 1;
+        if (canInstanceWith(item))
+        {
+            instanceMatrices.clear();
+            instanceMatrices.push_back(mtx);
+            for (size_t nextIndex = itemIndex + 1; nextIndex < queue.size(); ++nextIndex)
+            {
+                const auto& next = queue[nextIndex];
+                if (!canInstanceWith(next))
+                    break;
+
+                glm::mat4 nextMtx = next.worldMatrix;
+                nextMtx *= next.model->GetRootTransform();
+                instanceMatrices.push_back(nextMtx);
+                ++batchCount;
+            }
+        }
+
+        if (batchCount > 1)
+        {
+            shader->setBool("u_IsInstanced", true);
+            shader->setUInt("u_EntityID", 0);
+            model->DrawInstanced(*shader, instanceMatrices, !matBound);
+            shader->setBool("u_IsInstanced", false);
+            itemIndex += batchCount - 1;
+        }
+        else
+        {
+            model->Draw(*shader, !matBound);
+        }
 
         // Restore DrawBuffers mapping after draw
         if (isCapturing)

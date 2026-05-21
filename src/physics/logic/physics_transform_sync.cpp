@@ -45,6 +45,8 @@ void PhysicsTransformSync::SyncToPhysics()
             continue;
 
         uint32_t currentVersion = world->version;
+        if (currentVersion == 0)
+            continue;  // worldMatrix not yet computed, skip to avoid syncing identity
         if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
             m_LastSyncedVersions[entity] == currentVersion)
         {

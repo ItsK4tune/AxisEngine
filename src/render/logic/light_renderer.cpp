@@ -10,6 +10,7 @@
 #include <render/unit/shadow.h>
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <vector>
 
 void LightRenderer::Initialize(IGraphicsContext& context)
@@ -32,28 +33,86 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader* sh
     auto& bm = m_Context->GetBufferManager();
 
     std::size_t currentCombinedVersion = 0;
-    std::size_t currentLightCount = sceneData.lights.size();
+    auto hashCombine = [&currentCombinedVersion](std::size_t value) {
+        currentCombinedVersion ^= value + 0x9e3779b97f4a7c15ULL + (currentCombinedVersion << 6) +
+                                  (currentCombinedVersion >> 2);
+    };
+    auto hashFloat = [](float value) { return std::hash<float>{}(value); };
+    auto hashVec3 = [&](const glm::vec3& value) {
+        hashCombine(hashFloat(value.x));
+        hashCombine(hashFloat(value.y));
+        hashCombine(hashFloat(value.z));
+    };
     for (const auto& light : sceneData.lights)
     {
-        currentCombinedVersion += light.version;
+        hashCombine(std::hash<int>{}(static_cast<int>(light.type)));
+        hashCombine(light.version);
+        hashVec3(light.position);
+        hashVec3(light.direction);
+        hashVec3(light.color);
+        hashVec3(light.ambient);
+        hashVec3(light.diffuse);
+        hashVec3(light.specular);
+        hashCombine(hashFloat(light.intensity));
+        hashCombine(hashFloat(light.constant));
+        hashCombine(hashFloat(light.linear));
+        hashCombine(hashFloat(light.quadratic));
+        hashCombine(hashFloat(light.range));
+        hashCombine(hashFloat(light.innerCutoff));
+        hashCombine(hashFloat(light.outerCutoff));
+        hashCombine(std::hash<bool>{}(light.castShadows));
+        hashCombine(std::hash<int>{}(light.shadowMapIndex));
     }
+    std::size_t currentLightCount = sceneData.lights.size();
 
     m_DirLights.clear();
     m_PointLights.clear();
     m_SpotLights.clear();
 
+    int dirShadowCount = 0;
+    int pointShadowCount = 0;
+    int spotShadowCount = 0;
+    int shadowMode = 0;
+    if (auto* shadowSys = ServiceLocator::Instance().Resolve<IShadowService>())
+        shadowMode = shadowSys->GetRenderer().GetShadowMode();
+
     for (const auto& light : sceneData.lights)
     {
-        float shadowIdx = (float)light.shadowMapIndex;
+        int shadowIdx = -1;
+        if (light.castShadows && shadowMode != 0)
+        {
+            if (light.type == RenderLightType::Directional)
+            {
+                if (shadowMode == 2)
+                {
+                    if (dirShadowCount < Shadow::MAX_DIR_LIGHTS_SHADOW)
+                        shadowIdx = dirShadowCount++;
+                }
+                else if (dirShadowCount == 0)
+                {
+                    shadowIdx = dirShadowCount++;
+                }
+            }
+            else if (light.type == RenderLightType::Point)
+            {
+                if (pointShadowCount < Shadow::MAX_POINT_LIGHTS_SHADOW)
+                    shadowIdx = pointShadowCount++;
+            }
+            else if (light.type == RenderLightType::Spot)
+            {
+                if (spotShadowCount < Shadow::MAX_SPOT_LIGHTS_SHADOW)
+                    shadowIdx = spotShadowCount++;
+            }
+        }
 
         if (light.type == RenderLightType::Directional)
         {
-            m_DirLights.push_back({light.direction, shadowIdx, light.color, light.intensity, light.ambient, 0.0f,
+            m_DirLights.push_back({light.direction, (float)shadowIdx, light.color, light.intensity, light.ambient, 0.0f,
                                    light.diffuse, 0.0f, light.specular, 0.0f});
         }
         else if (light.type == RenderLightType::Point)
         {
-            m_PointLights.push_back({light.position, shadowIdx, light.color, light.intensity, light.constant,
+            m_PointLights.push_back({light.position, (float)shadowIdx, light.color, light.intensity, light.constant,
                                      light.linear, light.quadratic, light.range, light.ambient, 0.0f, light.diffuse,
                                      0.0f, light.specular, 0.0f});
         }
@@ -62,7 +121,7 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader* sh
             m_SpotLights.push_back({light.position,
                                     0.0f,
                                     light.direction,
-                                    shadowIdx,
+                                    (float)shadowIdx,
                                     light.color,
                                     light.intensity,
                                     light.innerCutoff,

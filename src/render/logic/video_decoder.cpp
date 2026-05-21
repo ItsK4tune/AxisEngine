@@ -1,6 +1,10 @@
 #include <render/logic/video_decoder.h>
 #include <core/logic/logger.h>
 #include <render/interface/i_texture_manager.h>
+#include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <vector>
 
 ITextureManager* VideoDecoder::s_TextureManager = nullptr;
 
@@ -36,10 +40,33 @@ bool VideoDecoder::Load(const std::string& filepath)
 {
     Unload();
     m_Filepath = filepath;
+    m_ProceduralFallback = false;
 
     av_log_set_level(AV_LOG_QUIET);
     if (avformat_open_input(&m_FormatCtx, filepath.c_str(), nullptr, nullptr) != 0)
     {
+        std::ifstream in(filepath, std::ios::binary);
+        std::string marker;
+        if (in)
+        {
+            marker.resize(15);
+            in.read(marker.data(), static_cast<std::streamsize>(marker.size()));
+        }
+        if (marker.find("MOCK_VIDEO_DATA") == 0)
+        {
+            m_ProceduralFallback = true;
+            m_Width = 640;
+            m_Height = 360;
+            if (m_OutputWidth <= 0 || m_OutputHeight <= 0)
+            {
+                m_OutputWidth = m_Width;
+                m_OutputHeight = m_Height;
+            }
+            m_FrameRate = 30.0;
+            m_TimeBase = 1.0 / m_FrameRate;
+            InitTexture();
+            return true;
+        }
         LOGGER_ERROR("VideoDecoder") << "Failed to open video file: " << filepath;
         return false;
     }
@@ -124,8 +151,14 @@ void VideoDecoder::SetOutputSize(int width, int height)
         m_OutputHeight = height;
     }
 
-    if (!m_CodecCtx)
+    if (!m_CodecCtx && !m_ProceduralFallback)
         return;
+
+    if (m_ProceduralFallback)
+    {
+        InitTexture();
+        return;
+    }
 
     if (m_SwsCtx)
         sws_freeContext(m_SwsCtx);
@@ -167,6 +200,7 @@ void VideoDecoder::Unload()
     m_FormatCtx = nullptr;
     m_CodecCtx = nullptr;
     m_SwsCtx = nullptr;
+    m_ProceduralFallback = false;
     m_State = State::Stopped;
 }
 
@@ -212,6 +246,14 @@ void VideoDecoder::Update(float dt)
         return;
 
     m_CurrentTime += dt * m_Speed;
+
+    if (m_ProceduralFallback)
+    {
+        if (m_Loop && m_CurrentTime > 8.0)
+            m_CurrentTime = 0.0;
+        UploadProceduralFrame();
+        return;
+    }
 
     bool needsUpload = false;
     int decodedCount = 0;
@@ -288,8 +330,44 @@ void VideoDecoder::UploadFrame()
                      DataType::UnsignedByte, m_RGBFrame->data[0]);
 }
 
+void VideoDecoder::UploadProceduralFrame()
+{
+    if (!s_TextureManager || m_OutputWidth <= 0 || m_OutputHeight <= 0)
+        return;
+
+    std::vector<uint8_t> pixels(static_cast<size_t>(m_OutputWidth) * static_cast<size_t>(m_OutputHeight) * 4);
+    float t = static_cast<float>(m_CurrentTime);
+    for (int y = 0; y < m_OutputHeight; ++y)
+    {
+        for (int x = 0; x < m_OutputWidth; ++x)
+        {
+            float u = static_cast<float>(x) / static_cast<float>((std::max)(1, m_OutputWidth - 1));
+            float v = static_cast<float>(y) / static_cast<float>((std::max)(1, m_OutputHeight - 1));
+            uint8_t r = static_cast<uint8_t>(127.0f + 127.0f * std::sin((u * 8.0f + t) * 3.14159f));
+            uint8_t g = static_cast<uint8_t>(127.0f + 127.0f * std::sin((v * 6.0f + t * 1.4f) * 3.14159f));
+            uint8_t b = static_cast<uint8_t>(127.0f + 127.0f * std::sin(((u + v) * 5.0f - t * 0.8f) * 3.14159f));
+            size_t idx = (static_cast<size_t>(y) * static_cast<size_t>(m_OutputWidth) + static_cast<size_t>(x)) * 4;
+            pixels[idx + 0] = r;
+            pixels[idx + 1] = g;
+            pixels[idx + 2] = b;
+            pixels[idx + 3] = 255;
+        }
+    }
+
+    auto& tm = GetTextureManager();
+    tm.BindTexture(TextureType::Texture2D, m_TextureID);
+    tm.TexSubImage2D(TextureType::Texture2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, TextureFormat::RGBA,
+                     DataType::UnsignedByte, pixels.data());
+}
+
 void VideoDecoder::Seek(double timestamp)
 {
+    if (m_ProceduralFallback)
+    {
+        m_CurrentTime = timestamp;
+        m_LastFrameTime = timestamp;
+        return;
+    }
     if (!m_FormatCtx)
         return;
     int64_t targetPts = (int64_t)(timestamp / m_TimeBase);

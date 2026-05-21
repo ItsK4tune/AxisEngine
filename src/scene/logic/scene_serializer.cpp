@@ -809,6 +809,18 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     }
 }
 
+static bool HasSerializableComponents(entt::registry& reg, entt::entity entity)
+{
+    return reg.any_of<PositionComponent, RotationComponent, ScaleComponent, MeshRendererComponent,
+                      AxisMaterialComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent,
+                      CameraComponent, RigidShapeComponent, RigidBodyComponent, CharacterControllerComponent,
+                      AudioSourceComponent, VideoPlayerComponent, AnimationComponent, ParticleEmitterComponent,
+                      PostProcessComponent, UITransformComponent, UIRendererComponent, UITextComponent,
+                      UIFlexLayoutComponent, SkyboxRenderComponent, ReflectionProbeComponent, ReflectiveComponent,
+                      PlanarReflectionComponent, DecalComponent, LightProbeComponent, TerrainComponent, LODComponent,
+                      ScriptComponent, NetworkComponent, FragmentComponent>(entity);
+}
+
 bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, ResourceManager& res,
                                 const std::string& sceneName)
 {
@@ -1042,6 +1054,8 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
         }
         if (isRootInScene)
         {
+            if (!HasSerializableComponents(scene.registry, entity))
+                continue;
             if (scene.registry.all_of<FragmentComponent>(entity))
             {
                 auto& fc = scene.registry.get<FragmentComponent>(entity);

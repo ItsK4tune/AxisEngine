@@ -12,6 +12,7 @@ uniform sampler2D u_GNormalTex;
 uniform sampler2D u_GDepth;
 uniform sampler2D u_DecalAlbedo;
 uniform sampler2D u_DecalNormal;
+uniform bool u_HasDecalTexture;
 
 uniform mat4 u_InvModel;
 uniform mat4 u_Model;
@@ -37,7 +38,7 @@ void main()
     if (abs(localPos.x) > 0.5 || abs(localPos.y) > 0.5 || abs(localPos.z) > 0.5) discard;
 
     vec2 decalUV = localPos.xy + 0.5; 
-    vec4 texColor = texture(u_DecalAlbedo, decalUV);
+    vec4 texColor = u_HasDecalTexture ? texture(u_DecalAlbedo, decalUV) : vec4(1.0);
     if (texColor.a < 0.1) discard;
 
     vec3 linearColor = pow(texColor.rgb, vec3(2.2)) * u_TintColor.rgb;

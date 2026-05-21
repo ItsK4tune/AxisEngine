@@ -42,6 +42,10 @@ void NavigationSystem::UpdateNavMesh(Scene& scene)
             NavMeshGenerator::Generate(scene, navMesh, &resources, m_WalkableTags, m_CarveTags);
             LOGGER_INFO("NavigationSystem")
                 << "NavMesh state: Nodes=" << navMesh.nodes.size() << ", Tris=" << navMesh.triangles.size();
+            if (navMesh.nodes.empty())
+            {
+                navMesh.needsRebuild = true;
+            }
         }
     }
 }
@@ -85,7 +89,8 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 follower.pathPending = false;
                 follower.isMoving = !follower.currentPath.empty();
 
-                if (follower.isMoving && follower.currentPath.size() > 2 && physics_ptr)
+                if (follower.isMoving && follower.currentPath.size() > 2 && physics_ptr &&
+                    follower.pathfindingOptions.criteria != PathfindingCriteria::StayOnRoad)
                 {
                     std::vector<glm::vec3> smoothedPath;
                     smoothedPath.push_back(follower.currentPath[0]);
@@ -154,6 +159,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 {
                     moveDir /= moveDist;
                     pos.value += moveDir * follower.moveSpeed * dt;
+                    world.isDirty = true;
                 }
                 else
                 {
@@ -171,10 +177,22 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
                         if (groundHit.hasHit)
                         {
-                            groundNormal = groundHit.hitNormal;
-                            if (!glm::any(glm::isnan(groundHit.hitPoint)) && std::abs(groundHit.hitPoint.y) < 10000.0f)
+                            bool isObstacle = false;
+                            if (scene.registry.valid(groundHit.entity))
                             {
-                                pos.value.y = groundHit.hitPoint.y;
+                                auto* info = scene.registry.try_get<InfoComponent>(groundHit.entity);
+                                if (info && info->tag == "obstacle")
+                                {
+                                    isObstacle = true;
+                                }
+                            }
+                            if (!isObstacle)
+                            {
+                                groundNormal = groundHit.hitNormal;
+                                if (!glm::any(glm::isnan(groundHit.hitPoint)) && std::abs(groundHit.hitPoint.y) < 10000.0f)
+                                {
+                                    pos.value.y = groundHit.hitPoint.y;
+                                }
                             }
                         }
                     }
@@ -242,14 +260,23 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                             rotMat[2] = -forward;
                             glm::quat targetRot = glm::quat_cast(rotMat);
 
-                            if (follower.lockYYaw)
-                            {
-                            }
-
                             if (glm::length(follower.rotationOffset) > 0.001f)
                             {
                                 glm::quat offsetQuat = glm::quat(glm::radians(follower.rotationOffset));
                                 targetRot = targetRot * offsetQuat;
+                            }
+
+                            if (follower.lockXPitch || follower.lockYYaw || follower.lockZRoll)
+                            {
+                                glm::vec3 currentEuler = glm::eulerAngles(rot.value);
+                                glm::vec3 targetEuler = glm::eulerAngles(targetRot);
+                                if (follower.lockXPitch)
+                                    targetEuler.x = currentEuler.x;
+                                if (follower.lockYYaw)
+                                    targetEuler.y = currentEuler.y;
+                                if (follower.lockZRoll)
+                                    targetEuler.z = currentEuler.z;
+                                targetRot = glm::quat(targetEuler);
                             }
 
                             float dot = 0.0f;

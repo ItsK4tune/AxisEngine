@@ -8,6 +8,7 @@
 #include <entt/entt.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <unordered_map>
 
@@ -52,16 +53,20 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         if (scene.registry.all_of<MeshRendererComponent>(ent))
         {
             auto& renderer = scene.registry.get<MeshRendererComponent>(ent);
+            glm::vec3 localMin(-0.5f);
+            glm::vec3 localMax(0.5f);
             if (renderer.model)
             {
-                glm::vec3 worldMin = glm::vec3(transform.worldMatrix * glm::vec4(renderer.model->aabb.minBound, 1.0f));
-                glm::vec3 worldMax = glm::vec3(transform.worldMatrix * glm::vec4(renderer.model->aabb.maxBound, 1.0f));
-
-                glm::vec3 actualMin = glm::min(worldMin, worldMax);
-                glm::vec3 actualMax = glm::max(worldMin, worldMax);
-
-                obstacles.push_back({actualMin, actualMax});
+                localMin = renderer.model->aabb.minBound;
+                localMax = renderer.model->aabb.maxBound;
             }
+            glm::vec3 worldMin = glm::vec3(transform.worldMatrix * glm::vec4(localMin, 1.0f));
+            glm::vec3 worldMax = glm::vec3(transform.worldMatrix * glm::vec4(localMax, 1.0f));
+
+            glm::vec3 actualMin = glm::min(worldMin, worldMax);
+            glm::vec3 actualMax = glm::max(worldMin, worldMax);
+
+            obstacles.push_back({actualMin, actualMax});
         }
     }
 
@@ -252,18 +257,28 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
 
     struct Edge
     {
-        uint32_t v1, v2;
+        glm::ivec3 a, b;
         bool operator==(const Edge& other) const
         {
-            return v1 == other.v1 && v2 == other.v2;
+            return a == other.a && b == other.b;
         }
     };
     struct EdgeHash
     {
         std::size_t operator()(const Edge& e) const
         {
-            return std::hash<uint32_t>{}(e.v1) ^ (std::hash<uint32_t>{}(e.v2) << 1);
+            auto hashPoint = [](const glm::ivec3& p) {
+                std::size_t h = std::hash<int>{}(p.x);
+                h ^= std::hash<int>{}(p.y) + 0x9e3779b9 + (h << 6) + (h >> 2);
+                h ^= std::hash<int>{}(p.z) + 0x9e3779b9 + (h << 6) + (h >> 2);
+                return h;
+            };
+            return hashPoint(e.a) ^ (hashPoint(e.b) << 1);
         }
+    };
+    auto quantize = [](const glm::vec3& p) {
+        constexpr float scale = 1000.0f;
+        return glm::ivec3((int)std::round(p.x * scale), (int)std::round(p.y * scale), (int)std::round(p.z * scale));
     };
     std::unordered_map<Edge, std::vector<uint32_t>, EdgeHash> edgeMap;
 
@@ -272,9 +287,11 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
         const auto& tri = navMesh.triangles[i];
         for (int k = 0; k < 3; ++k)
         {
-            uint32_t va = tri.indices[k];
-            uint32_t vb = tri.indices[(k + 1) % 3];
-            Edge e = {std::min(va, vb), std::max(va, vb)};
+            glm::ivec3 va = quantize(navMesh.vertices[tri.indices[k]]);
+            glm::ivec3 vb = quantize(navMesh.vertices[tri.indices[(k + 1) % 3]]);
+            Edge e = (va.x < vb.x || (va.x == vb.x && (va.y < vb.y || (va.y == vb.y && va.z <= vb.z)))) ?
+                         Edge{va, vb} :
+                         Edge{vb, va};
             edgeMap[e].push_back(i);
         }
     }

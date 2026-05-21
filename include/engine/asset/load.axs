@@ -37,6 +37,10 @@ axis_scene:
       Vertex: include/engine/asset/shaders/deferred_lit.vs
       Fragment: include/engine/asset/shaders/deferred_lit.fs
     Shader:
+      Name: deferred_lit_shadow
+      Vertex: include/engine/asset/shaders/deferred_lit.vs
+      Fragment: include/engine/asset/shaders/deferred_lit_shadow.fs
+    Shader:
       Name: deferred_unlit
       Vertex: include/engine/asset/shaders/deferred_unlit.vs
       Fragment: include/engine/asset/shaders/deferred_unlit.fs
@@ -149,11 +153,9 @@ axis_scene:
       Name: forward_pbr_env
       Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
       Fragment: include/engine/asset/shaders/forward_pbr_env.fs
-    
     Texture:
       Name: error_texture
       Path: include/engine/asset/textures/error_checkerboard.tga
-
     Font:
       Name: time
       Path: include/engine/asset/fonts/time.ttf
@@ -162,7 +164,6 @@ axis_scene:
       Name: debug_font
       Path: include/engine/asset/fonts/time.ttf
       Size: 24
-
     Model:
       Name: planeModel
       Path: include/engine/asset/objects/plane/plane.fbx
@@ -187,18 +188,20 @@ axis_scene:
       Name: sphereModel
       Path: include/engine/asset/objects/sphere/sphere.fbx
       Static: 1
-
     Skybox:
       Name: defaultSkybox
       Right: include/engine/asset/skyboxs/default_right.png
       Left: include/engine/asset/skyboxs/default_left.png
+      Front: include/engine/asset/skyboxs/default_front.png
       Top: include/engine/asset/skyboxs/default_top.png
       Bottom: include/engine/asset/skyboxs/default_bottom.png
-      Front: include/engine/asset/skyboxs/default_front.png
       Back: include/engine/asset/skyboxs/default_back.png
-
   Entities:
     Skybox:
+      Component: Transform
+        Position: 0.000000 0.000000 0.000000
+        Rotation: 0.000000 -0.000000 0.000000
+        Scale: 1.000000 1.000000 1.000000
       Component: SkyboxRenderer
         Skybox: defaultSkybox
         Shader: skyboxShader

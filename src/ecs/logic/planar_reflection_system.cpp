@@ -2,6 +2,7 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_skybox_service.h>
 #include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
@@ -73,6 +74,9 @@ void PlanarReflectionSystem::Render(Scene& scene)
     auto& dc = m_Context->GetDrawContext();
 
     uint32_t currentFBO = m_RenderService->GetMainFBO();
+    const glm::mat4 savedView = m_RenderService->GetViewMatrix();
+    const glm::mat4 savedProjection = m_RenderService->GetProjectionMatrix();
+    const glm::vec3 savedCameraPos = m_RenderService->GetCameraPosition();
 
     int screenWidth = m_RenderService->GetLastWidth();
     int screenHeight = m_RenderService->GetLastHeight();
@@ -149,7 +153,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
         m_RenderService->SetMainFBO(prc.reflectionFBO);
 
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, prc.reflectionFBO);
-        rsm.SetViewport(0, 0, prc.resolution, prc.resolution);
+        rsm.SetViewport(0, 0, prc.resolution, prc.resolution_y);
         dc.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         dc.Clear(BufferBit::Color | BufferBit::Depth);
 
@@ -188,10 +192,17 @@ void PlanarReflectionSystem::Render(Scene& scene)
         reflParams.farPlane = cam.farPlane;
         reflParams.lodFactor = 1.0f;
         reflParams.width = prc.resolution;
-        reflParams.height = prc.resolution;
+        reflParams.height = prc.resolution_y;
         reflParams.cullingMask = cam.cullingMask;
         reflParams.isCapturingProbe = true;
+        reflParams.excludeEntity = entity;
         m_RenderService->BuildRenderQueuesWithCamera(scene, reflParams);
+
+        if (auto* skyboxService = ServiceLocator::Instance().Resolve<ISkyboxService>())
+        {
+            skyboxService->RenderAlphaPassWithCamera(scene, refViewMat, obliqueProj, prc.resolution, prc.resolution_y,
+                                                     prc.reflectionFBO);
+        }
 
         const auto& defQ = m_RenderService->GetRenderQueueObj().GetDeferredOpaqueQueue();
         m_RenderService->ExecuteQueue(defQ, false, nullptr, nullptr, nullptr);
@@ -202,7 +213,11 @@ void PlanarReflectionSystem::Render(Scene& scene)
         rsm.SetCullFace(CullMode::Back);
         m_RenderService->SetMainFBO(tempFB);
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, tempFB);
+        rsm.SetViewport(0, 0, screenWidth, screenHeight);
 
         prc.isRendered = true;
     }
+
+    m_RenderService->RestoreCameraState(savedView, savedProjection, savedCameraPos, cam.nearPlane, cam.farPlane);
+    m_RenderService->BuildRenderQueues(scene, 1.0f, screenWidth, screenHeight);
 }

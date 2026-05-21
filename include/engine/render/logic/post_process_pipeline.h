@@ -88,6 +88,10 @@ public:
     {
         m_BloomRadius = radius;
     }
+    void SetHDREnabled(bool enabled)
+    {
+        m_HDREnabled = enabled;
+    }
     void SetExposure(float exposure)
     {
         m_Exposure = exposure;

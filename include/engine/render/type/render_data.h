@@ -41,6 +41,7 @@ struct RenderItem
     bool isTransparent = false;
     RenderMode renderMode = RenderMode::Auto;
     uint64_t sortKey = 0;
+    uint64_t materialBatchKey = 0;
 
     bool hasAnimation = false;
     bool isStatic = false;

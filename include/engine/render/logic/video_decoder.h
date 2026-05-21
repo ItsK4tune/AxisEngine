@@ -46,6 +46,8 @@ public:
     }
     double GetDuration() const
     {
+        if (m_ProceduralFallback)
+            return 8.0;
         return m_FormatCtx ? (double)m_FormatCtx->duration / AV_TIME_BASE : 0.0;
     }
     double GetCurrentTime() const
@@ -109,6 +111,7 @@ private:
     double m_Limit = 0.0;
     double m_Speed = 1.0;
     bool m_Loop = true;
+    bool m_ProceduralFallback = false;
 
     enum class State
     {
@@ -127,5 +130,6 @@ private:
 
     bool DecodeFrame();
     void UploadFrame();
+    void UploadProceduralFrame();
     void InitTexture();
 };

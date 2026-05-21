@@ -74,7 +74,6 @@ void BulletDebugDrawer::Initialize()
 
 void BulletDebugDrawer::FrameStart()
 {
-    m_Lines.clear();
     if (m_VAO == 0 && s_BufferManager)
     {
         Initialize();
@@ -98,6 +97,7 @@ void BulletDebugDrawer::Flush()
     dc.DrawArrays(Primitive::Lines, 0, (unsigned int)m_Lines.size());
 
     bm.BindVertexArray(0);
+    m_Lines.clear();
 }
 
 void BulletDebugDrawer::drawLine(const btVector3& from, const btVector3& to, const btVector3& color)

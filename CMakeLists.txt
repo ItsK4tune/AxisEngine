@@ -153,3 +153,43 @@ configure_package_config_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine
 )
+
+# ─── Benchmark Samples App ───
+set(SAMPLE_SOURCES
+    sample/src/main.cpp
+    sample/src/sample_state.cpp
+)
+
+add_executable(axis_samples ${SAMPLE_SOURCES})
+target_compile_options(axis_samples PRIVATE /FS)
+
+target_include_directories(axis_samples PRIVATE
+    sample/src
+)
+
+if(ENABLE_EDITOR)
+    target_link_libraries(axis_samples PRIVATE
+        axis_editor
+        axis_engine
+        dxgi
+        pdh
+    )
+else()
+    target_link_libraries(axis_samples PRIVATE
+        axis_engine
+        dxgi
+        pdh
+    )
+endif()
+
+if(MSVC)
+    target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_engine")
+endif()
+
+# Copy DLLs post-build
+add_custom_command(TARGET axis_samples POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/dlls"
+        "$<TARGET_FILE_DIR:axis_samples>"
+)
+

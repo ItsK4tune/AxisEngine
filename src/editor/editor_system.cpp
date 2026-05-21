@@ -184,27 +184,8 @@ void EditorSystem::OnUpdate(float dt)
         ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
     }
 
-    auto& mouse = ioHandler->GetMouse();
-    bool hoveringPanel = ImGui::GetIO().WantCaptureMouse;
-    CursorMode curMode = mouse.GetCursorMode();
-
-    if (hoveringPanel && !m_WasHoveringPanel)
-    {
-        m_PreHoverCursorMode = curMode;
-        if (curMode != CursorMode::Disabled)
-        {
-            mouse.SetCursorMode(CursorMode::Disabled);
-        }
-        m_WasHoveringPanel = true;
-    }
-    else if (!hoveringPanel && m_WasHoveringPanel)
-    {
-        if (curMode == CursorMode::Disabled)
-        {
-            mouse.SetCursorMode(m_PreHoverCursorMode);
-        }
-        m_WasHoveringPanel = false;
-    }
+    // Note: Camera controller already checks ImGui::WantCaptureMouse to skip input.
+    // No cursor mode manipulation needed here — it breaks mouse in overlay/sample mode.
 
     // === Keyboard Shortcuts ===
     bool ctrl = kb.GetKey(Key::LeftControl) || kb.GetKey(Key::RightControl);

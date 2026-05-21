@@ -37,7 +37,7 @@ private:
     std::vector<GPUPointLight> m_PointLights;
     std::vector<GPUSpotLight> m_SpotLights;
 
-    uint32_t m_LastCombinedVersion = 0;
+    std::size_t m_LastCombinedVersion = 0;
     size_t m_LastLightCount = 0;
     bool m_NeedsUpload = true;
 

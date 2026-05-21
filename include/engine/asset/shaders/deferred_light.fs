@@ -163,8 +163,8 @@ void main()
     vec3 V = normalize(camera.viewPos.xyz - FragPos);
     
     vec4 PBRParams = texture(gPBRParams, TexCoords);
-    float Metallic = PBRParams.r;
-    float Roughness = PBRParams.g;
+    float Metallic = clamp(PBRParams.r, 0.0, 1.0);
+    float Roughness = clamp(PBRParams.g, 0.04, 1.0);
     float Reflectivity = PBRParams.b;
     
     // Unpacking: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 100.0
@@ -175,6 +175,7 @@ void main()
     float activeSpecularMask = 1.0; 
     if (Reflectivity < 0.01 && Roughness > 0.99) activeSpecularMask = 0.0;
 
+    vec3 F0Direct = mix(vec3(0.04), Albedo, Metallic);
     vec3 Lo = vec3(0.0);
 
     for(int i = 0; i < light.numDirLights; ++i)
@@ -194,9 +195,11 @@ void main()
             shadow = ShadowCalculationDir(fragPosLightSpace, sIdx);
         }
 
+        vec3 F = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0Direct, Roughness);
+        vec3 kD = (vec3(1.0) - F) * (1.0 - Metallic);
         vec3 radiance = dirLights[i].color * dirLights[i].intensity;
-        vec3 diffuse  = dirLights[i].diffuse * radiance * diff * Albedo;
-        vec3 u_Specular = dirLights[i].u_Specular * radiance * spec * 0.5 * activeSpecularMask;
+        vec3 diffuse  = dirLights[i].diffuse * radiance * diff * Albedo * kD;
+        vec3 u_Specular = dirLights[i].u_Specular * radiance * spec * F * activeSpecularMask;
         
         Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
@@ -219,9 +222,11 @@ void main()
             shadow = ShadowCalculationPoint(FragPos, pointLights[i].position, sIdx);
         }
 
+        vec3 F = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0Direct, Roughness);
+        vec3 kD = (vec3(1.0) - F) * (1.0 - Metallic);
         vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation;
-        vec3 diffuse  = pointLights[i].diffuse * radiance * diff * Albedo;
-        vec3 u_Specular = pointLights[i].u_Specular * radiance * spec * 0.5 * activeSpecularMask;
+        vec3 diffuse  = pointLights[i].diffuse * radiance * diff * Albedo * kD;
+        vec3 u_Specular = pointLights[i].u_Specular * radiance * spec * F * activeSpecularMask;
         
         Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
@@ -249,16 +254,18 @@ void main()
             shadow = ShadowCalculationSpot(fragPosLightSpace, sIdx);
         }
 
+        vec3 F = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0Direct, Roughness);
+        vec3 kD = (vec3(1.0) - F) * (1.0 - Metallic);
         vec3 radiance = spotLights[i].color * spotLights[i].intensity * attenuation * spotIntensity;
-        vec3 diffuse  = spotLights[i].diffuse * radiance * diff * Albedo;
-        vec3 u_Specular = spotLights[i].u_Specular * radiance * spec * 0.5 * activeSpecularMask;
+        vec3 diffuse  = spotLights[i].diffuse * radiance * diff * Albedo * kD;
+        vec3 u_Specular = spotLights[i].u_Specular * radiance * spec * F * activeSpecularMask;
         
         Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
 
     vec3 emissive = texture(gEmissive, TexCoords).rgb;
     
-    vec3 ambientDiffuse = Albedo * 0.15; 
+    vec3 ambientDiffuse = Albedo * 0.15 * (1.0 - Metallic * 0.75); 
     if (u_HasLightProbe) {
         ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
     }
@@ -319,7 +326,7 @@ void main()
         
         for (int i = 0; i < u_PlanarCount; ++i) {
             vec3 activeNormal = u_PlanarNormals[i];
-            float cosTheta = dot(Normal, activeNormal);
+            float cosTheta = abs(dot(Normal, activeNormal));
             
             // Mask for this specific mirror plane
             float mask = clamp((cosTheta - 0.98) * 50.0, 0.0, 1.0);
@@ -367,9 +374,10 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness) {
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx) {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
     if (projCoords.z > 1.0) return 0.0;
     float currentDepth = projCoords.z;
-    float bias = u_ShadowBias;
+    float bias = max(u_ShadowBias, 0.0025);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(u_ShadowMapDir, 0).xy;
     for(int x = -u_ShadowSoftness; x <= u_ShadowSoftness; ++x) {
@@ -386,7 +394,7 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
     vec3 fragToLight = fragPos - u_LightPos;
     float currentDepth = length(fragToLight);
     float shadow = 0.0;
-    float bias = u_ShadowBias * 10.0;
+    float bias = max(u_ShadowBias * 25.0, 0.08);
     int samples = 20;
     vec3 sampleOffsetDirections[20] = vec3[] (
        vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
@@ -409,9 +417,10 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
 float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx) {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
     if (projCoords.z > 1.0) return 0.0;
     float currentDepth = projCoords.z;
-    float bias = u_ShadowBias;
+    float bias = max(u_ShadowBias, 0.0035);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(u_ShadowMapSpot, 0).xy;
     for(int x = -u_ShadowSoftness; x <= u_ShadowSoftness; ++x) {

@@ -18,10 +18,10 @@ class RenderQueue
 public:
     RenderQueue()
     {
-        m_DeferredOpaqueQueue.reserve(2000);
-        m_ForwardOpaqueQueue.reserve(500);
-        m_TransparentQueue.reserve(500);
-        m_ShadowQueue.reserve(3000);
+        m_DeferredOpaqueQueue.reserve(16384);
+        m_ForwardOpaqueQueue.reserve(2048);
+        m_TransparentQueue.reserve(2048);
+        m_ShadowQueue.reserve(16384);
         m_Lights.reserve(256);
     }
 

@@ -73,7 +73,8 @@ EntityBuilder& EntityBuilder::WithTransform(const glm::vec3& pos, const glm::vec
     m_Scene.registry.emplace_or_replace<RotationComponent>(m_Entity, glm::quat(glm::radians(rot)),
                                                            glm::quat(glm::radians(rot)));
     m_Scene.registry.emplace_or_replace<ScaleComponent>(m_Entity, scale, scale);
-    m_Scene.registry.emplace_or_replace<WorldTransformComponent>(m_Entity);
+    auto& world = m_Scene.registry.emplace_or_replace<WorldTransformComponent>(m_Entity);
+    world.isDirty = true;
     return *this;
 }
 
@@ -83,6 +84,7 @@ EntityBuilder& EntityBuilder::WithMesh(const std::string& modelName, const std::
     auto& mesh = m_Scene.registry.get_or_emplace<MeshRendererComponent>(m_Entity);
     mesh.model = res.GetModel(modelName);
     mesh.shader = res.GetShader(shaderName);
+    mesh.shaderName = shaderName;
     return *this;
 }
 
@@ -274,6 +276,7 @@ EntityBuilder& EntityBuilder::WithAnimation(const std::string& animationName)
         if (!anim.animator)
         {
             anim.animator = std::make_shared<Animator>(a);
+            anim.animator->AddAnimation(animationName, a);
         }
         else
         {

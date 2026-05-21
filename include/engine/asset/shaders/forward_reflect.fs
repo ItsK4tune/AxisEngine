@@ -129,7 +129,7 @@ void main()
         vec2 uv = gl_FragCoord.xy / u_ScreenSize;
 
         for (int i = 0; i < u_PlanarCount; ++i) {
-            float mask = clamp((dot(norm, u_PlanarNormals[i]) - 0.98) * 50.0, 0.0, 1.0);
+            float mask = clamp((abs(dot(norm, u_PlanarNormals[i])) - 0.98) * 50.0, 0.0, 1.0);
             if (mask > 0.0) {
                 vec3 sampleColor = texture(u_PlanarReflections[i], uv).rgb;
                 reflectionColor += sampleColor * mask;

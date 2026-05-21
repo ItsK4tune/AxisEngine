@@ -92,6 +92,13 @@ public:
     {
         return host;
     }
+    ENetPeer* GetServerPeer()
+    {
+        return serverPeer && serverPeer->state == ENET_PEER_STATE_CONNECTED ? serverPeer : nullptr;
+    }
+    ENetPeer* GetFirstConnectedPeer();
+    size_t GetConnectedPeerCount() const;
+    const char* GetClientPeerState() const;
 
 private:
     ENetHost* host = nullptr;

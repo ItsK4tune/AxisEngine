@@ -183,9 +183,11 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
             shadowSys->GetShadow().BindTexture_Dir(0, 10);
             shadowSys->GetShadow().BindTexture_Point(0, 11);
             shadowSys->GetShadow().BindTexture_Spot(0, 12);
-            m_DeferredLightShader->setInt("shadowMapDir", 10);
-            m_DeferredLightShader->setInt("shadowMapPoint", 11);
-            m_DeferredLightShader->setInt("shadowMapSpot", 12);
+            m_DeferredLightShader->setInt("u_ShadowMapDir", 10);
+            m_DeferredLightShader->setInt("u_ShadowMapPoint", 11);
+            m_DeferredLightShader->setInt("u_ShadowMapSpot", 12);
+            m_DeferredLightShader->setFloat("u_ShadowBias", shadowSys->GetRenderer().GetShadowBias());
+            m_DeferredLightShader->setInt("u_ShadowSoftness", shadowSys->GetRenderer().GetShadowSoftness());
         }
     }
 

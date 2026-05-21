@@ -13,12 +13,21 @@
 
 void RenderQueue::Sort()
 {
-    std::sort(m_DeferredOpaqueQueue.begin(), m_DeferredOpaqueQueue.end(),
-              [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
+    if (m_DeferredOpaqueQueue.size() > 1)
+    {
+        std::sort(m_DeferredOpaqueQueue.begin(), m_DeferredOpaqueQueue.end(),
+                  [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
+    }
 
-    std::sort(m_ForwardOpaqueQueue.begin(), m_ForwardOpaqueQueue.end(),
-              [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
+    if (m_ForwardOpaqueQueue.size() > 1)
+    {
+        std::sort(m_ForwardOpaqueQueue.begin(), m_ForwardOpaqueQueue.end(),
+                  [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
+    }
 
-    std::sort(m_TransparentQueue.begin(), m_TransparentQueue.end(),
-              [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
+    if (m_TransparentQueue.size() > 1)
+    {
+        std::sort(m_TransparentQueue.begin(), m_TransparentQueue.end(),
+                  [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
+    }
 }

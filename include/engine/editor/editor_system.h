@@ -78,6 +78,8 @@ public:
     static void PushUndoState(Scene& scene);
     static void PerformUndo(Scene& scene);
 
+    ImGuiLayer& GetImGuiLayer() { return m_ImGuiLayer; }
+
 private:
     bool m_Enabled = true;
 
