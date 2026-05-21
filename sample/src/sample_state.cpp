@@ -547,8 +547,6 @@ void SampleState::OnUpdate(float dt)
             auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr->GetSystem("NetworkSystem"));
             if (netSystem && netSystem->IsRunning())
             {
-                netSystem->UpdateEvents(0);
-                
                 if (!netSystem->IsServer())
                 {
                     m_S16SendTimer += dt;
@@ -1423,6 +1421,15 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Network Messaging (ENet)");
         ImGui::Text("Status: %s", m_S16Status.c_str());
         ImGui::Checkbox("Host as Server", &m_S16IsServer);
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Use IPv6", &m_S16UseIPv6))
+        {
+            // Update default host when toggling
+            if (m_S16UseIPv6)
+                strncpy(m_S16Host, "::1", sizeof(m_S16Host));
+            else
+                strncpy(m_S16Host, "127.0.0.1", sizeof(m_S16Host));
+        }
         ImGui::InputText("Host IP", m_S16Host, sizeof(m_S16Host));
         ImGui::InputInt("Port", &m_S16Port);
         m_S16Port = glm::clamp(m_S16Port, 1024, 65535);
@@ -1445,6 +1452,7 @@ void SampleState::DrawGUI()
                     NetworkConfig config;
                     config.port = static_cast<uint16_t>(m_S16Port);
                     config.maxClients = 32;
+                    config.useIPv6 = m_S16UseIPv6;
                     m_S16Messages.clear();
 
                     if (m_S16IsServer)
@@ -1488,7 +1496,6 @@ void SampleState::DrawGUI()
                         if (netSystem->StartClient(config))
                         {
                             m_S16Status = "Client connecting to " + std::string(m_S16Host) + ":" + std::to_string(m_S16Port) + "...";
-                            netSystem->UpdateEvents(200);
                         }
                         else
                         {

@@ -453,6 +453,7 @@ private:
     char m_S16MessageText[128] = "Hello from AxisEngine";
     char m_S16Host[64] = "127.0.0.1";
     int m_S16Port = 12345;
+    bool m_S16UseIPv6 = false;
 
     // Scenario 17 UI variables
     std::shared_ptr<ISound> m_S17Audio2D = nullptr;

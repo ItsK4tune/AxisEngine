@@ -13,6 +13,7 @@ struct NetworkConfig
     size_t channels = 2;
     uint32_t incomingBandwidth = 0;
     uint32_t outgoingBandwidth = 0;
+    bool useIPv6 = false;  // Default: IPv4
 };
 
 class NetworkSystem : public IUpdateSystem
@@ -88,6 +89,14 @@ public:
     {
         return host != nullptr;
     }
+    bool IsIPv6() const
+    {
+        return m_useIPv6;
+    }
+    void UseIPv6(bool useIPv6)
+    {
+        m_useIPv6 = useIPv6;
+    }
     ENetHost* GetHost()
     {
         return host;
@@ -106,6 +115,7 @@ private:
     bool isServer = false;
     bool isClient = false;
     bool enabled = true;
+    bool m_useIPv6 = false;
 
     ConnectCallback onConnect;
     DisconnectCallback onDisconnect;
