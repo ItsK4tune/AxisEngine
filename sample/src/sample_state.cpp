@@ -3410,22 +3410,20 @@ void SampleState::LoadScene25()
     //     int order;
     // };
     // SolidDef solids[] = {
-    //     {"Order_Red", glm::vec3(-1.6f, 5.0f, 5.0f), glm::vec4(1.0f, 0.1f, 0.1f, 0.55f), 10},
-    //     {"Order_Green", glm::vec3(0.0f, 5.0f, 5.0f), glm::vec4(0.1f, 1.0f, 0.25f, 0.55f), 20},
-    //     {"Order_Blue", glm::vec3(1.6f, 5.0f, 5.0f), glm::vec4(0.15f, 0.35f, 1.0f, 0.55f), 30},
+    //     {"Solid_Red",   glm::vec3(-2.0f, 3.0f, 10.0f), glm::vec4(1.0f, 0.15f, 0.15f, 1.0f), 1},
+    //     {"Solid_Green", glm::vec3(0.0f, 3.0f, 10.0f), glm::vec4(0.15f, 1.0f, 0.25f, 1.0f), 2},
+    //     {"Solid_Blue",  glm::vec3(2.0f, 3.0f, 10.0f), glm::vec4(0.15f, 0.35f, 1.0f, 1.0f), 3},
     // };
 
     // for (const auto& solid : solids)
     // {
     //     auto entity = EntityBuilder(scene, res, "scenario")
     //         .WithName(solid.name)
-    //         .WithTransform(solid.pos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(5.0f, 7.0f, 0.25f))
+    //         .WithTransform(solid.pos, glm::vec3(0.0f), glm::vec3(4.0f, 4.0f, 4.0f))
     //         .WithMesh("cubeModel", "deferred_lit")
-    //         .WithPBRMaterial(0.0f, 0.2f, 1.0f)
+    //         .WithPBRMaterial(0.0f, 0.5f, 1.0f)
     //         .Build();
     //     auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
-    //     renderer.renderMode = RenderMode::ForceForward;
-    //     renderer.castShadow = false;
     //     renderer.order = solid.order;
     //     renderer.color = solid.color;
     // }

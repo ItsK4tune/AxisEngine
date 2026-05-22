@@ -8,3 +8,5 @@ axis_input:
       - Key: down
     PlayerRight:
       - Key: right
+    PlayerJump:
+      - Key: space

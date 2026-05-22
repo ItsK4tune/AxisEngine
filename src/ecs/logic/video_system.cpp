@@ -108,21 +108,11 @@ void VideoSystem::Update(Scene& scene, float dt)
                 }
             }
 
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+            if (scene.registry.all_of<MeshRendererComponent>(entity))
             {
-                if (renderer->model)
-                {
-                    for (auto& mesh : renderer->model->meshes)
-                    {
-                        Texture videoTex;
-                        videoTex.id = video.decoder->GetTextureID();
-                        videoTex.type = "texture_diffuse";
-                        videoTex.path = "video_stream";
-
-                        mesh.textures.clear();
-                        mesh.textures.push_back(videoTex);
-                    }
-                }
+                auto& mat = scene.registry.get_or_emplace<AxisMaterialComponent>(entity);
+                mat.gpu.albedoMap = video.decoder->GetTextureID();
+                mat.gpu.dirty = false;
             }
         }
     }

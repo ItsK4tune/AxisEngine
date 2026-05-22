@@ -265,9 +265,11 @@ void main()
 
     vec3 emissive = texture(gEmissive, TexCoords).rgb;
     
-    vec3 ambientDiffuse = Albedo * 0.15 * (1.0 - Metallic * 0.75); 
+    vec3 ambientDiffuse = Albedo * 0.15 * (1.0 - Metallic * 0.75);
+    vec3 ambientSpecular = F0Direct * 0.15 * Metallic;
     if (u_HasLightProbe) {
         ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
+        ambientSpecular = vec3(0.0);
     }
 
     vec3 reflectionColor = vec3(0.0);
