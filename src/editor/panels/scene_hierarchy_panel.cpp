@@ -493,6 +493,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::ColorEdit4("Color", &mesh.color.r);
         ImGui::Checkbox("Cast Shadow", &mesh.castShadow);
         ImGui::Checkbox("Receive Shadow", &mesh.receiveShadow);
+        ImGui::Checkbox("Ignore Depth", &mesh.ignoreDepth);
 
         static const char* renderModes[] = {"Auto", "Force Forward", "Force Deferred"};
         int currentMode = (int)mesh.renderMode;

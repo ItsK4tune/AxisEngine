@@ -12,7 +12,20 @@
 #include <render/unit/command_queue.h>
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/model.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_render_state_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
+
+namespace
+{
+glm::mat4 GetShadowModelMatrix(const RenderItem& item)
+{
+    glm::mat4 modelMatrix = item.worldMatrix;
+    if (item.model && !item.hasAnimation)
+        modelMatrix *= item.model->GetRootTransform();
+    return modelMatrix;
+}
+}
 
 void ShadowRenderer::Initialize(IGraphicsContext& context, IShaderLibrary& shaderLib)
 {
@@ -64,6 +77,19 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
 
     glm::vec3 camPos = sceneData.cameraPosition;
     m_MainQueue.Clear();
+    m_MainQueue.Submit([]() {
+        auto* context = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+        if (context)
+        {
+            auto& rsm = context->GetRenderStateManager();
+            rsm.Enable(ServerCapability::DepthTest);
+            rsm.SetDepthMask(true);
+            rsm.SetDepthFunc(CompareFunc::Less);
+            rsm.Disable(ServerCapability::Blend);
+            rsm.Enable(ServerCapability::CullFace);
+            rsm.SetCullFace(CullMode::Back);
+        }
+    });
     JobSystem::JobCounter counter(0);
 
     const auto& shadowQueue = sceneData.shadowQueue;
@@ -122,7 +148,8 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                     {
                         const auto& item = shadowQueue[k];
 
-                        if (m_ShadowDistanceCullingSq > 0.0f && item.distanceSq > m_ShadowDistanceCullingSq)
+                        if (m_ShadowDistanceCullingSq > 0.0f &&
+                            item.worldAABB.DistanceSq(camPos) > m_ShadowDistanceCullingSq)
                             continue;
                         if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(item.worldAABB))
                             continue;
@@ -132,7 +159,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                             continue;
 
                         Model* activeModel = item.model;
-                        glm::mat4 worldMat = item.worldMatrix;
+                        glm::mat4 worldMat = GetShadowModelMatrix(item);
 
                         if (activeModel)
                         {
@@ -175,7 +202,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             glm::vec3 lightPos = light->position;
             float farP = m_FarPlanePoint;
             float aspect = (float)m_Shadow.GetShadowPointWidth() / (float)m_Shadow.GetShadowPointHeight();
-            glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, 1.0f, farP);
+            glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, 0.05f, farP);
             std::vector<glm::mat4> shadowTransforms = {
                 shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(1, 0, 0), glm::vec3(0, -1, 0)),
                 shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1, 0, 0), glm::vec3(0, -1, 0)),
@@ -203,19 +230,25 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 size_t endIdx = std::min(startIdx + chunkSize, totalItems);
                 JobSystem::Instance().Execute(
                     [this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderPoint,
-                     shadowTransforms, farP, lightPos, camPos, lightingMode]() {
-                        threadQueue.Submit([shaderPoint, shadowTransforms, farP, lightPos]() {
+                     shadowTransforms, farP, lightPos, camPos, lightingMode, pIdx]() {
+                        threadQueue.Submit([shaderPoint, shadowTransforms, farP, lightPos, pIdx]() {
                             shaderPoint->use();
                             for (int k = 0; k < 6; ++k)
                                 shaderPoint->setMat4("u_ShadowMatrices[" + std::to_string(k) + "]",
                                                      shadowTransforms[k]);
                             shaderPoint->setFloat("u_FarPlane", farP);
                             shaderPoint->setVec3("u_LightPos", lightPos);
+                            shaderPoint->setInt("u_LightIndex", pIdx);
                         });
                         for (size_t k = startIdx; k < endIdx; ++k)
                         {
                             const auto& item = shadowQueue[k];
-                            if (m_ShadowDistanceCullingSq > 0.0f && item.distanceSq > m_ShadowDistanceCullingSq)
+                            if (m_ShadowDistanceCullingSq > 0.0f &&
+                                item.worldAABB.DistanceSq(camPos) > m_ShadowDistanceCullingSq)
+                                continue;
+
+                            // Skip objects that contain the light (self-shadowing of light mesh)
+                            if (item.worldAABB.Contains(lightPos))
                                 continue;
 
                             // Bake mode: only static objects cast shadows
@@ -223,7 +256,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                                 continue;
 
                             Model* activeModel = item.model;
-                            glm::mat4 worldMat = item.worldMatrix;
+                            glm::mat4 worldMat = GetShadowModelMatrix(item);
                             if (activeModel)
                             {
                                 threadQueue.Submit([shaderPoint, worldMat, activeModel, hasAnim = item.hasAnimation,
@@ -251,6 +284,9 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         for (int sIdx = 0; sIdx < numSpotShadows; ++sIdx)
         {
             const auto* light = shadowCastingSpotLights[sIdx];
+            glm::vec3 lightPos = light->position;
+            float farP = m_FarPlaneSpot;
+            float farPSq = farP * farP;
             m_LightSpaceMatrixSpot[sIdx] = light->viewProj;
 
             // Bake mode optimization
@@ -286,7 +322,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 size_t endIdx = std::min(startIdx + chunkSize, totalItems);
                 JobSystem::Instance().Execute(
                     [this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderSpot, sIdx,
-                     lightFrustum, camPos, lightingMode]() {
+                     lightFrustum, lightPos, farPSq, lightingMode]() {
                         threadQueue.Submit([shaderSpot, this, sIdx]() {
                             shaderSpot->use();
                             shaderSpot->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
@@ -294,7 +330,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                         for (size_t k = startIdx; k < endIdx; ++k)
                         {
                             const auto& item = shadowQueue[k];
-                            if (m_ShadowDistanceCullingSq > 0.0f && item.distanceSq > m_ShadowDistanceCullingSq)
+                            if (item.worldAABB.DistanceSq(lightPos) > farPSq)
                                 continue;
                             if (m_ShadowFrustumCullingEnabled && !lightFrustum.IsBoxVisible(item.worldAABB))
                                 continue;
@@ -304,7 +340,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                                 continue;
 
                             Model* activeModel = item.model;
-                            glm::mat4 worldMat = item.worldMatrix;
+                            glm::mat4 worldMat = GetShadowModelMatrix(item);
                             if (activeModel)
                             {
                                 threadQueue.Submit([shaderSpot, worldMat, activeModel, hasAnim = item.hasAnimation,

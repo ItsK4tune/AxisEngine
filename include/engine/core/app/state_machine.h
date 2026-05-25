@@ -3,6 +3,7 @@
 #include <core/app/engine_accessor.h>
 #include <memory>
 #include <stack>
+#include <vector>
 
 class State : public EngineAccessor
 {
@@ -42,11 +43,12 @@ public:
     void ChangeState(std::unique_ptr<State> state);
 
     State* GetCurrentState();
+    std::vector<State*> GetStates() const;
 
     void Update(float dt);
     void FixedUpdate(float fixedDt);
     void Render();
 
 private:
-    std::stack<std::unique_ptr<State>> m_States;
+    std::vector<std::unique_ptr<State>> m_States;
 };

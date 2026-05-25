@@ -183,6 +183,8 @@ void RenderServiceImpl::Initialize()
             m_DeferredLitShader = shaderLib->GetShader("deferred_lit");
             m_DeferredUnlitShader = shaderLib->GetShader("deferred_unlit");
             m_ForwardPBRLitShader = shaderLib->GetShader("forward_pbr_lit");
+            m_ForwardPBRLitShadowShader = shaderLib->GetShader("forward_pbr_lit_shadow");
+            m_DeferredLitShadowShader = shaderLib->GetShader("deferred_lit_shadow");
             m_ErrorForwardShader = shaderLib->GetShader("error_forward");
             m_ErrorDeferredShader = shaderLib->GetShader("error_deferred");
         }
@@ -433,9 +435,13 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         if (!renderer.model)
             continue;
 
+        const bool depthOverlay = renderer.ignoreDepth;
+        const bool castsSceneShadow = renderer.castShadow && !depthOverlay;
+
         float distSqResult = glm::length2(params.cameraPos - glm::vec3(modelMatrix[3]));
-        if (m_Flags.distanceCullingSq > 0.0f && distSqResult > m_Flags.distanceCullingSq)
-            continue;
+        bool visibleToCamera = true;
+        if (!depthOverlay && m_Flags.distanceCullingSq > 0.0f && distSqResult > m_Flags.distanceCullingSq)
+            visibleToCamera = false;
 
         AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
 
@@ -443,11 +449,14 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         if (m_IsCapturingProbe && worldAABB.Contains(params.cameraPos))
             continue;
 
-        if (m_Flags.frustumCullingEnabled)
+        if (m_Flags.frustumCullingEnabled &&
+            !m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
         {
-            if (!m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
-                continue;
+            visibleToCamera = false;
         }
+
+        if (!visibleToCamera && !castsSceneShadow && !depthOverlay)
+            continue;
 
         Model* activeModel = renderer.model.get();
         Shader* itemShader = renderer.shader.lock().get();
@@ -465,14 +474,18 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             }
         }
 
+        bool visibleByOcclusion = true;
         if (m_Flags.occlusionCullingEnabled)
         {
             if (auto* occ = scene.registry.try_get<OcclusionComponent>(entity))
             {
                 if (!occ->isVisible)
-                    continue;
+                    visibleByOcclusion = false;
             }
         }
+
+        if (!visibleByOcclusion && !castsSceneShadow && !depthOverlay)
+            continue;
 
         bool isTransparent = false;
         auto* material = scene.registry.try_get<AxisMaterialComponent>(entity);
@@ -484,7 +497,15 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         uint64_t materialBatchKey = HashMaterialForBatch(material);
         uint64_t key = 0;
         uint64_t sId = itemShader ? itemShader->getID() : 0;
-        if (!isTransparent)
+        if (renderer.ignoreDepth)
+        {
+            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
+            uint64_t invertedOrder = (uint64_t)(255 - glm::clamp(renderer.order, 0, 255));
+            uint64_t o = invertedOrder << 48;
+            uint64_t e = (uint64_t)((uint32_t)entity) & 0x0000FFFFFFFFFFFFULL;
+            key = l | o | e;
+        }
+        else if (!isTransparent)
         {
             uint64_t l = (uint64_t)(layer & 0xFF) << 56;
             uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
@@ -576,6 +597,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         item.sortKey = key;
         item.castShadow = renderer.castShadow;
         item.receiveShadow = renderer.receiveShadow;
+        item.ignoreDepth = renderer.ignoreDepth;
         item.renderMode = renderer.renderMode;
 
         item.tintColor = renderer.color;
@@ -603,23 +625,30 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         // Bake mode criteria: No animation, and no physics types other than static.
         item.isStatic = (!hasAnimation) && (!hasPhysic || (hasPhysic && isStaticPhysic));
-        if (isTransparent)
+        const bool addToCameraQueues = visibleToCamera && (visibleByOcclusion || depthOverlay);
+        if (addToCameraQueues)
         {
-            m_RenderQueueObj.AddTransparent(item);
-        }
-        else
-        {
-            // Unified: Deferred for Opaque by default, Forward if overridden
-            if (renderer.renderMode == RenderMode::ForceForward)
+            if (isTransparent)
             {
-                m_RenderQueueObj.AddForwardOpaque(item);
+                m_RenderQueueObj.AddTransparent(item);
             }
             else
             {
-                m_RenderQueueObj.AddDeferredOpaque(item);
+                if (renderer.ignoreDepth)
+                {
+                    m_RenderQueueObj.AddDepthOverlay(item);
+                }
+                else if (renderer.renderMode == RenderMode::ForceForward)
+                {
+                    m_RenderQueueObj.AddForwardOpaque(item);
+                }
+                else
+                {
+                    m_RenderQueueObj.AddDeferredOpaque(item);
+                }
             }
         }
-        if (renderer.castShadow)
+        if (castsSceneShadow)
             m_RenderQueueObj.AddShadow(item);
     }
 
@@ -733,6 +762,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque="
                                     << (int)(m_RenderQueueObj.GetDeferredOpaqueQueue().size() +
                                              m_RenderQueueObj.GetForwardOpaqueQueue().size())
+                                    << ", DepthOverlay=" << (int)m_RenderQueueObj.GetDepthOverlayQueue().size()
                                     << ", Transparent=" << (int)m_RenderQueueObj.GetTransparentQueue().size();
         firstFrame = false;
     }
@@ -760,6 +790,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         return;
     auto& tm = m_Context->GetTextureManager();
     auto& rtm = m_Context->GetRenderTargetManager();
+    auto& rsm = m_Context->GetRenderStateManager();
 
     Shader* lastShader = nullptr;
 
@@ -824,33 +855,67 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         Model* model = item.model;
         AxisMaterialComponent* material = item.material;
         Shader* shader = item.shader;
+        bool ignoreDepthForDraw = item.ignoreDepth && !overrideShader;
 
         if (overrideShader)
         {
             shader = overrideShader;
         }
-        else if (!shader)
+        else
         {
-            if (isTransparentPass || item.renderMode == RenderMode::ForceForward)
+            if (!shader)
             {
-                shader = m_ForwardPBRLitShader.get();
+                if (isTransparentPass || item.renderMode == RenderMode::ForceForward)
+                {
+                    shader = m_ForwardPBRLitShader.get();
+                }
+                else
+                {
+                    shader = isCapturing ? m_ForwardPBRLitShader.get() : m_DeferredLitShader.get();
+                }
             }
-            else
+
+            bool targetIsForward =
+                isTransparentPass || item.renderMode == RenderMode::ForceForward || item.ignoreDepth || isCapturing;
+            if (shader)
             {
-                shader = isCapturing ? m_ForwardPBRLitShader.get() : m_DeferredLitShader.get();
+                if (targetIsForward)
+                {
+                    if (shader->IsDeferred())
+                    {
+                        if (shader == m_DeferredUnlitShader.get() || shader->GetName() == "deferred_unlit")
+                        {
+                            shader = m_UnlitShader.get();
+                        }
+                        else if (shader == m_DeferredLitShadowShader.get() || shader->GetName() == "deferred_lit_shadow")
+                        {
+                            shader = m_ForwardPBRLitShadowShader.get();
+                        }
+                        else
+                        {
+                            shader = m_ForwardPBRLitShader.get();
+                        }
+                    }
+                }
+                else
+                {
+                    if (!shader->IsDeferred())
+                    {
+                        if (shader == m_UnlitShader.get() || shader->GetName() == "forward_unlit")
+                        {
+                            shader = m_DeferredUnlitShader.get();
+                        }
+                        else if (shader == m_ForwardPBRLitShader.get() || shader->GetName() == "forward_pbr_lit")
+                        {
+                            shader = m_DeferredLitShader.get();
+                        }
+                        else if (shader == m_ForwardPBRLitShadowShader.get() || shader->GetName() == "forward_pbr_lit_shadow")
+                        {
+                            shader = m_DeferredLitShadowShader.get();
+                        }
+                    }
+                }
             }
-        }
-        else if (isCapturing)
-        {
-            if (shader == m_DeferredLitShader.get())
-                shader = m_ForwardPBRLitShader.get();
-            else if (shader == m_DeferredUnlitShader.get())
-                shader = m_UnlitShader.get();
-        }
-        else if (!isTransparentPass && item.renderMode != RenderMode::ForceForward)
-        {
-            if (shader == m_UnlitShader.get())
-                shader = m_DeferredUnlitShader.get();
         }
 
         if (!shader || !model)
@@ -1006,7 +1071,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                    other.probeIndex < 0 && other.model == item.model && other.shader == item.shader &&
                    other.materialBatchKey == item.materialBatchKey && other.renderMode == item.renderMode &&
                    other.tintColor == item.tintColor && other.castShadow == item.castShadow &&
-                   other.receiveShadow == item.receiveShadow;
+                   other.receiveShadow == item.receiveShadow && other.ignoreDepth == item.ignoreDepth;
         };
 
         size_t batchCount = 1;
@@ -1029,6 +1094,12 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
 
         if (batchCount > 1)
         {
+            if (ignoreDepthForDraw)
+            {
+                rsm.Disable(ServerCapability::DepthTest);
+                rsm.SetDepthMask(false);
+            }
+
             shader->setBool("u_IsInstanced", true);
             shader->setUInt("u_EntityID", 0);
             model->DrawInstanced(*shader, instanceMatrices, !matBound);
@@ -1037,7 +1108,20 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         }
         else
         {
+            if (ignoreDepthForDraw)
+            {
+                rsm.Disable(ServerCapability::DepthTest);
+                rsm.SetDepthMask(false);
+            }
+
             model->Draw(*shader, !matBound);
+        }
+
+        if (ignoreDepthForDraw)
+        {
+            rsm.Enable(ServerCapability::DepthTest);
+            rsm.SetDepthFunc(CompareFunc::Less);
+            rsm.SetDepthMask(!isTransparentPass);
         }
 
         // Restore DrawBuffers mapping after draw

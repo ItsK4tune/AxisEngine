@@ -196,8 +196,9 @@ static void RedundantLoader(Scene& scene, entt::entity entity, const YAMLNode& n
 
 void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
-    LoaderUtils::ValidateKeys(node, {"Model", "Shader", "Order", "Color", "CastShadow", "ReceiveShadow", "RenderMode"},
-                              "Renderer");
+    LoaderUtils::ValidateKeys(
+        node, {"Model", "Shader", "Order", "Color", "CastShadow", "ReceiveShadow", "IgnoreDepth", "RenderMode"},
+        "Renderer");
 
     std::string modelName = node.GetChildValue("Model");
     std::string shaderName = node.GetChildValue("Shader");
@@ -206,6 +207,8 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
         node.GetChildValue("CastShadow", "1") == "1" || node.GetChildValue("CastShadow", "true") == "true";
     bool receiveShadow =
         node.GetChildValue("ReceiveShadow", "1") == "1" || node.GetChildValue("ReceiveShadow", "true") == "true";
+    bool ignoreDepth =
+        node.GetChildValue("IgnoreDepth", "0") == "1" || node.GetChildValue("IgnoreDepth", "false") == "true";
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1 1"));
     float cr = 1, cg = 1, cb = 1, ca = 1;
@@ -241,6 +244,7 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     r.order = order;
     r.castShadow = castShadow;
     r.receiveShadow = receiveShadow;
+    r.ignoreDepth = ignoreDepth;
     r.color = color;
     r.renderMode = (RenderMode)std::stoi(node.GetChildValue("RenderMode", "0"));
 

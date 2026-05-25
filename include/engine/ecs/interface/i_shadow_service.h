@@ -19,5 +19,6 @@ public:
     virtual int GetShadowMode() const = 0;
     virtual void SetShadowMode(int mode) = 0;
 
+    virtual void PrepareShadowLights(Scene& scene) = 0;
     virtual void Render(Scene& scene) = 0;
 };

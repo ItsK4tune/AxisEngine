@@ -8,6 +8,8 @@ struct PathFollowerComponent
 {
     glm::vec3 targetPosition = glm::vec3(0.0f);
     std::vector<glm::vec3> currentPath;
+    std::vector<glm::vec3> debugPlannedPath;
+    std::vector<glm::vec3> debugTraveledPath;
     uint32_t currentPathIndex = 0;
 
     float moveSpeed = 5.0f;
@@ -21,10 +23,14 @@ struct PathFollowerComponent
 
     bool isMoving = false;
     bool pathPending = false;
+    bool recordDebugPath = true;
 
     PathfindingOptions pathfindingOptions;
 
     bool lockXPitch = false;
     bool lockYYaw = false;
     bool lockZRoll = false;
+    bool lockMoveX = false;
+    bool lockMoveY = false;
+    bool lockMoveZ = false;
 };

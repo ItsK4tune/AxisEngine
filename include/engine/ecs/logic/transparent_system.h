@@ -32,7 +32,7 @@ public:
     }
     SystemCategory GetCategory() const override
     {
-        return SystemCategory::RenderTransparent;
+        return SystemCategory::RenderAlpha | SystemCategory::RenderTransparent;
     }
     SystemRequirement GetRequirements() const override
     {
@@ -41,6 +41,7 @@ public:
     void Render(Scene& scene) override
     {
     }
+    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
     void RenderTransparentPass(Scene& scene, int width, int height, float alpha) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;

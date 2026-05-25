@@ -74,6 +74,16 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
                 if (onRoad)
                     weight = 1.0f / options.tagWeightBonus;
             }
+            else if (options.criteria == PathfindingCriteria::OnlyXZ)
+            {
+                float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
+                weight = 1.0f + (yDelta * options.altitudePenaltyWeight * 2.0f);
+            }
+            else if (options.criteria == PathfindingCriteria::OnlyY)
+            {
+                float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
+                weight = 1.0f + (1.0f - glm::clamp(yDelta, 0.0f, 1.0f)) * 2.0f;
+            }
             else if (options.criteria == PathfindingCriteria::Custom && options.customCostFunc)
             {
                 weight = options.customCostFunc(current, neighbor, navMesh);

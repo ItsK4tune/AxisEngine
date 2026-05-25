@@ -19,6 +19,7 @@ struct MeshRendererComponent
     int order = 0;
     bool castShadow = true;
     bool receiveShadow = true;
+    bool ignoreDepth = false;
     RenderMode renderMode = RenderMode::Auto;
     glm::vec4 color = glm::vec4(1.0f);
 };

@@ -209,6 +209,7 @@ class PlayerControlScript : public Scriptable
 public:
     float speed = 15.0f;
     bool allowMouseColor = true;
+    bool allowKeyboardWhileUI = false;
     float verticalVelocity = 0.0f;
     float groundY = 0.75f;
     bool initializedGround = false;
@@ -216,7 +217,7 @@ public:
     void OnUpdate(float dt) override
     {
         ImGuiIO* imguiIO = ImGui::GetCurrentContext() ? &ImGui::GetIO() : nullptr;
-        const bool keyboardCaptured = imguiIO && imguiIO->WantCaptureKeyboard;
+        const bool keyboardCaptured = imguiIO && imguiIO->WantCaptureKeyboard && !allowKeyboardWhileUI;
         const bool mouseCaptured = imguiIO && imguiIO->WantCaptureMouse;
 
         glm::vec3 move = glm::vec3(0.0f);
@@ -318,6 +319,8 @@ public:
 
 private:
     void LoadScenario(int index);
+    void ResetDefaultPlayerBindings();
+    void ApplyScenario25RenderOrder();
     void DrawGUI();
     void SetupCamera();
 
@@ -350,6 +353,7 @@ private:
     void LoadScene27(); // Scenario 27: Deferred Shadow Receiver Test
     void LoadScene28(); // Scenario 28: UI Showcase
     void LoadScene29(); // Scenario 29: Responsive UI
+    void StopScenario17Audio();
 
     ImGuiLayer* m_EditorImGuiLayer = nullptr;
     int m_CurrentScenario = 0;
@@ -393,6 +397,11 @@ private:
     float m_S4Restitution = 0.5f;
     float m_S4Friction = 0.5f;
     glm::vec3 m_S4Gravity = glm::vec3(0.0f, -9.81f, 0.0f);
+    float m_S4SpawnHeight = 12.0f;
+    float m_S4GridSpacing = 2.5f;
+    float m_S4LinearDamping = 0.04f;
+    float m_S4AngularDamping = 0.12f;
+    float m_S4InitialImpulse = 0.0f;
 
     // Scenario 5 parameters
     int m_S5ObstacleCount = 12;
@@ -401,8 +410,13 @@ private:
     bool m_S5LockXPitch = false;
     bool m_S5LockYYaw = false;
     bool m_S5LockZRoll = false;
-    int m_S5PathfindingCriteria = 0; // 0: Shortest, 1: Smoothest, 2: StayOnRoad
+    bool m_S5LockMoveX = false;
+    bool m_S5LockMoveY = false;
+    bool m_S5LockMoveZ = false;
+    int m_S5PathfindingCriteria = 0; // See PathfindingCriteria combo in DrawGUI.
     glm::vec3 m_S5NewWaypoint = glm::vec3(0.0f, 0.5f, 0.0f);
+    bool m_S5RepathRequested = false;
+    int m_S5LastPathfindingCriteria = -1;
 
     // Scenario 7 parameters
     int m_S7EmitterCount = 50;
@@ -418,6 +432,13 @@ private:
     int m_S10ChainLength = 6;
     float m_S10WindForce = 0.0f;
     glm::vec3 m_S10Gravity = glm::vec3(0.0f, -9.81f, 0.0f);
+    float m_S10LinkMass = 1.5f;
+    float m_S10PayloadMass = 4.0f;
+    float m_S10LinkDamping = 0.3f;
+    float m_S10AnchorHeight = 22.0f;
+    float m_S10KickForce = 35.0f;
+    int m_S10LinkShape = 0;
+    int m_S10PayloadShape = 1;
     std::vector<entt::entity> m_S10ChainEntities;
 
     // Scenario 11 parameters
@@ -432,6 +453,7 @@ private:
     // Scenario 12 UI variables
     std::string m_S12Status = "Ready";
     int m_S12RandomEntityCount = 0;
+    std::vector<entt::entity> m_S12RandomEntities;
 
     // Scenario 13 UI variables
     std::string m_S13Status = "Ready";
@@ -482,6 +504,10 @@ private:
     float m_S20Reflectivity = 0.65f;
     float m_S20FresnelBias = 0.04f;
     float m_S20FresnelPower = 5.0f;
+    int m_S20ActiveCase = 0;
+    std::vector<entt::entity> m_S20ReflectionSpheres;
+    std::vector<entt::entity> m_S20ReflectionProbes;
+    entt::entity m_S20PlanarMirror = entt::null;
 
     // Scenario 21 UI variables
     float m_S21GlassOpacity = 0.35f;
@@ -496,6 +522,12 @@ private:
     int m_S26InstanceCount = 5000;
     bool m_S26UniqueTint = false;
 
+    // Scenario 28/29 UI variables
+    float m_S28RotateCard = 12.0f;
+    bool m_S28ShowTexture = true;
+    int m_S29LayoutMode = 0;
+    float m_S29PanelAlpha = 0.92f;
+
     // Post-processing UI state
     bool m_PPHdrEnabled = true;
     bool m_PPBloomEnabled = true;
@@ -508,6 +540,14 @@ private:
     bool m_PPVignetteEnabled = false;
     bool m_PPGlitchEnabled = false;
     bool m_PPFilmGrainEnabled = false;
+    bool m_PPGrayEnabled = false;
+    bool m_PPDitherEnabled = false;
+    bool m_PPPartialEffectEnabled = false;
+    int m_PPPartialEffectType = 0;
+    int m_PPPartialX = 0;
+    int m_PPPartialY = 0;
+    int m_PPPartialW = 0;
+    int m_PPPartialH = 0;
 
     // Benchmarking counters
     float m_FpsTime = 0.0f;
@@ -519,9 +559,18 @@ private:
     std::vector<glm::vec3> m_NavWaypoints;
     int m_CurrentWaypointIndex = 0;
 
+    // Scenario 8 mouse interaction state
+    entt::entity m_S8GrabbedEntity = entt::null;
+    glm::vec3 m_S8GrabOffset = glm::vec3(0.0f);
+    float m_S8GrabPlaneY = 0.0f;
+    bool m_S8Dragging = false;
+
     // Cached entity handles (set in LoadScene*, used in OnUpdate to avoid per-frame O(n) scans)
     entt::entity m_S2DirLightEntity  = entt::null;
     entt::entity m_S2PointLightEntity = entt::null;
     entt::entity m_S2SpotLightEntity  = entt::null;
     entt::entity m_S11DirLightEntity  = entt::null;
+    entt::entity m_S28CardEntity = entt::null;
+    entt::entity m_S28TextureEntity = entt::null;
+    entt::entity m_S29RootPanel = entt::null;
 };

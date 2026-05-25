@@ -249,7 +249,6 @@ void EngineLoop::Render()
         height = io->GetMonitorManager().GetHeight();
     }
 
-    sysMgr.RenderShadows(scene, width, height, m_Alpha);
     sysMgr.Render(scene, width, height, m_Alpha);
     rtCore.GetStateMachine().Render();
     sysMgr.RenderDebug(scene);

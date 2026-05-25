@@ -34,6 +34,7 @@ public:
     }
 
     void Render(Scene& scene) override;
+    void PrepareShadowLights(Scene& scene) override;
 
     Shadow& GetShadow()
     {

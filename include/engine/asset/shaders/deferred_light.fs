@@ -120,31 +120,23 @@ vec3 EvaluateSH(vec3 n) {
     ));
 }
 
-vec3 WorldPosFromDepth(float depth) {
-    float z = depth * 2.0 - 1.0;
-    vec4 clipSpacePosition = vec4(TexCoords * 2.0 - 1.0, z, 1.0);
-    vec4 viewSpacePosition = camera.u_InvProjection * clipSpacePosition;
-    viewSpacePosition /= viewSpacePosition.w;
-    // Using u_InvView * u_InvProjection for absolute WorldPos
-    vec4 worldSpacePosition = camera.u_InvView * (camera.u_InvProjection * clipSpacePosition);
-    worldSpacePosition /= worldSpacePosition.w;
-    return worldSpacePosition.xyz;
-}
-
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx);
 float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx);
-float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx);
+float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int lightIdx);
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness);
 
 void main()
 {             
-    float depth = texture(gDepth, TexCoords).r;
-    if (depth >= 1.0) discard;
-    vec3 FragPos = WorldPosFromDepth(depth);
-
     vec4 normalSample = texture(gNormal, TexCoords);
-    vec3 Normal = normalize(normalSample.rgb);
-    bool receiveShadowFlag = (normalSample.a > 0.5); 
+    vec3 rawNormal = normalSample.rgb;
+    if (dot(rawNormal, rawNormal) <= 0.000001) discard;
+
+    // GBuffer position is authoritative; depth may intentionally stay unchanged for ignoreDepth overlays.
+    vec3 FragPos = texture(gPosition, TexCoords).xyz;
+    if (any(isnan(FragPos)) || any(isinf(FragPos))) discard;
+
+    vec3 Normal = normalize(rawNormal);
+    bool receiveShadowFlag = (normalSample.a > 0.5);
     
     vec4 albedoSpecSample = texture(gAlbedoSpec, TexCoords);
     vec3 Albedo = albedoSpecSample.rgb;
@@ -251,7 +243,7 @@ void main()
         if (light.u_ReceiveShadow != 0 && receiveShadowFlag && sIdx >= 0 && sIdx < 16)
         {
             vec4 fragPosLightSpace = light.lightSpaceMatricesSpot[sIdx] * vec4(FragPos, 1.0);
-            shadow = ShadowCalculationSpot(fragPosLightSpace, sIdx);
+            shadow = ShadowCalculationSpot(fragPosLightSpace, Normal, L, sIdx);
         }
 
         vec3 F = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0Direct, Roughness);
@@ -396,7 +388,7 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
     vec3 fragToLight = fragPos - u_LightPos;
     float currentDepth = length(fragToLight);
     float shadow = 0.0;
-    float bias = max(u_ShadowBias * 25.0, 0.08);
+    float bias = u_ShadowBias * 10.0;
     int samples = 20;
     vec3 sampleOffsetDirections[20] = vec3[] (
        vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
@@ -405,8 +397,7 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
        vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
        vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
     );
-    float viewDistance = length(camera.viewPos.xyz - fragPos);
-    float diskRadius = (1.0 + (viewDistance / light.farPlanePoint)) / 25.0;
+    float diskRadius = (1.0 + (currentDepth / light.farPlanePoint)) / 25.0;
     for(int i = 0; i < samples; ++i) {
         float closestDepth = texture(u_ShadowMapPoint, vec4(fragToLight + sampleOffsetDirections[i] * diskRadius, lightIdx)).r;
         closestDepth *= light.farPlanePoint;
@@ -416,13 +407,14 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
     return shadow;
 }
 
-float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx) {
+float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int lightIdx) {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
     if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
     if (projCoords.z > 1.0) return 0.0;
     float currentDepth = projCoords.z;
-    float bias = max(u_ShadowBias, 0.0035);
+    float ndotl = max(dot(normalize(normal), normalize(lightDir)), 0.0);
+    float bias = max(u_ShadowBias * 0.25 * (1.0 - ndotl), 0.00005);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(u_ShadowMapSpot, 0).xy;
     for(int x = -u_ShadowSoftness; x <= u_ShadowSoftness; ++x) {

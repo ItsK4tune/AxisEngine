@@ -5,6 +5,8 @@
 #include <core/logic/data_node_serializer.h>
 #include <network/network_system.h>
 #include <physics/logic/collision_matrix.h>
+#include <physics/logic/physics_query_service.h>
+#include <physics/unit/ray.h>
 #include <audio/logic/audio_service.h>
 #include <audio/interface/i_sound.h>
 #include <ecs/unit/media_components.h>
@@ -32,6 +34,9 @@
 
 namespace
 {
+constexpr const char* kScenario12BaseSceneName = "scenario_base";
+constexpr const char* kScenario12DynamicSceneName = "scenario";
+
 struct PerfStats
 {
     float cpu = 0.0f;
@@ -191,6 +196,77 @@ glm::quat RotationFromNegativeY(const glm::vec3& direction)
         return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     return glm::rotation(glm::vec3(0.0f, -1.0f, 0.0f), dir);
 }
+
+bool RayPlaneIntersection(const glm::vec3& origin, const glm::vec3& dir, float planeY, glm::vec3& outPoint)
+{
+    if (std::abs(dir.y) < 0.0001f)
+        return false;
+    float t = (planeY - origin.y) / dir.y;
+    if (t < 0.0f)
+        return false;
+    outPoint = origin + dir * t;
+    return true;
+}
+
+void ConfigureScenario5PathOptions(PathFollowerComponent& follower, int criteria)
+{
+    follower.pathfindingOptions.criteria = static_cast<PathfindingCriteria>(criteria);
+    follower.pathfindingOptions.preferredTags = {"road"};
+    follower.pathfindingOptions.tagWeightBonus = 30.0f;
+    follower.pathfindingOptions.altitudePenaltyWeight = 10.0f;
+}
+
+struct Scenario10ShapeSpec
+{
+    const char* mesh;
+    ShapeType shape;
+    glm::vec3 visualScale;
+    glm::vec3 boxSize;
+    float radius;
+    float height;
+};
+
+Scenario10ShapeSpec GetScenario10ShapeSpec(int shapeIndex, bool payload)
+{
+    switch (shapeIndex)
+    {
+    case 1:
+        return {"sphereModel", ShapeType::Sphere, payload ? glm::vec3(2.0f) : glm::vec3(0.95f), glm::vec3(1.0f),
+                payload ? 1.0f : 0.48f, payload ? 1.0f : 0.8f};
+    case 2:
+        return {"capsuleModel", ShapeType::Capsule, payload ? glm::vec3(1.5f, 2.2f, 1.5f) : glm::vec3(0.7f, 1.25f, 0.7f),
+                glm::vec3(0.8f, 1.0f, 0.8f), payload ? 0.75f : 0.35f, payload ? 1.4f : 0.9f};
+    default:
+        return {"cubeModel", ShapeType::Box, payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f),
+                payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f), payload ? 1.0f : 0.5f,
+                payload ? 1.0f : 0.8f};
+    }
+}
+
+void ApplyShapeSpec(RigidShapeComponent& shape, const Scenario10ShapeSpec& spec)
+{
+    shape.type = spec.shape;
+    shape.size = spec.boxSize;
+    shape.radius = spec.radius;
+    shape.height = spec.height;
+}
+
+void StopScenario17AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_ptr<ISound>& audio3D,
+                                bool& play2D, bool& play3D)
+{
+    if (audio2D)
+    {
+        audio2D->Stop();
+        audio2D = nullptr;
+    }
+    if (audio3D)
+    {
+        audio3D->Stop();
+        audio3D = nullptr;
+    }
+    play2D = false;
+    play3D = false;
+}
 }
 
 void SampleState::OnEnter()
@@ -227,22 +303,28 @@ void SampleState::OnEnter()
     }
 
     // Register actions for Scenario 8 input handling
-    auto* io = Resolve<IOHandler>();
-    if (io)
-    {
-        auto& input = io->GetInputManager();
-        input.BindAction("PlayerForward", InputType::Key, (int)Key::W);
-        input.BindAction("PlayerBackward", InputType::Key, (int)Key::S);
-        input.BindAction("PlayerLeft", InputType::Key, (int)Key::A);
-        input.BindAction("PlayerRight", InputType::Key, (int)Key::D);
-        input.BindAction("PlayerAction", InputType::MouseButton, (int)Mouse::Left);
-        input.BindAction("PlayerJump", InputType::Key, (int)Key::Space);
-    }
+    ResetDefaultPlayerBindings();
 
     srand(static_cast<unsigned int>(time(nullptr)));
 
     // Load initial scenario (Scene 1)
     LoadScenario(1);
+}
+
+void SampleState::ResetDefaultPlayerBindings()
+{
+    auto* io = Resolve<IOHandler>();
+    if (!io)
+        return;
+
+    auto& input = io->GetInputManager();
+    input.FlushBindings();
+    input.BindAction("PlayerForward", InputType::Key, (int)Key::W);
+    input.BindAction("PlayerBackward", InputType::Key, (int)Key::S);
+    input.BindAction("PlayerLeft", InputType::Key, (int)Key::A);
+    input.BindAction("PlayerRight", InputType::Key, (int)Key::D);
+    input.BindAction("PlayerAction", InputType::MouseButton, (int)Mouse::Left);
+    input.BindAction("PlayerJump", InputType::Key, (int)Key::Space);
 }
 
 void SampleState::OnUpdate(float dt)
@@ -276,9 +358,18 @@ void SampleState::OnUpdate(float dt)
             follower->lockXPitch = m_S5LockXPitch;
             follower->lockYYaw = m_S5LockYYaw;
             follower->lockZRoll = m_S5LockZRoll;
-            follower->pathfindingOptions.criteria = static_cast<PathfindingCriteria>(m_S5PathfindingCriteria);
-            follower->pathfindingOptions.preferredTags = {"road"};
-            follower->pathfindingOptions.tagWeightBonus = 30.0f;
+            follower->lockMoveX = m_S5LockMoveX;
+            follower->lockMoveY = m_S5LockMoveY;
+            follower->lockMoveZ = m_S5LockMoveZ;
+            ConfigureScenario5PathOptions(*follower, m_S5PathfindingCriteria);
+
+            if (m_S5LastPathfindingCriteria != m_S5PathfindingCriteria || m_S5RepathRequested)
+            {
+                navSystem.StopMoving(GetScene(), m_NavFollower);
+                navSystem.MoveTo(GetScene(), m_NavFollower, follower->targetPosition);
+                m_S5LastPathfindingCriteria = m_S5PathfindingCriteria;
+                m_S5RepathRequested = false;
+            }
 
             if (!follower->pathPending && !follower->isMoving)
             {
@@ -336,14 +427,140 @@ void SampleState::OnUpdate(float dt)
                     auto& pp = view.get<PostProcessComponent>(entity);
                     pp.effects.clear();
                     if (m_PPVignetteEnabled)
-                        pp.effects.push_back({"vignette", 100, 0, 0, 0, 0, true, false});
+                        pp.effects.push_back({"vignette", 80, 0, 0, 0, 0, true, false});
                     if (m_PPGlitchEnabled)
-                        pp.effects.push_back({"glitch", 100, 0, 0, 0, 0, true, false});
+                        pp.effects.push_back({"glitch", 90, 0, 0, 0, 0, true, false});
                     if (m_PPFilmGrainEnabled)
                         pp.effects.push_back({"film_grain", 100, 0, 0, 0, 0, true, false});
+                    if (m_PPGrayEnabled)
+                        pp.effects.push_back({"grayscale", 120, 0, 0, 0, 0, true, false});
+                    if (m_PPDitherEnabled)
+                        pp.effects.push_back({"dither", 130, 0, 0, 0, 0, true, false});
+                    if (m_PPPartialEffectEnabled)
+                    {
+                        const int w = (std::max)(0, m_PPPartialW);
+                        const int h = (std::max)(0, m_PPPartialH);
+                        if (w > 0 && h > 0)
+                        {
+                            std::string shader = "grayscale";
+                            switch (m_PPPartialEffectType)
+                            {
+                            case 0: shader = "grayscale"; break;
+                            case 1: shader = "dither"; break;
+                            case 2: shader = "glitch"; break;
+                            case 3: shader = "vignette"; break;
+                            default: break;
+                            }
+                            pp.effects.push_back({shader, 140, m_PPPartialX, m_PPPartialY, w, h, true, false});
+                        }
+                    }
                     break;
                 }
             }
+        }
+    }
+
+    if (m_CurrentScenario == 8)
+    {
+        auto* io = Resolve<IOHandler>();
+        auto* phys = Resolve<IPhysicsWorld>();
+        if (io && phys)
+        {
+            const auto& mouse = io->GetMouse();
+            const bool mouseDown = GetAction("PlayerAction");
+            const bool mousePressed = GetActionDown("PlayerAction");
+            const bool mouseCaptured = ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse;
+            auto& scene = GetScene();
+
+            if (m_S8Dragging && (!mouseDown || mouseCaptured || !scene.registry.valid(m_S8GrabbedEntity)))
+            {
+                m_S8Dragging = false;
+                m_S8GrabbedEntity = entt::null;
+            }
+
+            if (!m_S8Dragging && mousePressed && !mouseCaptured)
+            {
+                PhysicsQueryService query;
+                auto hit = query.RaycastFromScreen(glm::vec2(mouse.GetLastX(), mouse.GetLastY()));
+                if (hit.hasHit && scene.registry.valid(hit.entity))
+                {
+                    auto* rb = scene.registry.try_get<RigidBodyComponent>(hit.entity);
+                    auto* info = scene.registry.try_get<InfoComponent>(hit.entity);
+                    if (rb && !rb->isStatic && (!info || info->name != "PlayerCube"))
+                    {
+                        auto* pos = scene.registry.try_get<PositionComponent>(hit.entity);
+                        if (pos)
+                        {
+                            m_S8GrabbedEntity = hit.entity;
+                            m_S8Dragging = true;
+                            m_S8GrabOffset = pos->value - hit.hitPoint;
+                            m_S8GrabPlaneY = (glm::max)(2.0f, pos->value.y + 2.0f);
+                            m_ShowDebugLines = false;
+                        }
+                    }
+                }
+            }
+
+            if (m_S8Dragging && scene.registry.valid(m_S8GrabbedEntity))
+            {
+                auto camEntity = EntityManager::GetActiveCamera(scene);
+                if (camEntity != entt::null && scene.registry.all_of<CameraComponent, PositionComponent>(camEntity))
+                {
+                    auto& cam = scene.registry.get<CameraComponent>(camEntity);
+                    glm::vec2 viewportSize(static_cast<float>(io->GetMonitorManager().GetWidth()),
+                                           static_cast<float>(io->GetMonitorManager().GetHeight()));
+                    Ray ray = RaycastUtils::CalculateRay(glm::vec2(mouse.GetLastX(), mouse.GetLastY()), viewportSize,
+                                                         cam.viewMatrix, cam.projectionMatrix);
+                    glm::vec3 targetPoint;
+                    if (RayPlaneIntersection(ray.origin, ray.direction, m_S8GrabPlaneY, targetPoint))
+                    {
+                        auto* pos = scene.registry.try_get<PositionComponent>(m_S8GrabbedEntity);
+                        auto* rot = scene.registry.try_get<RotationComponent>(m_S8GrabbedEntity);
+                        auto* world = scene.registry.try_get<WorldTransformComponent>(m_S8GrabbedEntity);
+                        auto* rb = scene.registry.try_get<RigidBodyComponent>(m_S8GrabbedEntity);
+                        if (pos)
+                        {
+                            pos->value = targetPoint + m_S8GrabOffset;
+                            if (rot)
+                                rot->value = glm::quat(glm::vec3(0.0f));
+                            if (world)
+                                world->isDirty = true;
+                            if (rb && rb->body)
+                            {
+                                rb->body->Activate(true);
+                                rb->body->SetWorldTransform(pos->value, rot ? rot->value : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                                rb->body->SetLinearVelocity(glm::vec3(0.0f));
+                                rb->body->SetAngularVelocity(glm::vec3(0.0f));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (m_CurrentScenario == 28 && m_S28CardEntity != entt::null && GetScene().registry.valid(m_S28CardEntity))
+    {
+        if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28CardEntity))
+            transform->rotation = m_S28RotateCard;
+        if (m_S28TextureEntity != entt::null && GetScene().registry.valid(m_S28TextureEntity))
+        {
+            if (auto* info = GetScene().registry.try_get<InfoComponent>(m_S28TextureEntity))
+                info->isActive = m_S28ShowTexture;
+        }
+    }
+
+    if (m_CurrentScenario == 29 && m_S29RootPanel != entt::null && GetScene().registry.valid(m_S29RootPanel))
+    {
+        auto& scene = GetScene();
+        if (auto* renderer = scene.registry.try_get<UIRendererComponent>(m_S29RootPanel))
+        {
+            renderer->color.a = m_S29PanelAlpha;
+        }
+        if (auto* flex = scene.registry.try_get<UIFlexLayoutComponent>(m_S29RootPanel))
+        {
+            flex->direction = (m_S29LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
+            flex->spacing = (m_S29LayoutMode == 1) ? 18.0f : 10.0f;
         }
     }
 
@@ -680,6 +897,27 @@ void SampleState::OnRenderDebug()
                     physics_ptr->DrawLine(m_NavWaypoints[i - 1] + glm::vec3(0.0f, 0.15f, 0.0f),
                                           m_NavWaypoints[i] + glm::vec3(0.0f, 0.15f, 0.0f), yellow);
                 }
+
+                if (m_NavFollower != entt::null)
+                {
+                    if (auto* follower = scene.registry.try_get<PathFollowerComponent>(m_NavFollower))
+                    {
+                        const auto& plannedPath = !follower->debugPlannedPath.empty() ? follower->debugPlannedPath
+                                                                                       : follower->currentPath;
+                        for (size_t i = 1; i < plannedPath.size(); ++i)
+                        {
+                            physics_ptr->DrawLine(plannedPath[i - 1] + glm::vec3(0.0f, 0.55f, 0.0f),
+                                                  plannedPath[i] + glm::vec3(0.0f, 0.55f, 0.0f),
+                                                  glm::vec3(0.0f, 1.0f, 0.15f));
+                        }
+                        for (size_t i = 1; i < follower->debugTraveledPath.size(); ++i)
+                        {
+                            physics_ptr->DrawLine(follower->debugTraveledPath[i - 1] + glm::vec3(0.0f, 0.85f, 0.0f),
+                                                  follower->debugTraveledPath[i] + glm::vec3(0.0f, 0.85f, 0.0f),
+                                                  glm::vec3(1.0f, 0.8f, 0.0f));
+                        }
+                    }
+                }
             }
         }
 
@@ -717,11 +955,14 @@ void SampleState::OnRenderDebug()
 
 void SampleState::OnExit()
 {
+    StopScenario17Audio();
+
     // Clean up scene entities
     auto* sceneMgr = Resolve<SceneManager>();
     if (sceneMgr)
     {
-        sceneMgr->UnloadSceneByName("scenario");
+        sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
+        sceneMgr->UnloadSceneByName(kScenario12BaseSceneName);
     }
 
     // No need to shutdown the shared ImGuiLayer
@@ -729,19 +970,35 @@ void SampleState::OnExit()
 
 void SampleState::LoadScenario(int index)
 {
+    if (m_CurrentScenario == 17)
+        StopScenario17Audio();
+
     auto* sceneMgr = Resolve<SceneManager>();
     if (sceneMgr)
     {
-        sceneMgr->UnloadSceneByName("scenario");
+        sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
+        sceneMgr->UnloadSceneByName(kScenario12BaseSceneName);
     }
 
     m_CurrentScenario = index;
+    m_ShowDebugLines = true;
     m_NavFollower = entt::null;
+    m_S8GrabbedEntity = entt::null;
+    m_S8Dragging = false;
     m_S2MotionTime = 0.0f;
     m_S2DirLightEntity  = entt::null;
     m_S2PointLightEntity = entt::null;
     m_S2SpotLightEntity  = entt::null;
     m_S11DirLightEntity  = entt::null;
+    m_S28CardEntity = entt::null;
+    m_S28TextureEntity = entt::null;
+    m_S29RootPanel = entt::null;
+    m_S20ReflectionSpheres.clear();
+    m_S20ReflectionProbes.clear();
+    m_S20PlanarMirror = entt::null;
+    m_S20ActiveCase = 0;
+    m_S5LastPathfindingCriteria = -1;
+    m_S5RepathRequested = true;
     if (index != 4 && index != 10)
     {
         if (auto* physics = Resolve<IPhysicsWorld>())
@@ -771,7 +1028,16 @@ void SampleState::LoadScenario(int index)
     m_PPVignetteEnabled = false;
     m_PPGlitchEnabled = false;
     m_PPFilmGrainEnabled = false;
+    m_PPGrayEnabled = false;
+    m_PPDitherEnabled = false;
+    m_PPPartialEffectEnabled = false;
+    m_PPPartialEffectType = 2;
+    m_PPPartialX = 0;
+    m_PPPartialY = 0;
+    m_PPPartialW = 0;
+    m_PPPartialH = 0;
     m_S10ChainEntities.clear();
+    m_S12RandomEntities.clear();
     if (auto* physics = Resolve<IPhysicsWorld>())
         physics->SetSolverIterations(10);
     if (auto* collisionMatrix = Resolve<CollisionMatrix>())
@@ -809,6 +1075,8 @@ void SampleState::LoadScenario(int index)
         case 25: LoadScene25(); break;
         case 26: LoadScene26(); break;
         case 27: LoadScene27(); break;
+        case 28: LoadScene28(); break;
+        case 29: LoadScene29(); break;
         default: break;
     }
 
@@ -816,6 +1084,11 @@ void SampleState::LoadScenario(int index)
     auto& transformSys = GetSystem<TransformSystem>();
     transformSys.m_IsLinearTransformsDirty = true;
     transformSys.Update(GetScene(), 0.0f);
+}
+
+void SampleState::StopScenario17Audio()
+{
+    StopScenario17AudioHandles(m_S17Audio2D, m_S17Audio3D, m_S17Play2D, m_S17Play3D);
 }
 
 void SampleState::SetupCamera()
@@ -928,9 +1201,11 @@ void SampleState::DrawGUI()
     AddScenarioButton(22, "Scenario 22: PBR Material Matrix", "Compare metallic/roughness material response under fixed lights");
     AddScenarioButton(23, "Scenario 23: LOD Selection", "Show distance based model swaps using LODComponent");
     AddScenarioButton(24, "Scenario 24: Layer Filter", "Toggle camera culling mask bits to show/hide render layers");
-    AddScenarioButton(25, "Scenario 25: Render Order", "Show transparent object ordering with renderer order values");
+    AddScenarioButton(25, "Scenario 25: Render Order", "Show ordering with transparent panels and opaque markers");
     AddScenarioButton(26, "Scenario 26: Instanced Batching", "Compare many matching renderers against unique tint batching breaks");
     AddScenarioButton(27, "Scenario 27: Deferred Shadow Receiver", "Show deferred_lit_shadow writing the receive-shadow bit");
+    AddScenarioButton(28, "Scenario 28: UI Showcase", "Test UI transform, texture, text, pivot, and rotation");
+    AddScenarioButton(29, "Scenario 29: Responsive UI", "Test anchors, flex layout, and percent-based UI resizing");
 
     ImGui::EndChild();
 
@@ -979,6 +1254,11 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Bounciness", &m_S4Restitution, 0.0f, 1.0f);
         ImGui::SliderFloat("Friction", &m_S4Friction, 0.0f, 1.0f);
         ImGui::DragFloat3("Gravity", &m_S4Gravity.x, 0.1f, -50.0f, 50.0f);
+        ImGui::SliderFloat("Spawn Height", &m_S4SpawnHeight, 3.0f, 30.0f);
+        ImGui::SliderFloat("Grid Spacing", &m_S4GridSpacing, 1.0f, 5.0f);
+        ImGui::SliderFloat("Linear Damping", &m_S4LinearDamping, 0.0f, 1.0f);
+        ImGui::SliderFloat("Angular Damping", &m_S4AngularDamping, 0.0f, 1.0f);
+        ImGui::SliderFloat("Initial Impulse", &m_S4InitialImpulse, 0.0f, 30.0f);
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
         ImGui::Spacing();
         if (ImGui::Checkbox("Show Physics Debug Lines", &m_ShowDebugLines))
@@ -992,12 +1272,19 @@ void SampleState::DrawGUI()
         ImGui::SliderInt("Obstacles count", &m_S5ObstacleCount, 0, 50);
         ImGui::SliderFloat("Obstacle Size", &m_S5ObstacleSize, 1.0f, 10.0f);
         ImGui::SliderFloat("Follower Speed", &m_S5FollowerSpeed, 1.0f, 25.0f);
-        ImGui::Combo("Pathfinding Method", &m_S5PathfindingCriteria, "Shortest\0Smoothest\0StayOnRoad\0");
+        ImGui::Combo("Pathfinding Method", &m_S5PathfindingCriteria,
+                     "Shortest\0Smoothest\0StayOnRoad\0OnlyXZ\0OnlyY\0");
+        ImGui::Text("Green: planned path. Yellow: actual traveled path.");
         ImGui::Spacing();
         ImGui::Text("Axis / Rotation Locks:");
         ImGui::Checkbox("Lock X (Pitch)", &m_S5LockXPitch);
         ImGui::Checkbox("Lock Y (Yaw)", &m_S5LockYYaw);
         ImGui::Checkbox("Lock Z (Roll)", &m_S5LockZRoll);
+        ImGui::Separator();
+        ImGui::Text("Movement Axis Locks:");
+        ImGui::Checkbox("Lock Move X", &m_S5LockMoveX);
+        ImGui::Checkbox("Lock Move Y", &m_S5LockMoveY);
+        ImGui::Checkbox("Lock Move Z", &m_S5LockMoveZ);
         ImGui::Spacing();
         ImGui::DragFloat3("New Waypoint", &m_S5NewWaypoint.x, 0.5f, -24.0f, 24.0f);
         if (ImGui::Button("Add Waypoint", ImVec2(170, 24)))
@@ -1053,7 +1340,8 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Controls:");
         ImGui::BulletText("W, A, S, D to Move player cube");
         ImGui::BulletText("Spacebar to Jump (Hold for scale pulse)");
-        ImGui::BulletText("Left Mouse Click to Randomize color");
+        ImGui::BulletText("Left Mouse Click on a target to drag it up");
+        ImGui::BulletText("Mouse drag keeps the grabbed object at a fixed height");
     }
     else if (m_CurrentScenario == 9)
     {
@@ -1073,12 +1361,35 @@ void SampleState::DrawGUI()
         ImGui::Checkbox("Vignette Effect", &m_PPVignetteEnabled);
         ImGui::Checkbox("Glitch Effect", &m_PPGlitchEnabled);
         ImGui::Checkbox("Film Grain Effect", &m_PPFilmGrainEnabled);
+        ImGui::Checkbox("Gray Effect", &m_PPGrayEnabled);
+        ImGui::Checkbox("Dither Effect", &m_PPDitherEnabled);
+        ImGui::Checkbox("Partial Rect Effect", &m_PPPartialEffectEnabled);
+        ImGui::Combo("Partial Effect Type", &m_PPPartialEffectType, "Gray\0Dither\0Glitch\0Vignette\0");
+        ImGui::Text("Partial XYWH is in screen pixels and only affects this region.");
+        ImGui::DragInt("Partial X", &m_PPPartialX, 1.0f, 0, 4096);
+        ImGui::DragInt("Partial Y", &m_PPPartialY, 1.0f, 0, 4096);
+        ImGui::DragInt("Partial W", &m_PPPartialW, 1.0f, 0, 4096);
+        ImGui::DragInt("Partial H", &m_PPPartialH, 1.0f, 0, 4096);
+        if (ImGui::Button("Set Partial Demo Region", ImVec2(180, 24)))
+        {
+            m_PPPartialX = 160;
+            m_PPPartialY = 120;
+            m_PPPartialW = 640;
+            m_PPPartialH = 360;
+        }
     }
     else if (m_CurrentScenario == 10)
     {
         ImGui::SliderInt("Chain Length", &m_S10ChainLength, 2, 20);
         ImGui::SliderFloat("Wind Force (Oscillating)", &m_S10WindForce, 0.0f, 200.0f);
         ImGui::DragFloat3("Gravity", &m_S10Gravity.x, 0.1f, -50.0f, 50.0f);
+        ImGui::SliderFloat("Link Mass", &m_S10LinkMass, 0.25f, 5.0f);
+        ImGui::SliderFloat("Payload Mass", &m_S10PayloadMass, 0.5f, 20.0f);
+        ImGui::SliderFloat("Link Damping", &m_S10LinkDamping, 0.0f, 1.0f);
+        ImGui::SliderFloat("Anchor Height", &m_S10AnchorHeight, 10.0f, 40.0f);
+        ImGui::SliderFloat("Kick Force", &m_S10KickForce, 0.0f, 100.0f);
+        ImGui::Combo("Link Shape", &m_S10LinkShape, "Box\0Sphere\0Capsule\0");
+        ImGui::Combo("Payload Shape", &m_S10PayloadShape, "Box\0Sphere\0Capsule\0");
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
         ImGui::Spacing();
         if (ImGui::Checkbox("Show Constraints Debug", &m_ShowDebugLines))
@@ -1138,6 +1449,7 @@ void SampleState::DrawGUI()
                 .WithMesh((m_S12RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit")
                 .WithPBRMaterial(0.1f, 0.5f, 1.0f)
                 .Build();
+            m_S12RandomEntities.push_back(entity);
             if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
             {
                 renderer->color = glm::vec4(static_cast<float>(rand() % 100) / 100.0f,
@@ -1163,11 +1475,13 @@ void SampleState::DrawGUI()
             }
             if (sceneMgr)
             {
-                sceneMgr->UnloadSceneByName("scenario");
+                sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
                 SetupCamera();
-                const char* path = std::filesystem::exists(kScenario12ScenePath)
-                    ? kScenario12ScenePath
-                    : kScenario12SceneLegacyPath;
+                m_S12RandomEntities.clear();
+                m_S12RandomEntityCount = 0;
+                const std::string path = std::filesystem::exists(SamplePath(kScenario12ScenePath))
+                                             ? SamplePath(kScenario12ScenePath)
+                                             : SamplePath(kScenario12SceneLegacyPath);
                 SceneLoadResult res = SceneSerializer::Deserialize(path, GetScene(), Get<ResourceManager>(), phys, audio);
                 if (!res.entities.empty())
                 {
@@ -1179,6 +1493,7 @@ void SampleState::DrawGUI()
                         }
                         sceneMgr->AddEntity(entity, "scenario");
                     }
+                    m_S12RandomEntityCount = static_cast<int>(res.entities.size());
                     m_S12Status = "Scene loaded successfully. Spawns: " + std::to_string(res.entities.size()) + " entities.";
                     auto& transformSys = GetSystem<TransformSystem>();
                     transformSys.m_IsLinearTransformsDirty = true;
@@ -1217,13 +1532,14 @@ void SampleState::DrawGUI()
                 m_S12Status = "Failed to serialize current scene.";
             }
         }
-        if (ImGui::Button("Flush Scene (Clear All Entities)", ImVec2(360, 24)))
+        if (ImGui::Button("Flush Scene (Keep Base Plane/Light)", ImVec2(360, 24)))
         {
             auto* sceneMgr = Resolve<SceneManager>();
-            if (sceneMgr) sceneMgr->UnloadSceneByName("scenario");
+            if (sceneMgr) sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
+            m_S12RandomEntities.clear();
             SetupCamera();
             m_S12RandomEntityCount = 0;
-            m_S12Status = "Scene flushed. Add entities or Load to restore.";
+            m_S12Status = "Dynamic scene flushed. Floor/light kept.";
         }
     }
     else if (m_CurrentScenario == 13)
@@ -1240,8 +1556,9 @@ void SampleState::DrawGUI()
             if (io)
             {
                 InputSerializer serializer;
-                m_S13Status = serializer.Deserialize("sample/resource/binding/binding.axs", io->GetInputManager()) ?
-                                  "Loaded binding.axs." : "Failed to load binding.axs.";
+                const std::string bindingPath = "sample/resource/binding/binding.axs";
+                m_S13Status = serializer.Deserialize(bindingPath, io->GetInputManager()) ?
+                                  "Loaded sample/resource/binding/binding.axs." : "Failed to load binding.axs.";
             }
         }
         ImGui::SameLine();
@@ -1251,24 +1568,19 @@ void SampleState::DrawGUI()
             if (io)
             {
                 InputSerializer serializer;
-                m_S13Status = serializer.Serialize("sample/resource/binding/binding.axs", io->GetInputManager()) ?
+                const std::string bindingPath = "sample/resource/binding/binding.axs";
+                m_S13Status = serializer.Serialize(bindingPath, io->GetInputManager()) ?
                                   "Saved bindings to binding.axs." : "Failed to save.";
             }
         }
-        if (ImGui::Button("Flush Bindings (Reset to Default)", ImVec2(360, 24)))
+        if (ImGui::Button("Flush Bindings (Clear All)", ImVec2(360, 24)))
         {
             auto* io = Resolve<IOHandler>();
             if (io)
             {
                 auto& input = io->GetInputManager();
                 input.FlushBindings();
-                input.BindAction("PlayerForward",  InputType::Key, (int)Key::W);
-                input.BindAction("PlayerBackward", InputType::Key, (int)Key::S);
-                input.BindAction("PlayerLeft",     InputType::Key, (int)Key::A);
-                input.BindAction("PlayerRight",    InputType::Key, (int)Key::D);
-                input.BindAction("PlayerAction",   InputType::MouseButton, (int)Mouse::Left);
-                input.BindAction("PlayerJump",     InputType::Key, (int)Key::Space);
-                m_S13Status = "Bindings reset to WASD defaults.";
+                m_S13Status = "Bindings cleared. Load a preset or save a new one.";
             }
         }
 
@@ -1285,6 +1597,8 @@ void SampleState::DrawGUI()
                 input.BindAction("PlayerBackward", InputType::Key, (int)Key::Down);
                 input.BindAction("PlayerLeft",     InputType::Key, (int)Key::Left);
                 input.BindAction("PlayerRight",    InputType::Key, (int)Key::Right);
+                input.BindAction("PlayerJump", InputType::Key, (int)Key::Space);
+                input.BindAction("PlayerAction", InputType::MouseButton, (int)Mouse::Left);
                 m_S13Status = "Arrow-key preset applied. Save to persist.";
             }
         }
@@ -1312,7 +1626,8 @@ void SampleState::DrawGUI()
         if (io)
         {
             auto& input = io->GetInputManager();
-            const char* liveActions[] = {"PlayerForward", "PlayerBackward", "PlayerLeft", "PlayerRight", "PlayerJump"};
+            const char* liveActions[] = {"PlayerForward", "PlayerBackward", "PlayerLeft", "PlayerRight",
+                                         "PlayerJump", "PlayerAction"};
             for (const char* action : liveActions)
             {
                 bool pressed = input.GetAction(action);
@@ -1670,33 +1985,58 @@ void SampleState::DrawGUI()
     else if (m_CurrentScenario == 20)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "SSR & Environment Probes");
-        ImGui::SliderInt("Probe Resolution", &m_S20ProbeResolution, 128, 1024);
-        ImGui::SliderFloat("Reflectivity", &m_S20Reflectivity, 0.0f, 1.0f);
-        ImGui::SliderFloat("Fresnel Bias", &m_S20FresnelBias, 0.0f, 0.5f);
-        ImGui::SliderFloat("Fresnel Power", &m_S20FresnelPower, 0.1f, 12.0f);
+        static const char* kCaseNames[] = {"UltraLow", "Low", "Mid", "High", "Extreme"};
+        ImGui::Combo("Case", &m_S20ActiveCase, kCaseNames, IM_ARRAYSIZE(kCaseNames));
+        ImGui::Text("Each case keeps its own probe resolution and fresnel response.");
 
-        auto refView = GetScene().registry.view<ReflectiveComponent>();
-        for (auto entity : refView)
+        auto& scene = GetScene();
+        if (m_S20ActiveCase >= 0 && m_S20ActiveCase < (int)m_S20ReflectionSpheres.size() &&
+            m_S20ActiveCase < (int)m_S20ReflectionProbes.size())
         {
-            auto& ref = refView.get<ReflectiveComponent>(entity);
-            ref.reflectivity = m_S20Reflectivity;
-            ref.fresnelBias = m_S20FresnelBias;
-            ref.fresnelPower = m_S20FresnelPower;
-        }
-        auto probeView = GetScene().registry.view<ReflectionProbeComponent>();
-        for (auto entity : probeView)
-        {
-            auto& probe = probeView.get<ReflectionProbeComponent>(entity);
-            if (probe.resolution != m_S20ProbeResolution)
+            auto sphereEntity = m_S20ReflectionSpheres[m_S20ActiveCase];
+            auto probeEntity = m_S20ReflectionProbes[m_S20ActiveCase];
+
+            if (auto* ref = scene.registry.try_get<ReflectiveComponent>(sphereEntity))
             {
-                probe.resolution = m_S20ProbeResolution;
-                probe.isDirty = true;
+                ImGui::SliderFloat("Reflectivity", &ref->reflectivity, 0.0f, 1.0f);
+                ImGui::SliderFloat("Fresnel Bias", &ref->fresnelBias, 0.0f, 0.5f);
+                ImGui::SliderFloat("Fresnel Power", &ref->fresnelPower, 0.1f, 24.0f);
+                m_S20Reflectivity = ref->reflectivity;
+                m_S20FresnelBias = ref->fresnelBias;
+                m_S20FresnelPower = ref->fresnelPower;
+            }
+
+            if (auto* probe = scene.registry.try_get<ReflectionProbeComponent>(probeEntity))
+            {
+                ImGui::SliderInt("Probe Resolution", &probe->resolution, 64, 2048);
+                if (ImGui::Button("Capture Selected Probe", ImVec2(360, 24)))
+                    probe->isDirty = true;
+                m_S20ProbeResolution = probe->resolution;
             }
         }
-        
+
+        if (m_S20PlanarMirror != entt::null && scene.registry.valid(m_S20PlanarMirror))
+        {
+            ImGui::Separator();
+            ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.5f, 1.0f), "Planar Mirror");
+            if (auto* ref = scene.registry.try_get<ReflectiveComponent>(m_S20PlanarMirror))
+            {
+                ImGui::SliderFloat("Mirror Reflectivity", &ref->reflectivity, 0.0f, 1.0f);
+                ImGui::SliderFloat("Mirror Fresnel Bias", &ref->fresnelBias, 0.0f, 0.5f);
+                ImGui::SliderFloat("Mirror Fresnel Power", &ref->fresnelPower, 0.1f, 24.0f);
+            }
+            if (auto* planar = scene.registry.try_get<PlanarReflectionComponent>(m_S20PlanarMirror))
+            {
+                ImGui::SliderInt("Mirror Resolution X", &planar->resolution, 256, 2048);
+                ImGui::SliderInt("Mirror Resolution Y", &planar->resolution_y, 256, 2048);
+                if (ImGui::Button("Mark Mirror Dirty", ImVec2(360, 24)))
+                    planar->isDirty = true;
+            }
+        }
+
         if (ImGui::Button("Force Probe Re-Capture", ImVec2(360, 24)))
         {
-            auto view = GetScene().registry.view<ReflectionProbeComponent>();
+            auto view = scene.registry.view<ReflectionProbeComponent>();
             for (auto entity : view)
             {
                 view.get<ReflectionProbeComponent>(entity).isDirty = true;
@@ -1750,18 +2090,15 @@ void SampleState::DrawGUI()
     else if (m_CurrentScenario == 25)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Render Order");
-        if (ImGui::Checkbox("Reverse panel order", &m_S25ReverseOrder))
-        {
-            auto view = GetScene().registry.view<MeshRendererComponent, InfoComponent>();
-            for (auto entity : view)
-            {
-                auto& info = view.get<InfoComponent>(entity);
-                if (info.name == "Order_Red") view.get<MeshRendererComponent>(entity).order = m_S25ReverseOrder ? 30 : 10;
-                if (info.name == "Order_Green") view.get<MeshRendererComponent>(entity).order = 20;
-                if (info.name == "Order_Blue") view.get<MeshRendererComponent>(entity).order = m_S25ReverseOrder ? 10 : 30;
-            }
-        }
-        ImGui::Text("Three transparent panels overlap at similar depth.");
+        if (ImGui::Checkbox("Reverse all order demos", &m_S25ReverseOrder))
+            ApplyScenario25RenderOrder();
+        ImGui::Text("Panels and opaque cubes enable IgnoreDepth: lower order draws on top.");
+        ImGui::Text("Normal: Red=5, Purple=3, Blue=1 => Blue top.");
+        ImGui::Text("Reverse: Red=5, Blue=3, Purple=1 => Purple top.");
+        ImGui::Text("Depth and world position are ignored for these order demos.");
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "Gold Sphere: Opaque Showcase (ignoreDepth = false, order = 5)");
+        ImGui::Text("Vat gan camera hon nhung render order cao hon thi van nam sau vat nam xa hon camera.");
     }
     else if (m_CurrentScenario == 26)
     {
@@ -1775,6 +2112,20 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Deferred Shadow Receiver");
         ImGui::Text("Floor uses deferred_lit_shadow.");
         ImGui::Text("Objects cast shadows but do not self receive.");
+    }
+    else if (m_CurrentScenario == 28)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "UI Showcase");
+        ImGui::SliderFloat("Rotate Card", &m_S28RotateCard, -45.0f, 45.0f);
+        ImGui::Checkbox("Show Texture Tile", &m_S28ShowTexture);
+        ImGui::Text("This scene mixes transform, text, image and hierarchy tests.");
+    }
+    else if (m_CurrentScenario == 29)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Responsive UI");
+        ImGui::Combo("Layout Mode", &m_S29LayoutMode, "Compact\0Expanded\0Stacked\0");
+        ImGui::SliderFloat("Panel Alpha", &m_S29PanelAlpha, 0.1f, 1.0f);
+        ImGui::Text("Resize the window to verify anchors, percent sizes, and flex layout.");
     }
     else
     {
@@ -1792,1725 +2143,4 @@ void SampleState::DrawGUI()
     }
 
     ImGui::End();
-}
-
-void SampleState::LoadScene1()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    int count = 0;
-    int size = static_cast<int>(std::ceil(std::pow(m_S1EntityCount, 1.0f / 3.0f))) + 2;
-    float spacing = 3.5f;
-    float offset = -(size * spacing) * 0.5f;
-
-    std::string modelName = "sphereModel";
-    if (m_S1MeshType == 1) modelName = "cubeModel";
-    else if (m_S1MeshType == 2) modelName = "cylinderModel";
-    else if (m_S1MeshType == 3) modelName = "capsuleModel";
-
-    for (int x = 0; x < size && count < m_S1EntityCount; ++x)
-    {
-        for (int y = 0; y < size && count < m_S1EntityCount; ++y)
-        {
-            for (int z = 0; z < size && count < m_S1EntityCount; ++z)
-            {
-                glm::vec3 pos(
-                    offset + x * spacing + static_cast<float>(rand() % 100) / 200.0f,
-                    y * spacing + static_cast<float>(rand() % 100) / 200.0f,
-                    offset + z * spacing + static_cast<float>(rand() % 100) / 200.0f
-                );
-
-                EntityBuilder(scene, res, "scenario")
-                    .WithName("Entity_" + std::to_string(count))
-                    .WithTransform(pos, glm::vec3(0.0f), glm::vec3(1.0f))
-                    .WithMesh(modelName, "deferred_lit")
-                    .WithPBRMaterial(0.1f, 0.5f, 1.0f)
-                    .Build();
-
-                count++;
-            }
-        }
-    }
-}
-
-void SampleState::LoadScene2()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(100.0f, 1.0f, 100.0f))
-        .WithMesh("planeModel", "deferred_lit_shadow")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    for (int i = 0; i < 1000; ++i)
-    {
-        float x = static_cast<float>(rand() % 2000) / 10.0f - 100.0f;
-        float z = static_cast<float>(rand() % 2000) / 10.0f - 100.0f;
-        float h = 1.0f + static_cast<float>(rand() % 50) / 10.0f;
-
-        auto cube = EntityBuilder(scene, res, "scenario")
-            .WithName("Cube_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, h * 0.5f + 0.5f, z), glm::vec3(0.0f, rand() % 360, 0.0f), glm::vec3(1.0f, h, 1.0f))
-            .WithMesh("cubeModel", "deferred_lit_shadow")
-            .WithPBRMaterial(0.1f, 0.6f, 1.0f)
-            .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(cube))
-        {
-            renderer->receiveShadow = false;
-        }
-    }
-
-    auto dir = EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(2.0f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.5f, 1.0f)
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), m_S2DirectionalColor, m_S2DirectionalIntensity)
-        .Build();
-    m_S2DirLightEntity = dir;
-    auto& matDir = scene.registry.get<AxisMaterialComponent>(dir);
-    matDir.desc.emission = m_S2DirectionalColor * (m_S2DirectionalIntensity * 3.0f);
-    matDir.gpu.dirty = true;
-
-    auto point = EntityBuilder(scene, res, "scenario")
-        .WithName("PointLight")
-        .WithTransform(glm::vec3(0.0f, 8.0f, 0.0f), glm::vec3(0.0f), glm::vec3(0.5f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.5f, 1.0f)
-        .WithPointLight(m_S2PointColor, m_S2PointIntensity, 30.0f)
-        .Build();
-    auto& matPoint = scene.registry.get<AxisMaterialComponent>(point);
-    matPoint.desc.emission = m_S2PointColor * (m_S2PointIntensity * 2.0f);
-    matPoint.gpu.dirty = true;
-    scene.registry.get<PointLightComponent>(point).isCastShadow = true;
-
-    auto spot = EntityBuilder(scene, res, "scenario")
-        .WithName("SpotLight")
-        .WithTransform(glm::vec3(m_S2SpotOrbitRadius, m_S2SpotMotionHeight, 0.0f), glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(0.8f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.5f, 1.0f)
-        .WithSpotLight(glm::vec3(0.0f, -1.0f, 0.0f), m_S2SpotColor, m_S2SpotIntensity)
-        .Build();
-    auto& spotLight = scene.registry.get<SpotLightComponent>(spot);
-    spotLight.cutOff = glm::cos(glm::radians(22.5f));
-    spotLight.outerCutOff = glm::cos(glm::radians(32.5f));
-    spotLight.linear = 0.045f;
-    spotLight.quadratic = 0.0075f;
-    scene.registry.get<RotationComponent>(spot).value =
-        RotationFromNegativeY(glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) - glm::vec3(m_S2SpotOrbitRadius, m_S2SpotMotionHeight, 0.0f)));
-    auto& matSpot = scene.registry.get<AxisMaterialComponent>(spot);
-    matSpot.desc.emission = m_S2SpotColor * (m_S2SpotIntensity * 1.25f);
-    matSpot.gpu.dirty = true;
-    scene.registry.get<SpotLightComponent>(spot).isCastShadow = true;
-}
-
-void SampleState::LoadScene3()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(100.0f, 1.0f, 100.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Cylinder")
-        .WithTransform(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(5.0f, 10.0f, 5.0f))
-        .WithMesh("cylinderModel", "deferred_lit")
-        .WithPBRMaterial(0.2f, 0.4f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight_Key")
-        .WithTransform(glm::vec3(0.0f, 30.0f, 0.0f), glm::vec3(-45.0f, 35.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.5f, -1.0f, -0.35f)), m_S3DirectionalColor,
-                              m_S3DirectionalIntensity)
-        .Build();
-
-    for (int i = 0; i < 499; ++i)
-    {
-        float radius = 10.0f + static_cast<float>(rand() % 40);
-        float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
-        float h = 1.0f + static_cast<float>(rand() % 100) / 10.0f;
-        glm::vec3 pPos(cos(angle) * radius, h, sin(angle) * radius);
-        glm::vec3 pColor = m_S3PointColor * (0.5f + static_cast<float>(rand() % 50) / 100.0f);
-        EntityBuilder(scene, res, "scenario")
-            .WithName("PointLight_" + std::to_string(i))
-            .WithTransform(pPos)
-            .WithPointLight(pColor, m_S3PointIntensity, 15.0f)
-            .Build();
-
-        float sRadius = 15.0f + static_cast<float>(rand() % 35);
-        float sAngle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
-        glm::vec3 sPos(cos(sAngle) * sRadius, 15.0f, sin(sAngle) * sRadius);
-        glm::vec3 sColor = m_S3SpotColor * (0.5f + static_cast<float>(rand() % 50) / 100.0f);
-        EntityBuilder(scene, res, "scenario")
-            .WithName("SpotLight_" + std::to_string(i))
-            .WithTransform(sPos, glm::vec3(0.0f))
-            .WithSpotLight(glm::vec3(0.0f, -1.0f, 0.0f), sColor, m_S3SpotIntensity)
-            .Build();
-    }
-
-    auto spotView = scene.registry.view<PositionComponent, RotationComponent, SpotLightComponent, InfoComponent>();
-    for (auto entity : spotView)
-    {
-        auto& info = spotView.get<InfoComponent>(entity);
-        if (info.name.rfind("SpotLight_", 0) != 0)
-            continue;
-        auto& pos = spotView.get<PositionComponent>(entity);
-        auto& rot = spotView.get<RotationComponent>(entity);
-        auto& spot = spotView.get<SpotLightComponent>(entity);
-        spot.direction = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) - pos.value);
-        spot.cutOff = glm::cos(glm::radians(20.0f));
-        spot.outerCutOff = glm::cos(glm::radians(30.0f));
-        spot.linear = 0.07f;
-        spot.quadratic = 0.017f;
-        rot.value = RotationFromNegativeY(spot.direction);
-    }
-}
-
-void SampleState::LoadScene4()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-    if (auto* physics = Resolve<IPhysicsWorld>())
-    {
-        physics->SetGravity(m_S4Gravity);
-    }
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(0.0f, 40.0f, 0.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
-        .Build();
-
-    auto floor = EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-    floorShape.type = ShapeType::Box;
-    floorShape.size = glm::vec3(80.0f, 1.0f, 80.0f);
-    floorShape.restitution = m_S4Restitution;
-    floorShape.friction = m_S4Friction;
-
-    auto& floorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-    floorRB.mass = 0.0f;
-    floorRB.isStatic = true;
-
-    std::string modelName = "cubeModel";
-    ShapeType st = ShapeType::Box;
-    if (m_S4ShapeType == 1) { modelName = "sphereModel"; st = ShapeType::Sphere; }
-    else if (m_S4ShapeType == 2) { modelName = "capsuleModel"; st = ShapeType::Capsule; }
-
-    for (int i = 0; i < m_S4EntityCount; ++i)
-    {
-        float x = static_cast<float>((i % 10) - 5) * 2.5f + (static_cast<float>(rand() % 100) / 400.0f - 0.125f);
-        float y = static_cast<float>(i / 100) * 2.5f + 5.0f;
-        float z = static_cast<float>(((i / 10) % 10) - 5) * 2.5f + (static_cast<float>(rand() % 100) / 400.0f - 0.125f);
-
-        auto bodyEntity = EntityBuilder(scene, res, "scenario")
-            .WithName("PhysicsEntity_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, y, z), glm::vec3(rand() % 360, rand() % 360, rand() % 360), glm::vec3(1.0f))
-            .WithMesh(modelName, "deferred_lit")
-            .WithPBRMaterial(0.1f, 0.6f, 1.0f)
-            .Build();
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, bodyEntity);
-        shape.type = st;
-        shape.size = glm::vec3(1.0f);
-        shape.radius = 0.5f;
-        shape.height = 1.0f;
-        shape.restitution = m_S4Restitution;
-        shape.friction = m_S4Friction;
-
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, bodyEntity);
-        rb.mass = m_S4Mass;
-        rb.isStatic = false;
-    }
-}
-
-void SampleState::LoadScene5()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-    auto& navSystem = GetSystem<NavigationSystem>();
-    navSystem.ClearWalkableTags();
-    navSystem.AddWalkableTag("walkable");
-    navSystem.ClearCarveTags();
-    navSystem.AddCarveTag("obstacle");
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(0.0f, 40.0f, 0.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
-        .Build();
-
-    auto ground = EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTag("walkable")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(50.0f, 1.0f, 50.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.9f, 1.0f)
-        .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(ground))
-        renderer->color = glm::vec4(0.1f, 0.85f, 0.2f, 1.0f);
-
-    auto navSurface = EntityBuilder(scene, res, "scenario")
-        .WithName("NavigationGridSurface")
-        .WithTag("walkable")
-        .WithTransform(glm::vec3(-25.0f, 0.0f, -25.0f), glm::vec3(0.0f), glm::vec3(1.0f))
-        .Build();
-    auto& terrain = scene.registry.emplace<TerrainComponent>(navSurface);
-    terrain.terrainSize = glm::vec3(50.0f, 0.0f, 50.0f);
-    terrain.maxHeight = 0.0f;
-    terrain.isWalkable = true;
-    terrain.generatePhysics = false;
-
-    const auto makeRoad = [&](const char* name, const glm::vec3& pos, const glm::vec3& scale) {
-        auto road = EntityBuilder(scene, res, "scenario")
-            .WithName(name)
-            .WithTransform(pos, glm::vec3(0.0f), scale)
-            .WithMesh("cubeModel", "deferred_unlit")
-            .WithPBRMaterial(0.0f, 0.55f, 1.0f)
-            .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(road))
-            renderer->color = glm::vec4(0.08f, 0.09f, 0.1f, 1.0f);
-    };
-    makeRoad("RoadNorthSouth", glm::vec3(-20.0f, 0.08f, 0.0f), glm::vec3(5.0f, 0.1f, 45.0f));
-    makeRoad("RoadEastWest", glm::vec3(0.0f, 0.09f, -20.0f), glm::vec3(45.0f, 0.1f, 5.0f));
-
-    auto groundPhys = EntityBuilder(scene, res, "scenario")
-        .WithName("GroundPhys")
-        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(1.0f))
-        .Build();
-    auto& groundShape = EntityManager::AddComponent<RigidShapeComponent>(scene, groundPhys);
-    groundShape.type = ShapeType::Box;
-    groundShape.size = glm::vec3(50.0f, 1.0f, 50.0f);
-    auto& groundRB = EntityManager::AddComponent<RigidBodyComponent>(scene, groundPhys);
-    groundRB.mass = 0.0f;
-    groundRB.isStatic = true;
-
-    // Dynamically generate obstacles based on count and size parameters
-    for (int i = 0; i < m_S5ObstacleCount; ++i)
-    {
-        float ox = static_cast<float>(rand() % 36 - 18);
-        float oz = static_cast<float>(rand() % 36 - 18);
-        if (glm::length(glm::vec2(ox + 20.0f, oz - 20.0f)) < 6.0f ||
-            glm::length(glm::vec2(ox - 20.0f, oz + 20.0f)) < 6.0f)
-        {
-            ox += 10.0f;
-            oz -= 10.0f;
-        }
-
-        float obstacleHeight = 2.0f + static_cast<float>(rand() % 50) / 10.0f;
-        glm::vec3 obstacleScale(m_S5ObstacleSize, obstacleHeight, m_S5ObstacleSize);
-
-        auto obstacle = EntityBuilder(scene, res, "scenario")
-            .WithName("Obstacle_" + std::to_string(i))
-            .WithTag("obstacle")
-            .WithTransform(glm::vec3(ox, obstacleHeight * 0.5f, oz), glm::vec3(0.0f), obstacleScale)
-            .WithMesh("cubeModel", "deferred_lit")
-            .WithPBRMaterial(0.3f, 0.3f, 1.0f)
-            .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(obstacle))
-            renderer->color = glm::vec4(0.9f, 0.08f, 0.05f, 1.0f);
-
-        auto obstacleCollider = EntityBuilder(scene, res, "scenario")
-            .WithName("ObstacleCollider_" + std::to_string(i))
-            .WithTransform(glm::vec3(ox, obstacleHeight * 0.5f, oz), glm::vec3(0.0f), glm::vec3(1.0f))
-            .Build();
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, obstacleCollider);
-        shape.type = ShapeType::Box;
-        shape.size = obstacleScale;
-        shape.friction = 0.8f;
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, obstacleCollider);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
-    }
-
-    auto navMesh = scene.registry.create();
-    scene.registry.emplace<InfoComponent>(navMesh).sceneName = "scenario";
-    auto& navComp = scene.registry.emplace<NavMeshComponent>(navMesh);
-    navComp.needsRebuild = true;
-    navComp.isDynamic = true;
-
-    m_NavFollower = EntityBuilder(scene, res, "scenario")
-        .WithName("Follower")
-        .WithTransform(glm::vec3(-20.0f, 0.5f, 20.0f), glm::vec3(0.0f), glm::vec3(1.5f))
-        .WithMesh("capsuleModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.5f, 1.0f)
-        .WithPathFollower(m_S5FollowerSpeed, 15.0f, 30.0f, 60.0f)
-        .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_NavFollower))
-        renderer->color = glm::vec4(0.1f, 0.9f, 0.25f, 1.0f);
-
-    auto& pf = scene.registry.get<PathFollowerComponent>(m_NavFollower);
-    pf.lockXPitch = m_S5LockXPitch;
-    pf.lockYYaw = m_S5LockYYaw;
-    pf.lockZRoll = m_S5LockZRoll;
-    pf.pathfindingOptions.criteria = static_cast<PathfindingCriteria>(m_S5PathfindingCriteria);
-    pf.pathfindingOptions.preferredTags = {"road"};
-    pf.pathfindingOptions.tagWeightBonus = 30.0f;
-
-    if (m_S5PathfindingCriteria == 0)
-    {
-        m_NavWaypoints = {
-            glm::vec3(-20.0f, 0.5f, 20.0f),
-            glm::vec3(20.0f, 0.5f, -20.0f)
-        };
-    }
-    else if (m_S5PathfindingCriteria == 1)
-    {
-        m_NavWaypoints = {
-            glm::vec3(-20.0f, 0.5f, 20.0f),
-            glm::vec3(-8.0f, 0.5f, 10.0f),
-            glm::vec3(0.0f, 0.5f, 0.0f),
-            glm::vec3(10.0f, 0.5f, -8.0f),
-            glm::vec3(20.0f, 0.5f, -20.0f)
-        };
-    }
-    else
-    {
-        m_NavWaypoints = {
-            glm::vec3(-20.0f, 0.5f, 20.0f),
-            glm::vec3(-20.0f, 0.5f, -20.0f),
-            glm::vec3(20.0f, 0.5f, -20.0f)
-        };
-    }
-    m_CurrentWaypointIndex = 1;
-
-    navSystem.SetShowDebug(m_ShowDebugLines);
-    auto& transformSys = GetSystem<TransformSystem>();
-    transformSys.m_IsLinearTransformsDirty = true;
-    transformSys.Update(scene, 0.0f);
-    auto& physicsSystem = GetSystem<PhysicsSystem>();
-    physicsSystem.Update(scene, 0.0f);
-    navSystem.Update(scene, 0.0f);
-    auto navMeshView = scene.registry.view<NavMeshComponent>();
-    for (auto entity : navMeshView)
-    {
-        auto& navMesh = navMeshView.get<NavMeshComponent>(entity);
-        for (auto& tri : navMesh.triangles)
-        {
-            bool onRoad = (std::abs(tri.center.x + 20.0f) <= 2.9f && tri.center.z >= -22.5f && tri.center.z <= 22.5f) ||
-                          (std::abs(tri.center.z + 20.0f) <= 2.9f && tri.center.x >= -22.5f && tri.center.x <= 22.5f);
-            tri.tag = onRoad ? "road" : "walkable";
-        }
-        for (auto& node : navMesh.nodes)
-        {
-            bool onRoad = (std::abs(node.position.x + 20.0f) <= 2.9f && node.position.z >= -22.5f &&
-                           node.position.z <= 22.5f) ||
-                          (std::abs(node.position.z + 20.0f) <= 2.9f && node.position.x >= -22.5f &&
-                           node.position.x <= 22.5f);
-            node.tag = onRoad ? "road" : "walkable";
-        }
-    }
-    navSystem.MoveTo(scene, m_NavFollower, m_NavWaypoints[m_CurrentWaypointIndex]);
-}
-
-void SampleState::LoadScene6()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(0.0f, 40.0f, 0.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
-        .Build();
-
-    for (int i = 0; i < 100; ++i)
-    {
-        float angle = (static_cast<float>(i) * 3.6f) * 3.14159f / 180.0f;
-        float radius = 10.0f + static_cast<float>(i % 5) * 3.0f;
-        glm::vec3 pos(cos(angle) * radius, 0.5f + static_cast<float>(i % 3) * 2.0f, sin(angle) * radius);
-
-        std::string name = "ScriptedEntity_" + std::to_string(i);
-        auto entity = EntityBuilder(scene, res, "scenario")
-            .WithName(name)
-            .WithTransform(pos, glm::vec3(0.0f), glm::vec3(1.0f))
-            .WithMesh("cubeModel", "deferred_unlit")
-            .WithPBRMaterial(0.1f, 0.5f, 1.0f)
-            .Build();
-
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
-        {
-            float hue = static_cast<float>(i) * 0.0618f;
-            renderer->color = glm::vec4(
-                0.35f + 0.65f * (0.5f + 0.5f * sin(hue * 6.28318f)),
-                0.35f + 0.65f * (0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f)),
-                0.35f + 0.65f * (0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f)),
-                1.0f);
-        }
-
-        std::string scriptName;
-        int scriptType = i % 6;
-        if (scriptType == 0) scriptName = "OrbitScript";
-        else if (scriptType == 1) scriptName = "PulseScaleScript";
-        else if (scriptType == 2) scriptName = "ColorShiftScript";
-        else if (scriptType == 3) scriptName = "RandomMoveScript";
-        else if (scriptType == 4) scriptName = "RotateScript";
-        else scriptName = "BouncingScript";
-
-        auto& script = scene.registry.emplace<ScriptComponent>(entity);
-        script.className = scriptName;
-        script.InstantiateScript = [scriptName]() {
-            auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
-            return registry ? registry->Create(scriptName) : nullptr;
-        };
-        script.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
-    }
-}
-
-void SampleState::LoadScene7()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(0.0f, 40.0f, 0.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
-        .Build();
-
-    float angleStep = 360.0f / static_cast<float>(m_S7EmitterCount > 0 ? m_S7EmitterCount : 1);
-
-    for (int i = 0; i < m_S7EmitterCount; ++i)
-    {
-        float angle = (static_cast<float>(i) * angleStep) * 3.14159f / 180.0f;
-        float radius = 15.0f;
-        glm::vec3 pos(cos(angle) * radius, 0.1f, sin(angle) * radius);
-
-        auto emitterEntity = EntityBuilder(scene, res, "scenario")
-            .WithName("Emitter_" + std::to_string(i))
-            .WithTransform(pos, glm::vec3(0.0f))
-            .Build();
-
-        auto& pe = scene.registry.emplace<ParticleEmitterComponent>(emitterEntity);
-        pe.isActive = true;
-        pe.emitter.SpawnRate = m_S7SpawnRate;
-        pe.emitter.LifeTime = m_S7LifeTime;
-        pe.emitter.StartSize = m_S7StartSize;
-        pe.emitter.EndSize = m_S7EndSize;
-
-        glm::vec3 dir = glm::normalize(glm::vec3(pos.x, 10.0f, pos.z));
-        pe.emitter.MinVelocity = dir * m_S7MinSpeed - glm::vec3(0.5f, 0.0f, 0.5f);
-        pe.emitter.MaxVelocity = dir * m_S7MaxSpeed + glm::vec3(0.5f, m_S7VerticalSpeed, 0.5f);
-
-        float r = 0.5f + 0.5f * sin(angle);
-        float g = 0.5f + 0.5f * sin(angle + 2.0f);
-        float b = 0.5f + 0.5f * sin(angle + 4.0f);
-        pe.emitter.StartColor = glm::vec4(r, g, b, 1.0f);
-        pe.emitter.EndColor = glm::vec4(r, g, b, 0.0f);
-
-        pe.emitter.Initialize(1000);
-    }
-}
-
-void SampleState::LoadScene8()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    auto floor = EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(50.0f, 1.0f, 50.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-    floorShape.type = ShapeType::Box;
-    floorShape.size = glm::vec3(50.0f, 1.0f, 50.0f);
-    floorShape.friction = 0.8f;
-    auto& floorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-    floorRB.mass = 0.0f;
-    floorRB.isStatic = true;
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
-        .Build();
-
-    // Controllable Player entity
-    auto player = EntityBuilder(scene, res, "scenario")
-        .WithName("PlayerCube")
-        .WithTransform(glm::vec3(0.0f, 0.75f, 0.0f), glm::vec3(0.0f), glm::vec3(1.5f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.4f, 1.0f)
-        .Build();
-
-    std::string scriptName = "PlayerControlScript";
-    auto& script = scene.registry.emplace<ScriptComponent>(player);
-    script.className = scriptName;
-    script.InstantiateScript = [scriptName]() {
-        auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
-        return registry ? registry->Create(scriptName) : nullptr;
-    };
-    script.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
-
-    auto& playerShape = EntityManager::AddComponent<RigidShapeComponent>(scene, player);
-    playerShape.type = ShapeType::Box;
-    playerShape.size = glm::vec3(1.5f);
-    playerShape.friction = 0.7f;
-    auto& playerRB = EntityManager::AddComponent<RigidBodyComponent>(scene, player);
-    playerRB.mass = 1.0f;
-    playerRB.isStatic = false;
-    playerRB.isKinematic = true;
-    playerRB.linearFactor = glm::vec3(1.0f, 1.0f, 1.0f);
-    playerRB.angularFactor = glm::vec3(0.0f, 1.0f, 0.0f);
-
-    // Spawn some targets / visual obstacles to walk around
-    for (int i = 0; i < 5; ++i)
-    {
-        float angle = static_cast<float>(i) * 72.0f * 3.14159f / 180.0f;
-        float radius = 10.0f;
-        glm::vec3 pos(cos(angle) * radius, 1.0f, sin(angle) * radius);
-
-        auto target = EntityBuilder(scene, res, "scenario")
-            .WithName("Target_" + std::to_string(i))
-            .WithTransform(pos, glm::vec3(0.0f), glm::vec3(2.0f))
-            .WithMesh("sphereModel", "deferred_lit")
-            .WithPBRMaterial(0.9f, 0.1f, 1.0f)
-            .Build();
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, target);
-        shape.type = ShapeType::Sphere;
-        shape.radius = 1.0f;
-        shape.friction = 0.5f;
-        shape.restitution = 0.25f;
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, target);
-        rb.mass = 1.0f;
-        rb.isStatic = false;
-        rb.linearDamping = 0.25f;
-        rb.angularDamping = 0.25f;
-    }
-
-    auto& transformSys = GetSystem<TransformSystem>();
-    transformSys.m_IsLinearTransformsDirty = true;
-    transformSys.Update(scene, 0.0f);
-    GetSystem<PhysicsSystem>().Update(scene, 0.0f);
-}
-
-void SampleState::LoadScene9()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.9f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(0.2f, 0.2f, 0.2f), 0.5f)
-        .Build();
-
-    struct GlowingObject {
-        glm::vec3 pos;
-        glm::vec3 emissionColor;
-        float scale;
-    };
-
-    std::vector<GlowingObject> glowers = {
-        { glm::vec3(-10.0f, 2.0f, 0.0f), glm::vec3(10.0f, 0.0f, 0.0f), 2.0f },
-        { glm::vec3(0.0f, 2.0f, -10.0f), glm::vec3(0.0f, 10.0f, 0.0f), 2.0f },
-        { glm::vec3(10.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 10.0f), 2.0f },
-        { glm::vec3(0.0f, 3.0f, 10.0f), glm::vec3(10.0f, 10.0f, 0.0f), 3.0f },
-        { glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(20.0f, 20.0f, 20.0f), 1.5f }
-    };
-
-    int index = 0;
-    for (const auto& g : glowers)
-    {
-        auto ent = EntityBuilder(scene, res, "scenario")
-            .WithName("Glower_" + std::to_string(index++))
-            .WithTransform(g.pos, glm::vec3(0.0f), glm::vec3(g.scale))
-            .WithMesh("sphereModel", "deferred_lit")
-            .WithPBRMaterial(0.0f, 0.1f, 1.0f)
-            .Build();
-
-        auto& mat = scene.registry.get<AxisMaterialComponent>(ent);
-        mat.desc.emission = g.emissionColor;
-        mat.gpu.dirty = true;
-
-        EntityBuilder(scene, res, "scenario")
-            .WithName("GlowLight_" + std::to_string(index))
-            .WithTransform(g.pos)
-            .WithPointLight(glm::normalize(g.emissionColor), glm::length(g.emissionColor) * 0.5f, 15.0f)
-            .Build();
-    }
-
-    m_PPBloomEnabled = true;
-    m_PPBloomThreshold = 0.8f;
-    m_PPBloomIntensity = 2.0f;
-    m_PPBloomRadius = 0.005f;
-    m_PPHdrEnabled = true;
-    m_PPExposure = 1.0f;
-    m_PPGamma = 2.2f;
-    m_PPTonemappingMode = 1;
-
-    auto ppEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("Scenario9PostProcess")
-        .Build();
-    auto& pp = scene.registry.emplace<PostProcessComponent>(ppEntity);
-    pp.enabled = true;
-
-    auto* sysMgr = Resolve<SystemManager>();
-    if (sysMgr)
-    {
-        auto* ppSys = dynamic_cast<PostProcessSystem*>(sysMgr->GetSystem("PostProcessSystem"));
-        if (ppSys)
-        {
-            auto& pipeline = ppSys->GetPipeline();
-            pipeline.SetHDREnabled(m_PPHdrEnabled);
-            pipeline.SetBloomEnabled(m_PPBloomEnabled);
-            pipeline.SetBloomThreshold(m_PPBloomThreshold);
-            pipeline.SetBloomIntensity(m_PPBloomIntensity);
-            pipeline.SetBloomRadius(m_PPBloomRadius);
-            pipeline.SetExposure(m_PPExposure);
-            pipeline.SetGamma(m_PPGamma);
-            pipeline.SetTonemappingMode(m_PPTonemappingMode);
-        }
-    }
-}
-
-void SampleState::LoadScene10()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-    if (auto* physics = Resolve<IPhysicsWorld>())
-    {
-        physics->SetGravity(m_S10Gravity);
-        physics->SetSolverIterations(24);
-    }
-    if (auto* collisionMatrix = Resolve<CollisionMatrix>())
-    {
-        collisionMatrix->IgnoreTagCollision("chain_link", "chain_link");
-    }
-
-    // 1. Static Floor & Lights
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.2f, 0.8f, 1.0f)
-        .Build();
-
-    auto floorPhys = EntityBuilder(scene, res, "scenario")
-        .WithName("FloorPhysics")
-        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(1.0f))
-        .Build();
-    
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floorPhys);
-    floorShape.type = ShapeType::Box;
-    floorShape.size = glm::vec3(80.0f, 1.0f, 80.0f);
-    floorShape.restitution = 0.5f;
-    floorShape.friction = 0.5f;
-
-    auto& floorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, floorPhys);
-    floorRB.mass = 0.0f;
-    floorRB.isStatic = true;
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    // 2. Hanging anchor (Static body, high up)
-    glm::vec3 anchorPos(0.0f, 22.0f, 0.0f);
-    auto anchor = EntityBuilder(scene, res, "scenario")
-        .WithName("Anchor")
-        .WithTag("chain_link")
-        .WithTransform(anchorPos, glm::vec3(0.0f), glm::vec3(1.5f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.8f, 0.2f, 1.0f)
-        .Build();
-
-    auto& anchorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, anchor);
-    anchorShape.type = ShapeType::Box;
-    anchorShape.size = glm::vec3(1.5f);
-    anchorShape.restitution = 0.5f;
-    anchorShape.friction = 0.5f;
-
-    auto& anchorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, anchor);
-    anchorRB.mass = 0.0f;
-    anchorRB.isStatic = true;
-    anchorRB.linearDamping = 0.2f;
-    anchorRB.angularDamping = 0.8f;
-
-    // 3. Dynamically build chain components
-    m_S10ChainEntities.clear();
-    m_S10ChainEntities.push_back(anchor);
-
-    float linkOffset = 1.1f;
-    for (int i = 0; i < m_S10ChainLength; ++i)
-    {
-        glm::vec3 currentPos = anchorPos - glm::vec3(0.0f, linkOffset * (i + 1), 0.0f);
-        
-        auto link = EntityBuilder(scene, res, "scenario")
-            .WithName("ChainLink_" + std::to_string(i))
-            .WithTag("chain_link")
-            .WithTransform(currentPos, glm::vec3(0.0f), glm::vec3(0.8f, 1.0f, 0.8f))
-            .WithMesh("cubeModel", "deferred_lit")
-            .WithPBRMaterial(0.1f, 0.5f, 1.0f)
-            .Build();
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, link);
-        shape.type = ShapeType::Box;
-        shape.size = glm::vec3(0.8f, 1.0f, 0.8f);
-        shape.restitution = 0.15f;
-        shape.friction = 0.65f;
-
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, link);
-        rb.mass = 1.5f;
-        rb.isStatic = false;
-        rb.linearDamping = 0.3f;
-        rb.angularDamping = 0.9f;
-
-        m_S10ChainEntities.push_back(link);
-    }
-
-    // Force PhysicsSystem to initialize bullet body structures immediately
-    auto& physicsSys = GetSystem<PhysicsSystem>();
-    physicsSys.Update(scene, 0.0f);
-
-    // 4. Create constraints between consecutive chain links
-    auto physics_ptr = Resolve<IPhysicsWorld>();
-    if (physics_ptr)
-    {
-        for (size_t i = 1; i < m_S10ChainEntities.size(); ++i)
-        {
-            entt::entity prevEntity = m_S10ChainEntities[i - 1];
-            entt::entity link = m_S10ChainEntities[i];
-
-            auto& prevRBComp = scene.registry.get<RigidBodyComponent>(prevEntity);
-            auto& linkRBComp = scene.registry.get<RigidBodyComponent>(link);
-
-            if (prevRBComp.body && linkRBComp.body)
-            {
-                // Anchor is first element (index 0)
-                glm::vec3 pivotA = (i == 1) ? glm::vec3(0.0f, -0.75f, 0.0f) : glm::vec3(0.0f, -0.52f, 0.0f);
-                glm::vec3 pivotB = glm::vec3(0.0f, 0.52f, 0.0f);
-
-                auto constraint = physics_ptr->CreateHingeConstraint(
-                    prevRBComp.body,
-                    linkRBComp.body,
-                    pivotA, pivotB,
-                    glm::vec3(1.0f, 0.0f, 0.0f),
-                    glm::vec3(1.0f, 0.0f, 0.0f)
-                );
-
-                if (constraint)
-                {
-                    physics_ptr->AddConstraint(constraint);
-                    prevRBComp.constraints.push_back(constraint);
-                }
-            }
-        }
-
-        // Apply a starting side kick so it swings immediately
-        auto lastLink = m_S10ChainEntities.back();
-        auto* rbLast = scene.registry.get<RigidBodyComponent>(lastLink).body.get();
-        if (rbLast)
-        {
-            rbLast->Activate(true);
-            rbLast->ApplyCentralForce(glm::vec3(35.0f, 0.0f, 0.0f));
-        }
-    }
-}
-
-void SampleState::LoadScene11()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    // 1. Static Floor & Lights
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DecalDirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), m_S11LightColor, m_S11LightIntensity)
-        .Build();
-
-    // 2. Spawn a large central wall to project decals onto
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DecalWall")
-        .WithTransform(glm::vec3(0.0f, 10.0f, -10.0f), glm::vec3(0.0f), glm::vec3(50.0f, 20.0f, 2.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.9f, 1.0f)
-        .Build();
-
-    // 3. Use tint-only decals. The decal shader falls back to a white source when no texture is assigned.
-    uint32_t decalTexId = 0;
-
-    // 4. Spawn Decal Components in a grid on the wall
-    for (int i = 0; i < m_S11DecalCount; ++i)
-    {
-        float x = -20.0f + static_cast<float>(i % 10) * 4.5f;
-        float y = 3.0f + static_cast<float>(i / 10) * 4.0f;
-        float z = -9.0f; 
-
-        float size = m_S11DecalSize;
-        auto decalEnt = EntityBuilder(scene, res, "scenario")
-            .WithName("Decal_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, y, z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(size, size, size))
-            .Build();
-
-        auto& decal = scene.registry.emplace<DecalComponent>(decalEnt);
-        decal.albedoMap = decalTexId;
-        decal.opacity = m_S11Opacity;
-        decal.roughness = 0.5f;
-        decal.metallic = 0.0f;
-        
-        if (m_S11RainbowMode)
-        {
-            float hue = static_cast<float>(i) / static_cast<float>(m_S11DecalCount);
-            float r = 0.5f + 0.5f * sin(hue * 6.28318f);
-            float g = 0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f);
-            float b = 0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f);
-            decal.tintColor = glm::vec4(r, g, b, 1.0f);
-        }
-        else
-        {
-            decal.tintColor = glm::vec4(m_S11Color, 1.0f);
-        }
-    }
-}
-
-void SampleState::LoadScene12()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    m_S12Status = "Scene initialized. Ready to Save or Load.";
-}
-
-void SampleState::LoadScene13()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    if (auto* io = Resolve<IOHandler>())
-    {
-        InputSerializer serializer;
-        serializer.Deserialize("sample/resource/binding/binding.axs", io->GetInputManager());
-    }
-
-    auto player = EntityBuilder(scene, res, "scenario")
-        .WithName("BindingPlayer")
-        .WithTransform(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f))
-        .WithMesh("capsuleModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.5f, 1.0f)
-        .Build();
-
-    auto& script = scene.registry.emplace<ScriptComponent>(player);
-    script.className = "PlayerControlScript";
-    script.InstantiateScript = []() {
-        auto playerScript = std::make_unique<PlayerControlScript>();
-        playerScript->allowMouseColor = false;
-        return playerScript;
-    };
-    script.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
-
-    struct InputPad
-    {
-        const char* action;
-        glm::vec3 position;
-        glm::vec3 scale;
-    };
-
-    const InputPad pads[] = {
-        {"PlayerForward", glm::vec3(0.0f, 0.12f, -8.0f), glm::vec3(3.0f, 0.15f, 3.0f)},
-        {"PlayerLeft", glm::vec3(-4.0f, 0.12f, -4.0f), glm::vec3(3.0f, 0.15f, 3.0f)},
-        {"PlayerBackward", glm::vec3(0.0f, 0.12f, -4.0f), glm::vec3(3.0f, 0.15f, 3.0f)},
-        {"PlayerRight", glm::vec3(4.0f, 0.12f, -4.0f), glm::vec3(3.0f, 0.15f, 3.0f)},
-        {"PlayerJump", glm::vec3(0.0f, 0.12f, 4.0f), glm::vec3(9.0f, 0.15f, 2.5f)},
-    };
-
-    for (const auto& pad : pads)
-    {
-        auto padEntity = EntityBuilder(scene, res, "scenario")
-            .WithName(std::string("InputPad_") + pad.action)
-            .WithTransform(pad.position, glm::vec3(0.0f), pad.scale)
-            .WithMesh("cubeModel", "deferred_unlit")
-            .WithPBRMaterial(0.0f, 0.5f, 1.0f)
-            .Build();
-
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(padEntity))
-            renderer->color = glm::vec4(0.18f, 0.2f, 0.24f, 1.0f);
-    }
-
-    m_S13Status = "Loaded binding.axs. Press mapped controls to light pads and move the capsule.";
-}
-
-void SampleState::LoadScene14()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.1f, 0.1f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    auto viCube = EntityBuilder(scene, res, "scenario")
-        .WithName("viCube")
-        .WithTransform(glm::vec3(-10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(1.0f, 0.1f, 0.1f)
-        .Build();
-    auto* rVi = scene.registry.try_get<MeshRendererComponent>(viCube);
-    if (rVi) rVi->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
-
-    auto enCube = EntityBuilder(scene, res, "scenario")
-        .WithName("enCube")
-        .WithTransform(glm::vec3(10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.1f, 1.0f)
-        .Build();
-    auto* rEn = scene.registry.try_get<MeshRendererComponent>(enCube);
-    if (rEn) rEn->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);
-
-    auto& l10n = GetSystem<LocalizationSystem>();
-    l10n.LoadLanguage("sample/resource/l10n/vi.axs", "vi");
-    l10n.LoadLanguage("sample/resource/l10n/en.axs", "en");
-    l10n.SetLanguage("en");
-}
-
-void SampleState::LoadScene15()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    int columns = static_cast<int>(std::ceil(std::sqrt(static_cast<float>(m_S15EntityCount))));
-    float spacing = (m_S15EntitySize * 1.6f > 1.5f) ? (m_S15EntitySize * 1.6f) : 1.5f;
-    for (int i = 0; i < m_S15EntityCount; ++i)
-    {
-        int xIdx = i % columns;
-        int zIdx = i / columns;
-        glm::vec3 pos((xIdx - columns * 0.5f) * spacing, m_S15EntitySize * 0.5f, (zIdx - columns * 0.5f) * spacing);
-        EntityBuilder(scene, res, "scenario")
-            .WithName("DataEntity_" + std::to_string(i))
-            .WithTransform(pos, glm::vec3(0.0f, i * 13.0f, 0.0f), glm::vec3(m_S15EntitySize))
-            .WithMesh((i % 2 == 0) ? "cubeModel" : "sphereModel", "deferred_lit")
-            .WithPBRMaterial(0.2f, 0.5f, 1.0f)
-            .Build();
-    }
-
-    m_S15Status = "Ready. Save/load entity count and size, then reload to apply.";
-}
-
-void SampleState::LoadScene16()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("NetworkOrb")
-        .WithTransform(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(3.0f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.9f, 0.1f)
-        .Build();
-
-    m_S16Messages.clear();
-    m_S16Status = "Network scenario initialized. Click Start to bind/connect.";
-}
-
-void SampleState::LoadScene17()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("AudioPlatform")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.2f, 0.8f, 0.2f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    auto audioSource = EntityBuilder(scene, res, "scenario")
-        .WithName("AudioSource3D")
-        .WithTransform(glm::vec3(0.0f, 3.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(1.0f, 0.5f, 0.0f)
-        .Build();
-
-    auto& audio3D = scene.registry.emplace<AudioSourceComponent>(audioSource);
-    audio3D.filePath = SamplePath("sample/resource/audio/sample.wav");
-    audio3D.playOnAwake = true;
-    audio3D.loop = true;
-    audio3D.is3D = true;
-    audio3D.volume = m_S17Volume3D;
-    audio3D.pitch = m_S17Pitch;
-    audio3D.speed = 1.0f;
-    audio3D.minDistance = m_S17MinDistance;
-    audio3D.maxDistance = m_S17MaxDistance;
-
-    auto audio2D = EntityBuilder(scene, res, "scenario")
-        .WithName("Audio2DLoop")
-        .Build();
-    auto& audio2DComp = scene.registry.emplace<AudioSourceComponent>(audio2D);
-    audio2DComp.filePath = SamplePath("sample/resource/audio/sample.wav");
-    audio2DComp.loop = true;
-    audio2DComp.volume = m_S17Volume2D;
-    audio2DComp.pitch = m_S17Pitch;
-
-    m_S17Play2D = false;
-    m_S17Play3D = true;
-    m_S17Audio2D = nullptr;
-    m_S17Audio3D = nullptr;
-}
-
-void SampleState::LoadScene18()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    auto tvScreen = EntityBuilder(scene, res, "scenario")
-        .WithName("TVScreen")
-        .WithTransform(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f), glm::vec3(16.0f, 9.0f, 0.5f))
-        .WithMesh("cubeModel", "videomapShader")
-        .WithPBRMaterial(0.0f, 0.4f, 1.0f)
-        .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(tvScreen))
-    {
-        renderer->renderMode = RenderMode::ForceForward;
-        renderer->color = glm::vec4(1.0f);
-    }
-
-    auto& video = scene.registry.emplace<VideoPlayerComponent>(tvScreen);
-    video.filePath = SamplePath("sample/resource/video/sample.mp4");
-    video.isLooping = true;
-    video.playOnAwake = true;
-    video.isPlaying = true;
-    video.volume = m_S18Volume;
-    video.maxDecodes = 3;
-
-    auto uiVideo = EntityBuilder(scene, res, "scenario")
-        .WithName("VideoPreviewUI")
-        .WithUITransform(glm::vec2(420.0f, 30.0f), glm::vec2(320.0f, 180.0f), 10)
-        .WithUIRenderer("video_preview_ui", glm::vec4(1.0f))
-        .Build();
-    auto& uiVideoPlayer = scene.registry.emplace<VideoPlayerComponent>(uiVideo);
-    uiVideoPlayer.filePath = SamplePath("sample/resource/video/sample.mp4");
-    uiVideoPlayer.isLooping = true;
-    uiVideoPlayer.playOnAwake = true;
-    uiVideoPlayer.isPlaying = true;
-    uiVideoPlayer.volume = m_S18Volume;
-    uiVideoPlayer.maxDecodes = 3;
-}
-
-void SampleState::LoadScene19()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    // Models must be loaded before clips because AnimationManager binds clips to the model skeleton.
-    res.LoadModel("defeatedModel", "sample/resource/object/defeated.fbx");
-    res.LoadModel("spinModel", "sample/resource/object/spin.fbx");
-    res.LoadAnimation("defeated", "sample/resource/object/defeated.fbx", "defeatedModel");
-    res.LoadAnimation("spin", "sample/resource/object/spin.fbx", "spinModel");
-
-    auto defeatedEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("DefeatedFbxCharacter")
-        .WithTransform(glm::vec3(-5.0f, 3.0f, 0.0f), glm::vec3(0.0f), glm::vec3(4.0f))
-        .WithMesh("defeatedModel", "deferred_lit")
-        .WithAnimation("defeated")
-        .Build();
-
-    auto spinEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("SpinFbxCharacter")
-        .WithTransform(glm::vec3(5.0f, 3.0f, 0.0f), glm::vec3(0.0f), glm::vec3(4.0f))
-        .WithMesh("spinModel", "deferred_lit")
-        .WithAnimation("spin")
-        .Build();
-
-    auto& defeatedAnim = scene.registry.get<AnimationComponent>(defeatedEntity);
-    defeatedAnim.animations.push_back("spin");
-    if (defeatedAnim.animator)
-    {
-        auto spinAnim = res.GetAnimation("spin");
-        if (spinAnim)
-        {
-            defeatedAnim.animator->AddAnimation("spin", spinAnim);
-        }
-    }
-
-    auto& spinAnimComp = scene.registry.get<AnimationComponent>(spinEntity);
-    spinAnimComp.animations.push_back("defeated");
-    if (spinAnimComp.animator)
-    {
-        auto defeatedAnimClip = res.GetAnimation("defeated");
-        if (defeatedAnimClip)
-        {
-            spinAnimComp.animator->AddAnimation("defeated", defeatedAnimClip);
-        }
-    }
-}
-
-void SampleState::LoadScene20()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("ReflectionFillLight")
-        .WithTransform(glm::vec3(0.0f, 12.0f, 12.0f), glm::vec3(0.0f), glm::vec3(0.8f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.3f, 1.0f)
-        .WithPointLight(glm::vec3(1.0f, 0.92f, 0.75f), 12.0f, 45.0f)
-        .Build();
-
-    auto floor = EntityBuilder(scene, res, "scenario")
-        .WithName("ReflectiveFloor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.02f, 0.35f, 1.0f)
-        .Build();
-    if (auto* floorRenderer = scene.registry.try_get<MeshRendererComponent>(floor))
-        floorRenderer->color = glm::vec4(0.55f, 0.55f, 0.52f, 1.0f);
-
-    auto planarMirror = EntityBuilder(scene, res, "scenario")
-        .WithName("PlanarMirror")
-        .WithTransform(glm::vec3(0.0f, 0.00f, -50.0f), glm::vec3(90.0f, 0.0f, 0.0f), glm::vec3(24.0f, 1.0f, 24.0f))
-        .WithMesh("planeModel", "deferred_reflect")
-        .WithPBRMaterial(0.0f, 0.04f, 1.0f)
-        .Build();
-    if (auto* mirrorRenderer = scene.registry.try_get<MeshRendererComponent>(planarMirror))
-    {
-        mirrorRenderer->color = glm::vec4(0.78f, 0.84f, 0.9f, 1.0f);
-        mirrorRenderer->receiveShadow = false;
-    }
-    auto& planar = scene.registry.emplace<PlanarReflectionComponent>(planarMirror);
-    planar.resolution = 1024;
-    planar.resolution_y = 1024;
-    planar.isDirty = true;
-    auto& planarReflective = scene.registry.emplace<ReflectiveComponent>(planarMirror);
-    planarReflective.reflectivity = 0.85f;
-    planarReflective.fresnelBias = 0.08f;
-    planarReflective.fresnelPower = 3.0f;
-    planarReflective.enabled = true;
-
-    auto wallRed = EntityBuilder(scene, res, "scenario")
-        .WithName("WallRed")
-        .WithTransform(glm::vec3(-20.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.65f, 1.0f)
-        .Build();
-    auto* rRed = scene.registry.try_get<MeshRendererComponent>(wallRed);
-    if (rRed) rRed->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
-
-    auto wallBlue = EntityBuilder(scene, res, "scenario")
-        .WithName("WallBlue")
-        .WithTransform(glm::vec3(20.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.65f, 1.0f)
-        .Build();
-    auto* rBlue = scene.registry.try_get<MeshRendererComponent>(wallBlue);
-    if (rBlue) rBlue->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);
-
-    // Separate probe entity from reflective sphere to avoid self-reference issues
-    auto probeEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("CenterProbe")
-        .WithTransform(glm::vec3(0.0f, 6.0f, 0.0f), glm::vec3(0.0f), glm::vec3(1.0f))
-        .Build();
-
-    auto& probeComp = scene.registry.emplace<ReflectionProbeComponent>(probeEntity);
-    probeComp.type = ReflectionProbeType::Dynamic;
-    probeComp.resolution = m_S20ProbeResolution;
-    probeComp.boxProjection = true;
-    probeComp.boxMin = glm::vec3(-24.0f, -6.0f, -24.0f);
-    probeComp.boxMax = glm::vec3(24.0f, 16.0f, 24.0f);
-    probeComp.blendDistance = 6.0f;
-    probeComp.isDirty = true;
-
-    auto sphere = EntityBuilder(scene, res, "scenario")
-        .WithName("ReflectiveSphere")
-        .WithTransform(glm::vec3(0.0f, 6.0f, 0.0f), glm::vec3(0.0f), glm::vec3(4.0f))
-        .WithMesh("sphereModel", "deferred_reflect")
-        .WithPBRMaterial(0.05f, 0.95f, 1.0f)
-        .Build();
-
-    auto& refComp = scene.registry.emplace<ReflectiveComponent>(sphere);
-    refComp.reflectivity = m_S20Reflectivity;
-    refComp.fresnelPower = m_S20FresnelPower;
-    refComp.fresnelBias = m_S20FresnelBias;
-    refComp.enabled = true;
-    refComp.targetProbe = "CenterProbe";
-}
-
-void SampleState::LoadScene21()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.4f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("TransparentGround")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(70.0f, 1.0f, 70.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.75f, 1.0f)
-        .Build();
-
-    auto mover = EntityBuilder(scene, res, "scenario")
-        .WithName("OpaqueMover")
-        .WithTransform(glm::vec3(0.0f, 2.0f, -1.5f), glm::vec3(0.0f), glm::vec3(2.5f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.35f, 1.0f)
-        .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(mover))
-        renderer->color = glm::vec4(1.0f, 0.72f, 0.1f, 1.0f);
-
-    for (int i = 0; i < 5; ++i)
-    {
-        float x = -12.0f + i * 6.0f;
-        auto glass = EntityBuilder(scene, res, "scenario")
-            .WithName("Glass_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, 4.0f, 0.0f), glm::vec3(0.0f, i * 14.0f, 0.0f), glm::vec3(3.0f, 7.0f, 0.35f))
-            .WithMesh("cubeModel", "forward_transparent")
-            .WithPBRMaterial(0.0f, m_S21GlassRoughness, 1.0f)
-            .Build();
-
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(glass))
-        {
-            renderer->renderMode = RenderMode::ForceForward;
-            renderer->color = glm::vec4(0.2f + 0.12f * i, 0.75f, 1.0f, 1.0f);
-            renderer->castShadow = false;
-        }
-        if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(glass))
-        {
-            mat->desc.opacity = m_S21GlassOpacity;
-            mat->desc.blendSrc = BlendFactor::SrcAlpha;
-            mat->desc.blendDst = BlendFactor::OneMinusSrcAlpha;
-            mat->gpu.dirty = true;
-        }
-    }
-}
-
-void SampleState::LoadScene22()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("WarmKeyLight")
-        .WithTransform(glm::vec3(-14.0f, 8.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.8f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.3f, 1.0f)
-        .WithPointLight(glm::vec3(1.0f, 0.72f, 0.45f), 18.0f, 35.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("PBRFloor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    for (int row = 0; row < 5; ++row)
-    {
-        for (int col = 0; col < 5; ++col)
-        {
-            float metallic = row / 4.0f;
-            float roughness = 0.05f + col * 0.225f;
-            auto sphere = EntityBuilder(scene, res, "scenario")
-                .WithName("PBR_" + std::to_string(row) + "_" + std::to_string(col))
-                .WithTransform(glm::vec3((col - 2) * 5.0f, 2.0f, (row - 2) * 5.0f), glm::vec3(0.0f), glm::vec3(2.0f))
-                .WithMesh("sphereModel", "deferred_lit")
-                .WithPBRMaterial(metallic, roughness, 1.0f)
-                .Build();
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(sphere))
-                renderer->color = glm::vec4(0.9f, 0.82f, 0.62f, 1.0f);
-        }
-    }
-}
-
-void SampleState::LoadScene23()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("LODDirLight")
-        .WithTransform(glm::vec3(20.0f, 35.0f, 25.0f), glm::vec3(-45.0f, -35.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.6f, -1.0f, -0.5f)), glm::vec3(1.0f), 1.4f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("LODFloor")
-        .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(90.0f, 1.0f, 120.0f))
-        .WithMesh("planeModel", "deferred_lit_shadow")
-        .WithPBRMaterial(0.0f, 0.85f, 1.0f)
-        .Build();
-
-    auto midModel = res.GetModel("cubeModel");
-    auto farModel = res.GetModel("capsuleModel");
-    for (int i = 0; i < 12; ++i)
-    {
-        float x = -22.0f + (i % 4) * 14.5f;
-        float z = 28.0f - (i / 4) * 28.0f;
-        auto entity = EntityBuilder(scene, res, "scenario")
-            .WithName("LOD_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, 3.0f, z), glm::vec3(0.0f, i * 15.0f, 0.0f), glm::vec3(2.8f))
-            .WithMesh("sphereModel", "deferred_lit_shadow")
-            .WithPBRMaterial(0.1f, 0.45f, 1.0f)
-            .Build();
-
-        auto& lod = scene.registry.emplace<LODComponent>(entity);
-        lod.lodDistancesSq = {900.0f, 2500.0f};
-        lod.lodModels = {midModel, farModel};
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
-            renderer->color = glm::vec4(0.25f + 0.05f * i, 0.8f, 0.4f, 1.0f);
-    }
-
-    // Solid reference entity (no LOD) so user can compare LOD swaps against a stable mesh
-    auto solidRef = EntityBuilder(scene, res, "scenario")
-        .WithName("LOD_SolidReference")
-        .WithTransform(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f), glm::vec3(3.5f))
-        .WithMesh("sphereModel", "deferred_lit_shadow")
-        .WithPBRMaterial(0.8f, 0.2f, 1.0f)
-        .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(solidRef))
-        renderer->color = glm::vec4(1.0f, 0.35f, 0.1f, 1.0f);
-}
-
-void SampleState::LoadScene24()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-    m_S24LayerMask = 0x7;
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("LayerDirLight")
-        .WithTransform(glm::vec3(20.0f, 35.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.6f, -1.0f, -0.6f)), glm::vec3(1.0f), 1.3f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("LayerFloor")
-        .WithLayer(0x1)
-        .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    for (int i = 0; i < 8; ++i)
-    {
-        auto cube = EntityBuilder(scene, res, "scenario")
-            .WithName("LayerRedCube_" + std::to_string(i))
-            .WithLayer(0x2)
-            .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, -8.0f), glm::vec3(0.0f, i * 20.0f, 0.0f), glm::vec3(2.0f))
-            .WithMesh("cubeModel", "deferred_lit")
-            .WithPBRMaterial(0.0f, 0.55f, 1.0f)
-            .Build();
-        scene.registry.get<MeshRendererComponent>(cube).color = glm::vec4(1.0f, 0.15f, 0.1f, 1.0f);
-
-        auto sphere = EntityBuilder(scene, res, "scenario")
-            .WithName("LayerBlueSphere_" + std::to_string(i))
-            .WithLayer(0x4)
-            .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, 8.0f), glm::vec3(0.0f), glm::vec3(2.0f))
-            .WithMesh("sphereModel", "deferred_lit")
-            .WithPBRMaterial(0.0f, 0.35f, 1.0f)
-            .Build();
-        scene.registry.get<MeshRendererComponent>(sphere).color = glm::vec4(0.1f, 0.35f, 1.0f, 1.0f);
-    }
-}
-
-void SampleState::LoadScene25()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-    m_S25ReverseOrder = false;
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("OrderLight")
-        .WithTransform(glm::vec3(0.0f, 18.0f, 18.0f), glm::vec3(-45.0f, 0.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(0.0f, -1.0f, -0.4f)), glm::vec3(1.0f), 1.1f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("OrderFloor")
-        .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    struct PanelDef
-    {
-        const char* name;
-        glm::vec3 pos;
-        glm::vec4 color;
-        int order;
-    };
-    PanelDef panels[] = {
-        {"Order_Red", glm::vec3(-1.6f, 5.0f, 0.0f), glm::vec4(1.0f, 0.1f, 0.1f, 0.55f), 10},
-        {"Order_Green", glm::vec3(0.0f, 5.0f, 0.0f), glm::vec4(0.1f, 1.0f, 0.25f, 0.55f), 20},
-        {"Order_Blue", glm::vec3(1.6f, 5.0f, 0.0f), glm::vec4(0.15f, 0.35f, 1.0f, 0.55f), 30},
-    };
-
-    for (const auto& panel : panels)
-    {
-        auto entity = EntityBuilder(scene, res, "scenario")
-            .WithName(panel.name)
-            .WithTransform(panel.pos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(5.0f, 7.0f, 0.25f))
-            .WithMesh("cubeModel", "forward_transparent")
-            .WithPBRMaterial(0.0f, 0.2f, 1.0f)
-            .Build();
-        auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
-        renderer.renderMode = RenderMode::ForceForward;
-        renderer.castShadow = false;
-        renderer.order = panel.order;
-        renderer.color = panel.color;
-
-        auto& mat = scene.registry.get<AxisMaterialComponent>(entity);
-        mat.desc.opacity = panel.color.a;
-        mat.desc.blendSrc = BlendFactor::SrcAlpha;
-        mat.desc.blendDst = BlendFactor::OneMinusSrcAlpha;
-        mat.gpu.dirty = true;
-    }
-
-    // struct SolidDef
-    // {
-    //     const char* name;
-    //     glm::vec3 pos;
-    //     glm::vec4 color;
-    //     int order;
-    // };
-    // SolidDef solids[] = {
-    //     {"Solid_Red",   glm::vec3(-2.0f, 3.0f, 10.0f), glm::vec4(1.0f, 0.15f, 0.15f, 1.0f), 1},
-    //     {"Solid_Green", glm::vec3(0.0f, 3.0f, 10.0f), glm::vec4(0.15f, 1.0f, 0.25f, 1.0f), 2},
-    //     {"Solid_Blue",  glm::vec3(2.0f, 3.0f, 10.0f), glm::vec4(0.15f, 0.35f, 1.0f, 1.0f), 3},
-    // };
-
-    // for (const auto& solid : solids)
-    // {
-    //     auto entity = EntityBuilder(scene, res, "scenario")
-    //         .WithName(solid.name)
-    //         .WithTransform(solid.pos, glm::vec3(0.0f), glm::vec3(4.0f, 4.0f, 4.0f))
-    //         .WithMesh("cubeModel", "deferred_lit")
-    //         .WithPBRMaterial(0.0f, 0.5f, 1.0f)
-    //         .Build();
-    //     auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
-    //     renderer.order = solid.order;
-    //     renderer.color = solid.color;
-    // }
-}
-
-void SampleState::LoadScene26()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("BatchLight")
-        .WithTransform(glm::vec3(25.0f, 45.0f, 25.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.6f, -1.0f, -0.6f)), glm::vec3(1.0f), 1.2f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("BatchFloor")
-        .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(180.0f, 1.0f, 180.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.85f, 1.0f)
-        .Build();
-
-    int side = static_cast<int>(std::ceil(std::sqrt(static_cast<float>(m_S26InstanceCount))));
-    float spacing = 2.7f;
-    float offset = -side * spacing * 0.5f;
-    for (int i = 0; i < m_S26InstanceCount; ++i)
-    {
-        int x = i % side;
-        int z = i / side;
-        auto entity = EntityBuilder(scene, res, "scenario")
-            .WithName("BatchCube_" + std::to_string(i))
-            .WithTransform(glm::vec3(offset + x * spacing, 1.3f, offset + z * spacing), glm::vec3(0.0f), glm::vec3(1.0f))
-            .WithMesh("cubeModel", "deferred_lit")
-            .WithPBRMaterial(0.05f, 0.55f, 1.0f)
-            .Build();
-
-        if (m_S26UniqueTint)
-        {
-            float hue = static_cast<float>(i % 97) / 97.0f;
-            scene.registry.get<MeshRendererComponent>(entity).color =
-                glm::vec4(0.35f + 0.55f * hue, 0.55f, 1.0f - 0.5f * hue, 1.0f);
-        }
-    }
-}
-
-void SampleState::LoadScene27()
-{
-    auto& scene = GetScene();
-    auto& res = Get<ResourceManager>();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("ShadowReceiverFloor")
-        .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(85.0f, 1.0f, 85.0f))
-        .WithMesh("planeModel", "deferred_lit_shadow")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
-        .Build();
-
-    auto casterA = EntityBuilder(scene, res, "scenario")
-        .WithName("ShadowCasterCube")
-        .WithTransform(glm::vec3(-6.0f, 5.0f, 0.0f), glm::vec3(0.0f, 25.0f, 0.0f), glm::vec3(4.0f, 8.0f, 4.0f))
-        .WithMesh("cubeModel", "deferred_lit_shadow")
-        .WithPBRMaterial(0.1f, 0.5f, 1.0f)
-        .Build();
-    {
-        auto& r = scene.registry.get<MeshRendererComponent>(casterA);
-        r.receiveShadow = false;
-        r.castShadow = true;
-    }
-
-    auto casterB = EntityBuilder(scene, res, "scenario")
-        .WithName("ShadowCasterSphere")
-        .WithTransform(glm::vec3(7.0f, 5.0f, -3.0f), glm::vec3(0.0f), glm::vec3(4.0f))
-        .WithMesh("sphereModel", "deferred_lit_shadow")
-        .WithPBRMaterial(0.0f, 0.35f, 1.0f)
-        .Build();
-    {
-        auto& r = scene.registry.get<MeshRendererComponent>(casterB);
-        r.receiveShadow = false;
-        r.castShadow = true;
-    }
-
-    auto light = EntityBuilder(scene, res, "scenario")
-        .WithName("DeferredShadowDirLight")
-        .WithTransform(glm::vec3(25.0f, 40.0f, 20.0f), glm::vec3(-50.0f, -40.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.55f, -1.0f, -0.35f)), glm::vec3(1.0f), 1.4f)
-        .Build();
-    if (auto* dir = scene.registry.try_get<DirectionalLightComponent>(light))
-        dir->isCastShadow = true;
 }

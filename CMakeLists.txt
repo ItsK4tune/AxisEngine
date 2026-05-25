@@ -155,9 +155,14 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
 )
 
 # ─── Benchmark Samples App ───
+file(GLOB SAMPLE_SCENARIO_SOURCES CONFIGURE_DEPENDS
+    sample/src/scenarios/*.cpp
+)
+
 set(SAMPLE_SOURCES
     sample/src/main.cpp
     sample/src/sample_state.cpp
+    ${SAMPLE_SCENARIO_SOURCES}
 )
 
 add_executable(axis_samples ${SAMPLE_SOURCES})

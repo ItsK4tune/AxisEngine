@@ -12,6 +12,8 @@ enum class PathfindingCriteria
     Shortest,
     Smoothest,
     StayOnRoad,
+    OnlyXZ,
+    OnlyY,
     Custom
 };
 

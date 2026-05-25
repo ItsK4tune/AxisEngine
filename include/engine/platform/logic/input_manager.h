@@ -35,6 +35,11 @@ public:
         return m_ActionMap;
     }
 
+    bool HasAction(const std::string& actionName) const
+    {
+        return m_ActionMap.find(actionName) != m_ActionMap.end();
+    }
+
 private:
     const KeyboardManager& m_Keyboard;
     const MouseManager& m_Mouse;

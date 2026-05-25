@@ -407,7 +407,13 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
     {
         auto* rs = sl.Resolve<IRenderService>();
         if (rs)
+        {
             rs->BuildRenderQueues(scene, alpha, width, height);
+            if (auto* shadowSys = sl.Resolve<IShadowService>(); shadowSys && shadowSys->IsEnabled())
+            {
+                shadowSys->PrepareShadowLights(scene);
+            }
+        }
     }
 
     // 3. Main Render Pass

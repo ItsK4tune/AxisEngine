@@ -25,6 +25,12 @@ void RenderQueue::Sort()
                   [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
     }
 
+    if (m_DepthOverlayQueue.size() > 1)
+    {
+        std::sort(m_DepthOverlayQueue.begin(), m_DepthOverlayQueue.end(),
+                  [](const RenderItem& lhs, const RenderItem& rhs) { return lhs.sortKey < rhs.sortKey; });
+    }
+
     if (m_TransparentQueue.size() > 1)
     {
         std::sort(m_TransparentQueue.begin(), m_TransparentQueue.end(),

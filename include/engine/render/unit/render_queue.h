@@ -20,6 +20,7 @@ public:
     {
         m_DeferredOpaqueQueue.reserve(16384);
         m_ForwardOpaqueQueue.reserve(2048);
+        m_DepthOverlayQueue.reserve(512);
         m_TransparentQueue.reserve(2048);
         m_ShadowQueue.reserve(16384);
         m_Lights.reserve(256);
@@ -29,6 +30,7 @@ public:
     {
         m_DeferredOpaqueQueue.clear();
         m_ForwardOpaqueQueue.clear();
+        m_DepthOverlayQueue.clear();
         m_TransparentQueue.clear();
         m_ShadowQueue.clear();
         m_Lights.clear();
@@ -40,6 +42,10 @@ public:
     void AddForwardOpaque(const RenderItem& item)
     {
         m_ForwardOpaqueQueue.push_back(item);
+    }
+    void AddDepthOverlay(const RenderItem& item)
+    {
+        m_DepthOverlayQueue.push_back(item);
     }
     void AddTransparent(const RenderItem& item)
     {
@@ -68,6 +74,10 @@ public:
     {
         return m_ForwardOpaqueQueue;
     }
+    const std::vector<RenderItem>& GetDepthOverlayQueue() const
+    {
+        return m_DepthOverlayQueue;
+    }
     const std::vector<RenderItem>& GetTransparentQueue() const
     {
         return m_TransparentQueue;
@@ -80,10 +90,15 @@ public:
     {
         return m_Lights;
     }
+    std::vector<RenderLight>& GetLights()
+    {
+        return m_Lights;
+    }
 
 private:
     std::vector<RenderItem> m_DeferredOpaqueQueue;
     std::vector<RenderItem> m_ForwardOpaqueQueue;
+    std::vector<RenderItem> m_DepthOverlayQueue;
     std::vector<RenderItem> m_TransparentQueue;
     std::vector<RenderItem> m_ShadowQueue;
     std::vector<RenderLight> m_Lights;

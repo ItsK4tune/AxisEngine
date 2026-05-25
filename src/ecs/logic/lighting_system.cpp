@@ -353,23 +353,13 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture15) + i));
         tm.BindTexture(TextureType::TextureCubeMap, 0);
     }
+    if (core)
+    {
+        core->GetMaterialRenderer().ResetTextureState();
+    }
 
     rsm.SetDepthMask(true);
     rsm.Enable(ServerCapability::DepthTest);
-
-    // Render Forward Opaque objects directly to Main FBO using blitted depth buffer
-    if (rs)
-    {
-        const auto& fwdOpaqueQueue = rs->GetRenderQueueObj().GetForwardOpaqueQueue();
-        if (!fwdOpaqueQueue.empty())
-        {
-            auto* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
-            if (core)
-            {
-                rs->ExecuteQueue(fwdOpaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
-            }
-        }
-    }
 }
 
 std::vector<entt::id_type> LightingSystem::GetReadComponents() const

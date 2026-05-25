@@ -25,16 +25,8 @@ void StatePanel::OnImGui(Scene& scene)
     if (currentState)
     {
         std::string rawName = typeid(*currentState).name();
-        if (rawName.find("MenuState") != std::string::npos)
-            stateName = "MenuState";
-        else if (rawName.find("AimGameState") != std::string::npos)
-            stateName = "AimGameState";
-        else if (rawName.find("SettingsState") != std::string::npos)
-            stateName = "SettingsState";
-        else if (rawName.find("PauseState") != std::string::npos)
-            stateName = "PauseState";
-        else if (rawName.find("ResultState") != std::string::npos)
-            stateName = "ResultState";
+        if (rawName.rfind("class ", 0) == 0)
+            stateName = rawName.substr(6);
         else
             stateName = rawName;
     }
@@ -206,35 +198,42 @@ void StatePanel::OnImGui(Scene& scene)
 
     ImGui::SetWindowFontScale(zoom);
 
-    // Transitions first (drawn behind nodes)
-    // 1. MenuState -> SettingsState
-    draw_arrow(ImVec2(140, 220), ImVec2(140, 120), "Settings");
-    // 2. SettingsState -> MenuState
-    draw_arrow(ImVec2(200, 120), ImVec2(200, 220), "Back / Esc");
-    // 3. MenuState -> Exit
-    draw_arrow(ImVec2(170, 280), ImVec2(170, 380), "Exit");
-    // 4. MenuState -> AimGameState
-    draw_arrow(ImVec2(240, 235), ImVec2(380, 235), "Start Mode");
-    // 5. AimGameState -> MenuState
-    draw_arrow(ImVec2(380, 265), ImVec2(240, 265), "F10");
-    // 6. AimGameState -> PauseState
-    draw_arrow(ImVec2(420, 220), ImVec2(420, 120), "P");
-    // 7. PauseState -> AimGameState
-    draw_arrow(ImVec2(480, 120), ImVec2(480, 220), "P");
-    // 8. AimGameState -> ResultState
-    draw_arrow(ImVec2(520, 235), ImVec2(660, 235), "Time Out");
-    // 9. ResultState -> AimGameState
-    draw_arrow(ImVec2(660, 265), ImVec2(520, 265), "Retry");
-    // 10. ResultState -> MenuState (curved arrow going underneath)
-    draw_arrow(ImVec2(730, 280), ImVec2(170, 280), "Menu / F10", true, ImVec2(450, 480));
+    auto activeStates = sm.GetStates();
+    if (activeStates.empty())
+    {
+        draw_node("No active states", ImVec2(380, 220), ImVec2(240, 60), false);
+    }
+    else
+    {
+        // Draw push transitions (arrows) first so they are behind nodes
+        for (size_t i = 0; i < activeStates.size() - 1; ++i)
+        {
+            ImVec2 start(100.0f + i * 260.0f + 180.0f, 250.0f);
+            ImVec2 end(100.0f + (i + 1) * 260.0f, 250.0f);
+            draw_arrow(start, end, "Push");
+        }
 
-    // Nodes
-    draw_node("MenuState", ImVec2(100, 220), ImVec2(140, 60), stateName == "MenuState");
-    draw_node("SettingsState", ImVec2(100, 60), ImVec2(140, 60), stateName == "SettingsState");
-    draw_node("Exit Game", ImVec2(100, 380), ImVec2(140, 60), false);
-    draw_node("AimGameState", ImVec2(380, 220), ImVec2(140, 60), stateName == "AimGameState");
-    draw_node("PauseState", ImVec2(380, 60), ImVec2(140, 60), stateName == "PauseState");
-    draw_node("ResultState", ImVec2(660, 220), ImVec2(140, 60), stateName == "ResultState");
+        // Draw active nodes
+        for (size_t i = 0; i < activeStates.size(); ++i)
+        {
+            State* s = activeStates[i];
+            std::string name = "UnknownState";
+            if (s)
+            {
+                std::string rawName = typeid(*s).name();
+                if (rawName.rfind("class ", 0) == 0)
+                {
+                    name = rawName.substr(6);
+                }
+                else
+                {
+                    name = rawName;
+                }
+            }
+            bool isActive = (i == activeStates.size() - 1);
+            draw_node(name, ImVec2(100.0f + i * 260.0f, 220.0f), ImVec2(180.0f, 60.0f), isActive);
+        }
+    }
 
     ImGui::SetWindowFontScale(1.0f);
     ImGui::EndChild();

@@ -43,6 +43,18 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader* sh
         hashCombine(hashFloat(value.y));
         hashCombine(hashFloat(value.z));
     };
+    int shadowMode = 0;
+    bool shadowsEnabled = false;
+    if (auto* shadowSys = ServiceLocator::Instance().Resolve<IShadowService>())
+    {
+        auto& renderer = shadowSys->GetRenderer();
+        shadowMode = renderer.GetShadowMode();
+        shadowsEnabled = renderer.IsShadowsEnabled();
+    }
+
+    hashCombine(std::hash<int>{}(shadowMode));
+    hashCombine(std::hash<bool>{}(shadowsEnabled));
+
     for (const auto& light : sceneData.lights)
     {
         hashCombine(std::hash<int>{}(static_cast<int>(light.type)));
@@ -69,41 +81,9 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader* sh
     m_PointLights.clear();
     m_SpotLights.clear();
 
-    int dirShadowCount = 0;
-    int pointShadowCount = 0;
-    int spotShadowCount = 0;
-    int shadowMode = 0;
-    if (auto* shadowSys = ServiceLocator::Instance().Resolve<IShadowService>())
-        shadowMode = shadowSys->GetRenderer().GetShadowMode();
-
     for (const auto& light : sceneData.lights)
     {
-        int shadowIdx = -1;
-        if (light.castShadows && shadowMode != 0)
-        {
-            if (light.type == RenderLightType::Directional)
-            {
-                if (shadowMode == 2)
-                {
-                    if (dirShadowCount < Shadow::MAX_DIR_LIGHTS_SHADOW)
-                        shadowIdx = dirShadowCount++;
-                }
-                else if (dirShadowCount == 0)
-                {
-                    shadowIdx = dirShadowCount++;
-                }
-            }
-            else if (light.type == RenderLightType::Point)
-            {
-                if (pointShadowCount < Shadow::MAX_POINT_LIGHTS_SHADOW)
-                    shadowIdx = pointShadowCount++;
-            }
-            else if (light.type == RenderLightType::Spot)
-            {
-                if (spotShadowCount < Shadow::MAX_SPOT_LIGHTS_SHADOW)
-                    shadowIdx = spotShadowCount++;
-            }
-        }
+        int shadowIdx = (light.castShadows && shadowsEnabled && shadowMode != 0) ? light.shadowMapIndex : -1;
 
         if (light.type == RenderLightType::Directional)
         {
@@ -154,7 +134,7 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader* sh
         data.numDirLights = (int)m_DirLights.size();
         data.nrPointLights = (int)m_PointLights.size();
         data.nrSpotLights = (int)m_SpotLights.size();
-        data.u_ReceiveShadow = sr.IsShadowsEnabled() ? 1 : 0;
+        data.u_ReceiveShadow = (sr.IsShadowsEnabled() && sr.GetShadowMode() != 0) ? 1 : 0;
         data.farPlanePoint = sr.GetFarPlanePoint();
         data.farPlaneSpot = sr.GetFarPlaneSpot();
         data.pad0 = 0.0f;

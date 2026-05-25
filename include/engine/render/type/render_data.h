@@ -39,6 +39,7 @@ struct RenderItem
     bool castShadow = true;
     bool receiveShadow = true;
     bool isTransparent = false;
+    bool ignoreDepth = false;
     RenderMode renderMode = RenderMode::Auto;
     uint64_t sortKey = 0;
     uint64_t materialBatchKey = 0;

@@ -90,7 +90,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float u_Roughness);
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
 float ShadowCalculationDir(vec4 fragPosLightSpace, int lightIdx);
 float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx);
-float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx);
+float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int lightIdx);
 
 void main()
 {
@@ -182,7 +182,7 @@ void main()
         int sIdx = int(spotLights[i].shadowIndex);
         if (light.u_ReceiveShadow != 0 && sIdx >= 0 && sIdx < 16) {
             vec4 fragPosLightSpace = light.lightSpaceMatricesSpot[sIdx] * vec4(FragPos, 1.0);
-            shadow = ShadowCalculationSpot(fragPosLightSpace, sIdx);
+            shadow = ShadowCalculationSpot(fragPosLightSpace, N, L, sIdx);
         }
 
         vec3 radiance = spotLights[i].color * spotLights[i].intensity * atten * spotIntensity;
@@ -253,8 +253,7 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
        vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
        vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
     );
-    float viewDistance = length(camera.viewPos.xyz - fragPos);
-    float diskRadius = (1.0 + (viewDistance / light.farPlanePoint)) / 25.0;
+    float diskRadius = (1.0 + (currentDepth / light.farPlanePoint)) / 25.0;
     for(int i = 0; i < samples; ++i) {
         float closestDepth = texture(u_ShadowMapPoint, vec4(fragToLight + sampleOffsetDirections[i] * diskRadius, lightIdx)).r;
         closestDepth *= light.farPlanePoint;
@@ -263,11 +262,13 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx) {
     return shadow / float(samples);
 }
 
-float ShadowCalculationSpot(vec4 fragPosLightSpace, int lightIdx) {
+float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int lightIdx) {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w * 0.5 + 0.5;
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
     if(projCoords.z > 1.0) return 0.0;
     float currentDepth = projCoords.z;
-    float bias = u_ShadowBias;
+    float ndotl = max(dot(normalize(normal), normalize(lightDir)), 0.0);
+    float bias = max(u_ShadowBias * 0.25 * (1.0 - ndotl), 0.00005);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(u_ShadowMapSpot, 0).xy;
     int pcfRange = u_ShadowSoftness;

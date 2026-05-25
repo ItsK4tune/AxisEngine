@@ -88,6 +88,9 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 follower.currentPathIndex = 0;
                 follower.pathPending = false;
                 follower.isMoving = !follower.currentPath.empty();
+                follower.debugTraveledPath.clear();
+                if (follower.recordDebugPath)
+                    follower.debugTraveledPath.push_back(pos.value);
 
                 if (follower.isMoving && follower.currentPath.size() > 2 && physics_ptr &&
                     follower.pathfindingOptions.criteria != PathfindingCriteria::StayOnRoad)
@@ -120,6 +123,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     }
                     follower.currentPath = smoothedPath;
                 }
+                follower.debugPlannedPath = follower.currentPath;
 
                 LOGGER_INFO("NavigationSystem") << "Pathfinding Result: " << (follower.isMoving ? "SUCCESS" : "FAILED")
                                                 << " PathSize=" << follower.currentPath.size();
@@ -138,9 +142,10 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
         if (follower.isMoving && !follower.currentPath.empty())
         {
+            const bool fly3D = follower.pathfindingOptions.criteria == PathfindingCriteria::OnlyY;
             glm::vec3 target = follower.currentPath[follower.currentPathIndex];
             glm::vec3 diff = target - pos.value;
-            float distance = glm::length(glm::vec3(diff.x, 0.0f, diff.z));
+            float distance = fly3D ? glm::length(diff) : glm::length(glm::vec3(diff.x, 0.0f, diff.z));
 
             if (distance < follower.arrivalDistance)
             {
@@ -153,12 +158,25 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
             }
             else
             {
-                glm::vec3 moveDir = glm::vec3(diff.x, 0.0f, diff.z);
+                glm::vec3 moveDir = fly3D ? diff : glm::vec3(diff.x, 0.0f, diff.z);
                 float moveDist = glm::length(moveDir);
                 if (moveDist > 0.001f)
                 {
                     moveDir /= moveDist;
-                    pos.value += moveDir * follower.moveSpeed * dt;
+                    glm::vec3 moveStep = moveDir * follower.moveSpeed * dt;
+                    if (follower.lockMoveX)
+                        moveStep.x = 0.0f;
+                    if (follower.lockMoveY)
+                        moveStep.y = 0.0f;
+                    if (follower.lockMoveZ)
+                        moveStep.z = 0.0f;
+                    pos.value += moveStep;
+                    if (follower.recordDebugPath &&
+                        (follower.debugTraveledPath.empty() ||
+                         glm::distance(follower.debugTraveledPath.back(), pos.value) > 0.35f))
+                    {
+                        follower.debugTraveledPath.push_back(pos.value);
+                    }
                     world.isDirty = true;
                 }
                 else
@@ -170,7 +188,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 if (glm::length(moveDir) > 0.001f)
                 {
                     glm::vec3 groundNormal(0, 1, 0);
-                    if (physics_ptr)
+                    if (physics_ptr && !fly3D)
                     {
                         auto groundHit = physics_ptr->Raycast(pos.value + glm::vec3(0, 100.0f, 0), glm::vec3(0, -1, 0),
                                                               200.0f, entity);
@@ -331,6 +349,8 @@ void NavigationSystem::StopMoving(Scene& scene, entt::entity entity)
         follower->isMoving = false;
         follower->pathPending = false;
         follower->currentPath.clear();
+        follower->debugPlannedPath.clear();
+        follower->debugTraveledPath.clear();
         follower->currentPathIndex = 0;
     }
 }
@@ -414,14 +434,25 @@ void NavigationSystem::Render(Scene& scene)
     for (auto entity : pathView)
     {
         auto& follower = pathView.get<PathFollowerComponent>(entity);
-        if (follower.isMoving && !follower.currentPath.empty())
+        const auto& plannedPath = !follower.debugPlannedPath.empty() ? follower.debugPlannedPath : follower.currentPath;
+        if (!plannedPath.empty())
         {
-            for (size_t i = 1; i < follower.currentPath.size(); ++i)
+            for (size_t i = 1; i < plannedPath.size(); ++i)
             {
-                glm::vec3 p0 = follower.currentPath[i - 1];
-                glm::vec3 p1 = follower.currentPath[i];
+                glm::vec3 p0 = plannedPath[i - 1] + glm::vec3(0.0f, 0.35f, 0.0f);
+                glm::vec3 p1 = plannedPath[i] + glm::vec3(0.0f, 0.35f, 0.0f);
 
-                physics_ptr->DrawLine(p0, p1, glm::vec3(0, 1, 0));
+                physics_ptr->DrawLine(p0, p1, glm::vec3(0.0f, 1.0f, 0.15f));
+            }
+        }
+
+        if (follower.debugTraveledPath.size() > 1)
+        {
+            for (size_t i = 1; i < follower.debugTraveledPath.size(); ++i)
+            {
+                glm::vec3 p0 = follower.debugTraveledPath[i - 1] + glm::vec3(0.0f, 0.65f, 0.0f);
+                glm::vec3 p1 = follower.debugTraveledPath[i] + glm::vec3(0.0f, 0.65f, 0.0f);
+                physics_ptr->DrawLine(p0, p1, glm::vec3(1.0f, 0.9f, 0.05f));
             }
         }
     }

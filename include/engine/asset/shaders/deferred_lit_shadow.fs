@@ -48,7 +48,7 @@ void main()
     roughness = clamp(roughness, 0.04, 1.0);
 
     gPosition = FragPos;
-    gNormal = vec4(normalize(Normal), 1.0);
+    gNormal = vec4(normalize(Normal), u_ReceiveShadowFlag);
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
     gAlbedoSpec.a = max(u_FresnelBias, 0.04);
     gEntityID = u_EntityID;

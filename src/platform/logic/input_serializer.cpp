@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <algorithm>
+#include <tuple>
 
 namespace
 {
@@ -15,6 +16,19 @@ std::string ToLower(const std::string& str)
     std::string lowerStr = str;
     std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
     return lowerStr;
+}
+
+void Trim(std::string& str)
+{
+    size_t start = str.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos)
+    {
+        str.clear();
+        return;
+    }
+
+    size_t end = str.find_last_not_of(" \t\r\n");
+    str = str.substr(start, end - start + 1);
 }
 }  // namespace
 
@@ -49,8 +63,6 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
         LOGGER_ERROR("InputSerializer") << "Invalid format in " << filepath << ": Missing axis_input/Bindings root.";
         return false;
     }
-
-    inputManager.FlushBindings();
 
     static std::unordered_map<std::string, Key> keyMap = {{"space", Key::Space},
                                                           {"w", Key::W},
@@ -132,6 +144,14 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
                                                                   {"buttonleftthumb", Gamepad::ButtonLeftThumb},
                                                                   {"buttonstart", Gamepad::ButtonStart}};
 
+    struct PendingBinding
+    {
+        std::string actionName;
+        InputType type;
+        int code;
+    };
+    std::vector<PendingBinding> pendingBindings;
+
     for (auto& actionNode : bindingsNode->children)
     {
         std::string actionName = actionNode.key;
@@ -141,6 +161,12 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
             std::string triggerKey = trigger.key;
             std::string triggerValue = trigger.value;
 
+            if (triggerKey.rfind("- ", 0) == 0)
+            {
+                triggerKey = triggerKey.substr(2);
+                Trim(triggerKey);
+            }
+
             if (triggerKey == "-")
             {
                 auto colonPos = triggerValue.find(':');
@@ -149,8 +175,8 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
                     triggerKey = triggerValue.substr(0, colonPos);
                     triggerValue = triggerValue.substr(colonPos + 1);
 
-                    triggerValue.erase(0, triggerValue.find_first_not_of(" \t\r\n"));
-                    triggerValue.erase(triggerValue.find_last_not_of(" \t\r\n") + 1);
+                    Trim(triggerKey);
+                    Trim(triggerValue);
                 }
             }
 
@@ -159,7 +185,7 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
                 std::string keyName = ToLower(triggerValue);
                 if (keyMap.count(keyName))
                 {
-                    inputManager.BindAction(actionName, InputType::Key, (int)keyMap[keyName]);
+                    pendingBindings.push_back({actionName, InputType::Key, (int)keyMap[keyName]});
                 }
                 else
                 {
@@ -171,7 +197,7 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
                 std::string btnName = ToLower(triggerValue);
                 if (mouseMap.count(btnName))
                 {
-                    inputManager.BindAction(actionName, InputType::MouseButton, (int)mouseMap[btnName]);
+                    pendingBindings.push_back({actionName, InputType::MouseButton, (int)mouseMap[btnName]});
                 }
                 else
                 {
@@ -183,7 +209,7 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
                 std::string padName = ToLower(triggerValue);
                 if (gamepadMap.count(padName))
                 {
-                    inputManager.BindAction(actionName, InputType::GamepadButton, (int)gamepadMap[padName]);
+                    pendingBindings.push_back({actionName, InputType::GamepadButton, (int)gamepadMap[padName]});
                 }
                 else
                 {
@@ -192,6 +218,18 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
                 }
             }
         }
+    }
+
+    if (pendingBindings.empty())
+    {
+        LOGGER_ERROR("InputSerializer") << "No valid input bindings found in " << filepath;
+        return false;
+    }
+
+    inputManager.FlushBindings();
+    for (const auto& binding : pendingBindings)
+    {
+        inputManager.BindAction(binding.actionName, binding.type, binding.code);
     }
 
     LOGGER_INFO("InputSerializer") << "Successfully loaded input bindings from " << filepath;

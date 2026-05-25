@@ -122,6 +122,14 @@ axis_scene:
       Vertex: include/engine/asset/shaders/fxaa.vs
       Fragment: include/engine/asset/shaders/film_grain.fs
     Shader:
+      Name: grayscale
+      Vertex: include/engine/asset/shaders/fxaa.vs
+      Fragment: include/engine/asset/shaders/grayscale.fs
+    Shader:
+      Name: dither
+      Vertex: include/engine/asset/shaders/fxaa.vs
+      Fragment: include/engine/asset/shaders/dither.fs
+    Shader:
       Name: error_forward
       Vertex: include/engine/asset/shaders/forward_unlit.vs
       Fragment: include/engine/asset/shaders/error_forward.fs

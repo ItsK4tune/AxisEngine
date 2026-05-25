@@ -462,6 +462,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "Order", std::to_string(mr->order));
         SerialWriteKV(f, ti, "CastShadow", mr->castShadow ? "true" : "false");
         SerialWriteKV(f, ti, "ReceiveShadow", mr->receiveShadow ? "true" : "false");
+        SerialWriteKV(f, ti, "IgnoreDepth", mr->ignoreDepth ? "true" : "false");
         SerialWriteKV(f, ti, "Color", Vec4Str(mr->color));
         SerialWriteKV(f, ti, "RenderMode", std::to_string((int)mr->renderMode));
     }

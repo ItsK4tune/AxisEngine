@@ -6,6 +6,8 @@ axis_input:
       - Key: left
     PlayerBackward:
       - Key: down
+    PlayerAction:
+      - Mouse: left
     PlayerRight:
       - Key: right
     PlayerJump:

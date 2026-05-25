@@ -252,6 +252,8 @@ private:
     std::shared_ptr<Shader> m_DeferredLitShader;
     std::shared_ptr<Shader> m_DeferredUnlitShader;
     std::shared_ptr<Shader> m_ForwardPBRLitShader;
+    std::shared_ptr<Shader> m_ForwardPBRLitShadowShader;
+    std::shared_ptr<Shader> m_DeferredLitShadowShader;
     std::shared_ptr<Shader> m_ErrorForwardShader;
     std::shared_ptr<Shader> m_ErrorDeferredShader;
 

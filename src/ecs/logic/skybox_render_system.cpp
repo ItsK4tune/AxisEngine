@@ -86,6 +86,7 @@ void SkyboxRenderSystem::RenderAlphaPassWithCamera(Scene& scene, const glm::mat4
 
     rsm.SetViewport(0, 0, width, height);
     rsm.SetDepthFunc(CompareFunc::Lequal);
+    rsm.SetDepthMask(false);
 
     auto activeSkybox = EntityManager::GetActiveSkybox(scene);
     if (activeSkybox != entt::null)
@@ -110,4 +111,5 @@ void SkyboxRenderSystem::RenderAlphaPassWithCamera(Scene& scene, const glm::mat4
     }
 
     rsm.SetDepthFunc(CompareFunc::Less);
+    rsm.SetDepthMask(true);
 }
