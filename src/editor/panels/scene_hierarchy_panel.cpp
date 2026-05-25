@@ -2,9 +2,12 @@
 #include <editor/editor_system.h>
 
 #ifdef ENABLE_EDITOR
+#include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
+#include <core/type/event_types.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/logic/entity_manager.h>
+#include <ecs/logic/transform_system.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
 #include <ecs/unit/light_components.h>
@@ -38,6 +41,26 @@
 
 namespace
 {
+void MarkTransformGraphDirty()
+{
+    if (auto* transformSystem = ServiceLocator::Instance().Resolve<TransformSystem>())
+        transformSystem->MarkTransformGraphDirty();
+}
+
+void EnsureTransformComponents(entt::registry& reg, entt::entity entity)
+{
+    if (!reg.try_get<PositionComponent>(entity))
+        reg.emplace<PositionComponent>(entity);
+    if (!reg.try_get<RotationComponent>(entity))
+        reg.emplace<RotationComponent>(entity);
+    if (!reg.try_get<ScaleComponent>(entity))
+        reg.emplace<ScaleComponent>(entity, glm::vec3(1.0f));
+
+    auto& world = reg.get_or_emplace<WorldTransformComponent>(entity);
+    world.isDirty = true;
+    MarkTransformGraphDirty();
+}
+
 std::string SerializeYAMLNode(const YAMLNode& n, int indent)
 {
     std::string res = std::string(indent * 2, ' ') + n.key;
@@ -53,14 +76,25 @@ std::string SerializeYAMLNode(const YAMLNode& n, int indent)
 }  // namespace
 
 entt::entity SceneHierarchyPanel::s_SelectedEntity = entt::null;
-bool SceneHierarchyPanel::s_FocusRequested = false;
-entt::entity SceneHierarchyPanel::s_FocusTargetEntity = entt::null;
+
+void SceneHierarchyPanel::SetSelectedEntity(entt::entity entity)
+{
+    s_SelectedEntity = entity;
+    EventManager::Instance().Publish(EntitySelectionChangedEvent{static_cast<uint32_t>(entity)});
+}
+
+void SceneHierarchyPanel::RequestFocus(entt::entity entity)
+{
+    EventManager::Instance().Publish(EntityFocusRequestedEvent{static_cast<uint32_t>(entity)});
+}
 
 void SceneHierarchyPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
 
     auto& registry = scene.registry;
+    if (s_SelectedEntity != entt::null && !registry.valid(s_SelectedEntity))
+        SetSelectedEntity(entt::null);
 
     // Group entities by sceneName
     std::unordered_map<std::string, std::vector<entt::entity>> sceneGroups;
@@ -114,8 +148,10 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
         {
             deletePressed = true;
             EditorSystem::PushUndoState(scene);
-            registry.destroy(s_SelectedEntity);
-            s_SelectedEntity = entt::null;
+            auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
+            EntityManager::DestroyEntityWithChildren(scene, s_SelectedEntity, sceneMgr);
+            SetSelectedEntity(entt::null);
+            MarkTransformGraphDirty();
         }
         if (!kb.GetKey(Key::Delete))
             deletePressed = false;
@@ -209,6 +245,9 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
 void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
 {
     auto& registry = scene.registry;
+    if (!registry.valid(entity))
+        return;
+
     uint32_t entityId = static_cast<uint32_t>(entity);
     std::string name = "Entity " + std::to_string(entityId);
 
@@ -249,13 +288,12 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
         ImGui::PopStyleColor();
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
     {
-        s_SelectedEntity = entity;
-        s_FocusRequested = true;
-        s_FocusTargetEntity = entity;
+        SetSelectedEntity(entity);
+        RequestFocus(entity);
     }
     if (ImGui::IsItemClicked())
     {
-        s_SelectedEntity = entity;
+        SetSelectedEntity(entity);
     }
 
     bool entityDeleted = false;
@@ -273,9 +311,11 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
 
     if (opened && hasChildren && children)
     {
-        for (auto child : *children)
+        auto childrenSnapshot = *children;
+        for (auto child : childrenSnapshot)
         {
-            DrawEntityNode(scene, child);
+            if (registry.valid(child))
+                DrawEntityNode(scene, child);
         }
         ImGui::TreePop();
     }
@@ -284,8 +324,10 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     {
         EditorSystem::PushUndoState(scene);
         if (s_SelectedEntity == entity)
-            s_SelectedEntity = entt::null;
-        registry.destroy(entity);
+            SetSelectedEntity(entt::null);
+        auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
+        EntityManager::DestroyEntityWithChildren(scene, entity, sceneMgr);
+        MarkTransformGraphDirty();
     }
 }
 
@@ -514,29 +556,43 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
                                          [&rm](const std::string& name) { return rm.GetShader(name); }))
         {
             mesh.shader = currentShader;
+            mesh.shaderName = currentShader ? currentShader->GetName() : "";
         }
 
         ImGui::DragInt("Render Order", &mesh.order, 1, 0, 255);
     });
 
     DrawComponent<DirectionalLightComponent>("Directional Light", reg, entity, [](auto& light) {
+        ImGui::Checkbox("Active", &light.active);
         ImGui::DragFloat3("Direction", &light.direction.x, 0.1f);
         ImGui::ColorEdit3("Color", &light.color.r);
         ImGui::DragFloat("Intensity", &light.intensity, 0.1f);
+        ImGui::DragFloat("Ambient", &light.ambient, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("Diffuse", &light.diffuse, 0.01f, 0.0f, 4.0f);
+        ImGui::DragFloat("Specular", &light.specular, 0.01f, 0.0f, 4.0f);
         ImGui::Checkbox("Cast Shadow", &light.isCastShadow);
     });
 
     DrawComponent<PointLightComponent>("Point Light", reg, entity, [](auto& light) {
+        ImGui::Checkbox("Active", &light.active);
         ImGui::ColorEdit3("Color", &light.color.r);
         ImGui::DragFloat("Intensity", &light.intensity, 0.1f);
         ImGui::DragFloat("Radius", &light.radius, 0.5f);
+        ImGui::DragFloat("Ambient", &light.ambient, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("Diffuse", &light.diffuse, 0.01f, 0.0f, 4.0f);
+        ImGui::DragFloat("Specular", &light.specular, 0.01f, 0.0f, 4.0f);
         ImGui::Checkbox("Cast Shadow", &light.isCastShadow);
     });
 
     DrawComponent<SpotLightComponent>("Spot Light", reg, entity, [](auto& light) {
+        ImGui::Checkbox("Active", &light.active);
         ImGui::DragFloat3("Direction", &light.direction.x, 0.1f);
         ImGui::ColorEdit3("Color", &light.color.r);
         ImGui::DragFloat("Intensity", &light.intensity, 0.1f);
+        ImGui::DragFloat("Radius", &light.radius, 0.5f);
+        ImGui::DragFloat("Ambient", &light.ambient, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("Diffuse", &light.diffuse, 0.01f, 0.0f, 4.0f);
+        ImGui::DragFloat("Specular", &light.specular, 0.01f, 0.0f, 4.0f);
         ImGui::Checkbox("Cast Shadow", &light.isCastShadow);
     });
 
@@ -1479,10 +1535,16 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     }
     if (ImGui::BeginPopup("AddComponentPopup"))
     {
+        if (!reg.try_get<PositionComponent>(entity) && ImGui::Selectable("Transform"))
+            EnsureTransformComponents(reg, entity);
         if (!reg.try_get<CameraComponent>(entity) && ImGui::Selectable("Camera"))
             reg.emplace<CameraComponent>(entity);
         if (!reg.try_get<MeshRendererComponent>(entity) && ImGui::Selectable("Mesh Renderer"))
+        {
+            EnsureTransformComponents(reg, entity);
             reg.emplace<MeshRendererComponent>(entity);
+            (void)reg.get_or_emplace<AxisMaterialComponent>(entity);
+        }
         if (!reg.try_get<AxisMaterialComponent>(entity) && ImGui::Selectable("Material"))
             reg.emplace<AxisMaterialComponent>(entity);
         if (!reg.try_get<DirectionalLightComponent>(entity) && ImGui::Selectable("Directional Light"))
@@ -1543,7 +1605,8 @@ void SceneHierarchyPanel::CreateNewEntity(Scene& scene, const std::string& scene
     // Assign to correct scene
     scene.registry.get<InfoComponent>(entity).sceneName = targetScene;
     sm.AddEntity(entity, targetScene);
-    s_SelectedEntity = entity;
+    MarkTransformGraphDirty();
+    SetSelectedEntity(entity);
 }
 
 void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
@@ -1569,6 +1632,8 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
     COPY_COMP(RotationComponent);
     COPY_COMP(ScaleComponent);
     COPY_COMP(WorldTransformComponent);
+    if (auto* world = reg.try_get<WorldTransformComponent>(newEntity))
+        world->isDirty = true;
     COPY_COMP(MeshRendererComponent);
     COPY_COMP(AxisMaterialComponent);
     COPY_COMP(DirectionalLightComponent);
@@ -1623,7 +1688,22 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
         }
     }
 
-    s_SelectedEntity = newEntity;
+    auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
+    if (sceneMgr)
+    {
+        std::string sceneName = sceneMgr->GetActiveScene();
+        if (auto* info = reg.try_get<InfoComponent>(newEntity))
+        {
+            if (!info->sceneName.empty())
+                sceneName = info->sceneName;
+        }
+        if (sceneName.empty())
+            sceneName = "main";
+        sceneMgr->AddEntity(newEntity, sceneName);
+    }
+
+    SetSelectedEntity(newEntity);
+    MarkTransformGraphDirty();
 }
 
 #endif

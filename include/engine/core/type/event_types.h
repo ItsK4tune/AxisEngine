@@ -2,6 +2,7 @@
 
 #include <core/logic/logger_types.h>
 #include <core/type/app_config.h>
+#include <cstdint>
 #include <string>
 
 struct InputActionPressedEvent
@@ -112,6 +113,16 @@ struct WindowResizedEvent
 struct WindowFocusEvent
 {
     bool focused;
+};
+
+struct EntitySelectionChangedEvent
+{
+    uint32_t entity = 0;
+};
+
+struct EntityFocusRequestedEvent
+{
+    uint32_t entity = 0;
 };
 
 struct RenderFrameBeginEvent

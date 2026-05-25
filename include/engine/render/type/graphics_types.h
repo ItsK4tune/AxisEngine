@@ -497,7 +497,7 @@ struct GPUSpotLight
     float constant;
     float linear;
     float quadratic;
-    float pad2;
+    float radius;
     float pad3;
     float pad4;
     glm::vec3 ambient;

@@ -35,6 +35,7 @@ struct SpotLightComponent
 {
     glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
     glm::vec3 color = glm::vec3(1.0f);
+    float radius = 50.0f;
     float intensity = 1.0f;
     float constant = 1.0f;
     float linear = 0.09f;

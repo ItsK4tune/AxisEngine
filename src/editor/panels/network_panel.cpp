@@ -187,7 +187,7 @@ void NetworkPanel::OnImGui(Scene& scene)
                     sprintf_s(label, "%u", netComp.networkId);
                     if (ImGui::Selectable(label, isSelected, ImGuiSelectableFlags_SpanAllColumns))
                     {
-                        SceneHierarchyPanel::s_SelectedEntity = entity;
+                        SceneHierarchyPanel::SetSelectedEntity(entity);
                     }
 
                     ImGui::TableSetColumnIndex(1);

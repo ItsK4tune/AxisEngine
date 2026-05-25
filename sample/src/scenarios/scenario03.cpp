@@ -13,9 +13,9 @@ void SampleState::LoadScene3()
         .Build();
 
     EntityBuilder(scene, res, "scenario")
-        .WithName("Cylinder")
+        .WithName("LightingProbeCapsule")
         .WithTransform(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(5.0f, 10.0f, 5.0f))
-        .WithMesh("cylinderModel", "deferred_lit")
+        .WithMesh("capsuleSmoothModel", "deferred_lit")
         .WithPBRMaterial(0.2f, 0.4f, 1.0f)
         .Build();
 

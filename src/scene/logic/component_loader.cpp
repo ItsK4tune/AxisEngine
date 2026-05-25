@@ -505,7 +505,7 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAM
 {
     LoaderUtils::ValidateKeys(node,
                               {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant",
-                               "Linear", "Quadratic", "Ambient", "Diffuse", "Specular"},
+                               "Linear", "Quadratic", "Radius", "Ambient", "Diffuse", "Specular"},
                               "LightSpot");
 
     auto& l = scene.registry.emplace<SpotLightComponent>(entity);
@@ -521,6 +521,9 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAM
     l.intensity = std::stof(node.GetChildValue("Intensity", "1.0"));
     if (l.intensity < 0.0f)
         LOGGER_WARN("ComponentLoader") << "LightSpot Intensity should not be negative: " << l.intensity;
+    l.radius = std::stof(node.GetChildValue("Radius", "50.0"));
+    if (l.radius <= 0.0f)
+        LOGGER_WARN("ComponentLoader") << "LightSpot Radius should be positive: " << l.radius;
 
     float cutOffAng = std::stof(node.GetChildValue("CutOff", "12.5"));
     float outerCutOffAng = std::stof(node.GetChildValue("OuterCutOff", "17.5"));

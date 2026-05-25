@@ -11,8 +11,9 @@ class SceneHierarchyPanel : public IEditorPanel
 {
 public:
     static entt::entity s_SelectedEntity;
-    static bool s_FocusRequested;
-    static entt::entity s_FocusTargetEntity;
+
+    static void SetSelectedEntity(entt::entity entity);
+    static void RequestFocus(entt::entity entity);
 
     void Initialize() override
     {

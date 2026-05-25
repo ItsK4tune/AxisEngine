@@ -904,7 +904,7 @@ void EditorSystem::PerformUndo(Scene& scene)
         std::error_code ec;
         std::filesystem::remove(tempRestoreFile, ec);
 
-        SceneHierarchyPanel::s_SelectedEntity = entt::null;
+        SceneHierarchyPanel::SetSelectedEntity(entt::null);
     }
 }
 #endif

@@ -5,10 +5,7 @@
 #include <platform/logic/keyboard_manager.h>
 #include <platform/logic/monitor_manager.h>
 #include <platform/logic/mouse_manager.h>
-#include <functional>
 #include <memory>
-
-class IGraphicsContext;
 
 class IOHandler
 {

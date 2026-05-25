@@ -2,6 +2,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 
@@ -43,6 +44,51 @@ void SetVertexBoneData(SkinnedVertex& Vertex, int boneID, float weight)
     }
 }
 
+Texture CreateFallbackTexture(const std::string& type, const std::string& path, const unsigned char rgba[4],
+                              bool deferred)
+{
+    Texture texture;
+    texture.type = type;
+    texture.path = path;
+    texture.width = 1;
+    texture.height = 1;
+    texture.nrComponents = 4;
+
+    if (deferred)
+    {
+        texture.pixelData = static_cast<unsigned char*>(std::malloc(4));
+        if (texture.pixelData)
+            std::memcpy(texture.pixelData, rgba, 4);
+        return texture;
+    }
+
+    auto& tm = Mesh::GetTextureManager();
+    texture.id = tm.GenTexture();
+    tm.BindTexture(TextureType::Texture2D, texture.id);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
+                  DataType::UnsignedByte, rgba);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::Repeat));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::Repeat));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Nearest));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Nearest));
+    return texture;
+}
+
+Texture GetOrCreateFallbackTexture(std::vector<Texture>& textures_loaded, const std::string& type,
+                                   const std::string& path, const unsigned char rgba[4], bool deferred)
+{
+    for (const auto& loaded : textures_loaded)
+    {
+        if (loaded.type == type && loaded.path == path)
+            return loaded;
+    }
+
+    Texture texture = CreateFallbackTexture(type, path, rgba, deferred);
+    if (texture.id != 0 || texture.pixelData)
+        textures_loaded.push_back(texture);
+    return texture;
+}
+
 unsigned int TextureFromFile(const char* path, const std::string& directory, const aiScene* scene, bool deferred,
                              Texture* outTex = nullptr)
 {
@@ -63,7 +109,7 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     bool shouldFree = true;
     const aiTexture* aiTex = nullptr;
 
-    if (filename[0] == '*')
+    if (!filename.empty() && filename[0] == '*')
     {
         try
         {
@@ -236,9 +282,9 @@ void ExtractBoneWeightForVertices(std::vector<SkinnedVertex>& vertices, aiMesh* 
         int numWeights = mesh->mBones[boneIndex]->mNumWeights;
         for (int weightIndex = 0; weightIndex < numWeights; ++weightIndex)
         {
-            int vertexId = weights[weightIndex].mVertexId;
+            const unsigned int vertexId = weights[weightIndex].mVertexId;
             float weight = weights[weightIndex].mWeight;
-            if (vertexId < (int)vertices.size())
+            if (vertexId < vertices.size())
                 SetVertexBoneData(vertices[vertexId], boneID, weight);
         }
     }
@@ -319,71 +365,18 @@ Mesh processMesh(aiMesh* mesh, const aiScene* scene, std::vector<Texture>& textu
                 if (aiGetMaterialColor(material, AI_MATKEY_BASE_COLOR, &color) == AI_SUCCESS ||
                     aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS)
                 {
-                    unsigned char* data = (unsigned char*)malloc(4);
-                    data[0] = (unsigned char)(color.r * 255.0f);
-                    data[1] = (unsigned char)(color.g * 255.0f);
-                    data[2] = (unsigned char)(color.b * 255.0f);
-                    data[3] = (unsigned char)(color.a * 255.0f);
-
-                    Texture Texture;
-                    Texture.pixelData = data;
-                    Texture.width = 1;
-                    Texture.height = 1;
-                    Texture.nrComponents = 4;
-                    Texture.type = "texture_diffuse";
-                    Texture.path = "INTERNAL_COLOR_FALLBACK_" + std::to_string(mesh->mMaterialIndex);
-
-                    if (!deferred)
-                    {
-                        auto& tm = Mesh::GetTextureManager();
-                        Texture.id = tm.GenTexture();
-                        tm.BindTexture(TextureType::Texture2D, Texture.id);
-                        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
-                                      DataType::UnsignedByte, data);
-                        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS,
-                                         static_cast<int>(TextureWrap::Repeat));
-                        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT,
-                                         static_cast<int>(TextureWrap::Repeat));
-                        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
-                                         static_cast<int>(TextureFilter::Nearest));
-                        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
-                                         static_cast<int>(TextureFilter::Nearest));
-                        free(data);
-                        Texture.pixelData = nullptr;
-                    }
-                    diffuseMaps.push_back(Texture);
+                    const unsigned char rgba[4] = {
+                        static_cast<unsigned char>(color.r * 255.0f), static_cast<unsigned char>(color.g * 255.0f),
+                        static_cast<unsigned char>(color.b * 255.0f), static_cast<unsigned char>(color.a * 255.0f)};
+                    diffuseMaps.push_back(GetOrCreateFallbackTexture(
+                        textures_loaded, "texture_diffuse",
+                        "INTERNAL_COLOR_FALLBACK_" + std::to_string(mesh->mMaterialIndex), rgba, deferred));
                 }
                 else
                 {
-                    unsigned char* data = (unsigned char*)malloc(4);
-                    data[0] = 255;
-                    data[1] = 0;
-                    data[2] = 255;
-                    data[3] = 255;
-
-                    Texture Texture;
-                    Texture.pixelData = data;
-                    Texture.width = 1;
-                    Texture.height = 1;
-                    Texture.nrComponents = 4;
-                    Texture.type = "texture_diffuse";
-                    Texture.path = "INTERNAL_MAGENTA_FALLBACK";
-
-                    if (!deferred)
-                    {
-                        auto& tm = Mesh::GetTextureManager();
-                        Texture.id = tm.GenTexture();
-                        tm.BindTexture(TextureType::Texture2D, Texture.id);
-                        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
-                                      DataType::UnsignedByte, data);
-                        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
-                                         static_cast<int>(TextureFilter::Nearest));
-                        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
-                                         static_cast<int>(TextureFilter::Nearest));
-                        free(data);
-                        Texture.pixelData = nullptr;
-                    }
-                    diffuseMaps.push_back(Texture);
+                    const unsigned char rgba[4] = {255, 0, 255, 255};
+                    diffuseMaps.push_back(GetOrCreateFallbackTexture(textures_loaded, "texture_diffuse",
+                                                                     "INTERNAL_MAGENTA_FALLBACK", rgba, deferred));
                 }
             }
         }
@@ -393,21 +386,9 @@ Mesh processMesh(aiMesh* mesh, const aiScene* scene, std::vector<Texture>& textu
                                                                  "texture_specular", directory, scene, deferred);
         if (specularMaps.empty())
         {
-            unsigned char data[4] = {255, 0, 255, 255};
-            auto& tm = Mesh::GetTextureManager();
-            unsigned int textureID = tm.GenTexture();
-            tm.BindTexture(TextureType::Texture2D, textureID);
-            tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, 1, 1, 0, TextureFormat::RGBA,
-                          DataType::UnsignedByte, data);
-            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
-                             static_cast<int>(TextureFilter::Nearest));
-            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
-                             static_cast<int>(TextureFilter::Nearest));
-            Texture Texture;
-            Texture.id = textureID;
-            Texture.type = "texture_specular";
-            Texture.path = "INTERNAL_SPECULAR_FALLBACK";
-            specularMaps.push_back(Texture);
+            const unsigned char rgba[4] = {255, 0, 255, 255};
+            specularMaps.push_back(GetOrCreateFallbackTexture(textures_loaded, "texture_specular",
+                                                              "INTERNAL_SPECULAR_FALLBACK", rgba, deferred));
         }
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
@@ -537,7 +518,9 @@ void Model::loadModel(std::string const& path, bool isStatic)
     m_IsStatic = isStatic;
     Assimp::Importer importer;
 
-    unsigned int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs;
+    unsigned int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FixInfacingNormals |
+                         aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality | aiProcess_OptimizeMeshes |
+                         aiProcess_RemoveRedundantMaterials | aiProcess_FindInvalidData | aiProcess_FlipUVs;
 
     if (m_IsStatic)
         flags |= aiProcess_PreTransformVertices;
@@ -601,6 +584,7 @@ void Model::UploadToGPU()
                     if (loadedTex.path == meshTex.path)
                     {
                         meshTex.id = loadedTex.id;
+                        meshTex.pixelData = nullptr;
                         break;
                     }
                 }

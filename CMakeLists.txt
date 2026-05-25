@@ -94,6 +94,7 @@ target_link_libraries(axis_engine PUBLIC
     irrKlang
     ${FFMPEG_LIBRARIES}
     ${ENET_LIBRARIES}
+    dbghelp
     winmm
     ws2_32
 )
@@ -189,6 +190,9 @@ endif()
 
 if(MSVC)
     target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_engine")
+    if(ENABLE_EDITOR)
+        target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_editor")
+    endif()
 endif()
 
 # Copy DLLs post-build

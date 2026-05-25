@@ -62,6 +62,7 @@ private:
     void ClearDebugLabels(Scene& scene);
     void UpdateLightLabels(Scene& scene);
     void ClearLightLabels(Scene& scene);
+    void ClearSceneLabels();
 
     void ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState, std::function<void()> action);
 
@@ -82,6 +83,7 @@ private:
 
     unsigned int m_LineVAO = 0;
     unsigned int m_LineVBO = 0;
+    int m_SceneUnloadedSubId = -1;
     std::vector<DebugLineVertex> m_GizmoLines;
 };
 

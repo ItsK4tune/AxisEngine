@@ -5,6 +5,7 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
+#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <physics/interface/i_physics_world.h>
 #include <resource/logic/resource_manager.h>
@@ -413,14 +414,16 @@ void SceneManager::Internal_UnloadRecord(SceneRecord& rec)
 void SceneManager::Internal_DestroySceneEntities(SceneRecord& rec)
 {
     auto& scene = ServiceLocator::Instance().Require<Scene>();
-    for (auto entity : rec.entities)
+    std::vector<entt::entity> entities;
+    entities.swap(rec.entities);
+
+    for (auto entity : entities)
     {
         if (scene.registry.valid(entity))
         {
-            scene.registry.destroy(entity);
+            EntityManager::DestroyEntity(scene, entity, this);
         }
     }
-    rec.entities.clear();
 }
 
 void SceneManager::Internal_UnloadOrphanedResources(const SceneRecord& rec)

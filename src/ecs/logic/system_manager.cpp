@@ -2,7 +2,6 @@
 #include <audio/interface/i_audio_engine.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
-#include <core/logic/job_system.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
@@ -10,6 +9,7 @@
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_lighting_service.h>
+#include <ecs/interface/i_parallel_update_system.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <ecs/interface/i_skybox_service.h>
@@ -240,31 +240,59 @@ void SystemManager::Update(Scene& scene, float dt)
         }
     }
 
-    // 2. Batched Parallel Update (Priority 30-79)
+    // 2. Mid update. Only snapshot-aware systems can leave the main thread.
     for (auto& batch : m_UpdateBatches)
     {
         if (batch.systems.empty())
             continue;
 
-        if (batch.systems.size() == 1)
-        {
-            if (batch.systems[0]->IsEnabled())
+        std::vector<IParallelUpdateSystem*> parallelSystems;
+        std::vector<FrameSnapshot> snapshots;
+        std::vector<ECSCommandBuffer> commandBuffers;
+
+        auto flushParallel = [&]() {
+            if (parallelSystems.empty())
+                return;
+
+            snapshots.resize(parallelSystems.size());
+            commandBuffers.resize(parallelSystems.size());
+
+            for (size_t i = 0; i < parallelSystems.size(); ++i)
             {
-                batch.systems[0]->Update(scene, dt);
+                parallelSystems[i]->CaptureSnapshot(scene, snapshots[i]);
             }
-        }
-        else
-        {
-            JobSystem::JobCounter counter{0};
-            for (auto* sys : batch.systems)
+
+            for (size_t i = 0; i < parallelSystems.size(); ++i)
             {
-                if (sys->IsEnabled())
-                {
-                    JobSystem::Instance().Execute([sys, &scene, dt]() { sys->Update(scene, dt); }, &counter);
-                }
+                parallelSystems[i]->UpdateParallel(snapshots[i], commandBuffers[i], dt);
             }
-            JobSystem::Instance().Wait(&counter);
+
+            for (auto& commandBuffer : commandBuffers)
+            {
+                commandBuffer.Apply(scene);
+            }
+
+            parallelSystems.clear();
+            snapshots.clear();
+            commandBuffers.clear();
+        };
+
+        for (auto* sys : batch.systems)
+        {
+            if (!sys->IsEnabled())
+                continue;
+
+            if (auto* parallelSys = dynamic_cast<IParallelUpdateSystem*>(sys))
+            {
+                parallelSystems.push_back(parallelSys);
+                continue;
+            }
+
+            flushParallel();
+            sys->Update(scene, dt);
         }
+
+        flushParallel();
     }
 
     // 3. Late Update (Priority >= 80)

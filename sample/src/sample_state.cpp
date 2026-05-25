@@ -12,7 +12,10 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/reflection_components.h>
 #include <scene/logic/scene_serializer.h>
+#ifdef ENABLE_EDITOR
+#include <editor/editor_system.h>
 #include <imgui.h>
+#endif
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -71,8 +74,8 @@ PerfStats QueryPerfStats()
         const auto sysDelta = (kernel.QuadPart - prevKernel.QuadPart) + (user.QuadPart - prevUser.QuadPart);
         const auto idleDelta = idle.QuadPart - prevIdle.QuadPart;
         if (prevKernel.QuadPart != 0 && sysDelta > 0)
-            stats.cpu = glm::clamp((1.0f - static_cast<float>(idleDelta) / static_cast<float>(sysDelta)) * 100.0f,
-                                   0.0f, 100.0f);
+            stats.cpu = glm::clamp((1.0f - static_cast<float>(idleDelta) / static_cast<float>(sysDelta)) * 100.0f, 0.0f,
+                                   100.0f);
         prevIdle = idle;
         prevKernel = kernel;
         prevUser = user;
@@ -230,16 +233,23 @@ Scenario10ShapeSpec GetScenario10ShapeSpec(int shapeIndex, bool payload)
 {
     switch (shapeIndex)
     {
-    case 1:
-        return {"sphereModel", ShapeType::Sphere, payload ? glm::vec3(2.0f) : glm::vec3(0.95f), glm::vec3(1.0f),
-                payload ? 1.0f : 0.48f, payload ? 1.0f : 0.8f};
-    case 2:
-        return {"capsuleModel", ShapeType::Capsule, payload ? glm::vec3(1.5f, 2.2f, 1.5f) : glm::vec3(0.7f, 1.25f, 0.7f),
-                glm::vec3(0.8f, 1.0f, 0.8f), payload ? 0.75f : 0.35f, payload ? 1.4f : 0.9f};
-    default:
-        return {"cubeModel", ShapeType::Box, payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f),
-                payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f), payload ? 1.0f : 0.5f,
-                payload ? 1.0f : 0.8f};
+        case 1:
+            return {"sphereModel",   ShapeType::Sphere,      payload ? glm::vec3(2.0f) : glm::vec3(0.95f),
+                    glm::vec3(1.0f), payload ? 1.0f : 0.48f, payload ? 1.0f : 0.8f};
+        case 2:
+            return {"capsuleModel",
+                    ShapeType::Capsule,
+                    payload ? glm::vec3(1.5f, 2.2f, 1.5f) : glm::vec3(0.7f, 1.25f, 0.7f),
+                    glm::vec3(0.8f, 1.0f, 0.8f),
+                    payload ? 0.75f : 0.35f,
+                    payload ? 1.4f : 0.9f};
+        default:
+            return {"cubeModel",
+                    ShapeType::Box,
+                    payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f),
+                    payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f),
+                    payload ? 1.0f : 0.5f,
+                    payload ? 1.0f : 0.8f};
     }
 }
 
@@ -251,8 +261,8 @@ void ApplyShapeSpec(RigidShapeComponent& shape, const Scenario10ShapeSpec& spec)
     shape.height = spec.height;
 }
 
-void StopScenario17AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_ptr<ISound>& audio3D,
-                                bool& play2D, bool& play3D)
+void StopScenario17AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_ptr<ISound>& audio3D, bool& play2D,
+                                bool& play3D)
 {
     if (audio2D)
     {
@@ -267,7 +277,7 @@ void StopScenario17AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_pt
     play2D = false;
     play3D = false;
 }
-}
+}  // namespace
 
 void SampleState::OnEnter()
 {
@@ -288,10 +298,9 @@ void SampleState::OnEnter()
 
     SetCursorMode(CursorMode::Normal);
 
-    // Disable Default Editor panels so we can draw our clean benchmark UI
+#ifdef ENABLE_EDITOR
     EnableSystem("EditorSystem", false);
 
-    // Retrieve EditorSystem's ImGuiLayer
     auto* sysMgr = Resolve<SystemManager>();
     if (sysMgr)
     {
@@ -301,6 +310,7 @@ void SampleState::OnEnter()
             m_EditorImGuiLayer = &editorSys->GetImGuiLayer();
         }
     }
+#endif
 
     // Register actions for Scenario 8 input handling
     ResetDefaultPlayerBindings();
@@ -445,11 +455,20 @@ void SampleState::OnUpdate(float dt)
                             std::string shader = "grayscale";
                             switch (m_PPPartialEffectType)
                             {
-                            case 0: shader = "grayscale"; break;
-                            case 1: shader = "dither"; break;
-                            case 2: shader = "glitch"; break;
-                            case 3: shader = "vignette"; break;
-                            default: break;
+                                case 0:
+                                    shader = "grayscale";
+                                    break;
+                                case 1:
+                                    shader = "dither";
+                                    break;
+                                case 2:
+                                    shader = "glitch";
+                                    break;
+                                case 3:
+                                    shader = "vignette";
+                                    break;
+                                default:
+                                    break;
                             }
                             pp.effects.push_back({shader, 140, m_PPPartialX, m_PPPartialY, w, h, true, false});
                         }
@@ -469,7 +488,11 @@ void SampleState::OnUpdate(float dt)
             const auto& mouse = io->GetMouse();
             const bool mouseDown = GetAction("PlayerAction");
             const bool mousePressed = GetActionDown("PlayerAction");
+#ifdef ENABLE_EDITOR
             const bool mouseCaptured = ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse;
+#else
+            const bool mouseCaptured = false;
+#endif
             auto& scene = GetScene();
 
             if (m_S8Dragging && (!mouseDown || mouseCaptured || !scene.registry.valid(m_S8GrabbedEntity)))
@@ -528,7 +551,8 @@ void SampleState::OnUpdate(float dt)
                             if (rb && rb->body)
                             {
                                 rb->body->Activate(true);
-                                rb->body->SetWorldTransform(pos->value, rot ? rot->value : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                                rb->body->SetWorldTransform(pos->value,
+                                                            rot ? rot->value : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
                                 rb->body->SetLinearVelocity(glm::vec3(0.0f));
                                 rb->body->SetAngularVelocity(glm::vec3(0.0f));
                             }
@@ -605,11 +629,13 @@ void SampleState::OnUpdate(float dt)
             auto& pos = view.get<PositionComponent>(entity);
             float a = m_S2MotionTime * m_S2PointMotionSpeed;
             if (m_S2LightMotionMode == 1)
-                pos.value = glm::vec3(cos(a) * m_S2PointOrbitRadius, m_S2PointMotionHeight, sin(a) * m_S2PointOrbitRadius);
+                pos.value =
+                    glm::vec3(cos(a) * m_S2PointOrbitRadius, m_S2PointMotionHeight, sin(a) * m_S2PointOrbitRadius);
             else if (m_S2LightMotionMode == 2)
                 pos.value.y = m_S2PointMotionHeight + sin(a) * 8.0f;
             else if (m_S2LightMotionMode == 3)
-                pos.value = glm::vec3(sin(a) * m_S2PointOrbitRadius, m_S2PointMotionHeight + sin(a * 1.7f) * 6.0f, sin(a * 2.0f) * m_S2PointOrbitRadius * 0.5f);
+                pos.value = glm::vec3(sin(a) * m_S2PointOrbitRadius, m_S2PointMotionHeight + sin(a * 1.7f) * 6.0f,
+                                      sin(a * 2.0f) * m_S2PointOrbitRadius * 0.5f);
 
             if (auto* world = GetScene().registry.try_get<WorldTransformComponent>(entity))
                 world->isDirty = true;
@@ -647,7 +673,8 @@ void SampleState::OnUpdate(float dt)
             else if (m_S2LightMotionMode == 2)
                 pos.value.y = m_S2SpotMotionHeight + sin(a) * 10.0f;
             else if (m_S2LightMotionMode == 3)
-                pos.value = glm::vec3(sin(a * 1.3f) * m_S2SpotOrbitRadius, m_S2SpotMotionHeight + sin(a) * 5.0f, sin(a * 2.0f) * m_S2SpotOrbitRadius * 0.55f);
+                pos.value = glm::vec3(sin(a * 1.3f) * m_S2SpotOrbitRadius, m_S2SpotMotionHeight + sin(a) * 5.0f,
+                                      sin(a * 2.0f) * m_S2SpotOrbitRadius * 0.55f);
 
             glm::vec3 target = glm::vec3(0.0f, 1.0f, 0.0f);
             light.direction = glm::normalize(target - pos.value);
@@ -699,10 +726,9 @@ void SampleState::OnUpdate(float dt)
         }
 
         glm::vec3 averageColor = (m_S3DirectionalColor + m_S3PointColor + m_S3SpotColor) / 3.0f;
-        float visibleLight = glm::clamp((m_S3DirectionalIntensity / 0.2f + m_S3PointIntensity / 10.0f +
-                                         m_S3SpotIntensity / 12.0f) /
-                                            3.0f,
-                                        0.0f, 1.0f);
+        float visibleLight = glm::clamp(
+            (m_S3DirectionalIntensity / 0.2f + m_S3PointIntensity / 10.0f + m_S3SpotIntensity / 12.0f) / 3.0f, 0.0f,
+            1.0f);
         visibleLight = 0.18f + visibleLight * 0.82f;
         auto renderView = scene.registry.view<MeshRendererComponent, InfoComponent>();
         for (auto entity : renderView)
@@ -736,7 +762,9 @@ void SampleState::OnUpdate(float dt)
         if (io)
         {
             auto& input = io->GetInputManager();
-            auto view = GetScene().registry.view<MeshRendererComponent, ScaleComponent, WorldTransformComponent, InfoComponent>();
+            auto view =
+                GetScene()
+                    .registry.view<MeshRendererComponent, ScaleComponent, WorldTransformComponent, InfoComponent>();
             for (auto entity : view)
             {
                 auto& info = view.get<InfoComponent>(entity);
@@ -747,8 +775,7 @@ void SampleState::OnUpdate(float dt)
                 const bool pressed = input.GetAction(action);
                 auto& renderer = view.get<MeshRendererComponent>(entity);
                 auto& scale = view.get<ScaleComponent>(entity);
-                renderer.color = pressed ? glm::vec4(0.0f, 0.85f, 0.25f, 1.0f)
-                                         : glm::vec4(0.18f, 0.2f, 0.24f, 1.0f);
+                renderer.color = pressed ? glm::vec4(0.0f, 0.85f, 0.25f, 1.0f) : glm::vec4(0.18f, 0.2f, 0.24f, 1.0f);
                 scale.value.y = pressed ? 0.35f : 0.15f;
                 view.get<WorldTransformComponent>(entity).isDirty = true;
             }
@@ -836,12 +863,14 @@ void SampleState::OnUpdate(float dt)
 void SampleState::OnRender()
 {
     OnRenderDebug();
+#ifdef ENABLE_EDITOR
     if (m_EditorImGuiLayer && !m_EditorSystemEnabled)
     {
         m_EditorImGuiLayer->BeginFrame();
         DrawGUI();
         m_EditorImGuiLayer->EndFrame();
     }
+#endif
 }
 
 void SampleState::OnRenderDebug()
@@ -865,16 +894,10 @@ void SampleState::OnRenderDebug()
                         auto& scale = view.get<ScaleComponent>(entity);
                         glm::vec3 h = scale.value * 0.5f;
                         glm::vec3 p = pos.value;
-                        glm::vec3 v[8] = {
-                            p + glm::vec3(-h.x, -h.y, -h.z),
-                            p + glm::vec3( h.x, -h.y, -h.z),
-                            p + glm::vec3( h.x,  h.y, -h.z),
-                            p + glm::vec3(-h.x,  h.y, -h.z),
-                            p + glm::vec3(-h.x, -h.y,  h.z),
-                            p + glm::vec3( h.x, -h.y,  h.z),
-                            p + glm::vec3( h.x,  h.y,  h.z),
-                            p + glm::vec3(-h.x,  h.y,  h.z)
-                        };
+                        glm::vec3 v[8] = {p + glm::vec3(-h.x, -h.y, -h.z), p + glm::vec3(h.x, -h.y, -h.z),
+                                          p + glm::vec3(h.x, h.y, -h.z),   p + glm::vec3(-h.x, h.y, -h.z),
+                                          p + glm::vec3(-h.x, -h.y, h.z),  p + glm::vec3(h.x, -h.y, h.z),
+                                          p + glm::vec3(h.x, h.y, h.z),    p + glm::vec3(-h.x, h.y, h.z)};
                         glm::vec3 red(1.0f, 0.1f, 0.1f);
                         physics_ptr->DrawLine(v[0], v[1], red);
                         physics_ptr->DrawLine(v[1], v[2], red);
@@ -902,8 +925,8 @@ void SampleState::OnRenderDebug()
                 {
                     if (auto* follower = scene.registry.try_get<PathFollowerComponent>(m_NavFollower))
                     {
-                        const auto& plannedPath = !follower->debugPlannedPath.empty() ? follower->debugPlannedPath
-                                                                                       : follower->currentPath;
+                        const auto& plannedPath =
+                            !follower->debugPlannedPath.empty() ? follower->debugPlannedPath : follower->currentPath;
                         for (size_t i = 1; i < plannedPath.size(); ++i)
                         {
                             physics_ptr->DrawLine(plannedPath[i - 1] + glm::vec3(0.0f, 0.55f, 0.0f),
@@ -923,33 +946,33 @@ void SampleState::OnRenderDebug()
 
         // Render physics debug lines (skip for scenario 7 - particle stress test)
         if (m_CurrentScenario != 7)
-        try
-        {
-            auto* sysMgr = Resolve<SystemManager>();
-            if (sysMgr)
+            try
             {
-                auto* physicsSystem = dynamic_cast<PhysicsSystem*>(sysMgr->GetSystem("PhysicsSystem"));
-                auto* resources = Resolve<ResourceManager>();
-                auto* graphics = Resolve<IGraphicsContext>();
-                auto* io = Resolve<IOHandler>();
-
-                if (physicsSystem && resources && graphics && io)
+                auto* sysMgr = Resolve<SystemManager>();
+                if (sysMgr)
                 {
-                    auto* window = io->GetMonitorManager().GetWindow();
-                    auto shader = resources->GetShader("debug_line");
-                    if (window && shader)
+                    auto* physicsSystem = dynamic_cast<PhysicsSystem*>(sysMgr->GetSystem("PhysicsSystem"));
+                    auto* resources = Resolve<ResourceManager>();
+                    auto* graphics = Resolve<IGraphicsContext>();
+                    auto* io = Resolve<IOHandler>();
+
+                    if (physicsSystem && resources && graphics && io)
                     {
-                        auto& rsm = graphics->GetRenderStateManager();
-                        int w = window->GetWidth();
-                        int h = window->GetHeight();
-                        physicsSystem->RenderDebug(GetScene(), *shader, w, h, rsm);
+                        auto* window = io->GetMonitorManager().GetWindow();
+                        auto shader = resources->GetShader("debug_line");
+                        if (window && shader)
+                        {
+                            auto& rsm = graphics->GetRenderStateManager();
+                            int w = window->GetWidth();
+                            int h = window->GetHeight();
+                            physicsSystem->RenderDebug(GetScene(), *shader, w, h, rsm);
+                        }
                     }
                 }
             }
-        }
-        catch (...)
-        {
-        }
+            catch (...)
+            {
+            }
     }
 }
 
@@ -986,10 +1009,10 @@ void SampleState::LoadScenario(int index)
     m_S8GrabbedEntity = entt::null;
     m_S8Dragging = false;
     m_S2MotionTime = 0.0f;
-    m_S2DirLightEntity  = entt::null;
+    m_S2DirLightEntity = entt::null;
     m_S2PointLightEntity = entt::null;
-    m_S2SpotLightEntity  = entt::null;
-    m_S11DirLightEntity  = entt::null;
+    m_S2SpotLightEntity = entt::null;
+    m_S11DirLightEntity = entt::null;
     m_S28CardEntity = entt::null;
     m_S28TextureEntity = entt::null;
     m_S29RootPanel = entt::null;
@@ -1048,36 +1071,95 @@ void SampleState::LoadScenario(int index)
 
     switch (index)
     {
-        case 1: LoadScene1(); break;
-        case 2: LoadScene2(); break;
-        case 3: LoadScene3(); break;
-        case 4: LoadScene4(); break;
-        case 5: LoadScene5(); break;
-        case 6: LoadScene6(); break;
-        case 7: LoadScene7(); break;
-        case 8: LoadScene8(); break;
-        case 9: LoadScene9(); break;
-        case 10: LoadScene10(); break;
-        case 11: LoadScene11(); break;
-        case 12: LoadScene12(); break;
-        case 13: LoadScene13(); break;
-        case 14: LoadScene14(); break;
-        case 15: LoadScene15(); break;
-        case 16: LoadScene16(); break;
-        case 17: LoadScene17(); break;
-        case 18: LoadScene18(); break;
-        case 19: LoadScene19(); break;
-        case 20: LoadScene20(); break;
-        case 21: LoadScene21(); break;
-        case 22: LoadScene22(); break;
-        case 23: LoadScene23(); break;
-        case 24: LoadScene24(); break;
-        case 25: LoadScene25(); break;
-        case 26: LoadScene26(); break;
-        case 27: LoadScene27(); break;
-        case 28: LoadScene28(); break;
-        case 29: LoadScene29(); break;
-        default: break;
+        case 1:
+            LoadScene1();
+            break;
+        case 2:
+            LoadScene2();
+            break;
+        case 3:
+            LoadScene3();
+            break;
+        case 4:
+            LoadScene4();
+            break;
+        case 5:
+            LoadScene5();
+            break;
+        case 6:
+            LoadScene6();
+            break;
+        case 7:
+            LoadScene7();
+            break;
+        case 8:
+            LoadScene8();
+            break;
+        case 9:
+            LoadScene9();
+            break;
+        case 10:
+            LoadScene10();
+            break;
+        case 11:
+            LoadScene11();
+            break;
+        case 12:
+            LoadScene12();
+            break;
+        case 13:
+            LoadScene13();
+            break;
+        case 14:
+            LoadScene14();
+            break;
+        case 15:
+            LoadScene15();
+            break;
+        case 16:
+            LoadScene16();
+            break;
+        case 17:
+            LoadScene17();
+            break;
+        case 18:
+            LoadScene18();
+            break;
+        case 19:
+            LoadScene19();
+            break;
+        case 20:
+            LoadScene20();
+            break;
+        case 21:
+            LoadScene21();
+            break;
+        case 22:
+            LoadScene22();
+            break;
+        case 23:
+            LoadScene23();
+            break;
+        case 24:
+            LoadScene24();
+            break;
+        case 25:
+            LoadScene25();
+            break;
+        case 26:
+            LoadScene26();
+            break;
+        case 27:
+            LoadScene27();
+            break;
+        case 28:
+            LoadScene28();
+            break;
+        case 29:
+            LoadScene29();
+            break;
+        default:
+            break;
     }
 
     // Force immediate transform update so worldMatrix is correct before next render
@@ -1097,22 +1179,21 @@ void SampleState::SetupCamera()
     auto& res = Get<ResourceManager>();
 
     auto camera = EntityBuilder(scene, res, "scenario")
-        .WithName("MainCamera")
-        .WithTransform(glm::vec3(0.0f, 15.0f, 60.0f), glm::vec3(-15.0f, 0.0f, 0.0f), glm::vec3(1.0f))
-        .WithCamera(60.0f, 0.1f, 1000.0f, true)
-        .Build();
+                      .WithName("MainCamera")
+                      .WithTransform(glm::vec3(0.0f, 15.0f, 60.0f), glm::vec3(-15.0f, 0.0f, 0.0f), glm::vec3(1.0f))
+                      .WithCamera(60.0f, 0.1f, 1000.0f, true)
+                      .Build();
 
     // Attach DefaultCameraController
     auto& script = scene.registry.emplace<ScriptComponent>(camera);
     script.className = "DefaultCameraController";
-    script.InstantiateScript = []() {
-        return std::make_unique<DefaultCameraController>();
-    };
+    script.InstantiateScript = []() { return std::make_unique<DefaultCameraController>(); };
     script.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
 }
 
 void SampleState::DrawGUI()
 {
+#ifdef ENABLE_EDITOR
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(380, 780), ImGuiCond_Always);
 
@@ -1126,13 +1207,14 @@ void SampleState::DrawGUI()
     ImGui::Text("Active Entities: %d", (int)GetScene().registry.view<InfoComponent>().size());
     ImGui::Text("CPU: %.0f%%  GPU: %.0f%%", perf.cpu, perf.gpu);
     ImGui::Text("RAM: %.0f%%  VRAM: %.0f%%", perf.ram, perf.vram);
-    
+
     // Physics rigid bodies count
     int rbCount = 0;
     auto rbView = GetScene().registry.view<RigidBodyComponent>();
     for (auto entity : rbView)
     {
-        if (rbView.get<RigidBodyComponent>(entity).body) rbCount++;
+        if (rbView.get<RigidBodyComponent>(entity).body)
+            rbCount++;
     }
     ImGui::Text("Active Rigid Bodies: %d", rbCount);
 
@@ -1156,8 +1238,7 @@ void SampleState::DrawGUI()
     ImGui::Separator();
     ImGui::BeginChild("ScenarioListChild", ImVec2(0, 240), true);
 
-    auto AddScenarioButton = [this](int index, const char* label, const char* desc)
-    {
+    auto AddScenarioButton = [this](int index, const char* label, const char* desc) {
         bool active = (m_CurrentScenario == index);
         if (active)
         {
@@ -1179,31 +1260,43 @@ void SampleState::DrawGUI()
 
     AddScenarioButton(1, "Scenario 1: Render Load Test", "10,000 sphere entities (deferred rendering check)");
     AddScenarioButton(2, "Scenario 2: Shadow Mapping Test", "1,000 cubes, plane, and 3 light types casting shadows");
-    AddScenarioButton(3, "Scenario 3: Lighting Load Test", "1 cylinder, plane, and 999 dynamic lighting entities");
+    AddScenarioButton(3, "Scenario 3: Lighting Load Test",
+                      "1 smooth capsule, plane, and 999 dynamic lighting entities");
     AddScenarioButton(4, "Scenario 4: Physics stress Test", "1,000 dynamic Bullet rigid bodies falling and colliding");
     AddScenarioButton(5, "Scenario 5: Navigation Test", "Dynamic NavMesh generation and pathfinding movement");
     AddScenarioButton(6, "Scenario 6: Scriptable Stability Test", "100 entities with 6 complex C++ script behaviors");
     AddScenarioButton(7, "Scenario 7: Particle Stress Test", "50 emitters with high-density colorful particle vortex");
-    AddScenarioButton(8, "Scenario 8: Interactive Playground", "Controllable player cube with W/A/S/D, Space and Mouse clicks");
-    AddScenarioButton(9, "Scenario 9: Post-Process & Tonemap", "Test HDR Bloom parameters, Exposure, Gamma, and Tonemapping");
-    AddScenarioButton(10, "Scenario 10: Physics Constraint Chain", "Pendulum test: cubes linked by Bullet point-to-point joints");
+    AddScenarioButton(8, "Scenario 8: Interactive Playground",
+                      "Controllable player cube with W/A/S/D, Space and Mouse clicks");
+    AddScenarioButton(9, "Scenario 9: Post-Process & Tonemap",
+                      "Test HDR Bloom parameters, Exposure, Gamma, and Tonemapping");
+    AddScenarioButton(10, "Scenario 10: Physics Constraint Chain",
+                      "Pendulum test: cubes linked by Bullet point-to-point joints");
     AddScenarioButton(11, "Scenario 11: Decal Stress Test", "PBR Decals: project materials dynamically on surfaces");
     AddScenarioButton(12, "Scenario 12: Scene Save & Load", "Test scene saving/loading using sample.axs");
     AddScenarioButton(13, "Scenario 13: Input Binding Save/Load", "Test load/save key bindings from binding.axs");
     AddScenarioButton(14, "Scenario 14: Localization (l10n)", "Test load/apply localizations from vi.axs/en.axs");
-    AddScenarioButton(15, "Scenario 15: DataNote YAML Test", "Test serialization of entity count and size using data.axs");
+    AddScenarioButton(15, "Scenario 15: DataNote YAML Test",
+                      "Test serialization of entity count and size using data.axs");
     AddScenarioButton(16, "Scenario 16: Network Messaging", "Test local network client/server packet transmission");
     AddScenarioButton(17, "Scenario 17: Audio 2D & 3D Test", "Test irrKlang audio play/orbit using sample.mp3");
-    AddScenarioButton(18, "Scenario 18: Video Mesh & UI Render", "Test Video Decoder applying frames to texture and UI using sample.mp4");
-    AddScenarioButton(19, "Scenario 19: Skeletal Anim & Blend", "Test animations blend/crossfade using defeated.fbx / spin.fbx");
-    AddScenarioButton(20, "Scenario 20: SSR & Env Probes", "Test environment probes and planar reflections reflection mapping");
-    AddScenarioButton(21, "Scenario 21: Transparent Objects", "Test transparent forward pass sorting, opacity, and lighting");
-    AddScenarioButton(22, "Scenario 22: PBR Material Matrix", "Compare metallic/roughness material response under fixed lights");
+    AddScenarioButton(18, "Scenario 18: Video Mesh & UI Render",
+                      "Test Video Decoder applying frames to texture and UI using sample.mp4");
+    AddScenarioButton(19, "Scenario 19: Skeletal Anim & Blend",
+                      "Test animations blend/crossfade using defeated.fbx / spin.fbx");
+    AddScenarioButton(20, "Scenario 20: SSR & Env Probes",
+                      "Test environment probes and planar reflections reflection mapping");
+    AddScenarioButton(21, "Scenario 21: Transparent Objects",
+                      "Test transparent forward pass sorting, opacity, and lighting");
+    AddScenarioButton(22, "Scenario 22: PBR Material Matrix",
+                      "Compare metallic/roughness material response under fixed lights");
     AddScenarioButton(23, "Scenario 23: LOD Selection", "Show distance based model swaps using LODComponent");
     AddScenarioButton(24, "Scenario 24: Layer Filter", "Toggle camera culling mask bits to show/hide render layers");
     AddScenarioButton(25, "Scenario 25: Render Order", "Show ordering with transparent panels and opaque markers");
-    AddScenarioButton(26, "Scenario 26: Instanced Batching", "Compare many matching renderers against unique tint batching breaks");
-    AddScenarioButton(27, "Scenario 27: Deferred Shadow Receiver", "Show deferred_lit_shadow writing the receive-shadow bit");
+    AddScenarioButton(26, "Scenario 26: Instanced Batching",
+                      "Compare many matching renderers against unique tint batching breaks");
+    AddScenarioButton(27, "Scenario 27: Shadow Receiver",
+                      "Compare deferred and forced-forward casters on a deferred shadow receiver");
     AddScenarioButton(28, "Scenario 28: UI Showcase", "Test UI transform, texture, text, pivot, and rotation");
     AddScenarioButton(29, "Scenario 29: Responsive UI", "Test anchors, flex layout, and percent-based UI resizing");
 
@@ -1301,10 +1394,7 @@ void SampleState::DrawGUI()
         ImGui::SameLine();
         if (ImGui::Button("Clear Custom Path", ImVec2(170, 24)))
         {
-            m_NavWaypoints = {
-                glm::vec3(-20.0f, 0.5f, 20.0f),
-                glm::vec3(20.0f, 0.5f, -20.0f)
-            };
+            m_NavWaypoints = {glm::vec3(-20.0f, 0.5f, 20.0f), glm::vec3(20.0f, 0.5f, -20.0f)};
             m_CurrentWaypointIndex = 1;
             if (m_NavFollower != entt::null)
             {
@@ -1417,11 +1507,9 @@ void SampleState::DrawGUI()
             {
                 int decalDenom = m_S11DecalCount > 1 ? m_S11DecalCount : 1;
                 float hue = static_cast<float>(decalIndex) / static_cast<float>(decalDenom);
-                decal.tintColor = glm::vec4(
-                    0.5f + 0.5f * sin(hue * 6.28318f),
-                    0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f),
-                    0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f),
-                    1.0f);
+                decal.tintColor =
+                    glm::vec4(0.5f + 0.5f * sin(hue * 6.28318f), 0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f),
+                              0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f), 1.0f);
             }
             else
             {
@@ -1443,19 +1531,19 @@ void SampleState::DrawGUI()
             float x = static_cast<float>(rand() % 400 - 200) / 10.0f;
             float z = static_cast<float>(rand() % 400 - 200) / 10.0f;
             float size = 0.8f + static_cast<float>(rand() % 30) / 10.0f;
-            auto entity = EntityBuilder(scene, res, "scenario")
-                .WithName("S12Random_" + std::to_string(++m_S12RandomEntityCount))
-                .WithTransform(glm::vec3(x, size * 0.5f, z), glm::vec3(0.0f, rand() % 360, 0.0f), glm::vec3(size))
-                .WithMesh((m_S12RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit")
-                .WithPBRMaterial(0.1f, 0.5f, 1.0f)
-                .Build();
+            auto entity =
+                EntityBuilder(scene, res, "scenario")
+                    .WithName("S12Random_" + std::to_string(++m_S12RandomEntityCount))
+                    .WithTransform(glm::vec3(x, size * 0.5f, z), glm::vec3(0.0f, rand() % 360, 0.0f), glm::vec3(size))
+                    .WithMesh((m_S12RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit")
+                    .WithPBRMaterial(0.1f, 0.5f, 1.0f)
+                    .Build();
             m_S12RandomEntities.push_back(entity);
             if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
             {
-                renderer->color = glm::vec4(static_cast<float>(rand() % 100) / 100.0f,
-                                            static_cast<float>(rand() % 100) / 100.0f,
-                                            static_cast<float>(rand() % 100) / 100.0f,
-                                            1.0f);
+                renderer->color =
+                    glm::vec4(static_cast<float>(rand() % 100) / 100.0f, static_cast<float>(rand() % 100) / 100.0f,
+                              static_cast<float>(rand() % 100) / 100.0f, 1.0f);
             }
             auto& transformSys = GetSystem<TransformSystem>();
             transformSys.m_IsLinearTransformsDirty = true;
@@ -1471,7 +1559,8 @@ void SampleState::DrawGUI()
             if (sysMgr)
             {
                 auto* physicsSystem = dynamic_cast<PhysicsSystem*>(sysMgr->GetSystem("PhysicsSystem"));
-                if (physicsSystem) phys = &physicsSystem->GetPhysicsWorld();
+                if (physicsSystem)
+                    phys = &physicsSystem->GetPhysicsWorld();
             }
             if (sceneMgr)
             {
@@ -1482,7 +1571,8 @@ void SampleState::DrawGUI()
                 const std::string path = std::filesystem::exists(SamplePath(kScenario12ScenePath))
                                              ? SamplePath(kScenario12ScenePath)
                                              : SamplePath(kScenario12SceneLegacyPath);
-                SceneLoadResult res = SceneSerializer::Deserialize(path, GetScene(), Get<ResourceManager>(), phys, audio);
+                SceneLoadResult res =
+                    SceneSerializer::Deserialize(path, GetScene(), Get<ResourceManager>(), phys, audio);
                 if (!res.entities.empty())
                 {
                     for (auto entity : res.entities)
@@ -1494,23 +1584,30 @@ void SampleState::DrawGUI()
                         sceneMgr->AddEntity(entity, "scenario");
                     }
                     m_S12RandomEntityCount = static_cast<int>(res.entities.size());
-                    m_S12Status = "Scene loaded successfully. Spawns: " + std::to_string(res.entities.size()) + " entities.";
+                    m_S12Status =
+                        "Scene loaded successfully. Spawns: " + std::to_string(res.entities.size()) + " entities.";
                     auto& transformSys = GetSystem<TransformSystem>();
                     transformSys.m_IsLinearTransformsDirty = true;
                     transformSys.Update(GetScene(), 0.0f);
 
                     bool hasLight = false;
                     auto lightView = GetScene().registry.view<DirectionalLightComponent>();
-                    for (auto entity : lightView) { (void)entity; hasLight = true; break; }
+                    for (auto entity : lightView)
+                    {
+                        (void)entity;
+                        hasLight = true;
+                        break;
+                    }
                     if (!hasLight)
                     {
                         auto& scene = GetScene();
                         auto& resMgr = Get<ResourceManager>();
                         auto light = EntityBuilder(scene, resMgr, "scenario")
-                            .WithName("LoadedSceneFallbackLight")
-                            .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-                            .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-                            .Build();
+                                         .WithName("LoadedSceneFallbackLight")
+                                         .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
+                                         .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)),
+                                                               glm::vec3(1.0f), 1.5f)
+                                         .Build();
                         sceneMgr->AddEntity(light, "scenario");
                     }
                 }
@@ -1535,7 +1632,8 @@ void SampleState::DrawGUI()
         if (ImGui::Button("Flush Scene (Keep Base Plane/Light)", ImVec2(360, 24)))
         {
             auto* sceneMgr = Resolve<SceneManager>();
-            if (sceneMgr) sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
+            if (sceneMgr)
+                sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
             m_S12RandomEntities.clear();
             SetupCamera();
             m_S12RandomEntityCount = 0;
@@ -1557,8 +1655,9 @@ void SampleState::DrawGUI()
             {
                 InputSerializer serializer;
                 const std::string bindingPath = "sample/resource/binding/binding.axs";
-                m_S13Status = serializer.Deserialize(bindingPath, io->GetInputManager()) ?
-                                  "Loaded sample/resource/binding/binding.axs." : "Failed to load binding.axs.";
+                m_S13Status = serializer.Deserialize(bindingPath, io->GetInputManager())
+                                  ? "Loaded sample/resource/binding/binding.axs."
+                                  : "Failed to load binding.axs.";
             }
         }
         ImGui::SameLine();
@@ -1569,8 +1668,9 @@ void SampleState::DrawGUI()
             {
                 InputSerializer serializer;
                 const std::string bindingPath = "sample/resource/binding/binding.axs";
-                m_S13Status = serializer.Serialize(bindingPath, io->GetInputManager()) ?
-                                  "Saved bindings to binding.axs." : "Failed to save.";
+                m_S13Status = serializer.Serialize(bindingPath, io->GetInputManager())
+                                  ? "Saved bindings to binding.axs."
+                                  : "Failed to save.";
             }
         }
         if (ImGui::Button("Flush Bindings (Clear All)", ImVec2(360, 24)))
@@ -1593,10 +1693,10 @@ void SampleState::DrawGUI()
             if (io)
             {
                 auto& input = io->GetInputManager();
-                input.BindAction("PlayerForward",  InputType::Key, (int)Key::Up);
+                input.BindAction("PlayerForward", InputType::Key, (int)Key::Up);
                 input.BindAction("PlayerBackward", InputType::Key, (int)Key::Down);
-                input.BindAction("PlayerLeft",     InputType::Key, (int)Key::Left);
-                input.BindAction("PlayerRight",    InputType::Key, (int)Key::Right);
+                input.BindAction("PlayerLeft", InputType::Key, (int)Key::Left);
+                input.BindAction("PlayerRight", InputType::Key, (int)Key::Right);
                 input.BindAction("PlayerJump", InputType::Key, (int)Key::Space);
                 input.BindAction("PlayerAction", InputType::MouseButton, (int)Mouse::Left);
                 m_S13Status = "Arrow-key preset applied. Save to persist.";
@@ -1615,7 +1715,8 @@ void SampleState::DrawGUI()
             if (io)
             {
                 io->GetInputManager().BindAction(actionBuf, InputType::Key, m_S13NewKey);
-                m_S13Status = std::string("Bound '") + actionBuf + "' to key " + std::to_string(m_S13NewKey) + ". Save to persist.";
+                m_S13Status = std::string("Bound '") + actionBuf + "' to key " + std::to_string(m_S13NewKey) +
+                              ". Save to persist.";
             }
         }
 
@@ -1626,8 +1727,8 @@ void SampleState::DrawGUI()
         if (io)
         {
             auto& input = io->GetInputManager();
-            const char* liveActions[] = {"PlayerForward", "PlayerBackward", "PlayerLeft", "PlayerRight",
-                                         "PlayerJump", "PlayerAction"};
+            const char* liveActions[] = {"PlayerForward", "PlayerBackward", "PlayerLeft",
+                                         "PlayerRight",   "PlayerJump",     "PlayerAction"};
             for (const char* action : liveActions)
             {
                 bool pressed = input.GetAction(action);
@@ -1641,9 +1742,12 @@ void SampleState::DrawGUI()
                 std::string bindText;
                 for (auto& b : binding.bindings)
                 {
-                    if      (b.type == InputType::Key)          bindText += "Key:" + std::to_string(b.code) + " ";
-                    else if (b.type == InputType::MouseButton)  bindText += "Mouse:" + std::to_string(b.code) + " ";
-                    else if (b.type == InputType::GamepadButton) bindText += "Gamepad:" + std::to_string(b.code) + " ";
+                    if (b.type == InputType::Key)
+                        bindText += "Key:" + std::to_string(b.code) + " ";
+                    else if (b.type == InputType::MouseButton)
+                        bindText += "Mouse:" + std::to_string(b.code) + " ";
+                    else if (b.type == InputType::GamepadButton)
+                        bindText += "Gamepad:" + std::to_string(b.code) + " ";
                 }
                 ImGui::BulletText("%-20s %s", action.c_str(), bindText.c_str());
             }
@@ -1656,7 +1760,7 @@ void SampleState::DrawGUI()
 
         auto& l10n = GetSystem<LocalizationSystem>();
         ImGui::Text("Current Language: %s", l10n.GetLanguage().c_str());
-        
+
         if (ImGui::Button("Switch to Vietnamese (vi)", ImVec2(360, 24)))
         {
             l10n.LoadLanguage("sample/resource/l10n/vi.axs", "vi");
@@ -1672,9 +1776,10 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "Localized Outputs:");
         ImGui::Text("App Title: %s", l10n.Get("app.title").c_str());
         ImGui::Text("Select Scenario Label: %s", l10n.Get("menu.select_scenario").c_str());
-        
+
         int entCount = (int)GetScene().registry.storage<entt::entity>().size();
-        ImGui::Text("Localized format check: %s", l10n.GetFormat("scenario.active_entities", std::to_string(entCount)).c_str());
+        ImGui::Text("Localized format check: %s",
+                    l10n.GetFormat("scenario.active_entities", std::to_string(entCount)).c_str());
     }
     else if (m_CurrentScenario == 15)
     {
@@ -1707,9 +1812,8 @@ void SampleState::DrawGUI()
         {
             std::unordered_map<std::string, DataNode> dataMap;
             DataNodeSerializer serializer;
-            const char* path = std::filesystem::exists(kScenario15DataPath)
-                ? kScenario15DataPath
-                : kScenario15DataLegacyPath;
+            const char* path =
+                std::filesystem::exists(kScenario15DataPath) ? kScenario15DataPath : kScenario15DataLegacyPath;
             if (serializer.Deserialize(path, dataMap))
             {
                 auto it = dataMap.find("DataNote");
@@ -1755,15 +1859,15 @@ void SampleState::DrawGUI()
             auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr->GetSystem("NetworkSystem"));
             if (netSystem)
             {
-                ImGui::Text("Running: %s | Mode: %s | Connected peers: %zu",
-                            netSystem->IsRunning() ? "yes" : "no",
+                ImGui::Text("Running: %s | Mode: %s | Connected peers: %zu", netSystem->IsRunning() ? "yes" : "no",
                             netSystem->IsServer() ? "server" : (netSystem->IsClient() ? "client" : "idle"),
                             netSystem->GetConnectedPeerCount());
                 if (netSystem->IsClient())
                     ImGui::Text("Client peer state: %s", netSystem->GetClientPeerState());
                 if (ImGui::Button("Start Connection", ImVec2(170, 24)))
                 {
-                    if (netSystem->IsRunning()) netSystem->Stop();
+                    if (netSystem->IsRunning())
+                        netSystem->Stop();
                     NetworkConfig config;
                     config.port = static_cast<uint16_t>(m_S16Port);
                     config.maxClients = 32;
@@ -1781,22 +1885,25 @@ void SampleState::DrawGUI()
                             m_S16Status = "Server: client disconnected.";
                             m_S16Messages.push_back("Client disconnected.");
                         });
-                        netSystem->SetOnMessage([this, netSystem](ENetPeer* peer, const uint8_t* data, size_t size, uint8_t) {
-                            std::string msg((const char*)data, size);
-                            if (!msg.empty() && msg.back() == '\0') msg.pop_back();
-                            m_S16Messages.push_back("Server recvd: " + msg);
-                            std::string echo = "Echo: " + msg;
-                            netSystem->SendPacket(peer, echo.c_str(), echo.size() + 1);
-                        });
-                        m_S16Status = netSystem->StartServer(config) ?
-                            "Server started on port " + std::to_string(m_S16Port) + "." :
-                            "Failed to start server.";
+                        netSystem->SetOnMessage(
+                            [this, netSystem](ENetPeer* peer, const uint8_t* data, size_t size, uint8_t) {
+                                std::string msg((const char*)data, size);
+                                if (!msg.empty() && msg.back() == '\0')
+                                    msg.pop_back();
+                                m_S16Messages.push_back("Server recvd: " + msg);
+                                std::string echo = "Echo: " + msg;
+                                netSystem->SendPacket(peer, echo.c_str(), echo.size() + 1);
+                            });
+                        m_S16Status = netSystem->StartServer(config)
+                                          ? "Server started on port " + std::to_string(m_S16Port) + "."
+                                          : "Failed to start server.";
                     }
                     else
                     {
                         config.host = m_S16Host;
                         netSystem->SetOnConnect([this](ENetPeer*) {
-                            m_S16Status = "Client connected to " + std::string(m_S16Host) + ":" + std::to_string(m_S16Port) + ".";
+                            m_S16Status =
+                                "Client connected to " + std::string(m_S16Host) + ":" + std::to_string(m_S16Port) + ".";
                             m_S16Messages.push_back("Connected to server.");
                         });
                         netSystem->SetOnDisconnect([this](ENetPeer*) {
@@ -1805,12 +1912,14 @@ void SampleState::DrawGUI()
                         });
                         netSystem->SetOnMessage([this](ENetPeer*, const uint8_t* data, size_t size, uint8_t) {
                             std::string msg((const char*)data, size);
-                            if (!msg.empty() && msg.back() == '\0') msg.pop_back();
+                            if (!msg.empty() && msg.back() == '\0')
+                                msg.pop_back();
                             m_S16Messages.push_back("Client recvd: " + msg);
                         });
                         if (netSystem->StartClient(config))
                         {
-                            m_S16Status = "Client connecting to " + std::string(m_S16Host) + ":" + std::to_string(m_S16Port) + "...";
+                            m_S16Status = "Client connecting to " + std::string(m_S16Host) + ":" +
+                                          std::to_string(m_S16Port) + "...";
                         }
                         else
                         {
@@ -1855,7 +1964,8 @@ void SampleState::DrawGUI()
                     }
                     else
                     {
-                        m_S16Messages.push_back(std::string("No connected peer. State: ") + netSystem->GetClientPeerState());
+                        m_S16Messages.push_back(std::string("No connected peer. State: ") +
+                                                netSystem->GetClientPeerState());
                     }
                 }
             }
@@ -1863,8 +1973,7 @@ void SampleState::DrawGUI()
         ImGui::Separator();
         ImGui::Text("Network Logs:");
         ImGui::BeginChild("NetLogList", ImVec2(0, 100), true);
-        for (auto& m : m_S16Messages)
-            ImGui::TextUnformatted(m.c_str());
+        for (auto& m : m_S16Messages) ImGui::TextUnformatted(m.c_str());
         ImGui::EndChild();
     }
     else if (m_CurrentScenario == 17)
@@ -1876,7 +1985,7 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Playback Speed / Pitch", &m_S17Pitch, 0.25f, 3.0f);
         ImGui::SliderFloat("3D Min Distance", &m_S17MinDistance, 0.1f, 20.0f);
         ImGui::SliderFloat("3D Max Distance", &m_S17MaxDistance, 1.0f, 120.0f);
-        
+
         auto* audioService = Resolve<AudioService>();
         if (audioService)
         {
@@ -1893,7 +2002,11 @@ void SampleState::DrawGUI()
                 }
                 else
                 {
-                    if (m_S17Audio2D) { m_S17Audio2D->Stop(); m_S17Audio2D = nullptr; }
+                    if (m_S17Audio2D)
+                    {
+                        m_S17Audio2D->Stop();
+                        m_S17Audio2D = nullptr;
+                    }
                 }
             }
 
@@ -1901,7 +2014,8 @@ void SampleState::DrawGUI()
             {
                 if (m_S17Play3D)
                 {
-                    m_S17Audio3D = audioService->Play3D(SamplePath("sample/resource/audio/sample.wav"), glm::vec3(0.0f), true);
+                    m_S17Audio3D =
+                        audioService->Play3D(SamplePath("sample/resource/audio/sample.wav"), glm::vec3(0.0f), true);
                     if (m_S17Audio3D)
                     {
                         m_S17Audio3D->SetVolume(m_S17Volume3D);
@@ -1912,7 +2026,11 @@ void SampleState::DrawGUI()
                 }
                 else
                 {
-                    if (m_S17Audio3D) { m_S17Audio3D->Stop(); m_S17Audio3D = nullptr; }
+                    if (m_S17Audio3D)
+                    {
+                        m_S17Audio3D->Stop();
+                        m_S17Audio3D = nullptr;
+                    }
                 }
             }
 
@@ -1930,7 +2048,7 @@ void SampleState::DrawGUI()
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Video Mesh & UI Playback");
         ImGui::Checkbox("Loop Video", &m_S18VideoPlaying);
-        
+
         auto view = GetScene().registry.view<VideoPlayerComponent>();
         for (auto entity : view)
         {
@@ -1941,10 +2059,12 @@ void SampleState::DrawGUI()
                 ImGui::Text("Time: %.2f / %.2f s", video.decoder->GetCurrentTime(), video.decoder->GetDuration());
                 ImGui::SliderFloat("Volume", &video.volume, 0.0f, 1.0f);
                 ImGui::SliderFloat("Speed", &video.speed, 0.1f, 3.0f);
-                
-                if (ImGui::Button("Pause Video", ImVec2(170, 24))) PauseVideo(video);
+
+                if (ImGui::Button("Pause Video", ImVec2(170, 24)))
+                    PauseVideo(video);
                 ImGui::SameLine();
-                if (ImGui::Button("Play Video", ImVec2(170, 24))) PlayVideo(video);
+                if (ImGui::Button("Play Video", ImVec2(170, 24)))
+                    PlayVideo(video);
                 ImGui::PopID();
             }
         }
@@ -2081,9 +2201,12 @@ void SampleState::DrawGUI()
         bool layer0 = (m_S24LayerMask & 0x1) != 0;
         bool layer1 = (m_S24LayerMask & 0x2) != 0;
         bool layer2 = (m_S24LayerMask & 0x4) != 0;
-        if (ImGui::Checkbox("Layer 0: neutral/floor", &layer0)) m_S24LayerMask = (m_S24LayerMask & ~0x1) | (layer0 ? 0x1 : 0);
-        if (ImGui::Checkbox("Layer 1: red cubes", &layer1)) m_S24LayerMask = (m_S24LayerMask & ~0x2) | (layer1 ? 0x2 : 0);
-        if (ImGui::Checkbox("Layer 2: blue spheres", &layer2)) m_S24LayerMask = (m_S24LayerMask & ~0x4) | (layer2 ? 0x4 : 0);
+        if (ImGui::Checkbox("Layer 0: neutral/floor", &layer0))
+            m_S24LayerMask = (m_S24LayerMask & ~0x1) | (layer0 ? 0x1 : 0);
+        if (ImGui::Checkbox("Layer 1: red cubes", &layer1))
+            m_S24LayerMask = (m_S24LayerMask & ~0x2) | (layer1 ? 0x2 : 0);
+        if (ImGui::Checkbox("Layer 2: blue spheres", &layer2))
+            m_S24LayerMask = (m_S24LayerMask & ~0x4) | (layer2 ? 0x4 : 0);
         if (auto camEntity = EntityManager::GetActiveCamera(GetScene()); camEntity != entt::null)
             GetScene().registry.get<CameraComponent>(camEntity).cullingMask = static_cast<uint32_t>(m_S24LayerMask);
     }
@@ -2097,7 +2220,8 @@ void SampleState::DrawGUI()
         ImGui::Text("Reverse: Red=5, Blue=3, Purple=1 => Purple top.");
         ImGui::Text("Depth and world position are ignored for these order demos.");
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "Gold Sphere: Opaque Showcase (ignoreDepth = false, order = 5)");
+        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f),
+                           "Gold Sphere: Opaque Showcase (ignoreDepth = false, order = 5)");
         ImGui::Text("Vat gan camera hon nhung render order cao hon thi van nam sau vat nam xa hon camera.");
     }
     else if (m_CurrentScenario == 26)
@@ -2109,9 +2233,9 @@ void SampleState::DrawGUI()
     }
     else if (m_CurrentScenario == 27)
     {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Deferred Shadow Receiver");
-        ImGui::Text("Floor uses deferred_lit_shadow.");
-        ImGui::Text("Objects cast shadows but do not self receive.");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Shadow Receiver");
+        ImGui::Text("Floor receives shadows through deferred_lit_shadow.");
+        ImGui::Text("Deferred and forced-forward objects cast into the same shadow map.");
     }
     else if (m_CurrentScenario == 28)
     {
@@ -2143,4 +2267,5 @@ void SampleState::DrawGUI()
     }
 
     ImGui::End();
+#endif
 }

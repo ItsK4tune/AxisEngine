@@ -76,12 +76,7 @@ uint64_t HashMaterialForBatch(const AxisMaterialComponent* material)
     h = CombineHash(h, hashString(d.type));
     return h;
 }
-}
-
-#ifdef ENABLE_EDITOR
-#include <editor/editor_system.h>
-
-#endif
+}  // namespace
 
 #include <platform/logic/io_handler.h>
 #include <render/logic/material_renderer.h>
@@ -449,8 +444,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         if (m_IsCapturingProbe && worldAABB.Contains(params.cameraPos))
             continue;
 
-        if (m_Flags.frustumCullingEnabled &&
-            !m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
+        if (m_Flags.frustumCullingEnabled && !m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
         {
             visibleToCamera = false;
         }
@@ -679,6 +673,14 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         m_RenderQueueObj.AddLight(std::move(rl));
     }
 
+    auto isLightVolumeVisible = [this](const glm::vec3& position, float radius) {
+        if (!m_Flags.frustumCullingEnabled || radius <= 0.0f)
+            return true;
+
+        glm::vec3 extent(radius);
+        return m_FrustumCuller.IsVisible(position - extent, position + extent);
+    };
+
     auto pointView = scene.registry.view<PointLightComponent, PositionComponent, InfoComponent>();
     for (auto entity : pointView)
     {
@@ -688,6 +690,8 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         auto [light, pos] = pointView.get<PointLightComponent, PositionComponent>(entity);
         if (!light.active)
+            continue;
+        if (!isLightVolumeVisible(pos.value, light.radius))
             continue;
         RenderLight rl;
         rl.type = RenderLightType::Point;
@@ -717,6 +721,8 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         auto [light, pos, rot] = spotView.get<SpotLightComponent, PositionComponent, RotationComponent>(entity);
         if (!light.active)
             continue;
+        if (!isLightVolumeVisible(pos.value, light.radius))
+            continue;
         RenderLight rl;
         rl.type = RenderLightType::Spot;
         rl.position = pos.value;
@@ -726,6 +732,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         rl.constant = light.constant;
         rl.linear = light.linear;
         rl.quadratic = light.quadratic;
+        rl.range = light.radius;
         rl.innerCutoff = light.cutOff;
         rl.outerCutoff = light.outerCutOff;
         rl.ambient = glm::vec3(light.ambient);
@@ -887,7 +894,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                         {
                             shader = m_UnlitShader.get();
                         }
-                        else if (shader == m_DeferredLitShadowShader.get() || shader->GetName() == "deferred_lit_shadow")
+                        else if (shader == m_DeferredLitShadowShader.get() ||
+                                 shader->GetName() == "deferred_lit_shadow")
                         {
                             shader = m_ForwardPBRLitShadowShader.get();
                         }
@@ -909,7 +917,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                         {
                             shader = m_DeferredLitShader.get();
                         }
-                        else if (shader == m_ForwardPBRLitShadowShader.get() || shader->GetName() == "forward_pbr_lit_shadow")
+                        else if (shader == m_ForwardPBRLitShadowShader.get() ||
+                                 shader->GetName() == "forward_pbr_lit_shadow")
                         {
                             shader = m_DeferredLitShadowShader.get();
                         }

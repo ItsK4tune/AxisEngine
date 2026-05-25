@@ -1,18 +1,16 @@
-#include <core/app/application.h>
+#include <core/logic/event_manager.h>
+#include <core/type/event_types.h>
 #include <ecs/unit/core_components.h>
 #include <platform/logic/io_handler.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <script/logic/default_camera_controller.h>
-#include <platform/logic/input_manager.h>
 #include <script/logic/script_registry.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
 #ifdef ENABLE_EDITOR
-#include <editor/panels/scene_hierarchy_panel.h>
 #include <imgui.h>
-
 #endif
 
 REGISTER_SCRIPT(DefaultCameraController)
@@ -20,11 +18,31 @@ REGISTER_SCRIPT(DefaultCameraController)
 void DefaultCameraController::OnCreate()
 {
     SetRunWhenPaused(true);
+
+    auto& events = EventManager::Instance();
+    m_SelectionChangedSubId = events.Subscribe<EntitySelectionChangedEvent>(
+        [this](const EntitySelectionChangedEvent& e) { m_SelectedEntity = static_cast<entt::entity>(e.entity); });
+    m_FocusRequestedSubId = events.Subscribe<EntityFocusRequestedEvent>(
+        [this](const EntityFocusRequestedEvent& e) { m_PendingFocusEntity = static_cast<entt::entity>(e.entity); });
 }
 
-void DefaultCameraController::OnUpdate(float dt)
+void DefaultCameraController::OnDestroy()
 {
-    static bool s_WasOrbitingBefore = false;
+    auto& events = EventManager::Instance();
+    if (m_SelectionChangedSubId != -1)
+    {
+        events.Unsubscribe<EntitySelectionChangedEvent>(m_SelectionChangedSubId);
+        m_SelectionChangedSubId = -1;
+    }
+    if (m_FocusRequestedSubId != -1)
+    {
+        events.Unsubscribe<EntityFocusRequestedEvent>(m_FocusRequestedSubId);
+        m_FocusRequestedSubId = -1;
+    }
+}
+
+void DefaultCameraController::OnUpdate(float)
+{
     if (!HasComponent<PositionComponent>() || !HasComponent<CameraComponent>())
         return;
 
@@ -45,8 +63,11 @@ void DefaultCameraController::OnUpdate(float dt)
     bool hoveringPanel = false;
     bool typing = false;
 #ifdef ENABLE_EDITOR
-    hoveringPanel = ImGui::GetIO().WantCaptureMouse;
-    typing = ImGui::GetIO().WantTextInput;
+    if (ImGui::GetCurrentContext())
+    {
+        hoveringPanel = ImGui::GetIO().WantCaptureMouse;
+        typing = ImGui::GetIO().WantTextInput;
+    }
 #endif
 
     bool isRMB = mouse.IsRightButtonPressed();
@@ -109,28 +130,24 @@ void DefaultCameraController::OnUpdate(float dt)
     if (isF && !m_WasFPressed && !typing)
     {
         m_WasFPressed = true;
-#ifdef ENABLE_EDITOR
-        entt::entity target = SceneHierarchyPanel::s_SelectedEntity;
+        entt::entity target = m_SelectedEntity;
         if (target != entt::null && GetScene().registry.valid(target))
         {
             FocusOnEntity(target);
         }
-#endif
     }
     if (!isF)
         m_WasFPressed = false;
 
-#ifdef ENABLE_EDITOR
-    if (SceneHierarchyPanel::s_FocusRequested)
+    if (m_PendingFocusEntity != entt::null)
     {
-        entt::entity target = SceneHierarchyPanel::s_FocusTargetEntity;
+        entt::entity target = m_PendingFocusEntity;
         if (target != entt::null && GetScene().registry.valid(target))
         {
             FocusOnEntity(target);
         }
-        SceneHierarchyPanel::s_FocusRequested = false;
+        m_PendingFocusEntity = entt::null;
     }
-#endif
 
     // Movement multipliers
     float speedMultiplier = 1.0f;
@@ -200,8 +217,7 @@ void DefaultCameraController::OnUpdate(float dt)
     else if (orbiting)
     {
         bool pivotSet = false;
-#ifdef ENABLE_EDITOR
-        entt::entity selected = SceneHierarchyPanel::s_SelectedEntity;
+        entt::entity selected = m_SelectedEntity;
         if (selected != entt::null && GetScene().registry.valid(selected))
         {
             if (auto* tr = GetScene().registry.try_get<WorldTransformComponent>(selected))
@@ -209,22 +225,21 @@ void DefaultCameraController::OnUpdate(float dt)
                 glm::vec3 selPos = glm::vec3(tr->worldMatrix[3]);
                 m_Pivot = selPos;
                 pivotSet = true;
-                if (!s_WasOrbitingBefore)
+                if (!m_WasOrbitingBefore)
                 {
                     m_Distance = glm::distance(posComp.value, m_Pivot);
                     if (m_Distance < 0.1f)
                         m_Distance = 0.1f;
-                    s_WasOrbitingBefore = true;
+                    m_WasOrbitingBefore = true;
                 }
             }
         }
-#endif
-        if (!pivotSet && !s_WasOrbitingBefore)
+        if (!pivotSet && !m_WasOrbitingBefore)
         {
             m_Distance = glm::distance(posComp.value, m_Pivot);
             if (m_Distance < 0.1f)
                 m_Distance = 0.1f;
-            s_WasOrbitingBefore = true;
+            m_WasOrbitingBefore = true;
         }
 
         m_Yaw += xOffset;
@@ -232,7 +247,7 @@ void DefaultCameraController::OnUpdate(float dt)
     }
     else
     {
-        s_WasOrbitingBefore = false;
+        m_WasOrbitingBefore = false;
     }
 
     // Apply Pitch clamp globally after input

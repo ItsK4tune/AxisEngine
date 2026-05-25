@@ -12,6 +12,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <core/app/application.h>
+#include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
 #include <ecs/logic/entity_manager.h>
 #include <ecs/unit/light_components.h>
@@ -25,6 +26,7 @@
 #include <render/interface/i_render_state_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
+#include <scene/type/scene_events.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -33,10 +35,17 @@ GizmoEditorModule::GizmoEditorModule()
 }
 GizmoEditorModule::~GizmoEditorModule()
 {
+    if (m_SceneUnloadedSubId != -1)
+    {
+        EventManager::Instance().Unsubscribe<SceneUnloadedEvent>(m_SceneUnloadedSubId);
+        m_SceneUnloadedSubId = -1;
+    }
 }
 
 void GizmoEditorModule::Initialize()
 {
+    m_SceneUnloadedSubId = EventManager::Instance().Subscribe<SceneUnloadedEvent>(
+        [this](const SceneUnloadedEvent&) { ClearSceneLabels(); });
 }
 
 #include <core/logic/config_manager.h>
@@ -220,6 +229,19 @@ void GizmoEditorModule::Render(Scene& scene)
 
 void GizmoEditorModule::ProcessInput(KeyboardManager& keyboard)
 {
+}
+
+void GizmoEditorModule::ClearSceneLabels()
+{
+    if (auto* scene = ServiceLocator::Instance().Resolve<Scene>())
+    {
+        ClearDebugLabels(*scene);
+        ClearLightLabels(*scene);
+        return;
+    }
+
+    m_EntityLabelMap.clear();
+    m_LightLabelMap.clear();
 }
 
 void GizmoEditorModule::ClearDebugLabels(Scene& scene)

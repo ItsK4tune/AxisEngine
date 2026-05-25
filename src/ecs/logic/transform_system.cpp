@@ -17,21 +17,34 @@ void TransformSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<TransformSystem>(this);
+    if (auto* scene = sl.Resolve<Scene>())
+        BindRegistry(*scene);
+
     EventManager::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
-        e.registry->on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-        e.registry->on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-        e.registry->on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-
-        e.registry->on_construct<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-        e.registry->on_destroy<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-
-        e.registry->on_update<PositionComponent>().connect<&TransformSystem::OnTransformChanged>(this);
-        e.registry->on_update<RotationComponent>().connect<&TransformSystem::OnTransformChanged>(this);
-        e.registry->on_update<ScaleComponent>().connect<&TransformSystem::OnTransformChanged>(this);
-
-        m_IsLinearTransformsDirty = true;
-        RebuildLinearTransforms(*(Scene*)e.scene);
+        if (e.scene)
+            BindRegistry(*e.scene);
     });
+}
+
+void TransformSystem::BindRegistry(Scene& scene)
+{
+    auto& registry = scene.registry;
+    if (m_BoundRegistries.insert(&registry).second)
+    {
+        registry.on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        registry.on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        registry.on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+
+        registry.on_construct<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+        registry.on_destroy<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+
+        registry.on_update<PositionComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+        registry.on_update<RotationComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+        registry.on_update<ScaleComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+    }
+
+    m_IsLinearTransformsDirty = true;
+    RebuildLinearTransforms(scene);
 }
 
 void TransformSystem::OnTransformChanged(entt::registry& reg, entt::entity entity)

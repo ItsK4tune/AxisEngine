@@ -142,9 +142,7 @@ struct AppConfig
     DebugConfig debug;
     LightingMode lightingMode = LightingMode::RealTime;
 
-    // ─── Legacy accessors (inline, zero-cost) ───
-    // These keep existing code compiling during migration.
-    // TODO: Remove after all consumers migrate to sub-structs.
+    // Legacy accessors keep existing code compiling during config migration.
     int& width = window.width;
     int& height = window.height;
     WindowMode& windowMode = window.windowMode;

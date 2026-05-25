@@ -1,129 +1,192 @@
 #pragma once
 
-#include <new>
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <new>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
-// Flat, zero-allocation-per-command bump allocator for rendering commands
 class CommandQueue
 {
 public:
-    CommandQueue()
+    CommandQueue() = default;
+    ~CommandQueue()
     {
-        m_Buffer.reserve(1024 * 64);  // Pre-allocate 64KB for commands
+        Clear();
+    }
+
+    CommandQueue(const CommandQueue&) = delete;
+    CommandQueue& operator=(const CommandQueue&) = delete;
+
+    CommandQueue(CommandQueue&&) noexcept = default;
+    CommandQueue& operator=(CommandQueue&& other) noexcept
+    {
+        if (this != &other)
+        {
+            Clear();
+            m_Blocks = std::move(other.m_Blocks);
+        }
+        return *this;
     }
 
     template <typename F>
     void Submit(F&& f)
     {
         using FuncType = std::decay_t<F>;
-        constexpr size_t funcSize = sizeof(FuncType);
-        constexpr size_t align = alignof(FuncType);
+        static_assert(alignof(FuncType) <= kBlockAlignment,
+                      "Command captures require an alignment larger than the command queue block alignment.");
 
-        // Ensure alignment for the header
-        size_t offset = m_Buffer.size();
-        size_t headerPad = (alignof(CommandHeader) - (offset % alignof(CommandHeader))) % alignof(CommandHeader);
-        offset += headerPad;
+        Block& block = GetWritableBlock(sizeof(CommandHeader) + alignof(FuncType) + sizeof(FuncType));
+        size_t headerOffset = AlignUp(block.used, alignof(CommandHeader));
+        size_t dataOffset = AlignUp(headerOffset + sizeof(CommandHeader), alignof(FuncType));
+        size_t endOffset = dataOffset + sizeof(FuncType);
 
-        // Ensure alignment for the function object
-        size_t dataOffset = offset + sizeof(CommandHeader);
-        size_t funcPad = (align - (dataOffset % align)) % align;
-        dataOffset += funcPad;
+        if (endOffset > block.capacity)
+        {
+            Block& freshBlock = AddBlock(sizeof(CommandHeader) + alignof(FuncType) + sizeof(FuncType));
+            headerOffset = AlignUp(freshBlock.used, alignof(CommandHeader));
+            dataOffset = AlignUp(headerOffset + sizeof(CommandHeader), alignof(FuncType));
+            endOffset = dataOffset + sizeof(FuncType);
+            return SubmitIntoBlock<FuncType>(freshBlock, headerOffset, dataOffset, endOffset, std::forward<F>(f));
+        }
 
-        size_t totalSize = (dataOffset + funcSize) - m_Buffer.size();
+        SubmitIntoBlock<FuncType>(block, headerOffset, dataOffset, endOffset, std::forward<F>(f));
+    }
 
-        m_Buffer.resize(m_Buffer.size() + totalSize);
+    void Execute()
+    {
+        ForEachCommand([](CommandHeader& header, uint8_t* data) { header.execute(data); });
+    }
 
-        // Placement new the lambda into the buffer
-        new (m_Buffer.data() + dataOffset) FuncType(std::forward<F>(f));
+    void Clear()
+    {
+        ForEachCommand([](CommandHeader& header, uint8_t* data) { header.destroy(data); });
+        for (auto& block : m_Blocks)
+        {
+            block->used = 0;
+        }
+    }
 
-        // Write header
-        CommandHeader* header = reinterpret_cast<CommandHeader*>(m_Buffer.data() + offset);
-        header->execute = [](const uint8_t* data) {
-            auto* func = reinterpret_cast<const FuncType*>(data);
+    bool IsEmpty() const
+    {
+        return std::all_of(m_Blocks.begin(), m_Blocks.end(), [](const auto& block) { return block->used == 0; });
+    }
+
+    void Merge(CommandQueue& other)
+    {
+        for (auto& block : other.m_Blocks)
+        {
+            if (block && block->used > 0)
+            {
+                m_Blocks.push_back(std::move(block));
+            }
+        }
+        other.m_Blocks.clear();
+    }
+
+private:
+    static constexpr size_t kDefaultBlockSize = 64 * 1024;
+    static constexpr size_t kBlockAlignment = 64;
+
+    static size_t AlignUp(size_t value, size_t alignment)
+    {
+        return (value + alignment - 1) & ~(alignment - 1);
+    }
+
+    struct CommandHeader
+    {
+        void (*execute)(uint8_t*);
+        void (*destroy)(uint8_t*);
+        size_t commandSize;
+        size_t dataOffset;
+    };
+
+    struct Block
+    {
+        explicit Block(size_t requestedCapacity)
+            : capacity(AlignUp((std::max)(requestedCapacity, kDefaultBlockSize), kBlockAlignment)),
+              data(static_cast<uint8_t*>(::operator new(capacity, std::align_val_t(kBlockAlignment))))
+        {
+        }
+
+        ~Block()
+        {
+            ::operator delete(data, std::align_val_t(kBlockAlignment));
+        }
+
+        Block(const Block&) = delete;
+        Block& operator=(const Block&) = delete;
+
+        size_t capacity = 0;
+        size_t used = 0;
+        uint8_t* data = nullptr;
+    };
+
+    Block& AddBlock(size_t minimumCapacity)
+    {
+        m_Blocks.push_back(std::make_unique<Block>(minimumCapacity));
+        return *m_Blocks.back();
+    }
+
+    Block& GetWritableBlock(size_t requiredBytes)
+    {
+        if (m_Blocks.empty())
+        {
+            return AddBlock(requiredBytes);
+        }
+
+        Block& block = *m_Blocks.back();
+        if (block.capacity - block.used < requiredBytes)
+        {
+            return AddBlock(requiredBytes);
+        }
+        return block;
+    }
+
+    template <typename FuncType, typename F>
+    void SubmitIntoBlock(Block& block, size_t headerOffset, size_t dataOffset, size_t endOffset, F&& f)
+    {
+        new (block.data + dataOffset) FuncType(std::forward<F>(f));
+
+        auto* header = reinterpret_cast<CommandHeader*>(block.data + headerOffset);
+        header->execute = [](uint8_t* data) {
+            auto* func = reinterpret_cast<FuncType*>(data);
             (*func)();
         };
         header->destroy = [](uint8_t* data) {
             auto* func = reinterpret_cast<FuncType*>(data);
             func->~FuncType();
         };
-        header->dataOffset = static_cast<uint16_t>(dataOffset - offset);
-        header->commandSize = static_cast<uint32_t>(totalSize - headerPad);
+        header->dataOffset = dataOffset - headerOffset;
+        header->commandSize = endOffset - headerOffset;
+        block.used = endOffset;
     }
 
-    void Execute()
+    template <typename Fn>
+    void ForEachCommand(Fn&& fn)
     {
-        size_t offset = 0;
-        while (offset < m_Buffer.size())
+        for (auto& block : m_Blocks)
         {
-            size_t pad = (alignof(CommandHeader) - (offset % alignof(CommandHeader))) % alignof(CommandHeader);
-            offset += pad;
+            if (!block)
+                continue;
 
-            if (offset >= m_Buffer.size())
-                break;
+            size_t offset = 0;
+            while (offset < block->used)
+            {
+                offset = AlignUp(offset, alignof(CommandHeader));
+                if (offset >= block->used)
+                    break;
 
-            CommandHeader* header = reinterpret_cast<CommandHeader*>(m_Buffer.data() + offset);
-            const uint8_t* data = m_Buffer.data() + offset + header->dataOffset;
-
-            header->execute(data);
-
-            offset += header->commandSize;
+                auto* header = reinterpret_cast<CommandHeader*>(block->data + offset);
+                uint8_t* data = block->data + offset + header->dataOffset;
+                fn(*header, data);
+                offset += header->commandSize;
+            }
         }
     }
 
-    void Clear()
-    {
-        size_t offset = 0;
-        while (offset < m_Buffer.size())
-        {
-            size_t pad = (alignof(CommandHeader) - (offset % alignof(CommandHeader))) % alignof(CommandHeader);
-            offset += pad;
-
-            if (offset >= m_Buffer.size())
-                break;
-
-            CommandHeader* header = reinterpret_cast<CommandHeader*>(m_Buffer.data() + offset);
-            uint8_t* data = m_Buffer.data() + offset + header->dataOffset;
-
-            header->destroy(data);
-
-            offset += header->commandSize;
-        }
-        m_Buffer.clear();
-    }
-
-    bool IsEmpty() const
-    {
-        return m_Buffer.empty();
-    }
-
-    void Merge(CommandQueue& other)
-    {
-        if (other.m_Buffer.empty())
-            return;
-
-        // Memory copy because lambdas captured here are trivially relocatable
-        // (Render commands mostly capture pointers and basic types).
-        // If a command captures std::shared_ptr or std::string, moving via memcpy is NOT standards-compliant,
-        // but it works under typical ABI because addresses of the captured variables themselves don't change relative
-        // to the buffer.
-        m_Buffer.insert(m_Buffer.end(), other.m_Buffer.begin(), other.m_Buffer.end());
-
-        // Notice we don't call clear on other because that would invoke destructors!
-        // We just clear the vector without destroying elements since we moved them.
-        other.m_Buffer.clear();
-    }
-
-private:
-    struct CommandHeader
-    {
-        void (*execute)(const uint8_t*);
-        void (*destroy)(uint8_t*);
-        uint32_t commandSize;
-        uint16_t dataOffset;
-        uint16_t padding;
-    };
-
-    std::vector<uint8_t> m_Buffer;
+    std::vector<std::unique_ptr<Block>> m_Blocks;
 };

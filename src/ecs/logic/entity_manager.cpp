@@ -365,6 +365,9 @@ void EntityManager::DestroyEntity(Scene& scene, entt::entity entity, SceneManage
         sky->shader.reset();
     }
 
+    if (manager)
+        manager->RemoveEntity(entity);
+
     scene.registry.destroy(entity);
 }
 

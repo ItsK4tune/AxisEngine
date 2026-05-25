@@ -192,6 +192,7 @@ void ScriptableSystem::OnScriptComponentDestroyed(entt::registry& reg, entt::ent
         {
             try
             {
+                sc->instance->OnDestroy();
                 if (sc->DestroyScript)
                     sc->DestroyScript(sc);
                 else

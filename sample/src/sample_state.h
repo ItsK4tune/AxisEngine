@@ -1,7 +1,11 @@
 #pragma once
 
 #include <axis_all.h>
+#ifdef ENABLE_EDITOR
 #include <imgui.h>
+
+class ImGuiLayer;
+#endif
 #include <vector>
 
 // ─── Scriptable Behaviors for Scenario 6 ───
@@ -13,7 +17,7 @@ public:
     float radius = 5.0f;
     glm::vec3 center = glm::vec3(0.0f);
     float angle = 0.0f;
-    
+
     void OnCreate() override
     {
         angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
@@ -24,7 +28,7 @@ public:
             center = GetComponent<PositionComponent>().value;
         }
     }
-    
+
     void OnUpdate(float dt) override
     {
         angle += speed * dt;
@@ -43,13 +47,13 @@ class PulseScaleScript : public Scriptable
 public:
     float speed = 2.0f;
     float time = 0.0f;
-    
+
     void OnCreate() override
     {
         speed = 1.0f + static_cast<float>(rand() % 200) / 100.0f;
         time = static_cast<float>(rand() % 100) / 100.0f;
     }
-    
+
     void OnUpdate(float dt) override
     {
         time += dt;
@@ -69,21 +73,18 @@ class ColorShiftScript : public Scriptable
 public:
     float speed = 1.0f;
     float time = 0.0f;
-    
+
     void OnCreate() override
     {
         speed = 0.5f + static_cast<float>(rand() % 100) / 100.0f;
         time = static_cast<float>(rand() % 100) / 100.0f;
     }
-    
+
     void OnUpdate(float dt) override
     {
         time += dt;
-        glm::vec3 color(
-            0.5f + 0.5f * sin(time * speed),
-            0.5f + 0.5f * sin(time * speed + 2.0f),
-            0.5f + 0.5f * sin(time * speed + 4.0f)
-        );
+        glm::vec3 color(0.5f + 0.5f * sin(time * speed), 0.5f + 0.5f * sin(time * speed + 2.0f),
+                        0.5f + 0.5f * sin(time * speed + 4.0f));
 
         if (HasComponent<MeshRendererComponent>())
         {
@@ -149,11 +150,8 @@ public:
 
     void OnCreate() override
     {
-        rotationSpeed = glm::vec3(
-            static_cast<float>(rand() % 360 - 180),
-            static_cast<float>(rand() % 360 - 180),
-            static_cast<float>(rand() % 360 - 180)
-        );
+        rotationSpeed = glm::vec3(static_cast<float>(rand() % 360 - 180), static_cast<float>(rand() % 360 - 180),
+                                  static_cast<float>(rand() % 360 - 180));
     }
 
     void OnUpdate(float dt) override
@@ -178,11 +176,10 @@ public:
 
     void OnCreate() override
     {
-        velocity = glm::normalize(glm::vec3(
-            static_cast<float>(rand() % 200 - 100),
-            static_cast<float>(rand() % 200 - 100),
-            static_cast<float>(rand() % 200 - 100)
-        )) * (3.0f + static_cast<float>(rand() % 10));
+        velocity =
+            glm::normalize(glm::vec3(static_cast<float>(rand() % 200 - 100), static_cast<float>(rand() % 200 - 100),
+                                     static_cast<float>(rand() % 200 - 100))) *
+            (3.0f + static_cast<float>(rand() % 10));
     }
 
     void OnUpdate(float dt) override
@@ -192,12 +189,36 @@ public:
             auto& pos = GetComponent<PositionComponent>();
             pos.value += velocity * dt;
 
-            if (pos.value.x < minBound.x) { pos.value.x = minBound.x; velocity.x *= -1.0f; }
-            if (pos.value.x > maxBound.x) { pos.value.x = maxBound.x; velocity.x *= -1.0f; }
-            if (pos.value.y < minBound.y) { pos.value.y = minBound.y; velocity.y *= -1.0f; }
-            if (pos.value.y > maxBound.y) { pos.value.y = maxBound.y; velocity.y *= -1.0f; }
-            if (pos.value.z < minBound.z) { pos.value.z = minBound.z; velocity.z *= -1.0f; }
-            if (pos.value.z > maxBound.z) { pos.value.z = maxBound.z; velocity.z *= -1.0f; }
+            if (pos.value.x < minBound.x)
+            {
+                pos.value.x = minBound.x;
+                velocity.x *= -1.0f;
+            }
+            if (pos.value.x > maxBound.x)
+            {
+                pos.value.x = maxBound.x;
+                velocity.x *= -1.0f;
+            }
+            if (pos.value.y < minBound.y)
+            {
+                pos.value.y = minBound.y;
+                velocity.y *= -1.0f;
+            }
+            if (pos.value.y > maxBound.y)
+            {
+                pos.value.y = maxBound.y;
+                velocity.y *= -1.0f;
+            }
+            if (pos.value.z < minBound.z)
+            {
+                pos.value.z = minBound.z;
+                velocity.z *= -1.0f;
+            }
+            if (pos.value.z > maxBound.z)
+            {
+                pos.value.z = maxBound.z;
+                velocity.z *= -1.0f;
+            }
             if (HasComponent<WorldTransformComponent>())
                 GetComponent<WorldTransformComponent>().isDirty = true;
         }
@@ -216,17 +237,26 @@ public:
 
     void OnUpdate(float dt) override
     {
+#ifdef ENABLE_EDITOR
         ImGuiIO* imguiIO = ImGui::GetCurrentContext() ? &ImGui::GetIO() : nullptr;
         const bool keyboardCaptured = imguiIO && imguiIO->WantCaptureKeyboard && !allowKeyboardWhileUI;
         const bool mouseCaptured = imguiIO && imguiIO->WantCaptureMouse;
+#else
+        const bool keyboardCaptured = false;
+        const bool mouseCaptured = false;
+#endif
 
         glm::vec3 move = glm::vec3(0.0f);
         if (!keyboardCaptured)
         {
-            if (GetAction("PlayerForward")) move.z -= 1.0f;
-            if (GetAction("PlayerBackward")) move.z += 1.0f;
-            if (GetAction("PlayerLeft")) move.x -= 1.0f;
-            if (GetAction("PlayerRight")) move.x += 1.0f;
+            if (GetAction("PlayerForward"))
+                move.z -= 1.0f;
+            if (GetAction("PlayerBackward"))
+                move.z += 1.0f;
+            if (GetAction("PlayerLeft"))
+                move.x -= 1.0f;
+            if (GetAction("PlayerRight"))
+                move.x += 1.0f;
         }
 
         bool dirty = false;
@@ -273,11 +303,9 @@ public:
                 auto& mat = GetComponent<AxisMaterialComponent>();
                 mat.desc.pbr.roughness = static_cast<float>(rand() % 100) / 100.0f;
                 mat.desc.pbr.metallic = static_cast<float>(rand() % 100) / 100.0f;
-                mat.desc.emission = glm::vec3(
-                    static_cast<float>(rand() % 100) / 30.0f,
-                    static_cast<float>(rand() % 100) / 30.0f,
-                    static_cast<float>(rand() % 100) / 30.0f
-                );
+                mat.desc.emission =
+                    glm::vec3(static_cast<float>(rand() % 100) / 30.0f, static_cast<float>(rand() % 100) / 30.0f,
+                              static_cast<float>(rand() % 100) / 30.0f);
                 mat.gpu.dirty = true;
             }
         }
@@ -324,45 +352,47 @@ private:
     void DrawGUI();
     void SetupCamera();
 
-    void LoadScene1(); // 10,000 non-colliding spheres
-    void LoadScene2(); // 1,000 cubes, plane, 3 light types with shadow mapping
-    void LoadScene3(); // 1 cylinder, plane, 999 lighting load (333 dir, 333 point, 333 spot)
-    void LoadScene4(); // 1,000 dynamic rigidbodies falling
-    void LoadScene5(); // Navmesh generation + follower pathfinding
-    void LoadScene6(); // Scriptable stability (100 entities with 6 script behaviors)
-    void LoadScene7(); // Particle emitter stress test (dynamic colored vortex)
-    void LoadScene8(); // Scenario 8: Interactive Playground (Mouse & Keyboard)
-    void LoadScene9(); // Scenario 9: Post-Processing & Tonemapping
-    void LoadScene10(); // Scenario 10: Physics Constraint Chain (Pendulum)
-    void LoadScene11(); // Scenario 11: Decal Stress Test & Blending
-    void LoadScene12(); // Scenario 12: Scene Save & Load Test
-    void LoadScene13(); // Scenario 13: Input Binding Save & Load Test
-    void LoadScene14(); // Scenario 14: Localization (l10n) Test
-    void LoadScene15(); // Scenario 15: AxisData Node Save & Load Test
-    void LoadScene16(); // Scenario 16: Network Messaging Test
-    void LoadScene17(); // Scenario 17: Audio 2D/3D Test
-    void LoadScene18(); // Scenario 18: Video Playback Test
-    void LoadScene19(); // Scenario 19: Skeletal Animation Test
-    void LoadScene20(); // Scenario 20: Reflection & Environment Probes Test
-    void LoadScene21(); // Scenario 21: Transparent Object Sorting Test
-    void LoadScene22(); // Scenario 22: PBR Material Matrix Test
-    void LoadScene23(); // Scenario 23: LOD Selection Test
-    void LoadScene24(); // Scenario 24: Camera Layer Filter Test
-    void LoadScene25(); // Scenario 25: Render Order Test
-    void LoadScene26(); // Scenario 26: Instanced Batching Test
-    void LoadScene27(); // Scenario 27: Deferred Shadow Receiver Test
-    void LoadScene28(); // Scenario 28: UI Showcase
-    void LoadScene29(); // Scenario 29: Responsive UI
+    void LoadScene1();   // 10,000 non-colliding spheres
+    void LoadScene2();   // 1,000 cubes, plane, 3 light types with shadow mapping
+    void LoadScene3();   // 1 smooth capsule, plane, 999 lighting load (333 dir, 333 point, 333 spot)
+    void LoadScene4();   // 1,000 dynamic rigidbodies falling
+    void LoadScene5();   // Navmesh generation + follower pathfinding
+    void LoadScene6();   // Scriptable stability (100 entities with 6 script behaviors)
+    void LoadScene7();   // Particle emitter stress test (dynamic colored vortex)
+    void LoadScene8();   // Scenario 8: Interactive Playground (Mouse & Keyboard)
+    void LoadScene9();   // Scenario 9: Post-Processing & Tonemapping
+    void LoadScene10();  // Scenario 10: Physics Constraint Chain (Pendulum)
+    void LoadScene11();  // Scenario 11: Decal Stress Test & Blending
+    void LoadScene12();  // Scenario 12: Scene Save & Load Test
+    void LoadScene13();  // Scenario 13: Input Binding Save & Load Test
+    void LoadScene14();  // Scenario 14: Localization (l10n) Test
+    void LoadScene15();  // Scenario 15: AxisData Node Save & Load Test
+    void LoadScene16();  // Scenario 16: Network Messaging Test
+    void LoadScene17();  // Scenario 17: Audio 2D/3D Test
+    void LoadScene18();  // Scenario 18: Video Playback Test
+    void LoadScene19();  // Scenario 19: Skeletal Animation Test
+    void LoadScene20();  // Scenario 20: Reflection & Environment Probes Test
+    void LoadScene21();  // Scenario 21: Transparent Object Sorting Test
+    void LoadScene22();  // Scenario 22: PBR Material Matrix Test
+    void LoadScene23();  // Scenario 23: LOD Selection Test
+    void LoadScene24();  // Scenario 24: Camera Layer Filter Test
+    void LoadScene25();  // Scenario 25: Render Order Test
+    void LoadScene26();  // Scenario 26: Instanced Batching Test
+    void LoadScene27();  // Scenario 27: Shadow Receiver Test
+    void LoadScene28();  // Scenario 28: UI Showcase
+    void LoadScene29();  // Scenario 29: Responsive UI
     void StopScenario17Audio();
 
+#ifdef ENABLE_EDITOR
     ImGuiLayer* m_EditorImGuiLayer = nullptr;
+    bool m_EditorSystemEnabled = false;
+#endif
     int m_CurrentScenario = 0;
     int m_PendingScenario = -1;  // scenario to load next OnUpdate
     bool m_ShowDebugLines = true;
-    bool m_EditorSystemEnabled = false;
 
     // Scenario 2 parameters
-    int m_S2LightMotionMode = 1; // 0: Static, 1: Circle, 2: Vertical bob, 3: Figure eight
+    int m_S2LightMotionMode = 1;  // 0: Static, 1: Circle, 2: Vertical bob, 3: Figure eight
     float m_S2PointMotionSpeed = 1.0f;
     float m_S2PointOrbitRadius = 18.0f;
     float m_S2PointMotionHeight = 12.0f;
@@ -379,7 +409,7 @@ private:
     float m_S2SpotIntensity = 8.0f;
 
     // Scenario 3 parameters
-    float m_S3DirectionalIntensity = 0.02f;
+    float m_S3DirectionalIntensity = 0.08f;
     float m_S3PointIntensity = 2.0f;
     float m_S3SpotIntensity = 3.0f;
     glm::vec3 m_S3DirectionalColor = glm::vec3(1.0f);
@@ -388,11 +418,11 @@ private:
 
     // Scenario 1 parameters
     int m_S1EntityCount = 10000;
-    int m_S1MeshType = 0; // 0: Sphere, 1: Cube, 2: Cylinder, 3: Capsule
+    int m_S1MeshType = 0;  // 0: Sphere, 1: Cube, 2: Cylinder, 3: Capsule
 
     // Scenario 4 parameters
-    int m_S4EntityCount = 100; // Default lower to be safe
-    int m_S4ShapeType = 0; // 0: Box, 1: Sphere, 2: Capsule
+    int m_S4EntityCount = 100;  // Default lower to be safe
+    int m_S4ShapeType = 0;      // 0: Box, 1: Sphere, 2: Capsule
     float m_S4Mass = 1.0f;
     float m_S4Restitution = 0.5f;
     float m_S4Friction = 0.5f;
@@ -413,7 +443,7 @@ private:
     bool m_S5LockMoveX = false;
     bool m_S5LockMoveY = false;
     bool m_S5LockMoveZ = false;
-    int m_S5PathfindingCriteria = 0; // See PathfindingCriteria combo in DrawGUI.
+    int m_S5PathfindingCriteria = 0;  // See PathfindingCriteria combo in DrawGUI.
     glm::vec3 m_S5NewWaypoint = glm::vec3(0.0f, 0.5f, 0.0f);
     bool m_S5RepathRequested = false;
     int m_S5LastPathfindingCriteria = -1;
@@ -458,7 +488,7 @@ private:
     // Scenario 13 UI variables
     std::string m_S13Status = "Ready";
     std::string m_S13NewAction = "PlayerJump";
-    int m_S13NewKey = 32; // Space
+    int m_S13NewKey = 32;  // Space
 
     // Scenario 15 UI variables
     std::string m_S15Status = "Ready";
@@ -566,10 +596,10 @@ private:
     bool m_S8Dragging = false;
 
     // Cached entity handles (set in LoadScene*, used in OnUpdate to avoid per-frame O(n) scans)
-    entt::entity m_S2DirLightEntity  = entt::null;
+    entt::entity m_S2DirLightEntity = entt::null;
     entt::entity m_S2PointLightEntity = entt::null;
-    entt::entity m_S2SpotLightEntity  = entt::null;
-    entt::entity m_S11DirLightEntity  = entt::null;
+    entt::entity m_S2SpotLightEntity = entt::null;
+    entt::entity m_S11DirLightEntity = entt::null;
     entt::entity m_S28CardEntity = entt::null;
     entt::entity m_S28TextureEntity = entt::null;
     entt::entity m_S29RootPanel = entt::null;

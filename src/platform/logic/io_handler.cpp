@@ -4,7 +4,6 @@
 #include <platform/logic/keyboard_manager.h>
 #include <platform/logic/monitor_manager.h>
 #include <platform/logic/mouse_manager.h>
-#include <render/interface/i_graphics_context.h>
 
 IOHandler::IOHandler()
 {

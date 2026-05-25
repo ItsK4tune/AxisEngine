@@ -4,6 +4,7 @@
 #include <ecs/interface/i_update_system.h>
 #include <ecs/unit/core_components.h>
 #include <scene/logic/scene.h>
+#include <unordered_set>
 
 class TransformSystem : public IUpdateSystem, public IECSSystem
 {
@@ -44,9 +45,17 @@ public:
 
     std::vector<entt::entity> m_LinearTransforms;
     bool m_IsLinearTransformsDirty = true;
+    void MarkTransformGraphDirty()
+    {
+        m_IsLinearTransformsDirty = true;
+    }
+    void BindRegistry(Scene& scene);
     void RebuildLinearTransforms(Scene& scene);
     void OnHierarchyChanged(entt::registry& reg, entt::entity entity);
     void OnTransformChanged(entt::registry& reg, entt::entity entity);
 
     bool m_Enabled = true;
+
+private:
+    std::unordered_set<entt::registry*> m_BoundRegistries;
 };

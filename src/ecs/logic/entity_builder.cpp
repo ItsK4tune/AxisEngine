@@ -304,12 +304,14 @@ EntityBuilder& EntityBuilder::WithPointLight(const glm::vec3& color, float inten
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithSpotLight(const glm::vec3& direction, const glm::vec3& color, float intensity)
+EntityBuilder& EntityBuilder::WithSpotLight(const glm::vec3& direction, const glm::vec3& color, float intensity,
+                                            float radius)
 {
     auto& light = m_Scene.registry.get_or_emplace<SpotLightComponent>(m_Entity);
     light.direction = direction;
     light.color = color;
     light.intensity = intensity;
+    light.radius = radius;
     return *this;
 }
 

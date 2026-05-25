@@ -8,14 +8,12 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/core/app/state_machine.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/app_builder.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/config_loader.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/config_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/event_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/job_system.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/loader_strategies.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/localization_system.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/log_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/logger.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/state.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/data_node_serializer.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/data_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/core/logic/yaml_parser.cpp
@@ -73,7 +71,6 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/render/logic/animation.cpp
     ${CMAKE_SOURCE_DIR}/src/render/logic/animator.cpp
     ${CMAKE_SOURCE_DIR}/src/render/logic/bone.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/command_queue.cpp
     ${CMAKE_SOURCE_DIR}/src/render/logic/compute_shader.cpp
     ${CMAKE_SOURCE_DIR}/src/render/logic/font.cpp
     ${CMAKE_SOURCE_DIR}/src/render/logic/frustum.cpp

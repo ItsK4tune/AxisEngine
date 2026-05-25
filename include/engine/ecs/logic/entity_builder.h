@@ -65,7 +65,7 @@ public:
     EntityBuilder& WithPointLight(const glm::vec3& color = glm::vec3(1.0f), float intensity = 1.0f,
                                   float radius = 10.0f);
     EntityBuilder& WithSpotLight(const glm::vec3& direction, const glm::vec3& color = glm::vec3(1.0f),
-                                 float intensity = 1.0f);
+                                 float intensity = 1.0f, float radius = 50.0f);
 
     EntityBuilder& WithCamera(float fov = 45.0f, float near = 0.1f, float far = 1000.0f, bool active = false);
 

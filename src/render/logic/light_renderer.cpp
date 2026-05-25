@@ -109,7 +109,7 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader* sh
                                     light.constant,
                                     light.linear,
                                     light.quadratic,
-                                    0.0f,
+                                    light.range,
                                     0.0f,
                                     0.0f,
                                     light.ambient,

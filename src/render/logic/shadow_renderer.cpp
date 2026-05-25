@@ -25,7 +25,24 @@ glm::mat4 GetShadowModelMatrix(const RenderItem& item)
         modelMatrix *= item.model->GetRootTransform();
     return modelMatrix;
 }
+
+void ExecuteAndClear(CommandQueue& queue)
+{
+    if (queue.IsEmpty())
+        return;
+
+    queue.Execute();
+    queue.Clear();
 }
+
+void ExecuteAndClear(std::vector<CommandQueue>& queues)
+{
+    for (auto& queue : queues)
+    {
+        ExecuteAndClear(queue);
+    }
+}
+}  // namespace
 
 void ShadowRenderer::Initialize(IGraphicsContext& context, IShaderLibrary& shaderLib)
 {
@@ -177,7 +194,8 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 &counter);
         }
         JobSystem::Instance().Wait(&counter);
-        for (auto& tq : m_ThreadQueues) m_MainQueue.Merge(tq);
+        ExecuteAndClear(m_MainQueue);
+        ExecuteAndClear(m_ThreadQueues);
     }
 
     // Point Lights
@@ -246,6 +264,8 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                             if (m_ShadowDistanceCullingSq > 0.0f &&
                                 item.worldAABB.DistanceSq(camPos) > m_ShadowDistanceCullingSq)
                                 continue;
+                            if (item.worldAABB.DistanceSq(lightPos) > farP * farP)
+                                continue;
 
                             // Skip objects that contain the light (self-shadowing of light mesh)
                             if (item.worldAABB.Contains(lightPos))
@@ -273,7 +293,8 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                     &counter);
             }
             JobSystem::Instance().Wait(&counter);
-            for (auto& tq : m_ThreadQueues) m_MainQueue.Merge(tq);
+            ExecuteAndClear(m_MainQueue);
+            ExecuteAndClear(m_ThreadQueues);
         }
     }
 
@@ -357,10 +378,11 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                     &counter);
             }
             JobSystem::Instance().Wait(&counter);
-            for (auto& tq : m_ThreadQueues) m_MainQueue.Merge(tq);
+            ExecuteAndClear(m_MainQueue);
+            ExecuteAndClear(m_ThreadQueues);
         }
     }
 
     m_MainQueue.Submit([this]() { m_Shadow.UnbindFBO(); });
-    m_MainQueue.Execute();
+    ExecuteAndClear(m_MainQueue);
 }

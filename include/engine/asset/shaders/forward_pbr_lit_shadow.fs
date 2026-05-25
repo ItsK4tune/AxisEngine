@@ -51,7 +51,7 @@ struct SpotLight {
     vec3 direction; float shadowIndex;
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
-    float quadratic; float pad2; float pad3; float pad4;
+    float quadratic; float radius; float pad3; float pad4;
     vec3 u_Ambient; float pad5;
     vec3 diffuse; float pad6;
     vec3 u_Specular; float pad7;

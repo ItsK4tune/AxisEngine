@@ -528,6 +528,23 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "Intensity", FloatStr(l->intensity));
         SerialWriteKV(f, ti, "Radius", FloatStr(l->radius));
     }
+    if (auto* l = reg.try_get<SpotLightComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "SpotLight");
+        SerialWriteKV(f, ti, "Active", l->active ? "true" : "false");
+        SerialWriteKV(f, ti, "CastShadow", l->isCastShadow ? "true" : "false");
+        SerialWriteKV(f, ti, "Color", Vec3Str(l->color));
+        SerialWriteKV(f, ti, "Intensity", FloatStr(l->intensity));
+        SerialWriteKV(f, ti, "Radius", FloatStr(l->radius));
+        SerialWriteKV(f, ti, "CutOff", FloatStr(glm::degrees(glm::acos(l->cutOff))));
+        SerialWriteKV(f, ti, "OuterCutOff", FloatStr(glm::degrees(glm::acos(l->outerCutOff))));
+        SerialWriteKV(f, ti, "Constant", FloatStr(l->constant));
+        SerialWriteKV(f, ti, "Linear", FloatStr(l->linear));
+        SerialWriteKV(f, ti, "Quadratic", FloatStr(l->quadratic));
+        SerialWriteKV(f, ti, "Ambient", FloatStr(l->ambient));
+        SerialWriteKV(f, ti, "Diffuse", FloatStr(l->diffuse));
+        SerialWriteKV(f, ti, "Specular", FloatStr(l->specular));
+    }
 
     // Physics
     if (auto* rs = reg.try_get<RigidShapeComponent>(entity))

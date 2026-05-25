@@ -54,7 +54,7 @@ struct SpotLight {
     vec3 direction; float shadowIndex;
     vec3 color; float intensity;
     float cutOff; float outerCutOff; float constant; float linear;
-    float quadratic; float pad2; float pad3; float pad4;
+    float quadratic; float radius; float pad3; float pad4;
     vec3 u_Ambient; float pad5;
     vec3 diffuse; float pad6;
     vec3 u_Specular; float pad7;
@@ -198,9 +198,11 @@ void main()
     
     for(int i = 0; i < light.nrPointLights; ++i)
     {
-        vec3 L = normalize(pointLights[i].position - FragPos);
+        vec3 toLight = pointLights[i].position - FragPos;
+        float dist = length(toLight);
+        if (pointLights[i].radius > 0.0 && dist > pointLights[i].radius) continue;
+        vec3 L = toLight / max(dist, 0.0001);
         vec3 H = normalize(V + L);
-        float dist = length(pointLights[i].position - FragPos);
         float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
         
         float diff = max(dot(Normal, L), 0.0);
@@ -225,14 +227,17 @@ void main()
 
     for(int i = 0; i < light.nrSpotLights; ++i)
     {
-        vec3 L = normalize(spotLights[i].position - FragPos);
+        vec3 toLight = spotLights[i].position - FragPos;
+        float dist = length(toLight);
+        if (spotLights[i].radius > 0.0 && dist > spotLights[i].radius) continue;
+        vec3 L = toLight / max(dist, 0.0001);
         vec3 H = normalize(V + L);
-        float dist = length(spotLights[i].position - FragPos);
         float attenuation = 1.0 / (spotLights[i].constant + spotLights[i].linear * dist + spotLights[i].quadratic * (dist * dist));
         
         float theta = dot(L, normalize(-spotLights[i].direction));
-        float epsilon = spotLights[i].cutOff - spotLights[i].outerCutOff;
+        float epsilon = max(spotLights[i].cutOff - spotLights[i].outerCutOff, 0.0001);
         float spotIntensity = clamp((theta - spotLights[i].outerCutOff) / epsilon, 0.0, 1.0);
+        if (spotIntensity <= 0.0) continue;
         
         float diff = max(dot(Normal, L), 0.0);
         float specPower = mix(128.0, 2.0, Roughness);
