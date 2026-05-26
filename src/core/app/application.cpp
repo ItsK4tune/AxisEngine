@@ -308,6 +308,7 @@ bool Application::Initialize(const AppConfig& config)
 
     m_Impl->m_SceneManager->Initialize();
     m_Impl->m_ScriptRegistry->Initialize();
+    RegisterUserStates();
     RegisterUserScripts();
 
     m_Impl->m_ConfigSubId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {

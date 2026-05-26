@@ -23,12 +23,19 @@ public:
     bool Initialize(const AppConfig& config);
     void Shutdown();
     void Run();
+    virtual void RegisterUserStates()
+    {
+    }
     virtual void RegisterUserScripts()
     {
     }
 
     template <typename T>
     void RegisterScript(const std::string& name);
+    template <typename T>
+    void RegisterState(const std::string& name = "");
+    template <typename From, typename To>
+    void RegisterStateTransition(const std::string& label, StateTransitionKind kind = StateTransitionKind::Custom);
 
     template <typename T, typename... Args>
     void PushState(Args&&... args)
@@ -56,6 +63,18 @@ inline void Application::RegisterScript(const std::string& name)
     {
         reg->Register<T>(name);
     }
+}
+
+template <typename T>
+inline void Application::RegisterState(const std::string& name)
+{
+    GetStateMachine().RegisterState<T>(name);
+}
+
+template <typename From, typename To>
+inline void Application::RegisterStateTransition(const std::string& label, StateTransitionKind kind)
+{
+    GetStateMachine().RegisterTransition<From, To>(label, kind);
 }
 
 class IAudioEngine;

@@ -132,6 +132,29 @@ int main() {
 }
 ```
 
+### Registering State Graph Metadata
+
+The editor State Machine panel can display all registered states and labeled transitions between them. Register this
+metadata during application setup:
+
+```cpp
+class GameApplication : public Application {
+public:
+    void RegisterUserStates() override {
+        RegisterState<MenuState>("Menu");
+        RegisterState<GameplayState>("Gameplay");
+        RegisterState<PauseState>("Pause");
+
+        RegisterStateTransition<MenuState, GameplayState>("Start Game", StateTransitionKind::Change);
+        RegisterStateTransition<GameplayState, PauseState>("Pause", StateTransitionKind::Push);
+        RegisterStateTransition<PauseState, GameplayState>("Resume", StateTransitionKind::Pop);
+    }
+};
+```
+
+Runtime calls to `PushState`, `PopState`, and `ChangeState` are also observed automatically, so the graph still shows
+states and transitions that were not explicitly registered.
+
 ---
 
 ## State Methods

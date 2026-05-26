@@ -33,6 +33,9 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
+#include <algorithm>
+#include <cmath>
+#include <utility>
 #include <unordered_map>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -1145,11 +1148,77 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     });
 
     DrawComponent<LODComponent>("LOD", reg, entity, [](auto& lod) {
-        ImGui::Text("LOD Levels: %d", (int)lod.lodModels.size());
+        auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
+        auto modelNames = rm.GetLoadedModels();
+
+        const size_t pairCount = std::max(lod.lodModels.size(), lod.lodDistancesSq.size());
+        while (lod.lodModels.size() < pairCount) lod.lodModels.push_back(nullptr);
+        while (lod.lodDistancesSq.size() < pairCount)
+        {
+            float previousDistance = lod.lodDistancesSq.empty() ? 0.0f : std::sqrt(lod.lodDistancesSq.back());
+            float nextDistance = previousDistance + 10.0f;
+            lod.lodDistancesSq.push_back(nextDistance * nextDistance);
+        }
+
+        ImGui::Text("LOD Pairs: %d", (int)lod.lodModels.size());
+        ImGui::Separator();
+
+        int removeIndex = -1;
         for (size_t i = 0; i < lod.lodModels.size(); ++i)
         {
-            float dist = (i < lod.lodDistancesSq.size()) ? sqrtf(lod.lodDistancesSq[i]) : 0.0f;
-            ImGui::Text("  L%d: %s (dist: %.1f)", (int)i, lod.lodModels[i] ? "Loaded" : "None", dist);
+            ImGui::PushID((int)i);
+            ImGui::Text("L%d", (int)i);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Remove"))
+                removeIndex = (int)i;
+
+            std::shared_ptr<Model> currentModel = lod.lodModels[i];
+            if (DrawResourceDropdown<Model>("Model", currentModel, modelNames,
+                                            [&rm](const std::string& name) { return rm.GetModel(name); }))
+            {
+                lod.lodModels[i] = currentModel;
+            }
+
+            float distance = std::sqrt(std::max(lod.lodDistancesSq[i], 0.0f));
+            if (ImGui::DragFloat("Distance", &distance, 0.25f, 0.0f, 100000.0f, "%.2f"))
+            {
+                distance = std::max(distance, 0.0f);
+                lod.lodDistancesSq[i] = distance * distance;
+            }
+            ImGui::TextDisabled("DistanceSq: %.2f", lod.lodDistancesSq[i]);
+            ImGui::Separator();
+            ImGui::PopID();
+        }
+
+        if (removeIndex >= 0)
+        {
+            lod.lodModels.erase(lod.lodModels.begin() + removeIndex);
+            lod.lodDistancesSq.erase(lod.lodDistancesSq.begin() + removeIndex);
+        }
+
+        if (ImGui::Button("+ Add LOD Pair"))
+        {
+            float previousDistance = lod.lodDistancesSq.empty() ? 0.0f : std::sqrt(lod.lodDistancesSq.back());
+            float nextDistance = previousDistance + 10.0f;
+            lod.lodModels.push_back(nullptr);
+            lod.lodDistancesSq.push_back(nextDistance * nextDistance);
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Sort by Distance"))
+        {
+            std::vector<std::pair<float, std::shared_ptr<Model>>> pairs;
+            pairs.reserve(lod.lodModels.size());
+            for (size_t i = 0; i < lod.lodModels.size(); ++i)
+                pairs.emplace_back(lod.lodDistancesSq[i], lod.lodModels[i]);
+
+            std::sort(pairs.begin(), pairs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+
+            for (size_t i = 0; i < pairs.size(); ++i)
+            {
+                lod.lodDistancesSq[i] = pairs[i].first;
+                lod.lodModels[i] = pairs[i].second;
+            }
         }
     });
 

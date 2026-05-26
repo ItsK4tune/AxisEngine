@@ -774,10 +774,15 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     {
         WriteComponentHeader(f, ci, "LOD");
         std::string models, dists;
-        for (auto& m : lod->lodModels)
-            if (m)
-                models += m->GetName() + " ";
-        for (float d : lod->lodDistancesSq) dists += FloatStr(sqrtf(d)) + " ";
+        const size_t pairCount = std::min(lod->lodModels.size(), lod->lodDistancesSq.size());
+        for (size_t i = 0; i < pairCount; ++i)
+        {
+            if (!lod->lodModels[i])
+                continue;
+
+            models += lod->lodModels[i]->GetName() + " ";
+            dists += FloatStr(sqrtf(lod->lodDistancesSq[i])) + " ";
+        }
         if (!models.empty())
             SerialWriteKV(f, ti, "Models", models);
         if (!dists.empty())
