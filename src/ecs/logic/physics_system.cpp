@@ -226,6 +226,7 @@ void PhysicsSystem::OnRigidBodyDestroyed(entt::registry& registry, entt::entity 
             if (constraint)
                 m_LastPhysicsWorld->RemoveConstraint(constraint);
         }
+        rb.constraints.clear();
         m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
     }
 }

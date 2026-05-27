@@ -234,20 +234,20 @@ Scenario10ShapeSpec GetScenario10ShapeSpec(int shapeIndex, bool payload)
     switch (shapeIndex)
     {
         case 1:
-            return {"sphereModel",   ShapeType::Sphere,      payload ? glm::vec3(2.0f) : glm::vec3(0.95f),
-                    glm::vec3(1.0f), payload ? 1.0f : 0.48f, payload ? 1.0f : 0.8f};
+            return {"sphereModel",   ShapeType::Sphere,      payload ? glm::vec3(1.65f) : glm::vec3(0.85f),
+                    glm::vec3(1.0f), 0.5f,                   payload ? 1.0f : 0.8f};
         case 2:
             return {"capsuleModel",
                     ShapeType::Capsule,
-                    payload ? glm::vec3(1.5f, 2.2f, 1.5f) : glm::vec3(0.7f, 1.25f, 0.7f),
-                    glm::vec3(0.8f, 1.0f, 0.8f),
-                    payload ? 0.75f : 0.35f,
-                    payload ? 1.4f : 0.9f};
+                    payload ? glm::vec3(1.35f, 1.9f, 1.35f) : glm::vec3(0.65f, 1.15f, 0.65f),
+                    glm::vec3(1.0f),
+                    0.5f,
+                    payload ? 1.05f : 0.85f};
         default:
             return {"cubeModel",
                     ShapeType::Box,
-                    payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f),
-                    payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f),
+                    payload ? glm::vec3(1.6f) : glm::vec3(0.75f, 0.95f, 0.75f),
+                    glm::vec3(0.5f),
                     payload ? 1.0f : 0.5f,
                     payload ? 1.0f : 0.8f};
     }
@@ -571,6 +571,11 @@ void SampleState::OnUpdate(float dt)
         {
             if (auto* info = GetScene().registry.try_get<InfoComponent>(m_S28TextureEntity))
                 info->isActive = m_S28ShowTexture;
+            if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28TextureEntity))
+            {
+                transform->flipX = m_S28FlipTextureX;
+                transform->flipY = m_S28FlipTextureY;
+            }
         }
     }
 
@@ -1158,6 +1163,9 @@ void SampleState::LoadScenario(int index)
         case 29:
             LoadScene29();
             break;
+        case 30:
+            LoadScene30();
+            break;
         default:
             break;
     }
@@ -1297,8 +1305,9 @@ void SampleState::DrawGUI()
                       "Compare many matching renderers against unique tint batching breaks");
     AddScenarioButton(27, "Scenario 27: Shadow Receiver",
                       "Compare deferred and forced-forward casters on a deferred shadow receiver");
-    AddScenarioButton(28, "Scenario 28: UI Showcase", "Test UI transform, texture, text, pivot, and rotation");
+    AddScenarioButton(28, "Scenario 28: UI Showcase", "Test UI transform, texture, text, pivot, rotation, and flip");
     AddScenarioButton(29, "Scenario 29: Responsive UI", "Test anchors, flex layout, and percent-based UI resizing");
+    AddScenarioButton(30, "Scenario 30: Interactive UI", "Show UI onHover, onClick, onHold and button callbacks");
 
     ImGui::EndChild();
 
@@ -1352,6 +1361,7 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Linear Damping", &m_S4LinearDamping, 0.0f, 1.0f);
         ImGui::SliderFloat("Angular Damping", &m_S4AngularDamping, 0.0f, 1.0f);
         ImGui::SliderFloat("Initial Impulse", &m_S4InitialImpulse, 0.0f, 30.0f);
+        ImGui::Text("Mass changes collision and impulse response; free-fall speed stays gravity-driven.");
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
         ImGui::Spacing();
         if (ImGui::Checkbox("Show Physics Debug Lines", &m_ShowDebugLines))
@@ -1535,8 +1545,7 @@ void SampleState::DrawGUI()
                 EntityBuilder(scene, res, "scenario")
                     .WithName("S12Random_" + std::to_string(++m_S12RandomEntityCount))
                     .WithTransform(glm::vec3(x, size * 0.5f, z), glm::vec3(0.0f, rand() % 360, 0.0f), glm::vec3(size))
-                    .WithMesh((m_S12RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit")
-                    .WithPBRMaterial(0.1f, 0.5f, 1.0f)
+                    .WithPBRMesh((m_S12RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit", 0.1f, 0.5f, 1.0f)
                     .Build();
             m_S12RandomEntities.push_back(entity);
             if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
@@ -2216,13 +2225,9 @@ void SampleState::DrawGUI()
         if (ImGui::Checkbox("Reverse all order demos", &m_S25ReverseOrder))
             ApplyScenario25RenderOrder();
         ImGui::Text("Panels and opaque cubes enable IgnoreDepth: lower order draws on top.");
-        ImGui::Text("Normal: Red=5, Purple=3, Blue=1 => Blue top.");
-        ImGui::Text("Reverse: Red=5, Blue=3, Purple=1 => Purple top.");
+        ImGui::Text("Normal: Red=1, Green=2, Blue=3 => Red top.");
+        ImGui::Text("Reverse: Red=3, Green=2, Blue=1 => Blue top.");
         ImGui::Text("Depth and world position are ignored for these order demos.");
-        ImGui::Separator();
-        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f),
-                           "Gold Sphere: Opaque Showcase (ignoreDepth = false, order = 5)");
-        ImGui::Text("Vat gan camera hon nhung render order cao hon thi van nam sau vat nam xa hon camera.");
     }
     else if (m_CurrentScenario == 26)
     {
@@ -2242,6 +2247,9 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "UI Showcase");
         ImGui::SliderFloat("Rotate Card", &m_S28RotateCard, -45.0f, 45.0f);
         ImGui::Checkbox("Show Texture Tile", &m_S28ShowTexture);
+        ImGui::Checkbox("Flip Texture X", &m_S28FlipTextureX);
+        ImGui::SameLine();
+        ImGui::Checkbox("Flip Texture Y", &m_S28FlipTextureY);
         ImGui::Text("This scene mixes transform, text, image and hierarchy tests.");
     }
     else if (m_CurrentScenario == 29)
@@ -2250,6 +2258,12 @@ void SampleState::DrawGUI()
         ImGui::Combo("Layout Mode", &m_S29LayoutMode, "Compact\0Expanded\0Stacked\0");
         ImGui::SliderFloat("Panel Alpha", &m_S29PanelAlpha, 0.1f, 1.0f);
         ImGui::Text("Resize the window to verify anchors, percent sizes, and flex layout.");
+    }
+    else if (m_CurrentScenario == 30)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Interactive UI");
+        ImGui::Text("The in-scene UI is driven by InputScriptable callbacks.");
+        ImGui::Text("Hover, click, hold, right-click, and middle-click the UI blocks.");
     }
     else
     {

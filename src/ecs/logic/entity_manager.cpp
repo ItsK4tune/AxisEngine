@@ -9,6 +9,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
 #include <physics/interface/i_physics_world.h>
 #include <scene/logic/scene_manager.h>
 #include <glm/gtc/quaternion.hpp>
@@ -328,8 +329,18 @@ void EntityManager::DestroyEntity(Scene& scene, entt::entity entity, SceneManage
     {
         if (rb->body)
         {
-            if (manager && manager->GetPhysicsWorld())
-                manager->GetPhysicsWorld()->RemoveRigidBody(rb->body.get());
+            IPhysicsWorld* physicsWorld = manager ? manager->GetPhysicsWorld()
+                                                  : ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+            if (physicsWorld)
+            {
+                for (auto& constraint : rb->constraints)
+                {
+                    if (constraint)
+                        physicsWorld->RemoveConstraint(constraint);
+                }
+                rb->constraints.clear();
+                physicsWorld->RemoveRigidBody(rb->body.get());
+            }
 
             rb->body = nullptr;
         }

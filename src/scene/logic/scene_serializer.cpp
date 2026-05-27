@@ -659,6 +659,8 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "size", Vec2PercentStr(uit->size, uit->sizeIsPercent));
         SerialWriteKV(f, ti, "zIndex", std::to_string(uit->zIndex));
         SerialWriteKV(f, ti, "pivot", Vec2Str(uit->pivot));
+        SerialWriteKV(f, ti, "flipX", uit->flipX ? "true" : "false");
+        SerialWriteKV(f, ti, "flipY", uit->flipY ? "true" : "false");
         SerialWriteKV(f, ti, "anchorMin", Vec2PercentStr(uit->anchorMin, uit->anchorMinIsPercent));
         SerialWriteKV(f, ti, "anchorMax", Vec2PercentStr(uit->anchorMax, uit->anchorMaxIsPercent));
         SerialWriteKV(f, ti, "offsetMin", Vec2PercentStr(uit->offsetMin, uit->offsetMinIsPercent));

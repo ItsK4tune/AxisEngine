@@ -590,6 +590,13 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
     parseVec2Percent(node.GetChildValue("Position"), ui.position, ui.positionIsPercent, glm::vec2(0.0f));
     parseVec2Percent(node.GetChildValue("Size"), ui.size, ui.sizeIsPercent, glm::vec2(100.0f));
 
+    auto parseBool = [](const std::string& value, bool defaultValue = false) {
+        if (value.empty())
+            return defaultValue;
+        return value == "true" || value == "True" || value == "TRUE" || value == "1" || value == "yes" ||
+               value == "Yes" || value == "on" || value == "On";
+    };
+
     ui.zIndex = std::stoi(node.GetChildValue("ZOrder", "0"));
     std::string zLabel = node.GetChildValue("zIndex");
     if (!zLabel.empty())
@@ -602,6 +609,15 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
 
     std::stringstream pivotSS(node.GetChildValue("pivot", "0.5 0.5"));
     pivotSS >> ui.pivot.x >> ui.pivot.y;
+
+    std::string flipX = node.GetChildValue("flipX");
+    if (flipX.empty())
+        flipX = node.GetChildValue("FlipX");
+    std::string flipY = node.GetChildValue("flipY");
+    if (flipY.empty())
+        flipY = node.GetChildValue("FlipY");
+    ui.flipX = parseBool(flipX);
+    ui.flipY = parseBool(flipY);
 }
 
 void ComponentLoader::LoadUIRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)

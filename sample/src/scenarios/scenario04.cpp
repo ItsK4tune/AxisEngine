@@ -18,8 +18,7 @@ void SampleState::LoadScene4()
     auto floor = EntityBuilder(scene, res, "scenario")
         .WithName("Floor")
         .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
     auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
@@ -46,8 +45,7 @@ void SampleState::LoadScene4()
         auto bodyEntity = EntityBuilder(scene, res, "scenario")
             .WithName("PhysicsEntity_" + std::to_string(i))
             .WithTransform(glm::vec3(x, y, z), glm::vec3(rand() % 360, rand() % 360, rand() % 360), glm::vec3(1.0f))
-            .WithMesh(modelName, "deferred_lit")
-            .WithPBRMaterial(0.1f, 0.6f, 1.0f)
+            .WithPBRMesh(modelName, "deferred_lit", 0.1f, 0.6f, 1.0f)
             .Build();
 
         auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, bodyEntity);
@@ -79,8 +77,10 @@ void SampleState::LoadScene4()
             if (rb.body)
             {
                 float impulse = m_S4InitialImpulse * (0.75f + static_cast<float>(rand() % 100) / 100.0f);
+                float angle = static_cast<float>(rand() % 628) * 0.01f;
+                glm::vec3 direction = glm::normalize(glm::vec3(std::cos(angle), 0.18f, std::sin(angle)));
                 rb.body->Activate(true);
-                rb.body->ApplyCentralForce(glm::vec3(impulse, impulse * 0.15f, impulse * 0.25f));
+                rb.body->ApplyCentralImpulse(direction * impulse);
             }
         }
     }

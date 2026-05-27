@@ -8,16 +8,14 @@ void SampleState::LoadScene27()
     EntityBuilder(scene, res, "scenario")
         .WithName("ShadowReceiverFloor")
         .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(85.0f, 1.0f, 85.0f))
-        .WithMesh("planeModel", "deferred_lit_shadow")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit_shadow", 0.0f, 0.8f, 1.0f)
         .Build();
 
     auto casterA =
         EntityBuilder(scene, res, "scenario")
             .WithName("ShadowCasterCube")
             .WithTransform(glm::vec3(-6.0f, 5.0f, 0.0f), glm::vec3(0.0f, 25.0f, 0.0f), glm::vec3(4.0f, 8.0f, 4.0f))
-            .WithMesh("cubeModel", "deferred_lit_shadow")
-            .WithPBRMaterial(0.1f, 0.5f, 1.0f)
+            .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.1f, 0.5f, 1.0f)
             .Build();
     {
         auto& r = scene.registry.get<MeshRendererComponent>(casterA);
@@ -28,8 +26,7 @@ void SampleState::LoadScene27()
     auto casterB = EntityBuilder(scene, res, "scenario")
                        .WithName("ShadowCasterSphere")
                        .WithTransform(glm::vec3(7.0f, 5.0f, -3.0f), glm::vec3(0.0f), glm::vec3(4.0f))
-                       .WithMesh("sphereModel", "deferred_lit_shadow")
-                       .WithPBRMaterial(0.0f, 0.35f, 1.0f)
+                       .WithPBRMesh("sphereModel", "deferred_lit_shadow", 0.0f, 0.35f, 1.0f)
                        .Build();
     {
         auto& r = scene.registry.get<MeshRendererComponent>(casterB);
@@ -41,8 +38,7 @@ void SampleState::LoadScene27()
         EntityBuilder(scene, res, "scenario")
             .WithName("ForwardShadowCasterCube")
             .WithTransform(glm::vec3(-1.0f, 6.0f, 8.0f), glm::vec3(0.0f, -18.0f, 0.0f), glm::vec3(3.5f, 7.0f, 3.5f))
-            .WithMesh("cubeModel", "forward_pbr_lit_shadow")
-            .WithPBRMaterial(0.0f, 0.45f, 1.0f)
+            .WithPBRMesh("cubeModel", "forward_pbr_lit_shadow", 0.0f, 0.45f, 1.0f)
             .Build();
     {
         auto& r = scene.registry.get<MeshRendererComponent>(forwardCasterA);
@@ -56,8 +52,7 @@ void SampleState::LoadScene27()
         EntityBuilder(scene, res, "scenario")
             .WithName("ForwardUnlitShadowCaster")
             .WithTransform(glm::vec3(12.0f, 4.0f, 6.0f), glm::vec3(0.0f, 35.0f, 0.0f), glm::vec3(2.8f, 5.2f, 2.8f))
-            .WithMesh("capsuleSmoothModel", "forward_unlit")
-            .WithPBRMaterial(0.0f, 0.5f, 1.0f)
+            .WithPBRMesh("capsuleSmoothModel", "forward_unlit", 0.0f, 0.5f, 1.0f)
             .Build();
     {
         auto& r = scene.registry.get<MeshRendererComponent>(forwardCasterB);

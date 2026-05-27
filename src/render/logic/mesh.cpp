@@ -13,6 +13,102 @@ IBufferManager* Mesh::s_BufferManager = nullptr;
 ITextureManager* Mesh::s_TextureManager = nullptr;
 IDrawContext* Mesh::s_DrawContext = nullptr;
 
+namespace
+{
+struct MeshTextureSlot
+{
+    const char* legacyPrefix = "";
+    const char* canonicalUniform = nullptr;
+    unsigned int canonicalUnit = 0;
+    bool hasCanonicalUnit = false;
+};
+
+MeshTextureSlot ResolveTextureSlot(const std::string& type)
+{
+    if (type == "texture_diffuse")
+        return {"texture_diffuse", "u_AlbedoMap", 0, true};
+    if (type == "texture_normal")
+        return {"texture_normal", "u_NormalMap", 1, true};
+    if (type == "texture_metallic")
+        return {"texture_metallic", "u_MetallicMap", 2, true};
+    if (type == "texture_roughness")
+        return {"texture_roughness", "u_RoughnessMap", 3, true};
+    if (type == "texture_ao")
+        return {"texture_ao", "u_AOMap", 4, true};
+    if (type == "texture_emissive")
+        return {"texture_emissive", "u_EmissiveMap", 5, true};
+    if (type == "texture_specular")
+        return {"texture_specular", "u_SpecularMap", 6, true};
+    if (type == "texture_height")
+        return {"texture_height", "u_HeightMap", 0, false};
+
+    return {};
+}
+
+unsigned int IncrementTextureCounter(const std::string& type, unsigned int& diffuseNr, unsigned int& specularNr,
+                                     unsigned int& normalNr, unsigned int& heightNr, unsigned int& metallicNr,
+                                     unsigned int& roughnessNr, unsigned int& aoNr, unsigned int& emissiveNr)
+{
+    if (type == "texture_diffuse")
+        return diffuseNr++;
+    if (type == "texture_specular")
+        return specularNr++;
+    if (type == "texture_normal")
+        return normalNr++;
+    if (type == "texture_height")
+        return heightNr++;
+    if (type == "texture_metallic")
+        return metallicNr++;
+    if (type == "texture_roughness")
+        return roughnessNr++;
+    if (type == "texture_ao")
+        return aoNr++;
+    if (type == "texture_emissive")
+        return emissiveNr++;
+
+    return 1;
+}
+
+void BindMeshTextures(Shader& shader, const std::vector<Texture>& textures, ITextureManager& textureManager)
+{
+    unsigned int diffuseNr = 1;
+    unsigned int specularNr = 1;
+    unsigned int normalNr = 1;
+    unsigned int heightNr = 1;
+    unsigned int metallicNr = 1;
+    unsigned int roughnessNr = 1;
+    unsigned int aoNr = 1;
+    unsigned int emissiveNr = 1;
+    unsigned int fallbackUnit = 7;
+
+    for (const auto& texture : textures)
+    {
+        const auto slot = ResolveTextureSlot(texture.type);
+        const unsigned int occurrence = IncrementTextureCounter(texture.type, diffuseNr, specularNr, normalNr, heightNr,
+                                                                metallicNr, roughnessNr, aoNr, emissiveNr);
+        const unsigned int unit = (slot.hasCanonicalUnit && occurrence == 1) ? slot.canonicalUnit : fallbackUnit++;
+
+        textureManager.ActiveTexture(static_cast<TextureUnit>(unit));
+
+        if (slot.legacyPrefix[0] != '\0')
+        {
+            char fullName[64];
+            snprintf(fullName, sizeof(fullName), "%s%d", slot.legacyPrefix, occurrence);
+            shader.setInt(fullName, static_cast<int>(unit));
+
+            char materialName[80];
+            snprintf(materialName, sizeof(materialName), "material.%s%d", slot.legacyPrefix, occurrence);
+            shader.setInt(materialName, static_cast<int>(unit));
+        }
+
+        if (slot.canonicalUniform && occurrence == 1)
+            shader.setInt(slot.canonicalUniform, static_cast<int>(unit));
+
+        textureManager.BindTexture(TextureType::Texture2D, texture.id);
+    }
+}
+}  // namespace
+
 void Mesh::SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* draw)
 {
     s_BufferManager = buf;
@@ -86,52 +182,7 @@ void Mesh::Draw(Shader& shader, bool bindTextures)
 
     if (bindTextures)
     {
-        unsigned int diffuseNr = 1;
-        unsigned int specularNr = 1;
-        unsigned int normalNr = 1;
-        unsigned int heightNr = 1;
-
-        for (unsigned int i = 0; i < textures.size(); i++)
-        {
-            tm.ActiveTexture(static_cast<TextureUnit>(i));
-
-            // Build uniform name — these strings are small and SSO-eligible
-            const char* prefix = "";
-            int num = 0;
-            const auto& type = textures[i].type;
-
-            if (type == "texture_diffuse")
-            {
-                prefix = "texture_diffuse";
-                num = diffuseNr++;
-            }
-            else if (type == "texture_specular")
-            {
-                prefix = "texture_specular";
-                num = specularNr++;
-            }
-            else if (type == "texture_normal")
-            {
-                prefix = "texture_normal";
-                num = normalNr++;
-            }
-            else if (type == "texture_height")
-            {
-                prefix = "texture_height";
-                num = heightNr++;
-            }
-
-            // Use Shader's internal location cache — only does GL lookup once per name
-            char fullName[64];
-            snprintf(fullName, sizeof(fullName), "%s%d", prefix, num);
-            shader.setInt(fullName, i);
-
-            char materialName[80];
-            snprintf(materialName, sizeof(materialName), "material.%s%d", prefix, num);
-            shader.setInt(materialName, i);
-
-            tm.BindTexture(TextureType::Texture2D, textures[i].id);
-        }
+        BindMeshTextures(shader, textures, tm);
     }
 
     shader.setBool("isInstanced", false);
@@ -148,50 +199,7 @@ void Mesh::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, b
 
     if (bindTextures)
     {
-        unsigned int diffuseNr = 1;
-        unsigned int specularNr = 1;
-        unsigned int normalNr = 1;
-        unsigned int heightNr = 1;
-
-        for (unsigned int i = 0; i < textures.size(); i++)
-        {
-            tm.ActiveTexture(static_cast<TextureUnit>(i));
-
-            const char* prefix = "";
-            int num = 0;
-            const auto& type = textures[i].type;
-
-            if (type == "texture_diffuse")
-            {
-                prefix = "texture_diffuse";
-                num = diffuseNr++;
-            }
-            else if (type == "texture_specular")
-            {
-                prefix = "texture_specular";
-                num = specularNr++;
-            }
-            else if (type == "texture_normal")
-            {
-                prefix = "texture_normal";
-                num = normalNr++;
-            }
-            else if (type == "texture_height")
-            {
-                prefix = "texture_height";
-                num = heightNr++;
-            }
-
-            char fullName[64];
-            snprintf(fullName, sizeof(fullName), "%s%d", prefix, num);
-            shader.setInt(fullName, i);
-
-            char materialName[80];
-            snprintf(materialName, sizeof(materialName), "material.%s%d", prefix, num);
-            shader.setInt(materialName, i);
-
-            tm.BindTexture(TextureType::Texture2D, textures[i].id);
-        }
+        BindMeshTextures(shader, textures, tm);
     }
 
     shader.setBool("isInstanced", true);

@@ -13,7 +13,184 @@
 #include <platform/logic/io_handler.h>
 #include <scene/logic/component_loader.h>
 #include <scene/type/scene_events.h>
+#include <script/logic/input_scriptable.h>
 #include <script/logic/scriptable.h>
+#include <algorithm>
+
+namespace
+{
+struct ScriptableUIRect
+{
+    glm::vec2 pos = glm::vec2(0.0f);
+    glm::vec2 size = glm::vec2(0.0f);
+};
+
+glm::vec2 EvalUIVec(const glm::vec2& value, const glm::bvec2& isPercent, const glm::vec2& reference)
+{
+    return glm::vec2(isPercent.x ? (value.x * 0.01f * reference.x) : value.x,
+                     isPercent.y ? (value.y * 0.01f * reference.y) : value.y);
+}
+
+ScriptableUIRect CalculateScriptableUIRect(entt::registry& registry, entt::entity entity, float screenWidth,
+                                           float screenHeight)
+{
+    auto* transform = registry.try_get<UITransformComponent>(entity);
+    if (!transform)
+        return {};
+
+    glm::vec2 parentSize(screenWidth, screenHeight);
+    glm::vec2 parentPos(0.0f);
+
+    if (auto* hierarchy = registry.try_get<HierarchyComponent>(entity))
+    {
+        if (hierarchy->parent != entt::null && registry.valid(hierarchy->parent) &&
+            registry.all_of<UITransformComponent>(hierarchy->parent))
+        {
+            ScriptableUIRect parentRect =
+                CalculateScriptableUIRect(registry, hierarchy->parent, screenWidth, screenHeight);
+            parentPos = parentRect.pos;
+            parentSize = parentRect.size;
+        }
+    }
+
+    glm::vec2 evalAnchorMin = EvalUIVec(transform->anchorMin, transform->anchorMinIsPercent, glm::vec2(1.0f));
+    glm::vec2 evalAnchorMax = EvalUIVec(transform->anchorMax, transform->anchorMaxIsPercent, glm::vec2(1.0f));
+
+    glm::vec2 finalMin = parentPos + evalAnchorMin * parentSize +
+                         EvalUIVec(transform->offsetMin, transform->offsetMinIsPercent, parentSize);
+    glm::vec2 finalMax = parentPos + evalAnchorMax * parentSize +
+                         EvalUIVec(transform->offsetMax, transform->offsetMaxIsPercent, parentSize);
+
+    glm::vec2 evalPos = EvalUIVec(transform->position, transform->positionIsPercent, parentSize);
+    finalMin += evalPos;
+    finalMax += evalPos;
+
+    glm::vec2 evalSize = EvalUIVec(transform->size, transform->sizeIsPercent, parentSize);
+    if (evalAnchorMin.x == evalAnchorMax.x)
+        finalMax.x = finalMin.x + evalSize.x;
+    if (evalAnchorMin.y == evalAnchorMax.y)
+        finalMax.y = finalMin.y + evalSize.y;
+
+    return {finalMin, finalMax - finalMin};
+}
+
+template <typename ClickFn, typename HoldFn, typename ReleaseFn>
+void DispatchPointerButton(bool isDown, bool canStartPress, float dt, bool& isPressed, float& holdTime,
+                           ClickFn&& onClick, HoldFn&& onHold, ReleaseFn&& onRelease)
+{
+    if (!isPressed && isDown && canStartPress)
+    {
+        isPressed = true;
+        holdTime = 0.0f;
+        onClick();
+    }
+
+    if (!isPressed)
+        return;
+
+    if (isDown)
+    {
+        holdTime += dt;
+        onHold(holdTime);
+    }
+    else
+    {
+        onRelease(holdTime);
+        isPressed = false;
+        holdTime = 0.0f;
+    }
+}
+
+void DispatchUIInput(Scene& scene, float dt)
+{
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+    if (!io)
+        return;
+
+    const float screenWidth = (std::max)(1.0f, static_cast<float>(io->GetMonitorManager().GetWidth()));
+    const float screenHeight = (std::max)(1.0f, static_cast<float>(io->GetMonitorManager().GetHeight()));
+    constexpr float refWidth = 1920.0f;
+    constexpr float refHeight = 1080.0f;
+    const float scaleFactor = (std::min)(screenWidth / refWidth, screenHeight / refHeight);
+    if (scaleFactor <= 0.0f)
+        return;
+
+    const auto& mouse = io->GetMouse();
+    const glm::vec2 mousePos(static_cast<float>(mouse.GetLastX()) / scaleFactor,
+                             static_cast<float>(mouse.GetLastY()) / scaleFactor);
+    const float safeDt = (std::max)(0.0f, dt);
+
+    auto view = scene.registry.view<ScriptComponent, UITransformComponent, InfoComponent>();
+    for (auto entity : view)
+    {
+        auto& info = view.get<InfoComponent>(entity);
+        if (!info.isActive)
+            continue;
+
+        auto& script = view.get<ScriptComponent>(entity);
+        if (!script.instance || !script.instance->IsEnabled())
+            continue;
+
+        const ScriptableUIRect rect =
+            CalculateScriptableUIRect(scene.registry, entity, screenWidth / scaleFactor, screenHeight / scaleFactor);
+        const bool isInside = mousePos.x >= rect.pos.x && mousePos.x <= rect.pos.x + rect.size.x &&
+                              mousePos.y >= rect.pos.y && mousePos.y <= rect.pos.y + rect.size.y;
+
+        auto* inputScript = dynamic_cast<InputScriptable*>(script.instance.get());
+        if (!inputScript)
+        {
+            if (isInside)
+                script.instance->OnMouseOver();
+            continue;
+        }
+
+        if (isInside && !inputScript->IsHovered())
+        {
+            inputScript->SetHovered(true);
+            inputScript->OnHoverEnter();
+            script.instance->OnMouseEnter();
+        }
+        if (isInside)
+        {
+            inputScript->OnHoverStay();
+            script.instance->OnMouseOver();
+        }
+        else if (inputScript->IsHovered())
+        {
+            inputScript->SetHovered(false);
+            inputScript->OnHoverExit();
+            script.instance->OnMouseExit();
+        }
+
+        DispatchPointerButton(mouse.IsLeftButtonPressed(), isInside, safeDt, inputScript->GetLeftPressedRef(),
+                              inputScript->GetLeftHoldTimeRef(),
+                              [&]() {
+                                  inputScript->OnLeftClick();
+                                  script.instance->OnMouseClicked(Mouse::Left);
+                              },
+                              [&](float duration) { inputScript->OnLeftHold(duration); },
+                              [&](float duration) { inputScript->OnLeftRelease(duration); });
+
+        DispatchPointerButton(mouse.IsRightButtonPressed(), isInside, safeDt, inputScript->GetRightPressedRef(),
+                              inputScript->GetRightHoldTimeRef(),
+                              [&]() {
+                                  inputScript->OnRightClick();
+                                  script.instance->OnMouseClicked(Mouse::Right);
+                              },
+                              [&](float duration) { inputScript->OnRightHold(duration); },
+                              [&](float duration) { inputScript->OnRightRelease(duration); });
+
+        DispatchPointerButton(mouse.IsMiddleButtonPressed(), isInside, safeDt, inputScript->GetMiddlePressedRef(),
+                              inputScript->GetMiddleHoldTimeRef(),
+                              [&]() {
+                                  inputScript->OnMiddleClick();
+                                  script.instance->OnMouseClicked(Mouse::Middle);
+                              },
+                              [&](float duration) { inputScript->OnMiddleHold(duration); },
+                              [&](float duration) { inputScript->OnMiddleRelease(duration); });
+    }
+}
+}  // namespace
 
 REGISTER_SYSTEM(ScriptableSystem)
 
@@ -230,40 +407,7 @@ void ScriptableSystem::Update(Scene& scene, float dt)
     if (!m_Enabled)
         return;
 
-    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
-    {
-        const auto& mouse = io->GetMouse();
-        if (mouse.GetXOffset() != 0.0f || mouse.GetYOffset() != 0.0f)
-        {
-            double mouseX = mouse.GetLastX();
-            double mouseY = mouse.GetLastY();
-
-            auto uiView = scene.registry.view<ScriptComponent, UITransformComponent, InfoComponent>();
-            for (auto entity : uiView)
-            {
-                auto& info = uiView.get<InfoComponent>(entity);
-                if (!info.isActive)
-                    continue;
-
-                auto& sc = uiView.get<ScriptComponent>(entity);
-                auto& ui = uiView.get<UITransformComponent>(entity);
-
-                if (!sc.instance || !sc.instance->IsEnabled())
-                    continue;
-
-                bool isInside = (mouseX >= ui.position.x && mouseX <= ui.position.x + ui.size.x &&
-                                 mouseY >= ui.position.y && mouseY <= ui.position.y + ui.size.y);
-
-                if (isInside)
-                {
-                    sc.instance->OnMouseOver();
-                }
-            }
-        }
-    }
-
     auto view = scene.registry.view<ScriptComponent, InfoComponent>();
-    auto& sl = ServiceLocator::Instance();
 
     for (auto entity : view)
     {
@@ -325,6 +469,8 @@ void ScriptableSystem::Update(Scene& scene, float dt)
             }
         }
     }
+
+    DispatchUIInput(scene, dt);
 }
 
 std::vector<entt::id_type> ScriptableSystem::GetReadComponents() const

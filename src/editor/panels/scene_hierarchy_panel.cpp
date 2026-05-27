@@ -812,6 +812,9 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::DragFloat("Rotation##UI", &uiTransform.rotation, 1.0f);
         ImGui::DragInt("Z-Index##UI", &uiTransform.zIndex);
         ImGui::DragFloat2("Pivot##UI", &uiTransform.pivot.x, 0.05f);
+        ImGui::Checkbox("Flip X##UI", &uiTransform.flipX);
+        ImGui::SameLine();
+        ImGui::Checkbox("Flip Y##UI", &uiTransform.flipY);
 
         DrawVec2Percent("Anchor Min##UI", uiTransform.anchorMin, uiTransform.anchorMinIsPercent, 0.05f);
         DrawVec2Percent("Anchor Max##UI", uiTransform.anchorMax, uiTransform.anchorMaxIsPercent, 0.05f);

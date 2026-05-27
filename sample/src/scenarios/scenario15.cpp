@@ -8,8 +8,7 @@ void SampleState::LoadScene15()
     EntityBuilder(scene, res, "scenario")
         .WithName("Ground")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
@@ -28,8 +27,7 @@ void SampleState::LoadScene15()
         EntityBuilder(scene, res, "scenario")
             .WithName("DataEntity_" + std::to_string(i))
             .WithTransform(pos, glm::vec3(0.0f, i * 13.0f, 0.0f), glm::vec3(m_S15EntitySize))
-            .WithMesh((i % 2 == 0) ? "cubeModel" : "sphereModel", "deferred_lit")
-            .WithPBRMaterial(0.2f, 0.5f, 1.0f)
+            .WithPBRMesh((i % 2 == 0) ? "cubeModel" : "sphereModel", "deferred_lit", 0.2f, 0.5f, 1.0f)
             .Build();
     }
 

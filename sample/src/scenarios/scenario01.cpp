@@ -29,9 +29,7 @@ void SampleState::LoadScene1()
 
                 EntityBuilder(scene, res, "scenario")
                     .WithName("Entity_" + std::to_string(count))
-                    .WithTransform(pos, glm::vec3(0.0f), glm::vec3(1.0f))
-                    .WithMesh(modelName, "deferred_lit")
-                    .WithPBRMaterial(0.1f, 0.5f, 1.0f)
+                    .WithPBRRenderable(modelName, "deferred_lit", pos, glm::vec3(0.0f), 1.0f, 0.1f, 0.5f, 1.0f)
                     .Build();
 
                 count++;

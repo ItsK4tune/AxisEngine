@@ -156,49 +156,44 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
 )
 
 # ─── Benchmark Samples App ───
-file(GLOB SAMPLE_SCENARIO_SOURCES CONFIGURE_DEPENDS
-    sample/src/scenarios/*.cpp
-)
-
-set(SAMPLE_SOURCES
-    sample/src/main.cpp
-    sample/src/sample_state.cpp
-    ${SAMPLE_SCENARIO_SOURCES}
-)
-
-add_executable(axis_samples ${SAMPLE_SOURCES})
-target_compile_options(axis_samples PRIVATE /FS)
-
-target_include_directories(axis_samples PRIVATE
-    sample/src
-)
-
 if(ENABLE_EDITOR)
+    file(GLOB SAMPLE_SCENARIO_SOURCES CONFIGURE_DEPENDS
+        sample/src/scenarios/*.cpp
+    )
+
+    set(SAMPLE_SOURCES
+        sample/src/main.cpp
+        sample/src/sample_state.cpp
+        ${SAMPLE_SCENARIO_SOURCES}
+    )
+
+    if(WIN32)
+        list(APPEND SAMPLE_SOURCES include/engine/asset/project/app.rc)
+    endif()
+
+    add_executable(axis_samples ${SAMPLE_SOURCES})
+    target_compile_options(axis_samples PRIVATE /FS)
+
+    target_include_directories(axis_samples PRIVATE
+        sample/src
+    )
+
     target_link_libraries(axis_samples PRIVATE
         axis_editor
         axis_engine
         dxgi
         pdh
     )
-else()
-    target_link_libraries(axis_samples PRIVATE
-        axis_engine
-        dxgi
-        pdh
-    )
-endif()
 
-if(MSVC)
-    target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_engine")
-    if(ENABLE_EDITOR)
+    if(MSVC)
+        target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_engine")
         target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_editor")
     endif()
+
+    # Copy DLLs post-build
+    add_custom_command(TARGET axis_samples POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/dlls"
+            "$<TARGET_FILE_DIR:axis_samples>"
+    )
 endif()
-
-# Copy DLLs post-build
-add_custom_command(TARGET axis_samples POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/dlls"
-        "$<TARGET_FILE_DIR:axis_samples>"
-)
-

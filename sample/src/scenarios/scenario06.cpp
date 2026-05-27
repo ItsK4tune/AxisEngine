@@ -21,8 +21,7 @@ void SampleState::LoadScene6()
         auto entity = EntityBuilder(scene, res, "scenario")
             .WithName(name)
             .WithTransform(pos, glm::vec3(0.0f), glm::vec3(1.0f))
-            .WithMesh("cubeModel", "deferred_unlit")
-            .WithPBRMaterial(0.1f, 0.5f, 1.0f)
+            .WithPBRMesh("cubeModel", "deferred_unlit", 0.1f, 0.5f, 1.0f)
             .Build();
 
         if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))

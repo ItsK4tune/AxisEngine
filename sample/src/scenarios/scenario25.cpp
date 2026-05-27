@@ -10,13 +10,12 @@ struct OrderVisual
 };
 
 const OrderVisual kOrderVisuals[] = {
-    {"Panel_Red", 5, 5},
-    {"Panel_Purple", 3, 1},
-    {"Panel_Blue", 1, 3},
+    {"Panel_Red", 1, 3},
+    {"Panel_Green", 2, 2},
+    {"Panel_Blue", 3, 1},
     {"Solid_Red", 1, 3},
     {"Solid_Green", 2, 2},
     {"Solid_Blue", 3, 1},
-    {"Opaque_Showcase", 5, 5},
 };
 }  // namespace
 
@@ -53,8 +52,7 @@ void SampleState::LoadScene25()
     EntityBuilder(scene, res, "scenario")
         .WithName("OrderFloor")
         .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
     struct PanelDef
@@ -66,8 +64,8 @@ void SampleState::LoadScene25()
     };
     PanelDef panels[] = {
         {"Panel_Red", glm::vec3(-1.8f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec4(1.0f, 0.1f, 0.1f, 0.50f)},
-        {"Panel_Purple", glm::vec3(0.0f, 5.4f, 0.0f), glm::vec3(0.0f), glm::vec4(0.55f, 0.1f, 1.0f, 0.50f)},
-        {"Panel_Blue", glm::vec3(1.8f, 5.8f, 0.0f), glm::vec3(0.0f), glm::vec4(0.15f, 0.35f, 1.0f, 0.50f)},
+        {"Panel_Green", glm::vec3(0.0f, 5.4f, 0.0f), glm::vec3(0.0f), glm::vec4(0.1f, 1.0f, 0.1f, 0.50f)},
+        {"Panel_Blue", glm::vec3(1.8f, 5.8f, 0.0f), glm::vec3(0.0f), glm::vec4(0.1f, 0.1f, 1.0f, 0.50f)},
     };
 
     for (const auto& panel : panels)
@@ -75,8 +73,7 @@ void SampleState::LoadScene25()
         auto entity = EntityBuilder(scene, res, "scenario")
             .WithName(panel.name)
             .WithTransform(panel.position, panel.rotation, glm::vec3(8.0f, 5.5f, 0.15f))
-            .WithMesh("cubeModel", "forward_transparent")
-            .WithPBRMaterial(0.0f, 0.2f, 1.0f)
+            .WithPBRMesh("cubeModel", "forward_transparent", 0.0f, 0.2f, 1.0f)
             .Build();
         auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
         renderer.renderMode = RenderMode::ForceForward;
@@ -98,9 +95,9 @@ void SampleState::LoadScene25()
         glm::vec4 color;
     };
     SolidDef solids[] = {
-        {"Solid_Red", glm::vec3(-1.0f, 2.0f, 22.0f), glm::vec4(1.0f, 0.15f, 0.15f, 1.0f)},
-        {"Solid_Green", glm::vec3(0.0f, 2.3f, 18.0f), glm::vec4(0.15f, 1.0f, 0.25f, 1.0f)},
-        {"Solid_Blue", glm::vec3(1.0f, 2.6f, 14.0f), glm::vec4(0.15f, 0.35f, 1.0f, 1.0f)},
+        {"Solid_Red", glm::vec3(-1.0f, 2.0f, 22.0f), glm::vec4(1.0f, 0.1f, 0.1f, 1.0f)},
+        {"Solid_Green", glm::vec3(0.0f, 2.3f, 18.0f), glm::vec4(0.1f, 1.0f, 0.1f, 1.0f)},
+        {"Solid_Blue", glm::vec3(1.0f, 2.6f, 14.0f), glm::vec4(0.1f, 0.1f, 1.0f, 1.0f)},
     };
 
     for (const auto& solid : solids)
@@ -108,8 +105,7 @@ void SampleState::LoadScene25()
         auto entity = EntityBuilder(scene, res, "scenario")
             .WithName(solid.name)
             .WithTransform(solid.position, glm::vec3(0.0f), glm::vec3(3.5f, 3.5f, 3.5f))
-            .WithMesh("cubeModel", "deferred_lit")
-            .WithPBRMaterial(0.0f, 0.5f, 1.0f)
+            .WithPBRMesh("cubeModel", "forward_pbr_lit", 0.0f, 0.5f, 1.0f)
             .Build();
         auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
         renderer.renderMode = RenderMode::ForceForward;
@@ -122,25 +118,6 @@ void SampleState::LoadScene25()
         mat.desc.opacity = 1.0f;
         mat.gpu.dirty = true;
     }
-
-    // Add opaque showcase entity
-    auto opaqueShowcase = EntityBuilder(scene, res, "scenario")
-        .WithName("Opaque_Showcase")
-        .WithTransform(glm::vec3(0.0f, 3.0f, 3.0f), glm::vec3(0.0f), glm::vec3(2.5f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.5f, 1.0f)
-        .Build();
-    auto& rOpaque = scene.registry.get<MeshRendererComponent>(opaqueShowcase);
-    rOpaque.renderMode = RenderMode::ForceForward;
-    rOpaque.castShadow = false;
-    rOpaque.receiveShadow = false;
-    rOpaque.ignoreDepth = false; // Normal opaque
-    rOpaque.color = glm::vec4(1.0f, 0.84f, 0.0f, 1.0f); // Gold/Yellow
-    rOpaque.order = 5;
-
-    auto& matOpaque = scene.registry.get<AxisMaterialComponent>(opaqueShowcase);
-    matOpaque.desc.opacity = 1.0f;
-    matOpaque.gpu.dirty = true;
 
     ApplyScenario25RenderOrder();
 }

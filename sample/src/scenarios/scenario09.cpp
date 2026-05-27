@@ -8,8 +8,7 @@ void SampleState::LoadScene9()
     EntityBuilder(scene, res, "scenario")
         .WithName("Floor")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.9f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.9f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
@@ -38,8 +37,7 @@ void SampleState::LoadScene9()
         auto ent = EntityBuilder(scene, res, "scenario")
             .WithName("Glower_" + std::to_string(index++))
             .WithTransform(g.pos, glm::vec3(0.0f), glm::vec3(g.scale))
-            .WithMesh("sphereModel", "deferred_lit")
-            .WithPBRMaterial(0.0f, 0.1f, 1.0f)
+            .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.1f, 1.0f)
             .Build();
 
         auto& mat = scene.registry.get<AxisMaterialComponent>(ent);

@@ -37,6 +37,8 @@ struct UITransformComponent
     int zIndex = 0;
 
     glm::vec2 pivot = glm::vec2(0.5f);
+    bool flipX = false;
+    bool flipY = false;
 
     glm::vec2 anchorMin = glm::vec2(0.5f);
     glm::bvec2 anchorMinIsPercent = glm::bvec2(false);

@@ -9,8 +9,7 @@ void SampleState::LoadScene11()
     EntityBuilder(scene, res, "scenario")
         .WithName("Floor")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
@@ -23,8 +22,7 @@ void SampleState::LoadScene11()
     EntityBuilder(scene, res, "scenario")
         .WithName("DecalWall")
         .WithTransform(glm::vec3(0.0f, 10.0f, -10.0f), glm::vec3(0.0f), glm::vec3(50.0f, 20.0f, 2.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.9f, 1.0f)
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.9f, 1.0f)
         .Build();
 
     // 3. Use tint-only decals. The decal shader falls back to a white source when no texture is assigned.

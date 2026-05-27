@@ -54,6 +54,15 @@ void BulletRigidBody::ApplyCentralForce(const glm::vec3& force)
         m_Body->applyCentralForce(btVector3(force.x, force.y, force.z));
 }
 
+void BulletRigidBody::ApplyCentralImpulse(const glm::vec3& impulse)
+{
+    if (m_Body)
+    {
+        m_Body->activate(true);
+        m_Body->applyCentralImpulse(btVector3(impulse.x, impulse.y, impulse.z));
+    }
+}
+
 void BulletRigidBody::ApplyTorque(const glm::vec3& torque)
 {
     if (m_Body)

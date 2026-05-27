@@ -129,6 +129,13 @@ void BulletPhysicsWorld::RemoveRigidBody(IRigidBody* body)
     btRigidBody* rawBody = bBody->GetRaw();
     if (rawBody)
     {
+        for (int i = m_DynamicsWorld->getNumConstraints() - 1; i >= 0; --i)
+        {
+            btTypedConstraint* constraint = m_DynamicsWorld->getConstraint(i);
+            if (constraint && (&constraint->getRigidBodyA() == rawBody || &constraint->getRigidBodyB() == rawBody))
+                m_DynamicsWorld->removeConstraint(constraint);
+        }
+
         btDispatcher* dispatcher = m_DynamicsWorld->getDispatcher();
         if (dispatcher)
         {

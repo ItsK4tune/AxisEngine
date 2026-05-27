@@ -66,16 +66,15 @@ inline Scenario10ShapeSpec GetScenario10ShapeSpec(int shapeIndex, bool payload)
     switch (shapeIndex)
     {
     case 1:
-        return {"sphereModel", ShapeType::Sphere, payload ? glm::vec3(2.0f) : glm::vec3(0.95f), glm::vec3(1.0f),
-                payload ? 1.0f : 0.48f, payload ? 1.0f : 0.8f};
+        return {"sphereModel", ShapeType::Sphere, payload ? glm::vec3(1.65f) : glm::vec3(0.85f), glm::vec3(1.0f),
+                0.5f, payload ? 1.0f : 0.8f};
     case 2:
-        return {"capsuleModel", ShapeType::Capsule, payload ? glm::vec3(1.5f, 2.2f, 1.5f) :
-                                                              glm::vec3(0.7f, 1.25f, 0.7f),
-                glm::vec3(0.8f, 1.0f, 0.8f), payload ? 0.75f : 0.35f, payload ? 1.4f : 0.9f};
+        return {"capsuleModel", ShapeType::Capsule, payload ? glm::vec3(1.35f, 1.9f, 1.35f) :
+                                                              glm::vec3(0.65f, 1.15f, 0.65f),
+                glm::vec3(1.0f), 0.5f, payload ? 1.05f : 0.85f};
     default:
-        return {"cubeModel", ShapeType::Box, payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f),
-                payload ? glm::vec3(2.0f) : glm::vec3(0.8f, 1.0f, 0.8f), payload ? 1.0f : 0.5f,
-                payload ? 1.0f : 0.8f};
+        return {"cubeModel", ShapeType::Box, payload ? glm::vec3(1.6f) : glm::vec3(0.75f, 0.95f, 0.75f),
+                glm::vec3(0.5f), payload ? 1.0f : 0.5f, payload ? 1.0f : 0.8f};
     }
 }
 

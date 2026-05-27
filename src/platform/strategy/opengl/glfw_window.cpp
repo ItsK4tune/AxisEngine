@@ -7,11 +7,103 @@
 #ifdef _WIN32
 #undef APIENTRY
 #include <windows.h>
+#include <asset/project/resource.h>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
 #endif
+
+namespace
+{
+#ifdef _WIN32
+std::wstring BuildAppUserModelId()
+{
+    wchar_t exePath[MAX_PATH] = {};
+    DWORD length = GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    std::wstring exeName = length > 0 ? std::wstring(exePath, length) : L"AxisEngineApplication";
+
+    size_t slash = exeName.find_last_of(L"\\/");
+    if (slash != std::wstring::npos)
+        exeName = exeName.substr(slash + 1);
+
+    size_t dot = exeName.find_last_of(L'.');
+    if (dot != std::wstring::npos)
+        exeName = exeName.substr(0, dot);
+
+    for (wchar_t& ch : exeName)
+    {
+        const bool alphaNumeric =
+            (ch >= L'0' && ch <= L'9') || (ch >= L'A' && ch <= L'Z') || (ch >= L'a' && ch <= L'z');
+        if (!alphaNumeric)
+            ch = L'.';
+    }
+
+    return L"AxisEngine." + exeName;
+}
+
+void SetProcessAppUserModelId()
+{
+    using SetAppUserModelIdFn = HRESULT(WINAPI*)(PCWSTR);
+
+    HMODULE shell32 = GetModuleHandleW(L"shell32.dll");
+    if (!shell32)
+        shell32 = LoadLibraryW(L"shell32.dll");
+    if (!shell32)
+        return;
+
+    auto setAppUserModelId =
+        reinterpret_cast<SetAppUserModelIdFn>(GetProcAddress(shell32, "SetCurrentProcessExplicitAppUserModelID"));
+    if (!setAppUserModelId)
+        return;
+
+    std::wstring appId = BuildAppUserModelId();
+    setAppUserModelId(appId.c_str());
+}
+
+HICON LoadSharedAppIcon(int width, int height)
+{
+    return static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, width,
+                                         height, LR_DEFAULTCOLOR | LR_SHARED));
+}
+
+bool ApplyEmbeddedWindowIcon(GLFWwindow* window)
+{
+    if (!window)
+        return false;
+
+    HWND hwnd = glfwGetWin32Window(window);
+    if (!hwnd)
+        return false;
+
+    HICON bigIcon = LoadSharedAppIcon(GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON));
+    if (!bigIcon)
+        bigIcon = LoadSharedAppIcon(0, 0);
+
+    HICON smallIcon = LoadSharedAppIcon(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON));
+    if (!smallIcon)
+        smallIcon = bigIcon;
+
+    if (!bigIcon && !smallIcon)
+        return false;
+
+    if (bigIcon)
+    {
+        SendMessage(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(bigIcon));
+        SetClassLongPtr(hwnd, GCLP_HICON, reinterpret_cast<LONG_PTR>(bigIcon));
+    }
+
+    if (smallIcon)
+    {
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(smallIcon));
+        SetClassLongPtr(hwnd, GCLP_HICONSM, reinterpret_cast<LONG_PTR>(smallIcon));
+    }
+
+    return true;
+}
+#endif
+}  // namespace
+
 GLFWWindow::GLFWWindow()
 {
 }
@@ -38,6 +130,10 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
         glfwWindowHint(GLFW_SAMPLES, msaaSamples);
     }
 
+#ifdef _WIN32
+    SetProcessAppUserModelId();
+#endif
+
     m_Window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     if (!m_Window)
     {
@@ -47,16 +143,7 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
     }
 
 #ifdef _WIN32
-    HWND hwnd = glfwGetWin32Window(m_Window);
-    HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101));
-    if (hIcon)
-    {
-        SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
-        SetClassLongPtr(hwnd, GCLP_HICON, (LONG_PTR)hIcon);
-        SetClassLongPtr(hwnd, GCLP_HICONSM, (LONG_PTR)hIcon);
-    }
-    else
+    if (!ApplyEmbeddedWindowIcon(m_Window))
     {
         int w, h, ch;
         std::string iconPath = FileSystem::getPath("include/engine/asset/project/icon.png");
@@ -108,6 +195,9 @@ void GLFWWindow::SetIcon(int width, int height, unsigned char* pixels)
         images[0].height = height;
         images[0].pixels = pixels;
         glfwSetWindowIcon(m_Window, 1, images);
+#ifdef _WIN32
+        ApplyEmbeddedWindowIcon(m_Window);
+#endif
     }
 }
 

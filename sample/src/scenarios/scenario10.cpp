@@ -18,8 +18,7 @@ void SampleState::LoadScene10()
     EntityBuilder(scene, res, "scenario")
         .WithName("Floor")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.2f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.2f, 0.8f, 1.0f)
         .Build();
 
     auto floorPhys = EntityBuilder(scene, res, "scenario")
@@ -48,15 +47,14 @@ void SampleState::LoadScene10()
     anchorPos.y = m_S10AnchorHeight;
     auto anchor = EntityBuilder(scene, res, "scenario")
         .WithName("Anchor")
-        .WithTag("chain_link")
+        .WithTag("chain_anchor")
         .WithTransform(anchorPos, glm::vec3(0.0f), glm::vec3(1.5f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.8f, 0.2f, 1.0f)
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.8f, 0.2f, 1.0f)
         .Build();
 
     auto& anchorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, anchor);
     anchorShape.type = ShapeType::Box;
-    anchorShape.size = glm::vec3(1.5f);
+    anchorShape.size = glm::vec3(0.5f);
     anchorShape.restitution = 0.5f;
     anchorShape.friction = 0.5f;
 
@@ -80,8 +78,7 @@ void SampleState::LoadScene10()
             .WithName("ChainLink_" + std::to_string(i))
             .WithTag("chain_link")
             .WithTransform(currentPos, glm::vec3(0.0f), linkSpec.visualScale)
-            .WithMesh(linkSpec.mesh, "deferred_lit")
-            .WithPBRMaterial(0.1f, 0.5f, 1.0f)
+            .WithPBRMesh(linkSpec.mesh, "deferred_lit", 0.1f, 0.5f, 1.0f)
             .Build();
 
         auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, link);
@@ -98,14 +95,13 @@ void SampleState::LoadScene10()
         m_S10ChainEntities.push_back(link);
     }
 
-    auto payloadPos = anchorPos - glm::vec3(0.0f, linkOffset * (m_S10ChainLength + 1), 0.0f);
+    auto payloadPos = anchorPos - glm::vec3(0.0f, linkOffset * m_S10ChainLength + 1.55f, 0.0f);
     const Scenario10ShapeSpec payloadSpec = GetScenario10ShapeSpec(m_S10PayloadShape, true);
     auto payload = EntityBuilder(scene, res, "scenario")
         .WithName("Payload")
-        .WithTag("chain_link")
+        .WithTag("chain_payload")
         .WithTransform(payloadPos, glm::vec3(0.0f), payloadSpec.visualScale)
-        .WithMesh(payloadSpec.mesh, "deferred_lit")
-        .WithPBRMaterial(0.05f, 0.45f, 1.0f)
+        .WithPBRMesh(payloadSpec.mesh, "deferred_lit", 0.05f, 0.45f, 1.0f)
         .Build();
     auto& payloadShape = EntityManager::AddComponent<RigidShapeComponent>(scene, payload);
     ApplyShapeSpec(payloadShape, payloadSpec);
@@ -117,6 +113,37 @@ void SampleState::LoadScene10()
     payloadRB.linearDamping = 0.2f;
     payloadRB.angularDamping = 0.85f;
     m_S10ChainEntities.push_back(payload);
+
+    for (int i = 0; i < 8; ++i)
+    {
+        const bool sphere = (i % 2) == 0;
+        const float x = -10.5f + static_cast<float>(i) * 3.0f;
+        const float z = (i % 3 == 0) ? -3.0f : 3.0f;
+        const float y = anchorPos.y + 4.0f + static_cast<float>(i % 4) * 1.4f;
+        const glm::vec3 scale = sphere ? glm::vec3(0.75f) : glm::vec3(0.85f);
+
+        auto probe = EntityBuilder(scene, res, "scenario")
+                         .WithName("GravityProbe_" + std::to_string(i))
+                         .WithTag("gravity_probe")
+                         .WithTransform(glm::vec3(x, y, z),
+                                        glm::vec3(rand() % 360, rand() % 360, rand() % 360), scale)
+                         .WithPBRMesh(sphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.0f, 0.38f, 1.0f)
+                         .Build();
+
+        auto& probeShape = EntityManager::AddComponent<RigidShapeComponent>(scene, probe);
+        probeShape.type = sphere ? ShapeType::Sphere : ShapeType::Box;
+        probeShape.size = glm::vec3(0.5f);
+        probeShape.radius = 0.5f;
+        probeShape.height = 1.0f;
+        probeShape.restitution = 0.35f;
+        probeShape.friction = 0.6f;
+
+        auto& probeRB = EntityManager::AddComponent<RigidBodyComponent>(scene, probe);
+        probeRB.mass = 0.75f + static_cast<float>(i) * 0.25f;
+        probeRB.isStatic = false;
+        probeRB.linearDamping = 0.02f;
+        probeRB.angularDamping = 0.08f;
+    }
 
     // Force PhysicsSystem to initialize bullet body structures immediately
     auto& physicsSys = GetSystem<PhysicsSystem>();
@@ -181,7 +208,7 @@ void SampleState::LoadScene10()
         if (rbLast)
         {
             rbLast->Activate(true);
-            rbLast->ApplyCentralForce(glm::vec3(m_S10KickForce, 0.0f, 0.0f));
+            rbLast->ApplyCentralImpulse(glm::vec3(m_S10KickForce, 0.0f, 0.0f));
         }
     }
 }

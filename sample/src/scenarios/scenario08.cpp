@@ -8,8 +8,7 @@ void SampleState::LoadScene8()
     auto floor = EntityBuilder(scene, res, "scenario")
         .WithName("Floor")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(50.0f, 1.0f, 50.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
     auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
     floorShape.type = ShapeType::Box;
@@ -29,8 +28,7 @@ void SampleState::LoadScene8()
     auto player = EntityBuilder(scene, res, "scenario")
         .WithName("PlayerCube")
         .WithTransform(glm::vec3(0.0f, 0.75f, 0.0f), glm::vec3(0.0f), glm::vec3(1.5f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.4f, 1.0f)
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.4f, 1.0f)
         .Build();
 
     std::string scriptName = "PlayerControlScript";
@@ -65,8 +63,7 @@ void SampleState::LoadScene8()
         auto target = EntityBuilder(scene, res, "scenario")
             .WithName("Target_" + std::to_string(i))
             .WithTransform(pos, glm::vec3(0.0f), glm::vec3(2.0f))
-            .WithMesh("sphereModel", "deferred_lit")
-            .WithPBRMaterial(0.9f, 0.1f, 1.0f)
+            .WithPBRMesh("sphereModel", "deferred_lit", 0.9f, 0.1f, 1.0f)
             .Build();
 
         auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, target);

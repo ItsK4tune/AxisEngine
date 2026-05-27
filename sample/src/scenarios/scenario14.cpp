@@ -8,8 +8,7 @@ void SampleState::LoadScene14()
     EntityBuilder(scene, res, "scenario")
         .WithName("Ground")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.1f, 0.1f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.1f, 0.1f, 0.1f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
@@ -21,8 +20,7 @@ void SampleState::LoadScene14()
     auto viCube = EntityBuilder(scene, res, "scenario")
         .WithName("viCube")
         .WithTransform(glm::vec3(-10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(1.0f, 0.1f, 0.1f)
+        .WithPBRMesh("cubeModel", "deferred_lit", 1.0f, 0.1f, 0.1f)
         .Build();
     auto* rVi = scene.registry.try_get<MeshRendererComponent>(viCube);
     if (rVi) rVi->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
@@ -30,8 +28,7 @@ void SampleState::LoadScene14()
     auto enCube = EntityBuilder(scene, res, "scenario")
         .WithName("enCube")
         .WithTransform(glm::vec3(10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.1f, 1.0f)
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.1f, 1.0f)
         .Build();
     auto* rEn = scene.registry.try_get<MeshRendererComponent>(enCube);
     if (rEn) rEn->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);

@@ -8,8 +8,7 @@ void SampleState::LoadScene13()
     EntityBuilder(scene, res, "scenario")
         .WithName("Ground")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
@@ -30,8 +29,7 @@ void SampleState::LoadScene13()
     auto player = EntityBuilder(scene, res, "scenario")
         .WithName("BindingPlayer")
         .WithTransform(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f))
-        .WithMesh("capsuleModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.5f, 1.0f)
+        .WithPBRMesh("capsuleModel", "deferred_lit", 0.0f, 0.5f, 1.0f)
         .Build();
 
     auto& script = scene.registry.emplace<ScriptComponent>(player);
@@ -64,8 +62,7 @@ void SampleState::LoadScene13()
         auto padEntity = EntityBuilder(scene, res, "scenario")
             .WithName(std::string("InputPad_") + pad.action)
             .WithTransform(pad.position, glm::vec3(0.0f), pad.scale)
-            .WithMesh("cubeModel", "deferred_unlit")
-            .WithPBRMaterial(0.0f, 0.5f, 1.0f)
+            .WithPBRMesh("cubeModel", "deferred_unlit", 0.0f, 0.5f, 1.0f)
             .Build();
 
         if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(padEntity))

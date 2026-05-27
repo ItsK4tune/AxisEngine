@@ -109,6 +109,9 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     bool shouldFree = true;
     const aiTexture* aiTex = nullptr;
 
+    // Model import uses aiProcess_FlipUVs, so model textures must not inherit stb's global flip state.
+    stbi_set_flip_vertically_on_load(false);
+
     if (!filename.empty() && filename[0] == '*')
     {
         try

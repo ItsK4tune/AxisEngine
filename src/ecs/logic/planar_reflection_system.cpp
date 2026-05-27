@@ -3,6 +3,7 @@
 #include <core/logic/service_locator.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_skybox_service.h>
+#include <ecs/interface/i_lighting_service.h>
 #include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
@@ -202,6 +203,16 @@ void PlanarReflectionSystem::Render(Scene& scene)
         {
             skyboxService->RenderAlphaPassWithCamera(scene, refViewMat, obliqueProj, prc.resolution, prc.resolution_y,
                                                      prc.reflectionFBO);
+        }
+
+        if (auto* lightingService = ServiceLocator::Instance().Resolve<ILightingService>())
+        {
+            RenderSceneData sceneData;
+            sceneData.viewMatrix = refViewMat;
+            sceneData.projMatrix = obliqueProj;
+            sceneData.cameraPosition = refCamPos;
+            sceneData.lights = m_RenderService->GetRenderQueueObj().GetLights();
+            lightingService->UploadLightData(sceneData);
         }
 
         const auto& defQ = m_RenderService->GetRenderQueueObj().GetDeferredOpaqueQueue();

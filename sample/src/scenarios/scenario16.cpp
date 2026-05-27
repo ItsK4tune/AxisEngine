@@ -8,8 +8,7 @@ void SampleState::LoadScene16()
     EntityBuilder(scene, res, "scenario")
         .WithName("Ground")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
@@ -21,8 +20,7 @@ void SampleState::LoadScene16()
     EntityBuilder(scene, res, "scenario")
         .WithName("NetworkOrb")
         .WithTransform(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(3.0f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.1f, 0.9f, 0.1f)
+        .WithPBRMesh("sphereModel", "deferred_lit", 0.1f, 0.9f, 0.1f)
         .Build();
 
     m_S16Messages.clear();

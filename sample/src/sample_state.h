@@ -381,6 +381,7 @@ private:
     void LoadScene27();  // Scenario 27: Shadow Receiver Test
     void LoadScene28();  // Scenario 28: UI Showcase
     void LoadScene29();  // Scenario 29: Responsive UI
+    void LoadScene30();  // Scenario 30: Interactive UI callbacks
     void StopScenario17Audio();
 
 #ifdef ENABLE_EDITOR
@@ -555,6 +556,8 @@ private:
     // Scenario 28/29 UI variables
     float m_S28RotateCard = 12.0f;
     bool m_S28ShowTexture = true;
+    bool m_S28FlipTextureX = false;
+    bool m_S28FlipTextureY = false;
     int m_S29LayoutMode = 0;
     float m_S29PanelAlpha = 0.92f;
 

@@ -17,6 +17,7 @@ public:
     virtual glm::vec3 GetAngularVelocity() const = 0;
 
     virtual void ApplyCentralForce(const glm::vec3& force) = 0;
+    virtual void ApplyCentralImpulse(const glm::vec3& impulse) = 0;
     virtual void ApplyTorque(const glm::vec3& torque) = 0;
 
     virtual void SetFriction(float friction) = 0;

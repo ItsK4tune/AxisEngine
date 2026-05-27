@@ -21,6 +21,7 @@ public:
     glm::vec3 GetAngularVelocity() const override;
 
     void ApplyCentralForce(const glm::vec3& force) override;
+    void ApplyCentralImpulse(const glm::vec3& impulse) override;
     void ApplyTorque(const glm::vec3& torque) override;
 
     void SetFriction(float friction) override;

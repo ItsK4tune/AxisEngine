@@ -8,8 +8,7 @@ void SampleState::LoadScene19()
     EntityBuilder(scene, res, "scenario")
         .WithName("Ground")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")

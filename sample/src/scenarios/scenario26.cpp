@@ -14,8 +14,7 @@ void SampleState::LoadScene26()
     EntityBuilder(scene, res, "scenario")
         .WithName("BatchFloor")
         .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(180.0f, 1.0f, 180.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.85f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.85f, 1.0f)
         .Build();
 
     int side = static_cast<int>(std::ceil(std::sqrt(static_cast<float>(m_S26InstanceCount))));
@@ -28,8 +27,7 @@ void SampleState::LoadScene26()
         auto entity = EntityBuilder(scene, res, "scenario")
             .WithName("BatchCube_" + std::to_string(i))
             .WithTransform(glm::vec3(offset + x * spacing, 1.3f, offset + z * spacing), glm::vec3(0.0f), glm::vec3(1.0f))
-            .WithMesh("cubeModel", "deferred_lit")
-            .WithPBRMaterial(0.05f, 0.55f, 1.0f)
+            .WithPBRMesh("cubeModel", "deferred_lit", 0.05f, 0.55f, 1.0f)
             .Build();
 
         if (m_S26UniqueTint)

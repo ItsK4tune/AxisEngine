@@ -8,8 +8,7 @@ void SampleState::LoadScene17()
     EntityBuilder(scene, res, "scenario")
         .WithName("AudioPlatform")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.2f, 0.8f, 0.2f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.2f, 0.8f, 0.2f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
@@ -21,8 +20,7 @@ void SampleState::LoadScene17()
     auto audioSource = EntityBuilder(scene, res, "scenario")
         .WithName("AudioSource3D")
         .WithTransform(glm::vec3(0.0f, 3.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(1.0f, 0.5f, 0.0f)
+        .WithPBRMesh("sphereModel", "deferred_lit", 1.0f, 0.5f, 0.0f)
         .Build();
 
     auto& audio3D = scene.registry.emplace<AudioSourceComponent>(audioSource);

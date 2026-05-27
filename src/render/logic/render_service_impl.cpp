@@ -882,8 +882,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                 }
             }
 
-            bool targetIsForward =
-                isTransparentPass || item.renderMode == RenderMode::ForceForward || item.ignoreDepth || isCapturing;
+            // Capture passes can route deferred albedo directly into Color0 below; keep deferred shaders intact here.
+            bool targetIsForward = isTransparentPass || item.renderMode == RenderMode::ForceForward || item.ignoreDepth;
             if (shader)
             {
                 if (targetIsForward)

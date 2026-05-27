@@ -145,12 +145,14 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                 if (renderer->texture)
                     texID = renderer->texture->id;
 
+                const glm::vec2 flipScale(transform.flipX ? -1.0f : 1.0f, transform.flipY ? -1.0f : 1.0f);
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::translate(model, glm::vec3(finalPos + transform.pivot * finalSize, 0.0f));
                 if (transform.rotation != 0.0f)
                 {
                     model = glm::rotate(model, glm::radians(transform.rotation), glm::vec3(0.0f, 0.0f, 1.0f));
                 }
+                model = glm::scale(model, glm::vec3(flipScale, 1.0f));
                 model = glm::translate(model, glm::vec3(-transform.pivot * finalSize, 0.0f));
                 model = glm::scale(model, glm::vec3(finalSize, 1.0f));
                 currentShader->setMat4("u_Model", model);
@@ -222,11 +224,21 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                     float cosR = cos(rotRads);
                     float sinR = sin(rotRads);
 
-                    auto rotatePt = [&](float px, float py) -> glm::vec2 {
-                        if (transform.rotation == 0.0f)
+                    auto transformPt = [&](float px, float py) -> glm::vec2 {
+                        if (transform.rotation == 0.0f && !transform.flipX && !transform.flipY)
                             return {px, py};
+
                         float dx = px - pivotPos.x;
                         float dy = py - pivotPos.y;
+
+                        if (transform.flipX)
+                            dx = -dx;
+                        if (transform.flipY)
+                            dy = -dy;
+
+                        if (transform.rotation == 0.0f)
+                            return {pivotPos.x + dx, pivotPos.y + dy};
+
                         return {pivotPos.x + dx * cosR - dy * sinR, pivotPos.y + dx * sinR + dy * cosR};
                     };
 
@@ -239,10 +251,10 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                         float w = ch.size.x * scale;
                         float h = ch.size.y * scale;
 
-                        glm::vec2 p1 = rotatePt(xpos, ypos - h);
-                        glm::vec2 p2 = rotatePt(xpos, ypos);
-                        glm::vec2 p3 = rotatePt(xpos + w, ypos);
-                        glm::vec2 p4 = rotatePt(xpos + w, ypos - h);
+                        glm::vec2 p1 = transformPt(xpos, ypos - h);
+                        glm::vec2 p2 = transformPt(xpos, ypos);
+                        glm::vec2 p3 = transformPt(xpos + w, ypos);
+                        glm::vec2 p4 = transformPt(xpos + w, ypos - h);
 
                         std::vector<float> vertices = {
                             p1.x, p1.y, 0.0f, 0.0f, p2.x, p2.y, 0.0f, 1.0f, p3.x, p3.y, 1.0f, 1.0f,

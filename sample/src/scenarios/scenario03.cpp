@@ -7,23 +7,21 @@ void SampleState::LoadScene3()
 
     EntityBuilder(scene, res, "scenario")
         .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(100.0f, 1.0f, 100.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.8f, 1.0f)
+        .WithPBRRenderable("planeModel", "deferred_lit", glm::vec3(0.0f), glm::vec3(0.0f),
+                           glm::vec3(100.0f, 1.0f, 100.0f), 0.0f, 0.8f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("LightingProbeCapsule")
-        .WithTransform(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(5.0f, 10.0f, 5.0f))
-        .WithMesh("capsuleSmoothModel", "deferred_lit")
-        .WithPBRMaterial(0.2f, 0.4f, 1.0f)
+        .WithPBRRenderable("capsuleSmoothModel", "deferred_lit", glm::vec3(0.0f, 5.0f, 0.0f),
+                           glm::vec3(0.0f), glm::vec3(5.0f, 10.0f, 5.0f), 0.2f, 0.4f, 1.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("DirLight_Key")
-        .WithTransform(glm::vec3(0.0f, 30.0f, 0.0f), glm::vec3(-45.0f, 35.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.5f, -1.0f, -0.35f)), m_S3DirectionalColor,
-                              m_S3DirectionalIntensity)
+        .WithDirectionalLightAt(glm::vec3(0.0f, 30.0f, 0.0f), glm::vec3(-45.0f, 35.0f, 0.0f),
+                                glm::normalize(glm::vec3(-0.5f, -1.0f, -0.35f)), m_S3DirectionalColor,
+                                m_S3DirectionalIntensity)
         .Build();
 
     for (int i = 0; i < 499; ++i)
@@ -35,8 +33,7 @@ void SampleState::LoadScene3()
         glm::vec3 pColor = m_S3PointColor * (0.5f + static_cast<float>(rand() % 50) / 100.0f);
         EntityBuilder(scene, res, "scenario")
             .WithName("PointLight_" + std::to_string(i))
-            .WithTransform(pPos)
-            .WithPointLight(pColor, m_S3PointIntensity, 15.0f)
+            .WithPointLightAt(pPos, pColor, m_S3PointIntensity, 15.0f)
             .Build();
 
         float sRadius = 15.0f + static_cast<float>(rand() % 35);
@@ -45,8 +42,7 @@ void SampleState::LoadScene3()
         glm::vec3 sColor = m_S3SpotColor * (0.5f + static_cast<float>(rand() % 50) / 100.0f);
         EntityBuilder(scene, res, "scenario")
             .WithName("SpotLight_" + std::to_string(i))
-            .WithTransform(sPos, glm::vec3(0.0f))
-            .WithSpotLight(glm::vec3(0.0f, -1.0f, 0.0f), sColor, m_S3SpotIntensity)
+            .WithSpotLightAt(sPos, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f), sColor, m_S3SpotIntensity)
             .Build();
     }
 

@@ -17,25 +17,22 @@ void SampleState::LoadScene20()
     EntityBuilder(scene, res, "scenario")
         .WithName("ReflectionFillLight")
         .WithTransform(glm::vec3(0.0f, 12.0f, 12.0f), glm::vec3(0.0f), glm::vec3(0.8f))
-        .WithMesh("sphereModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.3f, 1.0f)
+        .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.3f, 1.0f)
         .WithPointLight(glm::vec3(1.0f, 0.92f, 0.75f), 12.0f, 45.0f)
         .Build();
 
     auto floor = EntityBuilder(scene, res, "scenario")
         .WithName("ReflectiveFloor")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithMesh("planeModel", "deferred_lit")
-        .WithPBRMaterial(0.02f, 0.35f, 1.0f)
+        .WithPBRMesh("planeModel", "deferred_lit", 0.02f, 0.35f, 1.0f)
         .Build();
     if (auto* floorRenderer = scene.registry.try_get<MeshRendererComponent>(floor))
         floorRenderer->color = glm::vec4(0.55f, 0.55f, 0.52f, 1.0f);
 
     auto planarMirror = EntityBuilder(scene, res, "scenario")
         .WithName("PlanarMirror")
-        .WithTransform(glm::vec3(0.0f, 0.00f, -50.0f), glm::vec3(90.0f, 0.0f, 0.0f), glm::vec3(24.0f, 1.0f, 24.0f))
-        .WithMesh("planeModel", "deferred_reflect")
-        .WithPBRMaterial(0.0f, 0.04f, 1.0f)
+        .WithTransform(glm::vec3(0.0f, 0.00f, -50.0f), glm::vec3(90.0f, 0.0f, 0.0f), glm::vec3(38.0f, 1.0f, 24.0f))
+        .WithPBRMesh("planeModel", "deferred_reflect", 0.0f, 0.04f, 1.0f)
         .Build();
     if (auto* mirrorRenderer = scene.registry.try_get<MeshRendererComponent>(planarMirror))
     {
@@ -55,18 +52,16 @@ void SampleState::LoadScene20()
 
     auto wallRed = EntityBuilder(scene, res, "scenario")
         .WithName("WallRed")
-        .WithTransform(glm::vec3(-20.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.65f, 1.0f)
+        .WithTransform(glm::vec3(-32.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
         .Build();
     auto* rRed = scene.registry.try_get<MeshRendererComponent>(wallRed);
     if (rRed) rRed->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
 
     auto wallBlue = EntityBuilder(scene, res, "scenario")
         .WithName("WallBlue")
-        .WithTransform(glm::vec3(20.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
-        .WithMesh("cubeModel", "deferred_lit")
-        .WithPBRMaterial(0.0f, 0.65f, 1.0f)
+        .WithTransform(glm::vec3(32.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
         .Build();
     auto* rBlue = scene.registry.try_get<MeshRendererComponent>(wallBlue);
     if (rBlue) rBlue->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);
@@ -116,8 +111,7 @@ void SampleState::LoadScene20()
         auto sphere = EntityBuilder(scene, res, "scenario")
             .WithName(c.sphereName)
             .WithTransform(c.pos, glm::vec3(0.0f), glm::vec3(4.0f))
-            .WithMesh("sphereModel", "deferred_reflect")
-            .WithPBRMaterial(0.05f, 0.95f, 1.0f)
+            .WithPBRMesh("sphereModel", "deferred_reflect", 0.05f, 0.95f, 1.0f)
             .Build();
 
         if (auto* sphereRenderer = scene.registry.try_get<MeshRendererComponent>(sphere))
