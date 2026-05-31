@@ -114,18 +114,18 @@ void PhysicsTransformSync::SyncFromPhysics()
             glm::quat worldRot;
             rb.body->GetWorldTransform(worldPos, worldRot);
 
-            glm::mat4 rootMtx = glm::mat4(1.0f);
+            glm::vec3 Rt(0.0f);
+            glm::quat Rr(1.0f, 0.0f, 0.0f, 0.0f);
+            glm::vec3 Rs(1.0f);
             if (auto* mesh = m_Scene.registry.try_get<MeshRendererComponent>(entity))
             {
                 if (mesh->model)
                 {
-                    rootMtx = mesh->model->GetRootTransform();
+                    Rt = mesh->model->GetRootTranslation();
+                    Rr = mesh->model->GetRootRotation();
+                    Rs = mesh->model->GetRootScale();
                 }
             }
-            glm::vec3 Rt, Rs, Rskew;
-            glm::quat Rr;
-            glm::vec4 Rperspective;
-            glm::decompose(rootMtx, Rs, Rr, Rt, Rskew, Rperspective);
 
             if (hasParent)  // ALWAYS factor out parent transform to maintain relative ECS coordinate integrity!
             {

@@ -27,6 +27,7 @@ public:
     virtual void OnCollisionStay(entt::entity other) = 0;
 
     virtual void OnTriggerEnter(entt::entity other) = 0;
+    virtual void OnTriggerStay(entt::entity other) = 0;
     virtual void OnTriggerExit(entt::entity other) = 0;
 
     virtual void OnKeyPress(Key key) = 0;

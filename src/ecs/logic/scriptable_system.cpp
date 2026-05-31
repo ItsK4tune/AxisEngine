@@ -101,7 +101,7 @@ void DispatchPointerButton(bool isDown, bool canStartPress, float dt, bool& isPr
     }
 }
 
-void DispatchUIInput(Scene& scene, float dt)
+void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& scriptEntities)
 {
     auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
     if (!io)
@@ -120,15 +120,21 @@ void DispatchUIInput(Scene& scene, float dt)
                              static_cast<float>(mouse.GetLastY()) / scaleFactor);
     const float safeDt = (std::max)(0.0f, dt);
 
-    auto view = scene.registry.view<ScriptComponent, UITransformComponent, InfoComponent>();
-    for (auto entity : view)
+    for (auto entity : scriptEntities)
     {
-        auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive)
+        if (!scene.registry.valid(entity))
             continue;
 
-        auto& script = view.get<ScriptComponent>(entity);
-        if (!script.instance || !script.instance->IsEnabled())
+        auto* info = scene.registry.try_get<InfoComponent>(entity);
+        if (!info || !info->isActive)
+            continue;
+
+        auto* script = scene.registry.try_get<ScriptComponent>(entity);
+        if (!script || !script->instance || !script->instance->IsEnabled())
+            continue;
+
+        auto* uiTransform = scene.registry.try_get<UITransformComponent>(entity);
+        if (!uiTransform)
             continue;
 
         const ScriptableUIRect rect =
@@ -136,11 +142,17 @@ void DispatchUIInput(Scene& scene, float dt)
         const bool isInside = mousePos.x >= rect.pos.x && mousePos.x <= rect.pos.x + rect.size.x &&
                               mousePos.y >= rect.pos.y && mousePos.y <= rect.pos.y + rect.size.y;
 
-        auto* inputScript = dynamic_cast<InputScriptable*>(script.instance.get());
+        if (script->instance && !script->scriptableInstance)
+        {
+            script->scriptableInstance = dynamic_cast<Scriptable*>(script->instance.get());
+            script->inputScriptableInstance = dynamic_cast<InputScriptable*>(script->instance.get());
+        }
+
+        auto* inputScript = script->inputScriptableInstance;
         if (!inputScript)
         {
             if (isInside)
-                script.instance->OnMouseOver();
+                script->instance->OnMouseOver();
             continue;
         }
 
@@ -148,25 +160,25 @@ void DispatchUIInput(Scene& scene, float dt)
         {
             inputScript->SetHovered(true);
             inputScript->OnHoverEnter();
-            script.instance->OnMouseEnter();
+            script->instance->OnMouseEnter();
         }
         if (isInside)
         {
             inputScript->OnHoverStay();
-            script.instance->OnMouseOver();
+            script->instance->OnMouseOver();
         }
         else if (inputScript->IsHovered())
         {
             inputScript->SetHovered(false);
             inputScript->OnHoverExit();
-            script.instance->OnMouseExit();
+            script->instance->OnMouseExit();
         }
 
         DispatchPointerButton(mouse.IsLeftButtonPressed(), isInside, safeDt, inputScript->GetLeftPressedRef(),
                               inputScript->GetLeftHoldTimeRef(),
                               [&]() {
                                   inputScript->OnLeftClick();
-                                  script.instance->OnMouseClicked(Mouse::Left);
+                                  script->instance->OnMouseClicked(Mouse::Left);
                               },
                               [&](float duration) { inputScript->OnLeftHold(duration); },
                               [&](float duration) { inputScript->OnLeftRelease(duration); });
@@ -175,7 +187,7 @@ void DispatchUIInput(Scene& scene, float dt)
                               inputScript->GetRightHoldTimeRef(),
                               [&]() {
                                   inputScript->OnRightClick();
-                                  script.instance->OnMouseClicked(Mouse::Right);
+                                  script->instance->OnMouseClicked(Mouse::Right);
                               },
                               [&](float duration) { inputScript->OnRightHold(duration); },
                               [&](float duration) { inputScript->OnRightRelease(duration); });
@@ -184,7 +196,7 @@ void DispatchUIInput(Scene& scene, float dt)
                               inputScript->GetMiddleHoldTimeRef(),
                               [&]() {
                                   inputScript->OnMiddleClick();
-                                  script.instance->OnMouseClicked(Mouse::Middle);
+                                  script->instance->OnMouseClicked(Mouse::Middle);
                               },
                               [&](float duration) { inputScript->OnMiddleHold(duration); },
                               [&](float duration) { inputScript->OnMiddleRelease(duration); });
@@ -222,10 +234,30 @@ void ScriptableSystem::Initialize()
 void ScriptableSystem::OnSceneChanged(const SceneChangedEvent& e)
 {
     m_ActiveScene = e.scene;
-    if (e.registry && m_BoundRegistries.find(e.registry) == m_BoundRegistries.end())
+    if (e.registry)
     {
-        e.registry->on_destroy<ScriptComponent>().connect<&ScriptableSystem::OnScriptComponentDestroyed>(this);
-        m_BoundRegistries.insert(e.registry);
+        if (m_BoundRegistries.find(e.registry) == m_BoundRegistries.end())
+        {
+            e.registry->on_construct<ScriptComponent>().connect<&ScriptableSystem::OnScriptComponentConstructed>(this);
+            e.registry->on_destroy<ScriptComponent>().connect<&ScriptableSystem::OnScriptComponentDestroyed>(this);
+            m_BoundRegistries.insert(e.registry);
+        }
+
+        m_ScriptEntities.clear();
+        auto view = e.registry->view<ScriptComponent>();
+        m_ScriptEntities.assign(view.begin(), view.end());
+    }
+    else
+    {
+        m_ScriptEntities.clear();
+    }
+}
+
+void ScriptableSystem::OnScriptComponentConstructed(entt::registry& reg, entt::entity entity)
+{
+    if (std::find(m_ScriptEntities.begin(), m_ScriptEntities.end(), entity) == m_ScriptEntities.end())
+    {
+        m_ScriptEntities.push_back(entity);
     }
 }
 
@@ -275,6 +307,8 @@ void ScriptableSystem::OnEntityTrigger(const EntityTriggerEvent& e)
             {
                 if (type == CollisionEventType::Enter)
                     sc->instance->OnTriggerEnter(other);
+                else if (type == CollisionEventType::Stay)
+                    sc->instance->OnTriggerStay(other);
                 else if (type == CollisionEventType::Exit)
                     sc->instance->OnTriggerExit(other);
             }
@@ -289,17 +323,19 @@ void ScriptableSystem::OnKeyPressed(const KeyPressedEvent& e)
 {
     if (!m_ActiveScene || !m_Enabled)
         return;
-    auto view = m_ActiveScene->registry.view<ScriptComponent, InfoComponent>();
-    for (auto entity : view)
+    auto entities = m_ScriptEntities;
+    for (auto entity : entities)
     {
-        auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive)
+        if (!m_ActiveScene->registry.valid(entity))
+            continue;
+        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        if (!info || !info->isActive)
             continue;
 
-        auto& sc = view.get<ScriptComponent>(entity);
-        if (sc.instance && sc.instance->IsEnabled())
+        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        if (sc && sc->instance && sc->instance->IsEnabled())
         {
-            sc.instance->OnKeyPress(static_cast<Key>(e.key));
+            sc->instance->OnKeyPress(static_cast<Key>(e.key));
         }
     }
 }
@@ -308,17 +344,19 @@ void ScriptableSystem::OnKeyReleased(const KeyReleasedEvent& e)
 {
     if (!m_ActiveScene || !m_Enabled)
         return;
-    auto view = m_ActiveScene->registry.view<ScriptComponent, InfoComponent>();
-    for (auto entity : view)
+    auto entities = m_ScriptEntities;
+    for (auto entity : entities)
     {
-        auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive)
+        if (!m_ActiveScene->registry.valid(entity))
+            continue;
+        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        if (!info || !info->isActive)
             continue;
 
-        auto& sc = view.get<ScriptComponent>(entity);
-        if (sc.instance && sc.instance->IsEnabled())
+        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        if (sc && sc->instance && sc->instance->IsEnabled())
         {
-            sc.instance->OnKeyRelease(static_cast<Key>(e.key));
+            sc->instance->OnKeyRelease(static_cast<Key>(e.key));
         }
     }
 }
@@ -327,17 +365,19 @@ void ScriptableSystem::OnMouseButtonPressed(const MouseButtonPressedEvent& e)
 {
     if (!m_ActiveScene || !m_Enabled)
         return;
-    auto view = m_ActiveScene->registry.view<ScriptComponent, InfoComponent>();
-    for (auto entity : view)
+    auto entities = m_ScriptEntities;
+    for (auto entity : entities)
     {
-        auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive)
+        if (!m_ActiveScene->registry.valid(entity))
+            continue;
+        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        if (!info || !info->isActive)
             continue;
 
-        auto& sc = view.get<ScriptComponent>(entity);
-        if (sc.instance && sc.instance->IsEnabled())
+        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        if (sc && sc->instance && sc->instance->IsEnabled())
         {
-            sc.instance->OnMouseButtonPress(static_cast<Mouse>(e.button));
+            sc->instance->OnMouseButtonPress(static_cast<Mouse>(e.button));
         }
     }
 }
@@ -346,23 +386,31 @@ void ScriptableSystem::OnMouseButtonReleased(const MouseButtonReleasedEvent& e)
 {
     if (!m_ActiveScene || !m_Enabled)
         return;
-    auto view = m_ActiveScene->registry.view<ScriptComponent, InfoComponent>();
-    for (auto entity : view)
+    auto entities = m_ScriptEntities;
+    for (auto entity : entities)
     {
-        auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive)
+        if (!m_ActiveScene->registry.valid(entity))
+            continue;
+        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        if (!info || !info->isActive)
             continue;
 
-        auto& sc = view.get<ScriptComponent>(entity);
-        if (sc.instance && sc.instance->IsEnabled())
+        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        if (sc && sc->instance && sc->instance->IsEnabled())
         {
-            sc.instance->OnMouseButtonRelease(static_cast<Mouse>(e.button));
+            sc->instance->OnMouseButtonRelease(static_cast<Mouse>(e.button));
         }
     }
 }
 
 void ScriptableSystem::OnScriptComponentDestroyed(entt::registry& reg, entt::entity entity)
 {
+    auto it = std::find(m_ScriptEntities.begin(), m_ScriptEntities.end(), entity);
+    if (it != m_ScriptEntities.end())
+    {
+        m_ScriptEntities.erase(it);
+    }
+
     if (auto sc = reg.try_get<ScriptComponent>(entity))
     {
         if (sc->instance)
@@ -407,70 +455,88 @@ void ScriptableSystem::Update(Scene& scene, float dt)
     if (!m_Enabled)
         return;
 
-    auto view = scene.registry.view<ScriptComponent, InfoComponent>();
-
-    for (auto entity : view)
+    if (m_ActiveScene != &scene)
     {
-        auto& info = view.get<InfoComponent>(entity);
-        if (!info.isActive)
+        OnSceneChanged(SceneChangedEvent{&scene.registry, &scene});
+    }
+
+    auto entities = m_ScriptEntities;
+
+    for (auto entity : entities)
+    {
+        if (!scene.registry.valid(entity))
             continue;
 
-        auto& script = view.get<ScriptComponent>(entity);
+        auto* info = scene.registry.try_get<InfoComponent>(entity);
+        if (!info || !info->isActive)
+            continue;
 
-        if (!script.instance && script.InstantiateScript)
+        auto* script = scene.registry.try_get<ScriptComponent>(entity);
+        if (!script)
+            continue;
+
+        if (!script->instance && script->InstantiateScript)
         {
             try
             {
-                script.instance = std::move(script.InstantiateScript());
-                if (script.instance)
+                script->instance = std::move(script->InstantiateScript());
+                if (script->instance)
                 {
-                    script.instance->Initialize(entity, &scene);
-                    script.instance->OnCreate();
+                    script->instance->Initialize(entity, &scene);
+                    script->scriptableInstance = dynamic_cast<Scriptable*>(script->instance.get());
+                    script->inputScriptableInstance = dynamic_cast<InputScriptable*>(script->instance.get());
+                    script->instance->OnCreate();
                 }
             }
             catch (const std::exception& e)
             {
                 LOGGER_ERROR("ScriptableSystem")
                     << "Script Initialization CRASH on entity " << (uint32_t)entity << ": " << e.what();
-                script.instance = nullptr;
+                script->instance = nullptr;
             }
         }
 
-        if (script.instance && script.instance->IsEnabled())
+        if (script->instance && !script->scriptableInstance)
+        {
+            script->scriptableInstance = dynamic_cast<Scriptable*>(script->instance.get());
+            script->inputScriptableInstance = dynamic_cast<InputScriptable*>(script->instance.get());
+        }
+
+        if (script->instance && script->instance->IsEnabled())
         {
             float effectiveDt = dt;
 
-            if (dt == 0.0f && script.instance->CanRunWhenPaused() && m_TimeService)
+            if (dt == 0.0f && script->instance->CanRunWhenPaused() && m_TimeService)
             {
                 effectiveDt = m_TimeService->GetRealDeltaTime();
             }
 
-            if (effectiveDt > 0.0f || script.instance->CanRunWhenPaused())
+            if (effectiveDt > 0.0f || script->instance->CanRunWhenPaused())
             {
                 try
                 {
-                    if (auto* s = dynamic_cast<Scriptable*>(script.instance.get()))
+                    if (script->scriptableInstance)
                     {
-                        s->UpdateInvokes(effectiveDt);
+                        script->scriptableInstance->UpdateInvokes(effectiveDt);
                     }
-                    script.instance->OnUpdate(effectiveDt);
+                    script->instance->OnUpdate(effectiveDt);
                 }
                 catch (const std::exception& e)
                 {
                     LOGGER_ERROR("ScriptableSystem")
                         << "Script Update CRASH on entity " << (uint32_t)entity << ": " << e.what();
-                    script.instance->SetEnabled(false);  // Disable failing script
+                    script->instance->SetEnabled(false);  // Disable failing script
                 }
                 catch (...)
                 {
                     LOGGER_ERROR("ScriptableSystem") << "Script Update UNKNOWN CRASH on entity " << (uint32_t)entity;
-                    script.instance->SetEnabled(false);
+                    script->instance->SetEnabled(false);
                 }
             }
         }
     }
 
-    DispatchUIInput(scene, dt);
+    DispatchUIInput(scene, dt, m_ScriptEntities);
 }
 
 std::vector<entt::id_type> ScriptableSystem::GetReadComponents() const

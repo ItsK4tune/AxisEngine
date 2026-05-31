@@ -985,15 +985,15 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
             mtx *= model->GetRootTransform();
         }
 
-        shader->setMat4("u_Model", mtx);
-        shader->setVec4("u_TintColor", item.tintColor);
-        shader->setUInt("u_EntityID", item.entityId);
-        shader->setBool("u_IsInstanced", false);
-        shader->setFloat("u_ReceiveShadowFlag", item.receiveShadow ? 1.0f : 0.0f);
+        shader->setMat4_Fast(shader->m_Loc_u_Model, "u_Model", mtx);
+        shader->setVec4_Fast(shader->m_Loc_u_TintColor, "u_TintColor", item.tintColor);
+        shader->setUInt_Fast(shader->m_Loc_u_EntityID, "u_EntityID", item.entityId);
+        shader->setBool_Fast(shader->m_Loc_u_IsInstanced, "u_IsInstanced", false);
+        shader->setFloat_Fast(shader->m_Loc_u_ReceiveShadowFlag, "u_ReceiveShadowFlag", item.receiveShadow ? 1.0f : 0.0f);
 
         if (item.probeIndex >= 0)
         {
-            shader->setInt("u_ProbeIndex", item.probeIndex);
+            shader->setInt_Fast(shader->m_Loc_u_ProbeIndex, "u_ProbeIndex", item.probeIndex);
         }
 
         // Reflection Probe Binding — only set uniforms on state transitions
@@ -1009,21 +1009,21 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
             }
             if (!lastHadReflection)
             {
-                shader->setInt("u_ReflectionProbe", 15);
-                shader->setBool("u_HasReflection", true);
-                shader->setBool("u_HasProbe", true);
+                shader->setInt_Fast(shader->m_Loc_u_ReflectionProbe, "u_ReflectionProbe", 15);
+                shader->setBool_Fast(shader->m_Loc_u_HasReflection, "u_HasReflection", true);
+                shader->setBool_Fast(shader->m_Loc_u_HasProbe, "u_HasProbe", true);
             }
-            shader->setVec3("u_ProbePos", item.probePos);
-            shader->setVec3("u_ProbeBoxMin", item.probe->boxMin);
-            shader->setVec3("u_ProbeBoxMax", item.probe->boxMax);
+            shader->setVec3_Fast(shader->m_Loc_u_ProbePos, "u_ProbePos", item.probePos);
+            shader->setVec3_Fast(shader->m_Loc_u_ProbeBoxMin, "u_ProbeBoxMin", item.probe->boxMin);
+            shader->setVec3_Fast(shader->m_Loc_u_ProbeBoxMax, "u_ProbeBoxMax", item.probe->boxMax);
         }
         else if (lastHadReflection && !isCapturing)
         {
             // State transition: had reflection -> no reflection. Cleanup once.
             tm.ActiveTexture(TextureUnit::Texture15);
             tm.BindTexture(TextureType::TextureCubeMap, 0);
-            shader->setBool("u_HasReflection", false);
-            shader->setBool("u_HasProbe", false);
+            shader->setBool_Fast(shader->m_Loc_u_HasReflection, "u_HasReflection", false);
+            shader->setBool_Fast(shader->m_Loc_u_HasProbe, "u_HasProbe", false);
             shader->setInt("u_ProbeCount", 0);
         }
 
@@ -1049,13 +1049,13 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         // Reflection data uniforms — only when item has reflection
         if (item.reflection && !isCapturing)
         {
-            shader->setFloat("u_Reflectivity", item.reflection->reflectivity);
-            shader->setFloat("u_FresnelPower", item.reflection->fresnelPower);
-            shader->setFloat("u_FresnelBias", item.reflection->fresnelBias);
+            shader->setFloat_Fast(shader->m_Loc_u_Reflectivity, "u_Reflectivity", item.reflection->reflectivity);
+            shader->setFloat_Fast(shader->m_Loc_u_FresnelPower, "u_FresnelPower", item.reflection->fresnelPower);
+            shader->setFloat_Fast(shader->m_Loc_u_FresnelBias, "u_FresnelBias", item.reflection->fresnelBias);
 
             if (item.probe && item.probe->cubemapID != 0)
             {
-                shader->setFloat("u_ReflectionIntensity", item.reflectionIntensity);
+                shader->setFloat_Fast(shader->m_Loc_u_ReflectionIntensity, "u_ReflectionIntensity", item.reflectionIntensity);
             }
         }
         else if (!isCapturing)
@@ -1063,10 +1063,10 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
             // Only set defaults if previous item had reflection (avoid redundant sets)
             if (lastHadProbe)
             {
-                shader->setFloat("u_Reflectivity", 0.0f);
-                shader->setFloat("u_FresnelPower", 5.0f);
-                shader->setFloat("u_FresnelBias", 0.04f);
-                shader->setBool("u_HasProbe", false);
+                shader->setFloat_Fast(shader->m_Loc_u_Reflectivity, "u_Reflectivity", 0.0f);
+                shader->setFloat_Fast(shader->m_Loc_u_FresnelPower, "u_FresnelPower", 5.0f);
+                shader->setFloat_Fast(shader->m_Loc_u_FresnelBias, "u_FresnelBias", 0.04f);
+                shader->setBool_Fast(shader->m_Loc_u_HasProbe, "u_HasProbe", false);
             }
         }
         lastHadProbe = (item.reflection != nullptr);
@@ -1109,10 +1109,10 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                 rsm.SetDepthMask(false);
             }
 
-            shader->setBool("u_IsInstanced", true);
-            shader->setUInt("u_EntityID", 0);
+            shader->setBool_Fast(shader->m_Loc_u_IsInstanced, "u_IsInstanced", true);
+            shader->setUInt_Fast(shader->m_Loc_u_EntityID, "u_EntityID", 0);
             model->DrawInstanced(*shader, instanceMatrices, !matBound);
-            shader->setBool("u_IsInstanced", false);
+            shader->setBool_Fast(shader->m_Loc_u_IsInstanced, "u_IsInstanced", false);
             itemIndex += batchCount - 1;
         }
         else

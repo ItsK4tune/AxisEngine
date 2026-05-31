@@ -55,10 +55,13 @@ public:
     {
     }
 
-    virtual void OnTriggerEnter(entt::entity other)
+    virtual void OnTriggerEnter(entt::entity other) override
     {
     }
-    virtual void OnTriggerExit(entt::entity other)
+    virtual void OnTriggerStay(entt::entity other) override
+    {
+    }
+    virtual void OnTriggerExit(entt::entity other) override
     {
     }
 

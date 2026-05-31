@@ -185,7 +185,7 @@ void Mesh::Draw(Shader& shader, bool bindTextures)
         BindMeshTextures(shader, textures, tm);
     }
 
-    shader.setBool("isInstanced", false);
+    shader.setBool_Fast(shader.m_Loc_isInstanced, "isInstanced", false);
 
     bm.BindVertexArray(VAO);
     dm.DrawElements(Primitive::Triangles, static_cast<int>(indices.size()), DataType::UnsignedInt, 0);
@@ -202,7 +202,7 @@ void Mesh::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, b
         BindMeshTextures(shader, textures, tm);
     }
 
-    shader.setBool("isInstanced", true);
+    shader.setBool_Fast(shader.m_Loc_isInstanced, "isInstanced", true);
 
     bm.BindBuffer(BufferType::ArrayBuffer, instanceVBO);
     size_t requiredSize = models.size() * sizeof(glm::mat4);
@@ -222,7 +222,7 @@ void Mesh::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, b
     dm.DrawElementsInstanced(Primitive::Triangles, static_cast<int>(indices.size()), DataType::UnsignedInt, 0,
                              static_cast<int>(models.size()));
 
-    shader.setBool("isInstanced", false);
+    shader.setBool_Fast(shader.m_Loc_isInstanced, "isInstanced", false);
 }
 
 void Mesh::setupMesh()

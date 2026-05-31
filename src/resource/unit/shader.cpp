@@ -102,6 +102,24 @@ void Shader::load(const char* vertexPath, const char* fragmentPath, const char* 
         m_UniformLocations.clear();
     }
 
+    m_Loc_u_Model = -2;
+    m_Loc_u_TintColor = -2;
+    m_Loc_u_EntityID = -2;
+    m_Loc_u_IsInstanced = -2;
+    m_Loc_u_ReceiveShadowFlag = -2;
+    m_Loc_u_ProbeIndex = -2;
+    m_Loc_u_ProbePos = -2;
+    m_Loc_u_ProbeBoxMin = -2;
+    m_Loc_u_ProbeBoxMax = -2;
+    m_Loc_u_ReflectionProbe = -2;
+    m_Loc_u_HasReflection = -2;
+    m_Loc_u_HasProbe = -2;
+    m_Loc_u_Reflectivity = -2;
+    m_Loc_u_FresnelPower = -2;
+    m_Loc_u_FresnelBias = -2;
+    m_Loc_u_ReflectionIntensity = -2;
+    m_Loc_isInstanced = -2;
+
     LOGGER_INFO("Shader") << "Shader loaded successfully: " << vertexPath << " | " << fragmentPath;
 }
 
@@ -326,4 +344,46 @@ void Shader::checkCompileErrors(unsigned int shader, std::string type)
                                    << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
+}
+
+void Shader::setBool_Fast(int& cachedLoc, const std::string& name, bool value) const
+{
+    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    setBool(cachedLoc, value);
+}
+
+void Shader::setInt_Fast(int& cachedLoc, const std::string& name, int value) const
+{
+    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    setInt(cachedLoc, value);
+}
+
+void Shader::setUInt_Fast(int& cachedLoc, const std::string& name, unsigned int value) const
+{
+    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    setUInt(cachedLoc, value);
+}
+
+void Shader::setFloat_Fast(int& cachedLoc, const std::string& name, float value) const
+{
+    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    setFloat(cachedLoc, value);
+}
+
+void Shader::setVec3_Fast(int& cachedLoc, const std::string& name, const glm::vec3& value) const
+{
+    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    setVec3(cachedLoc, value);
+}
+
+void Shader::setVec4_Fast(int& cachedLoc, const std::string& name, const glm::vec4& value) const
+{
+    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    setVec4(cachedLoc, value);
+}
+
+void Shader::setMat4_Fast(int& cachedLoc, const std::string& name, const glm::mat4& mat) const
+{
+    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    setMat4(cachedLoc, mat);
 }

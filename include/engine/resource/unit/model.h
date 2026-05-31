@@ -5,6 +5,7 @@
 #include <resource/unit/mesh.h>
 #include <resource/unit/shader.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -65,6 +66,18 @@ public:
     {
         return m_RootTransform;
     }
+    glm::vec3 GetRootTranslation() const
+    {
+        return m_RootTranslation;
+    }
+    glm::quat GetRootRotation() const
+    {
+        return m_RootRotation;
+    }
+    glm::vec3 GetRootScale() const
+    {
+        return m_RootScale;
+    }
 
 private:
     std::vector<Texture> textures_loaded;
@@ -73,6 +86,9 @@ private:
     bool m_ReadyToRender = false;
     bool m_IsStatic = false;
     glm::mat4 m_RootTransform = glm::mat4(1.0f);
+    glm::vec3 m_RootTranslation = glm::vec3(0.0f);
+    glm::quat m_RootRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    glm::vec3 m_RootScale = glm::vec3(1.0f);
     std::string m_Name;
 
     void loadModel(std::string const& path, bool isStatic);

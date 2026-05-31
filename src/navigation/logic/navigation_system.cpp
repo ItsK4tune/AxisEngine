@@ -420,9 +420,10 @@ void NavigationSystem::Render(Scene& scene)
 
         for (const auto& tri : navMesh.triangles)
         {
-            glm::vec3 v0 = navMesh.vertices[tri.indices[0]];
-            glm::vec3 v1 = navMesh.vertices[tri.indices[1]];
-            glm::vec3 v2 = navMesh.vertices[tri.indices[2]];
+            constexpr float offset = 0.02f;
+            glm::vec3 v0 = navMesh.vertices[tri.indices[0]] + glm::vec3(0.0f, offset, 0.0f);
+            glm::vec3 v1 = navMesh.vertices[tri.indices[1]] + glm::vec3(0.0f, offset, 0.0f);
+            glm::vec3 v2 = navMesh.vertices[tri.indices[2]] + glm::vec3(0.0f, offset, 0.0f);
 
             physics_ptr->DrawLine(v0, v1, glm::vec3(0, 0, 1));
             physics_ptr->DrawLine(v1, v2, glm::vec3(0, 0, 1));

@@ -37,6 +37,7 @@ public:
     void Update(Scene& scene, float dt) override;
 
     void OnSceneChanged(const SceneChangedEvent& e);
+    void OnScriptComponentConstructed(entt::registry& reg, entt::entity entity);
     void OnScriptComponentDestroyed(entt::registry& reg, entt::entity entity);
 
     void OnEntityCollision(const EntityCollisionEvent& e);
@@ -58,4 +59,6 @@ private:
     std::set<entt::registry*> m_BoundRegistries;
     Scene* m_ActiveScene = nullptr;
     class TimeService* m_TimeService = nullptr;
+    std::vector<entt::entity> m_ScriptEntities;
 };
+

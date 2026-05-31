@@ -54,6 +54,7 @@ void StateMachine::PushStateInternal(std::unique_ptr<State> state, bool recordTr
     state->SetActiveScene(&scene);
     state->OnEnter();
     m_States.push_back(std::move(state));
+    m_CurrentState = m_States.back().get();
 }
 
 void StateMachine::PopState()
@@ -68,6 +69,7 @@ void StateMachine::PopStateInternal(bool recordTransition)
         const std::string fromState = GetStateName(*m_States.back());
         m_States.back()->OnExit();
         m_States.pop_back();
+        m_CurrentState = m_States.empty() ? nullptr : m_States.back().get();
         if (!m_States.empty())
         {
             const std::string toState = GetStateName(*m_States.back());
@@ -84,6 +86,7 @@ void StateMachine::Clear()
     {
         PopState();
     }
+    m_CurrentState = nullptr;
 }
 
 void StateMachine::ChangeState(std::unique_ptr<State> state)
@@ -100,7 +103,7 @@ void StateMachine::ChangeState(std::unique_ptr<State> state)
 
 State* StateMachine::GetCurrentState()
 {
-    return m_States.empty() ? nullptr : m_States.back().get();
+    return m_CurrentState;
 }
 
 std::vector<State*> StateMachine::GetStates() const
@@ -137,6 +140,10 @@ void StateMachine::RegisterTransition(const std::string& from, const std::string
 
 std::string StateMachine::GetStateName(const State& state) const
 {
+    std::string customName = state.GetName();
+    if (!customName.empty())
+        return customName;
+
     auto it = m_StateTypeNames.find(std::type_index(typeid(state)));
     if (it != m_StateTypeNames.end())
         return it->second;

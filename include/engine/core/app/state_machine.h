@@ -13,6 +13,11 @@ class State : public EngineAccessor
 public:
     virtual ~State() = default;
 
+    virtual std::string GetName() const
+    {
+        return "";
+    }
+
     virtual void OnEnter() = 0;
     virtual void OnUpdate(float dt) = 0;
     virtual void OnFixedUpdate(float fixedDt)
@@ -121,6 +126,7 @@ private:
     void RenameState(const std::string& oldName, const std::string& newName);
 
     std::vector<std::unique_ptr<State>> m_States;
+    State* m_CurrentState = nullptr;
     std::vector<StateInfo> m_StateRegistry;
     std::vector<StateTransitionInfo> m_StateTransitions;
     std::unordered_map<std::type_index, std::string> m_StateTypeNames;

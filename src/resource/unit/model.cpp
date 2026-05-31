@@ -13,6 +13,7 @@
 #include <render/interface/i_texture_manager.h>
 #include <render/logic/assimp_glm_helpers.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <stb/stb_image.h>
 #include <iostream>
 #include <sstream>
@@ -533,6 +534,9 @@ void Model::loadModel(std::string const& path, bool isStatic)
     {
         m_RootTransform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(scene->mRootNode->mTransformation);
         m_RootTransform = glm::scale(m_RootTransform, glm::vec3(0.01f));
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::decompose(m_RootTransform, m_RootScale, m_RootRotation, m_RootTranslation, skew, perspective);
     }
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)

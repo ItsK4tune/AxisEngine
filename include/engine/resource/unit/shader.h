@@ -36,7 +36,7 @@ public:
     {
         return ID;
     }
-    std::string GetName() const
+    const std::string& GetName() const
     {
         return m_Name;
     }
@@ -44,6 +44,25 @@ public:
     {
         m_Name = name;
     }
+
+    // Common uniform locations cached for fast access
+    mutable int m_Loc_u_Model = -2;
+    mutable int m_Loc_u_TintColor = -2;
+    mutable int m_Loc_u_EntityID = -2;
+    mutable int m_Loc_u_IsInstanced = -2;
+    mutable int m_Loc_u_ReceiveShadowFlag = -2;
+    mutable int m_Loc_u_ProbeIndex = -2;
+    mutable int m_Loc_u_ProbePos = -2;
+    mutable int m_Loc_u_ProbeBoxMin = -2;
+    mutable int m_Loc_u_ProbeBoxMax = -2;
+    mutable int m_Loc_u_ReflectionProbe = -2;
+    mutable int m_Loc_u_HasReflection = -2;
+    mutable int m_Loc_u_HasProbe = -2;
+    mutable int m_Loc_u_Reflectivity = -2;
+    mutable int m_Loc_u_FresnelPower = -2;
+    mutable int m_Loc_u_FresnelBias = -2;
+    mutable int m_Loc_u_ReflectionIntensity = -2;
+    mutable int m_Loc_isInstanced = -2;
 
     bool IsError() const
     {
@@ -92,6 +111,14 @@ public:
     void setMat4Array(int location, const std::vector<glm::mat4>& matrices) const;
 
     int GetUniformLocation(const std::string& name) const;
+
+    void setBool_Fast(int& cachedLoc, const std::string& name, bool value) const;
+    void setInt_Fast(int& cachedLoc, const std::string& name, int value) const;
+    void setUInt_Fast(int& cachedLoc, const std::string& name, unsigned int value) const;
+    void setFloat_Fast(int& cachedLoc, const std::string& name, float value) const;
+    void setVec3_Fast(int& cachedLoc, const std::string& name, const glm::vec3& value) const;
+    void setVec4_Fast(int& cachedLoc, const std::string& name, const glm::vec4& value) const;
+    void setMat4_Fast(int& cachedLoc, const std::string& name, const glm::mat4& mat) const;
 
 private:
     void checkCompileErrors(unsigned int shader, std::string type);

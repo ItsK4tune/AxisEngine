@@ -51,34 +51,6 @@ void PhysicsCollisionDispatcher::DispatchEvents()
                 if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
                     return;
 
-                if (m_Scene.registry.all_of<ScriptComponent>(target))
-                {
-                    auto& s = m_Scene.registry.get<ScriptComponent>(target);
-                    if (s.instance)
-                    {
-                        if (trigger)
-                        {
-                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
-                            {
-                                if (!stay)
-                                    ps->OnTriggerEnter(other);
-                                else
-                                    ps->OnTriggerStay(other);
-                            }
-                        }
-                        else
-                        {
-                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
-                            {
-                                if (!stay)
-                                    ps->OnCollisionEnter(other);
-                                else
-                                    ps->OnCollisionStay(other);
-                            }
-                        }
-                    }
-                }
-
                 if (trigger)
                 {
                     EventManager::Instance().Publish(
@@ -125,24 +97,6 @@ void PhysicsCollisionDispatcher::DispatchEvents()
             auto NotifyExit = [&](entt::entity target, entt::entity other, bool trigger) {
                 if (!m_Scene.registry.valid(target) || !m_Scene.registry.valid(other))
                     return;
-
-                if (m_Scene.registry.all_of<ScriptComponent>(target))
-                {
-                    auto& s = m_Scene.registry.get<ScriptComponent>(target);
-                    if (s.instance)
-                    {
-                        if (trigger)
-                        {
-                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
-                                ps->OnTriggerExit(other);
-                        }
-                        else
-                        {
-                            if (auto* ps = dynamic_cast<PhysicsScriptable*>(s.instance.get()))
-                                ps->OnCollisionExit(other);
-                        }
-                    }
-                }
 
                 if (trigger)
                 {
