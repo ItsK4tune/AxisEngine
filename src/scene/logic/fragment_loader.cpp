@@ -125,6 +125,10 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                 // Set parent to the provided parent by default
                 if (parent != entt::null)
                 {
+                    if (!scene.registry.all_of<HierarchyComponent>(parent))
+                    {
+                        scene.registry.emplace<HierarchyComponent>(parent);
+                    }
                     scene.registry.patch<HierarchyComponent>(currentEntity, [&](auto& h) { h.parent = parent; });
                     scene.registry.patch<HierarchyComponent>(parent,
                                                              [&](auto& h) { h.children.push_back(currentEntity); });

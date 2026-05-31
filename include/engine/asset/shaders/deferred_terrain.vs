@@ -28,7 +28,7 @@ uniform float maxHeight;
 void main()
 {
     TexCoords = aTexCoords;
-    float h = texture(heightMap, TexCoords).r * maxHeight;
+    float h = textureLod(heightMap, TexCoords, 0.0).r * maxHeight;
     vec3 pos = aPos;
     pos.y = h;
     

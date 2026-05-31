@@ -25,6 +25,17 @@ enum class MaterialTextureSlot
     Specular
 };
 
+struct PlacementRule
+{
+    float minHeight = 0.0f;
+    float maxHeight = 1.0f;
+    float maxSlope = 1.0f;
+    float waterWeight = 1.0f;      // weight factor near water
+    float mountainWeight = 1.0f;   // weight factor on mountains
+    float plainsWeight = 1.0f;     // weight factor on plains
+    float baseProbability = 5.0f;  // base probability in percent
+};
+
 class EntityBuilder
 {
 public:
@@ -97,6 +108,12 @@ public:
                                         const std::string& metallic = "", const std::string& roughness = "",
                                         const std::string& ao = "", const std::string& emissive = "",
                                         const std::string& specular = "");
+
+    EntityBuilder& WithTerrain(const glm::vec3& terrainSize, float maxHeight, int resolution, int chunkSize,
+                               float textureScale, const std::string& heightMapName,
+                               const std::string& splatMapName = "",
+                               const std::vector<std::string>& diffuseLayerNames = {},
+                               bool generatePhysics = true, bool castShadows = true);
 
     EntityBuilder& WithRigidBody(std::shared_ptr<IRigidBody> body);
     EntityBuilder& WithCharacterController(std::shared_ptr<ICharacterController> controller);
@@ -181,6 +198,17 @@ public:
     EntityBuilder& WithUIVideo(const std::string& videoPath, const std::string& uiModelName,
                                const glm::vec4& color = glm::vec4(1.0f), bool loop = true, float volume = 1.0f,
                                int maxDecodes = 1, float speed = 1.0f);
+
+    static entt::entity SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
+                                    const std::string& fragmentPath, const glm::vec3& pos,
+                                    const glm::vec3& scale = glm::vec3(1.0f));
+
+    static void ScatterObjects(Scene& scene, ResourceManager& res, const std::string& sceneName,
+                               const std::string& fragmentPath, const PlacementRule& rule,
+                               const std::vector<float>& heights, int width, int height,
+                               float terrainWidth, float terrainLength, float terrainHeight,
+                               float waterLevel, float randomOffsetX, float randomOffsetZ,
+                               int attempts = 200, const glm::vec3& scale = glm::vec3(1.0f));
 
     entt::entity Build();
 

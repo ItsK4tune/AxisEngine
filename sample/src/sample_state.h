@@ -379,9 +379,9 @@ private:
     void LoadScene25();  // Scenario 25: Render Order Test
     void LoadScene26();  // Scenario 26: Instanced Batching Test
     void LoadScene27();  // Scenario 27: Shadow Receiver Test
-    void LoadScene28();  // Scenario 28: UI Showcase
-    void LoadScene29();  // Scenario 29: Responsive UI
-    void LoadScene30();  // Scenario 30: Interactive UI callbacks
+    void LoadScene28();  // Scenario 28: UI Showcase & Responsive UI (Merged)
+    void LoadScene29();  // Scenario 29: Interactive UI
+    void LoadScene30();  // Scenario 30: Terrain Creation Showcase
     void StopScenario17Audio();
 
 #ifdef ENABLE_EDITOR
@@ -560,6 +560,17 @@ private:
     bool m_S28FlipTextureY = false;
     int m_S29LayoutMode = 0;
     float m_S29PanelAlpha = 0.92f;
+
+    // Scenario 30 Terrain variables
+    float m_S30TerrainWidth = 200.0f;
+    float m_S30TerrainHeight = 35.0f;
+    float m_S30TerrainLength = 200.0f;
+    float m_S30TextureScale = 12.0f;
+    bool m_S30GeneratePhysics = true;
+    bool m_S30SpawnPhysicsBalls = true;
+    float m_S30NoiseFrequency = 1.8f;
+    int m_S30NoiseOctaves = 4;
+    float m_S30SpawnTimer = 0.0f;
 
     // Post-processing UI state
     bool m_PPHdrEnabled = true;

@@ -20,6 +20,8 @@ struct TerrainChunk
     glm::ivec2 gridPos;
 };
 
+class Scene;
+
 class TerrainSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
@@ -35,7 +37,7 @@ public:
     }
     int GetPriority() const override
     {
-        return 80;
+        return 81;
     }
     std::string GetName() const override
     {
@@ -43,7 +45,7 @@ public:
     }
     SystemCategory GetCategory() const override
     {
-        return SystemCategory::RenderMain;
+        return SystemCategory::RenderMain | SystemCategory::Update;
     }
     SystemRequirement GetRequirements() const override
     {
@@ -51,10 +53,8 @@ public:
     }
 
     void Update(Scene& scene, float dt) override;
-    void Render(Scene& scene) override
-    {
-    }
-    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
+    void Render(Scene& scene) override;
+    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override {}
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -67,6 +67,8 @@ public:
     {
         return m_DebugNoTexture;
     }
+
+    void OnTerrainDestroyed(entt::registry& registry, entt::entity entity);
 
 private:
     bool m_Enabled = true;
@@ -82,9 +84,10 @@ private:
     };
 
     std::map<entt::entity, std::unique_ptr<TerrainData>> m_TerrainCache;
+    Scene* m_LastScene = nullptr;
 
     void BuildTerrain(entt::entity entity, TerrainComponent& terrain);
-    void CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset);
+    void CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset, const std::vector<float>& heights, int mapWidth, int mapHeight);
     void GenerateLODIndices(TerrainData& data, int chunkSize);
     void CleanupTerrainData(TerrainData& data);
 };

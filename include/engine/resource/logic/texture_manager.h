@@ -24,6 +24,8 @@ public:
     std::shared_ptr<Texture> Load(const std::string& name, const std::string& path, bool async = true,
                                   bool keepCpuData = false);
 
+    std::shared_ptr<Texture> CreateFromData(const std::string& name, const unsigned char* pixels, int width, int height, int nrComponents, bool keepCpuData = false);
+
     std::shared_ptr<Texture> Get(const std::string& nameOrPath) override;
 
     void Unload(const std::string& nameOrPath) override;

@@ -335,3 +335,62 @@ void TextureManager::Clear()
     std::lock_guard<std::mutex> lock(m_AsyncMutex);
     m_AsyncLoads.clear();
 }
+
+std::shared_ptr<Texture> TextureManager::CreateFromData(const std::string& name, const unsigned char* pixels, int width, int height, int nrComponents, bool keepCpuData)
+{
+    if (auto existing = m_Cache.Get(name))
+    {
+        return existing;
+    }
+
+    auto tex = std::make_shared<Texture>();
+    tex->width = width;
+    tex->height = height;
+    tex->nrComponents = nrComponents;
+    tex->path = "memory://" + name;
+
+    unsigned int textureID = m_LowLevelManager.GenTexture();
+    tex->id = textureID;
+
+    InternalFormat iFormat = InternalFormat::RGB8;
+    TextureFormat format = TextureFormat::RGB;
+    if (nrComponents == 1)
+    {
+        iFormat = InternalFormat::R8;
+        format = TextureFormat::Red;
+    }
+    else if (nrComponents == 3)
+    {
+        iFormat = InternalFormat::RGB8;
+        format = TextureFormat::RGB;
+    }
+    else if (nrComponents == 4)
+    {
+        iFormat = InternalFormat::RGBA8;
+        format = TextureFormat::RGBA;
+    }
+
+    m_LowLevelManager.BindTexture(TextureType::Texture2D, textureID);
+    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format,
+                                 DataType::UnsignedByte, pixels);
+    m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
+
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, (int)TextureWrap::Repeat);
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, (int)TextureWrap::Repeat);
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::LinearMipmapLinear);
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Linear);
+
+    if (m_MaxAnisotropy > 1.0f)
+    {
+        m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy, m_MaxAnisotropy);
+    }
+
+    if (keepCpuData && pixels)
+    {
+        tex->pixelData = new unsigned char[width * height * nrComponents];
+        std::memcpy(tex->pixelData, pixels, width * height * nrComponents);
+    }
+
+    m_Cache.Add(name, tex);
+    return tex;
+}

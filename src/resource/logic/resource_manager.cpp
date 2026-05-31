@@ -229,6 +229,13 @@ void ResourceManager::LoadTexture(const std::string& name, const std::string& pa
     AddResourceDefinition("Texture", name, {{"Path", path}});
 }
 
+void ResourceManager::CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height, int nrComponents, bool keepCpuData)
+{
+    if (m_HeadlessMode || !m_TextureManager)
+        return;
+    m_TextureManager->CreateFromData(name, pixels, width, height, nrComponents, keepCpuData);
+}
+
 void ResourceManager::LoadModel(const std::string& name, const std::string& path, bool isStatic)
 {
     if (m_HeadlessMode)

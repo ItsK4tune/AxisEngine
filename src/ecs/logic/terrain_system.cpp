@@ -15,11 +15,13 @@
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
+#include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_shader_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/logic/frustum_culler.h>
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/shader.h>
+#include <scene/logic/scene.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 REGISTER_SYSTEM(TerrainSystem)
@@ -39,6 +41,12 @@ void TerrainSystem::Initialize()
 
 void TerrainSystem::Shutdown()
 {
+    if (m_LastScene)
+    {
+        m_LastScene->registry.on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
+        m_LastScene = nullptr;
+    }
+
     for (auto& pair : m_TerrainCache)
     {
         CleanupTerrainData(*pair.second);
@@ -48,6 +56,16 @@ void TerrainSystem::Shutdown()
 
 void TerrainSystem::Update(Scene& scene, float dt)
 {
+    if (m_LastScene != &scene)
+    {
+        if (m_LastScene)
+        {
+            m_LastScene->registry.on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
+        }
+        scene.registry.on_destroy<TerrainComponent>().connect<&TerrainSystem::OnTerrainDestroyed>(this);
+        m_LastScene = &scene;
+    }
+
     if (!m_Enabled)
         return;
 
@@ -63,7 +81,7 @@ void TerrainSystem::Update(Scene& scene, float dt)
     }
 }
 
-void TerrainSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
+void TerrainSystem::Render(Scene& scene)
 {
     if (!m_Enabled)
         return;
@@ -87,6 +105,7 @@ void TerrainSystem::RenderAlphaPass(Scene& scene, int width, int height, float a
     auto& bm = gc.GetBufferManager();
     auto& tm = gc.GetTextureManager();
     auto& sm = gc.GetRenderStateManager();
+    auto& rtm = gc.GetRenderTargetManager();
 
     FrustumCuller culler;
     culler.BuildFrustum(cam.projectionMatrix * cam.viewMatrix);
@@ -141,7 +160,9 @@ void TerrainSystem::RenderAlphaPass(Scene& scene, int width, int height, float a
 
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos.value);
         actShader->setMat4("model", model);
+        actShader->setMat4("u_Model", model);
         actShader->setUInt("entityID", static_cast<unsigned int>(entity));
+        actShader->setUInt("u_EntityID", static_cast<unsigned int>(entity));
 
         actShader->setFloat("maxHeight", terrain.maxHeight);
         actShader->setVec2("terrainSize", glm::vec2(terrain.terrainSize.x, terrain.terrainSize.z));
@@ -194,6 +215,11 @@ void TerrainSystem::RenderAlphaPass(Scene& scene, int width, int height, float a
         if (geoSys && geoSys->IsDeferredRenderingEnabled())
         {
             geoSys->UnbindGBuffer();
+            auto* rs = sl.Resolve<IRenderService>();
+            if (rs)
+            {
+                rtm.BindFramebuffer(FramebufferTarget::Framebuffer, rs->GetMainFBO());
+            }
         }
     }
 }
@@ -215,6 +241,36 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
         return;
     }
 
+    bool needsRetry = false;
+    std::vector<float> heights;
+    int mapWidth = 0;
+    int mapHeight = 0;
+
+    if (!terrain.heightMapName.empty())
+    {
+        auto tex = resources->GetTexture(terrain.heightMapName);
+        if (tex && tex->pixelData)
+        {
+            mapWidth = tex->width;
+            mapHeight = tex->height;
+            heights.reserve(mapWidth * mapHeight);
+            for (int i = 0; i < mapWidth * mapHeight; ++i)
+            {
+                float hValue = (float)tex->pixelData[i * tex->nrComponents] / 255.0f;
+                heights.push_back(hValue * terrain.maxHeight);
+            }
+        }
+        else
+        {
+            needsRetry = true;
+        }
+    }
+
+    if (needsRetry)
+    {
+        return;
+    }
+
     GenerateLODIndices(*data, terrain.chunkSize);
 
     int numChunksX = (terrain.resolution - 1) / (terrain.chunkSize - 1);
@@ -226,7 +282,7 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
         {
             TerrainChunk chunk;
             chunk.gridPos = glm::ivec2(x, z);
-            CreateChunkMesh(chunk, terrain, x * (terrain.chunkSize - 1), z * (terrain.chunkSize - 1));
+            CreateChunkMesh(chunk, terrain, x * (terrain.chunkSize - 1), z * (terrain.chunkSize - 1), heights, mapWidth, mapHeight);
             data->chunks.push_back(chunk);
         }
     }
@@ -239,70 +295,73 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
 
     m_TerrainCache[entity] = std::move(data);
 
-    bool needsRetry = false;
     LOGGER_INFO("TerrainSystem") << "Checking physics generation for entity " << (uint32_t)entity
                                  << ": generate=" << terrain.generatePhysics << ", mapName=" << terrain.heightMapName;
 
-    auto physics_ptr = sl.Resolve<IPhysicsWorld>();
-    if (terrain.generatePhysics && physics_ptr && !terrain.heightMapName.empty())
+    glm::vec3 posVal(0.0f);
+    if (m_LastScene)
     {
-        auto tex = resources->GetTexture(terrain.heightMapName);
-        if (tex)
+        if (auto* posComp = m_LastScene->registry.try_get<PositionComponent>(entity))
         {
-            if (tex->pixelData)
-            {
-                std::vector<float> heights;
-                heights.reserve(tex->width * tex->height);
-
-                for (int i = 0; i < tex->width * tex->height; ++i)
-                {
-                    float hValue = (float)tex->pixelData[i * tex->nrComponents] / 255.0f;
-                    heights.push_back(hValue * terrain.maxHeight);
-                }
-
-                if (terrain.physicsBody)
-                {
-                    physics_ptr->RemoveRigidBody(terrain.physicsBody.get());
-                    terrain.physicsBody.reset();
-                }
-
-                if (terrain.collisionShape)
-                {
-                    terrain.collisionShape.reset();
-                }
-
-                terrain.collisionShape =
-                    physics_ptr->CreateHeightfieldShape(heights, tex->width, tex->height, 0.0f, terrain.maxHeight);
-
-                if (terrain.collisionShape)
-                {
-                    float scaleX = terrain.terrainSize.x / (float)(tex->width > 1 ? tex->width - 1 : 1);
-                    float scaleZ = terrain.terrainSize.z / (float)(tex->height > 1 ? tex->height - 1 : 1);
-                    terrain.collisionShape->SetLocalScaling(glm::vec3(scaleX, 1.0f, scaleZ));
-
-                    glm::vec3 basePos(0.0f);
-
-                    glm::vec3 centerPos = basePos + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f,
-                                                              terrain.terrainSize.z * 0.5f);
-
-                    terrain.physicsBody =
-                        physics_ptr->CreateRigidBody(0.0f, centerPos, glm::quat(1, 0, 0, 0), terrain.collisionShape);
-
-                    if (terrain.physicsBody)
-                    {
-                        terrain.physicsBody->SetUserPointer((void*)((uintptr_t)entity + 1));
-                        physics_ptr->AddRigidBody(terrain.physicsBody.get());
-                    }
-                }
-            }
-            else
-            {
-                needsRetry = true;
-            }
+            posVal = posComp->value;
         }
-        else
+    }
+    LOGGER_INFO("TerrainSystem") << "BuildTerrain posVal for entity " << (uint32_t)entity << " is (" << posVal.x << ", " << posVal.y << ", " << posVal.z << ")";
+
+    auto* gc = sl.Resolve<IGraphicsContext>();
+    if (gc)
+    {
+        auto& tm = gc->GetTextureManager();
+        tm.ActiveTexture(TextureUnit::Texture0);
+        if (terrain.heightMap != 0)
         {
-            needsRetry = true;
+            tm.BindTexture(TextureType::Texture2D, terrain.heightMap);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, (int)TextureWrap::ClampToEdge);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, (int)TextureWrap::ClampToEdge);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Linear);
+        }
+        if (terrain.splatMap != 0)
+        {
+            tm.BindTexture(TextureType::Texture2D, terrain.splatMap);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, (int)TextureWrap::ClampToEdge);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, (int)TextureWrap::ClampToEdge);
+            tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Linear);
+        }
+    }
+
+    auto physics_ptr = sl.Resolve<IPhysicsWorld>();
+    if (terrain.generatePhysics && physics_ptr && !heights.empty())
+    {
+        if (terrain.physicsBody)
+        {
+            physics_ptr->RemoveRigidBody(terrain.physicsBody.get());
+            terrain.physicsBody.reset();
+        }
+
+        if (terrain.collisionShape)
+        {
+            terrain.collisionShape.reset();
+        }
+
+        terrain.collisionShape =
+            physics_ptr->CreateHeightfieldShape(heights, mapWidth, mapHeight, 0.0f, terrain.maxHeight);
+
+        if (terrain.collisionShape)
+        {
+            float scaleX = terrain.terrainSize.x / (float)(mapWidth > 1 ? mapWidth - 1 : 1);
+            float scaleZ = terrain.terrainSize.z / (float)(mapHeight > 1 ? mapHeight - 1 : 1);
+            terrain.collisionShape->SetLocalScaling(glm::vec3(scaleX, 1.0f, scaleZ));
+
+            glm::vec3 centerPos = posVal + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f, terrain.terrainSize.z * 0.5f);
+
+            terrain.physicsBody =
+                physics_ptr->CreateRigidBody(0.0f, centerPos, glm::quat(1, 0, 0, 0), terrain.collisionShape);
+
+            if (terrain.physicsBody)
+            {
+                terrain.physicsBody->SetUserPointer((void*)((uintptr_t)entity + 1));
+                physics_ptr->AddRigidBody(terrain.physicsBody.get());
+            }
         }
     }
 
@@ -312,7 +371,7 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     }
 }
 
-void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset)
+void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset, const std::vector<float>& heights, int mapWidth, int mapHeight)
 {
     auto* gc_ptr = ServiceLocator::Instance().Resolve<IGraphicsContext>();
     if (!gc_ptr)
@@ -327,18 +386,40 @@ void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent&
     chunk.minBound = glm::vec3(xOffset * stepX, 0.0f, zOffset * stepZ);
     chunk.maxBound = glm::vec3((xOffset + size - 1) * stepX, terrain.maxHeight, (zOffset + size - 1) * stepZ);
 
+    auto getHeight = [&](int gx, int gz) -> float {
+        int tx = (int)std::round((float)gx / (float)(terrain.resolution - 1) * (float)(mapWidth - 1));
+        int tz = (int)std::round((float)gz / (float)(terrain.resolution - 1) * (float)(mapHeight - 1));
+        tx = std::max(0, std::min(tx, mapWidth - 1));
+        tz = std::max(0, std::min(tz, mapHeight - 1));
+        if (heights.empty() || tx >= mapWidth || tz >= mapHeight)
+            return 0.0f;
+        return heights[tz * mapWidth + tx];
+    };
+
     for (int z = 0; z < size; ++z)
     {
         for (int x = 0; x < size; ++x)
         {
             StaticVertex v;
-            float worldX = (xOffset + x) * stepX;
-            float worldZ = (zOffset + z) * stepZ;
+            int gridX = xOffset + x;
+            int gridZ = zOffset + z;
+            float worldX = gridX * stepX;
+            float worldZ = gridZ * stepZ;
 
-            v.Position = glm::vec3(worldX, 0.0f, worldZ);
-            v.Normal = glm::vec3(0.0f, 1.0f, 0.0f);
-            v.TexCoords = glm::vec2((float)(xOffset + x) / (float)(terrain.resolution - 1),
-                                    (float)(zOffset + z) / (float)(terrain.resolution - 1));
+            float h = getHeight(gridX, gridZ);
+            v.Position = glm::vec3(worldX, h, worldZ);
+
+            // Compute normal using central difference
+            float hL = getHeight(gridX - 1, gridZ);
+            float hR = getHeight(gridX + 1, gridZ);
+            float hD = getHeight(gridX, gridZ - 1);
+            float hU = getHeight(gridX, gridZ + 1);
+
+            glm::vec3 normal = glm::normalize(glm::vec3(hL - hR, 2.0f * stepX, hD - hU));
+            v.Normal = normal;
+
+            v.TexCoords = glm::vec2((float)gridX / (float)(terrain.resolution - 1),
+                                    (float)gridZ / (float)(terrain.resolution - 1));
 
             vertices.push_back(v);
         }
@@ -433,4 +514,29 @@ std::vector<entt::id_type> TerrainSystem::GetReadComponents() const
 std::vector<entt::id_type> TerrainSystem::GetWriteComponents() const
 {
     return {entt::type_id<TerrainComponent>().hash()};
+}
+
+void TerrainSystem::OnTerrainDestroyed(entt::registry& registry, entt::entity entity)
+{
+    auto* terrain_ptr = registry.try_get<TerrainComponent>(entity);
+    if (terrain_ptr)
+    {
+        if (terrain_ptr->physicsBody)
+        {
+            auto physics_ptr = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+            if (physics_ptr)
+            {
+                physics_ptr->RemoveRigidBody(terrain_ptr->physicsBody.get());
+            }
+            terrain_ptr->physicsBody.reset();
+            terrain_ptr->collisionShape.reset();
+        }
+    }
+
+    auto it = m_TerrainCache.find(entity);
+    if (it != m_TerrainCache.end())
+    {
+        CleanupTerrainData(*it->second);
+        m_TerrainCache.erase(it);
+    }
 }

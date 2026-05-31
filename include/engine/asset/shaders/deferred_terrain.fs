@@ -1,17 +1,17 @@
-#version 460 core
-layout (location = 0) out vec3 gPosition;
-layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gAlbedoSpec;
-layout (location = 3) out uint gEntityID;
-layout (location = 4) out vec3 gEmissive;
-
-in vec2 TexCoords;
-in vec3 WorldPos;
-in vec3 Normal;
-
-uniform uint u_EntityID;
-
-
+#version 460 core
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec4 gNormal;
+layout (location = 2) out vec4 gAlbedoSpec;
+layout (location = 3) out uint gEntityID;
+layout (location = 4) out vec3 gEmissive;
+layout (location = 5) out vec4 gPBRParams;
+
+in vec2 TexCoords;
+in vec3 WorldPos;
+in vec3 Normal;
+
+uniform uint u_EntityID;
+
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;
     mat4 u_View;
@@ -20,47 +20,53 @@ layout(std140, binding = 20) uniform CameraData {
     mat4 u_InvView;
     mat4 stableProjection;
     mat4 invStableProjection;
-} camera;
-
-
-layout (binding = 27) uniform sampler2D splatMap;
-layout (binding = 28) uniform sampler2D textureLayer0;
-layout (binding = 29) uniform sampler2D textureLayer1;
-layout (binding = 30) uniform sampler2D textureLayer2;
-layout (binding = 31) uniform sampler2D textureLayer3;
-
-uniform float textureScale;
-uniform bool debug_noTexture;
-
-void main()
-{
-    gPosition = WorldPos;
-    gNormal = normalize(Normal);
-    
-    vec3 albedo;
-    if (debug_noTexture) {
-        albedo = vec3(1.0);
-    } else {
-        vec4 splat = texture(splatMap, TexCoords);
-        vec2 tiledCoords = TexCoords * textureScale;
-        
-        vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
-        vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
-        vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
-        vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
-        
-        albedo = col0 * splat.r + 
-                 col1 * splat.g + 
-                 col2 * splat.b + 
-                 col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
-    }
-    
-    gAlbedoSpec.rgb = albedo;
-    gAlbedoSpec.a = 0.04; // Default FresnelBias (terrain is non-reflective)
-    gEntityID = u_EntityID;
-    gEmissive = vec3(0.0);
-}
-
-
-
+} camera;
 
+layout (binding = 27) uniform sampler2D splatMap;
+layout (binding = 28) uniform sampler2D textureLayer0;
+layout (binding = 29) uniform sampler2D textureLayer1;
+layout (binding = 30) uniform sampler2D textureLayer2;
+layout (binding = 31) uniform sampler2D textureLayer3;
+
+uniform float textureScale;
+uniform bool debug_noTexture;
+uniform float maxHeight;
+
+void main()
+{
+    gPosition = WorldPos;
+    gNormal = vec4(normalize(Normal), 1.0); // alpha=1.0 enables receiving shadows
+    
+    vec3 albedo;
+    vec4 pbrParams = vec4(0.0, 0.85, 0.0, 0.0); // Metallic=0.0, Roughness=0.85, Reflectivity=0.0
+    
+    if (debug_noTexture) {
+        albedo = vec3(1.0);
+    } else {
+        vec4 splat = texture(splatMap, TexCoords);
+        vec2 tiledCoords = TexCoords * textureScale;
+        
+        vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
+        vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
+        vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
+        vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
+        
+        albedo = col0 * splat.r + 
+                 col1 * splat.g + 
+                 col2 * splat.b + 
+                 col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
+                 
+        // Draw shiny blue water below waterLevel (0.15 * maxHeight)
+        float waterHeight = 0.15 * maxHeight;
+        if (WorldPos.y < waterHeight + 0.15) {
+            albedo = vec3(0.06, 0.20, 0.48); // Deep blue water
+            pbrParams = vec4(0.0, 0.05, 0.95, 0.0); // Roughness=0.05, Reflectivity=0.95 (Shiny!)
+        }
+    }
+    
+    gAlbedoSpec.rgb = albedo;
+    gAlbedoSpec.a = 0.04; // Default FresnelBias
+    gEntityID = u_EntityID;
+    gEmissive = vec3(0.0);
+    gPBRParams = pbrParams;
+}

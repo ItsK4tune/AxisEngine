@@ -4,8 +4,11 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/render_components.h>
+#include <ecs/unit/terrain_component.h>
 #include <ecs/unit/script_component.h>
 #include <ecs/unit/ui_components.h>
+#include <engine/ecs/unit/fragment_component.h>
+#include <cmath>
 #include <navigation/unit/pathfollower_component.h>
 #include <physics/interface/i_character_controller.h>
 #include <physics/interface/i_rigid_body.h>
@@ -83,6 +86,52 @@ void BindMaterialTexture(AxisMaterialComponent& mat, MaterialTextureSlot slot, c
     auto texture = resources.GetTextureAuto(textureNameOrPath);
     *gpuMap = texture ? texture->id : 0;
     mat.gpu.dirty = !texture;
+}
+
+namespace Perlin
+{
+    inline float fade(float t) { return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f); }
+    inline float lerp(float t, float a, float b) { return a + t * (b - a); }
+    inline float grad(int hash, float x, float y)
+    {
+        int h = hash & 7;
+        float u = h < 4 ? x : y;
+        float v = h < 4 ? y : x;
+        return ((h & 1) ? -u : u) + ((h & 2) ? -2.0f * v : 2.0f * v);
+    }
+    
+    inline int hashCoords(int x, int y)
+    {
+        unsigned int h = x * 374761393 + y * 668265263;
+        h = (h ^ (h >> 13)) * 12741261;
+        return h ^ (h >> 16);
+    }
+
+    inline float Noise2D(float x, float y)
+    {
+        int ix = (int)std::floor(x);
+        int iy = (int)std::floor(y);
+        float fx = x - ix;
+        float fy = y - iy;
+
+        float u = fade(fx);
+        float v = fade(fy);
+
+        int h00 = hashCoords(ix, iy);
+        int h10 = hashCoords(ix + 1, iy);
+        int h01 = hashCoords(ix, iy + 1);
+        int h11 = hashCoords(ix + 1, iy + 1);
+
+        float n00 = grad(h00, fx, fy);
+        float n10 = grad(h10, fx - 1.0f, fy);
+        float n01 = grad(h01, fx, fy - 1.0f);
+        float n11 = grad(h11, fx - 1.0f, fy - 1.0f);
+
+        float x1 = lerp(u, n00, n10);
+        float x2 = lerp(u, n01, n11);
+
+        return (lerp(v, x1, x2) + 1.0f) * 0.5f; // [0, 1]
+    }
 }
 }  // namespace
 
@@ -853,6 +902,125 @@ EntityBuilder& EntityBuilder::WithUIVideo(const std::string& videoPath, const st
 {
     WithUIRenderer(uiModelName, color);
     return WithPlayingVideo(videoPath, loop, volume, maxDecodes, speed);
+}
+
+EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float maxHeight, int resolution, int chunkSize,
+                                           float textureScale, const std::string& heightMapName,
+                                           const std::string& splatMapName,
+                                           const std::vector<std::string>& diffuseLayerNames,
+                                           bool generatePhysics, bool castShadows)
+{
+    auto& terrain = m_Scene.registry.get_or_emplace<TerrainComponent>(m_Entity);
+    terrain.terrainSize = terrainSize;
+    terrain.maxHeight = maxHeight;
+    terrain.resolution = resolution;
+    terrain.chunkSize = chunkSize;
+    terrain.textureScale = textureScale;
+    terrain.generatePhysics = generatePhysics;
+    terrain.castShadows = castShadows;
+    terrain.needsRebuild = true;
+    terrain.isWalkable = true;
+
+    auto heightTex = m_Resources.GetTexture(heightMapName);
+    if (heightTex)
+    {
+        terrain.heightMap = heightTex->id;
+    }
+    terrain.heightMapName = heightMapName;
+
+    if (!splatMapName.empty())
+    {
+        auto splatTex = m_Resources.GetTexture(splatMapName);
+        if (splatTex)
+        {
+            terrain.splatMap = splatTex->id;
+        }
+    }
+
+    terrain.diffuseLayers.clear();
+    for (const auto& layerName : diffuseLayerNames)
+    {
+        auto tex = m_Resources.GetTexture(layerName);
+        if (tex)
+        {
+            terrain.diffuseLayers.push_back(tex->id);
+        }
+    }
+
+    return *this;
+}
+
+entt::entity EntityBuilder::SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
+                                        const std::string& fragmentPath, const glm::vec3& pos,
+                                        const glm::vec3& scale)
+{
+    auto e = EntityBuilder(scene, res, sceneName)
+        .WithName("ProceduralObject")
+        .WithTransform(pos, glm::vec3(0.0f, rand() % 360, 0.0f), scale)
+        .Build();
+        
+    auto& frag = scene.registry.emplace<FragmentComponent>(e);
+    frag.path = fragmentPath;
+    frag.instantiated = false;
+    
+    return e;
+}
+
+void EntityBuilder::ScatterObjects(Scene& scene, ResourceManager& res, const std::string& sceneName,
+                                   const std::string& fragmentPath, const PlacementRule& rule,
+                                   const std::vector<float>& heights, int width, int height,
+                                   float terrainWidth, float terrainLength, float terrainHeight,
+                                   float waterLevel, float randomOffsetX, float randomOffsetZ,
+                                   int attempts, const glm::vec3& scale)
+{
+    auto getTerrainHeight = [&](float wx, float wz) -> float {
+        float localX = wx - (-terrainWidth * 0.5f);
+        float localZ = wz - (-terrainLength * 0.5f);
+        float gridXf = (localX / terrainWidth) * 256.0f;
+        float gridZf = (localZ / terrainLength) * 256.0f;
+        int gx = (std::max)(0, (std::min)(256, (int)std::round(gridXf)));
+        int gz = (std::max)(0, (std::min)(256, (int)std::round(gridZf)));
+        return heights[gz * width + gx] * terrainHeight;
+    };
+
+    auto getTerrainSlope = [&](float wx, float wz) -> float {
+        float hL = getTerrainHeight(wx - 1.0f, wz);
+        float hR = getTerrainHeight(wx + 1.0f, wz);
+        float hD = getTerrainHeight(wx, wz - 1.0f);
+        float hU = getTerrainHeight(wx, wz + 1.0f);
+        return std::sqrt((hR - hL) * (hR - hL) + (hU - hD) * (hU - hD));
+    };
+
+    for (int i = 0; i < attempts; ++i)
+    {
+        float rx = (static_cast<float>(rand() % 1000) / 1000.0f - 0.5f) * (terrainWidth * 0.9f);
+        float rz = (static_cast<float>(rand() % 1000) / 1000.0f - 0.5f) * (terrainLength * 0.9f);
+
+        float h = getTerrainHeight(rx, rz);
+        float slope = getTerrainSlope(rx, rz);
+
+        if (h < rule.minHeight || h > rule.maxHeight || slope > rule.maxSlope)
+            continue;
+
+        float localX = rx - (-terrainWidth * 0.5f);
+        float localZ = rz - (-terrainLength * 0.5f);
+        float gridX = (localX / terrainWidth) * 256.0f;
+        float gridZ = (localZ / terrainLength) * 256.0f;
+
+        float riverNoise = Perlin::Noise2D(gridX * 0.008f + randomOffsetX + 500.0f, gridZ * 0.008f + randomOffsetZ + 500.0f);
+        float riverFactor = std::abs(riverNoise - 0.5f);
+        bool nearWater = (riverFactor < 0.08f) || (h < (waterLevel + 0.06f) * terrainHeight);
+
+        float weight = 1.0f;
+        if (nearWater) weight *= rule.waterWeight;
+        if (h > 0.62f * terrainHeight || slope > 0.25f) weight *= rule.mountainWeight;
+        if (h >= (waterLevel + 0.05f) * terrainHeight && h < 0.55f * terrainHeight && slope < 0.12f) weight *= rule.plainsWeight;
+
+        if ((rand() % 100) < (weight * rule.baseProbability))
+        {
+            SpawnObject(scene, res, sceneName, fragmentPath, glm::vec3(rx, h, rz), scale);
+        }
+    }
 }
 
 entt::entity EntityBuilder::Build()

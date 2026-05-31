@@ -50,6 +50,7 @@ public:
                     const std::string& gsPath = "");
     void LoadTexture(const std::string& name, const std::string& path, bool async = true,
                      bool keepCpuData = false) override;
+    void CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height, int nrComponents, bool keepCpuData = false);
     void UnloadTexture(const std::string& name);
 
     void LoadModel(const std::string& name, const std::string& path, bool isStatic = false);

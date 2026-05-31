@@ -1,321 +1,252 @@
 #include "sample_scenario_common.h"
-
-#include <ecs/unit/script_component.h>
-#include <script/logic/input_scriptable.h>
+#include <ecs/unit/terrain_component.h>
+#include <core/logic/logger.h>
+#include <fstream>
+#include <filesystem>
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
-#include <memory>
-#include <string>
-#include <utility>
 
 namespace
 {
-enum class Scenario30Mode
+namespace Perlin
 {
-    Hover,
-    Click,
-    Hold
-};
+    inline float fade(float t) { return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f); }
+    inline float lerp(float t, float a, float b) { return a + t * (b - a); }
+    inline float grad(int hash, float x, float y)
+    {
+        int h = hash & 7;
+        float u = h < 4 ? x : y;
+        float v = h < 4 ? y : x;
+        return ((h & 1) ? -u : u) + ((h & 2) ? -2.0f * v : 2.0f * v);
+    }
+    
+    inline int hashCoords(int x, int y)
+    {
+        unsigned int h = x * 374761393 + y * 668265263;
+        h = (h ^ (h >> 13)) * 12741261;
+        return h ^ (h >> 16);
+    }
 
-std::string SecondsText(float seconds)
+    float Noise2D(float x, float y)
+    {
+        int ix = (int)std::floor(x);
+        int iy = (int)std::floor(y);
+        float fx = x - ix;
+        float fy = y - iy;
+
+        float u = fade(fx);
+        float v = fade(fy);
+
+        int h00 = hashCoords(ix, iy);
+        int h10 = hashCoords(ix + 1, iy);
+        int h01 = hashCoords(ix, iy + 1);
+        int h11 = hashCoords(ix + 1, iy + 1);
+
+        float n00 = grad(h00, fx, fy);
+        float n10 = grad(h10, fx - 1.0f, fy);
+        float n01 = grad(h01, fx, fy - 1.0f);
+        float n11 = grad(h11, fx - 1.0f, fy - 1.0f);
+
+        float x1 = lerp(u, n00, n10);
+        float x2 = lerp(u, n01, n11);
+
+        return (lerp(v, x1, x2) + 1.0f) * 0.5f; // [0, 1]
+    }
+} // namespace Perlin
+
+float GetNoise(float x, float z, float frequency, int octaves)
 {
-    char buffer[32];
-    snprintf(buffer, sizeof(buffer), "%.2fs", seconds);
-    return std::string(buffer);
-}
-
-class Scenario30InteractiveControl : public InputScriptable
-{
-public:
-    Scenario30InteractiveControl(entt::entity label, entt::entity status, entt::entity meter, Scenario30Mode mode,
-                                 std::string title, glm::vec4 baseColor, glm::vec4 hoverColor,
-                                 glm::vec4 activeColor)
-        : m_Label(label),
-          m_Status(status),
-          m_Meter(meter),
-          m_Mode(mode),
-          m_Title(std::move(title)),
-          m_BaseColor(baseColor),
-          m_HoverColor(hoverColor),
-          m_ActiveColor(activeColor)
+    float total = 0.0f;
+    float amplitude = 1.0f;
+    float freq = frequency * 0.015f;
+    float maxValue = 0.0f;
+    for (int i = 0; i < octaves; ++i)
     {
+        total += Perlin::Noise2D(x * freq, z * freq) * amplitude;
+        maxValue += amplitude;
+        freq *= 2.0f;
+        amplitude *= 0.5f;
     }
-
-    void OnCreate() override
-    {
-        SetColor(m_BaseColor);
-        SetMeter(0.0f);
-        SetLabel("Ready");
-    }
-
-    void OnUpdate(float dt) override
-    {
-        if (!IsHovered() || IsLeftPressed())
-            return;
-
-        m_Pulse += dt;
-        const float pulse = 0.18f + 0.12f * (0.5f + 0.5f * std::sin(m_Pulse * 7.0f));
-        SetColor(glm::mix(m_HoverColor, glm::vec4(1.0f), pulse));
-    }
-
-    void OnHoverEnter() override
-    {
-        m_HoverTicks = 0;
-        m_Pulse = 0.0f;
-        SetColor(m_HoverColor);
-        SetLabel("OnHoverEnter");
-        SetStatus("Latest event: " + m_Title + " -> OnHoverEnter");
-    }
-
-    void OnHoverStay() override
-    {
-        ++m_HoverTicks;
-        if (m_Mode == Scenario30Mode::Hover)
-            SetLabel("OnHoverStay #" + std::to_string(m_HoverTicks));
-    }
-
-    void OnHoverExit() override
-    {
-        SetColor(m_BaseColor);
-        SetLabel("OnHoverExit");
-        SetStatus("Latest event: " + m_Title + " -> OnHoverExit");
-    }
-
-    void OnLeftClick() override
-    {
-        ++m_ClickCount;
-        SetColor(m_ActiveColor);
-        if (m_Mode == Scenario30Mode::Click)
-            SetLabel("OnLeftClick count: " + std::to_string(m_ClickCount));
-        else
-            SetLabel("OnLeftClick");
-        SetStatus("Latest event: " + m_Title + " -> OnLeftClick");
-    }
-
-    void OnLeftHold(float duration) override
-    {
-        if (m_Mode != Scenario30Mode::Hold)
-            return;
-
-        SetColor(m_ActiveColor);
-        SetMeter(glm::clamp(duration / 2.0f, 0.0f, 1.0f));
-        SetLabel("OnLeftHold " + SecondsText(duration));
-        SetStatus("Latest event: " + m_Title + " -> OnLeftHold " + SecondsText(duration));
-    }
-
-    void OnLeftRelease(float duration) override
-    {
-        SetColor(IsHovered() ? m_HoverColor : m_BaseColor);
-        if (m_Mode == Scenario30Mode::Hold)
-        {
-            SetMeter(0.0f);
-            SetLabel("OnLeftRelease " + SecondsText(duration));
-        }
-        else
-        {
-            SetLabel("OnLeftRelease");
-        }
-        SetStatus("Latest event: " + m_Title + " -> OnLeftRelease " + SecondsText(duration));
-    }
-
-    void OnRightClick() override
-    {
-        SetColor(glm::vec4(0.78f, 0.25f, 0.29f, 0.98f));
-        SetLabel("OnRightClick");
-        SetStatus("Latest event: " + m_Title + " -> OnRightClick");
-    }
-
-    void OnRightRelease(float duration) override
-    {
-        SetColor(IsHovered() ? m_HoverColor : m_BaseColor);
-        SetStatus("Latest event: " + m_Title + " -> OnRightRelease " + SecondsText(duration));
-    }
-
-    void OnMiddleClick() override
-    {
-        SetColor(glm::vec4(0.35f, 0.32f, 0.76f, 0.98f));
-        SetLabel("OnMiddleClick");
-        SetStatus("Latest event: " + m_Title + " -> OnMiddleClick");
-    }
-
-    void OnMiddleRelease(float duration) override
-    {
-        SetColor(IsHovered() ? m_HoverColor : m_BaseColor);
-        SetStatus("Latest event: " + m_Title + " -> OnMiddleRelease " + SecondsText(duration));
-    }
-
-private:
-    void SetColor(const glm::vec4& color)
-    {
-        auto& registry = GetScene().registry;
-        if (registry.valid(m_Entity))
-        {
-            if (auto* renderer = registry.try_get<UIRendererComponent>(m_Entity))
-                renderer->color = color;
-        }
-    }
-
-    void SetLabel(const std::string& detail)
-    {
-        auto& registry = GetScene().registry;
-        if (registry.valid(m_Label))
-        {
-            if (auto* text = registry.try_get<UITextComponent>(m_Label))
-                text->text = m_Title + "\n" + detail;
-        }
-    }
-
-    void SetStatus(const std::string& status)
-    {
-        auto& registry = GetScene().registry;
-        if (registry.valid(m_Status))
-        {
-            if (auto* text = registry.try_get<UITextComponent>(m_Status))
-                text->text = status;
-        }
-    }
-
-    void SetMeter(float ratio)
-    {
-        if (m_Meter == entt::null)
-            return;
-
-        auto& registry = GetScene().registry;
-        if (!registry.valid(m_Meter))
-            return;
-
-        const float clamped = glm::clamp(ratio, 0.0f, 1.0f);
-        if (auto* transform = registry.try_get<UITransformComponent>(m_Meter))
-            transform->size.x = 250.0f * clamped;
-        if (auto* renderer = registry.try_get<UIRendererComponent>(m_Meter))
-            renderer->color = glm::mix(glm::vec4(0.18f, 0.72f, 0.54f, 0.96f),
-                                       glm::vec4(0.92f, 0.63f, 0.22f, 0.98f), clamped);
-    }
-
-    entt::entity m_Label = entt::null;
-    entt::entity m_Status = entt::null;
-    entt::entity m_Meter = entt::null;
-    Scenario30Mode m_Mode = Scenario30Mode::Hover;
-    std::string m_Title;
-    glm::vec4 m_BaseColor = glm::vec4(1.0f);
-    glm::vec4 m_HoverColor = glm::vec4(1.0f);
-    glm::vec4 m_ActiveColor = glm::vec4(1.0f);
-    int m_ClickCount = 0;
-    int m_HoverTicks = 0;
-    float m_Pulse = 0.0f;
-};
-
-void AttachScenario30Control(Scene& scene, entt::entity control, entt::entity label, entt::entity status,
-                             entt::entity meter, Scenario30Mode mode, const std::string& title,
-                             const glm::vec4& baseColor, const glm::vec4& hoverColor,
-                             const glm::vec4& activeColor)
-{
-    auto& script = scene.registry.emplace_or_replace<ScriptComponent>(control);
-    script.className = "Scenario30InteractiveControl";
-    script.InstantiateScript = [label, status, meter, mode, title, baseColor, hoverColor, activeColor]() {
-        return std::make_unique<Scenario30InteractiveControl>(label, status, meter, mode, title, baseColor, hoverColor,
-                                                              activeColor);
-    };
-    script.DestroyScript = [](ScriptComponent* sc) { sc->instance.reset(); };
-}
-
-entt::entity CreateScenario30Control(Scene& scene, ResourceManager& res, entt::entity root, entt::entity status,
-                                     const std::string& name, const glm::vec2& pos, const glm::vec2& size,
-                                     Scenario30Mode mode, const glm::vec4& baseColor, const glm::vec4& hoverColor,
-                                     const glm::vec4& activeColor)
-{
-    auto control = EntityBuilder(scene, res, "scenario")
-                       .WithName(name)
-                       .WithUIChild(root, pos, size, 32)
-                       .WithUIRenderer(name + "_background", baseColor)
-                       .Build();
-
-    entt::entity meter = entt::null;
-    if (mode == Scenario30Mode::Hold)
-    {
-        EntityBuilder(scene, res, "scenario")
-            .WithName(name + "_MeterTrack")
-            .WithUIChild(control, glm::vec2(18.0f, size.y - 34.0f), glm::vec2(250.0f, 12.0f), 33)
-            .WithUIRenderer(name + "_meter_track", glm::vec4(0.08f, 0.09f, 0.10f, 0.86f))
-            .Build();
-
-        meter = EntityBuilder(scene, res, "scenario")
-                    .WithName(name + "_MeterFill")
-                    .WithUIChild(control, glm::vec2(18.0f, size.y - 34.0f), glm::vec2(0.0f, 12.0f), 34)
-                    .WithUIRenderer(name + "_meter_fill", glm::vec4(0.18f, 0.72f, 0.54f, 0.96f))
-                    .Build();
-    }
-
-    auto label = EntityBuilder(scene, res, "scenario")
-                     .WithName(name + "_Label")
-                     .WithUIChild(control, glm::vec2(18.0f, 18.0f), glm::vec2(size.x - 36.0f, size.y - 36.0f), 35)
-                     .WithUIText(name + "\nReady", "time", 0.9f, glm::vec4(0.96f, 0.98f, 1.0f, 1.0f))
-                     .WithUITextAlignment(TextAlignment::Left, true, size.x - 48.0f)
-                     .Build();
-
-    AttachScenario30Control(scene, control, label, status, meter, mode, name, baseColor, hoverColor, activeColor);
-    return control;
+    return total / maxValue;
 }
 }  // namespace
 
 void SampleState::LoadScene30()
 {
+    m_S30TerrainHeight = 20.0f + static_cast<float>(rand() % 35); // Random height between 20.0f and 55.0f
+    m_S30TextureScale = 8.0f + static_cast<float>(rand() % 12);   // Random texture scale between 8.0f and 20.0f
+
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
 
+    // 1. Generate heightmap and splatmap in memory
+    int width = 257;
+    int height = 257;
+    std::vector<unsigned char> heightPixels(width * height * 3);
+    std::vector<unsigned char> splatPixels(width * height * 3);
+
+    std::vector<float> heights(width * height);
+    float randomOffsetX = (float)(rand() % 10000);
+    float randomOffsetZ = (float)(rand() % 10000);
+
+    float waterLevel = 0.15f; // Water level relative to maxHeight
+
+    for (int z = 0; z < height; ++z)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            float noiseVal = GetNoise((float)x + randomOffsetX, (float)z + randomOffsetZ, m_S30NoiseFrequency, m_S30NoiseOctaves);
+            
+            // Create winding rivers using 2D Perlin noise
+            float riverNoise = Perlin::Noise2D((float)x * 0.008f + randomOffsetX + 500.0f, (float)z * 0.008f + randomOffsetZ + 500.0f);
+            float riverFactor = std::abs(riverNoise - 0.5f); // 0.0 at center of river
+            
+            // Carve river path
+            if (riverFactor < 0.045f) {
+                float carve = (1.0f - (riverFactor / 0.045f)); // 1.0 at center, 0.0 at edge
+                noiseVal = noiseVal * (1.0f - carve) + (waterLevel * 0.5f) * carve;
+            }
+            
+            heights[z * width + x] = noiseVal;
+        }
+    }
+
+    for (int z = 0; z < height; ++z)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            int idx = z * width + x;
+            float h = heights[idx];
+
+            unsigned char hByte = (unsigned char)(h * 255.0f);
+            heightPixels[idx * 3 + 0] = hByte; // B
+            heightPixels[idx * 3 + 1] = hByte; // G
+            heightPixels[idx * 3 + 2] = hByte; // R
+
+            float hX = (x < width - 1) ? heights[z * width + (x + 1)] : h;
+            float hZ = (z < height - 1) ? heights[(z + 1) * width + x] : h;
+            float slope = std::sqrt((hX - h) * (hX - h) + (hZ - h) * (hZ - h)) * 12.0f;
+            slope = (std::min)(slope, 1.0f);
+
+            // Slope determines rocks (steeper = more rock)
+            float rockWeight = (std::max)(0.0f, (std::min)(1.0f, (slope - 0.15f) / 0.2f));
+
+            // Heights below waterLevel + 0.04f determine Sand (layer 3 / sand_static)
+            float sandWeight = 0.0f;
+            if (h < waterLevel + 0.04f)
+            {
+                sandWeight = (std::max)(0.0f, (std::min)(1.0f, ((waterLevel + 0.04f) - h) / 0.04f)) * (1.0f - rockWeight);
+            }
+
+            // Lower frequency noise controls clumpy grass vs dirt biomes
+            float blendNoise = Perlin::Noise2D((float)x * 0.04f + randomOffsetX + 100.0f, (float)z * 0.04f + randomOffsetZ + 100.0f);
+            float grassDirtFactor = (std::max)(0.0f, (std::min)(1.0f, (blendNoise - 0.42f) / 0.12f));
+
+            float grassWeight = (1.0f - rockWeight - sandWeight) * grassDirtFactor;
+            float dirtWeight = (1.0f - rockWeight - sandWeight) * (1.0f - grassDirtFactor);
+
+            float total = grassWeight + dirtWeight + rockWeight + sandWeight;
+            if (total > 0.0f)
+            {
+                grassWeight /= total;
+                dirtWeight /= total;
+                rockWeight /= total;
+                sandWeight /= total;
+            }
+
+            splatPixels[idx * 3 + 0] = (unsigned char)(grassWeight * 255.0f); // Red
+            splatPixels[idx * 3 + 1] = (unsigned char)(dirtWeight * 255.0f);  // Green
+            splatPixels[idx * 3 + 2] = (unsigned char)(rockWeight * 255.0f);  // Blue
+        }
+    }
+
+    // 2. Clear old cached texture resources to force rebuild
+    res.UnloadTexture("terrain_height_procedural");
+    res.UnloadTexture("terrain_splat_procedural");
+
+    // 3. Create textures in memory, and load static layers from disk
+    res.CreateTextureFromData("terrain_height_procedural", heightPixels.data(), width, height, 3, true);
+    res.CreateTextureFromData("terrain_splat_procedural", splatPixels.data(), width, height, 3, false);
+
+    res.LoadTexture("terrain_grass_static", "sample/resource/texture/terrain_grass.bmp", false, false);
+    res.LoadTexture("terrain_dirt_static", "sample/resource/texture/terrain_dirt.bmp", false, false);
+    res.LoadTexture("terrain_rock_static", "sample/resource/texture/terrain_rock.bmp", false, false);
+    res.LoadTexture("terrain_snow_static", "sample/resource/texture/terrain_snow.bmp", false, false);
+
+    // 4. Lights
     EntityBuilder(scene, res, "scenario")
-        .WithName("Scenario30Ground")
-        .WithPBRRenderable("planeModel", "deferred_lit", glm::vec3(0.0f, -0.05f, 0.0f), glm::vec3(0.0f),
-                           glm::vec3(80.0f, 1.0f, 80.0f), 0.0f, 0.82f, 1.0f)
+        .WithName("TerrainDirLight")
+        .WithTransform(glm::vec3(0.0f, 60.0f, 0.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
+        .WithDirectionalLight(glm::normalize(glm::vec3(-0.6f, -1.0f, -0.4f)), glm::vec3(1.0f, 0.95f, 0.88f), 1.6f)
         .Build();
 
+    // 5. Create Terrain Entity
     EntityBuilder(scene, res, "scenario")
-        .WithName("Scenario30DirLight")
-        .WithDirectionalLightAt(glm::vec3(16.0f, 36.0f, 18.0f), glm::vec3(-45.0f, -35.0f, 0.0f),
-                                glm::normalize(glm::vec3(-0.6f, -1.0f, -0.45f)),
-                                glm::vec3(1.0f, 0.96f, 0.88f), 1.2f)
+        .WithName("ProceduralTerrain")
+        .WithTransform(glm::vec3(-m_S30TerrainWidth * 0.5f, 0.0f, -m_S30TerrainLength * 0.5f), glm::vec3(0.0f), glm::vec3(1.0f))
+        .WithTerrain(glm::vec3(m_S30TerrainWidth, m_S30TerrainHeight, m_S30TerrainLength),
+                     m_S30TerrainHeight, 257, 65, m_S30TextureScale,
+                     "terrain_height_procedural", "terrain_splat_procedural",
+                     { "terrain_grass_static", "terrain_dirt_static", "terrain_rock_static", "terrain_snow_static" },
+                     m_S30GeneratePhysics, true)
         .Build();
 
-    auto root = EntityBuilder(scene, res, "scenario")
-                    .WithName("Scenario30InteractRoot")
-                    .WithUIStretch(glm::vec2(0.56f, 0.08f), glm::vec2(0.98f, 0.92f))
-                    .WithUIZIndex(28)
-                    .WithUIRenderer("scenario30_panel", glm::vec4(0.08f, 0.09f, 0.11f, 0.94f))
-                    .Build();
+    // 6. Spawn Procedural Objects via generic ScatterObjects utility
+    // Rules for House
+    PlacementRule houseRule;
+    houseRule.minHeight = (waterLevel * m_S30TerrainHeight) + 0.5f;
+    houseRule.maxHeight = 0.55f * m_S30TerrainHeight;
+    houseRule.maxSlope = 0.12f;
+    houseRule.waterWeight = 3.5f;
+    houseRule.mountainWeight = 0.1f;
+    houseRule.plainsWeight = 2.0f;
+    houseRule.baseProbability = 3.5f;
 
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Scenario30Title")
-        .WithUIChild(root, glm::vec2(32.0f, 24.0f), glm::vec2(600.0f, 64.0f), 30)
-        .WithUIText("Interactive UI Callbacks", "time", 1.08f, glm::vec4(0.94f, 0.97f, 1.0f, 1.0f))
-        .WithUITextAlignment(TextAlignment::Left, true, 560.0f)
-        .Build();
+    EntityBuilder::ScatterObjects(scene, res, "scenario", "sample/resource/fragment/house.axs", houseRule,
+                                  heights, width, height, m_S30TerrainWidth, m_S30TerrainLength, m_S30TerrainHeight,
+                                  waterLevel, randomOffsetX, randomOffsetZ, 120, glm::vec3(1.0f));
 
-    auto status = EntityBuilder(scene, res, "scenario")
-                      .WithName("Scenario30Status")
-                      .WithUIChild(root, glm::vec2(32.0f, 548.0f), glm::vec2(600.0f, 64.0f), 35)
-                      .WithUIRenderer("scenario30_status_bg", glm::vec4(0.13f, 0.14f, 0.16f, 0.92f))
-                      .WithUIText("Latest event: Ready", "time", 0.82f, glm::vec4(0.78f, 0.88f, 0.96f, 1.0f))
-                      .WithUITextAlignment(TextAlignment::Left, true, 560.0f)
-                      .Build();
+    // Rules for Tree
+    PlacementRule treeRule;
+    treeRule.minHeight = (waterLevel * m_S30TerrainHeight) + 0.4f;
+    treeRule.maxHeight = 0.65f * m_S30TerrainHeight;
+    treeRule.maxSlope = 0.25f;
+    treeRule.waterWeight = 2.2f;
+    treeRule.mountainWeight = 0.15f;
+    treeRule.plainsWeight = 1.8f;
+    treeRule.baseProbability = 12.0f;
 
-    CreateScenario30Control(scene, res, root, status, "Hover Target", glm::vec2(32.0f, 112.0f),
-                            glm::vec2(600.0f, 106.0f), Scenario30Mode::Hover,
-                            glm::vec4(0.16f, 0.24f, 0.26f, 0.96f), glm::vec4(0.18f, 0.46f, 0.42f, 0.98f),
-                            glm::vec4(0.24f, 0.58f, 0.48f, 0.98f));
+    EntityBuilder::ScatterObjects(scene, res, "scenario", "sample/resource/fragment/tree.axs", treeRule,
+                                  heights, width, height, m_S30TerrainWidth, m_S30TerrainLength, m_S30TerrainHeight,
+                                  waterLevel, randomOffsetX, randomOffsetZ, 250, glm::vec3(1.0f));
 
-    CreateScenario30Control(scene, res, root, status, "Click Counter", glm::vec2(32.0f, 242.0f),
-                            glm::vec2(288.0f, 128.0f), Scenario30Mode::Click,
-                            glm::vec4(0.22f, 0.20f, 0.25f, 0.96f), glm::vec4(0.44f, 0.31f, 0.45f, 0.98f),
-                            glm::vec4(0.66f, 0.39f, 0.52f, 0.98f));
+    // Rules for Rock
+    PlacementRule rockRule;
+    rockRule.minHeight = (waterLevel * m_S30TerrainHeight) + 0.4f;
+    rockRule.maxHeight = 0.95f * m_S30TerrainHeight;
+    rockRule.maxSlope = 0.8f;
+    rockRule.waterWeight = 1.0f;
+    rockRule.mountainWeight = 2.0f; // Prefer rocky mountains
+    rockRule.plainsWeight = 0.5f;
+    rockRule.baseProbability = 8.0f;
 
-    CreateScenario30Control(scene, res, root, status, "Hold Meter", glm::vec2(344.0f, 242.0f),
-                            glm::vec2(288.0f, 128.0f), Scenario30Mode::Hold,
-                            glm::vec4(0.18f, 0.22f, 0.30f, 0.96f), glm::vec4(0.24f, 0.36f, 0.55f, 0.98f),
-                            glm::vec4(0.26f, 0.50f, 0.76f, 0.98f));
+    EntityBuilder::ScatterObjects(scene, res, "scenario", "sample/resource/fragment/rock.axs", rockRule,
+                                  heights, width, height, m_S30TerrainWidth, m_S30TerrainLength, m_S30TerrainHeight,
+                                  waterLevel, randomOffsetX, randomOffsetZ, 150, glm::vec3(1.5f));
 
-    CreateScenario30Control(scene, res, root, status, "Mouse Buttons", glm::vec2(32.0f, 394.0f),
-                            glm::vec2(600.0f, 126.0f), Scenario30Mode::Click,
-                            glm::vec4(0.24f, 0.22f, 0.16f, 0.96f), glm::vec4(0.48f, 0.38f, 0.20f, 0.98f),
-                            glm::vec4(0.72f, 0.48f, 0.22f, 0.98f));
+    // 7. Set camera position to overview the terrain
+    auto camView = scene.registry.view<CameraComponent, PositionComponent, RotationComponent>();
+    for (auto camEntity : camView)
+    {
+        auto& pos = camView.get<PositionComponent>(camEntity);
+        auto& rot = camView.get<RotationComponent>(camEntity);
+        pos.value = glm::vec3(0.0f, m_S30TerrainHeight + 35.0f, m_S30TerrainLength * 0.65f);
+        rot.value = glm::quat(glm::radians(glm::vec3(-22.0f, 0.0f, 0.0f)));
+        if (auto* world = scene.registry.try_get<WorldTransformComponent>(camEntity))
+            world->isDirty = true;
+    }
+
+    m_S30SpawnTimer = 0.0f;
+
+    LOGGER_INFO("SampleState") << "Scenario 30 Terrain Scene Loaded.";
 }

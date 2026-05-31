@@ -563,33 +563,113 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    if (m_CurrentScenario == 28 && m_S28CardEntity != entt::null && GetScene().registry.valid(m_S28CardEntity))
+    if (m_CurrentScenario == 28)
     {
-        if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28CardEntity))
-            transform->rotation = m_S28RotateCard;
-        if (m_S28TextureEntity != entt::null && GetScene().registry.valid(m_S28TextureEntity))
+        if (m_S28CardEntity != entt::null && GetScene().registry.valid(m_S28CardEntity))
         {
-            if (auto* info = GetScene().registry.try_get<InfoComponent>(m_S28TextureEntity))
-                info->isActive = m_S28ShowTexture;
-            if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28TextureEntity))
+            if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28CardEntity))
+                transform->rotation = m_S28RotateCard;
+            if (m_S28TextureEntity != entt::null && GetScene().registry.valid(m_S28TextureEntity))
             {
-                transform->flipX = m_S28FlipTextureX;
-                transform->flipY = m_S28FlipTextureY;
+                if (auto* info = GetScene().registry.try_get<InfoComponent>(m_S28TextureEntity))
+                    info->isActive = m_S28ShowTexture;
+                if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28TextureEntity))
+                {
+                    transform->flipX = m_S28FlipTextureX;
+                    transform->flipY = m_S28FlipTextureY;
+                }
+            }
+        }
+        if (m_S29RootPanel != entt::null && GetScene().registry.valid(m_S29RootPanel))
+        {
+            auto& scene = GetScene();
+            if (auto* renderer = scene.registry.try_get<UIRendererComponent>(m_S29RootPanel))
+            {
+                renderer->color.a = m_S29PanelAlpha;
+            }
+            if (auto* flex = scene.registry.try_get<UIFlexLayoutComponent>(m_S29RootPanel))
+            {
+                flex->direction = (m_S29LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
+                flex->spacing = (m_S29LayoutMode == 1) ? 18.0f : 10.0f;
             }
         }
     }
 
-    if (m_CurrentScenario == 29 && m_S29RootPanel != entt::null && GetScene().registry.valid(m_S29RootPanel))
+    if (m_CurrentScenario == 30 && m_S30SpawnPhysicsBalls)
     {
-        auto& scene = GetScene();
-        if (auto* renderer = scene.registry.try_get<UIRendererComponent>(m_S29RootPanel))
+        m_S30SpawnTimer += dt;
+        if (m_S30SpawnTimer >= 0.35f)
         {
-            renderer->color.a = m_S29PanelAlpha;
-        }
-        if (auto* flex = scene.registry.try_get<UIFlexLayoutComponent>(m_S29RootPanel))
-        {
-            flex->direction = (m_S29LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
-            flex->spacing = (m_S29LayoutMode == 1) ? 18.0f : 10.0f;
+            m_S30SpawnTimer = 0.0f;
+            auto& scene = GetScene();
+            auto& res = Get<ResourceManager>();
+            auto view = scene.registry.view<RigidBodyComponent, InfoComponent>();
+            int spawnCount = 0;
+            entt::entity oldestEntity = entt::null;
+            int minBallId = 2147483647;
+            for (auto entity : view)
+            {
+                auto& info = view.get<InfoComponent>(entity);
+                if (info.name.rfind("S30Ball_", 0) == 0)
+                {
+                    spawnCount++;
+                    try
+                    {
+                        int id = std::stoi(info.name.substr(8));
+                        if (id < minBallId)
+                        {
+                            minBallId = id;
+                            oldestEntity = entity;
+                        }
+                    }
+                    catch (...)
+                    {
+                        if (oldestEntity == entt::null || (uint32_t)entity < (uint32_t)oldestEntity)
+                        {
+                            oldestEntity = entity;
+                        }
+                    }
+                }
+            }
+
+            if (spawnCount >= 40 && oldestEntity != entt::null)
+            {
+                scene.registry.destroy(oldestEntity);
+            }
+
+            float rx = (static_cast<float>(rand() % 100) / 100.0f - 0.5f) * (m_S30TerrainWidth * 0.7f);
+            float rz = (static_cast<float>(rand() % 100) / 100.0f - 0.5f) * (m_S30TerrainLength * 0.7f);
+            float ry = m_S30TerrainHeight + 15.0f + (static_cast<float>(rand() % 100) / 10.0f);
+
+            static int ballId = 0;
+            std::string ballName = "S30Ball_" + std::to_string(++ballId);
+            bool isSphere = (rand() % 2 == 0);
+            auto ball = EntityBuilder(scene, res, "scenario")
+                            .WithName(ballName)
+                            .WithTransform(glm::vec3(rx, ry, rz), glm::vec3(rand() % 360, rand() % 360, rand() % 360), glm::vec3(1.5f))
+                            .WithPBRMesh(isSphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.05f, 0.4f, 1.0f)
+                            .Build();
+
+            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(ball))
+            {
+                float rColor = 0.3f + static_cast<float>(rand() % 70) / 100.0f;
+                float gColor = 0.3f + static_cast<float>(rand() % 70) / 100.0f;
+                float bColor = 0.3f + static_cast<float>(rand() % 70) / 100.0f;
+                renderer->color = glm::vec4(rColor, gColor, bColor, 1.0f);
+            }
+
+            auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, ball);
+            shape.type = isSphere ? ShapeType::Sphere : ShapeType::Box;
+            shape.size = glm::vec3(1.5f);
+            shape.radius = 0.75f;
+            shape.restitution = 0.65f;
+            shape.friction = 0.35f;
+
+            auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, ball);
+            rb.mass = 1.0f;
+            rb.isStatic = false;
+            rb.linearDamping = 0.05f;
+            rb.angularDamping = 0.05f;
         }
     }
 
@@ -1305,9 +1385,9 @@ void SampleState::DrawGUI()
                       "Compare many matching renderers against unique tint batching breaks");
     AddScenarioButton(27, "Scenario 27: Shadow Receiver",
                       "Compare deferred and forced-forward casters on a deferred shadow receiver");
-    AddScenarioButton(28, "Scenario 28: UI Showcase", "Test UI transform, texture, text, pivot, rotation, and flip");
-    AddScenarioButton(29, "Scenario 29: Responsive UI", "Test anchors, flex layout, and percent-based UI resizing");
-    AddScenarioButton(30, "Scenario 30: Interactive UI", "Show UI onHover, onClick, onHold and button callbacks");
+    AddScenarioButton(28, "Scenario 28: UI & Responsive Showcase", "Merged: UI Showcase transform/rotate/flip and Responsive layout tests");
+    AddScenarioButton(29, "Scenario 29: Interactive UI", "Show UI onHover, onClick, onHold and button callbacks");
+    AddScenarioButton(30, "Scenario 30: Terrain Creation Showcase", "Generate heightmaps and splatmaps procedurally and drop physics bodies");
 
     ImGui::EndChild();
 
@@ -2244,26 +2324,40 @@ void SampleState::DrawGUI()
     }
     else if (m_CurrentScenario == 28)
     {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "UI Showcase");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "UI & Responsive Showcase");
         ImGui::SliderFloat("Rotate Card", &m_S28RotateCard, -45.0f, 45.0f);
         ImGui::Checkbox("Show Texture Tile", &m_S28ShowTexture);
         ImGui::Checkbox("Flip Texture X", &m_S28FlipTextureX);
         ImGui::SameLine();
         ImGui::Checkbox("Flip Texture Y", &m_S28FlipTextureY);
-        ImGui::Text("This scene mixes transform, text, image and hierarchy tests.");
-    }
-    else if (m_CurrentScenario == 29)
-    {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Responsive UI");
+        ImGui::Separator();
         ImGui::Combo("Layout Mode", &m_S29LayoutMode, "Compact\0Expanded\0Stacked\0");
         ImGui::SliderFloat("Panel Alpha", &m_S29PanelAlpha, 0.1f, 1.0f);
-        ImGui::Text("Resize the window to verify anchors, percent sizes, and flex layout.");
+        ImGui::Text("This merged scene mixes transform, text, image, flex and anchors.");
     }
-    else if (m_CurrentScenario == 30)
+    else if (m_CurrentScenario == 29)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Interactive UI");
         ImGui::Text("The in-scene UI is driven by InputScriptable callbacks.");
         ImGui::Text("Hover, click, hold, right-click, and middle-click the UI blocks.");
+    }
+    else if (m_CurrentScenario == 30)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Terrain Creation Showcase");
+        ImGui::SliderFloat("Terrain Width", &m_S30TerrainWidth, 50.0f, 500.0f);
+        ImGui::SliderFloat("Terrain Height", &m_S30TerrainHeight, 5.0f, 150.0f);
+        ImGui::SliderFloat("Terrain Length", &m_S30TerrainLength, 50.0f, 500.0f);
+        ImGui::SliderFloat("Texture Tile Scale", &m_S30TextureScale, 1.0f, 50.0f);
+        ImGui::SliderFloat("Noise Frequency", &m_S30NoiseFrequency, 0.2f, 8.0f);
+        ImGui::SliderInt("Noise Octaves", &m_S30NoiseOctaves, 1, 8);
+        ImGui::Checkbox("Generate Heightfield Physics", &m_S30GeneratePhysics);
+        ImGui::Checkbox("Spawn Dynamic Physics Balls", &m_S30SpawnPhysicsBalls);
+        if (ImGui::Checkbox("Show Physics / NavMesh Debug Lines", &m_ShowDebugLines))
+        {
+            auto& navSystem = GetSystem<NavigationSystem>();
+            navSystem.SetShowDebug(m_ShowDebugLines);
+        }
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to generate new terrain.");
     }
     else
     {
