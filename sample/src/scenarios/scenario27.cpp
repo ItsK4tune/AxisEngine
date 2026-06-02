@@ -13,31 +13,35 @@ void SampleState::LoadScene27()
 
     auto casterA =
         EntityBuilder(scene, res, "scenario")
-            .WithName("ShadowCasterCube")
-            .WithTransform(glm::vec3(-6.0f, 5.0f, 0.0f), glm::vec3(0.0f, 25.0f, 0.0f), glm::vec3(4.0f, 8.0f, 4.0f))
+            .WithName("DeferredShadowCasterCube")
+            .WithTransform(glm::vec3(-16.0f, 5.0f, -1.0f), glm::vec3(0.0f, 25.0f, 0.0f),
+                           glm::vec3(4.0f, 8.0f, 4.0f))
             .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.1f, 0.5f, 1.0f)
             .Build();
     {
         auto& r = scene.registry.get<MeshRendererComponent>(casterA);
         r.receiveShadow = false;
         r.castShadow = true;
+        r.color = glm::vec4(0.18f, 0.46f, 1.0f, 1.0f);
     }
 
     auto casterB = EntityBuilder(scene, res, "scenario")
-                       .WithName("ShadowCasterSphere")
-                       .WithTransform(glm::vec3(7.0f, 5.0f, -3.0f), glm::vec3(0.0f), glm::vec3(4.0f))
+                       .WithName("DeferredShadowCasterSphere")
+                       .WithTransform(glm::vec3(-9.0f, 5.0f, 4.0f), glm::vec3(0.0f), glm::vec3(4.0f))
                        .WithPBRMesh("sphereModel", "deferred_lit_shadow", 0.0f, 0.35f, 1.0f)
                        .Build();
     {
         auto& r = scene.registry.get<MeshRendererComponent>(casterB);
         r.receiveShadow = false;
         r.castShadow = true;
+        r.color = glm::vec4(0.10f, 0.70f, 1.0f, 1.0f);
     }
 
     auto forwardCasterA =
         EntityBuilder(scene, res, "scenario")
             .WithName("ForwardShadowCasterCube")
-            .WithTransform(glm::vec3(-1.0f, 6.0f, 8.0f), glm::vec3(0.0f, -18.0f, 0.0f), glm::vec3(3.5f, 7.0f, 3.5f))
+            .WithTransform(glm::vec3(10.0f, 6.0f, -1.0f), glm::vec3(0.0f, -18.0f, 0.0f),
+                           glm::vec3(3.5f, 7.0f, 3.5f))
             .WithPBRMesh("cubeModel", "forward_pbr_lit_shadow", 0.0f, 0.45f, 1.0f)
             .Build();
     {
@@ -45,13 +49,14 @@ void SampleState::LoadScene27()
         r.renderMode = RenderMode::ForceForward;
         r.receiveShadow = false;
         r.castShadow = true;
-        r.color = glm::vec4(0.25f, 0.55f, 1.0f, 1.0f);
+        r.color = glm::vec4(1.0f, 0.18f, 0.14f, 1.0f);
     }
 
     auto forwardCasterB =
         EntityBuilder(scene, res, "scenario")
-            .WithName("ForwardUnlitShadowCaster")
-            .WithTransform(glm::vec3(12.0f, 4.0f, 6.0f), glm::vec3(0.0f, 35.0f, 0.0f), glm::vec3(2.8f, 5.2f, 2.8f))
+            .WithName("ForwardShadowCasterCapsule")
+            .WithTransform(glm::vec3(18.0f, 4.0f, 4.0f), glm::vec3(0.0f, 35.0f, 0.0f),
+                           glm::vec3(2.8f, 5.2f, 2.8f))
             .WithPBRMesh("capsuleSmoothModel", "forward_unlit", 0.0f, 0.5f, 1.0f)
             .Build();
     {
@@ -59,7 +64,7 @@ void SampleState::LoadScene27()
         r.renderMode = RenderMode::ForceForward;
         r.receiveShadow = false;
         r.castShadow = true;
-        r.color = glm::vec4(1.0f, 0.75f, 0.18f, 1.0f);
+        r.color = glm::vec4(1.0f, 0.36f, 0.22f, 1.0f);
     }
 
     auto light = EntityBuilder(scene, res, "scenario")

@@ -11,17 +11,47 @@ void SampleState::LoadScene6()
         .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
         .Build();
 
-    for (int i = 0; i < 100; ++i)
+    std::string modelName = "cubeModel";
+    if (m_S6MeshType == 1)
+        modelName = "sphereModel";
+    else if (m_S6MeshType == 2)
+        modelName = "capsuleModel";
+    else if (m_S6MeshType == 3)
+        modelName = "cylinderModel";
+
+    std::string shaderName = "deferred_unlit";
+    if (m_S6ShaderMode == 1)
+        shaderName = "deferred_lit";
+    else if (m_S6ShaderMode == 2)
+        shaderName = "forward_pbr_lit";
+
+    std::vector<std::string> enabledScripts;
+    if (m_S6EnableOrbit)
+        enabledScripts.push_back("OrbitScript");
+    if (m_S6EnablePulse)
+        enabledScripts.push_back("PulseScaleScript");
+    if (m_S6EnableColor)
+        enabledScripts.push_back("ColorShiftScript");
+    if (m_S6EnableRandomMove)
+        enabledScripts.push_back("RandomMoveScript");
+    if (m_S6EnableRotate)
+        enabledScripts.push_back("RotateScript");
+    if (m_S6EnableBounce)
+        enabledScripts.push_back("BouncingScript");
+
+    int entityCount = (std::max)(1, m_S6EntityCount);
+    for (int i = 0; i < entityCount; ++i)
     {
-        float angle = (static_cast<float>(i) * 3.6f) * 3.14159f / 180.0f;
-        float radius = 10.0f + static_cast<float>(i % 5) * 3.0f;
-        glm::vec3 pos(cos(angle) * radius, 0.5f + static_cast<float>(i % 3) * 2.0f, sin(angle) * radius);
+        float angle = (static_cast<float>(i) / static_cast<float>(entityCount)) * 6.28318f;
+        float radius = m_S6BaseRadius + static_cast<float>(i % 5) * m_S6RadiusStep;
+        glm::vec3 pos(cos(angle) * radius, 0.5f + static_cast<float>(i % 3) * m_S6VerticalStep,
+                      sin(angle) * radius);
 
         std::string name = "ScriptedEntity_" + std::to_string(i);
         auto entity = EntityBuilder(scene, res, "scenario")
             .WithName(name)
-            .WithTransform(pos, glm::vec3(0.0f), glm::vec3(1.0f))
-            .WithPBRMesh("cubeModel", "deferred_unlit", 0.1f, 0.5f, 1.0f)
+            .WithTransform(pos, glm::vec3(0.0f), glm::vec3(m_S6EntityScale))
+            .WithPBRMesh(modelName, shaderName, 0.1f, 0.5f, 1.0f)
             .Build();
 
         if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
@@ -34,15 +64,10 @@ void SampleState::LoadScene6()
                 1.0f);
         }
 
-        std::string scriptName;
-        int scriptType = i % 6;
-        if (scriptType == 0) scriptName = "OrbitScript";
-        else if (scriptType == 1) scriptName = "PulseScaleScript";
-        else if (scriptType == 2) scriptName = "ColorShiftScript";
-        else if (scriptType == 3) scriptName = "RandomMoveScript";
-        else if (scriptType == 4) scriptName = "RotateScript";
-        else scriptName = "BouncingScript";
+        if (enabledScripts.empty())
+            continue;
 
+        std::string scriptName = enabledScripts[i % enabledScripts.size()];
         auto& script = scene.registry.emplace<ScriptComponent>(entity);
         script.className = scriptName;
         script.InstantiateScript = [scriptName]() {

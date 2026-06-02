@@ -10,6 +10,7 @@
 #include <audio/logic/audio_service.h>
 #include <audio/interface/i_sound.h>
 #include <ecs/unit/media_components.h>
+#include <ecs/unit/network_components.h>
 #include <ecs/unit/reflection_components.h>
 #include <scene/logic/scene_serializer.h>
 #ifdef ENABLE_EDITOR
@@ -19,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -276,6 +278,104 @@ void StopScenario17AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_pt
     }
     play2D = false;
     play3D = false;
+}
+
+void SetUITextByName(Scene& scene, const std::string& name, const std::string& text)
+{
+    auto view = scene.registry.view<UITextComponent, InfoComponent>();
+    for (auto entity : view)
+    {
+        auto& info = view.get<InfoComponent>(entity);
+        if (info.name != name)
+            continue;
+
+        view.get<UITextComponent>(entity).text = text;
+        return;
+    }
+}
+
+void UpdateScenario14LocalizedUI(Scene& scene, LocalizationSystem& l10n)
+{
+    const int entityCount = static_cast<int>(scene.registry.view<InfoComponent>().size());
+    int rigidBodyCount = 0;
+    auto rbView = scene.registry.view<RigidBodyComponent>();
+    for (auto entity : rbView)
+    {
+        if (rbView.get<RigidBodyComponent>(entity).body)
+            ++rigidBodyCount;
+    }
+
+    SetUITextByName(scene, "L10nPanelTitle", l10n.Get("app.title"));
+    SetUITextByName(scene, "L10nCurrentLanguageText",
+                    l10n.GetFormat("l10n.preview.current_language", l10n.GetLanguage()));
+    SetUITextByName(scene, "L10nScenarioLabelText", l10n.Get("menu.select_scenario"));
+    SetUITextByName(scene, "L10nEntityCountText",
+                    l10n.GetFormat("scenario.active_entities", std::to_string(entityCount)));
+    SetUITextByName(scene, "L10nReloadText",
+                    l10n.Get("l10n.preview.description") + "\n" +
+                        l10n.GetFormat("scenario.active_rigid_bodies", std::to_string(rigidBodyCount)));
+}
+
+struct Scenario16SpawnCommand
+{
+    int id = 0;
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 color = glm::vec3(1.0f);
+};
+
+std::string BuildScenario16SpawnPayload(const Scenario16SpawnCommand& cmd)
+{
+    char buffer[192];
+    std::snprintf(buffer, sizeof(buffer), "AXIS_S16_SPAWN|%d|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f", cmd.id,
+                  cmd.position.x, cmd.position.y, cmd.position.z, cmd.color.x, cmd.color.y, cmd.color.z);
+    return std::string(buffer);
+}
+
+bool ParseScenario16SpawnPayload(const std::string& msg, Scenario16SpawnCommand& out)
+{
+    Scenario16SpawnCommand parsed;
+    int matched = std::sscanf(msg.c_str(), "AXIS_S16_SPAWN|%d|%f|%f|%f|%f|%f|%f", &parsed.id,
+                              &parsed.position.x, &parsed.position.y, &parsed.position.z, &parsed.color.x,
+                              &parsed.color.y, &parsed.color.z);
+    if (matched != 7 || parsed.id <= 0)
+        return false;
+
+    out = parsed;
+    return true;
+}
+
+entt::entity FindEntityByName(Scene& scene, const std::string& name)
+{
+    auto view = scene.registry.view<InfoComponent>();
+    for (auto entity : view)
+    {
+        if (view.get<InfoComponent>(entity).name == name)
+            return entity;
+    }
+    return entt::null;
+}
+
+entt::entity SpawnScenario16NetworkEntity(Scene& scene, ResourceManager& res, const Scenario16SpawnCommand& cmd)
+{
+    const std::string name = "S16ServerSpawn_" + std::to_string(cmd.id);
+    if (auto existing = FindEntityByName(scene, name); existing != entt::null)
+        return existing;
+
+    auto entity = EntityBuilder(scene, res, "scenario")
+                      .WithName(name)
+                      .WithTransform(cmd.position, glm::vec3(0.0f, static_cast<float>((cmd.id * 37) % 360), 0.0f),
+                                     glm::vec3(1.6f))
+                      .WithPBRMesh("sphereModel", "deferred_lit", 0.05f, 0.35f, 1.0f)
+                      .Build();
+
+    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+        renderer->color = glm::vec4(cmd.color, 1.0f);
+    auto& net = scene.registry.emplace_or_replace<NetworkComponent>(entity);
+    net.networkId = static_cast<uint32_t>(cmd.id);
+    net.ownerId = 0;
+    net.isLocal = false;
+
+    return entity;
 }
 }  // namespace
 
@@ -828,7 +928,8 @@ void SampleState::OnUpdate(float dt)
 
     if (m_CurrentScenario == 11)
     {
-        auto view = GetScene().registry.view<DirectionalLightComponent, InfoComponent>();
+        auto& scene = GetScene();
+        auto view = scene.registry.view<DirectionalLightComponent, InfoComponent>();
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);
@@ -837,8 +938,46 @@ void SampleState::OnUpdate(float dt)
             auto& light = view.get<DirectionalLightComponent>(entity);
             light.color = m_S11LightColor;
             light.intensity = m_S11LightIntensity;
+            light.isCastShadow = m_S11LightingMode == 2;
             break;
         }
+
+        if (m_S11PointLightEntity != entt::null && scene.registry.valid(m_S11PointLightEntity))
+        {
+            if (auto* light = scene.registry.try_get<PointLightComponent>(m_S11PointLightEntity))
+            {
+                light->active = m_S11UsePointLight;
+                light->color = m_S11PointLightColor;
+                light->intensity = m_S11PointLightIntensity;
+                light->radius = m_S11PointLightRadius;
+                light->isCastShadow = m_S11LightingMode == 2;
+            }
+        }
+
+        if (m_S11PointLightMarkerEntity != entt::null && scene.registry.valid(m_S11PointLightMarkerEntity))
+        {
+            if (auto* info = scene.registry.try_get<InfoComponent>(m_S11PointLightMarkerEntity))
+                info->isActive = m_S11UsePointLight;
+            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S11PointLightMarkerEntity))
+                renderer->color = glm::vec4(m_S11PointLightColor, 1.0f);
+            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(m_S11PointLightMarkerEntity))
+            {
+                mat->desc.emission = m_S11PointLightColor * (m_S11PointLightIntensity * 0.8f);
+                mat->gpu.dirty = true;
+            }
+        }
+
+        if (m_S11ShadowCasterEntity != entt::null && scene.registry.valid(m_S11ShadowCasterEntity))
+        {
+            if (auto* info = scene.registry.try_get<InfoComponent>(m_S11ShadowCasterEntity))
+                info->isActive = m_S11ShowShadowCaster;
+            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S11ShadowCasterEntity))
+                renderer->castShadow = m_S11ShowShadowCaster;
+        }
+
+        auto decalView = scene.registry.view<DecalComponent>();
+        for (auto entity : decalView)
+            decalView.get<DecalComponent>(entity).lightingMode = m_S11LightingMode;
     }
 
     if (m_CurrentScenario == 13)
@@ -865,6 +1004,12 @@ void SampleState::OnUpdate(float dt)
                 view.get<WorldTransformComponent>(entity).isDirty = true;
             }
         }
+    }
+
+    if (m_CurrentScenario == 14)
+    {
+        auto& l10n = GetSystem<LocalizationSystem>();
+        UpdateScenario14LocalizedUI(GetScene(), l10n);
     }
 
     // Scenario 16 Network Update
@@ -1089,7 +1234,7 @@ void SampleState::LoadScenario(int index)
     }
 
     m_CurrentScenario = index;
-    m_ShowDebugLines = true;
+    m_ShowDebugLines = index != 30;
     m_NavFollower = entt::null;
     m_S8GrabbedEntity = entt::null;
     m_S8Dragging = false;
@@ -1098,6 +1243,9 @@ void SampleState::LoadScenario(int index)
     m_S2PointLightEntity = entt::null;
     m_S2SpotLightEntity = entt::null;
     m_S11DirLightEntity = entt::null;
+    m_S11PointLightEntity = entt::null;
+    m_S11PointLightMarkerEntity = entt::null;
+    m_S11ShadowCasterEntity = entt::null;
     m_S28CardEntity = entt::null;
     m_S28TextureEntity = entt::null;
     m_S29RootPanel = entt::null;
@@ -1150,6 +1298,8 @@ void SampleState::LoadScenario(int index)
         physics->SetSolverIterations(10);
     if (auto* collisionMatrix = Resolve<CollisionMatrix>())
         collisionMatrix->Reset();
+    if (auto* navSystem = Resolve<NavigationSystem>())
+        navSystem->SetShowDebug(m_ShowDebugLines);
 
     // Reset camera for all scenarios
     SetupCamera();
@@ -1254,6 +1404,8 @@ void SampleState::LoadScenario(int index)
     auto& transformSys = GetSystem<TransformSystem>();
     transformSys.m_IsLinearTransformsDirty = true;
     transformSys.Update(GetScene(), 0.0f);
+    if (auto* navSystem = Resolve<NavigationSystem>())
+        navSystem->SetShowDebug(m_ShowDebugLines);
 }
 
 void SampleState::StopScenario17Audio()
@@ -1503,6 +1655,25 @@ void SampleState::DrawGUI()
             navSystem.SetShowDebug(m_ShowDebugLines);
         }
     }
+    else if (m_CurrentScenario == 6)
+    {
+        ImGui::SliderInt("Scripted Entity Count", &m_S6EntityCount, 1, 1000);
+        ImGui::Combo("Mesh Type", &m_S6MeshType, "Cube\0Sphere\0Capsule\0Cylinder\0");
+        ImGui::Combo("Shader Mode", &m_S6ShaderMode, "Deferred Unlit\0Deferred Lit\0Forward Lit\0");
+        ImGui::SliderFloat("Base Radius", &m_S6BaseRadius, 2.0f, 40.0f);
+        ImGui::SliderFloat("Radius Step", &m_S6RadiusStep, 0.0f, 10.0f);
+        ImGui::SliderFloat("Vertical Step", &m_S6VerticalStep, 0.0f, 8.0f);
+        ImGui::SliderFloat("Entity Scale", &m_S6EntityScale, 0.2f, 4.0f);
+        ImGui::Separator();
+        ImGui::Text("Enabled Script Behaviors:");
+        ImGui::Checkbox("Orbit", &m_S6EnableOrbit);
+        ImGui::Checkbox("Pulse Scale", &m_S6EnablePulse);
+        ImGui::Checkbox("Color Shift", &m_S6EnableColor);
+        ImGui::Checkbox("Random Move", &m_S6EnableRandomMove);
+        ImGui::Checkbox("Rotate", &m_S6EnableRotate);
+        ImGui::Checkbox("Bounce", &m_S6EnableBounce);
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
+    }
     else if (m_CurrentScenario == 7)
     {
         ImGui::SliderInt("Emitters count", &m_S7EmitterCount, 1, 200);
@@ -1584,8 +1755,16 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Decal Size", &m_S11DecalSize, 0.5f, 10.0f);
         ImGui::SliderFloat("Decal Opacity", &m_S11Opacity, 0.0f, 1.0f);
         ImGui::ColorEdit3("Decal Color", &m_S11Color.x);
+        ImGui::Combo("Decal Lighting", &m_S11LightingMode, "Unlit\0Lit\0Lit + Shadow\0");
+        ImGui::Checkbox("Shadow Caster", &m_S11ShowShadowCaster);
+        ImGui::Separator();
         ImGui::ColorEdit3("Light Color", &m_S11LightColor.x);
         ImGui::SliderFloat("Light Intensity", &m_S11LightIntensity, 0.0f, 8.0f);
+        ImGui::Checkbox("Point Light Source", &m_S11UsePointLight);
+        ImGui::ColorEdit3("Point Light Color", &m_S11PointLightColor.x);
+        ImGui::SliderFloat("Point Light Intensity", &m_S11PointLightIntensity, 0.0f, 12.0f);
+        ImGui::SliderFloat("Point Light Radius", &m_S11PointLightRadius, 2.0f, 80.0f);
+        ImGui::Separator();
         ImGui::Checkbox("Rainbow Color Mode", &m_S11RainbowMode);
         auto decalView = GetScene().registry.view<DecalComponent>();
         int decalIndex = 0;
@@ -1593,6 +1772,7 @@ void SampleState::DrawGUI()
         {
             auto& decal = decalView.get<DecalComponent>(entity);
             decal.opacity = m_S11Opacity;
+            decal.lightingMode = m_S11LightingMode;
             if (m_S11RainbowMode)
             {
                 int decalDenom = m_S11DecalCount > 1 ? m_S11DecalCount : 1;
@@ -1854,11 +2034,13 @@ void SampleState::DrawGUI()
         {
             l10n.LoadLanguage("sample/resource/l10n/vi.axs", "vi");
             l10n.SetLanguage("vi");
+            UpdateScenario14LocalizedUI(GetScene(), l10n);
         }
         if (ImGui::Button("Switch to English (en)", ImVec2(360, 24)))
         {
             l10n.LoadLanguage("sample/resource/l10n/en.axs", "en");
             l10n.SetLanguage("en");
+            UpdateScenario14LocalizedUI(GetScene(), l10n);
         }
 
         ImGui::Separator();
@@ -2003,6 +2185,14 @@ void SampleState::DrawGUI()
                             std::string msg((const char*)data, size);
                             if (!msg.empty() && msg.back() == '\0')
                                 msg.pop_back();
+                            Scenario16SpawnCommand spawnCmd;
+                            if (ParseScenario16SpawnPayload(msg, spawnCmd))
+                            {
+                                SpawnScenario16NetworkEntity(GetScene(), Get<ResourceManager>(), spawnCmd);
+                                m_S16Messages.push_back("Client spawned server entity #" +
+                                                        std::to_string(spawnCmd.id));
+                                return;
+                            }
                             m_S16Messages.push_back("Client recvd: " + msg);
                         });
                         if (netSystem->StartClient(config))
@@ -2055,6 +2245,38 @@ void SampleState::DrawGUI()
                     {
                         m_S16Messages.push_back(std::string("No connected peer. State: ") +
                                                 netSystem->GetClientPeerState());
+                    }
+                }
+            }
+        }
+        if (ImGui::Button("Server Spawn Entity For Clients", ImVec2(360, 24)))
+        {
+            if (auto* sysMgr2 = Resolve<SystemManager>())
+            {
+                if (auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr2->GetSystem("NetworkSystem")))
+                {
+                    if (!netSystem->IsRunning() || !netSystem->IsServer())
+                    {
+                        m_S16Messages.push_back("Spawn requires a running server.");
+                    }
+                    else
+                    {
+                        Scenario16SpawnCommand cmd;
+                        cmd.id = ++m_S16SpawnCounter;
+                        cmd.position = glm::vec3(static_cast<float>(rand() % 260 - 130) / 10.0f,
+                                                 2.0f + static_cast<float>(rand() % 40) / 10.0f,
+                                                 static_cast<float>(rand() % 260 - 130) / 10.0f);
+                        cmd.color = glm::vec3(0.35f + static_cast<float>(rand() % 65) / 100.0f,
+                                              0.35f + static_cast<float>(rand() % 65) / 100.0f,
+                                              0.35f + static_cast<float>(rand() % 65) / 100.0f);
+                        SpawnScenario16NetworkEntity(GetScene(), Get<ResourceManager>(), cmd);
+
+                        std::string payload = BuildScenario16SpawnPayload(cmd);
+                        size_t peerCount = netSystem->GetConnectedPeerCount();
+                        if (peerCount > 0)
+                            netSystem->BroadcastPacket(payload.c_str(), payload.size() + 1);
+                        m_S16Messages.push_back("Server spawned entity #" + std::to_string(cmd.id) +
+                                                " and broadcast to " + std::to_string(peerCount) + " clients.");
                     }
                 }
             }
@@ -2321,6 +2543,7 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Shadow Receiver");
         ImGui::Text("Floor receives shadows through deferred_lit_shadow.");
         ImGui::Text("Deferred and forced-forward objects cast into the same shadow map.");
+        ImGui::Text("Left: deferred blue. Right: forward red.");
     }
     else if (m_CurrentScenario == 28)
     {

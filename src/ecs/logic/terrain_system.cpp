@@ -119,6 +119,9 @@ void TerrainSystem::Render(Scene& scene)
         auto& terrain = view.get<TerrainComponent>(entity);
         auto& pos = view.get<PositionComponent>(entity);
 
+        if (auto* info = scene.registry.try_get<InfoComponent>(entity); info && !info->isActive)
+            continue;
+
         auto it = m_TerrainCache.find(entity);
         if (it == m_TerrainCache.end())
         {

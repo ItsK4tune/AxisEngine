@@ -24,5 +24,6 @@ void SampleState::LoadScene16()
         .Build();
 
     m_S16Messages.clear();
+    m_S16SpawnCounter = 0;
     m_S16Status = "Network scenario initialized. Click Start to bind/connect.";
 }

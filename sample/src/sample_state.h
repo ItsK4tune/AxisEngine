@@ -449,6 +449,21 @@ private:
     bool m_S5RepathRequested = false;
     int m_S5LastPathfindingCriteria = -1;
 
+    // Scenario 6 parameters
+    int m_S6EntityCount = 100;
+    int m_S6MeshType = 0;    // 0: Cube, 1: Sphere, 2: Capsule, 3: Cylinder
+    int m_S6ShaderMode = 0;  // 0: Deferred unlit, 1: Deferred lit, 2: Forward lit
+    float m_S6BaseRadius = 10.0f;
+    float m_S6RadiusStep = 3.0f;
+    float m_S6VerticalStep = 2.0f;
+    float m_S6EntityScale = 1.0f;
+    bool m_S6EnableOrbit = true;
+    bool m_S6EnablePulse = true;
+    bool m_S6EnableColor = true;
+    bool m_S6EnableRandomMove = true;
+    bool m_S6EnableRotate = true;
+    bool m_S6EnableBounce = true;
+
     // Scenario 7 parameters
     int m_S7EmitterCount = 50;
     float m_S7SpawnRate = 200.0f;
@@ -479,6 +494,12 @@ private:
     glm::vec3 m_S11Color = glm::vec3(1.0f, 0.2f, 0.2f);
     glm::vec3 m_S11LightColor = glm::vec3(1.0f);
     float m_S11LightIntensity = 1.5f;
+    int m_S11LightingMode = 2;  // 0: Unlit, 1: Lit, 2: Lit + shadow
+    bool m_S11UsePointLight = true;
+    bool m_S11ShowShadowCaster = true;
+    glm::vec3 m_S11PointLightColor = glm::vec3(1.0f, 0.85f, 0.45f);
+    float m_S11PointLightIntensity = 5.0f;
+    float m_S11PointLightRadius = 35.0f;
     bool m_S11RainbowMode = false;
 
     // Scenario 12 UI variables
@@ -503,6 +524,7 @@ private:
     bool m_S16IsServer = true;
     std::vector<std::string> m_S16Messages;
     float m_S16SendTimer = 0.0f;
+    int m_S16SpawnCounter = 0;
     char m_S16MessageText[128] = "Hello from AxisEngine";
     char m_S16Host[64] = "127.0.0.1";
     int m_S16Port = 12345;
@@ -567,7 +589,7 @@ private:
     float m_S30TerrainLength = 200.0f;
     float m_S30TextureScale = 12.0f;
     bool m_S30GeneratePhysics = true;
-    bool m_S30SpawnPhysicsBalls = true;
+    bool m_S30SpawnPhysicsBalls = false;
     float m_S30NoiseFrequency = 1.8f;
     int m_S30NoiseOctaves = 4;
     float m_S30SpawnTimer = 0.0f;
@@ -614,6 +636,9 @@ private:
     entt::entity m_S2PointLightEntity = entt::null;
     entt::entity m_S2SpotLightEntity = entt::null;
     entt::entity m_S11DirLightEntity = entt::null;
+    entt::entity m_S11PointLightEntity = entt::null;
+    entt::entity m_S11PointLightMarkerEntity = entt::null;
+    entt::entity m_S11ShadowCasterEntity = entt::null;
     entt::entity m_S28CardEntity = entt::null;
     entt::entity m_S28TextureEntity = entt::null;
     entt::entity m_S29RootPanel = entt::null;

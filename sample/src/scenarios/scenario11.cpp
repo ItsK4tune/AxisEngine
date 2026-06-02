@@ -12,11 +12,35 @@ void SampleState::LoadScene11()
         .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
-    EntityBuilder(scene, res, "scenario")
+    m_S11DirLightEntity = EntityBuilder(scene, res, "scenario")
         .WithName("DecalDirLight")
         .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
         .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), m_S11LightColor, m_S11LightIntensity)
         .Build();
+    if (auto* dir = scene.registry.try_get<DirectionalLightComponent>(m_S11DirLightEntity))
+        dir->isCastShadow = true;
+
+    m_S11PointLightEntity = EntityBuilder(scene, res, "scenario")
+        .WithName("DecalPointLight")
+        .WithPointLightAt(glm::vec3(-12.0f, 14.0f, 4.0f), m_S11PointLightColor, m_S11PointLightIntensity,
+                          m_S11PointLightRadius)
+        .Build();
+    if (auto* light = scene.registry.try_get<PointLightComponent>(m_S11PointLightEntity))
+    {
+        light->active = m_S11UsePointLight;
+        light->isCastShadow = true;
+        light->linear = 0.045f;
+        light->quadratic = 0.0075f;
+    }
+
+    m_S11PointLightMarkerEntity = EntityBuilder(scene, res, "scenario")
+        .WithName("DecalPointLightMarker")
+        .WithTransform(glm::vec3(-12.0f, 14.0f, 4.0f), glm::vec3(0.0f), glm::vec3(1.2f))
+        .WithPBRMesh("sphereModel", "deferred_unlit", 0.0f, 0.25f, 1.0f)
+        .WithMaterialEmission(m_S11PointLightColor * 3.0f)
+        .Build();
+    if (auto* marker = scene.registry.try_get<MeshRendererComponent>(m_S11PointLightMarkerEntity))
+        marker->color = glm::vec4(m_S11PointLightColor, 1.0f);
 
     // 2. Spawn a large central wall to project decals onto
     EntityBuilder(scene, res, "scenario")
@@ -24,6 +48,20 @@ void SampleState::LoadScene11()
         .WithTransform(glm::vec3(0.0f, 10.0f, -10.0f), glm::vec3(0.0f), glm::vec3(50.0f, 20.0f, 2.0f))
         .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.9f, 1.0f)
         .Build();
+
+    m_S11ShadowCasterEntity = EntityBuilder(scene, res, "scenario")
+        .WithName("DecalShadowCaster")
+        .WithActive(m_S11ShowShadowCaster)
+        .WithTransform(glm::vec3(-4.0f, 10.0f, -4.2f), glm::vec3(0.0f, 18.0f, 0.0f),
+                       glm::vec3(3.0f, 12.0f, 1.5f))
+        .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.0f, 0.55f, 1.0f)
+        .Build();
+    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S11ShadowCasterEntity))
+    {
+        renderer->color = glm::vec4(0.12f, 0.12f, 0.14f, 1.0f);
+        renderer->castShadow = true;
+        renderer->receiveShadow = false;
+    }
 
     // 3. Use tint-only decals. The decal shader falls back to a white source when no texture is assigned.
     uint32_t decalTexId = 0;
@@ -46,6 +84,7 @@ void SampleState::LoadScene11()
         decal.opacity = m_S11Opacity;
         decal.roughness = 0.5f;
         decal.metallic = 0.0f;
+        decal.lightingMode = m_S11LightingMode;
         
         if (m_S11RainbowMode)
         {

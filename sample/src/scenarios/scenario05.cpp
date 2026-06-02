@@ -29,6 +29,7 @@ void SampleState::LoadScene5()
     auto navSurface = EntityBuilder(scene, res, "scenario")
         .WithName("NavigationGridSurface")
         .WithTag("walkable")
+        .WithActive(false)
         .WithTransform(glm::vec3(-25.0f, 0.0f, -25.0f), glm::vec3(0.0f), glm::vec3(1.0f))
         .Build();
     auto& terrain = scene.registry.emplace<TerrainComponent>(navSurface);
