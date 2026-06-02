@@ -36,6 +36,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
 #include <cstring>
+#include <unordered_map>
 
 namespace
 {
@@ -44,10 +45,13 @@ uint64_t CombineHash(uint64_t seed, uint64_t value)
     return seed ^ (value + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2));
 }
 
-uint64_t HashMaterialForBatch(const AxisMaterialComponent* material)
+uint64_t HashMaterialForBatch(AxisMaterialComponent* material)
 {
     if (!material)
         return 0;
+
+    if (!material->gpu.batchKeyDirty && !material->gpu.dirty)
+        return material->gpu.batchKey;
 
     const auto& d = material->desc;
     uint64_t h = 1469598103934665603ULL;
@@ -75,28 +79,11 @@ uint64_t HashMaterialForBatch(const AxisMaterialComponent* material)
     h = CombineHash(h, static_cast<uint64_t>(d.blendSrc));
     h = CombineHash(h, static_cast<uint64_t>(d.blendDst));
     h = CombineHash(h, hashString(d.type));
+    material->gpu.batchKey = h;
+    material->gpu.batchKeyDirty = false;
     return h;
 }
 
-bool IsDeferredCapable(const Shader* shader)
-{
-    return !shader || shader->IsDeferred();
-}
-
-RenderQueuePass ClassifyRenderPass(const MeshRendererComponent& renderer, const AxisMaterialComponent* material,
-                                   const Shader* shader)
-{
-    if (renderer.ignoreDepth)
-        return RenderQueuePass::DepthOverlay;
-
-    if (material && material->desc.opacity < 1.0f)
-        return RenderQueuePass::Transparent;
-
-    if (renderer.renderMode == RenderMode::ForceForward)
-        return RenderQueuePass::ForwardOpaque;
-
-    return IsDeferredCapable(shader) ? RenderQueuePass::DeferredGeometry : RenderQueuePass::ForwardOpaque;
-}
 }  // namespace
 
 #include <platform/logic/io_handler.h>
@@ -123,7 +110,7 @@ void RenderServiceImpl::Initialize()
     auto* context_ptr = sl.Resolve<IGraphicsContext>();
     auto* configMgr_ptr = sl.Resolve<ConfigManager>();
     if (!configMgr_ptr)
-        return;  // Critical service
+        return;
 
     m_Context = context_ptr;
     m_ConfigManager = configMgr_ptr;
@@ -131,7 +118,6 @@ void RenderServiceImpl::Initialize()
     auto& config = m_ConfigManager->GetConfig();
     auto* shaderLib = sl.Resolve<ResourceManager>();
 
-    // Core settings
     this->SetInstanceBatching(config.instanceBatchingEnabled);
     this->SetFrustumCulling(config.frustumCullingEnabled);
     this->SetOcclusionCulling(config.occlusionCullingEnabled);
@@ -142,7 +128,6 @@ void RenderServiceImpl::Initialize()
     this->SetFaceCulling(config.cullFaceEnabled);
     this->SetDepthTest(config.depthTestEnabled);
 
-    // Skip GPU-dependent initialization if no context
     if (!m_Context)
     {
         LOGGER_INFO("RenderSystem") << "Initialized in HEADLESS mode (Rendering Services dormant)";
@@ -393,12 +378,6 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 {
     m_IsCapturingProbe = params.isCapturingProbe;
     float lodFactor = params.lodFactor;
-    if (lodFactor <= 0.0f || lodFactor > 1.0f)
-    {
-        // LOGGER_WARN("RenderSystem") << "Invalid alpha value: " << lodFactor;
-    }
-
-    IGraphicsContext& context = *m_Context;
     m_LastWidth = params.width;
     m_LastHeight = params.height;
 
@@ -415,18 +394,41 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     m_RenderQueueObj.Clear();
     m_RenderedCount = 0;
 
-    // Pre-collect reflection probes for fast lookup
     struct ProbeData
     {
         ReflectionProbeComponent* component;
         glm::vec3 position;
+        entt::entity entity;
     };
+
     std::vector<ProbeData> probes;
     auto probeView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
+    probes.reserve(probeView.size_hint());
     for (auto entity : probeView)
     {
-        auto [pos, probe] = probeView.get<PositionComponent, ReflectionProbeComponent>(entity);
-        probes.push_back({&probe, pos.value});
+        auto& pos = probeView.get<PositionComponent>(entity);
+        auto& probe = probeView.get<ReflectionProbeComponent>(entity);
+        probes.push_back({&probe, pos.value, entity});
+    }
+
+    std::unordered_map<std::string, const ProbeData*> probesByTarget;
+    probesByTarget.reserve(probes.size() * 2);
+    for (const auto& probe : probes)
+    {
+        auto* info = scene.registry.try_get<InfoComponent>(probe.entity);
+        if (!info)
+            continue;
+
+        probesByTarget.emplace(info->name, &probe);
+        if (!info->tag.empty())
+        {
+            std::string taggedKey;
+            taggedKey.reserve(info->name.size() + info->tag.size() + 1);
+            taggedKey.append(info->name);
+            taggedKey.push_back(':');
+            taggedKey.append(info->tag);
+            probesByTarget.emplace(std::move(taggedKey), &probe);
+        }
     }
 
     auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
@@ -445,7 +447,8 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             continue;
 
         auto& world = renderView.get<WorldTransformComponent>(entity);
-        glm::mat4 modelMatrix = (lodFactor >= 0.9999f) ? world.worldMatrix : world.GetInterpolated(lodFactor);
+        const bool useCurrentWorldMatrix = lodFactor >= 0.9999f;
+        glm::mat4 modelMatrix = useCurrentWorldMatrix ? world.worldMatrix : world.GetInterpolated(lodFactor);
 
         auto& renderer = renderView.get<MeshRendererComponent>(entity);
         if (!renderer.model)
@@ -461,7 +464,6 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
 
-        // Skip objects that contain the probe (Self-occlusion fix using AABB)
         if (m_IsCapturingProbe && worldAABB.Contains(params.cameraPos))
             continue;
 
@@ -502,9 +504,10 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         if (!visibleByOcclusion && !castsSceneShadow && !depthOverlay)
             continue;
 
+        bool isTransparent = false;
         auto* material = scene.registry.try_get<AxisMaterialComponent>(entity);
-        RenderQueuePass classifiedPass = ClassifyRenderPass(renderer, material, itemShader);
-        bool isTransparent = classifiedPass == RenderQueuePass::Transparent;
+        if (material && material->desc.opacity < 1.0f)
+            isTransparent = true;
 
         auto* reflection = scene.registry.try_get<ReflectiveComponent>(entity);
 
@@ -548,42 +551,33 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         item.materialBatchKey = materialBatchKey;
         item.reflection = (reflection && reflection->enabled) ? reflection : nullptr;
 
-        // Reflection Probe Selection
         if (item.reflection)
         {
             bool probeFound = false;
 
-            // 1. Try Target Probe (Name or Name:Tag)
             if (!item.reflection->targetProbe.empty())
             {
-                std::string target = item.reflection->targetProbe;
-                size_t colon = target.find(':');
-                std::string targetName = (colon == std::string::npos) ? target : target.substr(0, colon);
-                std::string targetTag = (colon == std::string::npos) ? "" : target.substr(colon + 1);
-
-                for (auto probeEntity : probeView)
+                auto it = probesByTarget.find(item.reflection->targetProbe);
+                if (it == probesByTarget.end())
                 {
-                    auto* info = scene.registry.try_get<InfoComponent>(probeEntity);
-                    if (info && (info->name == targetName))
+                    const size_t colon = item.reflection->targetProbe.find(':');
+                    if (colon != std::string::npos && colon + 1 == item.reflection->targetProbe.size())
                     {
-                        if (targetTag.empty() || info->tag == targetTag)
-                        {
-                            auto [pPos, pComp] =
-                                probeView.get<PositionComponent, ReflectionProbeComponent>(probeEntity);
-                            item.probe = &pComp;
-                            item.probePos = pPos.value;
-                            probeFound = true;
-                            break;
-                        }
+                        it = probesByTarget.find(item.reflection->targetProbe.substr(0, colon));
                     }
+                }
+                if (it != probesByTarget.end())
+                {
+                    item.probe = it->second->component;
+                    item.probePos = it->second->position;
+                    probeFound = true;
                 }
             }
 
-            // 2. Fallback to Nearest Probe
             if (!probeFound)
             {
                 float minProbeDistSq = 1e30f;
-                for (auto& p : probes)
+                for (const auto& p : probes)
                 {
                     float d = glm::distance2(glm::vec3(modelMatrix[3]), p.position);
                     if (d < minProbeDistSq)
@@ -596,7 +590,6 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
                 }
             }
 
-            // Standardize Intensity (since radius is removed)
             item.reflectionIntensity = 1.0f;
             if (item.probe)
                 item.probeIndex = item.probe->lastGpuIndex;
@@ -637,32 +630,34 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             }
         }
 
-        // Bake mode criteria: No animation, and no physics types other than static.
         item.isStatic = (!hasAnimation) && (!hasPhysic || (hasPhysic && isStaticPhysic));
         const bool addToCameraQueues = visibleToCamera && (visibleByOcclusion || depthOverlay);
         if (addToCameraQueues)
         {
-            switch (classifiedPass)
+            if (isTransparent)
             {
-                case RenderQueuePass::DepthOverlay:
+                m_RenderQueueObj.AddTransparent(item);
+            }
+            else
+            {
+                if (renderer.ignoreDepth)
+                {
                     m_RenderQueueObj.AddDepthOverlay(item);
-                    break;
-                case RenderQueuePass::Transparent:
-                    m_RenderQueueObj.AddTransparent(item);
-                    break;
-                case RenderQueuePass::ForwardOpaque:
+                }
+                else if (renderer.renderMode == RenderMode::ForceForward)
+                {
                     m_RenderQueueObj.AddForwardOpaque(item);
-                    break;
-                case RenderQueuePass::DeferredGeometry:
+                }
+                else
+                {
                     m_RenderQueueObj.AddDeferredOpaque(item);
-                    break;
+                }
             }
         }
         if (castsSceneShadow)
             m_RenderQueueObj.AddShadow(item);
     }
 
-    // Collect Lights
     auto dirView = scene.registry.view<DirectionalLightComponent, InfoComponent>();
     for (auto entity : dirView)
     {
@@ -762,7 +757,6 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
     m_RenderQueueObj.Sort();
 
-    // Collect Skybox
     m_IBLState.irradianceMap = 0;
     m_IBLState.prefilterMap = 0;
     m_IBLState.brdfLUT = 0;
@@ -821,7 +815,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
     Shader* lastShader = nullptr;
 
     RenderSceneData sceneData;
-    sceneData.lights = m_RenderQueueObj.GetLights();
     sceneData.cameraPosition = m_CameraState.position;
     sceneData.viewMatrix = m_CameraState.viewMatrix;
     sceneData.projMatrix = m_CameraState.projectionMatrix;
@@ -833,13 +826,13 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
 
     if (targetIsForwardPass)
     {
+        sceneData.lights = m_RenderQueueObj.GetLights();
         if (auto* lightingService = ServiceLocator::Instance().Resolve<ILightingService>())
             lightingService->UploadLightData(sceneData);
     }
 
     m_RenderedCount += (int)queue.size();
 
-    // --- Pre-collect planar reflection data ONCE before the draw loop ---
     struct PlanarEntry
     {
         unsigned int textureID;
@@ -870,11 +863,9 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         }
     }
 
-    // --- Pre-compute per-frame constants ---
     glm::vec2 screenSize((float)m_LastWidth, (float)m_LastHeight);
     bool isCapturing = m_IsCapturingProbe;
 
-    // --- Reflection state tracking to skip redundant uniform sets ---
     bool lastHadReflection = false;
     bool lastHadProbe = false;
     unsigned int lastProbeCubemap = 0;
@@ -930,11 +921,9 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
                 shader->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
             }
 
-            // Per-frame uniforms: set once per shader bind, not per item
             shader->setBool("u_ProbeUnlit", isCapturing);
             shader->setVec2("u_ScreenSize", screenSize);
 
-            // Bind pre-collected planar reflections once per shader bind
             if (!isCapturing)
             {
                 for (int p = 0; p < planarCount; ++p)
@@ -947,7 +936,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
             }
             shader->setInt("u_PlanarCount", planarCount);
 
-            // Reset reflection tracking on shader change
             lastHadReflection = false;
             lastHadProbe = false;
             lastProbeCubemap = 0;
@@ -974,7 +962,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
             shader->setInt_Fast(shader->m_Loc_u_ProbeIndex, "u_ProbeIndex", item.probeIndex);
         }
 
-        // Reflection Probe Binding — only set uniforms on state transitions
         bool curHasReflection = (item.reflection && item.probe && !isCapturing);
         unsigned int curProbeCubemap = curHasReflection ? item.probe->cubemapID : 0;
 
@@ -997,7 +984,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         }
         else if (lastHadReflection && !isCapturing)
         {
-            // State transition: had reflection -> no reflection. Cleanup once.
             tm.ActiveTexture(TextureUnit::Texture15);
             tm.BindTexture(TextureType::TextureCubeMap, 0);
             shader->setBool_Fast(shader->m_Loc_u_HasReflection, "u_HasReflection", false);
@@ -1008,7 +994,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         lastHadReflection = curHasReflection;
         lastProbeCubemap = curProbeCubemap;
 
-        // Dynamic Mapping for Reflection Probes (Zero-Code Re-routing)
         if (isCapturing)
         {
             if (shader->IsDeferred())
@@ -1024,7 +1009,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
             }
         }
 
-        // Reflection data uniforms — only when item has reflection
         if (item.reflection && !isCapturing)
         {
             shader->setFloat_Fast(shader->m_Loc_u_Reflectivity, "u_Reflectivity", item.reflection->reflectivity);
@@ -1038,7 +1022,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         }
         else if (!isCapturing)
         {
-            // Only set defaults if previous item had reflection (avoid redundant sets)
             if (lastHadProbe)
             {
                 shader->setFloat_Fast(shader->m_Loc_u_Reflectivity, "u_Reflectivity", 0.0f);
@@ -1112,7 +1095,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
             rsm.SetDepthMask(!isTransparentPass);
         }
 
-        // Restore DrawBuffers mapping after draw
         if (isCapturing)
         {
             FramebufferAttachment atts[] = {FramebufferAttachment::Color0};
@@ -1237,6 +1219,5 @@ void RenderServiceImpl::RestoreCameraState(const glm::mat4& view, const glm::mat
     m_CameraState.nearPlane = nearPlane;
     m_CameraState.farPlane = farPlane;
 
-    // Also recalculate the current view-projection for things that rely on it
     m_GlobalState.currViewProj = m_GlobalState.jitteredProjection * view;
 }

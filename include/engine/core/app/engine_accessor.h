@@ -25,7 +25,6 @@ class EngineAccessor
 public:
     virtual ~EngineAccessor() = default;
 
-    // ─── Generic service access ───
     template <typename T>
     T& Get() const
     {
@@ -53,7 +52,6 @@ public:
         return *sys;
     }
 
-    // ─── Scene management ───
     Scene& GetScene() const;
     void LoadScene(const std::string& path, bool persistent = false);
     void QueueLoadScene(const std::string& path, bool persistent = false);
@@ -75,7 +73,6 @@ public:
     bool GetActionUp(const std::string& name) const;
     void SetCursorMode(CursorMode mode);
 
-    // ─── Localization ───
     void LoadLanguage(const std::string& path, const std::string& name = "");
     void SetLanguage(const std::string& name);
     std::string GetLanguage() const;
@@ -91,7 +88,6 @@ public:
         return "[MISSING: " + key + "]";
     }
 
-    // ─── System control ───
     void EnableSystem(const std::string& systemName, bool enable);
     void EnablePhysics(bool enable)
     {
@@ -141,9 +137,6 @@ public:
 
     const AppConfig& GetConfig() const;
     void ApplyConfig(const AppConfig& config);
-
-    // ─── Convenience accessors (delegate to Get<T>()) ───
-    // Removed via Hard-break. Use Get<T>() instead.
 
     void SetActiveScene(Scene* scene)
     {

@@ -3,6 +3,7 @@
 #include <ecs/interface/i_base_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
+#include <entt/entt.hpp>
 #include <bitset>
 #include <typeindex>
 #include <functional>
@@ -71,7 +72,6 @@ private:
     std::unordered_map<std::type_index, IBaseSystem*> m_TypeCache;
     uint32_t m_AvailableCapabilities = 0;
 
-    // Bitset optimization for SystemsConflict
     struct SystemBitset
     {
         std::bitset<128> read;

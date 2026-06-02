@@ -2,10 +2,7 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/yaml_parser.h>
-#include <ecs/logic/system_factory.h>
 #include <filesystem>
-
-REGISTER_SYSTEM(LocalizationSystem)
 
 LocalizationSystem::LocalizationSystem()
 {

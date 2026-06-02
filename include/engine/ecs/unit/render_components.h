@@ -67,6 +67,8 @@ struct AxisMaterialGPUState
     uint32_t emissiveMap = 0;
     uint32_t specularMap = 0;
 
+    uint64_t batchKey = 0;
+    bool batchKeyDirty = true;
     bool dirty = true;
 };
 

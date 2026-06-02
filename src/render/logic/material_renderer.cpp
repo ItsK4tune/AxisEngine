@@ -81,7 +81,6 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
     {
         auto& mat = *material;
 
-        // 1. Sync GPU State if dirty
         if (mat.gpu.dirty && m_ResourceManager)
         {
             auto getTexID = [&](const std::string& path) -> uint32_t {
@@ -100,7 +99,6 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
             mat.gpu.dirty = false;
         }
 
-        // Set standardized u_* names
         if (locs.u_Roughness != -1)
             shader->setFloat(locs.u_Roughness, mat.desc.pbr.roughness);
         if (locs.u_Metallic != -1)
@@ -141,8 +139,6 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
             shader->setInt(locs.u_BrdfLUT, 8);
         }
 
-        // BaseColor: must always be set when shader declares it
-        // Incorporate material opacity into alpha channel — shaders read u_BaseColor.a for final alpha
         if (locs.u_BaseColor != -1)
         {
             glm::vec4 baseColor = tintColor;
@@ -190,7 +186,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
             setTex(3, mat.gpu.roughnessMap, locs.u_RoughnessMap);
             setTex(4, mat.gpu.aoMap, locs.u_AOMap);
             setTex(5, mat.gpu.emissiveMap, locs.u_EmissiveMap);
-            setTex(6, mat.gpu.specularMap, locs.u_SpecularMap);
+            setTex(9, mat.gpu.specularMap, locs.u_SpecularMap);
         }
         return boundSomething;
     }
@@ -201,7 +197,6 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
             shader->setVec4(locs.u_BaseColor, tintColor);
         }
 
-        // Set standard fallback values
         if (locs.u_Roughness != -1)
             shader->setFloat(locs.u_Roughness, 0.5f);
         if (locs.u_Metallic != -1)
@@ -245,14 +240,14 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
         if (locs.u_EmissiveMap != -1)
             shader->setInt(locs.u_EmissiveMap, 5);
 
-        if (m_LastBoundTextures[6] != m_WhiteTextureID)
+        if (m_LastBoundTextures[9] != m_WhiteTextureID)
         {
-            tm.ActiveTexture(TextureUnit::Texture6);
+            tm.ActiveTexture(TextureUnit::Texture9);
             tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
-            m_LastBoundTextures[6] = m_WhiteTextureID;
+            m_LastBoundTextures[9] = m_WhiteTextureID;
         }
         if (locs.u_SpecularMap != -1)
-            shader->setInt(locs.u_SpecularMap, 6);
+            shader->setInt(locs.u_SpecularMap, 9);
 
         return false;
     }

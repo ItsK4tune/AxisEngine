@@ -155,7 +155,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine
 )
 
-# ─── Benchmark Samples App ───
+# Sample app
 if(ENABLE_EDITOR)
     file(GLOB SAMPLE_SCENARIO_SOURCES CONFIGURE_DEPENDS
         sample/src/scenarios/*.cpp

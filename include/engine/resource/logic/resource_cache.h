@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,7 +19,7 @@ public:
 
     ResourcePtr Get(const std::string& name) const
     {
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::shared_lock<std::shared_mutex> lock(m_Mutex);
         auto it = m_Cache.find(name);
         if (it != m_Cache.end())
         {
@@ -31,31 +32,31 @@ public:
     {
         if (!resource)
             return;
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Cache[name] = resource;
     }
 
     void Remove(const std::string& name)
     {
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Cache.erase(name);
     }
 
     bool Has(const std::string& name) const
     {
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::shared_lock<std::shared_mutex> lock(m_Mutex);
         return m_Cache.find(name) != m_Cache.end();
     }
 
     void Clear()
     {
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Cache.clear();
     }
 
     std::vector<std::string> GetAllNames() const
     {
-        std::lock_guard<std::mutex> lock(m_Mutex);
+        std::shared_lock<std::shared_mutex> lock(m_Mutex);
         std::vector<std::string> names;
         names.reserve(m_Cache.size());
         for (const auto& pair : m_Cache)
@@ -67,5 +68,5 @@ public:
 
 private:
     std::unordered_map<std::string, ResourcePtr> m_Cache;
-    mutable std::mutex m_Mutex;
+    mutable std::shared_mutex m_Mutex;
 };

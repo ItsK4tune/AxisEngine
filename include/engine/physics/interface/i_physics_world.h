@@ -84,5 +84,9 @@ public:
                                                                const glm::vec3& pivotInA, const glm::vec3& pivotInB,
                                                                const glm::vec3& axisInA, const glm::vec3& axisInB) = 0;
 
+    virtual void CollectActiveCollisions(std::vector<CollisionInfo>& out)
+    {
+        out = GetActiveCollisions();
+    }
     virtual std::vector<CollisionInfo> GetActiveCollisions() = 0;
 };

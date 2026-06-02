@@ -24,9 +24,10 @@ public:
     {
         std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Services[std::type_index(typeid(T))] = static_cast<void*>(service);
-        // Invalidate per-type cache
+        uint64_t globalVer = m_Version.load(std::memory_order_acquire);
         TypeCache<T>::ptr.store(service, std::memory_order_release);
         TypeCache<T>::valid.store(true, std::memory_order_release);
+        TypeCache<T>::version.store(globalVer, std::memory_order_release);
     }
 
     template <typename T>
@@ -41,13 +42,11 @@ public:
     template <typename T>
     T* Resolve() const
     {
-        // Fast path: per-type atomic cache (no lock, no map lookup)
-        // Version check ensures cache is invalidated after ClearAll()
         uint64_t globalVer = m_Version.load(std::memory_order_acquire);
         if (TypeCache<T>::version.load(std::memory_order_acquire) == globalVer &&
             TypeCache<T>::valid.load(std::memory_order_acquire))
             return TypeCache<T>::ptr.load(std::memory_order_acquire);
-        // Slow path: first lookup or stale cache, populate cache
+
         std::shared_lock<std::shared_mutex> lock(m_Mutex);
         auto it = m_Services.find(std::type_index(typeid(T)));
         if (it != m_Services.end())
@@ -117,7 +116,6 @@ public:
         std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Services.clear();
         m_NamedServices.clear();
-        // Bump version — all per-type caches become stale
         m_Version.fetch_add(1, std::memory_order_release);
     }
 
@@ -130,7 +128,6 @@ private:
     mutable std::shared_mutex m_Mutex;
     std::atomic<uint64_t> m_Version{0};
 
-    // Per-type atomic cache: eliminates lock+map lookup for hot-path Resolve<T>()
     template <typename T>
     struct TypeCache
     {

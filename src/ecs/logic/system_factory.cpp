@@ -1,4 +1,13 @@
 #include <ecs/logic/system_factory.h>
+#include <core/logic/localization_system.h>
+
+namespace
+{
+const bool LocalizationSystemRegistered = []() {
+    SystemFactory::Register("LocalizationSystem", []() { return std::make_unique<LocalizationSystem>(); });
+    return true;
+}();
+}
 
 std::map<std::string, SystemFactory::Creator>& SystemFactory::GetRegistry()
 {

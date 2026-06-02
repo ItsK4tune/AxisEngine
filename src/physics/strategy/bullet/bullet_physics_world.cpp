@@ -523,15 +523,32 @@ std::shared_ptr<IConstraint> BulletPhysicsWorld::CreateFixedConstraint(std::shar
 std::vector<CollisionInfo> BulletPhysicsWorld::GetActiveCollisions()
 {
     std::vector<CollisionInfo> collisions;
-    if (!m_DynamicsWorld)
-        return collisions;
+    CollectActiveCollisions(collisions);
+    return collisions;
+}
 
-    int numManifolds = m_DynamicsWorld->getDispatcher()->getNumManifolds();
+void BulletPhysicsWorld::CollectActiveCollisions(std::vector<CollisionInfo>& collisions)
+{
+    collisions.clear();
+    if (!m_DynamicsWorld)
+        return;
+
+    btDispatcher* dispatcher = m_DynamicsWorld->getDispatcher();
+    if (!dispatcher)
+        return;
+
+    int numManifolds = dispatcher->getNumManifolds();
+    collisions.reserve(numManifolds);
     for (int i = 0; i < numManifolds; i++)
     {
-        btPersistentManifold* contactManifold = m_DynamicsWorld->getDispatcher()->getManifoldByIndexInternal(i);
+        btPersistentManifold* contactManifold = dispatcher->getManifoldByIndexInternal(i);
+        if (!contactManifold)
+            continue;
+
         const btCollisionObject* obA = contactManifold->getBody0();
         const btCollisionObject* obB = contactManifold->getBody1();
+        if (!obA || !obB)
+            continue;
 
         bool hasCollision = false;
         for (int j = 0; j < contactManifold->getNumContacts(); j++)
@@ -560,5 +577,4 @@ std::vector<CollisionInfo> BulletPhysicsWorld::GetActiveCollisions()
             }
         }
     }
-    return collisions;
 }

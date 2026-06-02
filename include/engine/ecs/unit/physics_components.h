@@ -1,7 +1,5 @@
 #pragma once
 
-// Forcing recompile - 2026-04-01-T11-53-00
-
 #include <physics/interface/i_character_controller.h>
 #include <physics/interface/i_constraint.h>
 #include <physics/interface/i_rigid_body.h>
@@ -27,7 +25,6 @@ struct RigidShapeComponent
     float friction = 0.5f;
     float restitution = 0.0f;
 
-    // For Compound shapes
     struct ChildShape
     {
         ShapeType type = ShapeType::Box;
@@ -62,8 +59,6 @@ struct RigidBodyComponent
     float linearDamping = 0.0f;
     float angularDamping = 0.0f;
 };
-
-// ─── Free functions for RigidBodyComponent (ECS-compliant) ───
 
 inline void SetRestitution(RigidBodyComponent& rb, float restitution)
 {
@@ -120,8 +115,6 @@ struct CharacterControllerComponent
     bool jumpRequested = false;
     bool isOnGround = false;
 };
-
-// ─── Free functions for CharacterControllerComponent (ECS-compliant) ───
 
 inline void SetWorldTransform(CharacterControllerComponent& cc, const glm::vec3& pos, const glm::quat& rot)
 {

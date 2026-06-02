@@ -6,6 +6,7 @@
 #include <scene/logic/scene.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
+#include <cmath>
 
 PhysicsTransformSync::PhysicsTransformSync(Scene& scene, IPhysicsWorld& physics) : m_Scene(scene), m_Physics(physics)
 {
@@ -14,6 +15,7 @@ PhysicsTransformSync::PhysicsTransformSync(Scene& scene, IPhysicsWorld& physics)
 void PhysicsTransformSync::Initialize()
 {
     m_simulationQuery.Update(m_Scene.registry);
+    m_LastSyncedVersions.reserve(m_simulationQuery.GetEntities().size());
 }
 
 void PhysicsTransformSync::OnComponentChanged(entt::registry& registry, entt::entity entity)
@@ -46,9 +48,9 @@ void PhysicsTransformSync::SyncToPhysics()
 
         uint32_t currentVersion = world->version;
         if (currentVersion == 0)
-            continue;  // worldMatrix not yet computed, skip to avoid syncing identity
-        if (m_LastSyncedVersions.find(entity) != m_LastSyncedVersions.end() &&
-            m_LastSyncedVersions[entity] == currentVersion)
+            continue;
+        auto lastSyncedIt = m_LastSyncedVersions.find(entity);
+        if (lastSyncedIt != m_LastSyncedVersions.end() && lastSyncedIt->second == currentVersion)
         {
             continue;
         }
@@ -101,14 +103,14 @@ void PhysicsTransformSync::SyncFromPhysics()
         if (info && !info->isActive)
             continue;
 
-        // Anti-snapback: If the user is dragging the object in the editor, skip syncing from physics
         if (world->isDirty)
             continue;
 
         bool isDynamic = !rb.body->IsStatic() && !rb.body->IsKinematic();
         bool hasParent = (hier && hier->parent != entt::null);
 
-        if (isDynamic && (rb.body->IsActive() || m_LastSyncedVersions.find(entity) == m_LastSyncedVersions.end()))
+        auto lastSyncedIt = m_LastSyncedVersions.find(entity);
+        if (isDynamic && (rb.body->IsActive() || lastSyncedIt == m_LastSyncedVersions.end()))
         {
             glm::vec3 worldPos;
             glm::quat worldRot;
@@ -116,18 +118,20 @@ void PhysicsTransformSync::SyncFromPhysics()
 
             glm::vec3 Rt(0.0f);
             glm::quat Rr(1.0f, 0.0f, 0.0f, 0.0f);
-            glm::vec3 Rs(1.0f);
+            bool hasRootPose = false;
             if (auto* mesh = m_Scene.registry.try_get<MeshRendererComponent>(entity))
             {
                 if (mesh->model)
                 {
                     Rt = mesh->model->GetRootTranslation();
                     Rr = mesh->model->GetRootRotation();
-                    Rs = mesh->model->GetRootScale();
                 }
             }
+            hasRootPose = std::abs(Rt.x) > 0.0001f || std::abs(Rt.y) > 0.0001f || std::abs(Rt.z) > 0.0001f ||
+                          std::abs(Rr.x) > 0.0001f || std::abs(Rr.y) > 0.0001f || std::abs(Rr.z) > 0.0001f ||
+                          std::abs(Rr.w - 1.0f) > 0.0001f;
 
-            if (hasParent)  // ALWAYS factor out parent transform to maintain relative ECS coordinate integrity!
+            if (hasParent)
             {
                 if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
                 {
@@ -150,23 +154,34 @@ void PhysicsTransformSync::SyncFromPhysics()
             }
             else
             {
-                glm::mat4 targetMtx = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
+                if (!hasRootPose)
+                {
+                    rot->value = worldRot;
+                    pos->value = worldPos;
+                    world->worldMatrix = glm::translate(glm::mat4(1.0f), pos->value) * glm::mat4_cast(rot->value) *
+                                         glm::scale(glm::mat4(1.0f), scl->value);
+                }
+                else
+                {
+                    glm::mat4 targetMtx = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
 
-                glm::vec3 Pt, Ps, Pskew;
-                glm::quat Pr;
-                glm::vec4 Pperspective;
-                glm::decompose(targetMtx, Ps, Pr, Pt, Pskew, Pperspective);
+                    glm::vec3 Pt, Ps, Pskew;
+                    glm::quat Pr;
+                    glm::vec4 Pperspective;
+                    glm::decompose(targetMtx, Ps, Pr, Pt, Pskew, Pperspective);
 
-                rot->value = Pr * glm::inverse(Rr);
-                glm::vec3 scaledRt = scl->value * Rt;
-                pos->value = Pt - (rot->value * scaledRt);
+                    rot->value = Pr * glm::inverse(Rr);
+                    glm::vec3 scaledRt = scl->value * Rt;
+                    pos->value = Pt - (rot->value * scaledRt);
 
-                glm::mat4 newLocalMtx = glm::translate(glm::mat4(1.0f), pos->value) * glm::mat4_cast(rot->value) *
-                                        glm::scale(glm::mat4(1.0f), scl->value);
-                world->worldMatrix = newLocalMtx;
+                    glm::mat4 newLocalMtx = glm::translate(glm::mat4(1.0f), pos->value) *
+                                            glm::mat4_cast(rot->value) * glm::scale(glm::mat4(1.0f), scl->value);
+                    world->worldMatrix = newLocalMtx;
+                }
             }
 
             world->isDirty = false;
+            world->version++;
             m_LastSyncedVersions[entity] = world->version;
 
             if (hier)

@@ -784,15 +784,19 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     });
 
     DrawComponent<AxisMaterialComponent>("Material", reg, entity, [](auto& mat) {
-        ImGui::DragFloat("Opacity", &mat.desc.opacity, 0.01f, 0.0f, 1.0f);
-        ImGui::ColorEdit3("Emission", &mat.desc.emission.r);
-        ImGui::DragFloat2("UV Scale", &mat.desc.uvScale.x, 0.01f);
-        ImGui::DragFloat2("UV Offset", &mat.desc.uvOffset.x, 0.01f);
+        bool changed = false;
+        changed |= ImGui::DragFloat("Opacity", &mat.desc.opacity, 0.01f, 0.0f, 1.0f);
+        changed |= ImGui::ColorEdit3("Emission", &mat.desc.emission.r);
+        changed |= ImGui::DragFloat2("UV Scale", &mat.desc.uvScale.x, 0.01f);
+        changed |= ImGui::DragFloat2("UV Offset", &mat.desc.uvOffset.x, 0.01f);
 
         ImGui::Separator();
-        ImGui::DragFloat("Roughness", &mat.desc.pbr.roughness, 0.01f, 0.0f, 1.0f);
-        ImGui::DragFloat("Metallic", &mat.desc.pbr.metallic, 0.01f, 0.0f, 1.0f);
-        ImGui::DragFloat("AO", &mat.desc.pbr.ao, 0.01f, 0.0f, 1.0f);
+        changed |= ImGui::DragFloat("Roughness", &mat.desc.pbr.roughness, 0.01f, 0.0f, 1.0f);
+        changed |= ImGui::DragFloat("Metallic", &mat.desc.pbr.metallic, 0.01f, 0.0f, 1.0f);
+        changed |= ImGui::DragFloat("AO", &mat.desc.pbr.ao, 0.01f, 0.0f, 1.0f);
+
+        if (changed)
+            mat.gpu.batchKeyDirty = true;
     });
 
     DrawComponent<UITransformComponent>("UI Transform", reg, entity, [](auto& uiTransform) {

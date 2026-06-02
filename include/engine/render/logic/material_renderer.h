@@ -50,7 +50,7 @@ public:
 
     void ResetTextureState()
     {
-        for (int i = 0; i < 8; ++i)
+        for (int i = 0; i < TextureStateSlots; ++i)
         {
             m_LastBoundTextures[i] = (unsigned int)-1;
         }
@@ -85,5 +85,6 @@ private:
     static SkyboxCache s_SkyboxCache;
     static std::mutex s_SkyboxMutex;
 
-    unsigned int m_LastBoundTextures[8] = {0};
+    static constexpr int TextureStateSlots = 32;
+    unsigned int m_LastBoundTextures[TextureStateSlots] = {0};
 };

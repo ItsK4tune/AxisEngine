@@ -16,11 +16,19 @@ public:
 
     ~CachedQuery()
     {
+        DisconnectSignals();
     }
 
     void Update(entt::registry& registry)
     {
-        if (!m_SignalsConnected)
+        if (m_Registry != &registry)
+        {
+            DisconnectSignals();
+            m_Registry = &registry;
+            m_Dirty = true;
+        }
+
+        if (!m_SignalsConnected && m_Registry)
         {
             (registry.on_construct<Components>().template connect<&CachedQuery::OnComponentAddedOrRemoved>(this), ...);
             (registry.on_destroy<Components>().template connect<&CachedQuery::OnComponentAddedOrRemoved>(this), ...);
@@ -73,7 +81,20 @@ private:
         m_Dirty = true;
     }
 
+    void DisconnectSignals()
+    {
+        if (!m_Registry || !m_SignalsConnected)
+            return;
+
+        (m_Registry->on_construct<Components>().template disconnect<&CachedQuery::OnComponentAddedOrRemoved>(this),
+         ...);
+        (m_Registry->on_destroy<Components>().template disconnect<&CachedQuery::OnComponentAddedOrRemoved>(this),
+         ...);
+        m_SignalsConnected = false;
+    }
+
     std::vector<entt::entity> m_CachedEntities;
+    entt::registry* m_Registry = nullptr;
     bool m_Dirty;
     bool m_SignalsConnected;
 };

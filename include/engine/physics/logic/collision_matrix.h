@@ -35,6 +35,7 @@ public:
 
     void Reset();
 
+    bool IsEmpty() const;
     bool CanCollide(const std::string& tag1, const std::string& tag2, const std::string& name1,
                     const std::string& name2) const;
 

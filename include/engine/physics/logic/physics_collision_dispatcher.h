@@ -1,10 +1,10 @@
 #pragma once
 
+#include <physics/interface/i_physics_world.h>
 #include <entt/entt.hpp>
 #include <unordered_set>
 #include <vector>
 
-class IPhysicsWorld;
 struct Scene;
 
 struct CollisionPair
@@ -39,4 +39,6 @@ private:
     IPhysicsWorld& m_Physics;
 
     std::unordered_set<CollisionPair, CollisionPairHash> m_activeCollisions;
+    std::unordered_set<CollisionPair, CollisionPairHash> m_currentCollisions;
+    std::vector<CollisionInfo> m_CurrentCollisionsList;
 };

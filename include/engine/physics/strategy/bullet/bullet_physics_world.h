@@ -110,6 +110,7 @@ public:
                                                        const glm::vec3& pivotInA, const glm::vec3& pivotInB,
                                                        const glm::vec3& axisInA, const glm::vec3& axisInB) override;
 
+    void CollectActiveCollisions(std::vector<CollisionInfo>& out) override;
     std::vector<CollisionInfo> GetActiveCollisions() override;
 
 private:

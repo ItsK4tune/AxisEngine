@@ -39,7 +39,8 @@ void JobSystem::Shutdown()
     {
         std::unique_lock<std::mutex> lock(m_QueueMutex);
         m_IsRunning = false;
-        while (!m_JobQueue.empty()) m_JobQueue.pop();
+        while (!m_JobQueue.empty())
+            m_JobQueue.pop();
     }
 
     m_Condition.notify_all();
@@ -72,7 +73,6 @@ void JobSystem::Execute(std::function<void()> job, JobCounter* counter)
 
 void JobSystem::Wait()
 {
-    // Use separate wait mutex — does NOT block workers from dequeuing
     std::unique_lock<std::mutex> lock(m_WaitMutex);
     m_WaitCondition.wait(lock, [this]() { return m_ActiveJobs.load(std::memory_order_acquire) == 0; });
 }
@@ -81,7 +81,6 @@ void JobSystem::Wait(JobCounter* counter)
 {
     if (!counter)
         return;
-    // Use separate wait mutex — does NOT block workers from dequeuing
     std::unique_lock<std::mutex> lock(m_WaitMutex);
     m_CounterCondition.wait(lock, [counter]() { return counter->load(std::memory_order_acquire) == 0; });
 }
@@ -108,8 +107,6 @@ void JobSystem::WorkerLoop()
             job = std::move(m_JobQueue.front());
             m_JobQueue.pop();
         }
-        // Lock is released here — other workers can dequeue immediately
-
         try
         {
             if (job.task)

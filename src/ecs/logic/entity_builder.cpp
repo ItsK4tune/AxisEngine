@@ -85,6 +85,7 @@ void BindMaterialTexture(AxisMaterialComponent& mat, MaterialTextureSlot slot, c
     *path = textureNameOrPath;
     auto texture = resources.GetTextureAuto(textureNameOrPath);
     *gpuMap = texture ? texture->id : 0;
+    mat.gpu.batchKeyDirty = true;
     mat.gpu.dirty = !texture;
 }
 
@@ -318,7 +319,8 @@ EntityBuilder& EntityBuilder::WithMeshAuto(const std::string& modelNameOrPath, c
 
 EntityBuilder& EntityBuilder::WithMaterial(const AxisMaterialComponent& material)
 {
-    m_Scene.registry.emplace_or_replace<AxisMaterialComponent>(m_Entity, material);
+    auto& mat = m_Scene.registry.emplace_or_replace<AxisMaterialComponent>(m_Entity, material);
+    mat.gpu.batchKeyDirty = true;
     return *this;
 }
 
@@ -328,6 +330,7 @@ EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const 
     auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
     mat.desc.pbr.roughness = glm::clamp(1.0f - (shininess / 128.0f), 0.0f, 1.0f);
     mat.desc.pbr.metallic = 0.0f;
+    mat.gpu.batchKeyDirty = true;
     return *this;
 }
 
@@ -337,6 +340,7 @@ EntityBuilder& EntityBuilder::WithPBRMaterial(float metallic, float roughness, f
     mat.desc.pbr.metallic = metallic;
     mat.desc.pbr.roughness = roughness;
     mat.desc.pbr.ao = ao;
+    mat.gpu.batchKeyDirty = true;
     return *this;
 }
 
@@ -437,6 +441,7 @@ EntityBuilder& EntityBuilder::WithMaterialEmission(const glm::vec3& emission)
 {
     auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
     mat.desc.emission = emission;
+    mat.gpu.batchKeyDirty = true;
     mat.gpu.dirty = true;
     return *this;
 }

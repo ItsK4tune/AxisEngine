@@ -1,5 +1,4 @@
 #include <physics/logic/collision_matrix.h>
-#include <iostream>
 
 void CollisionMatrix::IgnoreTagCollision(const std::string& tag1, const std::string& tag2)
 {
@@ -17,13 +16,18 @@ void CollisionMatrix::Reset()
     m_IgnoredNames.clear();
 }
 
+bool CollisionMatrix::IsEmpty() const
+{
+    return m_IgnoredTags.empty() && m_IgnoredNames.empty();
+}
+
 bool CollisionMatrix::CanCollide(const std::string& tag1, const std::string& tag2, const std::string& name1,
                                  const std::string& name2) const
 {
-    if (m_IgnoredTags.find({tag1, tag2}) != m_IgnoredTags.end())
+    if (!m_IgnoredTags.empty() && m_IgnoredTags.find({tag1, tag2}) != m_IgnoredTags.end())
         return false;
 
-    if (m_IgnoredNames.find({name1, name2}) != m_IgnoredNames.end())
+    if (!m_IgnoredNames.empty() && m_IgnoredNames.find({name1, name2}) != m_IgnoredNames.end())
         return false;
 
     return true;

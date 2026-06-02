@@ -1,17 +1,7 @@
 #pragma once
 
-#include <scene/logic/scene.h>
-#include <glm/glm.hpp>
-#include <vector>
-
-class Shader;
-class Model;
-#include <core/unit/aabb.h>
-
-class FrustumCuller;
-struct AxisMaterialComponent;
-
 #include <render/type/render_data.h>
+#include <vector>
 
 class RenderQueue
 {

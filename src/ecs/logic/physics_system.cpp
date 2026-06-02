@@ -2,7 +2,6 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 
-// Forcing recompile - 2026-04-01-T11-55-00
 #include <core/logic/config_manager.h>
 #include <ecs/logic/cached_query.h>
 #include <ecs/logic/system_factory.h>
@@ -89,7 +88,8 @@ void PhysicsSystem::Update(Scene& scene, float dt)
     if (!m_Enabled)
         return;
 
-    IPhysicsWorld* physicsWorld = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+    auto& sl = ServiceLocator::Instance();
+    IPhysicsWorld* physicsWorld = sl.Resolve<IPhysicsWorld>();
     if (!physicsWorld)
         return;
 
@@ -99,44 +99,35 @@ void PhysicsSystem::Update(Scene& scene, float dt)
         m_LastScene = &scene;
         m_LastPhysicsWorld = physicsWorld;
 
-        physicsWorld->SetCollisionFilter([pRegistry = &scene.registry](entt::entity eA, entt::entity eB) -> bool {
-            if (!pRegistry || !pRegistry->valid(eA) || !pRegistry->valid(eB))
-                return false;
+        auto* collisionMatrix = sl.Resolve<CollisionMatrix>();
+        physicsWorld->SetCollisionFilter(
+            [pRegistry = &scene.registry, collisionMatrix](entt::entity eA, entt::entity eB) -> bool {
+                if (!pRegistry || !pRegistry->valid(eA) || !pRegistry->valid(eB))
+                    return false;
 
-            if (pRegistry->all_of<RigidBodyComponent>(eA) && !pRegistry->get<RigidBodyComponent>(eA).isCollisionEnabled)
-                return false;
-            if (pRegistry->all_of<RigidBodyComponent>(eB) && !pRegistry->get<RigidBodyComponent>(eB).isCollisionEnabled)
-                return false;
+                if (auto* rbA = pRegistry->try_get<RigidBodyComponent>(eA); rbA && !rbA->isCollisionEnabled)
+                    return false;
+                if (auto* rbB = pRegistry->try_get<RigidBodyComponent>(eB); rbB && !rbB->isCollisionEnabled)
+                    return false;
 
-            std::string tagA = "", nameA = "";
-            std::string tagB = "", nameB = "";
+                if (!collisionMatrix || collisionMatrix->IsEmpty())
+                    return true;
 
-            if (pRegistry->all_of<InfoComponent>(eA))
-            {
-                auto& info = pRegistry->get<InfoComponent>(eA);
-                tagA = info.tag;
-                nameA = info.name;
-            }
-            if (pRegistry->all_of<InfoComponent>(eB))
-            {
-                auto& info = pRegistry->get<InfoComponent>(eB);
-                tagB = info.tag;
-                nameB = info.name;
-            }
+                static const std::string emptyString;
+                const auto* infoA = pRegistry->try_get<InfoComponent>(eA);
+                const auto* infoB = pRegistry->try_get<InfoComponent>(eB);
+                const std::string& tagA = infoA ? infoA->tag : emptyString;
+                const std::string& tagB = infoB ? infoB->tag : emptyString;
+                const std::string& nameA = infoA ? infoA->name : emptyString;
+                const std::string& nameB = infoB ? infoB->name : emptyString;
 
-            auto matrix = ServiceLocator::Instance().Resolve<CollisionMatrix>();
-            if (matrix)
-            {
-                return matrix->CanCollide(tagA, tagB, nameA, nameB);
-            }
-            return true;
-        });
+                return collisionMatrix->CanCollide(tagA, tagB, nameA, nameB);
+            });
 
         scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
         scene.registry.on_destroy<CharacterControllerComponent>()
             .connect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
 
-        // Listen for new shapes to initialize physics
         scene.registry.on_construct<RigidShapeComponent>().connect<&PhysicsSystem::OnShapeConstructed>(this);
     }
 
@@ -148,11 +139,10 @@ void PhysicsSystem::Update(Scene& scene, float dt)
 
     m_transformSync->SyncToPhysics();
 
-    // Check for newly added components that need assembly
     auto viewShape = scene.registry.view<RigidShapeComponent>(entt::exclude<RigidBodyComponent>);
     for (auto entity : viewShape)
     {
-        scene.registry.emplace<RigidBodyComponent>(entity);  // Default to static if only shape exists
+        scene.registry.emplace<RigidBodyComponent>(entity);
     }
 
     auto viewInit = scene.registry.view<RigidShapeComponent, RigidBodyComponent>();
@@ -244,7 +234,6 @@ void PhysicsSystem::OnCharacterControllerDestroyed(entt::registry& registry, ent
 
 void PhysicsSystem::OnShapeConstructed(entt::registry& registry, entt::entity entity)
 {
-    // PhysicsSystem::Update will handle assembly
 }
 
 void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity, RigidShapeComponent& shape,
@@ -255,7 +244,6 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
     glm::vec3 worldPos = pos ? pos->value : glm::vec3(0, 0, 0);
     glm::quat worldRot = rot ? rot->value : glm::quat(1, 0, 0, 0);
 
-    // Re-resolve world transform if possible, but only if it has been computed
     if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
     {
         if (world->version > 0)

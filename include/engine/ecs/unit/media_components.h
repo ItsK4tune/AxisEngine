@@ -49,8 +49,6 @@ struct VideoPlayerComponent
     std::shared_ptr<VideoDecoder> decoder = nullptr;
 };
 
-// ─── Free functions for VideoPlayerComponent (ECS-compliant) ───
-
 inline void PlayVideo(VideoPlayerComponent& vp)
 {
     vp.isPlaying = true;
