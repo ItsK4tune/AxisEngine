@@ -84,6 +84,11 @@ void ParticleSystem::Update(Scene& scene, float dt)
 
 void ParticleSystem::RenderTransparentPass(Scene& scene, int width, int height, float alpha)
 {
+    RenderParticles(scene, width, height, alpha);
+}
+
+void ParticleSystem::RenderParticles(Scene& scene, int width, int height, float alpha)
+{
     if (!m_Enabled || !m_Context)
         return;
 
@@ -147,8 +152,11 @@ void ParticleSystem::RenderTransparentPass(Scene& scene, int width, int height, 
     }
 
     rsm.SetDepthMask(true);
+    rsm.SetDepthFunc(CompareFunc::Less);
     rsm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
     rsm.Disable(ServerCapability::Blend);
+    rsm.Enable(ServerCapability::CullFace);
+    rsm.SetCullFace(CullMode::Back);
 }
 
 std::vector<entt::id_type> ParticleSystem::GetReadComponents() const

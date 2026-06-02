@@ -120,6 +120,8 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     auto* shadowSys = m_ShadowService;
     if (!geoSys)
         return;
+    if (!geoSys->IsDeferredRenderingEnabled())
+        return;
     auto& gBuffer = geoSys->GetGBuffer();
 
     rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, gBuffer.GetFBO());

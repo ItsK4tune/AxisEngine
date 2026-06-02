@@ -4,6 +4,7 @@
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
 #include <ecs/interface/i_geometry_service.h>
+#include <ecs/interface/i_lighting_service.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/logic/entity_manager.h>
 #include <ecs/logic/shadow_system.h>
@@ -21,6 +22,7 @@
 #include <render/logic/render_core.h>
 #include <render/unit/gbuffer.h>
 #include <render/unit/render_command.h>
+#include <render/unit/render_queue.h>
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/shader.h>
 #include <scene/logic/scene.h>
@@ -112,15 +114,38 @@ void DecalSystem::RenderAlphaPass(Scene& scene, int width, int height, float alp
         return;
     m_ScreenWidth = width;
     m_ScreenHeight = height;
-    Render(scene);
+
+    auto& sl = ServiceLocator::Instance();
+    if (!m_GeoService)
+        m_GeoService = sl.Resolve<IGeometryService>();
+
+    if (m_GeoService && m_GeoService->IsDeferredRenderingEnabled())
+        return;
+
+    RenderDecals(scene, false);
 }
 
 void DecalSystem::Render(Scene& scene)
 {
+    if (!m_Enabled)
+        return;
+
+    auto& sl = ServiceLocator::Instance();
+    if (!m_GeoService)
+        m_GeoService = sl.Resolve<IGeometryService>();
+
+    if (!m_GeoService || !m_GeoService->IsDeferredRenderingEnabled())
+        return;
+
+    RenderDecals(scene, true);
+}
+
+void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
+{
     static bool logEntry = false;
     if (!logEntry)
     {
-        LOGGER_INFO("DecalSystem") << "DecalSystem::Render called for the first time.";
+        LOGGER_INFO("DecalSystem") << "DecalSystem::RenderDecals called for the first time.";
         logEntry = true;
     }
     if (!m_Enabled)
@@ -135,7 +160,7 @@ void DecalSystem::Render(Scene& scene)
         m_GraphicsContext = sl.Resolve<IGraphicsContext>();
 
     auto* geoSys = m_GeoService;
-    if (!geoSys)
+    if (isDeferred && !geoSys)
     {
         static bool logGeo = false;
         if (!logGeo)
@@ -177,7 +202,6 @@ void DecalSystem::Render(Scene& scene)
     m_ScreenWidth = width;
     m_ScreenHeight = height;
 
-    bool isDeferred = geoSys->IsDeferredRenderingEnabled();
     Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();
     if (!shader)
         return;
@@ -227,9 +251,6 @@ void DecalSystem::Render(Scene& scene)
     else
     {
         auto* rs = m_RenderService;
-        if (rs && geoSys->IsDeferredRenderingEnabled())
-            return;
-
         uint32_t fbo = rs ? rs->GetMainFBO() : 0;
         gc.GetRenderTargetManager().BindFramebuffer(FramebufferTarget::Framebuffer, fbo);
 
@@ -251,6 +272,19 @@ void DecalSystem::Render(Scene& scene)
             shader->setInt("u_ShadowMapDir", 10);
             shader->setInt("u_ShadowMapPoint", 11);
             shader->setInt("u_ShadowMapSpot", 12);
+        }
+
+        auto* lightingService = sl.Resolve<ILightingService>();
+        if (lightingService && rs)
+        {
+            RenderSceneData sceneData;
+            sceneData.lights = rs->GetRenderQueueObj().GetLights();
+            sceneData.cameraPosition = rs->GetCameraPosition();
+            sceneData.viewMatrix = rs->GetViewMatrix();
+            sceneData.projMatrix = rs->GetProjectionMatrix();
+            sceneData.nearPlane = rs->GetNearPlane();
+            sceneData.farPlane = rs->GetFarPlane();
+            lightingService->UploadLightData(sceneData, shader);
         }
     }
 
@@ -380,6 +414,7 @@ void DecalSystem::Render(Scene& scene)
     sm.SetDepthMask(true);
     sm.SetDepthFunc(CompareFunc::Less);
     sm.Disable(ServerCapability::Blend);
+    sm.Enable(ServerCapability::CullFace);
     sm.SetCullFace(CullMode::Back);
 }
 

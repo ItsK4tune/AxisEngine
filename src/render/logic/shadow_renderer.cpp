@@ -8,12 +8,14 @@
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <core/type/lighting_mode.h>
+#include <ecs/logic/terrain_system.h>
 #include <render/interface/i_draw_context.h>
 #include <render/unit/command_queue.h>
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/model.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
+#include <scene/logic/scene.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace
@@ -41,6 +43,21 @@ void ExecuteAndClear(std::vector<CommandQueue>& queues)
     {
         ExecuteAndClear(queue);
     }
+}
+
+void RenderTerrainShadow(Shader* shader, const Frustum* lightFrustum, const glm::vec3& cullingOrigin,
+                         float distanceCullingSq)
+{
+    if (!shader)
+        return;
+
+    auto& sl = ServiceLocator::Instance();
+    auto* scene = sl.Resolve<Scene>();
+    auto* terrainSystem = sl.Resolve<TerrainSystem>();
+    if (!scene || !terrainSystem)
+        return;
+
+    terrainSystem->RenderShadowPass(*scene, *shader, lightFrustum, cullingOrigin, distanceCullingSq);
 }
 }  // namespace
 
@@ -196,6 +213,12 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         JobSystem::Instance().Wait(&counter);
         ExecuteAndClear(m_MainQueue);
         ExecuteAndClear(m_ThreadQueues);
+
+        shaderDir->use();
+        shaderDir->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
+        shaderDir->setBool("u_HasAnimation", false);
+        RenderTerrainShadow(shaderDir, m_ShadowFrustumCullingEnabled ? &lightFrustum : nullptr, camPos,
+                            m_ShadowDistanceCullingSq);
     }
 
     // Point Lights
@@ -295,6 +318,15 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             JobSystem::Instance().Wait(&counter);
             ExecuteAndClear(m_MainQueue);
             ExecuteAndClear(m_ThreadQueues);
+
+            shaderPoint->use();
+            for (int k = 0; k < 6; ++k)
+                shaderPoint->setMat4("u_ShadowMatrices[" + std::to_string(k) + "]", shadowTransforms[k]);
+            shaderPoint->setFloat("u_FarPlane", farP);
+            shaderPoint->setVec3("u_LightPos", lightPos);
+            shaderPoint->setInt("u_LightIndex", pIdx);
+            shaderPoint->setBool("u_HasAnimation", false);
+            RenderTerrainShadow(shaderPoint, nullptr, lightPos, farP * farP);
         }
     }
 
@@ -380,6 +412,11 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             JobSystem::Instance().Wait(&counter);
             ExecuteAndClear(m_MainQueue);
             ExecuteAndClear(m_ThreadQueues);
+
+            shaderSpot->use();
+            shaderSpot->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
+            shaderSpot->setBool("u_HasAnimation", false);
+            RenderTerrainShadow(shaderSpot, m_ShadowFrustumCullingEnabled ? &lightFrustum : nullptr, lightPos, farPSq);
         }
     }
 

@@ -464,7 +464,8 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "ReceiveShadow", mr->receiveShadow ? "true" : "false");
         SerialWriteKV(f, ti, "IgnoreDepth", mr->ignoreDepth ? "true" : "false");
         SerialWriteKV(f, ti, "Color", Vec4Str(mr->color));
-        SerialWriteKV(f, ti, "RenderMode", std::to_string((int)mr->renderMode));
+        int renderModeValue = (mr->renderMode == RenderMode::ForceForward) ? (int)RenderMode::ForceForward : 0;
+        SerialWriteKV(f, ti, "RenderMode", std::to_string(renderModeValue));
     }
 
     if (auto* mat = reg.try_get<AxisMaterialComponent>(entity))

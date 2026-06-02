@@ -540,11 +540,11 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::Checkbox("Receive Shadow", &mesh.receiveShadow);
         ImGui::Checkbox("Ignore Depth", &mesh.ignoreDepth);
 
-        static const char* renderModes[] = {"Auto", "Force Forward", "Force Deferred"};
-        int currentMode = (int)mesh.renderMode;
+        static const char* renderModes[] = {"Auto", "Force Forward"};
+        int currentMode = (mesh.renderMode == RenderMode::ForceForward) ? 1 : 0;
         if (ImGui::Combo("Render Mode", &currentMode, renderModes, IM_ARRAYSIZE(renderModes)))
         {
-            mesh.renderMode = (RenderMode)currentMode;
+            mesh.renderMode = (currentMode == 1) ? RenderMode::ForceForward : RenderMode::Auto;
         }
 
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();

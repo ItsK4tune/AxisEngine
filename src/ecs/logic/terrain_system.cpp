@@ -19,6 +19,7 @@
 #include <render/interface/i_shader_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/logic/frustum_culler.h>
+#include <render/unit/frustum.h>
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/shader.h>
 #include <scene/logic/scene.h>
@@ -222,6 +223,69 @@ void TerrainSystem::Render(Scene& scene)
             }
         }
     }
+}
+
+void TerrainSystem::RenderShadowPass(Scene& scene, Shader& shader, const Frustum* lightFrustum,
+                                     const glm::vec3& cullingOrigin, float distanceCullingSq)
+{
+    if (!m_Enabled)
+        return;
+
+    auto& sl = ServiceLocator::Instance();
+    auto* gc_ptr = sl.Resolve<IGraphicsContext>();
+    if (!gc_ptr)
+        return;
+
+    auto& bm = gc_ptr->GetBufferManager();
+    auto& dc = gc_ptr->GetDrawContext();
+
+    shader.use();
+    shader.setBool("u_HasAnimation", false);
+
+    auto view = scene.registry.view<TerrainComponent, PositionComponent>();
+    for (auto entity : view)
+    {
+        auto& terrain = view.get<TerrainComponent>(entity);
+        if (!terrain.castShadows)
+            continue;
+        if (auto* info = scene.registry.try_get<InfoComponent>(entity); info && !info->isActive)
+            continue;
+
+        auto it = m_TerrainCache.find(entity);
+        if (it == m_TerrainCache.end() || !it->second)
+            continue;
+
+        TerrainData& data = *it->second;
+        if (data.lodEBOs.empty() || data.lodIndexCounts.empty())
+            continue;
+
+        auto& pos = view.get<PositionComponent>(entity);
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), pos.value);
+        shader.setMat4("u_Model", model);
+
+        for (const auto& chunk : data.chunks)
+        {
+            glm::vec3 minBound = chunk.minBound + pos.value;
+            glm::vec3 maxBound = chunk.maxBound + pos.value;
+
+            if (lightFrustum && !lightFrustum->IsBoxVisible(minBound, maxBound))
+                continue;
+
+            if (distanceCullingSq > 0.0f)
+            {
+                glm::vec3 center = (minBound + maxBound) * 0.5f;
+                glm::vec3 delta = center - cullingOrigin;
+                if (glm::dot(delta, delta) > distanceCullingSq)
+                    continue;
+            }
+
+            bm.BindVertexArray(chunk.VAO);
+            bm.BindBuffer(BufferType::ElementArrayBuffer, data.lodEBOs[0]);
+            dc.DrawElements(Primitive::Triangles, data.lodIndexCounts[0], DataType::UnsignedInt, nullptr);
+        }
+    }
+
+    bm.BindVertexArray(0);
 }
 
 void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)

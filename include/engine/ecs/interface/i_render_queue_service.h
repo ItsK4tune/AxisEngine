@@ -1,6 +1,7 @@
 #pragma once
 
 #include <render/type/render_view_params.h>
+#include <render/type/render_data.h>
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -37,7 +38,7 @@ public:
 
     virtual void BuildRenderQueues(Scene& scene, float alpha, int width = 0, int height = 0) = 0;
     virtual void BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params) = 0;
-    virtual void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass,
+    virtual void ExecuteQueue(const std::vector<RenderItem>& queue, RenderQueuePass pass,
                               ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer,
                               Shader* overrideShader = nullptr) = 0;
 

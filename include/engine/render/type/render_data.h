@@ -9,8 +9,15 @@
 enum class RenderMode
 {
     Auto,
-    ForceForward,
-    ForceDeferred
+    ForceForward
+};
+
+enum class RenderQueuePass
+{
+    DeferredGeometry,
+    ForwardOpaque,
+    Transparent,
+    DepthOverlay
 };
 
 class Model;

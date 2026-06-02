@@ -3,6 +3,8 @@
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
+#include <ecs/logic/decal_system.h>
+#include <ecs/logic/particle_system.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -59,8 +61,14 @@ void TransparentSystem::RenderAlphaPass(Scene& scene, int width, int height, flo
         const auto& regularForwardQueue = rs->GetRenderQueueObj().GetForwardOpaqueQueue();
         if (!regularForwardQueue.empty())
         {
-            rs->ExecuteQueue(regularForwardQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
+            rs->ExecuteQueue(regularForwardQueue, RenderQueuePass::ForwardOpaque, shadowRenderer,
+                             &core->GetMaterialRenderer(), nullptr);
         }
+    }
+
+    if (auto* decalSystem = sl.Resolve<DecalSystem>())
+    {
+        decalSystem->RenderAlphaPass(scene, width, height, alpha);
     }
 }
 
@@ -94,8 +102,13 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
 
     if (core)
     {
-        rs->ExecuteQueue(rs->GetRenderQueueObj().GetTransparentQueue(), true, shadowRenderer,
+        rs->ExecuteQueue(rs->GetRenderQueueObj().GetTransparentQueue(), RenderQueuePass::Transparent, shadowRenderer,
                          &core->GetMaterialRenderer());
+    }
+
+    if (auto* particleSystem = sl.Resolve<ParticleSystem>())
+    {
+        particleSystem->RenderParticles(scene, width, height, alpha);
     }
 
     rsm.Disable(ServerCapability::Blend);
@@ -116,7 +129,8 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
 
     if (core)
     {
-        rs->ExecuteQueue(depthOverlayQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
+        rs->ExecuteQueue(depthOverlayQueue, RenderQueuePass::DepthOverlay, shadowRenderer,
+                         &core->GetMaterialRenderer(), nullptr);
     }
 
     rsm.Enable(ServerCapability::DepthTest);

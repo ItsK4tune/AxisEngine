@@ -55,7 +55,7 @@ public:
 
     bool IsDeferredRenderingEnabled() const override
     {
-        return m_IsDeferredCached;
+        return m_Enabled && m_IsDeferredCached;
     }
 
     uint32_t GetGBufferDepth() const override

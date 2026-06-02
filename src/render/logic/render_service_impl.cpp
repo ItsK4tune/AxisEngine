@@ -22,6 +22,7 @@
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
+#include <ecs/interface/i_lighting_service.h>
 #include <ecs/logic/entity_manager.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
@@ -75,6 +76,26 @@ uint64_t HashMaterialForBatch(const AxisMaterialComponent* material)
     h = CombineHash(h, static_cast<uint64_t>(d.blendDst));
     h = CombineHash(h, hashString(d.type));
     return h;
+}
+
+bool IsDeferredCapable(const Shader* shader)
+{
+    return !shader || shader->IsDeferred();
+}
+
+RenderQueuePass ClassifyRenderPass(const MeshRendererComponent& renderer, const AxisMaterialComponent* material,
+                                   const Shader* shader)
+{
+    if (renderer.ignoreDepth)
+        return RenderQueuePass::DepthOverlay;
+
+    if (material && material->desc.opacity < 1.0f)
+        return RenderQueuePass::Transparent;
+
+    if (renderer.renderMode == RenderMode::ForceForward)
+        return RenderQueuePass::ForwardOpaque;
+
+    return IsDeferredCapable(shader) ? RenderQueuePass::DeferredGeometry : RenderQueuePass::ForwardOpaque;
 }
 }  // namespace
 
@@ -481,10 +502,9 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         if (!visibleByOcclusion && !castsSceneShadow && !depthOverlay)
             continue;
 
-        bool isTransparent = false;
         auto* material = scene.registry.try_get<AxisMaterialComponent>(entity);
-        if (material && material->desc.opacity < 1.0f)
-            isTransparent = true;
+        RenderQueuePass classifiedPass = ClassifyRenderPass(renderer, material, itemShader);
+        bool isTransparent = classifiedPass == RenderQueuePass::Transparent;
 
         auto* reflection = scene.registry.try_get<ReflectiveComponent>(entity);
 
@@ -622,24 +642,20 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         const bool addToCameraQueues = visibleToCamera && (visibleByOcclusion || depthOverlay);
         if (addToCameraQueues)
         {
-            if (isTransparent)
+            switch (classifiedPass)
             {
-                m_RenderQueueObj.AddTransparent(item);
-            }
-            else
-            {
-                if (renderer.ignoreDepth)
-                {
+                case RenderQueuePass::DepthOverlay:
                     m_RenderQueueObj.AddDepthOverlay(item);
-                }
-                else if (renderer.renderMode == RenderMode::ForceForward)
-                {
+                    break;
+                case RenderQueuePass::Transparent:
+                    m_RenderQueueObj.AddTransparent(item);
+                    break;
+                case RenderQueuePass::ForwardOpaque:
                     m_RenderQueueObj.AddForwardOpaque(item);
-                }
-                else
-                {
+                    break;
+                case RenderQueuePass::DeferredGeometry:
                     m_RenderQueueObj.AddDeferredOpaque(item);
-                }
+                    break;
             }
         }
         if (castsSceneShadow)
@@ -780,7 +796,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     m_LastHeight = params.height;
 }
 
-void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass,
+void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, RenderQueuePass pass,
                                      ShadowRenderer* shadowRenderer, MaterialRenderer* materialRenderer,
                                      Shader* overrideShader)
 {
@@ -799,9 +815,13 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& rsm = m_Context->GetRenderStateManager();
 
+    const bool isTransparentPass = pass == RenderQueuePass::Transparent;
+    const bool targetIsForwardPass = pass != RenderQueuePass::DeferredGeometry;
+
     Shader* lastShader = nullptr;
 
     RenderSceneData sceneData;
+    sceneData.lights = m_RenderQueueObj.GetLights();
     sceneData.cameraPosition = m_CameraState.position;
     sceneData.viewMatrix = m_CameraState.viewMatrix;
     sceneData.projMatrix = m_CameraState.projectionMatrix;
@@ -810,6 +830,12 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
     sceneData.irradianceMap = m_IBLState.irradianceMap;
     sceneData.prefilterMap = m_IBLState.prefilterMap;
     sceneData.brdfLUT = m_IBLState.brdfLUT;
+
+    if (targetIsForwardPass)
+    {
+        if (auto* lightingService = ServiceLocator::Instance().Resolve<ILightingService>())
+            lightingService->UploadLightData(sceneData);
+    }
 
     m_RenderedCount += (int)queue.size();
 
@@ -872,65 +898,17 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
         {
             if (!shader)
             {
-                if (isTransparentPass || item.renderMode == RenderMode::ForceForward)
-                {
-                    shader = m_ForwardPBRLitShader.get();
-                }
-                else
-                {
-                    shader = isCapturing ? m_ForwardPBRLitShader.get() : m_DeferredLitShader.get();
-                }
-            }
-
-            // Capture passes can route deferred albedo directly into Color0 below; keep deferred shaders intact here.
-            bool targetIsForward = isTransparentPass || item.renderMode == RenderMode::ForceForward || item.ignoreDepth;
-            if (shader)
-            {
-                if (targetIsForward)
-                {
-                    if (shader->IsDeferred())
-                    {
-                        if (shader == m_DeferredUnlitShader.get() || shader->GetName() == "deferred_unlit")
-                        {
-                            shader = m_UnlitShader.get();
-                        }
-                        else if (shader == m_DeferredLitShadowShader.get() ||
-                                 shader->GetName() == "deferred_lit_shadow")
-                        {
-                            shader = m_ForwardPBRLitShadowShader.get();
-                        }
-                        else
-                        {
-                            shader = m_ForwardPBRLitShader.get();
-                        }
-                    }
-                }
-                else
-                {
-                    if (!shader->IsDeferred())
-                    {
-                        if (shader == m_UnlitShader.get() || shader->GetName() == "forward_unlit")
-                        {
-                            shader = m_DeferredUnlitShader.get();
-                        }
-                        else if (shader == m_ForwardPBRLitShader.get() || shader->GetName() == "forward_pbr_lit")
-                        {
-                            shader = m_DeferredLitShader.get();
-                        }
-                        else if (shader == m_ForwardPBRLitShadowShader.get() ||
-                                 shader->GetName() == "forward_pbr_lit_shadow")
-                        {
-                            shader = m_DeferredLitShadowShader.get();
-                        }
-                    }
-                }
+                shader = targetIsForwardPass ? m_UnlitShader.get() : m_DeferredUnlitShader.get();
             }
         }
 
-        if (!shader || !model)
+        if (!model)
+            continue;
+
+        if (!shader)
         {
-            shader = isTransparentPass ? m_ErrorForwardShader.get() : m_ErrorDeferredShader.get();
-            if (!shader || !model)
+            shader = targetIsForwardPass ? m_ErrorForwardShader.get() : m_ErrorDeferredShader.get();
+            if (!shader)
                 continue;
         }
 
@@ -1075,12 +1053,13 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, bool 
                                                                 m_Flags.debugNoTexture, m_Flags.wireframe);
 
         auto canInstanceWith = [&](const RenderItem& other) {
-            return m_Flags.instanceBatchingEnabled && !isTransparentPass && !overrideShader && !item.hasAnimation &&
-                   !other.hasAnimation && !item.reflection && !other.reflection && item.probeIndex < 0 &&
-                   other.probeIndex < 0 && other.model == item.model && other.shader == item.shader &&
-                   other.materialBatchKey == item.materialBatchKey && other.renderMode == item.renderMode &&
-                   other.tintColor == item.tintColor && other.castShadow == item.castShadow &&
-                   other.receiveShadow == item.receiveShadow && other.ignoreDepth == item.ignoreDepth;
+            return m_Flags.instanceBatchingEnabled && pass != RenderQueuePass::Transparent && !overrideShader &&
+                   !item.hasAnimation && !other.hasAnimation && !item.reflection && !other.reflection &&
+                   item.probeIndex < 0 && other.probeIndex < 0 && other.model == item.model &&
+                   other.shader == item.shader && other.materialBatchKey == item.materialBatchKey &&
+                   other.renderMode == item.renderMode && other.tintColor == item.tintColor &&
+                   other.castShadow == item.castShadow && other.receiveShadow == item.receiveShadow &&
+                   other.ignoreDepth == item.ignoreDepth;
         };
 
         size_t batchCount = 1;

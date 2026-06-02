@@ -21,6 +21,7 @@ struct TerrainChunk
 };
 
 class Scene;
+class Frustum;
 
 class TerrainSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
@@ -55,6 +56,8 @@ public:
     void Update(Scene& scene, float dt) override;
     void Render(Scene& scene) override;
     void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override {}
+    void RenderShadowPass(Scene& scene, Shader& shader, const Frustum* lightFrustum, const glm::vec3& cullingOrigin,
+                          float distanceCullingSq);
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

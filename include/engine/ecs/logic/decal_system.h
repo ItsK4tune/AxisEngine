@@ -83,6 +83,7 @@ private:
     int m_ScreenWidth = 800;
     int m_ScreenHeight = 600;
 
+    void RenderDecals(Scene& scene, bool isDeferred);
     void UpdateTagMap(Scene& scene);
     uint32_t GetBitmask(const std::vector<std::string>& tags);
 };

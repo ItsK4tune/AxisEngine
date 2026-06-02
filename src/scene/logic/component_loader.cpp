@@ -246,7 +246,8 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     r.receiveShadow = receiveShadow;
     r.ignoreDepth = ignoreDepth;
     r.color = color;
-    r.renderMode = (RenderMode)std::stoi(node.GetChildValue("RenderMode", "0"));
+    int renderModeValue = std::stoi(node.GetChildValue("RenderMode", "0"));
+    r.renderMode = (renderModeValue == (int)RenderMode::ForceForward) ? RenderMode::ForceForward : RenderMode::Auto;
 
     if (!r.model)
         LOGGER_WARN("ComponentLoader") << "Renderer model not found on entity '" << entityName << "': " << modelName;

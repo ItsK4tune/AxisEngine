@@ -78,7 +78,6 @@ void SampleState::LoadScene25()
         auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
         renderer.renderMode = RenderMode::ForceForward;
         renderer.castShadow = false;
-        renderer.ignoreDepth = true;
         renderer.color = panel.color;
 
         auto& mat = scene.registry.get<AxisMaterialComponent>(entity);

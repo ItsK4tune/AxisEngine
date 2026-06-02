@@ -159,7 +159,7 @@ public:
     }
     void BuildRenderQueues(Scene& scene, float alpha, int width = 0, int height = 0) override;
     void BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params) override;
-    void ExecuteQueue(const std::vector<RenderItem>& queue, bool isTransparentPass, ShadowRenderer* shadowRenderer,
+    void ExecuteQueue(const std::vector<RenderItem>& queue, RenderQueuePass pass, ShadowRenderer* shadowRenderer,
                       MaterialRenderer* materialRenderer, Shader* overrideShader = nullptr) override;
     void SubmitCommand(const RenderDrawCommand& cmd) override;
     void FlushCommands() override;

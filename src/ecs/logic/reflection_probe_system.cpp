@@ -225,9 +225,12 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     // Final Render Queue Execution
     if (core)
     {
-        renderService.ExecuteQueue(defOpaque, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
-        renderService.ExecuteQueue(fwdOpaque, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
-        renderService.ExecuteQueue(transparent, true, shadowRenderer, &core->GetMaterialRenderer());
+        renderService.ExecuteQueue(defOpaque, RenderQueuePass::DeferredGeometry, shadowRenderer,
+                                   &core->GetMaterialRenderer(), nullptr);
+        renderService.ExecuteQueue(fwdOpaque, RenderQueuePass::ForwardOpaque, shadowRenderer,
+                                   &core->GetMaterialRenderer(), nullptr);
+        renderService.ExecuteQueue(transparent, RenderQueuePass::Transparent, shadowRenderer,
+                                   &core->GetMaterialRenderer());
     }
 
     // Generate mipmaps only after full update or on every few faces

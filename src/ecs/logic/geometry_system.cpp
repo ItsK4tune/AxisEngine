@@ -10,6 +10,7 @@
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
+#include <ecs/unit/terrain_component.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_graphics_context.h>
@@ -24,6 +25,21 @@
 #include <algorithm>
 
 REGISTER_SYSTEM(GeometrySystem)
+
+namespace
+{
+bool HasActiveTerrain(Scene& scene)
+{
+    auto view = scene.registry.view<TerrainComponent>();
+    for (auto entity : view)
+    {
+        if (auto* info = scene.registry.try_get<InfoComponent>(entity); info && !info->isActive)
+            continue;
+        return true;
+    }
+    return false;
+}
+}  // namespace
 
 void GeometrySystem::Initialize()
 {
@@ -50,7 +66,7 @@ void GeometrySystem::Initialize()
 
     m_GBuffer.SetRenderScale(config.renderScale);
     m_GBuffer.Initialize(context, config.width, config.height);
-    m_IsDeferredCached = true;
+    m_IsDeferredCached = false;
 
     m_RenderService = sl.Resolve<IRenderService>();
     m_ShadowService = sl.Resolve<IShadowService>();
@@ -81,6 +97,8 @@ void GeometrySystem::Shutdown()
 
 void GeometrySystem::Render(Scene& scene)
 {
+    m_IsDeferredCached = false;
+
     if (!m_Enabled)
         return;
 
@@ -111,8 +129,10 @@ void GeometrySystem::Render(Scene& scene)
         return;
     }
 
-    bool isDeferred = true;
-    m_IsDeferredCached = true;
+    const auto& defOpaqueQueue = rs->GetRenderQueueObj().GetDeferredOpaqueQueue();
+    bool hasDeferredWork = !defOpaqueQueue.empty() || HasActiveTerrain(scene);
+    if (!hasDeferredWork)
+        return;
 
     const auto& config = m_ConfigManager->GetConfig();
     int width = config.width;
@@ -127,6 +147,8 @@ void GeometrySystem::Render(Scene& scene)
 
     if (!m_GraphicsContext)
         return;
+    m_IsDeferredCached = true;
+
     auto& context = *m_GraphicsContext;
     auto& rsm = context.GetRenderStateManager();
     auto& dc = context.GetDrawContext();
@@ -146,14 +168,14 @@ void GeometrySystem::Render(Scene& scene)
     auto* shadowSys = sl.Resolve<IShadowService>();
     ShadowRenderer* shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
 
-    const auto& defOpaqueQueue = rs->GetRenderQueueObj().GetDeferredOpaqueQueue();
     if (!defOpaqueQueue.empty())
     {
         shadowRenderer = shadowSys ? &shadowSys->GetRenderer() : nullptr;
         RenderCore* core = sl.Resolve<RenderCore>();
         if (core)
         {
-            rs->ExecuteQueue(defOpaqueQueue, false, shadowRenderer, &core->GetMaterialRenderer(), nullptr);
+            rs->ExecuteQueue(defOpaqueQueue, RenderQueuePass::DeferredGeometry, shadowRenderer,
+                             &core->GetMaterialRenderer(), nullptr);
         }
     }
 

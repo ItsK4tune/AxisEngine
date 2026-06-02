@@ -216,10 +216,10 @@ void PlanarReflectionSystem::Render(Scene& scene)
         }
 
         const auto& defQ = m_RenderService->GetRenderQueueObj().GetDeferredOpaqueQueue();
-        m_RenderService->ExecuteQueue(defQ, false, nullptr, nullptr, nullptr);
+        m_RenderService->ExecuteQueue(defQ, RenderQueuePass::DeferredGeometry, nullptr, nullptr, nullptr);
 
         const auto& fwdQ = m_RenderService->GetRenderQueueObj().GetForwardOpaqueQueue();
-        m_RenderService->ExecuteQueue(fwdQ, false, nullptr, nullptr, nullptr);
+        m_RenderService->ExecuteQueue(fwdQ, RenderQueuePass::ForwardOpaque, nullptr, nullptr, nullptr);
 
         rsm.SetCullFace(CullMode::Back);
         m_RenderService->SetMainFBO(tempFB);
