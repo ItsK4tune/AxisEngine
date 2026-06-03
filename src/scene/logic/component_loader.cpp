@@ -218,10 +218,7 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     std::string entityName = "Unknown";
     if (scene.registry.all_of<InfoComponent>(entity))
         entityName = scene.registry.get<InfoComponent>(entity).name;
-
-    LOGGER_INFO("ComponentLoader") << "[DEBUG] Renderer load on '" << entityName << "': Color(" << cr << ", " << cg
-                                   << ", " << cb << ", " << ca << ")";
-
+        
     auto& r = scene.registry.emplace<MeshRendererComponent>(entity);
     if (modelName.empty())
     {

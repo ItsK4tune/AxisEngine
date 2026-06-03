@@ -617,45 +617,6 @@ void EditorSystem::OnUpdate(float dt)
         else if (!kb.GetKey(Key::F6))
             f6_pressed = false;
 
-        // Pause/Resume Engine (F11)
-        if (kb.GetKey(Key::F11) && !f11_pressed)
-        {
-            f11_pressed = true;
-            auto& sl = ServiceLocator::Instance();
-            auto* core = sl.Resolve<RuntimeCore>();
-            auto* timer = sl.Resolve<TimeService>();
-            if (core && timer)
-            {
-                core->GetEngineLoop().SetPaused(!timer->IsPaused());
-            }
-        }
-        else if (!kb.GetKey(Key::F11))
-            f11_pressed = false;
-
-        // Cycle Time Multiplier (F12)
-        if (kb.GetKey(Key::F12) && !f12_pressed)
-        {
-            f12_pressed = true;
-            auto* timer = ServiceLocator::Instance().Resolve<TimeService>();
-            if (timer)
-            {
-                float current = timer->GetTimeScale();
-                float next = 1.0f;
-                if (abs(current - 0.25f) < 0.01f)
-                    next = 0.5f;
-                else if (abs(current - 0.5f) < 0.01f)
-                    next = 1.0f;
-                else if (abs(current - 1.0f) < 0.01f)
-                    next = 1.5f;
-                else if (abs(current - 1.5f) < 0.01f)
-                    next = 2.0f;
-                else if (abs(current - 2.0f) < 0.01f)
-                    next = 0.25f;
-                timer->SetTimeScale(next);
-            }
-        }
-        else if (!kb.GetKey(Key::F12))
-            f12_pressed = false;
     }
 
     // Panel toggle shortcuts (Ctrl+1 to Ctrl+9, and Ctrl+0 for NetworkPanel)

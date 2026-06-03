@@ -173,14 +173,6 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                         sComp.value = glm::vec3(sx, sy, sz);
                         sComp.prev = sComp.value;
 
-                        LOGGER_INFO("FragmentLoader")
-                            << "[DEBUG] Loaded Transform for '" << entityName << "': Pos(" << x << "," << y << "," << z
-                            << ") Scale(" << sx << "," << sy << "," << sz << ")";
-
-                        // Mark dirty ΓÇö TransformSystem will compute the correct world matrix
-                        // AFTER deferred internal parenting is resolved.
-                        // Do NOT pre-compute here: `parent` is the fragment owner, not the
-                        // internal parent (which hasn't been linked yet).
                         if (scene.registry.all_of<WorldTransformComponent>(currentEntity))
                         {
                             scene.registry.get<WorldTransformComponent>(currentEntity).isDirty = true;

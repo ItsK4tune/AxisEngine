@@ -123,19 +123,16 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
     rtm.DrawBuffers(1, &colorAttachment);
     rsm.SetViewport(0, 0, width, height);
     rsm.Disable(ServerCapability::Blend);
-    rsm.Disable(ServerCapability::DepthTest);
+    context->Clear(BufferBit::Depth);
+    rsm.Enable(ServerCapability::DepthTest);
     rsm.SetDepthFunc(CompareFunc::Less);
-    rsm.SetDepthMask(false);
+    rsm.SetDepthMask(true);
 
     if (core)
     {
         rs->ExecuteQueue(depthOverlayQueue, RenderQueuePass::DepthOverlay, shadowRenderer,
                          &core->GetMaterialRenderer(), nullptr);
     }
-
-    rsm.Enable(ServerCapability::DepthTest);
-    rsm.SetDepthFunc(CompareFunc::Less);
-    rsm.SetDepthMask(true);
 }
 
 std::vector<entt::id_type> TransparentSystem::GetReadComponents() const

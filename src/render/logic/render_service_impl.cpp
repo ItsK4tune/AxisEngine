@@ -879,7 +879,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         Model* model = item.model;
         AxisMaterialComponent* material = item.material;
         Shader* shader = item.shader;
-        bool ignoreDepthForDraw = item.ignoreDepth && !overrideShader;
+        bool ignoreDepthForDraw = item.ignoreDepth && !overrideShader && pass != RenderQueuePass::DepthOverlay;
 
         if (overrideShader)
         {
