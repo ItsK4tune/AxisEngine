@@ -885,12 +885,15 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             {
                 script.DestroyScript(&script);
                 script.instance.reset();
+                script.scriptableInstance = nullptr;
+                script.inputScriptableInstance = nullptr;
             }
 
             script.className = currentScript;
             if (currentScript.empty() || currentScript == "None")
             {
                 script.InstantiateScript = nullptr;
+                script.DestroyScript = nullptr;
             }
             else
             {
@@ -899,7 +902,11 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
                 {
                     auto factory = factoryMap.at(currentScript);
                     script.InstantiateScript = factory;
-                    script.DestroyScript = [](ScriptComponent* sc) { sc->instance.reset(); };
+                    script.DestroyScript = [](ScriptComponent* sc) {
+                        sc->instance.reset();
+                        sc->scriptableInstance = nullptr;
+                        sc->inputScriptableInstance = nullptr;
+                    };
                     script.instance = script.InstantiateScript();
 
                     auto& globalScene = ServiceLocator::Instance().Require<Scene>();

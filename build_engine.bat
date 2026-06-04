@@ -201,6 +201,8 @@ if errorlevel 1 goto RETRY_EDITOR
 set ENABLE_EDITOR=OFF
 if "%editor_choice%"=="2" set ENABLE_EDITOR=ON
 
+if "%ENABLE_EDITOR%"=="ON" goto SELECT_BUILD_SAMPLES
+set BUILD_SAMPLES=OFF
 goto CONFIRM_CONFIG
 
 :RETRY_EDITOR
@@ -208,6 +210,35 @@ echo [ERROR] Invalid selection!
 pause
 goto SELECT_EDITOR
 
+:SELECT_BUILD_SAMPLES
+cls
+echo.
+echo ==========================================
+echo           BUILD SAMPLES?
+echo ==========================================
+echo  1. Yes (Build axis_samples) [Default]
+echo  2. No  (Build engine + editor libs only)
+echo ------------------------------------------
+echo  B. Back
+echo ==========================================
+set "sample_choice="
+set /p sample_choice="Enter number (Default: 1): "
+
+if "%sample_choice%"=="" set sample_choice=1
+if /i "%sample_choice%"=="b" goto SELECT_EDITOR
+
+echo %sample_choice%| findstr /r "^[1-2]$" >nul
+if errorlevel 1 goto RETRY_BUILD_SAMPLES
+
+set BUILD_SAMPLES=ON
+if "%sample_choice%"=="2" set BUILD_SAMPLES=OFF
+
+goto CONFIRM_CONFIG
+
+:RETRY_BUILD_SAMPLES
+echo [ERROR] Invalid selection!
+pause
+goto SELECT_BUILD_SAMPLES
 
 :CONFIRM_CONFIG
 cls
@@ -227,6 +258,7 @@ if defined QUICK_BUILD (
 ) else (
     echo  Clean Mode: %CLEAN_MODE%
     echo  Editor:     %ENABLE_EDITOR%
+    if "%ENABLE_EDITOR%"=="ON" echo  Samples:    %BUILD_SAMPLES%
 )
 echo ==========================================
 set "confirm="
@@ -235,6 +267,7 @@ if "%confirm%"=="" set confirm=y
 
 if /i "%confirm%"=="b" (
     if defined QUICK_BUILD goto SELECT_BUILD_TYPE
+    if "%ENABLE_EDITOR%"=="ON" goto SELECT_BUILD_SAMPLES
     goto SELECT_EDITOR
 )
 if /i "%confirm%"=="n" goto SELECT_ACTION
@@ -356,9 +389,9 @@ if %ERRORLEVEL% EQU 0 (
 
 if not defined QUICK_BUILD (
     if not defined GENERATOR (
-        "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR!
+        "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES!
     ) else (
-        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR!
+        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES!
     )
 ) else (
     if not exist "build" (

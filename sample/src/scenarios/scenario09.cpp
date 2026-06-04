@@ -6,91 +6,35 @@ void SampleState::LoadScene9()
     auto& res = Get<ResourceManager>();
 
     EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
-        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.9f, 1.0f)
+        .WithName("LODDirLight")
+        .WithDirectionalLightAt(glm::vec3(20.0f, 35.0f, 25.0f), glm::vec3(-45.0f, -35.0f, 0.0f),
+                                glm::normalize(glm::vec3(-0.6f, -1.0f, -0.5f)), glm::vec3(1.0f), 1.4f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(0.2f, 0.2f, 0.2f), 0.5f)
+        .WithName("LODFloor")
+        .WithPBRRenderable("planeModel", "deferred_lit_shadow", glm::vec3(0.0f), glm::vec3(0.0f),
+                           glm::vec3(90.0f, 1.0f, 120.0f), 0.0f, 0.85f, 1.0f)
         .Build();
 
-    struct GlowingObject {
-        glm::vec3 pos;
-        glm::vec3 emissionColor;
-        float scale;
-    };
-
-    std::vector<GlowingObject> glowers = {
-        { glm::vec3(-10.0f, 2.0f, 0.0f), glm::vec3(10.0f, 0.0f, 0.0f), 2.0f },
-        { glm::vec3(0.0f, 2.0f, -10.0f), glm::vec3(0.0f, 10.0f, 0.0f), 2.0f },
-        { glm::vec3(10.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 10.0f), 2.0f },
-        { glm::vec3(0.0f, 3.0f, 10.0f), glm::vec3(10.0f, 10.0f, 0.0f), 3.0f },
-        { glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(20.0f, 20.0f, 20.0f), 1.5f }
-    };
-
-    int index = 0;
-    for (const auto& g : glowers)
+    for (int i = 0; i < 12; ++i)
     {
-        auto ent = EntityBuilder(scene, res, "scenario")
-            .WithName("Glower_" + std::to_string(index++))
-            .WithTransform(g.pos, glm::vec3(0.0f), glm::vec3(g.scale))
-            .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.1f, 1.0f)
-            .Build();
-
-        auto& mat = scene.registry.get<AxisMaterialComponent>(ent);
-        mat.desc.emission = g.emissionColor;
-        mat.gpu.dirty = true;
-
+        float x = -22.0f + (i % 4) * 14.5f;
+        float z = 28.0f - (i / 4) * 28.0f;
         EntityBuilder(scene, res, "scenario")
-            .WithName("GlowLight_" + std::to_string(index))
-            .WithTransform(g.pos)
-            .WithPointLight(glm::normalize(g.emissionColor), glm::length(g.emissionColor) * 0.5f, 15.0f)
+            .WithName("LOD_" + std::to_string(i))
+            .WithPBRRenderable("sphereModel", "deferred_lit_shadow", glm::vec3(x, 5.0f, z),
+                               glm::vec3(0.0f, i * 15.0f, 0.0f), 2.8f, 0.1f, 0.45f, 1.0f)
+            .WithLOD({"cubeModel", "capsuleModel"}, {30.0f, 50.0f})
+            .WithRendererColor(glm::vec4(0.25f + 0.05f * i, 0.8f, 0.4f, 1.0f))
             .Build();
     }
 
-    m_PPBloomEnabled = true;
-    m_PPBloomThreshold = 0.8f;
-    m_PPBloomIntensity = 2.0f;
-    m_PPBloomRadius = 0.005f;
-    m_PPHdrEnabled = true;
-    m_PPExposure = 1.0f;
-    m_PPGamma = 2.2f;
-    m_PPTonemappingMode = 1;
-    m_PPVignetteEnabled = true;
-    m_PPFilmGrainEnabled = true;
-    m_PPGrayEnabled = false;
-    m_PPDitherEnabled = false;
-    m_PPPartialEffectEnabled = true;
-    m_PPPartialEffectType = 2;
-    m_PPPartialX = 180;
-    m_PPPartialY = 140;
-    m_PPPartialW = 520;
-    m_PPPartialH = 300;
-
-    auto ppEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("Scenario9PostProcess")
+    // Solid reference entity (no LOD) so user can compare LOD swaps against a stable mesh
+    EntityBuilder(scene, res, "scenario")
+        .WithName("LOD_SolidReference")
+        .WithPBRRenderable("sphereModel", "deferred_lit_shadow", glm::vec3(0.0f, 12.0f, 0.0f),
+                           glm::vec3(0.0f), 3.5f, 0.8f, 0.2f, 1.0f)
+        .WithRendererColor(glm::vec4(1.0f, 0.35f, 0.1f, 1.0f))
         .Build();
-    auto& pp = scene.registry.emplace<PostProcessComponent>(ppEntity);
-    pp.enabled = true;
-
-    auto* sysMgr = Resolve<SystemManager>();
-    if (sysMgr)
-    {
-        auto* ppSys = dynamic_cast<PostProcessSystem*>(sysMgr->GetSystem("PostProcessSystem"));
-        if (ppSys)
-        {
-            auto& pipeline = ppSys->GetPipeline();
-            pipeline.SetHDREnabled(m_PPHdrEnabled);
-            pipeline.SetBloomEnabled(m_PPBloomEnabled);
-            pipeline.SetBloomThreshold(m_PPBloomThreshold);
-            pipeline.SetBloomIntensity(m_PPBloomIntensity);
-            pipeline.SetBloomRadius(m_PPBloomRadius);
-            pipeline.SetExposure(m_PPExposure);
-            pipeline.SetGamma(m_PPGamma);
-            pipeline.SetTonemappingMode(m_PPTonemappingMode);
-        }
-    }
 }

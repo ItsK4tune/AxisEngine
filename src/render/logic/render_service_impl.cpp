@@ -879,7 +879,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         Model* model = item.model;
         AxisMaterialComponent* material = item.material;
         Shader* shader = item.shader;
-        bool ignoreDepthForDraw = item.ignoreDepth && !overrideShader && pass != RenderQueuePass::DepthOverlay;
+        bool ignoreDepthForDraw = item.ignoreDepth && !overrideShader;
 
         if (overrideShader)
         {
@@ -955,7 +955,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         shader->setVec4_Fast(shader->m_Loc_u_TintColor, "u_TintColor", item.tintColor);
         shader->setUInt_Fast(shader->m_Loc_u_EntityID, "u_EntityID", item.entityId);
         shader->setBool_Fast(shader->m_Loc_u_IsInstanced, "u_IsInstanced", false);
-        shader->setFloat_Fast(shader->m_Loc_u_ReceiveShadowFlag, "u_ReceiveShadowFlag", item.receiveShadow ? 1.0f : 0.0f);
+        shader->setFloat_Fast(shader->m_Loc_u_ReceiveShadowFlag, "u_ReceiveShadowFlag",
+                              item.receiveShadow ? 1.0f : 0.0f);
 
         if (item.probeIndex >= 0)
         {
@@ -1017,7 +1018,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
 
             if (item.probe && item.probe->cubemapID != 0)
             {
-                shader->setFloat_Fast(shader->m_Loc_u_ReflectionIntensity, "u_ReflectionIntensity", item.reflectionIntensity);
+                shader->setFloat_Fast(shader->m_Loc_u_ReflectionIntensity, "u_ReflectionIntensity",
+                                      item.reflectionIntensity);
             }
         }
         else if (!isCapturing)

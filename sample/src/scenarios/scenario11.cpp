@@ -4,99 +4,125 @@ void SampleState::LoadScene11()
 {
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
+    m_S11ReflectionSpheres.clear();
+    m_S11ReflectionProbes.clear();
+    m_S11ActiveCase = 0;
 
-    // 1. Static Floor & Lights
     EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-        .Build();
-
-    m_S11DirLightEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("DecalDirLight")
+        .WithName("DirLight")
         .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), m_S11LightColor, m_S11LightIntensity)
+        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
         .Build();
-    if (auto* dir = scene.registry.try_get<DirectionalLightComponent>(m_S11DirLightEntity))
-        dir->isCastShadow = true;
 
-    m_S11PointLightEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("DecalPointLight")
-        .WithPointLightAt(glm::vec3(-12.0f, 14.0f, 4.0f), m_S11PointLightColor, m_S11PointLightIntensity,
-                          m_S11PointLightRadius)
-        .Build();
-    if (auto* light = scene.registry.try_get<PointLightComponent>(m_S11PointLightEntity))
-    {
-        light->active = m_S11UsePointLight;
-        light->isCastShadow = true;
-        light->linear = 0.045f;
-        light->quadratic = 0.0075f;
-    }
-
-    m_S11PointLightMarkerEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("DecalPointLightMarker")
-        .WithTransform(glm::vec3(-12.0f, 14.0f, 4.0f), glm::vec3(0.0f), glm::vec3(1.2f))
-        .WithPBRMesh("sphereModel", "deferred_unlit", 0.0f, 0.25f, 1.0f)
-        .WithMaterialEmission(m_S11PointLightColor * 3.0f)
-        .Build();
-    if (auto* marker = scene.registry.try_get<MeshRendererComponent>(m_S11PointLightMarkerEntity))
-        marker->color = glm::vec4(m_S11PointLightColor, 1.0f);
-
-    // 2. Spawn a large central wall to project decals onto
     EntityBuilder(scene, res, "scenario")
-        .WithName("DecalWall")
-        .WithTransform(glm::vec3(0.0f, 10.0f, -10.0f), glm::vec3(0.0f), glm::vec3(50.0f, 20.0f, 2.0f))
-        .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.9f, 1.0f)
+        .WithName("ReflectionFillLight")
+        .WithTransform(glm::vec3(0.0f, 12.0f, 12.0f), glm::vec3(0.0f), glm::vec3(0.8f))
+        .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.3f, 1.0f)
+        .WithPointLight(glm::vec3(1.0f, 0.92f, 0.75f), 12.0f, 45.0f)
         .Build();
 
-    m_S11ShadowCasterEntity = EntityBuilder(scene, res, "scenario")
-        .WithName("DecalShadowCaster")
-        .WithActive(m_S11ShowShadowCaster)
-        .WithTransform(glm::vec3(-4.0f, 10.0f, -4.2f), glm::vec3(0.0f, 18.0f, 0.0f),
-                       glm::vec3(3.0f, 12.0f, 1.5f))
-        .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.0f, 0.55f, 1.0f)
+    auto floor = EntityBuilder(scene, res, "scenario")
+        .WithName("ReflectiveFloor")
+        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
+        .WithPBRMesh("planeModel", "deferred_lit", 0.02f, 0.35f, 1.0f)
         .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S11ShadowCasterEntity))
+    if (auto* floorRenderer = scene.registry.try_get<MeshRendererComponent>(floor))
+        floorRenderer->color = glm::vec4(0.55f, 0.55f, 0.52f, 1.0f);
+
+    auto planarMirror = EntityBuilder(scene, res, "scenario")
+        .WithName("PlanarMirror")
+        .WithTransform(glm::vec3(0.0f, 0.00f, -50.0f), glm::vec3(90.0f, 0.0f, 0.0f), glm::vec3(38.0f, 1.0f, 24.0f))
+        .WithPBRMesh("planeModel", "deferred_reflect", 0.0f, 0.04f, 1.0f)
+        .Build();
+    if (auto* mirrorRenderer = scene.registry.try_get<MeshRendererComponent>(planarMirror))
     {
-        renderer->color = glm::vec4(0.12f, 0.12f, 0.14f, 1.0f);
-        renderer->castShadow = true;
-        renderer->receiveShadow = false;
+        mirrorRenderer->color = glm::vec4(0.78f, 0.84f, 0.9f, 1.0f);
+        mirrorRenderer->receiveShadow = false;
     }
+    auto& planar = scene.registry.emplace<PlanarReflectionComponent>(planarMirror);
+    planar.resolution = 1024;
+    planar.resolution_y = 1024;
+    planar.isDirty = true;
+    auto& planarReflective = scene.registry.emplace<ReflectiveComponent>(planarMirror);
+    planarReflective.reflectivity = 0.85f;
+    planarReflective.fresnelBias = 0.08f;
+    planarReflective.fresnelPower = 3.0f;
+    planarReflective.enabled = true;
+    m_S11PlanarMirror = planarMirror;
 
-    // 3. Use tint-only decals. The decal shader falls back to a white source when no texture is assigned.
-    uint32_t decalTexId = 0;
+    auto wallRed = EntityBuilder(scene, res, "scenario")
+        .WithName("WallRed")
+        .WithTransform(glm::vec3(-32.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
+        .Build();
+    auto* rRed = scene.registry.try_get<MeshRendererComponent>(wallRed);
+    if (rRed) rRed->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
 
-    // 4. Spawn Decal Components in a grid on the wall
-    for (int i = 0; i < m_S11DecalCount; ++i)
+    auto wallBlue = EntityBuilder(scene, res, "scenario")
+        .WithName("WallBlue")
+        .WithTransform(glm::vec3(32.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
+        .Build();
+    auto* rBlue = scene.registry.try_get<MeshRendererComponent>(wallBlue);
+    if (rBlue) rBlue->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);
+
+    struct CaseDef
     {
-        float x = -20.0f + static_cast<float>(i % 10) * 4.5f;
-        float y = 3.0f + static_cast<float>(i / 10) * 4.0f;
-        float z = -9.0f; 
+        const char* caseName;
+        const char* probeName;
+        const char* sphereName;
+        glm::vec3 pos;
+        glm::vec4 tint;
+        int probeResolution;
+        float reflectivity;
+        float fresnelBias;
+        float fresnelPower;
+    };
 
-        float size = m_S11DecalSize;
-        auto decalEnt = EntityBuilder(scene, res, "scenario")
-            .WithName("Decal_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, y, z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(size, size, size))
+    const CaseDef cases[] = {
+        {"UltraLow", "ProbeUltraLow", "ReflectiveUltraLow", glm::vec3(-24.0f, 6.0f, -8.0f),
+         glm::vec4(0.96f, 0.84f, 0.68f, 1.0f), 64, 0.08f, 0.01f, 0.5f},
+        {"Low", "ProbeLow", "ReflectiveLow", glm::vec3(-14.0f, 6.0f, -3.0f), glm::vec4(0.95f, 0.85f, 0.7f, 1.0f), 128,
+         0.2f, 0.02f, 1.0f},
+        {"Mid", "CenterProbe", "ReflectiveMid", glm::vec3(-2.0f, 6.0f, 0.0f), glm::vec4(0.85f, 0.85f, 0.9f, 1.0f),
+         m_S11ProbeResolution, m_S11Reflectivity, m_S11FresnelBias, m_S11FresnelPower},
+        {"High", "ProbeHigh", "ReflectiveHigh", glm::vec3(10.0f, 6.0f, 4.0f), glm::vec4(0.75f, 0.9f, 1.0f, 1.0f), 1024,
+         0.92f, 0.08f, 8.0f},
+        {"Extreme", "ProbeExtreme", "ReflectiveExtreme", glm::vec3(20.0f, 6.0f, 8.0f),
+         glm::vec4(0.9f, 0.9f, 0.98f, 1.0f), 2048, 1.0f, 0.24f, 16.0f},
+    };
+
+    for (const auto& c : cases)
+    {
+        auto probeEntity = EntityBuilder(scene, res, "scenario")
+            .WithName(c.probeName)
+            .WithTransform(c.pos + glm::vec3(0.0f, 0.0f, -6.0f), glm::vec3(0.0f), glm::vec3(1.0f))
+            .Build();
+        auto& probeComp = scene.registry.emplace<ReflectionProbeComponent>(probeEntity);
+        probeComp.type = ReflectionProbeType::Dynamic;
+        probeComp.resolution = c.probeResolution;
+        probeComp.boxProjection = true;
+        probeComp.boxMin = glm::vec3(-24.0f, -6.0f, -24.0f);
+        probeComp.boxMax = glm::vec3(24.0f, 16.0f, 24.0f);
+        probeComp.blendDistance = 6.0f;
+        probeComp.isDirty = true;
+        m_S11ReflectionProbes.push_back(probeEntity);
+
+        auto sphere = EntityBuilder(scene, res, "scenario")
+            .WithName(c.sphereName)
+            .WithTransform(c.pos, glm::vec3(0.0f), glm::vec3(4.0f))
+            .WithPBRMesh("sphereModel", "deferred_reflect", 0.05f, 0.95f, 1.0f)
             .Build();
 
-        auto& decal = scene.registry.emplace<DecalComponent>(decalEnt);
-        decal.albedoMap = decalTexId;
-        decal.opacity = m_S11Opacity;
-        decal.roughness = 0.5f;
-        decal.metallic = 0.0f;
-        decal.lightingMode = m_S11LightingMode;
-        
-        if (m_S11RainbowMode)
-        {
-            float hue = static_cast<float>(i) / static_cast<float>(m_S11DecalCount);
-            float r = 0.5f + 0.5f * sin(hue * 6.28318f);
-            float g = 0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f);
-            float b = 0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f);
-            decal.tintColor = glm::vec4(r, g, b, 1.0f);
-        }
-        else
-        {
-            decal.tintColor = glm::vec4(m_S11Color, 1.0f);
-        }
+        if (auto* sphereRenderer = scene.registry.try_get<MeshRendererComponent>(sphere))
+            sphereRenderer->color = c.tint;
+
+        auto& refComp = scene.registry.emplace<ReflectiveComponent>(sphere);
+        refComp.reflectivity = c.reflectivity;
+        refComp.fresnelPower = c.fresnelPower;
+        refComp.fresnelBias = c.fresnelBias;
+        refComp.enabled = true;
+        refComp.targetProbe = c.probeName;
+        m_S11ReflectionSpheres.push_back(sphere);
     }
 }

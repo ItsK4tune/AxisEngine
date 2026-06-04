@@ -6,30 +6,41 @@ void SampleState::LoadScene15()
     auto& res = Get<ResourceManager>();
 
     EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
         .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
+        .WithTransform(glm::vec3(0.0f, 40.0f, 0.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
+        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
         .Build();
 
-    int columns = static_cast<int>(std::ceil(std::sqrt(static_cast<float>(m_S15EntityCount))));
-    float spacing = (m_S15EntitySize * 1.6f > 1.5f) ? (m_S15EntitySize * 1.6f) : 1.5f;
-    for (int i = 0; i < m_S15EntityCount; ++i)
-    {
-        int xIdx = i % columns;
-        int zIdx = i / columns;
-        glm::vec3 pos((xIdx - columns * 0.5f) * spacing, m_S15EntitySize * 0.5f, (zIdx - columns * 0.5f) * spacing);
-        EntityBuilder(scene, res, "scenario")
-            .WithName("DataEntity_" + std::to_string(i))
-            .WithTransform(pos, glm::vec3(0.0f, i * 13.0f, 0.0f), glm::vec3(m_S15EntitySize))
-            .WithPBRMesh((i % 2 == 0) ? "cubeModel" : "sphereModel", "deferred_lit", 0.2f, 0.5f, 1.0f)
-            .Build();
-    }
+    float angleStep = 360.0f / static_cast<float>(m_S15EmitterCount > 0 ? m_S15EmitterCount : 1);
 
-    m_S15Status = "Ready. Save/load entity count and size, then reload to apply.";
+    for (int i = 0; i < m_S15EmitterCount; ++i)
+    {
+        float angle = (static_cast<float>(i) * angleStep) * 3.14159f / 180.0f;
+        float radius = 15.0f;
+        glm::vec3 pos(cos(angle) * radius, 0.1f, sin(angle) * radius);
+
+        auto emitterEntity = EntityBuilder(scene, res, "scenario")
+            .WithName("Emitter_" + std::to_string(i))
+            .WithTransform(pos, glm::vec3(0.0f))
+            .Build();
+
+        auto& pe = scene.registry.emplace<ParticleEmitterComponent>(emitterEntity);
+        pe.isActive = true;
+        pe.emitter.SpawnRate = m_S15SpawnRate;
+        pe.emitter.LifeTime = m_S15LifeTime;
+        pe.emitter.StartSize = m_S15StartSize;
+        pe.emitter.EndSize = m_S15EndSize;
+
+        glm::vec3 dir = glm::normalize(glm::vec3(pos.x, 10.0f, pos.z));
+        pe.emitter.MinVelocity = dir * m_S15MinSpeed - glm::vec3(0.5f, 0.0f, 0.5f);
+        pe.emitter.MaxVelocity = dir * m_S15MaxSpeed + glm::vec3(0.5f, m_S15VerticalSpeed, 0.5f);
+
+        float r = 0.5f + 0.5f * sin(angle);
+        float g = 0.5f + 0.5f * sin(angle + 2.0f);
+        float b = 0.5f + 0.5f * sin(angle + 4.0f);
+        pe.emitter.StartColor = glm::vec4(r, g, b, 1.0f);
+        pe.emitter.EndColor = glm::vec4(r, g, b, 0.0f);
+
+        pe.emitter.Initialize(1000);
+    }
 }

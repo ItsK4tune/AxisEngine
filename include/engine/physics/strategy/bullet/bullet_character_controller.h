@@ -15,7 +15,10 @@ public:
     ~BulletCharacterController();
 
     void SetWalkDirection(const glm::vec3& dir) override;
-    void SetVelocity(const glm::vec3& vel) override;
+    void SetVelocity(const glm::vec3& vel, float timeInterval) override;
+    void SetFallSpeed(float speed) override;
+    void SetGravity(const glm::vec3& gravity) override;
+    void SetJumpSpeed(float speed) override;
     void Jump() override;
     bool OnGround() const override;
 

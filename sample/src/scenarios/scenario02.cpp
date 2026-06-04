@@ -7,61 +7,59 @@ void SampleState::LoadScene2()
 
     EntityBuilder(scene, res, "scenario")
         .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(100.0f, 1.0f, 100.0f))
-        .WithPBRMesh("planeModel", "deferred_lit_shadow", 0.0f, 0.8f, 1.0f)
+        .WithPBRRenderable("planeModel", "deferred_lit", glm::vec3(0.0f), glm::vec3(0.0f),
+                           glm::vec3(100.0f, 1.0f, 100.0f), 0.0f, 0.8f, 1.0f)
         .Build();
 
-    for (int i = 0; i < 1000; ++i)
-    {
-        float x = static_cast<float>(rand() % 2000) / 10.0f - 100.0f;
-        float z = static_cast<float>(rand() % 2000) / 10.0f - 100.0f;
-        float h = 1.0f + static_cast<float>(rand() % 50) / 10.0f;
+    EntityBuilder(scene, res, "scenario")
+        .WithName("LightingProbeCapsule")
+        .WithPBRRenderable("capsuleSmoothModel", "deferred_lit", glm::vec3(0.0f, 5.0f, 0.0f),
+                           glm::vec3(0.0f), glm::vec3(5.0f, 10.0f, 5.0f), 0.2f, 0.4f, 1.0f)
+        .Build();
 
-        auto cube = EntityBuilder(scene, res, "scenario")
-            .WithName("Cube_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, h * 0.5f + 0.5f, z), glm::vec3(0.0f, rand() % 360, 0.0f), glm::vec3(1.0f, h, 1.0f))
-            .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.1f, 0.6f, 1.0f)
+    EntityBuilder(scene, res, "scenario")
+        .WithName("DirLight_Key")
+        .WithDirectionalLightAt(glm::vec3(0.0f, 30.0f, 0.0f), glm::vec3(-45.0f, 35.0f, 0.0f),
+                                glm::normalize(glm::vec3(-0.5f, -1.0f, -0.35f)), m_S2DirectionalColor,
+                                m_S2DirectionalIntensity)
+        .Build();
+
+    for (int i = 0; i < 499; ++i)
+    {
+        float radius = 10.0f + static_cast<float>(rand() % 40);
+        float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
+        float h = 1.0f + static_cast<float>(rand() % 100) / 10.0f;
+        glm::vec3 pPos(cos(angle) * radius, h, sin(angle) * radius);
+        glm::vec3 pColor = m_S2PointColor * (0.5f + static_cast<float>(rand() % 50) / 100.0f);
+        EntityBuilder(scene, res, "scenario")
+            .WithName("PointLight_" + std::to_string(i))
+            .WithPointLightAt(pPos, pColor, m_S2PointIntensity, 15.0f)
+            .Build();
+
+        float sRadius = 15.0f + static_cast<float>(rand() % 35);
+        float sAngle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
+        glm::vec3 sPos(cos(sAngle) * sRadius, 15.0f, sin(sAngle) * sRadius);
+        glm::vec3 sColor = m_S2SpotColor * (0.5f + static_cast<float>(rand() % 50) / 100.0f);
+        EntityBuilder(scene, res, "scenario")
+            .WithName("SpotLight_" + std::to_string(i))
+            .WithSpotLightAt(sPos, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f), sColor, m_S2SpotIntensity)
             .Build();
     }
 
-    auto dir = EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithPBRRenderable("sphereModel", "deferred_lit", glm::vec3(20.0f, 40.0f, 20.0f),
-                           glm::vec3(-45.0f, -45.0f, 0.0f), 2.0f, 0.0f, 0.5f, 1.0f)
-        .WithMeshRenderOptions(false, false)
-        .WithRendererColor(glm::vec4(m_S2DirectionalColor * (m_S2DirectionalIntensity * 3.0f), 1.0f))
-        .WithMaterialEmission(m_S2DirectionalColor * (m_S2DirectionalIntensity * 3.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), m_S2DirectionalColor, m_S2DirectionalIntensity)
-        .Build();
-    m_S2DirLightEntity = dir;
-
-    auto point = EntityBuilder(scene, res, "scenario")
-        .WithName("PointLight")
-        .WithPBRRenderable("sphereModel", "deferred_lit", glm::vec3(0.0f, 8.0f, 0.0f), glm::vec3(0.0f),
-                           0.5f, 0.0f, 0.5f, 1.0f)
-        .WithMeshRenderOptions(false, false)
-        .WithRendererColor(glm::vec4(m_S2PointColor * (m_S2PointIntensity * 2.0f), 1.0f))
-        .WithMaterialEmission(m_S2PointColor * (m_S2PointIntensity * 2.0f))
-        .WithPointLight(m_S2PointColor, m_S2PointIntensity, 30.0f)
-        .Build();
-    scene.registry.get<PointLightComponent>(point).isCastShadow = true;
-
-    auto spot = EntityBuilder(scene, res, "scenario")
-        .WithName("SpotLight")
-        .WithPBRRenderable("sphereModel", "deferred_lit",
-                           glm::vec3(m_S2SpotOrbitRadius, m_S2SpotMotionHeight, 0.0f),
-                           glm::vec3(-90.0f, 0.0f, 0.0f), 0.8f, 0.0f, 0.5f, 1.0f)
-        .WithMeshRenderOptions(false, false)
-        .WithRendererColor(glm::vec4(m_S2SpotColor * (m_S2SpotIntensity * 1.25f), 1.0f))
-        .WithMaterialEmission(m_S2SpotColor * (m_S2SpotIntensity * 1.25f))
-        .WithSpotLight(glm::vec3(0.0f, -1.0f, 0.0f), m_S2SpotColor, m_S2SpotIntensity)
-        .Build();
-    auto& spotLight = scene.registry.get<SpotLightComponent>(spot);
-    spotLight.cutOff = glm::cos(glm::radians(22.5f));
-    spotLight.outerCutOff = glm::cos(glm::radians(32.5f));
-    spotLight.linear = 0.045f;
-    spotLight.quadratic = 0.0075f;
-    scene.registry.get<RotationComponent>(spot).value =
-        RotationFromNegativeY(glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) - glm::vec3(m_S2SpotOrbitRadius, m_S2SpotMotionHeight, 0.0f)));
-    scene.registry.get<SpotLightComponent>(spot).isCastShadow = true;
+    auto spotView = scene.registry.view<PositionComponent, RotationComponent, SpotLightComponent, InfoComponent>();
+    for (auto entity : spotView)
+    {
+        auto& info = spotView.get<InfoComponent>(entity);
+        if (info.name.rfind("SpotLight_", 0) != 0)
+            continue;
+        auto& pos = spotView.get<PositionComponent>(entity);
+        auto& rot = spotView.get<RotationComponent>(entity);
+        auto& spot = spotView.get<SpotLightComponent>(entity);
+        spot.direction = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) - pos.value);
+        spot.cutOff = glm::cos(glm::radians(20.0f));
+        spot.outerCutOff = glm::cos(glm::radians(30.0f));
+        spot.linear = 0.07f;
+        spot.quadratic = 0.017f;
+        rot.value = RotationFromNegativeY(spot.direction);
+    }
 }

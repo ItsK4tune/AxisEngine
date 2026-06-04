@@ -72,6 +72,7 @@ public:
     }
 
     void SetSceneActive(const std::string& name, bool active, Scene& scene);
+    void RebuildEntityRecords(Scene& scene);
 
     IPhysicsWorld* GetPhysicsWorld();
 

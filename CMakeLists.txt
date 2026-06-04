@@ -10,6 +10,7 @@ if (NOT WIN32)
 endif()
 
 option(ENABLE_EDITOR "Enable Editor System (ImGui)" OFF)
+option(BUILD_SAMPLES "Build sample application when editor is enabled" ON)
 
 if(ENABLE_EDITOR)
     add_compile_definitions(ENABLE_EDITOR)
@@ -156,7 +157,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
 )
 
 # Sample app
-if(ENABLE_EDITOR)
+if(ENABLE_EDITOR AND BUILD_SAMPLES)
     file(GLOB SAMPLE_SCENARIO_SOURCES CONFIGURE_DEPENDS
         sample/src/scenarios/*.cpp
     )

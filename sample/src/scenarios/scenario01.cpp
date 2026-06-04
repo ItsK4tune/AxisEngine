@@ -11,9 +11,12 @@ void SampleState::LoadScene1()
     float offset = -(size * spacing) * 0.5f;
 
     std::string modelName = "sphereModel";
-    if (m_S1MeshType == 1) modelName = "cubeModel";
-    else if (m_S1MeshType == 2) modelName = "cylinderModel";
-    else if (m_S1MeshType == 3) modelName = "capsuleModel";
+    if (m_S1MeshType == 1)
+        modelName = "cubeModel";
+    else if (m_S1MeshType == 2)
+        modelName = "cylinderModel";
+    else if (m_S1MeshType == 3)
+        modelName = "capsuleModel";
 
     for (int x = 0; x < size && count < m_S1EntityCount; ++x)
     {
@@ -21,16 +24,24 @@ void SampleState::LoadScene1()
         {
             for (int z = 0; z < size && count < m_S1EntityCount; ++z)
             {
-                glm::vec3 pos(
-                    offset + x * spacing + static_cast<float>(rand() % 100) / 200.0f,
-                    y * spacing + static_cast<float>(rand() % 100) / 200.0f,
-                    offset + z * spacing + static_cast<float>(rand() % 100) / 200.0f
-                );
+                glm::vec3 pos(offset + x * spacing + static_cast<float>(rand() % 100) / 200.0f,
+                              y * spacing + static_cast<float>(rand() % 100) / 200.0f,
+                              offset + z * spacing + static_cast<float>(rand() % 100) / 200.0f);
 
-                EntityBuilder(scene, res, "scenario")
-                    .WithName("Entity_" + std::to_string(count))
-                    .WithPBRRenderable(modelName, "deferred_lit", pos, glm::vec3(0.0f), 1.0f, 0.1f, 0.5f, 1.0f)
-                    .Build();
+                auto entity =
+                    EntityBuilder(scene, res, "scenario")
+                        .WithName("Entity_" + std::to_string(count))
+                        .WithPBRRenderable(modelName, "deferred_unlit", pos, glm::vec3(0.0f), 1.0f, 0.0f, 0.5f, 1.0f)
+                        .Build();
+
+                if (m_S1UniqueTint)
+                {
+                    float hue = static_cast<float>(count % 157) / 157.0f;
+                    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+                    {
+                        renderer->color = glm::vec4(0.35f + 0.55f * hue, 0.75f - 0.25f * hue, 1.0f - 0.45f * hue, 1.0f);
+                    }
+                }
 
                 count++;
             }

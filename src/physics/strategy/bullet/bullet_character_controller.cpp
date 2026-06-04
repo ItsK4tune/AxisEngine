@@ -19,9 +19,24 @@ void BulletCharacterController::SetWalkDirection(const glm::vec3& dir)
     m_Controller->setWalkDirection(btVector3(dir.x, dir.y, dir.z));
 }
 
-void BulletCharacterController::SetVelocity(const glm::vec3& vel)
+void BulletCharacterController::SetVelocity(const glm::vec3& vel, float timeInterval)
 {
-    m_Controller->setVelocityForTimeInterval(btVector3(vel.x, vel.y, vel.z), 1.0f);
+    m_Controller->setVelocityForTimeInterval(btVector3(vel.x, vel.y, vel.z), timeInterval);
+}
+
+void BulletCharacterController::SetFallSpeed(float speed)
+{
+    m_Controller->setFallSpeed(speed);
+}
+
+void BulletCharacterController::SetGravity(const glm::vec3& gravity)
+{
+    m_Controller->setGravity(btVector3(gravity.x, gravity.y, gravity.z));
+}
+
+void BulletCharacterController::SetJumpSpeed(float speed)
+{
+    m_Controller->setJumpSpeed(speed);
 }
 
 void BulletCharacterController::Jump()

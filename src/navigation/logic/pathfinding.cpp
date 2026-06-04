@@ -18,6 +18,9 @@ struct AStarNode
 std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::vec3& end,
                                              const NavMeshComponent& navMesh, const PathfindingOptions& options)
 {
+    if (options.criteria == PathfindingCriteria::StraightLine)
+        return {start, end};
+
     if (navMesh.nodes.empty())
         return {};
 
@@ -52,12 +55,14 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
 
         for (uint32_t neighbor : navMesh.nodes[current].neighbors)
         {
-            float dist = glm::distance(navMesh.nodes[current].position, navMesh.nodes[neighbor].position);
+            const glm::vec3& currentPos = navMesh.nodes[current].position;
+            const glm::vec3& neighborPos = navMesh.nodes[neighbor].position;
+            float dist = glm::distance(currentPos, neighborPos);
             float weight = 1.0f;
 
             if (options.criteria == PathfindingCriteria::Smoothest)
             {
-                float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
+                float yDelta = std::abs(currentPos.y - neighborPos.y);
                 weight = 1.0f + (yDelta * options.altitudePenaltyWeight);
             }
             else if (options.criteria == PathfindingCriteria::StayOnRoad)
@@ -74,15 +79,11 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
                 if (onRoad)
                     weight = 1.0f / options.tagWeightBonus;
             }
-            else if (options.criteria == PathfindingCriteria::OnlyXZ)
+            else if (options.criteria == PathfindingCriteria::HighGround)
             {
-                float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
-                weight = 1.0f + (yDelta * options.altitudePenaltyWeight * 2.0f);
-            }
-            else if (options.criteria == PathfindingCriteria::OnlyY)
-            {
-                float yDelta = std::abs(navMesh.nodes[current].position.y - navMesh.nodes[neighbor].position.y);
-                weight = 1.0f + (1.0f - glm::clamp(yDelta, 0.0f, 1.0f)) * 2.0f;
+                float heightReward = glm::clamp(neighborPos.y * 0.12f, 0.0f, 0.65f);
+                float climbPenalty = glm::max(0.0f, neighborPos.y - currentPos.y) * 0.08f;
+                weight = glm::max(0.25f, 1.0f - heightReward + climbPenalty);
             }
             else if (options.criteria == PathfindingCriteria::Custom && options.customCostFunc)
             {
@@ -129,6 +130,10 @@ float Pathfinding::Heuristic(const glm::vec3& a, const glm::vec3& b, const Pathf
     if (options.criteria == PathfindingCriteria::Custom && options.customHeuristicFunc)
     {
         return options.customHeuristicFunc(a, b);
+    }
+    if (options.criteria == PathfindingCriteria::StayOnRoad)
+    {
+        return glm::distance(glm::vec2(a.x, a.z), glm::vec2(b.x, b.z));
     }
     return glm::distance(a, b);
 }

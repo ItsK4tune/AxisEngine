@@ -12,6 +12,36 @@
 
 REGISTER_SYSTEM(NavigationSystem)
 
+namespace
+{
+std::vector<glm::vec3> SmoothPathCorners(const std::vector<glm::vec3>& path, int iterations)
+{
+    if (path.size() < 3 || iterations <= 0)
+        return path;
+
+    std::vector<glm::vec3> result = path;
+    for (int it = 0; it < iterations; ++it)
+    {
+        std::vector<glm::vec3> smoothed;
+        smoothed.reserve(result.size() * 2);
+        smoothed.push_back(result.front());
+
+        for (size_t i = 1; i + 1 < result.size(); ++i)
+        {
+            const glm::vec3& prev = result[i - 1];
+            const glm::vec3& curr = result[i];
+            const glm::vec3& next = result[i + 1];
+            smoothed.push_back(glm::mix(curr, prev, 0.22f));
+            smoothed.push_back(glm::mix(curr, next, 0.22f));
+        }
+
+        smoothed.push_back(result.back());
+        result = std::move(smoothed);
+    }
+    return result;
+}
+}  // namespace
+
 void NavigationSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
@@ -74,7 +104,18 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
         if (follower.pathPending)
         {
-            if (globalNavMesh && !globalNavMesh->nodes.empty())
+            if (follower.pathfindingOptions.criteria == PathfindingCriteria::StraightLine)
+            {
+                follower.currentPath = {pos.value, follower.targetPosition};
+                follower.currentPathIndex = 0;
+                follower.pathPending = false;
+                follower.isMoving = true;
+                follower.debugPlannedPath = follower.currentPath;
+                follower.debugTraveledPath.clear();
+                if (follower.recordDebugPath)
+                    follower.debugTraveledPath.push_back(pos.value);
+            }
+            else if (globalNavMesh && !globalNavMesh->nodes.empty())
             {
                 LOGGER_INFO("NavigationSystem") << "Pathfinding request for entity " << (uint32_t)entity << ": Start=("
                                                 << pos.value.x << "," << pos.value.y << "," << pos.value.z << ")"
@@ -93,7 +134,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     follower.debugTraveledPath.push_back(pos.value);
 
                 if (follower.isMoving && follower.currentPath.size() > 2 && physics_ptr &&
-                    follower.pathfindingOptions.criteria != PathfindingCriteria::StayOnRoad)
+                    follower.pathfindingOptions.criteria == PathfindingCriteria::Smoothest)
                 {
                     std::vector<glm::vec3> smoothedPath;
                     smoothedPath.push_back(follower.currentPath[0]);
@@ -123,6 +164,8 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     }
                     follower.currentPath = smoothedPath;
                 }
+                if (follower.isMoving && follower.pathfindingOptions.criteria == PathfindingCriteria::Smoothest)
+                    follower.currentPath = SmoothPathCorners(follower.currentPath, 2);
                 follower.debugPlannedPath = follower.currentPath;
 
                 LOGGER_INFO("NavigationSystem") << "Pathfinding Result: " << (follower.isMoving ? "SUCCESS" : "FAILED")
@@ -142,7 +185,9 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
         if (follower.isMoving && !follower.currentPath.empty())
         {
-            const bool fly3D = follower.pathfindingOptions.criteria == PathfindingCriteria::OnlyY;
+            const bool fly3D = follower.pathfindingOptions.criteria == PathfindingCriteria::Shortest ||
+                               follower.pathfindingOptions.criteria == PathfindingCriteria::Smoothest ||
+                               follower.pathfindingOptions.criteria == PathfindingCriteria::HighGround;
             glm::vec3 target = follower.currentPath[follower.currentPathIndex];
             glm::vec3 diff = target - pos.value;
             float distance = fly3D ? glm::length(diff) : glm::length(glm::vec3(diff.x, 0.0f, diff.z));
@@ -207,7 +252,8 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                             if (!isObstacle)
                             {
                                 groundNormal = groundHit.hitNormal;
-                                if (!glm::any(glm::isnan(groundHit.hitPoint)) && std::abs(groundHit.hitPoint.y) < 10000.0f)
+                                if (!glm::any(glm::isnan(groundHit.hitPoint)) &&
+                                    std::abs(groundHit.hitPoint.y) < 10000.0f)
                                 {
                                     pos.value.y = groundHit.hitPoint.y;
                                 }
@@ -470,7 +516,7 @@ void NavigationSystem::AddWalkableTag(const std::string& tag)
 void NavigationSystem::ClearWalkableTags()
 {
     m_WalkableTags.clear();
-    m_WalkableTags.push_back("Walkable");
+    m_WalkableTags.push_back("walkable");
 }
 
 void NavigationSystem::AddCarveTag(const std::string& tag)

@@ -437,8 +437,8 @@ void ScriptableSystem::LoadScript(Scene& scene, entt::entity entity, const YAMLN
     LoaderUtils::ValidateKeys(node, {"Class"}, "Script");
 
     std::string className = node.GetChildValue("Class");
-    if (className.empty())
-        LOGGER_WARN("ScriptableSystem") << "Script component missing 'Class' property";
+    if (className.empty() || className == "None")
+        return;
 
     auto& scriptComp = scene.registry.emplace<ScriptComponent>(entity);
     scriptComp.className = className;
@@ -447,7 +447,11 @@ void ScriptableSystem::LoadScript(Scene& scene, entt::entity entity, const YAMLN
         auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
         return registry ? registry->Create(className) : nullptr;
     };
-    scriptComp.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
+    scriptComp.DestroyScript = [](ScriptComponent* nsc) {
+        nsc->instance.reset();
+        nsc->scriptableInstance = nullptr;
+        nsc->inputScriptableInstance = nullptr;
+    };
 }
 
 void ScriptableSystem::Update(Scene& scene, float dt)

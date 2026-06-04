@@ -85,6 +85,17 @@ void PhysicsSystem::Initialize()
 
 void PhysicsSystem::Update(Scene& scene, float dt)
 {
+    if (dt <= 0.0f)
+        Step(scene, dt);
+}
+
+void PhysicsSystem::FixedUpdate(Scene& scene, float fixedDt)
+{
+    Step(scene, fixedDt);
+}
+
+void PhysicsSystem::Step(Scene& scene, float dt)
+{
     if (!m_Enabled)
         return;
 
@@ -155,6 +166,35 @@ void PhysicsSystem::Update(Scene& scene, float dt)
         }
     }
 
+    auto viewCC = scene.registry.view<CharacterControllerComponent, InfoComponent>();
+    for (auto entity : viewCC)
+    {
+        auto& info = viewCC.get<InfoComponent>(entity);
+        if (!info.isActive)
+            continue;
+
+        auto& cc = viewCC.get<CharacterControllerComponent>(entity);
+        if (!cc.controller)
+            continue;
+
+        if (cc.useVelocity)
+        {
+            if (glm::length(cc.velocity) > 0.0001f)
+                cc.controller->SetVelocity(cc.velocity, dt);
+            else
+                cc.controller->SetWalkDirection(glm::vec3(0.0f));
+        }
+        else
+        {
+            cc.controller->SetWalkDirection(cc.walkDirection);
+        }
+        if (cc.jumpRequested)
+        {
+            cc.controller->Jump();
+            cc.jumpRequested = false;
+        }
+    }
+
     physicsWorld->Update(dt);
     m_transformSync->SyncFromPhysics();
 
@@ -164,7 +204,6 @@ void PhysicsSystem::Update(Scene& scene, float dt)
     }
     m_collisionDispatcher->DispatchEvents();
 
-    auto viewCC = scene.registry.view<CharacterControllerComponent, InfoComponent>();
     for (auto entity : viewCC)
     {
         auto& info = viewCC.get<InfoComponent>(entity);
@@ -174,13 +213,18 @@ void PhysicsSystem::Update(Scene& scene, float dt)
         auto& cc = viewCC.get<CharacterControllerComponent>(entity);
         if (cc.controller)
         {
-            cc.controller->SetWalkDirection(cc.walkDirection);
-            if (cc.jumpRequested)
-            {
-                cc.controller->Jump();
-                cc.jumpRequested = false;
-            }
             cc.isOnGround = cc.controller->OnGround();
+            if (auto* pos = scene.registry.try_get<PositionComponent>(entity))
+            {
+                glm::vec3 controllerPos;
+                glm::quat controllerRot;
+                cc.controller->GetWorldTransform(controllerPos, controllerRot);
+                pos->value = controllerPos;
+                if (auto* rot = scene.registry.try_get<RotationComponent>(entity))
+                    rot->value = controllerRot;
+                if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
+                    world->isDirty = true;
+            }
         }
     }
 }
@@ -369,7 +413,14 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
             rb.body->SetLinearFactor(rb.linearFactor);
             rb.body->SetAngularFactor(rb.angularFactor);
             rb.body->SetDamping(rb.linearDamping, rb.angularDamping);
+            rb.body->SetLinearVelocity(rb.initialLinearVelocity);
+            rb.body->SetAngularVelocity(rb.initialAngularVelocity);
             physics.AddRigidBody(rb.body.get());
+            if (glm::length(rb.initialLinearVelocity) > 0.0001f ||
+                glm::length(rb.initialAngularVelocity) > 0.0001f)
+            {
+                rb.body->Activate(true);
+            }
         }
     }
 }

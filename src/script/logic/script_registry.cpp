@@ -3,6 +3,9 @@
 
 std::unique_ptr<IScriptable> ScriptRegistry::Create(const std::string& name)
 {
+    if (name.empty())
+        return nullptr;
+
     auto& staticMap = GetStaticFactoryMap();
     if (staticMap.find(name) != staticMap.end())
     {

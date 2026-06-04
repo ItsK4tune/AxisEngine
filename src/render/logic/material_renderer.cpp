@@ -86,7 +86,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
             auto getTexID = [&](const std::string& path) -> uint32_t {
                 if (path.empty())
                     return 0;
-                auto tex = m_ResourceManager->GetTexture(path);
+                auto tex = m_ResourceManager->GetTextureAuto(path);
                 return tex ? tex->id : 0;
             };
             mat.gpu.albedoMap = getTexID(mat.desc.albedoPath);
@@ -98,6 +98,13 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialCompone
             mat.gpu.specularMap = getTexID(mat.desc.specularPath);
             mat.gpu.dirty = false;
         }
+
+        boundSomething = !mat.desc.albedoPath.empty() || !mat.desc.normalPath.empty() ||
+                         !mat.desc.metallicPath.empty() || !mat.desc.roughnessPath.empty() ||
+                         !mat.desc.aoPath.empty() || !mat.desc.emissivePath.empty() || !mat.desc.specularPath.empty() ||
+                         mat.gpu.albedoMap != 0 || mat.gpu.normalMap != 0 || mat.gpu.metallicMap != 0 ||
+                         mat.gpu.roughnessMap != 0 || mat.gpu.aoMap != 0 || mat.gpu.emissiveMap != 0 ||
+                         mat.gpu.specularMap != 0;
 
         if (locs.u_Roughness != -1)
             shader->setFloat(locs.u_Roughness, mat.desc.pbr.roughness);

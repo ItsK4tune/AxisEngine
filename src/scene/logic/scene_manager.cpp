@@ -129,6 +129,52 @@ void SceneManager::SetSceneActive(const std::string& name, bool active, Scene& s
     }
 }
 
+void SceneManager::RebuildEntityRecords(Scene& scene)
+{
+    for (auto& rec : m_LoadedScenes)
+    {
+        rec.entities.clear();
+    }
+
+    auto view = scene.registry.view<InfoComponent>();
+    for (auto entity : view)
+    {
+        auto& info = view.get<InfoComponent>(entity);
+        std::string sceneName = SceneSerializer::NormalizeSceneName(info.sceneName);
+        if (sceneName.empty())
+        {
+            sceneName = m_ActiveSceneName.empty() ? "main" : m_ActiveSceneName;
+            info.sceneName = sceneName;
+        }
+
+        auto it = std::find_if(m_LoadedScenes.begin(), m_LoadedScenes.end(), [&](const SceneRecord& rec) {
+            return rec.name == sceneName || rec.filePath == sceneName ||
+                   SceneSerializer::NormalizeSceneName(rec.name) == sceneName;
+        });
+
+        if (it == m_LoadedScenes.end())
+        {
+            SceneRecord rec;
+            rec.name = sceneName;
+            rec.filePath = sceneName;
+            rec.loadOrder = m_NextLoadOrder++;
+            rec.persistent = false;
+            rec.isActive = true;
+            rec.entities.push_back(entity);
+            info.isActive = rec.isActive;
+            m_LoadedScenes.push_back(std::move(rec));
+        }
+        else
+        {
+            if (std::find(it->entities.begin(), it->entities.end(), entity) == it->entities.end())
+                it->entities.push_back(entity);
+            info.isActive = it->isActive;
+        }
+    }
+
+    Internal_ReindexScenes();
+}
+
 void SceneManager::LoadScene(const std::string& filePath, bool persistent)
 {
     LOGGER_INFO("SceneManager") << "Loading scene: " << filePath << (persistent ? " (persistent)" : "");

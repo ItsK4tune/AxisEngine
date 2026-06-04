@@ -4,84 +4,82 @@ void SampleState::LoadScene4()
 {
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
-    if (auto* physics = Resolve<IPhysicsWorld>())
-    {
-        physics->SetGravity(m_S4Gravity);
-    }
 
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(0.0f, 40.0f, 0.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
-        .Build();
+    auto lightDirection =
+        glm::normalize(glm::vec3(std::cos(glm::radians(m_S4LightYaw)) * std::cos(glm::radians(m_S4LightPitch)),
+                                 std::sin(glm::radians(m_S4LightPitch)),
+                                 std::sin(glm::radians(m_S4LightYaw)) * std::cos(glm::radians(m_S4LightPitch))));
 
-    auto floor = EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-        .Build();
-
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-    floorShape.type = ShapeType::Box;
-    floorShape.size = glm::vec3(80.0f, 1.0f, 80.0f);
-    floorShape.restitution = m_S4Restitution;
-    floorShape.friction = m_S4Friction;
-
-    auto& floorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-    floorRB.mass = 0.0f;
-    floorRB.isStatic = true;
-
-    std::string modelName = "cubeModel";
-    ShapeType st = ShapeType::Box;
-    if (m_S4ShapeType == 1) { modelName = "sphereModel"; st = ShapeType::Sphere; }
-    else if (m_S4ShapeType == 2) { modelName = "capsuleModel"; st = ShapeType::Capsule; }
-
-    for (int i = 0; i < m_S4EntityCount; ++i)
-    {
-        float x = static_cast<float>((i % 10) - 5) * m_S4GridSpacing + (static_cast<float>(rand() % 100) / 400.0f - 0.125f);
-        float y = static_cast<float>(i / 25) * m_S4GridSpacing + m_S4SpawnHeight;
-        float z = static_cast<float>(((i / 10) % 10) - 5) * m_S4GridSpacing + (static_cast<float>(rand() % 100) / 400.0f - 0.125f);
-
-        auto bodyEntity = EntityBuilder(scene, res, "scenario")
-            .WithName("PhysicsEntity_" + std::to_string(i))
-            .WithTransform(glm::vec3(x, y, z), glm::vec3(rand() % 360, rand() % 360, rand() % 360), glm::vec3(1.0f))
-            .WithPBRMesh(modelName, "deferred_lit", 0.1f, 0.6f, 1.0f)
+    m_S4ReceiverEntity =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("ShadowReceiverFloor")
+            .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(m_S4ReceiverSize, 1.0f, m_S4ReceiverSize))
+            .WithPBRMesh("planeModel", "deferred_lit_shadow", 0.0f, 0.8f, 1.0f)
             .Build();
 
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, bodyEntity);
-        shape.type = st;
-        shape.size = glm::vec3(1.0f);
-        shape.radius = 0.5f;
-        shape.height = 1.0f;
-        shape.restitution = m_S4Restitution;
-        shape.friction = m_S4Friction;
-
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, bodyEntity);
-        rb.mass = m_S4Mass;
-        rb.isStatic = false;
-        rb.linearDamping = m_S4LinearDamping;
-        rb.angularDamping = m_S4AngularDamping;
-    }
-
-    auto& physicsSystem = GetSystem<PhysicsSystem>();
-    physicsSystem.Update(scene, 0.0f);
-    if (m_S4InitialImpulse > 0.0f)
+    m_S4DeferredCubeEntity =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("DeferredShadowCasterCube")
+            .WithTransform(glm::vec3(-16.0f * m_S4CasterSpread, m_S4CasterHeight, -1.0f),
+                           glm::vec3(0.0f, 25.0f, 0.0f), glm::vec3(4.0f, 8.0f, 4.0f) * m_S4CasterScale)
+            .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.1f, 0.5f, 1.0f)
+            .Build();
     {
-        auto view = scene.registry.view<RigidBodyComponent, InfoComponent>();
-        for (auto entity : view)
-        {
-            auto& info = view.get<InfoComponent>(entity);
-            if (info.name.rfind("PhysicsEntity_", 0) != 0)
-                continue;
-            auto& rb = view.get<RigidBodyComponent>(entity);
-            if (rb.body)
-            {
-                float impulse = m_S4InitialImpulse * (0.75f + static_cast<float>(rand() % 100) / 100.0f);
-                float angle = static_cast<float>(rand() % 628) * 0.01f;
-                glm::vec3 direction = glm::normalize(glm::vec3(std::cos(angle), 0.18f, std::sin(angle)));
-                rb.body->Activate(true);
-                rb.body->ApplyCentralImpulse(direction * impulse);
-            }
-        }
+        auto& r = scene.registry.get<MeshRendererComponent>(m_S4DeferredCubeEntity);
+        r.receiveShadow = false;
+        r.castShadow = true;
+        r.color = glm::vec4(0.18f, 0.46f, 1.0f, 1.0f);
     }
+
+    m_S4DeferredSphereEntity = EntityBuilder(scene, res, "scenario")
+                                    .WithName("DeferredShadowCasterSphere")
+                                    .WithTransform(glm::vec3(-9.0f * m_S4CasterSpread, m_S4CasterHeight, 4.0f),
+                                                   glm::vec3(0.0f), glm::vec3(4.0f) * m_S4CasterScale)
+                                    .WithPBRMesh("sphereModel", "deferred_lit_shadow", 0.0f, 0.35f, 1.0f)
+                                    .Build();
+    {
+        auto& r = scene.registry.get<MeshRendererComponent>(m_S4DeferredSphereEntity);
+        r.receiveShadow = false;
+        r.castShadow = true;
+        r.color = glm::vec4(0.10f, 0.70f, 1.0f, 1.0f);
+    }
+
+    m_S4ForwardCubeEntity =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("ForwardShadowCasterCube")
+            .WithTransform(glm::vec3(10.0f * m_S4CasterSpread, m_S4CasterHeight + 1.0f, -1.0f),
+                           glm::vec3(0.0f, -18.0f, 0.0f), glm::vec3(3.5f, 7.0f, 3.5f) * m_S4CasterScale)
+            .WithPBRMesh("cubeModel", "forward_pbr_lit_shadow", 0.0f, 0.45f, 1.0f)
+            .Build();
+    {
+        auto& r = scene.registry.get<MeshRendererComponent>(m_S4ForwardCubeEntity);
+        r.renderMode = RenderMode::ForceForward;
+        r.receiveShadow = false;
+        r.castShadow = true;
+        r.color = glm::vec4(1.0f, 0.18f, 0.14f, 1.0f);
+    }
+
+    m_S4ForwardCapsuleEntity =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("ForwardShadowCasterCapsule")
+            .WithTransform(glm::vec3(18.0f * m_S4CasterSpread, m_S4CasterHeight - 1.0f, 4.0f),
+                           glm::vec3(0.0f, 35.0f, 0.0f), glm::vec3(2.8f, 5.2f, 2.8f) * m_S4CasterScale)
+            .WithPBRMesh("capsuleSmoothModel", "forward_unlit", 0.0f, 0.5f, 1.0f)
+            .Build();
+    {
+        auto& r = scene.registry.get<MeshRendererComponent>(m_S4ForwardCapsuleEntity);
+        r.renderMode = RenderMode::ForceForward;
+        r.receiveShadow = false;
+        r.castShadow = true;
+        r.color = glm::vec4(1.0f, 0.36f, 0.22f, 1.0f);
+    }
+
+    m_S4LightEntity =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("DeferredShadowDirLight")
+            .WithTransform(glm::vec3(25.0f, 40.0f, 20.0f), glm::vec3(m_S4LightPitch, m_S4LightYaw, 0.0f))
+            .WithDirectionalLight(lightDirection, glm::vec3(1.0f), m_S4LightIntensity)
+            .Build();
+    if (auto* dir = scene.registry.try_get<DirectionalLightComponent>(m_S4LightEntity))
+        dir->isCastShadow = true;
 }

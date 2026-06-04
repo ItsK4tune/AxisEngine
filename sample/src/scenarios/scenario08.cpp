@@ -4,82 +4,37 @@ void SampleState::LoadScene8()
 {
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
-
-    auto floor = EntityBuilder(scene, res, "scenario")
-        .WithName("Floor")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(50.0f, 1.0f, 50.0f))
-        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-        .Build();
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-    floorShape.type = ShapeType::Box;
-    floorShape.size = glm::vec3(50.0f, 1.0f, 50.0f);
-    floorShape.friction = 0.8f;
-    auto& floorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-    floorRB.mass = 0.0f;
-    floorRB.isStatic = true;
+    m_S8LayerMask = 0x7;
 
     EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
+        .WithName("LayerDirLight")
+        .WithTransform(glm::vec3(20.0f, 35.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f))
+        .WithDirectionalLight(glm::normalize(glm::vec3(-0.6f, -1.0f, -0.6f)), glm::vec3(1.0f), 1.3f)
         .Build();
 
-    // Controllable Player entity
-    auto player = EntityBuilder(scene, res, "scenario")
-        .WithName("PlayerCube")
-        .WithTransform(glm::vec3(0.0f, 0.75f, 0.0f), glm::vec3(0.0f), glm::vec3(1.5f))
-        .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.4f, 1.0f)
+    EntityBuilder(scene, res, "scenario")
+        .WithName("LayerFloor")
+        .WithLayer(0x1)
+        .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
 
-    std::string scriptName = "PlayerControlScript";
-    auto& script = scene.registry.emplace<ScriptComponent>(player);
-    script.className = scriptName;
-    script.InstantiateScript = [scriptName]() {
-        auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
-        return registry ? registry->Create(scriptName) : nullptr;
-    };
-    script.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
-
-    auto& playerShape = EntityManager::AddComponent<RigidShapeComponent>(scene, player);
-    playerShape.type = ShapeType::Box;
-    playerShape.size = glm::vec3(1.5f);
-    playerShape.friction = 0.7f;
-    auto& playerRB = EntityManager::AddComponent<RigidBodyComponent>(scene, player);
-    playerRB.mass = 1.0f;
-    playerRB.isStatic = false;
-    playerRB.isKinematic = true;
-    playerRB.linearFactor = glm::vec3(1.0f, 1.0f, 1.0f);
-    playerRB.angularFactor = glm::vec3(0.0f, 1.0f, 0.0f);
-    m_ShowDebugLines = false;
-    ResetDefaultPlayerBindings();
-
-    // Spawn some targets / visual obstacles to walk around
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 8; ++i)
     {
-        float angle = static_cast<float>(i) * 72.0f * 3.14159f / 180.0f;
-        float radius = 10.0f;
-        glm::vec3 pos(cos(angle) * radius, 1.0f, sin(angle) * radius);
-
-        auto target = EntityBuilder(scene, res, "scenario")
-            .WithName("Target_" + std::to_string(i))
-            .WithTransform(pos, glm::vec3(0.0f), glm::vec3(2.0f))
-            .WithPBRMesh("sphereModel", "deferred_lit", 0.9f, 0.1f, 1.0f)
+        auto cube = EntityBuilder(scene, res, "scenario")
+            .WithName("LayerRedCube_" + std::to_string(i))
+            .WithLayer(0x2)
+            .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, -8.0f), glm::vec3(0.0f, i * 20.0f, 0.0f), glm::vec3(2.0f))
+            .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.55f, 1.0f)
             .Build();
+        scene.registry.get<MeshRendererComponent>(cube).color = glm::vec4(1.0f, 0.15f, 0.1f, 1.0f);
 
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, target);
-        shape.type = ShapeType::Sphere;
-        shape.radius = 1.0f;
-        shape.friction = 0.5f;
-        shape.restitution = 0.25f;
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, target);
-        rb.mass = 1.0f;
-        rb.isStatic = false;
-        rb.linearDamping = 0.25f;
-        rb.angularDamping = 0.25f;
+        auto sphere = EntityBuilder(scene, res, "scenario")
+            .WithName("LayerBlueSphere_" + std::to_string(i))
+            .WithLayer(0x4)
+            .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, 8.0f), glm::vec3(0.0f), glm::vec3(2.0f))
+            .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.35f, 1.0f)
+            .Build();
+        scene.registry.get<MeshRendererComponent>(sphere).color = glm::vec4(0.1f, 0.35f, 1.0f, 1.0f);
     }
-
-    auto& transformSys = GetSystem<TransformSystem>();
-    transformSys.m_IsLinearTransformsDirty = true;
-    transformSys.Update(scene, 0.0f);
-    GetSystem<PhysicsSystem>().Update(scene, 0.0f);
 }

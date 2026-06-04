@@ -45,6 +45,8 @@ The system supports multiple criteria to suit different gameplay needs:
 - **Shortest**: Standard Euclidean distance (Fastest).
 - **Smoothest**: Minimizes altitude (slope) changes for more natural movement.
 - **StayOnRoad**: Prefers nodes with specific tags (e.g., `road`, `walkable`).
+- **StraightLine**: Bypasses the NavMesh and moves directly from start to target.
+- **HighGround**: Biases path cost toward higher nodes.
 - **Custom**: Evaluates path cost via a user-defined C++ callback.
 
 ### PathfindingOptions

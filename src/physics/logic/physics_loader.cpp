@@ -140,6 +140,14 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
         std::stringstream ss(node.GetChildValue("AngularVelocity"));
         ss >> angVel.x >> angVel.y >> angVel.z;
     }
+    rb.initialLinearVelocity = linVel;
+    rb.initialAngularVelocity = angVel;
+    if (rb.body)
+    {
+        rb.body->SetLinearVelocity(linVel);
+        rb.body->SetAngularVelocity(angVel);
+        rb.body->Activate(true);
+    }
 
     // We don't create the IRigidBody here anymore because it requires a Shape.
     // The PhysicsSystem will handle IRigidBody creation when RigidShape and RigidBody are both present.

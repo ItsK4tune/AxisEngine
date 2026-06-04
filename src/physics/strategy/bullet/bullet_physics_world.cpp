@@ -354,8 +354,8 @@ std::shared_ptr<ICharacterController> BulletPhysicsWorld::CreateCharacterControl
     ghostObject->setCollisionShape(bShape->GetRaw());
     ghostObject->setCollisionFlags(btCollisionObject::CF_CHARACTER_OBJECT);
 
-    btKinematicCharacterController* controller =
-        new btKinematicCharacterController(ghostObject, static_cast<btConvexShape*>(bShape->GetRaw()), stepHeight);
+    btKinematicCharacterController* controller = new btKinematicCharacterController(
+        ghostObject, static_cast<btConvexShape*>(bShape->GetRaw()), stepHeight, btVector3(0.0f, 1.0f, 0.0f));
 
     return std::make_shared<BulletCharacterController>(ghostObject, controller, shape);
 }

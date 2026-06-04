@@ -181,7 +181,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
                                                       entNode.GetChildValue("Tag", "default"));
 
                 auto& info = scene.registry.get<InfoComponent>(currentEntity);
-                info.sceneName = sceneName;
+                info.sceneName = entNode.GetChildValue("Scene", entNode.GetChildValue("SceneName", sceneName));
                 result.entities.push_back(currentEntity);
 
                 if (parent != entt::null)
@@ -201,7 +201,8 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
                     {
                         ComponentLoader::Load(child.value, scene, currentEntity, child, res, phys);
                     }
-                    else if (child.key != "Tag" && child.key != "Layer" && child.key != "Parent")
+                    else if (child.key != "Tag" && child.key != "Layer" && child.key != "Parent" &&
+                             child.key != "Scene" && child.key != "SceneName")
                     {
                         ParseEntity(child, currentEntity);
                     }
@@ -422,6 +423,8 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ci, "Tag", info->tag);
     if (info && !info->isActive)
         SerialWriteKV(f, ci, "Active", "false");
+    if (info && targetScene.empty() && !info->sceneName.empty())
+        SerialWriteKV(f, ci, "Scene", info->sceneName);
 
     // Parent link if parent is in a different scene
     if (auto* h = reg.try_get<HierarchyComponent>(entity))
@@ -430,7 +433,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         {
             if (auto* pInfo = reg.try_get<InfoComponent>(h->parent))
             {
-                if (SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene)
+                if (!targetScene.empty() && SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene)
                 {
                     SerialWriteKV(f, ci, "Parent", pInfo->name);
                 }
@@ -570,6 +573,12 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "BodyType", rb->isStatic ? "STATIC" : (rb->isKinematic ? "KINEMATIC" : "DYNAMIC"));
         SerialWriteKV(f, ti, "LinearDamping", FloatStr(rb->linearDamping));
         SerialWriteKV(f, ti, "AngularDamping", FloatStr(rb->angularDamping));
+        const glm::vec3 linearVelocity = rb->body ? rb->body->GetLinearVelocity() : rb->initialLinearVelocity;
+        const glm::vec3 angularVelocity = rb->body ? rb->body->GetAngularVelocity() : rb->initialAngularVelocity;
+        if (glm::length(linearVelocity) > 0.0001f)
+            SerialWriteKV(f, ti, "LinearVelocity", Vec3Str(linearVelocity));
+        if (glm::length(angularVelocity) > 0.0001f)
+            SerialWriteKV(f, ti, "AngularVelocity", Vec3Str(angularVelocity));
         if (rb->isTrigger)
             SerialWriteKV(f, ti, "IsTrigger", "true");
     }
@@ -792,11 +801,10 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
             SerialWriteKV(f, ti, "Distances", dists);
     }
 
-    if (auto* sc = reg.try_get<ScriptComponent>(entity))
+    if (auto* sc = reg.try_get<ScriptComponent>(entity); sc && !sc->className.empty())
     {
         WriteComponentHeader(f, ci, "Script");
-        if (!sc->className.empty())
-            SerialWriteKV(f, ti, "Class", sc->className);
+        SerialWriteKV(f, ti, "Class", sc->className);
     }
 
     if (auto* net = reg.try_get<NetworkComponent>(entity))
@@ -814,7 +822,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         {
             if (auto* pInfo = reg.try_get<InfoComponent>(h->parent))
             {
-                if (SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene)
+                if (!targetScene.empty() && SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene)
                 {
                     SerialWriteKV(f, indent + 1, "Parent", pInfo->name);
                 }
@@ -837,14 +845,17 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
 
 static bool HasSerializableComponents(entt::registry& reg, entt::entity entity)
 {
-    return reg.any_of<PositionComponent, RotationComponent, ScaleComponent, MeshRendererComponent,
+    auto* script = reg.try_get<ScriptComponent>(entity);
+    const bool hasNamedScript = script && !script->className.empty();
+    return hasNamedScript ||
+           reg.any_of<PositionComponent, RotationComponent, ScaleComponent, MeshRendererComponent,
                       AxisMaterialComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent,
                       CameraComponent, RigidShapeComponent, RigidBodyComponent, CharacterControllerComponent,
                       AudioSourceComponent, VideoPlayerComponent, AnimationComponent, ParticleEmitterComponent,
                       PostProcessComponent, UITransformComponent, UIRendererComponent, UITextComponent,
                       UIFlexLayoutComponent, SkyboxRenderComponent, ReflectionProbeComponent, ReflectiveComponent,
                       PlanarReflectionComponent, DecalComponent, LightProbeComponent, TerrainComponent, LODComponent,
-                      ScriptComponent, NetworkComponent, FragmentComponent>(entity);
+                      NetworkComponent, FragmentComponent>(entity);
 }
 
 bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, ResourceManager& res,
@@ -948,7 +959,7 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
             {
                 if (auto* pInfo = scene.registry.try_get<InfoComponent>(h->parent))
                 {
-                    if (SceneSerializer::NormalizeSceneName(pInfo->sceneName) == normName)
+                    if (normName.empty() || SceneSerializer::NormalizeSceneName(pInfo->sceneName) == normName)
                         isRootInScene = false;
                 }
             }
@@ -1073,7 +1084,7 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
             {
                 if (auto* pInfo = scene.registry.try_get<InfoComponent>(h->parent))
                 {
-                    if (SceneSerializer::NormalizeSceneName(pInfo->sceneName) == normName)
+                    if (normName.empty() || SceneSerializer::NormalizeSceneName(pInfo->sceneName) == normName)
                         isRootInScene = false;
                 }
             }

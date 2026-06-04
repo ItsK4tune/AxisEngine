@@ -60,6 +60,7 @@ public:
     std::vector<entt::id_type> GetWriteComponents() const override;
 
     void Update(Scene& scene, float dt) override;
+    void FixedUpdate(Scene& scene, float fixedDt) override;
     void Render(Scene& scene) override
     {
     }
@@ -87,6 +88,8 @@ private:
     std::unique_ptr<PhysicsCollisionDispatcher> m_collisionDispatcher;
 
     bool m_Enabled = true;
+
+    void Step(Scene& scene, float dt);
 
     Scene* m_LastScene = nullptr;
     IPhysicsWorld* m_LastPhysicsWorld = nullptr;

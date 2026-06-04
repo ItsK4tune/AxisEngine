@@ -26,11 +26,13 @@
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
+#include <scene/type/scene_events.h>
 #include <glm/gtx/quaternion.hpp>
 #include <imgui.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <map>
 
 // Panel includes
@@ -219,10 +221,23 @@ void EditorSystem::OnUpdate(float dt)
     {
         z_pressed = true;
         auto& globalScene = sl.Require<Scene>();
-        PerformUndo(globalScene);
+        if (shift)
+            PerformRedo(globalScene);
+        else
+            PerformUndo(globalScene);
     }
     if (!kb.GetKey(Key::Z))
         z_pressed = false;
+
+    static bool y_pressed = false;
+    if (ctrl && kb.GetKey(Key::Y) && !y_pressed)
+    {
+        y_pressed = true;
+        auto& globalScene = sl.Require<Scene>();
+        PerformRedo(globalScene);
+    }
+    if (!kb.GetKey(Key::Y))
+        y_pressed = false;
 
     // Ctrl+D — Duplicate selected entity
     // (handled in SceneHierarchyPanel via shared selection)
@@ -616,7 +631,6 @@ void EditorSystem::OnUpdate(float dt)
         }
         else if (!kb.GetKey(Key::F6))
             f6_pressed = false;
-
     }
 
     // Panel toggle shortcuts (Ctrl+1 to Ctrl+9, and Ctrl+0 for NetworkPanel)
@@ -805,67 +819,117 @@ void EditorSystem::DrawMenuBar()
 }
 
 static std::vector<std::string> s_UndoStack;
+static std::vector<std::string> s_RedoStack;
 
-void EditorSystem::PushUndoState(Scene& scene)
+static std::string CaptureEditorSceneState(Scene& scene)
 {
     auto& sl = ServiceLocator::Instance();
     auto* rm = sl.Resolve<ResourceManager>();
     if (!rm)
-        return;
+        return {};
 
-    std::string tempFile = "temp_undo.axs";
-    if (SceneSerializer::Serialize(tempFile, scene, *rm))
-    {
-        std::ifstream f(tempFile, std::ios::binary);
-        if (f.is_open())
-        {
-            std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-            f.close();
+    const std::string tempFile = "temp_undo.axs";
+    if (!SceneSerializer::Serialize(tempFile, scene, *rm))
+        return {};
 
-            std::error_code ec;
-            std::filesystem::remove(tempFile, ec);
+    std::ifstream f(tempFile, std::ios::binary);
+    if (!f.is_open())
+        return {};
 
-            if (s_UndoStack.empty() || s_UndoStack.back() != content)
-            {
-                s_UndoStack.push_back(content);
-                if (s_UndoStack.size() > 50)
-                {
-                    s_UndoStack.erase(s_UndoStack.begin());
-                }
-            }
-        }
-    }
+    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    f.close();
+
+    std::error_code ec;
+    std::filesystem::remove(tempFile, ec);
+    return content;
 }
 
-void EditorSystem::PerformUndo(Scene& scene)
+static void RestoreEditorSceneState(Scene& scene, const std::string& state)
 {
-    if (s_UndoStack.size() < 2)
+    if (state.empty())
         return;
-
-    s_UndoStack.pop_back();
-    std::string restoreState = s_UndoStack.back();
 
     auto& sl = ServiceLocator::Instance();
     auto* rm = sl.Resolve<ResourceManager>();
     auto* phys = sl.Resolve<IPhysicsWorld>();
     auto* audio = sl.Resolve<AudioService>();
+    auto* sceneMgr = sl.Resolve<SceneManager>();
     if (!rm)
         return;
 
-    std::string tempRestoreFile = "temp_restore.axs";
+    const std::string tempRestoreFile = "temp_restore.axs";
     std::ofstream f(tempRestoreFile, std::ios::binary);
-    if (f.is_open())
+    if (!f.is_open())
+        return;
+
+    f << state;
+    f.close();
+
+    scene.registry.clear();
+    SceneSerializer::Deserialize(tempRestoreFile, scene, *rm, phys, audio);
+    if (sceneMgr)
+        sceneMgr->RebuildEntityRecords(scene);
+
+    std::error_code ec;
+    std::filesystem::remove(tempRestoreFile, ec);
+
+    SceneHierarchyPanel::SetSelectedEntity(entt::null);
+    EventManager::Instance().Publish(SceneChangedEvent{&scene.registry, &scene});
+}
+
+void EditorSystem::PushUndoState(Scene& scene)
+{
+    std::string content = CaptureEditorSceneState(scene);
+    if (content.empty() || (!s_UndoStack.empty() && s_UndoStack.back() == content))
+        return;
+
+    s_UndoStack.push_back(content);
+    s_RedoStack.clear();
+    if (s_UndoStack.size() > 50)
+        s_UndoStack.erase(s_UndoStack.begin());
+}
+
+void EditorSystem::PerformUndo(Scene& scene)
+{
+    if (s_UndoStack.empty())
+        return;
+
+    std::string currentState = CaptureEditorSceneState(scene);
+    if (currentState.empty())
+        return;
+
+    if (s_UndoStack.back() != currentState)
     {
-        f << restoreState;
-        f.close();
-
-        scene.registry.clear();
-        SceneSerializer::Deserialize(tempRestoreFile, scene, *rm, phys, audio);
-
-        std::error_code ec;
-        std::filesystem::remove(tempRestoreFile, ec);
-
-        SceneHierarchyPanel::SetSelectedEntity(entt::null);
+        s_RedoStack.push_back(currentState);
+        RestoreEditorSceneState(scene, s_UndoStack.back());
+        return;
     }
+
+    if (s_UndoStack.size() < 2)
+        return;
+
+    s_RedoStack.push_back(currentState);
+    s_UndoStack.pop_back();
+    RestoreEditorSceneState(scene, s_UndoStack.back());
+}
+
+void EditorSystem::PerformRedo(Scene& scene)
+{
+    if (s_RedoStack.empty())
+        return;
+
+    std::string redoState = s_RedoStack.back();
+    s_RedoStack.pop_back();
+
+    std::string currentState = CaptureEditorSceneState(scene);
+    if (!currentState.empty() && (s_UndoStack.empty() || s_UndoStack.back() != currentState))
+        s_UndoStack.push_back(currentState);
+
+    if (s_UndoStack.empty() || s_UndoStack.back() != redoState)
+        s_UndoStack.push_back(redoState);
+    if (s_UndoStack.size() > 50)
+        s_UndoStack.erase(s_UndoStack.begin(), s_UndoStack.begin() + (s_UndoStack.size() - 50));
+
+    RestoreEditorSceneState(scene, redoState);
 }
 #endif

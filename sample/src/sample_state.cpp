@@ -1,4 +1,5 @@
 #include "sample_state.h"
+#include <core/logic/event_manager.h>
 #include <ecs/logic/post_process_system.h>
 #include <ecs/unit/post_process_component.h>
 #include <platform/logic/input_serializer.h>
@@ -12,6 +13,9 @@
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/network_components.h>
 #include <ecs/unit/reflection_components.h>
+#include <ecs/interface/i_render_state_service.h>
+#include <ecs/unit/light_probe_components.h>
+#include <resource/type/resource_events.h>
 #include <scene/logic/scene_serializer.h>
 #ifdef ENABLE_EDITOR
 #include <editor/editor_system.h>
@@ -39,8 +43,8 @@
 
 namespace
 {
-constexpr const char* kScenario12BaseSceneName = "scenario_base";
-constexpr const char* kScenario12DynamicSceneName = "scenario";
+constexpr const char* kScenario25BaseSceneName = "scenario_base";
+constexpr const char* kScenario25DynamicSceneName = "scenario";
 
 struct PerfStats
 {
@@ -189,10 +193,10 @@ std::string SamplePath(const char* relativePath)
     return path.generic_string();
 }
 
-constexpr const char* kScenario12ScenePath = "sample/scene/sample.axs";
-constexpr const char* kScenario12SceneLegacyPath = "sample/scene/sample.axis";
-constexpr const char* kScenario15DataPath = "sample/resource/data/data.axs";
-constexpr const char* kScenario15DataLegacyPath = "sample/resource/data/data.axis";
+constexpr const char* kScenario25ScenePath = "sample/scene/sample.axs";
+constexpr const char* kScenario25SceneLegacyPath = "sample/scene/sample.axis";
+constexpr const char* kScenario27DataPath = "sample/resource/data/data.axs";
+constexpr const char* kScenario27DataLegacyPath = "sample/resource/data/data.axis";
 
 glm::quat RotationFromNegativeY(const glm::vec3& direction)
 {
@@ -213,15 +217,28 @@ bool RayPlaneIntersection(const glm::vec3& origin, const glm::vec3& dir, float p
     return true;
 }
 
-void ConfigureScenario5PathOptions(PathFollowerComponent& follower, int criteria)
+void ConfigureScenario23PathOptions(PathFollowerComponent& follower, int criteria)
 {
     follower.pathfindingOptions.criteria = static_cast<PathfindingCriteria>(criteria);
-    follower.pathfindingOptions.preferredTags = {"road"};
-    follower.pathfindingOptions.tagWeightBonus = 30.0f;
-    follower.pathfindingOptions.altitudePenaltyWeight = 10.0f;
+    follower.pathfindingOptions.preferredTags =
+        criteria == 2 ? std::vector<std::string>{"road"} : std::vector<std::string>{"walkable", "road"};
+    follower.pathfindingOptions.tagWeightBonus = criteria == 2 ? 80.0f : 1.0f;
+    follower.pathfindingOptions.altitudePenaltyWeight = criteria == 1 ? 14.0f : 5.0f;
 }
 
-struct Scenario10ShapeSpec
+float Scenario23NavHeight(float x, float z)
+{
+    float ridge = 4.0f * std::exp(-std::abs(x) * 0.075f);
+    float roll = 1.2f * std::sin(z * 0.18f) + 0.8f * std::sin((x + z) * 0.11f);
+    return 0.5f + (std::max)(0.0f, ridge + roll);
+}
+
+float Scenario23WaypointY(int criteria, float x, float z)
+{
+    return (criteria == 0 || criteria == 1 || criteria == 4) ? Scenario23NavHeight(x, z) : 0.5f;
+}
+
+struct Scenario21ShapeSpec
 {
     const char* mesh;
     ShapeType shape;
@@ -231,13 +248,13 @@ struct Scenario10ShapeSpec
     float height;
 };
 
-Scenario10ShapeSpec GetScenario10ShapeSpec(int shapeIndex, bool payload)
+Scenario21ShapeSpec GetScenario21ShapeSpec(int shapeIndex, bool payload)
 {
     switch (shapeIndex)
     {
         case 1:
-            return {"sphereModel",   ShapeType::Sphere,      payload ? glm::vec3(1.65f) : glm::vec3(0.85f),
-                    glm::vec3(1.0f), 0.5f,                   payload ? 1.0f : 0.8f};
+            return {"sphereModel", ShapeType::Sphere,    payload ? glm::vec3(1.65f) : glm::vec3(0.85f), glm::vec3(1.0f),
+                    0.5f,          payload ? 1.0f : 0.8f};
         case 2:
             return {"capsuleModel",
                     ShapeType::Capsule,
@@ -246,16 +263,12 @@ Scenario10ShapeSpec GetScenario10ShapeSpec(int shapeIndex, bool payload)
                     0.5f,
                     payload ? 1.05f : 0.85f};
         default:
-            return {"cubeModel",
-                    ShapeType::Box,
-                    payload ? glm::vec3(1.6f) : glm::vec3(0.75f, 0.95f, 0.75f),
-                    glm::vec3(0.5f),
-                    payload ? 1.0f : 0.5f,
-                    payload ? 1.0f : 0.8f};
+            return {"cubeModel",     ShapeType::Box,        payload ? glm::vec3(1.6f) : glm::vec3(0.75f, 0.95f, 0.75f),
+                    glm::vec3(0.5f), payload ? 1.0f : 0.5f, payload ? 1.0f : 0.8f};
     }
 }
 
-void ApplyShapeSpec(RigidShapeComponent& shape, const Scenario10ShapeSpec& spec)
+void ApplyShapeSpec(RigidShapeComponent& shape, const Scenario21ShapeSpec& spec)
 {
     shape.type = spec.shape;
     shape.size = spec.boxSize;
@@ -263,7 +276,7 @@ void ApplyShapeSpec(RigidShapeComponent& shape, const Scenario10ShapeSpec& spec)
     shape.height = spec.height;
 }
 
-void StopScenario17AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_ptr<ISound>& audio3D, bool& play2D,
+void StopScenario31AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_ptr<ISound>& audio3D, bool& play2D,
                                 bool& play3D)
 {
     if (audio2D)
@@ -294,7 +307,7 @@ void SetUITextByName(Scene& scene, const std::string& name, const std::string& t
     }
 }
 
-void UpdateScenario14LocalizedUI(Scene& scene, LocalizationSystem& l10n)
+void UpdateScenario29LocalizedUI(Scene& scene, LocalizationSystem& l10n)
 {
     const int entityCount = static_cast<int>(scene.registry.view<InfoComponent>().size());
     int rigidBodyCount = 0;
@@ -316,27 +329,27 @@ void UpdateScenario14LocalizedUI(Scene& scene, LocalizationSystem& l10n)
                         l10n.GetFormat("scenario.active_rigid_bodies", std::to_string(rigidBodyCount)));
 }
 
-struct Scenario16SpawnCommand
+struct Scenario30SpawnCommand
 {
     int id = 0;
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 color = glm::vec3(1.0f);
 };
 
-std::string BuildScenario16SpawnPayload(const Scenario16SpawnCommand& cmd)
+std::string BuildScenario30SpawnPayload(const Scenario30SpawnCommand& cmd)
 {
     char buffer[192];
-    std::snprintf(buffer, sizeof(buffer), "AXIS_S16_SPAWN|%d|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f", cmd.id,
-                  cmd.position.x, cmd.position.y, cmd.position.z, cmd.color.x, cmd.color.y, cmd.color.z);
+    std::snprintf(buffer, sizeof(buffer), "AXIS_S30_SPAWN|%d|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f", cmd.id, cmd.position.x,
+                  cmd.position.y, cmd.position.z, cmd.color.x, cmd.color.y, cmd.color.z);
     return std::string(buffer);
 }
 
-bool ParseScenario16SpawnPayload(const std::string& msg, Scenario16SpawnCommand& out)
+bool ParseScenario30SpawnPayload(const std::string& msg, Scenario30SpawnCommand& out)
 {
-    Scenario16SpawnCommand parsed;
-    int matched = std::sscanf(msg.c_str(), "AXIS_S16_SPAWN|%d|%f|%f|%f|%f|%f|%f", &parsed.id,
-                              &parsed.position.x, &parsed.position.y, &parsed.position.z, &parsed.color.x,
-                              &parsed.color.y, &parsed.color.z);
+    Scenario30SpawnCommand parsed;
+    int matched =
+        std::sscanf(msg.c_str(), "AXIS_S30_SPAWN|%d|%f|%f|%f|%f|%f|%f", &parsed.id, &parsed.position.x,
+                    &parsed.position.y, &parsed.position.z, &parsed.color.x, &parsed.color.y, &parsed.color.z);
     if (matched != 7 || parsed.id <= 0)
         return false;
 
@@ -355,9 +368,25 @@ entt::entity FindEntityByName(Scene& scene, const std::string& name)
     return entt::null;
 }
 
-entt::entity SpawnScenario16NetworkEntity(Scene& scene, ResourceManager& res, const Scenario16SpawnCommand& cmd)
+bool PointInsideNamedBox(Scene& scene, const char* name, const glm::vec3& point, const glm::vec3& padding)
 {
-    const std::string name = "S16ServerSpawn_" + std::to_string(cmd.id);
+    auto entity = FindEntityByName(scene, name);
+    if (entity == entt::null || !scene.registry.valid(entity))
+        return false;
+
+    auto* boxPos = scene.registry.try_get<PositionComponent>(entity);
+    auto* boxScale = scene.registry.try_get<ScaleComponent>(entity);
+    if (!boxPos || !boxScale)
+        return false;
+
+    const glm::vec3 halfExtents = boxScale->value + padding;
+    const glm::vec3 delta = glm::abs(point - boxPos->value);
+    return delta.x <= halfExtents.x && delta.y <= halfExtents.y && delta.z <= halfExtents.z;
+}
+
+entt::entity SpawnScenario30NetworkEntity(Scene& scene, ResourceManager& res, const Scenario30SpawnCommand& cmd)
+{
+    const std::string name = "S29ServerSpawn_" + std::to_string(cmd.id);
     if (auto existing = FindEntityByName(scene, name); existing != entt::null)
         return existing;
 
@@ -395,6 +424,7 @@ void SampleState::OnEnter()
     EnableSystem("ReflectionProbeSystem", true);
     EnableSystem("PlanarReflectionSystem", true);
     EnableSystem("NetworkSystem", true);
+    EnableSystem("StreamingSystem", true);
 
     SetCursorMode(CursorMode::Normal);
 
@@ -457,28 +487,28 @@ void SampleState::OnUpdate(float dt)
         m_FpsCount = 0;
     }
 
-    // Pathfinding update (Scenario 5)
-    if (m_CurrentScenario == 5 && m_NavFollower != entt::null && !m_NavWaypoints.empty())
+    // Pathfinding update (Scenario 23)
+    if (m_CurrentScenario == 23 && m_NavFollower != entt::null && !m_NavWaypoints.empty())
     {
         auto& navSystem = GetSystem<NavigationSystem>();
         auto* follower = GetScene().registry.try_get<PathFollowerComponent>(m_NavFollower);
         if (follower)
         {
-            follower->moveSpeed = m_S5FollowerSpeed;
-            follower->lockXPitch = m_S5LockXPitch;
-            follower->lockYYaw = m_S5LockYYaw;
-            follower->lockZRoll = m_S5LockZRoll;
-            follower->lockMoveX = m_S5LockMoveX;
-            follower->lockMoveY = m_S5LockMoveY;
-            follower->lockMoveZ = m_S5LockMoveZ;
-            ConfigureScenario5PathOptions(*follower, m_S5PathfindingCriteria);
+            follower->moveSpeed = m_S23FollowerSpeed;
+            follower->lockXPitch = m_S23LockXPitch;
+            follower->lockYYaw = m_S23LockYYaw;
+            follower->lockZRoll = m_S23LockZRoll;
+            follower->lockMoveX = m_S23LockMoveX;
+            follower->lockMoveY = m_S23LockMoveY;
+            follower->lockMoveZ = m_S23LockMoveZ;
+            ConfigureScenario23PathOptions(*follower, m_S23PathfindingCriteria);
 
-            if (m_S5LastPathfindingCriteria != m_S5PathfindingCriteria || m_S5RepathRequested)
+            if (m_S23LastPathfindingCriteria != m_S23PathfindingCriteria || m_S23RepathRequested)
             {
                 navSystem.StopMoving(GetScene(), m_NavFollower);
                 navSystem.MoveTo(GetScene(), m_NavFollower, follower->targetPosition);
-                m_S5LastPathfindingCriteria = m_S5PathfindingCriteria;
-                m_S5RepathRequested = false;
+                m_S23LastPathfindingCriteria = m_S23PathfindingCriteria;
+                m_S23RepathRequested = false;
             }
 
             if (!follower->pathPending && !follower->isMoving)
@@ -489,24 +519,24 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    // Apply continuous wind force (Scenario 10)
-    if (m_CurrentScenario == 10 && !m_S10ChainEntities.empty() && m_S10WindForce > 0.0f)
+    // Apply continuous wind force (Scenario 21)
+    if (m_CurrentScenario == 21 && !m_S21ChainEntities.empty() && m_S21WindForce > 0.0f)
     {
         auto& scene = GetScene();
-        auto lastEntity = m_S10ChainEntities.back();
+        auto lastEntity = m_S21ChainEntities.back();
         auto* rb = scene.registry.try_get<RigidBodyComponent>(lastEntity);
         if (rb && rb->body)
         {
             rb->body->Activate(true);
             static float windAccumTime = 0.0f;
             windAccumTime += dt;
-            float windForceX = m_S10WindForce * sin(windAccumTime * 3.0f);
+            float windForceX = m_S21WindForce * sin(windAccumTime * 3.0f);
             rb->body->ApplyCentralForce(glm::vec3(windForceX, 0.0f, 0.0f));
         }
     }
 
-    // Post-processing parameters update (Scenario 9)
-    if (m_CurrentScenario == 9)
+    // Post-processing parameters update (Scenario 10)
+    if (m_CurrentScenario == 10)
     {
         auto* sysMgr = Resolve<SystemManager>();
         if (sysMgr)
@@ -531,7 +561,7 @@ void SampleState::OnUpdate(float dt)
                 for (auto entity : view)
                 {
                     auto& info = view.get<InfoComponent>(entity);
-                    if (info.name != "Scenario9PostProcess")
+                    if (info.name != "Scenario10PostProcess")
                         continue;
 
                     auto& pp = view.get<PostProcessComponent>(entity);
@@ -579,7 +609,7 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    if (m_CurrentScenario == 8)
+    if (m_CurrentScenario == 24)
     {
         auto* io = Resolve<IOHandler>();
         auto* phys = Resolve<IPhysicsWorld>();
@@ -595,13 +625,13 @@ void SampleState::OnUpdate(float dt)
 #endif
             auto& scene = GetScene();
 
-            if (m_S8Dragging && (!mouseDown || mouseCaptured || !scene.registry.valid(m_S8GrabbedEntity)))
+            if (m_S24Dragging && (!mouseDown || mouseCaptured || !scene.registry.valid(m_S24GrabbedEntity)))
             {
-                m_S8Dragging = false;
-                m_S8GrabbedEntity = entt::null;
+                m_S24Dragging = false;
+                m_S24GrabbedEntity = entt::null;
             }
 
-            if (!m_S8Dragging && mousePressed && !mouseCaptured)
+            if (!m_S24Dragging && mousePressed && !mouseCaptured)
             {
                 PhysicsQueryService query;
                 auto hit = query.RaycastFromScreen(glm::vec2(mouse.GetLastX(), mouse.GetLastY()));
@@ -609,22 +639,22 @@ void SampleState::OnUpdate(float dt)
                 {
                     auto* rb = scene.registry.try_get<RigidBodyComponent>(hit.entity);
                     auto* info = scene.registry.try_get<InfoComponent>(hit.entity);
-                    if (rb && !rb->isStatic && (!info || info->name != "PlayerCube"))
+                    if (rb && !rb->isStatic && (!info || info->name != "S26_CharacterController"))
                     {
                         auto* pos = scene.registry.try_get<PositionComponent>(hit.entity);
                         if (pos)
                         {
-                            m_S8GrabbedEntity = hit.entity;
-                            m_S8Dragging = true;
-                            m_S8GrabOffset = pos->value - hit.hitPoint;
-                            m_S8GrabPlaneY = (glm::max)(2.0f, pos->value.y + 2.0f);
+                            m_S24GrabbedEntity = hit.entity;
+                            m_S24Dragging = true;
+                            m_S24GrabOffset = pos->value - hit.hitPoint;
+                            m_S24GrabPlaneY = (glm::max)(2.0f, pos->value.y + 2.0f);
                             m_ShowDebugLines = false;
                         }
                     }
                 }
             }
 
-            if (m_S8Dragging && scene.registry.valid(m_S8GrabbedEntity))
+            if (m_S24Dragging && scene.registry.valid(m_S24GrabbedEntity))
             {
                 auto camEntity = EntityManager::GetActiveCamera(scene);
                 if (camEntity != entt::null && scene.registry.all_of<CameraComponent, PositionComponent>(camEntity))
@@ -635,15 +665,15 @@ void SampleState::OnUpdate(float dt)
                     Ray ray = RaycastUtils::CalculateRay(glm::vec2(mouse.GetLastX(), mouse.GetLastY()), viewportSize,
                                                          cam.viewMatrix, cam.projectionMatrix);
                     glm::vec3 targetPoint;
-                    if (RayPlaneIntersection(ray.origin, ray.direction, m_S8GrabPlaneY, targetPoint))
+                    if (RayPlaneIntersection(ray.origin, ray.direction, m_S24GrabPlaneY, targetPoint))
                     {
-                        auto* pos = scene.registry.try_get<PositionComponent>(m_S8GrabbedEntity);
-                        auto* rot = scene.registry.try_get<RotationComponent>(m_S8GrabbedEntity);
-                        auto* world = scene.registry.try_get<WorldTransformComponent>(m_S8GrabbedEntity);
-                        auto* rb = scene.registry.try_get<RigidBodyComponent>(m_S8GrabbedEntity);
+                        auto* pos = scene.registry.try_get<PositionComponent>(m_S24GrabbedEntity);
+                        auto* rot = scene.registry.try_get<RotationComponent>(m_S24GrabbedEntity);
+                        auto* world = scene.registry.try_get<WorldTransformComponent>(m_S24GrabbedEntity);
+                        auto* rb = scene.registry.try_get<RigidBodyComponent>(m_S24GrabbedEntity);
                         if (pos)
                         {
-                            pos->value = targetPoint + m_S8GrabOffset;
+                            pos->value = targetPoint + m_S24GrabOffset;
                             if (rot)
                                 rot->value = glm::quat(glm::vec3(0.0f));
                             if (world)
@@ -663,44 +693,44 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    if (m_CurrentScenario == 28)
+    if (m_CurrentScenario == 16)
     {
-        if (m_S28CardEntity != entt::null && GetScene().registry.valid(m_S28CardEntity))
+        if (m_S16CardEntity != entt::null && GetScene().registry.valid(m_S16CardEntity))
         {
-            if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28CardEntity))
-                transform->rotation = m_S28RotateCard;
-            if (m_S28TextureEntity != entt::null && GetScene().registry.valid(m_S28TextureEntity))
+            if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S16CardEntity))
+                transform->rotation = m_S16RotateCard;
+            if (m_S16TextureEntity != entt::null && GetScene().registry.valid(m_S16TextureEntity))
             {
-                if (auto* info = GetScene().registry.try_get<InfoComponent>(m_S28TextureEntity))
-                    info->isActive = m_S28ShowTexture;
-                if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S28TextureEntity))
+                if (auto* info = GetScene().registry.try_get<InfoComponent>(m_S16TextureEntity))
+                    info->isActive = m_S16ShowTexture;
+                if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S16TextureEntity))
                 {
-                    transform->flipX = m_S28FlipTextureX;
-                    transform->flipY = m_S28FlipTextureY;
+                    transform->flipX = m_S16FlipTextureX;
+                    transform->flipY = m_S16FlipTextureY;
                 }
             }
         }
-        if (m_S29RootPanel != entt::null && GetScene().registry.valid(m_S29RootPanel))
+        if (m_S16RootPanel != entt::null && GetScene().registry.valid(m_S16RootPanel))
         {
             auto& scene = GetScene();
-            if (auto* renderer = scene.registry.try_get<UIRendererComponent>(m_S29RootPanel))
+            if (auto* renderer = scene.registry.try_get<UIRendererComponent>(m_S16RootPanel))
             {
-                renderer->color.a = m_S29PanelAlpha;
+                renderer->color.a = m_S16PanelAlpha;
             }
-            if (auto* flex = scene.registry.try_get<UIFlexLayoutComponent>(m_S29RootPanel))
+            if (auto* flex = scene.registry.try_get<UIFlexLayoutComponent>(m_S16RootPanel))
             {
-                flex->direction = (m_S29LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
-                flex->spacing = (m_S29LayoutMode == 1) ? 18.0f : 10.0f;
+                flex->direction = (m_S16LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
+                flex->spacing = (m_S16LayoutMode == 1) ? 18.0f : 10.0f;
             }
         }
     }
 
-    if (m_CurrentScenario == 30 && m_S30SpawnPhysicsBalls)
+    if (m_CurrentScenario == 14 && m_S14SpawnPhysicsBalls)
     {
-        m_S30SpawnTimer += dt;
-        if (m_S30SpawnTimer >= 0.35f)
+        m_S14SpawnTimer += dt;
+        if (m_S14SpawnTimer >= 0.35f)
         {
-            m_S30SpawnTimer = 0.0f;
+            m_S14SpawnTimer = 0.0f;
             auto& scene = GetScene();
             auto& res = Get<ResourceManager>();
             auto view = scene.registry.view<RigidBodyComponent, InfoComponent>();
@@ -710,7 +740,7 @@ void SampleState::OnUpdate(float dt)
             for (auto entity : view)
             {
                 auto& info = view.get<InfoComponent>(entity);
-                if (info.name.rfind("S30Ball_", 0) == 0)
+                if (info.name.rfind("S14Ball_", 0) == 0)
                 {
                     spawnCount++;
                     try
@@ -737,16 +767,17 @@ void SampleState::OnUpdate(float dt)
                 scene.registry.destroy(oldestEntity);
             }
 
-            float rx = (static_cast<float>(rand() % 100) / 100.0f - 0.5f) * (m_S30TerrainWidth * 0.7f);
-            float rz = (static_cast<float>(rand() % 100) / 100.0f - 0.5f) * (m_S30TerrainLength * 0.7f);
-            float ry = m_S30TerrainHeight + 15.0f + (static_cast<float>(rand() % 100) / 10.0f);
+            float rx = (static_cast<float>(rand() % 100) / 100.0f - 0.5f) * (m_S14TerrainWidth * 0.7f);
+            float rz = (static_cast<float>(rand() % 100) / 100.0f - 0.5f) * (m_S14TerrainLength * 0.7f);
+            float ry = m_S14TerrainHeight + 15.0f + (static_cast<float>(rand() % 100) / 10.0f);
 
             static int ballId = 0;
-            std::string ballName = "S30Ball_" + std::to_string(++ballId);
+            std::string ballName = "S14Ball_" + std::to_string(++ballId);
             bool isSphere = (rand() % 2 == 0);
             auto ball = EntityBuilder(scene, res, "scenario")
                             .WithName(ballName)
-                            .WithTransform(glm::vec3(rx, ry, rz), glm::vec3(rand() % 360, rand() % 360, rand() % 360), glm::vec3(1.5f))
+                            .WithTransform(glm::vec3(rx, ry, rz), glm::vec3(rand() % 360, rand() % 360, rand() % 360),
+                                           glm::vec3(1.5f))
                             .WithPBRMesh(isSphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.05f, 0.4f, 1.0f)
                             .Build();
 
@@ -760,8 +791,9 @@ void SampleState::OnUpdate(float dt)
 
             auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, ball);
             shape.type = isSphere ? ShapeType::Sphere : ShapeType::Box;
-            shape.size = glm::vec3(1.5f);
-            shape.radius = 0.75f;
+            shape.size = glm::vec3(1.0f);
+            shape.radius = 1.0f;
+            shape.height = 2.0f;
             shape.restitution = 0.65f;
             shape.friction = 0.35f;
 
@@ -773,9 +805,9 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    if (m_CurrentScenario == 2)
+    if (m_CurrentScenario == 3)
     {
-        m_S2MotionTime += dt;
+        m_S3MotionTime += dt;
         auto& scene = GetScene();
 
         auto dirView = scene.registry.view<DirectionalLightComponent, InfoComponent>();
@@ -785,11 +817,11 @@ void SampleState::OnUpdate(float dt)
             if (info.name != "DirLight")
                 continue;
             auto& light = dirView.get<DirectionalLightComponent>(entity);
-            light.color = m_S2DirectionalColor;
-            light.intensity = m_S2DirectionalIntensity;
-            if (m_S2LightMotionMode != 0)
+            light.color = m_S3DirectionalColor;
+            light.intensity = m_S3DirectionalIntensity;
+            if (m_S3LightMotionMode != 0)
             {
-                float a = m_S2MotionTime * m_S2DirectionalSweepSpeed;
+                float a = m_S3MotionTime * m_S3DirectionalSweepSpeed;
                 light.direction = glm::normalize(glm::vec3(cos(a) * 0.65f, -1.0f, sin(a) * 0.65f));
                 if (auto* rot = scene.registry.try_get<RotationComponent>(entity))
                     rot->value = RotationFromNegativeY(light.direction);
@@ -798,7 +830,7 @@ void SampleState::OnUpdate(float dt)
             }
             if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
             {
-                mat->desc.emission = m_S2DirectionalColor * (m_S2DirectionalIntensity * 3.0f);
+                mat->desc.emission = m_S3DirectionalColor * (m_S3DirectionalIntensity * 3.0f);
                 mat->gpu.dirty = true;
             }
             break;
@@ -812,25 +844,25 @@ void SampleState::OnUpdate(float dt)
                 continue;
 
             auto& pos = view.get<PositionComponent>(entity);
-            float a = m_S2MotionTime * m_S2PointMotionSpeed;
-            if (m_S2LightMotionMode == 1)
+            float a = m_S3MotionTime * m_S3PointMotionSpeed;
+            if (m_S3LightMotionMode == 1)
                 pos.value =
-                    glm::vec3(cos(a) * m_S2PointOrbitRadius, m_S2PointMotionHeight, sin(a) * m_S2PointOrbitRadius);
-            else if (m_S2LightMotionMode == 2)
-                pos.value.y = m_S2PointMotionHeight + sin(a) * 8.0f;
-            else if (m_S2LightMotionMode == 3)
-                pos.value = glm::vec3(sin(a) * m_S2PointOrbitRadius, m_S2PointMotionHeight + sin(a * 1.7f) * 6.0f,
-                                      sin(a * 2.0f) * m_S2PointOrbitRadius * 0.5f);
+                    glm::vec3(cos(a) * m_S3PointOrbitRadius, m_S3PointMotionHeight, sin(a) * m_S3PointOrbitRadius);
+            else if (m_S3LightMotionMode == 2)
+                pos.value.y = m_S3PointMotionHeight + sin(a) * 8.0f;
+            else if (m_S3LightMotionMode == 3)
+                pos.value = glm::vec3(sin(a) * m_S3PointOrbitRadius, m_S3PointMotionHeight + sin(a * 1.7f) * 6.0f,
+                                      sin(a * 2.0f) * m_S3PointOrbitRadius * 0.5f);
 
             if (auto* world = GetScene().registry.try_get<WorldTransformComponent>(entity))
                 world->isDirty = true;
 
             auto& light = view.get<PointLightComponent>(entity);
-            light.color = m_S2PointColor;
-            light.intensity = m_S2PointIntensity;
+            light.color = m_S3PointColor;
+            light.intensity = m_S3PointIntensity;
             if (auto* mat = GetScene().registry.try_get<AxisMaterialComponent>(entity))
             {
-                mat->desc.emission = m_S2PointColor * (m_S2PointIntensity * 2.0f);
+                mat->desc.emission = m_S3PointColor * (m_S3PointIntensity * 2.0f);
                 mat->gpu.dirty = true;
             }
             break;
@@ -843,8 +875,8 @@ void SampleState::OnUpdate(float dt)
             if (info.name != "SpotLight")
                 continue;
             auto& light = spotView.get<SpotLightComponent>(entity);
-            light.color = m_S2SpotColor;
-            light.intensity = m_S2SpotIntensity;
+            light.color = m_S3SpotColor;
+            light.intensity = m_S3SpotIntensity;
             light.cutOff = glm::cos(glm::radians(22.5f));
             light.outerCutOff = glm::cos(glm::radians(32.5f));
             light.linear = 0.045f;
@@ -852,14 +884,14 @@ void SampleState::OnUpdate(float dt)
 
             auto& pos = spotView.get<PositionComponent>(entity);
             auto& rot = spotView.get<RotationComponent>(entity);
-            float a = m_S2MotionTime * m_S2SpotMotionSpeed + 1.5708f;
-            if (m_S2LightMotionMode == 1)
-                pos.value = glm::vec3(cos(a) * m_S2SpotOrbitRadius, m_S2SpotMotionHeight, sin(a) * m_S2SpotOrbitRadius);
-            else if (m_S2LightMotionMode == 2)
-                pos.value.y = m_S2SpotMotionHeight + sin(a) * 10.0f;
-            else if (m_S2LightMotionMode == 3)
-                pos.value = glm::vec3(sin(a * 1.3f) * m_S2SpotOrbitRadius, m_S2SpotMotionHeight + sin(a) * 5.0f,
-                                      sin(a * 2.0f) * m_S2SpotOrbitRadius * 0.55f);
+            float a = m_S3MotionTime * m_S3SpotMotionSpeed + 1.5708f;
+            if (m_S3LightMotionMode == 1)
+                pos.value = glm::vec3(cos(a) * m_S3SpotOrbitRadius, m_S3SpotMotionHeight, sin(a) * m_S3SpotOrbitRadius);
+            else if (m_S3LightMotionMode == 2)
+                pos.value.y = m_S3SpotMotionHeight + sin(a) * 10.0f;
+            else if (m_S3LightMotionMode == 3)
+                pos.value = glm::vec3(sin(a * 1.3f) * m_S3SpotOrbitRadius, m_S3SpotMotionHeight + sin(a) * 5.0f,
+                                      sin(a * 2.0f) * m_S3SpotOrbitRadius * 0.55f);
 
             glm::vec3 target = glm::vec3(0.0f, 1.0f, 0.0f);
             light.direction = glm::normalize(target - pos.value);
@@ -868,32 +900,32 @@ void SampleState::OnUpdate(float dt)
                 world->isDirty = true;
             if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
             {
-                mat->desc.emission = m_S2SpotColor * (m_S2SpotIntensity * 1.25f);
+                mat->desc.emission = m_S3SpotColor * (m_S3SpotIntensity * 1.25f);
                 mat->gpu.dirty = true;
             }
             break;
         }
     }
 
-    if (m_CurrentScenario == 3)
+    if (m_CurrentScenario == 2)
     {
         auto& scene = GetScene();
         auto dirView = scene.registry.view<DirectionalLightComponent>();
         for (auto entity : dirView)
         {
             auto& light = dirView.get<DirectionalLightComponent>(entity);
-            light.color = m_S3DirectionalColor;
-            light.intensity = m_S3DirectionalIntensity;
+            light.color = m_S2DirectionalColor;
+            light.intensity = m_S2DirectionalIntensity;
         }
         auto pointView = scene.registry.view<PointLightComponent>();
         for (auto entity : pointView)
         {
             auto& light = pointView.get<PointLightComponent>(entity);
-            light.color = m_S3PointColor;
-            light.intensity = m_S3PointIntensity;
+            light.color = m_S2PointColor;
+            light.intensity = m_S2PointIntensity;
             if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
             {
-                mat->desc.emission = m_S3PointColor * (m_S3PointIntensity * 4.0f);
+                mat->desc.emission = m_S2PointColor * (m_S2PointIntensity * 4.0f);
                 mat->gpu.dirty = true;
             }
         }
@@ -901,18 +933,18 @@ void SampleState::OnUpdate(float dt)
         for (auto entity : spotView)
         {
             auto& light = spotView.get<SpotLightComponent>(entity);
-            light.color = m_S3SpotColor;
-            light.intensity = m_S3SpotIntensity;
+            light.color = m_S2SpotColor;
+            light.intensity = m_S2SpotIntensity;
             if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
             {
-                mat->desc.emission = m_S3SpotColor * (m_S3SpotIntensity * 3.0f);
+                mat->desc.emission = m_S2SpotColor * (m_S2SpotIntensity * 3.0f);
                 mat->gpu.dirty = true;
             }
         }
 
-        glm::vec3 averageColor = (m_S3DirectionalColor + m_S3PointColor + m_S3SpotColor) / 3.0f;
+        glm::vec3 averageColor = (m_S2DirectionalColor + m_S2PointColor + m_S2SpotColor) / 3.0f;
         float visibleLight = glm::clamp(
-            (m_S3DirectionalIntensity / 0.2f + m_S3PointIntensity / 10.0f + m_S3SpotIntensity / 12.0f) / 3.0f, 0.0f,
+            (m_S2DirectionalIntensity / 0.2f + m_S2PointIntensity / 10.0f + m_S2SpotIntensity / 12.0f) / 3.0f, 0.0f,
             1.0f);
         visibleLight = 0.18f + visibleLight * 0.82f;
         auto renderView = scene.registry.view<MeshRendererComponent, InfoComponent>();
@@ -926,7 +958,7 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    if (m_CurrentScenario == 11)
+    if (m_CurrentScenario == 13)
     {
         auto& scene = GetScene();
         auto view = scene.registry.view<DirectionalLightComponent, InfoComponent>();
@@ -936,51 +968,50 @@ void SampleState::OnUpdate(float dt)
             if (info.name != "DecalDirLight")
                 continue;
             auto& light = view.get<DirectionalLightComponent>(entity);
-            light.color = m_S11LightColor;
-            light.intensity = m_S11LightIntensity;
-            light.isCastShadow = m_S11LightingMode == 2;
+            light.color = m_S13LightColor;
+            light.intensity = m_S13LightIntensity;
+            light.isCastShadow = m_S13LightingMode == 2;
             break;
         }
 
-        if (m_S11PointLightEntity != entt::null && scene.registry.valid(m_S11PointLightEntity))
+        if (m_S13PointLightEntity != entt::null && scene.registry.valid(m_S13PointLightEntity))
         {
-            if (auto* light = scene.registry.try_get<PointLightComponent>(m_S11PointLightEntity))
+            if (auto* light = scene.registry.try_get<PointLightComponent>(m_S13PointLightEntity))
             {
-                light->active = m_S11UsePointLight;
-                light->color = m_S11PointLightColor;
-                light->intensity = m_S11PointLightIntensity;
-                light->radius = m_S11PointLightRadius;
-                light->isCastShadow = m_S11LightingMode == 2;
+                light->active = m_S13UsePointLight;
+                light->color = m_S13PointLightColor;
+                light->intensity = m_S13PointLightIntensity;
+                light->radius = m_S13PointLightRadius;
+                light->isCastShadow = m_S13LightingMode == 2;
             }
         }
 
-        if (m_S11PointLightMarkerEntity != entt::null && scene.registry.valid(m_S11PointLightMarkerEntity))
+        if (m_S13PointLightMarkerEntity != entt::null && scene.registry.valid(m_S13PointLightMarkerEntity))
         {
-            if (auto* info = scene.registry.try_get<InfoComponent>(m_S11PointLightMarkerEntity))
-                info->isActive = m_S11UsePointLight;
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S11PointLightMarkerEntity))
-                renderer->color = glm::vec4(m_S11PointLightColor, 1.0f);
-            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(m_S11PointLightMarkerEntity))
+            if (auto* info = scene.registry.try_get<InfoComponent>(m_S13PointLightMarkerEntity))
+                info->isActive = m_S13UsePointLight;
+            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S13PointLightMarkerEntity))
+                renderer->color = glm::vec4(m_S13PointLightColor, 1.0f);
+            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(m_S13PointLightMarkerEntity))
             {
-                mat->desc.emission = m_S11PointLightColor * (m_S11PointLightIntensity * 0.8f);
+                mat->desc.emission = m_S13PointLightColor * (m_S13PointLightIntensity * 0.8f);
                 mat->gpu.dirty = true;
             }
         }
 
-        if (m_S11ShadowCasterEntity != entt::null && scene.registry.valid(m_S11ShadowCasterEntity))
+        if (m_S13ShadowCasterEntity != entt::null && scene.registry.valid(m_S13ShadowCasterEntity))
         {
-            if (auto* info = scene.registry.try_get<InfoComponent>(m_S11ShadowCasterEntity))
-                info->isActive = m_S11ShowShadowCaster;
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S11ShadowCasterEntity))
-                renderer->castShadow = m_S11ShowShadowCaster;
+            if (auto* info = scene.registry.try_get<InfoComponent>(m_S13ShadowCasterEntity))
+                info->isActive = m_S13ShowShadowCaster;
+            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S13ShadowCasterEntity))
+                renderer->castShadow = m_S13ShowShadowCaster;
         }
 
         auto decalView = scene.registry.view<DecalComponent>();
-        for (auto entity : decalView)
-            decalView.get<DecalComponent>(entity).lightingMode = m_S11LightingMode;
+        for (auto entity : decalView) decalView.get<DecalComponent>(entity).lightingMode = m_S13LightingMode;
     }
 
-    if (m_CurrentScenario == 13)
+    if (m_CurrentScenario == 28)
     {
         auto* io = Resolve<IOHandler>();
         if (io)
@@ -1006,14 +1037,14 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    if (m_CurrentScenario == 14)
+    if (m_CurrentScenario == 29)
     {
         auto& l10n = GetSystem<LocalizationSystem>();
-        UpdateScenario14LocalizedUI(GetScene(), l10n);
+        UpdateScenario29LocalizedUI(GetScene(), l10n);
     }
 
-    // Scenario 16 Network Update
-    if (m_CurrentScenario == 16)
+    // Scenario 30 Network Update
+    if (m_CurrentScenario == 30)
     {
         auto* sysMgr = Resolve<SystemManager>();
         if (sysMgr)
@@ -1023,10 +1054,10 @@ void SampleState::OnUpdate(float dt)
             {
                 if (!netSystem->IsServer())
                 {
-                    m_S16SendTimer += dt;
-                    if (m_S16SendTimer >= 1.5f)
+                    m_S30SendTimer += dt;
+                    if (m_S30SendTimer >= 1.5f)
                     {
-                        m_S16SendTimer = 0.0f;
+                        m_S30SendTimer = 0.0f;
                         static int pingCount = 0;
                         std::string msg = "Ping #" + std::to_string(++pingCount) + " from Client!";
                         if (auto* peer = netSystem->GetServerPeer())
@@ -1039,11 +1070,11 @@ void SampleState::OnUpdate(float dt)
         }
     }
 
-    // Scenario 17 Audio Orbit Update
-    if (m_CurrentScenario == 17)
+    // Scenario 31 Audio Orbit Update
+    if (m_CurrentScenario == 31)
     {
-        m_S17OrbitAngle += m_S17Speed * dt;
-        glm::vec3 soundPos(sin(m_S17OrbitAngle) * 15.0f, 3.0f, cos(m_S17OrbitAngle) * 15.0f);
+        m_S31OrbitAngle += m_S31Speed * dt;
+        glm::vec3 soundPos(sin(m_S31OrbitAngle) * 15.0f, 3.0f, cos(m_S31OrbitAngle) * 15.0f);
 
         auto view = GetScene().registry.view<PositionComponent, InfoComponent>();
         for (auto entity : view)
@@ -1058,24 +1089,24 @@ void SampleState::OnUpdate(float dt)
             }
         }
 
-        if (m_S17Audio3D)
+        if (m_S31Audio3D)
         {
-            m_S17Audio3D->SetPosition(soundPos);
-            m_S17Audio3D->SetVolume(m_S17Volume3D);
-            m_S17Audio3D->SetPitch(m_S17Pitch);
-            m_S17Audio3D->SetMinDistance(m_S17MinDistance);
-            m_S17Audio3D->SetMaxDistance(m_S17MaxDistance);
+            m_S31Audio3D->SetPosition(soundPos);
+            m_S31Audio3D->SetVolume(m_S31Volume3D);
+            m_S31Audio3D->SetPitch(m_S31Pitch);
+            m_S31Audio3D->SetMinDistance(m_S31MinDistance);
+            m_S31Audio3D->SetMaxDistance(m_S31MaxDistance);
         }
-        if (m_S17Audio2D)
+        if (m_S31Audio2D)
         {
-            m_S17Audio2D->SetVolume(m_S17Volume2D);
-            m_S17Audio2D->SetPitch(m_S17Pitch);
+            m_S31Audio2D->SetVolume(m_S31Volume2D);
+            m_S31Audio2D->SetPitch(m_S31Pitch);
         }
     }
 
-    if (m_CurrentScenario == 21 && m_S21AnimateObjects)
+    if (m_CurrentScenario == 6 && m_S6AnimateObjects)
     {
-        m_S17OrbitAngle += dt * 0.8f;
+        m_S31OrbitAngle += dt * 0.8f;
         auto view = GetScene().registry.view<PositionComponent, WorldTransformComponent, InfoComponent>();
         for (auto entity : view)
         {
@@ -1083,11 +1114,146 @@ void SampleState::OnUpdate(float dt)
             if (info.name == "OpaqueMover")
             {
                 auto& pos = view.get<PositionComponent>(entity);
-                pos.value.x = sin(m_S17OrbitAngle) * 7.5f;
+                pos.value.x = sin(m_S31OrbitAngle) * 7.5f;
                 view.get<WorldTransformComponent>(entity).isDirty = true;
             }
         }
     }
+
+    if (m_CurrentScenario == 4)
+    {
+        auto& scene = GetScene();
+        m_S4AnimTime += m_S4AnimateCasters ? dt : 0.0f;
+
+        const auto applyTransform = [&](entt::entity entity, const glm::vec3& pos, const glm::vec3& euler,
+                                        const glm::vec3& scale) {
+            if (entity == entt::null || !scene.registry.valid(entity))
+                return;
+            if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+                p->value = pos;
+            if (auto* r = scene.registry.try_get<RotationComponent>(entity))
+                r->value = glm::quat(glm::radians(euler));
+            if (auto* s = scene.registry.try_get<ScaleComponent>(entity))
+                s->value = scale;
+            if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity))
+                w->isDirty = true;
+        };
+
+        float spin = m_S4AnimateCasters ? std::sin(m_S4AnimTime * 1.4f) * 28.0f : 0.0f;
+        applyTransform(m_S4ReceiverEntity, glm::vec3(0.0f), glm::vec3(0.0f),
+                       glm::vec3(m_S4ReceiverSize, 1.0f, m_S4ReceiverSize));
+        applyTransform(m_S4DeferredCubeEntity, glm::vec3(-16.0f * m_S4CasterSpread, m_S4CasterHeight, -1.0f),
+                       glm::vec3(0.0f, 25.0f + spin, 0.0f), glm::vec3(4.0f, 8.0f, 4.0f) * m_S4CasterScale);
+        applyTransform(m_S4DeferredSphereEntity, glm::vec3(-9.0f * m_S4CasterSpread, m_S4CasterHeight, 4.0f),
+                       glm::vec3(0.0f, -spin, 0.0f), glm::vec3(4.0f) * m_S4CasterScale);
+        applyTransform(m_S4ForwardCubeEntity, glm::vec3(10.0f * m_S4CasterSpread, m_S4CasterHeight + 1.0f, -1.0f),
+                       glm::vec3(0.0f, -18.0f - spin, 0.0f), glm::vec3(3.5f, 7.0f, 3.5f) * m_S4CasterScale);
+        applyTransform(m_S4ForwardCapsuleEntity, glm::vec3(18.0f * m_S4CasterSpread, m_S4CasterHeight - 1.0f, 4.0f),
+                       glm::vec3(0.0f, 35.0f + spin, 0.0f), glm::vec3(2.8f, 5.2f, 2.8f) * m_S4CasterScale);
+
+        if (m_S4LightEntity != entt::null && scene.registry.valid(m_S4LightEntity))
+        {
+            glm::vec3 direction = glm::normalize(
+                glm::vec3(std::cos(glm::radians(m_S4LightYaw)) * std::cos(glm::radians(m_S4LightPitch)),
+                          std::sin(glm::radians(m_S4LightPitch)),
+                          std::sin(glm::radians(m_S4LightYaw)) * std::cos(glm::radians(m_S4LightPitch))));
+            if (auto* light = scene.registry.try_get<DirectionalLightComponent>(m_S4LightEntity))
+            {
+                light->direction = direction;
+                light->intensity = m_S4LightIntensity;
+                light->isCastShadow = true;
+            }
+            if (auto* rot = scene.registry.try_get<RotationComponent>(m_S4LightEntity))
+                rot->value = glm::quat(glm::radians(glm::vec3(m_S4LightPitch, m_S4LightYaw, 0.0f)));
+            if (auto* world = scene.registry.try_get<WorldTransformComponent>(m_S4LightEntity))
+                world->isDirty = true;
+        }
+    }
+
+    if (m_CurrentScenario == 22)
+    {
+        auto& scene = GetScene();
+        if (m_S22AutoSweep)
+        {
+            m_S22SweepTime += dt;
+            m_S22Yaw = -90.0f + std::sin(m_S22SweepTime * 0.75f) * 34.0f;
+        }
+
+        if (m_S22ShotFlash > 0.0f)
+            m_S22ShotFlash = (std::max)(0.0f, m_S22ShotFlash - dt);
+
+#ifdef ENABLE_EDITOR
+        const bool mouseCaptured = ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse;
+#else
+        const bool mouseCaptured = false;
+#endif
+        const bool clickFire = GetActionDown("PlayerAction") && !mouseCaptured;
+        const bool shouldFire = m_S22FireRequested || clickFire;
+        m_S22FireRequested = false;
+
+        if (m_S22EmitterEntity != entt::null && scene.registry.valid(m_S22EmitterEntity))
+        {
+            if (auto* pos = scene.registry.try_get<PositionComponent>(m_S22EmitterEntity))
+                m_S22RayOrigin = pos->value;
+        }
+
+        glm::vec3 dir = RaycastUtils::AngleToDirection(m_S22Yaw, m_S22Pitch);
+        PhysicsQueryService query;
+        RayHit hit = query.Raycast(m_S22RayOrigin, dir, m_S22Distance);
+        m_S22RayHit = hit.hasHit;
+        m_S22RayEnd = hit.hasHit ? hit.hitPoint : (m_S22RayOrigin + dir * m_S22Distance);
+        m_S22LastHitEntity = hit.hasHit ? hit.entity : entt::null;
+
+        if (hit.hasHit && scene.registry.valid(hit.entity))
+        {
+            if (auto* info = scene.registry.try_get<InfoComponent>(hit.entity))
+                m_S22LastHit = info->name + " @ " + std::to_string(static_cast<int>(hit.distance)) + "m";
+            else
+                m_S22LastHit = "Entity " + std::to_string(static_cast<uint32_t>(hit.entity));
+        }
+        else
+        {
+            m_S22LastHit = "No hit";
+        }
+
+        if (shouldFire)
+        {
+            m_S22ShotFlash = 0.18f;
+            if (hit.hasHit && scene.registry.valid(hit.entity))
+            {
+                auto* info = scene.registry.try_get<InfoComponent>(hit.entity);
+                const bool isTarget = info && info->name.rfind("S22Target_", 0) == 0;
+                if (isTarget)
+                {
+                    ++m_S22HitCount;
+                    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(hit.entity))
+                        renderer->color = glm::vec4(1.0f, 0.12f, 0.06f, 1.0f);
+                    if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(hit.entity))
+                    {
+                        mat->desc.emission = glm::vec3(1.2f, 0.08f, 0.04f);
+                        mat->gpu.dirty = true;
+                    }
+                    if (auto* rb = scene.registry.try_get<RigidBodyComponent>(hit.entity); rb && rb->body)
+                    {
+                        rb->body->Activate(true);
+                        rb->body->ApplyCentralImpulse(dir * m_S22ImpactImpulse);
+                    }
+                }
+            }
+        }
+    }
+
+    if (m_CurrentScenario == 12)
+    {
+        auto view = GetScene().registry.view<LightProbeComponent>();
+        for (auto entity : view)
+        {
+            auto& probe = view.get<LightProbeComponent>(entity);
+            probe.intensity = m_S12ProbeIntensity;
+            probe.radius = m_S12ProbeRadius;
+        }
+    }
+
 }
 
 void SampleState::OnRender()
@@ -1107,8 +1273,8 @@ void SampleState::OnRenderDebug()
 {
     if (m_ShowDebugLines)
     {
-        // Draw obstacles in RED (Scenario 5)
-        if (m_CurrentScenario == 5)
+        // Draw obstacles in RED (Scenario 23)
+        if (m_CurrentScenario == 23)
         {
             auto physics_ptr = Resolve<IPhysicsWorld>();
             if (physics_ptr)
@@ -1174,8 +1340,25 @@ void SampleState::OnRenderDebug()
             }
         }
 
+        if (m_CurrentScenario == 22)
+        {
+            if (auto physics_ptr = Resolve<IPhysicsWorld>())
+            {
+                glm::vec3 color = m_S22ShotFlash > 0.0f
+                                      ? glm::vec3(1.0f, 0.95f, 0.05f)
+                                      : (m_S22RayHit ? glm::vec3(1.0f, 0.08f, 0.04f) : glm::vec3(0.1f, 0.7f, 1.0f));
+                physics_ptr->DrawLine(m_S22RayOrigin, m_S22RayEnd, color);
+                physics_ptr->DrawLine(m_S22RayEnd + glm::vec3(-0.25f, 0.0f, 0.0f),
+                                      m_S22RayEnd + glm::vec3(0.25f, 0.0f, 0.0f), color);
+                physics_ptr->DrawLine(m_S22RayEnd + glm::vec3(0.0f, -0.25f, 0.0f),
+                                      m_S22RayEnd + glm::vec3(0.0f, 0.25f, 0.0f), color);
+                physics_ptr->DrawLine(m_S22RayEnd + glm::vec3(0.0f, 0.0f, -0.25f),
+                                      m_S22RayEnd + glm::vec3(0.0f, 0.0f, 0.25f), color);
+            }
+        }
+
         // Render physics debug lines (skip for scenario 7 - particle stress test)
-        if (m_CurrentScenario != 7)
+        if (m_CurrentScenario != 9)
             try
             {
                 auto* sysMgr = Resolve<SystemManager>();
@@ -1208,14 +1391,14 @@ void SampleState::OnRenderDebug()
 
 void SampleState::OnExit()
 {
-    StopScenario17Audio();
+    StopScenario31Audio();
 
     // Clean up scene entities
     auto* sceneMgr = Resolve<SceneManager>();
     if (sceneMgr)
     {
-        sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
-        sceneMgr->UnloadSceneByName(kScenario12BaseSceneName);
+        sceneMgr->UnloadSceneByName(kScenario25DynamicSceneName);
+        sceneMgr->UnloadSceneByName(kScenario25BaseSceneName);
     }
 
     // No need to shutdown the shared ImGuiLayer
@@ -1223,39 +1406,52 @@ void SampleState::OnExit()
 
 void SampleState::LoadScenario(int index)
 {
-    if (m_CurrentScenario == 17)
-        StopScenario17Audio();
+    if (m_CurrentScenario == 31)
+        StopScenario31Audio();
 
     auto* sceneMgr = Resolve<SceneManager>();
     if (sceneMgr)
     {
-        sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
-        sceneMgr->UnloadSceneByName(kScenario12BaseSceneName);
+        sceneMgr->UnloadSceneByName(kScenario25DynamicSceneName);
+        sceneMgr->UnloadSceneByName(kScenario25BaseSceneName);
     }
 
     m_CurrentScenario = index;
-    m_ShowDebugLines = index != 30;
+    m_ShowDebugLines = false;
     m_NavFollower = entt::null;
-    m_S8GrabbedEntity = entt::null;
-    m_S8Dragging = false;
-    m_S2MotionTime = 0.0f;
-    m_S2DirLightEntity = entt::null;
-    m_S2PointLightEntity = entt::null;
-    m_S2SpotLightEntity = entt::null;
-    m_S11DirLightEntity = entt::null;
-    m_S11PointLightEntity = entt::null;
-    m_S11PointLightMarkerEntity = entt::null;
-    m_S11ShadowCasterEntity = entt::null;
-    m_S28CardEntity = entt::null;
-    m_S28TextureEntity = entt::null;
-    m_S29RootPanel = entt::null;
-    m_S20ReflectionSpheres.clear();
-    m_S20ReflectionProbes.clear();
-    m_S20PlanarMirror = entt::null;
-    m_S20ActiveCase = 0;
-    m_S5LastPathfindingCriteria = -1;
-    m_S5RepathRequested = true;
-    if (index != 4 && index != 10)
+    m_S24GrabbedEntity = entt::null;
+    m_S24Dragging = false;
+    m_S3MotionTime = 0.0f;
+    m_S3DirLightEntity = entt::null;
+    m_S3PointLightEntity = entt::null;
+    m_S3SpotLightEntity = entt::null;
+    m_S13DirLightEntity = entt::null;
+    m_S13PointLightEntity = entt::null;
+    m_S13PointLightMarkerEntity = entt::null;
+    m_S13ShadowCasterEntity = entt::null;
+    m_S4ReceiverEntity = entt::null;
+    m_S4DeferredCubeEntity = entt::null;
+    m_S4DeferredSphereEntity = entt::null;
+    m_S4ForwardCubeEntity = entt::null;
+    m_S4ForwardCapsuleEntity = entt::null;
+    m_S4LightEntity = entt::null;
+    m_S4AnimTime = 0.0f;
+    m_S16CardEntity = entt::null;
+    m_S16TextureEntity = entt::null;
+    m_S16RootPanel = entt::null;
+    m_S22EmitterEntity = entt::null;
+    m_S22LastHitEntity = entt::null;
+    m_S22Targets.clear();
+    m_S22RayHit = false;
+    m_S22ShotFlash = 0.0f;
+    m_S11ReflectionSpheres.clear();
+    m_S11ReflectionProbes.clear();
+    m_S11PlanarMirror = entt::null;
+    m_S11ActiveCase = 0;
+    m_S26ControllerEntity = entt::null;
+    m_S23LastPathfindingCriteria = -1;
+    m_S23RepathRequested = true;
+    if (index != 6 && index != 12)
     {
         if (auto* physics = Resolve<IPhysicsWorld>())
             physics->SetGravity(glm::vec3(0.0f, -9.81f, 0.0f));
@@ -1292,14 +1488,20 @@ void SampleState::LoadScenario(int index)
     m_PPPartialY = 0;
     m_PPPartialW = 0;
     m_PPPartialH = 0;
-    m_S10ChainEntities.clear();
-    m_S12RandomEntities.clear();
+    m_S21ChainEntities.clear();
+    m_S25RandomEntities.clear();
     if (auto* physics = Resolve<IPhysicsWorld>())
         physics->SetSolverIterations(10);
     if (auto* collisionMatrix = Resolve<CollisionMatrix>())
         collisionMatrix->Reset();
     if (auto* navSystem = Resolve<NavigationSystem>())
         navSystem->SetShowDebug(m_ShowDebugLines);
+    if (auto* renderState = Resolve<IRenderStateService>())
+    {
+        renderState->SetOcclusionCulling(false);
+        renderState->SetDebugNoTexture(false);
+        renderState->SetWireframe(false);
+    }
 
     // Reset camera for all scenarios
     SetupCamera();
@@ -1396,6 +1598,9 @@ void SampleState::LoadScenario(int index)
         case 30:
             LoadScene30();
             break;
+        case 31:
+            LoadScene31();
+            break;
         default:
             break;
     }
@@ -1408,9 +1613,9 @@ void SampleState::LoadScenario(int index)
         navSystem->SetShowDebug(m_ShowDebugLines);
 }
 
-void SampleState::StopScenario17Audio()
+void SampleState::StopScenario31Audio()
 {
-    StopScenario17AudioHandles(m_S17Audio2D, m_S17Audio3D, m_S17Play2D, m_S17Play3D);
+    StopScenario31AudioHandles(m_S31Audio2D, m_S31Audio3D, m_S31Play2D, m_S31Play3D);
 }
 
 void SampleState::SetupCamera()
@@ -1428,7 +1633,11 @@ void SampleState::SetupCamera()
     auto& script = scene.registry.emplace<ScriptComponent>(camera);
     script.className = "DefaultCameraController";
     script.InstantiateScript = []() { return std::make_unique<DefaultCameraController>(); };
-    script.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
+    script.DestroyScript = [](ScriptComponent* nsc) {
+        nsc->instance.reset();
+        nsc->scriptableInstance = nullptr;
+        nsc->inputScriptableInstance = nullptr;
+    };
 }
 
 void SampleState::DrawGUI()
@@ -1498,48 +1707,53 @@ void SampleState::DrawGUI()
         }
     };
 
-    AddScenarioButton(1, "Scenario 1: Render Load Test", "10,000 sphere entities (deferred rendering check)");
-    AddScenarioButton(2, "Scenario 2: Shadow Mapping Test", "1,000 cubes, plane, and 3 light types casting shadows");
-    AddScenarioButton(3, "Scenario 3: Lighting Load Test",
+    AddScenarioButton(1, "Scenario 1: Render Entity Load",
+                      "Dense deferred-unlit renderer load with optional unique tint to break batches");
+    AddScenarioButton(2, "Scenario 2: Lighting Load Test",
                       "1 smooth capsule, plane, and 999 dynamic lighting entities");
-    AddScenarioButton(4, "Scenario 4: Physics stress Test", "1,000 dynamic Bullet rigid bodies falling and colliding");
-    AddScenarioButton(5, "Scenario 5: Navigation Test", "Dynamic NavMesh generation and pathfinding movement");
-    AddScenarioButton(6, "Scenario 6: Scriptable Stability Test", "100 entities with 6 complex C++ script behaviors");
-    AddScenarioButton(7, "Scenario 7: Particle Stress Test", "50 emitters with high-density colorful particle vortex");
-    AddScenarioButton(8, "Scenario 8: Interactive Playground",
-                      "Controllable player cube with W/A/S/D, Space and Mouse clicks");
-    AddScenarioButton(9, "Scenario 9: Post-Process & Tonemap",
+    AddScenarioButton(3, "Scenario 3: Shadow Mapping Test", "1,000 cubes, plane, and 3 light types casting shadows");
+    AddScenarioButton(4, "Scenario 4: Shadow Receiver",
+                      "Interactive deferred/forward casters on a deferred shadow receiver");
+    AddScenarioButton(5, "Scenario 5: PBR Material Matrix",
+                      "Compare metallic/roughness material response under fixed lights");
+    AddScenarioButton(6, "Scenario 6: Transparent Objects",
+                      "Test transparent forward pass sorting, opacity, and lighting");
+    AddScenarioButton(7, "Scenario 7: Render Order", "Show ordering with transparent panels and opaque markers");
+    AddScenarioButton(8, "Scenario 8: Layer Filter", "Toggle camera culling mask bits to show/hide render layers");
+    AddScenarioButton(9, "Scenario 9: LOD Selection", "Show distance based model swaps using LODComponent");
+    AddScenarioButton(10, "Scenario 10: Post-Process & Tonemap",
                       "Test HDR Bloom parameters, Exposure, Gamma, and Tonemapping");
-    AddScenarioButton(10, "Scenario 10: Physics Constraint Chain",
-                      "Pendulum test: cubes linked by Bullet point-to-point joints");
-    AddScenarioButton(11, "Scenario 11: Decal Stress Test", "PBR Decals: project materials dynamically on surfaces");
-    AddScenarioButton(12, "Scenario 12: Scene Save & Load", "Test scene saving/loading using sample.axs");
-    AddScenarioButton(13, "Scenario 13: Input Binding Save/Load", "Test load/save key bindings from binding.axs");
-    AddScenarioButton(14, "Scenario 14: Localization (l10n)", "Test load/apply localizations from vi.axs/en.axs");
-    AddScenarioButton(15, "Scenario 15: DataNote YAML Test",
-                      "Test serialization of entity count and size using data.axs");
-    AddScenarioButton(16, "Scenario 16: Network Messaging", "Test local network client/server packet transmission");
-    AddScenarioButton(17, "Scenario 17: Audio 2D & 3D Test", "Test irrKlang audio play/orbit using sample.mp3");
+    AddScenarioButton(11, "Scenario 11: SSR & Env Probes",
+                      "Test environment probes and planar reflections reflection mapping");
+    AddScenarioButton(12, "Scenario 12: Light Probe",
+                      "Ambient spherical-harmonic light probes with editable intensity/radius");
+    AddScenarioButton(13, "Scenario 13: Decal Stress Test", "PBR Decals: project materials dynamically on surfaces");
+    AddScenarioButton(14, "Scenario 14: Terrain Creation Showcase",
+                      "Generate heightmaps and splatmaps procedurally and drop physics bodies");
+    AddScenarioButton(15, "Scenario 15: Particle Stress Test", "50 emitters with high-density colorful particle vortex");
+    AddScenarioButton(16, "Scenario 16: UI & Responsive Showcase",
+                      "Merged: UI Showcase transform/rotate/flip and Responsive layout tests");
+    AddScenarioButton(17, "Scenario 17: Interactive UI", "Show UI onHover, onClick, onHold and button callbacks");
     AddScenarioButton(18, "Scenario 18: Video Mesh & UI Render",
                       "Test Video Decoder applying frames to texture and UI using sample.mp4");
     AddScenarioButton(19, "Scenario 19: Skeletal Anim & Blend",
                       "Test animations blend/crossfade using defeated.fbx / spin.fbx");
-    AddScenarioButton(20, "Scenario 20: SSR & Env Probes",
-                      "Test environment probes and planar reflections reflection mapping");
-    AddScenarioButton(21, "Scenario 21: Transparent Objects",
-                      "Test transparent forward pass sorting, opacity, and lighting");
-    AddScenarioButton(22, "Scenario 22: PBR Material Matrix",
-                      "Compare metallic/roughness material response under fixed lights");
-    AddScenarioButton(23, "Scenario 23: LOD Selection", "Show distance based model swaps using LODComponent");
-    AddScenarioButton(24, "Scenario 24: Layer Filter", "Toggle camera culling mask bits to show/hide render layers");
-    AddScenarioButton(25, "Scenario 25: Render Order", "Show ordering with transparent panels and opaque markers");
-    AddScenarioButton(26, "Scenario 26: Instanced Batching",
-                      "Compare many matching renderers against unique tint batching breaks");
-    AddScenarioButton(27, "Scenario 27: Shadow Receiver",
-                      "Compare deferred and forced-forward casters on a deferred shadow receiver");
-    AddScenarioButton(28, "Scenario 28: UI & Responsive Showcase", "Merged: UI Showcase transform/rotate/flip and Responsive layout tests");
-    AddScenarioButton(29, "Scenario 29: Interactive UI", "Show UI onHover, onClick, onHold and button callbacks");
-    AddScenarioButton(30, "Scenario 30: Terrain Creation Showcase", "Generate heightmaps and splatmaps procedurally and drop physics bodies");
+    AddScenarioButton(20, "Scenario 20: Physics Stress Test", "Dynamic Bullet rigid bodies falling and colliding");
+    AddScenarioButton(21, "Scenario 21: Physics Constraint Chain",
+                      "Pendulum test with Bullet joints and selectable primitive colliders");
+    AddScenarioButton(22, "Scenario 22: Hitray & Hitscan",
+                      "Raycast preview plus instant hitscan impulse against targets");
+    AddScenarioButton(23, "Scenario 23: Navigation Test", "Dynamic NavMesh generation and differentiated path methods");
+    AddScenarioButton(24, "Scenario 24: Scriptable Stability Test", "100 entities with 6 complex C++ script behaviors");
+    AddScenarioButton(25, "Scenario 25: Scene Save & Load", "Test scene saving/loading using sample.axs");
+    AddScenarioButton(26, "Scenario 26: Character Controller + Collision Zone",
+                      "CharacterControllerComponent, trigger counters, fixed constraint, and obstacle course");
+    AddScenarioButton(27, "Scenario 27: DataNote YAML Test",
+                      "Test serialization of entity count and size using data.axs");
+    AddScenarioButton(28, "Scenario 28: Input Binding Save/Load", "Test load/save key bindings from binding.axs");
+    AddScenarioButton(29, "Scenario 29: Localization (l10n)", "Test load/apply localizations from vi.axs/en.axs");
+    AddScenarioButton(30, "Scenario 30: Network Messaging", "Test local network client/server packet transmission");
+    AddScenarioButton(31, "Scenario 31: Audio 2D & 3D Test", "Test irrKlang audio play/orbit using sample.wav");
 
     ImGui::EndChild();
 
@@ -1551,48 +1765,49 @@ void SampleState::DrawGUI()
     {
         ImGui::SliderInt("Entities count", &m_S1EntityCount, 1000, 50000);
         ImGui::Combo("Mesh Type", &m_S1MeshType, "Sphere\0Cube\0Cylinder\0Capsule\0");
+        ImGui::Checkbox("Unique Tint (break batches)", &m_S1UniqueTint);
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
-    }
-    else if (m_CurrentScenario == 2)
-    {
-        ImGui::Combo("Light Motion", &m_S2LightMotionMode, "Static\0Circle\0Vertical Bob\0Figure Eight\0");
-        ImGui::SliderFloat("Directional Sweep Speed", &m_S2DirectionalSweepSpeed, 0.0f, 2.0f);
-        ImGui::SliderFloat("Point Motion Speed", &m_S2PointMotionSpeed, 0.1f, 5.0f);
-        ImGui::SliderFloat("Point Orbit Radius", &m_S2PointOrbitRadius, 4.0f, 35.0f);
-        ImGui::SliderFloat("Point Base Height", &m_S2PointMotionHeight, 3.0f, 30.0f);
-        ImGui::SliderFloat("Spot Motion Speed", &m_S2SpotMotionSpeed, 0.1f, 5.0f);
-        ImGui::SliderFloat("Spot Orbit Radius", &m_S2SpotOrbitRadius, 4.0f, 40.0f);
-        ImGui::SliderFloat("Spot Base Height", &m_S2SpotMotionHeight, 5.0f, 40.0f);
-        ImGui::Separator();
-        ImGui::ColorEdit3("Directional Color", &m_S2DirectionalColor.x);
-        ImGui::SliderFloat("Directional Brightness", &m_S2DirectionalIntensity, 0.0f, 5.0f);
-        ImGui::ColorEdit3("Point Color", &m_S2PointColor.x);
-        ImGui::SliderFloat("Point Brightness", &m_S2PointIntensity, 0.0f, 20.0f);
-        ImGui::ColorEdit3("Spot Color", &m_S2SpotColor.x);
-        ImGui::SliderFloat("Spot Brightness", &m_S2SpotIntensity, 0.0f, 25.0f);
     }
     else if (m_CurrentScenario == 3)
     {
+        ImGui::Combo("Light Motion", &m_S3LightMotionMode, "Static\0Circle\0Vertical Bob\0Figure Eight\0");
+        ImGui::SliderFloat("Directional Sweep Speed", &m_S3DirectionalSweepSpeed, 0.0f, 2.0f);
+        ImGui::SliderFloat("Point Motion Speed", &m_S3PointMotionSpeed, 0.1f, 5.0f);
+        ImGui::SliderFloat("Point Orbit Radius", &m_S3PointOrbitRadius, 4.0f, 35.0f);
+        ImGui::SliderFloat("Point Base Height", &m_S3PointMotionHeight, 3.0f, 30.0f);
+        ImGui::SliderFloat("Spot Motion Speed", &m_S3SpotMotionSpeed, 0.1f, 5.0f);
+        ImGui::SliderFloat("Spot Orbit Radius", &m_S3SpotOrbitRadius, 4.0f, 40.0f);
+        ImGui::SliderFloat("Spot Base Height", &m_S3SpotMotionHeight, 5.0f, 40.0f);
+        ImGui::Separator();
         ImGui::ColorEdit3("Directional Color", &m_S3DirectionalColor.x);
-        ImGui::SliderFloat("Directional Intensity", &m_S3DirectionalIntensity, 0.0f, 0.2f);
+        ImGui::SliderFloat("Directional Brightness", &m_S3DirectionalIntensity, 0.0f, 5.0f);
         ImGui::ColorEdit3("Point Color", &m_S3PointColor.x);
-        ImGui::SliderFloat("Point Intensity", &m_S3PointIntensity, 0.0f, 10.0f);
+        ImGui::SliderFloat("Point Brightness", &m_S3PointIntensity, 0.0f, 20.0f);
         ImGui::ColorEdit3("Spot Color", &m_S3SpotColor.x);
-        ImGui::SliderFloat("Spot Intensity", &m_S3SpotIntensity, 0.0f, 12.0f);
+        ImGui::SliderFloat("Spot Brightness", &m_S3SpotIntensity, 0.0f, 25.0f);
     }
-    else if (m_CurrentScenario == 4)
+    else if (m_CurrentScenario == 2)
     {
-        ImGui::SliderInt("Rigid Bodies count", &m_S4EntityCount, 100, 3000);
-        ImGui::Combo("Shape Type", &m_S4ShapeType, "Box\0Sphere\0Capsule\0");
-        ImGui::SliderFloat("Mass", &m_S4Mass, 0.1f, 10.0f);
-        ImGui::SliderFloat("Bounciness", &m_S4Restitution, 0.0f, 1.0f);
-        ImGui::SliderFloat("Friction", &m_S4Friction, 0.0f, 1.0f);
-        ImGui::DragFloat3("Gravity", &m_S4Gravity.x, 0.1f, -50.0f, 50.0f);
-        ImGui::SliderFloat("Spawn Height", &m_S4SpawnHeight, 3.0f, 30.0f);
-        ImGui::SliderFloat("Grid Spacing", &m_S4GridSpacing, 1.0f, 5.0f);
-        ImGui::SliderFloat("Linear Damping", &m_S4LinearDamping, 0.0f, 1.0f);
-        ImGui::SliderFloat("Angular Damping", &m_S4AngularDamping, 0.0f, 1.0f);
-        ImGui::SliderFloat("Initial Impulse", &m_S4InitialImpulse, 0.0f, 30.0f);
+        ImGui::ColorEdit3("Directional Color", &m_S2DirectionalColor.x);
+        ImGui::SliderFloat("Directional Intensity", &m_S2DirectionalIntensity, 0.0f, 0.2f);
+        ImGui::ColorEdit3("Point Color", &m_S2PointColor.x);
+        ImGui::SliderFloat("Point Intensity", &m_S2PointIntensity, 0.0f, 10.0f);
+        ImGui::ColorEdit3("Spot Color", &m_S2SpotColor.x);
+        ImGui::SliderFloat("Spot Intensity", &m_S2SpotIntensity, 0.0f, 12.0f);
+    }
+    else if (m_CurrentScenario == 20)
+    {
+        ImGui::SliderInt("Rigid Bodies count", &m_S20EntityCount, 100, 3000);
+        ImGui::Combo("Shape Type", &m_S20ShapeType, "Box\0Sphere\0Capsule\0");
+        ImGui::SliderFloat("Mass", &m_S20Mass, 0.1f, 10.0f);
+        ImGui::SliderFloat("Bounciness", &m_S20Restitution, 0.0f, 1.0f);
+        ImGui::SliderFloat("Friction", &m_S20Friction, 0.0f, 1.0f);
+        ImGui::DragFloat3("Gravity", &m_S20Gravity.x, 0.1f, -50.0f, 50.0f);
+        ImGui::SliderFloat("Spawn Height", &m_S20SpawnHeight, 3.0f, 30.0f);
+        ImGui::SliderFloat("Grid Spacing", &m_S20GridSpacing, 1.0f, 5.0f);
+        ImGui::SliderFloat("Linear Damping", &m_S20LinearDamping, 0.0f, 1.0f);
+        ImGui::SliderFloat("Angular Damping", &m_S20AngularDamping, 0.0f, 1.0f);
+        ImGui::SliderFloat("Initial Impulse", &m_S20InitialImpulse, 0.0f, 30.0f);
         ImGui::Text("Mass changes collision and impulse response; free-fall speed stays gravity-driven.");
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
         ImGui::Spacing();
@@ -1602,29 +1817,34 @@ void SampleState::DrawGUI()
             navSystem.SetShowDebug(m_ShowDebugLines);
         }
     }
-    else if (m_CurrentScenario == 5)
+    else if (m_CurrentScenario == 23)
     {
-        ImGui::SliderInt("Obstacles count", &m_S5ObstacleCount, 0, 50);
-        ImGui::SliderFloat("Obstacle Size", &m_S5ObstacleSize, 1.0f, 10.0f);
-        ImGui::SliderFloat("Follower Speed", &m_S5FollowerSpeed, 1.0f, 25.0f);
-        ImGui::Combo("Pathfinding Method", &m_S5PathfindingCriteria,
-                     "Shortest\0Smoothest\0StayOnRoad\0OnlyXZ\0OnlyY\0");
+        ImGui::SliderInt("Obstacles count", &m_S23ObstacleCount, 0, 50);
+        ImGui::SliderFloat("Obstacle Size", &m_S23ObstacleSize, 1.0f, 10.0f);
+        ImGui::SliderFloat("Follower Speed", &m_S23FollowerSpeed, 1.0f, 25.0f);
+        if (ImGui::Combo("Pathfinding Method", &m_S23PathfindingCriteria,
+                         "Shortest (XYZ)\0Smoothest (XYZ turns)\0Stay on road (XY)\0Straight line\0High ground\0"))
+        {
+            m_S23RepathRequested = true;
+        }
         ImGui::Text("Green: planned path. Yellow: actual traveled path.");
         ImGui::Spacing();
         ImGui::Text("Axis / Rotation Locks:");
-        ImGui::Checkbox("Lock X (Pitch)", &m_S5LockXPitch);
-        ImGui::Checkbox("Lock Y (Yaw)", &m_S5LockYYaw);
-        ImGui::Checkbox("Lock Z (Roll)", &m_S5LockZRoll);
+        ImGui::Checkbox("Lock X (Pitch)", &m_S23LockXPitch);
+        ImGui::Checkbox("Lock Y (Yaw)", &m_S23LockYYaw);
+        ImGui::Checkbox("Lock Z (Roll)", &m_S23LockZRoll);
         ImGui::Separator();
         ImGui::Text("Movement Axis Locks:");
-        ImGui::Checkbox("Lock Move X", &m_S5LockMoveX);
-        ImGui::Checkbox("Lock Move Y", &m_S5LockMoveY);
-        ImGui::Checkbox("Lock Move Z", &m_S5LockMoveZ);
+        ImGui::Checkbox("Lock Move X", &m_S23LockMoveX);
+        ImGui::Checkbox("Lock Move Y", &m_S23LockMoveY);
+        ImGui::Checkbox("Lock Move Z", &m_S23LockMoveZ);
         ImGui::Spacing();
-        ImGui::DragFloat3("New Waypoint", &m_S5NewWaypoint.x, 0.5f, -24.0f, 24.0f);
+        ImGui::DragFloat3("New Waypoint", &m_S23NewWaypoint.x, 0.5f, -24.0f, 24.0f);
         if (ImGui::Button("Add Waypoint", ImVec2(170, 24)))
         {
-            m_NavWaypoints.push_back(glm::vec3(m_S5NewWaypoint.x, 0.5f, m_S5NewWaypoint.z));
+            m_NavWaypoints.push_back(glm::vec3(
+                m_S23NewWaypoint.x, Scenario23WaypointY(m_S23PathfindingCriteria, m_S23NewWaypoint.x, m_S23NewWaypoint.z),
+                m_S23NewWaypoint.z));
             if (m_NavFollower != entt::null)
             {
                 m_CurrentWaypointIndex = static_cast<int>(m_NavWaypoints.size()) - 1;
@@ -1636,7 +1856,8 @@ void SampleState::DrawGUI()
         ImGui::SameLine();
         if (ImGui::Button("Clear Custom Path", ImVec2(170, 24)))
         {
-            m_NavWaypoints = {glm::vec3(-20.0f, 0.5f, 20.0f), glm::vec3(20.0f, 0.5f, -20.0f)};
+            m_NavWaypoints = {glm::vec3(-22.0f, Scenario23WaypointY(m_S23PathfindingCriteria, -22.0f, 22.0f), 22.0f),
+                              glm::vec3(22.0f, Scenario23WaypointY(m_S23PathfindingCriteria, 22.0f, -22.0f), -22.0f)};
             m_CurrentWaypointIndex = 1;
             if (m_NavFollower != entt::null)
             {
@@ -1647,7 +1868,8 @@ void SampleState::DrawGUI()
         }
         ImGui::Text("Waypoints: %d", (int)m_NavWaypoints.size());
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           "Method replans immediately; reload only regenerates obstacles.");
         ImGui::Spacing();
         if (ImGui::Checkbox("Show Debug Lines (Path/NavMesh)", &m_ShowDebugLines))
         {
@@ -1655,46 +1877,38 @@ void SampleState::DrawGUI()
             navSystem.SetShowDebug(m_ShowDebugLines);
         }
     }
-    else if (m_CurrentScenario == 6)
+    else if (m_CurrentScenario == 24)
     {
-        ImGui::SliderInt("Scripted Entity Count", &m_S6EntityCount, 1, 1000);
-        ImGui::Combo("Mesh Type", &m_S6MeshType, "Cube\0Sphere\0Capsule\0Cylinder\0");
-        ImGui::Combo("Shader Mode", &m_S6ShaderMode, "Deferred Unlit\0Deferred Lit\0Forward Lit\0");
-        ImGui::SliderFloat("Base Radius", &m_S6BaseRadius, 2.0f, 40.0f);
-        ImGui::SliderFloat("Radius Step", &m_S6RadiusStep, 0.0f, 10.0f);
-        ImGui::SliderFloat("Vertical Step", &m_S6VerticalStep, 0.0f, 8.0f);
-        ImGui::SliderFloat("Entity Scale", &m_S6EntityScale, 0.2f, 4.0f);
+        ImGui::SliderInt("Scripted Entity Count", &m_S24EntityCount, 1, 1000);
+        ImGui::Combo("Mesh Type", &m_S24MeshType, "Cube\0Sphere\0Capsule\0Cylinder\0");
+        ImGui::Combo("Shader Mode", &m_S24ShaderMode, "Deferred Unlit\0Deferred Lit\0Forward Lit\0");
+        ImGui::SliderFloat("Base Radius", &m_S24BaseRadius, 2.0f, 40.0f);
+        ImGui::SliderFloat("Radius Step", &m_S24RadiusStep, 0.0f, 10.0f);
+        ImGui::SliderFloat("Vertical Step", &m_S24VerticalStep, 0.0f, 8.0f);
+        ImGui::SliderFloat("Entity Scale", &m_S24EntityScale, 0.2f, 4.0f);
         ImGui::Separator();
         ImGui::Text("Enabled Script Behaviors:");
-        ImGui::Checkbox("Orbit", &m_S6EnableOrbit);
-        ImGui::Checkbox("Pulse Scale", &m_S6EnablePulse);
-        ImGui::Checkbox("Color Shift", &m_S6EnableColor);
-        ImGui::Checkbox("Random Move", &m_S6EnableRandomMove);
-        ImGui::Checkbox("Rotate", &m_S6EnableRotate);
-        ImGui::Checkbox("Bounce", &m_S6EnableBounce);
+        ImGui::Checkbox("Orbit", &m_S24EnableOrbit);
+        ImGui::Checkbox("Pulse Scale", &m_S24EnablePulse);
+        ImGui::Checkbox("Color Shift", &m_S24EnableColor);
+        ImGui::Checkbox("Random Move", &m_S24EnableRandomMove);
+        ImGui::Checkbox("Rotate", &m_S24EnableRotate);
+        ImGui::Checkbox("Bounce", &m_S24EnableBounce);
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
     }
-    else if (m_CurrentScenario == 7)
+    else if (m_CurrentScenario == 15)
     {
-        ImGui::SliderInt("Emitters count", &m_S7EmitterCount, 1, 200);
-        ImGui::SliderFloat("Spawn Rate", &m_S7SpawnRate, 10.0f, 1000.0f);
-        ImGui::SliderFloat("Life Time (s)", &m_S7LifeTime, 0.5f, 5.0f);
-        ImGui::SliderFloat("Start Size", &m_S7StartSize, 0.05f, 2.0f);
-        ImGui::SliderFloat("End Size", &m_S7EndSize, 0.0f, 2.0f);
-        ImGui::SliderFloat("Min Speed", &m_S7MinSpeed, 0.0f, 20.0f);
-        ImGui::SliderFloat("Max Speed", &m_S7MaxSpeed, 0.0f, 30.0f);
-        ImGui::SliderFloat("Vertical Speed", &m_S7VerticalSpeed, -10.0f, 20.0f);
+        ImGui::SliderInt("Emitters count", &m_S15EmitterCount, 1, 200);
+        ImGui::SliderFloat("Spawn Rate", &m_S15SpawnRate, 10.0f, 1000.0f);
+        ImGui::SliderFloat("Life Time (s)", &m_S15LifeTime, 0.5f, 5.0f);
+        ImGui::SliderFloat("Start Size", &m_S15StartSize, 0.05f, 2.0f);
+        ImGui::SliderFloat("End Size", &m_S15EndSize, 0.0f, 2.0f);
+        ImGui::SliderFloat("Min Speed", &m_S15MinSpeed, 0.0f, 20.0f);
+        ImGui::SliderFloat("Max Speed", &m_S15MaxSpeed, 0.0f, 30.0f);
+        ImGui::SliderFloat("Vertical Speed", &m_S15VerticalSpeed, -10.0f, 20.0f);
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
     }
-    else if (m_CurrentScenario == 8)
-    {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Controls:");
-        ImGui::BulletText("W, A, S, D to Move player cube");
-        ImGui::BulletText("Spacebar to Jump (Hold for scale pulse)");
-        ImGui::BulletText("Left Mouse Click on a target to drag it up");
-        ImGui::BulletText("Mouse drag keeps the grabbed object at a fixed height");
-    }
-    else if (m_CurrentScenario == 9)
+    else if (m_CurrentScenario == 10)
     {
         ImGui::Checkbox("Enable Bloom", &m_PPBloomEnabled);
         ImGui::SliderFloat("Bloom Threshold", &m_PPBloomThreshold, 0.0f, 3.0f);
@@ -1729,18 +1943,18 @@ void SampleState::DrawGUI()
             m_PPPartialH = 360;
         }
     }
-    else if (m_CurrentScenario == 10)
+    else if (m_CurrentScenario == 21)
     {
-        ImGui::SliderInt("Chain Length", &m_S10ChainLength, 2, 20);
-        ImGui::SliderFloat("Wind Force (Oscillating)", &m_S10WindForce, 0.0f, 200.0f);
-        ImGui::DragFloat3("Gravity", &m_S10Gravity.x, 0.1f, -50.0f, 50.0f);
-        ImGui::SliderFloat("Link Mass", &m_S10LinkMass, 0.25f, 5.0f);
-        ImGui::SliderFloat("Payload Mass", &m_S10PayloadMass, 0.5f, 20.0f);
-        ImGui::SliderFloat("Link Damping", &m_S10LinkDamping, 0.0f, 1.0f);
-        ImGui::SliderFloat("Anchor Height", &m_S10AnchorHeight, 10.0f, 40.0f);
-        ImGui::SliderFloat("Kick Force", &m_S10KickForce, 0.0f, 100.0f);
-        ImGui::Combo("Link Shape", &m_S10LinkShape, "Box\0Sphere\0Capsule\0");
-        ImGui::Combo("Payload Shape", &m_S10PayloadShape, "Box\0Sphere\0Capsule\0");
+        ImGui::SliderInt("Chain Length", &m_S21ChainLength, 2, 20);
+        ImGui::SliderFloat("Wind Force (Oscillating)", &m_S21WindForce, 0.0f, 200.0f);
+        ImGui::DragFloat3("Gravity", &m_S21Gravity.x, 0.1f, -50.0f, 50.0f);
+        ImGui::SliderFloat("Link Mass", &m_S21LinkMass, 0.25f, 5.0f);
+        ImGui::SliderFloat("Payload Mass", &m_S21PayloadMass, 0.5f, 20.0f);
+        ImGui::SliderFloat("Link Damping", &m_S21LinkDamping, 0.0f, 1.0f);
+        ImGui::SliderFloat("Anchor Height", &m_S21AnchorHeight, 10.0f, 40.0f);
+        ImGui::SliderFloat("Kick Force", &m_S21KickForce, 0.0f, 100.0f);
+        ImGui::Combo("Link Shape", &m_S21LinkShape, "Box\0Sphere\0Capsule\0");
+        ImGui::Combo("Payload Shape", &m_S21PayloadShape, "Box\0Sphere\0Capsule\0");
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
         ImGui::Spacing();
         if (ImGui::Checkbox("Show Constraints Debug", &m_ShowDebugLines))
@@ -1749,33 +1963,33 @@ void SampleState::DrawGUI()
             navSystem.SetShowDebug(m_ShowDebugLines);
         }
     }
-    else if (m_CurrentScenario == 11)
+    else if (m_CurrentScenario == 13)
     {
-        ImGui::SliderInt("Decal Count", &m_S11DecalCount, 1, 100);
-        ImGui::SliderFloat("Decal Size", &m_S11DecalSize, 0.5f, 10.0f);
-        ImGui::SliderFloat("Decal Opacity", &m_S11Opacity, 0.0f, 1.0f);
-        ImGui::ColorEdit3("Decal Color", &m_S11Color.x);
-        ImGui::Combo("Decal Lighting", &m_S11LightingMode, "Unlit\0Lit\0Lit + Shadow\0");
-        ImGui::Checkbox("Shadow Caster", &m_S11ShowShadowCaster);
+        ImGui::SliderInt("Decal Count", &m_S13DecalCount, 1, 100);
+        ImGui::SliderFloat("Decal Size", &m_S13DecalSize, 0.5f, 10.0f);
+        ImGui::SliderFloat("Decal Opacity", &m_S13Opacity, 0.0f, 1.0f);
+        ImGui::ColorEdit3("Decal Color", &m_S13Color.x);
+        ImGui::Combo("Decal Lighting", &m_S13LightingMode, "Unlit\0Lit\0Lit + Shadow\0");
+        ImGui::Checkbox("Shadow Caster", &m_S13ShowShadowCaster);
         ImGui::Separator();
-        ImGui::ColorEdit3("Light Color", &m_S11LightColor.x);
-        ImGui::SliderFloat("Light Intensity", &m_S11LightIntensity, 0.0f, 8.0f);
-        ImGui::Checkbox("Point Light Source", &m_S11UsePointLight);
-        ImGui::ColorEdit3("Point Light Color", &m_S11PointLightColor.x);
-        ImGui::SliderFloat("Point Light Intensity", &m_S11PointLightIntensity, 0.0f, 12.0f);
-        ImGui::SliderFloat("Point Light Radius", &m_S11PointLightRadius, 2.0f, 80.0f);
+        ImGui::ColorEdit3("Light Color", &m_S13LightColor.x);
+        ImGui::SliderFloat("Light Intensity", &m_S13LightIntensity, 0.0f, 8.0f);
+        ImGui::Checkbox("Point Light Source", &m_S13UsePointLight);
+        ImGui::ColorEdit3("Point Light Color", &m_S13PointLightColor.x);
+        ImGui::SliderFloat("Point Light Intensity", &m_S13PointLightIntensity, 0.0f, 12.0f);
+        ImGui::SliderFloat("Point Light Radius", &m_S13PointLightRadius, 2.0f, 80.0f);
         ImGui::Separator();
-        ImGui::Checkbox("Rainbow Color Mode", &m_S11RainbowMode);
+        ImGui::Checkbox("Rainbow Color Mode", &m_S13RainbowMode);
         auto decalView = GetScene().registry.view<DecalComponent>();
         int decalIndex = 0;
         for (auto entity : decalView)
         {
             auto& decal = decalView.get<DecalComponent>(entity);
-            decal.opacity = m_S11Opacity;
-            decal.lightingMode = m_S11LightingMode;
-            if (m_S11RainbowMode)
+            decal.opacity = m_S13Opacity;
+            decal.lightingMode = m_S13LightingMode;
+            if (m_S13RainbowMode)
             {
-                int decalDenom = m_S11DecalCount > 1 ? m_S11DecalCount : 1;
+                int decalDenom = m_S13DecalCount > 1 ? m_S13DecalCount : 1;
                 float hue = static_cast<float>(decalIndex) / static_cast<float>(decalDenom);
                 decal.tintColor =
                     glm::vec4(0.5f + 0.5f * sin(hue * 6.28318f), 0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f),
@@ -1783,16 +1997,16 @@ void SampleState::DrawGUI()
             }
             else
             {
-                decal.tintColor = glm::vec4(m_S11Color, 1.0f);
+                decal.tintColor = glm::vec4(m_S13Color, 1.0f);
             }
             ++decalIndex;
         }
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Count/size require Reload Scenario.");
     }
-    else if (m_CurrentScenario == 12)
+    else if (m_CurrentScenario == 25)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Scene Save/Load (sample.axs)");
-        ImGui::Text("Status: %s", m_S12Status.c_str());
+        ImGui::Text("Status: %s", m_S25Status.c_str());
         ImGui::Spacing();
         if (ImGui::Button("Add Random Entity", ImVec2(360, 24)))
         {
@@ -1803,11 +2017,12 @@ void SampleState::DrawGUI()
             float size = 0.8f + static_cast<float>(rand() % 30) / 10.0f;
             auto entity =
                 EntityBuilder(scene, res, "scenario")
-                    .WithName("S12Random_" + std::to_string(++m_S12RandomEntityCount))
+                    .WithName("S25Random_" + std::to_string(++m_S25RandomEntityCount))
                     .WithTransform(glm::vec3(x, size * 0.5f, z), glm::vec3(0.0f, rand() % 360, 0.0f), glm::vec3(size))
-                    .WithPBRMesh((m_S12RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit", 0.1f, 0.5f, 1.0f)
+                    .WithPBRMesh((m_S25RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit", 0.1f, 0.5f,
+                                 1.0f)
                     .Build();
-            m_S12RandomEntities.push_back(entity);
+            m_S25RandomEntities.push_back(entity);
             if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
             {
                 renderer->color =
@@ -1817,7 +2032,7 @@ void SampleState::DrawGUI()
             auto& transformSys = GetSystem<TransformSystem>();
             transformSys.m_IsLinearTransformsDirty = true;
             transformSys.Update(scene, 0.0f);
-            m_S12Status = "Added random entity. Save, reload scenario, then Load Scene to verify.";
+            m_S25Status = "Added random entity. Save, reload scenario, then Load Scene to verify.";
         }
         if (ImGui::Button("Load Saved Scene (Deserialize)", ImVec2(360, 24)))
         {
@@ -1833,13 +2048,13 @@ void SampleState::DrawGUI()
             }
             if (sceneMgr)
             {
-                sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
+                sceneMgr->UnloadSceneByName(kScenario25DynamicSceneName);
                 SetupCamera();
-                m_S12RandomEntities.clear();
-                m_S12RandomEntityCount = 0;
-                const std::string path = std::filesystem::exists(SamplePath(kScenario12ScenePath))
-                                             ? SamplePath(kScenario12ScenePath)
-                                             : SamplePath(kScenario12SceneLegacyPath);
+                m_S25RandomEntities.clear();
+                m_S25RandomEntityCount = 0;
+                const std::string path = std::filesystem::exists(SamplePath(kScenario25ScenePath))
+                                             ? SamplePath(kScenario25ScenePath)
+                                             : SamplePath(kScenario25SceneLegacyPath);
                 SceneLoadResult res =
                     SceneSerializer::Deserialize(path, GetScene(), Get<ResourceManager>(), phys, audio);
                 if (!res.entities.empty())
@@ -1852,8 +2067,8 @@ void SampleState::DrawGUI()
                         }
                         sceneMgr->AddEntity(entity, "scenario");
                     }
-                    m_S12RandomEntityCount = static_cast<int>(res.entities.size());
-                    m_S12Status =
+                    m_S25RandomEntityCount = static_cast<int>(res.entities.size());
+                    m_S25Status =
                         "Scene loaded successfully. Spawns: " + std::to_string(res.entities.size()) + " entities.";
                     auto& transformSys = GetSystem<TransformSystem>();
                     transformSys.m_IsLinearTransformsDirty = true;
@@ -1882,37 +2097,37 @@ void SampleState::DrawGUI()
                 }
                 else
                 {
-                    m_S12Status = "Failed to deserialize scene from sample.axs.";
+                    m_S25Status = "Failed to deserialize scene from sample.axs.";
                 }
             }
         }
         if (ImGui::Button("Save Current Scene (Serialize)", ImVec2(360, 24)))
         {
-            bool ok = SceneSerializer::Serialize(kScenario12ScenePath, GetScene(), Get<ResourceManager>(), "scenario");
+            bool ok = SceneSerializer::Serialize(kScenario25ScenePath, GetScene(), Get<ResourceManager>(), "scenario");
             if (ok)
             {
-                m_S12Status = "Serialized current scene to sample.axs!";
+                m_S25Status = "Serialized current scene to sample.axs!";
             }
             else
             {
-                m_S12Status = "Failed to serialize current scene.";
+                m_S25Status = "Failed to serialize current scene.";
             }
         }
         if (ImGui::Button("Flush Scene (Keep Base Plane/Light)", ImVec2(360, 24)))
         {
             auto* sceneMgr = Resolve<SceneManager>();
             if (sceneMgr)
-                sceneMgr->UnloadSceneByName(kScenario12DynamicSceneName);
-            m_S12RandomEntities.clear();
+                sceneMgr->UnloadSceneByName(kScenario25DynamicSceneName);
+            m_S25RandomEntities.clear();
             SetupCamera();
-            m_S12RandomEntityCount = 0;
-            m_S12Status = "Dynamic scene flushed. Floor/light kept.";
+            m_S25RandomEntityCount = 0;
+            m_S25Status = "Dynamic scene flushed. Floor/light kept.";
         }
     }
-    else if (m_CurrentScenario == 13)
+    else if (m_CurrentScenario == 28)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Input Binding Save/Load");
-        ImGui::Text("Status: %s", m_S13Status.c_str());
+        ImGui::Text("Status: %s", m_S28Status.c_str());
         ImGui::Spacing();
 
         // --- Step 1: Persist / Load ---
@@ -1924,7 +2139,7 @@ void SampleState::DrawGUI()
             {
                 InputSerializer serializer;
                 const std::string bindingPath = "sample/resource/binding/binding.axs";
-                m_S13Status = serializer.Deserialize(bindingPath, io->GetInputManager())
+                m_S28Status = serializer.Deserialize(bindingPath, io->GetInputManager())
                                   ? "Loaded sample/resource/binding/binding.axs."
                                   : "Failed to load binding.axs.";
             }
@@ -1937,7 +2152,7 @@ void SampleState::DrawGUI()
             {
                 InputSerializer serializer;
                 const std::string bindingPath = "sample/resource/binding/binding.axs";
-                m_S13Status = serializer.Serialize(bindingPath, io->GetInputManager())
+                m_S28Status = serializer.Serialize(bindingPath, io->GetInputManager())
                                   ? "Saved bindings to binding.axs."
                                   : "Failed to save.";
             }
@@ -1949,7 +2164,7 @@ void SampleState::DrawGUI()
             {
                 auto& input = io->GetInputManager();
                 input.FlushBindings();
-                m_S13Status = "Bindings cleared. Load a preset or save a new one.";
+                m_S28Status = "Bindings cleared. Load a preset or save a new one.";
             }
         }
 
@@ -1968,7 +2183,7 @@ void SampleState::DrawGUI()
                 input.BindAction("PlayerRight", InputType::Key, (int)Key::Right);
                 input.BindAction("PlayerJump", InputType::Key, (int)Key::Space);
                 input.BindAction("PlayerAction", InputType::MouseButton, (int)Mouse::Left);
-                m_S13Status = "Arrow-key preset applied. Save to persist.";
+                m_S28Status = "Arrow-key preset applied. Save to persist.";
             }
         }
 
@@ -1977,14 +2192,14 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.0f, 1.0f), "Step 3 - Add custom binding:");
         static char actionBuf[64] = "PlayerCustom";
         ImGui::InputText("Action Name", actionBuf, sizeof(actionBuf));
-        ImGui::InputInt("Key Code", &m_S13NewKey);
+        ImGui::InputInt("Key Code", &m_S28NewKey);
         if (ImGui::Button("Add Binding", ImVec2(360, 24)))
         {
             auto* io = Resolve<IOHandler>();
             if (io)
             {
-                io->GetInputManager().BindAction(actionBuf, InputType::Key, m_S13NewKey);
-                m_S13Status = std::string("Bound '") + actionBuf + "' to key " + std::to_string(m_S13NewKey) +
+                io->GetInputManager().BindAction(actionBuf, InputType::Key, m_S28NewKey);
+                m_S28Status = std::string("Bound '") + actionBuf + "' to key " + std::to_string(m_S28NewKey) +
                               ". Save to persist.";
             }
         }
@@ -2022,7 +2237,7 @@ void SampleState::DrawGUI()
             }
         }
     }
-    else if (m_CurrentScenario == 14)
+    else if (m_CurrentScenario == 29)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Localization (l10n)");
         ImGui::Spacing();
@@ -2034,13 +2249,13 @@ void SampleState::DrawGUI()
         {
             l10n.LoadLanguage("sample/resource/l10n/vi.axs", "vi");
             l10n.SetLanguage("vi");
-            UpdateScenario14LocalizedUI(GetScene(), l10n);
+            UpdateScenario29LocalizedUI(GetScene(), l10n);
         }
         if (ImGui::Button("Switch to English (en)", ImVec2(360, 24)))
         {
             l10n.LoadLanguage("sample/resource/l10n/en.axs", "en");
             l10n.SetLanguage("en");
-            UpdateScenario14LocalizedUI(GetScene(), l10n);
+            UpdateScenario29LocalizedUI(GetScene(), l10n);
         }
 
         ImGui::Separator();
@@ -2052,31 +2267,31 @@ void SampleState::DrawGUI()
         ImGui::Text("Localized format check: %s",
                     l10n.GetFormat("scenario.active_entities", std::to_string(entCount)).c_str());
     }
-    else if (m_CurrentScenario == 15)
+    else if (m_CurrentScenario == 27)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "DataNote YAML Save/Load");
-        ImGui::Text("Status: %s", m_S15Status.c_str());
+        ImGui::Text("Status: %s", m_S27Status.c_str());
         ImGui::Spacing();
-        ImGui::SliderInt("Entity Count", &m_S15EntityCount, 1, 250);
-        ImGui::SliderFloat("Entity Size", &m_S15EntitySize, 0.2f, 10.0f);
+        ImGui::SliderInt("Entity Count", &m_S27EntityCount, 1, 250);
+        ImGui::SliderFloat("Entity Size", &m_S27EntitySize, 0.2f, 10.0f);
 
         if (ImGui::Button("Save data.axs", ImVec2(360, 24)))
         {
             std::unordered_map<std::string, DataNode> dataMap;
             DataNode dataNote;
-            dataNote.attributes["EntityCount"] = std::to_string(m_S15EntityCount);
-            dataNote.attributes["EntitySize"] = std::to_string(m_S15EntitySize);
+            dataNote.attributes["EntityCount"] = std::to_string(m_S27EntityCount);
+            dataNote.attributes["EntitySize"] = std::to_string(m_S27EntitySize);
             dataNote.value = "DataNote";
             dataMap["DataNote"] = dataNote;
 
             DataNodeSerializer serializer;
-            if (serializer.Serialize(kScenario15DataPath, dataMap))
+            if (serializer.Serialize(kScenario27DataPath, dataMap))
             {
-                m_S15Status = "Serialized data to data.axs successfully.";
+                m_S27Status = "Serialized data to data.axs successfully.";
             }
             else
             {
-                m_S15Status = "Failed to serialize data.";
+                m_S27Status = "Failed to serialize data.";
             }
         }
         if (ImGui::Button("Load data.axs", ImVec2(360, 24)))
@@ -2084,7 +2299,7 @@ void SampleState::DrawGUI()
             std::unordered_map<std::string, DataNode> dataMap;
             DataNodeSerializer serializer;
             const char* path =
-                std::filesystem::exists(kScenario15DataPath) ? kScenario15DataPath : kScenario15DataLegacyPath;
+                std::filesystem::exists(kScenario27DataPath) ? kScenario27DataPath : kScenario27DataLegacyPath;
             if (serializer.Deserialize(path, dataMap))
             {
                 auto it = dataMap.find("DataNote");
@@ -2094,35 +2309,35 @@ void SampleState::DrawGUI()
                 {
                     auto& stats = it->second;
                     if (stats.attributes.find("EntityCount") != stats.attributes.end())
-                        m_S15EntityCount = std::stoi(stats.attributes["EntityCount"]);
+                        m_S27EntityCount = std::stoi(stats.attributes["EntityCount"]);
                     if (stats.attributes.find("EntitySize") != stats.attributes.end())
-                        m_S15EntitySize = std::stof(stats.attributes["EntitySize"]);
+                        m_S27EntitySize = std::stof(stats.attributes["EntitySize"]);
                 }
-                m_S15Status = "Deserialized data successfully. Reload Scenario to apply entity count/size.";
+                m_S27Status = "Deserialized data successfully. Reload Scenario to apply entity count/size.";
             }
             else
             {
-                m_S15Status = "Failed to deserialize data.axs.";
+                m_S27Status = "Failed to deserialize data.axs.";
             }
         }
     }
-    else if (m_CurrentScenario == 16)
+    else if (m_CurrentScenario == 30)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Network Messaging (ENet)");
-        ImGui::Text("Status: %s", m_S16Status.c_str());
-        ImGui::Checkbox("Host as Server", &m_S16IsServer);
+        ImGui::Text("Status: %s", m_S30Status.c_str());
+        ImGui::Checkbox("Host as Server", &m_S30IsServer);
         ImGui::SameLine();
-        if (ImGui::Checkbox("Use IPv6", &m_S16UseIPv6))
+        if (ImGui::Checkbox("Use IPv6", &m_S30UseIPv6))
         {
             // Update default host when toggling
-            if (m_S16UseIPv6)
-                strncpy(m_S16Host, "::1", sizeof(m_S16Host));
+            if (m_S30UseIPv6)
+                strncpy(m_S30Host, "::1", sizeof(m_S30Host));
             else
-                strncpy(m_S16Host, "127.0.0.1", sizeof(m_S16Host));
+                strncpy(m_S30Host, "127.0.0.1", sizeof(m_S30Host));
         }
-        ImGui::InputText("Host IP", m_S16Host, sizeof(m_S16Host));
-        ImGui::InputInt("Port", &m_S16Port);
-        m_S16Port = glm::clamp(m_S16Port, 1024, 65535);
+        ImGui::InputText("Host IP", m_S30Host, sizeof(m_S30Host));
+        ImGui::InputInt("Port", &m_S30Port);
+        m_S30Port = glm::clamp(m_S30Port, 1024, 65535);
 
         auto* sysMgr = Resolve<SystemManager>();
         if (sysMgr)
@@ -2140,69 +2355,68 @@ void SampleState::DrawGUI()
                     if (netSystem->IsRunning())
                         netSystem->Stop();
                     NetworkConfig config;
-                    config.port = static_cast<uint16_t>(m_S16Port);
+                    config.port = static_cast<uint16_t>(m_S30Port);
                     config.maxClients = 32;
-                    config.useIPv6 = m_S16UseIPv6;
-                    m_S16Messages.clear();
+                    config.useIPv6 = m_S30UseIPv6;
+                    m_S30Messages.clear();
 
-                    if (m_S16IsServer)
+                    if (m_S30IsServer)
                     {
                         config.host.clear();
                         netSystem->SetOnConnect([this](ENetPeer*) {
-                            m_S16Status = "Server: client connected.";
-                            m_S16Messages.push_back("Client connected.");
+                            m_S30Status = "Server: client connected.";
+                            m_S30Messages.push_back("Client connected.");
                         });
                         netSystem->SetOnDisconnect([this](ENetPeer*) {
-                            m_S16Status = "Server: client disconnected.";
-                            m_S16Messages.push_back("Client disconnected.");
+                            m_S30Status = "Server: client disconnected.";
+                            m_S30Messages.push_back("Client disconnected.");
                         });
                         netSystem->SetOnMessage(
                             [this, netSystem](ENetPeer* peer, const uint8_t* data, size_t size, uint8_t) {
                                 std::string msg((const char*)data, size);
                                 if (!msg.empty() && msg.back() == '\0')
                                     msg.pop_back();
-                                m_S16Messages.push_back("Server recvd: " + msg);
+                                m_S30Messages.push_back("Server recvd: " + msg);
                                 std::string echo = "Echo: " + msg;
                                 netSystem->SendPacket(peer, echo.c_str(), echo.size() + 1);
                             });
-                        m_S16Status = netSystem->StartServer(config)
-                                          ? "Server started on port " + std::to_string(m_S16Port) + "."
+                        m_S30Status = netSystem->StartServer(config)
+                                          ? "Server started on port " + std::to_string(m_S30Port) + "."
                                           : "Failed to start server.";
                     }
                     else
                     {
-                        config.host = m_S16Host;
+                        config.host = m_S30Host;
                         netSystem->SetOnConnect([this](ENetPeer*) {
-                            m_S16Status =
-                                "Client connected to " + std::string(m_S16Host) + ":" + std::to_string(m_S16Port) + ".";
-                            m_S16Messages.push_back("Connected to server.");
+                            m_S30Status =
+                                "Client connected to " + std::string(m_S30Host) + ":" + std::to_string(m_S30Port) + ".";
+                            m_S30Messages.push_back("Connected to server.");
                         });
                         netSystem->SetOnDisconnect([this](ENetPeer*) {
-                            m_S16Status = "Client disconnected.";
-                            m_S16Messages.push_back("Disconnected from server.");
+                            m_S30Status = "Client disconnected.";
+                            m_S30Messages.push_back("Disconnected from server.");
                         });
                         netSystem->SetOnMessage([this](ENetPeer*, const uint8_t* data, size_t size, uint8_t) {
                             std::string msg((const char*)data, size);
                             if (!msg.empty() && msg.back() == '\0')
                                 msg.pop_back();
-                            Scenario16SpawnCommand spawnCmd;
-                            if (ParseScenario16SpawnPayload(msg, spawnCmd))
+                            Scenario30SpawnCommand spawnCmd;
+                            if (ParseScenario30SpawnPayload(msg, spawnCmd))
                             {
-                                SpawnScenario16NetworkEntity(GetScene(), Get<ResourceManager>(), spawnCmd);
-                                m_S16Messages.push_back("Client spawned server entity #" +
-                                                        std::to_string(spawnCmd.id));
+                                SpawnScenario30NetworkEntity(GetScene(), Get<ResourceManager>(), spawnCmd);
+                                m_S30Messages.push_back("Client spawned server entity #" + std::to_string(spawnCmd.id));
                                 return;
                             }
-                            m_S16Messages.push_back("Client recvd: " + msg);
+                            m_S30Messages.push_back("Client recvd: " + msg);
                         });
                         if (netSystem->StartClient(config))
                         {
-                            m_S16Status = "Client connecting to " + std::string(m_S16Host) + ":" +
-                                          std::to_string(m_S16Port) + "...";
+                            m_S30Status = "Client connecting to " + std::string(m_S30Host) + ":" +
+                                          std::to_string(m_S30Port) + "...";
                         }
                         else
                         {
-                            m_S16Status = "Failed to initiate client connection.";
+                            m_S30Status = "Failed to initiate client connection.";
                         }
                     }
                 }
@@ -2210,40 +2424,40 @@ void SampleState::DrawGUI()
                 if (ImGui::Button("Stop Connection", ImVec2(170, 24)))
                 {
                     netSystem->Stop();
-                    m_S16Status = "Stopped.";
+                    m_S30Status = "Stopped.";
                 }
             }
         }
 
         ImGui::Separator();
-        ImGui::InputText("Message", m_S16MessageText, sizeof(m_S16MessageText));
+        ImGui::InputText("Message", m_S30MessageText, sizeof(m_S30MessageText));
         if (ImGui::Button("Send Message", ImVec2(360, 24)))
         {
             if (auto* sysMgr2 = Resolve<SystemManager>())
             {
                 if (auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr2->GetSystem("NetworkSystem")))
                 {
-                    std::string msg = m_S16MessageText;
+                    std::string msg = m_S30MessageText;
                     if (netSystem->IsServer())
                     {
                         if (netSystem->GetConnectedPeerCount() > 0)
                         {
                             netSystem->BroadcastPacket(msg.c_str(), msg.size() + 1);
-                            m_S16Messages.push_back("Server sent: " + msg);
+                            m_S30Messages.push_back("Server sent: " + msg);
                         }
                         else
                         {
-                            m_S16Messages.push_back("Server has no connected clients.");
+                            m_S30Messages.push_back("Server has no connected clients.");
                         }
                     }
                     else if (auto* peer = netSystem->GetServerPeer())
                     {
                         netSystem->SendPacket(peer, msg.c_str(), msg.size() + 1);
-                        m_S16Messages.push_back("Client sent: " + msg);
+                        m_S30Messages.push_back("Client sent: " + msg);
                     }
                     else
                     {
-                        m_S16Messages.push_back(std::string("No connected peer. State: ") +
+                        m_S30Messages.push_back(std::string("No connected peer. State: ") +
                                                 netSystem->GetClientPeerState());
                     }
                 }
@@ -2257,25 +2471,25 @@ void SampleState::DrawGUI()
                 {
                     if (!netSystem->IsRunning() || !netSystem->IsServer())
                     {
-                        m_S16Messages.push_back("Spawn requires a running server.");
+                        m_S30Messages.push_back("Spawn requires a running server.");
                     }
                     else
                     {
-                        Scenario16SpawnCommand cmd;
-                        cmd.id = ++m_S16SpawnCounter;
+                        Scenario30SpawnCommand cmd;
+                        cmd.id = ++m_S30SpawnCounter;
                         cmd.position = glm::vec3(static_cast<float>(rand() % 260 - 130) / 10.0f,
                                                  2.0f + static_cast<float>(rand() % 40) / 10.0f,
                                                  static_cast<float>(rand() % 260 - 130) / 10.0f);
                         cmd.color = glm::vec3(0.35f + static_cast<float>(rand() % 65) / 100.0f,
                                               0.35f + static_cast<float>(rand() % 65) / 100.0f,
                                               0.35f + static_cast<float>(rand() % 65) / 100.0f);
-                        SpawnScenario16NetworkEntity(GetScene(), Get<ResourceManager>(), cmd);
+                        SpawnScenario30NetworkEntity(GetScene(), Get<ResourceManager>(), cmd);
 
-                        std::string payload = BuildScenario16SpawnPayload(cmd);
+                        std::string payload = BuildScenario30SpawnPayload(cmd);
                         size_t peerCount = netSystem->GetConnectedPeerCount();
                         if (peerCount > 0)
                             netSystem->BroadcastPacket(payload.c_str(), payload.size() + 1);
-                        m_S16Messages.push_back("Server spawned entity #" + std::to_string(cmd.id) +
+                        m_S30Messages.push_back("Server spawned entity #" + std::to_string(cmd.id) +
                                                 " and broadcast to " + std::to_string(peerCount) + " clients.");
                     }
                 }
@@ -2284,63 +2498,63 @@ void SampleState::DrawGUI()
         ImGui::Separator();
         ImGui::Text("Network Logs:");
         ImGui::BeginChild("NetLogList", ImVec2(0, 100), true);
-        for (auto& m : m_S16Messages) ImGui::TextUnformatted(m.c_str());
+        for (auto& m : m_S30Messages) ImGui::TextUnformatted(m.c_str());
         ImGui::EndChild();
     }
-    else if (m_CurrentScenario == 17)
+    else if (m_CurrentScenario == 31)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "irrKlang Audio Test");
-        ImGui::SliderFloat("Orbit Speed", &m_S17Speed, 0.1f, 5.0f);
-        ImGui::SliderFloat("2D Volume", &m_S17Volume2D, 0.0f, 1.0f);
-        ImGui::SliderFloat("3D Volume", &m_S17Volume3D, 0.0f, 1.0f);
-        ImGui::SliderFloat("Playback Speed / Pitch", &m_S17Pitch, 0.25f, 3.0f);
-        ImGui::SliderFloat("3D Min Distance", &m_S17MinDistance, 0.1f, 20.0f);
-        ImGui::SliderFloat("3D Max Distance", &m_S17MaxDistance, 1.0f, 120.0f);
+        ImGui::SliderFloat("Orbit Speed", &m_S31Speed, 0.1f, 5.0f);
+        ImGui::SliderFloat("2D Volume", &m_S31Volume2D, 0.0f, 1.0f);
+        ImGui::SliderFloat("3D Volume", &m_S31Volume3D, 0.0f, 1.0f);
+        ImGui::SliderFloat("Playback Speed / Pitch", &m_S31Pitch, 0.25f, 3.0f);
+        ImGui::SliderFloat("3D Min Distance", &m_S31MinDistance, 0.1f, 20.0f);
+        ImGui::SliderFloat("3D Max Distance", &m_S31MaxDistance, 1.0f, 120.0f);
 
         auto* audioService = Resolve<AudioService>();
         if (audioService)
         {
-            if (ImGui::Checkbox("Play 2D Sound (sample.mp3)", &m_S17Play2D))
+            if (ImGui::Checkbox("Play 2D Sound (sample.mp3)", &m_S31Play2D))
             {
-                if (m_S17Play2D)
+                if (m_S31Play2D)
                 {
-                    m_S17Audio2D = audioService->Play2D(SamplePath("sample/resource/audio/sample.wav"), true);
-                    if (m_S17Audio2D)
+                    m_S31Audio2D = audioService->Play2D(SamplePath("sample/resource/audio/sample.wav"), true);
+                    if (m_S31Audio2D)
                     {
-                        m_S17Audio2D->SetVolume(m_S17Volume2D);
-                        m_S17Audio2D->SetPitch(m_S17Pitch);
+                        m_S31Audio2D->SetVolume(m_S31Volume2D);
+                        m_S31Audio2D->SetPitch(m_S31Pitch);
                     }
                 }
                 else
                 {
-                    if (m_S17Audio2D)
+                    if (m_S31Audio2D)
                     {
-                        m_S17Audio2D->Stop();
-                        m_S17Audio2D = nullptr;
+                        m_S31Audio2D->Stop();
+                        m_S31Audio2D = nullptr;
                     }
                 }
             }
 
-            if (ImGui::Checkbox("Play 3D Orbiting Sound", &m_S17Play3D))
+            if (ImGui::Checkbox("Play 3D Orbiting Sound", &m_S31Play3D))
             {
-                if (m_S17Play3D)
+                if (m_S31Play3D)
                 {
-                    m_S17Audio3D =
+                    m_S31Audio3D =
                         audioService->Play3D(SamplePath("sample/resource/audio/sample.wav"), glm::vec3(0.0f), true);
-                    if (m_S17Audio3D)
+                    if (m_S31Audio3D)
                     {
-                        m_S17Audio3D->SetVolume(m_S17Volume3D);
-                        m_S17Audio3D->SetPitch(m_S17Pitch);
-                        m_S17Audio3D->SetMinDistance(m_S17MinDistance);
-                        m_S17Audio3D->SetMaxDistance(m_S17MaxDistance);
+                        m_S31Audio3D->SetVolume(m_S31Volume3D);
+                        m_S31Audio3D->SetPitch(m_S31Pitch);
+                        m_S31Audio3D->SetMinDistance(m_S31MinDistance);
+                        m_S31Audio3D->SetMaxDistance(m_S31MaxDistance);
                     }
                 }
                 else
                 {
-                    if (m_S17Audio3D)
+                    if (m_S31Audio3D)
                     {
-                        m_S17Audio3D->Stop();
-                        m_S17Audio3D = nullptr;
+                        m_S31Audio3D->Stop();
+                        m_S31Audio3D = nullptr;
                     }
                 }
             }
@@ -2348,10 +2562,10 @@ void SampleState::DrawGUI()
             if (ImGui::Button("Stop All Sounds", ImVec2(360, 24)))
             {
                 audioService->StopAll();
-                m_S17Play2D = false;
-                m_S17Play3D = false;
-                m_S17Audio2D = nullptr;
-                m_S17Audio3D = nullptr;
+                m_S31Play2D = false;
+                m_S31Play3D = false;
+                m_S31Audio2D = nullptr;
+                m_S31Audio3D = nullptr;
             }
         }
     }
@@ -2413,28 +2627,28 @@ void SampleState::DrawGUI()
             }
         }
     }
-    else if (m_CurrentScenario == 20)
+    else if (m_CurrentScenario == 11)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "SSR & Environment Probes");
         static const char* kCaseNames[] = {"UltraLow", "Low", "Mid", "High", "Extreme"};
-        ImGui::Combo("Case", &m_S20ActiveCase, kCaseNames, IM_ARRAYSIZE(kCaseNames));
+        ImGui::Combo("Case", &m_S11ActiveCase, kCaseNames, IM_ARRAYSIZE(kCaseNames));
         ImGui::Text("Each case keeps its own probe resolution and fresnel response.");
 
         auto& scene = GetScene();
-        if (m_S20ActiveCase >= 0 && m_S20ActiveCase < (int)m_S20ReflectionSpheres.size() &&
-            m_S20ActiveCase < (int)m_S20ReflectionProbes.size())
+        if (m_S11ActiveCase >= 0 && m_S11ActiveCase < (int)m_S11ReflectionSpheres.size() &&
+            m_S11ActiveCase < (int)m_S11ReflectionProbes.size())
         {
-            auto sphereEntity = m_S20ReflectionSpheres[m_S20ActiveCase];
-            auto probeEntity = m_S20ReflectionProbes[m_S20ActiveCase];
+            auto sphereEntity = m_S11ReflectionSpheres[m_S11ActiveCase];
+            auto probeEntity = m_S11ReflectionProbes[m_S11ActiveCase];
 
             if (auto* ref = scene.registry.try_get<ReflectiveComponent>(sphereEntity))
             {
                 ImGui::SliderFloat("Reflectivity", &ref->reflectivity, 0.0f, 1.0f);
                 ImGui::SliderFloat("Fresnel Bias", &ref->fresnelBias, 0.0f, 0.5f);
                 ImGui::SliderFloat("Fresnel Power", &ref->fresnelPower, 0.1f, 24.0f);
-                m_S20Reflectivity = ref->reflectivity;
-                m_S20FresnelBias = ref->fresnelBias;
-                m_S20FresnelPower = ref->fresnelPower;
+                m_S11Reflectivity = ref->reflectivity;
+                m_S11FresnelBias = ref->fresnelBias;
+                m_S11FresnelPower = ref->fresnelPower;
             }
 
             if (auto* probe = scene.registry.try_get<ReflectionProbeComponent>(probeEntity))
@@ -2442,21 +2656,21 @@ void SampleState::DrawGUI()
                 ImGui::SliderInt("Probe Resolution", &probe->resolution, 64, 2048);
                 if (ImGui::Button("Capture Selected Probe", ImVec2(360, 24)))
                     probe->isDirty = true;
-                m_S20ProbeResolution = probe->resolution;
+                m_S11ProbeResolution = probe->resolution;
             }
         }
 
-        if (m_S20PlanarMirror != entt::null && scene.registry.valid(m_S20PlanarMirror))
+        if (m_S11PlanarMirror != entt::null && scene.registry.valid(m_S11PlanarMirror))
         {
             ImGui::Separator();
             ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.5f, 1.0f), "Planar Mirror");
-            if (auto* ref = scene.registry.try_get<ReflectiveComponent>(m_S20PlanarMirror))
+            if (auto* ref = scene.registry.try_get<ReflectiveComponent>(m_S11PlanarMirror))
             {
                 ImGui::SliderFloat("Mirror Reflectivity", &ref->reflectivity, 0.0f, 1.0f);
                 ImGui::SliderFloat("Mirror Fresnel Bias", &ref->fresnelBias, 0.0f, 0.5f);
                 ImGui::SliderFloat("Mirror Fresnel Power", &ref->fresnelPower, 0.1f, 24.0f);
             }
-            if (auto* planar = scene.registry.try_get<PlanarReflectionComponent>(m_S20PlanarMirror))
+            if (auto* planar = scene.registry.try_get<PlanarReflectionComponent>(m_S11PlanarMirror))
             {
                 ImGui::SliderInt("Mirror Resolution X", &planar->resolution, 256, 2048);
                 ImGui::SliderInt("Mirror Resolution Y", &planar->resolution_y, 256, 2048);
@@ -2474,12 +2688,12 @@ void SampleState::DrawGUI()
             }
         }
     }
-    else if (m_CurrentScenario == 21)
+    else if (m_CurrentScenario == 6)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Transparent Object Sorting");
-        ImGui::SliderFloat("Glass Opacity", &m_S21GlassOpacity, 0.05f, 0.95f);
-        ImGui::SliderFloat("Glass Roughness", &m_S21GlassRoughness, 0.0f, 1.0f);
-        ImGui::Checkbox("Animate Objects", &m_S21AnimateObjects);
+        ImGui::SliderFloat("Glass Opacity", &m_S6GlassOpacity, 0.05f, 0.95f);
+        ImGui::SliderFloat("Glass Roughness", &m_S6GlassRoughness, 0.0f, 1.0f);
+        ImGui::Checkbox("Animate Objects", &m_S6AnimateObjects);
 
         auto view = GetScene().registry.view<AxisMaterialComponent, InfoComponent>();
         for (auto entity : view)
@@ -2488,99 +2702,176 @@ void SampleState::DrawGUI()
             if (info.name.rfind("Glass_", 0) != 0)
                 continue;
             auto& mat = view.get<AxisMaterialComponent>(entity);
-            mat.desc.opacity = m_S21GlassOpacity;
-            mat.desc.pbr.roughness = m_S21GlassRoughness;
+            mat.desc.opacity = m_S6GlassOpacity;
+            mat.desc.pbr.roughness = m_S6GlassRoughness;
             mat.gpu.dirty = true;
         }
     }
-    else if (m_CurrentScenario == 22)
+    else if (m_CurrentScenario == 5)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "PBR Material Matrix");
         ImGui::Text("Rows: metallic 0.0 -> 1.0");
         ImGui::Text("Columns: roughness 0.05 -> 0.95");
     }
-    else if (m_CurrentScenario == 23)
+    else if (m_CurrentScenario == 9)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "LOD Selection");
         ImGui::Text("Near: sphere, mid: cube, far: capsule");
         ImGui::Text("Orange center = solid reference (no LOD).");
         ImGui::Text("Move camera forward/back to cross LOD thresholds.");
     }
-    else if (m_CurrentScenario == 24)
+    else if (m_CurrentScenario == 8)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Layer Filter");
-        bool layer0 = (m_S24LayerMask & 0x1) != 0;
-        bool layer1 = (m_S24LayerMask & 0x2) != 0;
-        bool layer2 = (m_S24LayerMask & 0x4) != 0;
+        bool layer0 = (m_S8LayerMask & 0x1) != 0;
+        bool layer1 = (m_S8LayerMask & 0x2) != 0;
+        bool layer2 = (m_S8LayerMask & 0x4) != 0;
         if (ImGui::Checkbox("Layer 0: neutral/floor", &layer0))
-            m_S24LayerMask = (m_S24LayerMask & ~0x1) | (layer0 ? 0x1 : 0);
+            m_S8LayerMask = (m_S8LayerMask & ~0x1) | (layer0 ? 0x1 : 0);
         if (ImGui::Checkbox("Layer 1: red cubes", &layer1))
-            m_S24LayerMask = (m_S24LayerMask & ~0x2) | (layer1 ? 0x2 : 0);
+            m_S8LayerMask = (m_S8LayerMask & ~0x2) | (layer1 ? 0x2 : 0);
         if (ImGui::Checkbox("Layer 2: blue spheres", &layer2))
-            m_S24LayerMask = (m_S24LayerMask & ~0x4) | (layer2 ? 0x4 : 0);
+            m_S8LayerMask = (m_S8LayerMask & ~0x4) | (layer2 ? 0x4 : 0);
         if (auto camEntity = EntityManager::GetActiveCamera(GetScene()); camEntity != entt::null)
-            GetScene().registry.get<CameraComponent>(camEntity).cullingMask = static_cast<uint32_t>(m_S24LayerMask);
+            GetScene().registry.get<CameraComponent>(camEntity).cullingMask = static_cast<uint32_t>(m_S8LayerMask);
     }
-    else if (m_CurrentScenario == 25)
+    else if (m_CurrentScenario == 7)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Render Order");
-        if (ImGui::Checkbox("Reverse all order demos", &m_S25ReverseOrder))
-            ApplyScenario25RenderOrder();
+        if (ImGui::Checkbox("Reverse all order demos", &m_S7ReverseOrder))
+            ApplyScenario7RenderOrder();
         ImGui::Text("Panels and opaque cubes enable IgnoreDepth: lower order draws on top.");
         ImGui::Text("Normal: Red=1, Green=2, Blue=3 => Red top.");
         ImGui::Text("Reverse: Red=3, Green=2, Blue=1 => Blue top.");
         ImGui::Text("Depth and world position are ignored for these order demos.");
     }
-    else if (m_CurrentScenario == 26)
-    {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Instanced Batching");
-        ImGui::SliderInt("Instance Count", &m_S26InstanceCount, 1000, 50000);
-        ImGui::Checkbox("Unique Tint (break batches)", &m_S26UniqueTint);
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Reload to apply.");
-    }
-    else if (m_CurrentScenario == 27)
+    else if (m_CurrentScenario == 4)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Shadow Receiver");
-        ImGui::Text("Floor receives shadows through deferred_lit_shadow.");
-        ImGui::Text("Deferred and forced-forward objects cast into the same shadow map.");
+        ImGui::SliderFloat("Receiver Size", &m_S4ReceiverSize, 30.0f, 140.0f);
+        ImGui::SliderFloat("Caster Height", &m_S4CasterHeight, 2.0f, 18.0f);
+        ImGui::SliderFloat("Caster Scale", &m_S4CasterScale, 0.35f, 2.5f);
+        ImGui::SliderFloat("Caster Spread", &m_S4CasterSpread, 0.45f, 1.8f);
+        ImGui::Checkbox("Animate Casters", &m_S4AnimateCasters);
+        ImGui::Separator();
+        ImGui::SliderFloat("Light Yaw", &m_S4LightYaw, -180.0f, 180.0f);
+        ImGui::SliderFloat("Light Pitch", &m_S4LightPitch, -85.0f, -5.0f);
+        ImGui::SliderFloat("Light Intensity", &m_S4LightIntensity, 0.0f, 6.0f);
         ImGui::Text("Left: deferred blue. Right: forward red.");
     }
-    else if (m_CurrentScenario == 28)
+    else if (m_CurrentScenario == 16)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "UI & Responsive Showcase");
-        ImGui::SliderFloat("Rotate Card", &m_S28RotateCard, -45.0f, 45.0f);
-        ImGui::Checkbox("Show Texture Tile", &m_S28ShowTexture);
-        ImGui::Checkbox("Flip Texture X", &m_S28FlipTextureX);
+        ImGui::SliderFloat("Rotate Card", &m_S16RotateCard, -45.0f, 45.0f);
+        ImGui::Checkbox("Show Texture Tile", &m_S16ShowTexture);
+        ImGui::Checkbox("Flip Texture X", &m_S16FlipTextureX);
         ImGui::SameLine();
-        ImGui::Checkbox("Flip Texture Y", &m_S28FlipTextureY);
+        ImGui::Checkbox("Flip Texture Y", &m_S16FlipTextureY);
         ImGui::Separator();
-        ImGui::Combo("Layout Mode", &m_S29LayoutMode, "Compact\0Expanded\0Stacked\0");
-        ImGui::SliderFloat("Panel Alpha", &m_S29PanelAlpha, 0.1f, 1.0f);
+        ImGui::Combo("Layout Mode", &m_S16LayoutMode, "Compact\0Expanded\0Stacked\0");
+        ImGui::SliderFloat("Panel Alpha", &m_S16PanelAlpha, 0.1f, 1.0f);
         ImGui::Text("This merged scene mixes transform, text, image, flex and anchors.");
     }
-    else if (m_CurrentScenario == 29)
+    else if (m_CurrentScenario == 17)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Interactive UI");
         ImGui::Text("The in-scene UI is driven by InputScriptable callbacks.");
         ImGui::Text("Hover, click, hold, right-click, and middle-click the UI blocks.");
     }
-    else if (m_CurrentScenario == 30)
+    else if (m_CurrentScenario == 14)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Terrain Creation Showcase");
-        ImGui::SliderFloat("Terrain Width", &m_S30TerrainWidth, 50.0f, 500.0f);
-        ImGui::SliderFloat("Terrain Height", &m_S30TerrainHeight, 5.0f, 150.0f);
-        ImGui::SliderFloat("Terrain Length", &m_S30TerrainLength, 50.0f, 500.0f);
-        ImGui::SliderFloat("Texture Tile Scale", &m_S30TextureScale, 1.0f, 50.0f);
-        ImGui::SliderFloat("Noise Frequency", &m_S30NoiseFrequency, 0.2f, 8.0f);
-        ImGui::SliderInt("Noise Octaves", &m_S30NoiseOctaves, 1, 8);
-        ImGui::Checkbox("Generate Heightfield Physics", &m_S30GeneratePhysics);
-        ImGui::Checkbox("Spawn Dynamic Physics Balls", &m_S30SpawnPhysicsBalls);
+        ImGui::SliderFloat("Terrain Width", &m_S14TerrainWidth, 50.0f, 500.0f);
+        ImGui::SliderFloat("Terrain Height", &m_S14TerrainHeight, 5.0f, 150.0f);
+        ImGui::SliderFloat("Terrain Length", &m_S14TerrainLength, 50.0f, 500.0f);
+        ImGui::SliderFloat("Texture Tile Scale", &m_S14TextureScale, 1.0f, 50.0f);
+        ImGui::SliderFloat("Noise Frequency", &m_S14NoiseFrequency, 0.2f, 8.0f);
+        ImGui::SliderInt("Noise Octaves", &m_S14NoiseOctaves, 1, 8);
+        ImGui::Checkbox("Generate Heightfield Physics", &m_S14GeneratePhysics);
+        ImGui::Checkbox("Spawn Dynamic Physics Balls", &m_S14SpawnPhysicsBalls);
         if (ImGui::Checkbox("Show Physics / NavMesh Debug Lines", &m_ShowDebugLines))
         {
             auto& navSystem = GetSystem<NavigationSystem>();
             navSystem.SetShowDebug(m_ShowDebugLines);
         }
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to generate new terrain.");
+    }
+    else if (m_CurrentScenario == 22)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Hitray & Hitscan");
+        ImGui::Checkbox("Auto Sweep Ray", &m_S22AutoSweep);
+        ImGui::SliderFloat("Ray Yaw", &m_S22Yaw, -160.0f, -20.0f);
+        ImGui::SliderFloat("Ray Pitch", &m_S22Pitch, -35.0f, 15.0f);
+        ImGui::SliderFloat("Ray Distance", &m_S22Distance, 10.0f, 160.0f);
+        ImGui::SliderFloat("Hitscan Impulse", &m_S22ImpactImpulse, 0.0f, 80.0f);
+        if (ImGui::Button("Fire Hitscan", ImVec2(360, 24)))
+            m_S22FireRequested = true;
+        ImGui::Text("Last hit: %s", m_S22LastHit.c_str());
+        ImGui::Text("Target hits: %d", m_S22HitCount);
+        if (ImGui::Checkbox("Show Ray / Physics Debug Lines", &m_ShowDebugLines))
+        {
+            auto& navSystem = GetSystem<NavigationSystem>();
+            navSystem.SetShowDebug(m_ShowDebugLines);
+        }
+    }
+    else if (m_CurrentScenario == 12)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Light Probe");
+        ImGui::SliderFloat("Probe Intensity", &m_S12ProbeIntensity, 0.0f, 4.0f);
+        ImGui::SliderFloat("Probe Radius", &m_S12ProbeRadius, 2.0f, 40.0f);
+    }
+    else if (m_CurrentScenario == 26)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Character Controller + Collision Zone");
+        ImGui::SliderFloat("Move Speed", &m_S26MoveSpeed, 1.0f, 16.0f);
+        ImGui::SliderFloat("Sprint Multiplier", &m_S26SprintMultiplier, 1.0f, 3.5f);
+        ImGui::SliderFloat("Ctrl Slow Multiplier", &m_S26SlowMultiplier, 0.1f, 0.8f);
+        ImGui::SliderFloat("Jump Speed", &m_S26JumpSpeed, 2.0f, 14.0f);
+        ImGui::SliderFloat("Step Height", &m_S26StepHeight, 0.05f, 1.5f);
+        ImGui::SliderFloat("Max Slope", &m_S26MaxSlope, 5.0f, 80.0f);
+        ImGui::Checkbox("Ignore character-trigger tag pair", &m_S26IgnoreCharacterTrigger);
+        Scenario26CharacterControllerScript* controllerScript = nullptr;
+        if (m_S26ControllerEntity != entt::null && GetScene().registry.valid(m_S26ControllerEntity))
+        {
+            if (auto* script = GetScene().registry.try_get<ScriptComponent>(m_S26ControllerEntity);
+                script && script->instance)
+            {
+                controllerScript = dynamic_cast<Scenario26CharacterControllerScript*>(script->instance.get());
+            }
+        }
+        if (controllerScript)
+        {
+            controllerScript->moveSpeed = m_S26MoveSpeed;
+            controllerScript->sprintMultiplier = m_S26SprintMultiplier;
+            controllerScript->slowMultiplier = m_S26SlowMultiplier;
+            controllerScript->jumpSpeed = m_S26JumpSpeed;
+            controllerScript->stepHeight = m_S26StepHeight;
+            controllerScript->maxSlope = m_S26MaxSlope;
+            controllerScript->ignoreCharacterTrigger = m_S26IgnoreCharacterTrigger;
+        }
+        if (ImGui::Checkbox("Show Hitbox Outline Debug", &m_ShowDebugLines))
+        {
+            auto& navSystem = GetSystem<NavigationSystem>();
+            navSystem.SetShowDebug(m_ShowDebugLines);
+        }
+        if (ImGui::Button("Reset Character Zone Counters", ImVec2(360, 24)))
+        {
+            if (controllerScript)
+                controllerScript->ResetCounters();
+            Scenario26CharacterControllerScript::s_JumpCount = 0;
+        }
+        if (controllerScript)
+        {
+            ImGui::Text("Trigger zone enters: %d", controllerScript->triggerEvents);
+            ImGui::Text("Solid callback contacts: %d", controllerScript->collisionEvents);
+            ImGui::Text("%s", controllerScript->inputState.c_str());
+            ImGui::Text("%s", controllerScript->zoneState.c_str());
+        }
+        else
+        {
+            ImGui::Text("Scenario26CharacterControllerScript is not initialized.");
+        }
+        ImGui::Text("Jump count: %d", Scenario26CharacterControllerScript::s_JumpCount);
     }
     else
     {

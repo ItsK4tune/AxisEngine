@@ -11,7 +11,10 @@ public:
     virtual ~ICharacterController() = default;
 
     virtual void SetWalkDirection(const glm::vec3& dir) = 0;
-    virtual void SetVelocity(const glm::vec3& vel) = 0;
+    virtual void SetVelocity(const glm::vec3& vel, float timeInterval) = 0;
+    virtual void SetFallSpeed(float speed) = 0;
+    virtual void SetGravity(const glm::vec3& gravity) = 0;
+    virtual void SetJumpSpeed(float speed) = 0;
     virtual void Jump() = 0;
     virtual bool OnGround() const = 0;
 

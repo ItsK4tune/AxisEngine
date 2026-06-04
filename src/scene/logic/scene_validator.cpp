@@ -135,12 +135,17 @@ void SceneValidator::ValidateCamera(Scene& scene)
     if (scriptInstance)
     {
         auto& scriptComp = scene.registry.emplace<ScriptComponent>(camEntity);
+        scriptComp.className = scriptName;
         scriptComp.instance = std::move(scriptInstance);
         scriptComp.InstantiateScript = [scriptName]() {
             auto registry = ServiceLocator::Instance().Resolve<ScriptRegistry>();
             return registry ? registry->Create(scriptName) : nullptr;
         };
-        scriptComp.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
+        scriptComp.DestroyScript = [](ScriptComponent* nsc) {
+            nsc->instance.reset();
+            nsc->scriptableInstance = nullptr;
+            nsc->inputScriptableInstance = nullptr;
+        };
 
         try
         {

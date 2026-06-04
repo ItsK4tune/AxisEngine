@@ -12,8 +12,89 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <scene/logic/scene.h>
+#include <scene/logic/scene_manager.h>
 #include <script/logic/default_camera_controller.h>
 #include <script/logic/script_registry.h>
+#include <vector>
+
+namespace
+{
+constexpr const char* kDebugCameraName = "Debug Camera";
+constexpr const char* kDebugCameraTag = "Debug";
+constexpr const char* kDefaultCameraController = "DefaultCameraController";
+
+bool IsDebugCamera(Scene& scene, entt::entity entity)
+{
+    if (!scene.registry.valid(entity) || !scene.registry.all_of<CameraComponent>(entity))
+        return false;
+
+    auto* info = scene.registry.try_get<InfoComponent>(entity);
+    return info && (info->name == kDebugCameraName || info->tag == kDebugCameraTag);
+}
+
+entt::entity FindDebugCamera(Scene& scene)
+{
+    auto view = scene.registry.view<CameraComponent, InfoComponent>();
+    for (auto entity : view)
+    {
+        auto& info = view.get<InfoComponent>(entity);
+        if (info.name == kDebugCameraName || info.tag == kDebugCameraTag)
+            return entity;
+    }
+    return entt::null;
+}
+
+void RemoveDuplicateDebugCameras(Scene& scene, entt::entity keep)
+{
+    std::vector<entt::entity> duplicates;
+    auto view = scene.registry.view<CameraComponent, InfoComponent>();
+    for (auto entity : view)
+    {
+        if (entity == keep)
+            continue;
+
+        auto& info = view.get<InfoComponent>(entity);
+        if (info.name == kDebugCameraName || info.tag == kDebugCameraTag)
+            duplicates.push_back(entity);
+    }
+
+    auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
+    for (auto entity : duplicates)
+    {
+        if (scene.registry.valid(entity))
+            EntityManager::DestroyEntity(scene, entity, sceneMgr);
+    }
+}
+
+void ResetScriptInstance(ScriptComponent* sc)
+{
+    if (!sc)
+        return;
+    sc->instance.reset();
+    sc->scriptableInstance = nullptr;
+    sc->inputScriptableInstance = nullptr;
+}
+
+void AttachDebugCameraScript(Scene& scene, entt::entity camera)
+{
+    auto& scriptComp = scene.registry.get_or_emplace<ScriptComponent>(camera);
+    scriptComp.className = kDefaultCameraController;
+    scriptComp.InstantiateScript = []() {
+        return ServiceLocator::Instance().Require<ScriptRegistry>().Create(kDefaultCameraController);
+    };
+    scriptComp.DestroyScript = ResetScriptInstance;
+
+    if (!scriptComp.instance)
+    {
+        scriptComp.instance = scriptComp.InstantiateScript ? scriptComp.InstantiateScript() : nullptr;
+        if (scriptComp.instance)
+        {
+            scriptComp.instance->Initialize(camera, &scene);
+            scriptComp.instance->OnCreate();
+        }
+    }
+}
+}  // namespace
 
 CameraEditorModule::CameraEditorModule()
 {
@@ -49,6 +130,10 @@ void CameraEditorModule::ToggleDebugCamera()
 {
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     auto& registry = scene.registry;
+    if (!IsDebugCamera(scene, m_DebugCamera))
+        m_DebugCamera = FindDebugCamera(scene);
+    if (m_DebugCamera != entt::null)
+        RemoveDuplicateDebugCameras(scene, m_DebugCamera);
 
     if (m_IsDebugCameraActive)
     {
@@ -86,13 +171,17 @@ void CameraEditorModule::ToggleDebugCamera()
 
         if (!registry.valid(m_DebugCamera))
         {
-            m_DebugCamera = EntityManager::CreateEntity(scene, "Debug_Camera");
-            registry.emplace<InfoComponent>(m_DebugCamera, "Debug Camera", "Debug");
+            m_DebugCamera = EntityManager::CreateEntity(scene, kDebugCameraName, kDebugCameraTag);
+            auto& info = registry.get<InfoComponent>(m_DebugCamera);
+            info.name = kDebugCameraName;
+            info.tag = kDebugCameraTag;
 
-            auto& posComp = registry.emplace<PositionComponent>(m_DebugCamera);
-            registry.emplace<RotationComponent>(m_DebugCamera);
-            registry.emplace<ScaleComponent>(m_DebugCamera);
-            registry.emplace<WorldTransformComponent>(m_DebugCamera);
+            auto& posComp = registry.get_or_emplace<PositionComponent>(m_DebugCamera);
+            auto& rotComp = registry.get_or_emplace<RotationComponent>(m_DebugCamera);
+            auto& scaleComp = registry.get_or_emplace<ScaleComponent>(m_DebugCamera);
+            auto& worldComp = registry.get_or_emplace<WorldTransformComponent>(m_DebugCamera);
+            (void)scaleComp;
+            (void)worldComp;
 
             if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera))
             {
@@ -103,7 +192,9 @@ void CameraEditorModule::ToggleDebugCamera()
                 posComp.value = glm::vec3(0.0f, 5.0f, 10.0f);
             }
 
-            auto& cam = registry.emplace<CameraComponent>(m_DebugCamera);
+            posComp.prev = posComp.value;
+
+            auto& cam = registry.get_or_emplace<CameraComponent>(m_DebugCamera);
             cam.isPrimary = true;
 
             if (registry.valid(m_LastActiveCamera) && registry.all_of<CameraComponent>(m_LastActiveCamera))
@@ -129,23 +220,17 @@ void CameraEditorModule::ToggleDebugCamera()
                 cam.aspectRatio = (float)cam.screenWidth / (float)cam.screenHeight;
             }
 
-            auto scriptInstance =
-                ServiceLocator::Instance().Require<ScriptRegistry>().Create("DefaultCameraController");
-            if (scriptInstance)
-            {
-                auto& scriptComp = registry.emplace<ScriptComponent>(m_DebugCamera);
-                scriptComp.instance = std::move(scriptInstance);
-                scriptComp.InstantiateScript = []() {
-                    return ServiceLocator::Instance().Require<ScriptRegistry>().Create("DefaultCameraController");
-                };
-                scriptComp.DestroyScript = [](ScriptComponent* nsc) { nsc->instance.reset(); };
-                scriptComp.instance->Initialize(m_DebugCamera, &scene);
-                scriptComp.instance->OnCreate();
-            }
+            rotComp.prev = rotComp.value;
+            AttachDebugCameraScript(scene, m_DebugCamera);
         }
         else if (registry.all_of<CameraComponent>(m_DebugCamera))
         {
             registry.get<CameraComponent>(m_DebugCamera).isPrimary = true;
+            if (auto* info = registry.try_get<InfoComponent>(m_DebugCamera))
+            {
+                info->name = kDebugCameraName;
+                info->tag = kDebugCameraTag;
+            }
             if (registry.valid(m_LastActiveCamera) && registry.all_of<PositionComponent>(m_LastActiveCamera))
             {
                 registry.get<PositionComponent>(m_DebugCamera).value =
@@ -155,6 +240,7 @@ void CameraEditorModule::ToggleDebugCamera()
                     registry.get<RotationComponent>(m_DebugCamera).value =
                         registry.get<RotationComponent>(m_LastActiveCamera).value;
             }
+            AttachDebugCameraScript(scene, m_DebugCamera);
         }
         m_IsDebugCameraActive = true;
     }

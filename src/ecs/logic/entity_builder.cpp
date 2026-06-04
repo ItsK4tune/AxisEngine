@@ -14,6 +14,7 @@
 #include <physics/interface/i_rigid_body.h>
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/animator.h>
+#include <ecs/interface/i_script_registry.h>
 #include <script/logic/scriptable.h>
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene_manager.h>
@@ -738,14 +739,18 @@ EntityBuilder& EntityBuilder::WithUITextureResource(const std::string& textureNa
 
 EntityBuilder& EntityBuilder::WithParent(entt::entity parent)
 {
-    auto& hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(m_Entity);
-    hierarchy.parent = parent;
+    if (parent == entt::null)
+        return *this;
 
-    if (parent != entt::null)
+    auto& hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(m_Entity);
+    (void)hierarchy;
+    if (m_Scene.registry.valid(parent))
     {
-        auto& p_hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(parent);
-        p_hierarchy.children.push_back(m_Entity);
+        auto& parentHierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(parent);
+        (void)parentHierarchy;
     }
+
+    EntityManager::SetParent(m_Scene, m_Entity, parent);
     return *this;
 }
 
@@ -765,6 +770,27 @@ EntityBuilder& EntityBuilder::WithAudio(const std::string& soundName, bool loop,
 EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
 {
     auto& script = m_Scene.registry.get_or_emplace<ScriptComponent>(m_Entity);
+    script.className = scriptName;
+    script.instance.reset();
+    script.scriptableInstance = nullptr;
+    script.inputScriptableInstance = nullptr;
+
+    if (scriptName.empty() || scriptName == "None")
+    {
+        script.InstantiateScript = nullptr;
+        script.DestroyScript = nullptr;
+        return *this;
+    }
+
+    script.InstantiateScript = [scriptName]() {
+        auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
+        return registry ? registry->Create(scriptName) : nullptr;
+    };
+    script.DestroyScript = [](ScriptComponent* sc) {
+        sc->instance.reset();
+        sc->scriptableInstance = nullptr;
+        sc->inputScriptableInstance = nullptr;
+    };
     return *this;
 }
 

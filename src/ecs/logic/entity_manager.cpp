@@ -323,6 +323,8 @@ void EntityManager::DestroyEntity(Scene& scene, entt::entity entity, SceneManage
         if (sc->instance && sc->DestroyScript)
             sc->DestroyScript(sc);
         sc->instance.reset();
+        sc->scriptableInstance = nullptr;
+        sc->inputScriptableInstance = nullptr;
     }
 
     if (auto rb = scene.registry.try_get<RigidBodyComponent>(entity))

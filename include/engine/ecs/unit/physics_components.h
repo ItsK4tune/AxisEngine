@@ -58,6 +58,9 @@ struct RigidBodyComponent
 
     float linearDamping = 0.0f;
     float angularDamping = 0.0f;
+
+    glm::vec3 initialLinearVelocity = glm::vec3(0.0f);
+    glm::vec3 initialAngularVelocity = glm::vec3(0.0f);
 };
 
 inline void SetRestitution(RigidBodyComponent& rb, float restitution)
@@ -112,6 +115,8 @@ struct CharacterControllerComponent
     float maxSlope = 45.0f;
 
     glm::vec3 walkDirection = glm::vec3(0.0f);
+    glm::vec3 velocity = glm::vec3(0.0f);
+    bool useVelocity = false;
     bool jumpRequested = false;
     bool isOnGround = false;
 };
