@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_render_service.h>
 #include <render/logic/frustum_culler.h>
 #include <render/logic/occlusion_culler.h>
@@ -268,4 +269,6 @@ private:
 
     IGraphicsContext* m_Context = nullptr;
     ConfigManager* m_ConfigManager = nullptr;
+    EventSubscriptionList m_EventSubscriptions;
+    bool m_IsShutdown = true;
 };

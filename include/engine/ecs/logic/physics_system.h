@@ -4,6 +4,7 @@
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <ecs/logic/cached_query.h>
+#include <core/logic/event_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <scene/logic/scene.h>
 #include <entt/entt.hpp>
@@ -25,6 +26,7 @@ public:
     ~PhysicsSystem();
 
     void Initialize() override;
+    void Shutdown() override;
     void Reset() override;
 
     bool IsEnabled() const override
@@ -95,4 +97,5 @@ private:
     IPhysicsWorld* m_LastPhysicsWorld = nullptr;
 
     mutable entt::entity m_cachedPrimaryCamera = entt::null;
+    EventSubscriptionList m_EventSubscriptions;
 };

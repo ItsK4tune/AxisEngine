@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <ecs/unit/core_components.h>
@@ -15,6 +16,7 @@ public:
     virtual ~TransformSystem() = default;
 
     void Initialize() override;
+    void Shutdown() override;
     void Update(Scene& scene, float dt) override;
     void FixedUpdate(Scene& scene, float fixedDt) override;
 
@@ -50,6 +52,7 @@ public:
         m_IsLinearTransformsDirty = true;
     }
     void BindRegistry(Scene& scene);
+    void UnbindRegistries();
     void RebuildLinearTransforms(Scene& scene);
     void OnHierarchyChanged(entt::registry& reg, entt::entity entity);
     void OnTransformChanged(entt::registry& reg, entt::entity entity);
@@ -58,4 +61,5 @@ public:
 
 private:
     std::unordered_set<entt::registry*> m_BoundRegistries;
+    EventSubscriptionList m_EventSubscriptions;
 };

@@ -55,7 +55,8 @@ public:
                     const std::string& gsPath = "");
     void LoadTexture(const std::string& name, const std::string& path, bool async = true,
                      bool keepCpuData = false) override;
-    void CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height, int nrComponents, bool keepCpuData = false);
+    void CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height,
+                               int nrComponents, bool keepCpuData = false);
     void UnloadTexture(const std::string& name);
 
     void LoadModel(const std::string& name, const std::string& path, bool isStatic = false);
@@ -123,6 +124,7 @@ public:
     std::vector<std::string> GetRegisteredLoaderTypes() const;
 
 private:
+    void SubscribeReloadEvents();
     void ReloadShader(const std::string& name);
     void ReloadTexture(const std::string& name);
 
@@ -149,4 +151,5 @@ private:
     bool m_HeadlessMode = false;
     bool m_StrictAssetLoading = false;
     int m_ReloadListenerId = -1;
+    bool m_IsShutdown = false;
 };

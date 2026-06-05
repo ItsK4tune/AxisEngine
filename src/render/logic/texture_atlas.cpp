@@ -2,7 +2,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <render/interface/i_texture_manager.h>
-#include <stb/stb_image.h>
+#include <resource/logic/stb_image_loader.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -50,8 +50,8 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths, int
         TextureData texData;
         std::string fullPath = FileSystem::getPath(path);
 
-        stbi_set_flip_vertically_on_load(false);
-        texData.data = stbi_load(fullPath.c_str(), &texData.width, &texData.height, &texData.channels, 4);
+        texData.data =
+            StbImageLoader::Load(fullPath.c_str(), &texData.width, &texData.height, &texData.channels, 4, false);
 
         if (!texData.data)
         {
@@ -72,7 +72,7 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths, int
         LOGGER_ERROR("TextureAtlas") << "Failed to pack textures";
         for (auto& tex : textures)
         {
-            stbi_image_free(tex.data);
+            StbImageLoader::Free(tex.data);
         }
         return false;
     }
@@ -127,7 +127,7 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths, int
 
     for (auto& tex : textures)
     {
-        stbi_image_free(tex.data);
+        StbImageLoader::Free(tex.data);
     }
 
     LOGGER_INFO("TextureAtlas") << "Created atlas with " << textures.size() << " textures";

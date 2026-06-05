@@ -42,7 +42,7 @@ void EngineLoop::Initialize()
 
     auto& sl = ServiceLocator::Instance();
     auto& configMgr = sl.Require<ConfigManager>();
-    auto& appConfig = configMgr.GetConfig();
+    auto appConfig = configMgr.GetConfig();
 
     SetPhysicsStep(1.0f / appConfig.physicsTickRate);
     SetMaxSubSteps(appConfig.maxSubSteps);

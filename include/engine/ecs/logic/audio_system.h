@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <scene/logic/scene.h>
@@ -10,6 +11,7 @@ class AudioSystem : public IUpdateSystem, public IECSSystem
 {
 public:
     void Initialize() override;
+    void Shutdown() override;
     void Update(Scene& scene, float dt) override;
     void StopAll(Scene& scene);
 
@@ -39,4 +41,6 @@ private:
 
     bool m_Enabled = true;
     float m_GlobalVolume = 1.0f;
+    Scene* m_BoundScene = nullptr;
+    EventSubscriptionList m_EventSubscriptions;
 };

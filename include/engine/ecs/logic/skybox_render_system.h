@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_skybox_service.h>
@@ -11,6 +12,7 @@ class SkyboxRenderSystem : public IRenderSystem, public IECSSystem, public ISkyb
 {
 public:
     void Initialize() override;
+    void Shutdown() override;
     bool IsEnabled() const override
     {
         return m_Enabled;
@@ -48,9 +50,7 @@ public:
 private:
     IGraphicsContext* m_Context = nullptr;
     float m_Intensity = 1.0f;
-    uint32_t m_ConfigSubId = 0;
-    uint32_t m_SceneSubId = 0;
-    uint32_t m_RenderDataSubId = 0;
+    EventSubscriptionList m_EventSubscriptions;
     bool m_Enabled = true;
 
     struct

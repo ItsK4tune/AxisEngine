@@ -14,36 +14,39 @@ void CameraSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<CameraSystem>(this);
-    EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
-        auto* scene = ServiceLocator::Instance().Resolve<Scene>();
-        if (!scene)
-            return;
+    m_EventSubscriptions.Clear();
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
+            auto* scene = ServiceLocator::Instance().Resolve<Scene>();
+            if (!scene)
+                return;
 
-        auto view = scene->registry.view<CameraComponent>();
-        float aspect = (float)e.width / (float)e.height;
-        for (auto entity : view)
-        {
-            auto& camera = view.get<CameraComponent>(entity);
-            camera.aspectRatio = aspect;
-            camera.screenWidth = e.width;
-            camera.screenHeight = e.height;
-            if (!camera.isOrthographic)
+            auto view = scene->registry.view<CameraComponent>();
+            float aspect = (float)e.width / (float)e.height;
+            for (auto entity : view)
             {
-                camera.projectionMatrix =
-                    glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
+                auto& camera = view.get<CameraComponent>(entity);
+                camera.aspectRatio = aspect;
+                camera.screenWidth = e.width;
+                camera.screenHeight = e.height;
+                if (!camera.isOrthographic)
+                {
+                    camera.projectionMatrix =
+                        glm::perspective(glm::radians(camera.fov), aspect, camera.nearPlane, camera.farPlane);
+                }
+                else
+                {
+                    float h = camera.orthoSize;
+                    float w = h * aspect;
+                    camera.projectionMatrix = glm::ortho(-w, w, -h, h, camera.nearPlane, camera.farPlane);
+                }
             }
-            else
-            {
-                float h = camera.orthoSize;
-                float w = h * aspect;
-                camera.projectionMatrix = glm::ortho(-w, w, -h, h, camera.nearPlane, camera.farPlane);
-            }
-        }
-    });
+        }));
 }
 
 void CameraSystem::Shutdown()
 {
+    m_EventSubscriptions.Clear();
 }
 
 void CameraSystem::Update(Scene& scene, float dt)

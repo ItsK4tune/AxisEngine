@@ -135,7 +135,7 @@ public:
     float GetTimeScale() const;
     float GetRealDeltaTime() const;
 
-    const AppConfig& GetConfig() const;
+    AppConfig GetConfig() const;
     void ApplyConfig(const AppConfig& config);
 
     void SetActiveScene(Scene* scene)

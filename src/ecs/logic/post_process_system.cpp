@@ -22,6 +22,7 @@ void PostProcessSystem::Initialize()
     auto* context = sl.Resolve<IGraphicsContext>();
     auto* resources = sl.Resolve<ResourceManager>();
     auto* configManager = sl.Resolve<ConfigManager>();
+    m_EventSubscriptions.Clear();
 
     if (!context || !resources || !configManager)
     {
@@ -29,41 +30,44 @@ void PostProcessSystem::Initialize()
         return;
     }
 
-    const auto& config = configManager->GetConfig();
+    auto config = configManager->GetConfig();
 
     m_Pipeline.Initialize(*context, config.width, config.height, *resources);
 
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (!(e.bitmask & (ConfigChangedEvent::Window | ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
-            return;
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (!(e.bitmask & (ConfigChangedEvent::Window | ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
+                return;
 
-        const auto& cfg = e.config;
-        m_Pipeline.SetBloomEnabled(cfg.bloomEnabled);
-        m_Pipeline.SetBloomThreshold(cfg.bloomThreshold);
-        m_Pipeline.SetBloomIntensity(cfg.bloomIntensity);
-        m_Pipeline.SetBloomRadius(cfg.bloomRadius);
-        m_Pipeline.SetExposure(cfg.exposure);
-        m_Pipeline.SetGamma(cfg.gamma);
-        m_Pipeline.SetTonemappingMode((int)cfg.tonemappingMode);
+            const auto& cfg = e.config;
+            m_Pipeline.SetBloomEnabled(cfg.bloomEnabled);
+            m_Pipeline.SetBloomThreshold(cfg.bloomThreshold);
+            m_Pipeline.SetBloomIntensity(cfg.bloomIntensity);
+            m_Pipeline.SetBloomRadius(cfg.bloomRadius);
+            m_Pipeline.SetExposure(cfg.exposure);
+            m_Pipeline.SetGamma(cfg.gamma);
+            m_Pipeline.SetTonemappingMode((int)cfg.tonemappingMode);
 
-        if (cfg.width != m_Pipeline.GetWidth() || cfg.height != m_Pipeline.GetHeight())
-        {
-            m_Pipeline.Resize(cfg.width, cfg.height);
-        }
-    });
+            if (cfg.width != m_Pipeline.GetWidth() || cfg.height != m_Pipeline.GetHeight())
+            {
+                m_Pipeline.Resize(cfg.width, cfg.height);
+            }
+        }));
 
-    EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
-        if (e.width != m_Pipeline.GetWidth() || e.height != m_Pipeline.GetHeight())
-        {
-            m_Pipeline.Resize(e.width, e.height);
-        }
-    });
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
+            if (e.width != m_Pipeline.GetWidth() || e.height != m_Pipeline.GetHeight())
+            {
+                m_Pipeline.Resize(e.width, e.height);
+            }
+        }));
 
     m_RenderService = sl.Resolve<IRenderService>();
 }
 
 void PostProcessSystem::Shutdown()
 {
+    m_EventSubscriptions.Clear();
     m_Pipeline.Shutdown();
 }
 

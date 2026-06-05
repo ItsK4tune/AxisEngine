@@ -1,4 +1,4 @@
 axis_data:
   DataNote: DataNote
-    EntityCount: 1
-    EntitySize: 7.699000
+    EntityCount: 162
+    EntitySize: 0.200000

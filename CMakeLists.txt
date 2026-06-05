@@ -39,30 +39,13 @@ find_package(IrrKlang REQUIRED)
 find_package(FFMPEG REQUIRED)
 find_package(Enet REQUIRED)
 
-include_directories(
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/bullet
-    ${CMAKE_SOURCE_DIR}/include/entt
-    ${CMAKE_SOURCE_DIR}/include/engine
-    ${CMAKE_SOURCE_DIR}/include/imgui
-    ${FREETYPE_INCLUDE_DIR}
-    ${ASSIMP_INCLUDE_DIR}
-    ${GLFW3_INCLUDE_DIR}
-    ${GLM_INCLUDE_DIR}
-    ${BULLET_INCLUDE_DIR}
-    ${IRRKLANG_INCLUDE_DIR}
-    ${FFMPEG_INCLUDE_DIRS}
-    ${ENET_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/game/include
-)
-
-link_directories(${CMAKE_SOURCE_DIR}/lib)
-
 include(${CMAKE_SOURCE_DIR}/cmake/sources.cmake)
 
 # Engine Core Library
 add_library(axis_engine STATIC ${AXIS_ENGINE_SOURCES})
 add_library(Axis::Engine ALIAS axis_engine)
+
+target_compile_features(axis_engine PUBLIC cxx_std_20)
 
 target_compile_definitions(axis_engine PUBLIC
     AXIS_HAS_OPENGL_BACKEND=1
@@ -74,6 +57,10 @@ target_compile_definitions(axis_engine PUBLIC
     AXIS_HAS_FMOD_BACKEND=0
     AXIS_HAS_OPENAL_BACKEND=0
 )
+
+if(MSVC)
+    target_compile_options(axis_engine PRIVATE /FS)
+endif()
 
 target_include_directories(axis_engine PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -90,23 +77,19 @@ target_include_directories(axis_engine PUBLIC
     $<BUILD_INTERFACE:${FFMPEG_INCLUDE_DIRS}>
     $<BUILD_INTERFACE:${ENET_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>
-)
-
-set(BULLET_LIBS
-    BulletDynamics$<$<CONFIG:Debug>:_Debug>
-    BulletCollision$<$<CONFIG:Debug>:_Debug>
-    LinearMath$<$<CONFIG:Debug>:_Debug>
+    $<INSTALL_INTERFACE:include/engine>
+    $<INSTALL_INTERFACE:include/imgui>
 )
 
 target_link_libraries(axis_engine PUBLIC
-    glfw3 
+    GLFW3::GLFW3
     opengl32 
-    assimp-vc143-mt
-    ${BULLET_LIBS}
-    freetype
-    irrKlang
-    ${FFMPEG_LIBRARIES}
-    ${ENET_LIBRARIES}
+    ASSIMP::ASSIMP
+    Bullet::Bullet
+    Freetype::Freetype
+    IrrKlang::IrrKlang
+    FFMPEG::FFMPEG
+    Enet::Enet
     dbghelp
     winmm
     ws2_32
@@ -116,6 +99,10 @@ target_link_libraries(axis_engine PUBLIC
 if(ENABLE_EDITOR)
     add_library(axis_editor STATIC ${AXIS_EDITOR_SOURCES})
     add_library(Axis::Editor ALIAS axis_editor)
+
+    if(MSVC)
+        target_compile_options(axis_editor PRIVATE /FS)
+    endif()
     
     target_include_directories(axis_editor PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -150,10 +137,24 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    FILES_MATCHING PATTERN "*.lib"
+)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/dlls/
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    FILES_MATCHING PATTERN "*.dll"
+)
+
 install(EXPORT AxisEngineTargets
     FILE AxisEngineTargets.cmake
     NAMESPACE Axis::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine
+)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/cmake/modules/
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine/modules
 )
 
 # Generate Config file

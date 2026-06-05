@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_shadow_service.h>
@@ -90,4 +91,5 @@ public:
 private:
     bool m_Enabled = true;
     ShadowRenderer m_ShadowRenderer;
+    EventSubscriptionList m_EventSubscriptions;
 };

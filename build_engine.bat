@@ -11,7 +11,7 @@ echo           GAME ENGINE LAUNCHER
 echo ==========================================
 echo  1. Full Rebuild (Clean + Build + Run)
 echo  2. Quick Build (Build + Run - FAST)
-echo  3. Run Existing Game
+echo  3. Build Tests (Clean + Build Tests)
 echo ==========================================
 set "action_choice="
 set /p action_choice="Enter number (Default: 1): "
@@ -23,13 +23,23 @@ if errorlevel 1 goto RETRY_ACTION
 
 if "%action_choice%"=="1" (
     set "QUICK_BUILD="
+    set "ENABLE_TESTS=OFF"
     goto SELECT_COMPILER
 )
 if "%action_choice%"=="2" (
     set "QUICK_BUILD=1"
+    set "ENABLE_TESTS=OFF"
     goto SELECT_BUILD_TYPE
 )
-if "%action_choice%"=="3" goto SELECT_BUILD_TYPE_FOR_RUN
+if "%action_choice%"=="3" (
+    set "QUICK_BUILD=1"
+    set "ENABLE_TESTS=ON"
+    set "BUILD_TYPE=Debug"
+    set "CLEAN_MODE=Soft"
+    set "ENABLE_EDITOR=OFF"
+    set "BUILD_SAMPLES=OFF"
+    goto SELECT_COMPILER
+)
 
 :RETRY_ACTION
 echo [ERROR] Invalid selection!
@@ -97,6 +107,7 @@ if "%comp_choice%"=="13" set GENERATOR="Ninja"
 if "%comp_choice%"=="14" set "GENERATOR="
 
 echo Selected Compiler Option: %comp_choice%
+if "%ENABLE_TESTS%"=="ON" goto CONFIRM_CONFIG
 
 :SELECT_BUILD_TYPE
 cls
@@ -259,6 +270,7 @@ if defined QUICK_BUILD (
     echo  Clean Mode: %CLEAN_MODE%
     echo  Editor:     %ENABLE_EDITOR%
     if "%ENABLE_EDITOR%"=="ON" echo  Samples:    %BUILD_SAMPLES%
+    echo  Tests:      %ENABLE_TESTS%
 )
 echo ==========================================
 set "confirm="
@@ -266,6 +278,7 @@ set /p confirm="Do you want to proceed? (Y/N, B=Back) [Default: Y]: "
 if "%confirm%"=="" set confirm=y
 
 if /i "%confirm%"=="b" (
+    if "%ENABLE_TESTS%"=="ON" goto SELECT_ACTION
     if defined QUICK_BUILD goto SELECT_BUILD_TYPE
     if "%ENABLE_EDITOR%"=="ON" goto SELECT_BUILD_SAMPLES
     goto SELECT_EDITOR
@@ -277,36 +290,7 @@ if /i "%confirm%"=="y" (
 )
 goto CONFIRM_CONFIG
 
-:SELECT_BUILD_TYPE_FOR_RUN
-cls
-echo.
-echo ==========================================
-echo      SELECT VERSION TO RUN
-echo ==========================================
-echo  1. Debug
-echo  2. Release (Default)
-echo ------------------------------------------
-echo  B. Back to Main Menu
-echo ==========================================
-set "run_type_choice="
-set /p run_type_choice="Enter selection (Default: 2): "
 
-if "%run_type_choice%"=="" set run_type_choice=2
-if /i "%run_type_choice%"=="b" goto SELECT_ACTION
-
-echo %run_type_choice%| findstr /r "^[1-2]$" >nul
-if errorlevel 1 goto RETRY_RUN_TYPE
-
-set BUILD_TYPE=Release
-if "%run_type_choice%"=="1" set BUILD_TYPE=Debug
-if "%run_type_choice%"=="2" set BUILD_TYPE=Release
-
-goto RUN_GAME
-
-:RETRY_RUN_TYPE
-echo [ERROR] Invalid selection!
-pause
-goto SELECT_BUILD_TYPE_FOR_RUN
 
 :CLEAN_FOLDERS
 echo.
@@ -371,7 +355,7 @@ echo      CONFIGURING AND BUILDING...
 echo ==========================================
 
 where cmake >nul 2>&1
-if %ERRORLEVEL% EQU 0 (
+if not errorlevel 1 (
     set CMAKE_CMD=cmake
 ) else (
     if exist "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" (
@@ -389,17 +373,25 @@ if %ERRORLEVEL% EQU 0 (
 
 if not defined QUICK_BUILD (
     if not defined GENERATOR (
-        "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES!
+        "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
     ) else (
-        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES!
+        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
     )
 ) else (
-    if not exist "build" (
-        "!CMAKE_CMD!" -B build
+    if "%ENABLE_TESTS%"=="ON" (
+        if not defined GENERATOR (
+            "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
+        ) else (
+            "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
+        )
+    ) else (
+        if not exist "build" (
+            "!CMAKE_CMD!" -B build -DENABLE_TESTS=!ENABLE_TESTS!
+        )
     )
 )
 
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo.
     echo [ERROR] CMake Configuration failed!
     pause
@@ -408,7 +400,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 "!CMAKE_CMD!" --build build --config %BUILD_TYPE%
 
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo.
     echo [ERROR] Build failed!
     pause

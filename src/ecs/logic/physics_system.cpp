@@ -32,6 +32,7 @@ PhysicsSystem::PhysicsSystem()
 }
 PhysicsSystem::~PhysicsSystem()
 {
+    Shutdown();
 }
 REGISTER_SYSTEM(PhysicsSystem)
 
@@ -39,12 +40,13 @@ void PhysicsSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<PhysicsSystem>(this);
+    m_EventSubscriptions.Clear();
     auto* phys = sl.Resolve<IPhysicsWorld>();
     auto& configManager = sl.Require<ConfigManager>();
 
     if (phys)
     {
-        const auto& cfg = configManager.GetConfig();
+        auto cfg = configManager.GetConfig();
         phys->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
         phys->SetMode(static_cast<int>(cfg.physicsMode));
         phys->SetSimulationSettings(cfg.physicsTickRate > 0.0f ? 1.0f / cfg.physicsTickRate : 1.0f / 60.0f,
@@ -53,39 +55,46 @@ void PhysicsSystem::Initialize()
         phys->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
     }
 
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (!(e.bitmask & (ConfigChangedEvent::Physics | ConfigChangedEvent::All)))
-            return;
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (!(e.bitmask & (ConfigChangedEvent::Physics | ConfigChangedEvent::All)))
+                return;
 
-        const auto& cfg = e.config;
-        auto* phys_inner = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-        if (phys_inner)
-        {
-            phys_inner->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
-            phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
-            phys_inner->SetSimulationSettings(cfg.physicsTickRate > 0.0f ? 1.0f / cfg.physicsTickRate
-                                                                         : 1.0f / 60.0f,
-                                             cfg.maxSubSteps);
-            phys_inner->SetSolverIterations(cfg.solverIterations);
-            phys_inner->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
-        }
-    });
-
-    EventManager::Instance().Subscribe<PhysicsDebugRenderEvent>([this](const PhysicsDebugRenderEvent& e) {
-        if (!m_Enabled || !e.scene)
-            return;
-        auto& sl = ServiceLocator::Instance();
-        if (auto* graphics = sl.Resolve<IGraphicsContext>())
-        {
-            if (auto* resources = sl.Resolve<ResourceManager>())
+            const auto& cfg = e.config;
+            auto* phys_inner = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+            if (phys_inner)
             {
-                if (auto debugShader = resources->GetShader("debug_line"))
+                phys_inner->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
+                phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
+                phys_inner->SetSimulationSettings(
+                    cfg.physicsTickRate > 0.0f ? 1.0f / cfg.physicsTickRate : 1.0f / 60.0f, cfg.maxSubSteps);
+                phys_inner->SetSolverIterations(cfg.solverIterations);
+                phys_inner->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
+            }
+        }));
+
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<PhysicsDebugRenderEvent>([this](const PhysicsDebugRenderEvent& e) {
+            if (!m_Enabled || !e.scene)
+                return;
+            auto& sl = ServiceLocator::Instance();
+            if (auto* graphics = sl.Resolve<IGraphicsContext>())
+            {
+                if (auto* resources = sl.Resolve<ResourceManager>())
                 {
-                    RenderDebug(*e.scene, *debugShader, e.width, e.height, graphics->GetRenderStateManager());
+                    if (auto debugShader = resources->GetShader("debug_line"))
+                    {
+                        RenderDebug(*e.scene, *debugShader, e.width, e.height, graphics->GetRenderStateManager());
+                    }
                 }
             }
-        }
-    });
+        }));
+}
+
+void PhysicsSystem::Shutdown()
+{
+    m_EventSubscriptions.Clear();
+    Reset();
 }
 
 void PhysicsSystem::Update(Scene& scene, float dt)
@@ -421,8 +430,7 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
             rb.body->SetLinearVelocity(rb.initialLinearVelocity);
             rb.body->SetAngularVelocity(rb.initialAngularVelocity);
             physics.AddRigidBody(rb.body.get());
-            if (glm::length(rb.initialLinearVelocity) > 0.0001f ||
-                glm::length(rb.initialAngularVelocity) > 0.0001f)
+            if (glm::length(rb.initialLinearVelocity) > 0.0001f || glm::length(rb.initialAngularVelocity) > 0.0001f)
             {
                 rb.body->Activate(true);
             }

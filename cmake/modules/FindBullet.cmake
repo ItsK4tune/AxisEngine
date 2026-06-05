@@ -10,6 +10,8 @@
 
 # --- Include directory ---
 FIND_PATH(BULLET_INCLUDE_DIR btBulletDynamicsCommon.h
+    PATH_SUFFIXES bullet
+    PATHS
     /usr/include
     /usr/local/include
     /opt/local/include
@@ -26,8 +28,24 @@ FIND_LIBRARY(BULLET_DYNAMICS_LIB BulletDynamics
     ${CMAKE_SOURCE_DIR}/lib
 )
 
+FIND_LIBRARY(BULLET_DYNAMICS_DEBUG_LIB BulletDynamics_Debug
+    /usr/lib
+    /usr/lib64
+    /usr/local/lib
+    /opt/local/lib
+    ${CMAKE_SOURCE_DIR}/lib
+)
+
 # --- Library: BulletCollision ---
 FIND_LIBRARY(BULLET_COLLISION_LIB BulletCollision
+    /usr/lib
+    /usr/lib64
+    /usr/local/lib
+    /opt/local/lib
+    ${CMAKE_SOURCE_DIR}/lib
+)
+
+FIND_LIBRARY(BULLET_COLLISION_DEBUG_LIB BulletCollision_Debug
     /usr/lib
     /usr/lib64
     /usr/local/lib
@@ -44,13 +62,31 @@ FIND_LIBRARY(BULLET_LINEARMATH_LIB LinearMath
     ${CMAKE_SOURCE_DIR}/lib
 )
 
+FIND_LIBRARY(BULLET_LINEARMATH_DEBUG_LIB LinearMath_Debug
+    /usr/lib
+    /usr/lib64
+    /usr/local/lib
+    /opt/local/lib
+    ${CMAKE_SOURCE_DIR}/lib
+)
+
 # --- Validate ---
 IF(BULLET_INCLUDE_DIR AND BULLET_DYNAMICS_LIB AND BULLET_COLLISION_LIB AND BULLET_LINEARMATH_LIB)
     SET(BULLET_FOUND TRUE)
+    SET(Bullet_FOUND TRUE)
+    IF(NOT BULLET_DYNAMICS_DEBUG_LIB)
+        SET(BULLET_DYNAMICS_DEBUG_LIB ${BULLET_DYNAMICS_LIB})
+    ENDIF()
+    IF(NOT BULLET_COLLISION_DEBUG_LIB)
+        SET(BULLET_COLLISION_DEBUG_LIB ${BULLET_COLLISION_LIB})
+    ENDIF()
+    IF(NOT BULLET_LINEARMATH_DEBUG_LIB)
+        SET(BULLET_LINEARMATH_DEBUG_LIB ${BULLET_LINEARMATH_LIB})
+    ENDIF()
     SET(BULLET_LIBRARIES
-        ${BULLET_DYNAMICS_LIB}
-        ${BULLET_COLLISION_LIB}
-        ${BULLET_LINEARMATH_LIB}
+        $<$<CONFIG:Debug>:${BULLET_DYNAMICS_DEBUG_LIB}>$<$<NOT:$<CONFIG:Debug>>:${BULLET_DYNAMICS_LIB}>
+        $<$<CONFIG:Debug>:${BULLET_COLLISION_DEBUG_LIB}>$<$<NOT:$<CONFIG:Debug>>:${BULLET_COLLISION_LIB}>
+        $<$<CONFIG:Debug>:${BULLET_LINEARMATH_DEBUG_LIB}>$<$<NOT:$<CONFIG:Debug>>:${BULLET_LINEARMATH_LIB}>
     )
 ENDIF()
 
@@ -58,6 +94,13 @@ ENDIF()
 IF(BULLET_FOUND)
     IF(NOT Bullet_FIND_QUIETLY)
         MESSAGE(STATUS "Found Bullet: ${BULLET_LIBRARIES}")
+    ENDIF()
+    IF(NOT TARGET Bullet::Bullet)
+        ADD_LIBRARY(Bullet::Bullet INTERFACE IMPORTED)
+        SET_TARGET_PROPERTIES(Bullet::Bullet PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${BULLET_INCLUDE_DIR}"
+            INTERFACE_LINK_LIBRARIES "${BULLET_LIBRARIES}"
+        )
     ENDIF()
 ELSE()
     IF(Bullet_FIND_REQUIRED)

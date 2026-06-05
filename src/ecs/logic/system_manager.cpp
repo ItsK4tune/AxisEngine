@@ -34,6 +34,7 @@ SystemManager::SystemManager()
 
 SystemManager::~SystemManager()
 {
+    Shutdown();
 }
 
 void SystemManager::RegisterSystem(std::unique_ptr<IBaseSystem> system)
@@ -105,6 +106,8 @@ void SystemManager::CreateSystems()
 void SystemManager::Initialize(ResourceManager& res, int width, int height)
 {
     LOGGER_INFO("SystemManager") << "Initializing systems...";
+    m_IsShutdown = false;
+    m_EventSubscriptions.Clear();
 
     m_UpdateSystems.clear();
     m_RenderSystems.clear();
@@ -116,12 +119,13 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
     m_PostProcessSystems.clear();
 
     // Subscribe to events
-    EventManager::Instance().Subscribe<SystemEnabledEvent>([this](const SystemEnabledEvent& e) {
-        if (auto* sys = this->GetSystem(e.systemName))
-        {
-            sys->SetEnabled(e.enabled);
-        }
-    });
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<SystemEnabledEvent>([this](const SystemEnabledEvent& e) {
+            if (auto* sys = this->GetSystem(e.systemName))
+            {
+                sys->SetEnabled(e.enabled);
+            }
+        }));
 
     // Sort systems by priority before initialization if needed,
     // but usually RegisterSystem and category flags are enough.
@@ -211,11 +215,16 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
 
 void SystemManager::Shutdown()
 {
+    if (m_IsShutdown)
+        return;
+
     LOGGER_INFO("SystemManager") << "Shutting down systems...";
+    m_EventSubscriptions.Clear();
     for (auto& sys : m_Systems)
     {
         sys->Shutdown();
     }
+    m_IsShutdown = true;
 }
 
 void SystemManager::FixedUpdate(Scene& scene, float fixedDt)
@@ -274,9 +283,8 @@ void SystemManager::Update(Scene& scene, float dt)
                 futures.reserve(parallelSystems.size());
                 for (size_t i = 0; i < parallelSystems.size(); ++i)
                 {
-                    futures.push_back(JobSystem::Instance().ExecuteAsync([&, i]() {
-                        parallelSystems[i]->UpdateParallel(snapshots[i], commandBuffers[i], dt);
-                    }));
+                    futures.push_back(JobSystem::Instance().ExecuteAsync(
+                        [&, i]() { parallelSystems[i]->UpdateParallel(snapshots[i], commandBuffers[i], dt); }));
                 }
 
                 for (auto& future : futures)

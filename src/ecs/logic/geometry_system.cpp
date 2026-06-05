@@ -46,6 +46,7 @@ void GeometrySystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<IGeometryService>(this);
     sl.Register<GeometrySystem>(this);
+    m_EventSubscriptions.Clear();
     m_GraphicsContext = sl.Resolve<IGraphicsContext>();
     m_ConfigManager = sl.Resolve<ConfigManager>();
 
@@ -60,7 +61,7 @@ void GeometrySystem::Initialize()
     if (!resources)
         return;
 
-    const auto& config = m_ConfigManager->GetConfig();
+    auto config = m_ConfigManager->GetConfig();
 
     m_GBufferShader = resources->GetShader("deferred_lit");
 
@@ -71,27 +72,30 @@ void GeometrySystem::Initialize()
     m_RenderService = sl.Resolve<IRenderService>();
     m_ShadowService = sl.Resolve<IShadowService>();
 
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
-            return;
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
+                return;
 
-        const auto& cfg = e.config;
-        if (cfg.width != m_GBuffer.GetWidth() || cfg.height != m_GBuffer.GetHeight())
-        {
-            m_GBuffer.Resize(cfg.width, cfg.height);
-        }
-    });
+            const auto& cfg = e.config;
+            if (cfg.width != m_GBuffer.GetWidth() || cfg.height != m_GBuffer.GetHeight())
+            {
+                m_GBuffer.Resize(cfg.width, cfg.height);
+            }
+        }));
 
-    EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
-        if (e.width != m_GBuffer.GetWidth() || e.height != m_GBuffer.GetHeight())
-        {
-            m_GBuffer.Resize(e.width, e.height);
-        }
-    });
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<WindowResizedEvent>([this](const WindowResizedEvent& e) {
+            if (e.width != m_GBuffer.GetWidth() || e.height != m_GBuffer.GetHeight())
+            {
+                m_GBuffer.Resize(e.width, e.height);
+            }
+        }));
 }
 
 void GeometrySystem::Shutdown()
 {
+    m_EventSubscriptions.Clear();
     m_GBuffer.Shutdown();
 }
 
@@ -134,7 +138,7 @@ void GeometrySystem::Render(Scene& scene)
     if (!hasDeferredWork)
         return;
 
-    const auto& config = m_ConfigManager->GetConfig();
+    auto config = m_ConfigManager->GetConfig();
     int width = config.width;
     int height = config.height;
     float currentScale = config.renderScale;

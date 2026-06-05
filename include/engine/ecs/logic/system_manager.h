@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_base_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
@@ -81,4 +82,6 @@ private:
     static uint32_t GetComponentBitIndex(entt::id_type id);
 
     bool SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const;
+    EventSubscriptionList m_EventSubscriptions;
+    bool m_IsShutdown = true;
 };

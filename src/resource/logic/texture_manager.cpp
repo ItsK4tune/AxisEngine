@@ -4,8 +4,8 @@
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
 #include <core/type/event_types.h>
+#include <resource/logic/stb_image_loader.h>
 #include <resource/type/resource_events.h>
-#include <stb/stb_image.h>
 #include <filesystem>
 
 TextureManager::TextureManager(ITextureManager& lowLevelManager) : m_LowLevelManager(lowLevelManager)
@@ -104,8 +104,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             data.name = name;
             data.path = fullPath;
             data.keepCpuData = keepCpuData;
-            stbi_set_flip_vertically_on_load(true);
-            data.data = stbi_load(fullPath.c_str(), &data.width, &data.height, &data.nrComponents, 0);
+            data.data = StbImageLoader::Load(fullPath.c_str(), &data.width, &data.height, &data.nrComponents, 0, true);
             promise->set_value(data);
         });
 
@@ -114,8 +113,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
     else
     {
         int width, height, nrComponents;
-        stbi_set_flip_vertically_on_load(true);
-        unsigned char* data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, 0);
+        unsigned char* data = StbImageLoader::Load(fullPath.c_str(), &width, &height, &nrComponents, 0, true);
 
         if (data)
         {
@@ -171,9 +169,9 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             tex->type = "texture_diffuse";
 
             if (keepCpuData)
-                tex->pixelData = data;
+                tex->SetPixelData(data, Texture::PixelDataOwnership::Stbi);
             else
-                stbi_image_free(data);
+                StbImageLoader::Free(data);
 
             m_Cache.Add(name, tex);
 
@@ -191,9 +189,9 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
         }
         else
         {
-            LOGGER_ERROR("TextureManager") << "Failed to load texture: " << path << "."
-                                           << (m_StrictLoading ? " Strict loading is enabled." :
-                                                                " Returning error texture.");
+            LOGGER_ERROR("TextureManager")
+                << "Failed to load texture: " << path << "."
+                << (m_StrictLoading ? " Strict loading is enabled." : " Returning error texture.");
             EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
             if (m_StrictLoading)
                 return nullptr;
@@ -223,6 +221,7 @@ void TextureManager::Unload(const std::string& name)
                 {
                     m_LowLevelManager.DeleteTextures(1, &tex->id);
                 }
+                tex->ReleasePixelData();
                 m_PathToTextureMap.erase(fullPath);
                 m_PathReferenceCounts.erase(fullPath);
                 LOGGER_INFO("TextureManager") << "Fully unloaded physical texture from GPU: " << fullPath;
@@ -232,10 +231,11 @@ void TextureManager::Unload(const std::string& name)
         }
         else
         {
-            if (tex->id != 0)
+            if (tex->id != 0 && (!m_ErrorTexture || tex->id != m_ErrorTexture->id))
             {
                 m_LowLevelManager.DeleteTextures(1, &tex->id);
             }
+            tex->ReleasePixelData();
         }
         m_Cache.Remove(name);
         LOGGER_INFO("TextureManager") << "Removed texture name alias from cache: " << name;
@@ -272,8 +272,7 @@ bool TextureManager::Reload(const std::string& name)
     int width = 0;
     int height = 0;
     int nrComponents = 0;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, 0);
+    unsigned char* data = StbImageLoader::Load(fullPath.c_str(), &width, &height, &nrComponents, 0, true);
     if (!data)
     {
         LOGGER_ERROR("TextureManager") << "Failed to reload texture: " << name << " from " << fullPath;
@@ -297,8 +296,8 @@ bool TextureManager::Reload(const std::string& name)
     const unsigned int oldId = texture->id;
     unsigned int textureID = m_LowLevelManager.GenTexture();
     m_LowLevelManager.BindTexture(TextureType::Texture2D, textureID);
-    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format,
-                                 DataType::UnsignedByte, data);
+    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format, DataType::UnsignedByte,
+                                 data);
     m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
     m_LowLevelManager.TexParameteri(
         TextureType::Texture2D, TextureParameter::WrapS,
@@ -329,9 +328,12 @@ bool TextureManager::Reload(const std::string& name)
     texture->nrComponents = nrComponents;
 
     if (keepCpuData)
-        texture->pixelData = data;
+        texture->SetPixelData(data, Texture::PixelDataOwnership::Stbi);
     else
-        stbi_image_free(data);
+    {
+        texture->ReleasePixelData();
+        StbImageLoader::Free(data);
+    }
 
     LOGGER_INFO("TextureManager") << "Reloaded texture: " << name;
     EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
@@ -391,9 +393,12 @@ void TextureManager::Update(float dt)
                     tex->height = data.height;
                     tex->nrComponents = data.nrComponents;
                     if (data.keepCpuData)
-                        tex->pixelData = data.data;
+                        tex->SetPixelData(data.data, Texture::PixelDataOwnership::Stbi);
                     else
-                        stbi_image_free(data.data);
+                    {
+                        tex->ReleasePixelData();
+                        StbImageLoader::Free(data.data);
+                    }
                 }
                 LOGGER_INFO("TextureManager") << "Async texture loaded: " << data.name;
                 EventManager::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", true});
@@ -415,8 +420,8 @@ void TextureManager::Update(float dt)
                         }
                     }
                     m_Cache.Remove(data.name);
-                    LOGGER_ERROR("TextureManager") << "Failed async texture: " << data.name
-                                                   << ". Strict loading is enabled.";
+                    LOGGER_ERROR("TextureManager")
+                        << "Failed async texture: " << data.name << ". Strict loading is enabled.";
                 }
                 else
                 {
@@ -465,7 +470,8 @@ void TextureManager::Clear()
     m_AsyncLoads.clear();
 }
 
-std::shared_ptr<Texture> TextureManager::CreateFromData(const std::string& name, const unsigned char* pixels, int width, int height, int nrComponents, bool keepCpuData)
+std::shared_ptr<Texture> TextureManager::CreateFromData(const std::string& name, const unsigned char* pixels, int width,
+                                                        int height, int nrComponents, bool keepCpuData)
 {
     if (auto existing = m_Cache.Get(name))
     {
@@ -500,24 +506,26 @@ std::shared_ptr<Texture> TextureManager::CreateFromData(const std::string& name,
     }
 
     m_LowLevelManager.BindTexture(TextureType::Texture2D, textureID);
-    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format,
-                                 DataType::UnsignedByte, pixels);
+    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format, DataType::UnsignedByte,
+                                 pixels);
     m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
 
     m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, (int)TextureWrap::Repeat);
     m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, (int)TextureWrap::Repeat);
-    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::LinearMipmapLinear);
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
+                                    (int)TextureFilter::LinearMipmapLinear);
     m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Linear);
 
     if (m_MaxAnisotropy > 1.0f)
     {
-        m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy, m_MaxAnisotropy);
+        m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy,
+                                        m_MaxAnisotropy);
     }
 
     if (keepCpuData && pixels)
     {
-        tex->pixelData = new unsigned char[width * height * nrComponents];
-        std::memcpy(tex->pixelData, pixels, width * height * nrComponents);
+        tex->SetPixelDataCopy(pixels, static_cast<std::size_t>(width) * static_cast<std::size_t>(height) *
+                                          static_cast<std::size_t>(nrComponents));
     }
 
     m_Cache.Add(name, tex);

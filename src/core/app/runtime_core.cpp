@@ -11,8 +11,6 @@ RuntimeCore::RuntimeCore()
 
 void RuntimeCore::Initialize()
 {
-    auto& config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
-
     m_EngineLoop.Initialize();
     m_StateMachine.Initialize();
 

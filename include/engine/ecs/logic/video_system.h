@@ -9,6 +9,7 @@ class VideoSystem : public IUpdateSystem, public IECSSystem
 {
 public:
     void Initialize() override;
+    void Shutdown() override;
     bool IsEnabled() const override
     {
         return m_Enabled;
@@ -38,4 +39,5 @@ private:
     void OnVideoPlayerDestroyed(entt::registry& registry, entt::entity entity);
 
     bool m_Enabled = true;
+    Scene* m_BoundScene = nullptr;
 };

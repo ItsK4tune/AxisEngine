@@ -15,5 +15,5 @@ public:
 
 private:
     static const uint32_t MAGIC = 0x41585342;
-    static const uint32_t VERSION = 1;
+    static const uint32_t VERSION = 3;
 };

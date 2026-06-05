@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <resource/unit/model.h>
@@ -12,9 +11,9 @@
 #include <core/logic/logger.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/logic/assimp_glm_helpers.h>
+#include <resource/logic/stb_image_loader.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
-#include <stb/stb_image.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -22,7 +21,6 @@
 
 namespace
 {
-
 void SetVertexBoneDataToDefault(SkinnedVertex& Vertex)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; i++)
@@ -57,9 +55,12 @@ Texture CreateFallbackTexture(const std::string& type, const std::string& path, 
 
     if (deferred)
     {
-        texture.pixelData = static_cast<unsigned char*>(std::malloc(4));
-        if (texture.pixelData)
-            std::memcpy(texture.pixelData, rgba, 4);
+        auto* data = static_cast<unsigned char*>(std::malloc(4));
+        if (data)
+        {
+            std::memcpy(data, rgba, 4);
+            texture.SetPixelData(data, Texture::PixelDataOwnership::Malloc);
+        }
         return texture;
     }
 
@@ -110,9 +111,6 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     bool shouldFree = true;
     const aiTexture* aiTex = nullptr;
 
-    // Model import uses aiProcess_FlipUVs, so model textures must not inherit stb's global flip state.
-    stbi_set_flip_vertically_on_load(false);
-
     if (!filename.empty() && filename[0] == '*')
     {
         try
@@ -135,8 +133,8 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     {
         if (aiTex->mHeight == 0)
         {
-            data = stbi_load_from_memory(reinterpret_cast<unsigned char*>(aiTex->pcData), aiTex->mWidth, &width,
-                                         &height, &nrComponents, req_comp);
+            data = StbImageLoader::LoadFromMemory(reinterpret_cast<unsigned char*>(aiTex->pcData), aiTex->mWidth,
+                                                  &width, &height, &nrComponents, req_comp, false);
             shouldFree = true;
         }
         else
@@ -152,18 +150,18 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     else
     {
         std::string fullPath = directory_sanitized + '/' + pureFilename;
-        data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, req_comp);
+        data = StbImageLoader::Load(fullPath.c_str(), &width, &height, &nrComponents, req_comp, false);
 
         if (!data)
         {
             std::string globalPath = FileSystem::getPath("include/engine/asset/textures") + '/' + pureFilename;
-            data = stbi_load(globalPath.c_str(), &width, &height, &nrComponents, req_comp);
+            data = StbImageLoader::Load(globalPath.c_str(), &width, &height, &nrComponents, req_comp, false);
         }
 
         if (!data && filename != pureFilename)
         {
             std::string fullPathOriginal = directory_sanitized + '/' + filename;
-            data = stbi_load(fullPathOriginal.c_str(), &width, &height, &nrComponents, req_comp);
+            data = StbImageLoader::Load(fullPathOriginal.c_str(), &width, &height, &nrComponents, req_comp, false);
         }
         shouldFree = true;
     }
@@ -172,7 +170,7 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     {
         if (deferred && outTex)
         {
-            outTex->pixelData = data;
+            outTex->SetPixelData(data, Texture::PixelDataOwnership::Stbi);
             outTex->width = width;
             outTex->height = height;
             outTex->nrComponents = nrComponents;
@@ -191,7 +189,7 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
                          static_cast<int>(TextureFilter::LinearMipmapLinear));
         tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
         if (shouldFree)
-            stbi_image_free(data);
+            StbImageLoader::Free(data);
     }
     else
     {
@@ -420,8 +418,9 @@ Mesh processMesh(aiMesh* mesh, const aiScene* scene, std::vector<Texture>& textu
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
     }
 
-    return Mesh(std::move(vertexData), mesh->mNumVertices, vertexStride, hasBones, std::move(indices),
+    Mesh result(std::move(vertexData), mesh->mNumVertices, vertexStride, hasBones, std::move(indices),
                 std::move(textures), !deferred);
+    return result;
 }
 
 void processNode(aiNode* node, const aiScene* scene, std::vector<Mesh>& meshes, std::vector<Texture>& textures_loaded,
@@ -437,7 +436,10 @@ void processNode(aiNode* node, const aiScene* scene, std::vector<Mesh>& meshes, 
             continue;
         aiMesh* mesh = scene->mMeshes[meshIndex];
         if (mesh)
-            meshes.push_back(processMesh(mesh, scene, textures_loaded, directory, boneInfoMap, boneCount, deferred));
+        {
+            auto processedMesh = processMesh(mesh, scene, textures_loaded, directory, boneInfoMap, boneCount, deferred);
+            meshes.push_back(processedMesh);
+        }
     }
     for (unsigned int i = 0; i < node->mNumChildren; i++)
         processNode(node->mChildren[i], scene, meshes, textures_loaded, directory, boneInfoMap, boneCount, deferred);
@@ -455,11 +457,7 @@ Model::~Model()
 {
     for (auto& tex : textures_loaded)
     {
-        if (tex.pixelData)
-        {
-            stbi_image_free(tex.pixelData);
-            tex.pixelData = nullptr;
-        }
+        tex.ReleasePixelData();
     }
 }
 
@@ -575,8 +573,7 @@ void Model::UploadToGPU()
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
                              static_cast<int>(TextureFilter::Linear));
 
-            stbi_image_free(tex.pixelData);
-            tex.pixelData = nullptr;
+            tex.ReleasePixelData();
         }
     }
 
@@ -591,7 +588,7 @@ void Model::UploadToGPU()
                     if (loadedTex.path == meshTex.path)
                     {
                         meshTex.id = loadedTex.id;
-                        meshTex.pixelData = nullptr;
+                        meshTex.ReleasePixelData();
                         break;
                     }
                 }

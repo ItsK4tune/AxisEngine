@@ -162,7 +162,7 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     auto* configManager = sl.Resolve<ConfigManager>();
     if (!configManager)
         return;
-    const auto& config = configManager->GetConfig();
+    auto config = configManager->GetConfig();
     int windowWidth = config.width;
     int windowHeight = config.height;
 

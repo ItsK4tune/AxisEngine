@@ -96,10 +96,14 @@ RenderServiceImpl::RenderServiceImpl()
 }
 RenderServiceImpl::~RenderServiceImpl()
 {
+    Shutdown();
 }
 
 void RenderServiceImpl::Initialize()
 {
+    m_IsShutdown = false;
+    m_EventSubscriptions.Clear();
+
     auto& sl = ServiceLocator::Instance();
     sl.Register<IRenderService>(this);
     sl.Register<ICameraService>(this);
@@ -115,7 +119,7 @@ void RenderServiceImpl::Initialize()
     m_Context = context_ptr;
     m_ConfigManager = configMgr_ptr;
 
-    auto& config = m_ConfigManager->GetConfig();
+    auto config = m_ConfigManager->GetConfig();
     auto* shaderLib = sl.Resolve<ResourceManager>();
 
     this->SetInstanceBatching(config.instanceBatchingEnabled);
@@ -137,21 +141,22 @@ void RenderServiceImpl::Initialize()
     auto& context = *m_Context;
     auto& shaderLibRef = *shaderLib;
 
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
-            return;
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
+                return;
 
-        const AppConfig& cfg = e.config;
-        this->SetInstanceBatching(cfg.instanceBatchingEnabled);
-        this->SetFrustumCulling(cfg.frustumCullingEnabled);
-        this->SetOcclusionCulling(cfg.occlusionCullingEnabled);
-        this->SetDistanceCulling(cfg.distanceCulling);
-        this->SetAntiAliasingMode((AntiAliasingMode)cfg.antialiasing);
-        this->SetRenderOrderEnabled(cfg.renderOrderEnabled);
-        this->SetFilterLayerMask(cfg.filterLayerMask);
-        this->SetFaceCulling(cfg.cullFaceEnabled);
-        this->SetDepthTest(cfg.depthTestEnabled);
-    });
+            const AppConfig& cfg = e.config;
+            this->SetInstanceBatching(cfg.instanceBatchingEnabled);
+            this->SetFrustumCulling(cfg.frustumCullingEnabled);
+            this->SetOcclusionCulling(cfg.occlusionCullingEnabled);
+            this->SetDistanceCulling(cfg.distanceCulling);
+            this->SetAntiAliasingMode((AntiAliasingMode)cfg.antialiasing);
+            this->SetRenderOrderEnabled(cfg.renderOrderEnabled);
+            this->SetFilterLayerMask(cfg.filterLayerMask);
+            this->SetFaceCulling(cfg.cullFaceEnabled);
+            this->SetDepthTest(cfg.depthTestEnabled);
+        }));
 
     m_RenderCore = std::make_unique<RenderCore>();
     m_RenderCore->Initialize(m_Context, shaderLib);
@@ -194,10 +199,15 @@ void RenderServiceImpl::Initialize()
 
 void RenderServiceImpl::Shutdown()
 {
+    if (m_IsShutdown)
+        return;
+
     LOGGER_INFO("RenderSystem") << "Shutting down RenderSystem";
+    m_EventSubscriptions.Clear();
     m_OcclusionCuller.Shutdown();
     if (m_RenderCore)
         m_RenderCore->Shutdown();
+    m_IsShutdown = true;
 }
 
 void RenderServiceImpl::SetFaceCulling(bool enabled, CullMode mode)

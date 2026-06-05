@@ -66,7 +66,7 @@ struct Application::Impl
     std::unique_ptr<ScriptRegistry> m_ScriptRegistry;
     std::unique_ptr<CollisionMatrix> m_CollisionMatrix;
     std::unique_ptr<DataManager> m_DataManager;
-    uint32_t m_ConfigSubId = 0;
+    int m_ConfigSubId = -1;
 };
 
 Application::Application() : m_Impl(std::make_unique<Impl>())
@@ -136,10 +136,14 @@ void Application::Shutdown()
 
     JobSystem::Instance().Shutdown();
     LOGGER_INFO("Application") << "Cleaning up ConfigManager and ServiceLocator...";
-    m_Impl->m_ConfigManager.reset();
 
-    if (m_Impl->m_ConfigSubId != 0)
+    if (m_Impl->m_ConfigSubId != -1)
+    {
         EventManager::Instance().Unsubscribe<ConfigChangedEvent>(m_Impl->m_ConfigSubId);
+        m_Impl->m_ConfigSubId = -1;
+    }
+
+    m_Impl->m_ConfigManager.reset();
 
     LOGGER_INFO("Application") << "Application shutdown completed.";
     LogManager::Instance().Shutdown();
@@ -387,7 +391,7 @@ ScriptRegistry* Application::GetScriptRegistry()
     return m_Impl->m_ScriptRegistry.get();
 }
 
-const AppConfig& Application::GetConfig() const
+AppConfig Application::GetConfig() const
 {
     return m_Impl->m_ConfigManager->GetConfig();
 }

@@ -16,24 +16,44 @@ void AudioSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<AudioSystem>(this);
+    m_EventSubscriptions.Clear();
+    if (m_BoundScene)
+    {
+        m_BoundScene->registry.on_destroy<AudioSourceComponent>().disconnect<&AudioSystem::OnAudioSourceDestroyed>(
+            this);
+        m_BoundScene = nullptr;
+    }
 
     auto* configManager = sl.Resolve<ConfigManager>();
     if (configManager)
     {
         m_GlobalVolume = configManager->GetConfig().masterVolume;
 
-        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All))
-            {
-                m_GlobalVolume = e.config.masterVolume;
-            }
-        });
+        m_EventSubscriptions.Add(
+            EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+                if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All))
+                {
+                    m_GlobalVolume = e.config.masterVolume;
+                }
+            }));
     }
 
     auto* scene = sl.Resolve<Scene>();
     if (scene)
     {
-        scene->registry.on_destroy<AudioSourceComponent>().connect<&AudioSystem::OnAudioSourceDestroyed>(*this);
+        scene->registry.on_destroy<AudioSourceComponent>().connect<&AudioSystem::OnAudioSourceDestroyed>(this);
+        m_BoundScene = scene;
+    }
+}
+
+void AudioSystem::Shutdown()
+{
+    m_EventSubscriptions.Clear();
+    if (m_BoundScene)
+    {
+        m_BoundScene->registry.on_destroy<AudioSourceComponent>().disconnect<&AudioSystem::OnAudioSourceDestroyed>(
+            this);
+        m_BoundScene = nullptr;
     }
 }
 

@@ -14,6 +14,11 @@
 
 ResourceManager::ResourceManager()
 {
+    SubscribeReloadEvents();
+}
+
+void ResourceManager::SubscribeReloadEvents()
+{
     m_ReloadListenerId = EventManager::Instance().Subscribe<ResourceReloadEvent>([this](const ResourceReloadEvent& e) {
         if (e.type == "SHADER")
         {
@@ -61,6 +66,9 @@ std::vector<std::string> ResourceManager::GetRegisteredLoaderTypes() const
 void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager* textureManager,
                                  IAudioEngine& audioEngine)
 {
+    m_IsShutdown = false;
+    if (m_ReloadListenerId == -1)
+        SubscribeReloadEvents();
     m_HeadlessMode = (shaderManager == nullptr && textureManager == nullptr);
 
     if (shaderManager)
@@ -86,6 +94,9 @@ void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager*
 
 void ResourceManager::InitializeHeadless()
 {
+    m_IsShutdown = false;
+    if (m_ReloadListenerId == -1)
+        SubscribeReloadEvents();
     m_HeadlessMode = true;
     m_ModelManager = std::make_unique<ModelManager>(m_ModelInstanceManager);
     m_FragmentManager = std::make_unique<FragmentAssetManager>();
@@ -102,12 +113,21 @@ void ResourceManager::InitializePostLoad()
 
 ResourceManager::~ResourceManager()
 {
+    Shutdown();
 }
 
 void ResourceManager::Shutdown()
 {
-    EventManager::Instance().Unsubscribe<ResourceReloadEvent>(m_ReloadListenerId);
+    if (m_IsShutdown)
+        return;
+
+    if (m_ReloadListenerId != -1)
+    {
+        EventManager::Instance().Unsubscribe<ResourceReloadEvent>(m_ReloadListenerId);
+        m_ReloadListenerId = -1;
+    }
     ClearResource();
+    m_IsShutdown = true;
 }
 
 void ResourceManager::SetTextureAsyncEnabled(bool enabled)
@@ -244,7 +264,8 @@ void ResourceManager::LoadTexture(const std::string& name, const std::string& pa
     AddResourceDefinition("Texture", name, {{"Path", path}});
 }
 
-void ResourceManager::CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height, int nrComponents, bool keepCpuData)
+void ResourceManager::CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height,
+                                            int nrComponents, bool keepCpuData)
 {
     if (m_HeadlessMode || !m_TextureManager)
         return;

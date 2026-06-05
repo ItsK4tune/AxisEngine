@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <core/logic/yaml_parser.h>
 #include <core/type/event_types.h>
 #include <ecs/interface/i_ecs_system.h>
@@ -14,6 +15,7 @@ class ScriptableSystem : public IUpdateSystem, public IECSSystem
 {
 public:
     void Initialize() override;
+    void Shutdown() override;
     bool IsEnabled() const override
     {
         return m_Enabled;
@@ -53,12 +55,12 @@ public:
     std::vector<entt::id_type> GetWriteComponents() const override;
 
 private:
+    void UnbindRegistries();
+
     bool m_Enabled = true;
-    uint32_t m_SceneSubId = 0;
-    std::vector<uint32_t> m_EventSubs;
+    EventSubscriptionList m_EventSubscriptions;
     std::set<entt::registry*> m_BoundRegistries;
     Scene* m_ActiveScene = nullptr;
     class TimeService* m_TimeService = nullptr;
     std::vector<entt::entity> m_ScriptEntities;
 };
-

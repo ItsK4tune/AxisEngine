@@ -6,75 +6,644 @@
 #include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
-#include <ecs/unit/media_components.h>
 #include <ecs/unit/render_components.h>
-#include <engine/platform/logic/io_handler.h>
-#include <physics/interface/i_physics_world.h>
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/model.h>
 #include <resource/unit/shader.h>
 #include <scene/type/scene_types.h>
+#include <algorithm>
+#include <cstdint>
 #include <fstream>
 #include <map>
+#include <string>
+#include <type_traits>
 #include <vector>
+
+namespace
+{
+constexpr uint32_t MAX_BINARY_STRING_BYTES = 1024 * 1024;
+constexpr std::streamsize LEGACY_AXIS_MATERIAL_DESCRIPTOR_V2_BYTES = 344;
+
+template <typename T>
+void WriteValue(std::ostream& os, const T& value)
+{
+    static_assert(std::is_arithmetic_v<T>, "Binary serializer only writes scalar arithmetic values here.");
+    os.write(reinterpret_cast<const char*>(&value), sizeof(T));
+}
+
+template <typename T>
+void ReadValue(std::istream& is, T& value)
+{
+    static_assert(std::is_arithmetic_v<T>, "Binary serializer only reads scalar arithmetic values here.");
+    is.read(reinterpret_cast<char*>(&value), sizeof(T));
+}
+
+template <typename T>
+void WriteEnum(std::ostream& os, T value)
+{
+    using Underlying = std::underlying_type_t<T>;
+    WriteValue(os, static_cast<Underlying>(value));
+}
+
+template <typename T>
+void ReadEnum(std::istream& is, T& value)
+{
+    using Underlying = std::underlying_type_t<T>;
+    Underlying raw{};
+    ReadValue(is, raw);
+    value = static_cast<T>(raw);
+}
+
+void WriteBool(std::ostream& os, bool value)
+{
+    uint8_t raw = value ? 1 : 0;
+    WriteValue(os, raw);
+}
+
+void ReadBool(std::istream& is, bool& value)
+{
+    uint8_t raw = 0;
+    ReadValue(is, raw);
+    value = raw != 0;
+}
+
+void WriteString(std::ostream& os, const std::string& value)
+{
+    uint32_t length = static_cast<uint32_t>((std::min)(value.size(), static_cast<size_t>(MAX_BINARY_STRING_BYTES)));
+    WriteValue(os, length);
+    if (length > 0)
+        os.write(value.data(), length);
+}
+
+std::string ReadString(std::istream& is)
+{
+    uint32_t length = 0;
+    ReadValue(is, length);
+    if (length > MAX_BINARY_STRING_BYTES)
+    {
+        is.setstate(std::ios::failbit);
+        return {};
+    }
+
+    std::string value(length, '\0');
+    if (length > 0)
+        is.read(value.data(), length);
+    return value;
+}
+
+void WriteVec2(std::ostream& os, const glm::vec2& value)
+{
+    WriteValue(os, value.x);
+    WriteValue(os, value.y);
+}
+
+void ReadVec2(std::istream& is, glm::vec2& value)
+{
+    ReadValue(is, value.x);
+    ReadValue(is, value.y);
+}
+
+void WriteVec3(std::ostream& os, const glm::vec3& value)
+{
+    WriteValue(os, value.x);
+    WriteValue(os, value.y);
+    WriteValue(os, value.z);
+}
+
+void ReadVec3(std::istream& is, glm::vec3& value)
+{
+    ReadValue(is, value.x);
+    ReadValue(is, value.y);
+    ReadValue(is, value.z);
+}
+
+void WriteQuat(std::ostream& os, const glm::quat& value)
+{
+    WriteValue(os, value.x);
+    WriteValue(os, value.y);
+    WriteValue(os, value.z);
+    WriteValue(os, value.w);
+}
+
+void ReadQuat(std::istream& is, glm::quat& value)
+{
+    ReadValue(is, value.x);
+    ReadValue(is, value.y);
+    ReadValue(is, value.z);
+    ReadValue(is, value.w);
+}
+
+void WriteMat4(std::ostream& os, const glm::mat4& value)
+{
+    for (int col = 0; col < 4; ++col)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            WriteValue(os, value[col][row]);
+        }
+    }
+}
+
+void ReadMat4(std::istream& is, glm::mat4& value)
+{
+    for (int col = 0; col < 4; ++col)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            ReadValue(is, value[col][row]);
+        }
+    }
+}
+
+void WriteAppConfigV3(std::ostream& os, const AppConfig& config)
+{
+    WriteString(os, config.title);
+    WriteEnum(os, config.logLevel);
+    WriteValue(os, config.numJobThreads);
+    WriteValue(os, config.timeScale);
+    WriteString(os, config.iconPath);
+    WriteBool(os, config.headlessMode);
+
+    WriteValue(os, config.width);
+    WriteValue(os, config.height);
+    WriteEnum(os, config.windowMode);
+    WriteBool(os, config.vsync);
+    WriteValue(os, config.monitorIndex);
+    WriteValue(os, config.refreshRate);
+    WriteValue(os, config.frameRateLimit);
+
+    WriteEnum(os, config.graphicsBackend);
+    WriteValue(os, config.msaaSamples);
+    WriteValue(os, config.antialiasing);
+    WriteValue(os, config.maxAnisotropy);
+    WriteValue(os, config.renderScale);
+    WriteBool(os, config.asyncResourceLoading);
+    WriteBool(os, config.strictAssetLoading);
+
+    WriteEnum(os, config.tonemappingMode);
+    WriteBool(os, config.hdrEnabled);
+    WriteBool(os, config.bloomEnabled);
+    WriteValue(os, config.gamma);
+    WriteValue(os, config.exposure);
+    WriteValue(os, config.bloomIntensity);
+    WriteValue(os, config.bloomThreshold);
+    WriteValue(os, config.bloomRadius);
+    WriteValue(os, config.skyboxIntensity);
+    WriteValue(os, config.ambientIntensity);
+    WriteValue(os, config.uiReferenceWidth);
+    WriteValue(os, config.uiReferenceHeight);
+    for (float channel : config.clearColor) WriteValue(os, channel);
+
+    WriteBool(os, config.shadowsEnabled);
+    WriteValue(os, config.shadowMode);
+    WriteValue(os, config.shadowMapResolution);
+    WriteValue(os, config.shadowProjectionSize);
+    WriteBool(os, config.shadowFrustumCullingEnabled);
+    WriteValue(os, config.shadowDistanceCulling);
+    WriteValue(os, config.shadowBias);
+    WriteValue(os, config.shadowSoftness);
+
+    WriteEnum(os, config.physicsBackend);
+    WriteEnum(os, config.physicsMode);
+    for (float axis : config.gravity) WriteValue(os, axis);
+    WriteValue(os, config.maxSubSteps);
+    WriteValue(os, config.physicsTickRate);
+    WriteBool(os, config.ccdEnabled);
+    WriteValue(os, config.ccdThreshold);
+    WriteValue(os, config.solverIterations);
+
+    WriteValue(os, config.mouseSensitivityX);
+    WriteValue(os, config.mouseSensitivityY);
+    WriteBool(os, config.mouseInvertX);
+    WriteBool(os, config.mouseInvertY);
+
+    WriteEnum(os, config.audioBackend);
+    WriteValue(os, config.masterVolume);
+    WriteString(os, config.audioDevice);
+
+    WriteBool(os, config.cullFaceEnabled);
+    WriteBool(os, config.depthTestEnabled);
+    WriteBool(os, config.frustumCullingEnabled);
+    WriteBool(os, config.occlusionCullingEnabled);
+    WriteBool(os, config.instanceBatchingEnabled);
+    WriteBool(os, config.renderOrderEnabled);
+    WriteValue(os, config.filterLayerMask);
+    WriteValue(os, config.distanceCulling);
+
+    WriteBool(os, config.debug.wireframeMode);
+    WriteBool(os, config.debug.noTexture);
+    WriteBool(os, config.debug.physicsDebug);
+    WriteBool(os, config.debug.uiEnabled);
+    WriteBool(os, config.debug.gizmos);
+    WriteBool(os, config.debug.lightGizmos);
+    WriteBool(os, config.debug.entityNames);
+    WriteBool(os, config.debug.audioDebug);
+    WriteBool(os, config.debug.particleDebug);
+    WriteBool(os, config.debug.gridSnapEnabled);
+    WriteBool(os, config.debug.gridIndicatorEnabled);
+    WriteValue(os, config.debug.gridSnapTranslation);
+    WriteValue(os, config.debug.gridSnapRotation);
+    WriteValue(os, config.debug.gridSnapScale);
+
+    WriteEnum(os, config.lightingMode);
+}
+
+void ReadAppConfigV3(std::istream& is, AppConfig& config)
+{
+    config.title = ReadString(is);
+    ReadEnum(is, config.logLevel);
+    ReadValue(is, config.numJobThreads);
+    ReadValue(is, config.timeScale);
+    config.iconPath = ReadString(is);
+    ReadBool(is, config.headlessMode);
+
+    ReadValue(is, config.width);
+    ReadValue(is, config.height);
+    ReadEnum(is, config.windowMode);
+    ReadBool(is, config.vsync);
+    ReadValue(is, config.monitorIndex);
+    ReadValue(is, config.refreshRate);
+    ReadValue(is, config.frameRateLimit);
+
+    ReadEnum(is, config.graphicsBackend);
+    ReadValue(is, config.msaaSamples);
+    ReadValue(is, config.antialiasing);
+    ReadValue(is, config.maxAnisotropy);
+    ReadValue(is, config.renderScale);
+    ReadBool(is, config.asyncResourceLoading);
+    ReadBool(is, config.strictAssetLoading);
+
+    ReadEnum(is, config.tonemappingMode);
+    ReadBool(is, config.hdrEnabled);
+    ReadBool(is, config.bloomEnabled);
+    ReadValue(is, config.gamma);
+    ReadValue(is, config.exposure);
+    ReadValue(is, config.bloomIntensity);
+    ReadValue(is, config.bloomThreshold);
+    ReadValue(is, config.bloomRadius);
+    ReadValue(is, config.skyboxIntensity);
+    ReadValue(is, config.ambientIntensity);
+    ReadValue(is, config.uiReferenceWidth);
+    ReadValue(is, config.uiReferenceHeight);
+    for (float& channel : config.clearColor) ReadValue(is, channel);
+
+    ReadBool(is, config.shadowsEnabled);
+    ReadValue(is, config.shadowMode);
+    ReadValue(is, config.shadowMapResolution);
+    ReadValue(is, config.shadowProjectionSize);
+    ReadBool(is, config.shadowFrustumCullingEnabled);
+    ReadValue(is, config.shadowDistanceCulling);
+    ReadValue(is, config.shadowBias);
+    ReadValue(is, config.shadowSoftness);
+
+    ReadEnum(is, config.physicsBackend);
+    ReadEnum(is, config.physicsMode);
+    for (float& axis : config.gravity) ReadValue(is, axis);
+    ReadValue(is, config.maxSubSteps);
+    ReadValue(is, config.physicsTickRate);
+    ReadBool(is, config.ccdEnabled);
+    ReadValue(is, config.ccdThreshold);
+    ReadValue(is, config.solverIterations);
+
+    ReadValue(is, config.mouseSensitivityX);
+    ReadValue(is, config.mouseSensitivityY);
+    ReadBool(is, config.mouseInvertX);
+    ReadBool(is, config.mouseInvertY);
+
+    ReadEnum(is, config.audioBackend);
+    ReadValue(is, config.masterVolume);
+    config.audioDevice = ReadString(is);
+
+    ReadBool(is, config.cullFaceEnabled);
+    ReadBool(is, config.depthTestEnabled);
+    ReadBool(is, config.frustumCullingEnabled);
+    ReadBool(is, config.occlusionCullingEnabled);
+    ReadBool(is, config.instanceBatchingEnabled);
+    ReadBool(is, config.renderOrderEnabled);
+    ReadValue(is, config.filterLayerMask);
+    ReadValue(is, config.distanceCulling);
+
+    ReadBool(is, config.debug.wireframeMode);
+    ReadBool(is, config.debug.noTexture);
+    ReadBool(is, config.debug.physicsDebug);
+    ReadBool(is, config.debug.uiEnabled);
+    ReadBool(is, config.debug.gizmos);
+    ReadBool(is, config.debug.lightGizmos);
+    ReadBool(is, config.debug.entityNames);
+    ReadBool(is, config.debug.audioDebug);
+    ReadBool(is, config.debug.particleDebug);
+    ReadBool(is, config.debug.gridSnapEnabled);
+    ReadBool(is, config.debug.gridIndicatorEnabled);
+    ReadValue(is, config.debug.gridSnapTranslation);
+    ReadValue(is, config.debug.gridSnapRotation);
+    ReadValue(is, config.debug.gridSnapScale);
+
+    ReadEnum(is, config.lightingMode);
+}
+
+void ReadLegacyAppConfigV2(std::istream& is, AppConfig& config)
+{
+    config.title = ReadString(is);
+    is.read(reinterpret_cast<char*>(&config.logLevel), sizeof(config.logLevel));
+    is.read(reinterpret_cast<char*>(&config.numJobThreads), sizeof(config.numJobThreads));
+    is.read(reinterpret_cast<char*>(&config.timeScale), sizeof(config.timeScale));
+    config.iconPath = ReadString(is);
+    config.audioDevice = ReadString(is);
+    is.read(reinterpret_cast<char*>(&config.width), 4 * 7);
+    is.read(reinterpret_cast<char*>(&config.graphicsBackend), sizeof(config.graphicsBackend));
+    is.read(reinterpret_cast<char*>(&config.msaaSamples), 4 * 3);
+    is.read(reinterpret_cast<char*>(&config.renderScale), 4 * 1);
+    is.read(reinterpret_cast<char*>(&config.asyncResourceLoading), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
+    is.read(reinterpret_cast<char*>(&config.hdrEnabled), sizeof(bool) * 2);
+    is.read(reinterpret_cast<char*>(&config.gamma), 4 * 6);
+    is.read(reinterpret_cast<char*>(&config.clearColor), 4 * 4);
+    is.read(reinterpret_cast<char*>(&config.shadowsEnabled), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&config.shadowMode), 4 * 3);
+    is.read(reinterpret_cast<char*>(&config.shadowFrustumCullingEnabled), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&config.shadowDistanceCulling), 4 * 3);
+    is.read(reinterpret_cast<char*>(&config.physicsBackend), sizeof(config.physicsBackend));
+    is.read(reinterpret_cast<char*>(&config.physicsMode), sizeof(config.physicsMode));
+    is.read(reinterpret_cast<char*>(&config.gravity), 4 * 3);
+    is.read(reinterpret_cast<char*>(&config.maxSubSteps), 4 * 2);
+    is.read(reinterpret_cast<char*>(&config.ccdEnabled), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&config.ccdThreshold), 4 * 2);
+    is.read(reinterpret_cast<char*>(&config.mouseSensitivityX), 4 * 2);
+    is.read(reinterpret_cast<char*>(&config.mouseInvertX), sizeof(bool) * 2);
+    is.read(reinterpret_cast<char*>(&config.audioBackend), sizeof(config.audioBackend));
+    is.read(reinterpret_cast<char*>(&config.masterVolume), 4);
+    is.read(reinterpret_cast<char*>(&config.cullFaceEnabled), sizeof(bool) * 5);
+    is.read(reinterpret_cast<char*>(&config.renderOrderEnabled), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&config.filterLayerMask), 4 * 2);
+}
+
+void WriteMaterialDescriptor(std::ostream& os, const AxisMaterialDescriptor& desc)
+{
+    WriteValue(os, desc.pbr.roughness);
+    WriteValue(os, desc.pbr.metallic);
+    WriteValue(os, desc.pbr.ao);
+    WriteValue(os, desc.opacity);
+    WriteValue(os, desc.alphaCutoff);
+    WriteVec3(os, desc.emission);
+    WriteVec2(os, desc.uvScale);
+    WriteVec2(os, desc.uvOffset);
+    WriteString(os, desc.albedoPath);
+    WriteString(os, desc.normalPath);
+    WriteString(os, desc.metallicPath);
+    WriteString(os, desc.roughnessPath);
+    WriteString(os, desc.aoPath);
+    WriteString(os, desc.emissivePath);
+    WriteString(os, desc.specularPath);
+    WriteEnum(os, desc.blendSrc);
+    WriteEnum(os, desc.blendDst);
+    WriteString(os, desc.type);
+    for (float port : desc.ports.data) WriteValue(os, port);
+}
+
+void ReadMaterialDescriptor(std::istream& is, AxisMaterialDescriptor& desc)
+{
+    ReadValue(is, desc.pbr.roughness);
+    ReadValue(is, desc.pbr.metallic);
+    ReadValue(is, desc.pbr.ao);
+    ReadValue(is, desc.opacity);
+    ReadValue(is, desc.alphaCutoff);
+    ReadVec3(is, desc.emission);
+    ReadVec2(is, desc.uvScale);
+    ReadVec2(is, desc.uvOffset);
+    desc.albedoPath = ReadString(is);
+    desc.normalPath = ReadString(is);
+    desc.metallicPath = ReadString(is);
+    desc.roughnessPath = ReadString(is);
+    desc.aoPath = ReadString(is);
+    desc.emissivePath = ReadString(is);
+    desc.specularPath = ReadString(is);
+    ReadEnum(is, desc.blendSrc);
+    ReadEnum(is, desc.blendDst);
+    desc.type = ReadString(is);
+    for (float& port : desc.ports.data) ReadValue(is, port);
+}
+
+void WriteCamera(std::ostream& os, const CameraComponent& camera)
+{
+    WriteMat4(os, camera.projectionMatrix);
+    WriteMat4(os, camera.viewMatrix);
+    WriteValue(os, camera.fov);
+    WriteValue(os, camera.nearPlane);
+    WriteValue(os, camera.farPlane);
+    WriteValue(os, camera.aspectRatio);
+    WriteValue(os, camera.screenWidth);
+    WriteValue(os, camera.screenHeight);
+    WriteBool(os, camera.isPrimary);
+    WriteBool(os, camera.isOrthographic);
+    WriteValue(os, camera.orthoSize);
+    WriteValue(os, camera.cullingMask);
+}
+
+void ReadCamera(std::istream& is, CameraComponent& camera)
+{
+    ReadMat4(is, camera.projectionMatrix);
+    ReadMat4(is, camera.viewMatrix);
+    ReadValue(is, camera.fov);
+    ReadValue(is, camera.nearPlane);
+    ReadValue(is, camera.farPlane);
+    ReadValue(is, camera.aspectRatio);
+    ReadValue(is, camera.screenWidth);
+    ReadValue(is, camera.screenHeight);
+    ReadBool(is, camera.isPrimary);
+    ReadBool(is, camera.isOrthographic);
+    ReadValue(is, camera.orthoSize);
+    ReadValue(is, camera.cullingMask);
+}
+
+void WriteDirectionalLight(std::ostream& os, const DirectionalLightComponent& light)
+{
+    WriteVec3(os, light.direction);
+    WriteVec3(os, light.color);
+    WriteValue(os, light.intensity);
+    WriteValue(os, light.ambient);
+    WriteValue(os, light.diffuse);
+    WriteValue(os, light.specular);
+    WriteBool(os, light.active);
+    WriteBool(os, light.isCastShadow);
+}
+
+void ReadDirectionalLight(std::istream& is, DirectionalLightComponent& light)
+{
+    ReadVec3(is, light.direction);
+    ReadVec3(is, light.color);
+    ReadValue(is, light.intensity);
+    ReadValue(is, light.ambient);
+    ReadValue(is, light.diffuse);
+    ReadValue(is, light.specular);
+    ReadBool(is, light.active);
+    ReadBool(is, light.isCastShadow);
+}
+
+void WritePointLight(std::ostream& os, const PointLightComponent& light)
+{
+    WriteVec3(os, light.color);
+    WriteValue(os, light.radius);
+    WriteValue(os, light.intensity);
+    WriteValue(os, light.constant);
+    WriteValue(os, light.linear);
+    WriteValue(os, light.quadratic);
+    WriteValue(os, light.ambient);
+    WriteValue(os, light.diffuse);
+    WriteValue(os, light.specular);
+    WriteBool(os, light.active);
+    WriteBool(os, light.isCastShadow);
+}
+
+void ReadPointLight(std::istream& is, PointLightComponent& light)
+{
+    ReadVec3(is, light.color);
+    ReadValue(is, light.radius);
+    ReadValue(is, light.intensity);
+    ReadValue(is, light.constant);
+    ReadValue(is, light.linear);
+    ReadValue(is, light.quadratic);
+    ReadValue(is, light.ambient);
+    ReadValue(is, light.diffuse);
+    ReadValue(is, light.specular);
+    ReadBool(is, light.active);
+    ReadBool(is, light.isCastShadow);
+}
+
+void WriteSpotLight(std::ostream& os, const SpotLightComponent& light)
+{
+    WriteVec3(os, light.direction);
+    WriteVec3(os, light.color);
+    WriteValue(os, light.radius);
+    WriteValue(os, light.intensity);
+    WriteValue(os, light.constant);
+    WriteValue(os, light.linear);
+    WriteValue(os, light.quadratic);
+    WriteValue(os, light.ambient);
+    WriteValue(os, light.diffuse);
+    WriteValue(os, light.specular);
+    WriteValue(os, light.cutOff);
+    WriteValue(os, light.outerCutOff);
+    WriteBool(os, light.active);
+    WriteBool(os, light.isCastShadow);
+}
+
+void ReadSpotLight(std::istream& is, SpotLightComponent& light)
+{
+    ReadVec3(is, light.direction);
+    ReadVec3(is, light.color);
+    ReadValue(is, light.radius);
+    ReadValue(is, light.intensity);
+    ReadValue(is, light.constant);
+    ReadValue(is, light.linear);
+    ReadValue(is, light.quadratic);
+    ReadValue(is, light.ambient);
+    ReadValue(is, light.diffuse);
+    ReadValue(is, light.specular);
+    ReadValue(is, light.cutOff);
+    ReadValue(is, light.outerCutOff);
+    ReadBool(is, light.active);
+    ReadBool(is, light.isCastShadow);
+}
+
+void SkipLegacyBytes(std::istream& is, std::streamsize count)
+{
+    if (count > 0)
+        is.ignore(count);
+}
+
+void ReadLegacyBool(std::istream& is, bool& value)
+{
+    uint8_t raw = 0;
+    ReadValue(is, raw);
+    value = raw != 0;
+}
+
+void ReadLegacyCameraV2(std::istream& is, CameraComponent& camera)
+{
+    ReadMat4(is, camera.projectionMatrix);
+    ReadMat4(is, camera.viewMatrix);
+    ReadValue(is, camera.fov);
+    ReadValue(is, camera.nearPlane);
+    ReadValue(is, camera.farPlane);
+    ReadValue(is, camera.aspectRatio);
+    ReadValue(is, camera.screenWidth);
+    ReadValue(is, camera.screenHeight);
+    ReadLegacyBool(is, camera.isPrimary);
+    ReadLegacyBool(is, camera.isOrthographic);
+    SkipLegacyBytes(is, 2);
+    ReadValue(is, camera.orthoSize);
+    ReadValue(is, camera.cullingMask);
+}
+
+void ReadLegacyDirectionalLightV2(std::istream& is, DirectionalLightComponent& light)
+{
+    ReadVec3(is, light.direction);
+    ReadVec3(is, light.color);
+    ReadValue(is, light.intensity);
+    ReadValue(is, light.ambient);
+    ReadValue(is, light.diffuse);
+    ReadValue(is, light.specular);
+    ReadLegacyBool(is, light.active);
+    ReadLegacyBool(is, light.isCastShadow);
+    SkipLegacyBytes(is, 2);
+}
+
+void ReadLegacyPointLightV2(std::istream& is, PointLightComponent& light)
+{
+    ReadVec3(is, light.color);
+    ReadValue(is, light.radius);
+    ReadValue(is, light.intensity);
+    ReadValue(is, light.constant);
+    ReadValue(is, light.linear);
+    ReadValue(is, light.quadratic);
+    ReadValue(is, light.ambient);
+    ReadValue(is, light.diffuse);
+    ReadValue(is, light.specular);
+    ReadLegacyBool(is, light.active);
+    ReadLegacyBool(is, light.isCastShadow);
+    SkipLegacyBytes(is, 2);
+}
+
+void ReadLegacySpotLightV2(std::istream& is, SpotLightComponent& light)
+{
+    ReadVec3(is, light.direction);
+    ReadVec3(is, light.color);
+    ReadValue(is, light.radius);
+    ReadValue(is, light.intensity);
+    ReadValue(is, light.constant);
+    ReadValue(is, light.linear);
+    ReadValue(is, light.quadratic);
+    ReadValue(is, light.ambient);
+    ReadValue(is, light.diffuse);
+    ReadValue(is, light.specular);
+    ReadValue(is, light.cutOff);
+    ReadValue(is, light.outerCutOff);
+    ReadLegacyBool(is, light.active);
+    ReadLegacyBool(is, light.isCastShadow);
+    SkipLegacyBytes(is, 2);
+}
+}  // namespace
 
 bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
 {
-    auto& sl = ServiceLocator::Instance();
-    auto& rm = sl.Require<ResourceManager>();
-    auto& io = sl.Require<IOHandler>();
     std::ofstream os(path, std::ios::binary);
     if (!os.is_open())
         return false;
-    os.write(reinterpret_cast<const char*>(&scene::BINARY_MAGIC), sizeof(scene::BINARY_MAGIC));
-    os.write(reinterpret_cast<const char*>(&scene::BINARY_VERSION), sizeof(scene::BINARY_VERSION));
+
+    WriteValue(os, scene::BINARY_MAGIC);
+    WriteValue(os, scene::BINARY_VERSION);
+
     auto view = scene.registry.view<InfoComponent>();
     std::vector<entt::entity> entities;
     for (auto entity : view) entities.push_back(entity);
-    uint32_t entityCount = (uint32_t)entities.size();
-    os.write(reinterpret_cast<const char*>(&entityCount), sizeof(entityCount));
 
-    auto& configMgr = sl.Require<ConfigManager>();
-    const AppConfig& config = configMgr.GetConfig();
+    uint32_t entityCount = static_cast<uint32_t>(entities.size());
+    WriteValue(os, entityCount);
 
-    auto writeString = [&](const std::string& s) {
-        uint32_t len = (uint32_t)s.length();
-        os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-        os.write(s.c_str(), len);
-    };
-
-    writeString(config.title);
-    os.write(reinterpret_cast<const char*>(&config.logLevel), sizeof(config.logLevel));
-    os.write(reinterpret_cast<const char*>(&config.numJobThreads), sizeof(config.numJobThreads));
-    os.write(reinterpret_cast<const char*>(&config.timeScale), sizeof(config.timeScale));
-    writeString(config.iconPath);
-    writeString(config.audioDevice);
-    os.write(reinterpret_cast<const char*>(&config.width), 4 * 7);
-    os.write(reinterpret_cast<const char*>(&config.graphicsBackend), sizeof(config.graphicsBackend));
-    os.write(reinterpret_cast<const char*>(&config.msaaSamples), 4 * 3);
-    os.write(reinterpret_cast<const char*>(&config.renderScale), 4 * 1);
-    os.write(reinterpret_cast<const char*>(&config.asyncResourceLoading), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
-    os.write(reinterpret_cast<const char*>(&config.hdrEnabled), sizeof(bool) * 2);
-    os.write(reinterpret_cast<const char*>(&config.gamma), 4 * 6);
-    os.write(reinterpret_cast<const char*>(&config.clearColor), 4 * 4);
-    os.write(reinterpret_cast<const char*>(&config.shadowsEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.shadowMode), 4 * 3);
-    os.write(reinterpret_cast<const char*>(&config.shadowFrustumCullingEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.shadowDistanceCulling), 4 * 3);
-    os.write(reinterpret_cast<const char*>(&config.physicsBackend), sizeof(config.physicsBackend));
-    os.write(reinterpret_cast<const char*>(&config.physicsMode), sizeof(config.physicsMode));
-    os.write(reinterpret_cast<const char*>(&config.gravity), 4 * 3);
-    os.write(reinterpret_cast<const char*>(&config.maxSubSteps), 4 * 2);
-    os.write(reinterpret_cast<const char*>(&config.ccdEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.ccdThreshold), 4 * 2);
-    os.write(reinterpret_cast<const char*>(&config.mouseSensitivityX), 4 * 2);
-    os.write(reinterpret_cast<const char*>(&config.mouseInvertX), sizeof(bool) * 2);
-    os.write(reinterpret_cast<const char*>(&config.audioBackend), sizeof(config.audioBackend));
-    os.write(reinterpret_cast<const char*>(&config.masterVolume), 4);
-    os.write(reinterpret_cast<const char*>(&config.cullFaceEnabled), sizeof(bool) * 5);
-    os.write(reinterpret_cast<const char*>(&config.renderOrderEnabled), sizeof(bool));
-    os.write(reinterpret_cast<const char*>(&config.filterLayerMask), 4 * 2);
+    AppConfig config;
+    if (auto* configMgr = ServiceLocator::Instance().Resolve<ConfigManager>())
+        config = configMgr->GetConfig();
+    WriteAppConfigV3(os, config);
 
     std::map<entt::entity, uint32_t> entityToIndex;
     uint32_t idx = 0;
@@ -84,198 +653,143 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
     {
         auto& info = scene.registry.get<InfoComponent>(entity);
 
-        {
-            uint32_t len = (uint32_t)info.name.length();
-            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-            os.write(info.name.c_str(), len);
-        }
-        {
-            uint32_t len = (uint32_t)info.tag.length();
-            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-            os.write(info.tag.c_str(), len);
-        }
-        os.write(reinterpret_cast<const char*>(&info.layer), sizeof(info.layer));
+        WriteString(os, info.name);
+        WriteString(os, info.tag);
+        WriteValue(os, info.layer);
 
         auto* pos = scene.registry.try_get<PositionComponent>(entity);
+        WriteBool(os, pos != nullptr);
+        if (pos)
+            WriteVec3(os, pos->value);
+
         auto* rot = scene.registry.try_get<RotationComponent>(entity);
+        WriteBool(os, rot != nullptr);
+        if (rot)
+            WriteQuat(os, rot->value);
+
         auto* scl = scene.registry.try_get<ScaleComponent>(entity);
-
-        bool hasP = (pos != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasP), sizeof(hasP));
-        if (hasP)
-            os.write(reinterpret_cast<const char*>(&pos->value), sizeof(pos->value));
-
-        bool hasR = (rot != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasR), sizeof(hasR));
-        if (hasR)
-            os.write(reinterpret_cast<const char*>(&rot->value), sizeof(rot->value));
-
-        bool hasS = (scl != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasS), sizeof(hasS));
-        if (hasS)
-            os.write(reinterpret_cast<const char*>(&scl->value), sizeof(scl->value));
+        WriteBool(os, scl != nullptr);
+        if (scl)
+            WriteVec3(os, scl->value);
 
         auto* hier = scene.registry.try_get<HierarchyComponent>(entity);
         int32_t parentIdx = -1;
         if (hier && hier->parent != entt::null && entityToIndex.count(hier->parent))
-            parentIdx = (int32_t)entityToIndex[hier->parent];
-        os.write(reinterpret_cast<const char*>(&parentIdx), sizeof(parentIdx));
+            parentIdx = static_cast<int32_t>(entityToIndex[hier->parent]);
+        WriteValue(os, parentIdx);
 
         auto* mesh = scene.registry.try_get<MeshRendererComponent>(entity);
-        bool hasMesh = (mesh != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasMesh), sizeof(hasMesh));
-        if (hasMesh)
+        WriteBool(os, mesh != nullptr);
+        if (mesh)
         {
-            std::string mName = mesh->model ? mesh->model->GetName() : "";
-            uint32_t len = (uint32_t)mName.length();
-            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-            os.write(mName.c_str(), len);
+            std::string modelName = mesh->model ? mesh->model->GetName() : "";
+            WriteString(os, modelName);
 
-            auto s_ptr = mesh->shader.lock();
-            std::string sName = s_ptr ? s_ptr->GetName() : "";
-            len = (uint32_t)sName.length();
-            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-            os.write(sName.c_str(), len);
-
-            os.write(reinterpret_cast<const char*>(&mesh->castShadow), sizeof(mesh->castShadow));
+            auto shaderPtr = mesh->shader.lock();
+            std::string shaderName = shaderPtr ? shaderPtr->GetName() : mesh->shaderName;
+            WriteString(os, shaderName);
+            WriteBool(os, mesh->castShadow);
         }
 
         auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity);
-        bool hasMat = (mat != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasMat), sizeof(hasMat));
-        if (hasMat)
-        {
-            os.write(reinterpret_cast<const char*>(&mat->desc), sizeof(mat->desc));
-        }
+        WriteBool(os, mat != nullptr);
+        if (mat)
+            WriteMaterialDescriptor(os, mat->desc);
 
         auto* cam = scene.registry.try_get<CameraComponent>(entity);
-        bool hasCam = (cam != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasCam), sizeof(hasCam));
-        if (hasCam)
-        {
-            os.write(reinterpret_cast<const char*>(cam), sizeof(CameraComponent));
-        }
+        WriteBool(os, cam != nullptr);
+        if (cam)
+            WriteCamera(os, *cam);
 
         auto* dl = scene.registry.try_get<DirectionalLightComponent>(entity);
-        bool hasDL = (dl != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasDL), sizeof(hasDL));
-        if (hasDL)
-            os.write(reinterpret_cast<const char*>(dl), sizeof(DirectionalLightComponent));
+        WriteBool(os, dl != nullptr);
+        if (dl)
+            WriteDirectionalLight(os, *dl);
 
         auto* pl = scene.registry.try_get<PointLightComponent>(entity);
-        bool hasPL = (pl != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasPL), sizeof(hasPL));
-        if (hasPL)
-            os.write(reinterpret_cast<const char*>(pl), sizeof(PointLightComponent));
+        WriteBool(os, pl != nullptr);
+        if (pl)
+            WritePointLight(os, *pl);
 
-        auto* sl_comp = scene.registry.try_get<SpotLightComponent>(entity);
-        bool hasSL = (sl_comp != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasSL), sizeof(hasSL));
-        if (hasSL)
-            os.write(reinterpret_cast<const char*>(sl_comp), sizeof(SpotLightComponent));
+        auto* spot = scene.registry.try_get<SpotLightComponent>(entity);
+        WriteBool(os, spot != nullptr);
+        if (spot)
+            WriteSpotLight(os, *spot);
 
         auto* sky = scene.registry.try_get<SkyboxRenderComponent>(entity);
-        bool hasSky = (sky != nullptr);
-        os.write(reinterpret_cast<const char*>(&hasSky), sizeof(hasSky));
-        if (hasSky)
+        WriteBool(os, sky != nullptr);
+        if (sky)
         {
-            os.write(reinterpret_cast<const char*>(&sky->isPrimary), sizeof(sky->isPrimary));
-            std::string sName = sky->skybox ? sky->skybox->GetName() : "";
-            uint32_t len = (uint32_t)sName.length();
-            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-            os.write(sName.c_str(), len);
+            WriteBool(os, sky->isPrimary);
+            std::string skyboxName = sky->skybox ? sky->skybox->GetName() : "";
+            WriteString(os, skyboxName);
 
-            auto sh_ptr = sky->shader.lock();
-            std::string shName = sh_ptr ? sh_ptr->GetName() : "";
-            len = (uint32_t)shName.length();
-            os.write(reinterpret_cast<const char*>(&len), sizeof(len));
-            os.write(shName.c_str(), len);
+            auto shaderPtr = sky->shader.lock();
+            std::string shaderName = shaderPtr ? shaderPtr->GetName() : sky->shaderName;
+            WriteString(os, shaderName);
         }
     }
 
-    os.close();
+    if (!os.good())
+        return false;
+
     LOGGER_INFO("BinarySceneSerializer") << "Serialized scene to: " << path;
     return true;
 }
 
 bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
 {
-    auto& sl = ServiceLocator::Instance();
-    auto& rm = sl.Require<ResourceManager>();
-    auto& physics = sl.Require<IPhysicsWorld>();
-
     std::ifstream is(path, std::ios::binary);
     if (!is.is_open())
         return false;
 
-    uint32_t magic, version;
-    is.read(reinterpret_cast<char*>(&magic), sizeof(magic));
-    is.read(reinterpret_cast<char*>(&version), sizeof(version));
+    uint32_t magic = 0;
+    uint32_t version = 0;
+    ReadValue(is, magic);
+    ReadValue(is, version);
 
     if (magic != scene::BINARY_MAGIC)
         return false;
 
-    uint32_t entityCount;
-    is.read(reinterpret_cast<char*>(&entityCount), sizeof(entityCount));
+    uint32_t entityCount = 0;
+    ReadValue(is, entityCount);
 
-    auto readString = [&]() -> std::string {
-        uint32_t len;
-        is.read(reinterpret_cast<char*>(&len), sizeof(len));
-        std::string s(len, ' ');
-        is.read(&s[0], len);
-        return s;
-    };
-
-    if (version >= 2)
+    auto* configMgr = ServiceLocator::Instance().Resolve<ConfigManager>();
+    if (version >= 2 && configMgr)
     {
-        auto& configMgr = sl.Require<ConfigManager>();
-        AppConfig config = configMgr.GetConfig();
-
-        config.title = readString();
-        is.read(reinterpret_cast<char*>(&config.logLevel), sizeof(config.logLevel));
-        is.read(reinterpret_cast<char*>(&config.numJobThreads), sizeof(config.numJobThreads));
-        is.read(reinterpret_cast<char*>(&config.timeScale), sizeof(config.timeScale));
-        config.iconPath = readString();
-        config.audioDevice = readString();
-        is.read(reinterpret_cast<char*>(&config.width), 4 * 7);
-        is.read(reinterpret_cast<char*>(&config.graphicsBackend), sizeof(config.graphicsBackend));
-        is.read(reinterpret_cast<char*>(&config.msaaSamples), 4 * 3);
-        is.read(reinterpret_cast<char*>(&config.renderScale), 4 * 1);
-        is.read(reinterpret_cast<char*>(&config.asyncResourceLoading), sizeof(bool));
-        is.read(reinterpret_cast<char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
-        is.read(reinterpret_cast<char*>(&config.hdrEnabled), sizeof(bool) * 2);
-        is.read(reinterpret_cast<char*>(&config.gamma), 4 * 6);
-        is.read(reinterpret_cast<char*>(&config.clearColor), 4 * 4);
-        is.read(reinterpret_cast<char*>(&config.shadowsEnabled), sizeof(bool));
-        is.read(reinterpret_cast<char*>(&config.shadowMode), 4 * 3);
-        is.read(reinterpret_cast<char*>(&config.shadowFrustumCullingEnabled), sizeof(bool));
-        is.read(reinterpret_cast<char*>(&config.shadowDistanceCulling), 4 * 3);
-        is.read(reinterpret_cast<char*>(&config.physicsBackend), sizeof(config.physicsBackend));
-        is.read(reinterpret_cast<char*>(&config.physicsMode), sizeof(config.physicsMode));
-        is.read(reinterpret_cast<char*>(&config.gravity), 4 * 3);
-        is.read(reinterpret_cast<char*>(&config.maxSubSteps), 4 * 2);
-        is.read(reinterpret_cast<char*>(&config.ccdEnabled), sizeof(bool));
-        is.read(reinterpret_cast<char*>(&config.ccdThreshold), 4 * 2);
-        is.read(reinterpret_cast<char*>(&config.mouseSensitivityX), 4 * 2);
-        is.read(reinterpret_cast<char*>(&config.mouseInvertX), sizeof(bool) * 2);
-        is.read(reinterpret_cast<char*>(&config.audioBackend), sizeof(config.audioBackend));
-        is.read(reinterpret_cast<char*>(&config.masterVolume), 4);
-        is.read(reinterpret_cast<char*>(&config.cullFaceEnabled), sizeof(bool) * 5);
-        is.read(reinterpret_cast<char*>(&config.renderOrderEnabled), sizeof(bool));
-        is.read(reinterpret_cast<char*>(&config.filterLayerMask), 4 * 2);
-
-        configMgr.UpdateConfig(config);
+        AppConfig config = configMgr->GetConfig();
+        if (version >= 3)
+            ReadAppConfigV3(is, config);
+        else
+            ReadLegacyAppConfigV2(is, config);
+        configMgr->UpdateConfig(config);
+    }
+    else if (version >= 3)
+    {
+        AppConfig ignored;
+        ReadAppConfigV3(is, ignored);
+    }
+    else if (version >= 2)
+    {
+        AppConfig ignored;
+        ReadLegacyAppConfigV2(is, ignored);
     }
 
+    if (!is.good())
+        return false;
+
+    auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
     std::vector<entt::entity> entities;
     std::vector<int32_t> parents;
+    entities.reserve(entityCount);
+    parents.reserve(entityCount);
 
     for (uint32_t i = 0; i < entityCount; ++i)
     {
-        std::string name = readString();
-        std::string tag = readString();
-        uint32_t layer;
-        is.read(reinterpret_cast<char*>(&layer), sizeof(layer));
+        std::string name = ReadString(is);
+        std::string tag = ReadString(is);
+        uint32_t layer = 1;
+        ReadValue(is, layer);
 
         entt::entity entity = scene.registry.create();
         entities.push_back(entity);
@@ -283,118 +797,157 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         auto& info = scene.registry.emplace<InfoComponent>(entity, name, tag);
         info.layer = layer;
 
-        bool hasP, hasR, hasS;
-        is.read(reinterpret_cast<char*>(&hasP), sizeof(hasP));
+        bool hasP = false;
+        bool hasR = false;
+        bool hasS = false;
+        ReadBool(is, hasP);
         if (hasP)
         {
-            glm::vec3 v;
-            is.read(reinterpret_cast<char*>(&v), sizeof(v));
-            scene.registry.emplace<PositionComponent>(entity, v, v);
+            glm::vec3 value;
+            if (version >= 3)
+                ReadVec3(is, value);
+            else
+                is.read(reinterpret_cast<char*>(&value), sizeof(value));
+            scene.registry.emplace<PositionComponent>(entity, value, value);
         }
 
-        is.read(reinterpret_cast<char*>(&hasR), sizeof(hasR));
+        ReadBool(is, hasR);
         if (hasR)
         {
-            glm::quat v;
-            is.read(reinterpret_cast<char*>(&v), sizeof(v));
-            scene.registry.emplace<RotationComponent>(entity, v, v);
+            glm::quat value;
+            if (version >= 3)
+                ReadQuat(is, value);
+            else
+                is.read(reinterpret_cast<char*>(&value), sizeof(value));
+            scene.registry.emplace<RotationComponent>(entity, value, value);
         }
 
-        is.read(reinterpret_cast<char*>(&hasS), sizeof(hasS));
+        ReadBool(is, hasS);
         if (hasS)
         {
-            glm::vec3 v;
-            is.read(reinterpret_cast<char*>(&v), sizeof(v));
-            scene.registry.emplace<ScaleComponent>(entity, v, v);
+            glm::vec3 value;
+            if (version >= 3)
+                ReadVec3(is, value);
+            else
+                is.read(reinterpret_cast<char*>(&value), sizeof(value));
+            scene.registry.emplace<ScaleComponent>(entity, value, value);
         }
 
-        int32_t pIdx;
-        is.read(reinterpret_cast<char*>(&pIdx), sizeof(pIdx));
-        parents.push_back(pIdx);
+        int32_t parentIdx = -1;
+        ReadValue(is, parentIdx);
+        parents.push_back(parentIdx);
 
-        bool hasMesh;
-        is.read(reinterpret_cast<char*>(&hasMesh), sizeof(hasMesh));
+        bool hasMesh = false;
+        ReadBool(is, hasMesh);
         if (hasMesh)
         {
-            std::string modelName = readString();
-            std::string shaderName = readString();
-            bool castShadow;
-            is.read(reinterpret_cast<char*>(&castShadow), sizeof(castShadow));
+            std::string modelName = ReadString(is);
+            std::string shaderName = ReadString(is);
+            bool castShadow = true;
+            ReadBool(is, castShadow);
 
-            auto& m = scene.registry.emplace<MeshRendererComponent>(entity);
-            m.model = rm.GetModel(modelName);
-            m.shader = rm.GetShader(shaderName);
-            m.castShadow = castShadow;
+            auto& mesh = scene.registry.emplace<MeshRendererComponent>(entity);
+            if (resources)
+            {
+                mesh.model = resources->GetModel(modelName);
+                mesh.shader = resources->GetShader(shaderName);
+            }
+            mesh.shaderName = shaderName;
+            mesh.castShadow = castShadow;
         }
 
-        bool hasMat;
-        is.read(reinterpret_cast<char*>(&hasMat), sizeof(hasMat));
+        bool hasMat = false;
+        ReadBool(is, hasMat);
         if (hasMat)
         {
-            auto& m = scene.registry.emplace<AxisMaterialComponent>(entity);
-            is.read(reinterpret_cast<char*>(&m.desc), sizeof(m.desc));
-            m.gpu.dirty = true;
+            auto& material = scene.registry.emplace<AxisMaterialComponent>(entity);
+            if (version >= 3)
+            {
+                ReadMaterialDescriptor(is, material.desc);
+            }
+            else
+            {
+                SkipLegacyBytes(is, LEGACY_AXIS_MATERIAL_DESCRIPTOR_V2_BYTES);
+            }
+            material.gpu.dirty = true;
+            material.gpu.batchKeyDirty = true;
         }
 
-        bool hasCam;
-        is.read(reinterpret_cast<char*>(&hasCam), sizeof(hasCam));
+        bool hasCam = false;
+        ReadBool(is, hasCam);
         if (hasCam)
         {
-            auto& c = scene.registry.emplace<CameraComponent>(entity);
-            is.read(reinterpret_cast<char*>(&c), sizeof(CameraComponent));
+            auto& camera = scene.registry.emplace<CameraComponent>(entity);
+            if (version >= 3)
+                ReadCamera(is, camera);
+            else
+                ReadLegacyCameraV2(is, camera);
         }
 
-        bool hasDL;
-        is.read(reinterpret_cast<char*>(&hasDL), sizeof(hasDL));
+        bool hasDL = false;
+        ReadBool(is, hasDL);
         if (hasDL)
         {
-            auto& l = scene.registry.emplace<DirectionalLightComponent>(entity);
-            is.read(reinterpret_cast<char*>(&l), sizeof(DirectionalLightComponent));
+            auto& light = scene.registry.emplace<DirectionalLightComponent>(entity);
+            if (version >= 3)
+                ReadDirectionalLight(is, light);
+            else
+                ReadLegacyDirectionalLightV2(is, light);
         }
 
-        bool hasPL;
-        is.read(reinterpret_cast<char*>(&hasPL), sizeof(hasPL));
+        bool hasPL = false;
+        ReadBool(is, hasPL);
         if (hasPL)
         {
-            auto& l = scene.registry.emplace<PointLightComponent>(entity);
-            is.read(reinterpret_cast<char*>(&l), sizeof(PointLightComponent));
+            auto& light = scene.registry.emplace<PointLightComponent>(entity);
+            if (version >= 3)
+                ReadPointLight(is, light);
+            else
+                ReadLegacyPointLightV2(is, light);
         }
 
-        bool hasSL;
-        is.read(reinterpret_cast<char*>(&hasSL), sizeof(hasSL));
+        bool hasSL = false;
+        ReadBool(is, hasSL);
         if (hasSL)
         {
-            auto& l = scene.registry.emplace<SpotLightComponent>(entity);
-            is.read(reinterpret_cast<char*>(&l), sizeof(SpotLightComponent));
+            auto& light = scene.registry.emplace<SpotLightComponent>(entity);
+            if (version >= 3)
+                ReadSpotLight(is, light);
+            else
+                ReadLegacySpotLightV2(is, light);
         }
 
-        bool hasSky;
-        is.read(reinterpret_cast<char*>(&hasSky), sizeof(hasSky));
+        bool hasSky = false;
+        ReadBool(is, hasSky);
         if (hasSky)
         {
-            auto& s = scene.registry.emplace<SkyboxRenderComponent>(entity);
-            is.read(reinterpret_cast<char*>(&s.isPrimary), sizeof(s.isPrimary));
-            std::string sName = readString();
-            std::string shName = readString();
-            s.skybox = rm.GetSkybox(sName);
-            s.shader = rm.GetShader(shName);
-            if (s.isPrimary)
+            auto& sky = scene.registry.emplace<SkyboxRenderComponent>(entity);
+            ReadBool(is, sky.isPrimary);
+            std::string skyboxName = ReadString(is);
+            std::string shaderName = ReadString(is);
+            if (resources)
+            {
+                sky.skybox = resources->GetSkybox(skyboxName);
+                sky.shader = resources->GetShader(shaderName);
+            }
+            sky.shaderName = shaderName;
+            if (sky.isPrimary)
                 EntityManager::SetActiveSkybox(scene, entity);
         }
 
         scene.registry.emplace<HierarchyComponent>(entity);
         scene.registry.emplace<WorldTransformComponent>(entity);
+
+        if (!is.good())
+            return false;
     }
 
     for (size_t i = 0; i < entities.size(); ++i)
     {
-        if (parents[i] != -1 && (size_t)parents[i] < entities.size())
-        {
+        if (parents[i] != -1 && static_cast<size_t>(parents[i]) < entities.size())
             EntityManager::SetParent(scene, entities[i], entities[parents[i]]);
-        }
     }
 
-    is.close();
     LOGGER_INFO("BinarySceneSerializer") << "Deserialized scene: " << path;
     return true;
 }

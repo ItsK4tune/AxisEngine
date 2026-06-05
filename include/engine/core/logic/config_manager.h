@@ -21,10 +21,12 @@ public:
 
     void UpdateConfig(const AppConfig& config, uint32_t type = ConfigChangedEvent::All)
     {
+        AppConfig snapshot;
         {
             std::unique_lock<std::shared_mutex> lock(m_Mutex);
             m_Config = config;
             m_Config.headlessMode = m_IsHeadless;  // preserve headless flag
+            snapshot = m_Config;
         }
         // In headless mode, strip non-critical change categories
         if (m_IsHeadless)
@@ -34,22 +36,24 @@ public:
             if (type == ConfigChangedEvent::None)
                 return;
         }
-        EventManager::Instance().Publish(ConfigChangedEvent{m_Config, type});
+        EventManager::Instance().Publish(ConfigChangedEvent{snapshot, type});
     }
 
     void SetResolution(int width, int height)
     {
+        AppConfig snapshot;
         {
             std::unique_lock<std::shared_mutex> lock(m_Mutex);
             if (m_Config.width == width && m_Config.height == height)
                 return;
             m_Config.width = width;
             m_Config.height = height;
+            snapshot = m_Config;
         }
-        EventManager::Instance().Publish(ConfigChangedEvent{m_Config, ConfigChangedEvent::Window});
+        EventManager::Instance().Publish(ConfigChangedEvent{snapshot, ConfigChangedEvent::Window});
     }
 
-    const AppConfig& GetConfig() const
+    AppConfig GetConfig() const
     {
         std::shared_lock<std::shared_mutex> lock(m_Mutex);
         return m_Config;

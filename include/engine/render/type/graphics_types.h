@@ -1,8 +1,13 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 class IGraphicsContext;
@@ -432,12 +437,130 @@ struct SkinnedVertex
 };
 struct Texture
 {
+    enum class PixelDataOwnership
+    {
+        Borrowed,
+        Stbi,
+        Malloc,
+        Array
+    };
+
     unsigned int id = 0;
     std::string type;
     std::string path;
 
     unsigned char* pixelData = nullptr;
+    std::shared_ptr<unsigned char> pixelDataOwner;
     int width = 0, height = 0, nrComponents = 0;
+
+    Texture() = default;
+
+    Texture(const Texture& other)
+        : id(other.id),
+          type(other.type),
+          path(other.path),
+          pixelDataOwner(other.pixelDataOwner),
+          width(other.width),
+          height(other.height),
+          nrComponents(other.nrComponents)
+    {
+        pixelData = pixelDataOwner ? pixelDataOwner.get() : other.pixelData;
+    }
+
+    Texture& operator=(const Texture& other)
+    {
+        if (this == &other)
+            return *this;
+
+        id = other.id;
+        type = other.type;
+        path = other.path;
+        pixelDataOwner = other.pixelDataOwner;
+        pixelData = pixelDataOwner ? pixelDataOwner.get() : other.pixelData;
+        width = other.width;
+        height = other.height;
+        nrComponents = other.nrComponents;
+        return *this;
+    }
+
+    Texture(Texture&& other) noexcept
+        : id(other.id),
+          type(std::move(other.type)),
+          path(std::move(other.path)),
+          pixelDataOwner(std::move(other.pixelDataOwner)),
+          width(other.width),
+          height(other.height),
+          nrComponents(other.nrComponents)
+    {
+        pixelData = pixelDataOwner ? pixelDataOwner.get() : other.pixelData;
+        other.pixelData = nullptr;
+        other.width = 0;
+        other.height = 0;
+        other.nrComponents = 0;
+    }
+
+    Texture& operator=(Texture&& other) noexcept
+    {
+        if (this == &other)
+            return *this;
+
+        ReleasePixelData();
+        id = other.id;
+        type = std::move(other.type);
+        path = std::move(other.path);
+        pixelDataOwner = std::move(other.pixelDataOwner);
+        pixelData = pixelDataOwner ? pixelDataOwner.get() : other.pixelData;
+        width = other.width;
+        height = other.height;
+        nrComponents = other.nrComponents;
+        other.pixelData = nullptr;
+        other.width = 0;
+        other.height = 0;
+        other.nrComponents = 0;
+        return *this;
+    }
+
+    void SetPixelData(unsigned char* data, PixelDataOwnership ownership)
+    {
+        ReleasePixelData();
+        pixelData = data;
+
+        if (!data || ownership == PixelDataOwnership::Borrowed)
+            return;
+
+        if (ownership == PixelDataOwnership::Array)
+        {
+            pixelDataOwner = std::shared_ptr<unsigned char>(data, [](unsigned char* ptr) { delete[] ptr; });
+        }
+        else
+        {
+            pixelDataOwner = std::shared_ptr<unsigned char>(data, [](unsigned char* ptr) { std::free(ptr); });
+        }
+    }
+
+    void SetPixelDataCopy(const unsigned char* data, std::size_t size)
+    {
+        if (!data || size == 0)
+        {
+            ReleasePixelData();
+            return;
+        }
+
+        auto* copy = new unsigned char[size];
+        std::memcpy(copy, data, size);
+        SetPixelData(copy, PixelDataOwnership::Array);
+    }
+
+    void ReleasePixelData()
+    {
+        pixelDataOwner.reset();
+        pixelData = nullptr;
+    }
+
+    bool OwnsPixelData() const
+    {
+        return pixelDataOwner != nullptr;
+    }
 };
 
 #include <resource/unit/bone_info.h>

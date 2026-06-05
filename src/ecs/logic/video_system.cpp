@@ -17,11 +17,28 @@ void VideoSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<VideoSystem>(this);
+    if (m_BoundScene)
+    {
+        m_BoundScene->registry.on_destroy<VideoPlayerComponent>().disconnect<&VideoSystem::OnVideoPlayerDestroyed>(
+            this);
+        m_BoundScene = nullptr;
+    }
 
     auto* scene = sl.Resolve<Scene>();
     if (scene)
     {
-        scene->registry.on_destroy<VideoPlayerComponent>().connect<&VideoSystem::OnVideoPlayerDestroyed>(*this);
+        scene->registry.on_destroy<VideoPlayerComponent>().connect<&VideoSystem::OnVideoPlayerDestroyed>(this);
+        m_BoundScene = scene;
+    }
+}
+
+void VideoSystem::Shutdown()
+{
+    if (m_BoundScene)
+    {
+        m_BoundScene->registry.on_destroy<VideoPlayerComponent>().disconnect<&VideoSystem::OnVideoPlayerDestroyed>(
+            this);
+        m_BoundScene = nullptr;
     }
 }
 

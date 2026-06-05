@@ -60,7 +60,7 @@ void PhysicsEditorModule::Render(Scene& scene)
     bool showParticle = false;
     if (cm)
     {
-        auto& conf = cm->GetConfig();
+        auto conf = cm->GetConfig();
         showPhysics = conf.debug.physicsDebug;
         showAudio = conf.debug.audioDebug;
         showParticle = conf.debug.particleDebug;

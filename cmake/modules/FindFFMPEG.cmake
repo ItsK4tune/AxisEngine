@@ -13,6 +13,8 @@
 
 # --- Include directory ---
 FIND_PATH(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
+    PATH_SUFFIXES ffmpeg
+    PATHS
     /usr/include
     /usr/local/include
     /opt/local/include
@@ -76,4 +78,11 @@ if(FFMPEG_FOUND)
         ${SWSCALE_LIBRARY}
         ${SWRESAMPLE_LIBRARY}
     )
+    if(NOT TARGET FFMPEG::FFMPEG)
+        add_library(FFMPEG::FFMPEG INTERFACE IMPORTED)
+        set_target_properties(FFMPEG::FFMPEG PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIR}"
+            INTERFACE_LINK_LIBRARIES "${FFMPEG_LIBRARIES}"
+        )
+    endif()
 endif()

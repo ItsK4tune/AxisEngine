@@ -22,4 +22,4 @@ BraceWrapping:
   SplitEmptyFunction: true
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
-Standard: c++17
+Standard: c++20

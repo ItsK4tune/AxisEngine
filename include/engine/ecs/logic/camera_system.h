@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <vector>
@@ -41,4 +42,5 @@ public:
 
 private:
     bool m_Enabled = true;
+    EventSubscriptionList m_EventSubscriptions;
 };

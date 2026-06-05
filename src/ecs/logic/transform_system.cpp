@@ -17,13 +17,22 @@ void TransformSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<TransformSystem>(this);
+    m_EventSubscriptions.Clear();
     if (auto* scene = sl.Resolve<Scene>())
         BindRegistry(*scene);
 
-    EventManager::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
+    m_EventSubscriptions.Add(EventManager::Instance().Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) {
         if (e.scene)
             BindRegistry(*e.scene);
-    });
+    }));
+}
+
+void TransformSystem::Shutdown()
+{
+    m_EventSubscriptions.Clear();
+    UnbindRegistries();
+    m_LinearTransforms.clear();
+    m_IsLinearTransformsDirty = true;
 }
 
 void TransformSystem::BindRegistry(Scene& scene)
@@ -45,6 +54,27 @@ void TransformSystem::BindRegistry(Scene& scene)
 
     m_IsLinearTransformsDirty = true;
     RebuildLinearTransforms(scene);
+}
+
+void TransformSystem::UnbindRegistries()
+{
+    for (auto* registry : m_BoundRegistries)
+    {
+        if (!registry)
+            continue;
+
+        registry->on_construct<HierarchyComponent>().disconnect<&TransformSystem::OnHierarchyChanged>(this);
+        registry->on_destroy<HierarchyComponent>().disconnect<&TransformSystem::OnHierarchyChanged>(this);
+        registry->on_update<HierarchyComponent>().disconnect<&TransformSystem::OnHierarchyChanged>(this);
+
+        registry->on_construct<WorldTransformComponent>().disconnect<&TransformSystem::OnHierarchyChanged>(this);
+        registry->on_destroy<WorldTransformComponent>().disconnect<&TransformSystem::OnHierarchyChanged>(this);
+
+        registry->on_update<PositionComponent>().disconnect<&TransformSystem::OnTransformChanged>(this);
+        registry->on_update<RotationComponent>().disconnect<&TransformSystem::OnTransformChanged>(this);
+        registry->on_update<ScaleComponent>().disconnect<&TransformSystem::OnTransformChanged>(this);
+    }
+    m_BoundRegistries.clear();
 }
 
 void TransformSystem::OnTransformChanged(entt::registry& reg, entt::entity entity)

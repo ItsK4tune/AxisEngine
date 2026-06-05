@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <render/type/graphics_types.h>
 #include <resource/interface/i_resource_libraries.h>
 #include <resource/unit/shader.h>
@@ -171,6 +172,7 @@ private:
     float m_Exposure = 1.0f;
     float m_Gamma = 2.2f;
     int m_TonemappingMode = 1;
+    EventSubscriptionList m_EventSubscriptions;
 
     void UpdateConfig();
     void InitQuad();

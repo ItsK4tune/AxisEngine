@@ -29,6 +29,7 @@ class IEventDispatcher
 {
 public:
     virtual ~IEventDispatcher() = default;
+    virtual void UnregisterAny(int id) = 0;
     virtual bool HasListeners() const = 0;
 };
 
@@ -65,6 +66,11 @@ public:
             std::remove_if(newListeners->begin(), newListeners->end(), [id](const Listener& l) { return l.id == id; }),
             newListeners->end());
         m_Listeners = std::move(newListeners);
+    }
+
+    void UnregisterAny(int id) override
+    {
+        Unregister(id);
     }
 
     void Dispatch(const T& event)
@@ -134,6 +140,23 @@ public:
         {
             auto* dispatcher = static_cast<EventDispatcher<T>*>(m_Dispatchers[eventId].get());
             dispatcher->Unregister(listenerId);
+        }
+    }
+
+    void Unsubscribe(int listenerId)
+    {
+        std::vector<std::shared_ptr<IEventDispatcher>> dispatchers;
+        {
+            std::lock_guard<std::mutex> lock(m_DispatchersMutex);
+            dispatchers = m_Dispatchers;
+        }
+
+        for (auto& dispatcher : dispatchers)
+        {
+            if (dispatcher)
+            {
+                dispatcher->UnregisterAny(listenerId);
+            }
         }
     }
 
@@ -238,4 +261,59 @@ public:
 
 private:
     int m_ListenerId = -1;
+};
+
+class EventSubscriptionList
+{
+public:
+    EventSubscriptionList() = default;
+
+    ~EventSubscriptionList()
+    {
+        Clear();
+    }
+
+    EventSubscriptionList(const EventSubscriptionList&) = delete;
+    EventSubscriptionList& operator=(const EventSubscriptionList&) = delete;
+
+    EventSubscriptionList(EventSubscriptionList&& other) noexcept : m_ListenerIds(std::move(other.m_ListenerIds))
+    {
+        other.m_ListenerIds.clear();
+    }
+
+    EventSubscriptionList& operator=(EventSubscriptionList&& other) noexcept
+    {
+        if (this != &other)
+        {
+            Clear();
+            m_ListenerIds = std::move(other.m_ListenerIds);
+            other.m_ListenerIds.clear();
+        }
+        return *this;
+    }
+
+    void Add(int listenerId)
+    {
+        if (listenerId != -1)
+        {
+            m_ListenerIds.push_back(listenerId);
+        }
+    }
+
+    void Clear()
+    {
+        for (int listenerId : m_ListenerIds)
+        {
+            EventManager::Instance().Unsubscribe(listenerId);
+        }
+        m_ListenerIds.clear();
+    }
+
+    bool Empty() const
+    {
+        return m_ListenerIds.empty();
+    }
+
+private:
+    std::vector<int> m_ListenerIds;
 };

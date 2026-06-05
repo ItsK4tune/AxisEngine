@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/logic/event_manager.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_render_system.h>
@@ -97,4 +98,5 @@ private:
     class IShadowService* m_ShadowService = nullptr;
     class IGraphicsContext* m_GraphicsContext = nullptr;
     class ConfigManager* m_ConfigManager = nullptr;
+    EventSubscriptionList m_EventSubscriptions;
 };

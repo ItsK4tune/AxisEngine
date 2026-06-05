@@ -195,32 +195,35 @@ void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& sc
             script->instance->OnMouseExit();
         }
 
-        DispatchPointerButton(mouse.IsLeftButtonPressed(), isInside, safeDt, inputScript->GetLeftPressedRef(),
-                              inputScript->GetLeftHoldTimeRef(),
-                              [&]() {
-                                  inputScript->OnLeftClick();
-                                  script->instance->OnMouseClicked(Mouse::Left);
-                              },
-                              [&](float duration) { inputScript->OnLeftHold(duration); },
-                              [&](float duration) { inputScript->OnLeftRelease(duration); });
+        DispatchPointerButton(
+            mouse.IsLeftButtonPressed(), isInside, safeDt, inputScript->GetLeftPressedRef(),
+            inputScript->GetLeftHoldTimeRef(),
+            [&]() {
+                inputScript->OnLeftClick();
+                script->instance->OnMouseClicked(Mouse::Left);
+            },
+            [&](float duration) { inputScript->OnLeftHold(duration); },
+            [&](float duration) { inputScript->OnLeftRelease(duration); });
 
-        DispatchPointerButton(mouse.IsRightButtonPressed(), isInside, safeDt, inputScript->GetRightPressedRef(),
-                              inputScript->GetRightHoldTimeRef(),
-                              [&]() {
-                                  inputScript->OnRightClick();
-                                  script->instance->OnMouseClicked(Mouse::Right);
-                              },
-                              [&](float duration) { inputScript->OnRightHold(duration); },
-                              [&](float duration) { inputScript->OnRightRelease(duration); });
+        DispatchPointerButton(
+            mouse.IsRightButtonPressed(), isInside, safeDt, inputScript->GetRightPressedRef(),
+            inputScript->GetRightHoldTimeRef(),
+            [&]() {
+                inputScript->OnRightClick();
+                script->instance->OnMouseClicked(Mouse::Right);
+            },
+            [&](float duration) { inputScript->OnRightHold(duration); },
+            [&](float duration) { inputScript->OnRightRelease(duration); });
 
-        DispatchPointerButton(mouse.IsMiddleButtonPressed(), isInside, safeDt, inputScript->GetMiddlePressedRef(),
-                              inputScript->GetMiddleHoldTimeRef(),
-                              [&]() {
-                                  inputScript->OnMiddleClick();
-                                  script->instance->OnMouseClicked(Mouse::Middle);
-                              },
-                              [&](float duration) { inputScript->OnMiddleHold(duration); },
-                              [&](float duration) { inputScript->OnMiddleRelease(duration); });
+        DispatchPointerButton(
+            mouse.IsMiddleButtonPressed(), isInside, safeDt, inputScript->GetMiddlePressedRef(),
+            inputScript->GetMiddleHoldTimeRef(),
+            [&]() {
+                inputScript->OnMiddleClick();
+                script->instance->OnMouseClicked(Mouse::Middle);
+            },
+            [&](float duration) { inputScript->OnMiddleHold(duration); },
+            [&](float duration) { inputScript->OnMiddleRelease(duration); });
     }
 }
 }  // namespace
@@ -232,24 +235,48 @@ void ScriptableSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<ScriptableSystem>(this);
     auto& ev = EventManager::Instance();
+    m_EventSubscriptions.Clear();
 
-    m_SceneSubId = ev.Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) { OnSceneChanged(e); });
+    m_EventSubscriptions.Add(
+        ev.Subscribe<SceneChangedEvent>([this](const SceneChangedEvent& e) { OnSceneChanged(e); }));
 
-    m_EventSubs.push_back(
+    m_EventSubscriptions.Add(
         ev.Subscribe<EntityCollisionEvent>([this](const EntityCollisionEvent& e) { OnEntityCollision(e); }));
-    m_EventSubs.push_back(
+    m_EventSubscriptions.Add(
         ev.Subscribe<EntityTriggerEvent>([this](const EntityTriggerEvent& e) { OnEntityTrigger(e); }));
-    m_EventSubs.push_back(ev.Subscribe<KeyPressedEvent>([this](const KeyPressedEvent& e) { OnKeyPressed(e); }));
-    m_EventSubs.push_back(ev.Subscribe<KeyReleasedEvent>([this](const KeyReleasedEvent& e) { OnKeyReleased(e); }));
-    m_EventSubs.push_back(
+    m_EventSubscriptions.Add(ev.Subscribe<KeyPressedEvent>([this](const KeyPressedEvent& e) { OnKeyPressed(e); }));
+    m_EventSubscriptions.Add(ev.Subscribe<KeyReleasedEvent>([this](const KeyReleasedEvent& e) { OnKeyReleased(e); }));
+    m_EventSubscriptions.Add(
         ev.Subscribe<MouseButtonPressedEvent>([this](const MouseButtonPressedEvent& e) { OnMouseButtonPressed(e); }));
-    m_EventSubs.push_back(ev.Subscribe<MouseButtonReleasedEvent>(
+    m_EventSubscriptions.Add(ev.Subscribe<MouseButtonReleasedEvent>(
         [this](const MouseButtonReleasedEvent& e) { OnMouseButtonReleased(e); }));
 
     ComponentLoader::RegisterLoader("Script", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
                                                  IPhysicsWorld* p) { ScriptableSystem::LoadScript(s, e, n); });
 
     m_TimeService = &ServiceLocator::Instance().Require<TimeService>();
+}
+
+void ScriptableSystem::Shutdown()
+{
+    m_EventSubscriptions.Clear();
+    UnbindRegistries();
+    m_ActiveScene = nullptr;
+    m_TimeService = nullptr;
+    m_ScriptEntities.clear();
+}
+
+void ScriptableSystem::UnbindRegistries()
+{
+    for (auto* registry : m_BoundRegistries)
+    {
+        if (!registry)
+            continue;
+
+        registry->on_construct<ScriptComponent>().disconnect<&ScriptableSystem::OnScriptComponentConstructed>(this);
+        registry->on_destroy<ScriptComponent>().disconnect<&ScriptableSystem::OnScriptComponentDestroyed>(this);
+    }
+    m_BoundRegistries.clear();
 }
 
 void ScriptableSystem::OnSceneChanged(const SceneChangedEvent& e)

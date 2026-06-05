@@ -47,7 +47,7 @@ public:
     RuntimeCore& GetRuntimeCore();
     StateMachine& GetStateMachine();
 
-    const AppConfig& GetConfig() const;
+    AppConfig GetConfig() const;
 
     ScriptRegistry* GetScriptRegistry();
 

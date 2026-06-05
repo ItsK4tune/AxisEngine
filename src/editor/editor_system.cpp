@@ -255,7 +255,7 @@ void EditorSystem::OnUpdate(float dt)
             auto cm = sl.Resolve<ConfigManager>();
             if (cm)
             {
-                const auto& conf = cm->GetConfig();
+                auto conf = cm->GetConfig();
                 float tSnap = conf.debug.gridSnapTranslation;
                 float rSnap = glm::radians(conf.debug.gridSnapRotation);
                 float sSnap = conf.debug.gridSnapScale;

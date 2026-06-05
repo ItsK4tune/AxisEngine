@@ -31,17 +31,20 @@ void TerrainSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<TerrainSystem>(this);
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All))
-        {
-        }
-    });
-    EventManager::Instance().Subscribe<DebugNoTextureChangedEvent>(
-        [this](const DebugNoTextureChangedEvent& e) { SetDebugNoTexture(e.enabled); });
+    m_EventSubscriptions.Clear();
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All))
+            {
+            }
+        }));
+    m_EventSubscriptions.Add(EventManager::Instance().Subscribe<DebugNoTextureChangedEvent>(
+        [this](const DebugNoTextureChangedEvent& e) { SetDebugNoTexture(e.enabled); }));
 }
 
 void TerrainSystem::Shutdown()
 {
+    m_EventSubscriptions.Clear();
     if (m_LastScene)
     {
         m_LastScene->registry.on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
@@ -349,7 +352,8 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
         {
             TerrainChunk chunk;
             chunk.gridPos = glm::ivec2(x, z);
-            CreateChunkMesh(chunk, terrain, x * (terrain.chunkSize - 1), z * (terrain.chunkSize - 1), heights, mapWidth, mapHeight);
+            CreateChunkMesh(chunk, terrain, x * (terrain.chunkSize - 1), z * (terrain.chunkSize - 1), heights, mapWidth,
+                            mapHeight);
             data->chunks.push_back(chunk);
         }
     }
@@ -373,7 +377,8 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
             posVal = posComp->value;
         }
     }
-    LOGGER_INFO("TerrainSystem") << "BuildTerrain posVal for entity " << (uint32_t)entity << " is (" << posVal.x << ", " << posVal.y << ", " << posVal.z << ")";
+    LOGGER_INFO("TerrainSystem") << "BuildTerrain posVal for entity " << (uint32_t)entity << " is (" << posVal.x << ", "
+                                 << posVal.y << ", " << posVal.z << ")";
 
     auto* gc = sl.Resolve<IGraphicsContext>();
     if (gc)
@@ -419,7 +424,8 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
             float scaleZ = terrain.terrainSize.z / (float)(mapHeight > 1 ? mapHeight - 1 : 1);
             terrain.collisionShape->SetLocalScaling(glm::vec3(scaleX, 1.0f, scaleZ));
 
-            glm::vec3 centerPos = posVal + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f, terrain.terrainSize.z * 0.5f);
+            glm::vec3 centerPos = posVal + glm::vec3(terrain.terrainSize.x * 0.5f, terrain.maxHeight * 0.5f,
+                                                     terrain.terrainSize.z * 0.5f);
 
             terrain.physicsBody =
                 physics_ptr->CreateRigidBody(0.0f, centerPos, glm::quat(1, 0, 0, 0), terrain.collisionShape);
@@ -438,7 +444,8 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     }
 }
 
-void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset, const std::vector<float>& heights, int mapWidth, int mapHeight)
+void TerrainSystem::CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset,
+                                    const std::vector<float>& heights, int mapWidth, int mapHeight)
 {
     auto* gc_ptr = ServiceLocator::Instance().Resolve<IGraphicsContext>();
     if (!gc_ptr)

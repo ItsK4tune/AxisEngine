@@ -171,12 +171,11 @@ float EngineAccessor::GetRealDeltaTime() const
     return ServiceLocator::Instance().Require<RuntimeCore>().GetEngineLoop().GetRealDeltaTime();
 }
 
-const AppConfig& EngineAccessor::GetConfig() const
+AppConfig EngineAccessor::GetConfig() const
 {
     return ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
 }
 void EngineAccessor::ApplyConfig(const AppConfig& config)
 {
     ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(config);
-    EventManager::Instance().Publish(ConfigChangedEvent{config});
 }

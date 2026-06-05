@@ -4,8 +4,8 @@
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/type/graphics_types.h>
+#include <resource/logic/stb_image_loader.h>
 #include <resource/unit/shader.h>
-#include <stb/stb_image.h>
 #include <iostream>
 
 IBufferManager* Skybox::s_BufferManager = nullptr;
@@ -144,8 +144,6 @@ void Skybox::LoadCubemap(const std::vector<std::string>& faces)
     m_TextureID = tm.GenTexture();
     tm.BindTexture(TextureType::TextureCubeMap, m_TextureID);
 
-    stbi_set_flip_vertically_on_load(false);
-
     for (unsigned int i = 0; i < 6; ++i)
     {
         int width = 0, height = 0, channels = 0;
@@ -156,7 +154,7 @@ void Skybox::LoadCubemap(const std::vector<std::string>& faces)
         if (i < faces.size())
         {
             std::string fullPath = FileSystem::getPath(faces[i]);
-            data = stbi_load(fullPath.c_str(), &width, &height, &channels, 0);
+            data = StbImageLoader::Load(fullPath.c_str(), &width, &height, &channels, 0, false);
 
             if (data)
             {
@@ -164,7 +162,7 @@ void Skybox::LoadCubemap(const std::vector<std::string>& faces)
                 {
                     LOGGER_WARN("Skybox")
                         << "Warning: cubemap face not square: " << faces[i] << ", using fallback color.";
-                    stbi_image_free(data);
+                    StbImageLoader::Free(data);
                     data = nullptr;
                 }
                 else
@@ -209,7 +207,7 @@ void Skybox::LoadCubemap(const std::vector<std::string>& faces)
         else
         {
             tm.TexImage2D(faceTarget, 0, internalFormat, width, height, 0, dataFormat, DataType::UnsignedByte, data);
-            stbi_image_free(data);
+            StbImageLoader::Free(data);
         }
     }
 

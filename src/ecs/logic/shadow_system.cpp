@@ -25,6 +25,7 @@ void ShadowSystem::Initialize()
     auto* context = sl.Resolve<IGraphicsContext>();
     auto* resources = sl.Resolve<ResourceManager>();
     auto* configManager = sl.Resolve<ConfigManager>();
+    m_EventSubscriptions.Clear();
 
     if (!context || !resources || !configManager)
     {
@@ -32,7 +33,7 @@ void ShadowSystem::Initialize()
         return;
     }
 
-    const auto& config = configManager->GetConfig();
+    auto config = configManager->GetConfig();
 
     m_ShadowRenderer.Initialize(*context, *resources);
     m_ShadowRenderer.GetShadow().Initialize(*context, config.shadowMapResolution, config.shadowMapResolution);
@@ -45,34 +46,36 @@ void ShadowSystem::Initialize()
     m_ShadowRenderer.SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
     m_ShadowRenderer.SetShadowDistanceCulling(config.shadowDistanceCulling);
 
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
-            return;
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
+                return;
 
-        const auto& cfg = e.config;
-        m_ShadowRenderer.SetEnableShadows(cfg.shadowsEnabled);
-        m_ShadowRenderer.SetShadowMode(cfg.shadowMode);
-        m_ShadowRenderer.SetShadowBias(cfg.shadowBias);
-        m_ShadowRenderer.SetShadowSoftness(cfg.shadowSoftness);
-        m_ShadowRenderer.SetShadowProjectionSize(cfg.shadowProjectionSize);
-        m_ShadowRenderer.SetShadowFrustumCulling(cfg.shadowFrustumCullingEnabled);
-        m_ShadowRenderer.SetShadowDistanceCulling(cfg.shadowDistanceCulling);
+            const auto& cfg = e.config;
+            m_ShadowRenderer.SetEnableShadows(cfg.shadowsEnabled);
+            m_ShadowRenderer.SetShadowMode(cfg.shadowMode);
+            m_ShadowRenderer.SetShadowBias(cfg.shadowBias);
+            m_ShadowRenderer.SetShadowSoftness(cfg.shadowSoftness);
+            m_ShadowRenderer.SetShadowProjectionSize(cfg.shadowProjectionSize);
+            m_ShadowRenderer.SetShadowFrustumCulling(cfg.shadowFrustumCullingEnabled);
+            m_ShadowRenderer.SetShadowDistanceCulling(cfg.shadowDistanceCulling);
 
-        if (cfg.shadowMapResolution != m_ShadowRenderer.GetShadow().GetShadowWidth())
-        {
-            auto& sl_inner = ServiceLocator::Instance();
-            auto* context_inner = sl_inner.Resolve<IGraphicsContext>();
-            if (context_inner)
+            if (cfg.shadowMapResolution != m_ShadowRenderer.GetShadow().GetShadowWidth())
             {
-                m_ShadowRenderer.GetShadow().Initialize(*context_inner, cfg.shadowMapResolution,
-                                                        cfg.shadowMapResolution);
+                auto& sl_inner = ServiceLocator::Instance();
+                auto* context_inner = sl_inner.Resolve<IGraphicsContext>();
+                if (context_inner)
+                {
+                    m_ShadowRenderer.GetShadow().Initialize(*context_inner, cfg.shadowMapResolution,
+                                                            cfg.shadowMapResolution);
+                }
             }
-        }
-    });
+        }));
 }
 
 void ShadowSystem::Shutdown()
 {
+    m_EventSubscriptions.Clear();
     m_ShadowRenderer.Shutdown();
 }
 
@@ -116,8 +119,7 @@ void ShadowSystem::PrepareShadowLights(Scene& scene)
     int pointShadowCount = 0;
     int spotShadowCount = 0;
     const int shadowMode = m_ShadowRenderer.GetShadowMode();
-    const int maxDirectionalShadows =
-        shadowMode == 2 ? Shadow::MAX_DIR_LIGHTS_SHADOW : (shadowMode == 1 ? 1 : 0);
+    const int maxDirectionalShadows = shadowMode == 2 ? Shadow::MAX_DIR_LIGHTS_SHADOW : (shadowMode == 1 ? 1 : 0);
 
     for (auto& rl : queueLights)
     {
@@ -134,9 +136,8 @@ void ShadowSystem::PrepareShadowLights(Scene& scene)
             glm::vec3 lightPos = -rl.direction * projSize;
             float nearPlane = 1.0f;
             float farPlane = projSize * 3.0f;
-            glm::vec3 up = std::abs(glm::dot(rl.direction, glm::vec3(0, 1, 0))) > 0.99f
-                               ? glm::vec3(0, 0, 1)
-                               : glm::vec3(0, 1, 0);
+            glm::vec3 up =
+                std::abs(glm::dot(rl.direction, glm::vec3(0, 1, 0))) > 0.99f ? glm::vec3(0, 0, 1) : glm::vec3(0, 1, 0);
             glm::mat4 lightProjection = glm::ortho(-projSize, projSize, -projSize, projSize, nearPlane, farPlane);
             rl.viewProj = lightProjection * glm::lookAt(lightPos, glm::vec3(0.0f), up);
             rl.shadowMapIndex = dirShadowCount++;

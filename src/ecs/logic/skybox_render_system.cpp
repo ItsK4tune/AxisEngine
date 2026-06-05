@@ -26,26 +26,35 @@ void SkyboxRenderSystem::Initialize()
     sl.Register<ISkyboxService>(this);
     sl.Register<SkyboxRenderSystem>(this);
     m_Context = sl.Resolve<IGraphicsContext>();
+    m_EventSubscriptions.Clear();
 
     auto* configManager = sl.Resolve<ConfigManager>();
     if (configManager)
     {
         m_Intensity = configManager->GetConfig().skyboxIntensity;
 
-        m_ConfigSubId = EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (e.bitmask & ConfigChangedEvent::Graphics)
-            {
-                auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-                if (cm)
-                    m_Intensity = cm->GetConfig().skyboxIntensity;
-            }
-        });
+        m_EventSubscriptions.Add(
+            EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+                if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All))
+                {
+                    auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+                    if (cm)
+                        m_Intensity = cm->GetConfig().skyboxIntensity;
+                }
+            }));
     }
 
-    m_RenderDataSubId = EventManager::Instance().Subscribe<FrameRenderDataEvent>(
-        [this](const FrameRenderDataEvent& e) { m_LastFrameData.mainFBO = e.data.mainFBO; });
+    m_EventSubscriptions.Add(EventManager::Instance().Subscribe<FrameRenderDataEvent>(
+        [this](const FrameRenderDataEvent& e) { m_LastFrameData.mainFBO = e.data.mainFBO; }));
 
     m_RenderService = sl.Resolve<IRenderService>();
+}
+
+void SkyboxRenderSystem::Shutdown()
+{
+    m_EventSubscriptions.Clear();
+    m_Context = nullptr;
+    m_RenderService = nullptr;
 }
 
 std::vector<entt::id_type> SkyboxRenderSystem::GetReadComponents() const

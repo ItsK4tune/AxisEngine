@@ -2,7 +2,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <platform/strategy/opengl/glfw_translator.h>
-#include <stb/stb_image.h>
+#include <resource/logic/stb_image_loader.h>
 
 #ifdef _WIN32
 #undef APIENTRY
@@ -147,7 +147,7 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
     {
         int w, h, ch;
         std::string iconPath = FileSystem::getPath("include/engine/asset/project/icon.png");
-        unsigned char* pixels = stbi_load(iconPath.c_str(), &w, &h, &ch, 4);
+        unsigned char* pixels = StbImageLoader::Load(iconPath.c_str(), &w, &h, &ch, 4, false);
         if (pixels)
         {
             GLFWimage images[1];
@@ -155,7 +155,7 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
             images[0].height = h;
             images[0].pixels = pixels;
             glfwSetWindowIcon(m_Window, 1, images);
-            stbi_image_free(pixels);
+            StbImageLoader::Free(pixels);
             LOGGER_INFO("GLFWWindow") << "Loaded window icon from file: " << iconPath;
         }
         else

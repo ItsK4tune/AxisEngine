@@ -2,8 +2,11 @@ add_executable(axis_test
     test_main.cpp
     unit/test_collision_matrix.cpp
     unit/test_entity_manager.cpp
+    unit/test_event_manager.cpp
     unit/test_pathfinding.cpp
+    unit/test_texture_ownership.cpp
     unit/test_yaml_parser.cpp
+    integration/test_binary_scene_serializer.cpp
     integration/test_navigation_system.cpp
     integration/test_physics_system.cpp
     integration/test_resource_manager.cpp

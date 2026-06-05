@@ -1,7 +1,7 @@
 #include <platform/logic/monitor_manager.h>
 #include <core/logic/logger.h>
 #include <platform/interface/i_window.h>
-#include <stb/stb_image.h>
+#include <resource/logic/stb_image_loader.h>
 
 MonitorManager::MonitorManager()
     : m_Width(1280),
@@ -102,13 +102,13 @@ void MonitorManager::SetWindowIcon(const std::string& path)
     LOGGER_INFO("MonitorManager") << "Attempting to load icon from: " << path;
 
     int width, height, channels;
-    unsigned char* pixels = stbi_load(path.c_str(), &width, &height, &channels, 4);
+    unsigned char* pixels = StbImageLoader::Load(path.c_str(), &width, &height, &channels, 4, false);
 
     if (pixels)
     {
         LOGGER_INFO("MonitorManager") << "Icon loaded successfully (" << width << "x" << height << ")";
         m_Window->SetIcon(width, height, pixels);
-        stbi_image_free(pixels);
+        StbImageLoader::Free(pixels);
     }
     else
     {

@@ -55,7 +55,7 @@ void DefaultCameraController::OnUpdate(float)
 
     const auto& mouse = io->GetMouse();
     const auto& keyboard = io->GetKeyboard();
-    const AppConfig& config = GetConfig();
+    AppConfig config = GetConfig();
 
     float delta = GetRealDeltaTime();
 

@@ -28,6 +28,7 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
     m_Context = &context;
     m_Width = width;
     m_Height = height;
+    m_EventSubscriptions.Clear();
 
     InitQuad();
     InitFramebuffers();
@@ -40,18 +41,19 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
 
     UpdateConfig();
 
-    EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-        const auto& cfg = e.config;
-        m_ClearColor = glm::vec4(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
-        m_BloomEnabled = cfg.bloomEnabled;
-        m_BloomThreshold = cfg.bloomThreshold;
-        m_BloomIntensity = cfg.bloomIntensity;
-        m_BloomRadius = cfg.bloomRadius;
-        m_HDREnabled = cfg.hdrEnabled;
-        m_Exposure = cfg.hdrEnabled ? cfg.exposure : 1.0f;
-        m_Gamma = cfg.hdrEnabled ? cfg.gamma : 2.2f;
-        m_TonemappingMode = cfg.hdrEnabled ? (int)cfg.tonemappingMode : 0;
-    });
+    m_EventSubscriptions.Add(
+        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
+            const auto& cfg = e.config;
+            m_ClearColor = glm::vec4(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
+            m_BloomEnabled = cfg.bloomEnabled;
+            m_BloomThreshold = cfg.bloomThreshold;
+            m_BloomIntensity = cfg.bloomIntensity;
+            m_BloomRadius = cfg.bloomRadius;
+            m_HDREnabled = cfg.hdrEnabled;
+            m_Exposure = cfg.hdrEnabled ? cfg.exposure : 1.0f;
+            m_Gamma = cfg.hdrEnabled ? cfg.gamma : 2.2f;
+            m_TonemappingMode = cfg.hdrEnabled ? (int)cfg.tonemappingMode : 0;
+        }));
 }
 
 void PostProcessPipeline::InitFramebuffers()
@@ -144,7 +146,7 @@ void PostProcessPipeline::InitFramebuffers()
 
 void PostProcessPipeline::UpdateConfig()
 {
-    auto& cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
+    auto cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
     m_ClearColor = glm::vec4(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
     m_BloomEnabled = cfg.bloomEnabled;
     m_BloomThreshold = cfg.bloomThreshold;
@@ -158,6 +160,7 @@ void PostProcessPipeline::UpdateConfig()
 
 void PostProcessPipeline::Shutdown()
 {
+    m_EventSubscriptions.Clear();
     if (!m_Context)
         return;
     auto& rtm = m_Context->GetRenderTargetManager();

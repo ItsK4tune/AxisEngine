@@ -80,7 +80,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
     if (m_ShadowMode == 0 || !m_EnableShadows)
         return;
 
-    auto& config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
+    auto config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
     LightingMode lightingMode = config.lightingMode;
 
     Shader* shaderDir = m_Shadow.GetShaderDir();
