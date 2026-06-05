@@ -6,6 +6,7 @@
 #include <core/type/event_types.h>
 #include <resource/type/resource_events.h>
 #include <stb/stb_image.h>
+#include <filesystem>
 
 TextureManager::TextureManager(ITextureManager& lowLevelManager) : m_LowLevelManager(lowLevelManager)
 {
@@ -32,7 +33,9 @@ void TextureManager::Initialize()
 
     // 2. Try to load the higher quality external error texture
     std::string errorTexturePath = "include/engine/asset/textures/error_checkerboard.tga";
-    auto externalError = Load("External_Error_Texture", errorTexturePath, false, false);
+    std::shared_ptr<Texture> externalError;
+    if (std::filesystem::exists(FileSystem::getPath(errorTexturePath)))
+        externalError = Load("External_Error_Texture", errorTexturePath, false, false);
 
     if (externalError && externalError->id != 0 && externalError->path != "internal://error_texture")
     {

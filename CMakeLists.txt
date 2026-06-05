@@ -11,6 +11,7 @@ endif()
 
 option(ENABLE_EDITOR "Enable Editor System (ImGui)" OFF)
 option(BUILD_SAMPLES "Build sample application when editor is enabled" ON)
+option(ENABLE_TESTS "Build AxisEngine automated tests" OFF)
 
 if(ENABLE_EDITOR)
     add_compile_definitions(ENABLE_EDITOR)
@@ -208,4 +209,9 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
             "${CMAKE_SOURCE_DIR}/dlls"
             "$<TARGET_FILE_DIR:axis_samples>"
     )
+endif()
+
+if(ENABLE_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()

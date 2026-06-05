@@ -238,20 +238,20 @@ void EntityManager::SetParent(Scene& scene, entt::entity child, entt::entity par
 {
     if (!scene.registry.valid(child) || !scene.registry.valid(parent))
     {
-        LOGGER_ERROR("Scene") << "Invalid child or parent entity";
+        LOGGER_WARN("Scene") << "Invalid child or parent entity";
         return;
     }
 
     if (!scene.registry.all_of<HierarchyComponent>(child) || !scene.registry.all_of<HierarchyComponent>(parent))
     {
-        LOGGER_ERROR("Scene") << "Child or parent missing HierarchyComponent";
+        LOGGER_WARN("Scene") << "Child or parent missing HierarchyComponent";
         return;
     }
 
     auto& childH = scene.registry.get<HierarchyComponent>(child);
     if (child == parent)
     {
-        LOGGER_ERROR("Scene") << "Attempted to set entity as its own parent: " << (uint32_t)child;
+        LOGGER_WARN("Scene") << "Attempted to set entity as its own parent: " << (uint32_t)child;
         return;
     }
 
@@ -263,8 +263,8 @@ void EntityManager::SetParent(Scene& scene, entt::entity child, entt::entity par
     {
         if (current == child)
         {
-            LOGGER_ERROR("Scene") << "Cycle detected in hierarchy! Cannot set " << (uint32_t)child << " as child of "
-                                  << (uint32_t)parent;
+            LOGGER_WARN("Scene") << "Cycle detected in hierarchy! Cannot set " << (uint32_t)child << " as child of "
+                                 << (uint32_t)parent;
             return;
         }
         if (auto* pH = scene.registry.try_get<HierarchyComponent>(current))

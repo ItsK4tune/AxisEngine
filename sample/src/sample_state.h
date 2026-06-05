@@ -852,7 +852,11 @@ public:
     void OnRenderDebug() override;
     void OnExit() override;
 
+#ifdef AXIS_TESTING
+public:
+#else
 private:
+#endif
     void LoadScenario(int index);
     void ResetDefaultPlayerBindings();
     void ApplyScenario7RenderOrder();

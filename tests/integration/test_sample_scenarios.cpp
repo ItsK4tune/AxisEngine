@@ -1,0 +1,346 @@
+#include "mocks/fake_physics.h"
+#include "test_framework.h"
+#include "test_support.h"
+
+#include <core/logic/config_manager.h>
+#include <core/logic/localization_system.h>
+#include <ecs/logic/physics_system.h>
+#include <ecs/logic/system_manager.h>
+#include <ecs/logic/transform_system.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/light_components.h>
+#include <ecs/unit/media_components.h>
+#include <ecs/unit/network_components.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/script_component.h>
+#include <ecs/unit/ui_components.h>
+#include <navigation/logic/navigation_system.h>
+#include <navigation/unit/pathfollower_component.h>
+#include <physics/logic/collision_matrix.h>
+#include <physics/unit/ray.h>
+#include <sample_state.h>
+#include <scene/logic/scene_manager.h>
+#include <scene/logic/scene_serializer.h>
+#include <fstream>
+#include <memory>
+#include <sstream>
+
+using axis_test_mocks::FakePhysicsWorld;
+
+void SampleState::ResetDefaultPlayerBindings()
+{
+}
+
+void SampleState::OnEnter()
+{
+}
+
+void SampleState::OnUpdate(float)
+{
+}
+
+void SampleState::OnRender()
+{
+}
+
+void SampleState::OnRenderDebug()
+{
+}
+
+void SampleState::OnExit()
+{
+}
+
+namespace
+{
+class TestSampleState : public SampleState
+{
+public:
+    void OnEnter() override
+    {
+    }
+
+    void OnUpdate(float) override
+    {
+    }
+
+    void OnRender() override
+    {
+    }
+
+    void OnRenderDebug() override
+    {
+    }
+
+    void OnExit() override
+    {
+    }
+};
+
+struct SampleScenarioFixture
+{
+    SampleScenarioFixture()
+    {
+        axis_test_support::ResetServices();
+        resources.InitializeHeadless();
+        AppConfig config;
+        config.headlessMode = false;
+        configManager.Initialize(config);
+
+        ServiceLocator::Instance().Register<Scene>(&scene);
+        ServiceLocator::Instance().Register<ResourceManager>(&resources);
+        ServiceLocator::Instance().Register<IPhysicsWorld>(&physics);
+        ServiceLocator::Instance().Register<CollisionMatrix>(&collisionMatrix);
+        ServiceLocator::Instance().Register<ConfigManager>(&configManager);
+        ServiceLocator::Instance().Register<SystemManager>(&systems);
+
+        systems.RegisterSystem(std::make_unique<TransformSystem>());
+        systems.RegisterSystem(std::make_unique<PhysicsSystem>());
+        systems.RegisterSystem(std::make_unique<NavigationSystem>());
+        systems.RegisterSystem(std::make_unique<LocalizationSystem>());
+
+        state.SetActiveScene(&scene);
+    }
+
+    ~SampleScenarioFixture()
+    {
+        if (auto* physicsSystem = systems.GetSystem<PhysicsSystem>())
+            physicsSystem->Reset();
+        resources.Shutdown();
+        axis_test_support::ResetServices();
+    }
+
+    Scene scene;
+    ResourceManager resources;
+    FakePhysicsWorld physics;
+    CollisionMatrix collisionMatrix;
+    ConfigManager configManager;
+    SystemManager systems;
+    TestSampleState state;
+};
+
+int CountByPrefix(Scene& scene, const std::string& prefix)
+{
+    int count = 0;
+    auto view = scene.registry.view<InfoComponent>();
+    for (auto entity : view)
+    {
+        const auto& name = view.get<InfoComponent>(entity).name;
+        if (name.rfind(prefix, 0) == 0)
+            ++count;
+    }
+    return count;
+}
+
+entt::entity FindByName(Scene& scene, const std::string& name)
+{
+    auto view = scene.registry.view<InfoComponent>();
+    for (auto entity : view)
+    {
+        if (view.get<InfoComponent>(entity).name == name)
+            return entity;
+    }
+    return entt::null;
+}
+
+std::string ReadText(const std::filesystem::path& path)
+{
+    std::ifstream file(path);
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+int RendererOrder(Scene& scene, const std::string& name)
+{
+    auto entity = FindByName(scene, name);
+    AXIS_CHECK(entity != entt::null);
+    AXIS_CHECK(scene.registry.all_of<MeshRendererComponent>(entity));
+    return scene.registry.get<MeshRendererComponent>(entity).order;
+}
+}  // namespace
+
+AXIS_TEST_CASE("Sample Scenario 01 creates requested render entity stress set")
+{
+    SampleScenarioFixture fixture;
+    fixture.state.m_S1EntityCount = 216;
+    fixture.state.m_S1MeshType = 1;
+    fixture.state.m_S1UniqueTint = true;
+
+    fixture.state.LoadScene1();
+
+    AXIS_CHECK(CountByPrefix(fixture.scene, "Entity_") == 216);
+    auto first = FindByName(fixture.scene, "Entity_0");
+    AXIS_CHECK(first != entt::null);
+    AXIS_CHECK(fixture.scene.registry.all_of<MeshRendererComponent>(first));
+    AXIS_CHECK(fixture.scene.registry.all_of<AxisMaterialComponent>(first));
+}
+
+AXIS_TEST_CASE("Sample Scenario 03 creates shadow casting light rig")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene3();
+
+    AXIS_CHECK(CountByPrefix(fixture.scene, "Cube_") == 1000);
+    auto point = FindByName(fixture.scene, "PointLight");
+    auto spot = FindByName(fixture.scene, "SpotLight");
+    auto dir = FindByName(fixture.scene, "DirLight");
+    AXIS_CHECK(point != entt::null);
+    AXIS_CHECK(spot != entt::null);
+    AXIS_CHECK(dir != entt::null);
+    AXIS_CHECK(fixture.scene.registry.get<PointLightComponent>(point).isCastShadow);
+    AXIS_CHECK(fixture.scene.registry.get<SpotLightComponent>(spot).isCastShadow);
+    AXIS_CHECK(fixture.scene.registry.all_of<DirectionalLightComponent>(dir));
+}
+
+AXIS_TEST_CASE("Sample Scenario 07 render order switches normal and reverse")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene7();
+    AXIS_CHECK(RendererOrder(fixture.scene, "Panel_Red") == 1);
+    AXIS_CHECK(RendererOrder(fixture.scene, "Panel_Blue") == 3);
+
+    fixture.state.m_S7ReverseOrder = true;
+    fixture.state.ApplyScenario7RenderOrder();
+
+    AXIS_CHECK(RendererOrder(fixture.scene, "Panel_Red") == 3);
+    AXIS_CHECK(RendererOrder(fixture.scene, "Panel_Blue") == 1);
+}
+
+AXIS_TEST_CASE("Sample Scenario 21 creates primitive collider chain payload")
+{
+    SampleScenarioFixture fixture;
+    fixture.state.m_S21ChainLength = 2;
+    fixture.state.m_S21PayloadShape = 1;
+
+    fixture.state.LoadScene21();
+
+    auto payload = FindByName(fixture.scene, "Payload");
+    AXIS_CHECK(payload != entt::null);
+    AXIS_CHECK(fixture.scene.registry.get<RigidShapeComponent>(payload).type == ShapeType::Sphere);
+    AXIS_CHECK(fixture.scene.registry.all_of<RigidBodyComponent>(payload));
+    AXIS_CHECK(fixture.state.m_S21ChainEntities.size() == 4);
+}
+
+AXIS_TEST_CASE("Sample Scenario 26 creates controller trigger zones and fixed constraint")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene26();
+
+    auto controller = FindByName(fixture.scene, "S26_CharacterController");
+    auto trigger = FindByName(fixture.scene, "S26_TriggerZone");
+    AXIS_CHECK(controller != entt::null);
+    AXIS_CHECK(trigger != entt::null);
+    AXIS_CHECK(fixture.scene.registry.all_of<CharacterControllerComponent>(controller));
+    AXIS_CHECK(fixture.scene.registry.get<RigidBodyComponent>(trigger).isTrigger);
+    AXIS_CHECK(fixture.physics.fixedConstraintCreateCount >= 1);
+}
+
+AXIS_TEST_CASE("Sample Scenario 28 creates input binding player and action pads")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene28();
+
+    auto player = FindByName(fixture.scene, "BindingPlayer");
+    AXIS_CHECK(player != entt::null);
+    AXIS_CHECK(fixture.scene.registry.all_of<ScriptComponent>(player));
+    AXIS_CHECK(fixture.scene.registry.all_of<RigidBodyComponent>(player));
+    AXIS_CHECK(CountByPrefix(fixture.scene, "InputPad_") == 5);
+}
+
+AXIS_TEST_CASE("Sample Scenario 23 configures path criteria follower")
+{
+    SampleScenarioFixture fixture;
+    fixture.state.m_S23ObstacleCount = 0;
+    fixture.state.m_S23PathfindingCriteria = static_cast<int>(PathfindingCriteria::StayOnRoad);
+
+    fixture.state.LoadScene23();
+
+    auto follower = fixture.state.m_NavFollower;
+    AXIS_CHECK(follower != entt::null);
+    AXIS_CHECK(fixture.scene.registry.valid(follower));
+    const auto& pathFollower = fixture.scene.registry.get<PathFollowerComponent>(follower);
+    AXIS_CHECK(pathFollower.pathfindingOptions.criteria == PathfindingCriteria::StayOnRoad);
+    AXIS_CHECK(pathFollower.pathfindingOptions.preferredTags.size() == 1);
+    AXIS_CHECK(pathFollower.pathfindingOptions.preferredTags[0] == "road");
+    AXIS_CHECK(!fixture.state.m_NavWaypoints.empty());
+}
+
+AXIS_TEST_CASE("Sample Scenario 25 scene save and reload roundtrip keeps base entities")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene25();
+    auto output = axis_test_support::TempPath("mr_scenario25.axs");
+    AXIS_CHECK(SceneSerializer::Serialize(output.string(), fixture.scene, fixture.resources, "scenario_base"));
+    const std::string serialized = ReadText(output);
+
+    Scene reloaded;
+    auto result = SceneSerializer::Deserialize(output.string(), reloaded, fixture.resources, nullptr, nullptr);
+    AXIS_CHECK(serialized.find("Ground:") != std::string::npos);
+    AXIS_CHECK(result.entities.size() >= 2);
+    AXIS_CHECK(FindByName(reloaded, "Ground") != entt::null);
+}
+
+AXIS_TEST_CASE("Sample Scenario 27 creates data-driven entity grid")
+{
+    SampleScenarioFixture fixture;
+    fixture.state.m_S27EntityCount = 12;
+    fixture.state.m_S27EntitySize = 1.5f;
+
+    fixture.state.LoadScene27();
+
+    AXIS_CHECK(CountByPrefix(fixture.scene, "DataEntity_") == 12);
+    auto first = FindByName(fixture.scene, "DataEntity_0");
+    AXIS_CHECK(first != entt::null);
+    AXIS_CHECK(fixture.scene.registry.all_of<MeshRendererComponent>(first));
+}
+
+AXIS_TEST_CASE("Sample Scenario 29 loads localization and creates localized UI")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene29();
+
+    auto* localization = fixture.systems.GetSystem<LocalizationSystem>();
+    AXIS_CHECK(localization != nullptr);
+    AXIS_CHECK(localization->GetLanguage() == "en");
+    AXIS_CHECK(FindByName(fixture.scene, "L10nPreviewPanel") != entt::null);
+    AXIS_CHECK(FindByName(fixture.scene, "L10nCurrentLanguageText") != entt::null);
+}
+
+AXIS_TEST_CASE("Sample Scenario 30 initializes network orb and message state")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene30();
+
+    auto orb = FindByName(fixture.scene, "NetworkOrb");
+    AXIS_CHECK(orb != entt::null);
+    AXIS_CHECK(fixture.scene.registry.all_of<MeshRendererComponent>(orb));
+    AXIS_CHECK(fixture.state.m_S30SpawnCounter == 0);
+    AXIS_CHECK(fixture.state.m_S30Messages.empty());
+}
+
+AXIS_TEST_CASE("Sample Scenario 31 creates 2D and 3D audio sources")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene31();
+
+    auto source3D = FindByName(fixture.scene, "AudioSource3D");
+    auto source2D = FindByName(fixture.scene, "Audio2DLoop");
+    AXIS_CHECK(source3D != entt::null);
+    AXIS_CHECK(source2D != entt::null);
+    const auto& audio3D = fixture.scene.registry.get<AudioSourceComponent>(source3D);
+    const auto& audio2D = fixture.scene.registry.get<AudioSourceComponent>(source2D);
+    AXIS_CHECK(audio3D.is3D);
+    AXIS_CHECK(!audio2D.is3D);
+    AXIS_CHECK(audio3D.loop);
+    AXIS_CHECK(audio2D.loop);
+}

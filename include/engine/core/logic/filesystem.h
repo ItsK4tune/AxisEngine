@@ -22,14 +22,22 @@ public:
     static std::string getPath(const std::string& path)
     {
         std::string root = getRoot();
+        std::string normPath = path;
+        std::replace(normPath.begin(), normPath.end(), '\\', '/');
 
-        if (!root.empty() && path.find(root) == 0)
-            return path;
+        if (!root.empty() && normPath.find(root) == 0)
+            return normPath;
+
+        if (normPath.size() >= 3 && normPath[1] == ':' && normPath[2] == '/')
+            return normPath;
+
+        if (normPath.rfind("//", 0) == 0)
+            return normPath;
 
         if (!root.empty())
-            return root + "/" + path;
+            return root + "/" + normPath;
 
-        return path;
+        return normPath;
     }
 
     static std::string getRelativePath(const std::string& path)
