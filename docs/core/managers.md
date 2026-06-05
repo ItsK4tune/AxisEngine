@@ -14,6 +14,7 @@ Handles loading, caching, and retrieval of all engine assets.
 - **Deduplication**: Automatically caches textures, shaders, and models by name or path.
 - **Asynchronous Loading**: Supports non-blocking asset loading via the Job System.
 - **Hot Reloading**: Automatically recompiles shaders and refreshes textures when source files change.
+- **Strict Asset Loading**: `STRICT_ASSET_LOADING` disables debug fallback substitutions so failed shader, texture, and model loads surface as load failures.
 
 ### Common Methods
 - `GetModel(name)`, `GetTexture(name)`, `GetShader(name)`

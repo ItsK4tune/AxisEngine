@@ -6,6 +6,7 @@
 #ifdef ENABLE_EDITOR
 
 #include <iomanip>
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -276,9 +277,15 @@ void GizmoEditorModule::UpdateDebugLabels(Scene& scene)
     int width = io->GetMonitorManager().GetWidth();
     int height = io->GetMonitorManager().GetHeight();
 
-    const float REF_WIDTH = 1920.0f;
-    const float REF_HEIGHT = 1080.0f;
-    float scaleFactor = std::min((float)width / REF_WIDTH, (float)height / REF_HEIGHT);
+    float referenceWidth = 1920.0f;
+    float referenceHeight = 1080.0f;
+    if (auto* cm = sl.Resolve<ConfigManager>())
+    {
+        referenceWidth = (std::max)(1.0f, cm->GetConfig().uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, cm->GetConfig().uiReferenceHeight);
+    }
+
+    float scaleFactor = std::min((float)width / referenceWidth, (float)height / referenceHeight);
     if (scaleFactor < 0.0001f)
         scaleFactor = 1.0f;
 
@@ -495,9 +502,15 @@ void GizmoEditorModule::UpdateLightLabels(Scene& scene)
     int width = io->GetMonitorManager().GetWidth();
     int height = io->GetMonitorManager().GetHeight();
 
-    const float REF_WIDTH = 1920.0f;
-    const float REF_HEIGHT = 1080.0f;
-    float scaleFactor = std::min((float)width / REF_WIDTH, (float)height / REF_HEIGHT);
+    float referenceWidth = 1920.0f;
+    float referenceHeight = 1080.0f;
+    if (auto* cm = sl.Resolve<ConfigManager>())
+    {
+        referenceWidth = (std::max)(1.0f, cm->GetConfig().uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, cm->GetConfig().uiReferenceHeight);
+    }
+
+    float scaleFactor = std::min((float)width / referenceWidth, (float)height / referenceHeight);
     if (scaleFactor < 0.0001f)
         scaleFactor = 1.0f;
 

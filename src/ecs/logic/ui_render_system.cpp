@@ -11,6 +11,7 @@
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
 
 struct UIRect
 {
@@ -71,6 +72,16 @@ UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screen
     return {finalMin, size};
 }
 
+static UIRect ApplyVisualScale(const UIRect& rect, const UITransformComponent& transform, float scale)
+{
+    if (scale <= 0.0f || scale == 1.0f)
+        return rect;
+
+    const glm::vec2 pivot = rect.pos + transform.pivot * rect.size;
+    const glm::vec2 scaledSize = rect.size * scale;
+    return {pivot - transform.pivot * scaledSize, scaledSize};
+}
+
 REGISTER_SYSTEM(UIRenderSystem)
 
 void UIRenderSystem::Initialize()
@@ -94,10 +105,17 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
     PolygonMode previousPolygonMode = renderState.GetPolygonMode();
     renderState.SetPolygonMode(CullMode::FrontAndBack, PolygonMode::Fill);
 
-    // Canvas Scaler: "Scale With Screen Size" based on 1920x1080 reference
-    const float REF_WIDTH = 1920.0f;
-    const float REF_HEIGHT = 1080.0f;
-    float scaleFactor = std::min(screenWidth / REF_WIDTH, screenHeight / REF_HEIGHT);
+    float referenceWidth = 1920.0f;
+    float referenceHeight = 1080.0f;
+    if (auto* config = ServiceLocator::Instance().Resolve<ConfigManager>())
+    {
+        referenceWidth = (std::max)(1.0f, config->GetConfig().uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, config->GetConfig().uiReferenceHeight);
+    }
+
+    float scaleFactor = std::min(screenWidth / referenceWidth, screenHeight / referenceHeight);
+    if (scaleFactor <= 0.0f)
+        scaleFactor = 1.0f;
     float virtualWidth = screenWidth / scaleFactor;
     float virtualHeight = screenHeight / scaleFactor;
 
@@ -123,6 +141,8 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
     {
         auto& transform = view.get<UITransformComponent>(entity);
         UIRect rect = CalculateRect(scene.registry, entity, virtualWidth, virtualHeight);
+        if (auto* animation = scene.registry.try_get<UIAnimationComponent>(entity))
+            rect = ApplyVisualScale(rect, transform, animation->visualScale);
 
         // Apply Position natively in CalculateRect, but rotation happens here
         glm::vec2 finalPos = rect.pos;
@@ -342,7 +362,8 @@ void UIRenderSystem::Render(Scene& scene)
 
 std::vector<entt::id_type> UIRenderSystem::GetReadComponents() const
 {
-    return {entt::type_id<UIRendererComponent>().hash(), entt::type_id<UITransformComponent>().hash()};
+    return {entt::type_id<UIRendererComponent>().hash(), entt::type_id<UITransformComponent>().hash(),
+            entt::type_id<UIAnimationComponent>().hash()};
 }
 
 std::vector<entt::id_type> UIRenderSystem::GetWriteComponents() const

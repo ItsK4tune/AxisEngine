@@ -280,6 +280,7 @@ bool Application::Initialize(const AppConfig& config)
 
     m_Impl->m_ResourceManager->SetTextureAsyncEnabled(config.asyncResourceLoading);
     m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(config.maxAnisotropy);
+    m_Impl->m_ResourceManager->SetStrictAssetLoading(config.strictAssetLoading);
     m_Impl->m_Scene->InitializeManagers();
 
     auto& sl = ServiceLocator::Instance();
@@ -335,6 +336,12 @@ bool Application::Initialize(const AppConfig& config)
                 m_Impl->m_IOHandler->GetMonitorManager().SetVsync(e.config.vsync);
                 m_Impl->m_IOHandler->GetMonitorManager().SetFrameRateLimit(e.config.frameRateLimit);
             }
+        }
+        if (m_Impl->m_ResourceManager)
+        {
+            m_Impl->m_ResourceManager->SetTextureAsyncEnabled(e.config.asyncResourceLoading);
+            m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(e.config.maxAnisotropy);
+            m_Impl->m_ResourceManager->SetStrictAssetLoading(e.config.strictAssetLoading);
         }
     });
 

@@ -722,7 +722,7 @@ void EditorSystem::RenderUIPass(Scene& scene, float width, float height, IRender
         ImGui::Separator();
         ImGui::Text("Developed by: Duong");
         ImGui::Text("Architecture: Core, ECS, Platform, Render, Script/Editor");
-        ImGui::Text("Tech Stack: EnTT, OpenGL 3.3+, GLFW, Jolt Physics, irrKlang, ImGui");
+        ImGui::Text("Tech Stack: EnTT, OpenGL 3.3+, GLFW, Bullet Physics, irrKlang, ImGui");
         ImGui::Separator();
         ImGui::Text("Copyright (c) 2026. All rights reserved.");
         ImGui::Spacing();

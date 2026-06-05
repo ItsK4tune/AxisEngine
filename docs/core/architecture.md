@@ -9,7 +9,7 @@ AXIS Engine is built on a **Modular Abstraction Layer** that decouples high-leve
 The engine architecture follows a **Pillar-Bridge-Provider** pattern:
 1.  **Pillar (Interfaces)**: Precise C++ interfaces (e.g., `IRenderSystem`, `IPhysicsWorld`) defined in the `engine::interface` namespace. These define *what* a system must do without dictating *how*.
 2.  **Bridge (Core systems)**: The ECS orchestration layer (`entt`) that moves data between systems and handles lifecycle management.
-3.  **Provider (Backends)**: Concrete implementations for specific APIs (e.g., `OpenGLRenderSystem`, `BulletPhysicsWorld`). These are swappable at setup or even runtime via configuration.
+3.  **Provider (Backends)**: Concrete implementations for specific APIs (e.g., `OpenGLContext`, `BulletPhysicsWorld`). Provider selection is validated against the backends compiled into the current build.
 
 ---
 
@@ -23,11 +23,11 @@ graph TD
     B[<b>Logic Layer</b><br/>ECS Systems, Scripting API, Navigation] --> C
     C[<b>Core Layer</b><br/>Resource Caching, Job System, Event Dispatch] --> D
     D[<b>Abstraction Layer</b><br/>Graphics/Physics/Audio Interfaces] --> E
-    E[<b>Module Layer</b><br/>OpenGL, Vulkan, Bullet, PhysX, IrrKlang]
+    E[<b>Module Layer</b><br/>OpenGL, Bullet, IrrKlang]
 ```
 
 ### Abstraction Mechanics
-Backends are managed via **Service Locators** and **Context Wrappers**. For instance, the `RenderSystem` does not call OpenGL commands directly; it issues commands to an `IGraphicsContext` which is fulfilled by either an OpenGL or Vulkan provider.
+Backends are managed via **Service Locators** and **Context Wrappers**. For instance, the `RenderSystem` does not call OpenGL commands directly; it issues commands to an `IGraphicsContext`. The current build provides an OpenGL implementation and rejects unsupported backend requests instead of falling back silently.
 
 ---
 
@@ -36,7 +36,7 @@ Backends are managed via **Service Locators** and **Context Wrappers**. For inst
 - **Dual-Timestep Pipeline**: 
     - **Fixed Time (60Hz)**: Deterministic steps for Physics and core state reconciliation.
     - **Variable Time**: Frame-rate independent updates for Animation, Particles, and UI.
-- **Job-Based Concurrency**: A lock-free task queue distributes work (Asset decoding, Frustum Culling, Particle updates) across all CPU cores.
+- **Job-Based Concurrency**: A worker-pool `JobSystem` distributes asset decoding and snapshot-safe parallel system work across configured worker threads.
 
 ---
 
@@ -77,7 +77,7 @@ Systems iterate over entities with matching component "views".
 
 ### Asset Management
 - **Asynchronous Loading**: Background loading via `JobSystem` to prevent stalls.
-- **Hot Reloading**: Watches file changes (Shaders) and reloads at runtime.
+- **Hot Reloading**: Watches registered shader stages and textures and reloads them at runtime.
 - **Caching**: Deduplicates asset memory via naming registry.
 
 ---

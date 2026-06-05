@@ -68,6 +68,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             auto tex = it->second;
             m_Cache.Add(name, tex);
             m_NameToPathMap[name] = fullPath;
+            m_NameKeepCpuDataMap[name] = keepCpuData;
             m_PathReferenceCounts[fullPath]++;
             LOGGER_INFO("TextureManager") << "Deduplicated texture load for path: " << path << " under name: " << name;
             return tex;
@@ -92,6 +93,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
             m_PathToTextureMap[fullPath] = tex;
             m_PathReferenceCounts[fullPath] = 1;
             m_NameToPathMap[name] = fullPath;
+            m_NameKeepCpuDataMap[name] = keepCpuData;
         }
 
         JobSystem::Instance().Execute([promise, name, fullPath, keepCpuData]() {
@@ -177,6 +179,7 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
                 m_PathToTextureMap[fullPath] = tex;
                 m_PathReferenceCounts[fullPath] = 1;
                 m_NameToPathMap[name] = fullPath;
+                m_NameKeepCpuDataMap[name] = keepCpuData;
             }
 
             LOGGER_INFO("TextureManager") << "Loaded texture: " << name;
@@ -185,8 +188,12 @@ std::shared_ptr<Texture> TextureManager::Load(const std::string& name, const std
         }
         else
         {
-            LOGGER_ERROR("TextureManager") << "Failed to load texture: " << path << ". Returning error texture.";
+            LOGGER_ERROR("TextureManager") << "Failed to load texture: " << path << "."
+                                           << (m_StrictLoading ? " Strict loading is enabled." :
+                                                                " Returning error texture.");
             EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
+            if (m_StrictLoading)
+                return nullptr;
             return m_ErrorTexture;
         }
     }
@@ -218,6 +225,7 @@ void TextureManager::Unload(const std::string& name)
                 LOGGER_INFO("TextureManager") << "Fully unloaded physical texture from GPU: " << fullPath;
             }
             m_NameToPathMap.erase(pathIt);
+            m_NameKeepCpuDataMap.erase(name);
         }
         else
         {
@@ -229,6 +237,102 @@ void TextureManager::Unload(const std::string& name)
         m_Cache.Remove(name);
         LOGGER_INFO("TextureManager") << "Removed texture name alias from cache: " << name;
     }
+}
+
+bool TextureManager::Reload(const std::string& name)
+{
+    std::string fullPath;
+    bool keepCpuData = false;
+    std::shared_ptr<Texture> texture;
+
+    {
+        std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+        auto pathIt = m_NameToPathMap.find(name);
+        if (pathIt == m_NameToPathMap.end())
+        {
+            LOGGER_ERROR("TextureManager") << "Cannot reload texture without a file path: " << name;
+            return false;
+        }
+
+        fullPath = pathIt->second;
+        auto keepIt = m_NameKeepCpuDataMap.find(name);
+        keepCpuData = keepIt != m_NameKeepCpuDataMap.end() ? keepIt->second : false;
+    }
+
+    texture = m_Cache.Get(name);
+    if (!texture)
+    {
+        LOGGER_ERROR("TextureManager") << "Cannot reload missing texture: " << name;
+        return false;
+    }
+
+    int width = 0;
+    int height = 0;
+    int nrComponents = 0;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load(fullPath.c_str(), &width, &height, &nrComponents, 0);
+    if (!data)
+    {
+        LOGGER_ERROR("TextureManager") << "Failed to reload texture: " << name << " from " << fullPath;
+        EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", false});
+        return false;
+    }
+
+    TextureFormat format = TextureFormat::RGBA;
+    InternalFormat iFormat = InternalFormat::RGBA8;
+    if (nrComponents == 1)
+    {
+        format = TextureFormat::Red;
+        iFormat = InternalFormat::R8;
+    }
+    else if (nrComponents == 3)
+    {
+        format = TextureFormat::RGB;
+        iFormat = InternalFormat::RGB8;
+    }
+
+    const unsigned int oldId = texture->id;
+    unsigned int textureID = m_LowLevelManager.GenTexture();
+    m_LowLevelManager.BindTexture(TextureType::Texture2D, textureID);
+    m_LowLevelManager.TexImage2D(TextureType::Texture2D, 0, iFormat, width, height, 0, format,
+                                 DataType::UnsignedByte, data);
+    m_LowLevelManager.GenerateMipmap(TextureType::Texture2D);
+    m_LowLevelManager.TexParameteri(
+        TextureType::Texture2D, TextureParameter::WrapS,
+        static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
+    m_LowLevelManager.TexParameteri(
+        TextureType::Texture2D, TextureParameter::WrapT,
+        static_cast<int>(format == TextureFormat::RGBA ? TextureWrap::ClampToEdge : TextureWrap::Repeat));
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
+                                    static_cast<int>(TextureFilter::LinearMipmapLinear));
+    m_LowLevelManager.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
+                                    static_cast<int>(TextureFilter::Linear));
+
+    if (m_MaxAnisotropy > 1.0f)
+    {
+        m_LowLevelManager.TexParameterf(TextureType::Texture2D, TextureParameter::TextureMaxAnisotropy,
+                                        m_MaxAnisotropy);
+    }
+
+    if (oldId != 0 && (!m_ErrorTexture || oldId != m_ErrorTexture->id))
+    {
+        m_LowLevelManager.DeleteTextures(1, &oldId);
+    }
+
+    texture->id = textureID;
+    texture->path = fullPath;
+    texture->width = width;
+    texture->height = height;
+    texture->nrComponents = nrComponents;
+
+    if (keepCpuData)
+        texture->pixelData = data;
+    else
+        stbi_image_free(data);
+
+    LOGGER_INFO("TextureManager") << "Reloaded texture: " << name;
+    EventManager::Instance().Publish(ResourceLoadedEvent{name, "Texture", true});
+    return true;
 }
 
 void TextureManager::Update(float dt)
@@ -293,18 +397,39 @@ void TextureManager::Update(float dt)
             }
             else
             {
-                if (auto tex = m_Cache.Get(data.name))
+                if (m_StrictLoading)
                 {
-                    if (m_ErrorTexture)
                     {
-                        tex->id = m_ErrorTexture->id;
-                        tex->width = m_ErrorTexture->width;
-                        tex->height = m_ErrorTexture->height;
-                        tex->nrComponents = m_ErrorTexture->nrComponents;
+                        std::lock_guard<std::mutex> pathLock(m_DeduplicationMutex);
+                        auto pathIt = m_NameToPathMap.find(data.name);
+                        if (pathIt != m_NameToPathMap.end())
+                        {
+                            const std::string fullPath = pathIt->second;
+                            m_PathToTextureMap.erase(fullPath);
+                            m_PathReferenceCounts.erase(fullPath);
+                            m_NameToPathMap.erase(pathIt);
+                            m_NameKeepCpuDataMap.erase(data.name);
+                        }
                     }
+                    m_Cache.Remove(data.name);
+                    LOGGER_ERROR("TextureManager") << "Failed async texture: " << data.name
+                                                   << ". Strict loading is enabled.";
                 }
-                LOGGER_ERROR("TextureManager")
-                    << "Failed async texture: " << data.name << ". Falling back to error texture.";
+                else
+                {
+                    if (auto tex = m_Cache.Get(data.name))
+                    {
+                        if (m_ErrorTexture)
+                        {
+                            tex->id = m_ErrorTexture->id;
+                            tex->width = m_ErrorTexture->width;
+                            tex->height = m_ErrorTexture->height;
+                            tex->nrComponents = m_ErrorTexture->nrComponents;
+                        }
+                    }
+                    LOGGER_ERROR("TextureManager")
+                        << "Failed async texture: " << data.name << ". Falling back to error texture.";
+                }
                 EventManager::Instance().Publish(ResourceLoadedEvent{data.name, "Texture", false});
             }
             it = m_AsyncLoads.erase(it);
@@ -330,6 +455,7 @@ void TextureManager::Clear()
         m_PathToTextureMap.clear();
         m_PathReferenceCounts.clear();
         m_NameToPathMap.clear();
+        m_NameKeepCpuDataMap.clear();
     }
 
     std::lock_guard<std::mutex> lock(m_AsyncMutex);

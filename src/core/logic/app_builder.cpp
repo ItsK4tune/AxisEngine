@@ -1,59 +1,87 @@
 #include <audio/strategy/irrklang/irrklang_audio_engine.h>
 #include <core/app/application.h>
+#include <core/logic/backend_registry.h>
 #include <core/logic/logger.h>
 #include <physics/strategy/bullet/bullet_physics_world.h>
 #include <platform/strategy/opengl/glfw_window.h>
 #include <render/strategy/opengl/opengl_context.h>
+#include <stdexcept>
+#include <string>
+
+namespace
+{
+[[noreturn]] void ThrowUnsupportedBackend(const char* category, std::string_view requested, const char* supported)
+{
+    std::string message = std::string("Unsupported ") + category + " backend requested: " +
+                          std::string(requested) + ". Supported in this build: " + supported + ".";
+    LOGGER_ERROR("AppBuilder") << message;
+    throw std::runtime_error(message);
+}
+}  // namespace
 
 std::unique_ptr<IGraphicsContext> AppBuilder::CreateGraphicsContext(const AppConfig& config)
 {
+    if (!BackendRegistry::IsSupported(config.graphicsBackend))
+    {
+        ThrowUnsupportedBackend("graphics", BackendRegistry::ToString(config.graphicsBackend),
+                                BackendRegistry::SupportedGraphicsBackends());
+    }
+
     switch (config.graphicsBackend)
     {
         case GraphicsBackend::OpenGL:
             LOGGER_INFO("AppBuilder") << "Initializing Graphics Backend: OpenGL";
             return std::make_unique<OpenGLContext>();
         case GraphicsBackend::Vulkan:
-            LOGGER_ERROR("AppBuilder") << "Vulkan Backend not yet implemented. Defaulting to OpenGL.";
-            return std::make_unique<OpenGLContext>();
         case GraphicsBackend::DirectX:
-            LOGGER_ERROR("AppBuilder") << "DirectX Backend not yet implemented. Defaulting to OpenGL.";
-            return std::make_unique<OpenGLContext>();
+            break;
     }
 
-    return std::make_unique<OpenGLContext>();
+    ThrowUnsupportedBackend("graphics", BackendRegistry::ToString(config.graphicsBackend),
+                            BackendRegistry::SupportedGraphicsBackends());
 }
 
 std::unique_ptr<IAudioEngine> AppBuilder::CreateAudioEngine(const AppConfig& config)
 {
+    if (!BackendRegistry::IsSupported(config.audioBackend))
+    {
+        ThrowUnsupportedBackend("audio", BackendRegistry::ToString(config.audioBackend),
+                                BackendRegistry::SupportedAudioBackends());
+    }
+
     switch (config.audioBackend)
     {
         case AudioBackend::IrrKlang:
             LOGGER_INFO("AppBuilder") << "Initializing Audio Backend: IrrKlang";
             return std::make_unique<IrrKlangAudioEngine>();
         case AudioBackend::FMOD:
-            LOGGER_ERROR("AppBuilder") << "FMOD Backend not yet implemented. Defaulting to IrrKlang.";
-            return std::make_unique<IrrKlangAudioEngine>();
         case AudioBackend::OpenAL:
-            LOGGER_ERROR("AppBuilder") << "OpenAL Backend not yet implemented. Defaulting to IrrKlang.";
-            return std::make_unique<IrrKlangAudioEngine>();
+            break;
     }
 
-    return std::make_unique<IrrKlangAudioEngine>();
+    ThrowUnsupportedBackend("audio", BackendRegistry::ToString(config.audioBackend),
+                            BackendRegistry::SupportedAudioBackends());
 }
 
 std::unique_ptr<IPhysicsWorld> AppBuilder::CreatePhysicsWorld(const AppConfig& config)
 {
+    if (!BackendRegistry::IsSupported(config.physicsBackend))
+    {
+        ThrowUnsupportedBackend("physics", BackendRegistry::ToString(config.physicsBackend),
+                                BackendRegistry::SupportedPhysicsBackends());
+    }
+
     switch (config.physicsBackend)
     {
         case PhysicsBackend::Bullet:
             LOGGER_INFO("AppBuilder") << "Initializing Physics Backend: BulletPhysics";
             return std::make_unique<BulletPhysicsWorld>();
         case PhysicsBackend::PhysX:
-            LOGGER_ERROR("AppBuilder") << "PhysX Backend not yet implemented. Defaulting to Bullet.";
-            return std::make_unique<BulletPhysicsWorld>();
+            break;
     }
 
-    return std::make_unique<BulletPhysicsWorld>();
+    ThrowUnsupportedBackend("physics", BackendRegistry::ToString(config.physicsBackend),
+                            BackendRegistry::SupportedPhysicsBackends());
 }
 
 std::unique_ptr<IWindow> AppBuilder::MakeWindow()

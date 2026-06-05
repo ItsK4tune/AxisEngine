@@ -59,15 +59,16 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
             m_NameToPathMap[name] = fullPath;
         }
 
-        auto future = JobSystem::Instance().ExecuteAsync([this, model, path, isStatic, name]() {
+        auto future = JobSystem::Instance().ExecuteAsync([model, path, isStatic]() {
             try
             {
                 model->LoadCPU(path, isStatic);
+                return !model->meshes.empty();
             }
             catch (...)
             {
-                LOGGER_ERROR("ModelManager")
-                    << "Async load failed for: " << path << ". Fallback will be applied on GPU upload.";
+                LOGGER_ERROR("ModelManager") << "Async load failed for: " << path;
+                return false;
             }
         });
 
@@ -83,6 +84,19 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         try
         {
             model->LoadCPU(path, isStatic);
+            if (model->meshes.empty())
+            {
+                LOGGER_ERROR("ModelManager") << "Loaded model has no meshes: " << path;
+                if (m_StrictLoading)
+                    return nullptr;
+                if (m_ErrorModel)
+                {
+                    LOGGER_WARN("ModelManager") << "Returning fallback model for: " << path;
+                    m_Cache.Add(name, m_ErrorModel);
+                    return m_ErrorModel;
+                }
+                return nullptr;
+            }
             if (ServiceLocator::Instance().Has<IGraphicsContext>())
             {
                 model->UploadToGPU();
@@ -102,7 +116,11 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         }
         catch (...)
         {
-            LOGGER_ERROR("ModelManager") << "Failed to load model: " << path << ". Returning cubeModel fallback.";
+            LOGGER_ERROR("ModelManager") << "Failed to load model: " << path << "."
+                                         << (m_StrictLoading ? " Strict loading is enabled." :
+                                                              " Returning fallback model.");
+            if (m_StrictLoading)
+                return nullptr;
             if (m_ErrorModel)
             {
                 m_Cache.Add(name, m_ErrorModel);
@@ -154,7 +172,38 @@ void ModelManager::Update(float dt)
     {
         if (it->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
         {
-            it->future.get();
+            const bool loaded = it->future.get();
+            if (!loaded)
+            {
+                LOGGER_ERROR("ModelManager") << "Async model failed to load: " << it->name
+                                             << (m_StrictLoading ? ". Strict loading is enabled." :
+                                                                  ". Applying fallback model.");
+                {
+                    std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+                    auto pathIt = m_NameToPathMap.find(it->name);
+                    if (pathIt != m_NameToPathMap.end())
+                    {
+                        const std::string fullPath = pathIt->second;
+                        m_PathToModelMap.erase(fullPath);
+                        m_PathReferenceCounts.erase(fullPath);
+                        m_NameToPathMap.erase(pathIt);
+                    }
+                }
+
+                if (!m_StrictLoading && m_ErrorModel)
+                {
+                    m_Cache.Add(it->name, m_ErrorModel);
+                    m_InstanceManager.RegisterModel(it->name, m_ErrorModel);
+                }
+                else
+                {
+                    m_Cache.Remove(it->name);
+                }
+
+                EventManager::Instance().Publish(ResourceLoadedEvent{it->name, "MODEL", false});
+                it = m_PendingModels.erase(it);
+                continue;
+            }
 
             if (!it->model->IsReadyToRender())
             {

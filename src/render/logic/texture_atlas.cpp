@@ -123,6 +123,8 @@ bool TextureAtlas::CreateAtlas(const std::vector<std::string>& texturePaths, int
 
     tm.BindTexture(TextureType::Texture2D, 0);
 
+    m_AtlasPixels = std::move(atlasData);
+
     for (auto& tex : textures)
     {
         stbi_image_free(tex.data);
@@ -197,14 +199,135 @@ glm::vec4 TextureAtlas::TransformUV(const std::string& textureName, const glm::v
 
 bool TextureAtlas::SaveToFile(const std::string& path)
 {
-    LOGGER_WARN("TextureAtlas") << "Save to file not yet implemented";
-    return false;
+    if (m_AtlasID == 0 || m_Width <= 0 || m_Height <= 0 || m_AtlasPixels.empty())
+    {
+        LOGGER_ERROR("TextureAtlas") << "Cannot save empty atlas: " << path;
+        return false;
+    }
+
+    struct AtlasFileHeader
+    {
+        uint32_t magic;
+        uint32_t version;
+        uint32_t width;
+        uint32_t height;
+        uint32_t regionCount;
+        uint32_t pixelDataSize;
+    };
+
+    std::ofstream file(path, std::ios::binary);
+    if (!file.is_open())
+    {
+        LOGGER_ERROR("TextureAtlas") << "Failed to open atlas file for writing: " << path;
+        return false;
+    }
+
+    AtlasFileHeader header;
+    header.magic = 0x41585441;
+    header.version = 1;
+    header.width = static_cast<uint32_t>(m_Width);
+    header.height = static_cast<uint32_t>(m_Height);
+    header.regionCount = static_cast<uint32_t>(m_Regions.size());
+    header.pixelDataSize = static_cast<uint32_t>(m_AtlasPixels.size());
+
+    file.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    for (const auto& [name, region] : m_Regions)
+    {
+        uint32_t nameSize = static_cast<uint32_t>(name.size());
+        file.write(reinterpret_cast<const char*>(&nameSize), sizeof(nameSize));
+        file.write(name.data(), name.size());
+        file.write(reinterpret_cast<const char*>(&region.uvMin), sizeof(region.uvMin));
+        file.write(reinterpret_cast<const char*>(&region.uvMax), sizeof(region.uvMax));
+        file.write(reinterpret_cast<const char*>(&region.uvScale), sizeof(region.uvScale));
+        file.write(reinterpret_cast<const char*>(&region.uvOffset), sizeof(region.uvOffset));
+        file.write(reinterpret_cast<const char*>(&region.width), sizeof(region.width));
+        file.write(reinterpret_cast<const char*>(&region.height), sizeof(region.height));
+    }
+    file.write(reinterpret_cast<const char*>(m_AtlasPixels.data()), m_AtlasPixels.size());
+
+    LOGGER_INFO("TextureAtlas") << "Saved atlas to file: " << path;
+    return true;
 }
 
 bool TextureAtlas::LoadFromFile(const std::string& path)
 {
-    LOGGER_WARN("TextureAtlas") << "Load from file not yet implemented";
-    return false;
+    if (!s_TextureManager)
+        return false;
+
+    struct AtlasFileHeader
+    {
+        uint32_t magic;
+        uint32_t version;
+        uint32_t width;
+        uint32_t height;
+        uint32_t regionCount;
+        uint32_t pixelDataSize;
+    };
+
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open())
+    {
+        LOGGER_ERROR("TextureAtlas") << "Failed to open atlas file: " << path;
+        return false;
+    }
+
+    AtlasFileHeader header;
+    file.read(reinterpret_cast<char*>(&header), sizeof(header));
+    if (!file || header.magic != 0x41585441 || header.version != 1)
+    {
+        LOGGER_ERROR("TextureAtlas") << "Invalid atlas file: " << path;
+        return false;
+    }
+
+    std::map<std::string, AtlasRegion> loadedRegions;
+    for (uint32_t i = 0; i < header.regionCount; ++i)
+    {
+        uint32_t nameSize = 0;
+        file.read(reinterpret_cast<char*>(&nameSize), sizeof(nameSize));
+        std::string name(nameSize, '\0');
+        file.read(name.data(), name.size());
+
+        AtlasRegion region;
+        region.name = name;
+        file.read(reinterpret_cast<char*>(&region.uvMin), sizeof(region.uvMin));
+        file.read(reinterpret_cast<char*>(&region.uvMax), sizeof(region.uvMax));
+        file.read(reinterpret_cast<char*>(&region.uvScale), sizeof(region.uvScale));
+        file.read(reinterpret_cast<char*>(&region.uvOffset), sizeof(region.uvOffset));
+        file.read(reinterpret_cast<char*>(&region.width), sizeof(region.width));
+        file.read(reinterpret_cast<char*>(&region.height), sizeof(region.height));
+        loadedRegions[name] = region;
+    }
+
+    std::vector<unsigned char> pixels(header.pixelDataSize);
+    file.read(reinterpret_cast<char*>(pixels.data()), pixels.size());
+    if (!file)
+    {
+        LOGGER_ERROR("TextureAtlas") << "Atlas file is truncated: " << path;
+        return false;
+    }
+
+    Clear();
+
+    auto& tm = GetTextureManager();
+    m_Width = static_cast<int>(header.width);
+    m_Height = static_cast<int>(header.height);
+    m_Regions = std::move(loadedRegions);
+    m_AtlasPixels = std::move(pixels);
+
+    m_AtlasID = tm.GenTexture();
+    tm.BindTexture(TextureType::Texture2D, m_AtlasID);
+    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA8, m_Width, m_Height, 0, TextureFormat::RGBA,
+                  DataType::UnsignedByte, m_AtlasPixels.data());
+    tm.GenerateMipmap(TextureType::Texture2D);
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::Repeat));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::Repeat));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
+                     static_cast<int>(TextureFilter::LinearMipmapLinear));
+    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
+    tm.BindTexture(TextureType::Texture2D, 0);
+
+    LOGGER_INFO("TextureAtlas") << "Loaded atlas from file: " << path;
+    return true;
 }
 
 void TextureAtlas::Clear()
@@ -215,6 +338,7 @@ void TextureAtlas::Clear()
         m_AtlasID = 0;
     }
     m_Regions.clear();
+    m_AtlasPixels.clear();
 }
 
 bool TextureAtlas::HasTexture(const std::string& name) const

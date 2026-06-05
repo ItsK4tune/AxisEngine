@@ -47,6 +47,8 @@ void PhysicsSystem::Initialize()
         const auto& cfg = configManager.GetConfig();
         phys->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
         phys->SetMode(static_cast<int>(cfg.physicsMode));
+        phys->SetSimulationSettings(cfg.physicsTickRate > 0.0f ? 1.0f / cfg.physicsTickRate : 1.0f / 60.0f,
+                                    cfg.maxSubSteps);
         phys->SetSolverIterations(cfg.solverIterations);
         phys->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
     }
@@ -61,6 +63,9 @@ void PhysicsSystem::Initialize()
         {
             phys_inner->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
             phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
+            phys_inner->SetSimulationSettings(cfg.physicsTickRate > 0.0f ? 1.0f / cfg.physicsTickRate
+                                                                         : 1.0f / 60.0f,
+                                             cfg.maxSubSteps);
             phys_inner->SetSolverIterations(cfg.solverIterations);
             phys_inner->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
         }

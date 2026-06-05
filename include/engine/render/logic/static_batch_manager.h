@@ -23,6 +23,8 @@ public:
         size_t indexCount;
         Shader* shader;
         std::string materialName;
+        std::vector<StaticVertex> vertices;
+        std::vector<unsigned int> indices;
     };
 
     StaticBatchManager();

@@ -6,6 +6,10 @@
 #include <fstream>
 #include <vector>
 
+#ifndef AXIS_ENABLE_MOCK_VIDEO_DATA
+#define AXIS_ENABLE_MOCK_VIDEO_DATA 0
+#endif
+
 ITextureManager* VideoDecoder::s_TextureManager = nullptr;
 
 void VideoDecoder::SetTextureManager(ITextureManager& textureManager)
@@ -54,6 +58,7 @@ bool VideoDecoder::Load(const std::string& filepath)
         }
         if (marker.find("MOCK_VIDEO_DATA") == 0)
         {
+#if AXIS_ENABLE_MOCK_VIDEO_DATA
             m_ProceduralFallback = true;
             m_Width = 640;
             m_Height = 360;
@@ -66,6 +71,10 @@ bool VideoDecoder::Load(const std::string& filepath)
             m_TimeBase = 1.0 / m_FrameRate;
             InitTexture();
             return true;
+#else
+            LOGGER_ERROR("VideoDecoder") << "MOCK_VIDEO_DATA fallback is disabled for this build: " << filepath;
+            return false;
+#endif
         }
         LOGGER_ERROR("VideoDecoder") << "Failed to open video file: " << filepath;
         return false;

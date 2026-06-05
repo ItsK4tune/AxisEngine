@@ -1,6 +1,6 @@
 # Physics Guide
 
-AXIS Engine integrates **Bullet Physics** to provide a robust, high-performance simulation environment.
+AXIS Engine integrates **Bullet Physics** as the physics provider in the current build.
 
 ---
 

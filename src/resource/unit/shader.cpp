@@ -20,6 +20,8 @@ Shader::Shader(IShaderManager& manager, const char* vertexPath, const char* frag
 void Shader::load(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
 {
     auto& sm = m_ShaderManager;
+    const unsigned int previousID = ID;
+    m_IsError = false;
 
     std::string vertexCode;
     std::string fragmentCode;
@@ -83,19 +85,39 @@ void Shader::load(const char* vertexPath, const char* fragmentPath, const char* 
         checkCompileErrors(geometry, "GEOMETRY");
     }
 
-    ID = sm.CreateProgram();
-    sm.AttachShader(ID, Vertex);
-    sm.AttachShader(ID, fragment);
+    unsigned int newProgram = sm.CreateProgram();
+    sm.AttachShader(newProgram, Vertex);
+    sm.AttachShader(newProgram, fragment);
     if (geometryPath != nullptr)
-        sm.AttachShader(ID, geometry);
+        sm.AttachShader(newProgram, geometry);
 
-    sm.LinkProgram(ID);
-    checkCompileErrors(ID, "PROGRAM");
+    sm.LinkProgram(newProgram);
+    checkCompileErrors(newProgram, "PROGRAM");
 
     sm.DeleteShader(Vertex);
     sm.DeleteShader(fragment);
     if (geometryPath != nullptr)
         sm.DeleteShader(geometry);
+
+    if (m_IsError && m_AllowErrorFallback)
+    {
+        if (newProgram != 0)
+            sm.DeleteProgram(newProgram);
+
+        ID = previousID;
+        if (previousID != 0)
+        {
+            m_IsError = false;
+            LOGGER_WARN("Shader") << "Reload failed for '" << m_Name << "'. Keeping previous valid program.";
+        }
+        return;
+    }
+
+    ID = newProgram;
+    if (previousID != 0 && previousID != ID)
+    {
+        sm.DeleteProgram(previousID);
+    }
 
     {
         std::lock_guard<std::mutex> lock(m_UniformMutex);

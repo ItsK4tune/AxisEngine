@@ -8,6 +8,7 @@
 #include <BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
+#include <algorithm>
 
 struct IgnoreEntityRayCallback : public btCollisionWorld::ClosestRayResultCallback
 {
@@ -62,7 +63,7 @@ void BulletPhysicsWorld::Update(float dt)
 {
     if (m_DynamicsWorld)
     {
-        m_DynamicsWorld->stepSimulation(dt, 10, 1.0f / 60.0f);
+        m_DynamicsWorld->stepSimulation(dt, m_MaxSubSteps, m_FixedTimeStep);
     }
 }
 
@@ -92,6 +93,33 @@ void BulletPhysicsWorld::SetGravity(const glm::vec3& gravity)
 
 void BulletPhysicsWorld::SetMode(int mode)
 {
+    m_PhysicsMode = mode;
+
+    switch (mode)
+    {
+    case 0:  // Fast
+        m_MaxSubSteps = 4;
+        m_FixedTimeStep = 1.0f / 30.0f;
+        SetSolverIterations(6);
+        break;
+    case 2:  // Accurate
+        m_MaxSubSteps = 20;
+        m_FixedTimeStep = 1.0f / 120.0f;
+        SetSolverIterations(16);
+        break;
+    case 1:  // Balanced
+    default:
+        m_MaxSubSteps = 10;
+        m_FixedTimeStep = 1.0f / 60.0f;
+        SetSolverIterations(10);
+        break;
+    }
+}
+
+void BulletPhysicsWorld::SetSimulationSettings(float fixedTimeStep, int maxSubSteps)
+{
+    m_FixedTimeStep = fixedTimeStep > 0.0f ? fixedTimeStep : (1.0f / 60.0f);
+    m_MaxSubSteps = std::max(1, maxSubSteps);
 }
 
 void BulletPhysicsWorld::SetSolverIterations(int iterations)

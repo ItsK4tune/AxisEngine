@@ -122,6 +122,17 @@ void ResourceManager::SetTextureMaxAnisotropy(float max)
         m_TextureManager->SetMaxAnisotropy(max);
 }
 
+void ResourceManager::SetStrictAssetLoading(bool strict)
+{
+    m_StrictAssetLoading = strict;
+    if (m_ShaderManager)
+        m_ShaderManager->SetStrictLoading(strict);
+    if (m_TextureManager)
+        m_TextureManager->SetStrictLoading(strict);
+    if (m_ModelManager)
+        m_ModelManager->SetStrictLoading(strict);
+}
+
 void ResourceManager::Update(float dt)
 {
     if (m_TextureManager)
@@ -155,6 +166,10 @@ void ResourceManager::ReloadShader(const std::string& name)
 void ResourceManager::ReloadTexture(const std::string& name)
 {
     LOGGER_INFO("HotReload") << "Reloading Texture: " << name;
+    if (m_TextureManager)
+    {
+        m_TextureManager->Reload(name);
+    }
 }
 
 void ResourceManager::AddResourceDefinition(const std::string& type, const std::string& name,

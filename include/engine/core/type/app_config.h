@@ -31,6 +31,7 @@ struct GraphicsConfig
     float maxAnisotropy = 16.0f;
     float renderScale = 1.0f;
     bool asyncResourceLoading = true;
+    bool strictAssetLoading = false;
 };
 
 struct RenderConfig
@@ -44,6 +45,9 @@ struct RenderConfig
     float bloomThreshold = 1.0f;
     float bloomRadius = 0.005f;
     float skyboxIntensity = 1.0f;
+    float ambientIntensity = 1.0f;
+    float uiReferenceWidth = 1920.0f;
+    float uiReferenceHeight = 1080.0f;
     float clearColor[4] = {0.1f, 0.1f, 0.1f, 1.0f};
 };
 
@@ -157,6 +161,7 @@ struct AppConfig
     float& maxAnisotropy = graphics.maxAnisotropy;
     float& renderScale = graphics.renderScale;
     bool& asyncResourceLoading = graphics.asyncResourceLoading;
+    bool& strictAssetLoading = graphics.strictAssetLoading;
 
     TonemappingMode& tonemappingMode = render.tonemappingMode;
     bool& hdrEnabled = render.hdrEnabled;
@@ -167,6 +172,9 @@ struct AppConfig
     float& bloomThreshold = render.bloomThreshold;
     float& bloomRadius = render.bloomRadius;
     float& skyboxIntensity = render.skyboxIntensity;
+    float& ambientIntensity = render.ambientIntensity;
+    float& uiReferenceWidth = render.uiReferenceWidth;
+    float& uiReferenceHeight = render.uiReferenceHeight;
     float (&clearColor)[4] = render.clearColor;
 
     bool& shadowsEnabled = shadow.shadowsEnabled;

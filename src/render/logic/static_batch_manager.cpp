@@ -57,6 +57,8 @@ void StaticBatchManager::CreateBatch(const std::string& name, const std::vector<
     MergeMeshes(models, transforms, mergedVertices, mergedIndices);
 
     BatchData batch;
+    batch.vertices = mergedVertices;
+    batch.indices = mergedIndices;
     CreateGPUBuffers(batch, mergedVertices, mergedIndices);
     batch.shader = nullptr;
     batch.materialName = "";
@@ -216,6 +218,8 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
     file.close();
 
     BatchData batch;
+    batch.vertices = vertices;
+    batch.indices = indices;
     CreateGPUBuffers(batch, vertices, indices);
     batch.shader = nullptr;
     batch.materialName = "";
@@ -235,7 +239,39 @@ void StaticBatchManager::SaveBatchToFile(const std::string& name, const std::str
         return;
     }
 
-    LOGGER_WARN("StaticBatchManager") << "Batch saving not yet fully implemented";
+    struct BatchFileHeader
+    {
+        uint32_t magic;
+        uint32_t version;
+        uint32_t vertexCount;
+        uint32_t indexCount;
+    };
+
+    const BatchData& batch = it->second;
+    if (batch.vertices.empty() || batch.indices.empty())
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Batch has no CPU-side mesh data to save: " << name;
+        return;
+    }
+
+    std::ofstream file(path, std::ios::binary);
+    if (!file.is_open())
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Failed to open batch file for writing: " << path;
+        return;
+    }
+
+    BatchFileHeader header;
+    header.magic = 0x48435442;
+    header.version = 1;
+    header.vertexCount = static_cast<uint32_t>(batch.vertices.size());
+    header.indexCount = static_cast<uint32_t>(batch.indices.size());
+
+    file.write(reinterpret_cast<const char*>(&header), sizeof(BatchFileHeader));
+    file.write(reinterpret_cast<const char*>(batch.vertices.data()), batch.vertices.size() * sizeof(StaticVertex));
+    file.write(reinterpret_cast<const char*>(batch.indices.data()), batch.indices.size() * sizeof(unsigned int));
+
+    LOGGER_INFO("StaticBatchManager") << "Saved batch to file: " << path;
 }
 
 void StaticBatchManager::Clear()

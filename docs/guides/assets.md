@@ -69,10 +69,14 @@ Load heavy assets without halting the main thread:
 res.LoadModelAsync("City", "models/city.fbx");
 ```
 
+### Strict Asset Loading
+Debug builds can keep using internal error shaders, checkerboard textures, and model fallbacks to make missing assets visible. Set `STRICT_ASSET_LOADING: 1` in config for production-style behavior where failed shader, texture, and model loads report failure instead of silently substituting fallback assets.
+
 ### Hot Reloading
-In Debug mode, the engine monitors the `resources/` directory:
-- **Shaders**: Automatic recompilation and material updates on file save.
-- **Textures**: Refreshed instantly without restarting (supported in dev builds).
+In Debug mode, the engine monitors registered shader and texture files:
+- **Shaders**: Vertex, fragment, and geometry shader stages trigger recompilation on file save.
+- **Textures**: Registered file-backed textures are uploaded again without restarting.
+- **Scripts and metadata**: Runtime reload is not supported by the current compile-time script registry.
 
 ### Deduplication
 The `ResourceManager` caches assets by their **Name**. Loading the same file path under the same name multiple times will return a shared pointer to the existing instance, saving memory.

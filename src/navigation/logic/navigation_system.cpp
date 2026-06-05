@@ -9,6 +9,7 @@
 #include <resource/logic/resource_manager.h>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <algorithm>
 
 REGISTER_SYSTEM(NavigationSystem)
 
@@ -39,6 +40,71 @@ std::vector<glm::vec3> SmoothPathCorners(const std::vector<glm::vec3>& path, int
         result = std::move(smoothed);
     }
     return result;
+}
+
+bool HasTag(const std::vector<std::string>& tags, const std::string& value)
+{
+    return std::find(tags.begin(), tags.end(), value) != tags.end();
+}
+
+glm::vec3 ComputeLocalAvoidance(Scene& scene, entt::entity self, const glm::vec3& position,
+                                const glm::vec3& moveDir, const PathFollowerComponent& follower,
+                                IPhysicsWorld* physics, const std::vector<std::string>& obstacleTags, bool fly3D)
+{
+    if (!follower.localAvoidanceEnabled)
+        return glm::vec3(0.0f);
+
+    glm::vec3 avoidance(0.0f);
+    auto view = scene.registry.view<PositionComponent, PathFollowerComponent, InfoComponent>();
+    for (auto other : view)
+    {
+        if (other == self)
+            continue;
+
+        const auto& otherInfo = view.get<InfoComponent>(other);
+        if (!otherInfo.isActive)
+            continue;
+
+        const auto& otherFollower = view.get<PathFollowerComponent>(other);
+        if (!otherFollower.isMoving && !otherFollower.pathPending)
+            continue;
+
+        glm::vec3 offset = position - view.get<PositionComponent>(other).value;
+        if (!fly3D)
+            offset.y = 0.0f;
+
+        const float distance = glm::length(offset);
+        if (distance <= 0.0001f || distance >= follower.separationRadius)
+            continue;
+
+        const float strength = 1.0f - (distance / follower.separationRadius);
+        avoidance += (offset / distance) * strength * follower.separationWeight;
+    }
+
+    if (physics && follower.obstacleAvoidanceDistance > 0.0f && glm::length(moveDir) > 0.001f)
+    {
+        const glm::vec3 rayOrigin = position + glm::vec3(0.0f, 0.5f, 0.0f);
+        auto hit = physics->Raycast(rayOrigin, glm::normalize(moveDir), follower.obstacleAvoidanceDistance, self);
+        if (hit.hasHit && scene.registry.valid(hit.entity))
+        {
+            const auto* info = scene.registry.try_get<InfoComponent>(hit.entity);
+            if (info && HasTag(obstacleTags, info->tag))
+            {
+                glm::vec3 side = glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), moveDir);
+                if (glm::length(side) < 0.001f)
+                    side = glm::vec3(1.0f, 0.0f, 0.0f);
+                else
+                    side = glm::normalize(side);
+
+                const float proximity = 1.0f - glm::clamp(hit.distance / follower.obstacleAvoidanceDistance, 0.0f, 1.0f);
+                avoidance += side * proximity * follower.obstacleAvoidanceWeight;
+            }
+        }
+    }
+
+    if (!fly3D)
+        avoidance.y = 0.0f;
+    return avoidance;
 }
 }  // namespace
 
@@ -95,12 +161,45 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
         globalNavMesh = &navMeshView.get<NavMeshComponent>(navMeshView.front());
     }
 
+    NavigationGridComponent* globalGrid = nullptr;
+    auto gridView = scene.registry.view<NavigationGridComponent>();
+    for (auto gridEntity : gridView)
+    {
+        auto& grid = gridView.get<NavigationGridComponent>(gridEntity);
+        if (grid.IsValid())
+        {
+            globalGrid = &grid;
+            break;
+        }
+    }
+
     for (auto entity : view)
     {
         auto& pos = view.get<PositionComponent>(entity);
         auto& rot = view.get<RotationComponent>(entity);
         auto& world = view.get<WorldTransformComponent>(entity);
         auto& follower = view.get<PathFollowerComponent>(entity);
+        NavMeshComponent* selectedNavMesh = globalNavMesh;
+        NavigationGridComponent* selectedGrid = globalGrid;
+
+        if (follower.navigationProviderEntity != entt::null && scene.registry.valid(follower.navigationProviderEntity))
+        {
+            if (follower.pathfindingOptions.provider == NavigationProvider::NavMesh ||
+                follower.pathfindingOptions.provider == NavigationProvider::Auto)
+            {
+                if (auto* nav = scene.registry.try_get<NavMeshComponent>(follower.navigationProviderEntity))
+                    selectedNavMesh = nav;
+            }
+            if (follower.pathfindingOptions.provider == NavigationProvider::Grid ||
+                follower.pathfindingOptions.provider == NavigationProvider::Auto)
+            {
+                if (auto* grid = scene.registry.try_get<NavigationGridComponent>(follower.navigationProviderEntity);
+                    grid && grid->IsValid())
+                {
+                    selectedGrid = grid;
+                }
+            }
+        }
 
         if (follower.pathPending)
         {
@@ -115,16 +214,32 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 if (follower.recordDebugPath)
                     follower.debugTraveledPath.push_back(pos.value);
             }
-            else if (globalNavMesh && !globalNavMesh->nodes.empty())
+            else if (selectedGrid &&
+                     (follower.pathfindingOptions.provider == NavigationProvider::Grid ||
+                      (follower.pathfindingOptions.provider == NavigationProvider::Auto &&
+                       (!selectedNavMesh || selectedNavMesh->nodes.empty()))))
+            {
+                follower.currentPath =
+                    Pathfinding::FindGridPath(pos.value, follower.targetPosition, *selectedGrid,
+                                              follower.pathfindingOptions);
+                follower.currentPathIndex = 0;
+                follower.pathPending = false;
+                follower.isMoving = !follower.currentPath.empty();
+                follower.debugTraveledPath.clear();
+                if (follower.recordDebugPath)
+                    follower.debugTraveledPath.push_back(pos.value);
+                follower.debugPlannedPath = follower.currentPath;
+            }
+            else if (selectedNavMesh && !selectedNavMesh->nodes.empty())
             {
                 LOGGER_INFO("NavigationSystem") << "Pathfinding request for entity " << (uint32_t)entity << ": Start=("
                                                 << pos.value.x << "," << pos.value.y << "," << pos.value.z << ")"
                                                 << " Target=(" << follower.targetPosition.x << ","
                                                 << follower.targetPosition.y << "," << follower.targetPosition.z << ")"
-                                                << " NavMeshNodes=" << globalNavMesh->nodes.size()
+                                                << " NavMeshNodes=" << selectedNavMesh->nodes.size()
                                                 << " Strategy=" << (int)follower.pathfindingOptions.criteria;
 
-                follower.currentPath = Pathfinding::FindPath(pos.value, follower.targetPosition, *globalNavMesh,
+                follower.currentPath = Pathfinding::FindPath(pos.value, follower.targetPosition, *selectedNavMesh,
                                                              follower.pathfindingOptions);
                 follower.currentPathIndex = 0;
                 follower.pathPending = false;
@@ -175,7 +290,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
             {
                 if (follower.pathPending)
                 {
-                    LOGGER_WARN("NavigationSystem") << "Path pending but NavMesh is empty or missing!";
+                    LOGGER_WARN("NavigationSystem") << "Path pending but no usable navigation provider is available!";
                     follower.pathPending = false;
                     follower.isMoving = false;
                     follower.currentPath.clear();
@@ -208,6 +323,15 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 if (moveDist > 0.001f)
                 {
                     moveDir /= moveDist;
+                    glm::vec3 avoidance =
+                        ComputeLocalAvoidance(scene, entity, pos.value, moveDir, follower, physics_ptr, m_CarveTags,
+                                              fly3D);
+                    if (glm::length(avoidance) > 0.001f)
+                    {
+                        glm::vec3 adjustedDir = moveDir + avoidance;
+                        if (glm::length(adjustedDir) > 0.001f)
+                            moveDir = glm::normalize(adjustedDir);
+                    }
                     glm::vec3 moveStep = moveDir * follower.moveSpeed * dt;
                     if (follower.lockMoveX)
                         moveStep.x = 0.0f;
@@ -558,9 +682,33 @@ void NavigationSystem::SetCustomCostFunction(Scene& scene, entt::entity entity,
     }
 }
 
+void NavigationSystem::SetCustomGridCostFunction(
+    Scene& scene, entt::entity entity, std::function<float(uint32_t, uint32_t, const NavigationGridComponent&)> func)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower)
+    {
+        follower->pathfindingOptions.criteria = PathfindingCriteria::Custom;
+        follower->pathfindingOptions.customGridCostFunc = func;
+    }
+}
+
+void NavigationSystem::SetNavigationProviderEntity(Scene& scene, entt::entity entity, entt::entity provider,
+                                                   NavigationProvider providerType)
+{
+    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    if (follower)
+    {
+        follower->navigationProviderEntity = provider;
+        if (providerType != NavigationProvider::Auto)
+            follower->pathfindingOptions.provider = providerType;
+    }
+}
+
 std::vector<entt::id_type> NavigationSystem::GetReadComponents() const
 {
-    return {entt::type_id<PositionComponent>().hash(), entt::type_id<NavMeshComponent>().hash()};
+    return {entt::type_id<PositionComponent>().hash(), entt::type_id<NavMeshComponent>().hash(),
+            entt::type_id<NavigationGridComponent>().hash()};
 }
 
 std::vector<entt::id_type> NavigationSystem::GetWriteComponents() const

@@ -29,6 +29,7 @@ public:
     std::shared_ptr<Texture> Get(const std::string& nameOrPath) override;
 
     void Unload(const std::string& nameOrPath) override;
+    bool Reload(const std::string& name);
 
     void Update(float dt = 0.0f) override;
 
@@ -47,6 +48,10 @@ public:
     {
         m_MaxAnisotropy = anisotropy;
     }
+    void SetStrictLoading(bool strict)
+    {
+        m_StrictLoading = strict;
+    }
 
     void Initialize() override;
 
@@ -63,6 +68,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<Texture>> m_PathToTextureMap;
     std::unordered_map<std::string, int> m_PathReferenceCounts;
     std::unordered_map<std::string, std::string> m_NameToPathMap;
+    std::unordered_map<std::string, bool> m_NameKeepCpuDataMap;
     std::mutex m_DeduplicationMutex;
 
     ITextureManager& m_LowLevelManager;
@@ -73,6 +79,7 @@ private:
 
     bool m_AsyncEnabled = true;
     float m_MaxAnisotropy = 1.0f;
+    bool m_StrictLoading = false;
 
     std::shared_ptr<Texture> m_ErrorTexture;
 };

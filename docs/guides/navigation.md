@@ -1,21 +1,22 @@
 # Navigation Guide
 
-AXIS Engine features a robust Navigation System for AI pathfinding and character movement, based on generated Navigation Meshes (NavMeshes).
+AXIS Engine provides navigation for AI pathfinding and character movement through generated NavMeshes and grid-based A* providers.
 
 ---
 
 ## 1. Navigation Components
 
 ### NavMeshComponent
-Stores the spatial data used for pathfinding.
+Stores the spatial data used for NavMesh pathfinding.
 - **Data**: Vertices, Indices, and path-optimized polygons.
 - **Usage**: Automatically processed by the `NavigationSystem` for A* calculations.
 
 ### PathFollowerComponent
-Enables an entity to traverse the NavMesh.
+Enables an entity to traverse a navigation provider.
 - **Movement**: `MoveSpeed`, `ArrivalDistance`.
 - **Rotation**: `RotationSpeed`, `MaxRotationSpeed`, `RotationAcceleration` (for smooth orientation).
 - **Alignment**: `RotationOffset` to fix character model facing.
+- **Provider Binding**: `navigationProviderEntity` can bind the follower to a specific `NavMeshComponent` or `NavigationGridComponent`; otherwise the system falls back to the first valid provider in the scene.
 
 ---
 
@@ -25,17 +26,17 @@ NavMeshes are baked from existing scene geometry.
 ### Baking Steps
 1.  **Tag Geometry**: Set the `Tag` of all floors and ramps to `Walkable`.
 2.  **Add NavMesh Entity**: Create an empty entity with a `NavMeshComponent`.
-3.  **Generate**: Call `NavigationSystem::GenerateNavMesh()` (usually via editor or script) to bake the data from all `Walkable` meshes.
+3.  **Generate**: Add a `NavMeshComponent` and set `needsRebuild = true`; `NavigationSystem` rebuilds it during update through `NavMeshGenerator`.
 
 ---
 
 ## 3. Navigation System Features
 The `NavigationSystem` automatically manages entities with a `PathFollowerComponent`:
 
-- **A* Pathfinding**: Finds the shortest traversable path between world points.
+- **A* Pathfinding**: Finds traversable paths between world points on either NavMesh or grid providers.
 - **Path Smoothing**: Skips unnecessary nodes if a direct line-of-sight exists on the NavMesh.
 - **Ground Alignment**: Automatically rotates the character to match the slope of the ground normal.
-- **Steering**: Handles smooth acceleration and deceleration during rotation.
+- **Steering**: Handles smooth rotation, local separation, and obstacle avoidance.
 
 ---
 
@@ -54,6 +55,9 @@ Configure behavior via the `PathfindingOptions` struct:
 - `preferredTags`: List of tags that reduce movement cost.
 - `tagWeightBonus`: Multiplier to prioritize preferred areas.
 - `altitudePenaltyWeight`: Scaling for slope-based cost (Smoothest mode).
+- `provider`: `Auto`, `NavMesh`, or `Grid`.
+- `customCostFunc`: NavMesh-specific custom edge cost callback.
+- `customGridCostFunc`: Grid-specific custom cell cost callback.
 
 ---
 

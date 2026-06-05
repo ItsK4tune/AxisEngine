@@ -39,6 +39,10 @@ public:
     void Reload(const std::string& name);
     void ReloadAll();
     void Initialize() override;
+    void SetStrictLoading(bool strict)
+    {
+        m_StrictLoading = strict;
+    }
 
 private:
     IShaderManager& m_LowLevelManager;
@@ -52,6 +56,7 @@ private:
 
     std::shared_ptr<Shader> m_ErrorShader;
     std::shared_ptr<Shader> m_ErrorGBufferShader;
+    bool m_StrictLoading = false;
 };
 
 #endif

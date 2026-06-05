@@ -34,13 +34,13 @@ Provides automated horizontal or vertical arrangement of child elements.
 
 ### UIInteractiveComponent
 Enables mouse interaction for buttons and sliders.
-- **States**: `isHovered`, `isPressed`.
-- **Callbacks**: Hook into `onClick` or `onHoverEnter` via scripting to trigger game logic.
+- **States**: `hovered`, `pressed`, `clicked`, and `holdTime`.
+- **Callbacks**: Runtime C++ callbacks such as `onClick`, `onHoverEnter`, and `onReleased`. These callbacks are not serialized into `.axs` files.
 
 ### UIAnimationComponent
 Provides lightweight visual feedback.
 - Automatically interpolates between `normalColor` and `hoverColor` when the entity is hovered.
-- Can be used to scale elements smoothly during interaction.
+- Can scale elements smoothly during interaction through `visualScale` without mutating layout-owned `UITransformComponent::size`.
 
 ---
 
@@ -49,14 +49,17 @@ The UI system is designed to handle dynamic window resizing:
 
 - **Percentage Scaling**: Enable `UsePercentage` to keep elements size-relative to the screen (e.g., a map that always takes up 20% of the viewport).
 - **Anchoring**: Ensures UI elements stay "stuck" to screen corners or centers regardless of aspect ratio changes.
+- **Reference Canvas**: `UI_REFERENCE_WIDTH`, `UI_REFERENCE_HEIGHT`, or `UI_REFERENCE_SIZE` config controls the canvas scale used by UI rendering and input hit testing.
 
 ---
 
 ## 4. UI Systems
 Two systems manage the UI every frame:
 
-1.  **UIInteractSystem**: Processes mouse positions and clicks, updating the state of `UIInteractiveComponent` and triggering user callbacks.
+1.  **UIInteractSystem**: Processes mouse positions and clicks, updating `UIInteractiveComponent` state and triggering runtime callbacks.
 2.  **UIRenderSystem**: Renders all UI elements as a late pass on top of the 3D scene, ensuring the UI is never occluded by game objects.
+
+Script-driven input still flows through `ScriptableSystem` and `InputScriptable`; it uses the same reference canvas config for hit testing.
 
 ---
 

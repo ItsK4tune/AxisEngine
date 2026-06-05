@@ -2,6 +2,7 @@
 #include <audio/interface/i_audio_engine.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
+#include <core/logic/job_system.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
@@ -24,6 +25,7 @@
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <algorithm>
+#include <future>
 #include <stdexcept>
 
 SystemManager::SystemManager()
@@ -262,9 +264,25 @@ void SystemManager::Update(Scene& scene, float dt)
                 parallelSystems[i]->CaptureSnapshot(scene, snapshots[i]);
             }
 
-            for (size_t i = 0; i < parallelSystems.size(); ++i)
+            if (parallelSystems.size() == 1)
             {
-                parallelSystems[i]->UpdateParallel(snapshots[i], commandBuffers[i], dt);
+                parallelSystems[0]->UpdateParallel(snapshots[0], commandBuffers[0], dt);
+            }
+            else
+            {
+                std::vector<std::future<void>> futures;
+                futures.reserve(parallelSystems.size());
+                for (size_t i = 0; i < parallelSystems.size(); ++i)
+                {
+                    futures.push_back(JobSystem::Instance().ExecuteAsync([&, i]() {
+                        parallelSystems[i]->UpdateParallel(snapshots[i], commandBuffers[i], dt);
+                    }));
+                }
+
+                for (auto& future : futures)
+                {
+                    future.get();
+                }
             }
 
             for (auto& commandBuffer : commandBuffers)
@@ -458,6 +476,11 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
             sys->RenderAlphaPass(scene, width, height, alpha);
     }
 
+    if (auto* rs = sl.Resolve<IRenderService>())
+    {
+        rs->RenderOcclusionQueries(scene, alpha);
+    }
+
     // 5. Transparent Pass
     for (IRenderSystem* sys : m_RenderTransparentSystems)
     {
@@ -483,7 +506,7 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
 
 void SystemManager::UpdateDebug(float realDeltaTime)
 {
-    // DebugSystem is now updated via standard m_UpdateSystems loop (Priority 1000)
+    // Debug/editor behavior is handled by regular systems and editor modules.
 }
 
 void SystemManager::RenderDebug(Scene& scene)

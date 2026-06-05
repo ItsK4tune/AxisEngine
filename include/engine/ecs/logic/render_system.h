@@ -3,7 +3,6 @@
 #include <core/type/app_config.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_service.h>
-#include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <ecs/unit/render_components.h>
 #include <render/interface/i_query_manager.h>
@@ -19,7 +18,7 @@ class Shader;
 class ShadowRenderer;
 class MaterialRenderer;
 
-class RenderSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
+class RenderSystem : public IUpdateSystem, public IECSSystem
 {
 public:
     RenderSystem();
@@ -44,7 +43,7 @@ public:
     }
     SystemCategory GetCategory() const override
     {
-        return SystemCategory::RenderMain | SystemCategory::Update | SystemCategory::PostProcess;
+        return SystemCategory::Update;
     }
     SystemRequirement GetRequirements() const override
     {
@@ -52,11 +51,6 @@ public:
     }
 
     void Update(Scene& scene, float dt) override;
-
-    void Render(Scene& scene) override;
-    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
-    void RenderTransparentPass(Scene& scene, int width, int height, float alpha) override;
-    void RenderUIPass(Scene& scene, float width, float height, IRenderStateManager& renderState) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;

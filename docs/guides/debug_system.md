@@ -1,60 +1,35 @@
-# Debug System Guide
+# Debug & Editor Controls Guide
 
-The `DebugSystem` provides real-time introspection, control, and diagnostics for the AXIS Engine. It is enabled when `ENABLE_DEBUG_SYSTEM` is defined (default in Debug builds).
+AXIS does not currently provide a standalone `DebugSystem` class. Runtime diagnostics and toggles are handled by editor modules, `DebugConfig`, `ToolsPanel`, and the active systems that read those config values.
 
-## Controls (Hotkeys)
+## Controls
 
 | Key | Function | Description |
 | :--- | :--- | :--- |
-| **F1** | **Log Controls** | Prints this list of debug keys to the console. |
-| **F2** | **Log Devices** | Lists all detected hardware (GPU, CPU, Monitors, Inputs, Audio). Active devices are marked with `[*]`. |
-| **F3** | **Performance Stats** | Logs current FPS and Frame Time (ms). |
-| **F4** | **Entity Stats** | Logs count of Entities, Renderables, UI Elements, and Physics Objects. |
-| **F5** | **Scene Dump** | Logs the hierarchy of the current Scene (Scene Graph). |
-| **F6** | **Wireframe Mode** | Toggles between Fill (Solid) and Line (Wireframe) rendering modes. |
-| **F7** | **No Texture Mode** | Toggles "Clay Mode" (White textures) for all objects. Useful for checking lighting/geometry. |
-| **F8** | **Physics Debug** | Toggles visual debugging of physics colliders (Wireframes). |
-| **F9** | **Toggle UI** | Hides or Shows the UI layer (2D Overlay). |
-| **F10** | **Stats Overlay** | Toggles an on-screen overlay showing FPS and Entity Count. |
-| **F11** | **Pause Game** | Pauses logic and physics updates. Rendering continues (useful for inspecting visual states). |
-| **F12** | **Time Scale** | Cycles time dilation: `0.25x` -> `0.5x` -> `1.0x` -> `1.5x` -> `2.0x`. |
-| **Shift+F3** | **Entity Names** | Toggle Entity Name tags above objects. |
-| **Shift+F4** | **Transform Gizmos** | Toggle Transform Gizmos (Position/Rotation/Scale visualizers). |
-| **Shift+F5** | **Light Gizmos** | Toggle Light Gizmos (Dir/Point/Spot icons). |
-| **Shift+F6** | **Toggle Skybox** | Enable or Disable Skybox rendering. |
-| **Shift+F7** | **Toggle Shadows** | Globally enables or disables shadow mapping. |
-| **Shift+F11** | **Toggle Debug Camera** | Switches between Main Camera and Free/Debug Camera (WASD "NoClip"). |
-| **Shift+F12** | **Cycle Cursor Mode** | Cycles: Normal -> Hidden -> Locked -> LockedHidden. |
+| **F1** | **Entity Names** | Toggles entity name labels. |
+| **F2** | **Gizmos** | Toggles general transform/editor gizmos. |
+| **F3** | **Light Gizmos** | Toggles light gizmo rendering. |
+| **F4** | **Audio System** | Toggles the audio system when available. |
+| **F5** | **Post Process System** | Toggles post-processing when available. |
+| **F6** | **Force Free Cursor** | Releases the cursor for editor panel interaction. |
+| **F8** | **Physics Debug** | Toggles Bullet collider debug drawing. |
+| **F9** | **UI Rendering** | Toggles UI render output. |
+| **F10** | **Game Exit Hook** | Used by game states such as match/result flows. |
+| **F11** | **Pause Game** | Pauses or resumes the engine loop. |
+| **F12** | **Time Scale** | Cycles time scale between slow motion and normal/fast values. |
+| **Shift+F6** | **Toggle Skybox** | Enables or disables skybox rendering. |
+| **Shift+F7** | **Toggle Shadows** | Enables or disables shadow mapping. |
+| **Shift+F8** | **Audio Debug** | Toggles audio debug display. |
+| **Shift+F9** | **Particle Debug** | Toggles particle debug display. |
+| **Shift+F11** | **Debug Camera** | Toggles the free/debug camera. |
+| **Shift+F12** | **Cursor Mode** | Cycles cursor modes. |
 
-## Features Detail
+## Panels
 
-### 1. Visual Debugging (F6, F7, F8)
-*   **Wireframe (F6)**: Uses `glPolygonMode` to see mesh topology without relying on post-processing hacks. Controlled globally via `DebugConfig::GetInstance().ShowWireframe`.
-*   **No Texture (F7)**: Replaces all material textures with a 1x1 white texture. This works on PBR, Phong, and Unlit shaders.
-    *   **Shadow Toggle (Shift+F7)**: Globally enables/disables shadow mapping.
-*   **Physics Draw (F8)**: Renders the internal Bullet Physics collision shapes. Green = Static, Red = Dynamic (usually). Driven by `BulletDebugDrawer`.
+The `HelpPanel` mirrors the current shortcut list. The `ToolsPanel` exposes the same runtime toggles through ImGui controls, including physics debug, entity names, gizmos, light gizmos, skybox, shadows, pause, and time scale.
 
-### 2. Gizmos (Shift+F4, Shift+F5)
-*   **Transform Gizmo (Shift+F4)**: Renders colored 3D axis lines (X=Red, Y=Green, Z=Blue) at the origin of entities possessing a `TransformComponent`.
-*   **Light Gizmo (Shift+F5)**: Renders wireframe spheres (Point/Spot) or icons (Directional) to visualize the position and range of lights.
+## Visual Debugging
 
-### 3. Debug Camera (Shift+F11)
-When enabled, the game camera is overridden by a free-flying "NoClip" camera.
-- **W/S**: Move Forward/Backward
-- **A/D**: Strafe Left/Right
-- **Q/E**: Move Down/Up
-- **Shift**: Move Faster
-- **Mouse**: Rotate Camera
-
-### 4. Time Control (F11, F12)
-*   **Pause (F11)**: Freezes `deltaTime` for logic/physics systems. Rendering and Debug Camera updates continue.
-*   **Slow Motion (F12)**: Adjusts `deltaTime` multiplier (0.25x, 0.5x, 1x, 1.5x, 2x).
-
-### 3. Diagnostics (F2, F3, F4, F5)
-*   Use these keys to dump information to the console window.
-*   **F2** is particularly useful for verifying which Monitor or Audio Device is currently selected by the configuration.
-
-### 5. On-Screen Overlay (F10)
-*   Displays real-time stats and active debug modes in the top-right corner.
-*   Requires `resources/fonts/time.ttf` and valid UI shaders.
-*   Includes: FPS, Frame Time, Total Entities, Rendered Count, and the current On/Off status of Physics Wireframes (F8) and Gizmos (Shift+F4 / Shift+F5).
+- **Physics Debug**: Renders Bullet collision shapes through the Bullet debug drawer.
+- **Gizmos**: Draws transform, light, grid, and other editor visual aids when their config flags are enabled.
+- **Debug Camera**: Uses editor camera modules rather than a separate global debug system.

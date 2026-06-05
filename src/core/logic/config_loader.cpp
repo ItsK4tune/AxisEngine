@@ -1,5 +1,6 @@
 #include <core/logic/config_loader.h>
 #include <core/app/runtime_core.h>
+#include <core/logic/backend_registry.h>
 #include <core/logic/logger.h>
 #include <physics/interface/i_physics_world.h>
 #include <platform/interface/i_window.h>
@@ -56,6 +57,21 @@ T ResolveEnum(const std::string& input, const std::unordered_map<std::string, T>
 }
 }  // namespace
 
+template <typename Backend>
+bool AcceptSupportedBackend(const char* key, Backend requested, Backend& target, const char* supported)
+{
+    if (BackendRegistry::IsSupported(requested))
+    {
+        target = requested;
+        return true;
+    }
+
+    LOGGER_ERROR("ConfigLoader") << key << " requested unsupported backend '" << BackendRegistry::ToString(requested)
+                                 << "'. Keeping '" << BackendRegistry::ToString(target)
+                                 << "'. Supported in this build: " << supported << ".";
+    return false;
+}
+
 void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool headless)
 {
     std::string subCmd;
@@ -76,26 +92,32 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     {
         std::string val;
         ss >> val;
-        config.graphicsBackend = ResolveEnum(val,
-                                             {{"OPENGL", GraphicsBackend::OpenGL},
-                                              {"VULKAN", GraphicsBackend::Vulkan},
-                                              {"DIRECTX", GraphicsBackend::DirectX}},
-                                             GraphicsBackend::OpenGL);
+        GraphicsBackend requested = ResolveEnum(val,
+                                                {{"OPENGL", GraphicsBackend::OpenGL},
+                                                 {"VULKAN", GraphicsBackend::Vulkan},
+                                                 {"DIRECTX", GraphicsBackend::DirectX}},
+                                                config.graphicsBackend);
+        AcceptSupportedBackend("GRAPHICS_API", requested, config.graphicsBackend,
+                               BackendRegistry::SupportedGraphicsBackends());
     }
     else if (subCmd == "PHYSICS_ENGINE")
     {
         std::string val;
         ss >> val;
-        config.physicsBackend = ResolveEnum(val, {{"BULLET", PhysicsBackend::Bullet}, {"PHYSX", PhysicsBackend::PhysX}},
-                                            PhysicsBackend::Bullet);
+        PhysicsBackend requested = ResolveEnum(val,
+                                               {{"BULLET", PhysicsBackend::Bullet}, {"PHYSX", PhysicsBackend::PhysX}},
+                                               config.physicsBackend);
+        AcceptSupportedBackend("PHYSICS_ENGINE", requested, config.physicsBackend,
+                               BackendRegistry::SupportedPhysicsBackends());
     }
     else if (subCmd == "AUDIO_ENGINE")
     {
         std::string val;
         ss >> val;
-        config.audioBackend = ResolveEnum(
+        AudioBackend requested = ResolveEnum(
             val, {{"IRRKLANG", AudioBackend::IrrKlang}, {"FMOD", AudioBackend::FMOD}, {"OPENAL", AudioBackend::OpenAL}},
-            AudioBackend::IrrKlang);
+            config.audioBackend);
+        AcceptSupportedBackend("AUDIO_ENGINE", requested, config.audioBackend, BackendRegistry::SupportedAudioBackends());
     }
     else if (subCmd == "TONEMAPPING")
     {
@@ -267,6 +289,12 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
         ss >> enable;
         config.asyncResourceLoading = (enable != 0);
     }
+    else if (subCmd == "STRICT_ASSET_LOADING")
+    {
+        int enable;
+        ss >> enable;
+        config.strictAssetLoading = (enable != 0);
+    }
     else if (subCmd == "SHADOWS_ENABLED")
     {
         int enable;
@@ -309,14 +337,21 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     {
         ss >> config.skyboxIntensity;
     }
-    else if (subCmd == "SKYBOX_INTENSITY")
-    {
-        ss >> config.skyboxIntensity;
-    }
     else if (subCmd == "AMBIENT_INTENSITY")
     {
-        float val;
-        ss >> val;
+        ss >> config.ambientIntensity;
+    }
+    else if (subCmd == "UI_REFERENCE_WIDTH")
+    {
+        ss >> config.uiReferenceWidth;
+    }
+    else if (subCmd == "UI_REFERENCE_HEIGHT")
+    {
+        ss >> config.uiReferenceHeight;
+    }
+    else if (subCmd == "UI_REFERENCE_SIZE")
+    {
+        ss >> config.uiReferenceWidth >> config.uiReferenceHeight;
     }
     else if (subCmd == "VOLUME")
     {

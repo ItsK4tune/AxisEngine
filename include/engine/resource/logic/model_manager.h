@@ -41,6 +41,11 @@ public:
         return m_InstanceManager;
     }
 
+    void SetStrictLoading(bool strict)
+    {
+        m_StrictLoading = strict;
+    }
+
     void Initialize() override;
 
 private:
@@ -57,8 +62,9 @@ private:
     {
         std::string name;
         std::shared_ptr<Model> model;
-        std::future<void> future;
+        std::future<bool> future;
     };
     std::vector<PendingModel> m_PendingModels;
     std::mutex m_PendingMutex;
+    bool m_StrictLoading = false;
 };

@@ -72,6 +72,10 @@ public:
     {
         m_IsError = error;
     }
+    void SetAllowErrorFallback(bool allow)
+    {
+        m_AllowErrorFallback = allow;
+    }
 
     bool IsDeferred() const
     {
@@ -130,4 +134,5 @@ private:
     std::string m_Name;
     bool m_IsError = false;
     bool m_IsDeferred = false;
+    bool m_AllowErrorFallback = true;
 };

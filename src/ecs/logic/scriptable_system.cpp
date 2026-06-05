@@ -1,4 +1,5 @@
 #include <ecs/logic/scriptable_system.h>
+#include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/loader_utils.h>
 #include <core/logic/logger.h>
@@ -74,6 +75,17 @@ ScriptableUIRect CalculateScriptableUIRect(entt::registry& registry, entt::entit
     return {finalMin, finalMax - finalMin};
 }
 
+ScriptableUIRect ApplyScriptableVisualScale(const ScriptableUIRect& rect, const UITransformComponent& transform,
+                                            float scale)
+{
+    if (scale <= 0.0f || scale == 1.0f)
+        return rect;
+
+    const glm::vec2 pivot = rect.pos + transform.pivot * rect.size;
+    const glm::vec2 scaledSize = rect.size * scale;
+    return {pivot - transform.pivot * scaledSize, scaledSize};
+}
+
 template <typename ClickFn, typename HoldFn, typename ReleaseFn>
 void DispatchPointerButton(bool isDown, bool canStartPress, float dt, bool& isPressed, float& holdTime,
                            ClickFn&& onClick, HoldFn&& onHold, ReleaseFn&& onRelease)
@@ -109,9 +121,15 @@ void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& sc
 
     const float screenWidth = (std::max)(1.0f, static_cast<float>(io->GetMonitorManager().GetWidth()));
     const float screenHeight = (std::max)(1.0f, static_cast<float>(io->GetMonitorManager().GetHeight()));
-    constexpr float refWidth = 1920.0f;
-    constexpr float refHeight = 1080.0f;
-    const float scaleFactor = (std::min)(screenWidth / refWidth, screenHeight / refHeight);
+    float referenceWidth = 1920.0f;
+    float referenceHeight = 1080.0f;
+    if (auto* config = ServiceLocator::Instance().Resolve<ConfigManager>())
+    {
+        referenceWidth = (std::max)(1.0f, config->GetConfig().uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, config->GetConfig().uiReferenceHeight);
+    }
+
+    const float scaleFactor = (std::min)(screenWidth / referenceWidth, screenHeight / referenceHeight);
     if (scaleFactor <= 0.0f)
         return;
 
@@ -137,8 +155,11 @@ void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& sc
         if (!uiTransform)
             continue;
 
-        const ScriptableUIRect rect =
+        ScriptableUIRect rect =
             CalculateScriptableUIRect(scene.registry, entity, screenWidth / scaleFactor, screenHeight / scaleFactor);
+        if (auto* animation = scene.registry.try_get<UIAnimationComponent>(entity))
+            rect = ApplyScriptableVisualScale(rect, *uiTransform, animation->visualScale);
+
         const bool isInside = mousePos.x >= rect.pos.x && mousePos.x <= rect.pos.x + rect.size.x &&
                               mousePos.y >= rect.pos.y && mousePos.y <= rect.pos.y + rect.size.y;
 

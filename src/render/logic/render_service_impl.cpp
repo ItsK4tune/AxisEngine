@@ -658,6 +658,9 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             m_RenderQueueObj.AddShadow(item);
     }
 
+    const float ambientIntensity =
+        m_ConfigManager ? (std::max)(0.0f, m_ConfigManager->GetConfig().ambientIntensity) : 1.0f;
+
     auto dirView = scene.registry.view<DirectionalLightComponent, InfoComponent>();
     for (auto entity : dirView)
     {
@@ -673,7 +676,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         rl.color = light.color;
         rl.intensity = light.intensity;
         rl.castShadows = light.isCastShadow;
-        rl.ambient = glm::vec3(light.ambient);
+        rl.ambient = glm::vec3(light.ambient * ambientIntensity);
         rl.diffuse = glm::vec3(light.diffuse);
         rl.specular = glm::vec3(light.specular);
         rl.direction = light.direction;
@@ -713,7 +716,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         rl.constant = light.constant;
         rl.linear = light.linear;
         rl.quadratic = light.quadratic;
-        rl.ambient = glm::vec3(light.ambient);
+        rl.ambient = glm::vec3(light.ambient * ambientIntensity);
         rl.diffuse = glm::vec3(light.diffuse);
         rl.specular = glm::vec3(light.specular);
         rl.castShadows = light.isCastShadow;
@@ -746,7 +749,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         rl.range = light.radius;
         rl.innerCutoff = light.cutOff;
         rl.outerCutoff = light.outerCutOff;
-        rl.ambient = glm::vec3(light.ambient);
+        rl.ambient = glm::vec3(light.ambient * ambientIntensity);
         rl.diffuse = glm::vec3(light.diffuse);
         rl.specular = glm::vec3(light.specular);
         rl.castShadows = light.isCastShadow;
@@ -788,6 +791,14 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     m_LastAlpha = lodFactor;
     m_LastWidth = params.width;
     m_LastHeight = params.height;
+}
+
+void RenderServiceImpl::RenderOcclusionQueries(Scene& scene, float alpha)
+{
+    if (!m_Context || !m_Flags.occlusionCullingEnabled || m_IsCapturingProbe)
+        return;
+
+    m_OcclusionCuller.RenderQueries(scene, m_CameraState.projectionMatrix, m_CameraState.viewMatrix, alpha);
 }
 
 void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, RenderQueuePass pass,

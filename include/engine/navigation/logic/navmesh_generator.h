@@ -22,6 +22,7 @@ private:
 
     static RawMeshData GatherWalkableGeometry(Scene& scene, ResourceManager* resources = nullptr,
                                               const std::vector<std::string>& walkableTags = {"walkable"},
-                                              const std::vector<std::string>& carveTags = {"obstacle"});
+                                              const std::vector<std::string>& carveTags = {"obstacle"},
+                                              int terrainGridResolution = 64);
     static void BuildConnectivity(NavMeshComponent& navMesh);
 };

@@ -41,6 +41,7 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/terrain_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/transform_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/transparent_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/logic/ui_interact_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/ui_render_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/video_system.cpp
     ${CMAKE_SOURCE_DIR}/src/network/logic/network_system.cpp
@@ -55,7 +56,6 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/physics/logic/physics_query_service.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/logic/physics_transform_sync.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/logic/ray.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_backend.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_character_controller.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_collision_shape.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_debug_drawer.cpp

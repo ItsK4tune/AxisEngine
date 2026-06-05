@@ -71,6 +71,10 @@ public:
     void SetPreferredTags(Scene& scene, entt::entity entity, const std::vector<std::string>& tags);
     void SetCustomCostFunction(Scene& scene, entt::entity entity,
                                std::function<float(uint32_t, uint32_t, const NavMeshComponent&)> func);
+    void SetCustomGridCostFunction(Scene& scene, entt::entity entity,
+                                   std::function<float(uint32_t, uint32_t, const NavigationGridComponent&)> func);
+    void SetNavigationProviderEntity(Scene& scene, entt::entity entity, entt::entity provider,
+                                     NavigationProvider providerType = NavigationProvider::Auto);
 
 private:
     void UpdatePathFollowing(Scene& scene, float dt);

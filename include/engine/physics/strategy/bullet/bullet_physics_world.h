@@ -59,6 +59,7 @@ public:
 
     void SetGravity(const glm::vec3& gravity) override;
     void SetMode(int mode) override;
+    void SetSimulationSettings(float fixedTimeStep, int maxSubSteps) override;
     void SetSolverIterations(int iterations) override;
     void SetCCDEnabled(bool enabled, float threshold = 0.0f) override;
 
@@ -126,4 +127,6 @@ private:
     bool m_CCDEnabled = false;
     float m_CCDThreshold = 0.0f;
     int m_PhysicsMode = 0;
+    int m_MaxSubSteps = 10;
+    float m_FixedTimeStep = 1.0f / 60.0f;
 };

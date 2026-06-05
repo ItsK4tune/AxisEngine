@@ -33,7 +33,9 @@ axis_scene:
     SHADOW_DISTANCE: 100.0
     FILTER_LAYER: -1
     PHYSICS_MODE: 1
-    PHYSICS_MODE: 1
+    STRICT_ASSET_LOADING: 0
+    AMBIENT_INTENSITY: 1.0
+    UI_REFERENCE_SIZE: 1920 1080
 ```
 
 ### Comprehensive Configuration Guide
@@ -52,12 +54,13 @@ Settings that control the fundamental behavior of the engine and hardware resour
     - `-1`: Auto-detect hardware concurrency.
 - **`TIME_SCALE`**: Global simulation multiplier (0.5 = Slow motion, 2.0 = Fast forward).
 - **`ASYNC_RESOURCES`**: Enables background asset loading (`1` or `0`).
+- **`STRICT_ASSET_LOADING`**: Disables debug fallback assets for shaders, textures, and models when set to `1`; failed loads return failure/null instead of checkerboard/capsule fallbacks.
 
 ---
 
 ## 🖼️ 2. Graphics & Post-Processing (Modular)
 
-These settings apply to the `IGraphicsContext` and subsequent rendering providers (OpenGL/Vulkan).
+These settings apply to the `IGraphicsContext` and rendering provider compiled into the build.
 
 ### Display & Resolution
 - **`WINDOW_MODE`**: Display strategy.
@@ -79,6 +82,9 @@ These settings apply to the `IGraphicsContext` and subsequent rendering provider
 - **`GAMMA`**: Color correction (Default: `2.2`).
 - **`EXPOSURE`**: Virtual camera exposure level.
 - **`SKYBOX_INTENSITY`**: Ambient light contribution from environment maps.
+- **`AMBIENT_INTENSITY`**: Multiplier applied to light ambient terms.
+- **`UI_REFERENCE_WIDTH` / `UI_REFERENCE_HEIGHT`**: Reference canvas size used by UI rendering and input scaling.
+- **`UI_REFERENCE_SIZE`**: Shorthand form that accepts width and height in one line.
 
 ---
 
@@ -98,7 +104,7 @@ Configures the `IShadowManager` which handles depth projection and filtering.
 
 ## 🧊 4. Physics Simulation (Modular)
 
-Configuration for the `IPhysicsWorld` abstraction, applicable to Bullet or PhysX backends.
+Configuration for the `IPhysicsWorld` abstraction. The current build provides the Bullet backend.
 
 - **`GRAVITY`**: Vector force `X Y Z` (e.g., `0 -9.81 0`).
 - **`PHYSICS_MODE`**: Simulation precision presets.
@@ -125,10 +131,12 @@ Directly selects the module implementation for each interface.
 
 | Key | Description | Supported Modules |
 |:---|:---|:---|
-| `GRAPHICS_API` | Core rendering implementation | `OPENGL`, `VULKAN`, `DIRECTX` |
-| `PHYSICS_ENGINE` | Simulation implementation | `BULLET`, `PHYSX` |
-| `AUDIO_ENGINE` | Sound processing implementation | `IRRKLANG`, `FMOD`, `OPENAL` |
+| `GRAPHICS_API` | Core rendering implementation | `OPENGL` |
+| `PHYSICS_ENGINE` | Simulation implementation | `BULLET` |
+| `AUDIO_ENGINE` | Sound processing implementation | `IRRKLANG` |
 | `RENDER_PATH` | Geometry processing strategy | `FORWARD`, `DEFERRED` |
+
+Unsupported backend values such as `VULKAN`, `DIRECTX`, `PHYSX`, `FMOD`, or `OPENAL` are rejected by `ConfigLoader`/`AppBuilder` unless their provider is actually compiled into the build.
 
 ## 2. CMake Build System
 
@@ -139,7 +147,7 @@ The project uses CMake for cross-platform build generation.
 - **Release**: Optimized. Uses `MD` runtime library.
 
 ### DLL Management
-The build system automatically copies required DLLs (from `dlls/`) to the output binary directory (`bin/` or `build/Debug/`).
+The build system automatically copies required DLLs (from `dlls/`) to the target output directory under the CMake build tree (for example `build/bin/`).
 
 > **Important**: When adding a new library, ensure its `.dll` is placed in the `dlls/` folder so it can be found at runtime.
 

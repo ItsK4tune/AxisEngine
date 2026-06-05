@@ -1,6 +1,7 @@
 #pragma once
 
 #include <navigation/logic/pathfinding.h>
+#include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -26,6 +27,7 @@ struct PathFollowerComponent
     bool recordDebugPath = true;
 
     PathfindingOptions pathfindingOptions;
+    entt::entity navigationProviderEntity = entt::null;
 
     bool lockXPitch = false;
     bool lockYYaw = false;
@@ -33,4 +35,10 @@ struct PathFollowerComponent
     bool lockMoveX = false;
     bool lockMoveY = false;
     bool lockMoveZ = false;
+
+    bool localAvoidanceEnabled = true;
+    float separationRadius = 1.25f;
+    float separationWeight = 0.85f;
+    float obstacleAvoidanceDistance = 1.8f;
+    float obstacleAvoidanceWeight = 1.0f;
 };

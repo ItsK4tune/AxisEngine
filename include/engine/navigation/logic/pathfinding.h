@@ -17,8 +17,16 @@ enum class PathfindingCriteria
     Custom
 };
 
+enum class NavigationProvider
+{
+    Auto,
+    NavMesh,
+    Grid
+};
+
 struct PathfindingOptions
 {
+    NavigationProvider provider = NavigationProvider::Auto;
     PathfindingCriteria criteria = PathfindingCriteria::Shortest;
 
     std::vector<std::string> preferredTags = {"walkable"};
@@ -27,6 +35,7 @@ struct PathfindingOptions
     float altitudePenaltyWeight = 10.0f;
 
     std::function<float(uint32_t current, uint32_t neighbor, const NavMeshComponent& navMesh)> customCostFunc;
+    std::function<float(uint32_t current, uint32_t neighbor, const NavigationGridComponent& grid)> customGridCostFunc;
     std::function<float(const glm::vec3& a, const glm::vec3& b)> customHeuristicFunc;
 };
 
@@ -36,6 +45,9 @@ public:
     static std::vector<glm::vec3> FindPath(const glm::vec3& start, const glm::vec3& end,
                                            const NavMeshComponent& navMesh,
                                            const PathfindingOptions& options = PathfindingOptions());
+    static std::vector<glm::vec3> FindGridPath(const glm::vec3& start, const glm::vec3& end,
+                                               const NavigationGridComponent& grid,
+                                               const PathfindingOptions& options = PathfindingOptions());
 
 private:
     static uint32_t FindClosestNode(const glm::vec3& pos, const NavMeshComponent& navMesh);

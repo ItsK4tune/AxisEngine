@@ -21,7 +21,8 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
     navMesh.triangles.clear();
     navMesh.nodes.clear();
 
-    RawMeshData raw = GatherWalkableGeometry(scene, resources, walkableTags, carveTags);
+    RawMeshData raw = GatherWalkableGeometry(scene, resources, walkableTags, carveTags,
+                                             navMesh.terrainGridResolution);
     if (raw.vertices.empty())
     {
         LOGGER_WARN("NavMeshGenerator") << "No walkable geometry found! NavMesh will be empty.";
@@ -66,6 +67,10 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
             glm::vec3 actualMin = glm::min(worldMin, worldMax);
             glm::vec3 actualMax = glm::max(worldMin, worldMax);
 
+            actualMin.x -= navMesh.carveAgentRadius;
+            actualMin.z -= navMesh.carveAgentRadius;
+            actualMax.x += navMesh.carveAgentRadius;
+            actualMax.z += navMesh.carveAgentRadius;
             obstacles.push_back({actualMin, actualMax});
         }
     }
@@ -88,13 +93,14 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         tri.center = (v0 + v1 + v2) / 3.0f;
         tri.normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
 
-        if (tri.normal.y > 0.3f)
+        if (tri.normal.y > navMesh.walkableNormalY)
         {
             bool obstructed = false;
             for (const auto& obs : obstacles)
             {
                 if (tri.center.x >= obs.min.x && tri.center.x <= obs.max.x && tri.center.z >= obs.min.z &&
-                    tri.center.z <= obs.max.z && tri.center.y >= obs.min.y - 0.5f && tri.center.y <= obs.max.y + 0.5f)
+                    tri.center.z <= obs.max.z && tri.center.y >= obs.min.y - navMesh.carveHeightPadding &&
+                    tri.center.y <= obs.max.y + navMesh.carveHeightPadding)
                 {
                     obstructed = true;
                     break;
@@ -112,7 +118,8 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
 
 NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& scene, ResourceManager* resources,
                                                                        const std::vector<std::string>& walkableTags,
-                                                                       const std::vector<std::string>& carveTags)
+                                                                       const std::vector<std::string>& carveTags,
+                                                                       int terrainGridResolution)
 {
     RawMeshData result;
 
@@ -176,7 +183,7 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
         uint32_t baseIndex = (uint32_t)result.vertices.size();
         glm::vec3 size = terrain.terrainSize;
 
-        int gridRes = 64;
+        int gridRes = (std::max)(2, terrainGridResolution);
         float resStepX = size.x / (float)(gridRes - 1);
         float resStepZ = size.z / (float)(gridRes - 1);
 

@@ -31,6 +31,9 @@ private:
         std::string name;
         std::string filePath;
         std::filesystem::file_time_type lastWriteTime;
+        std::filesystem::file_time_type vsLastWriteTime;
+        std::filesystem::file_time_type fsLastWriteTime;
+        std::filesystem::file_time_type gsLastWriteTime;
         std::string type;
         std::string vsPath;
         std::string fsPath;

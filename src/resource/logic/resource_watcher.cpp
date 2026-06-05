@@ -24,37 +24,30 @@ ResourceWatcher::~ResourceWatcher()
 
 void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type)
 {
-    bool alreadyWatched = false;
+    WatchEntry entry;
+    entry.name = name;
+    entry.filePath = path;
+    entry.type = type;
+
+    try
     {
-        std::lock_guard<std::mutex> lock(m_Mutex);
-        for (auto& w : m_Watchers)
-        {
-            if (w.name == name && w.type == type)
-            {
-                alreadyWatched = true;
-                break;
-            }
-        }
+        entry.lastWriteTime = std::filesystem::last_write_time(path);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        LOGGER_WARN("HotReload") << "Cannot watch '" << name << "' at " << path << ": " << e.what();
     }
 
-    if (!alreadyWatched)
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    for (auto& w : m_Watchers)
     {
-        WatchEntry entry;
-        entry.name = name;
-        entry.filePath = path;
-        entry.type = type;
-
-        try
+        if (w.name == name && w.type == type)
         {
-            entry.lastWriteTime = std::filesystem::last_write_time(path);
+            w = entry;
+            return;
         }
-        catch (...)
-        {
-        }
-
-        std::lock_guard<std::mutex> lock(m_Mutex);
-        m_Watchers.push_back(entry);
     }
+    m_Watchers.push_back(entry);
 }
 
 void ResourceWatcher::Watch(const std::string& name, const std::string& path, const std::string& type,
@@ -71,12 +64,27 @@ void ResourceWatcher::Watch(const std::string& name, const std::string& path, co
     try
     {
         entry.lastWriteTime = std::filesystem::last_write_time(path);
+        if (!vsPath.empty())
+            entry.vsLastWriteTime = std::filesystem::last_write_time(vsPath);
+        if (!fsPath.empty())
+            entry.fsLastWriteTime = std::filesystem::last_write_time(fsPath);
+        if (!gsPath.empty())
+            entry.gsLastWriteTime = std::filesystem::last_write_time(gsPath);
     }
-    catch (...)
+    catch (const std::filesystem::filesystem_error& e)
     {
+        LOGGER_WARN("HotReload") << "Cannot watch shader '" << name << "': " << e.what();
     }
 
     std::lock_guard<std::mutex> lock(m_Mutex);
+    for (auto& w : m_Watchers)
+    {
+        if (w.name == name && w.type == type)
+        {
+            w = entry;
+            return;
+        }
+    }
     m_Watchers.push_back(entry);
 }
 
@@ -102,11 +110,29 @@ void ResourceWatcher::WatcherLoop()
         {
             try
             {
-                if (!std::filesystem::exists(watcher.filePath))
-                    continue;
+                auto checkFile = [&](const std::string& path, std::filesystem::file_time_type& previous) -> bool {
+                    if (path.empty() || !std::filesystem::exists(path))
+                        return false;
 
-                auto currentWriteTime = std::filesystem::last_write_time(watcher.filePath);
-                if (currentWriteTime > watcher.lastWriteTime)
+                    auto currentWriteTime = std::filesystem::last_write_time(path);
+                    if (currentWriteTime <= previous)
+                        return false;
+
+                    previous = currentWriteTime;
+                    return true;
+                };
+
+                std::string changedPath;
+                if (checkFile(watcher.filePath, watcher.lastWriteTime))
+                    changedPath = watcher.filePath;
+                if (checkFile(watcher.vsPath, watcher.vsLastWriteTime))
+                    changedPath = watcher.vsPath;
+                if (checkFile(watcher.fsPath, watcher.fsLastWriteTime))
+                    changedPath = watcher.fsPath;
+                if (checkFile(watcher.gsPath, watcher.gsLastWriteTime))
+                    changedPath = watcher.gsPath;
+
+                if (!changedPath.empty())
                 {
                     {
                         std::lock_guard<std::mutex> lock(m_Mutex);
@@ -114,25 +140,30 @@ void ResourceWatcher::WatcherLoop()
                         {
                             if (w.name == watcher.name && w.type == watcher.type)
                             {
-                                w.lastWriteTime = currentWriteTime;
+                                w.lastWriteTime = watcher.lastWriteTime;
+                                w.vsLastWriteTime = watcher.vsLastWriteTime;
+                                w.fsLastWriteTime = watcher.fsLastWriteTime;
+                                w.gsLastWriteTime = watcher.gsLastWriteTime;
                                 break;
                             }
                         }
                     }
 
-                    LOGGER_INFO("HotReload") << "Detected change in: " << watcher.filePath;
+                    LOGGER_INFO("HotReload") << "Detected change in: " << changedPath;
 
                     ResourceReloadEvent e;
                     e.name = watcher.name;
                     e.type = watcher.type;
-                    e.filePath = watcher.filePath;
+                    e.filePath = changedPath;
 
                     std::lock_guard<std::mutex> lock(m_Mutex);
                     m_PendingReloads.push_back(e);
                 }
             }
-            catch (const std::filesystem::filesystem_error&)
+            catch (const std::filesystem::filesystem_error& e)
             {
+                LOGGER_WARN("HotReload") << "Watcher check failed for '" << watcher.name << "' (" << watcher.type
+                                         << "): " << e.what();
             }
         }
     }

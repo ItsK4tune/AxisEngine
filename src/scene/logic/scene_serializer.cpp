@@ -897,12 +897,17 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
 
         SerialWriteKV(f, 2, "MSAA", std::to_string(cfg.graphics.msaaSamples));
         SerialWriteKV(f, 2, "RENDER_SCALE", FloatStr(cfg.graphics.renderScale));
+        SerialWriteKV(f, 2, "ASYNC_RESOURCES", cfg.graphics.asyncResourceLoading ? "1" : "0");
+        SerialWriteKV(f, 2, "STRICT_ASSET_LOADING", cfg.graphics.strictAssetLoading ? "1" : "0");
 
         SerialWriteKV(f, 2, "HDR_ENABLED", cfg.render.hdrEnabled ? "1" : "0");
         SerialWriteKV(f, 2, "BLOOM_ENABLED", cfg.render.bloomEnabled ? "1" : "0");
         SerialWriteKV(f, 2, "GAMMA", FloatStr(cfg.render.gamma));
         SerialWriteKV(f, 2, "EXPOSURE", FloatStr(cfg.render.exposure));
         SerialWriteKV(f, 2, "SKYBOX_INTENSITY", FloatStr(cfg.render.skyboxIntensity));
+        SerialWriteKV(f, 2, "AMBIENT_INTENSITY", FloatStr(cfg.render.ambientIntensity));
+        SerialWriteKV(f, 2, "UI_REFERENCE_SIZE",
+                      Vec2Str(glm::vec2(cfg.render.uiReferenceWidth, cfg.render.uiReferenceHeight)));
 
         auto TonemappingToStr = [](TonemappingMode mode) {
             switch (mode)

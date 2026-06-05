@@ -3,7 +3,9 @@
 #include <resource/unit/font.h>
 #include <resource/unit/shader.h>
 #include <resource/unit/ui_model.h>
+#include <entt/entt.hpp>
 #include <glm/glm.hpp>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -84,4 +86,39 @@ struct UIFlexLayoutComponent
     float spacing = 5.0f;
     bool autoSize = false;
     glm::vec4 padding = glm::vec4(0.0f);
+};
+
+struct UIInteractiveComponent
+{
+    bool interactable = true;
+    bool hovered = false;
+    bool pressed = false;
+    bool clicked = false;
+    float holdTime = 0.0f;
+
+    std::function<void(entt::entity)> onHoverEnter;
+    std::function<void(entt::entity)> onHoverStay;
+    std::function<void(entt::entity)> onHoverExit;
+    std::function<void(entt::entity)> onPressed;
+    std::function<void(entt::entity)> onReleased;
+    std::function<void(entt::entity)> onClick;
+};
+
+struct UIAnimationComponent
+{
+    bool enabled = true;
+    bool animateColor = true;
+    bool animateScale = false;
+
+    glm::vec4 normalColor = glm::vec4(1.0f);
+    glm::vec4 hoverColor = glm::vec4(1.0f);
+    glm::vec4 pressedColor = glm::vec4(0.85f, 0.85f, 0.85f, 1.0f);
+
+    float normalScale = 1.0f;
+    float hoverScale = 1.0f;
+    float pressedScale = 0.98f;
+    float currentScale = 1.0f;
+    float visualScale = 1.0f;
+    float transitionSpeed = 12.0f;
+    glm::vec2 baseSize = glm::vec2(0.0f);
 };

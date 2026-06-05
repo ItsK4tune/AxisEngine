@@ -21,10 +21,10 @@
 
 <div align="center">
 
-![C++](https://img.shields.io/badge/C++-17-blue.svg?style=flat-square&logo=c%2B%2B) 
-![Vulkan/GL](https://img.shields.io/badge/Graphics-Vulkan%20%7C%20GL-green.svg?style=flat-square) 
+![C++](https://img.shields.io/badge/C++-20-blue.svg?style=flat-square&logo=c%2B%2B)
+![OpenGL](https://img.shields.io/badge/Graphics-OpenGL-green.svg?style=flat-square)
 ![EnTT](https://img.shields.io/badge/EnTT-3.x-red.svg?style=flat-square)
-![Bullet/PhysX](https://img.shields.io/badge/Physics-Bullet%20%7C%20PhysX-orange.svg?style=flat-square)
+![Bullet](https://img.shields.io/badge/Physics-Bullet-orange.svg?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square) 
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg?style=flat-square&logo=windows)
 
@@ -34,9 +34,9 @@
 
 ## 🎯 Overview
 
-**AXIS Engine** is a high-performance **hybrid modular** multimedia framework built with C++17. It leverages an interface-driven architecture to abstract hardware backends, providing a unified, data-oriented runtime via ECS (`entt`).
+**AXIS Engine** is a high-performance **hybrid modular** multimedia framework built with C++20. It leverages an interface-driven architecture to abstract hardware backends, providing a unified, data-oriented runtime via ECS (`entt`).
 
-Designed for scalability and technical precision, AXIS allows developers to swap rendering (Vulkan/OpenGL), physics (Bullet/PhysX), and audio providers while maintaining a consistent gameplay logic layer.
+Designed for scalability and technical precision, AXIS keeps rendering, physics, and audio behind interface boundaries while the current build ships OpenGL, Bullet, and irrKlang providers.
 
 ---
 
@@ -45,26 +45,26 @@ Designed for scalability and technical precision, AXIS allows developers to swap
 ## ✨ Features
 
 ### 🏗️ **Hybrid Architecture**
-- **Modular Backends**: Swappable providers for Graphics (Vulkan/OpenGL), Physics (Bullet/PhysX), and Audio (IrrKlang/FMOD).
+- **Modular Backends**: Interface-driven providers for Graphics, Physics, and Audio. This build includes OpenGL, Bullet, and IrrKlang.
 - **Data-Oriented Runtime**: High-performance entity management using [EnTT](https://github.com/skypjack/entt) with contiguous memory layout.
-- **Multithreaded Job System**: Scalable task distribution across all CPU cores for asset decoding and system updates.
+- **Multithreaded Job System**: Thread-pool task distribution for asset decoding and snapshot-safe parallel system work.
 
 ### 🎨 **Graphics & Rendering**
 - **Hybrid Pipeline**: Support for both Forward and Deferred rendering paths.
 - **PBR Pipeline**: Physically Based Rendering with HDR, Bloom, and ACES Tonemapping.
 - **Advanced Decals**: Order-independent stabilized decals with tag-based filtering.
-- **Performance**: Occulsion culling, Frustum culling, and Instanced batching.
+- **Performance**: Occlusion culling, frustum culling, and instanced batching.
 
 ### ⚙️ **Physics & Dynamics**
-- **Modular Simulation**: Integrated interfaces for Bullet and PhysX providers.
+- **Modular Simulation**: Integrated physics interface backed by Bullet in the current build.
 - **Precision Modes**: Fast (30Hz), Balanced (60Hz), and Accurate (120Hz) simulation presets.
 - **CCD**: Continuous Collision Detection for high-speed entities.
 - **Visuals**: Real-time physics debug rendering and mesh-accurate colliders.
 
 ### 📐 **Navigation & AI**
-- **Modular Pathfinding**: Swappable navigation providers supporting NavMesh and Grid-based A*.
+- **Modular Pathfinding**: Per-agent provider selection for NavMesh and grid-based A*.
 - **Advanced Criteria**: Pathfinding based on `Shortest`, `Smoothest`, or `StayOnRoad` logic.
-- **Steerings**: Group behaviors, obstacle avoidance, and path following.
+- **Steering**: Local separation, obstacle avoidance, and path following.
 
 ### 🖥️ **UI & multimedia**
 - **Responsive UI**: Resolution-independent anchoring and FlexBox-style layout system.
@@ -72,9 +72,9 @@ Designed for scalability and technical precision, AXIS allows developers to swap
 - **Spatial Audio**: Position-based attenuation and 3D soundscapes.
 
 ### 🛠️ **Developer Workflow**
-- **Hot-Reload**: Instant reloading for Shaders, Scripts, and Asset metadata.
+- **Hot-Reload**: Runtime reload for registered shader stages and textures during development.
 - **Scene Format (.axs)**: Human-readable YAML hierarchy for entities and configuration.
-- **Debug Suite**: Comprehensive F-key overlays for profiling, profiling, and device monitoring.
+- **Debug Suite**: F-key diagnostics for profiling, device monitoring, render toggles, and editor overlays.
 
 ---
 
@@ -204,7 +204,7 @@ For deep technical details, please refer to the following specialized guides:
 
 ### 🧱 **Modular Module Guides**
 - **[Graphics & Post-Processing](docs/guides/graphics.md)**: PBR, Decals, Culling, and Rendering Paths.
-- **[Physics & Simulation](docs/guides/physics.md)**: Bullet/PhysX configuration and Character Controllers.
+- **[Physics & Simulation](docs/guides/physics.md)**: Bullet configuration and Character Controllers.
 - **[Navigation & AI](docs/guides/navigation.md)**: Pathfinding, Steering, and NavMesh baking.
 - **[User Interface (UI)](docs/guides/ui.md)**: Anchoring, FlexLayout, and Dynamic Text.
 
@@ -226,9 +226,9 @@ graph TD
     Interface --> Backend[Module Layer<br/>Backends]
     
     subgraph "Hardware Providers"
-        Backend -- Vulkan/GL --> GPU
-        Backend -- Bullet/PhysX --> Physics
-        Backend -- IrrKlang/FMOD --> Audio
+        Backend -- OpenGL --> GPU
+        Backend -- Bullet --> Physics
+        Backend -- IrrKlang --> Audio
     end
 ```
 

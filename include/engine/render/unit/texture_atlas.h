@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <map>
 #include <string>
+#include <cstdint>
 #include <vector>
 
 class ITextureManager;
@@ -48,6 +49,7 @@ private:
     unsigned int m_AtlasID;
     int m_Width, m_Height;
     std::map<std::string, AtlasRegion> m_Regions;
+    std::vector<unsigned char> m_AtlasPixels;
 
     struct Rect
     {

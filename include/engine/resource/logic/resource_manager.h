@@ -45,6 +45,11 @@ public:
     void Update(float dt);
     void SetTextureAsyncEnabled(bool enabled);
     void SetTextureMaxAnisotropy(float max);
+    void SetStrictAssetLoading(bool strict);
+    bool IsStrictAssetLoading() const
+    {
+        return m_StrictAssetLoading;
+    }
 
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath,
                     const std::string& gsPath = "");
@@ -142,5 +147,6 @@ private:
     std::vector<ResourceDefinition> m_ResourceDefinitions;
 
     bool m_HeadlessMode = false;
+    bool m_StrictAssetLoading = false;
     int m_ReloadListenerId = -1;
 };
