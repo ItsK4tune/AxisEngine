@@ -6,7 +6,6 @@
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
 #include <ecs/interface/i_render_service.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -72,11 +71,11 @@ void SkyboxRenderSystem::RenderAlphaPass(Scene& scene, int width, int height, fl
     if (!m_Enabled || !m_Context)
         return;
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;
 
-    auto& camera = scene.registry.get<CameraComponent>(camEntity);
+    auto& camera = scene.GetComponent<CameraComponent>(camEntity);
     RenderAlphaPassWithCamera(scene, camera.viewMatrix, camera.projectionMatrix, width, height,
                               m_LastFrameData.mainFBO);
 }
@@ -97,10 +96,10 @@ void SkyboxRenderSystem::RenderAlphaPassWithCamera(Scene& scene, const glm::mat4
     rsm.SetDepthFunc(CompareFunc::Lequal);
     rsm.SetDepthMask(false);
 
-    auto activeSkybox = EntityManager::GetActiveSkybox(scene);
+    auto activeSkybox = scene.GetActiveSkybox();
     if (activeSkybox != entt::null)
     {
-        auto& component = scene.registry.get<SkyboxRenderComponent>(activeSkybox);
+        auto& component = scene.GetComponent<SkyboxRenderComponent>(activeSkybox);
         auto lockedShader = component.shader.lock();
         if (component.skybox && lockedShader)
         {

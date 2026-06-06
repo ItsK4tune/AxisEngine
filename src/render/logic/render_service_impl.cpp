@@ -23,7 +23,6 @@
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <ecs/interface/i_lighting_service.h>
-#include <ecs/logic/entity_manager.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_graphics_context.h>
@@ -45,7 +44,7 @@ uint64_t CombineHash(uint64_t seed, uint64_t value)
     return seed ^ (value + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2));
 }
 
-uint64_t HashMaterialForBatch(AxisMaterialComponent* material)
+uint64_t HashMaterialForBatch(MaterialComponent* material)
 {
     if (!material)
         return 0;
@@ -251,7 +250,7 @@ void RenderServiceImpl::BuildRenderQueues(Scene& scene, float alpha, int width, 
 {
     if (!m_Context)
         return;
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
     {
         if (!m_QueuesBuilt)
@@ -263,8 +262,8 @@ void RenderServiceImpl::BuildRenderQueues(Scene& scene, float alpha, int width, 
         return;
     }
 
-    CameraComponent& cam = scene.registry.get<CameraComponent>(camEntity);
-    PositionComponent* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    CameraComponent& cam = scene.GetComponent<CameraComponent>(camEntity);
+    PositionComponent* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     glm::vec3 pos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
     RenderViewParams params;
@@ -412,7 +411,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     };
 
     std::vector<ProbeData> probes;
-    auto probeView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
+    auto probeView = scene.View<PositionComponent, ReflectionProbeComponent>();
     probes.reserve(probeView.size_hint());
     for (auto entity : probeView)
     {
@@ -425,7 +424,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     probesByTarget.reserve(probes.size() * 2);
     for (const auto& probe : probes)
     {
-        auto* info = scene.registry.try_get<InfoComponent>(probe.entity);
+        auto* info = scene.TryGetComponent<InfoComponent>(probe.entity);
         if (!info)
             continue;
 
@@ -441,7 +440,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         }
     }
 
-    auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
+    auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
 
     for (auto entity : renderView)
     {
@@ -488,7 +487,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         Model* activeModel = renderer.model.get();
         Shader* itemShader = renderer.shader.lock().get();
 
-        if (auto* lod = scene.registry.try_get<LODComponent>(entity))
+        if (auto* lod = scene.TryGetComponent<LODComponent>(entity))
         {
             for (int j = 0; j < (int)lod->lodDistancesSq.size(); ++j)
             {
@@ -504,7 +503,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         bool visibleByOcclusion = true;
         if (m_Flags.occlusionCullingEnabled)
         {
-            if (auto* occ = scene.registry.try_get<OcclusionComponent>(entity))
+            if (auto* occ = scene.TryGetComponent<OcclusionComponent>(entity))
             {
                 if (!occ->isVisible)
                     visibleByOcclusion = false;
@@ -515,11 +514,11 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             continue;
 
         bool isTransparent = false;
-        auto* material = scene.registry.try_get<AxisMaterialComponent>(entity);
+        auto* material = scene.TryGetComponent<MaterialComponent>(entity);
         if (material && material->desc.opacity < 1.0f)
             isTransparent = true;
 
-        auto* reflection = scene.registry.try_get<ReflectiveComponent>(entity);
+        auto* reflection = scene.TryGetComponent<ReflectiveComponent>(entity);
 
         uint64_t materialBatchKey = HashMaterialForBatch(material);
         uint64_t key = 0;
@@ -619,7 +618,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         item.tintColor = renderer.color;
         bool hasAnimation = false;
-        if (auto* anim = scene.registry.try_get<AnimationComponent>(entity))
+        if (auto* anim = scene.TryGetComponent<AnimationComponent>(entity))
         {
             if (anim->animator)
             {
@@ -631,7 +630,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         bool hasPhysic = false;
         bool isStaticPhysic = true;
-        if (auto* rb = scene.registry.try_get<RigidBodyComponent>(entity))
+        if (auto* rb = scene.TryGetComponent<RigidBodyComponent>(entity))
         {
             hasPhysic = true;
             if (rb->body)
@@ -671,7 +670,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     const float ambientIntensity =
         m_ConfigManager ? (std::max)(0.0f, m_ConfigManager->GetConfig().ambientIntensity) : 1.0f;
 
-    auto dirView = scene.registry.view<DirectionalLightComponent, InfoComponent>();
+    auto dirView = scene.View<DirectionalLightComponent, InfoComponent>();
     for (auto entity : dirView)
     {
         auto& info = dirView.get<InfoComponent>(entity);
@@ -690,9 +689,9 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         rl.diffuse = glm::vec3(light.diffuse);
         rl.specular = glm::vec3(light.specular);
         rl.direction = light.direction;
-        if (auto* rot = scene.registry.try_get<RotationComponent>(entity))
+        if (auto* rot = scene.TryGetComponent<RotationComponent>(entity))
             rl.direction = rot->value * glm::vec3(0, -1, 0);
-        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity))
+        if (auto* w = scene.TryGetComponent<WorldTransformComponent>(entity))
             rl.version = w->version;
         m_RenderQueueObj.AddLight(std::move(rl));
     }
@@ -705,7 +704,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         return m_FrustumCuller.IsVisible(position - extent, position + extent);
     };
 
-    auto pointView = scene.registry.view<PointLightComponent, PositionComponent, InfoComponent>();
+    auto pointView = scene.View<PointLightComponent, PositionComponent, InfoComponent>();
     for (auto entity : pointView)
     {
         auto& info = pointView.get<InfoComponent>(entity);
@@ -730,12 +729,12 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         rl.diffuse = glm::vec3(light.diffuse);
         rl.specular = glm::vec3(light.specular);
         rl.castShadows = light.isCastShadow;
-        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity))
+        if (auto* w = scene.TryGetComponent<WorldTransformComponent>(entity))
             rl.version = w->version;
         m_RenderQueueObj.AddLight(std::move(rl));
     }
 
-    auto spotView = scene.registry.view<SpotLightComponent, PositionComponent, RotationComponent, InfoComponent>();
+    auto spotView = scene.View<SpotLightComponent, PositionComponent, RotationComponent, InfoComponent>();
     for (auto entity : spotView)
     {
         auto& info = spotView.get<InfoComponent>(entity);
@@ -763,7 +762,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         rl.diffuse = glm::vec3(light.diffuse);
         rl.specular = glm::vec3(light.specular);
         rl.castShadows = light.isCastShadow;
-        if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity))
+        if (auto* w = scene.TryGetComponent<WorldTransformComponent>(entity))
             rl.version = w->version;
         m_RenderQueueObj.AddLight(std::move(rl));
     }
@@ -773,7 +772,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     m_IBLState.irradianceMap = 0;
     m_IBLState.prefilterMap = 0;
     m_IBLState.brdfLUT = 0;
-    auto skyView = scene.registry.view<SkyboxRenderComponent>();
+    auto skyView = scene.View<SkyboxRenderComponent>();
     for (auto skyEnt : skyView)
     {
         auto& skyComp = skyView.get<SkyboxRenderComponent>(skyEnt);
@@ -867,7 +866,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
     if (!m_IsCapturingProbe)
     {
         auto& scene = ServiceLocator::Instance().Require<Scene>();
-        auto planarView = scene.registry.view<PlanarReflectionComponent>();
+        auto planarView = scene.View<PlanarReflectionComponent>();
         for (auto planarEntity : planarView)
         {
             auto& prc = planarView.get<PlanarReflectionComponent>(planarEntity);
@@ -898,7 +897,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
     {
         const auto& item = queue[itemIndex];
         Model* model = item.model;
-        AxisMaterialComponent* material = item.material;
+        MaterialComponent* material = item.material;
         Shader* shader = item.shader;
         bool ignoreDepthForDraw = item.ignoreDepth && !overrideShader;
 

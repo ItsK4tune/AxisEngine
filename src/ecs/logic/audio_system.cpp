@@ -5,7 +5,6 @@
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/media_components.h>
@@ -19,7 +18,7 @@ void AudioSystem::Initialize()
     m_EventSubscriptions.Clear();
     if (m_BoundScene)
     {
-        m_BoundScene->registry.on_destroy<AudioSourceComponent>().disconnect<&AudioSystem::OnAudioSourceDestroyed>(
+        m_BoundScene->GetRegistry().on_destroy<AudioSourceComponent>().disconnect<&AudioSystem::OnAudioSourceDestroyed>(
             this);
         m_BoundScene = nullptr;
     }
@@ -41,7 +40,7 @@ void AudioSystem::Initialize()
     auto* scene = sl.Resolve<Scene>();
     if (scene)
     {
-        scene->registry.on_destroy<AudioSourceComponent>().connect<&AudioSystem::OnAudioSourceDestroyed>(this);
+        scene->GetRegistry().on_destroy<AudioSourceComponent>().connect<&AudioSystem::OnAudioSourceDestroyed>(this);
         m_BoundScene = scene;
     }
 }
@@ -51,7 +50,7 @@ void AudioSystem::Shutdown()
     m_EventSubscriptions.Clear();
     if (m_BoundScene)
     {
-        m_BoundScene->registry.on_destroy<AudioSourceComponent>().disconnect<&AudioSystem::OnAudioSourceDestroyed>(
+        m_BoundScene->GetRegistry().on_destroy<AudioSourceComponent>().disconnect<&AudioSystem::OnAudioSourceDestroyed>(
             this);
         m_BoundScene = nullptr;
     }
@@ -63,19 +62,19 @@ void AudioSystem::Update(Scene& scene, float dt)
     if (!audioService)
         return;
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity != entt::null)
     {
-        auto& cam = scene.registry.get<CameraComponent>(camEntity);
-        auto& camPos = scene.registry.get<PositionComponent>(camEntity);
-        auto& camRot = scene.registry.get<RotationComponent>(camEntity);
+        auto& cam = scene.GetRegistry().get<CameraComponent>(camEntity);
+        auto& camPos = scene.GetRegistry().get<PositionComponent>(camEntity);
+        auto& camRot = scene.GetRegistry().get<RotationComponent>(camEntity);
 
         glm::vec3 lookDir = camRot.value * glm::vec3(0.0f, 0.0f, -1.0f);
 
         audioService->UpdateListener(camPos.value, lookDir);
     }
 
-    auto view = scene.registry.view<AudioSourceComponent, InfoComponent>();
+    auto view = scene.GetRegistry().view<AudioSourceComponent, InfoComponent>();
 
     audioService->GetEngine()->SetGlobalVolume(m_GlobalVolume);
 
@@ -114,7 +113,7 @@ void AudioSystem::Update(Scene& scene, float dt)
             {
                 if (audio.is3D)
                 {
-                    PositionComponent* posComp = scene.registry.try_get<PositionComponent>(entity);
+                    PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
                     glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
                     audio.sound = audioService->GetEngine()->Play3D(audio.source.get(), pos, audio.loop);
                 }
@@ -127,7 +126,7 @@ void AudioSystem::Update(Scene& scene, float dt)
             {
                 if (audio.is3D)
                 {
-                    PositionComponent* posComp = scene.registry.try_get<PositionComponent>(entity);
+                    PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
                     glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
                     audio.sound = audioService->GetEngine()->Play3D(audio.filePath, pos, audio.loop);
                 }
@@ -159,7 +158,7 @@ void AudioSystem::Update(Scene& scene, float dt)
 
             if (audio.is3D)
             {
-                PositionComponent* posComp = scene.registry.try_get<PositionComponent>(entity);
+                PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
                 if (posComp)
                 {
                     audio.sound->SetPosition(posComp->value);
@@ -189,7 +188,7 @@ void AudioSystem::OnAudioSourceDestroyed(entt::registry& registry, entt::entity 
 
 void AudioSystem::StopAll(Scene& scene)
 {
-    auto view = scene.registry.view<AudioSourceComponent>();
+    auto view = scene.GetRegistry().view<AudioSourceComponent>();
     for (auto entity : view)
     {
         auto& audio = view.get<AudioSourceComponent>(entity);

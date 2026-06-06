@@ -19,7 +19,7 @@ void VideoSystem::Initialize()
     sl.Register<VideoSystem>(this);
     if (m_BoundScene)
     {
-        m_BoundScene->registry.on_destroy<VideoPlayerComponent>().disconnect<&VideoSystem::OnVideoPlayerDestroyed>(
+        m_BoundScene->GetRegistry().on_destroy<VideoPlayerComponent>().disconnect<&VideoSystem::OnVideoPlayerDestroyed>(
             this);
         m_BoundScene = nullptr;
     }
@@ -27,7 +27,7 @@ void VideoSystem::Initialize()
     auto* scene = sl.Resolve<Scene>();
     if (scene)
     {
-        scene->registry.on_destroy<VideoPlayerComponent>().connect<&VideoSystem::OnVideoPlayerDestroyed>(this);
+        scene->GetRegistry().on_destroy<VideoPlayerComponent>().connect<&VideoSystem::OnVideoPlayerDestroyed>(this);
         m_BoundScene = scene;
     }
 }
@@ -36,7 +36,7 @@ void VideoSystem::Shutdown()
 {
     if (m_BoundScene)
     {
-        m_BoundScene->registry.on_destroy<VideoPlayerComponent>().disconnect<&VideoSystem::OnVideoPlayerDestroyed>(
+        m_BoundScene->GetRegistry().on_destroy<VideoPlayerComponent>().disconnect<&VideoSystem::OnVideoPlayerDestroyed>(
             this);
         m_BoundScene = nullptr;
     }
@@ -47,7 +47,7 @@ void VideoSystem::Update(Scene& scene, float dt)
     if (!m_Enabled)
         return;
 
-    auto view = scene.registry.view<VideoPlayerComponent>();
+    auto view = scene.GetRegistry().view<VideoPlayerComponent>();
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
 
     for (auto entity : view)
@@ -67,9 +67,9 @@ void VideoSystem::Update(Scene& scene, float dt)
                 video.decoder->SetSpeed(video.speed);
                 video.decoder->SetMaxDecodeSteps(video.maxDecodes);
 
-                if (scene.registry.all_of<UITransformComponent>(entity))
+                if (scene.GetRegistry().all_of<UITransformComponent>(entity))
                 {
-                    auto& ui = scene.registry.get<UITransformComponent>(entity);
+                    auto& ui = scene.GetRegistry().get<UITransformComponent>(entity);
                     if (ui.size.x > 0 && ui.size.y > 0)
                     {
                         video.decoder->SetOutputSize((int)ui.size.x, (int)ui.size.y);
@@ -106,7 +106,7 @@ void VideoSystem::Update(Scene& scene, float dt)
 
             video.decoder->Update(dt);
 
-            if (auto* uiRenderer = scene.registry.try_get<UIRendererComponent>(entity))
+            if (auto* uiRenderer = scene.GetRegistry().try_get<UIRendererComponent>(entity))
             {
                 if (!uiRenderer->model)
                 {
@@ -125,9 +125,9 @@ void VideoSystem::Update(Scene& scene, float dt)
                 }
             }
 
-            if (scene.registry.all_of<MeshRendererComponent>(entity))
+            if (scene.GetRegistry().all_of<MeshRendererComponent>(entity))
             {
-                auto& mat = scene.registry.get_or_emplace<AxisMaterialComponent>(entity);
+                auto& mat = scene.GetOrAddComponent<MaterialComponent>(entity);
                 mat.gpu.albedoMap = video.decoder->GetTextureID();
                 mat.gpu.dirty = false;
             }

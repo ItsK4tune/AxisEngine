@@ -23,19 +23,12 @@ void SampleState::LoadScene21()
         .WithPBRMesh("planeModel", "deferred_lit", 0.2f, 0.8f, 1.0f)
         .Build();
 
-    auto floorPhys = EntityBuilder(scene, res, "scenario")
-                         .WithName("FloorPhysics")
-                         .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(1.0f))
-                         .Build();
-
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floorPhys);
-    ConfigureBoxCollider(floorShape, glm::vec3(80.0f, 0.5f, 80.0f));
-    floorShape.restitution = 0.5f;
-    floorShape.friction = 0.5f;
-
-    auto& floorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, floorPhys);
-    floorRB.mass = 0.0f;
-    floorRB.isStatic = true;
+    EntityBuilder(scene, res, "scenario")
+        .WithName("FloorPhysics")
+        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(1.0f))
+        .WithRigidShape(ShapeType::Box, glm::vec3(80.0f, 0.5f, 80.0f), 1.0f, 2.0f, 0.5f, 0.5f)
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("DirLight")
@@ -51,18 +44,9 @@ void SampleState::LoadScene21()
                       .WithTag("chain_anchor")
                       .WithTransform(anchorPos, glm::vec3(0.0f), glm::vec3(1.5f))
                       .WithPBRMesh("cubeModel", "deferred_lit", 0.8f, 0.2f, 1.0f)
+                      .WithRigidShape(ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.5f, 0.5f)
+                      .WithRigidBody(0.0f, true, false, 0.2f, 0.8f)
                       .Build();
-
-    auto& anchorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, anchor);
-    ConfigurePrimitiveCollider(anchorShape, ShapeType::Box);
-    anchorShape.restitution = 0.5f;
-    anchorShape.friction = 0.5f;
-
-    auto& anchorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, anchor);
-    anchorRB.mass = 0.0f;
-    anchorRB.isStatic = true;
-    anchorRB.linearDamping = 0.2f;
-    anchorRB.angularDamping = 0.8f;
 
     // 3. Dynamically build chain components
     m_S21ChainEntities.clear();
@@ -79,18 +63,9 @@ void SampleState::LoadScene21()
                         .WithTag("chain_link")
                         .WithTransform(currentPos, glm::vec3(0.0f), linkSpec.visualScale)
                         .WithPBRMesh(linkSpec.mesh, "deferred_lit", 0.1f, 0.5f, 1.0f)
+                        .WithRigidShape(linkSpec.shape, linkSpec.boxSize, linkSpec.radius, linkSpec.height, 0.65f, 0.02f)
+                        .WithRigidBody(m_S21LinkMass, false, false, m_S21LinkDamping, 0.9f)
                         .Build();
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, link);
-        ApplyShapeSpec(shape, linkSpec);
-        shape.restitution = 0.02f;
-        shape.friction = 0.65f;
-
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, link);
-        rb.mass = m_S21LinkMass;
-        rb.isStatic = false;
-        rb.linearDamping = m_S21LinkDamping;
-        rb.angularDamping = 0.9f;
 
         m_S21ChainEntities.push_back(link);
     }
@@ -102,16 +77,9 @@ void SampleState::LoadScene21()
                        .WithTag("chain_payload")
                        .WithTransform(payloadPos, glm::vec3(0.0f), payloadSpec.visualScale)
                        .WithPBRMesh(payloadSpec.mesh, "deferred_lit", 0.05f, 0.45f, 1.0f)
+                       .WithRigidShape(payloadSpec.shape, payloadSpec.boxSize, payloadSpec.radius, payloadSpec.height, 0.65f, 0.2f)
+                       .WithRigidBody(m_S21PayloadMass, false, false, 0.2f, 0.85f)
                        .Build();
-    auto& payloadShape = EntityManager::AddComponent<RigidShapeComponent>(scene, payload);
-    ApplyShapeSpec(payloadShape, payloadSpec);
-    payloadShape.restitution = 0.2f;
-    payloadShape.friction = 0.65f;
-    auto& payloadRB = EntityManager::AddComponent<RigidBodyComponent>(scene, payload);
-    payloadRB.mass = m_S21PayloadMass;
-    payloadRB.isStatic = false;
-    payloadRB.linearDamping = 0.2f;
-    payloadRB.angularDamping = 0.85f;
     m_S21ChainEntities.push_back(payload);
 
     for (int i = 0; i < 8; ++i)
@@ -122,23 +90,14 @@ void SampleState::LoadScene21()
         const float y = anchorPos.y + 4.0f + static_cast<float>(i % 4) * 1.4f;
         const glm::vec3 scale = sphere ? glm::vec3(0.75f) : glm::vec3(0.85f);
 
-        auto probe = EntityBuilder(scene, res, "scenario")
-                         .WithName("GravityProbe_" + std::to_string(i))
-                         .WithTag("gravity_probe")
-                         .WithTransform(glm::vec3(x, y, z), glm::vec3(rand() % 360, rand() % 360, rand() % 360), scale)
-                         .WithPBRMesh(sphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.0f, 0.38f, 1.0f)
-                         .Build();
-
-        auto& probeShape = EntityManager::AddComponent<RigidShapeComponent>(scene, probe);
-        ConfigurePrimitiveCollider(probeShape, sphere ? ShapeType::Sphere : ShapeType::Box);
-        probeShape.restitution = 0.35f;
-        probeShape.friction = 0.6f;
-
-        auto& probeRB = EntityManager::AddComponent<RigidBodyComponent>(scene, probe);
-        probeRB.mass = 0.75f + static_cast<float>(i) * 0.25f;
-        probeRB.isStatic = false;
-        probeRB.linearDamping = 0.02f;
-        probeRB.angularDamping = 0.08f;
+        EntityBuilder(scene, res, "scenario")
+            .WithName("GravityProbe_" + std::to_string(i))
+            .WithTag("gravity_probe")
+            .WithTransform(glm::vec3(x, y, z), glm::vec3(rand() % 360, rand() % 360, rand() % 360), scale)
+            .WithPBRMesh(sphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.0f, 0.38f, 1.0f)
+            .WithRigidShape(sphere ? ShapeType::Sphere : ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.6f, 0.35f)
+            .WithRigidBody(0.75f + static_cast<float>(i) * 0.25f, false, false, 0.02f, 0.08f)
+            .Build();
     }
 
     // Force PhysicsSystem to initialize bullet body structures immediately
@@ -154,8 +113,8 @@ void SampleState::LoadScene21()
             entt::entity prevEntity = m_S21ChainEntities[i - 1];
             entt::entity link = m_S21ChainEntities[i];
 
-            auto& prevRBComp = scene.registry.get<RigidBodyComponent>(prevEntity);
-            auto& linkRBComp = scene.registry.get<RigidBodyComponent>(link);
+            auto& prevRBComp = scene.GetComponent<RigidBodyComponent>(prevEntity);
+            auto& linkRBComp = scene.GetComponent<RigidBodyComponent>(link);
 
             if (prevRBComp.body && linkRBComp.body)
             {
@@ -179,8 +138,8 @@ void SampleState::LoadScene21()
         {
             entt::entity prevEntity = m_S21ChainEntities[m_S21ChainEntities.size() - 2];
             entt::entity payloadEntity = m_S21ChainEntities.back();
-            auto& prevRBComp = scene.registry.get<RigidBodyComponent>(prevEntity);
-            auto& payloadRBComp = scene.registry.get<RigidBodyComponent>(payloadEntity);
+            auto& prevRBComp = scene.GetComponent<RigidBodyComponent>(prevEntity);
+            auto& payloadRBComp = scene.GetComponent<RigidBodyComponent>(payloadEntity);
             if (prevRBComp.body && payloadRBComp.body)
             {
                 auto constraint = physics_ptr->CreatePoint2PointConstraint(
@@ -195,7 +154,7 @@ void SampleState::LoadScene21()
 
         // Apply a starting side kick so it swings immediately
         auto lastLink = m_S21ChainEntities.back();
-        auto* rbLast = scene.registry.get<RigidBodyComponent>(lastLink).body.get();
+        auto* rbLast = scene.GetComponent<RigidBodyComponent>(lastLink).body.get();
         if (rbLast)
         {
             rbLast->Activate(true);

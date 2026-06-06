@@ -21,10 +21,10 @@ public:
     void Patch(entt::entity entity, Fn&& patch)
     {
         m_Commands.emplace_back([entity, patch = std::forward<Fn>(patch)](Scene& scene) mutable {
-            if (!scene.registry.valid(entity))
+            if (!scene.IsValid(entity))
                 return;
 
-            if (auto* component = scene.registry.try_get<T>(entity))
+            if (auto* component = scene.TryGetComponent<T>(entity))
             {
                 patch(*component);
             }

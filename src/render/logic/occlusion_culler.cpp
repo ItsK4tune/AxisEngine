@@ -64,7 +64,7 @@ void OcclusionCuller::UpdateResults(Scene& scene)
     if (!m_Context)
         return;
     auto& qm = m_Context->GetQueryManager();
-    auto view = scene.registry.view<OcclusionComponent>();
+    auto view = scene.View<OcclusionComponent>();
 
     for (auto entity : view)
     {
@@ -99,7 +99,7 @@ void OcclusionCuller::RenderQueries(Scene& scene, const glm::mat4& proj, const g
 
     bm.BindVertexArray(m_CubeVAO);
 
-    auto occView = scene.registry.view<WorldTransformComponent, MeshRendererComponent, OcclusionComponent>();
+    auto occView = scene.View<WorldTransformComponent, MeshRendererComponent, OcclusionComponent>();
 
     for (auto entity : occView)
     {

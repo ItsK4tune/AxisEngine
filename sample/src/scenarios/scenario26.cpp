@@ -12,7 +12,7 @@ void SampleState::LoadScene26()
     Scenario26FpsCameraScript::s_Pitch = -8.0f;
 
     entt::entity camera = entt::null;
-    auto cameraView = scene.registry.view<InfoComponent>();
+    auto cameraView = scene.View<InfoComponent>();
     for (auto entity : cameraView)
     {
         if (cameraView.get<InfoComponent>(entity).name == "MainCamera")
@@ -21,28 +21,12 @@ void SampleState::LoadScene26()
             break;
         }
     }
-    if (camera != entt::null && scene.registry.valid(camera))
+    if (camera != entt::null && scene.IsValid(camera))
     {
-        if (auto* pos = scene.registry.try_get<PositionComponent>(camera))
-            pos->value = glm::vec3(0.0f, 4.45f, 10.0f);
-        if (auto* rot = scene.registry.try_get<RotationComponent>(camera))
-        {
-            rot->value = glm::quatLookAt(glm::normalize(glm::vec3(0.0f, -0.14f, -1.0f)), glm::vec3(0.0f, 1.0f, 0.0f));
-        }
-        if (auto* world = scene.registry.try_get<WorldTransformComponent>(camera))
-            world->isDirty = true;
-
-        auto& script = scene.registry.get_or_emplace<ScriptComponent>(camera);
-        script.className = "Scenario26FpsCameraScript";
-        script.instance.reset();
-        script.scriptableInstance = nullptr;
-        script.inputScriptableInstance = nullptr;
-        script.InstantiateScript = []() { return std::make_unique<Scenario26FpsCameraScript>(); };
-        script.DestroyScript = [](ScriptComponent* nsc) {
-            nsc->instance.reset();
-            nsc->scriptableInstance = nullptr;
-            nsc->inputScriptableInstance = nullptr;
-        };
+        EntityBuilder(scene, res, camera)
+            .WithPosition(glm::vec3(0.0f, 4.45f, 10.0f))
+            .WithRotation(glm::quatLookAt(glm::normalize(glm::vec3(0.0f, -0.14f, -1.0f)), glm::vec3(0.0f, 1.0f, 0.0f)))
+            .WithScriptable("Scenario26FpsCameraScript", []() { return std::make_unique<Scenario26FpsCameraScript>(); });
     }
 
     EntityBuilder(scene, res, "scenario")
@@ -51,30 +35,24 @@ void SampleState::LoadScene26()
         .WithDirectionalLight(glm::normalize(glm::vec3(-0.55f, -1.0f, -0.4f)), glm::vec3(1.0f), 1.35f)
         .Build();
 
-    auto floor = EntityBuilder(scene, res, "scenario")
-                     .WithName("S26_Floor")
-                     .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(70.0f, 1.0f, 70.0f))
-                     .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-                     .Build();
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-    ConfigureBoxCollider(floorShape, glm::vec3(1.0f, 0.5f, 1.0f));
-    auto& floorRb = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-    floorRb.mass = 0.0f;
-    floorRb.isStatic = true;
+    EntityBuilder(scene, res, "scenario")
+        .WithName("S26_Floor")
+        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(70.0f, 1.0f, 70.0f))
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
+        .WithRigidShape(ShapeType::Box, glm::vec3(1.0f, 0.5f, 1.0f))
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     for (int i = 0; i < 5; ++i)
     {
-        auto step = EntityBuilder(scene, res, "scenario")
-                        .WithName("S26_Step_" + std::to_string(i))
-                        .WithTransform(glm::vec3(-8.0f + i * 2.4f, 0.35f + i * 0.28f, -8.0f), glm::vec3(0.0f),
-                                       glm::vec3(2.2f, 0.35f + i * 0.28f, 4.0f))
-                        .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
-                        .Build();
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, step);
-        ConfigurePrimitiveCollider(shape, ShapeType::Box);
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, step);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
+        EntityBuilder(scene, res, "scenario")
+            .WithName("S26_Step_" + std::to_string(i))
+            .WithTransform(glm::vec3(-8.0f + i * 2.4f, 0.35f + i * 0.28f, -8.0f), glm::vec3(0.0f),
+                           glm::vec3(2.2f, 0.35f + i * 0.28f, 4.0f))
+            .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
+            .WithRigidShape(ShapeType::Box)
+            .WithRigidBody(0.0f, true)
+            .Build();
     }
 
     struct StaticObstacleSpec
@@ -105,19 +83,15 @@ void SampleState::LoadScene26()
 
     for (const auto& spec : obstacles)
     {
-        auto obstacle = EntityBuilder(scene, res, "scenario")
-                            .WithName(spec.name)
-                            .WithTransform(spec.position, spec.rotation, spec.scale)
-                            .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.58f, 1.0f)
-                            .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(obstacle))
+        EntityBuilder(scene, res, "scenario")
+            .WithName(spec.name)
+            .WithTransform(spec.position, spec.rotation, spec.scale)
+            .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.58f, 1.0f)
+            .WithRigidShape(ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.85f)
+            .WithRigidBody(0.0f, true)
+            .Build();
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(scene.FindByName(spec.name)))
             renderer->color = spec.color;
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, obstacle);
-        ConfigurePrimitiveCollider(shape, ShapeType::Box);
-        shape.friction = 0.85f;
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, obstacle);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
     }
 
     auto triggerZone = EntityBuilder(scene, res, "scenario")
@@ -125,20 +99,16 @@ void SampleState::LoadScene26()
                            .WithTag("trigger")
                            .WithTransform(glm::vec3(0.0f, 2.0f, 4.0f), glm::vec3(0.0f), glm::vec3(4.8f, 2.2f, 4.8f))
                            .WithPBRMesh("cubeModel", "forward_transparent", 0.0f, 0.3f, 1.0f)
+                           .WithRigidShape(ShapeType::Box)
+                           .WithRigidBody(0.0f, true, true)
                            .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(triggerZone))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(triggerZone))
         renderer->color = glm::vec4(0.1f, 0.75f, 1.0f, 0.24f);
-    if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(triggerZone))
+    if (auto* mat = scene.TryGetComponent<MaterialComponent>(triggerZone))
     {
         mat->desc.opacity = 0.24f;
         mat->gpu.dirty = true;
     }
-    auto& triggerShape = EntityManager::AddComponent<RigidShapeComponent>(scene, triggerZone);
-    ConfigurePrimitiveCollider(triggerShape, ShapeType::Box);
-    auto& triggerRb = EntityManager::AddComponent<RigidBodyComponent>(scene, triggerZone);
-    triggerRb.mass = 0.0f;
-    triggerRb.isStatic = true;
-    triggerRb.isTrigger = true;
 
     const auto createEffectZone = [&](const char* name, const glm::vec3& position, const glm::vec3& scale,
                                       const glm::vec4& color) {
@@ -147,21 +117,16 @@ void SampleState::LoadScene26()
                         .WithTag("trigger")
                         .WithTransform(position, glm::vec3(0.0f), scale)
                         .WithPBRMesh("cubeModel", "forward_transparent", 0.0f, 0.28f, 1.0f)
+                        .WithRigidShape(ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.05f)
+                        .WithRigidBody(0.0f, true, true)
                         .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(zone))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(zone))
             renderer->color = color;
-        if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(zone))
+        if (auto* mat = scene.TryGetComponent<MaterialComponent>(zone))
         {
             mat->desc.opacity = color.a;
             mat->gpu.dirty = true;
         }
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, zone);
-        ConfigurePrimitiveCollider(shape, ShapeType::Box);
-        shape.friction = 0.05f;
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, zone);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
-        rb.isTrigger = true;
         return zone;
     };
 
@@ -182,14 +147,11 @@ void SampleState::LoadScene26()
             .WithTag("solid_callback")
             .WithTransform(glm::vec3(0.0f, 1.15f, -3.2f), glm::vec3(0.0f), glm::vec3(4.6f, 1.15f, 1.2f))
             .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.5f, 1.0f)
+            .WithRigidShape(ShapeType::Box)
+            .WithRigidBody(0.0f, true)
             .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(callbackBlock))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(callbackBlock))
         renderer->color = glm::vec4(0.95f, 0.55f, 0.18f, 1.0f);
-    auto& callbackShape = EntityManager::AddComponent<RigidShapeComponent>(scene, callbackBlock);
-    ConfigurePrimitiveCollider(callbackShape, ShapeType::Box);
-    auto& callbackRb = EntityManager::AddComponent<RigidBodyComponent>(scene, callbackBlock);
-    callbackRb.mass = 0.0f;
-    callbackRb.isStatic = true;
 
     std::vector<entt::entity> fixedParts;
     fixedParts.reserve(2);
@@ -199,15 +161,11 @@ void SampleState::LoadScene26()
                         .WithName("S26_FixedConstraintPart_" + std::to_string(i))
                         .WithTransform(glm::vec3(12.5f + i * 2.2f, 3.4f, 5.5f), glm::vec3(0.0f), glm::vec3(1.0f))
                         .WithPBRMesh("cubeModel", "deferred_lit", 0.15f, 0.38f, 1.0f)
+                        .WithRigidShape(ShapeType::Box)
+                        .WithRigidBody(1.0f, false, false, 0.2f, 0.35f)
                         .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(part))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(part))
             renderer->color = glm::vec4(0.72f, 0.38f, 0.95f, 1.0f);
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, part);
-        ConfigurePrimitiveCollider(shape, ShapeType::Box);
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, part);
-        rb.mass = 1.0f;
-        rb.linearDamping = 0.2f;
-        rb.angularDamping = 0.35f;
         fixedParts.push_back(part);
     }
 
@@ -220,28 +178,12 @@ void SampleState::LoadScene26()
                           .WithName("S26_DraggableTarget_" + std::to_string(i))
                           .WithTransform(glm::vec3(x, 2.2f, z), glm::vec3(0.0f), glm::vec3(sphere ? 1.35f : 1.15f))
                           .WithPBRMesh(sphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.08f, 0.42f, 1.0f)
+                          .WithRigidShape(sphere ? ShapeType::Sphere : ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.65f, 0.25f)
+                          .WithRigidBody(1.0f, false, false, 0.25f, 0.45f)
                           .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(target))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(target))
             renderer->color = sphere ? glm::vec4(0.95f, 0.42f, 0.22f, 1.0f) : glm::vec4(0.28f, 0.78f, 0.95f, 1.0f);
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, target);
-        ConfigurePrimitiveCollider(shape, sphere ? ShapeType::Sphere : ShapeType::Box);
-        shape.friction = 0.65f;
-        shape.restitution = 0.25f;
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, target);
-        rb.mass = 1.0f;
-        rb.linearDamping = 0.25f;
-        rb.angularDamping = 0.45f;
     }
-
-    m_S26ControllerEntity = EntityBuilder(scene, res, "scenario")
-                                .WithName("S26_CharacterController")
-                                .WithTag("mover")
-                                .WithTransform(glm::vec3(0.0f, 3.0f, 10.0f), glm::vec3(0.0f), glm::vec3(1.2f))
-                                .WithPBRMesh("capsuleModel", "deferred_lit", 0.0f, 0.45f, 1.0f)
-                                .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S26ControllerEntity))
-        renderer->color = glm::vec4(0.2f, 0.95f, 0.35f, 1.0f);
 
     const float initialMoveSpeed = m_S26MoveSpeed;
     const float initialSprintMultiplier = m_S26SprintMultiplier;
@@ -251,26 +193,27 @@ void SampleState::LoadScene26()
     const float initialMaxSlope = m_S26MaxSlope;
     const bool initialIgnoreCharacterTrigger = m_S26IgnoreCharacterTrigger;
 
-    auto& controllerScript = scene.registry.emplace<ScriptComponent>(m_S26ControllerEntity);
-    controllerScript.className = "Scenario26CharacterControllerScript";
-    controllerScript.InstantiateScript = [initialMoveSpeed, initialSprintMultiplier, initialSlowMultiplier,
-                                          initialJumpSpeed, initialStepHeight, initialMaxSlope,
-                                          initialIgnoreCharacterTrigger]() {
-        auto script = std::make_unique<Scenario26CharacterControllerScript>();
-        script->moveSpeed = initialMoveSpeed;
-        script->sprintMultiplier = initialSprintMultiplier;
-        script->slowMultiplier = initialSlowMultiplier;
-        script->jumpSpeed = initialJumpSpeed;
-        script->stepHeight = initialStepHeight;
-        script->maxSlope = initialMaxSlope;
-        script->ignoreCharacterTrigger = initialIgnoreCharacterTrigger;
-        return script;
-    };
-    controllerScript.DestroyScript = [](ScriptComponent* nsc) {
-        nsc->instance.reset();
-        nsc->scriptableInstance = nullptr;
-        nsc->inputScriptableInstance = nullptr;
-    };
+    m_S26ControllerEntity = EntityBuilder(scene, res, "scenario")
+                                .WithName("S26_CharacterController")
+                                .WithTag("mover")
+                                .WithTransform(glm::vec3(0.0f, 3.0f, 10.0f), glm::vec3(0.0f), glm::vec3(1.2f))
+                                .WithPBRMesh("capsuleModel", "deferred_lit", 0.0f, 0.45f, 1.0f)
+                                .WithScriptable("Scenario26CharacterControllerScript", [initialMoveSpeed, initialSprintMultiplier, initialSlowMultiplier,
+                                                                                      initialJumpSpeed, initialStepHeight, initialMaxSlope,
+                                                                                      initialIgnoreCharacterTrigger]() {
+                                    auto script = std::make_unique<Scenario26CharacterControllerScript>();
+                                    script->moveSpeed = initialMoveSpeed;
+                                    script->sprintMultiplier = initialSprintMultiplier;
+                                    script->slowMultiplier = initialSlowMultiplier;
+                                    script->jumpSpeed = initialJumpSpeed;
+                                    script->stepHeight = initialStepHeight;
+                                    script->maxSlope = initialMaxSlope;
+                                    script->ignoreCharacterTrigger = initialIgnoreCharacterTrigger;
+                                    return script;
+                                })
+                                .Build();
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S26ControllerEntity))
+        renderer->color = glm::vec4(0.2f, 0.95f, 0.35f, 1.0f);
 
     if (phys)
     {
@@ -283,10 +226,8 @@ void SampleState::LoadScene26()
             controller->SetJumpSpeed(m_S26JumpSpeed);
             controller->SetUserPointer((void*)((uintptr_t)m_S26ControllerEntity + 1));
             phys->AddCharacterController(controller.get());
-            auto& cc = scene.registry.emplace<CharacterControllerComponent>(m_S26ControllerEntity);
-            cc.controller = controller;
-            cc.stepHeight = m_S26StepHeight;
-            cc.maxSlope = m_S26MaxSlope;
+            EntityBuilder(scene, res, m_S26ControllerEntity)
+                .WithCharacterController(controller, m_S26StepHeight, m_S26MaxSlope);
         }
     }
 
@@ -297,8 +238,8 @@ void SampleState::LoadScene26()
 
     if (phys && fixedParts.size() == 2)
     {
-        auto& rbA = scene.registry.get<RigidBodyComponent>(fixedParts[0]);
-        auto& rbB = scene.registry.get<RigidBodyComponent>(fixedParts[1]);
+        auto& rbA = scene.GetComponent<RigidBodyComponent>(fixedParts[0]);
+        auto& rbB = scene.GetComponent<RigidBodyComponent>(fixedParts[1]);
         if (rbA.body && rbB.body)
         {
             auto constraint = phys->CreateFixedConstraint(

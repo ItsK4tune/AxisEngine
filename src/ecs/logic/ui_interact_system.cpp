@@ -116,7 +116,7 @@ void UIInteractSystem::Update(Scene& scene, float dt)
     const bool leftDown = mouse.IsLeftButtonPressed();
 
     std::vector<entt::entity> entities;
-    auto view = scene.registry.view<UITransformComponent, UIInteractiveComponent, InfoComponent>();
+    auto view = scene.View<UITransformComponent, UIInteractiveComponent, InfoComponent>();
     for (auto entity : view)
     {
         const auto& info = view.get<InfoComponent>(entity);
@@ -126,16 +126,16 @@ void UIInteractSystem::Update(Scene& scene, float dt)
     }
 
     std::sort(entities.begin(), entities.end(), [&](entt::entity a, entt::entity b) {
-        return scene.registry.get<UITransformComponent>(a).zIndex >
-               scene.registry.get<UITransformComponent>(b).zIndex;
+        return scene.GetComponent<UITransformComponent>(a).zIndex >
+               scene.GetComponent<UITransformComponent>(b).zIndex;
     });
 
     entt::entity topHovered = entt::null;
     for (auto entity : entities)
     {
-        UIRect rect = CalculateUIRect(scene.registry, entity, virtualWidth, virtualHeight);
-        if (auto* animation = scene.registry.try_get<UIAnimationComponent>(entity))
-            rect = ApplyVisualScale(rect, scene.registry.get<UITransformComponent>(entity), animation->visualScale);
+        UIRect rect = CalculateUIRect(scene.GetRegistry(), entity, virtualWidth, virtualHeight);
+        if (auto* animation = scene.TryGetComponent<UIAnimationComponent>(entity))
+            rect = ApplyVisualScale(rect, scene.GetComponent<UITransformComponent>(entity), animation->visualScale);
         if (Contains(rect, mousePos))
         {
             topHovered = entity;
@@ -146,7 +146,7 @@ void UIInteractSystem::Update(Scene& scene, float dt)
     const float safeDt = (std::max)(0.0f, dt);
     for (auto entity : entities)
     {
-        auto& interactive = scene.registry.get<UIInteractiveComponent>(entity);
+        auto& interactive = scene.GetComponent<UIInteractiveComponent>(entity);
         const bool hovered = entity == topHovered;
         interactive.clicked = false;
 
@@ -194,7 +194,7 @@ void UIInteractSystem::Update(Scene& scene, float dt)
             interactive.holdTime = 0.0f;
         }
 
-        if (auto* animation = scene.registry.try_get<UIAnimationComponent>(entity))
+        if (auto* animation = scene.TryGetComponent<UIAnimationComponent>(entity))
         {
             if (!animation->enabled)
             {
@@ -212,9 +212,9 @@ void UIInteractSystem::Update(Scene& scene, float dt)
 
             if (animation->animateColor)
             {
-                if (auto* renderer = scene.registry.try_get<UIRendererComponent>(entity))
+                if (auto* renderer = scene.TryGetComponent<UIRendererComponent>(entity))
                     renderer->color = glm::mix(renderer->color, targetColor, t);
-                if (auto* text = scene.registry.try_get<UITextComponent>(entity))
+                if (auto* text = scene.TryGetComponent<UITextComponent>(entity))
                     text->color = glm::mix(text->color, targetColor, t);
             }
 

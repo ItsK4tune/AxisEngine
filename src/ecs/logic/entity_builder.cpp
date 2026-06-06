@@ -1,5 +1,4 @@
 #include <ecs/logic/entity_builder.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/physics_components.h>
@@ -38,11 +37,11 @@ void ApplyUITransform(UITransformComponent& uiTransform, const glm::vec2& pos, c
 
 void MarkWorldDirty(Scene& scene, entt::entity entity)
 {
-    auto& world = scene.registry.get_or_emplace<WorldTransformComponent>(entity);
+    auto& world = scene.GetOrAddComponent<WorldTransformComponent>(entity);
     world.isDirty = true;
 }
 
-void BindMaterialTexture(AxisMaterialComponent& mat, MaterialTextureSlot slot, const std::string& textureNameOrPath,
+void BindMaterialTexture(MaterialComponent& mat, MaterialTextureSlot slot, const std::string& textureNameOrPath,
                          ResourceManager& resources)
 {
     uint32_t* gpuMap = nullptr;
@@ -140,15 +139,20 @@ namespace Perlin
 EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources, const std::string& sceneName)
     : m_Scene(scene), m_Resources(resources)
 {
-    m_Entity = m_Scene.registry.create();
+    m_Entity = m_Scene.GetRegistry().create();
 
-    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     info.sceneName = sceneName;
 
     if (auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>())
     {
         sceneMgr->AddEntity(m_Entity, sceneName);
     }
+}
+
+EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources, entt::entity entity)
+    : m_Scene(scene), m_Resources(resources), m_Entity(entity)
+{
 }
 
 EntityBuilder& EntityBuilder::WithTextureResource(const std::string& name, const std::string& path, bool async,
@@ -198,42 +202,42 @@ EntityBuilder& EntityBuilder::WithSkyboxResource(const std::string& name, const 
 
 EntityBuilder& EntityBuilder::WithName(const std::string& name)
 {
-    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     info.name = name;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithTag(const std::string& tag)
 {
-    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     info.tag = tag;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithLayer(uint32_t layer)
 {
-    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     info.layer = layer;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithActive(bool active)
 {
-    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     info.isActive = active;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithRenderOrder(int renderOrder)
 {
-    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     info.renderOrder = renderOrder;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithScene(const std::string& sceneName)
 {
-    auto& info = m_Scene.registry.get_or_emplace<InfoComponent>(m_Entity);
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     std::string oldScene = info.sceneName;
     info.sceneName = sceneName;
 
@@ -250,17 +254,17 @@ EntityBuilder& EntityBuilder::WithScene(const std::string& sceneName)
 
 EntityBuilder& EntityBuilder::WithTransform(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scale)
 {
-    m_Scene.registry.emplace_or_replace<PositionComponent>(m_Entity, pos, pos);
-    m_Scene.registry.emplace_or_replace<RotationComponent>(m_Entity, glm::quat(glm::radians(rot)),
+    m_Scene.AddOrReplaceComponent<PositionComponent>(m_Entity, pos, pos);
+    m_Scene.AddOrReplaceComponent<RotationComponent>(m_Entity, glm::quat(glm::radians(rot)),
                                                            glm::quat(glm::radians(rot)));
-    m_Scene.registry.emplace_or_replace<ScaleComponent>(m_Entity, scale, scale);
+    m_Scene.AddOrReplaceComponent<ScaleComponent>(m_Entity, scale, scale);
     MarkWorldDirty(m_Scene, m_Entity);
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithPosition(const glm::vec3& pos)
 {
-    m_Scene.registry.emplace_or_replace<PositionComponent>(m_Entity, pos, pos);
+    m_Scene.AddOrReplaceComponent<PositionComponent>(m_Entity, pos, pos);
     MarkWorldDirty(m_Scene, m_Entity);
     return *this;
 }
@@ -273,14 +277,14 @@ EntityBuilder& EntityBuilder::WithRotationEuler(const glm::vec3& rotDegrees)
 
 EntityBuilder& EntityBuilder::WithRotation(const glm::quat& rotation)
 {
-    m_Scene.registry.emplace_or_replace<RotationComponent>(m_Entity, rotation, rotation);
+    m_Scene.AddOrReplaceComponent<RotationComponent>(m_Entity, rotation, rotation);
     MarkWorldDirty(m_Scene, m_Entity);
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithScale(const glm::vec3& scale)
 {
-    m_Scene.registry.emplace_or_replace<ScaleComponent>(m_Entity, scale, scale);
+    m_Scene.AddOrReplaceComponent<ScaleComponent>(m_Entity, scale, scale);
     MarkWorldDirty(m_Scene, m_Entity);
     return *this;
 }
@@ -290,18 +294,10 @@ EntityBuilder& EntityBuilder::WithScale(float uniformScale)
     return WithScale(glm::vec3(uniformScale));
 }
 
-EntityBuilder& EntityBuilder::WithUIPosition(const glm::vec2& pos, const glm::bvec2& isPercent)
-{
-    auto& uiTransform = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
-    uiTransform.position = pos;
-    uiTransform.positionIsPercent = isPercent;
-    return *this;
-}
-
 EntityBuilder& EntityBuilder::WithMesh(const std::string& modelName, const std::string& shaderName)
 {
     auto& res = m_Resources;
-    auto& mesh = m_Scene.registry.get_or_emplace<MeshRendererComponent>(m_Entity);
+    auto& mesh = m_Scene.GetOrAddComponent<MeshRendererComponent>(m_Entity);
     mesh.model = res.GetModel(modelName);
     mesh.shader = res.GetShader(shaderName);
     mesh.shaderName = shaderName;
@@ -311,24 +307,23 @@ EntityBuilder& EntityBuilder::WithMesh(const std::string& modelName, const std::
 EntityBuilder& EntityBuilder::WithMeshAuto(const std::string& modelNameOrPath, const std::string& shaderName,
                                            bool isStatic)
 {
-    auto& mesh = m_Scene.registry.get_or_emplace<MeshRendererComponent>(m_Entity);
+    auto& mesh = m_Scene.GetOrAddComponent<MeshRendererComponent>(m_Entity);
     mesh.model = m_Resources.GetModelAuto(modelNameOrPath, isStatic);
     mesh.shader = m_Resources.GetShader(shaderName);
     mesh.shaderName = shaderName;
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithMaterial(const AxisMaterialComponent& material)
+EntityBuilder& EntityBuilder::WithMaterial(const MaterialComponent& material)
 {
-    auto& mat = m_Scene.registry.emplace_or_replace<AxisMaterialComponent>(m_Entity, material);
+    auto& mat = m_Scene.AddOrReplaceComponent<MaterialComponent>(m_Entity, material);
     mat.gpu.batchKeyDirty = true;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const glm::vec3& specular, float shininess)
 {
-    // Legacy support: convert to PBR roughly
-    auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
+    auto& mat = m_Scene.GetOrAddComponent<MaterialComponent>(m_Entity);
     mat.desc.pbr.roughness = glm::clamp(1.0f - (shininess / 128.0f), 0.0f, 1.0f);
     mat.desc.pbr.metallic = 0.0f;
     mat.gpu.batchKeyDirty = true;
@@ -337,7 +332,7 @@ EntityBuilder& EntityBuilder::WithPhongMaterial(const glm::vec3& ambient, const 
 
 EntityBuilder& EntityBuilder::WithPBRMaterial(float metallic, float roughness, float ao)
 {
-    auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
+    auto& mat = m_Scene.GetOrAddComponent<MaterialComponent>(m_Entity);
     mat.desc.pbr.metallic = metallic;
     mat.desc.pbr.roughness = roughness;
     mat.desc.pbr.ao = ao;
@@ -369,14 +364,14 @@ EntityBuilder& EntityBuilder::WithPBRRenderable(const std::string& modelName, co
 
 EntityBuilder& EntityBuilder::WithRendererColor(const glm::vec4& color)
 {
-    auto& mesh = m_Scene.registry.get_or_emplace<MeshRendererComponent>(m_Entity);
+    auto& mesh = m_Scene.GetOrAddComponent<MeshRendererComponent>(m_Entity);
     mesh.color = color;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithMeshRenderOptions(bool castShadow, bool receiveShadow, bool ignoreDepth, int order)
 {
-    auto& mesh = m_Scene.registry.get_or_emplace<MeshRendererComponent>(m_Entity);
+    auto& mesh = m_Scene.GetOrAddComponent<MeshRendererComponent>(m_Entity);
     mesh.castShadow = castShadow;
     mesh.receiveShadow = receiveShadow;
     mesh.ignoreDepth = ignoreDepth;
@@ -388,7 +383,7 @@ EntityBuilder& EntityBuilder::WithLOD(const std::vector<std::string>& modelNames
                                       const std::vector<float>& distances, bool distancesAreSquared,
                                       bool isStaticModel)
 {
-    auto& lod = m_Scene.registry.get_or_emplace<LODComponent>(m_Entity);
+    auto& lod = m_Scene.GetOrAddComponent<LODComponent>(m_Entity);
     lod.lodModels.clear();
     lod.lodDistancesSq.clear();
 
@@ -410,7 +405,7 @@ EntityBuilder& EntityBuilder::WithLOD(const std::vector<std::string>& modelNames
 EntityBuilder& EntityBuilder::WithLODModel(const std::string& modelNameOrPath, float distance,
                                            bool distanceIsSquared, bool isStaticModel)
 {
-    auto& lod = m_Scene.registry.get_or_emplace<LODComponent>(m_Entity);
+    auto& lod = m_Scene.GetOrAddComponent<LODComponent>(m_Entity);
     lod.lodModels.push_back(m_Resources.GetModelAuto(modelNameOrPath, isStaticModel));
 
     const float clampedDistance = glm::max(distance, 0.0f);
@@ -420,7 +415,7 @@ EntityBuilder& EntityBuilder::WithLODModel(const std::string& modelNameOrPath, f
 
 EntityBuilder& EntityBuilder::WithOcclusion(bool visible)
 {
-    auto& occlusion = m_Scene.registry.get_or_emplace<OcclusionComponent>(m_Entity);
+    auto& occlusion = m_Scene.GetOrAddComponent<OcclusionComponent>(m_Entity);
     occlusion.isVisible = visible;
     occlusion.queryPending = false;
     return *this;
@@ -429,7 +424,7 @@ EntityBuilder& EntityBuilder::WithOcclusion(bool visible)
 EntityBuilder& EntityBuilder::WithStreaming(const std::string& modelPath, float loadDistance, float unloadDistance,
                                             bool isStatic)
 {
-    auto& streaming = m_Scene.registry.get_or_emplace<StreamingComponent>(m_Entity);
+    auto& streaming = m_Scene.GetOrAddComponent<StreamingComponent>(m_Entity);
     streaming.modelPath = modelPath;
     streaming.loadDistance = glm::max(loadDistance, 0.0f);
     streaming.unloadDistance = glm::max(unloadDistance, streaming.loadDistance);
@@ -440,7 +435,7 @@ EntityBuilder& EntityBuilder::WithStreaming(const std::string& modelPath, float 
 
 EntityBuilder& EntityBuilder::WithMaterialEmission(const glm::vec3& emission)
 {
-    auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
+    auto& mat = m_Scene.GetOrAddComponent<MaterialComponent>(m_Entity);
     mat.desc.emission = emission;
     mat.gpu.batchKeyDirty = true;
     mat.gpu.dirty = true;
@@ -449,7 +444,7 @@ EntityBuilder& EntityBuilder::WithMaterialEmission(const glm::vec3& emission)
 
 EntityBuilder& EntityBuilder::WithMaterialTexture(MaterialTextureSlot slot, const std::string& textureNameOrPath)
 {
-    auto& mat = m_Scene.registry.get_or_emplace<AxisMaterialComponent>(m_Entity);
+    auto& mat = m_Scene.GetOrAddComponent<MaterialComponent>(m_Entity);
     BindMaterialTexture(mat, slot, textureNameOrPath, m_Resources);
     return *this;
 }
@@ -485,22 +480,35 @@ EntityBuilder& EntityBuilder::WithMaterialTextures(const std::string& albedo, co
 
 EntityBuilder& EntityBuilder::WithRigidBody(std::shared_ptr<IRigidBody> body)
 {
-    auto& rb = m_Scene.registry.get_or_emplace<RigidBodyComponent>(m_Entity);
+    auto& rb = m_Scene.GetOrAddComponent<RigidBodyComponent>(m_Entity);
     rb.body = body;
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithCharacterController(std::shared_ptr<ICharacterController> controller)
+EntityBuilder& EntityBuilder::WithRigidBody(float mass, bool isStatic, bool isTrigger, float linearDamping, float angularDamping)
 {
-    auto& cc = m_Scene.registry.get_or_emplace<CharacterControllerComponent>(m_Entity);
+    auto& rb = m_Scene.GetOrAddComponent<RigidBodyComponent>(m_Entity);
+    rb.mass = mass;
+    rb.isStatic = isStatic;
+    rb.isTrigger = isTrigger;
+    rb.linearDamping = linearDamping;
+    rb.angularDamping = angularDamping;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithCharacterController(std::shared_ptr<ICharacterController> controller, float stepHeight, float maxSlope)
+{
+    auto& cc = m_Scene.GetOrAddComponent<CharacterControllerComponent>(m_Entity);
     cc.controller = controller;
+    cc.stepHeight = stepHeight;
+    cc.maxSlope = maxSlope;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithPathFollower(float moveSpeed, float rotationSpeed, float maxRotationSpeed,
                                                float rotationAcceleration, const glm::vec3& rotationOffset)
 {
-    auto& follower = m_Scene.registry.get_or_emplace<PathFollowerComponent>(m_Entity);
+    auto& follower = m_Scene.GetOrAddComponent<PathFollowerComponent>(m_Entity);
     follower.moveSpeed = moveSpeed;
     follower.rotationSpeed = rotationSpeed;
     follower.maxRotationSpeed = maxRotationSpeed;
@@ -511,7 +519,7 @@ EntityBuilder& EntityBuilder::WithPathFollower(float moveSpeed, float rotationSp
 
 EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::vec2& size, int zIndex)
 {
-    auto& uiTransform = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& uiTransform = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ApplyUITransform(uiTransform, pos, size, glm::bvec2(false), glm::bvec2(false), zIndex);
     return *this;
 }
@@ -520,7 +528,7 @@ EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::v
                                               const glm::bvec2& positionIsPercent,
                                               const glm::bvec2& sizeIsPercent, int zIndex)
 {
-    auto& uiTransform = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& uiTransform = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ApplyUITransform(uiTransform, pos, size, positionIsPercent, sizeIsPercent, zIndex);
     return *this;
 }
@@ -528,7 +536,7 @@ EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::v
 EntityBuilder& EntityBuilder::WithUITransformPercent(const glm::vec2& posPercent, const glm::vec2& sizePercent,
                                                      int zIndex)
 {
-    auto& uiTransform = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& uiTransform = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ApplyUITransform(uiTransform, posPercent, sizePercent, glm::bvec2(true), glm::bvec2(true), zIndex);
     return *this;
 }
@@ -536,7 +544,7 @@ EntityBuilder& EntityBuilder::WithUITransformPercent(const glm::vec2& posPercent
 EntityBuilder& EntityBuilder::WithUITransformPercentPosition(const glm::vec2& posPercent, const glm::vec2& size,
                                                              int zIndex)
 {
-    auto& uiTransform = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& uiTransform = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ApplyUITransform(uiTransform, posPercent, size, glm::bvec2(true), glm::bvec2(false), zIndex);
     return *this;
 }
@@ -570,6 +578,14 @@ EntityBuilder& EntityBuilder::WithUIStretchChild(entt::entity parent, const glm:
     return WithUIZIndex(zIndex);
 }
 
+EntityBuilder& EntityBuilder::WithUIPosition(const glm::vec2& pos, const glm::bvec2& isPercent)
+{
+    auto& uiTransform = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
+    uiTransform.position = pos;
+    uiTransform.positionIsPercent = isPercent;
+    return *this;
+}
+
 EntityBuilder& EntityBuilder::WithUIPositionPercent(const glm::vec2& posPercent)
 {
     return WithUIPosition(posPercent, glm::bvec2(true));
@@ -577,7 +593,7 @@ EntityBuilder& EntityBuilder::WithUIPositionPercent(const glm::vec2& posPercent)
 
 EntityBuilder& EntityBuilder::WithUISize(const glm::vec2& size, const glm::bvec2& isPercent)
 {
-    auto& uiTransform = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& uiTransform = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     uiTransform.size = size;
     uiTransform.sizeIsPercent = isPercent;
     return *this;
@@ -592,7 +608,7 @@ EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::str
                                          const glm::vec4& color)
 {
     auto& res = m_Resources;
-    auto& textComp = m_Scene.registry.get_or_emplace<UITextComponent>(m_Entity);
+    auto& textComp = m_Scene.GetOrAddComponent<UITextComponent>(m_Entity);
 
     textComp.text = text;
     textComp.fontName = fontName;
@@ -614,7 +630,7 @@ EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::str
 
 EntityBuilder& EntityBuilder::WithUIAnchors(const glm::vec2& min, const glm::vec2& max)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.anchorMin = min;
     ui.anchorMax = max;
     return *this;
@@ -622,7 +638,7 @@ EntityBuilder& EntityBuilder::WithUIAnchors(const glm::vec2& min, const glm::vec
 
 EntityBuilder& EntityBuilder::WithUIOffsets(const glm::vec2& min, const glm::vec2& max)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.offsetMin = min;
     ui.offsetMax = max;
     return *this;
@@ -631,7 +647,7 @@ EntityBuilder& EntityBuilder::WithUIOffsets(const glm::vec2& min, const glm::vec
 EntityBuilder& EntityBuilder::WithUIStretch(const glm::vec2& anchorMin, const glm::vec2& anchorMax,
                                             const glm::vec2& offsetMin, const glm::vec2& offsetMax)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.position = glm::vec2(0.0f);
     ui.positionIsPercent = glm::bvec2(false);
     ui.size = glm::vec2(0.0f);
@@ -643,23 +659,189 @@ EntityBuilder& EntityBuilder::WithUIStretch(const glm::vec2& anchorMin, const gl
     return *this;
 }
 
+// Dedicated builder methods implementation
+EntityBuilder& EntityBuilder::WithInfo(const InfoComponent& info)
+{
+    m_Scene.AddOrReplaceComponent<InfoComponent>(m_Entity, info);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithPostProcess(const PostProcessComponent& postProcess)
+{
+    m_Scene.AddOrReplaceComponent<PostProcessComponent>(m_Entity, postProcess);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithPostProcessEffect(const std::string& shaderName, int priority, int x, int y, int w, int h)
+{
+    auto& pp = m_Scene.GetOrAddComponent<PostProcessComponent>(m_Entity);
+    pp.enabled = true;
+    PostProcessComponent::Effect effect;
+    effect.shaderName = shaderName;
+    effect.priority = priority;
+    effect.x = x;
+    effect.y = y;
+    effect.w = w;
+    effect.h = h;
+    effect.enabled = true;
+    effect.affectUI = false;
+    pp.effects.push_back(effect);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithReflectionProbe(const ReflectionProbeComponent& probe)
+{
+    m_Scene.AddOrReplaceComponent<ReflectionProbeComponent>(m_Entity, probe);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithReflectionProbe(ReflectionProbeType type, int resolution, bool boxProjection)
+{
+    auto& probe = m_Scene.GetOrAddComponent<ReflectionProbeComponent>(m_Entity);
+    probe.type = type;
+    probe.resolution = resolution;
+    probe.boxProjection = boxProjection;
+    probe.isDirty = true;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithReflective(const ReflectiveComponent& reflective)
+{
+    m_Scene.AddOrReplaceComponent<ReflectiveComponent>(m_Entity, reflective);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithReflective(float reflectivity, float fresnelPower, float fresnelBias)
+{
+    auto& ref = m_Scene.GetOrAddComponent<ReflectiveComponent>(m_Entity);
+    ref.reflectivity = reflectivity;
+    ref.fresnelPower = fresnelPower;
+    ref.fresnelBias = fresnelBias;
+    ref.enabled = true;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithPlanarReflection(const PlanarReflectionComponent& planar)
+{
+    m_Scene.AddOrReplaceComponent<PlanarReflectionComponent>(m_Entity, planar);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithPlanarReflection(int resolution, const glm::vec3& normal)
+{
+    auto& planar = m_Scene.GetOrAddComponent<PlanarReflectionComponent>(m_Entity);
+    planar.resolution = resolution;
+    planar.resolution_y = resolution;
+    planar.normal = normal;
+    planar.isDirty = true;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithLightProbe(const LightProbeComponent& probe)
+{
+    m_Scene.AddOrReplaceComponent<LightProbeComponent>(m_Entity, probe);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithLightProbe(float radius, float intensity)
+{
+    auto& lp = m_Scene.GetOrAddComponent<LightProbeComponent>(m_Entity);
+    lp.radius = radius;
+    lp.intensity = intensity;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithRigidShape(const RigidShapeComponent& shape)
+{
+    m_Scene.AddOrReplaceComponent<RigidShapeComponent>(m_Entity, shape);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithRigidShape(ShapeType type, const glm::vec3& size, float radius, float height, float friction, float restitution)
+{
+    auto& shape = m_Scene.GetOrAddComponent<RigidShapeComponent>(m_Entity);
+    shape.children.clear();
+    shape.type = type;
+    shape.size = size;
+    shape.radius = radius;
+    shape.height = height;
+    shape.friction = friction;
+    shape.restitution = restitution;
+    shape.offset = glm::vec3(0.0f);
+    shape.rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithRigidBodyComponent(const RigidBodyComponent& body)
+{
+    m_Scene.AddOrReplaceComponent<RigidBodyComponent>(m_Entity, body);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithDecal(const DecalComponent& decal)
+{
+    m_Scene.AddOrReplaceComponent<DecalComponent>(m_Entity, decal);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithDecal(uint32_t albedoMap, float opacity, float roughness, float metallic, int lightingMode, const glm::vec4& tintColor)
+{
+    auto& decal = m_Scene.GetOrAddComponent<DecalComponent>(m_Entity);
+    decal.albedoMap = albedoMap;
+    decal.opacity = opacity;
+    decal.roughness = roughness;
+    decal.metallic = metallic;
+    decal.lightingMode = lightingMode;
+    decal.tintColor = tintColor;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithAudioSource(const AudioSourceComponent& audioSource)
+{
+    m_Scene.AddOrReplaceComponent<AudioSourceComponent>(m_Entity, audioSource);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithAudioSource(const std::string& filePath, bool playOnAwake, bool loop,
+                                              bool is3D, float volume, float pitch, float speed,
+                                              float minDistance, float maxDistance)
+{
+    auto& audio = m_Scene.GetOrAddComponent<AudioSourceComponent>(m_Entity);
+    audio.filePath = filePath;
+    audio.playOnAwake = playOnAwake;
+    audio.loop = loop;
+    audio.is3D = is3D;
+    audio.volume = volume;
+    audio.pitch = pitch;
+    audio.speed = speed;
+    audio.minDistance = minDistance;
+    audio.maxDistance = maxDistance;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithMeshRenderer(const MeshRendererComponent& meshRenderer)
+{
+    m_Scene.AddOrReplaceComponent<MeshRendererComponent>(m_Entity, meshRenderer);
+    return *this;
+}
+
 EntityBuilder& EntityBuilder::WithUIFillParent(int zIndex)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.zIndex = zIndex;
     return WithUIStretch(glm::vec2(0.0f), glm::vec2(1.0f));
 }
 
 EntityBuilder& EntityBuilder::WithUIPivot(const glm::vec2& pivot)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.pivot = pivot;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithUIFlip(bool flipX, bool flipY)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.flipX = flipX;
     ui.flipY = flipY;
     return *this;
@@ -667,21 +849,21 @@ EntityBuilder& EntityBuilder::WithUIFlip(bool flipX, bool flipY)
 
 EntityBuilder& EntityBuilder::WithUIRotation(float degrees)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.rotation = degrees;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithUIZIndex(int zIndex)
 {
-    auto& ui = m_Scene.registry.get_or_emplace<UITransformComponent>(m_Entity);
+    auto& ui = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ui.zIndex = zIndex;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithUIFlex(FlexDirection dir, float spacing)
 {
-    auto& flex = m_Scene.registry.get_or_emplace<UIFlexLayoutComponent>(m_Entity);
+    auto& flex = m_Scene.GetOrAddComponent<UIFlexLayoutComponent>(m_Entity);
     flex.direction = dir;
     flex.spacing = spacing;
     return *this;
@@ -689,7 +871,7 @@ EntityBuilder& EntityBuilder::WithUIFlex(FlexDirection dir, float spacing)
 
 EntityBuilder& EntityBuilder::WithUITextAlignment(TextAlignment align, bool wrap, float maxWidth)
 {
-    auto& text = m_Scene.registry.get_or_emplace<UITextComponent>(m_Entity);
+    auto& text = m_Scene.GetOrAddComponent<UITextComponent>(m_Entity);
     text.alignment = align;
     text.wordWrap = wrap;
     text.maxWidth = maxWidth;
@@ -699,7 +881,7 @@ EntityBuilder& EntityBuilder::WithUITextAlignment(TextAlignment align, bool wrap
 EntityBuilder& EntityBuilder::WithUIRenderer(const std::string& textureName, const glm::vec4& color)
 {
     auto& res = m_Resources;
-    auto& renderer = m_Scene.registry.get_or_emplace<UIRendererComponent>(m_Entity);
+    auto& renderer = m_Scene.GetOrAddComponent<UIRendererComponent>(m_Entity);
 
     renderer.color = color;
     renderer.shader = res.GetShader("uiShader");
@@ -721,7 +903,7 @@ EntityBuilder& EntityBuilder::WithUITexture(const std::string& textureNameOrPath
     WithUIRenderer(modelName, color);
 
     auto texture = m_Resources.GetTextureAuto(textureNameOrPath);
-    auto& renderer = m_Scene.registry.get_or_emplace<UIRendererComponent>(m_Entity);
+    auto& renderer = m_Scene.GetOrAddComponent<UIRendererComponent>(m_Entity);
     renderer.texture = texture;
     if (renderer.model && texture)
         renderer.model->SetTexture(texture->id);
@@ -742,22 +924,22 @@ EntityBuilder& EntityBuilder::WithParent(entt::entity parent)
     if (parent == entt::null)
         return *this;
 
-    auto& hierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(m_Entity);
+    auto& hierarchy = m_Scene.GetOrAddComponent<HierarchyComponent>(m_Entity);
     (void)hierarchy;
-    if (m_Scene.registry.valid(parent))
+    if (m_Scene.IsValid(parent))
     {
-        auto& parentHierarchy = m_Scene.registry.get_or_emplace<HierarchyComponent>(parent);
+        auto& parentHierarchy = m_Scene.GetOrAddComponent<HierarchyComponent>(parent);
         (void)parentHierarchy;
     }
 
-    EntityManager::SetParent(m_Scene, m_Entity, parent);
+    m_Scene.SetParent(m_Entity, parent);
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithAudio(const std::string& soundName, bool loop, float volume)
 {
     auto& res = m_Resources;
-    auto& audio = m_Scene.registry.get_or_emplace<AudioSourceComponent>(m_Entity);
+    auto& audio = m_Scene.GetOrAddComponent<AudioSourceComponent>(m_Entity);
     audio.sound = std::dynamic_pointer_cast<ISound>(res.GetSound(soundName));
     if (audio.sound)
     {
@@ -769,7 +951,7 @@ EntityBuilder& EntityBuilder::WithAudio(const std::string& soundName, bool loop,
 
 EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
 {
-    auto& script = m_Scene.registry.get_or_emplace<ScriptComponent>(m_Entity);
+    auto& script = m_Scene.GetOrAddComponent<ScriptComponent>(m_Entity);
     script.className = scriptName;
     script.instance.reset();
     script.scriptableInstance = nullptr;
@@ -794,10 +976,26 @@ EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
     return *this;
 }
 
+EntityBuilder& EntityBuilder::WithScriptable(const std::string& className, std::function<std::unique_ptr<IScriptable>()> instantiateFunc)
+{
+    auto& script = m_Scene.GetOrAddComponent<ScriptComponent>(m_Entity);
+    script.className = className;
+    script.instance.reset();
+    script.scriptableInstance = nullptr;
+    script.inputScriptableInstance = nullptr;
+    script.InstantiateScript = instantiateFunc;
+    script.DestroyScript = [](ScriptComponent* sc) {
+        sc->instance.reset();
+        sc->scriptableInstance = nullptr;
+        sc->inputScriptableInstance = nullptr;
+    };
+    return *this;
+}
+
 EntityBuilder& EntityBuilder::WithAnimation(const std::string& animationName)
 {
     auto& res = m_Resources;
-    auto& anim = m_Scene.registry.get_or_emplace<AnimationComponent>(m_Entity);
+    auto& anim = m_Scene.GetOrAddComponent<AnimationComponent>(m_Entity);
     anim.animations.push_back(animationName);
 
     auto a = res.GetAnimation(animationName);
@@ -816,9 +1014,27 @@ EntityBuilder& EntityBuilder::WithAnimation(const std::string& animationName)
     return *this;
 }
 
+EntityBuilder& EntityBuilder::WithFragment(const std::string& path, const std::string& overrides)
+{
+    auto& frag = m_Scene.GetOrAddComponent<FragmentComponent>(m_Entity);
+    frag.path = path;
+    frag.overrides = overrides;
+    frag.instantiated = false;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithNetwork(uint32_t networkId, uint32_t ownerId, bool isLocal)
+{
+    auto& net = m_Scene.GetOrAddComponent<NetworkComponent>(m_Entity);
+    net.networkId = networkId;
+    net.ownerId = ownerId;
+    net.isLocal = isLocal;
+    return *this;
+}
+
 EntityBuilder& EntityBuilder::WithDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity)
 {
-    auto& light = m_Scene.registry.get_or_emplace<DirectionalLightComponent>(m_Entity);
+    auto& light = m_Scene.GetOrAddComponent<DirectionalLightComponent>(m_Entity);
     light.direction = direction;
     light.color = color;
     light.intensity = intensity;
@@ -835,7 +1051,7 @@ EntityBuilder& EntityBuilder::WithDirectionalLightAt(const glm::vec3& pos, const
 
 EntityBuilder& EntityBuilder::WithPointLight(const glm::vec3& color, float intensity, float radius)
 {
-    auto& light = m_Scene.registry.get_or_emplace<PointLightComponent>(m_Entity);
+    auto& light = m_Scene.GetOrAddComponent<PointLightComponent>(m_Entity);
     light.color = color;
     light.intensity = intensity;
     light.radius = radius;
@@ -852,7 +1068,7 @@ EntityBuilder& EntityBuilder::WithPointLightAt(const glm::vec3& pos, const glm::
 EntityBuilder& EntityBuilder::WithSpotLight(const glm::vec3& direction, const glm::vec3& color, float intensity,
                                             float radius)
 {
-    auto& light = m_Scene.registry.get_or_emplace<SpotLightComponent>(m_Entity);
+    auto& light = m_Scene.GetOrAddComponent<SpotLightComponent>(m_Entity);
     light.direction = direction;
     light.color = color;
     light.intensity = intensity;
@@ -869,25 +1085,25 @@ EntityBuilder& EntityBuilder::WithSpotLightAt(const glm::vec3& pos, const glm::v
 
 EntityBuilder& EntityBuilder::WithCamera(float fov, float near, float far, bool active)
 {
-    auto& cam = m_Scene.registry.get_or_emplace<CameraComponent>(m_Entity);
+    auto& cam = m_Scene.GetOrAddComponent<CameraComponent>(m_Entity);
     cam.fov = fov;
     cam.nearPlane = near;
     cam.farPlane = far;
     if (active)
-        EntityManager::SetActiveCamera(m_Scene, m_Entity);
+        m_Scene.SetActiveCamera(m_Entity);
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithParticle(const std::string& textureName)
 {
-    auto& p = m_Scene.registry.get_or_emplace<ParticleEmitterComponent>(m_Entity);
+    auto& p = m_Scene.GetOrAddComponent<ParticleEmitterComponent>(m_Entity);
     p.textureName = textureName;
     return *this;
 }
 
 EntityBuilder& EntityBuilder::WithParticleTexture(const std::string& textureNameOrPath)
 {
-    auto& p = m_Scene.registry.get_or_emplace<ParticleEmitterComponent>(m_Entity);
+    auto& p = m_Scene.GetOrAddComponent<ParticleEmitterComponent>(m_Entity);
     p.textureName = textureNameOrPath;
     p.emitter.Texture = m_Resources.GetTextureAuto(textureNameOrPath);
     return *this;
@@ -900,9 +1116,25 @@ EntityBuilder& EntityBuilder::WithParticleTextureResource(const std::string& tex
     return WithParticleTexture(textureName);
 }
 
+EntityBuilder& EntityBuilder::WithParticleEmitter(float spawnRate, float lifeTime, float startSize, float endSize, const glm::vec3& minVelocity, const glm::vec3& maxVelocity, const glm::vec4& startColor, const glm::vec4& endColor, int maxParticles)
+{
+    auto& pe = m_Scene.GetOrAddComponent<ParticleEmitterComponent>(m_Entity);
+    pe.isActive = true;
+    pe.emitter.SpawnRate = spawnRate;
+    pe.emitter.LifeTime = lifeTime;
+    pe.emitter.StartSize = startSize;
+    pe.emitter.EndSize = endSize;
+    pe.emitter.MinVelocity = minVelocity;
+    pe.emitter.MaxVelocity = maxVelocity;
+    pe.emitter.StartColor = startColor;
+    pe.emitter.EndColor = endColor;
+    pe.emitter.Initialize(maxParticles);
+    return *this;
+}
+
 EntityBuilder& EntityBuilder::WithVideo(const std::string& videoPath, bool loop)
 {
-    auto& video = m_Scene.registry.get_or_emplace<VideoPlayerComponent>(m_Entity);
+    auto& video = m_Scene.GetOrAddComponent<VideoPlayerComponent>(m_Entity);
     video.filePath = videoPath;
     video.isLooping = loop;
     return *this;
@@ -911,7 +1143,7 @@ EntityBuilder& EntityBuilder::WithVideo(const std::string& videoPath, bool loop)
 EntityBuilder& EntityBuilder::WithVideoPlayback(bool playOnAwake, bool isPlaying, float volume, float speed,
                                                 int maxDecodes)
 {
-    auto& video = m_Scene.registry.get_or_emplace<VideoPlayerComponent>(m_Entity);
+    auto& video = m_Scene.GetOrAddComponent<VideoPlayerComponent>(m_Entity);
     video.playOnAwake = playOnAwake;
     video.isPlaying = isPlaying;
     video.volume = volume;
@@ -941,7 +1173,7 @@ EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float ma
                                            const std::vector<std::string>& diffuseLayerNames,
                                            bool generatePhysics, bool castShadows)
 {
-    auto& terrain = m_Scene.registry.get_or_emplace<TerrainComponent>(m_Entity);
+    auto& terrain = m_Scene.GetOrAddComponent<TerrainComponent>(m_Entity);
     terrain.terrainSize = terrainSize;
     terrain.maxHeight = maxHeight;
     terrain.resolution = resolution;
@@ -981,6 +1213,17 @@ EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float ma
     return *this;
 }
 
+EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float maxHeight, bool isWalkable, bool generatePhysics)
+{
+    auto& terrain = m_Scene.GetOrAddComponent<TerrainComponent>(m_Entity);
+    terrain.terrainSize = terrainSize;
+    terrain.maxHeight = maxHeight;
+    terrain.isWalkable = isWalkable;
+    terrain.generatePhysics = generatePhysics;
+    terrain.needsRebuild = true;
+    return *this;
+}
+
 entt::entity EntityBuilder::SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
                                         const std::string& fragmentPath, const glm::vec3& pos,
                                         const glm::vec3& scale)
@@ -990,7 +1233,7 @@ entt::entity EntityBuilder::SpawnObject(Scene& scene, ResourceManager& res, cons
         .WithTransform(pos, glm::vec3(0.0f, rand() % 360, 0.0f), scale)
         .Build();
         
-    auto& frag = scene.registry.emplace<FragmentComponent>(e);
+    auto& frag = scene.AddComponent<FragmentComponent>(e);
     frag.path = fragmentPath;
     frag.instantiated = false;
     
@@ -1052,6 +1295,85 @@ void EntityBuilder::ScatterObjects(Scene& scene, ResourceManager& res, const std
             SpawnObject(scene, res, sceneName, fragmentPath, glm::vec3(rx, h, rz), scale);
         }
     }
+}
+
+EntityBuilder& EntityBuilder::WithNavMesh(bool isDynamic, int terrainGridResolution, float walkableNormalY)
+{
+    auto& nav = m_Scene.GetOrAddComponent<NavMeshComponent>(m_Entity);
+    nav.isDynamic = isDynamic;
+    nav.terrainGridResolution = terrainGridResolution;
+    nav.walkableNormalY = walkableNormalY;
+    nav.needsRebuild = true;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithNavMesh(const NavMeshComponent& navMesh)
+{
+    m_Scene.AddOrReplaceComponent<NavMeshComponent>(m_Entity, navMesh);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithNavigationGrid(int width, int height, float cellSize, const glm::vec3& origin, bool allowDiagonal)
+{
+    auto& grid = m_Scene.GetOrAddComponent<NavigationGridComponent>(m_Entity);
+    grid.width = width;
+    grid.height = height;
+    grid.cellSize = cellSize;
+    grid.origin = origin;
+    grid.allowDiagonal = allowDiagonal;
+    grid.cells.resize(width * height);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithNavigationGrid(const NavigationGridComponent& grid)
+{
+    m_Scene.AddOrReplaceComponent<NavigationGridComponent>(m_Entity, grid);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIInteractive(bool interactable, std::function<void(entt::entity)> onClick)
+{
+    auto& ui = m_Scene.GetOrAddComponent<UIInteractiveComponent>(m_Entity);
+    ui.interactable = interactable;
+    ui.onClick = onClick;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIInteractive(const UIInteractiveComponent& interactive)
+{
+    m_Scene.AddOrReplaceComponent<UIInteractiveComponent>(m_Entity, interactive);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIAnimation(bool enabled, bool animateColor, bool animateScale)
+{
+    auto& anim = m_Scene.GetOrAddComponent<UIAnimationComponent>(m_Entity);
+    anim.enabled = enabled;
+    anim.animateColor = animateColor;
+    anim.animateScale = animateScale;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithUIAnimation(const UIAnimationComponent& anim)
+{
+    m_Scene.AddOrReplaceComponent<UIAnimationComponent>(m_Entity, anim);
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithSkybox(const std::string& skyboxName, const std::string& shaderName, bool isPrimary)
+{
+    auto& sky = m_Scene.GetOrAddComponent<SkyboxRenderComponent>(m_Entity);
+    sky.skybox = m_Resources.GetSkybox(skyboxName);
+    sky.shader = m_Resources.GetShader(shaderName);
+    sky.shaderName = shaderName;
+    sky.isPrimary = isPrimary;
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithSkybox(const SkyboxRenderComponent& skybox)
+{
+    m_Scene.AddOrReplaceComponent<SkyboxRenderComponent>(m_Entity, skybox);
+    return *this;
 }
 
 entt::entity EntityBuilder::Build()

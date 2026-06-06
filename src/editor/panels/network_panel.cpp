@@ -174,7 +174,7 @@ void NetworkPanel::OnImGui(Scene& scene)
                 ImGui::TableSetupColumn("Position");
                 ImGui::TableHeadersRow();
 
-                auto view = scene.registry.view<NetworkComponent>();
+                auto view = scene.View<NetworkComponent>();
                 for (auto entity : view)
                 {
                     auto& netComp = view.get<NetworkComponent>(entity);
@@ -191,9 +191,9 @@ void NetworkPanel::OnImGui(Scene& scene)
                     }
 
                     ImGui::TableSetColumnIndex(1);
-                    if (scene.registry.all_of<InfoComponent>(entity))
+                    if (scene.HasAllComponents<InfoComponent>(entity))
                     {
-                        auto& info = scene.registry.get<InfoComponent>(entity);
+                        auto& info = scene.GetComponent<InfoComponent>(entity);
                         ImGui::Text("%s", info.name.c_str());
                     }
                     else
@@ -208,9 +208,9 @@ void NetworkPanel::OnImGui(Scene& scene)
                     ImGui::Text(netComp.isLocal ? "Yes" : "No");
 
                     ImGui::TableSetColumnIndex(4);
-                    if (scene.registry.all_of<PositionComponent>(entity))
+                    if (scene.HasAllComponents<PositionComponent>(entity))
                     {
-                        auto& pos = scene.registry.get<PositionComponent>(entity);
+                        auto& pos = scene.GetComponent<PositionComponent>(entity);
                         ImGui::Text("(%.2f, %.2f, %.2f)", pos.value.x, pos.value.y, pos.value.z);
                     }
                     else

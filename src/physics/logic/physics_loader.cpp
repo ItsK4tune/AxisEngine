@@ -14,7 +14,7 @@ void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAML
         node, {"Type", "Size", "Radius", "Height", "Offset", "Rotation", "Friction", "Restitution", "Shapes"},
         "RigidShape");
 
-    auto& rs = scene.registry.get_or_emplace<RigidShapeComponent>(entity);
+    auto& rs = scene.GetOrAddComponent<RigidShapeComponent>(entity);
     rs.type = ShapeTypeFromString(node.GetChildValue("Type", "BOX"));
 
     if (!node.GetChildValue("Size").empty())
@@ -86,7 +86,7 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
         LoadRigidShape(scene, entity, node, physics);
     }
 
-    auto& rb = scene.registry.get_or_emplace<RigidBodyComponent>(entity);
+    auto& rb = scene.GetOrAddComponent<RigidBodyComponent>(entity);
     rb.mass = std::stof(node.GetChildValue("Mass", "1.0"));
 
     std::string bodyType = node.GetChildValue("BodyType", "UNKNOWN");
@@ -164,10 +164,10 @@ void PhysicsLoader::LoadCharacterController(Scene& scene, entt::entity entity, c
     float stepHeight = std::stof(node.GetChildValue("StepHeight", "0.35"));
     float maxSlope = std::stof(node.GetChildValue("MaxSlope", "45.0"));
 
-    auto& pos = scene.registry.get<PositionComponent>(entity);
-    auto& rot = scene.registry.get<RotationComponent>(entity);
+    auto& pos = scene.GetComponent<PositionComponent>(entity);
+    auto& rot = scene.GetComponent<RotationComponent>(entity);
 
-    auto& cc = scene.registry.emplace<CharacterControllerComponent>(entity);
+    auto& cc = scene.AddComponent<CharacterControllerComponent>(entity);
     cc.stepHeight = stepHeight;
     cc.maxSlope = maxSlope;
 

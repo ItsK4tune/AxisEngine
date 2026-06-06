@@ -249,7 +249,7 @@ void EditorSystem::OnUpdate(float dt)
     if (alt && SceneHierarchyPanel::s_SelectedEntity != entt::null && s_NudgeTimer <= 0.0f)
     {
         auto& globalScene = sl.Require<Scene>();
-        auto& reg = globalScene.registry;
+        auto& reg = globalScene.GetRegistry();
         if (reg.valid(SceneHierarchyPanel::s_SelectedEntity))
         {
             auto cm = sl.Resolve<ConfigManager>();
@@ -865,7 +865,7 @@ static void RestoreEditorSceneState(Scene& scene, const std::string& state)
     f << state;
     f.close();
 
-    scene.registry.clear();
+    scene.GetRegistry().clear();
     SceneSerializer::Deserialize(tempRestoreFile, scene, *rm, phys, audio);
     if (sceneMgr)
         sceneMgr->RebuildEntityRecords(scene);
@@ -874,7 +874,7 @@ static void RestoreEditorSceneState(Scene& scene, const std::string& state)
     std::filesystem::remove(tempRestoreFile, ec);
 
     SceneHierarchyPanel::SetSelectedEntity(entt::null);
-    EventManager::Instance().Publish(SceneChangedEvent{&scene.registry, &scene});
+    EventManager::Instance().Publish(SceneChangedEvent{&scene.GetRegistry(), &scene});
 }
 
 void EditorSystem::PushUndoState(Scene& scene)

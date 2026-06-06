@@ -129,7 +129,7 @@ void PostProcessSystem::Render(Scene& scene)
     // Only collect custom component effects if system is enabled
     if (m_EffectsEnabled)
     {
-        auto view = scene.registry.view<PostProcessComponent, InfoComponent>();
+        auto view = scene.View<PostProcessComponent, InfoComponent>();
         auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
         if (res)
         {

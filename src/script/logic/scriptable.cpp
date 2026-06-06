@@ -1,7 +1,6 @@
 #include <script/logic/scriptable.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/data_manager.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/script_component.h>
@@ -10,53 +9,53 @@
 
 bool Scriptable::CompareTag(entt::entity entity, const std::string& tag) const
 {
-    if (GetScene().registry.valid(entity) && GetScene().registry.all_of<InfoComponent>(entity))
+    if (GetScene().IsValid(entity) && GetScene().HasAllComponents<InfoComponent>(entity))
     {
-        return GetScene().registry.get<InfoComponent>(entity).tag == tag;
+        return GetScene().GetComponent<InfoComponent>(entity).tag == tag;
     }
     return false;
 }
 
 bool Scriptable::CompareName(entt::entity entity, const std::string& name) const
 {
-    if (GetScene().registry.valid(entity) && GetScene().registry.all_of<InfoComponent>(entity))
+    if (GetScene().IsValid(entity) && GetScene().HasAllComponents<InfoComponent>(entity))
     {
-        return GetScene().registry.get<InfoComponent>(entity).name == name;
+        return GetScene().GetComponent<InfoComponent>(entity).name == name;
     }
     return false;
 }
 
 std::string Scriptable::GetTag(entt::entity entity) const
 {
-    if (GetScene().registry.valid(entity) && GetScene().registry.all_of<InfoComponent>(entity))
+    if (GetScene().IsValid(entity) && GetScene().HasAllComponents<InfoComponent>(entity))
     {
-        return GetScene().registry.get<InfoComponent>(entity).tag;
+        return GetScene().GetComponent<InfoComponent>(entity).tag;
     }
     return "";
 }
 
 std::string Scriptable::GetName(entt::entity entity) const
 {
-    if (GetScene().registry.valid(entity) && GetScene().registry.all_of<InfoComponent>(entity))
+    if (GetScene().IsValid(entity) && GetScene().HasAllComponents<InfoComponent>(entity))
     {
-        return GetScene().registry.get<InfoComponent>(entity).name;
+        return GetScene().GetComponent<InfoComponent>(entity).name;
     }
     return "";
 }
 
 void Scriptable::SetCollisionEnabled(bool enabled)
 {
-    if (GetScene().registry.valid(m_Entity) && GetScene().registry.all_of<RigidBodyComponent>(m_Entity))
+    if (GetScene().IsValid(m_Entity) && GetScene().HasAllComponents<RigidBodyComponent>(m_Entity))
     {
-        GetScene().registry.get<RigidBodyComponent>(m_Entity).isCollisionEnabled = enabled;
+        GetScene().GetComponent<RigidBodyComponent>(m_Entity).isCollisionEnabled = enabled;
     }
 }
 
 bool Scriptable::IsCollisionEnabled() const
 {
-    if (GetScene().registry.valid(m_Entity) && GetScene().registry.all_of<RigidBodyComponent>(m_Entity))
+    if (GetScene().IsValid(m_Entity) && GetScene().HasAllComponents<RigidBodyComponent>(m_Entity))
     {
-        return GetScene().registry.get<RigidBodyComponent>(m_Entity).isCollisionEnabled;
+        return GetScene().GetComponent<RigidBodyComponent>(m_Entity).isCollisionEnabled;
     }
     return false;
 }
@@ -77,18 +76,18 @@ void Scriptable::IgnoreNameCollision(const std::string& name1, const std::string
 
 entt::entity Scriptable::Spawn(const std::string& name, const std::string& tag)
 {
-    return EntityManager::CreateEntity(GetScene(), name, tag);
+    return GetScene().CreateEntity(name, tag);
 }
 
 entt::entity Scriptable::Spawn(const std::string& name, const glm::vec3& position, const glm::vec3& rotation,
                                const glm::vec3& scale)
 {
-    return EntityManager::CreateEntityWithTransform(GetScene(), name, position, rotation, scale);
+    return GetScene().CreateEntityWithTransform(name, position, rotation, scale);
 }
 
 void Scriptable::Destroy(entt::entity entity)
 {
-    EntityManager::Destroy(GetScene(), entity);
+    GetScene().Destroy(entity);
 }
 
 void Scriptable::Invoke(std::function<void()> callback, float delay)

@@ -86,7 +86,7 @@ void ProfilerPanel::OnImGui(Scene& scene)
     ImGui::Separator();
 
     // Entity/render stats
-    auto& reg = scene.registry;
+    auto& reg = scene.GetRegistry();
     ImGui::Text("Entities: %zu", reg.storage<entt::entity>().size());
 
     size_t meshCount = reg.view<MeshRendererComponent>().size();

@@ -23,7 +23,7 @@ void SampleState::LoadScene18()
         .WithPBRMesh("planeModel", "videomapShader", 0.0f, 0.4f, 1.0f)
         .WithPlayingVideo(SamplePath("sample/resource/video/sample.mp4"), true, m_S18Volume, 3)
         .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(tvScreen))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(tvScreen))
     {
         renderer->renderMode = RenderMode::ForceForward;
         renderer->color = glm::vec4(1.0f);

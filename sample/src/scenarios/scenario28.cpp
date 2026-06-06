@@ -5,18 +5,13 @@ void SampleState::LoadScene28()
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
 
-    auto ground = EntityBuilder(scene, res, "scenario")
-                      .WithName("Ground")
-                      .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-                      .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-                      .Build();
-    {
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, ground);
-        ConfigureBoxCollider(shape, glm::vec3(1.0f, 0.05f, 1.0f));
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, ground);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
-    }
+    EntityBuilder(scene, res, "scenario")
+        .WithName("Ground")
+        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
+        .WithRigidShape(ShapeType::Box, glm::vec3(1.0f, 0.05f, 1.0f))
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("DirLight")
@@ -38,31 +33,22 @@ void SampleState::LoadScene28()
                       .WithName("BindingPlayer")
                       .WithTransform(glm::vec3(0.0f, 2.5f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f))
                       .WithPBRMesh("capsuleModel", "deferred_lit", 0.0f, 0.5f, 1.0f)
+                      .WithScriptable("PlayerControlScript", []() {
+                          auto playerScript = std::make_unique<PlayerControlScript>();
+                          playerScript->allowMouseColor = false;
+                          playerScript->allowKeyboardWhileUI = true;
+                          return playerScript;
+                      })
+                      .WithRigidShape(ShapeType::Capsule, glm::vec3(1.0f), 1.0f, 2.0f, 0.7f)
+                      .WithRigidBody(1.0f, false, false)
                       .Build();
 
-    auto& script = scene.registry.emplace<ScriptComponent>(player);
-    script.className = "PlayerControlScript";
-    script.InstantiateScript = []() {
-        auto playerScript = std::make_unique<PlayerControlScript>();
-        playerScript->allowMouseColor = false;
-        playerScript->allowKeyboardWhileUI = true;
-        return playerScript;
-    };
-    script.DestroyScript = [](ScriptComponent* nsc) {
-        nsc->instance.reset();
-        nsc->scriptableInstance = nullptr;
-        nsc->inputScriptableInstance = nullptr;
-    };
-
-    auto& playerShape = EntityManager::AddComponent<RigidShapeComponent>(scene, player);
-    ConfigurePrimitiveCollider(playerShape, ShapeType::Capsule);
-    playerShape.friction = 0.7f;
-    auto& playerRB = EntityManager::AddComponent<RigidBodyComponent>(scene, player);
-    playerRB.mass = 1.0f;
-    playerRB.isStatic = false;
-    playerRB.isKinematic = true;
-    playerRB.linearFactor = glm::vec3(1.0f);
-    playerRB.angularFactor = glm::vec3(0.0f, 1.0f, 0.0f);
+    if (auto* rb = scene.TryGetComponent<RigidBodyComponent>(player))
+    {
+        rb->isKinematic = true;
+        rb->linearFactor = glm::vec3(1.0f);
+        rb->angularFactor = glm::vec3(0.0f, 1.0f, 0.0f);
+    }
 
     struct InputPad
     {
@@ -87,7 +73,7 @@ void SampleState::LoadScene28()
                              .WithPBRMesh("cubeModel", "deferred_unlit", 0.0f, 0.5f, 1.0f)
                              .Build();
 
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(padEntity))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(padEntity))
             renderer->color = glm::vec4(0.18f, 0.2f, 0.24f, 1.0f);
     }
 }

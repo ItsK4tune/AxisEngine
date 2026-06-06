@@ -96,9 +96,9 @@ public:
             renderer.color = glm::vec4(color, 1.0f);
         }
 
-        if (HasComponent<AxisMaterialComponent>())
+        if (HasComponent<MaterialComponent>())
         {
-            auto& mat = GetComponent<AxisMaterialComponent>();
+            auto& mat = GetComponent<MaterialComponent>();
             mat.desc.emission = color * 0.35f;
             mat.gpu.dirty = true;
         }
@@ -302,9 +302,9 @@ public:
 
         if (allowMouseColor && !mouseCaptured && GetActionDown("PlayerAction"))
         {
-            if (HasComponent<AxisMaterialComponent>())
+            if (HasComponent<MaterialComponent>())
             {
-                auto& mat = GetComponent<AxisMaterialComponent>();
+                auto& mat = GetComponent<MaterialComponent>();
                 mat.desc.pbr.roughness = static_cast<float>(rand() % 100) / 100.0f;
                 mat.desc.pbr.metallic = static_cast<float>(rand() % 100) / 100.0f;
                 mat.desc.emission =
@@ -434,9 +434,9 @@ public:
 
         glm::vec3 cameraForward(0.0f, 0.0f, -1.0f);
         glm::vec3 cameraRight(1.0f, 0.0f, 0.0f);
-        if (auto camera = EntityManager::GetActiveCamera(scene); camera != entt::null && scene.registry.valid(camera))
+        if (auto camera = scene.GetActiveCamera(); camera != entt::null && scene.IsValid(camera))
         {
-            if (auto* rot = scene.registry.try_get<RotationComponent>(camera))
+            if (auto* rot = scene.TryGetComponent<RotationComponent>(camera))
             {
                 cameraForward = rot->value * glm::vec3(0.0f, 0.0f, -1.0f);
                 cameraForward.y = 0.0f;
@@ -611,7 +611,7 @@ private:
 
     entt::entity FindEntityByName(const char* name)
     {
-        auto view = GetScene().registry.view<InfoComponent>();
+        auto view = GetScene().View<InfoComponent>();
         for (auto entity : view)
         {
             if (view.get<InfoComponent>(entity).name == name)
@@ -624,11 +624,11 @@ private:
     {
         auto& scene = GetScene();
         auto entity = FindEntityByName(name);
-        if (entity == entt::null || !scene.registry.valid(entity))
+        if (entity == entt::null || !scene.IsValid(entity))
             return false;
 
-        auto* boxPos = scene.registry.try_get<PositionComponent>(entity);
-        auto* boxScale = scene.registry.try_get<ScaleComponent>(entity);
+        auto* boxPos = scene.TryGetComponent<PositionComponent>(entity);
+        auto* boxScale = scene.TryGetComponent<ScaleComponent>(entity);
         if (!boxPos || !boxScale)
             return false;
 
@@ -641,13 +641,13 @@ private:
     {
         auto& scene = GetScene();
         auto entity = FindEntityByName(name);
-        if (entity == entt::null || !scene.registry.valid(entity))
+        if (entity == entt::null || !scene.IsValid(entity))
             return;
 
         const glm::vec4 color = active ? activeColor : idleColor;
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))
             renderer->color = color;
-        if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
+        if (auto* mat = scene.TryGetComponent<MaterialComponent>(entity))
         {
             mat->desc.opacity = color.a;
             mat->gpu.dirty = true;
@@ -683,9 +683,9 @@ private:
             glm::vec4 triggerColor = ignoreCharacterTrigger ? glm::vec4(0.95f, 0.2f, 0.15f, 0.16f)
                                      : insideTrigger        ? glm::vec4(0.15f, 1.0f, 0.42f, 0.34f)
                                                             : glm::vec4(0.1f, 0.75f, 1.0f, 0.24f);
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(trigger))
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(trigger))
                 renderer->color = triggerColor;
-            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(trigger))
+            if (auto* mat = scene.TryGetComponent<MaterialComponent>(trigger))
             {
                 mat->desc.opacity = triggerColor.a;
                 mat->gpu.dirty = true;
@@ -705,7 +705,7 @@ private:
 
         if (auto block = FindEntityByName("S26_CallbackBlock"); block != entt::null)
         {
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(block))
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(block))
             {
                 renderer->color = touchingCallbackBlock ? glm::vec4(1.0f, 0.72f, 0.2f, 1.0f)
                                                         : glm::vec4(0.95f, 0.55f, 0.18f, 1.0f);
@@ -736,9 +736,9 @@ public:
         if (!io)
             return;
 
-        if (m_Target == entt::null || !GetScene().registry.valid(m_Target))
+        if (m_Target == entt::null || !GetScene().IsValid(m_Target))
         {
-            auto view = GetScene().registry.view<InfoComponent>();
+            auto view = GetScene().View<InfoComponent>();
             for (auto entity : view)
             {
                 if (view.get<InfoComponent>(entity).name == "S26_CharacterController")
@@ -749,7 +749,7 @@ public:
             }
         }
 
-        if (m_Target == entt::null || !GetScene().registry.valid(m_Target))
+        if (m_Target == entt::null || !GetScene().IsValid(m_Target))
             return;
 
         bool mouseCaptured = false;
@@ -773,7 +773,7 @@ public:
             mouse.SetCursorMode(CursorMode::Normal);
         }
 
-        auto& targetPos = GetScene().registry.get<PositionComponent>(m_Target);
+        auto& targetPos = GetScene().GetComponent<PositionComponent>(m_Target);
         glm::vec3 front;
         front.x = std::cos(glm::radians(s_Yaw)) * std::cos(glm::radians(s_Pitch));
         front.y = std::sin(glm::radians(s_Pitch));
@@ -816,9 +816,9 @@ private:
     {
         if (HasComponent<MeshRendererComponent>())
             GetComponent<MeshRendererComponent>().color = color;
-        if (HasComponent<AxisMaterialComponent>())
+        if (HasComponent<MaterialComponent>())
         {
-            auto& mat = GetComponent<AxisMaterialComponent>();
+            auto& mat = GetComponent<MaterialComponent>();
             mat.desc.emission = emission;
             mat.gpu.dirty = true;
         }
@@ -1193,7 +1193,7 @@ private:
     entt::entity m_S4DeferredCubeEntity = entt::null;
     entt::entity m_S4DeferredSphereEntity = entt::null;
     entt::entity m_S4ForwardCubeEntity = entt::null;
-    entt::entity m_S4ForwardCapsuleEntity = entt::null;
+    entt::entity m_S4ForwardSphereEntity = entt::null;
     entt::entity m_S4LightEntity = entt::null;
     entt::entity m_S16CardEntity = entt::null;
     entt::entity m_S16TextureEntity = entt::null;

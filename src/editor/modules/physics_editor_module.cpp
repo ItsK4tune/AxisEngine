@@ -21,7 +21,6 @@
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
-#include <ecs/logic/entity_manager.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_graphics_context.h>
@@ -84,12 +83,12 @@ void PhysicsEditorModule::Render(Scene& scene)
     if (!debugShader)
         return;
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;
 
-    auto& cam = scene.registry.get<CameraComponent>(camEntity);
-    auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    auto& cam = scene.GetComponent<CameraComponent>(camEntity);
+    auto* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
     float aspect = (float)width / (float)height;
@@ -97,7 +96,7 @@ void PhysicsEditorModule::Render(Scene& scene)
         aspect = 1.0f;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
 
-    auto& camRot = scene.registry.get<RotationComponent>(camEntity);
+    auto& camRot = scene.GetComponent<RotationComponent>(camEntity);
     glm::vec3 front = camRot.value * glm::vec3(0, 0, -1);
     glm::vec3 up = camRot.value * glm::vec3(0, 1, 0);
     glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
@@ -124,13 +123,13 @@ void PhysicsEditorModule::Render(Scene& scene)
 
     if (showAudio)
     {
-        auto viewAudio = scene.registry.view<AudioSourceComponent>();
+        auto viewAudio = scene.View<AudioSourceComponent>();
         for (auto entity : viewAudio)
         {
             glm::vec3 pos(0.0f);
-            if (auto* tr = scene.registry.try_get<WorldTransformComponent>(entity))
+            if (auto* tr = scene.TryGetComponent<WorldTransformComponent>(entity))
                 pos = glm::vec3(tr->worldMatrix[3]);
-            else if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+            else if (auto* p = scene.TryGetComponent<PositionComponent>(entity))
                 pos = p->value;
 
             float s = 0.5f;
@@ -143,13 +142,13 @@ void PhysicsEditorModule::Render(Scene& scene)
 
     if (showParticle)
     {
-        auto viewParticle = scene.registry.view<ParticleEmitterComponent>();
+        auto viewParticle = scene.View<ParticleEmitterComponent>();
         for (auto entity : viewParticle)
         {
             glm::vec3 pos(0.0f);
-            if (auto* tr = scene.registry.try_get<WorldTransformComponent>(entity))
+            if (auto* tr = scene.TryGetComponent<WorldTransformComponent>(entity))
                 pos = glm::vec3(tr->worldMatrix[3]);
-            else if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+            else if (auto* p = scene.TryGetComponent<PositionComponent>(entity))
                 pos = p->value;
 
             float s = 1.0f;
@@ -237,12 +236,12 @@ void PhysicsEditorModule::Render(Scene& scene)
 
     // Draw Rotation, Scale, and Translation visual indicators for Selected Entity
     if (SceneHierarchyPanel::s_SelectedEntity != entt::null &&
-        scene.registry.valid(SceneHierarchyPanel::s_SelectedEntity))
+        scene.IsValid(SceneHierarchyPanel::s_SelectedEntity))
     {
         glm::vec3 pos(0.0f);
-        if (auto* tr = scene.registry.try_get<WorldTransformComponent>(SceneHierarchyPanel::s_SelectedEntity))
+        if (auto* tr = scene.TryGetComponent<WorldTransformComponent>(SceneHierarchyPanel::s_SelectedEntity))
             pos = glm::vec3(tr->worldMatrix[3]);
-        else if (auto* p = scene.registry.try_get<PositionComponent>(SceneHierarchyPanel::s_SelectedEntity))
+        else if (auto* p = scene.TryGetComponent<PositionComponent>(SceneHierarchyPanel::s_SelectedEntity))
             pos = p->value;
 
         auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>();
@@ -254,7 +253,7 @@ void PhysicsEditorModule::Render(Scene& scene)
             bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
 
             float indicatorScale = 1.0f;
-            if (auto* s = scene.registry.try_get<ScaleComponent>(SceneHierarchyPanel::s_SelectedEntity))
+            if (auto* s = scene.TryGetComponent<ScaleComponent>(SceneHierarchyPanel::s_SelectedEntity))
             {
                 indicatorScale = glm::max(0.5f, glm::max(s->value.x, glm::max(s->value.y, s->value.z)));
             }

@@ -23,20 +23,16 @@ void SampleState::LoadScene23()
                       .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(50.0f, 1.0f, 50.0f))
                       .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.9f, 1.0f)
                       .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(ground))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(ground))
         renderer->color = glm::vec4(0.1f, 0.85f, 0.2f, 1.0f);
 
-    auto navSurface = EntityBuilder(scene, res, "scenario")
-                          .WithName("NavigationGridSurface")
-                          .WithTag("walkable")
-                          .WithActive(false)
-                          .WithTransform(glm::vec3(-25.0f, 0.0f, -25.0f), glm::vec3(0.0f), glm::vec3(1.0f))
-                          .Build();
-    auto& terrain = scene.registry.emplace<TerrainComponent>(navSurface);
-    terrain.terrainSize = glm::vec3(50.0f, 0.0f, 50.0f);
-    terrain.maxHeight = 0.0f;
-    terrain.isWalkable = true;
-    terrain.generatePhysics = false;
+    EntityBuilder(scene, res, "scenario")
+        .WithName("NavigationGridSurface")
+        .WithTag("walkable")
+        .WithActive(false)
+        .WithTransform(glm::vec3(-25.0f, 0.0f, -25.0f), glm::vec3(0.0f), glm::vec3(1.0f))
+        .WithTerrain(glm::vec3(50.0f, 0.0f, 50.0f), 0.0f, true, false)
+        .Build();
 
     const auto makeRoad = [&](const char* name, const glm::vec3& pos, const glm::vec3& scale) {
         auto road = EntityBuilder(scene, res, "scenario")
@@ -45,22 +41,18 @@ void SampleState::LoadScene23()
                         .WithTransform(pos, glm::vec3(0.0f), scale)
                         .WithPBRMesh("cubeModel", "deferred_unlit", 0.0f, 0.55f, 1.0f)
                         .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(road))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(road))
             renderer->color = glm::vec4(0.08f, 0.09f, 0.1f, 1.0f);
     };
     makeRoad("RoadNorthSouth", glm::vec3(-20.0f, 0.08f, 0.0f), glm::vec3(5.0f, 0.1f, 45.0f));
     makeRoad("RoadEastWest", glm::vec3(0.0f, 0.09f, -20.0f), glm::vec3(45.0f, 0.1f, 5.0f));
 
-    auto groundPhys = EntityBuilder(scene, res, "scenario")
-                          .WithName("GroundPhys")
-                          .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(1.0f))
-                          .Build();
-    auto& groundShape = EntityManager::AddComponent<RigidShapeComponent>(scene, groundPhys);
-    groundShape.type = ShapeType::Box;
-    groundShape.size = glm::vec3(50.0f, 1.0f, 50.0f);
-    auto& groundRB = EntityManager::AddComponent<RigidBodyComponent>(scene, groundPhys);
-    groundRB.mass = 0.0f;
-    groundRB.isStatic = true;
+    EntityBuilder(scene, res, "scenario")
+        .WithName("GroundPhys")
+        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(1.0f))
+        .WithRigidShape(ShapeType::Box, glm::vec3(50.0f, 1.0f, 50.0f))
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     // Dynamically generate obstacles based on count and size parameters
     for (int i = 0; i < m_S23ObstacleCount; ++i)
@@ -83,29 +75,21 @@ void SampleState::LoadScene23()
                             .WithTransform(glm::vec3(ox, obstacleHeight * 0.5f, oz), glm::vec3(0.0f), obstacleScale)
                             .WithPBRMesh("cubeModel", "deferred_lit", 0.3f, 0.3f, 1.0f)
                             .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(obstacle))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(obstacle))
             renderer->color = glm::vec4(0.9f, 0.08f, 0.05f, 1.0f);
 
-        auto obstacleCollider =
-            EntityBuilder(scene, res, "scenario")
-                .WithName("ObstacleCollider_" + std::to_string(i))
-                .WithTransform(glm::vec3(ox, obstacleHeight * 0.5f, oz), glm::vec3(0.0f), glm::vec3(1.0f))
-                .Build();
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, obstacleCollider);
-        shape.type = ShapeType::Box;
-        shape.size = obstacleScale;
-        shape.friction = 0.8f;
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, obstacleCollider);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
+        EntityBuilder(scene, res, "scenario")
+            .WithName("ObstacleCollider_" + std::to_string(i))
+            .WithTransform(glm::vec3(ox, obstacleHeight * 0.5f, oz), glm::vec3(0.0f), glm::vec3(1.0f))
+            .WithRigidShape(ShapeType::Box, obstacleScale, 1.0f, 2.0f, 0.8f)
+            .WithRigidBody(0.0f, true)
+            .Build();
     }
 
-    auto navMesh = scene.registry.create();
-    scene.registry.emplace<InfoComponent>(navMesh).sceneName = "scenario";
-    auto& navComp = scene.registry.emplace<NavMeshComponent>(navMesh);
-    navComp.needsRebuild = true;
-    navComp.isDynamic = true;
+    auto navMesh = EntityBuilder(scene, res, "scenario")
+                       .WithName("NavMesh")
+                       .WithNavMesh(true)
+                       .Build();
 
     m_NavFollower = EntityBuilder(scene, res, "scenario")
                         .WithName("Follower")
@@ -113,10 +97,10 @@ void SampleState::LoadScene23()
                         .WithPBRMesh("capsuleModel", "deferred_lit", 0.1f, 0.5f, 1.0f)
                         .WithPathFollower(m_S23FollowerSpeed, 15.0f, 30.0f, 60.0f)
                         .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_NavFollower))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_NavFollower))
         renderer->color = glm::vec4(0.1f, 0.9f, 0.25f, 1.0f);
 
-    auto& pf = scene.registry.get<PathFollowerComponent>(m_NavFollower);
+    auto& pf = scene.GetComponent<PathFollowerComponent>(m_NavFollower);
     pf.lockXPitch = m_S23LockXPitch;
     pf.lockYYaw = m_S23LockYYaw;
     pf.lockZRoll = m_S23LockZRoll;
@@ -160,9 +144,9 @@ void SampleState::LoadScene23()
     m_CurrentWaypointIndex = 1;
     if (!m_NavWaypoints.empty())
     {
-        if (auto* pos = scene.registry.try_get<PositionComponent>(m_NavFollower))
+        if (auto* pos = scene.TryGetComponent<PositionComponent>(m_NavFollower))
             pos->value = m_NavWaypoints.front();
-        if (auto* world = scene.registry.try_get<WorldTransformComponent>(m_NavFollower))
+        if (auto* world = scene.TryGetComponent<WorldTransformComponent>(m_NavFollower))
             world->isDirty = true;
     }
     m_S23LastPathfindingCriteria = m_S23PathfindingCriteria;
@@ -175,7 +159,7 @@ void SampleState::LoadScene23()
     auto& physicsSystem = GetSystem<PhysicsSystem>();
     physicsSystem.Update(scene, 0.0f);
     navSystem.Update(scene, 0.0f);
-    auto navMeshView = scene.registry.view<NavMeshComponent>();
+    auto navMeshView = scene.View<NavMeshComponent>();
     for (auto entity : navMeshView)
     {
         auto& navMesh = navMeshView.get<NavMeshComponent>(entity);

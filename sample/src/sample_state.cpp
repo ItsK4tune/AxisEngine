@@ -295,7 +295,7 @@ void StopScenario31AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_pt
 
 void SetUITextByName(Scene& scene, const std::string& name, const std::string& text)
 {
-    auto view = scene.registry.view<UITextComponent, InfoComponent>();
+    auto view = scene.View<UITextComponent, InfoComponent>();
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
@@ -309,9 +309,9 @@ void SetUITextByName(Scene& scene, const std::string& name, const std::string& t
 
 void UpdateScenario29LocalizedUI(Scene& scene, LocalizationSystem& l10n)
 {
-    const int entityCount = static_cast<int>(scene.registry.view<InfoComponent>().size());
+    const int entityCount = static_cast<int>(scene.View<InfoComponent>().size());
     int rigidBodyCount = 0;
-    auto rbView = scene.registry.view<RigidBodyComponent>();
+    auto rbView = scene.View<RigidBodyComponent>();
     for (auto entity : rbView)
     {
         if (rbView.get<RigidBodyComponent>(entity).body)
@@ -359,7 +359,7 @@ bool ParseScenario30SpawnPayload(const std::string& msg, Scenario30SpawnCommand&
 
 entt::entity FindEntityByName(Scene& scene, const std::string& name)
 {
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).name == name)
@@ -371,11 +371,11 @@ entt::entity FindEntityByName(Scene& scene, const std::string& name)
 bool PointInsideNamedBox(Scene& scene, const char* name, const glm::vec3& point, const glm::vec3& padding)
 {
     auto entity = FindEntityByName(scene, name);
-    if (entity == entt::null || !scene.registry.valid(entity))
+    if (entity == entt::null || !scene.IsValid(entity))
         return false;
 
-    auto* boxPos = scene.registry.try_get<PositionComponent>(entity);
-    auto* boxScale = scene.registry.try_get<ScaleComponent>(entity);
+    auto* boxPos = scene.TryGetComponent<PositionComponent>(entity);
+    auto* boxScale = scene.TryGetComponent<ScaleComponent>(entity);
     if (!boxPos || !boxScale)
         return false;
 
@@ -395,14 +395,11 @@ entt::entity SpawnScenario30NetworkEntity(Scene& scene, ResourceManager& res, co
                       .WithTransform(cmd.position, glm::vec3(0.0f, static_cast<float>((cmd.id * 37) % 360), 0.0f),
                                      glm::vec3(1.6f))
                       .WithPBRMesh("sphereModel", "deferred_lit", 0.05f, 0.35f, 1.0f)
+                      .WithNetwork(static_cast<uint32_t>(cmd.id), 0, false)
                       .Build();
 
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))
         renderer->color = glm::vec4(cmd.color, 1.0f);
-    auto& net = scene.registry.emplace_or_replace<NetworkComponent>(entity);
-    net.networkId = static_cast<uint32_t>(cmd.id);
-    net.ownerId = 0;
-    net.isLocal = false;
 
     return entity;
 }
@@ -491,7 +488,7 @@ void SampleState::OnUpdate(float dt)
     if (m_CurrentScenario == 23 && m_NavFollower != entt::null && !m_NavWaypoints.empty())
     {
         auto& navSystem = GetSystem<NavigationSystem>();
-        auto* follower = GetScene().registry.try_get<PathFollowerComponent>(m_NavFollower);
+        auto* follower = GetScene().TryGetComponent<PathFollowerComponent>(m_NavFollower);
         if (follower)
         {
             follower->moveSpeed = m_S23FollowerSpeed;
@@ -524,7 +521,7 @@ void SampleState::OnUpdate(float dt)
     {
         auto& scene = GetScene();
         auto lastEntity = m_S21ChainEntities.back();
-        auto* rb = scene.registry.try_get<RigidBodyComponent>(lastEntity);
+        auto* rb = scene.TryGetComponent<RigidBodyComponent>(lastEntity);
         if (rb && rb->body)
         {
             rb->body->Activate(true);
@@ -557,7 +554,7 @@ void SampleState::OnUpdate(float dt)
                     pipeline.SetTonemappingMode(m_PPTonemappingMode);
                 }
 
-                auto view = GetScene().registry.view<PostProcessComponent, InfoComponent>();
+                auto view = GetScene().View<PostProcessComponent, InfoComponent>();
                 for (auto entity : view)
                 {
                     auto& info = view.get<InfoComponent>(entity);
@@ -625,7 +622,7 @@ void SampleState::OnUpdate(float dt)
 #endif
             auto& scene = GetScene();
 
-            if (m_S24Dragging && (!mouseDown || mouseCaptured || !scene.registry.valid(m_S24GrabbedEntity)))
+            if (m_S24Dragging && (!mouseDown || mouseCaptured || !scene.IsValid(m_S24GrabbedEntity)))
             {
                 m_S24Dragging = false;
                 m_S24GrabbedEntity = entt::null;
@@ -635,13 +632,13 @@ void SampleState::OnUpdate(float dt)
             {
                 PhysicsQueryService query;
                 auto hit = query.RaycastFromScreen(glm::vec2(mouse.GetLastX(), mouse.GetLastY()));
-                if (hit.hasHit && scene.registry.valid(hit.entity))
+                if (hit.hasHit && scene.IsValid(hit.entity))
                 {
-                    auto* rb = scene.registry.try_get<RigidBodyComponent>(hit.entity);
-                    auto* info = scene.registry.try_get<InfoComponent>(hit.entity);
+                    auto* rb = scene.TryGetComponent<RigidBodyComponent>(hit.entity);
+                    auto* info = scene.TryGetComponent<InfoComponent>(hit.entity);
                     if (rb && !rb->isStatic && (!info || info->name != "S26_CharacterController"))
                     {
-                        auto* pos = scene.registry.try_get<PositionComponent>(hit.entity);
+                        auto* pos = scene.TryGetComponent<PositionComponent>(hit.entity);
                         if (pos)
                         {
                             m_S24GrabbedEntity = hit.entity;
@@ -654,12 +651,12 @@ void SampleState::OnUpdate(float dt)
                 }
             }
 
-            if (m_S24Dragging && scene.registry.valid(m_S24GrabbedEntity))
+            if (m_S24Dragging && scene.IsValid(m_S24GrabbedEntity))
             {
-                auto camEntity = EntityManager::GetActiveCamera(scene);
-                if (camEntity != entt::null && scene.registry.all_of<CameraComponent, PositionComponent>(camEntity))
+                auto camEntity = scene.GetActiveCamera();
+                if (camEntity != entt::null && scene.HasAllComponents<CameraComponent, PositionComponent>(camEntity))
                 {
-                    auto& cam = scene.registry.get<CameraComponent>(camEntity);
+                    auto& cam = scene.GetComponent<CameraComponent>(camEntity);
                     glm::vec2 viewportSize(static_cast<float>(io->GetMonitorManager().GetWidth()),
                                            static_cast<float>(io->GetMonitorManager().GetHeight()));
                     Ray ray = RaycastUtils::CalculateRay(glm::vec2(mouse.GetLastX(), mouse.GetLastY()), viewportSize,
@@ -667,10 +664,10 @@ void SampleState::OnUpdate(float dt)
                     glm::vec3 targetPoint;
                     if (RayPlaneIntersection(ray.origin, ray.direction, m_S24GrabPlaneY, targetPoint))
                     {
-                        auto* pos = scene.registry.try_get<PositionComponent>(m_S24GrabbedEntity);
-                        auto* rot = scene.registry.try_get<RotationComponent>(m_S24GrabbedEntity);
-                        auto* world = scene.registry.try_get<WorldTransformComponent>(m_S24GrabbedEntity);
-                        auto* rb = scene.registry.try_get<RigidBodyComponent>(m_S24GrabbedEntity);
+                        auto* pos = scene.TryGetComponent<PositionComponent>(m_S24GrabbedEntity);
+                        auto* rot = scene.TryGetComponent<RotationComponent>(m_S24GrabbedEntity);
+                        auto* world = scene.TryGetComponent<WorldTransformComponent>(m_S24GrabbedEntity);
+                        auto* rb = scene.TryGetComponent<RigidBodyComponent>(m_S24GrabbedEntity);
                         if (pos)
                         {
                             pos->value = targetPoint + m_S24GrabOffset;
@@ -695,29 +692,29 @@ void SampleState::OnUpdate(float dt)
 
     if (m_CurrentScenario == 16)
     {
-        if (m_S16CardEntity != entt::null && GetScene().registry.valid(m_S16CardEntity))
+        if (m_S16CardEntity != entt::null && GetScene().IsValid(m_S16CardEntity))
         {
-            if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S16CardEntity))
+            if (auto* transform = GetScene().TryGetComponent<UITransformComponent>(m_S16CardEntity))
                 transform->rotation = m_S16RotateCard;
-            if (m_S16TextureEntity != entt::null && GetScene().registry.valid(m_S16TextureEntity))
+            if (m_S16TextureEntity != entt::null && GetScene().IsValid(m_S16TextureEntity))
             {
-                if (auto* info = GetScene().registry.try_get<InfoComponent>(m_S16TextureEntity))
+                if (auto* info = GetScene().TryGetComponent<InfoComponent>(m_S16TextureEntity))
                     info->isActive = m_S16ShowTexture;
-                if (auto* transform = GetScene().registry.try_get<UITransformComponent>(m_S16TextureEntity))
+                if (auto* transform = GetScene().TryGetComponent<UITransformComponent>(m_S16TextureEntity))
                 {
                     transform->flipX = m_S16FlipTextureX;
                     transform->flipY = m_S16FlipTextureY;
                 }
             }
         }
-        if (m_S16RootPanel != entt::null && GetScene().registry.valid(m_S16RootPanel))
+        if (m_S16RootPanel != entt::null && GetScene().IsValid(m_S16RootPanel))
         {
             auto& scene = GetScene();
-            if (auto* renderer = scene.registry.try_get<UIRendererComponent>(m_S16RootPanel))
+            if (auto* renderer = scene.TryGetComponent<UIRendererComponent>(m_S16RootPanel))
             {
                 renderer->color.a = m_S16PanelAlpha;
             }
-            if (auto* flex = scene.registry.try_get<UIFlexLayoutComponent>(m_S16RootPanel))
+            if (auto* flex = scene.TryGetComponent<UIFlexLayoutComponent>(m_S16RootPanel))
             {
                 flex->direction = (m_S16LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
                 flex->spacing = (m_S16LayoutMode == 1) ? 18.0f : 10.0f;
@@ -733,7 +730,7 @@ void SampleState::OnUpdate(float dt)
             m_S14SpawnTimer = 0.0f;
             auto& scene = GetScene();
             auto& res = Get<ResourceManager>();
-            auto view = scene.registry.view<RigidBodyComponent, InfoComponent>();
+            auto view = scene.View<RigidBodyComponent, InfoComponent>();
             int spawnCount = 0;
             entt::entity oldestEntity = entt::null;
             int minBallId = 2147483647;
@@ -764,7 +761,7 @@ void SampleState::OnUpdate(float dt)
 
             if (spawnCount >= 40 && oldestEntity != entt::null)
             {
-                scene.registry.destroy(oldestEntity);
+                scene.Destroy(oldestEntity);
             }
 
             float rx = (static_cast<float>(rand() % 100) / 100.0f - 0.5f) * (m_S14TerrainWidth * 0.7f);
@@ -781,7 +778,7 @@ void SampleState::OnUpdate(float dt)
                             .WithPBRMesh(isSphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.05f, 0.4f, 1.0f)
                             .Build();
 
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(ball))
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(ball))
             {
                 float rColor = 0.3f + static_cast<float>(rand() % 70) / 100.0f;
                 float gColor = 0.3f + static_cast<float>(rand() % 70) / 100.0f;
@@ -789,7 +786,7 @@ void SampleState::OnUpdate(float dt)
                 renderer->color = glm::vec4(rColor, gColor, bColor, 1.0f);
             }
 
-            auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, ball);
+            auto& shape = scene.AddComponent<RigidShapeComponent>(ball);
             shape.type = isSphere ? ShapeType::Sphere : ShapeType::Box;
             shape.size = glm::vec3(1.0f);
             shape.radius = 1.0f;
@@ -797,7 +794,7 @@ void SampleState::OnUpdate(float dt)
             shape.restitution = 0.65f;
             shape.friction = 0.35f;
 
-            auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, ball);
+            auto& rb = scene.AddComponent<RigidBodyComponent>(ball);
             rb.mass = 1.0f;
             rb.isStatic = false;
             rb.linearDamping = 0.05f;
@@ -810,7 +807,7 @@ void SampleState::OnUpdate(float dt)
         m_S3MotionTime += dt;
         auto& scene = GetScene();
 
-        auto dirView = scene.registry.view<DirectionalLightComponent, InfoComponent>();
+        auto dirView = scene.View<DirectionalLightComponent, InfoComponent>();
         for (auto entity : dirView)
         {
             auto& info = dirView.get<InfoComponent>(entity);
@@ -823,12 +820,12 @@ void SampleState::OnUpdate(float dt)
             {
                 float a = m_S3MotionTime * m_S3DirectionalSweepSpeed;
                 light.direction = glm::normalize(glm::vec3(cos(a) * 0.65f, -1.0f, sin(a) * 0.65f));
-                if (auto* rot = scene.registry.try_get<RotationComponent>(entity))
+                if (auto* rot = scene.TryGetComponent<RotationComponent>(entity))
                     rot->value = RotationFromNegativeY(light.direction);
-                if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
+                if (auto* world = scene.TryGetComponent<WorldTransformComponent>(entity))
                     world->isDirty = true;
             }
-            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
+            if (auto* mat = scene.TryGetComponent<MaterialComponent>(entity))
             {
                 mat->desc.emission = m_S3DirectionalColor * (m_S3DirectionalIntensity * 3.0f);
                 mat->gpu.dirty = true;
@@ -836,7 +833,7 @@ void SampleState::OnUpdate(float dt)
             break;
         }
 
-        auto view = GetScene().registry.view<PositionComponent, PointLightComponent, InfoComponent>();
+        auto view = GetScene().View<PositionComponent, PointLightComponent, InfoComponent>();
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);
@@ -854,13 +851,13 @@ void SampleState::OnUpdate(float dt)
                 pos.value = glm::vec3(sin(a) * m_S3PointOrbitRadius, m_S3PointMotionHeight + sin(a * 1.7f) * 6.0f,
                                       sin(a * 2.0f) * m_S3PointOrbitRadius * 0.5f);
 
-            if (auto* world = GetScene().registry.try_get<WorldTransformComponent>(entity))
+            if (auto* world = GetScene().TryGetComponent<WorldTransformComponent>(entity))
                 world->isDirty = true;
 
             auto& light = view.get<PointLightComponent>(entity);
             light.color = m_S3PointColor;
             light.intensity = m_S3PointIntensity;
-            if (auto* mat = GetScene().registry.try_get<AxisMaterialComponent>(entity))
+            if (auto* mat = GetScene().TryGetComponent<MaterialComponent>(entity))
             {
                 mat->desc.emission = m_S3PointColor * (m_S3PointIntensity * 2.0f);
                 mat->gpu.dirty = true;
@@ -868,7 +865,7 @@ void SampleState::OnUpdate(float dt)
             break;
         }
 
-        auto spotView = scene.registry.view<PositionComponent, RotationComponent, SpotLightComponent, InfoComponent>();
+        auto spotView = scene.View<PositionComponent, RotationComponent, SpotLightComponent, InfoComponent>();
         for (auto entity : spotView)
         {
             auto& info = spotView.get<InfoComponent>(entity);
@@ -896,9 +893,9 @@ void SampleState::OnUpdate(float dt)
             glm::vec3 target = glm::vec3(0.0f, 1.0f, 0.0f);
             light.direction = glm::normalize(target - pos.value);
             rot.value = RotationFromNegativeY(light.direction);
-            if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
+            if (auto* world = scene.TryGetComponent<WorldTransformComponent>(entity))
                 world->isDirty = true;
-            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
+            if (auto* mat = scene.TryGetComponent<MaterialComponent>(entity))
             {
                 mat->desc.emission = m_S3SpotColor * (m_S3SpotIntensity * 1.25f);
                 mat->gpu.dirty = true;
@@ -910,32 +907,32 @@ void SampleState::OnUpdate(float dt)
     if (m_CurrentScenario == 2)
     {
         auto& scene = GetScene();
-        auto dirView = scene.registry.view<DirectionalLightComponent>();
+        auto dirView = scene.View<DirectionalLightComponent>();
         for (auto entity : dirView)
         {
             auto& light = dirView.get<DirectionalLightComponent>(entity);
             light.color = m_S2DirectionalColor;
             light.intensity = m_S2DirectionalIntensity;
         }
-        auto pointView = scene.registry.view<PointLightComponent>();
+        auto pointView = scene.View<PointLightComponent>();
         for (auto entity : pointView)
         {
             auto& light = pointView.get<PointLightComponent>(entity);
             light.color = m_S2PointColor;
             light.intensity = m_S2PointIntensity;
-            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
+            if (auto* mat = scene.TryGetComponent<MaterialComponent>(entity))
             {
                 mat->desc.emission = m_S2PointColor * (m_S2PointIntensity * 4.0f);
                 mat->gpu.dirty = true;
             }
         }
-        auto spotView = scene.registry.view<SpotLightComponent>();
+        auto spotView = scene.View<SpotLightComponent>();
         for (auto entity : spotView)
         {
             auto& light = spotView.get<SpotLightComponent>(entity);
             light.color = m_S2SpotColor;
             light.intensity = m_S2SpotIntensity;
-            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity))
+            if (auto* mat = scene.TryGetComponent<MaterialComponent>(entity))
             {
                 mat->desc.emission = m_S2SpotColor * (m_S2SpotIntensity * 3.0f);
                 mat->gpu.dirty = true;
@@ -947,7 +944,7 @@ void SampleState::OnUpdate(float dt)
             (m_S2DirectionalIntensity / 0.2f + m_S2PointIntensity / 10.0f + m_S2SpotIntensity / 12.0f) / 3.0f, 0.0f,
             1.0f);
         visibleLight = 0.18f + visibleLight * 0.82f;
-        auto renderView = scene.registry.view<MeshRendererComponent, InfoComponent>();
+        auto renderView = scene.View<MeshRendererComponent, InfoComponent>();
         for (auto entity : renderView)
         {
             auto& info = renderView.get<InfoComponent>(entity);
@@ -961,7 +958,7 @@ void SampleState::OnUpdate(float dt)
     if (m_CurrentScenario == 13)
     {
         auto& scene = GetScene();
-        auto view = scene.registry.view<DirectionalLightComponent, InfoComponent>();
+        auto view = scene.View<DirectionalLightComponent, InfoComponent>();
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);
@@ -974,9 +971,9 @@ void SampleState::OnUpdate(float dt)
             break;
         }
 
-        if (m_S13PointLightEntity != entt::null && scene.registry.valid(m_S13PointLightEntity))
+        if (m_S13PointLightEntity != entt::null && scene.IsValid(m_S13PointLightEntity))
         {
-            if (auto* light = scene.registry.try_get<PointLightComponent>(m_S13PointLightEntity))
+            if (auto* light = scene.TryGetComponent<PointLightComponent>(m_S13PointLightEntity))
             {
                 light->active = m_S13UsePointLight;
                 light->color = m_S13PointLightColor;
@@ -986,28 +983,28 @@ void SampleState::OnUpdate(float dt)
             }
         }
 
-        if (m_S13PointLightMarkerEntity != entt::null && scene.registry.valid(m_S13PointLightMarkerEntity))
+        if (m_S13PointLightMarkerEntity != entt::null && scene.IsValid(m_S13PointLightMarkerEntity))
         {
-            if (auto* info = scene.registry.try_get<InfoComponent>(m_S13PointLightMarkerEntity))
+            if (auto* info = scene.TryGetComponent<InfoComponent>(m_S13PointLightMarkerEntity))
                 info->isActive = m_S13UsePointLight;
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S13PointLightMarkerEntity))
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S13PointLightMarkerEntity))
                 renderer->color = glm::vec4(m_S13PointLightColor, 1.0f);
-            if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(m_S13PointLightMarkerEntity))
+            if (auto* mat = scene.TryGetComponent<MaterialComponent>(m_S13PointLightMarkerEntity))
             {
                 mat->desc.emission = m_S13PointLightColor * (m_S13PointLightIntensity * 0.8f);
                 mat->gpu.dirty = true;
             }
         }
 
-        if (m_S13ShadowCasterEntity != entt::null && scene.registry.valid(m_S13ShadowCasterEntity))
+        if (m_S13ShadowCasterEntity != entt::null && scene.IsValid(m_S13ShadowCasterEntity))
         {
-            if (auto* info = scene.registry.try_get<InfoComponent>(m_S13ShadowCasterEntity))
+            if (auto* info = scene.TryGetComponent<InfoComponent>(m_S13ShadowCasterEntity))
                 info->isActive = m_S13ShowShadowCaster;
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S13ShadowCasterEntity))
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S13ShadowCasterEntity))
                 renderer->castShadow = m_S13ShowShadowCaster;
         }
 
-        auto decalView = scene.registry.view<DecalComponent>();
+        auto decalView = scene.View<DecalComponent>();
         for (auto entity : decalView) decalView.get<DecalComponent>(entity).lightingMode = m_S13LightingMode;
     }
 
@@ -1019,7 +1016,7 @@ void SampleState::OnUpdate(float dt)
             auto& input = io->GetInputManager();
             auto view =
                 GetScene()
-                    .registry.view<MeshRendererComponent, ScaleComponent, WorldTransformComponent, InfoComponent>();
+                    .View<MeshRendererComponent, ScaleComponent, WorldTransformComponent, InfoComponent>();
             for (auto entity : view)
             {
                 auto& info = view.get<InfoComponent>(entity);
@@ -1076,14 +1073,14 @@ void SampleState::OnUpdate(float dt)
         m_S31OrbitAngle += m_S31Speed * dt;
         glm::vec3 soundPos(sin(m_S31OrbitAngle) * 15.0f, 3.0f, cos(m_S31OrbitAngle) * 15.0f);
 
-        auto view = GetScene().registry.view<PositionComponent, InfoComponent>();
+        auto view = GetScene().View<PositionComponent, InfoComponent>();
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);
             if (info.name == "AudioSource3D")
             {
                 view.get<PositionComponent>(entity).value = soundPos;
-                if (auto* world = GetScene().registry.try_get<WorldTransformComponent>(entity))
+                if (auto* world = GetScene().TryGetComponent<WorldTransformComponent>(entity))
                     world->isDirty = true;
                 break;
             }
@@ -1107,7 +1104,7 @@ void SampleState::OnUpdate(float dt)
     if (m_CurrentScenario == 6 && m_S6AnimateObjects)
     {
         m_S31OrbitAngle += dt * 0.8f;
-        auto view = GetScene().registry.view<PositionComponent, WorldTransformComponent, InfoComponent>();
+        auto view = GetScene().View<PositionComponent, WorldTransformComponent, InfoComponent>();
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);
@@ -1127,15 +1124,15 @@ void SampleState::OnUpdate(float dt)
 
         const auto applyTransform = [&](entt::entity entity, const glm::vec3& pos, const glm::vec3& euler,
                                         const glm::vec3& scale) {
-            if (entity == entt::null || !scene.registry.valid(entity))
+            if (entity == entt::null || !scene.IsValid(entity))
                 return;
-            if (auto* p = scene.registry.try_get<PositionComponent>(entity))
+            if (auto* p = scene.TryGetComponent<PositionComponent>(entity))
                 p->value = pos;
-            if (auto* r = scene.registry.try_get<RotationComponent>(entity))
+            if (auto* r = scene.TryGetComponent<RotationComponent>(entity))
                 r->value = glm::quat(glm::radians(euler));
-            if (auto* s = scene.registry.try_get<ScaleComponent>(entity))
+            if (auto* s = scene.TryGetComponent<ScaleComponent>(entity))
                 s->value = scale;
-            if (auto* w = scene.registry.try_get<WorldTransformComponent>(entity))
+            if (auto* w = scene.TryGetComponent<WorldTransformComponent>(entity))
                 w->isDirty = true;
         };
 
@@ -1148,24 +1145,24 @@ void SampleState::OnUpdate(float dt)
                        glm::vec3(0.0f, -spin, 0.0f), glm::vec3(4.0f) * m_S4CasterScale);
         applyTransform(m_S4ForwardCubeEntity, glm::vec3(10.0f * m_S4CasterSpread, m_S4CasterHeight + 1.0f, -1.0f),
                        glm::vec3(0.0f, -18.0f - spin, 0.0f), glm::vec3(3.5f, 7.0f, 3.5f) * m_S4CasterScale);
-        applyTransform(m_S4ForwardCapsuleEntity, glm::vec3(18.0f * m_S4CasterSpread, m_S4CasterHeight - 1.0f, 4.0f),
+        applyTransform(m_S4ForwardSphereEntity, glm::vec3(18.0f * m_S4CasterSpread, m_S4CasterHeight - 1.0f, 4.0f),
                        glm::vec3(0.0f, 35.0f + spin, 0.0f), glm::vec3(2.8f, 5.2f, 2.8f) * m_S4CasterScale);
 
-        if (m_S4LightEntity != entt::null && scene.registry.valid(m_S4LightEntity))
+        if (m_S4LightEntity != entt::null && scene.IsValid(m_S4LightEntity))
         {
             glm::vec3 direction = glm::normalize(
                 glm::vec3(std::cos(glm::radians(m_S4LightYaw)) * std::cos(glm::radians(m_S4LightPitch)),
                           std::sin(glm::radians(m_S4LightPitch)),
                           std::sin(glm::radians(m_S4LightYaw)) * std::cos(glm::radians(m_S4LightPitch))));
-            if (auto* light = scene.registry.try_get<DirectionalLightComponent>(m_S4LightEntity))
+            if (auto* light = scene.TryGetComponent<DirectionalLightComponent>(m_S4LightEntity))
             {
                 light->direction = direction;
                 light->intensity = m_S4LightIntensity;
                 light->isCastShadow = true;
             }
-            if (auto* rot = scene.registry.try_get<RotationComponent>(m_S4LightEntity))
+            if (auto* rot = scene.TryGetComponent<RotationComponent>(m_S4LightEntity))
                 rot->value = glm::quat(glm::radians(glm::vec3(m_S4LightPitch, m_S4LightYaw, 0.0f)));
-            if (auto* world = scene.registry.try_get<WorldTransformComponent>(m_S4LightEntity))
+            if (auto* world = scene.TryGetComponent<WorldTransformComponent>(m_S4LightEntity))
                 world->isDirty = true;
         }
     }
@@ -1191,9 +1188,9 @@ void SampleState::OnUpdate(float dt)
         const bool shouldFire = m_S22FireRequested || clickFire;
         m_S22FireRequested = false;
 
-        if (m_S22EmitterEntity != entt::null && scene.registry.valid(m_S22EmitterEntity))
+        if (m_S22EmitterEntity != entt::null && scene.IsValid(m_S22EmitterEntity))
         {
-            if (auto* pos = scene.registry.try_get<PositionComponent>(m_S22EmitterEntity))
+            if (auto* pos = scene.TryGetComponent<PositionComponent>(m_S22EmitterEntity))
                 m_S22RayOrigin = pos->value;
         }
 
@@ -1204,9 +1201,9 @@ void SampleState::OnUpdate(float dt)
         m_S22RayEnd = hit.hasHit ? hit.hitPoint : (m_S22RayOrigin + dir * m_S22Distance);
         m_S22LastHitEntity = hit.hasHit ? hit.entity : entt::null;
 
-        if (hit.hasHit && scene.registry.valid(hit.entity))
+        if (hit.hasHit && scene.IsValid(hit.entity))
         {
-            if (auto* info = scene.registry.try_get<InfoComponent>(hit.entity))
+            if (auto* info = scene.TryGetComponent<InfoComponent>(hit.entity))
                 m_S22LastHit = info->name + " @ " + std::to_string(static_cast<int>(hit.distance)) + "m";
             else
                 m_S22LastHit = "Entity " + std::to_string(static_cast<uint32_t>(hit.entity));
@@ -1219,21 +1216,21 @@ void SampleState::OnUpdate(float dt)
         if (shouldFire)
         {
             m_S22ShotFlash = 0.18f;
-            if (hit.hasHit && scene.registry.valid(hit.entity))
+            if (hit.hasHit && scene.IsValid(hit.entity))
             {
-                auto* info = scene.registry.try_get<InfoComponent>(hit.entity);
+                auto* info = scene.TryGetComponent<InfoComponent>(hit.entity);
                 const bool isTarget = info && info->name.rfind("S22Target_", 0) == 0;
                 if (isTarget)
                 {
                     ++m_S22HitCount;
-                    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(hit.entity))
+                    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(hit.entity))
                         renderer->color = glm::vec4(1.0f, 0.12f, 0.06f, 1.0f);
-                    if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(hit.entity))
+                    if (auto* mat = scene.TryGetComponent<MaterialComponent>(hit.entity))
                     {
                         mat->desc.emission = glm::vec3(1.2f, 0.08f, 0.04f);
                         mat->gpu.dirty = true;
                     }
-                    if (auto* rb = scene.registry.try_get<RigidBodyComponent>(hit.entity); rb && rb->body)
+                    if (auto* rb = scene.TryGetComponent<RigidBodyComponent>(hit.entity); rb && rb->body)
                     {
                         rb->body->Activate(true);
                         rb->body->ApplyCentralImpulse(dir * m_S22ImpactImpulse);
@@ -1245,7 +1242,7 @@ void SampleState::OnUpdate(float dt)
 
     if (m_CurrentScenario == 12)
     {
-        auto view = GetScene().registry.view<LightProbeComponent>();
+        auto view = GetScene().View<LightProbeComponent>();
         for (auto entity : view)
         {
             auto& probe = view.get<LightProbeComponent>(entity);
@@ -1280,7 +1277,7 @@ void SampleState::OnRenderDebug()
             if (physics_ptr)
             {
                 auto& scene = GetScene();
-                auto view = scene.registry.view<PositionComponent, ScaleComponent, InfoComponent>();
+                auto view = scene.View<PositionComponent, ScaleComponent, InfoComponent>();
                 for (auto entity : view)
                 {
                     auto& info = view.get<InfoComponent>(entity);
@@ -1319,7 +1316,7 @@ void SampleState::OnRenderDebug()
 
                 if (m_NavFollower != entt::null)
                 {
-                    if (auto* follower = scene.registry.try_get<PathFollowerComponent>(m_NavFollower))
+                    if (auto* follower = scene.TryGetComponent<PathFollowerComponent>(m_NavFollower))
                     {
                         const auto& plannedPath =
                             !follower->debugPlannedPath.empty() ? follower->debugPlannedPath : follower->currentPath;
@@ -1433,7 +1430,7 @@ void SampleState::LoadScenario(int index)
     m_S4DeferredCubeEntity = entt::null;
     m_S4DeferredSphereEntity = entt::null;
     m_S4ForwardCubeEntity = entt::null;
-    m_S4ForwardCapsuleEntity = entt::null;
+    m_S4ForwardSphereEntity = entt::null;
     m_S4LightEntity = entt::null;
     m_S4AnimTime = 0.0f;
     m_S16CardEntity = entt::null;
@@ -1630,7 +1627,7 @@ void SampleState::SetupCamera()
                       .Build();
 
     // Attach DefaultCameraController
-    auto& script = scene.registry.emplace<ScriptComponent>(camera);
+    auto& script = scene.AddComponent<ScriptComponent>(camera);
     script.className = "DefaultCameraController";
     script.InstantiateScript = []() { return std::make_unique<DefaultCameraController>(); };
     script.DestroyScript = [](ScriptComponent* nsc) {
@@ -1653,13 +1650,13 @@ void SampleState::DrawGUI()
     PerfStats perf = QueryPerfStats();
     ImGui::Text("FPS: %.1f", m_CurrentFps);
     ImGui::Text("Frame Time: %.2f ms", 1000.0f / (m_CurrentFps > 0.0f ? m_CurrentFps : 60.0f));
-    ImGui::Text("Active Entities: %d", (int)GetScene().registry.view<InfoComponent>().size());
+    ImGui::Text("Active Entities: %d", (int)GetScene().View<InfoComponent>().size());
     ImGui::Text("CPU: %.0f%%  GPU: %.0f%%", perf.cpu, perf.gpu);
     ImGui::Text("RAM: %.0f%%  VRAM: %.0f%%", perf.ram, perf.vram);
 
     // Physics rigid bodies count
     int rbCount = 0;
-    auto rbView = GetScene().registry.view<RigidBodyComponent>();
+    auto rbView = GetScene().View<RigidBodyComponent>();
     for (auto entity : rbView)
     {
         if (rbView.get<RigidBodyComponent>(entity).body)
@@ -1669,7 +1666,7 @@ void SampleState::DrawGUI()
 
     // Active particle count
     int pCount = 0;
-    auto pView = GetScene().registry.view<ParticleEmitterComponent>();
+    auto pView = GetScene().View<ParticleEmitterComponent>();
     for (auto entity : pView)
     {
         pCount += pView.get<ParticleEmitterComponent>(entity).emitter.GetActiveParticleCount();
@@ -1980,7 +1977,7 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Point Light Radius", &m_S13PointLightRadius, 2.0f, 80.0f);
         ImGui::Separator();
         ImGui::Checkbox("Rainbow Color Mode", &m_S13RainbowMode);
-        auto decalView = GetScene().registry.view<DecalComponent>();
+        auto decalView = GetScene().View<DecalComponent>();
         int decalIndex = 0;
         for (auto entity : decalView)
         {
@@ -2023,7 +2020,7 @@ void SampleState::DrawGUI()
                                  1.0f)
                     .Build();
             m_S25RandomEntities.push_back(entity);
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))
             {
                 renderer->color =
                     glm::vec4(static_cast<float>(rand() % 100) / 100.0f, static_cast<float>(rand() % 100) / 100.0f,
@@ -2061,7 +2058,7 @@ void SampleState::DrawGUI()
                 {
                     for (auto entity : res.entities)
                     {
-                        if (auto* info = GetScene().registry.try_get<InfoComponent>(entity))
+                        if (auto* info = GetScene().TryGetComponent<InfoComponent>(entity))
                         {
                             info->sceneName = "scenario";
                         }
@@ -2075,7 +2072,7 @@ void SampleState::DrawGUI()
                     transformSys.Update(GetScene(), 0.0f);
 
                     bool hasLight = false;
-                    auto lightView = GetScene().registry.view<DirectionalLightComponent>();
+                    auto lightView = GetScene().View<DirectionalLightComponent>();
                     for (auto entity : lightView)
                     {
                         (void)entity;
@@ -2263,7 +2260,7 @@ void SampleState::DrawGUI()
         ImGui::Text("App Title: %s", l10n.Get("app.title").c_str());
         ImGui::Text("Select Scenario Label: %s", l10n.Get("menu.select_scenario").c_str());
 
-        int entCount = (int)GetScene().registry.storage<entt::entity>().size();
+        int entCount = (int)GetScene().GetEntityCount();
         ImGui::Text("Localized format check: %s",
                     l10n.GetFormat("scenario.active_entities", std::to_string(entCount)).c_str());
     }
@@ -2574,7 +2571,7 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Video Mesh & UI Playback");
         ImGui::Checkbox("Loop Video", &m_S18VideoPlaying);
 
-        auto view = GetScene().registry.view<VideoPlayerComponent>();
+        auto view = GetScene().View<VideoPlayerComponent>();
         for (auto entity : view)
         {
             auto& video = view.get<VideoPlayerComponent>(entity);
@@ -2601,7 +2598,7 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Speed", &m_S19Speed, 0.0f, 3.0f);
         ImGui::SliderFloat("Blend Factor", &m_S19Blend, 0.0f, 1.0f);
 
-        auto view = GetScene().registry.view<AnimationComponent>();
+        auto view = GetScene().View<AnimationComponent>();
         for (auto entity : view)
         {
             auto& anim = view.get<AnimationComponent>(entity);
@@ -2641,7 +2638,7 @@ void SampleState::DrawGUI()
             auto sphereEntity = m_S11ReflectionSpheres[m_S11ActiveCase];
             auto probeEntity = m_S11ReflectionProbes[m_S11ActiveCase];
 
-            if (auto* ref = scene.registry.try_get<ReflectiveComponent>(sphereEntity))
+            if (auto* ref = scene.TryGetComponent<ReflectiveComponent>(sphereEntity))
             {
                 ImGui::SliderFloat("Reflectivity", &ref->reflectivity, 0.0f, 1.0f);
                 ImGui::SliderFloat("Fresnel Bias", &ref->fresnelBias, 0.0f, 0.5f);
@@ -2651,7 +2648,7 @@ void SampleState::DrawGUI()
                 m_S11FresnelPower = ref->fresnelPower;
             }
 
-            if (auto* probe = scene.registry.try_get<ReflectionProbeComponent>(probeEntity))
+            if (auto* probe = scene.TryGetComponent<ReflectionProbeComponent>(probeEntity))
             {
                 ImGui::SliderInt("Probe Resolution", &probe->resolution, 64, 2048);
                 if (ImGui::Button("Capture Selected Probe", ImVec2(360, 24)))
@@ -2660,17 +2657,17 @@ void SampleState::DrawGUI()
             }
         }
 
-        if (m_S11PlanarMirror != entt::null && scene.registry.valid(m_S11PlanarMirror))
+        if (m_S11PlanarMirror != entt::null && scene.IsValid(m_S11PlanarMirror))
         {
             ImGui::Separator();
             ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.5f, 1.0f), "Planar Mirror");
-            if (auto* ref = scene.registry.try_get<ReflectiveComponent>(m_S11PlanarMirror))
+            if (auto* ref = scene.TryGetComponent<ReflectiveComponent>(m_S11PlanarMirror))
             {
                 ImGui::SliderFloat("Mirror Reflectivity", &ref->reflectivity, 0.0f, 1.0f);
                 ImGui::SliderFloat("Mirror Fresnel Bias", &ref->fresnelBias, 0.0f, 0.5f);
                 ImGui::SliderFloat("Mirror Fresnel Power", &ref->fresnelPower, 0.1f, 24.0f);
             }
-            if (auto* planar = scene.registry.try_get<PlanarReflectionComponent>(m_S11PlanarMirror))
+            if (auto* planar = scene.TryGetComponent<PlanarReflectionComponent>(m_S11PlanarMirror))
             {
                 ImGui::SliderInt("Mirror Resolution X", &planar->resolution, 256, 2048);
                 ImGui::SliderInt("Mirror Resolution Y", &planar->resolution_y, 256, 2048);
@@ -2681,7 +2678,7 @@ void SampleState::DrawGUI()
 
         if (ImGui::Button("Force Probe Re-Capture", ImVec2(360, 24)))
         {
-            auto view = scene.registry.view<ReflectionProbeComponent>();
+            auto view = scene.View<ReflectionProbeComponent>();
             for (auto entity : view)
             {
                 view.get<ReflectionProbeComponent>(entity).isDirty = true;
@@ -2695,13 +2692,13 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Glass Roughness", &m_S6GlassRoughness, 0.0f, 1.0f);
         ImGui::Checkbox("Animate Objects", &m_S6AnimateObjects);
 
-        auto view = GetScene().registry.view<AxisMaterialComponent, InfoComponent>();
+        auto view = GetScene().View<MaterialComponent, InfoComponent>();
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);
             if (info.name.rfind("Glass_", 0) != 0)
                 continue;
-            auto& mat = view.get<AxisMaterialComponent>(entity);
+            auto& mat = view.get<MaterialComponent>(entity);
             mat.desc.opacity = m_S6GlassOpacity;
             mat.desc.pbr.roughness = m_S6GlassRoughness;
             mat.gpu.dirty = true;
@@ -2732,8 +2729,8 @@ void SampleState::DrawGUI()
             m_S8LayerMask = (m_S8LayerMask & ~0x2) | (layer1 ? 0x2 : 0);
         if (ImGui::Checkbox("Layer 2: blue spheres", &layer2))
             m_S8LayerMask = (m_S8LayerMask & ~0x4) | (layer2 ? 0x4 : 0);
-        if (auto camEntity = EntityManager::GetActiveCamera(GetScene()); camEntity != entt::null)
-            GetScene().registry.get<CameraComponent>(camEntity).cullingMask = static_cast<uint32_t>(m_S8LayerMask);
+        if (auto camEntity = GetScene().GetActiveCamera(); camEntity != entt::null)
+            GetScene().GetComponent<CameraComponent>(camEntity).cullingMask = static_cast<uint32_t>(m_S8LayerMask);
     }
     else if (m_CurrentScenario == 7)
     {
@@ -2831,9 +2828,9 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Max Slope", &m_S26MaxSlope, 5.0f, 80.0f);
         ImGui::Checkbox("Ignore character-trigger tag pair", &m_S26IgnoreCharacterTrigger);
         Scenario26CharacterControllerScript* controllerScript = nullptr;
-        if (m_S26ControllerEntity != entt::null && GetScene().registry.valid(m_S26ControllerEntity))
+        if (m_S26ControllerEntity != entt::null && GetScene().IsValid(m_S26ControllerEntity))
         {
-            if (auto* script = GetScene().registry.try_get<ScriptComponent>(m_S26ControllerEntity);
+            if (auto* script = GetScene().TryGetComponent<ScriptComponent>(m_S26ControllerEntity);
                 script && script->instance)
             {
                 controllerScript = dynamic_cast<Scenario26CharacterControllerScript*>(script->instance.get());

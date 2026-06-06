@@ -6,7 +6,6 @@
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_lighting_service.h>
 #include <ecs/interface/i_render_service.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/shadow_system.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
@@ -83,7 +82,7 @@ void DecalSystem::Update(Scene& scene, float dt)
     if (!m_Enabled)
         return;
 
-    auto view = scene.registry.view<DecalComponent>();
+    auto view = scene.View<DecalComponent>();
     std::vector<entt::entity> toRemove;
 
     for (auto entity : view)
@@ -103,7 +102,7 @@ void DecalSystem::Update(Scene& scene, float dt)
     {
         for (auto entity : toRemove)
         {
-            scene.registry.destroy(entity);
+            scene.Destroy(entity);
         }
     }
 }
@@ -171,7 +170,7 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         return;
     }
 
-    auto camEntity = EntityManager::GetActiveCamera(scene);
+    auto camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
     {
         static bool logCam = false;
@@ -182,7 +181,7 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         }
         return;
     }
-    auto& cam = scene.registry.get<CameraComponent>(camEntity);
+    auto& cam = scene.GetComponent<CameraComponent>(camEntity);
 
     if (!m_GraphicsContext)
         return;
@@ -317,7 +316,7 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         return;
     }
 
-    auto view = scene.registry.view<DecalComponent>();
+    auto view = scene.View<DecalComponent>();
 
     std::vector<entt::entity> sortedEntities;
     for (auto entity : view) sortedEntities.push_back(entity);
@@ -332,8 +331,8 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
 
     for (auto entity : sortedEntities)
     {
-        auto& decal = scene.registry.get<DecalComponent>(entity);
-        auto* posComp = scene.registry.try_get<PositionComponent>(entity);
+        auto& decal = scene.GetComponent<DecalComponent>(entity);
+        auto* posComp = scene.TryGetComponent<PositionComponent>(entity);
         if (!posComp)
             continue;
         auto& pos = *posComp;
@@ -364,8 +363,8 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
             activeShader->setFloat("u_Reflectivity", decal.reflectivity);
         }
 
-        auto* rotComp = scene.registry.try_get<RotationComponent>(entity);
-        auto* scaleComp = scene.registry.try_get<ScaleComponent>(entity);
+        auto* rotComp = scene.TryGetComponent<RotationComponent>(entity);
+        auto* scaleComp = scene.TryGetComponent<ScaleComponent>(entity);
 
         glm::quat rotation = rotComp ? rotComp->value : glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
         glm::vec3 scale = scaleComp ? scaleComp->value : glm::vec3(1.0f);
@@ -434,8 +433,8 @@ uint32_t DecalSystem::LoadDecalTexture(const std::string& path)
 
 void DecalSystem::FlushDecals(Scene& scene)
 {
-    auto view = scene.registry.view<DecalComponent>();
-    scene.registry.destroy(view.begin(), view.end());
+    auto view = scene.View<DecalComponent>();
+    scene.Destroy(view.begin(), view.end());
 }
 
 std::vector<entt::id_type> DecalSystem::GetReadComponents() const
@@ -483,7 +482,7 @@ void DecalSystem::UpdateTagMap(Scene& scene)
     else
         std::fill(m_TagBuffer.begin(), m_TagBuffer.end(), 0);
 
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     for (auto entity : view)
     {
         uint32_t id = static_cast<uint32_t>(entity) & 0xFFFF;

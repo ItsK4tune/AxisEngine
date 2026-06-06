@@ -64,7 +64,7 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     return locs;
 }
 
-bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, AxisMaterialComponent* material,
+bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* material,
                                              const RenderSceneData& sceneData, const glm::vec4& tintColor,
                                              bool debugNoTexture, bool isWireframe)
 {

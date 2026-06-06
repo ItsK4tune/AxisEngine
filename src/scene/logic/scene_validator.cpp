@@ -1,5 +1,4 @@
 #include <core/logic/service_locator.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/script_component.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -29,7 +28,7 @@ void SceneValidator::ValidateParentChildRelationships(
     if (deferredChildren.empty())
         return;
 
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     for (const auto& [childEntity, parentNames] : deferredChildren)
     {
         for (const auto& parentName : parentNames)
@@ -46,10 +45,10 @@ void SceneValidator::ValidateParentChildRelationships(
 
             if (parentEntity != entt::null)
             {
-                if (scene.registry.all_of<HierarchyComponent>(childEntity) &&
-                    scene.registry.all_of<HierarchyComponent>(parentEntity))
+                if (scene.HasAllComponents<HierarchyComponent>(childEntity) &&
+                    scene.HasAllComponents<HierarchyComponent>(parentEntity))
                 {
-                    EntityManager::AddChild(scene, parentEntity, childEntity, true);
+                    scene.AddChild(parentEntity, childEntity, true);
                 }
             }
             else
@@ -63,7 +62,7 @@ void SceneValidator::ValidateParentChildRelationships(
 
 void SceneValidator::ValidateLights(Scene& scene)
 {
-    auto dirLightView = scene.registry.view<DirectionalLightComponent>();
+    auto dirLightView = scene.View<DirectionalLightComponent>();
     bool hasShadowCaster = false;
     entt::entity lastDirLight = entt::null;
 
@@ -82,10 +81,10 @@ void SceneValidator::ValidateLights(Scene& scene)
 
 void SceneValidator::ValidateCamera(Scene& scene)
 {
-    if (EntityManager::GetActiveCamera(scene) != entt::null)
+    if (scene.GetActiveCamera() != entt::null)
         return;
 
-    auto renderableView = scene.registry.view<MeshRendererComponent>();
+    auto renderableView = scene.View<MeshRendererComponent>();
     bool hasRenderableEntities = false;
     for (auto entity : renderableView)
     {
@@ -99,23 +98,23 @@ void SceneValidator::ValidateCamera(Scene& scene)
     LOGGER_WARN("SceneValidator") << "No Active Camera found in scene! Creating Default Spectator Camera.";
 
     std::string scriptName = "DefaultCameraController";
-    entt::entity camEntity = EntityManager::CreateEntity(scene);
+    entt::entity camEntity = scene.CreateEntity();
 
-    auto& info = scene.registry.get<InfoComponent>(camEntity);
+    auto& info = scene.GetComponent<InfoComponent>(camEntity);
     info.name = "Default Spectator Camera";
     info.tag = "Default";
 
-    auto& pos = scene.registry.get<PositionComponent>(camEntity);
+    auto& pos = scene.GetComponent<PositionComponent>(camEntity);
     pos.value = glm::vec3(0.0f, 2.0f, 10.0f);
     pos.prev = pos.value;
 
-    auto& cam = scene.registry.emplace<CameraComponent>(camEntity);
+    auto& cam = scene.AddComponent<CameraComponent>(camEntity);
     cam.isPrimary = true;
     cam.fov = 45.0f;
     cam.nearPlane = 0.1f;
     cam.farPlane = 1000.0f;
 
-    auto& rot = scene.registry.get_or_emplace<RotationComponent>(camEntity);
+    auto& rot = scene.GetOrAddComponent<RotationComponent>(camEntity);
     rot.value = glm::quatLookAt(glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
     rot.prev = rot.value;
 
@@ -134,7 +133,7 @@ void SceneValidator::ValidateCamera(Scene& scene)
 
     if (scriptInstance)
     {
-        auto& scriptComp = scene.registry.emplace<ScriptComponent>(camEntity);
+        auto& scriptComp = scene.AddComponent<ScriptComponent>(camEntity);
         scriptComp.className = scriptName;
         scriptComp.instance = std::move(scriptInstance);
         scriptComp.InstantiateScript = [scriptName]() {
@@ -169,7 +168,7 @@ void SceneValidator::ValidatePhysicsSync(Scene& scene, IPhysicsWorld* phys)
 {
     if (!phys)
         return;
-    auto rbView = scene.registry.view<RigidBodyComponent, WorldTransformComponent>();
+    auto rbView = scene.View<RigidBodyComponent, WorldTransformComponent>();
     for (auto entity : rbView)
     {
         auto& rb = rbView.get<RigidBodyComponent>(entity);
@@ -184,12 +183,12 @@ void SceneValidator::ValidatePhysicsSync(Scene& scene, IPhysicsWorld* phys)
             phys->SyncRigidBody(rb.body.get(), position, rotation);
             rb.body->SetUserPointer((void*)(uintptr_t)((uint32_t)entity + 1));
 
-            if (rb.isAttachedToParent && scene.registry.all_of<HierarchyComponent>(entity))
+            if (rb.isAttachedToParent && scene.HasAllComponents<HierarchyComponent>(entity))
             {
-                auto& hier = scene.registry.get<HierarchyComponent>(entity);
-                if (scene.registry.valid(hier.parent) && scene.registry.all_of<RigidBodyComponent>(hier.parent))
+                auto& hier = scene.GetComponent<HierarchyComponent>(entity);
+                if (scene.IsValid(hier.parent) && scene.HasAllComponents<RigidBodyComponent>(hier.parent))
                 {
-                    auto& parentRb = scene.registry.get<RigidBodyComponent>(hier.parent);
+                    auto& parentRb = scene.GetComponent<RigidBodyComponent>(hier.parent);
                     if (parentRb.body)
                     {
                         glm::vec3 pivotA = glm::vec3(0.0f);
@@ -197,7 +196,7 @@ void SceneValidator::ValidatePhysicsSync(Scene& scene, IPhysicsWorld* phys)
                         glm::quat rotA = glm::quat(1, 0, 0, 0);
                         glm::quat rotB = glm::quat(1, 0, 0, 0);
 
-                        auto& parentWorld = scene.registry.get<WorldTransformComponent>(hier.parent);
+                        auto& parentWorld = scene.GetComponent<WorldTransformComponent>(hier.parent);
                         glm::mat4 invParent = glm::inverse(parentWorld.worldMatrix);
                         glm::mat4 localChild = invParent * world.worldMatrix;
 

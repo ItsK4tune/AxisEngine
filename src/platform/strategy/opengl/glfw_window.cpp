@@ -3,6 +3,8 @@
 #include <core/logic/logger.h>
 #include <platform/strategy/opengl/glfw_translator.h>
 #include <resource/logic/stb_image_loader.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/config_manager.h>
 
 #ifdef _WIN32
 #undef APIENTRY
@@ -256,6 +258,18 @@ void GLFWWindow::SetCursorMode(CursorMode mode)
 {
     int glfwMode = GLFWTranslator::ToGLFWCursorMode(mode);
     glfwSetInputMode(m_Window, GLFW_CURSOR, glfwMode);
+
+    auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    bool enableRaw = false;
+    if (cm && cm->GetConfig().input.rawMouseInput && (mode == CursorMode::Locked || mode == CursorMode::LockedHidden))
+    {
+        enableRaw = true;
+    }
+
+    if (glfwRawMouseMotionSupported())
+    {
+        glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, enableRaw ? GLFW_TRUE : GLFW_FALSE);
+    }
 }
 
 void GLFWWindow::SetAspectRatio(int numerator, int denominator)

@@ -3,7 +3,6 @@
 #include "test_support.h"
 
 #include <core/logic/service_locator.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/physics_system.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
@@ -62,7 +61,7 @@ AXIS_TEST_CASE("PhysicsLoader LoadRigidShape parses primitive shape fields")
 {
     Scene scene;
     FakePhysicsWorld physics;
-    auto entity = EntityManager::CreateEntity(scene, "Body");
+    auto entity = scene.CreateEntity("Body");
     auto node = SingleNode(
         "RigidShape:\n"
         "  Type: BOX\n"
@@ -76,7 +75,7 @@ AXIS_TEST_CASE("PhysicsLoader LoadRigidShape parses primitive shape fields")
 
     PhysicsLoader::LoadRigidShape(scene, entity, node, physics);
 
-    const auto& shape = scene.registry.get<RigidShapeComponent>(entity);
+    const auto& shape = scene.GetComponent<RigidShapeComponent>(entity);
     AXIS_CHECK(shape.type == ShapeType::Box);
     AXIS_CHECK_NEAR(shape.size.x, 1.0f, 0.0001f);
     AXIS_CHECK_NEAR(shape.size.y, 2.0f, 0.0001f);
@@ -92,7 +91,7 @@ AXIS_TEST_CASE("PhysicsLoader legacy RigidBody with Type creates shape and body 
 {
     Scene scene;
     FakePhysicsWorld physics;
-    auto entity = EntityManager::CreateEntity(scene, "Body");
+    auto entity = scene.CreateEntity("Body");
     auto node = SingleNode(
         "RigidBody:\n"
         "  Type: BOX\n"
@@ -107,10 +106,10 @@ AXIS_TEST_CASE("PhysicsLoader legacy RigidBody with Type creates shape and body 
 
     PhysicsLoader::LoadRigidBody(scene, entity, node, physics);
 
-    AXIS_CHECK(scene.registry.all_of<RigidShapeComponent>(entity));
-    AXIS_CHECK(scene.registry.all_of<RigidBodyComponent>(entity));
-    const auto& shape = scene.registry.get<RigidShapeComponent>(entity);
-    const auto& body = scene.registry.get<RigidBodyComponent>(entity);
+    AXIS_CHECK(scene.HasAllComponents<RigidShapeComponent>(entity));
+    AXIS_CHECK(scene.HasAllComponents<RigidBodyComponent>(entity));
+    const auto& shape = scene.GetComponent<RigidShapeComponent>(entity);
+    const auto& body = scene.GetComponent<RigidBodyComponent>(entity);
     AXIS_CHECK(shape.type == ShapeType::Box);
     AXIS_CHECK_NEAR(body.mass, 2.0f, 0.0001f);
     AXIS_CHECK(!body.isStatic);
@@ -126,14 +125,14 @@ AXIS_TEST_CASE("PhysicsSystem auto-adds RigidBodyComponent for shape-only entity
     FakePhysicsWorld physics;
     ServiceLocator::Instance().Register<IPhysicsWorld>(&physics);
     PhysicsSystem system;
-    auto entity = EntityManager::CreateEntity(scene, "ShapeOnly");
-    auto& shape = scene.registry.emplace<RigidShapeComponent>(entity);
+    auto entity = scene.CreateEntity("ShapeOnly");
+    auto& shape = scene.AddComponent<RigidShapeComponent>(entity);
     shape.type = ShapeType::Box;
 
     system.FixedUpdate(scene, 1.0f / 60.0f);
 
-    AXIS_CHECK(scene.registry.all_of<RigidBodyComponent>(entity));
-    AXIS_CHECK(scene.registry.get<RigidBodyComponent>(entity).body != nullptr);
+    AXIS_CHECK(scene.HasAllComponents<RigidBodyComponent>(entity));
+    AXIS_CHECK(scene.GetComponent<RigidBodyComponent>(entity).body != nullptr);
     AXIS_CHECK(physics.rigidBodies.size() == 1);
     system.Reset();
     axis_test_support::ResetServices();
@@ -148,9 +147,9 @@ AXIS_TEST_CASE("PhysicsSystem InitializeRigidBodyDirect creates primitive shapes
 
     for (ShapeType type : types)
     {
-        auto entity = EntityManager::CreateEntity(scene, "Primitive");
-        auto& shape = scene.registry.emplace<RigidShapeComponent>(entity);
-        auto& body = scene.registry.emplace<RigidBodyComponent>(entity);
+        auto entity = scene.CreateEntity("Primitive");
+        auto& shape = scene.AddComponent<RigidShapeComponent>(entity);
+        auto& body = scene.AddComponent<RigidBodyComponent>(entity);
         shape.type = type;
         shape.size = {1.0f, 2.0f, 3.0f};
         shape.radius = 0.5f;
@@ -170,9 +169,9 @@ AXIS_TEST_CASE("PhysicsSystem wraps offset shape in compound")
     Scene scene;
     FakePhysicsWorld physics;
     PhysicsSystem system;
-    auto entity = EntityManager::CreateEntity(scene, "OffsetBody");
-    auto& shape = scene.registry.emplace<RigidShapeComponent>(entity);
-    auto& body = scene.registry.emplace<RigidBodyComponent>(entity);
+    auto entity = scene.CreateEntity("OffsetBody");
+    auto& shape = scene.AddComponent<RigidShapeComponent>(entity);
+    auto& body = scene.AddComponent<RigidBodyComponent>(entity);
     shape.type = ShapeType::Box;
     shape.offset = {1.0f, 0.0f, 0.0f};
 
@@ -192,10 +191,10 @@ AXIS_TEST_CASE("PhysicsSystem collision filter respects disabled collision flag"
     FakePhysicsWorld physics;
     ServiceLocator::Instance().Register<IPhysicsWorld>(&physics);
     PhysicsSystem system;
-    auto enabled = EntityManager::CreateEntity(scene, "Enabled");
-    auto disabled = EntityManager::CreateEntity(scene, "Disabled");
-    scene.registry.emplace<RigidBodyComponent>(enabled);
-    auto& disabledBody = scene.registry.emplace<RigidBodyComponent>(disabled);
+    auto enabled = scene.CreateEntity("Enabled");
+    auto disabled = scene.CreateEntity("Disabled");
+    scene.AddComponent<RigidBodyComponent>(enabled);
+    auto& disabledBody = scene.AddComponent<RigidBodyComponent>(disabled);
     disabledBody.isCollisionEnabled = false;
 
     system.FixedUpdate(scene, 1.0f / 60.0f);

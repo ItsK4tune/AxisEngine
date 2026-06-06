@@ -66,9 +66,9 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
         {
             std::string namePrefix = "";
             std::string tagPrefix = "";
-            if (parent != entt::null && scene.registry.all_of<InfoComponent>(parent))
+            if (parent != entt::null && scene.HasAllComponents<InfoComponent>(parent))
             {
-                auto& parentInfo = scene.registry.get<InfoComponent>(parent);
+                auto& parentInfo = scene.GetComponent<InfoComponent>(parent);
                 namePrefix = parentInfo.name + ".";
                 tagPrefix = parentInfo.tag + ".";
             }
@@ -108,29 +108,29 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                 std::string namespacedName = namePrefix + entityName;
                 std::string namespacedTag = tagPrefix + entityTag;
 
-                entt::entity currentEntity = scene.registry.create();
+                entt::entity currentEntity = scene.GetRegistry().create();
                 instantiatedEntities[entityName] = currentEntity;  // KEEP LOCAL NAME FOR MAPPING
 
-                scene.registry.emplace<PositionComponent>(currentEntity);
-                scene.registry.emplace<RotationComponent>(currentEntity);
-                scene.registry.emplace<ScaleComponent>(currentEntity);
-                scene.registry.emplace<HierarchyComponent>(currentEntity);
-                auto& wt = scene.registry.emplace<WorldTransformComponent>(currentEntity);
+                scene.AddComponent<PositionComponent>(currentEntity);
+                scene.AddComponent<RotationComponent>(currentEntity);
+                scene.AddComponent<ScaleComponent>(currentEntity);
+                scene.AddComponent<HierarchyComponent>(currentEntity);
+                auto& wt = scene.AddComponent<WorldTransformComponent>(currentEntity);
                 wt.isDirty = true;
-                scene.registry.emplace<InfoComponent>(currentEntity, namespacedName, namespacedTag);
+                scene.AddComponent<InfoComponent>(currentEntity, namespacedName, namespacedTag);
 
-                auto& info = scene.registry.get<InfoComponent>(currentEntity);
+                auto& info = scene.GetComponent<InfoComponent>(currentEntity);
                 info.sceneName = fragmentName;
 
                 // Set parent to the provided parent by default
                 if (parent != entt::null)
                 {
-                    if (!scene.registry.all_of<HierarchyComponent>(parent))
+                    if (!scene.HasAllComponents<HierarchyComponent>(parent))
                     {
-                        scene.registry.emplace<HierarchyComponent>(parent);
+                        scene.AddComponent<HierarchyComponent>(parent);
                     }
-                    scene.registry.patch<HierarchyComponent>(currentEntity, [&](auto& h) { h.parent = parent; });
-                    scene.registry.patch<HierarchyComponent>(parent,
+                    scene.GetRegistry().patch<HierarchyComponent>(currentEntity, [&](auto& h) { h.parent = parent; });
+                    scene.GetRegistry().patch<HierarchyComponent>(parent,
                                                              [&](auto& h) { h.children.push_back(currentEntity); });
                 }
 
@@ -161,21 +161,21 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                         std::stringstream ssS(sStr);
                         ssS >> sx >> sy >> sz;
 
-                        auto& pComp = scene.registry.get<PositionComponent>(currentEntity);
+                        auto& pComp = scene.GetComponent<PositionComponent>(currentEntity);
                         pComp.value = glm::vec3(x, y, z);
                         pComp.prev = pComp.value;
 
-                        auto& rComp = scene.registry.get<RotationComponent>(currentEntity);
+                        auto& rComp = scene.GetComponent<RotationComponent>(currentEntity);
                         rComp.value = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
                         rComp.prev = rComp.value;
 
-                        auto& sComp = scene.registry.get<ScaleComponent>(currentEntity);
+                        auto& sComp = scene.GetComponent<ScaleComponent>(currentEntity);
                         sComp.value = glm::vec3(sx, sy, sz);
                         sComp.prev = sComp.value;
 
-                        if (scene.registry.all_of<WorldTransformComponent>(currentEntity))
+                        if (scene.HasAllComponents<WorldTransformComponent>(currentEntity))
                         {
-                            scene.registry.get<WorldTransformComponent>(currentEntity).isDirty = true;
+                            scene.GetComponent<WorldTransformComponent>(currentEntity).isDirty = true;
                         }
                         break;
                     }
@@ -212,14 +212,14 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                 // Remove from the default fragment parent if it was added
                 if (parent != entt::null)
                 {
-                    scene.registry.patch<HierarchyComponent>(parent, [&](auto& ph) {
+                    scene.GetRegistry().patch<HierarchyComponent>(parent, [&](auto& ph) {
                         ph.children.erase(std::remove(ph.children.begin(), ph.children.end(), entity),
                                           ph.children.end());
                     });
                 }
 
-                scene.registry.patch<HierarchyComponent>(entity, [&](auto& h) { h.parent = internalParent; });
-                scene.registry.patch<HierarchyComponent>(internalParent,
+                scene.GetRegistry().patch<HierarchyComponent>(entity, [&](auto& h) { h.parent = internalParent; });
+                scene.GetRegistry().patch<HierarchyComponent>(internalParent,
                                                          [&](auto& ph) { ph.children.push_back(entity); });
             }
         }

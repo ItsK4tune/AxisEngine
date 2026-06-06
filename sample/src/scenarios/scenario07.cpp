@@ -22,7 +22,7 @@ const OrderVisual kOrderVisuals[] = {
 void SampleState::ApplyScenario7RenderOrder()
 {
     auto& scene = GetScene();
-    auto view = scene.registry.view<MeshRendererComponent, InfoComponent>();
+    auto view = scene.View<MeshRendererComponent, InfoComponent>();
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
@@ -75,12 +75,12 @@ void SampleState::LoadScene7()
             .WithTransform(panel.position, panel.rotation, glm::vec3(8.0f, 5.5f, 0.15f))
             .WithPBRMesh("cubeModel", "forward_transparent", 0.0f, 0.2f, 1.0f)
             .Build();
-        auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
+        auto& renderer = scene.GetComponent<MeshRendererComponent>(entity);
         renderer.renderMode = RenderMode::ForceForward;
         renderer.castShadow = false;
         renderer.color = panel.color;
 
-        auto& mat = scene.registry.get<AxisMaterialComponent>(entity);
+        auto& mat = scene.GetComponent<MaterialComponent>(entity);
         mat.desc.opacity = panel.color.a;
         mat.desc.blendSrc = BlendFactor::SrcAlpha;
         mat.desc.blendDst = BlendFactor::OneMinusSrcAlpha;
@@ -106,14 +106,14 @@ void SampleState::LoadScene7()
             .WithTransform(solid.position, glm::vec3(0.0f), glm::vec3(3.5f, 3.5f, 3.5f))
             .WithPBRMesh("cubeModel", "forward_pbr_lit", 0.0f, 0.5f, 1.0f)
             .Build();
-        auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
+        auto& renderer = scene.GetComponent<MeshRendererComponent>(entity);
         renderer.renderMode = RenderMode::ForceForward;
         renderer.castShadow = false;
         renderer.receiveShadow = false;
         renderer.ignoreDepth = true;
         renderer.color = solid.color;
 
-        auto& mat = scene.registry.get<AxisMaterialComponent>(entity);
+        auto& mat = scene.GetComponent<MaterialComponent>(entity);
         mat.desc.opacity = 1.0f;
         mat.gpu.dirty = true;
     }

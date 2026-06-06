@@ -2,15 +2,27 @@
 
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/ui_components.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/light_components.h>
+#include <ecs/unit/light_probe_components.h>
+#include <ecs/unit/post_process_component.h>
+#include <ecs/unit/reflection_components.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/unit/decal_component.h>
+#include <ecs/unit/media_components.h>
+#include <ecs/unit/script_component.h>
+#include <ecs/unit/terrain_component.h>
+#include <ecs/unit/network_components.h>
+#include <navigation/unit/navmesh_component.h>
 #include <scene/logic/scene.h>
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
+#include <memory>
 
 class ResourceManager;
 class IRigidBody;
 class ICharacterController;
-struct AxisMaterialComponent;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
@@ -40,13 +52,7 @@ class EntityBuilder
 {
 public:
     EntityBuilder(Scene& scene, ResourceManager& resources, const std::string& sceneName);
-
-    template <typename T, typename... Args>
-    EntityBuilder& With(Args&&... args)
-    {
-        m_Scene.registry.emplace_or_replace<T>(m_Entity, std::forward<Args>(args)...);
-        return *this;
-    }
+    EntityBuilder(Scene& scene, ResourceManager& resources, entt::entity entity);
 
     EntityBuilder& WithTextureResource(const std::string& name, const std::string& path, bool async = true,
                                        bool keepCpuData = false);
@@ -76,7 +82,7 @@ public:
     EntityBuilder& WithMesh(const std::string& modelName, const std::string& shaderName);
     EntityBuilder& WithMeshAuto(const std::string& modelNameOrPath, const std::string& shaderName,
                                 bool isStatic = false);
-    EntityBuilder& WithMaterial(const AxisMaterialComponent& material);
+    EntityBuilder& WithMaterial(const MaterialComponent& material);
     EntityBuilder& WithPhongMaterial(const glm::vec3& ambient = glm::vec3(1.0f),
                                      const glm::vec3& specular = glm::vec3(0.5f), float shininess = 32.0f);
     EntityBuilder& WithPBRMaterial(float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f);
@@ -114,9 +120,11 @@ public:
                                const std::string& splatMapName = "",
                                const std::vector<std::string>& diffuseLayerNames = {},
                                bool generatePhysics = true, bool castShadows = true);
+    EntityBuilder& WithTerrain(const glm::vec3& terrainSize, float maxHeight = 0.0f, bool isWalkable = true, bool generatePhysics = false);
 
     EntityBuilder& WithRigidBody(std::shared_ptr<IRigidBody> body);
-    EntityBuilder& WithCharacterController(std::shared_ptr<ICharacterController> controller);
+    EntityBuilder& WithRigidBody(float mass = 1.0f, bool isStatic = false, bool isTrigger = false, float linearDamping = 0.0f, float angularDamping = 0.0f);
+    EntityBuilder& WithCharacterController(std::shared_ptr<ICharacterController> controller, float stepHeight = 0.35f, float maxSlope = 45.0f);
 
     EntityBuilder& WithPathFollower(float moveSpeed = 5.0f, float rotationSpeed = 10.0f, float maxRotationSpeed = 20.0f,
                                     float rotationAcceleration = 40.0f,
@@ -166,7 +174,10 @@ public:
     EntityBuilder& WithParent(entt::entity parent);
     EntityBuilder& WithAudio(const std::string& soundName, bool loop = false, float volume = 1.0f);
     EntityBuilder& WithScript(const std::string& scriptName);
+    EntityBuilder& WithScriptable(const std::string& className, std::function<std::unique_ptr<IScriptable>()> instantiateFunc);
     EntityBuilder& WithAnimation(const std::string& animationName);
+    EntityBuilder& WithFragment(const std::string& path, const std::string& overrides = "");
+    EntityBuilder& WithNetwork(uint32_t networkId = 0, uint32_t ownerId = 0, bool isLocal = false);
 
     EntityBuilder& WithDirectionalLight(const glm::vec3& direction, const glm::vec3& color = glm::vec3(1.0f),
                                         float intensity = 1.0f);
@@ -190,6 +201,7 @@ public:
     EntityBuilder& WithParticleTexture(const std::string& textureNameOrPath);
     EntityBuilder& WithParticleTextureResource(const std::string& textureName, const std::string& path,
                                                bool async = true, bool keepCpuData = false);
+    EntityBuilder& WithParticleEmitter(float spawnRate = 10.0f, float lifeTime = 2.0f, float startSize = 0.1f, float endSize = 0.1f, const glm::vec3& minVelocity = glm::vec3(-1.0f), const glm::vec3& maxVelocity = glm::vec3(1.0f), const glm::vec4& startColor = glm::vec4(1.0f), const glm::vec4& endColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f), int maxParticles = 1000);
     EntityBuilder& WithVideo(const std::string& videoPath, bool loop = true);
     EntityBuilder& WithVideoPlayback(bool playOnAwake, bool isPlaying, float volume = 1.0f, float speed = 1.0f,
                                      int maxDecodes = 1);
@@ -198,6 +210,39 @@ public:
     EntityBuilder& WithUIVideo(const std::string& videoPath, const std::string& uiModelName,
                                const glm::vec4& color = glm::vec4(1.0f), bool loop = true, float volume = 1.0f,
                                int maxDecodes = 1, float speed = 1.0f);
+
+    // Dedicated builder methods for formerly generic components
+    EntityBuilder& WithInfo(const InfoComponent& info);
+    EntityBuilder& WithPostProcess(const PostProcessComponent& postProcess);
+    EntityBuilder& WithPostProcessEffect(const std::string& shaderName, int priority = 1, int x = 0, int y = 0, int w = 0, int h = 0);
+    EntityBuilder& WithReflectionProbe(const ReflectionProbeComponent& probe);
+    EntityBuilder& WithReflectionProbe(ReflectionProbeType type = ReflectionProbeType::Static, int resolution = 512, bool boxProjection = true);
+    EntityBuilder& WithReflective(const ReflectiveComponent& reflective);
+    EntityBuilder& WithReflective(float reflectivity = 1.0f, float fresnelPower = 5.0f, float fresnelBias = 0.04f);
+    EntityBuilder& WithPlanarReflection(const PlanarReflectionComponent& planar);
+    EntityBuilder& WithPlanarReflection(int resolution = 1024, const glm::vec3& normal = glm::vec3(0, 1, 0));
+    EntityBuilder& WithLightProbe(const LightProbeComponent& probe);
+    EntityBuilder& WithLightProbe(float radius = 5.0f, float intensity = 1.0f);
+    EntityBuilder& WithRigidShape(const RigidShapeComponent& shape);
+    EntityBuilder& WithRigidShape(ShapeType type, const glm::vec3& size = glm::vec3(1.0f), float radius = 1.0f, float height = 2.0f, float friction = 0.5f, float restitution = 0.0f);
+    EntityBuilder& WithRigidBodyComponent(const RigidBodyComponent& body);
+    EntityBuilder& WithDecal(const DecalComponent& decal);
+    EntityBuilder& WithDecal(uint32_t albedoMap = 0, float opacity = 1.0f, float roughness = 0.5f, float metallic = 0.0f, int lightingMode = 0, const glm::vec4& tintColor = glm::vec4(1.0f));
+    EntityBuilder& WithAudioSource(const AudioSourceComponent& audioSource);
+    EntityBuilder& WithAudioSource(const std::string& filePath, bool playOnAwake = true, bool loop = true,
+                                  bool is3D = false, float volume = 1.0f, float pitch = 1.0f,
+                                  float speed = 1.0f, float minDistance = 1.0f, float maxDistance = 100.0f);
+    EntityBuilder& WithMeshRenderer(const MeshRendererComponent& meshRenderer);
+    EntityBuilder& WithNavMesh(bool isDynamic = false, int terrainGridResolution = 64, float walkableNormalY = 0.3f);
+    EntityBuilder& WithNavMesh(const NavMeshComponent& navMesh);
+    EntityBuilder& WithNavigationGrid(int width, int height, float cellSize = 1.0f, const glm::vec3& origin = glm::vec3(0.0f), bool allowDiagonal = false);
+    EntityBuilder& WithNavigationGrid(const NavigationGridComponent& grid);
+    EntityBuilder& WithUIInteractive(bool interactable = true, std::function<void(entt::entity)> onClick = nullptr);
+    EntityBuilder& WithUIInteractive(const UIInteractiveComponent& interactive);
+    EntityBuilder& WithUIAnimation(bool enabled = true, bool animateColor = true, bool animateScale = false);
+    EntityBuilder& WithUIAnimation(const UIAnimationComponent& anim);
+    EntityBuilder& WithSkybox(const std::string& skyboxName, const std::string& shaderName, bool isPrimary = true);
+    EntityBuilder& WithSkybox(const SkyboxRenderComponent& skybox);
 
     static entt::entity SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
                                     const std::string& fragmentPath, const glm::vec3& pos,

@@ -139,7 +139,7 @@ std::vector<entt::id_type> TransparentSystem::GetReadComponents() const
 {
     return {entt::type_id<MeshRendererComponent>().hash(),   entt::type_id<PositionComponent>().hash(),
             entt::type_id<RotationComponent>().hash(),       entt::type_id<ScaleComponent>().hash(),
-            entt::type_id<WorldTransformComponent>().hash(), entt::type_id<AxisMaterialComponent>().hash()};
+            entt::type_id<WorldTransformComponent>().hash(), entt::type_id<MaterialComponent>().hash()};
 }
 
 std::vector<entt::id_type> TransparentSystem::GetWriteComponents() const

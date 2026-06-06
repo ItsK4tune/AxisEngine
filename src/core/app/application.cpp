@@ -91,7 +91,7 @@ void Application::Shutdown()
     {
         try
         {
-            m_Impl->m_Scene->registry.clear();
+            m_Impl->m_Scene->GetRegistry().clear();
         }
         catch (...)
         {
@@ -346,6 +346,18 @@ bool Application::Initialize(const AppConfig& config)
             m_Impl->m_ResourceManager->SetTextureAsyncEnabled(e.config.asyncResourceLoading);
             m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(e.config.maxAnisotropy);
             m_Impl->m_ResourceManager->SetStrictAssetLoading(e.config.strictAssetLoading);
+        }
+        if (e.bitmask & (ConfigChangedEvent::Input | ConfigChangedEvent::All))
+        {
+            if (m_Impl->m_IOHandler)
+            {
+                auto mode = m_Impl->m_IOHandler->GetMouse().GetCursorMode();
+                auto* window = m_Impl->m_IOHandler->GetMonitorManager().GetWindow();
+                if (window)
+                {
+                    window->SetCursorMode(mode);
+                }
+            }
         }
     });
 

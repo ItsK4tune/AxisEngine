@@ -171,24 +171,24 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
             ComponentLoader::InitializeDefaultLoaders();
             std::function<void(YAMLNode&, entt::entity)> ParseEntity = [&](YAMLNode& entNode, entt::entity parent) {
                 std::string entityName = entNode.key;
-                entt::entity currentEntity = scene.registry.create();
-                scene.registry.emplace<PositionComponent>(currentEntity);
-                scene.registry.emplace<RotationComponent>(currentEntity);
-                scene.registry.emplace<ScaleComponent>(currentEntity);
-                scene.registry.emplace<HierarchyComponent>(currentEntity);
-                scene.registry.emplace<WorldTransformComponent>(currentEntity);
-                scene.registry.emplace<InfoComponent>(currentEntity, entityName,
+                entt::entity currentEntity = scene.GetRegistry().create();
+                scene.AddComponent<PositionComponent>(currentEntity);
+                scene.AddComponent<RotationComponent>(currentEntity);
+                scene.AddComponent<ScaleComponent>(currentEntity);
+                scene.AddComponent<HierarchyComponent>(currentEntity);
+                scene.AddComponent<WorldTransformComponent>(currentEntity);
+                scene.AddComponent<InfoComponent>(currentEntity, entityName,
                                                       entNode.GetChildValue("Tag", "default"));
 
-                auto& info = scene.registry.get<InfoComponent>(currentEntity);
+                auto& info = scene.GetComponent<InfoComponent>(currentEntity);
                 info.sceneName = entNode.GetChildValue("Scene", entNode.GetChildValue("SceneName", sceneName));
                 result.entities.push_back(currentEntity);
 
                 if (parent != entt::null)
                 {
-                    auto& h = scene.registry.get<HierarchyComponent>(currentEntity);
+                    auto& h = scene.GetComponent<HierarchyComponent>(currentEntity);
                     h.parent = parent;
-                    scene.registry.get<HierarchyComponent>(parent).children.push_back(currentEntity);
+                    scene.GetComponent<HierarchyComponent>(parent).children.push_back(currentEntity);
                 }
                 else if (auto* pNode = entNode.GetChild("Parent"))
                 {
@@ -336,7 +336,7 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
         if (mr->model)
             ur.models.insert(mr->model->GetName());
     }
-    if (auto* mat = reg.try_get<AxisMaterialComponent>(entity))
+    if (auto* mat = reg.try_get<MaterialComponent>(entity))
     {
         if (!mat->desc.albedoPath.empty())
             ur.textures.insert(SceneSerializer::NormalizePath(mat->desc.albedoPath));
@@ -471,7 +471,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "RenderMode", std::to_string(renderModeValue));
     }
 
-    if (auto* mat = reg.try_get<AxisMaterialComponent>(entity))
+    if (auto* mat = reg.try_get<MaterialComponent>(entity))
     {
         WriteComponentHeader(f, ci, "Material");
         SerialWriteKV(f, ti, "Opacity", FloatStr(mat->desc.opacity));
@@ -849,7 +849,7 @@ static bool HasSerializableComponents(entt::registry& reg, entt::entity entity)
     const bool hasNamedScript = script && !script->className.empty();
     return hasNamedScript ||
            reg.any_of<PositionComponent, RotationComponent, ScaleComponent, MeshRendererComponent,
-                      AxisMaterialComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent,
+                      MaterialComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent,
                       CameraComponent, RigidShapeComponent, RigidBodyComponent, CharacterControllerComponent,
                       AudioSourceComponent, VideoPlayerComponent, AnimationComponent, ParticleEmitterComponent,
                       PostProcessComponent, UITransformComponent, UIRendererComponent, UITextComponent,
@@ -950,7 +950,7 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
     }
 
     UsedResources ur;
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
@@ -958,11 +958,11 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
             continue;
 
         bool isRootInScene = true;
-        if (auto* h = scene.registry.try_get<HierarchyComponent>(entity))
+        if (auto* h = scene.TryGetComponent<HierarchyComponent>(entity))
         {
             if (h->parent != entt::null)
             {
-                if (auto* pInfo = scene.registry.try_get<InfoComponent>(h->parent))
+                if (auto* pInfo = scene.TryGetComponent<InfoComponent>(h->parent))
                 {
                     if (normName.empty() || SceneSerializer::NormalizeSceneName(pInfo->sceneName) == normName)
                         isRootInScene = false;
@@ -970,7 +970,7 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
             }
         }
         if (isRootInScene)
-            CollectResources(scene.registry, entity, ur, normName);
+            CollectResources(scene.GetRegistry(), entity, ur, normName);
     }
 
     f << "  Resources:\n";
@@ -1083,11 +1083,11 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
             continue;
 
         bool isRootInScene = true;
-        if (auto* h = scene.registry.try_get<HierarchyComponent>(entity))
+        if (auto* h = scene.TryGetComponent<HierarchyComponent>(entity))
         {
             if (h->parent != entt::null)
             {
-                if (auto* pInfo = scene.registry.try_get<InfoComponent>(h->parent))
+                if (auto* pInfo = scene.TryGetComponent<InfoComponent>(h->parent))
                 {
                     if (normName.empty() || SceneSerializer::NormalizeSceneName(pInfo->sceneName) == normName)
                         isRootInScene = false;
@@ -1096,15 +1096,15 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
         }
         if (isRootInScene)
         {
-            if (!HasSerializableComponents(scene.registry, entity))
+            if (!HasSerializableComponents(scene.GetRegistry(), entity))
                 continue;
-            if (scene.registry.all_of<FragmentComponent>(entity))
+            if (scene.HasAllComponents<FragmentComponent>(entity))
             {
-                auto& fc = scene.registry.get<FragmentComponent>(entity);
+                auto& fc = scene.GetComponent<FragmentComponent>(entity);
                 LOGGER_INFO("SceneSerializer") << "[FRAG-ROOT] Writing root fragment entity '" << info.name
                                                << "' overrides.size=" << fc.overrides.size();
             }
-            SerializeEntity(f, scene.registry, entity, 2, normName);
+            SerializeEntity(f, scene.GetRegistry(), entity, 2, normName);
         }
     }
 

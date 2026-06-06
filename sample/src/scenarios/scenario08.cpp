@@ -27,7 +27,7 @@ void SampleState::LoadScene8()
             .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, -8.0f), glm::vec3(0.0f, i * 20.0f, 0.0f), glm::vec3(2.0f))
             .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.55f, 1.0f)
             .Build();
-        scene.registry.get<MeshRendererComponent>(cube).color = glm::vec4(1.0f, 0.15f, 0.1f, 1.0f);
+        scene.GetComponent<MeshRendererComponent>(cube).color = glm::vec4(1.0f, 0.15f, 0.1f, 1.0f);
 
         auto sphere = EntityBuilder(scene, res, "scenario")
             .WithName("LayerBlueSphere_" + std::to_string(i))
@@ -35,6 +35,6 @@ void SampleState::LoadScene8()
             .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, 8.0f), glm::vec3(0.0f), glm::vec3(2.0f))
             .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.35f, 1.0f)
             .Build();
-        scene.registry.get<MeshRendererComponent>(sphere).color = glm::vec4(0.1f, 0.35f, 1.0f, 1.0f);
+        scene.GetComponent<MeshRendererComponent>(sphere).color = glm::vec4(0.1f, 0.35f, 1.0f, 1.0f);
     }
 }

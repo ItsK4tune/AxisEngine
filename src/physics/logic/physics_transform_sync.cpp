@@ -14,7 +14,7 @@ PhysicsTransformSync::PhysicsTransformSync(Scene& scene, IPhysicsWorld& physics)
 
 void PhysicsTransformSync::Initialize()
 {
-    m_simulationQuery.Update(m_Scene.registry);
+    m_simulationQuery.Update(m_Scene.GetRegistry());
     m_LastSyncedVersions.reserve(m_simulationQuery.GetEntities().size());
 }
 
@@ -25,16 +25,16 @@ void PhysicsTransformSync::OnComponentChanged(entt::registry& registry, entt::en
 
 void PhysicsTransformSync::SyncToPhysics()
 {
-    m_simulationQuery.Update(m_Scene.registry);
+    m_simulationQuery.Update(m_Scene.GetRegistry());
     const auto& entities = m_simulationQuery.GetEntities();
 
     for (auto entity : entities)
     {
-        auto& rb = m_Scene.registry.get<RigidBodyComponent>(entity);
+        auto& rb = m_Scene.GetComponent<RigidBodyComponent>(entity);
         if (!rb.body)
             continue;
 
-        auto* info = m_Scene.registry.try_get<InfoComponent>(entity);
+        auto* info = m_Scene.TryGetComponent<InfoComponent>(entity);
         if (info && !info->isActive)
         {
             if (rb.body->IsActive())
@@ -42,7 +42,7 @@ void PhysicsTransformSync::SyncToPhysics()
             continue;
         }
 
-        auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
+        auto* world = m_Scene.TryGetComponent<WorldTransformComponent>(entity);
         if (!world)
             continue;
 
@@ -56,7 +56,7 @@ void PhysicsTransformSync::SyncToPhysics()
         }
 
         glm::mat4 syncMtx = world->worldMatrix;
-        if (auto* mesh = m_Scene.registry.try_get<MeshRendererComponent>(entity))
+        if (auto* mesh = m_Scene.TryGetComponent<MeshRendererComponent>(entity))
         {
             if (mesh->model)
             {
@@ -84,22 +84,22 @@ void PhysicsTransformSync::SyncToPhysics()
 
 void PhysicsTransformSync::SyncFromPhysics()
 {
-    m_simulationQuery.Update(m_Scene.registry);
+    m_simulationQuery.Update(m_Scene.GetRegistry());
     const auto& entities = m_simulationQuery.GetEntities();
 
     for (auto entity : entities)
     {
-        auto& rb = m_Scene.registry.get<RigidBodyComponent>(entity);
-        auto* pos = m_Scene.registry.try_get<PositionComponent>(entity);
-        auto* rot = m_Scene.registry.try_get<RotationComponent>(entity);
-        auto* hier = m_Scene.registry.try_get<HierarchyComponent>(entity);
-        auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
-        auto* scl = m_Scene.registry.try_get<ScaleComponent>(entity);
+        auto& rb = m_Scene.GetComponent<RigidBodyComponent>(entity);
+        auto* pos = m_Scene.TryGetComponent<PositionComponent>(entity);
+        auto* rot = m_Scene.TryGetComponent<RotationComponent>(entity);
+        auto* hier = m_Scene.TryGetComponent<HierarchyComponent>(entity);
+        auto* world = m_Scene.TryGetComponent<WorldTransformComponent>(entity);
+        auto* scl = m_Scene.TryGetComponent<ScaleComponent>(entity);
 
         if (!rb.body || !pos || !rot || !world || !scl)
             continue;
 
-        auto* info = m_Scene.registry.try_get<InfoComponent>(entity);
+        auto* info = m_Scene.TryGetComponent<InfoComponent>(entity);
         if (info && !info->isActive)
             continue;
 
@@ -119,7 +119,7 @@ void PhysicsTransformSync::SyncFromPhysics()
             glm::vec3 Rt(0.0f);
             glm::quat Rr(1.0f, 0.0f, 0.0f, 0.0f);
             bool hasRootPose = false;
-            if (auto* mesh = m_Scene.registry.try_get<MeshRendererComponent>(entity))
+            if (auto* mesh = m_Scene.TryGetComponent<MeshRendererComponent>(entity))
             {
                 if (mesh->model)
                 {
@@ -133,7 +133,7 @@ void PhysicsTransformSync::SyncFromPhysics()
 
             if (hasParent)
             {
-                if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
+                if (auto* parentWorld = m_Scene.TryGetComponent<WorldTransformComponent>(hier->parent))
                 {
                     glm::mat4 physMtx = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
                     glm::mat4 targetMtx = glm::inverse(parentWorld->worldMatrix) * physMtx;
@@ -188,7 +188,7 @@ void PhysicsTransformSync::SyncFromPhysics()
             {
                 for (auto child : hier->children)
                 {
-                    if (auto* cWorld = m_Scene.registry.try_get<WorldTransformComponent>(child))
+                    if (auto* cWorld = m_Scene.TryGetComponent<WorldTransformComponent>(child))
                     {
                         cWorld->isDirty = true;
                     }
@@ -200,17 +200,17 @@ void PhysicsTransformSync::SyncFromPhysics()
 
 void PhysicsTransformSync::SyncTransformToPhysics(entt::entity entity)
 {
-    if (!m_Scene.registry.valid(entity))
+    if (!m_Scene.IsValid(entity))
         return;
 
-    auto* rb = m_Scene.registry.try_get<RigidBodyComponent>(entity);
-    auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
+    auto* rb = m_Scene.TryGetComponent<RigidBodyComponent>(entity);
+    auto* world = m_Scene.TryGetComponent<WorldTransformComponent>(entity);
 
     if (!rb || !rb->body || !world)
         return;
 
     glm::mat4 syncMtx = world->worldMatrix;
-    if (auto* mesh = m_Scene.registry.try_get<MeshRendererComponent>(entity))
+    if (auto* mesh = m_Scene.TryGetComponent<MeshRendererComponent>(entity))
     {
         if (mesh->model)
         {
@@ -233,14 +233,14 @@ void PhysicsTransformSync::SyncTransformToPhysics(entt::entity entity)
 
 void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
 {
-    if (!m_Scene.registry.valid(entity))
+    if (!m_Scene.IsValid(entity))
         return;
 
-    auto* rb = m_Scene.registry.try_get<RigidBodyComponent>(entity);
-    auto* pos = m_Scene.registry.try_get<PositionComponent>(entity);
-    auto* rot = m_Scene.registry.try_get<RotationComponent>(entity);
-    auto* hier = m_Scene.registry.try_get<HierarchyComponent>(entity);
-    auto* world = m_Scene.registry.try_get<WorldTransformComponent>(entity);
+    auto* rb = m_Scene.TryGetComponent<RigidBodyComponent>(entity);
+    auto* pos = m_Scene.TryGetComponent<PositionComponent>(entity);
+    auto* rot = m_Scene.TryGetComponent<RotationComponent>(entity);
+    auto* hier = m_Scene.TryGetComponent<HierarchyComponent>(entity);
+    auto* world = m_Scene.TryGetComponent<WorldTransformComponent>(entity);
 
     if (!rb || !rb->body || !pos || !rot || !world)
         return;
@@ -252,7 +252,7 @@ void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
     rb->body->GetWorldTransform(worldPos, worldRot);
 
     glm::mat4 rootMtx = glm::mat4(1.0f);
-    if (auto* mesh = m_Scene.registry.try_get<MeshRendererComponent>(entity))
+    if (auto* mesh = m_Scene.TryGetComponent<MeshRendererComponent>(entity))
     {
         if (mesh->model)
         {
@@ -265,7 +265,7 @@ void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
 
     if (hasParent && rb->isParentMatter)
     {
-        if (auto* parentWorld = m_Scene.registry.try_get<WorldTransformComponent>(hier->parent))
+        if (auto* parentWorld = m_Scene.TryGetComponent<WorldTransformComponent>(hier->parent))
         {
             glm::mat4 physMtx = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
             glm::mat4 entityMtx = physMtx * rootMtxInv;

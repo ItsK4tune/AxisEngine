@@ -131,7 +131,7 @@ void DefaultCameraController::OnUpdate(float)
     {
         m_WasFPressed = true;
         entt::entity target = m_SelectedEntity;
-        if (target != entt::null && GetScene().registry.valid(target))
+        if (target != entt::null && GetScene().IsValid(target))
         {
             FocusOnEntity(target);
         }
@@ -142,7 +142,7 @@ void DefaultCameraController::OnUpdate(float)
     if (m_PendingFocusEntity != entt::null)
     {
         entt::entity target = m_PendingFocusEntity;
-        if (target != entt::null && GetScene().registry.valid(target))
+        if (target != entt::null && GetScene().IsValid(target))
         {
             FocusOnEntity(target);
         }
@@ -218,9 +218,9 @@ void DefaultCameraController::OnUpdate(float)
     {
         bool pivotSet = false;
         entt::entity selected = m_SelectedEntity;
-        if (selected != entt::null && GetScene().registry.valid(selected))
+        if (selected != entt::null && GetScene().IsValid(selected))
         {
-            if (auto* tr = GetScene().registry.try_get<WorldTransformComponent>(selected))
+            if (auto* tr = GetScene().TryGetComponent<WorldTransformComponent>(selected))
             {
                 glm::vec3 selPos = glm::vec3(tr->worldMatrix[3]);
                 m_Pivot = selPos;
@@ -312,10 +312,10 @@ void DefaultCameraController::OnUpdate(float)
 
 void DefaultCameraController::FocusOnEntity(entt::entity entity)
 {
-    if (HasComponent<PositionComponent>() && GetScene().registry.valid(entity) &&
-        GetScene().registry.all_of<WorldTransformComponent>(entity))
+    if (HasComponent<PositionComponent>() && GetScene().IsValid(entity) &&
+        GetScene().HasAllComponents<WorldTransformComponent>(entity))
     {
-        auto& targetTrans = GetScene().registry.get<WorldTransformComponent>(entity);
+        auto& targetTrans = GetScene().GetComponent<WorldTransformComponent>(entity);
         glm::vec3 targetPos = targetTrans.worldMatrix[3];
 
         m_Pivot = targetPos;

@@ -15,7 +15,6 @@
 #include <core/app/application.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/ui_components.h>
@@ -139,17 +138,17 @@ void GizmoEditorModule::Render(Scene& scene)
     if (!debugShader)
         return;
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;
 
-    auto& cam = scene.registry.get<CameraComponent>(camEntity);
-    auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    auto& cam = scene.GetComponent<CameraComponent>(camEntity);
+    auto* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
     float aspect = (float)width / (float)height;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
-    auto& camRot = scene.registry.get<RotationComponent>(camEntity);
+    auto& camRot = scene.GetComponent<RotationComponent>(camEntity);
     glm::vec3 front = camRot.value * glm::vec3(0, 0, -1);
     glm::vec3 up = camRot.value * glm::vec3(0, 1, 0);
     glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
@@ -158,7 +157,7 @@ void GizmoEditorModule::Render(Scene& scene)
     debugShader->setMat4("projection", proj);
     debugShader->setMat4("view", view);
 
-    auto viewEntities = scene.registry.view<WorldTransformComponent>();
+    auto viewEntities = scene.View<WorldTransformComponent>();
 
     std::vector<float> lineVertices;
     auto addLine = [&](const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) {
@@ -247,7 +246,7 @@ void GizmoEditorModule::ClearSceneLabels()
 
 void GizmoEditorModule::ClearDebugLabels(Scene& scene)
 {
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     for (auto& pair : m_EntityLabelMap)
     {
         if (registry.valid(pair.second))
@@ -289,8 +288,8 @@ void GizmoEditorModule::UpdateDebugLabels(Scene& scene)
     if (scaleFactor < 0.0001f)
         scaleFactor = 1.0f;
 
-    auto& registry = scene.registry;
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    auto& registry = scene.GetRegistry();
+    entt::entity camEntity = scene.GetActiveCamera();
 
     glm::mat4 vp = glm::mat4(1.0f);
     if (registry.valid(camEntity) && registry.all_of<CameraComponent, PositionComponent>(camEntity))
@@ -442,7 +441,7 @@ void GizmoEditorModule::UpdateDebugLabels(Scene& scene)
 
     for (auto& pending : pendingLabels)
     {
-        entt::entity labelEntity = EntityManager::CreateEntity(scene, "Label_" + pending.second, "DebugLabel");
+        entt::entity labelEntity = scene.CreateEntity("Label_" + pending.second, "DebugLabel");
         registry.emplace<UITransformComponent>(labelEntity);
         auto& text = registry.emplace<UITextComponent>(labelEntity);
 
@@ -472,7 +471,7 @@ void GizmoEditorModule::UpdateDebugLabels(Scene& scene)
 
 void GizmoEditorModule::ClearLightLabels(Scene& scene)
 {
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     for (auto& pair : m_LightLabelMap)
     {
         if (registry.valid(pair.second))
@@ -514,8 +513,8 @@ void GizmoEditorModule::UpdateLightLabels(Scene& scene)
     if (scaleFactor < 0.0001f)
         scaleFactor = 1.0f;
 
-    auto& registry = scene.registry;
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    auto& registry = scene.GetRegistry();
+    entt::entity camEntity = scene.GetActiveCamera();
 
     glm::mat4 vp = glm::mat4(1.0f);
     if (registry.valid(camEntity) && registry.all_of<CameraComponent, PositionComponent>(camEntity))
@@ -668,7 +667,7 @@ void GizmoEditorModule::UpdateLightLabels(Scene& scene)
 
     for (auto& pending : pendingLights)
     {
-        entt::entity labelEntity = EntityManager::CreateEntity(scene, "LightLabel_" + pending.typeName, "DebugLabel");
+        entt::entity labelEntity = scene.CreateEntity("LightLabel_" + pending.typeName, "DebugLabel");
         registry.emplace<UITransformComponent>(labelEntity);
         auto& text = registry.emplace<UITextComponent>(labelEntity);
 

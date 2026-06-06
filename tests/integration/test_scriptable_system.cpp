@@ -1,7 +1,6 @@
 #include "test_framework.h"
 
 #include <core/type/event_types.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/scriptable_system.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/script_component.h>
@@ -74,7 +73,7 @@ private:
 
 ScriptComponent& AddScript(Scene& scene, entt::entity entity, ScriptState& state)
 {
-    auto& script = scene.registry.emplace<ScriptComponent>(entity);
+    auto& script = scene.AddComponent<ScriptComponent>(entity);
     script.className = "RecordingScript";
     script.InstantiateScript = [&state]() { return std::make_unique<RecordingScript>(state); };
     script.DestroyScript = [](ScriptComponent* sc) {
@@ -91,13 +90,13 @@ AXIS_TEST_CASE("ScriptableSystem lazily instantiates script on first update")
     Scene scene;
     ScriptableSystem system;
     ScriptState state;
-    auto entity = EntityManager::CreateEntity(scene, "Scripted");
+    auto entity = scene.CreateEntity("Scripted");
     AddScript(scene, entity, state);
 
     system.Update(scene, 0.016f);
 
     AXIS_CHECK(state.createCount == 1);
-    AXIS_CHECK(scene.registry.get<ScriptComponent>(entity).instance != nullptr);
+    AXIS_CHECK(scene.GetComponent<ScriptComponent>(entity).instance != nullptr);
 }
 
 AXIS_TEST_CASE("ScriptableSystem calls OnUpdate for active enabled script")
@@ -105,7 +104,7 @@ AXIS_TEST_CASE("ScriptableSystem calls OnUpdate for active enabled script")
     Scene scene;
     ScriptableSystem system;
     ScriptState state;
-    auto entity = EntityManager::CreateEntity(scene, "Scripted");
+    auto entity = scene.CreateEntity("Scripted");
     AddScript(scene, entity, state);
 
     system.Update(scene, 0.016f);
@@ -119,15 +118,15 @@ AXIS_TEST_CASE("ScriptableSystem skips inactive entity script")
     Scene scene;
     ScriptableSystem system;
     ScriptState state;
-    auto entity = EntityManager::CreateEntity(scene, "InactiveScripted");
-    scene.registry.get<InfoComponent>(entity).isActive = false;
+    auto entity = scene.CreateEntity("InactiveScripted");
+    scene.GetComponent<InfoComponent>(entity).isActive = false;
     AddScript(scene, entity, state);
 
     system.Update(scene, 0.016f);
 
     AXIS_CHECK(state.createCount == 0);
     AXIS_CHECK(state.updateCount == 0);
-    AXIS_CHECK(scene.registry.get<ScriptComponent>(entity).instance == nullptr);
+    AXIS_CHECK(scene.GetComponent<ScriptComponent>(entity).instance == nullptr);
 }
 
 AXIS_TEST_CASE("ScriptableSystem disables throwing script")
@@ -136,13 +135,13 @@ AXIS_TEST_CASE("ScriptableSystem disables throwing script")
     ScriptableSystem system;
     ScriptState state;
     state.throwOnUpdate = true;
-    auto entity = EntityManager::CreateEntity(scene, "ThrowingScripted");
+    auto entity = scene.CreateEntity("ThrowingScripted");
     AddScript(scene, entity, state);
 
     AXIS_EXPECT_ERROR_LOGS(1);
     system.Update(scene, 0.016f);
 
-    auto& script = scene.registry.get<ScriptComponent>(entity);
+    auto& script = scene.GetComponent<ScriptComponent>(entity);
     AXIS_CHECK(script.instance != nullptr);
     AXIS_CHECK(!script.instance->IsEnabled());
     AXIS_CHECK(state.disableCount == 1);
@@ -154,8 +153,8 @@ AXIS_TEST_CASE("ScriptableSystem collision event dispatches to both scripts")
     ScriptableSystem system;
     ScriptState stateA;
     ScriptState stateB;
-    auto entityA = EntityManager::CreateEntity(scene, "ScriptA");
-    auto entityB = EntityManager::CreateEntity(scene, "ScriptB");
+    auto entityA = scene.CreateEntity("ScriptA");
+    auto entityB = scene.CreateEntity("ScriptB");
     AddScript(scene, entityA, stateA).instance = std::make_unique<RecordingScript>(stateA);
     AddScript(scene, entityB, stateB).instance = std::make_unique<RecordingScript>(stateB);
 
@@ -175,9 +174,9 @@ AXIS_TEST_CASE("ScriptableSystem key press and release skip inactive scripts")
     ScriptableSystem system;
     ScriptState activeState;
     ScriptState inactiveState;
-    auto active = EntityManager::CreateEntity(scene, "ActiveScript");
-    auto inactive = EntityManager::CreateEntity(scene, "InactiveScript");
-    scene.registry.get<InfoComponent>(inactive).isActive = false;
+    auto active = scene.CreateEntity("ActiveScript");
+    auto inactive = scene.CreateEntity("InactiveScript");
+    scene.GetComponent<InfoComponent>(inactive).isActive = false;
     AddScript(scene, active, activeState).instance = std::make_unique<RecordingScript>(activeState);
     AddScript(scene, inactive, inactiveState).instance = std::make_unique<RecordingScript>(inactiveState);
 

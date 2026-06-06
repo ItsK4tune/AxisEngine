@@ -15,20 +15,13 @@ void SampleState::LoadScene20()
         .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.2f)
         .Build();
 
-    auto floor = EntityBuilder(scene, res, "scenario")
-                     .WithName("Floor")
-                     .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-                     .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-                     .Build();
-
-    auto& floorShape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-    ConfigureBoxCollider(floorShape, glm::vec3(1.0f, 0.5f, 1.0f));
-    floorShape.restitution = m_S20Restitution;
-    floorShape.friction = m_S20Friction;
-
-    auto& floorRB = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-    floorRB.mass = 0.0f;
-    floorRB.isStatic = true;
+    EntityBuilder(scene, res, "scenario")
+        .WithName("Floor")
+        .WithTransform(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
+        .WithRigidShape(ShapeType::Box, glm::vec3(1.0f, 0.5f, 1.0f), 1.0f, 2.0f, m_S20Friction, m_S20Restitution)
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     std::string modelName = "cubeModel";
     ShapeType st = ShapeType::Box;
@@ -51,30 +44,20 @@ void SampleState::LoadScene20()
         float z = static_cast<float>(((i / 10) % 10) - 5) * m_S20GridSpacing +
                   (static_cast<float>(rand() % 100) / 400.0f - 0.125f);
 
-        auto bodyEntity =
-            EntityBuilder(scene, res, "scenario")
-                .WithName("PhysicsEntity_" + std::to_string(i))
-                .WithTransform(glm::vec3(x, y, z), glm::vec3(rand() % 360, rand() % 360, rand() % 360), glm::vec3(1.0f))
-                .WithPBRMesh(modelName, "deferred_lit", 0.1f, 0.6f, 1.0f)
-                .Build();
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, bodyEntity);
-        ConfigurePrimitiveCollider(shape, st);
-        shape.restitution = m_S20Restitution;
-        shape.friction = m_S20Friction;
-
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, bodyEntity);
-        rb.mass = m_S20Mass;
-        rb.isStatic = false;
-        rb.linearDamping = m_S20LinearDamping;
-        rb.angularDamping = m_S20AngularDamping;
+        EntityBuilder(scene, res, "scenario")
+            .WithName("PhysicsEntity_" + std::to_string(i))
+            .WithTransform(glm::vec3(x, y, z), glm::vec3(rand() % 360, rand() % 360, rand() % 360), glm::vec3(1.0f))
+            .WithPBRMesh(modelName, "deferred_lit", 0.1f, 0.6f, 1.0f)
+            .WithRigidShape(st, glm::vec3(1.0f), 1.0f, 2.0f, m_S20Friction, m_S20Restitution)
+            .WithRigidBody(m_S20Mass, false, false, m_S20LinearDamping, m_S20AngularDamping)
+            .Build();
     }
 
     auto& physicsSystem = GetSystem<PhysicsSystem>();
     physicsSystem.Update(scene, 0.0f);
     if (m_S20InitialImpulse > 0.0f)
     {
-        auto view = scene.registry.view<RigidBodyComponent, InfoComponent>();
+        auto view = scene.View<RigidBodyComponent, InfoComponent>();
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);

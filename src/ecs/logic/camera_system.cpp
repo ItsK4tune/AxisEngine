@@ -21,7 +21,7 @@ void CameraSystem::Initialize()
             if (!scene)
                 return;
 
-            auto view = scene->registry.view<CameraComponent>();
+            auto view = scene->GetRegistry().view<CameraComponent>();
             float aspect = (float)e.width / (float)e.height;
             for (auto entity : view)
             {
@@ -51,7 +51,7 @@ void CameraSystem::Shutdown()
 
 void CameraSystem::Update(Scene& scene, float dt)
 {
-    auto view = scene.registry.view<CameraComponent, PositionComponent, RotationComponent>();
+    auto view = scene.GetRegistry().view<CameraComponent, PositionComponent, RotationComponent>();
     for (auto entity : view)
     {
         auto& camera = view.get<CameraComponent>(entity);

@@ -34,7 +34,7 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         glm::vec3 min, max;
     };
     std::vector<ObstacleAABB> obstacles;
-    auto infoView = scene.registry.view<InfoComponent, WorldTransformComponent>();
+    auto infoView = scene.View<InfoComponent, WorldTransformComponent>();
     for (auto ent : infoView)
     {
         auto& info = infoView.get<InfoComponent>(ent);
@@ -51,9 +51,9 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
             continue;
 
         auto& transform = infoView.get<WorldTransformComponent>(ent);
-        if (scene.registry.all_of<MeshRendererComponent>(ent))
+        if (scene.HasAllComponents<MeshRendererComponent>(ent))
         {
-            auto& renderer = scene.registry.get<MeshRendererComponent>(ent);
+            auto& renderer = scene.GetComponent<MeshRendererComponent>(ent);
             glm::vec3 localMin(-0.5f);
             glm::vec3 localMax(0.5f);
             if (renderer.model)
@@ -125,7 +125,7 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
 
     LOGGER_INFO("NavMeshGenerator") << "Gathering walkable geometry for " << walkableTags.size() << " tags.";
 
-    auto meshView = scene.registry.view<InfoComponent, MeshRendererComponent, WorldTransformComponent>();
+    auto meshView = scene.View<InfoComponent, MeshRendererComponent, WorldTransformComponent>();
     for (auto entity : meshView)
     {
         auto& info = meshView.get<InfoComponent>(entity);
@@ -171,7 +171,7 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
         }
     }
 
-    auto terrainView = scene.registry.view<TerrainComponent, PositionComponent>();
+    auto terrainView = scene.View<TerrainComponent, PositionComponent>();
     for (auto entity : terrainView)
     {
         auto& terrain = terrainView.get<TerrainComponent>(entity);

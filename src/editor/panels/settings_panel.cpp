@@ -201,6 +201,8 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::Checkbox("Invert Y", &conf.input.mouseInvertY))
             changed = true;
+        if (ImGui::Checkbox("Raw Mouse Input", &conf.input.rawMouseInput))
+            changed = true;
         if (ImGui::SliderFloat("Master Volume", &conf.audio.masterVolume, 0.0f, 100.0f))
             changed = true;
     }

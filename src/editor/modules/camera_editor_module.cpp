@@ -7,7 +7,6 @@
 #include <core/app/runtime_core.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <ecs/logic/entity_manager.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
@@ -25,16 +24,16 @@ constexpr const char* kDefaultCameraController = "DefaultCameraController";
 
 bool IsDebugCamera(Scene& scene, entt::entity entity)
 {
-    if (!scene.registry.valid(entity) || !scene.registry.all_of<CameraComponent>(entity))
+    if (!scene.IsValid(entity) || !scene.HasAllComponents<CameraComponent>(entity))
         return false;
 
-    auto* info = scene.registry.try_get<InfoComponent>(entity);
+    auto* info = scene.TryGetComponent<InfoComponent>(entity);
     return info && (info->name == kDebugCameraName || info->tag == kDebugCameraTag);
 }
 
 entt::entity FindDebugCamera(Scene& scene)
 {
-    auto view = scene.registry.view<CameraComponent, InfoComponent>();
+    auto view = scene.View<CameraComponent, InfoComponent>();
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
@@ -47,7 +46,7 @@ entt::entity FindDebugCamera(Scene& scene)
 void RemoveDuplicateDebugCameras(Scene& scene, entt::entity keep)
 {
     std::vector<entt::entity> duplicates;
-    auto view = scene.registry.view<CameraComponent, InfoComponent>();
+    auto view = scene.View<CameraComponent, InfoComponent>();
     for (auto entity : view)
     {
         if (entity == keep)
@@ -61,8 +60,8 @@ void RemoveDuplicateDebugCameras(Scene& scene, entt::entity keep)
     auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
     for (auto entity : duplicates)
     {
-        if (scene.registry.valid(entity))
-            EntityManager::DestroyEntity(scene, entity, sceneMgr);
+        if (scene.IsValid(entity))
+            scene.DestroyEntity(entity, sceneMgr);
     }
 }
 
@@ -77,7 +76,7 @@ void ResetScriptInstance(ScriptComponent* sc)
 
 void AttachDebugCameraScript(Scene& scene, entt::entity camera)
 {
-    auto& scriptComp = scene.registry.get_or_emplace<ScriptComponent>(camera);
+    auto& scriptComp = scene.GetOrAddComponent<ScriptComponent>(camera);
     scriptComp.className = kDefaultCameraController;
     scriptComp.InstantiateScript = []() {
         return ServiceLocator::Instance().Require<ScriptRegistry>().Create(kDefaultCameraController);
@@ -129,7 +128,7 @@ void CameraEditorModule::ProcessInput(KeyboardManager& keyboard)
 void CameraEditorModule::ToggleDebugCamera()
 {
     auto& scene = ServiceLocator::Instance().Require<Scene>();
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     if (!IsDebugCamera(scene, m_DebugCamera))
         m_DebugCamera = FindDebugCamera(scene);
     if (m_DebugCamera != entt::null)
@@ -162,7 +161,7 @@ void CameraEditorModule::ToggleDebugCamera()
     }
     else
     {
-        m_LastActiveCamera = EntityManager::GetActiveCamera(scene);
+        m_LastActiveCamera = scene.GetActiveCamera();
         if (registry.valid(m_LastActiveCamera))
         {
             if (registry.all_of<CameraComponent>(m_LastActiveCamera))
@@ -171,7 +170,7 @@ void CameraEditorModule::ToggleDebugCamera()
 
         if (!registry.valid(m_DebugCamera))
         {
-            m_DebugCamera = EntityManager::CreateEntity(scene, kDebugCameraName, kDebugCameraTag);
+            m_DebugCamera = scene.CreateEntity(kDebugCameraName, kDebugCameraTag);
             auto& info = registry.get<InfoComponent>(m_DebugCamera);
             info.name = kDebugCameraName;
             info.tag = kDebugCameraTag;

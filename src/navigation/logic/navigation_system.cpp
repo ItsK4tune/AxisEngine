@@ -55,7 +55,7 @@ glm::vec3 ComputeLocalAvoidance(Scene& scene, entt::entity self, const glm::vec3
         return glm::vec3(0.0f);
 
     glm::vec3 avoidance(0.0f);
-    auto view = scene.registry.view<PositionComponent, PathFollowerComponent, InfoComponent>();
+    auto view = scene.View<PositionComponent, PathFollowerComponent, InfoComponent>();
     for (auto other : view)
     {
         if (other == self)
@@ -85,9 +85,9 @@ glm::vec3 ComputeLocalAvoidance(Scene& scene, entt::entity self, const glm::vec3
     {
         const glm::vec3 rayOrigin = position + glm::vec3(0.0f, 0.5f, 0.0f);
         auto hit = physics->Raycast(rayOrigin, glm::normalize(moveDir), follower.obstacleAvoidanceDistance, self);
-        if (hit.hasHit && scene.registry.valid(hit.entity))
+        if (hit.hasHit && scene.IsValid(hit.entity))
         {
-            const auto* info = scene.registry.try_get<InfoComponent>(hit.entity);
+            const auto* info = scene.TryGetComponent<InfoComponent>(hit.entity);
             if (info && HasTag(obstacleTags, info->tag))
             {
                 glm::vec3 side = glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), moveDir);
@@ -128,7 +128,7 @@ void NavigationSystem::UpdateNavMesh(Scene& scene)
     auto& sl = ServiceLocator::Instance();
     auto& resources = sl.Require<ResourceManager>();
 
-    auto view = scene.registry.view<NavMeshComponent>();
+    auto view = scene.View<NavMeshComponent>();
     for (auto entity : view)
     {
         auto& navMesh = view.get<NavMeshComponent>(entity);
@@ -152,17 +152,17 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
     auto physics_ptr = sl.Resolve<IPhysicsWorld>();
 
     auto view =
-        scene.registry.view<PositionComponent, RotationComponent, WorldTransformComponent, PathFollowerComponent>();
+        scene.View<PositionComponent, RotationComponent, WorldTransformComponent, PathFollowerComponent>();
 
     NavMeshComponent* globalNavMesh = nullptr;
-    auto navMeshView = scene.registry.view<NavMeshComponent>();
+    auto navMeshView = scene.View<NavMeshComponent>();
     if (!navMeshView.empty())
     {
         globalNavMesh = &navMeshView.get<NavMeshComponent>(navMeshView.front());
     }
 
     NavigationGridComponent* globalGrid = nullptr;
-    auto gridView = scene.registry.view<NavigationGridComponent>();
+    auto gridView = scene.View<NavigationGridComponent>();
     for (auto gridEntity : gridView)
     {
         auto& grid = gridView.get<NavigationGridComponent>(gridEntity);
@@ -182,18 +182,18 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
         NavMeshComponent* selectedNavMesh = globalNavMesh;
         NavigationGridComponent* selectedGrid = globalGrid;
 
-        if (follower.navigationProviderEntity != entt::null && scene.registry.valid(follower.navigationProviderEntity))
+        if (follower.navigationProviderEntity != entt::null && scene.IsValid(follower.navigationProviderEntity))
         {
             if (follower.pathfindingOptions.provider == NavigationProvider::NavMesh ||
                 follower.pathfindingOptions.provider == NavigationProvider::Auto)
             {
-                if (auto* nav = scene.registry.try_get<NavMeshComponent>(follower.navigationProviderEntity))
+                if (auto* nav = scene.TryGetComponent<NavMeshComponent>(follower.navigationProviderEntity))
                     selectedNavMesh = nav;
             }
             if (follower.pathfindingOptions.provider == NavigationProvider::Grid ||
                 follower.pathfindingOptions.provider == NavigationProvider::Auto)
             {
-                if (auto* grid = scene.registry.try_get<NavigationGridComponent>(follower.navigationProviderEntity);
+                if (auto* grid = scene.TryGetComponent<NavigationGridComponent>(follower.navigationProviderEntity);
                     grid && grid->IsValid())
                 {
                     selectedGrid = grid;
@@ -365,9 +365,9 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                         if (groundHit.hasHit)
                         {
                             bool isObstacle = false;
-                            if (scene.registry.valid(groundHit.entity))
+                            if (scene.IsValid(groundHit.entity))
                             {
-                                auto* info = scene.registry.try_get<InfoComponent>(groundHit.entity);
+                                auto* info = scene.TryGetComponent<InfoComponent>(groundHit.entity);
                                 if (info && info->tag == "obstacle")
                                 {
                                     isObstacle = true;
@@ -513,7 +513,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
 void NavigationSystem::StopMoving(Scene& scene, entt::entity entity)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
     {
         follower->isMoving = false;
@@ -527,21 +527,21 @@ void NavigationSystem::StopMoving(Scene& scene, entt::entity entity)
 
 bool NavigationSystem::IsMoving(Scene& scene, entt::entity entity)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     return follower ? follower->isMoving : false;
 }
 
 void NavigationSystem::SetMoveSpeed(Scene& scene, entt::entity entity, float speed)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
         follower->moveSpeed = speed;
 }
 
 float NavigationSystem::GetRemainingDistance(Scene& scene, entt::entity entity)
 {
-    auto* pos = scene.registry.try_get<PositionComponent>(entity);
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* pos = scene.TryGetComponent<PositionComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
 
     if (!pos || !follower || !follower->isMoving || follower->currentPath.empty())
         return 0.0f;
@@ -560,7 +560,7 @@ float NavigationSystem::GetRemainingDistance(Scene& scene, entt::entity entity)
 
 void NavigationSystem::MoveTo(Scene& scene, entt::entity entity, const glm::vec3& position)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
     {
         follower->targetPosition = position;
@@ -570,7 +570,7 @@ void NavigationSystem::MoveTo(Scene& scene, entt::entity entity, const glm::vec3
 
 bool NavigationSystem::HasTarget(Scene& scene, entt::entity entity)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     return follower ? (follower->pathPending || follower->isMoving) : false;
 }
 
@@ -583,7 +583,7 @@ void NavigationSystem::Render(Scene& scene)
     if (!physics_ptr)
         return;
 
-    auto navMeshView = scene.registry.view<NavMeshComponent>();
+    auto navMeshView = scene.View<NavMeshComponent>();
     for (auto entity : navMeshView)
     {
         auto& navMesh = navMeshView.get<NavMeshComponent>(entity);
@@ -601,7 +601,7 @@ void NavigationSystem::Render(Scene& scene)
         }
     }
 
-    auto pathView = scene.registry.view<PositionComponent, PathFollowerComponent>();
+    auto pathView = scene.View<PositionComponent, PathFollowerComponent>();
     for (auto entity : pathView)
     {
         auto& follower = pathView.get<PathFollowerComponent>(entity);
@@ -659,14 +659,14 @@ void NavigationSystem::ClearCarveTags()
 
 void NavigationSystem::SetPathfindingCriteria(Scene& scene, entt::entity entity, PathfindingCriteria criteria)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
         follower->pathfindingOptions.criteria = criteria;
 }
 
 void NavigationSystem::SetPreferredTags(Scene& scene, entt::entity entity, const std::vector<std::string>& tags)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
         follower->pathfindingOptions.preferredTags = tags;
 }
@@ -674,7 +674,7 @@ void NavigationSystem::SetPreferredTags(Scene& scene, entt::entity entity, const
 void NavigationSystem::SetCustomCostFunction(Scene& scene, entt::entity entity,
                                              std::function<float(uint32_t, uint32_t, const NavMeshComponent&)> func)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
     {
         follower->pathfindingOptions.criteria = PathfindingCriteria::Custom;
@@ -685,7 +685,7 @@ void NavigationSystem::SetCustomCostFunction(Scene& scene, entt::entity entity,
 void NavigationSystem::SetCustomGridCostFunction(
     Scene& scene, entt::entity entity, std::function<float(uint32_t, uint32_t, const NavigationGridComponent&)> func)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
     {
         follower->pathfindingOptions.criteria = PathfindingCriteria::Custom;
@@ -696,7 +696,7 @@ void NavigationSystem::SetCustomGridCostFunction(
 void NavigationSystem::SetNavigationProviderEntity(Scene& scene, entt::entity entity, entt::entity provider,
                                                    NavigationProvider providerType)
 {
-    auto* follower = scene.registry.try_get<PathFollowerComponent>(entity);
+    auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
     {
         follower->navigationProviderEntity = provider;

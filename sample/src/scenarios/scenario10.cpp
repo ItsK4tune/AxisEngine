@@ -40,7 +40,7 @@ void SampleState::LoadScene10()
             .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.1f, 1.0f)
             .Build();
 
-        auto& mat = scene.registry.get<AxisMaterialComponent>(ent);
+        auto& mat = scene.GetComponent<MaterialComponent>(ent);
         mat.desc.emission = g.emissionColor;
         mat.gpu.dirty = true;
 
@@ -70,11 +70,10 @@ void SampleState::LoadScene10()
     m_PPPartialW = 520;
     m_PPPartialH = 300;
 
-    auto ppEntity = EntityBuilder(scene, res, "scenario")
+    EntityBuilder(scene, res, "scenario")
         .WithName("Scenario10PostProcess")
+        .WithPostProcess(PostProcessComponent{true, {}})
         .Build();
-    auto& pp = scene.registry.emplace<PostProcessComponent>(ppEntity);
-    pp.enabled = true;
 
     auto* sysMgr = Resolve<SystemManager>();
     if (sysMgr)

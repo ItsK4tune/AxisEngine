@@ -4,7 +4,6 @@
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_skybox_service.h>
 #include <ecs/interface/i_lighting_service.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/reflection_components.h>
@@ -37,7 +36,7 @@ void PlanarReflectionSystem::Shutdown()
     // Get the global scene/registry to clean up resources
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
-    auto view = scene.registry.view<PlanarReflectionComponent>();
+    auto view = scene.View<PlanarReflectionComponent>();
     for (auto entity : view)
     {
         auto& comp = view.get<PlanarReflectionComponent>(entity);
@@ -55,16 +54,16 @@ void PlanarReflectionSystem::Render(Scene& scene)
     if (!m_Enabled || !m_Context || !m_RenderService)
         return;
 
-    auto view = scene.registry.view<PlanarReflectionComponent, PositionComponent, RotationComponent>();
+    auto view = scene.View<PlanarReflectionComponent, PositionComponent, RotationComponent>();
     if (view.begin() == view.end())
         return;
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;
 
-    auto& cam = scene.registry.get<CameraComponent>(camEntity);
-    auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    auto& cam = scene.GetComponent<CameraComponent>(camEntity);
+    auto* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     if (!camPosComp)
         return;
     glm::vec3 camPos = camPosComp->value;

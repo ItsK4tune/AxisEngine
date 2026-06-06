@@ -135,21 +135,21 @@ public:
     template <typename T>
     T& GetComponent()
     {
-        return GetScene().registry.get<T>(m_Entity);
+        return GetScene().GetComponent<T>(m_Entity);
     }
 
     template <typename T>
     bool HasComponent()
     {
-        return GetScene().registry.all_of<T>(m_Entity);
+        return GetScene().HasAllComponents<T>(m_Entity);
     }
 
     template <typename T>
     T* GetScript(entt::entity targetEntity)
     {
-        if (GetScene().registry.valid(targetEntity) && GetScene().registry.all_of<ScriptComponent>(targetEntity))
+        if (GetScene().IsValid(targetEntity) && GetScene().HasAllComponents<ScriptComponent>(targetEntity))
         {
-            auto& sc = GetScene().registry.get<ScriptComponent>(targetEntity);
+            auto& sc = GetScene().GetComponent<ScriptComponent>(targetEntity);
             if (sc.instance)
             {
                 return dynamic_cast<T*>(sc.instance.get());

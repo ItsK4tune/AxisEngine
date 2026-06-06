@@ -62,7 +62,7 @@ void ReflectionProbeSystem::Update(Scene& scene, float dt)
 
 void ReflectionProbeSystem::RenderCapturePass(Scene& scene, int width, int height)
 {
-    auto view = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
+    auto view = scene.View<PositionComponent, ReflectionProbeComponent>();
     for (auto entity : view)
     {
         auto& probe = view.get<ReflectionProbeComponent>(entity);
@@ -126,8 +126,8 @@ void ReflectionProbeSystem::CaptureProbe(Scene& scene, entt::entity entity, int 
     auto& tm = context.GetTextureManager();
     auto& renderService = *renderService_ptr;
 
-    auto& pos = scene.registry.get<PositionComponent>(entity).value;
-    auto& probe = scene.registry.get<ReflectionProbeComponent>(entity);
+    auto& pos = scene.GetComponent<PositionComponent>(entity).value;
+    auto& probe = scene.GetComponent<ReflectionProbeComponent>(entity);
 
     if (probe.cubemapID == 0 || probe.lastResolution != probe.resolution)
     {

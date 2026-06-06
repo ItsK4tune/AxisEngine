@@ -140,24 +140,24 @@ void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& sc
 
     for (auto entity : scriptEntities)
     {
-        if (!scene.registry.valid(entity))
+        if (!scene.GetRegistry().valid(entity))
             continue;
 
-        auto* info = scene.registry.try_get<InfoComponent>(entity);
+        auto* info = scene.GetRegistry().try_get<InfoComponent>(entity);
         if (!info || !info->isActive)
             continue;
 
-        auto* script = scene.registry.try_get<ScriptComponent>(entity);
+        auto* script = scene.GetRegistry().try_get<ScriptComponent>(entity);
         if (!script || !script->instance || !script->instance->IsEnabled())
             continue;
 
-        auto* uiTransform = scene.registry.try_get<UITransformComponent>(entity);
+        auto* uiTransform = scene.GetRegistry().try_get<UITransformComponent>(entity);
         if (!uiTransform)
             continue;
 
         ScriptableUIRect rect =
-            CalculateScriptableUIRect(scene.registry, entity, screenWidth / scaleFactor, screenHeight / scaleFactor);
-        if (auto* animation = scene.registry.try_get<UIAnimationComponent>(entity))
+            CalculateScriptableUIRect(scene.GetRegistry(), entity, screenWidth / scaleFactor, screenHeight / scaleFactor);
+        if (auto* animation = scene.GetRegistry().try_get<UIAnimationComponent>(entity))
             rect = ApplyScriptableVisualScale(rect, *uiTransform, animation->visualScale);
 
         const bool isInside = mousePos.x >= rect.pos.x && mousePos.x <= rect.pos.x + rect.size.x &&
@@ -290,7 +290,7 @@ void ScriptableSystem::OnSceneChanged(const SceneChangedEvent& e)
             e.registry->on_destroy<ScriptComponent>().connect<&ScriptableSystem::OnScriptComponentDestroyed>(this);
             m_BoundRegistries.insert(e.registry);
         }
-
+ 
         m_ScriptEntities.clear();
         auto view = e.registry->view<ScriptComponent>();
         m_ScriptEntities.assign(view.begin(), view.end());
@@ -315,9 +315,9 @@ void ScriptableSystem::OnEntityCollision(const EntityCollisionEvent& e)
         return;
 
     auto Dispatch = [&](entt::entity target, entt::entity other, CollisionEventType type) {
-        if (auto sc = m_ActiveScene->registry.try_get<ScriptComponent>(target))
+        if (auto sc = m_ActiveScene->GetRegistry().try_get<ScriptComponent>(target))
         {
-            if (auto info = m_ActiveScene->registry.try_get<InfoComponent>(target))
+            if (auto info = m_ActiveScene->GetRegistry().try_get<InfoComponent>(target))
             {
                 if (!info->isActive)
                     return;
@@ -344,9 +344,9 @@ void ScriptableSystem::OnEntityTrigger(const EntityTriggerEvent& e)
         return;
 
     auto Dispatch = [&](entt::entity target, entt::entity other, CollisionEventType type) {
-        if (auto sc = m_ActiveScene->registry.try_get<ScriptComponent>(target))
+        if (auto sc = m_ActiveScene->GetRegistry().try_get<ScriptComponent>(target))
         {
-            if (auto info = m_ActiveScene->registry.try_get<InfoComponent>(target))
+            if (auto info = m_ActiveScene->GetRegistry().try_get<InfoComponent>(target))
             {
                 if (!info->isActive)
                     return;
@@ -374,13 +374,13 @@ void ScriptableSystem::OnKeyPressed(const KeyPressedEvent& e)
     auto entities = m_ScriptEntities;
     for (auto entity : entities)
     {
-        if (!m_ActiveScene->registry.valid(entity))
+        if (!m_ActiveScene->GetRegistry().valid(entity))
             continue;
-        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        auto* info = m_ActiveScene->GetRegistry().try_get<InfoComponent>(entity);
         if (!info || !info->isActive)
             continue;
 
-        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        auto* sc = m_ActiveScene->GetRegistry().try_get<ScriptComponent>(entity);
         if (sc && sc->instance && sc->instance->IsEnabled())
         {
             sc->instance->OnKeyPress(static_cast<Key>(e.key));
@@ -395,13 +395,13 @@ void ScriptableSystem::OnKeyReleased(const KeyReleasedEvent& e)
     auto entities = m_ScriptEntities;
     for (auto entity : entities)
     {
-        if (!m_ActiveScene->registry.valid(entity))
+        if (!m_ActiveScene->GetRegistry().valid(entity))
             continue;
-        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        auto* info = m_ActiveScene->GetRegistry().try_get<InfoComponent>(entity);
         if (!info || !info->isActive)
             continue;
 
-        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        auto* sc = m_ActiveScene->GetRegistry().try_get<ScriptComponent>(entity);
         if (sc && sc->instance && sc->instance->IsEnabled())
         {
             sc->instance->OnKeyRelease(static_cast<Key>(e.key));
@@ -416,13 +416,13 @@ void ScriptableSystem::OnMouseButtonPressed(const MouseButtonPressedEvent& e)
     auto entities = m_ScriptEntities;
     for (auto entity : entities)
     {
-        if (!m_ActiveScene->registry.valid(entity))
+        if (!m_ActiveScene->GetRegistry().valid(entity))
             continue;
-        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        auto* info = m_ActiveScene->GetRegistry().try_get<InfoComponent>(entity);
         if (!info || !info->isActive)
             continue;
 
-        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        auto* sc = m_ActiveScene->GetRegistry().try_get<ScriptComponent>(entity);
         if (sc && sc->instance && sc->instance->IsEnabled())
         {
             sc->instance->OnMouseButtonPress(static_cast<Mouse>(e.button));
@@ -437,13 +437,13 @@ void ScriptableSystem::OnMouseButtonReleased(const MouseButtonReleasedEvent& e)
     auto entities = m_ScriptEntities;
     for (auto entity : entities)
     {
-        if (!m_ActiveScene->registry.valid(entity))
+        if (!m_ActiveScene->GetRegistry().valid(entity))
             continue;
-        auto* info = m_ActiveScene->registry.try_get<InfoComponent>(entity);
+        auto* info = m_ActiveScene->GetRegistry().try_get<InfoComponent>(entity);
         if (!info || !info->isActive)
             continue;
 
-        auto* sc = m_ActiveScene->registry.try_get<ScriptComponent>(entity);
+        auto* sc = m_ActiveScene->GetRegistry().try_get<ScriptComponent>(entity);
         if (sc && sc->instance && sc->instance->IsEnabled())
         {
             sc->instance->OnMouseButtonRelease(static_cast<Mouse>(e.button));
@@ -488,7 +488,7 @@ void ScriptableSystem::LoadScript(Scene& scene, entt::entity entity, const YAMLN
     if (className.empty() || className == "None")
         return;
 
-    auto& scriptComp = scene.registry.emplace<ScriptComponent>(entity);
+    auto& scriptComp = scene.GetRegistry().emplace<ScriptComponent>(entity);
     scriptComp.className = className;
 
     scriptComp.InstantiateScript = [className]() {
@@ -509,21 +509,21 @@ void ScriptableSystem::Update(Scene& scene, float dt)
 
     if (m_ActiveScene != &scene)
     {
-        OnSceneChanged(SceneChangedEvent{&scene.registry, &scene});
+        OnSceneChanged(SceneChangedEvent{&scene.GetRegistry(), &scene});
     }
 
     auto entities = m_ScriptEntities;
 
     for (auto entity : entities)
     {
-        if (!scene.registry.valid(entity))
+        if (!scene.GetRegistry().valid(entity))
             continue;
 
-        auto* info = scene.registry.try_get<InfoComponent>(entity);
+        auto* info = scene.GetRegistry().try_get<InfoComponent>(entity);
         if (!info || !info->isActive)
             continue;
 
-        auto* script = scene.registry.try_get<ScriptComponent>(entity);
+        auto* script = scene.GetRegistry().try_get<ScriptComponent>(entity);
         if (!script)
             continue;
 

@@ -43,7 +43,7 @@ void SampleState::LoadScene5()
                                    glm::vec3((col - 2) * 5.0f, 2.0f, (row - 2) * 5.0f), glm::vec3(0.0f), 2.0f,
                                    metallic, roughness, 1.0f)
                 .Build();
-            if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(sphere))
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(sphere))
                 renderer->color = glm::vec4(0.92f, 0.92f, 0.94f, 1.0f);
         }
     }

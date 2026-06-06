@@ -20,7 +20,7 @@ void StatsPanel::OnImGui(Scene& scene)
     ImGui::Text("Frame Time: %.3f ms", m_FrameTime);
     ImGui::Separator();
 
-    auto& reg = scene.registry;
+    auto& reg = scene.GetRegistry();
     size_t totalEntities = reg.storage<entt::entity>().size();
     size_t meshEntities = reg.view<MeshRendererComponent>().size();
     size_t physicsEntities = reg.view<RigidBodyComponent>().size();
@@ -72,7 +72,7 @@ void StatsPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("Scene Graph", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        auto view = scene.registry.view<InfoComponent>();
+        auto view = scene.View<InfoComponent>();
         for (auto entity : view)
         {
             const auto& info = view.get<InfoComponent>(entity);

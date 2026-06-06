@@ -13,18 +13,13 @@ void SampleState::LoadScene22()
     m_S22Targets.clear();
     ResetDefaultPlayerBindings();
 
-    auto floor = EntityBuilder(scene, res, "scenario")
-                     .WithName("S22QueryFloor")
-                     .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-                     .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.75f, 1.0f)
-                     .Build();
-    {
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-        ConfigureBoxCollider(shape, glm::vec3(1.0f, 0.05f, 1.0f));
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
-    }
+    EntityBuilder(scene, res, "scenario")
+        .WithName("S22QueryFloor")
+        .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.75f, 1.0f)
+        .WithRigidShape(ShapeType::Box, glm::vec3(1.0f, 0.05f, 1.0f))
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("S22DirLight")
@@ -37,7 +32,7 @@ void SampleState::LoadScene22()
                              .WithTransform(m_S22RayOrigin, glm::vec3(0.0f), glm::vec3(1.2f))
                              .WithPBRMesh("cubeModel", "deferred_lit", 0.05f, 0.35f, 1.0f)
                              .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S22EmitterEntity))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S22EmitterEntity))
         renderer->color = glm::vec4(0.1f, 0.85f, 1.0f, 1.0f);
 
     struct TargetSpec
@@ -71,20 +66,11 @@ void SampleState::LoadScene22()
                           .WithName("S22Target_" + std::to_string(i))
                           .WithTransform(spec.pos, glm::vec3(0.0f, i * 19.0f, 0.0f), spec.scale)
                           .WithPBRMesh(spec.model, "deferred_lit", 0.04f, 0.42f, 1.0f)
+                          .WithRigidShape(spec.shape, glm::vec3(1.0f), 1.0f, 2.0f, 0.55f, 0.4f)
+                          .WithRigidBody(1.0f, false, false, 0.35f, 0.55f)
                           .Build();
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(target))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(target))
             renderer->color = spec.color;
-
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, target);
-        ConfigurePrimitiveCollider(shape, spec.shape);
-        shape.restitution = 0.4f;
-        shape.friction = 0.55f;
-
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, target);
-        rb.mass = 1.0f;
-        rb.isStatic = false;
-        rb.linearDamping = 0.35f;
-        rb.angularDamping = 0.55f;
 
         m_S22Targets.push_back(target);
     }

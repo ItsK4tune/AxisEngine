@@ -243,14 +243,14 @@ void SampleState::LoadScene14()
                                   randomOffsetX, randomOffsetZ, 150, glm::vec3(1.5f));
 
     // 7. Set camera position to overview the terrain
-    auto camView = scene.registry.view<CameraComponent, PositionComponent, RotationComponent>();
+    auto camView = scene.View<CameraComponent, PositionComponent, RotationComponent>();
     for (auto camEntity : camView)
     {
         auto& pos = camView.get<PositionComponent>(camEntity);
         auto& rot = camView.get<RotationComponent>(camEntity);
         pos.value = glm::vec3(0.0f, m_S14TerrainHeight + 35.0f, m_S14TerrainLength * 0.65f);
         rot.value = glm::quat(glm::radians(glm::vec3(-22.0f, 0.0f, 0.0f)));
-        if (auto* world = scene.registry.try_get<WorldTransformComponent>(camEntity))
+        if (auto* world = scene.TryGetComponent<WorldTransformComponent>(camEntity))
             world->isDirty = true;
     }
 

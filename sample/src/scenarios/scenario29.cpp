@@ -27,7 +27,7 @@ void SampleState::LoadScene29()
         .WithTransform(glm::vec3(-10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
         .WithPBRMesh("cubeModel", "deferred_lit", 1.0f, 0.1f, 0.1f)
         .Build();
-    auto* rVi = scene.registry.try_get<MeshRendererComponent>(viCube);
+    auto* rVi = scene.TryGetComponent<MeshRendererComponent>(viCube);
     if (rVi) rVi->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
 
     auto enCube = EntityBuilder(scene, res, "scenario")
@@ -35,7 +35,7 @@ void SampleState::LoadScene29()
         .WithTransform(glm::vec3(10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
         .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.1f, 1.0f)
         .Build();
-    auto* rEn = scene.registry.try_get<MeshRendererComponent>(enCube);
+    auto* rEn = scene.TryGetComponent<MeshRendererComponent>(enCube);
     if (rEn) rEn->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);
 
     auto panel = EntityBuilder(scene, res, "scenario")
@@ -44,7 +44,7 @@ void SampleState::LoadScene29()
         .WithUIRenderer("l10n_preview_panel", glm::vec4(0.08f, 0.10f, 0.13f, 0.94f))
         .WithUIFlex(FlexDirection::Column, 12.0f)
         .Build();
-    scene.registry.get<UIFlexLayoutComponent>(panel).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(panel).autoSize = false;
 
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nPanelTitle")
@@ -71,7 +71,7 @@ void SampleState::LoadScene29()
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nEntityCountText")
         .WithUIChild(panel, glm::vec2(20.0f, 166.0f), glm::vec2(520.0f, 42.0f), 25)
-        .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)scene.registry.view<InfoComponent>().size())),
+        .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)scene.View<InfoComponent>().size())),
                     "time", 0.86f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
         .Build();

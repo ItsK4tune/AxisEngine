@@ -1,7 +1,6 @@
 #include "test_framework.h"
 #include "test_support.h"
 
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <navigation/logic/navigation_system.h>
 #include <navigation/unit/navmesh_component.h>
@@ -11,8 +10,8 @@ namespace
 {
 entt::entity CreateFollower(Scene& scene)
 {
-    auto entity = EntityManager::CreateEntity(scene, "Agent", "agent");
-    scene.registry.emplace<PathFollowerComponent>(entity);
+    auto entity = scene.CreateEntity("Agent", "agent");
+    scene.AddComponent<PathFollowerComponent>(entity);
     return entity;
 }
 }  // namespace
@@ -25,7 +24,7 @@ AXIS_TEST_CASE("NavigationSystem MoveTo sets pending target")
 
     navigation.MoveTo(scene, entity, {5.0f, 0.0f, 0.0f});
 
-    const auto& follower = scene.registry.get<PathFollowerComponent>(entity);
+    const auto& follower = scene.GetComponent<PathFollowerComponent>(entity);
     AXIS_CHECK(follower.pathPending);
     AXIS_CHECK(!follower.isMoving);
     AXIS_CHECK_NEAR(follower.targetPosition.x, 5.0f, 0.0001f);
@@ -37,7 +36,7 @@ AXIS_TEST_CASE("NavigationSystem no navmesh fails pending path cleanly")
     Scene scene;
     NavigationSystem navigation;
     auto entity = CreateFollower(scene);
-    auto& follower = scene.registry.get<PathFollowerComponent>(entity);
+    auto& follower = scene.GetComponent<PathFollowerComponent>(entity);
     follower.pathfindingOptions.criteria = PathfindingCriteria::Shortest;
 
     navigation.MoveTo(scene, entity, {5.0f, 0.0f, 0.0f});
@@ -54,7 +53,7 @@ AXIS_TEST_CASE("NavigationSystem straight line creates path and starts moving")
     Scene scene;
     NavigationSystem navigation;
     auto entity = CreateFollower(scene);
-    auto& follower = scene.registry.get<PathFollowerComponent>(entity);
+    auto& follower = scene.GetComponent<PathFollowerComponent>(entity);
     follower.pathfindingOptions.criteria = PathfindingCriteria::StraightLine;
     follower.moveSpeed = 5.0f;
 
@@ -62,7 +61,7 @@ AXIS_TEST_CASE("NavigationSystem straight line creates path and starts moving")
     navigation.Update(scene, 0.1f);
     navigation.Update(scene, 0.1f);
 
-    const auto& pos = scene.registry.get<PositionComponent>(entity);
+    const auto& pos = scene.GetComponent<PositionComponent>(entity);
     AXIS_CHECK(!follower.pathPending);
     AXIS_CHECK(follower.isMoving);
     AXIS_CHECK(follower.currentPath.size() == 2);
@@ -75,7 +74,7 @@ AXIS_TEST_CASE("NavigationSystem StopMoving clears state")
     Scene scene;
     NavigationSystem navigation;
     auto entity = CreateFollower(scene);
-    auto& follower = scene.registry.get<PathFollowerComponent>(entity);
+    auto& follower = scene.GetComponent<PathFollowerComponent>(entity);
     follower.isMoving = true;
     follower.pathPending = true;
     follower.currentPath = {{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}};
@@ -98,7 +97,7 @@ AXIS_TEST_CASE("NavigationSystem GetRemainingDistance sums remaining waypoints")
     Scene scene;
     NavigationSystem navigation;
     auto entity = CreateFollower(scene);
-    auto& follower = scene.registry.get<PathFollowerComponent>(entity);
+    auto& follower = scene.GetComponent<PathFollowerComponent>(entity);
     follower.isMoving = true;
     follower.currentPath = {{3.0f, 0.0f, 0.0f}, {3.0f, 4.0f, 0.0f}};
     follower.currentPathIndex = 0;

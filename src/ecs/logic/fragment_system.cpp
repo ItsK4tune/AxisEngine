@@ -28,7 +28,7 @@ void FragmentSystem::Update(Scene& scene, float dt)
 
     auto* audioSvc = sl.Resolve<AudioService>();
 
-    auto view = scene.registry.view<FragmentComponent>();
+    auto view = scene.View<FragmentComponent>();
 
     // Resolve SceneManager once ΓÇö needed for both cleanup and re-registration
     auto* sceneMgr = sl.Resolve<SceneManager>();
@@ -40,19 +40,19 @@ void FragmentSystem::Update(Scene& scene, float dt)
             continue;
 
         // Clear existing children before re-instantiating (recursive)
-        if (auto* h = scene.registry.try_get<HierarchyComponent>(entity))
+        if (auto* h = scene.TryGetComponent<HierarchyComponent>(entity))
         {
             auto childrenCopy = h->children;
 
             std::function<void(entt::entity)> destroyRecursive = [&](entt::entity e) {
-                if (auto* hc = scene.registry.try_get<HierarchyComponent>(e))
+                if (auto* hc = scene.TryGetComponent<HierarchyComponent>(e))
                 {
                     auto cc = hc->children;
                     for (auto c : cc) destroyRecursive(c);
                 }
                 if (sceneMgr)
                     sceneMgr->RemoveEntity(e);
-                scene.registry.destroy(e);
+                scene.Destroy(e);
             };
 
             for (auto child : childrenCopy)
@@ -80,7 +80,7 @@ void FragmentSystem::Update(Scene& scene, float dt)
 
         std::string parentSceneName = "";
         bool parentActive = true;
-        if (auto* info = scene.registry.try_get<InfoComponent>(entity))
+        if (auto* info = scene.TryGetComponent<InfoComponent>(entity))
         {
             parentSceneName = info->sceneName;
             parentActive = info->isActive;
@@ -91,7 +91,7 @@ void FragmentSystem::Update(Scene& scene, float dt)
 
         for (auto const& [name, e] : instantiated)
         {
-            if (auto* info = scene.registry.try_get<InfoComponent>(e))
+            if (auto* info = scene.TryGetComponent<InfoComponent>(e))
             {
                 if (!parentSceneName.empty())
                     info->sceneName = parentSceneName;

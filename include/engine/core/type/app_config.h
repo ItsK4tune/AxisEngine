@@ -81,6 +81,7 @@ struct InputConfig
     float mouseSensitivityY = 0.1f;
     bool mouseInvertX = false;
     bool mouseInvertY = false;
+    bool rawMouseInput = true;
 };
 
 struct AudioConfig
@@ -199,6 +200,7 @@ struct AppConfig
     float& mouseSensitivityY = input.mouseSensitivityY;
     bool& mouseInvertX = input.mouseInvertX;
     bool& mouseInvertY = input.mouseInvertY;
+    bool& rawMouseInput = input.rawMouseInput;
 
     AudioBackend& audioBackend = audio.audioBackend;
     float& masterVolume = audio.masterVolume;

@@ -2,7 +2,6 @@
 
 #include <axis_commons.h>
 
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/entity_builder.h>
 #include <ecs/interface/i_script_registry.h>
 #include <resource/logic/resource_manager.h>

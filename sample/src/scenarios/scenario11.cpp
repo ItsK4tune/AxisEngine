@@ -26,28 +26,21 @@ void SampleState::LoadScene11()
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
         .WithPBRMesh("planeModel", "deferred_lit", 0.02f, 0.35f, 1.0f)
         .Build();
-    if (auto* floorRenderer = scene.registry.try_get<MeshRendererComponent>(floor))
+    if (auto* floorRenderer = scene.TryGetComponent<MeshRendererComponent>(floor))
         floorRenderer->color = glm::vec4(0.55f, 0.55f, 0.52f, 1.0f);
 
     auto planarMirror = EntityBuilder(scene, res, "scenario")
         .WithName("PlanarMirror")
         .WithTransform(glm::vec3(0.0f, 0.00f, -50.0f), glm::vec3(90.0f, 0.0f, 0.0f), glm::vec3(38.0f, 1.0f, 24.0f))
         .WithPBRMesh("planeModel", "deferred_reflect", 0.0f, 0.04f, 1.0f)
+        .WithPlanarReflection(1024)
+        .WithReflective(0.85f, 3.0f, 0.08f)
         .Build();
-    if (auto* mirrorRenderer = scene.registry.try_get<MeshRendererComponent>(planarMirror))
+    if (auto* mirrorRenderer = scene.TryGetComponent<MeshRendererComponent>(planarMirror))
     {
         mirrorRenderer->color = glm::vec4(0.78f, 0.84f, 0.9f, 1.0f);
         mirrorRenderer->receiveShadow = false;
     }
-    auto& planar = scene.registry.emplace<PlanarReflectionComponent>(planarMirror);
-    planar.resolution = 1024;
-    planar.resolution_y = 1024;
-    planar.isDirty = true;
-    auto& planarReflective = scene.registry.emplace<ReflectiveComponent>(planarMirror);
-    planarReflective.reflectivity = 0.85f;
-    planarReflective.fresnelBias = 0.08f;
-    planarReflective.fresnelPower = 3.0f;
-    planarReflective.enabled = true;
     m_S11PlanarMirror = planarMirror;
 
     auto wallRed = EntityBuilder(scene, res, "scenario")
@@ -55,7 +48,7 @@ void SampleState::LoadScene11()
         .WithTransform(glm::vec3(-32.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
         .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
         .Build();
-    auto* rRed = scene.registry.try_get<MeshRendererComponent>(wallRed);
+    auto* rRed = scene.TryGetComponent<MeshRendererComponent>(wallRed);
     if (rRed) rRed->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
 
     auto wallBlue = EntityBuilder(scene, res, "scenario")
@@ -63,7 +56,7 @@ void SampleState::LoadScene11()
         .WithTransform(glm::vec3(32.0f, 5.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f, 10.0f, 20.0f))
         .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.65f, 1.0f)
         .Build();
-    auto* rBlue = scene.registry.try_get<MeshRendererComponent>(wallBlue);
+    auto* rBlue = scene.TryGetComponent<MeshRendererComponent>(wallBlue);
     if (rBlue) rBlue->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);
 
     struct CaseDef
@@ -97,32 +90,30 @@ void SampleState::LoadScene11()
         auto probeEntity = EntityBuilder(scene, res, "scenario")
             .WithName(c.probeName)
             .WithTransform(c.pos + glm::vec3(0.0f, 0.0f, -6.0f), glm::vec3(0.0f), glm::vec3(1.0f))
+            .WithReflectionProbe(ReflectionProbeType::Dynamic, c.probeResolution, true)
             .Build();
-        auto& probeComp = scene.registry.emplace<ReflectionProbeComponent>(probeEntity);
-        probeComp.type = ReflectionProbeType::Dynamic;
-        probeComp.resolution = c.probeResolution;
-        probeComp.boxProjection = true;
-        probeComp.boxMin = glm::vec3(-24.0f, -6.0f, -24.0f);
-        probeComp.boxMax = glm::vec3(24.0f, 16.0f, 24.0f);
-        probeComp.blendDistance = 6.0f;
-        probeComp.isDirty = true;
+        if (auto* probeComp = scene.TryGetComponent<ReflectionProbeComponent>(probeEntity))
+        {
+            probeComp->boxMin = glm::vec3(-24.0f, -6.0f, -24.0f);
+            probeComp->boxMax = glm::vec3(24.0f, 16.0f, 24.0f);
+            probeComp->blendDistance = 6.0f;
+        }
         m_S11ReflectionProbes.push_back(probeEntity);
 
         auto sphere = EntityBuilder(scene, res, "scenario")
             .WithName(c.sphereName)
             .WithTransform(c.pos, glm::vec3(0.0f), glm::vec3(4.0f))
             .WithPBRMesh("sphereModel", "deferred_reflect", 0.05f, 0.95f, 1.0f)
+            .WithReflective(c.reflectivity, c.fresnelPower, c.fresnelBias)
             .Build();
 
-        if (auto* sphereRenderer = scene.registry.try_get<MeshRendererComponent>(sphere))
+        if (auto* sphereRenderer = scene.TryGetComponent<MeshRendererComponent>(sphere))
             sphereRenderer->color = c.tint;
 
-        auto& refComp = scene.registry.emplace<ReflectiveComponent>(sphere);
-        refComp.reflectivity = c.reflectivity;
-        refComp.fresnelPower = c.fresnelPower;
-        refComp.fresnelBias = c.fresnelBias;
-        refComp.enabled = true;
-        refComp.targetProbe = c.probeName;
+        if (auto* refComp = scene.TryGetComponent<ReflectiveComponent>(sphere))
+        {
+            refComp->targetProbe = c.probeName;
+        }
         m_S11ReflectionSpheres.push_back(sphere);
     }
 }

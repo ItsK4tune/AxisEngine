@@ -33,7 +33,7 @@ void PhysicsCollisionDispatcher::DispatchEvents()
         entt::entity eA = info.bodyA;
         entt::entity eB = info.bodyB;
 
-        if (m_Scene.registry.valid(eA) && m_Scene.registry.valid(eB))
+        if (m_Scene.IsValid(eA) && m_Scene.IsValid(eB))
         {
             if (eA > eB)
                 std::swap(eA, eB);
@@ -69,11 +69,11 @@ void PhysicsCollisionDispatcher::DispatchEvents()
             entt::entity eA = pair.a;
             entt::entity eB = pair.b;
 
-            if (!m_Scene.registry.valid(eA) || !m_Scene.registry.valid(eB))
+            if (!m_Scene.IsValid(eA) || !m_Scene.IsValid(eB))
                 continue;
 
             bool isTrigger = false;
-            if (auto* rbA = m_Scene.registry.try_get<RigidBodyComponent>(eA))
+            if (auto* rbA = m_Scene.TryGetComponent<RigidBodyComponent>(eA))
             {
                 if (auto body = rbA->body)
                 {
@@ -83,7 +83,7 @@ void PhysicsCollisionDispatcher::DispatchEvents()
             }
             if (!isTrigger)
             {
-                if (auto* rbB = m_Scene.registry.try_get<RigidBodyComponent>(eB))
+                if (auto* rbB = m_Scene.TryGetComponent<RigidBodyComponent>(eB))
                 {
                     if (auto body = rbB->body)
                     {

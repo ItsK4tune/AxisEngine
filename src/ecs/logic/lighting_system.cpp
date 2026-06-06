@@ -204,7 +204,7 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     };
     ProbeEntry allProbes[MAX_PROBES];
     int numProbes = 0;
-    auto reflectionView = scene.registry.view<PositionComponent, ReflectionProbeComponent>();
+    auto reflectionView = scene.View<PositionComponent, ReflectionProbeComponent>();
     glm::vec3 camPos = rs->GetCameraPosition();
 
     ProbeEntry globalProbe = {entt::null, 0.0f, glm::vec3(0.0f), -1.0f};
@@ -271,7 +271,7 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     }
 
     // Bind nearest light probe
-    auto lpView = scene.registry.view<PositionComponent, LightProbeComponent>();
+    auto lpView = scene.View<PositionComponent, LightProbeComponent>();
     entt::entity nearestLP = entt::null;
     float minDistanceSq = std::numeric_limits<float>::max();
 
@@ -298,7 +298,7 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         m_DeferredLightShader->setBool("u_HasLightProbe", false);
     }
 
-    auto planarView = scene.registry.view<PlanarReflectionComponent>();
+    auto planarView = scene.View<PlanarReflectionComponent>();
     int planarCount = 0;
     std::vector<uint32_t> planarTextures;
     std::vector<glm::vec3> planarNormals;

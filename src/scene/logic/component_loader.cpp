@@ -6,7 +6,6 @@
 #include <core/logic/loader_utils.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
 #include <ecs/unit/fragment_component.h>
@@ -188,7 +187,7 @@ static std::string SerializeYAML(const YAMLNode& node, int indent = 0)
 
 static void RedundantLoader(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
-    auto& anim = scene.registry.emplace<AnimationComponent>(entity);
+    auto& anim = scene.AddComponent<AnimationComponent>(entity);
     std::stringstream ss(node.GetChildValue("Animation"));
     std::string a;
     while (ss >> a) anim.animations.push_back(a);
@@ -216,10 +215,10 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     glm::vec4 color(cr, cg, cb, ca);
 
     std::string entityName = "Unknown";
-    if (scene.registry.all_of<InfoComponent>(entity))
-        entityName = scene.registry.get<InfoComponent>(entity).name;
+    if (scene.HasAllComponents<InfoComponent>(entity))
+        entityName = scene.GetComponent<InfoComponent>(entity).name;
         
-    auto& r = scene.registry.emplace<MeshRendererComponent>(entity);
+    auto& r = scene.AddComponent<MeshRendererComponent>(entity);
     if (modelName.empty())
     {
         std::string keys = "";
@@ -256,7 +255,7 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, const YAML
 {
     LoaderUtils::ValidateKeys(node, {"Animation", "Speed", "StartTime", "Rate", "BlendFactor"}, "Animator");
 
-    auto& a = scene.registry.emplace<AnimationComponent>(entity);
+    auto& a = scene.AddComponent<AnimationComponent>(entity);
 
     std::string animNames = node.GetChildValue("Animation");
     if (animNames.empty())
@@ -299,15 +298,15 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, const YAML
             a.animator->SetUpdateRate(a.rate);
             a.animator->SetBlendFactor(a.blendFactor);
 
-            if (scene.registry.all_of<MeshRendererComponent>(entity))
+            if (scene.HasAllComponents<MeshRendererComponent>(entity))
             {
-                auto& mrc = scene.registry.get<MeshRendererComponent>(entity);
+                auto& mrc = scene.GetComponent<MeshRendererComponent>(entity);
                 if (mrc.model && mrc.model->IsStatic())
                 {
                     LOGGER_WARN("ComponentLoader")
                         << "Entity has Animator but its Model is STATIC! Animations will not play correctly. Entity: "
-                        << (scene.registry.all_of<InfoComponent>(entity)
-                                ? scene.registry.get<InfoComponent>(entity).name
+                        << (scene.HasAllComponents<InfoComponent>(entity)
+                                ? scene.GetComponent<InfoComponent>(entity).name
                                 : "Unknown");
                 }
             }
@@ -331,7 +330,7 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, const YAML
 void ComponentLoader::LoadPostProcess(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     LoaderUtils::ValidateKeys(node, {"Active", "Effects"}, "PostProcess");
-    auto& pp = scene.registry.emplace<PostProcessComponent>(entity);
+    auto& pp = scene.AddComponent<PostProcessComponent>(entity);
     pp.enabled = node.GetChildValue("Active", "true") == "true";
 
     std::string effectsStr = node.GetChildValue("Effects");
@@ -387,7 +386,7 @@ void ComponentLoader::LoadPostProcess(Scene& scene, entt::entity entity, const Y
 void ComponentLoader::LoadReflective(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     LoaderUtils::ValidateKeys(node, {"Active", "Reflectivity", "FresnelPower", "FresnelBias", "Probe"}, "Reflective");
-    auto& ref = scene.registry.emplace<ReflectiveComponent>(entity);
+    auto& ref = scene.AddComponent<ReflectiveComponent>(entity);
     ref.enabled = node.GetChildValue("Active", "true") == "true";
     ref.reflectivity = std::stof(node.GetChildValue("Reflectivity", "1.0"));
     ref.fresnelPower = std::stof(node.GetChildValue("FresnelPower", "5.0"));
@@ -399,7 +398,7 @@ void ComponentLoader::LoadCamera(Scene& scene, entt::entity entity, const YAMLNo
 {
     LoaderUtils::ValidateKeys(node, {"Primary", "FOV", "Yaw", "Pitch", "Near", "Far", "AspectRatio"}, "Camera");
 
-    auto& c = scene.registry.emplace<CameraComponent>(entity);
+    auto& c = scene.AddComponent<CameraComponent>(entity);
     c.isPrimary = node.GetChildValue("Primary", "1") == "1" || node.GetChildValue("Primary", "true") == "true";
 
     c.aspectRatio = std::stof(node.GetChildValue("AspectRatio", "0.0"));
@@ -425,7 +424,7 @@ void ComponentLoader::LoadCamera(Scene& scene, entt::entity entity, const YAMLNo
 
     glm::quat rotation = glm::quatLookAt(glm::normalize(front), up);
 
-    auto& rotComp = scene.registry.get_or_emplace<RotationComponent>(entity);
+    auto& rotComp = scene.GetOrAddComponent<RotationComponent>(entity);
     rotComp.value = rotation;
     rotComp.prev = rotation;
 
@@ -438,7 +437,7 @@ void ComponentLoader::LoadCamera(Scene& scene, entt::entity entity, const YAMLNo
         LOGGER_WARN("ComponentLoader") << "Camera Near plane must be less than Far plane";
 
     if (c.isPrimary)
-        EntityManager::SetActiveCamera(scene, entity);
+        scene.SetActiveCamera(entity);
 }
 
 void ComponentLoader::LoadLightDir(Scene& scene, entt::entity entity, const YAMLNode& node)
@@ -446,7 +445,7 @@ void ComponentLoader::LoadLightDir(Scene& scene, entt::entity entity, const YAML
     LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Ambient", "Diffuse", "Specular"},
                               "LightDir");
 
-    auto& l = scene.registry.emplace<DirectionalLightComponent>(entity);
+    auto& l = scene.AddComponent<DirectionalLightComponent>(entity);
 
     l.active = node.GetChildValue("Active", "1") == "1" || node.GetChildValue("Active", "true") == "true";
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
@@ -472,7 +471,7 @@ void ComponentLoader::LoadLightPoint(Scene& scene, entt::entity entity, const YA
                                "Quadratic", "Ambient", "Diffuse", "Specular"},
                               "LightPoint");
 
-    auto& l = scene.registry.emplace<PointLightComponent>(entity);
+    auto& l = scene.AddComponent<PointLightComponent>(entity);
 
     l.active = node.GetChildValue("Active", "1") == "1" || node.GetChildValue("Active", "true") == "true";
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
@@ -506,7 +505,7 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAM
                                "Linear", "Quadratic", "Radius", "Ambient", "Diffuse", "Specular"},
                               "LightSpot");
 
-    auto& l = scene.registry.emplace<SpotLightComponent>(entity);
+    auto& l = scene.AddComponent<SpotLightComponent>(entity);
 
     l.active = node.GetChildValue("Active", "1") == "1" || node.GetChildValue("Active", "true") == "true";
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
@@ -547,7 +546,7 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAM
 
 void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    auto& ui = scene.registry.emplace<UITransformComponent>(entity);
+    auto& ui = scene.AddComponent<UITransformComponent>(entity);
 
     auto parseVec2Percent = [](const std::string& str, glm::vec2& outVec, glm::bvec2& outPercent,
                                const glm::vec2& defaultVec) {
@@ -621,7 +620,7 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
 void ComponentLoader::LoadUIRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     LoaderUtils::ValidateKeys(node, {"Color", "color", "Texture", "texture", "Shader", "shader"}, "UIRenderer");
-    auto& ui = scene.registry.emplace<UIRendererComponent>(entity);
+    auto& ui = scene.AddComponent<UIRendererComponent>(entity);
 
     std::stringstream colorSS(node.GetChildValue("color", "1 1 1 1"));
     if (node.GetChildValue("color").empty())
@@ -669,9 +668,9 @@ void ComponentLoader::LoadUIRenderer(Scene& scene, entt::entity entity, const YA
 
 void ComponentLoader::LoadTransform(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    auto& p = scene.registry.get<PositionComponent>(entity);
-    auto& r = scene.registry.get<RotationComponent>(entity);
-    auto& s = scene.registry.get<ScaleComponent>(entity);
+    auto& p = scene.GetComponent<PositionComponent>(entity);
+    auto& r = scene.GetComponent<RotationComponent>(entity);
+    auto& s = scene.GetComponent<ScaleComponent>(entity);
 
     std::stringstream pSS(node.GetChildValue("Position", "0 0 0"));
     pSS >> p.value.x >> p.value.y >> p.value.z;
@@ -687,8 +686,8 @@ void ComponentLoader::LoadTransform(Scene& scene, entt::entity entity, const YAM
     sSS >> s.value.x >> s.value.y >> s.value.z;
     s.prev = s.value;
 
-    if (scene.registry.all_of<WorldTransformComponent>(entity))
-        scene.registry.get<WorldTransformComponent>(entity).isDirty = true;
+    if (scene.HasAllComponents<WorldTransformComponent>(entity))
+        scene.GetComponent<WorldTransformComponent>(entity).isDirty = true;
 }
 
 void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
@@ -697,7 +696,7 @@ void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, con
                               {"Active", "SpawnRate", "Lifetime", "StartSize", "EndSize", "StartColor", "EndColor",
                                "MinVelocity", "MaxVelocity"},
                               "ParticleEmitter");
-    auto& pe = scene.registry.emplace<ParticleEmitterComponent>(entity);
+    auto& pe = scene.AddComponent<ParticleEmitterComponent>(entity);
 
     pe.isActive = node.GetChildValue("Active", "true") == "true";
     pe.emitter.SpawnRate = std::stof(node.GetChildValue("SpawnRate", "10.0"));
@@ -739,7 +738,7 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
                               {"Text", "text", "Font", "font", "fontSize", "Color", "color", "Scale", "scale",
                                "Alignment", "alignment", "wordWrap", "maxWidth"},
                               "UIText");
-    auto& txt = scene.registry.emplace<UITextComponent>(entity);
+    auto& txt = scene.AddComponent<UITextComponent>(entity);
 
     auto StripQuotes = [](std::string s) {
         if (s.length() >= 2 && s.front() == '"' && s.back() == '"')
@@ -790,7 +789,7 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
 void ComponentLoader::LoadUIFlex(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
     LoaderUtils::ValidateKeys(node, {"direction", "spacing", "autoSize", "padding"}, "UIFlex");
-    auto& flex = scene.registry.emplace<UIFlexLayoutComponent>(entity);
+    auto& flex = scene.AddComponent<UIFlexLayoutComponent>(entity);
 
     std::string dirStr = node.GetChildValue("direction", "Column");
     flex.direction = (dirStr == "Row") ? FlexDirection::Row : FlexDirection::Column;
@@ -814,7 +813,7 @@ void ComponentLoader::LoadLOD(Scene& scene, entt::entity entity, const YAMLNode&
         return;
     }
 
-    auto& lod = scene.registry.emplace<LODComponent>(entity);
+    auto& lod = scene.AddComponent<LODComponent>(entity);
 
     std::stringstream modelSS(modelsStr);
     std::string modelName;
@@ -852,7 +851,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, cons
 {
     LoaderUtils::ValidateKeys(node, {"Skybox", "Shader"}, "SkyboxRenderer");
 
-    auto& comp = scene.registry.emplace<SkyboxRenderComponent>(entity);
+    auto& comp = scene.AddComponent<SkyboxRenderComponent>(entity);
 
     std::string skyboxName = node.GetChildValue("Skybox");
     std::string shaderName = node.GetChildValue("Shader");
@@ -869,7 +868,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, cons
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer skybox not found: " << skyboxName;
     if (comp.shader.expired())
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer shader not found: " << shaderName;
-    EntityManager::SetActiveSkybox(scene, entity);
+    scene.SetActiveSkybox(entity);
 }
 
 void ComponentLoader::LoadReflectionProbe(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
@@ -877,7 +876,7 @@ void ComponentLoader::LoadReflectionProbe(Scene& scene, entt::entity entity, con
     LoaderUtils::ValidateKeys(node, {"Type", "Resolution", "BoxProjection", "BoxMin", "BoxMax", "BlendDistance"},
                               "ReflectionProbe");
 
-    auto& comp = scene.registry.emplace<ReflectionProbeComponent>(entity);
+    auto& comp = scene.AddComponent<ReflectionProbeComponent>(entity);
 
     std::string typeStr = node.GetChildValue("Type", "Static");
     comp.type =
@@ -941,7 +940,7 @@ void ComponentLoader::LoadAudioSource(Scene& scene, entt::entity entity, const Y
     audio.minDistance = std::stof(node.GetChildValue("MinDistance", "1.0"));
     audio.maxDistance = std::stof(node.GetChildValue("MaxDistance", "100.0"));
 
-    scene.registry.emplace<AudioSourceComponent>(entity, audio);
+    scene.AddComponent<AudioSourceComponent>(entity, audio);
 }
 
 void ComponentLoader::LoadVideoPlayer(Scene& scene, entt::entity entity, const YAMLNode& node)
@@ -962,7 +961,7 @@ void ComponentLoader::LoadVideoPlayer(Scene& scene, entt::entity entity, const Y
     video.playOnAwake =
         node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
 
-    scene.registry.emplace<VideoPlayerComponent>(entity, video);
+    scene.AddComponent<VideoPlayerComponent>(entity, video);
 }
 
 void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
@@ -972,7 +971,7 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAML
         {"Opacity", "Roughness", "Metallic", "Albedo", "Normal", "MetallicMap", "RoughnessMap", "AO", "EmissiveMap",
          "SpecularMap", "Emission", "AlphaCutoff", "UVScale", "UVOffset", "AO_Map"},
         "Material");
-    auto& mat = scene.registry.emplace<AxisMaterialComponent>(entity);
+    auto& mat = scene.AddComponent<MaterialComponent>(entity);
     mat.desc.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
     mat.desc.pbr.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
     mat.desc.pbr.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
@@ -1008,7 +1007,7 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadFragment(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    auto& frag = scene.registry.emplace<FragmentComponent>(entity);
+    auto& frag = scene.AddComponent<FragmentComponent>(entity);
     frag.path = node.GetChildValue("Path");
 
     // Check for both "Override" (singular) and "Overrides" (plural)
@@ -1035,14 +1034,14 @@ void ComponentLoader::LoadFragment(Scene& scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadPathFollower(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    auto& pf = scene.registry.emplace<PathFollowerComponent>(entity);
+    auto& pf = scene.AddComponent<PathFollowerComponent>(entity);
     pf.moveSpeed = std::stof(node.GetChildValue("MoveSpeed", "5.0"));
     pf.arrivalDistance = std::stof(node.GetChildValue("ArrivalDistance", "0.5"));
 }
 
 void ComponentLoader::LoadDecal(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
-    auto& d = scene.registry.emplace<DecalComponent>(entity);
+    auto& d = scene.AddComponent<DecalComponent>(entity);
     d.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
     d.roughness = std::stof(node.GetChildValue("Roughness", "1.0"));
     d.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
@@ -1055,7 +1054,7 @@ void ComponentLoader::LoadDecal(Scene& scene, entt::entity entity, const YAMLNod
 
 void ComponentLoader::LoadPlanarReflection(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    auto& pr = scene.registry.emplace<PlanarReflectionComponent>(entity);
+    auto& pr = scene.AddComponent<PlanarReflectionComponent>(entity);
     pr.resolution = std::stoi(node.GetChildValue("Resolution", "1024"));
     std::stringstream ss(node.GetChildValue("Normal", "0 1 0"));
     ss >> pr.normal.x >> pr.normal.y >> pr.normal.z;
@@ -1063,14 +1062,14 @@ void ComponentLoader::LoadPlanarReflection(Scene& scene, entt::entity entity, co
 
 void ComponentLoader::LoadLightProbe(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    auto& lp = scene.registry.emplace<LightProbeComponent>(entity);
+    auto& lp = scene.AddComponent<LightProbeComponent>(entity);
     lp.intensity = std::stof(node.GetChildValue("Intensity", "1.0"));
     lp.radius = std::stof(node.GetChildValue("Radius", "5.0"));
 }
 
 void ComponentLoader::LoadTerrain(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
-    auto& t = scene.registry.emplace<TerrainComponent>(entity);
+    auto& t = scene.AddComponent<TerrainComponent>(entity);
     t.heightMapName = node.GetChildValue("HeightMap");
     std::stringstream ss(node.GetChildValue("Size", "512 50 512"));
     ss >> t.terrainSize.x >> t.terrainSize.y >> t.terrainSize.z;
@@ -1082,7 +1081,7 @@ void ComponentLoader::LoadTerrain(Scene& scene, entt::entity entity, const YAMLN
 
 void ComponentLoader::LoadNetwork(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    auto& net = scene.registry.emplace<NetworkComponent>(entity);
+    auto& net = scene.AddComponent<NetworkComponent>(entity);
     net.networkId = std::stoul(node.GetChildValue("NetworkId", "0"));
     net.ownerId = std::stoul(node.GetChildValue("OwnerId", "0"));
     net.isLocal = node.GetChildValue("IsLocal", "false") == "true";

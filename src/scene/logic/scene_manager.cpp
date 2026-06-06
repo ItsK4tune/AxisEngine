@@ -5,7 +5,6 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <physics/interface/i_physics_world.h>
 #include <resource/logic/resource_manager.h>
@@ -35,7 +34,7 @@ void SceneManager::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
-    EventManager::Instance().Publish(SceneChangedEvent{&scene.registry, &scene});
+    EventManager::Instance().Publish(SceneChangedEvent{&scene.GetRegistry(), &scene});
 
     LOGGER_INFO("SceneManager") << "Initialized";
 }
@@ -56,7 +55,7 @@ void SceneManager::AddEntity(entt::entity entity, const std::string& sceneName)
             if (std::find(rec.entities.begin(), rec.entities.end(), entity) == rec.entities.end())
             {
                 rec.entities.push_back(entity);
-                if (auto* info = ServiceLocator::Instance().Require<Scene>().registry.try_get<InfoComponent>(entity))
+                if (auto* info = ServiceLocator::Instance().Require<Scene>().TryGetComponent<InfoComponent>(entity))
                 {
                     info->isActive = rec.isActive;
                 }
@@ -74,7 +73,7 @@ void SceneManager::AddEntity(entt::entity entity, const std::string& sceneName)
     newRec.isActive = true;
     newRec.entities.push_back(entity);
 
-    if (auto* info = ServiceLocator::Instance().Require<Scene>().registry.try_get<InfoComponent>(entity))
+    if (auto* info = ServiceLocator::Instance().Require<Scene>().TryGetComponent<InfoComponent>(entity))
     {
         info->isActive = newRec.isActive;
     }
@@ -100,13 +99,13 @@ void SceneManager::SetSceneActive(const std::string& name, bool active, Scene& s
     std::string normName = SceneSerializer::NormalizeSceneName(name);
 
     auto PropagateActive = [&](auto self, entt::entity e, bool state) -> void {
-        if (!scene.registry.valid(e))
+        if (!scene.IsValid(e))
             return;
-        if (auto* info = scene.registry.try_get<InfoComponent>(e))
+        if (auto* info = scene.TryGetComponent<InfoComponent>(e))
         {
             info->isActive = state;
         }
-        if (auto* hier = scene.registry.try_get<HierarchyComponent>(e))
+        if (auto* hier = scene.TryGetComponent<HierarchyComponent>(e))
         {
             for (auto child : hier->children)
             {
@@ -136,7 +135,7 @@ void SceneManager::RebuildEntityRecords(Scene& scene)
         rec.entities.clear();
     }
 
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
@@ -307,7 +306,7 @@ void SceneManager::ChangeScene(const std::string& filePath)
 
     auto& sl = ServiceLocator::Instance();
     auto& scene = sl.Require<Scene>();
-    EventManager::Instance().Publish(SceneChangedEvent{&scene.registry, &scene});
+    EventManager::Instance().Publish(SceneChangedEvent{&scene.GetRegistry(), &scene});
 }
 
 void SceneManager::ClearAllScenes()
@@ -465,9 +464,9 @@ void SceneManager::Internal_DestroySceneEntities(SceneRecord& rec)
 
     for (auto entity : entities)
     {
-        if (scene.registry.valid(entity))
+        if (scene.IsValid(entity))
         {
-            EntityManager::DestroyEntity(scene, entity, this);
+            scene.DestroyEntity(entity, this);
         }
     }
 }

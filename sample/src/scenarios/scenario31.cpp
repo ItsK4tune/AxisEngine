@@ -17,31 +17,17 @@ void SampleState::LoadScene31()
         .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
         .Build();
 
-    auto audioSource = EntityBuilder(scene, res, "scenario")
+    EntityBuilder(scene, res, "scenario")
         .WithName("AudioSource3D")
-        .WithTransform(glm::vec3(0.0f, 3.0f, 0.0f), glm::vec3(0.0f), glm::vec3(2.0f))
+        .WithTransform(glm::vec3(0.0f, 3.0f, 60.0f), glm::vec3(0.0f), glm::vec3(2.0f))
         .WithPBRMesh("sphereModel", "deferred_lit", 1.0f, 0.5f, 0.0f)
+        .WithAudioSource(SamplePath("sample/resource/audio/sample.wav"), true, true, true, m_S31Volume3D, m_S31Pitch, 1.0f, m_S31MinDistance, m_S31MaxDistance)
         .Build();
 
-    auto& audio3D = scene.registry.emplace<AudioSourceComponent>(audioSource);
-    audio3D.filePath = SamplePath("sample/resource/audio/sample.wav");
-    audio3D.playOnAwake = true;
-    audio3D.loop = true;
-    audio3D.is3D = true;
-    audio3D.volume = m_S31Volume3D;
-    audio3D.pitch = m_S31Pitch;
-    audio3D.speed = 1.0f;
-    audio3D.minDistance = m_S31MinDistance;
-    audio3D.maxDistance = m_S31MaxDistance;
-
-    auto audio2D = EntityBuilder(scene, res, "scenario")
+    EntityBuilder(scene, res, "scenario")
         .WithName("Audio2DLoop")
+        .WithAudioSource(SamplePath("sample/resource/audio/sample.wav"), true, true, false, m_S31Volume2D, m_S31Pitch)
         .Build();
-    auto& audio2DComp = scene.registry.emplace<AudioSourceComponent>(audio2D);
-    audio2DComp.filePath = SamplePath("sample/resource/audio/sample.wav");
-    audio2DComp.loop = true;
-    audio2DComp.volume = m_S31Volume2D;
-    audio2DComp.pitch = m_S31Pitch;
 
     m_S31Play2D = false;
     m_S31Play3D = true;

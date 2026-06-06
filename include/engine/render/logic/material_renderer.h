@@ -7,7 +7,7 @@
 
 class IGraphicsContext;
 class Shader;
-struct AxisMaterialComponent;
+struct MaterialComponent;
 
 struct MaterialUniformLocations
 {
@@ -45,7 +45,7 @@ class MaterialRenderer
 public:
     void Initialize(IGraphicsContext* context, ResourceManager* resourceManager, unsigned int whiteTextureId,
                     unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
-    bool SetupMaterialUniforms(Shader* shader, AxisMaterialComponent* material, const RenderSceneData& sceneData,
+    bool SetupMaterialUniforms(Shader* shader, MaterialComponent* material, const RenderSceneData& sceneData,
                                const glm::vec4& tintColor, bool debugNoTexture = false, bool isWireframe = false);
 
     void ResetTextureState()

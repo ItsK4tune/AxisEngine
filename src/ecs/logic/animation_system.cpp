@@ -22,7 +22,7 @@ void AnimationSystem::Update(Scene& scene, float dt)
     if (!m_Enabled)
         return;
 
-    auto view = scene.registry.view<AnimationComponent, MeshRendererComponent, InfoComponent>();
+    auto view = scene.View<AnimationComponent, MeshRendererComponent, InfoComponent>();
 
     for (auto entity : view)
     {
@@ -34,9 +34,9 @@ void AnimationSystem::Update(Scene& scene, float dt)
         if (anim.animator)
         {
             glm::mat4 rootTransform = glm::mat4(1.0f);
-            if (scene.registry.all_of<MeshRendererComponent>(entity))
+            if (scene.HasAllComponents<MeshRendererComponent>(entity))
             {
-                auto& renderer = scene.registry.get<MeshRendererComponent>(entity);
+                auto& renderer = scene.GetComponent<MeshRendererComponent>(entity);
                 if (renderer.model)
                 {
                     rootTransform = renderer.model->GetRootTransform();

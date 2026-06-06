@@ -22,7 +22,6 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/camera_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/decal_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/entity_builder.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/entity_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/fragment_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/geometry_system.cpp
     ${CMAKE_SOURCE_DIR}/src/ecs/logic/lighting_system.cpp

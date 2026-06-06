@@ -37,7 +37,7 @@ void TransformSystem::Shutdown()
 
 void TransformSystem::BindRegistry(Scene& scene)
 {
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     if (m_BoundRegistries.insert(&registry).second)
     {
         registry.on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
@@ -92,7 +92,7 @@ void TransformSystem::OnHierarchyChanged(entt::registry& reg, entt::entity entit
 
 void TransformSystem::FixedUpdate(Scene& scene, float dt)
 {
-    auto view = scene.registry.view<PositionComponent, RotationComponent, ScaleComponent, WorldTransformComponent>();
+    auto view = scene.View<PositionComponent, RotationComponent, ScaleComponent, WorldTransformComponent>();
     for (auto entity : view)
     {
         auto& pos = view.get<PositionComponent>(entity);
@@ -111,7 +111,7 @@ void TransformSystem::RebuildLinearTransforms(Scene& scene)
 {
     m_LinearTransforms.clear();
     std::vector<entt::entity> roots;
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     auto transformView = registry.view<WorldTransformComponent>();
 
     for (auto entity : transformView)
@@ -155,7 +155,7 @@ void TransformSystem::Update(Scene& scene, float dt)
         RebuildLinearTransforms(scene);
     }
 
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     for (auto entity : m_LinearTransforms)
     {
         auto* world = registry.try_get<WorldTransformComponent>(entity);

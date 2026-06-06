@@ -1,5 +1,4 @@
 #include <ecs/logic/streaming_system.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -25,16 +24,16 @@ void StreamingSystem::Update(Scene& scene, float dt)
         return;
     m_Timer = 0.0f;
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;
 
-    auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    auto* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     if (!camPosComp)
         return;
     glm::vec3 camPos = camPosComp->value;
 
-    auto view = scene.registry.view<StreamingComponent, PositionComponent>();
+    auto view = scene.View<StreamingComponent, PositionComponent>();
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
 
     for (auto entity : view)
@@ -57,18 +56,18 @@ void StreamingSystem::Update(Scene& scene, float dt)
             if (stream.isRequested)
             {
                 LOGGER_INFO("StreamingSystem") << "Unload distance reached, removing mesh: " << stream.modelPath;
-                if (scene.registry.all_of<MeshRendererComponent>(entity))
+                if (scene.HasAllComponents<MeshRendererComponent>(entity))
                 {
-                    scene.registry.remove<MeshRendererComponent>(entity);
+                    scene.RemoveComponent<MeshRendererComponent>(entity);
                 }
                 stream.isRequested = false;
             }
         }
 
-        if (scene.registry.all_of<LODComponent, MeshRendererComponent>(entity))
+        if (scene.HasAllComponents<LODComponent, MeshRendererComponent>(entity))
         {
-            auto& lod = scene.registry.get<LODComponent>(entity);
-            auto& mesh = scene.registry.get<MeshRendererComponent>(entity);
+            auto& lod = scene.GetComponent<LODComponent>(entity);
+            auto& mesh = scene.GetComponent<MeshRendererComponent>(entity);
 
             size_t bestLod = 0;
             for (size_t i = 0; i < lod.lodDistancesSq.size(); ++i)

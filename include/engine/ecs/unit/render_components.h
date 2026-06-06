@@ -31,7 +31,7 @@ struct PBRMaterialParams
     float ao = 1.0f;
 };
 
-struct AxisMaterialDescriptor
+struct MaterialDescriptor
 {
     PBRMaterialParams pbr;
 
@@ -57,7 +57,7 @@ struct AxisMaterialDescriptor
     ShaderPorts ports;
 };
 
-struct AxisMaterialGPUState
+struct MaterialGPUState
 {
     uint32_t albedoMap = 0;
     uint32_t normalMap = 0;
@@ -72,10 +72,10 @@ struct AxisMaterialGPUState
     bool dirty = true;
 };
 
-struct AxisMaterialComponent
+struct MaterialComponent
 {
-    AxisMaterialDescriptor desc;
-    AxisMaterialGPUState gpu;
+    MaterialDescriptor desc;
+    MaterialGPUState gpu;
 };
 
 struct SkyboxRenderComponent

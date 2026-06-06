@@ -22,7 +22,7 @@ enum class RenderQueuePass
 
 class Model;
 class Shader;
-struct AxisMaterialComponent;
+struct MaterialComponent;
 struct ReflectiveComponent;
 struct ReflectionProbeComponent;
 
@@ -30,7 +30,7 @@ struct RenderItem
 {
     Model* model = nullptr;
     Shader* shader = nullptr;
-    AxisMaterialComponent* material = nullptr;
+    MaterialComponent* material = nullptr;
     ReflectiveComponent* reflection = nullptr;
     ReflectionProbeComponent* probe = nullptr;
     glm::vec3 probePos = glm::vec3(0.0f);

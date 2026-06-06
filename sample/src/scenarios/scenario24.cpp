@@ -48,13 +48,15 @@ void SampleState::LoadScene24()
                       sin(angle) * radius);
 
         std::string name = "ScriptedEntity_" + std::to_string(i);
+        std::string scriptName = enabledScripts.empty() ? "" : enabledScripts[i % enabledScripts.size()];
         auto entity = EntityBuilder(scene, res, "scenario")
             .WithName(name)
             .WithTransform(pos, glm::vec3(0.0f), glm::vec3(m_S24EntityScale))
             .WithPBRMesh(modelName, shaderName, 0.1f, 0.5f, 1.0f)
+            .WithScript(scriptName)
             .Build();
 
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(entity))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))
         {
             float hue = static_cast<float>(i) * 0.0618f;
             renderer->color = glm::vec4(
@@ -63,21 +65,5 @@ void SampleState::LoadScene24()
                 0.35f + 0.65f * (0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f)),
                 1.0f);
         }
-
-        if (enabledScripts.empty())
-            continue;
-
-        std::string scriptName = enabledScripts[i % enabledScripts.size()];
-        auto& script = scene.registry.emplace<ScriptComponent>(entity);
-        script.className = scriptName;
-        script.InstantiateScript = [scriptName]() {
-            auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
-            return registry ? registry->Create(scriptName) : nullptr;
-        };
-        script.DestroyScript = [](ScriptComponent* nsc) {
-            nsc->instance.reset();
-            nsc->scriptableInstance = nullptr;
-            nsc->inputScriptableInstance = nullptr;
-        };
     }
 }

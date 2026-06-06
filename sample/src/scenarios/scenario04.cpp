@@ -25,7 +25,7 @@ void SampleState::LoadScene4()
             .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.1f, 0.5f, 1.0f)
             .Build();
     {
-        auto& r = scene.registry.get<MeshRendererComponent>(m_S4DeferredCubeEntity);
+        auto& r = scene.GetComponent<MeshRendererComponent>(m_S4DeferredCubeEntity);
         r.receiveShadow = false;
         r.castShadow = true;
         r.color = glm::vec4(0.18f, 0.46f, 1.0f, 1.0f);
@@ -38,7 +38,7 @@ void SampleState::LoadScene4()
                                     .WithPBRMesh("sphereModel", "deferred_lit_shadow", 0.0f, 0.35f, 1.0f)
                                     .Build();
     {
-        auto& r = scene.registry.get<MeshRendererComponent>(m_S4DeferredSphereEntity);
+        auto& r = scene.GetComponent<MeshRendererComponent>(m_S4DeferredSphereEntity);
         r.receiveShadow = false;
         r.castShadow = true;
         r.color = glm::vec4(0.10f, 0.70f, 1.0f, 1.0f);
@@ -52,22 +52,22 @@ void SampleState::LoadScene4()
             .WithPBRMesh("cubeModel", "forward_pbr_lit_shadow", 0.0f, 0.45f, 1.0f)
             .Build();
     {
-        auto& r = scene.registry.get<MeshRendererComponent>(m_S4ForwardCubeEntity);
+        auto& r = scene.GetComponent<MeshRendererComponent>(m_S4ForwardCubeEntity);
         r.renderMode = RenderMode::ForceForward;
         r.receiveShadow = false;
         r.castShadow = true;
         r.color = glm::vec4(1.0f, 0.18f, 0.14f, 1.0f);
     }
 
-    m_S4ForwardCapsuleEntity =
+    m_S4ForwardSphereEntity =
         EntityBuilder(scene, res, "scenario")
             .WithName("ForwardShadowCasterCapsule")
             .WithTransform(glm::vec3(18.0f * m_S4CasterSpread, m_S4CasterHeight - 1.0f, 4.0f),
                            glm::vec3(0.0f, 35.0f, 0.0f), glm::vec3(2.8f, 5.2f, 2.8f) * m_S4CasterScale)
-            .WithPBRMesh("capsuleSmoothModel", "forward_unlit", 0.0f, 0.5f, 1.0f)
+            .WithPBRMesh("sphereModel", "forward_pbr_lit_shadow", 0.0f, 0.5f, 1.0f)
             .Build();
     {
-        auto& r = scene.registry.get<MeshRendererComponent>(m_S4ForwardCapsuleEntity);
+        auto& r = scene.GetComponent<MeshRendererComponent>(m_S4ForwardSphereEntity);
         r.renderMode = RenderMode::ForceForward;
         r.receiveShadow = false;
         r.castShadow = true;
@@ -80,6 +80,6 @@ void SampleState::LoadScene4()
             .WithTransform(glm::vec3(25.0f, 40.0f, 20.0f), glm::vec3(m_S4LightPitch, m_S4LightYaw, 0.0f))
             .WithDirectionalLight(lightDirection, glm::vec3(1.0f), m_S4LightIntensity)
             .Build();
-    if (auto* dir = scene.registry.try_get<DirectionalLightComponent>(m_S4LightEntity))
+    if (auto* dir = scene.TryGetComponent<DirectionalLightComponent>(m_S4LightEntity))
         dir->isCastShadow = true;
 }

@@ -1,7 +1,6 @@
 #include "test_framework.h"
 #include "test_support.h"
 
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <scene/logic/scene_manager.h>
 
@@ -70,13 +69,13 @@ AXIS_TEST_CASE("SceneManager SetSceneActive propagates inactive state to childre
 {
     axis_test_support::SceneServiceFixture fixture;
     SceneManager manager;
-    auto parent = EntityManager::CreateEntity(fixture.scene, "Parent");
-    auto child = EntityManager::CreateEntity(fixture.scene, "Child");
-    EntityManager::SetParent(fixture.scene, child, parent);
+    auto parent = fixture.scene.CreateEntity("Parent");
+    auto child = fixture.scene.CreateEntity("Child");
+    fixture.scene.SetParent(child, parent);
     manager.AddEntity(parent, "arena");
 
     manager.SetSceneActive("arena", false, fixture.scene);
 
-    AXIS_CHECK(!fixture.scene.registry.get<InfoComponent>(parent).isActive);
-    AXIS_CHECK(!fixture.scene.registry.get<InfoComponent>(child).isActive);
+    AXIS_CHECK(!fixture.scene.GetComponent<InfoComponent>(parent).isActive);
+    AXIS_CHECK(!fixture.scene.GetComponent<InfoComponent>(child).isActive);
 }

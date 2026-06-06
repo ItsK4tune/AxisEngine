@@ -12,7 +12,6 @@
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
-#include <ecs/logic/entity_manager.h>
 #include <physics/interface/i_collision_shape.h>
 #include <physics/interface/i_physics_world.h>
 #include <physics/logic/collision_matrix.h>
@@ -126,7 +125,7 @@ void PhysicsSystem::Step(Scene& scene, float dt)
 
         auto* collisionMatrix = sl.Resolve<CollisionMatrix>();
         physicsWorld->SetCollisionFilter(
-            [pRegistry = &scene.registry, collisionMatrix](entt::entity eA, entt::entity eB) -> bool {
+            [pRegistry = &scene.GetRegistry(), collisionMatrix](entt::entity eA, entt::entity eB) -> bool {
                 if (!pRegistry || !pRegistry->valid(eA) || !pRegistry->valid(eB))
                     return false;
 
@@ -149,11 +148,11 @@ void PhysicsSystem::Step(Scene& scene, float dt)
                 return collisionMatrix->CanCollide(tagA, tagB, nameA, nameB);
             });
 
-        scene.registry.on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
-        scene.registry.on_destroy<CharacterControllerComponent>()
+        scene.GetRegistry().on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
+        scene.GetRegistry().on_destroy<CharacterControllerComponent>()
             .connect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
 
-        scene.registry.on_construct<RigidShapeComponent>().connect<&PhysicsSystem::OnShapeConstructed>(this);
+        scene.GetRegistry().on_construct<RigidShapeComponent>().connect<&PhysicsSystem::OnShapeConstructed>(this);
     }
 
     if (!m_transformSync)
@@ -164,13 +163,13 @@ void PhysicsSystem::Step(Scene& scene, float dt)
 
     m_transformSync->SyncToPhysics();
 
-    auto viewShape = scene.registry.view<RigidShapeComponent>(entt::exclude<RigidBodyComponent>);
+    auto viewShape = scene.GetRegistry().view<RigidShapeComponent>(entt::exclude<RigidBodyComponent>);
     for (auto entity : viewShape)
     {
-        scene.registry.emplace<RigidBodyComponent>(entity);
+        scene.GetRegistry().emplace<RigidBodyComponent>(entity);
     }
 
-    auto viewInit = scene.registry.view<RigidShapeComponent, RigidBodyComponent>();
+    auto viewInit = scene.GetRegistry().view<RigidShapeComponent, RigidBodyComponent>();
     for (auto entity : viewInit)
     {
         auto& rb = viewInit.get<RigidBodyComponent>(entity);
@@ -180,7 +179,7 @@ void PhysicsSystem::Step(Scene& scene, float dt)
         }
     }
 
-    auto viewCC = scene.registry.view<CharacterControllerComponent, InfoComponent>();
+    auto viewCC = scene.GetRegistry().view<CharacterControllerComponent, InfoComponent>();
     for (auto entity : viewCC)
     {
         auto& info = viewCC.get<InfoComponent>(entity);
@@ -228,15 +227,15 @@ void PhysicsSystem::Step(Scene& scene, float dt)
         if (cc.controller)
         {
             cc.isOnGround = cc.controller->OnGround();
-            if (auto* pos = scene.registry.try_get<PositionComponent>(entity))
+            if (auto* pos = scene.GetRegistry().try_get<PositionComponent>(entity))
             {
                 glm::vec3 controllerPos;
                 glm::quat controllerRot;
                 cc.controller->GetWorldTransform(controllerPos, controllerRot);
                 pos->value = controllerPos;
-                if (auto* rot = scene.registry.try_get<RotationComponent>(entity))
+                if (auto* rot = scene.GetRegistry().try_get<RotationComponent>(entity))
                     rot->value = controllerRot;
-                if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
+                if (auto* world = scene.GetRegistry().try_get<WorldTransformComponent>(entity))
                     world->isDirty = true;
             }
         }
@@ -250,10 +249,10 @@ void PhysicsSystem::Reset()
 
     if (m_LastScene)
     {
-        m_LastScene->registry.on_destroy<RigidBodyComponent>().disconnect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
-        m_LastScene->registry.on_destroy<CharacterControllerComponent>()
+        m_LastScene->GetRegistry().on_destroy<RigidBodyComponent>().disconnect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
+        m_LastScene->GetRegistry().on_destroy<CharacterControllerComponent>()
             .disconnect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
-        m_LastScene->registry.on_construct<RigidShapeComponent>().disconnect<&PhysicsSystem::OnShapeConstructed>(this);
+        m_LastScene->GetRegistry().on_construct<RigidShapeComponent>().disconnect<&PhysicsSystem::OnShapeConstructed>(this);
     }
 
     m_transformSync.reset();
@@ -297,12 +296,12 @@ void PhysicsSystem::OnShapeConstructed(entt::registry& registry, entt::entity en
 void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity, RigidShapeComponent& shape,
                                               RigidBodyComponent& rb, IPhysicsWorld& physics)
 {
-    auto* pos = scene.registry.try_get<PositionComponent>(entity);
-    auto* rot = scene.registry.try_get<RotationComponent>(entity);
+    auto* pos = scene.GetRegistry().try_get<PositionComponent>(entity);
+    auto* rot = scene.GetRegistry().try_get<RotationComponent>(entity);
     glm::vec3 worldPos = pos ? pos->value : glm::vec3(0, 0, 0);
     glm::quat worldRot = rot ? rot->value : glm::quat(1, 0, 0, 0);
 
-    if (auto* world = scene.registry.try_get<WorldTransformComponent>(entity))
+    if (auto* world = scene.GetRegistry().try_get<WorldTransformComponent>(entity))
     {
         if (world->version > 0)
         {
@@ -328,7 +327,7 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
         finalShape = physics.CreateCylinderShape(shape.radius, shape.height);
     else if (shape.type == ShapeType::Mesh)
     {
-        if (auto* meshComp = scene.registry.try_get<MeshRendererComponent>(entity))
+        if (auto* meshComp = scene.GetRegistry().try_get<MeshRendererComponent>(entity))
         {
             if (meshComp->model)
             {
@@ -388,14 +387,14 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
     if (finalShape)
     {
         glm::vec3 totalScale(1.0f);
-        if (auto* scl = scene.registry.try_get<ScaleComponent>(entity))
+        if (auto* scl = scene.GetRegistry().try_get<ScaleComponent>(entity))
         {
             totalScale = scl->value;
         }
 
         if (shape.type == ShapeType::Mesh)
         {
-            if (auto* meshComp = scene.registry.try_get<MeshRendererComponent>(entity))
+            if (auto* meshComp = scene.GetRegistry().try_get<MeshRendererComponent>(entity))
             {
                 if (meshComp->model)
                 {
@@ -447,7 +446,7 @@ void PhysicsSystem::RenderDebug(Scene& scene, Shader& shader, int screenWidth, i
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
 
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
 
     if (!registry.valid(m_cachedPrimaryCamera) || !registry.all_of<CameraComponent>(m_cachedPrimaryCamera) ||
         !registry.get<CameraComponent>(m_cachedPrimaryCamera).isPrimary)

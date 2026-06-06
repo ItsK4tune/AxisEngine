@@ -6,18 +6,13 @@ void SampleState::LoadScene13()
     auto& res = Get<ResourceManager>();
 
     // 1. Static Floor & Lights
-    auto floor = EntityBuilder(scene, res, "scenario")
-                     .WithName("Floor")
-                     .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-                     .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
-                     .Build();
-    {
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, floor);
-        ConfigureBoxCollider(shape, glm::vec3(1.0f, 0.05f, 1.0f));
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, floor);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
-    }
+    EntityBuilder(scene, res, "scenario")
+        .WithName("Floor")
+        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
+        .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
+        .WithRigidShape(ShapeType::Box, glm::vec3(1.0f, 0.05f, 1.0f))
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     m_S13DirLightEntity =
         EntityBuilder(scene, res, "scenario")
@@ -25,7 +20,7 @@ void SampleState::LoadScene13()
             .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
             .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), m_S13LightColor, m_S13LightIntensity)
             .Build();
-    if (auto* dir = scene.registry.try_get<DirectionalLightComponent>(m_S13DirLightEntity))
+    if (auto* dir = scene.TryGetComponent<DirectionalLightComponent>(m_S13DirLightEntity))
         dir->isCastShadow = true;
 
     m_S13PointLightEntity = EntityBuilder(scene, res, "scenario")
@@ -33,7 +28,7 @@ void SampleState::LoadScene13()
                                 .WithPointLightAt(glm::vec3(-12.0f, 14.0f, 4.0f), m_S13PointLightColor,
                                                   m_S13PointLightIntensity, m_S13PointLightRadius)
                                 .Build();
-    if (auto* light = scene.registry.try_get<PointLightComponent>(m_S13PointLightEntity))
+    if (auto* light = scene.TryGetComponent<PointLightComponent>(m_S13PointLightEntity))
     {
         light->active = m_S13UsePointLight;
         light->isCastShadow = true;
@@ -47,22 +42,17 @@ void SampleState::LoadScene13()
                                       .WithPBRMesh("sphereModel", "deferred_unlit", 0.0f, 0.25f, 1.0f)
                                       .WithMaterialEmission(m_S13PointLightColor * 3.0f)
                                       .Build();
-    if (auto* marker = scene.registry.try_get<MeshRendererComponent>(m_S13PointLightMarkerEntity))
+    if (auto* marker = scene.TryGetComponent<MeshRendererComponent>(m_S13PointLightMarkerEntity))
         marker->color = glm::vec4(m_S13PointLightColor, 1.0f);
 
     // 2. Spawn a large central wall to project decals onto
-    auto wall = EntityBuilder(scene, res, "scenario")
-                    .WithName("DecalWall")
-                    .WithTransform(glm::vec3(0.0f, 10.0f, -10.0f), glm::vec3(0.0f), glm::vec3(50.0f, 20.0f, 2.0f))
-                    .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.9f, 1.0f)
-                    .Build();
-    {
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, wall);
-        ConfigurePrimitiveCollider(shape, ShapeType::Box);
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, wall);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
-    }
+    EntityBuilder(scene, res, "scenario")
+        .WithName("DecalWall")
+        .WithTransform(glm::vec3(0.0f, 10.0f, -10.0f), glm::vec3(0.0f), glm::vec3(50.0f, 20.0f, 2.0f))
+        .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.9f, 1.0f)
+        .WithRigidShape(ShapeType::Box)
+        .WithRigidBody(0.0f, true)
+        .Build();
 
     m_S13ShadowCasterEntity =
         EntityBuilder(scene, res, "scenario")
@@ -70,19 +60,14 @@ void SampleState::LoadScene13()
             .WithActive(m_S13ShowShadowCaster)
             .WithTransform(glm::vec3(-4.0f, 10.0f, -4.2f), glm::vec3(0.0f, 18.0f, 0.0f), glm::vec3(3.0f, 12.0f, 1.5f))
             .WithPBRMesh("cubeModel", "deferred_lit_shadow", 0.0f, 0.55f, 1.0f)
+            .WithRigidShape(ShapeType::Box)
+            .WithRigidBody(0.0f, true)
             .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(m_S13ShadowCasterEntity))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S13ShadowCasterEntity))
     {
         renderer->color = glm::vec4(0.12f, 0.12f, 0.14f, 1.0f);
         renderer->castShadow = true;
         renderer->receiveShadow = false;
-    }
-    {
-        auto& shape = EntityManager::AddComponent<RigidShapeComponent>(scene, m_S13ShadowCasterEntity);
-        ConfigurePrimitiveCollider(shape, ShapeType::Box);
-        auto& rb = EntityManager::AddComponent<RigidBodyComponent>(scene, m_S13ShadowCasterEntity);
-        rb.mass = 0.0f;
-        rb.isStatic = true;
     }
 
     // 3. Use tint-only decals. The decal shader falls back to a white source when no texture is assigned.
@@ -96,29 +81,20 @@ void SampleState::LoadScene13()
         float z = -9.0f;
 
         float size = m_S13DecalSize;
-        auto decalEnt = EntityBuilder(scene, res, "scenario")
-                            .WithName("Decal_" + std::to_string(i))
-                            .WithTransform(glm::vec3(x, y, z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(size, size, size))
-                            .Build();
-
-        auto& decal = scene.registry.emplace<DecalComponent>(decalEnt);
-        decal.albedoMap = decalTexId;
-        decal.opacity = m_S13Opacity;
-        decal.roughness = 0.5f;
-        decal.metallic = 0.0f;
-        decal.lightingMode = m_S13LightingMode;
-
+        glm::vec4 tint = glm::vec4(m_S13Color, 1.0f);
         if (m_S13RainbowMode)
         {
             float hue = static_cast<float>(i) / static_cast<float>(m_S13DecalCount);
             float r = 0.5f + 0.5f * sin(hue * 6.28318f);
             float g = 0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f);
             float b = 0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f);
-            decal.tintColor = glm::vec4(r, g, b, 1.0f);
+            tint = glm::vec4(r, g, b, 1.0f);
         }
-        else
-        {
-            decal.tintColor = glm::vec4(m_S13Color, 1.0f);
-        }
+
+        EntityBuilder(scene, res, "scenario")
+            .WithName("Decal_" + std::to_string(i))
+            .WithTransform(glm::vec3(x, y, z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(size, size, size))
+            .WithDecal(decalTexId, m_S13Opacity, 0.5f, 0.0f, m_S13LightingMode, tint)
+            .Build();
     }
 }

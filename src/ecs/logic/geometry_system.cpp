@@ -6,7 +6,6 @@
 #include <core/type/event_types.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -30,10 +29,10 @@ namespace
 {
 bool HasActiveTerrain(Scene& scene)
 {
-    auto view = scene.registry.view<TerrainComponent>();
+    auto view = scene.View<TerrainComponent>();
     for (auto entity : view)
     {
-        if (auto* info = scene.registry.try_get<InfoComponent>(entity); info && !info->isActive)
+        if (auto* info = scene.TryGetComponent<InfoComponent>(entity); info && !info->isActive)
             continue;
         return true;
     }
@@ -120,8 +119,8 @@ void GeometrySystem::Render(Scene& scene)
         return;
     }
 
-    entt::entity camEntity = ::EntityManager::GetActiveCamera(scene);
-    auto* cam = scene.registry.try_get<CameraComponent>(camEntity);
+    entt::entity camEntity = scene.GetActiveCamera();
+    auto* cam = scene.TryGetComponent<CameraComponent>(camEntity);
     if (!cam)
     {
         static bool camWarned = false;
@@ -234,7 +233,7 @@ std::vector<entt::id_type> GeometrySystem::GetReadComponents() const
 {
     return {entt::type_id<MeshRendererComponent>().hash(),   entt::type_id<PositionComponent>().hash(),
             entt::type_id<RotationComponent>().hash(),       entt::type_id<ScaleComponent>().hash(),
-            entt::type_id<WorldTransformComponent>().hash(), entt::type_id<AxisMaterialComponent>().hash()};
+            entt::type_id<WorldTransformComponent>().hash(), entt::type_id<MaterialComponent>().hash()};
 }
 
 std::vector<entt::id_type> GeometrySystem::GetWriteComponents() const

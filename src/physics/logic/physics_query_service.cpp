@@ -1,6 +1,5 @@
 #include <physics/logic/physics_query_service.h>
 #include <core/logic/service_locator.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <physics/interface/i_physics_world.h>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
@@ -46,11 +45,11 @@ RayHit PhysicsQueryService::RaycastFromScreen(const glm::vec2& screenPos, float 
     if (!physicsWorld || !scene)
         return {};
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(*scene);
+    entt::entity camEntity = scene->GetActiveCamera();
     if (camEntity == entt::null)
         return {};
 
-    auto& camera = scene->registry.get<CameraComponent>(camEntity);
+    auto& camera = scene->GetRegistry().get<CameraComponent>(camEntity);
     auto& monitorManager = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager();
     glm::vec2 viewportSize(monitorManager.GetWidth(), monitorManager.GetHeight());
 

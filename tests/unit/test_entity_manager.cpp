@@ -1,54 +1,53 @@
 #include "test_framework.h"
-
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
+#include <scene/logic/scene.h>
 
 AXIS_TEST_CASE("EntityManager creates entity with default core components")
 {
     Scene scene;
 
-    auto entity = EntityManager::CreateEntity(scene, "Player", "player");
+    auto entity = scene.CreateEntity("Player", "player");
 
-    AXIS_CHECK(scene.registry.valid(entity));
-    AXIS_CHECK(scene.registry.all_of<InfoComponent>(entity));
-    AXIS_CHECK(scene.registry.all_of<PositionComponent>(entity));
-    AXIS_CHECK(scene.registry.all_of<RotationComponent>(entity));
-    AXIS_CHECK(scene.registry.all_of<ScaleComponent>(entity));
-    AXIS_CHECK(scene.registry.all_of<HierarchyComponent>(entity));
-    AXIS_CHECK(scene.registry.all_of<WorldTransformComponent>(entity));
-    AXIS_CHECK(scene.registry.get<InfoComponent>(entity).name == "Player");
-    AXIS_CHECK(scene.registry.get<InfoComponent>(entity).tag == "player");
+    AXIS_CHECK(scene.IsValid(entity));
+    AXIS_CHECK(scene.HasAllComponents<InfoComponent>(entity));
+    AXIS_CHECK(scene.HasAllComponents<PositionComponent>(entity));
+    AXIS_CHECK(scene.HasAllComponents<RotationComponent>(entity));
+    AXIS_CHECK(scene.HasAllComponents<ScaleComponent>(entity));
+    AXIS_CHECK(scene.HasAllComponents<HierarchyComponent>(entity));
+    AXIS_CHECK(scene.HasAllComponents<WorldTransformComponent>(entity));
+    AXIS_CHECK(scene.GetComponent<InfoComponent>(entity).name == "Player");
+    AXIS_CHECK(scene.GetComponent<InfoComponent>(entity).tag == "player");
 }
 
 AXIS_TEST_CASE("EntityManager finds entities by name tag and scene")
 {
     Scene scene;
 
-    auto player = EntityManager::CreateEntity(scene, "Player", "player");
-    auto enemy = EntityManager::CreateEntity(scene, "Enemy", "enemy");
-    scene.registry.get<InfoComponent>(player).sceneName = "arena";
-    scene.registry.get<InfoComponent>(enemy).sceneName = "arena";
+    auto player = scene.CreateEntity("Player", "player");
+    auto enemy = scene.CreateEntity("Enemy", "enemy");
+    scene.GetComponent<InfoComponent>(player).sceneName = "arena";
+    scene.GetComponent<InfoComponent>(enemy).sceneName = "arena";
 
-    AXIS_CHECK(EntityManager::FindByName(scene, "Player") == player);
-    AXIS_CHECK(EntityManager::FindByTag(scene, "enemy") == enemy);
-    AXIS_CHECK(EntityManager::FindByNameAndTag(scene, "Player", "player") == player);
-    AXIS_CHECK(EntityManager::FindByNameTagAndScene(scene, "Enemy", "enemy", "arena") == enemy);
-    AXIS_CHECK(EntityManager::FindAllBySceneName(scene, "arena").size() == 2);
+    AXIS_CHECK(scene.FindByName("Player") == player);
+    AXIS_CHECK(scene.FindByTag("enemy") == enemy);
+    AXIS_CHECK(scene.FindByNameAndTag("Player", "player") == player);
+    AXIS_CHECK(scene.FindByNameTagAndScene("Enemy", "enemy", "arena") == enemy);
+    AXIS_CHECK(scene.FindAllBySceneName("arena").size() == 2);
 }
 
 AXIS_TEST_CASE("EntityManager reparents child and removes it from old parent")
 {
     Scene scene;
-    auto parentA = EntityManager::CreateEntity(scene, "ParentA");
-    auto parentB = EntityManager::CreateEntity(scene, "ParentB");
-    auto child = EntityManager::CreateEntity(scene, "Child");
+    auto parentA = scene.CreateEntity("ParentA");
+    auto parentB = scene.CreateEntity("ParentB");
+    auto child = scene.CreateEntity("Child");
 
-    EntityManager::SetParent(scene, child, parentA);
-    EntityManager::SetParent(scene, child, parentB);
+    scene.SetParent(child, parentA);
+    scene.SetParent(child, parentB);
 
-    const auto& childHierarchy = scene.registry.get<HierarchyComponent>(child);
-    const auto& parentAHierarchy = scene.registry.get<HierarchyComponent>(parentA);
-    const auto& parentBHierarchy = scene.registry.get<HierarchyComponent>(parentB);
+    const auto& childHierarchy = scene.GetComponent<HierarchyComponent>(child);
+    const auto& parentAHierarchy = scene.GetComponent<HierarchyComponent>(parentA);
+    const auto& parentBHierarchy = scene.GetComponent<HierarchyComponent>(parentB);
 
     AXIS_CHECK(childHierarchy.parent == parentB);
     AXIS_CHECK(parentAHierarchy.children.empty());
@@ -59,25 +58,25 @@ AXIS_TEST_CASE("EntityManager reparents child and removes it from old parent")
 AXIS_TEST_CASE("EntityManager keeps hierarchy stable for repeated parent assignment")
 {
     Scene scene;
-    auto root = EntityManager::CreateEntity(scene, "Root");
-    auto child = EntityManager::CreateEntity(scene, "Child");
+    auto root = scene.CreateEntity("Root");
+    auto child = scene.CreateEntity("Child");
 
-    EntityManager::SetParent(scene, child, root);
-    EntityManager::SetParent(scene, child, root);
+    scene.SetParent(child, root);
+    scene.SetParent(child, root);
 
-    AXIS_CHECK(scene.registry.get<HierarchyComponent>(root).parent == entt::null);
-    AXIS_CHECK(scene.registry.get<HierarchyComponent>(child).parent == root);
-    AXIS_CHECK(scene.registry.get<HierarchyComponent>(root).children.size() == 1);
+    AXIS_CHECK(scene.GetComponent<HierarchyComponent>(root).parent == entt::null);
+    AXIS_CHECK(scene.GetComponent<HierarchyComponent>(child).parent == root);
+    AXIS_CHECK(scene.GetComponent<HierarchyComponent>(root).children.size() == 1);
 }
 
 AXIS_TEST_CASE("EntityManager rejects self-parent without hierarchy mutation")
 {
     Scene scene;
-    auto entity = EntityManager::CreateEntity(scene, "Root");
+    auto entity = scene.CreateEntity("Root");
 
-    EntityManager::SetParent(scene, entity, entity);
+    scene.SetParent(entity, entity);
 
-    const auto& hierarchy = scene.registry.get<HierarchyComponent>(entity);
+    const auto& hierarchy = scene.GetComponent<HierarchyComponent>(entity);
     AXIS_CHECK(hierarchy.parent == entt::null);
     AXIS_CHECK(hierarchy.children.empty());
 }
@@ -85,14 +84,14 @@ AXIS_TEST_CASE("EntityManager rejects self-parent without hierarchy mutation")
 AXIS_TEST_CASE("EntityManager rejects hierarchy cycle without hierarchy mutation")
 {
     Scene scene;
-    auto root = EntityManager::CreateEntity(scene, "Root");
-    auto child = EntityManager::CreateEntity(scene, "Child");
+    auto root = scene.CreateEntity("Root");
+    auto child = scene.CreateEntity("Child");
 
-    EntityManager::SetParent(scene, child, root);
-    EntityManager::SetParent(scene, root, child);
+    scene.SetParent(child, root);
+    scene.SetParent(root, child);
 
-    const auto& rootHierarchy = scene.registry.get<HierarchyComponent>(root);
-    const auto& childHierarchy = scene.registry.get<HierarchyComponent>(child);
+    const auto& rootHierarchy = scene.GetComponent<HierarchyComponent>(root);
+    const auto& childHierarchy = scene.GetComponent<HierarchyComponent>(child);
     AXIS_CHECK(rootHierarchy.parent == entt::null);
     AXIS_CHECK(rootHierarchy.children.size() == 1);
     AXIS_CHECK(rootHierarchy.children[0] == child);
@@ -103,29 +102,29 @@ AXIS_TEST_CASE("EntityManager rejects hierarchy cycle without hierarchy mutation
 AXIS_TEST_CASE("EntityManager destroy detaches surviving children")
 {
     Scene scene;
-    auto parent = EntityManager::CreateEntity(scene, "Parent");
-    auto child = EntityManager::CreateEntity(scene, "Child");
-    EntityManager::SetParent(scene, child, parent);
+    auto parent = scene.CreateEntity("Parent");
+    auto child = scene.CreateEntity("Child");
+    scene.SetParent(child, parent);
 
-    EntityManager::DestroyEntity(scene, parent);
+    scene.DestroyEntity(parent);
 
-    AXIS_CHECK(!scene.registry.valid(parent));
-    AXIS_CHECK(scene.registry.valid(child));
-    AXIS_CHECK(scene.registry.get<HierarchyComponent>(child).parent == entt::null);
+    AXIS_CHECK(!scene.IsValid(parent));
+    AXIS_CHECK(scene.IsValid(child));
+    AXIS_CHECK(scene.GetComponent<HierarchyComponent>(child).parent == entt::null);
 }
 
 AXIS_TEST_CASE("EntityManager destroy with children recursively destroys hierarchy")
 {
     Scene scene;
-    auto parent = EntityManager::CreateEntity(scene, "Parent");
-    auto child = EntityManager::CreateEntity(scene, "Child");
-    auto grandChild = EntityManager::CreateEntity(scene, "GrandChild");
-    EntityManager::SetParent(scene, child, parent);
-    EntityManager::SetParent(scene, grandChild, child);
+    auto parent = scene.CreateEntity("Parent");
+    auto child = scene.CreateEntity("Child");
+    auto grandChild = scene.CreateEntity("GrandChild");
+    scene.SetParent(child, parent);
+    scene.SetParent(grandChild, child);
 
-    EntityManager::DestroyEntityWithChildren(scene, parent);
+    scene.DestroyEntityWithChildren(parent);
 
-    AXIS_CHECK(!scene.registry.valid(parent));
-    AXIS_CHECK(!scene.registry.valid(child));
-    AXIS_CHECK(!scene.registry.valid(grandChild));
+    AXIS_CHECK(!scene.IsValid(parent));
+    AXIS_CHECK(!scene.IsValid(child));
+    AXIS_CHECK(!scene.IsValid(grandChild));
 }

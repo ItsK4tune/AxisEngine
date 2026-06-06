@@ -3,7 +3,6 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
@@ -377,7 +376,7 @@ void ReadLegacyAppConfigV2(std::istream& is, AppConfig& config)
     is.read(reinterpret_cast<char*>(&config.filterLayerMask), 4 * 2);
 }
 
-void WriteMaterialDescriptor(std::ostream& os, const AxisMaterialDescriptor& desc)
+void WriteMaterialDescriptor(std::ostream& os, const MaterialDescriptor& desc)
 {
     WriteValue(os, desc.pbr.roughness);
     WriteValue(os, desc.pbr.metallic);
@@ -400,7 +399,7 @@ void WriteMaterialDescriptor(std::ostream& os, const AxisMaterialDescriptor& des
     for (float port : desc.ports.data) WriteValue(os, port);
 }
 
-void ReadMaterialDescriptor(std::istream& is, AxisMaterialDescriptor& desc)
+void ReadMaterialDescriptor(std::istream& is, MaterialDescriptor& desc)
 {
     ReadValue(is, desc.pbr.roughness);
     ReadValue(is, desc.pbr.metallic);
@@ -633,7 +632,7 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
     WriteValue(os, scene::BINARY_MAGIC);
     WriteValue(os, scene::BINARY_VERSION);
 
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     std::vector<entt::entity> entities;
     for (auto entity : view) entities.push_back(entity);
 
@@ -651,34 +650,34 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
 
     for (auto entity : entities)
     {
-        auto& info = scene.registry.get<InfoComponent>(entity);
+        auto& info = scene.GetComponent<InfoComponent>(entity);
 
         WriteString(os, info.name);
         WriteString(os, info.tag);
         WriteValue(os, info.layer);
 
-        auto* pos = scene.registry.try_get<PositionComponent>(entity);
+        auto* pos = scene.TryGetComponent<PositionComponent>(entity);
         WriteBool(os, pos != nullptr);
         if (pos)
             WriteVec3(os, pos->value);
 
-        auto* rot = scene.registry.try_get<RotationComponent>(entity);
+        auto* rot = scene.TryGetComponent<RotationComponent>(entity);
         WriteBool(os, rot != nullptr);
         if (rot)
             WriteQuat(os, rot->value);
 
-        auto* scl = scene.registry.try_get<ScaleComponent>(entity);
+        auto* scl = scene.TryGetComponent<ScaleComponent>(entity);
         WriteBool(os, scl != nullptr);
         if (scl)
             WriteVec3(os, scl->value);
 
-        auto* hier = scene.registry.try_get<HierarchyComponent>(entity);
+        auto* hier = scene.TryGetComponent<HierarchyComponent>(entity);
         int32_t parentIdx = -1;
         if (hier && hier->parent != entt::null && entityToIndex.count(hier->parent))
             parentIdx = static_cast<int32_t>(entityToIndex[hier->parent]);
         WriteValue(os, parentIdx);
 
-        auto* mesh = scene.registry.try_get<MeshRendererComponent>(entity);
+        auto* mesh = scene.TryGetComponent<MeshRendererComponent>(entity);
         WriteBool(os, mesh != nullptr);
         if (mesh)
         {
@@ -691,32 +690,32 @@ bool BinarySceneSerializer::Save(const std::string& path, Scene& scene)
             WriteBool(os, mesh->castShadow);
         }
 
-        auto* mat = scene.registry.try_get<AxisMaterialComponent>(entity);
+        auto* mat = scene.TryGetComponent<MaterialComponent>(entity);
         WriteBool(os, mat != nullptr);
         if (mat)
             WriteMaterialDescriptor(os, mat->desc);
 
-        auto* cam = scene.registry.try_get<CameraComponent>(entity);
+        auto* cam = scene.TryGetComponent<CameraComponent>(entity);
         WriteBool(os, cam != nullptr);
         if (cam)
             WriteCamera(os, *cam);
 
-        auto* dl = scene.registry.try_get<DirectionalLightComponent>(entity);
+        auto* dl = scene.TryGetComponent<DirectionalLightComponent>(entity);
         WriteBool(os, dl != nullptr);
         if (dl)
             WriteDirectionalLight(os, *dl);
 
-        auto* pl = scene.registry.try_get<PointLightComponent>(entity);
+        auto* pl = scene.TryGetComponent<PointLightComponent>(entity);
         WriteBool(os, pl != nullptr);
         if (pl)
             WritePointLight(os, *pl);
 
-        auto* spot = scene.registry.try_get<SpotLightComponent>(entity);
+        auto* spot = scene.TryGetComponent<SpotLightComponent>(entity);
         WriteBool(os, spot != nullptr);
         if (spot)
             WriteSpotLight(os, *spot);
 
-        auto* sky = scene.registry.try_get<SkyboxRenderComponent>(entity);
+        auto* sky = scene.TryGetComponent<SkyboxRenderComponent>(entity);
         WriteBool(os, sky != nullptr);
         if (sky)
         {
@@ -791,10 +790,10 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         uint32_t layer = 1;
         ReadValue(is, layer);
 
-        entt::entity entity = scene.registry.create();
+        entt::entity entity = scene.GetRegistry().create();
         entities.push_back(entity);
 
-        auto& info = scene.registry.emplace<InfoComponent>(entity, name, tag);
+        auto& info = scene.AddComponent<InfoComponent>(entity, name, tag);
         info.layer = layer;
 
         bool hasP = false;
@@ -808,7 +807,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
                 ReadVec3(is, value);
             else
                 is.read(reinterpret_cast<char*>(&value), sizeof(value));
-            scene.registry.emplace<PositionComponent>(entity, value, value);
+            scene.AddComponent<PositionComponent>(entity, value, value);
         }
 
         ReadBool(is, hasR);
@@ -819,7 +818,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
                 ReadQuat(is, value);
             else
                 is.read(reinterpret_cast<char*>(&value), sizeof(value));
-            scene.registry.emplace<RotationComponent>(entity, value, value);
+            scene.AddComponent<RotationComponent>(entity, value, value);
         }
 
         ReadBool(is, hasS);
@@ -830,7 +829,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
                 ReadVec3(is, value);
             else
                 is.read(reinterpret_cast<char*>(&value), sizeof(value));
-            scene.registry.emplace<ScaleComponent>(entity, value, value);
+            scene.AddComponent<ScaleComponent>(entity, value, value);
         }
 
         int32_t parentIdx = -1;
@@ -846,7 +845,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
             bool castShadow = true;
             ReadBool(is, castShadow);
 
-            auto& mesh = scene.registry.emplace<MeshRendererComponent>(entity);
+            auto& mesh = scene.AddComponent<MeshRendererComponent>(entity);
             if (resources)
             {
                 mesh.model = resources->GetModel(modelName);
@@ -860,7 +859,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         ReadBool(is, hasMat);
         if (hasMat)
         {
-            auto& material = scene.registry.emplace<AxisMaterialComponent>(entity);
+            auto& material = scene.AddComponent<MaterialComponent>(entity);
             if (version >= 3)
             {
                 ReadMaterialDescriptor(is, material.desc);
@@ -877,7 +876,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         ReadBool(is, hasCam);
         if (hasCam)
         {
-            auto& camera = scene.registry.emplace<CameraComponent>(entity);
+            auto& camera = scene.AddComponent<CameraComponent>(entity);
             if (version >= 3)
                 ReadCamera(is, camera);
             else
@@ -888,7 +887,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         ReadBool(is, hasDL);
         if (hasDL)
         {
-            auto& light = scene.registry.emplace<DirectionalLightComponent>(entity);
+            auto& light = scene.AddComponent<DirectionalLightComponent>(entity);
             if (version >= 3)
                 ReadDirectionalLight(is, light);
             else
@@ -899,7 +898,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         ReadBool(is, hasPL);
         if (hasPL)
         {
-            auto& light = scene.registry.emplace<PointLightComponent>(entity);
+            auto& light = scene.AddComponent<PointLightComponent>(entity);
             if (version >= 3)
                 ReadPointLight(is, light);
             else
@@ -910,7 +909,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         ReadBool(is, hasSL);
         if (hasSL)
         {
-            auto& light = scene.registry.emplace<SpotLightComponent>(entity);
+            auto& light = scene.AddComponent<SpotLightComponent>(entity);
             if (version >= 3)
                 ReadSpotLight(is, light);
             else
@@ -921,7 +920,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
         ReadBool(is, hasSky);
         if (hasSky)
         {
-            auto& sky = scene.registry.emplace<SkyboxRenderComponent>(entity);
+            auto& sky = scene.AddComponent<SkyboxRenderComponent>(entity);
             ReadBool(is, sky.isPrimary);
             std::string skyboxName = ReadString(is);
             std::string shaderName = ReadString(is);
@@ -932,11 +931,11 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
             }
             sky.shaderName = shaderName;
             if (sky.isPrimary)
-                EntityManager::SetActiveSkybox(scene, entity);
+                scene.SetActiveSkybox(entity);
         }
 
-        scene.registry.emplace<HierarchyComponent>(entity);
-        scene.registry.emplace<WorldTransformComponent>(entity);
+        scene.AddComponent<HierarchyComponent>(entity);
+        scene.AddComponent<WorldTransformComponent>(entity);
 
         if (!is.good())
             return false;
@@ -945,7 +944,7 @@ bool BinarySceneSerializer::Load(const std::string& path, Scene& scene)
     for (size_t i = 0; i < entities.size(); ++i)
     {
         if (parents[i] != -1 && static_cast<size_t>(parents[i]) < entities.size())
-            EntityManager::SetParent(scene, entities[i], entities[parents[i]]);
+            scene.SetParent(entities[i], entities[parents[i]]);
     }
 
     LOGGER_INFO("BinarySceneSerializer") << "Deserialized scene: " << path;

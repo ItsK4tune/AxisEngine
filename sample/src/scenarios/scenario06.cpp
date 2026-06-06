@@ -22,7 +22,7 @@ void SampleState::LoadScene6()
         .WithTransform(glm::vec3(0.0f, 2.0f, -1.5f), glm::vec3(0.0f), glm::vec3(2.5f))
         .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.35f, 1.0f)
         .Build();
-    if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(mover))
+    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(mover))
         renderer->color = glm::vec4(1.0f, 0.72f, 0.1f, 1.0f);
 
     for (int i = 0; i < 5; ++i)
@@ -34,13 +34,13 @@ void SampleState::LoadScene6()
             .WithPBRMesh("cubeModel", "forward_transparent", 0.0f, m_S6GlassRoughness, 1.0f)
             .Build();
 
-        if (auto* renderer = scene.registry.try_get<MeshRendererComponent>(glass))
+        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(glass))
         {
             renderer->renderMode = RenderMode::ForceForward;
             renderer->color = glm::vec4(0.2f + 0.12f * i, 0.75f, 1.0f, 1.0f);
             renderer->castShadow = false;
         }
-        if (auto* mat = scene.registry.try_get<AxisMaterialComponent>(glass))
+        if (auto* mat = scene.TryGetComponent<MaterialComponent>(glass))
         {
             mat->desc.opacity = m_S6GlassOpacity;
             mat->desc.blendSrc = BlendFactor::SrcAlpha;

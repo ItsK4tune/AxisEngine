@@ -148,30 +148,30 @@ public:
 private:
     void SetColor(const glm::vec4& color)
     {
-        auto& registry = GetScene().registry;
-        if (registry.valid(m_Entity))
+        auto& scene = GetScene();
+        if (scene.IsValid(m_Entity))
         {
-            if (auto* renderer = registry.try_get<UIRendererComponent>(m_Entity))
+            if (auto* renderer = scene.TryGetComponent<UIRendererComponent>(m_Entity))
                 renderer->color = color;
         }
     }
 
     void SetLabel(const std::string& detail)
     {
-        auto& registry = GetScene().registry;
-        if (registry.valid(m_Label))
+        auto& scene = GetScene();
+        if (scene.IsValid(m_Label))
         {
-            if (auto* text = registry.try_get<UITextComponent>(m_Label))
+            if (auto* text = scene.TryGetComponent<UITextComponent>(m_Label))
                 text->text = m_Title + "\n" + detail;
         }
     }
 
     void SetStatus(const std::string& status)
     {
-        auto& registry = GetScene().registry;
-        if (registry.valid(m_Status))
+        auto& scene = GetScene();
+        if (scene.IsValid(m_Status))
         {
-            if (auto* text = registry.try_get<UITextComponent>(m_Status))
+            if (auto* text = scene.TryGetComponent<UITextComponent>(m_Status))
                 text->text = status;
         }
     }
@@ -181,14 +181,14 @@ private:
         if (m_Meter == entt::null)
             return;
 
-        auto& registry = GetScene().registry;
-        if (!registry.valid(m_Meter))
+        auto& scene = GetScene();
+        if (!scene.IsValid(m_Meter))
             return;
 
         const float clamped = glm::clamp(ratio, 0.0f, 1.0f);
-        if (auto* transform = registry.try_get<UITransformComponent>(m_Meter))
+        if (auto* transform = scene.TryGetComponent<UITransformComponent>(m_Meter))
             transform->size.x = 250.0f * clamped;
-        if (auto* renderer = registry.try_get<UIRendererComponent>(m_Meter))
+        if (auto* renderer = scene.TryGetComponent<UIRendererComponent>(m_Meter))
             renderer->color = glm::mix(glm::vec4(0.18f, 0.72f, 0.54f, 0.96f),
                                        glm::vec4(0.92f, 0.63f, 0.22f, 0.98f), clamped);
     }
@@ -211,7 +211,7 @@ void AttachScenarioControl(Scene& scene, entt::entity control, entt::entity labe
                              const glm::vec4& baseColor, const glm::vec4& hoverColor,
                              const glm::vec4& activeColor)
 {
-    auto& script = scene.registry.emplace_or_replace<ScriptComponent>(control);
+    auto& script = scene.AddOrReplaceComponent<ScriptComponent>(control);
     script.className = "ScenarioInteractiveControl";
     script.InstantiateScript = [label, status, meter, mode, title, baseColor, hoverColor, activeColor]() {
         return std::make_unique<ScenarioInteractiveControl>(label, status, meter, mode, title, baseColor, hoverColor,

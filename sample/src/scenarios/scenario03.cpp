@@ -46,7 +46,7 @@ void SampleState::LoadScene3()
                      .WithMaterialEmission(m_S3PointColor * (m_S3PointIntensity * 2.0f))
                      .WithPointLight(m_S3PointColor, m_S3PointIntensity, 30.0f)
                      .Build();
-    scene.registry.get<PointLightComponent>(point).isCastShadow = true;
+    scene.GetComponent<PointLightComponent>(point).isCastShadow = true;
     m_S3PointLightEntity = point;
 
     auto spot = EntityBuilder(scene, res, "scenario")
@@ -59,13 +59,13 @@ void SampleState::LoadScene3()
                     .WithMaterialEmission(m_S3SpotColor * (m_S3SpotIntensity * 1.25f))
                     .WithSpotLight(glm::vec3(0.0f, -1.0f, 0.0f), m_S3SpotColor, m_S3SpotIntensity)
                     .Build();
-    auto& spotLight = scene.registry.get<SpotLightComponent>(spot);
+    auto& spotLight = scene.GetComponent<SpotLightComponent>(spot);
     spotLight.cutOff = glm::cos(glm::radians(22.5f));
     spotLight.outerCutOff = glm::cos(glm::radians(32.5f));
     spotLight.linear = 0.045f;
     spotLight.quadratic = 0.0075f;
-    scene.registry.get<RotationComponent>(spot).value = RotationFromNegativeY(
+    scene.GetComponent<RotationComponent>(spot).value = RotationFromNegativeY(
         glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) - glm::vec3(m_S3SpotOrbitRadius, m_S3SpotMotionHeight, 0.0f)));
-    scene.registry.get<SpotLightComponent>(spot).isCastShadow = true;
+    scene.GetComponent<SpotLightComponent>(spot).isCastShadow = true;
     m_S3SpotLightEntity = spot;
 }

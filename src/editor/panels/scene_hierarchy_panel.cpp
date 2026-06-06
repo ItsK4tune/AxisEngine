@@ -6,7 +6,6 @@
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
 #include <ecs/interface/i_ecs_system.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/transform_system.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
@@ -95,7 +94,7 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
 
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     if (s_SelectedEntity != entt::null && !registry.valid(s_SelectedEntity))
         SetSelectedEntity(entt::null);
 
@@ -152,7 +151,7 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
             deletePressed = true;
             EditorSystem::PushUndoState(scene);
             auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
-            EntityManager::DestroyEntityWithChildren(scene, s_SelectedEntity, sceneMgr);
+            scene.DestroyEntityWithChildren(s_SelectedEntity, sceneMgr);
             SetSelectedEntity(entt::null);
             MarkTransformGraphDirty();
         }
@@ -247,7 +246,7 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
 
 void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
 {
-    auto& registry = scene.registry;
+    auto& registry = scene.GetRegistry();
     if (!registry.valid(entity))
         return;
 
@@ -329,7 +328,7 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
         if (s_SelectedEntity == entity)
             SetSelectedEntity(entt::null);
         auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
-        EntityManager::DestroyEntityWithChildren(scene, entity, sceneMgr);
+        scene.DestroyEntityWithChildren(entity, sceneMgr);
         MarkTransformGraphDirty();
     }
 }
@@ -783,7 +782,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::Text("On Ground: %s", cc.isOnGround ? "Yes" : "No");
     });
 
-    DrawComponent<AxisMaterialComponent>("Material", reg, entity, [](auto& mat) {
+    DrawComponent<MaterialComponent>("Material", reg, entity, [](auto& mat) {
         bool changed = false;
         changed |= ImGui::DragFloat("Opacity", &mat.desc.opacity, 0.01f, 0.0f, 1.0f);
         changed |= ImGui::ColorEdit3("Emission", &mat.desc.emission.r);
@@ -1252,7 +1251,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             if (skyboxComp.isPrimary)
             {
                 auto& scene = ServiceLocator::Instance().Require<Scene>();
-                ::EntityManager::SetActiveSkybox(scene, entity);
+                scene.SetActiveSkybox(entity);
             }
         }
 
@@ -1626,10 +1625,10 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         {
             EnsureTransformComponents(reg, entity);
             reg.emplace<MeshRendererComponent>(entity);
-            (void)reg.get_or_emplace<AxisMaterialComponent>(entity);
+            (void)reg.get_or_emplace<MaterialComponent>(entity);
         }
-        if (!reg.try_get<AxisMaterialComponent>(entity) && ImGui::Selectable("Material"))
-            reg.emplace<AxisMaterialComponent>(entity);
+        if (!reg.try_get<MaterialComponent>(entity) && ImGui::Selectable("Material"))
+            reg.emplace<MaterialComponent>(entity);
         if (!reg.try_get<DirectionalLightComponent>(entity) && ImGui::Selectable("Directional Light"))
             reg.emplace<DirectionalLightComponent>(entity);
         if (!reg.try_get<PointLightComponent>(entity) && ImGui::Selectable("Point Light"))
@@ -1677,16 +1676,16 @@ void SceneHierarchyPanel::CreateNewEntity(Scene& scene, const std::string& scene
     if (targetScene.empty())
         targetScene = "main";
 
-    auto entity = scene.registry.create();
-    scene.registry.emplace<PositionComponent>(entity);
-    scene.registry.emplace<RotationComponent>(entity);
-    scene.registry.emplace<ScaleComponent>(entity, glm::vec3(1.0f));
-    scene.registry.emplace<HierarchyComponent>(entity);
-    scene.registry.emplace<WorldTransformComponent>(entity);
-    scene.registry.emplace<InfoComponent>(entity, "New Entity", "default");
+    auto entity = scene.GetRegistry().create();
+    scene.AddComponent<PositionComponent>(entity);
+    scene.AddComponent<RotationComponent>(entity);
+    scene.AddComponent<ScaleComponent>(entity, glm::vec3(1.0f));
+    scene.AddComponent<HierarchyComponent>(entity);
+    scene.AddComponent<WorldTransformComponent>(entity);
+    scene.AddComponent<InfoComponent>(entity, "New Entity", "default");
 
     // Assign to correct scene
-    scene.registry.get<InfoComponent>(entity).sceneName = targetScene;
+    scene.GetComponent<InfoComponent>(entity).sceneName = targetScene;
     sm.AddEntity(entity, targetScene);
     MarkTransformGraphDirty();
     SetSelectedEntity(entity);
@@ -1694,11 +1693,11 @@ void SceneHierarchyPanel::CreateNewEntity(Scene& scene, const std::string& scene
 
 void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
 {
-    if (srcEntity == entt::null || !scene.registry.valid(srcEntity))
+    if (srcEntity == entt::null || !scene.IsValid(srcEntity))
         return;
 
-    auto newEntity = scene.registry.create();
-    auto& reg = scene.registry;
+    auto newEntity = scene.GetRegistry().create();
+    auto& reg = scene.GetRegistry();
 
 // Helper macro to copy component if exists
 #define COPY_COMP(Type)              \
@@ -1718,7 +1717,7 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
     if (auto* world = reg.try_get<WorldTransformComponent>(newEntity))
         world->isDirty = true;
     COPY_COMP(MeshRendererComponent);
-    COPY_COMP(AxisMaterialComponent);
+    COPY_COMP(MaterialComponent);
     COPY_COMP(DirectionalLightComponent);
     COPY_COMP(PointLightComponent);
     COPY_COMP(SpotLightComponent);
@@ -1767,7 +1766,7 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
         auto parent = reg.get<HierarchyComponent>(srcEntity).parent;
         if (parent != entt::null)
         {
-            EntityManager::AddChild(scene, parent, newEntity, false);
+            scene.AddChild(parent, newEntity, false);
         }
     }
 

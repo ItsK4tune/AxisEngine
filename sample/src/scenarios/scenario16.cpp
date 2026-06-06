@@ -12,7 +12,7 @@ void SampleState::LoadScene16()
                     .WithUIRenderer("ui_panel_28", glm::vec4(0.08f, 0.10f, 0.13f, 0.94f))
                     .WithUIFlex(FlexDirection::Column, 14.0f)
                     .Build();
-    scene.registry.get<UIFlexLayoutComponent>(root).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(root).autoSize = false;
 
     EntityBuilder(scene, res, "scenario")
         .WithName("UIRootTitle")
@@ -27,14 +27,14 @@ void SampleState::LoadScene16()
                        .WithUIChild(root, glm::vec2(0.0f), glm::vec2(560.0f, 200.0f), 12)
                        .WithUIFlex(FlexDirection::Row, 18.0f)
                        .Build();
-    scene.registry.get<UIFlexLayoutComponent>(content).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(content).autoSize = false;
 
     m_S16TextureEntity = EntityBuilder(scene, res, "scenario")
                              .WithName("UILogoTile")
                              .WithUIChild(content, glm::vec2(0.0f), glm::vec2(180.0f, 180.0f), 13)
                              .WithUITextureResource("ui_logo_28", SamplePath("include/engine/asset/project/logo.png"),
                                                     glm::vec4(1.0f), "ui_logo_tile_28")
-                             .WithUIFlip(false, false)
+                             .WithUIFlip(false, true)
                              .Build();
 
     m_S16CardEntity = EntityBuilder(scene, res, "scenario")
@@ -57,7 +57,7 @@ void SampleState::LoadScene16()
                       .WithUIChild(root, glm::vec2(0.0f), glm::vec2(560.0f, 96.0f), 12)
                       .WithUIFlex(FlexDirection::Row, 10.0f)
                       .Build();
-    scene.registry.get<UIFlexLayoutComponent>(footer).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(footer).autoSize = false;
 
     EntityBuilder(scene, res, "scenario")
         .WithName("UICreditText")
@@ -82,14 +82,14 @@ void SampleState::LoadScene16()
                          .WithUIRenderer("ui_panel_29", glm::vec4(0.08f, 0.09f, 0.11f, m_S16PanelAlpha))
                          .WithUIFlex(FlexDirection::Row, 14.0f)
                          .Build();
-    scene.registry.get<UIFlexLayoutComponent>(m_S16RootPanel).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(m_S16RootPanel).autoSize = false;
 
     auto leftColumn = EntityBuilder(scene, res, "scenario")
                           .WithName("ResponsiveLeftColumn")
                           .WithUIChild(m_S16RootPanel, glm::vec2(0.0f), glm::vec2(280.0f, 260.0f), 9)
                           .WithUIFlex(FlexDirection::Column, 10.0f)
                           .Build();
-    scene.registry.get<UIFlexLayoutComponent>(leftColumn).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(leftColumn).autoSize = false;
 
     EntityBuilder(scene, res, "scenario")
         .WithName("ResponsiveTitle")
@@ -113,7 +113,7 @@ void SampleState::LoadScene16()
                           .WithUIChild(leftColumn, glm::vec2(0.0f), glm::vec2(260.0f, 60.0f), 10)
                           .WithUIFlex(FlexDirection::Row, 8.0f)
                           .Build();
-    scene.registry.get<UIFlexLayoutComponent>(metricsRow).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(metricsRow).autoSize = false;
 
     const char* metricLabels[] = {"Anchors", "Offsets", "Flex"};
     for (int i = 0; i < 3; ++i)
@@ -132,14 +132,14 @@ void SampleState::LoadScene16()
                            .WithUIChild(m_S16RootPanel, glm::vec2(0.0f), glm::vec2(240.0f, 260.0f), 9)
                            .WithUIFlex(FlexDirection::Column, 12.0f)
                            .Build();
-    scene.registry.get<UIFlexLayoutComponent>(rightColumn).autoSize = false;
+    scene.GetComponent<UIFlexLayoutComponent>(rightColumn).autoSize = false;
 
     auto preview = EntityBuilder(scene, res, "scenario")
                        .WithName("ResponsivePreview")
                        .WithUIChild(rightColumn, glm::vec2(0.0f), glm::vec2(220.0f, 170.0f), 10)
                        .WithUITextureResource("ui_logo_29", SamplePath("include/engine/asset/project/logo.png"),
                                               glm::vec4(0.18f, 0.21f, 0.24f, 0.95f), "ui_preview_29")
-                       .WithUIFlip(false, false)
+                       .WithUIFlip(false, true)
                        .Build();
 
     EntityBuilder(scene, res, "scenario")

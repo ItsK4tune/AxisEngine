@@ -46,7 +46,7 @@ void SampleState::LoadScene2()
             .Build();
     }
 
-    auto spotView = scene.registry.view<PositionComponent, RotationComponent, SpotLightComponent, InfoComponent>();
+    auto spotView = scene.View<PositionComponent, RotationComponent, SpotLightComponent, InfoComponent>();
     for (auto entity : spotView)
     {
         auto& info = spotView.get<InfoComponent>(entity);

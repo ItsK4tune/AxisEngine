@@ -16,9 +16,9 @@ bool FrustumCuller::IsVisible(const glm::vec3& minBound, const glm::vec3& maxBou
 
 bool FrustumCuller::IsVisible(Scene& scene, entt::entity entity, float alpha) const
 {
-    if (!scene.registry.all_of<WorldTransformComponent, MeshRendererComponent>(entity))
+    if (!scene.HasAllComponents<WorldTransformComponent, MeshRendererComponent>(entity))
         return false;
-    auto [world, renderer] = scene.registry.get<WorldTransformComponent, MeshRendererComponent>(entity);
+    auto [world, renderer] = scene.GetComponent<WorldTransformComponent, MeshRendererComponent>(entity);
     if (!renderer.model)
         return false;
 
@@ -32,7 +32,7 @@ void FrustumCuller::Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt
 {
     outVisibleEntities.clear();
 
-    auto renderView = scene.registry.view<WorldTransformComponent, MeshRendererComponent>();
+    auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent>();
 
     outVisibleEntities.reserve(renderView.size_hint());
 

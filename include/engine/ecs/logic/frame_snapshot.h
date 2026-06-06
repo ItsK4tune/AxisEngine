@@ -25,7 +25,7 @@ public:
     {
         m_Animations.clear();
 
-        auto view = scene.registry.view<AnimationComponent, MeshRendererComponent, InfoComponent>();
+        auto view = scene.View<AnimationComponent, MeshRendererComponent, InfoComponent>();
         m_Animations.reserve(view.size_hint());
 
         for (auto entity : view)

@@ -123,7 +123,7 @@ struct SampleScenarioFixture
 int CountByPrefix(Scene& scene, const std::string& prefix)
 {
     int count = 0;
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     for (auto entity : view)
     {
         const auto& name = view.get<InfoComponent>(entity).name;
@@ -135,7 +135,7 @@ int CountByPrefix(Scene& scene, const std::string& prefix)
 
 entt::entity FindByName(Scene& scene, const std::string& name)
 {
-    auto view = scene.registry.view<InfoComponent>();
+    auto view = scene.View<InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).name == name)
@@ -156,8 +156,8 @@ int RendererOrder(Scene& scene, const std::string& name)
 {
     auto entity = FindByName(scene, name);
     AXIS_CHECK(entity != entt::null);
-    AXIS_CHECK(scene.registry.all_of<MeshRendererComponent>(entity));
-    return scene.registry.get<MeshRendererComponent>(entity).order;
+    AXIS_CHECK(scene.HasAllComponents<MeshRendererComponent>(entity));
+    return scene.GetComponent<MeshRendererComponent>(entity).order;
 }
 }  // namespace
 
@@ -173,8 +173,8 @@ AXIS_TEST_CASE("Sample Scenario 01 creates requested render entity stress set")
     AXIS_CHECK(CountByPrefix(fixture.scene, "Entity_") == 216);
     auto first = FindByName(fixture.scene, "Entity_0");
     AXIS_CHECK(first != entt::null);
-    AXIS_CHECK(fixture.scene.registry.all_of<MeshRendererComponent>(first));
-    AXIS_CHECK(fixture.scene.registry.all_of<AxisMaterialComponent>(first));
+    AXIS_CHECK(fixture.scene.HasAllComponents<MeshRendererComponent>(first));
+    AXIS_CHECK(fixture.scene.HasAllComponents<MaterialComponent>(first));
 }
 
 AXIS_TEST_CASE("Sample Scenario 03 creates shadow casting light rig")
@@ -190,9 +190,9 @@ AXIS_TEST_CASE("Sample Scenario 03 creates shadow casting light rig")
     AXIS_CHECK(point != entt::null);
     AXIS_CHECK(spot != entt::null);
     AXIS_CHECK(dir != entt::null);
-    AXIS_CHECK(fixture.scene.registry.get<PointLightComponent>(point).isCastShadow);
-    AXIS_CHECK(fixture.scene.registry.get<SpotLightComponent>(spot).isCastShadow);
-    AXIS_CHECK(fixture.scene.registry.all_of<DirectionalLightComponent>(dir));
+    AXIS_CHECK(fixture.scene.GetComponent<PointLightComponent>(point).isCastShadow);
+    AXIS_CHECK(fixture.scene.GetComponent<SpotLightComponent>(spot).isCastShadow);
+    AXIS_CHECK(fixture.scene.HasAllComponents<DirectionalLightComponent>(dir));
 }
 
 AXIS_TEST_CASE("Sample Scenario 07 render order switches normal and reverse")
@@ -220,8 +220,8 @@ AXIS_TEST_CASE("Sample Scenario 21 creates primitive collider chain payload")
 
     auto payload = FindByName(fixture.scene, "Payload");
     AXIS_CHECK(payload != entt::null);
-    AXIS_CHECK(fixture.scene.registry.get<RigidShapeComponent>(payload).type == ShapeType::Sphere);
-    AXIS_CHECK(fixture.scene.registry.all_of<RigidBodyComponent>(payload));
+    AXIS_CHECK(fixture.scene.GetComponent<RigidShapeComponent>(payload).type == ShapeType::Sphere);
+    AXIS_CHECK(fixture.scene.HasAllComponents<RigidBodyComponent>(payload));
     AXIS_CHECK(fixture.state.m_S21ChainEntities.size() == 4);
 }
 
@@ -235,8 +235,8 @@ AXIS_TEST_CASE("Sample Scenario 26 creates controller trigger zones and fixed co
     auto trigger = FindByName(fixture.scene, "S26_TriggerZone");
     AXIS_CHECK(controller != entt::null);
     AXIS_CHECK(trigger != entt::null);
-    AXIS_CHECK(fixture.scene.registry.all_of<CharacterControllerComponent>(controller));
-    AXIS_CHECK(fixture.scene.registry.get<RigidBodyComponent>(trigger).isTrigger);
+    AXIS_CHECK(fixture.scene.HasAllComponents<CharacterControllerComponent>(controller));
+    AXIS_CHECK(fixture.scene.GetComponent<RigidBodyComponent>(trigger).isTrigger);
     AXIS_CHECK(fixture.physics.fixedConstraintCreateCount >= 1);
 }
 
@@ -248,8 +248,8 @@ AXIS_TEST_CASE("Sample Scenario 28 creates input binding player and action pads"
 
     auto player = FindByName(fixture.scene, "BindingPlayer");
     AXIS_CHECK(player != entt::null);
-    AXIS_CHECK(fixture.scene.registry.all_of<ScriptComponent>(player));
-    AXIS_CHECK(fixture.scene.registry.all_of<RigidBodyComponent>(player));
+    AXIS_CHECK(fixture.scene.HasAllComponents<ScriptComponent>(player));
+    AXIS_CHECK(fixture.scene.HasAllComponents<RigidBodyComponent>(player));
     AXIS_CHECK(CountByPrefix(fixture.scene, "InputPad_") == 5);
 }
 
@@ -263,8 +263,8 @@ AXIS_TEST_CASE("Sample Scenario 23 configures path criteria follower")
 
     auto follower = fixture.state.m_NavFollower;
     AXIS_CHECK(follower != entt::null);
-    AXIS_CHECK(fixture.scene.registry.valid(follower));
-    const auto& pathFollower = fixture.scene.registry.get<PathFollowerComponent>(follower);
+    AXIS_CHECK(fixture.scene.IsValid(follower));
+    const auto& pathFollower = fixture.scene.GetComponent<PathFollowerComponent>(follower);
     AXIS_CHECK(pathFollower.pathfindingOptions.criteria == PathfindingCriteria::StayOnRoad);
     AXIS_CHECK(pathFollower.pathfindingOptions.preferredTags.size() == 1);
     AXIS_CHECK(pathFollower.pathfindingOptions.preferredTags[0] == "road");
@@ -298,7 +298,7 @@ AXIS_TEST_CASE("Sample Scenario 27 creates data-driven entity grid")
     AXIS_CHECK(CountByPrefix(fixture.scene, "DataEntity_") == 12);
     auto first = FindByName(fixture.scene, "DataEntity_0");
     AXIS_CHECK(first != entt::null);
-    AXIS_CHECK(fixture.scene.registry.all_of<MeshRendererComponent>(first));
+    AXIS_CHECK(fixture.scene.HasAllComponents<MeshRendererComponent>(first));
 }
 
 AXIS_TEST_CASE("Sample Scenario 29 loads localization and creates localized UI")
@@ -322,7 +322,7 @@ AXIS_TEST_CASE("Sample Scenario 30 initializes network orb and message state")
 
     auto orb = FindByName(fixture.scene, "NetworkOrb");
     AXIS_CHECK(orb != entt::null);
-    AXIS_CHECK(fixture.scene.registry.all_of<MeshRendererComponent>(orb));
+    AXIS_CHECK(fixture.scene.HasAllComponents<MeshRendererComponent>(orb));
     AXIS_CHECK(fixture.state.m_S30SpawnCounter == 0);
     AXIS_CHECK(fixture.state.m_S30Messages.empty());
 }
@@ -337,8 +337,8 @@ AXIS_TEST_CASE("Sample Scenario 31 creates 2D and 3D audio sources")
     auto source2D = FindByName(fixture.scene, "Audio2DLoop");
     AXIS_CHECK(source3D != entt::null);
     AXIS_CHECK(source2D != entt::null);
-    const auto& audio3D = fixture.scene.registry.get<AudioSourceComponent>(source3D);
-    const auto& audio2D = fixture.scene.registry.get<AudioSourceComponent>(source2D);
+    const auto& audio3D = fixture.scene.GetComponent<AudioSourceComponent>(source3D);
+    const auto& audio2D = fixture.scene.GetComponent<AudioSourceComponent>(source2D);
     AXIS_CHECK(audio3D.is3D);
     AXIS_CHECK(!audio2D.is3D);
     AXIS_CHECK(audio3D.loop);

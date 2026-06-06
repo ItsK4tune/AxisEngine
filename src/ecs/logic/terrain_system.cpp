@@ -6,7 +6,6 @@
 #include <core/type/event_types.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_render_service.h>
-#include <ecs/logic/entity_manager.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/terrain_component.h>
@@ -47,7 +46,7 @@ void TerrainSystem::Shutdown()
     m_EventSubscriptions.Clear();
     if (m_LastScene)
     {
-        m_LastScene->registry.on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
+        m_LastScene->GetRegistry().on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
         m_LastScene = nullptr;
     }
 
@@ -64,16 +63,16 @@ void TerrainSystem::Update(Scene& scene, float dt)
     {
         if (m_LastScene)
         {
-            m_LastScene->registry.on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
+            m_LastScene->GetRegistry().on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
         }
-        scene.registry.on_destroy<TerrainComponent>().connect<&TerrainSystem::OnTerrainDestroyed>(this);
+        scene.GetRegistry().on_destroy<TerrainComponent>().connect<&TerrainSystem::OnTerrainDestroyed>(this);
         m_LastScene = &scene;
     }
 
     if (!m_Enabled)
         return;
 
-    auto view = scene.registry.view<TerrainComponent>();
+    auto view = scene.View<TerrainComponent>();
     for (auto entity : view)
     {
         auto& terrain = view.get<TerrainComponent>(entity);
@@ -90,12 +89,12 @@ void TerrainSystem::Render(Scene& scene)
     if (!m_Enabled)
         return;
 
-    entt::entity camEntity = EntityManager::GetActiveCamera(scene);
+    entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;
 
-    auto& cam = scene.registry.get<CameraComponent>(camEntity);
-    auto* camPosComp = scene.registry.try_get<PositionComponent>(camEntity);
+    auto& cam = scene.GetComponent<CameraComponent>(camEntity);
+    auto* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
     auto& sl = ServiceLocator::Instance();
@@ -116,13 +115,13 @@ void TerrainSystem::Render(Scene& scene)
 
     auto* geoSys = sl.Resolve<IGeometryService>();
 
-    auto view = scene.registry.view<TerrainComponent, PositionComponent>();
+    auto view = scene.View<TerrainComponent, PositionComponent>();
     for (auto entity : view)
     {
         auto& terrain = view.get<TerrainComponent>(entity);
         auto& pos = view.get<PositionComponent>(entity);
 
-        if (auto* info = scene.registry.try_get<InfoComponent>(entity); info && !info->isActive)
+        if (auto* info = scene.TryGetComponent<InfoComponent>(entity); info && !info->isActive)
             continue;
 
         auto it = m_TerrainCache.find(entity);
@@ -248,13 +247,13 @@ void TerrainSystem::RenderShadowPass(Scene& scene, Shader& shader, const Frustum
     shader.use();
     shader.setBool("u_HasAnimation", false);
 
-    auto view = scene.registry.view<TerrainComponent, PositionComponent>();
+    auto view = scene.View<TerrainComponent, PositionComponent>();
     for (auto entity : view)
     {
         auto& terrain = view.get<TerrainComponent>(entity);
         if (!terrain.castShadows)
             continue;
-        if (auto* info = scene.registry.try_get<InfoComponent>(entity); info && !info->isActive)
+        if (auto* info = scene.TryGetComponent<InfoComponent>(entity); info && !info->isActive)
             continue;
 
         auto it = m_TerrainCache.find(entity);
@@ -372,7 +371,7 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     glm::vec3 posVal(0.0f);
     if (m_LastScene)
     {
-        if (auto* posComp = m_LastScene->registry.try_get<PositionComponent>(entity))
+        if (auto* posComp = m_LastScene->GetRegistry().try_get<PositionComponent>(entity))
         {
             posVal = posComp->value;
         }

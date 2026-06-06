@@ -123,7 +123,7 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
     UpdateLayout(scene, virtualWidth, virtualHeight);
 
     std::vector<entt::entity> sortedEntities;
-    auto view = scene.registry.view<UITransformComponent, InfoComponent>();
+    auto view = scene.View<UITransformComponent, InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).isActive)
@@ -140,15 +140,15 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
     for (auto entity : sortedEntities)
     {
         auto& transform = view.get<UITransformComponent>(entity);
-        UIRect rect = CalculateRect(scene.registry, entity, virtualWidth, virtualHeight);
-        if (auto* animation = scene.registry.try_get<UIAnimationComponent>(entity))
+        UIRect rect = CalculateRect(scene.GetRegistry(), entity, virtualWidth, virtualHeight);
+        if (auto* animation = scene.TryGetComponent<UIAnimationComponent>(entity))
             rect = ApplyVisualScale(rect, transform, animation->visualScale);
 
         // Apply Position natively in CalculateRect, but rotation happens here
         glm::vec2 finalPos = rect.pos;
         glm::vec2 finalSize = rect.size;
 
-        if (auto* renderer = scene.registry.try_get<UIRendererComponent>(entity))
+        if (auto* renderer = scene.TryGetComponent<UIRendererComponent>(entity))
         {
             if (renderer->model && renderer->shader)
             {
@@ -181,7 +181,7 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
             }
         }
 
-        if (auto* textComp = scene.registry.try_get<UITextComponent>(entity))
+        if (auto* textComp = scene.TryGetComponent<UITextComponent>(entity))
         {
             if (textComp->model && textComp->shader && textComp->font)
             {
@@ -297,7 +297,7 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
 
 void UIRenderSystem::UpdateLayout(Scene& scene, float screenWidth, float screenHeight)
 {
-    auto view = scene.registry.view<UITransformComponent, UIFlexLayoutComponent, HierarchyComponent>();
+    auto view = scene.View<UITransformComponent, UIFlexLayoutComponent, HierarchyComponent>();
     for (auto entity : view)
     {
         auto& flex = view.get<UIFlexLayoutComponent>(entity);
@@ -307,14 +307,14 @@ void UIRenderSystem::UpdateLayout(Scene& scene, float screenWidth, float screenH
         if (hierarchy.children.empty())
             continue;
 
-        UIRect parentRect = CalculateRect(scene.registry, entity, screenWidth, screenHeight);
+        UIRect parentRect = CalculateRect(scene.GetRegistry(), entity, screenWidth, screenHeight);
         float currentOffset = (flex.direction == FlexDirection::Row) ? flex.padding.x : flex.padding.y;
 
         for (auto child : hierarchy.children)
         {
-            if (!scene.registry.all_of<UITransformComponent>(child))
+            if (!scene.HasAllComponents<UITransformComponent>(child))
                 continue;
-            auto& childTransform = scene.registry.get<UITransformComponent>(child);
+            auto& childTransform = scene.GetComponent<UITransformComponent>(child);
 
             if (flex.direction == FlexDirection::Row)
             {

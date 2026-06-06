@@ -271,6 +271,12 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
         ss >> invert;
         config.mouseInvertY = (invert != 0);
     }
+    else if (subCmd == "RAW_MOUSE_INPUT")
+    {
+        int enable;
+        ss >> enable;
+        config.rawMouseInput = (enable != 0);
+    }
     else if (subCmd == "MSAA")
     {
         ss >> config.msaaSamples;
