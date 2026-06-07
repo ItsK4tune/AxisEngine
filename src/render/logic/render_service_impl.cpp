@@ -890,6 +890,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
     bool lastHadProbe = false;
     unsigned int lastProbeCubemap = 0;
 
+    int lastRenderOrder = -9999;
     std::vector<glm::mat4> instanceMatrices;
     instanceMatrices.reserve(1024);
 
@@ -1064,7 +1065,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
                    other.shader == item.shader && other.materialBatchKey == item.materialBatchKey &&
                    other.renderMode == item.renderMode && other.tintColor == item.tintColor &&
                    other.castShadow == item.castShadow && other.receiveShadow == item.receiveShadow &&
-                   other.ignoreDepth == item.ignoreDepth;
+                   other.ignoreDepth == item.ignoreDepth &&
+                   (!item.ignoreDepth || other.renderOrder == item.renderOrder);
         };
 
         size_t batchCount = 1;
@@ -1085,12 +1087,21 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
             }
         }
 
+        if (ignoreDepthForDraw)
+        {
+            if (lastRenderOrder != -9999 && item.renderOrder != lastRenderOrder)
+            {
+                m_Context->Clear(BufferBit::Depth);
+            }
+            lastRenderOrder = item.renderOrder;
+        }
+
         if (batchCount > 1)
         {
             if (ignoreDepthForDraw)
             {
-                rsm.Disable(ServerCapability::DepthTest);
-                rsm.SetDepthMask(false);
+                rsm.Enable(ServerCapability::DepthTest);
+                rsm.SetDepthMask(true);
             }
 
             shader->setBool_Fast(shader->m_Loc_u_IsInstanced, "u_IsInstanced", true);
@@ -1103,8 +1114,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         {
             if (ignoreDepthForDraw)
             {
-                rsm.Disable(ServerCapability::DepthTest);
-                rsm.SetDepthMask(false);
+                rsm.Enable(ServerCapability::DepthTest);
+                rsm.SetDepthMask(true);
             }
 
             model->Draw(*shader, !matBound);
