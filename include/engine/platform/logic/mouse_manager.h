@@ -31,11 +31,11 @@ public:
     }
     bool IsMouseClicked(Mouse button) const
     {
-        return m_CurrentButtons.test((size_t)button) && !m_PreviousButtons.test((size_t)button);
+        return m_ClickedAccumulator.test((size_t)button) || (m_CurrentButtons.test((size_t)button) && !m_PreviousButtons.test((size_t)button));
     }
     bool IsMouseReleased(Mouse button) const
     {
-        return !m_CurrentButtons.test((size_t)button) && m_PreviousButtons.test((size_t)button);
+        return m_ReleasedAccumulator.test((size_t)button) || (!m_CurrentButtons.test((size_t)button) && m_PreviousButtons.test((size_t)button));
     }
 
     bool IsLeftButtonPressed() const
@@ -144,4 +144,6 @@ private:
 
     std::bitset<16> m_CurrentButtons;
     std::bitset<16> m_PreviousButtons;
+    std::bitset<16> m_ClickedAccumulator;
+    std::bitset<16> m_ReleasedAccumulator;
 };

@@ -13,6 +13,8 @@ MouseManager::MouseManager(IWindow* window)
     SetWindow(window);
     m_CurrentButtons.reset();
     m_PreviousButtons.reset();
+    m_ClickedAccumulator.reset();
+    m_ReleasedAccumulator.reset();
 }
 
 void MouseManager::SetWindow(IWindow* window)
@@ -72,13 +74,15 @@ void MouseManager::UpdateButton(Mouse button, int action, int mods)
     if (btnIdx >= 16)
         return;
 
-    if (action == 1)
+    if (action == 1) // Press
     {
         m_CurrentButtons.set(btnIdx, true);
+        m_ClickedAccumulator.set(btnIdx, true);
     }
-    else if (action == 0)
+    else if (action == 0) // Release
     {
         m_CurrentButtons.set(btnIdx, false);
+        m_ReleasedAccumulator.set(btnIdx, true);
     }
 }
 
@@ -89,6 +93,8 @@ void MouseManager::EndFrame()
     m_ScrollY = 0.0f;
 
     m_PreviousButtons = m_CurrentButtons;
+    m_ClickedAccumulator.reset();
+    m_ReleasedAccumulator.reset();
 }
 
 void MouseManager::SetCursorMode(CursorMode mode)

@@ -107,6 +107,20 @@ void CameraEditorModule::Initialize()
 }
 void CameraEditorModule::OnUpdate(float dt)
 {
+    if (m_IsDebugCameraActive)
+    {
+        auto& scene = ServiceLocator::Instance().Require<Scene>();
+        if (scene.IsValid(m_DebugCamera))
+        {
+            if (auto* sc = scene.TryGetComponent<ScriptComponent>(m_DebugCamera))
+            {
+                if (sc->instance)
+                {
+                    sc->instance->OnUpdate(dt);
+                }
+            }
+        }
+    }
 }
 void CameraEditorModule::Render(Scene& scene)
 {
@@ -201,7 +215,7 @@ void CameraEditorModule::ToggleDebugCamera()
                 auto& lastCam = registry.get<CameraComponent>(m_LastActiveCamera);
                 cam.fov = lastCam.fov;
                 cam.nearPlane = lastCam.nearPlane;
-                cam.farPlane = lastCam.farPlane;
+                cam.farPlane = lastCam.farPlane * 20.0f; // Multiplied by 20 to ensure it is much further than gameplay camera
                 cam.screenWidth = lastCam.screenWidth;
                 cam.screenHeight = lastCam.screenHeight;
                 cam.aspectRatio = lastCam.aspectRatio;
@@ -212,7 +226,7 @@ void CameraEditorModule::ToggleDebugCamera()
             {
                 cam.fov = 45.0f;
                 cam.nearPlane = 0.1f;
-                cam.farPlane = 1000.0f;
+                cam.farPlane = 10000.0f;
                 auto& mm = ServiceLocator::Instance().Require<IOHandler>().GetMonitorManager();
                 cam.screenWidth = mm.GetWidth();
                 cam.screenHeight = mm.GetHeight();

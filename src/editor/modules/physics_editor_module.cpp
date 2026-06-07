@@ -189,48 +189,96 @@ void PhysicsEditorModule::Render(Scene& scene)
             if (tSnap < 0.1f)
                 tSnap = 0.1f;  // Safety clamp
 
-            // Snap grid center to nearest multiple of tSnap to ensure lines align perfectly with snapped coordinates
-            float snapX = std::round(camPos.x / tSnap) * tSnap;
-            float snapZ = std::round(camPos.z / tSnap) * tSnap;
+            float extent = 5000.0f; // Looks infinite
+            float minorExtent = 200.0f;
+            
+            float minorStep = tSnap;
+            float majorStep = tSnap * 10.0f;
+            if (majorStep < 10.0f)
+                majorStep = 10.0f;
 
-            float extent = 200.0f;
-            if (tSnap < 0.5f)
-            {
-                extent = 100.0f;  // Snug grid for fine step to maintain performance
-            }
-            else if (tSnap > 2.0f)
-            {
-                extent = 500.0f;  // Large grid for huge step
-            }
-
-            glm::vec3 gridColor(0.20f, 0.20f, 0.20f);
+            glm::vec3 gridColorMajor(0.20f, 0.20f, 0.20f);
+            glm::vec3 gridColorMinor(0.08f, 0.08f, 0.08f); // Fainter minor lines
             glm::vec3 axisColorX(0.7f, 0.2f, 0.2f);  // Red for X-axis
             glm::vec3 axisColorZ(0.2f, 0.2f, 0.7f);  // Blue for Z-axis
             glm::vec3 axisColorY(0.2f, 0.7f, 0.2f);  // Green for Y-axis
 
-            // Draw grid lines parallel to Z axis (incrementing X) - all lines are exact multiples of tSnap
-            int halfLines = static_cast<int>(extent / tSnap);
-            for (int i = -halfLines; i <= halfLines; ++i)
+            // 1. Draw horizontal XZ Major Grid (extent = 5000)
+            int halfMajorLines = static_cast<int>(extent / majorStep);
+            for (int i = -halfMajorLines; i <= halfMajorLines; ++i)
             {
-                float x = snapX + i * tSnap;
-                glm::vec3 start(x, 0.0f, snapZ - extent);
-                glm::vec3 end(x, 0.0f, snapZ + extent);
-                glm::vec3 color = (std::abs(x) < 0.001f) ? axisColorZ : gridColor;
-                addLine(start, end, color);
+                float val = i * majorStep;
+                
+                // Lines parallel to Z
+                glm::vec3 startZ(val, 0.0f, -extent);
+                glm::vec3 endZ(val, 0.0f, extent);
+                glm::vec3 colorZ = (std::abs(val) < 0.001f) ? axisColorZ : gridColorMajor;
+                addLine(startZ, endZ, colorZ);
+
+                // Lines parallel to X
+                glm::vec3 startX(-extent, 0.0f, val);
+                glm::vec3 endX(extent, 0.0f, val);
+                glm::vec3 colorX = (std::abs(val) < 0.001f) ? axisColorX : gridColorMajor;
+                addLine(startX, endX, colorX);
             }
 
-            // Draw grid lines parallel to X axis (incrementing Z) - all lines are exact multiples of tSnap
-            for (int i = -halfLines; i <= halfLines; ++i)
+            // 2. Draw horizontal XZ Minor Grid (extent = 200) centered at camera
+            int halfMinorLines = static_cast<int>(minorExtent / minorStep);
+            float snapX = std::round(camPos.x / minorStep) * minorStep;
+            float snapZ = std::round(camPos.z / minorStep) * minorStep;
+            for (int i = -halfMinorLines; i <= halfMinorLines; ++i)
             {
-                float z = snapZ + i * tSnap;
-                glm::vec3 start(snapX - extent, 0.0f, z);
-                glm::vec3 end(snapX + extent, 0.0f, z);
-                glm::vec3 color = (std::abs(z) < 0.001f) ? axisColorX : gridColor;
-                addLine(start, end, color);
+                float x = snapX + i * minorStep;
+                float z = snapZ + i * minorStep;
+
+                // Lines parallel to Z
+                glm::vec3 startZ(x, 0.0f, snapZ - minorExtent);
+                glm::vec3 endZ(x, 0.0f, snapZ + minorExtent);
+                if (std::abs(x) > 0.001f) // Skip axis lines
+                    addLine(startZ, endZ, gridColorMinor);
+
+                // Lines parallel to X
+                glm::vec3 startX(snapX - minorExtent, 0.0f, z);
+                glm::vec3 endX(snapX + minorExtent, 0.0f, z);
+                if (std::abs(z) > 0.001f)
+                    addLine(startX, endX, gridColorMinor);
             }
 
-            // Draw absolute Y-axis line at X=0, Z=0
-            addLine(glm::vec3(0.0f, -extent, 0.0f), glm::vec3(0.0f, extent, 0.0f), axisColorY);
+            // 3. Draw vertical XY Grid at Z = 0 (extent = 5000, step = majorStep)
+            for (int i = -halfMajorLines; i <= halfMajorLines; ++i)
+            {
+                float val = i * majorStep;
+                
+                // Vertical lines (parallel to Y)
+                glm::vec3 startY(val, -extent, 0.0f);
+                glm::vec3 endY(val, extent, 0.0f);
+                glm::vec3 colorY = (std::abs(val) < 0.001f) ? axisColorY : gridColorMajor;
+                addLine(startY, endY, colorY);
+
+                // Horizontal lines (parallel to X)
+                glm::vec3 startX(-extent, val, 0.0f);
+                glm::vec3 endX(extent, val, 0.0f);
+                glm::vec3 colorX = (std::abs(val) < 0.001f) ? axisColorX : gridColorMajor;
+                addLine(startX, endX, colorX);
+            }
+
+            // 4. Draw vertical YZ Grid at X = 0 (extent = 5000, step = majorStep)
+            for (int i = -halfMajorLines; i <= halfMajorLines; ++i)
+            {
+                float val = i * majorStep;
+                
+                // Vertical lines (parallel to Y)
+                glm::vec3 startY(0.0f, -extent, val);
+                glm::vec3 endY(0.0f, extent, val);
+                glm::vec3 colorY = (std::abs(val) < 0.001f) ? axisColorY : gridColorMajor;
+                addLine(startY, endY, colorY);
+
+                // Horizontal lines (parallel to Z)
+                glm::vec3 startZ(0.0f, val, -extent);
+                glm::vec3 endZ(0.0f, val, extent);
+                glm::vec3 colorZ = (std::abs(val) < 0.001f) ? axisColorZ : gridColorMajor;
+                addLine(startZ, endZ, colorZ);
+            }
         }
     }
 
