@@ -22,7 +22,18 @@ jobs:
           - os: macos-latest
             preset: macos
             install-cmd: |
-              brew install ninja glfw glm bullet freetype assimp enet ffmpeg
+              packages=(ninja glfw glm bullet freetype assimp enet ffmpeg)
+              missing=()
+              for package in "${packages[@]}"; do
+                if ! brew list --formula "$package" >/dev/null 2>&1; then
+                  missing+=("$package")
+                fi
+              done
+              if [ ${#missing[@]} -gt 0 ]; then
+                brew install "${missing[@]}"
+              else
+                echo "All Homebrew dependencies are already installed."
+              fi
           - os: windows-latest
             preset: windows
             install-cmd: "" # Dependencies are pre-committed under lib/ and dlls/
