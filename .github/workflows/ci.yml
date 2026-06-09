@@ -35,6 +35,10 @@ jobs:
         if: matrix.install-cmd != ''
         run: ${{ matrix.install-cmd }}
 
+      - name: Setup MSVC Developer Command Prompt
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Configure CMake
         run: cmake --preset=ci-${{ matrix.preset }}
 

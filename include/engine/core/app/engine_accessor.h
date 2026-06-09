@@ -4,6 +4,7 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <platform/interface/cursor_mode.h>
+#include <ecs/logic/system_manager.h>
 #include <string>
 #include <vector>
 
@@ -46,7 +47,7 @@ public:
     template <typename T>
     T& GetSystem() const
     {
-        auto* sys = Get<SystemManager>().template GetSystem<T>();
+        auto* sys = Get<SystemManager>().GetSystem<T>();
         if (!sys)
             throw std::runtime_error("System not found: " + std::string(typeid(T).name()));
         return *sys;
