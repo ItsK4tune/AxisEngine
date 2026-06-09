@@ -1,4 +1,4 @@
-#version 330 core
+#version 460 core
 layout (location = 0) in vec3 aPos;
 layout (location = 5) in ivec4 aBoneIds;
 layout (location = 6) in vec4 aWeights;

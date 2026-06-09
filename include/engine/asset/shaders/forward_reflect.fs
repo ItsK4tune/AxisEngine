@@ -1,10 +1,10 @@
-#version 430 core
+#version 460 core
 out vec4 FragColor;
 
 layout (binding = 0) uniform sampler2D u_AlbedoMap;
 layout (binding = 1) uniform sampler2D u_NormalMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
-layout (binding = 6) uniform sampler2D u_SpecularMap;
+layout (binding = 9) uniform sampler2D u_SpecularMap;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;

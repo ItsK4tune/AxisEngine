@@ -1,5 +1,6 @@
 #include "sample_state.h"
 #include <core/logic/event_manager.h>
+#include <ecs/logic/camera_system.h>
 #include <ecs/logic/post_process_system.h>
 #include <ecs/unit/post_process_component.h>
 #include <platform/logic/input_serializer.h>
@@ -1472,6 +1473,7 @@ void SampleState::LoadScenario(int index)
             pipeline.SetHDREnabled(false);
             pipeline.SetBloomEnabled(false);
             pipeline.ClearEffects();
+            pipeline.ResetTemporalHistory();
         }
     }
     m_PPVignetteEnabled = false;
@@ -1606,6 +1608,7 @@ void SampleState::LoadScenario(int index)
     auto& transformSys = GetSystem<TransformSystem>();
     transformSys.m_IsLinearTransformsDirty = true;
     transformSys.Update(GetScene(), 0.0f);
+    GetSystem<CameraSystem>().Update(GetScene(), 0.0f);
     if (auto* navSystem = Resolve<NavigationSystem>())
         navSystem->SetShowDebug(m_ShowDebugLines);
 }

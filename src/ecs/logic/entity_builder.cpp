@@ -953,6 +953,16 @@ EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
 {
     auto& script = m_Scene.GetOrAddComponent<ScriptComponent>(m_Entity);
     script.className = scriptName;
+    if (script.instance)
+    {
+        try
+        {
+            script.instance->OnDestroy();
+        }
+        catch (...)
+        {
+        }
+    }
     script.instance.reset();
     script.scriptableInstance = nullptr;
     script.inputScriptableInstance = nullptr;
@@ -980,6 +990,16 @@ EntityBuilder& EntityBuilder::WithScriptable(const std::string& className, std::
 {
     auto& script = m_Scene.GetOrAddComponent<ScriptComponent>(m_Entity);
     script.className = className;
+    if (script.instance)
+    {
+        try
+        {
+            script.instance->OnDestroy();
+        }
+        catch (...)
+        {
+        }
+    }
     script.instance.reset();
     script.scriptableInstance = nullptr;
     script.inputScriptableInstance = nullptr;

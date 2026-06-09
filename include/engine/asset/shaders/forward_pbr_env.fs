@@ -1,4 +1,4 @@
-#version 430 core
+#version 460 core
 out vec4 FragColor;
 
 layout (binding = 0) uniform sampler2D u_AlbedoMap;

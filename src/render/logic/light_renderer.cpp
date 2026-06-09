@@ -154,20 +154,24 @@ void LightRenderer::UploadLightData(const RenderSceneData& sceneData, Shader* sh
     m_LastCombinedVersion = currentCombinedVersion;
     m_LastLightCount = currentLightCount;
 
-    auto safeSize = [](size_t count, size_t unitSize) { return (std::max)(count * unitSize, (size_t)16); };
+    auto safeSize = [](size_t count, size_t unitSize) { return (std::max)(count, (size_t)1) * unitSize; };
+
+    static const GPUDirLight dummyDir{};
+    static const GPUPointLight dummyPoint{};
+    static const GPUSpotLight dummySpot{};
 
     bm.BindBuffer(BufferType::ShaderStorageBuffer, m_DirLightSSBO->Get());
     bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_DirLights.size(), sizeof(GPUDirLight)),
-                  m_DirLights.data(), BufferUsage::DynamicDraw);
+                  m_DirLights.empty() ? &dummyDir : m_DirLights.data(), BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::ShaderStorageBuffer, 23, m_DirLightSSBO->Get());
 
     bm.BindBuffer(BufferType::ShaderStorageBuffer, m_PointLightSSBO->Get());
     bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_PointLights.size(), sizeof(GPUPointLight)),
-                  m_PointLights.data(), BufferUsage::DynamicDraw);
+                  m_PointLights.empty() ? &dummyPoint : m_PointLights.data(), BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::ShaderStorageBuffer, 24, m_PointLightSSBO->Get());
 
     bm.BindBuffer(BufferType::ShaderStorageBuffer, m_SpotLightSSBO->Get());
     bm.BufferData(BufferType::ShaderStorageBuffer, safeSize(m_SpotLights.size(), sizeof(GPUSpotLight)),
-                  m_SpotLights.data(), BufferUsage::DynamicDraw);
+                  m_SpotLights.empty() ? &dummySpot : m_SpotLights.data(), BufferUsage::DynamicDraw);
     bm.BindBufferBase(BufferType::ShaderStorageBuffer, 25, m_SpotLightSSBO->Get());
 }

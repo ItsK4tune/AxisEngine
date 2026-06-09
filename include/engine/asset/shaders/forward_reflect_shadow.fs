@@ -1,10 +1,10 @@
-#version 430 core
+#version 460 core
 out vec4 FragColor;
 
 layout (binding = 0) uniform sampler2D u_AlbedoMap;
 layout (binding = 1) uniform sampler2D u_NormalMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
-layout (binding = 6) uniform sampler2D u_SpecularMap;
+layout (binding = 9) uniform sampler2D u_SpecularMap;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;
@@ -66,8 +66,6 @@ layout (binding = 14) uniform sampler2D u_ShadowMapSpot[2];
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
-in vec4 FragPosLightSpace[2];
-in vec4 FragPosLightSpaceSpot[2];
 
 uniform float u_Shininess;
 uniform vec3 u_Specular;
@@ -167,10 +165,11 @@ vec3 CalcDirLightWithShadow(DirLight pLight, vec3 normal, vec3 viewDir, int ligh
 
     vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo;
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo;
-    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular;
+    vec3 specularOut = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular;
 
-    float shadow = light.u_ReceiveShadow != 0 ? ShadowCalculationDir(FragPosLightSpace[lightIndex], normal, lightDir, lightIndex) : 0.0;
-    return (u_Ambient + (1.0 - shadow) * (diffuse + u_Specular));
+    vec4 fragPosLightSpace = light.lightSpaceMatricesDir[lightIndex] * vec4(FragPos, 1.0);
+    float shadow = light.u_ReceiveShadow != 0 ? ShadowCalculationDir(fragPosLightSpace, normal, lightDir, lightIndex) : 0.0;
+    return (u_Ambient + (1.0 - shadow) * (diffuse + specularOut));
 }
 
 vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
@@ -186,9 +185,9 @@ vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir)
 
     vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo;
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo;
-    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular;
+    vec3 specularOut = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular;
 
-    return (u_Ambient + diffuse + u_Specular);
+    return (u_Ambient + diffuse + specularOut);
 }
 
 vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, int index)
@@ -206,12 +205,12 @@ vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, 
 
     vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo * attenuation;
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo * attenuation;
-    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular * attenuation;
+    vec3 specularOut = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular * attenuation;
 
     float shadow = 0.0;
     if (index >= 0 && index < 2)
         shadow = ShadowCalculationPoint(fragPos, pLight.position, index);
-    return (u_Ambient + (1.0 - shadow) * (diffuse + u_Specular));
+    return (u_Ambient + (1.0 - shadow) * (diffuse + specularOut));
 }
 
 vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, int index)
@@ -233,12 +232,15 @@ vec3 CalcSpotLight(SpotLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, in
 
     vec3 u_Ambient  = pLight.color * pLight.u_Ambient * pLight.intensity * albedo * attenuation * intensity;
     vec3 diffuse  = pLight.color * pLight.diffuse * pLight.intensity * diff * albedo * attenuation * intensity;
-    vec3 u_Specular = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular * attenuation * intensity;
+    vec3 specularOut = pLight.color * pLight.u_Specular * pLight.intensity * spec * specularMap * u_Specular * attenuation * intensity;
 
     float shadow = 0.0;
     if (light.u_ReceiveShadow != 0 && index >= 0 && index < 2)
-        shadow = ShadowCalculationSpot(FragPosLightSpaceSpot[index], normal, lightDir, index);
-    return (u_Ambient + (1.0 - shadow) * (diffuse + u_Specular));
+    {
+        vec4 fragPosLightSpaceSpot = light.lightSpaceMatricesSpot[index] * vec4(FragPos, 1.0);
+        shadow = ShadowCalculationSpot(fragPosLightSpaceSpot, normal, lightDir, index);
+    }
+    return (u_Ambient + (1.0 - shadow) * (diffuse + specularOut));
 }
 
 float ShadowCalculationDir(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int shadowMapIndex)

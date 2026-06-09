@@ -114,6 +114,17 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* 
             shader->setFloat(locs.u_AO, mat.desc.pbr.ao);
         if (locs.u_Emission != -1)
             shader->setVec3(locs.u_Emission, mat.desc.emission);
+        if (locs.u_Shininess != -1)
+        {
+            float roughness = mat.desc.pbr.roughness;
+            if (roughness < 0.0f)
+                roughness = 0.0f;
+            else if (roughness > 1.0f)
+                roughness = 1.0f;
+            shader->setFloat(locs.u_Shininess, 1.0f + (1.0f - roughness) * 127.0f);
+        }
+        if (locs.u_Specular != -1)
+            shader->setVec3(locs.u_Specular, glm::vec3(0.5f));
 
         if (sceneData.irradianceMap != 0 && locs.u_IrradianceMap != -1)
         {

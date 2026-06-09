@@ -13,6 +13,23 @@
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <resource/logic/resource_manager.h>
+#include <cmath>
+
+namespace
+{
+bool IsUsableTemporalMatrix(const glm::mat4& matrix)
+{
+    for (int col = 0; col < 4; ++col)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            if (!std::isfinite(matrix[col][row]))
+                return false;
+        }
+    }
+    return std::abs(glm::determinant(matrix)) > 0.000001f;
+}
+}  // namespace
 
 PostProcessPipeline::PostProcessPipeline()
 {
@@ -201,6 +218,8 @@ void PostProcessPipeline::Resize(int width, int height)
 {
     m_Width = width;
     m_Height = height;
+    m_PingPong.currentIndex = 0;
+    m_ResetTemporalHistory = true;
     if (!m_Context)
         return;
     auto& tm = m_Context->GetTextureManager();
@@ -244,6 +263,7 @@ void PostProcessPipeline::BeginCapture()
     auto& rsm = m_Context->GetRenderStateManager();
     auto& dc = m_Context->GetDrawContext();
 
+    m_PingPong.currentIndex = 0;
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[0]->Get());
     rsm.SetViewport(0, 0, m_Width, m_Height);
     rsm.Enable(ServerCapability::DepthTest);
@@ -528,6 +548,10 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
 
     if (mode == AntiAliasingMode::TAA)
     {
+        const bool validTemporalMatrices = IsUsableTemporalMatrix(prevViewProj) && IsUsableTemporalMatrix(currViewProj);
+        const bool resetHistory = m_ResetTemporalHistory || !validTemporalMatrices;
+        const glm::mat4 safeCurrViewProj = IsUsableTemporalMatrix(currViewProj) ? currViewProj : glm::mat4(1.0f);
+
         shader->setInt("depthTexture", 1);
         tm.ActiveTexture(TextureUnit::Texture1);
         tm.BindTexture(TextureType::Texture2D, m_DepthTexture->Get());
@@ -536,8 +560,9 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
         tm.ActiveTexture(TextureUnit::Texture2);
         tm.BindTexture(TextureType::Texture2D, m_HistoryTexture->Get());
 
-        shader->setMat4("invViewProj", glm::inverse(currViewProj));
-        shader->setMat4("prevViewProj", prevViewProj);
+        shader->setBool("resetHistory", resetHistory);
+        shader->setMat4("invViewProj", resetHistory ? glm::mat4(1.0f) : glm::inverse(currViewProj));
+        shader->setMat4("prevViewProj", resetHistory ? safeCurrViewProj : prevViewProj);
         shader->setVec2("jitterOffset", jitterOffset);
 
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[1]->Get());
@@ -553,6 +578,8 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
         rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.fbo[1]->Get());
         rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_PingPong.fbo[0]->Get());
         rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+
+        m_ResetTemporalHistory = false;
     }
     else if (mode == AntiAliasingMode::FXAA)
     {
@@ -622,6 +649,12 @@ void PostProcessPipeline::RenderUIEffects()
 void PostProcessPipeline::ClearEffects()
 {
     m_Effects.clear();
+}
+
+void PostProcessPipeline::ResetTemporalHistory()
+{
+    m_ResetTemporalHistory = true;
+    m_PingPong.currentIndex = 0;
 }
 
 void PostProcessPipeline::InitQuad()

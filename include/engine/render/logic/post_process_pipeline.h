@@ -45,6 +45,7 @@ public:
 
     bool HasUIEffects() const;
     void RenderUIEffects();
+    void ResetTemporalHistory();
 
     uint32_t GetDepthTexture() const
     {
@@ -172,6 +173,7 @@ private:
     float m_Exposure = 1.0f;
     float m_Gamma = 2.2f;
     int m_TonemappingMode = 1;
+    bool m_ResetTemporalHistory = true;
     EventSubscriptionList m_EventSubscriptions;
 
     void UpdateConfig();
