@@ -1125,7 +1125,7 @@ EntityBuilder& EntityBuilder::WithParticleTexture(const std::string& textureName
 {
     auto& p = m_Scene.GetOrAddComponent<ParticleEmitterComponent>(m_Entity);
     p.textureName = textureNameOrPath;
-    p.emitter.Texture = m_Resources.GetTextureAuto(textureNameOrPath);
+    p.emitter.texture = m_Resources.GetTextureAuto(textureNameOrPath);
     return *this;
 }
 

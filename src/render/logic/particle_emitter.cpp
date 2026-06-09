@@ -78,7 +78,7 @@ ParticleEmitter::ParticleEmitter(ParticleEmitter&& other) noexcept
       m_VAO(other.m_VAO),
       m_VBO(other.m_VBO),
       m_instanceVBO(other.m_instanceVBO),
-      Texture(other.Texture),
+      texture(other.texture),
       Offset(other.Offset),
       MinVelocity(other.MinVelocity),
       MaxVelocity(other.MaxVelocity),
@@ -117,7 +117,7 @@ ParticleEmitter& ParticleEmitter::operator=(ParticleEmitter&& other) noexcept
         m_VAO = other.m_VAO;
         m_VBO = other.m_VBO;
         m_instanceVBO = other.m_instanceVBO;
-        Texture = other.Texture;
+        texture = other.texture;
 
         Offset = other.Offset;
         MinVelocity = other.MinVelocity;
@@ -254,10 +254,10 @@ void ParticleEmitter::Render(Shader* shader)
     auto& bm = GetBufferManager();
     auto& dc = GetDrawContext();
 
-    if (Texture)
+    if (texture)
     {
         tm.ActiveTexture(TextureUnit::Texture0);
-        tm.BindTexture(TextureType::Texture2D, Texture->id);
+        tm.BindTexture(TextureType::Texture2D, texture->id);
         shader->setInt("u_AlbedoMap", 0);
     }
 

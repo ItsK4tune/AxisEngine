@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Install System Dependencies
         if: matrix.install-cmd != ''

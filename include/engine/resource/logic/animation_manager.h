@@ -26,7 +26,7 @@ public:
     void Unload(const std::string& nameOrPath) override;
 
     void Clear() override;
-    std::vector<std::string> GetAllNames() const
+    std::vector<std::string> GetAllNames() const override
     {
         return m_Cache.GetAllNames();
     }

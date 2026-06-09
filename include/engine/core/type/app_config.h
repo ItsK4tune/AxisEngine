@@ -11,6 +11,7 @@
 #include <platform/type/window_mode.h>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #ifndef AXIS_HAS_IRRKLANG_BACKEND
 #define AXIS_HAS_IRRKLANG_BACKEND 1
@@ -268,6 +269,32 @@ struct AppConfig
         return *this;
     }
 
-    AppConfig(AppConfig&& o) noexcept = default;
-    AppConfig& operator=(AppConfig&& o) noexcept = default;
+    AppConfig(AppConfig&& o) noexcept
+        : AppConfig()
+    {
+        *this = std::move(o);
+    }
+
+    AppConfig& operator=(AppConfig&& o) noexcept
+    {
+        if (this == &o)
+            return *this;
+        title = std::move(o.title);
+        logLevel = o.logLevel;
+        numJobThreads = o.numJobThreads;
+        timeScale = o.timeScale;
+        iconPath = std::move(o.iconPath);
+        headlessMode = o.headlessMode;
+        window = std::move(o.window);
+        graphics = std::move(o.graphics);
+        render = std::move(o.render);
+        shadow = std::move(o.shadow);
+        physics = std::move(o.physics);
+        input = std::move(o.input);
+        audio = std::move(o.audio);
+        culling = std::move(o.culling);
+        debug = std::move(o.debug);
+        lightingMode = o.lightingMode;
+        return *this;
+    }
 };

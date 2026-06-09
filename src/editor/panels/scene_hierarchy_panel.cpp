@@ -1011,7 +1011,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         auto textureNames = rm.GetLoadedTextures();
         if (DrawResourceDropdownStr("Texture", pe.textureName, textureNames))
         {
-            pe.emitter.Texture = rm.GetTexture(pe.textureName);
+            pe.emitter.texture = rm.GetTexture(pe.textureName);
         }
     });
 

@@ -134,12 +134,12 @@ void ParticleSystem::RenderParticles(Scene& scene, int width, int height, float 
             uint32_t activeCount = emitterComp.emitter.GetActiveParticleCount();
             if (activeCount > 0)
             {
-                if (!emitterComp.emitter.Texture && !emitterComp.textureName.empty())
+                if (!emitterComp.emitter.texture && !emitterComp.textureName.empty())
                 {
-                    emitterComp.emitter.Texture = resources->GetTextureAuto(emitterComp.textureName);
+                    emitterComp.emitter.texture = resources->GetTextureAuto(emitterComp.textureName);
                 }
 
-                if (!emitterComp.emitter.Texture)
+                if (!emitterComp.emitter.texture)
                 {
                     m_Context->GetTextureManager().ActiveTexture(TextureUnit::Texture0);
                     m_Context->GetTextureManager().BindTexture(TextureType::Texture2D, m_DefaultTexture);

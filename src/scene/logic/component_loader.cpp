@@ -708,7 +708,7 @@ void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, con
     if (!texName.empty())
     {
         pe.textureName = texName;
-        pe.emitter.Texture = res.GetTextureAuto(texName);
+        pe.emitter.texture = res.GetTextureAuto(texName);
     }
 
     std::string shaderName = node.GetChildValue("Shader");
