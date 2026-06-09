@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <typeindex>
 #include <shared_mutex>
 #include <stdexcept>
