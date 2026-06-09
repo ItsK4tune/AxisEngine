@@ -39,7 +39,9 @@
       "name": "ci-base",
       "displayName": "CI Base Configuration",
       "hidden": true,
+      "inherits": "base",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_TESTS": "ON",
         "ENABLE_EDITOR": "OFF",
         "BUILD_SAMPLES": "OFF"
@@ -78,10 +80,10 @@
     },
     {
       "name": "ci-windows",
-      "displayName": "CI Windows MSVC",
+      "displayName": "CI Windows Ninja",
       "inherits": [
-        "windows-msvc",
-        "ci-base"
+        "ci-base",
+        "windows-ninja"
       ]
     },
     {
@@ -140,8 +142,8 @@
       "name": "ci-linux",
       "displayName": "CI Linux Ninja",
       "inherits": [
-        "linux-ninja",
-        "ci-base"
+        "ci-base",
+        "linux-ninja"
       ]
     },
     {
@@ -196,8 +198,8 @@
       "name": "ci-macos",
       "displayName": "CI macOS Ninja",
       "inherits": [
-        "macos-ninja",
-        "ci-base"
+        "ci-base",
+        "macos-ninja"
       ]
     },
     {
@@ -245,6 +247,21 @@
       "displayName": "macOS Ninja Release",
       "configurePreset": "macos-ninja",
       "configuration": "Release"
+    },
+    {
+      "name": "ci-linux",
+      "displayName": "CI Linux Build",
+      "configurePreset": "ci-linux"
+    },
+    {
+      "name": "ci-macos",
+      "displayName": "CI macOS Build",
+      "configurePreset": "ci-macos"
+    },
+    {
+      "name": "ci-windows",
+      "displayName": "CI Windows Build",
+      "configurePreset": "ci-windows"
     }
   ],
   "testPresets": [

@@ -72,7 +72,8 @@ public:
     float SpawnRate = 10.0f;
     EmissionShape Shape = EmissionShape::DIRECTIONAL;
 
-    std::shared_ptr<Texture> Texture = nullptr;
+    using TexturePtr = std::shared_ptr<Texture>;
+    TexturePtr Texture = nullptr;
 
     static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
 

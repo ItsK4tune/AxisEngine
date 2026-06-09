@@ -43,7 +43,7 @@ jobs:
         run: cmake --preset=ci-${{ matrix.preset }}
 
       - name: Build Engine
-        run: cmake --build build --config Release
+        run: cmake --build --preset=ci-${{ matrix.preset }}
 
       - name: Run Tests
         run: ctest --preset=ci-tests-${{ matrix.preset }} -C Release
