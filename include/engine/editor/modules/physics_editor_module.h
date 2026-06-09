@@ -4,6 +4,7 @@
 #include <platform/interface/input_codes.h>
 #include <functional>
 #include <string>
+#include <cstdint>
 
 class Application;
 
