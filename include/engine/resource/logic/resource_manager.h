@@ -52,40 +52,40 @@ public:
     }
 
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath,
-                    const std::string& gsPath = "");
+                    const std::string& gsPath = "") override;
     void LoadTexture(const std::string& name, const std::string& path, bool async = true,
                      bool keepCpuData = false) override;
     void CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height,
                                int nrComponents, bool keepCpuData = false);
-    void UnloadTexture(const std::string& name);
+    void UnloadTexture(const std::string& name) override;
 
-    void LoadModel(const std::string& name, const std::string& path, bool isStatic = false);
-    void LoadModelAsync(const std::string& name, const std::string& path, bool isStatic = false);
-    void UnloadModel(const std::string& name);
+    void LoadModel(const std::string& name, const std::string& path, bool isStatic = false) override;
+    void LoadModelAsync(const std::string& name, const std::string& path, bool isStatic = false) override;
+    void UnloadModel(const std::string& name) override;
 
     void LoadAnimation(const std::string& name, const std::string& path, const std::string& modelName);
-    void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize);
-    void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine);
-    void LoadSkybox(const std::string& name, const std::vector<std::string>& faces);
+    void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize) override;
+    void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine) override;
+    void LoadSkybox(const std::string& name, const std::vector<std::string>& faces) override;
     void LoadFragment(const std::string& name, const std::string& path);
-    void CreateUIModel(const std::string& name, UIType type);
+    void CreateUIModel(const std::string& name, UIType type) override;
 
-    void UnloadShader(const std::string& name);
-    void UnloadFont(const std::string& name);
-    void UnloadSound(const std::string& name);
-    void UnloadSkybox(const std::string& name);
+    void UnloadShader(const std::string& name) override;
+    void UnloadFont(const std::string& name) override;
+    void UnloadSound(const std::string& name) override;
+    void UnloadSkybox(const std::string& name) override;
     void UnloadAnimation(const std::string& name);
     void UnloadFragment(const std::string& name);
 
-    std::shared_ptr<Shader> GetShader(const std::string& name);
-    std::shared_ptr<Texture> GetTexture(const std::string& name);
-    std::shared_ptr<Model> GetModel(const std::string& name);
+    std::shared_ptr<Shader> GetShader(const std::string& name) override;
+    std::shared_ptr<Texture> GetTexture(const std::string& name) override;
+    std::shared_ptr<Model> GetModel(const std::string& name) override;
     std::shared_ptr<Animation> GetAnimation(const std::string& name);
-    std::shared_ptr<Font> GetFont(const std::string& name);
-    std::shared_ptr<IAudioSource> GetSound(const std::string& name);
-    std::shared_ptr<Skybox> GetSkybox(const std::string& name);
+    std::shared_ptr<Font> GetFont(const std::string& name) override;
+    std::shared_ptr<IAudioSource> GetSound(const std::string& name) override;
+    std::shared_ptr<Skybox> GetSkybox(const std::string& name) override;
     std::shared_ptr<FragmentAsset> GetFragment(const std::string& name);
-    std::shared_ptr<UIModel> GetUIModel(const std::string& name);
+    std::shared_ptr<UIModel> GetUIModel(const std::string& name) override;
     bool HasUIModel(const std::string& name);
     std::shared_ptr<VideoDecoder> GetVideo(const std::string& name);
 
