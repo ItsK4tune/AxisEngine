@@ -234,17 +234,17 @@ std::vector<Texture> loadMaterialTextures(std::vector<Texture>& textures_loaded,
         }
         if (!skip)
         {
-            Texture Texture;
-            Texture.type = typeName;
-            Texture.path = str.C_Str();
+            Texture texture;
+            texture.type = typeName;
+            texture.path = str.C_Str();
 
-            unsigned int id = TextureFromFile(str.C_Str(), directory, scene, deferred, &Texture);
+            unsigned int id = TextureFromFile(str.C_Str(), directory, scene, deferred, &texture);
 
-            if (id != 0 || (deferred && Texture.pixelData != nullptr))
+            if (id != 0 || (deferred && texture.pixelData != nullptr))
             {
-                Texture.id = id;
-                textures.push_back(Texture);
-                textures_loaded.push_back(Texture);
+                texture.id = id;
+                textures.push_back(texture);
+                textures_loaded.push_back(texture);
             }
         }
     }
