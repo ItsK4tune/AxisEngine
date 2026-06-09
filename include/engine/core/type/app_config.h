@@ -12,6 +12,10 @@
 #include <cstdint>
 #include <string>
 
+#ifndef AXIS_HAS_IRRKLANG_BACKEND
+#define AXIS_HAS_IRRKLANG_BACKEND 1
+#endif
+
 struct WindowConfig
 {
     int width = 800;
@@ -86,8 +90,12 @@ struct InputConfig
 
 struct AudioConfig
 {
+#if AXIS_HAS_IRRKLANG_BACKEND
     AudioBackend audioBackend = AudioBackend::IrrKlang;
-    float masterVolume = 10.0f;
+#else
+    AudioBackend audioBackend = AudioBackend::Null;
+#endif
+    float masterVolume = 100.0f;
     std::string audioDevice = "";
 };
 

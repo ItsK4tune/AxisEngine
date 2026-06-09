@@ -25,7 +25,7 @@ struct AudioSourceComponent
     bool loop = false;
     bool is3D = false;
 
-    float volume = 1.0f;
+    float volume = 100.0f;
     float pitch = 1.0f;
     float pan = 0.0f;
     float speed = 1.0f;

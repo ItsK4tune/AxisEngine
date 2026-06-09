@@ -3,8 +3,8 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <DbgHelp.h>
-#include <array>
+#include <platform/interface/i_platform_runtime.h>
+#include <platform/logic/platform_services.h>
 #include <chrono>
 #include <filesystem>
 #include <iomanip>
@@ -20,13 +20,13 @@ void LogManager::Initialize(LogLevel level)
     if (level == LogLevel::None)
     {
 #ifndef ENABLE_EDITOR
-        FreeConsole();
+        GetNativePlatformRuntime().DetachConsole();
 #endif
     }
     else
     {
 #ifndef ENABLE_EDITOR
-        FreeConsole();
+        GetNativePlatformRuntime().DetachConsole();
 #endif
         std::string logsDirStr = FileSystem::getPath("logs");
         namespace fs = std::filesystem;
@@ -39,8 +39,7 @@ void LogManager::Initialize(LogLevel level)
 
         auto now = std::chrono::system_clock::now();
         auto timeT = std::chrono::system_clock::to_time_t(now);
-        std::tm bt{};
-        localtime_s(&bt, &timeT);
+        std::tm bt = GetNativePlatformRuntime().LocalTime(timeT);
 
         std::stringstream ss;
         ss << "log_" << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S") << ".log";
@@ -65,7 +64,8 @@ void LogManager::Initialize(LogLevel level)
         }
     }
 
-    SetUnhandledExceptionFilter(CrashHandler);
+    GetNativePlatformRuntime().InstallCrashHandler(
+        [this](const std::string& report) { this->WriteCrashReport(report); });
 
     if (auto* es = ServiceLocator::Instance().Resolve<EventManager>())
     {
@@ -151,90 +151,18 @@ void LogManager::Log(LogType type, const std::string& tag, const std::string& me
 #endif
 }
 
-LONG WINAPI LogManager::CrashHandler(EXCEPTION_POINTERS* exceptionInfo)
+void LogManager::WriteCrashReport(const std::string& report)
 {
-    auto& logFile = Instance().m_LogFile;
-    if (logFile.is_open())
+    if (m_LogFile.is_open())
     {
-        logFile << "Unhandled Exception Caught!\n";
-        if (exceptionInfo && exceptionInfo->ExceptionRecord)
-        {
-            logFile << "Exception Code: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionCode << std::dec
-                    << "\n";
-            logFile << "Faulting Address: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionAddress
-                    << std::dec << "\n";
-        }
-
-        HANDLE process = GetCurrentProcess();
-        HANDLE thread = GetCurrentThread();
-        SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-
-        if (SymInitialize(process, nullptr, TRUE) && exceptionInfo && exceptionInfo->ContextRecord)
-        {
-            CONTEXT context = *exceptionInfo->ContextRecord;
-            STACKFRAME64 frame{};
-            DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
-
-            frame.AddrPC.Offset = context.Rip;
-            frame.AddrPC.Mode = AddrModeFlat;
-            frame.AddrFrame.Offset = context.Rbp;
-            frame.AddrFrame.Mode = AddrModeFlat;
-            frame.AddrStack.Offset = context.Rsp;
-            frame.AddrStack.Mode = AddrModeFlat;
-
-            logFile << "Stack Trace:\n";
-            for (int frameIndex = 0; frameIndex < 64; ++frameIndex)
-            {
-                if (!StackWalk64(machineType, process, thread, &frame, &context, nullptr, SymFunctionTableAccess64,
-                                 SymGetModuleBase64, nullptr))
-                {
-                    break;
-                }
-
-                if (frame.AddrPC.Offset == 0)
-                    break;
-
-                DWORD64 moduleBase = SymGetModuleBase64(process, frame.AddrPC.Offset);
-                std::array<char, MAX_PATH> moduleName{};
-                if (moduleBase)
-                {
-                    GetModuleFileNameA(reinterpret_cast<HMODULE>(moduleBase), moduleName.data(),
-                                       static_cast<DWORD>(moduleName.size()));
-                }
-
-                alignas(SYMBOL_INFO) std::array<unsigned char, sizeof(SYMBOL_INFO) + MAX_SYM_NAME> symbolBuffer{};
-                auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbolBuffer.data());
-                symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-                symbol->MaxNameLen = MAX_SYM_NAME;
-
-                DWORD64 displacement = 0;
-                bool hasSymbol = SymFromAddr(process, frame.AddrPC.Offset, &displacement, symbol) == TRUE;
-
-                IMAGEHLP_LINE64 line{};
-                line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-                DWORD lineDisplacement = 0;
-                bool hasLine = SymGetLineFromAddr64(process, frame.AddrPC.Offset, &lineDisplacement, &line) == TRUE;
-
-                logFile << "  #" << frameIndex << " 0x" << std::hex << frame.AddrPC.Offset;
-                if (moduleBase)
-                {
-                    logFile << " " << moduleName.data() << "+0x" << (frame.AddrPC.Offset - moduleBase);
-                }
-                logFile << std::dec;
-
-                if (hasSymbol)
-                {
-                    logFile << " " << symbol->Name << "+0x" << std::hex << displacement << std::dec;
-                }
-                if (hasLine)
-                {
-                    logFile << " (" << line.FileName << ":" << line.LineNumber << ")";
-                }
-                logFile << "\n";
-            }
-            SymCleanup(process);
-        }
-        logFile.flush();
+        m_LogFile << report;
+        if (report.empty() || report.back() != '\n')
+            m_LogFile << '\n';
+        m_LogFile.flush();
+        return;
     }
-    return EXCEPTION_EXECUTE_HANDLER;
+
+    std::cerr << report;
+    if (report.empty() || report.back() != '\n')
+        std::cerr << std::endl;
 }

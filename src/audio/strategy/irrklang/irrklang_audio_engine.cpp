@@ -2,6 +2,21 @@
 #include <core/logic/logger.h>
 #include <algorithm>
 
+namespace
+{
+constexpr float kMaxPublicVolume = 100.0f;
+
+float ToIrrKlangVolume(float volume)
+{
+    return std::clamp(volume, 0.0f, kMaxPublicVolume) / kMaxPublicVolume;
+}
+
+float FromIrrKlangVolume(float volume)
+{
+    return std::clamp(volume, 0.0f, 1.0f) * kMaxPublicVolume;
+}
+}  // namespace
+
 class IrrKlangAudioSource : public IAudioSource
 {
 public:
@@ -12,11 +27,11 @@ public:
     void SetDefaultVolume(float volume) override
     {
         if (m_Source)
-            m_Source->setDefaultVolume(volume);
+            m_Source->setDefaultVolume(ToIrrKlangVolume(volume));
     }
     float GetDefaultVolume() const override
     {
-        return m_Source ? m_Source->getDefaultVolume() : 1.0f;
+        return m_Source ? FromIrrKlangVolume(m_Source->getDefaultVolume()) : kMaxPublicVolume;
     }
 
     void SetDefaultPitch(float pitch) override
@@ -78,11 +93,11 @@ public:
     void SetVolume(float volume) override
     {
         if (m_Sound)
-            m_Sound->setVolume(volume);
+            m_Sound->setVolume(ToIrrKlangVolume(volume));
     }
     float GetVolume() override
     {
-        return m_Sound ? m_Sound->getVolume() : 0.0f;
+        return m_Sound ? FromIrrKlangVolume(m_Sound->getVolume()) : 0.0f;
     }
 
     void SetPan(float pan) override
@@ -252,7 +267,7 @@ void IrrKlangAudioEngine::SetListenerPosition(const glm::vec3& pos, const glm::v
 void IrrKlangAudioEngine::SetGlobalVolume(float volume)
 {
     if (m_Engine)
-        m_Engine->setSoundVolume(volume);
+        m_Engine->setSoundVolume(ToIrrKlangVolume(volume));
 }
 
 std::shared_ptr<ISound> IrrKlangAudioEngine::Play2D(const std::string& filename, bool loop, bool startPaused)

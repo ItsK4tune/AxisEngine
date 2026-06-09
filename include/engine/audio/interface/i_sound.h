@@ -9,6 +9,7 @@ class ISound
 public:
     virtual ~ISound() = default;
 
+    // Public audio volume uses a 0..100 range. Implementations map it to their native API scale.
     virtual void SetVolume(float volume) = 0;
     virtual float GetVolume() = 0;
 

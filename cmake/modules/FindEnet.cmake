@@ -9,6 +9,7 @@ FIND_PATH( ENET_INCLUDE_DIR enet/enet.h
 	/usr/include
 	/usr/local/include
 	/opt/local/include
+	/opt/homebrew/include
 	${CMAKE_SOURCE_DIR}/include
 )
 
@@ -17,6 +18,7 @@ FIND_LIBRARY( ENET_LIBRARY enet
 	/usr/lib
 	/usr/local/lib
 	/opt/local/lib
+	/opt/homebrew/lib
 	${CMAKE_SOURCE_DIR}/lib
 )
 

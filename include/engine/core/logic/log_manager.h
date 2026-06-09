@@ -2,7 +2,6 @@
 
 #include <core/logic/logger_types.h>
 #include <core/type/event_types.h>
-#include <Windows.h>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -72,8 +71,8 @@ private:
     LogManager() = default;
     ~LogManager() = default;
 
-    static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* exceptionInfo);
     void OnConfigChanged(const ConfigChangedEvent& event);
+    void WriteCrashReport(const std::string& report);
 
     std::ofstream m_LogFile;
     std::unique_ptr<TeeBuf> m_TeeOut;

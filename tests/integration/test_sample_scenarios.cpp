@@ -343,4 +343,29 @@ AXIS_TEST_CASE("Sample Scenario 31 creates 2D and 3D audio sources")
     AXIS_CHECK(!audio2D.is3D);
     AXIS_CHECK(audio3D.loop);
     AXIS_CHECK(audio2D.loop);
+    AXIS_CHECK(audio3D.playOnAwake);
+    AXIS_CHECK(!audio2D.playOnAwake);
+    AXIS_CHECK_NEAR(audio3D.volume, fixture.state.m_S31Volume3D, 0.0001f);
+    AXIS_CHECK_NEAR(audio2D.volume, fixture.state.m_S31Volume2D, 0.0001f);
+    AXIS_CHECK(fixture.state.m_S31Volume3D <= TestSampleState::kScenario31MaxVolume);
+    AXIS_CHECK(fixture.state.m_S31Volume2D <= TestSampleState::kScenario31MaxVolume);
+}
+
+AXIS_TEST_CASE("Sample Scenario 31 applies 2D and 3D volume independently")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.m_S31Volume2D = 20.0f;
+    fixture.state.m_S31Volume3D = 90.0f;
+    fixture.state.LoadScene31();
+
+    auto source3D = FindByName(fixture.scene, "AudioSource3D");
+    auto source2D = FindByName(fixture.scene, "Audio2DLoop");
+    auto& audio3D = fixture.scene.GetComponent<AudioSourceComponent>(source3D);
+    auto& audio2D = fixture.scene.GetComponent<AudioSourceComponent>(source2D);
+
+    AXIS_CHECK_NEAR(audio2D.volume, 20.0f, 0.0001f);
+    AXIS_CHECK_NEAR(audio3D.volume, 90.0f, 0.0001f);
+    AXIS_CHECK_NEAR(audio2D.volume, fixture.state.m_S31Volume2D, 0.0001f);
+    AXIS_CHECK_NEAR(audio3D.volume, fixture.state.m_S31Volume3D, 0.0001f);
 }

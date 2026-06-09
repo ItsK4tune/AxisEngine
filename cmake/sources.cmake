@@ -1,6 +1,6 @@
 set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/audio/logic/audio_service.cpp
-    ${CMAKE_SOURCE_DIR}/src/audio/strategy/irrklang/irrklang_audio_engine.cpp
+    ${CMAKE_SOURCE_DIR}/src/audio/strategy/null/null_audio_engine.cpp
     ${CMAKE_SOURCE_DIR}/src/core/app/application.cpp
     ${CMAKE_SOURCE_DIR}/src/core/app/engine_accessor.cpp
     ${CMAKE_SOURCE_DIR}/src/core/app/engine_loop.cpp
@@ -66,6 +66,7 @@ set(AXIS_ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/platform/logic/keyboard_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/platform/logic/monitor_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/platform/logic/mouse_manager.cpp
+    ${CMAKE_SOURCE_DIR}/src/platform/logic/platform_services.cpp
     ${CMAKE_SOURCE_DIR}/src/platform/strategy/opengl/glfw_window.cpp
     ${CMAKE_SOURCE_DIR}/src/render/logic/animation.cpp
     ${CMAKE_SOURCE_DIR}/src/render/logic/animator.cpp

@@ -1,4 +1,4 @@
-#include <audio/strategy/irrklang/irrklang_audio_engine.h>
+#include <audio/strategy/null/null_audio_engine.h>
 #include <core/app/application.h>
 #include <core/logic/backend_registry.h>
 #include <core/logic/logger.h>
@@ -8,12 +8,16 @@
 #include <stdexcept>
 #include <string>
 
+#if AXIS_HAS_IRRKLANG_BACKEND
+#include <audio/strategy/irrklang/irrklang_audio_engine.h>
+#endif
+
 namespace
 {
 [[noreturn]] void ThrowUnsupportedBackend(const char* category, std::string_view requested, const char* supported)
 {
-    std::string message = std::string("Unsupported ") + category + " backend requested: " +
-                          std::string(requested) + ". Supported in this build: " + supported + ".";
+    std::string message = std::string("Unsupported ") + category + " backend requested: " + std::string(requested) +
+                          ". Supported in this build: " + supported + ".";
     LOGGER_ERROR("AppBuilder") << message;
     throw std::runtime_error(message);
 }
@@ -51,9 +55,16 @@ std::unique_ptr<IAudioEngine> AppBuilder::CreateAudioEngine(const AppConfig& con
 
     switch (config.audioBackend)
     {
+        case AudioBackend::Null:
+            LOGGER_INFO("AppBuilder") << "Initializing Audio Backend: Null";
+            return std::make_unique<NullAudioEngine>();
         case AudioBackend::IrrKlang:
+#if AXIS_HAS_IRRKLANG_BACKEND
             LOGGER_INFO("AppBuilder") << "Initializing Audio Backend: IrrKlang";
             return std::make_unique<IrrKlangAudioEngine>();
+#else
+            break;
+#endif
         case AudioBackend::FMOD:
         case AudioBackend::OpenAL:
             break;

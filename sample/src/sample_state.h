@@ -440,8 +440,8 @@ public:
             {
                 cameraForward = rot->value * glm::vec3(0.0f, 0.0f, -1.0f);
                 cameraForward.y = 0.0f;
-                cameraForward = glm::length(cameraForward) > 0.001f ? glm::normalize(cameraForward)
-                                                                     : glm::vec3(0.0f, 0.0f, -1.0f);
+                cameraForward =
+                    glm::length(cameraForward) > 0.001f ? glm::normalize(cameraForward) : glm::vec3(0.0f, 0.0f, -1.0f);
 
                 cameraRight = rot->value * glm::vec3(1.0f, 0.0f, 0.0f);
                 cameraRight.y = 0.0f;
@@ -658,8 +658,7 @@ private:
                                       bool insideFlyZone, bool insideSlipperyZone, bool insideBoostZone)
     {
         auto& scene = GetScene();
-        const bool insideTrigger =
-            PointInsideNamedBox("S26_TriggerZone", controllerPos, glm::vec3(0.75f, 0.5f, 0.75f));
+        const bool insideTrigger = PointInsideNamedBox("S26_TriggerZone", controllerPos, glm::vec3(0.75f, 0.5f, 0.75f));
 
         if (ignoreCharacterTrigger)
         {
@@ -707,8 +706,8 @@ private:
         {
             if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(block))
             {
-                renderer->color = touchingCallbackBlock ? glm::vec4(1.0f, 0.72f, 0.2f, 1.0f)
-                                                        : glm::vec4(0.95f, 0.55f, 0.18f, 1.0f);
+                renderer->color =
+                    touchingCallbackBlock ? glm::vec4(1.0f, 0.72f, 0.2f, 1.0f) : glm::vec4(0.95f, 0.55f, 0.18f, 1.0f);
             }
         }
     }
@@ -895,6 +894,8 @@ private:
     void LoadScene30();  // Network Messaging
     void LoadScene31();  // Audio 2D & 3D
     void StopScenario31Audio();
+    AudioSourceComponent* FindScenario31AudioSource(const char* name);
+    void ApplyScenario31AudioSettings();
 
 #ifdef ENABLE_EDITOR
     ImGuiLayer* m_EditorImGuiLayer = nullptr;
@@ -1044,12 +1045,13 @@ private:
     bool m_S30UseIPv6 = false;
 
     // Scenario 31 UI variables
+    static constexpr float kScenario31MaxVolume = 100.0f;
     std::shared_ptr<ISound> m_S31Audio2D = nullptr;
     std::shared_ptr<ISound> m_S31Audio3D = nullptr;
     float m_S31OrbitAngle = 0.0f;
     float m_S31Speed = 1.0f;
-    float m_S31Volume2D = 0.35f;
-    float m_S31Volume3D = 0.8f;
+    float m_S31Volume2D = 35.0f;
+    float m_S31Volume3D = 80.0f;
     float m_S31Pitch = 1.0f;
     float m_S31MinDistance = 2.0f;
     float m_S31MaxDistance = 50.0f;

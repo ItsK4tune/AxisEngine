@@ -8,6 +8,7 @@
 #include <editor/panels/scene_hierarchy_panel.h>
 #include <scene/logic/scene.h>
 #include <imgui.h>
+#include <cstdio>
 
 void NetworkPanel::OnImGui(Scene& scene)
 {
@@ -184,7 +185,7 @@ void NetworkPanel::OnImGui(Scene& scene)
 
                     bool isSelected = (SceneHierarchyPanel::s_SelectedEntity == entity);
                     char label[32];
-                    sprintf_s(label, "%u", netComp.networkId);
+                    std::snprintf(label, sizeof(label), "%u", netComp.networkId);
                     if (ImGui::Selectable(label, isSelected, ImGuiSelectableFlags_SpanAllColumns))
                     {
                         SceneHierarchyPanel::SetSelectedEntity(entity);

@@ -217,7 +217,7 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     std::string entityName = "Unknown";
     if (scene.HasAllComponents<InfoComponent>(entity))
         entityName = scene.GetComponent<InfoComponent>(entity).name;
-        
+
     auto& r = scene.AddComponent<MeshRendererComponent>(entity);
     if (modelName.empty())
     {
@@ -933,7 +933,7 @@ void ComponentLoader::LoadAudioSource(Scene& scene, entt::entity entity, const Y
         node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
     audio.loop = node.GetChildValue("Loop", "0") == "1" || node.GetChildValue("Loop", "true") == "true";
     audio.is3D = node.GetChildValue("Is3d", "0") == "1" || node.GetChildValue("Is3d", "false") == "true";
-    audio.volume = std::stof(node.GetChildValue("Volume", "1.0"));
+    audio.volume = std::stof(node.GetChildValue("Volume", "100.0"));
     audio.pitch = std::stof(node.GetChildValue("Pitch", "1.0"));
     audio.pan = std::stof(node.GetChildValue("Pan", "0.0"));
     audio.speed = std::stof(node.GetChildValue("Speed", "1.0"));

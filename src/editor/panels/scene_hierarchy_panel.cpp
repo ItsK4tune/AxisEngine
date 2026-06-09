@@ -962,7 +962,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::Checkbox("Play On Awake", &audio.playOnAwake);
         ImGui::Checkbox("Loop##Audio", &audio.loop);
         ImGui::Checkbox("3D##Audio", &audio.is3D);
-        ImGui::DragFloat("Volume##Audio", &audio.volume, 0.01f, 0.0f, 2.0f);
+        ImGui::DragFloat("Volume##Audio", &audio.volume, 1.0f, 0.0f, 100.0f);
         ImGui::DragFloat("Pitch##Audio", &audio.pitch, 0.01f, 0.1f, 4.0f);
         ImGui::DragFloat("Pan##Audio", &audio.pan, 0.01f, -1.0f, 1.0f);
         if (audio.is3D)

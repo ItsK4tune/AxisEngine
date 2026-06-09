@@ -1,37 +1,22 @@
 #pragma once
 
-#include <algorithm>
+#include <platform/interface/i_platform_filesystem.h>
+#include <platform/logic/platform_services.h>
 #include <string>
-
-#ifndef _WIN32
-#include <unistd.h>
-
-#endif
-#include <windows.h>
-
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#else
-#endif
 
 class FileSystem
 {
 public:
     static std::string getPath(const std::string& path)
     {
+        auto& platform = GetNativePlatformFileSystem();
         std::string root = getRoot();
-        std::string normPath = path;
-        std::replace(normPath.begin(), normPath.end(), '\\', '/');
+        std::string normPath = platform.NormalizePath(path);
 
         if (!root.empty() && normPath.find(root) == 0)
             return normPath;
 
-        if (normPath.size() >= 3 && normPath[1] == ':' && normPath[2] == '/')
-            return normPath;
-
-        if (normPath.rfind("//", 0) == 0)
+        if (platform.IsAbsolutePath(normPath))
             return normPath;
 
         if (!root.empty())
@@ -42,12 +27,12 @@ public:
 
     static std::string getRelativePath(const std::string& path)
     {
+        auto& platform = GetNativePlatformFileSystem();
         std::string root = getRoot();
         if (root.empty())
             return path;
 
-        std::string normPath = path;
-        std::replace(normPath.begin(), normPath.end(), '\\', '/');
+        std::string normPath = platform.NormalizePath(path);
 
         if (normPath.find(root) == 0)
         {
@@ -70,51 +55,36 @@ private:
 
         initialized = true;
 
-#ifdef _WIN32
-        char exePath[MAX_PATH];
-        DWORD len = GetModuleFileNameA(NULL, exePath, MAX_PATH);
-        if (len > 0 && len < MAX_PATH)
+        auto& platform = GetNativePlatformFileSystem();
+        std::string path = platform.NormalizePath(platform.GetExecutablePath());
+        if (path.empty())
+            return cachedRoot;
+
+        size_t binPos = path.rfind("/bin/");
+        if (binPos != std::string::npos)
         {
-            std::string path(exePath);
-            std::replace(path.begin(), path.end(), '\\', '/');
+            cachedRoot = path.substr(0, binPos);
+            return cachedRoot;
+        }
 
-            size_t binPos = path.rfind("/bin/");
-            if (binPos != std::string::npos)
-            {
-                cachedRoot = path.substr(0, binPos);
-                return cachedRoot;
-            }
+        size_t buildPos = path.rfind("/build/");
+        if (buildPos != std::string::npos)
+        {
+            cachedRoot = path.substr(0, buildPos);
+            return cachedRoot;
+        }
 
-            size_t buildPos = path.rfind("/build/");
-            if (buildPos != std::string::npos)
+        size_t bundlePos = path.find(".app/Contents/MacOS/");
+        if (bundlePos != std::string::npos)
+        {
+            size_t bundleSlash = path.rfind('/', bundlePos);
+            if (bundleSlash != std::string::npos)
             {
-                cachedRoot = path.substr(0, buildPos);
+                cachedRoot = path.substr(0, bundleSlash);
                 return cachedRoot;
             }
         }
-#else
-        char exePath[PATH_MAX];
-        ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
-        if (len != -1)
-        {
-            exePath[len] = '\0';
-            std::string path(exePath);
 
-            size_t binPos = path.rfind("/bin/");
-            if (binPos != std::string::npos)
-            {
-                cachedRoot = path.substr(0, binPos);
-                return cachedRoot;
-            }
-
-            size_t buildPos = path.rfind("/build/");
-            if (buildPos != std::string::npos)
-            {
-                cachedRoot = path.substr(0, buildPos);
-                return cachedRoot;
-            }
-        }
-#endif
         return cachedRoot;
     }
 };

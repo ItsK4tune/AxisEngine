@@ -15,6 +15,7 @@ FIND_PATH(BULLET_INCLUDE_DIR btBulletDynamicsCommon.h
     /usr/include
     /usr/local/include
     /opt/local/include
+    /opt/homebrew/include
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/bullet
 )
@@ -25,6 +26,7 @@ FIND_LIBRARY(BULLET_DYNAMICS_LIB BulletDynamics
     /usr/lib64
     /usr/local/lib
     /opt/local/lib
+    /opt/homebrew/lib
     ${CMAKE_SOURCE_DIR}/lib
 )
 
@@ -33,6 +35,7 @@ FIND_LIBRARY(BULLET_DYNAMICS_DEBUG_LIB BulletDynamics_Debug
     /usr/lib64
     /usr/local/lib
     /opt/local/lib
+    /opt/homebrew/lib
     ${CMAKE_SOURCE_DIR}/lib
 )
 
@@ -42,6 +45,7 @@ FIND_LIBRARY(BULLET_COLLISION_LIB BulletCollision
     /usr/lib64
     /usr/local/lib
     /opt/local/lib
+    /opt/homebrew/lib
     ${CMAKE_SOURCE_DIR}/lib
 )
 
@@ -50,6 +54,7 @@ FIND_LIBRARY(BULLET_COLLISION_DEBUG_LIB BulletCollision_Debug
     /usr/lib64
     /usr/local/lib
     /opt/local/lib
+    /opt/homebrew/lib
     ${CMAKE_SOURCE_DIR}/lib
 )
 
@@ -59,6 +64,7 @@ FIND_LIBRARY(BULLET_LINEARMATH_LIB LinearMath
     /usr/lib64
     /usr/local/lib
     /opt/local/lib
+    /opt/homebrew/lib
     ${CMAKE_SOURCE_DIR}/lib
 )
 
@@ -67,6 +73,7 @@ FIND_LIBRARY(BULLET_LINEARMATH_DEBUG_LIB LinearMath_Debug
     /usr/lib64
     /usr/local/lib
     /opt/local/lib
+    /opt/homebrew/lib
     ${CMAKE_SOURCE_DIR}/lib
 )
 

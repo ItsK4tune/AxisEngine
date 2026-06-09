@@ -7,6 +7,7 @@ class IAudioSource
 public:
     virtual ~IAudioSource() = default;
 
+    // Public audio volume uses a 0..100 range. Implementations map it to their native API scale.
     virtual void SetDefaultVolume(float volume) = 0;
     virtual float GetDefaultVolume() const = 0;
 

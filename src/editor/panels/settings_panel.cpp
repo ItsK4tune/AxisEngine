@@ -9,10 +9,10 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <imgui.h>
-#include <intrin.h>
 
 #ifdef _WIN32
 #include <dxgi.h>
+#include <intrin.h>
 #include <wrl/client.h>
 
 #pragma comment(lib, "dxgi.lib")

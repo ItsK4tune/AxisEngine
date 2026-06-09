@@ -30,6 +30,8 @@
 #include <ctime>
 #include <filesystem>
 #include <glm/gtx/quaternion.hpp>
+
+#if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <dxgi1_4.h>
@@ -41,11 +43,14 @@
 #ifdef GetCurrentTime
 #undef GetCurrentTime
 #endif
+#endif
 
 namespace
 {
 constexpr const char* kScenario25BaseSceneName = "scenario_base";
 constexpr const char* kScenario25DynamicSceneName = "scenario";
+constexpr const char* kScenario31Audio2DName = "Audio2DLoop";
+constexpr const char* kScenario31Audio3DName = "AudioSource3D";
 
 struct PerfStats
 {
@@ -57,6 +62,7 @@ struct PerfStats
 
 PerfStats QueryPerfStats()
 {
+#if defined(_WIN32)
     static PerfStats smoothed;
     static bool hasSmoothed = false;
     static ULONGLONG lastUpdateMs = 0;
@@ -179,6 +185,9 @@ PerfStats QueryPerfStats()
     }
 
     return smoothed;
+#else
+    return {};
+#endif
 }
 
 std::string SamplePath(const char* relativePath)
@@ -292,6 +301,62 @@ void StopScenario31AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_pt
     }
     play2D = false;
     play3D = false;
+}
+
+void StopAudioSourceComponent(AudioSourceComponent& audio)
+{
+    if (audio.sound)
+    {
+        audio.sound->Stop();
+        audio.sound = nullptr;
+    }
+    audio.shouldPlay = false;
+    audio.playOnAwake = false;
+}
+
+void ApplyScenario31AudioComponent(AudioSourceComponent& audio, bool play, bool is3D, float volume, float pitch,
+                                   float minDistance, float maxDistance)
+{
+    audio.loop = true;
+    audio.is3D = is3D;
+    audio.volume = volume;
+    audio.pitch = pitch;
+    audio.playOnAwake = play;
+
+    if (is3D)
+    {
+        audio.minDistance = minDistance;
+        audio.maxDistance = maxDistance;
+    }
+
+    if (!play)
+    {
+        StopAudioSourceComponent(audio);
+        return;
+    }
+
+    if (audio.sound && audio.sound->IsFinished())
+        audio.sound = nullptr;
+
+    if (!audio.sound)
+    {
+        audio.shouldPlay = true;
+    }
+    else
+    {
+        audio.shouldPlay = false;
+    }
+
+    if (audio.sound)
+    {
+        audio.sound->SetVolume(audio.volume);
+        audio.sound->SetPitch(audio.pitch * audio.speed);
+        if (is3D)
+        {
+            audio.sound->SetMinDistance(audio.minDistance);
+            audio.sound->SetMaxDistance(audio.maxDistance);
+        }
+    }
 }
 
 void SetUITextByName(Scene& scene, const std::string& name, const std::string& text)
@@ -1016,8 +1081,7 @@ void SampleState::OnUpdate(float dt)
         {
             auto& input = io->GetInputManager();
             auto view =
-                GetScene()
-                    .View<MeshRendererComponent, ScaleComponent, WorldTransformComponent, InfoComponent>();
+                GetScene().View<MeshRendererComponent, ScaleComponent, WorldTransformComponent, InfoComponent>();
             for (auto entity : view)
             {
                 auto& info = view.get<InfoComponent>(entity);
@@ -1078,7 +1142,7 @@ void SampleState::OnUpdate(float dt)
         for (auto entity : view)
         {
             auto& info = view.get<InfoComponent>(entity);
-            if (info.name == "AudioSource3D")
+            if (info.name == kScenario31Audio3DName)
             {
                 view.get<PositionComponent>(entity).value = soundPos;
                 if (auto* world = GetScene().TryGetComponent<WorldTransformComponent>(entity))
@@ -1087,19 +1151,9 @@ void SampleState::OnUpdate(float dt)
             }
         }
 
-        if (m_S31Audio3D)
-        {
-            m_S31Audio3D->SetPosition(soundPos);
-            m_S31Audio3D->SetVolume(m_S31Volume3D);
-            m_S31Audio3D->SetPitch(m_S31Pitch);
-            m_S31Audio3D->SetMinDistance(m_S31MinDistance);
-            m_S31Audio3D->SetMaxDistance(m_S31MaxDistance);
-        }
-        if (m_S31Audio2D)
-        {
-            m_S31Audio2D->SetVolume(m_S31Volume2D);
-            m_S31Audio2D->SetPitch(m_S31Pitch);
-        }
+        ApplyScenario31AudioSettings();
+        if (auto* audio3D = FindScenario31AudioSource(kScenario31Audio3DName); audio3D && audio3D->sound)
+            audio3D->sound->SetPosition(soundPos);
     }
 
     if (m_CurrentScenario == 6 && m_S6AnimateObjects)
@@ -1251,7 +1305,6 @@ void SampleState::OnUpdate(float dt)
             probe.radius = m_S12ProbeRadius;
         }
     }
-
 }
 
 void SampleState::OnRender()
@@ -1616,6 +1669,40 @@ void SampleState::LoadScenario(int index)
 void SampleState::StopScenario31Audio()
 {
     StopScenario31AudioHandles(m_S31Audio2D, m_S31Audio3D, m_S31Play2D, m_S31Play3D);
+    if (auto* audio2D = FindScenario31AudioSource(kScenario31Audio2DName))
+        StopAudioSourceComponent(*audio2D);
+    if (auto* audio3D = FindScenario31AudioSource(kScenario31Audio3DName))
+        StopAudioSourceComponent(*audio3D);
+}
+
+AudioSourceComponent* SampleState::FindScenario31AudioSource(const char* name)
+{
+    if (!name)
+        return nullptr;
+
+    auto& scene = GetScene();
+    auto entity = scene.FindByName(name);
+    if (entity == entt::null || !scene.IsValid(entity))
+        return nullptr;
+    return scene.TryGetComponent<AudioSourceComponent>(entity);
+}
+
+void SampleState::ApplyScenario31AudioSettings()
+{
+    m_S31Volume2D = glm::clamp(m_S31Volume2D, 0.0f, kScenario31MaxVolume);
+    m_S31Volume3D = glm::clamp(m_S31Volume3D, 0.0f, kScenario31MaxVolume);
+
+    if (auto* audio2D = FindScenario31AudioSource(kScenario31Audio2DName))
+    {
+        ApplyScenario31AudioComponent(*audio2D, m_S31Play2D, false, m_S31Volume2D, m_S31Pitch, m_S31MinDistance,
+                                      m_S31MaxDistance);
+    }
+
+    if (auto* audio3D = FindScenario31AudioSource(kScenario31Audio3DName))
+    {
+        ApplyScenario31AudioComponent(*audio3D, m_S31Play3D, true, m_S31Volume3D, m_S31Pitch, m_S31MinDistance,
+                                      m_S31MaxDistance);
+    }
 }
 
 void SampleState::SetupCamera()
@@ -1730,7 +1817,8 @@ void SampleState::DrawGUI()
     AddScenarioButton(13, "Scenario 13: Decal Stress Test", "PBR Decals: project materials dynamically on surfaces");
     AddScenarioButton(14, "Scenario 14: Terrain Creation Showcase",
                       "Generate heightmaps and splatmaps procedurally and drop physics bodies");
-    AddScenarioButton(15, "Scenario 15: Particle Stress Test", "50 emitters with high-density colorful particle vortex");
+    AddScenarioButton(15, "Scenario 15: Particle Stress Test",
+                      "50 emitters with high-density colorful particle vortex");
     AddScenarioButton(16, "Scenario 16: UI & Responsive Showcase",
                       "Merged: UI Showcase transform/rotate/flip and Responsive layout tests");
     AddScenarioButton(17, "Scenario 17: Interactive UI", "Show UI onHover, onClick, onHold and button callbacks");
@@ -1842,9 +1930,10 @@ void SampleState::DrawGUI()
         ImGui::DragFloat3("New Waypoint", &m_S23NewWaypoint.x, 0.5f, -24.0f, 24.0f);
         if (ImGui::Button("Add Waypoint", ImVec2(170, 24)))
         {
-            m_NavWaypoints.push_back(glm::vec3(
-                m_S23NewWaypoint.x, Scenario23WaypointY(m_S23PathfindingCriteria, m_S23NewWaypoint.x, m_S23NewWaypoint.z),
-                m_S23NewWaypoint.z));
+            m_NavWaypoints.push_back(
+                glm::vec3(m_S23NewWaypoint.x,
+                          Scenario23WaypointY(m_S23PathfindingCriteria, m_S23NewWaypoint.x, m_S23NewWaypoint.z),
+                          m_S23NewWaypoint.z));
             if (m_NavFollower != entt::null)
             {
                 m_CurrentWaypointIndex = static_cast<int>(m_NavWaypoints.size()) - 1;
@@ -2504,69 +2593,29 @@ void SampleState::DrawGUI()
     else if (m_CurrentScenario == 31)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "irrKlang Audio Test");
+        bool audioSettingsChanged = false;
         ImGui::SliderFloat("Orbit Speed", &m_S31Speed, 0.1f, 5.0f);
-        ImGui::SliderFloat("2D Volume", &m_S31Volume2D, 0.0f, 1.0f);
-        ImGui::SliderFloat("3D Volume", &m_S31Volume3D, 0.0f, 1.0f);
-        ImGui::SliderFloat("Playback Speed / Pitch", &m_S31Pitch, 0.25f, 3.0f);
-        ImGui::SliderFloat("3D Min Distance", &m_S31MinDistance, 0.1f, 20.0f);
-        ImGui::SliderFloat("3D Max Distance", &m_S31MaxDistance, 1.0f, 120.0f);
+        audioSettingsChanged |= ImGui::SliderFloat("2D Volume", &m_S31Volume2D, 0.0f, kScenario31MaxVolume);
+        audioSettingsChanged |= ImGui::SliderFloat("3D Volume", &m_S31Volume3D, 0.0f, kScenario31MaxVolume);
+        audioSettingsChanged |= ImGui::SliderFloat("Playback Speed / Pitch", &m_S31Pitch, 0.25f, 3.0f);
+        audioSettingsChanged |= ImGui::SliderFloat("3D Min Distance", &m_S31MinDistance, 0.1f, 20.0f);
+        audioSettingsChanged |= ImGui::SliderFloat("3D Max Distance", &m_S31MaxDistance, 1.0f, 120.0f);
 
-        auto* audioService = Resolve<AudioService>();
-        if (audioService)
+        audioSettingsChanged |= ImGui::Checkbox("Play 2D Sound (sample.wav)", &m_S31Play2D);
+        audioSettingsChanged |= ImGui::Checkbox("Play 3D Orbiting Sound", &m_S31Play3D);
+
+        if (audioSettingsChanged)
+            ApplyScenario31AudioSettings();
+
+        if (ImGui::Button("Stop All Sounds", ImVec2(360, 24)))
         {
-            if (ImGui::Checkbox("Play 2D Sound (sample.mp3)", &m_S31Play2D))
-            {
-                if (m_S31Play2D)
-                {
-                    m_S31Audio2D = audioService->Play2D(SamplePath("sample/resource/audio/sample.wav"), true);
-                    if (m_S31Audio2D)
-                    {
-                        m_S31Audio2D->SetVolume(m_S31Volume2D);
-                        m_S31Audio2D->SetPitch(m_S31Pitch);
-                    }
-                }
-                else
-                {
-                    if (m_S31Audio2D)
-                    {
-                        m_S31Audio2D->Stop();
-                        m_S31Audio2D = nullptr;
-                    }
-                }
-            }
-
-            if (ImGui::Checkbox("Play 3D Orbiting Sound", &m_S31Play3D))
-            {
-                if (m_S31Play3D)
-                {
-                    m_S31Audio3D =
-                        audioService->Play3D(SamplePath("sample/resource/audio/sample.wav"), glm::vec3(0.0f), true);
-                    if (m_S31Audio3D)
-                    {
-                        m_S31Audio3D->SetVolume(m_S31Volume3D);
-                        m_S31Audio3D->SetPitch(m_S31Pitch);
-                        m_S31Audio3D->SetMinDistance(m_S31MinDistance);
-                        m_S31Audio3D->SetMaxDistance(m_S31MaxDistance);
-                    }
-                }
-                else
-                {
-                    if (m_S31Audio3D)
-                    {
-                        m_S31Audio3D->Stop();
-                        m_S31Audio3D = nullptr;
-                    }
-                }
-            }
-
-            if (ImGui::Button("Stop All Sounds", ImVec2(360, 24)))
-            {
+            if (auto* audioService = Resolve<AudioService>())
                 audioService->StopAll();
-                m_S31Play2D = false;
-                m_S31Play3D = false;
-                m_S31Audio2D = nullptr;
-                m_S31Audio3D = nullptr;
-            }
+            m_S31Play2D = false;
+            m_S31Play3D = false;
+            m_S31Audio2D = nullptr;
+            m_S31Audio3D = nullptr;
+            ApplyScenario31AudioSettings();
         }
     }
     else if (m_CurrentScenario == 18)

@@ -40,7 +40,7 @@ private:
     void OnAudioSourceDestroyed(entt::registry& registry, entt::entity entity);
 
     bool m_Enabled = true;
-    float m_GlobalVolume = 1.0f;
+    float m_GlobalVolume = 100.0f;
     Scene* m_BoundScene = nullptr;
     EventSubscriptionList m_EventSubscriptions;
 };

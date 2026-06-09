@@ -605,7 +605,7 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                     {
                         ImGui::Spacing();
                         float vol = m_ActiveSound->GetVolume();
-                        if (ImGui::SliderFloat("Preview Volume", &vol, 0.0f, 1.0f))
+                        if (ImGui::SliderFloat("Preview Volume", &vol, 0.0f, 100.0f))
                         {
                             m_ActiveSound->SetVolume(vol);
                         }

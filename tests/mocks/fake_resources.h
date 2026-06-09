@@ -152,7 +152,7 @@ public:
         stoppedAllSounds = true;
     }
 
-    float globalVolume = 1.0f;
+    float globalVolume = 100.0f;
     bool stoppedAllSounds = false;
 };
 }  // namespace axis_test_mocks

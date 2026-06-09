@@ -32,6 +32,7 @@
 SET(_glm_HEADER_SEARCH_DIRS
 "/usr/include"
 "/usr/local/include"
+"/opt/homebrew/include"
 "${CMAKE_SOURCE_DIR}/include"
 "C:/Program Files (x86)/glm" )
 # check environment variable

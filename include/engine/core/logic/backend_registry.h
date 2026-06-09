@@ -29,6 +29,9 @@
 #ifndef AXIS_HAS_OPENAL_BACKEND
 #define AXIS_HAS_OPENAL_BACKEND 0
 #endif
+#ifndef AXIS_HAS_NULL_AUDIO_BACKEND
+#define AXIS_HAS_NULL_AUDIO_BACKEND 1
+#endif
 
 namespace BackendRegistry
 {
@@ -62,6 +65,8 @@ constexpr std::string_view ToString(AudioBackend backend)
 {
     switch (backend)
     {
+        case AudioBackend::Null:
+            return "Null";
         case AudioBackend::IrrKlang:
             return "IrrKlang";
         case AudioBackend::FMOD:
@@ -102,6 +107,8 @@ constexpr bool IsSupported(AudioBackend backend)
 {
     switch (backend)
     {
+        case AudioBackend::Null:
+            return AXIS_HAS_NULL_AUDIO_BACKEND != 0;
         case AudioBackend::IrrKlang:
             return AXIS_HAS_IRRKLANG_BACKEND != 0;
         case AudioBackend::FMOD:
@@ -134,6 +141,8 @@ inline const char* SupportedAudioBackends()
 {
 #if AXIS_HAS_IRRKLANG_BACKEND && !AXIS_HAS_FMOD_BACKEND && !AXIS_HAS_OPENAL_BACKEND
     return "IrrKlang";
+#elif AXIS_HAS_NULL_AUDIO_BACKEND && !AXIS_HAS_IRRKLANG_BACKEND && !AXIS_HAS_FMOD_BACKEND && !AXIS_HAS_OPENAL_BACKEND
+    return "Null";
 #else
     return "the audio backends compiled into this build";
 #endif

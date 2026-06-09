@@ -19,6 +19,7 @@ public:
     virtual void Shutdown() = 0;
 
     virtual void SetListenerPosition(const glm::vec3& pos, const glm::vec3& lookDir) = 0;
+    // Public audio volume uses a 0..100 range. Implementations map it to their native API scale.
     virtual void SetGlobalVolume(float volume) = 0;
 
     virtual std::shared_ptr<ISound> Play2D(const std::string& filename, bool loop = false,

@@ -5,6 +5,13 @@ void SampleState::LoadScene31()
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
 
+    m_S31Volume2D = glm::clamp(m_S31Volume2D, 0.0f, kScenario31MaxVolume);
+    m_S31Volume3D = glm::clamp(m_S31Volume3D, 0.0f, kScenario31MaxVolume);
+    m_S31Play2D = false;
+    m_S31Play3D = true;
+    m_S31Audio2D = nullptr;
+    m_S31Audio3D = nullptr;
+
     EntityBuilder(scene, res, "scenario")
         .WithName("AudioPlatform")
         .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(60.0f, 1.0f, 60.0f))
@@ -21,16 +28,13 @@ void SampleState::LoadScene31()
         .WithName("AudioSource3D")
         .WithTransform(glm::vec3(0.0f, 3.0f, 60.0f), glm::vec3(0.0f), glm::vec3(2.0f))
         .WithPBRMesh("sphereModel", "deferred_lit", 1.0f, 0.5f, 0.0f)
-        .WithAudioSource(SamplePath("sample/resource/audio/sample.wav"), true, true, true, m_S31Volume3D, m_S31Pitch, 1.0f, m_S31MinDistance, m_S31MaxDistance)
+        .WithAudioSource(SamplePath("sample/resource/audio/sample.wav"), m_S31Play3D, true, true, m_S31Volume3D,
+                         m_S31Pitch, 1.0f, m_S31MinDistance, m_S31MaxDistance)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("Audio2DLoop")
-        .WithAudioSource(SamplePath("sample/resource/audio/sample.wav"), true, true, false, m_S31Volume2D, m_S31Pitch)
+        .WithAudioSource(SamplePath("sample/resource/audio/sample.wav"), m_S31Play2D, true, false, m_S31Volume2D,
+                         m_S31Pitch)
         .Build();
-
-    m_S31Play2D = false;
-    m_S31Play3D = true;
-    m_S31Audio2D = nullptr;
-    m_S31Audio3D = nullptr;
 }

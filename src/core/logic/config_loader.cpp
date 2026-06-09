@@ -104,9 +104,8 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     {
         std::string val;
         ss >> val;
-        PhysicsBackend requested = ResolveEnum(val,
-                                               {{"BULLET", PhysicsBackend::Bullet}, {"PHYSX", PhysicsBackend::PhysX}},
-                                               config.physicsBackend);
+        PhysicsBackend requested = ResolveEnum(
+            val, {{"BULLET", PhysicsBackend::Bullet}, {"PHYSX", PhysicsBackend::PhysX}}, config.physicsBackend);
         AcceptSupportedBackend("PHYSICS_ENGINE", requested, config.physicsBackend,
                                BackendRegistry::SupportedPhysicsBackends());
     }
@@ -114,10 +113,15 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     {
         std::string val;
         ss >> val;
-        AudioBackend requested = ResolveEnum(
-            val, {{"IRRKLANG", AudioBackend::IrrKlang}, {"FMOD", AudioBackend::FMOD}, {"OPENAL", AudioBackend::OpenAL}},
-            config.audioBackend);
-        AcceptSupportedBackend("AUDIO_ENGINE", requested, config.audioBackend, BackendRegistry::SupportedAudioBackends());
+        AudioBackend requested = ResolveEnum(val,
+                                             {{"NULL", AudioBackend::Null},
+                                              {"NONE", AudioBackend::Null},
+                                              {"IRRKLANG", AudioBackend::IrrKlang},
+                                              {"FMOD", AudioBackend::FMOD},
+                                              {"OPENAL", AudioBackend::OpenAL}},
+                                             config.audioBackend);
+        AcceptSupportedBackend("AUDIO_ENGINE", requested, config.audioBackend,
+                               BackendRegistry::SupportedAudioBackends());
     }
     else if (subCmd == "TONEMAPPING")
     {

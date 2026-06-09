@@ -5,10 +5,6 @@ project(AxisEngine)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (NOT WIN32)
-    message(FATAL_ERROR "AxisEngine currently only supports Windows.")
-endif()
-
 option(ENABLE_EDITOR "Enable Editor System (ImGui)" OFF)
 option(BUILD_SAMPLES "Build sample application when editor is enabled" ON)
 option(ENABLE_TESTS "Build AxisEngine automated tests" OFF)
@@ -35,11 +31,36 @@ find_package(GLFW3 REQUIRED)
 find_package(GLM REQUIRED)
 find_package(Bullet REQUIRED)
 find_package(Freetype REQUIRED)
-find_package(IrrKlang REQUIRED)
 find_package(FFMPEG REQUIRED)
 find_package(Enet REQUIRED)
 
+set(AXIS_HAS_IRRKLANG_BACKEND 0)
+if(WIN32)
+    find_package(IrrKlang REQUIRED)
+    set(AXIS_HAS_IRRKLANG_BACKEND 1)
+else()
+    find_package(OpenGL REQUIRED)
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/sources.cmake)
+
+if(WIN32)
+    list(APPEND AXIS_ENGINE_SOURCES
+        ${CMAKE_SOURCE_DIR}/src/audio/strategy/irrklang/irrklang_audio_engine.cpp
+        ${CMAKE_SOURCE_DIR}/src/platform/strategy/windows/windows_filesystem.cpp
+        ${CMAKE_SOURCE_DIR}/src/platform/strategy/windows/windows_runtime.cpp
+    )
+elseif(APPLE)
+    list(APPEND AXIS_ENGINE_SOURCES
+        ${CMAKE_SOURCE_DIR}/src/platform/strategy/macos/macos_filesystem.cpp
+        ${CMAKE_SOURCE_DIR}/src/platform/strategy/macos/macos_runtime.cpp
+    )
+else()
+    list(APPEND AXIS_ENGINE_SOURCES
+        ${CMAKE_SOURCE_DIR}/src/platform/strategy/posix/posix_filesystem.cpp
+        ${CMAKE_SOURCE_DIR}/src/platform/strategy/posix/posix_runtime.cpp
+    )
+endif()
 
 # Engine Core Library
 add_library(axis_engine STATIC ${AXIS_ENGINE_SOURCES})
@@ -53,9 +74,10 @@ target_compile_definitions(axis_engine PUBLIC
     AXIS_HAS_DIRECTX_BACKEND=0
     AXIS_HAS_BULLET_BACKEND=1
     AXIS_HAS_PHYSX_BACKEND=0
-    AXIS_HAS_IRRKLANG_BACKEND=1
+    AXIS_HAS_IRRKLANG_BACKEND=${AXIS_HAS_IRRKLANG_BACKEND}
     AXIS_HAS_FMOD_BACKEND=0
     AXIS_HAS_OPENAL_BACKEND=0
+    AXIS_HAS_NULL_AUDIO_BACKEND=1
 )
 
 if(MSVC)
@@ -73,7 +95,6 @@ target_include_directories(axis_engine PUBLIC
     $<BUILD_INTERFACE:${GLFW3_INCLUDE_DIR}>
     $<BUILD_INTERFACE:${GLM_INCLUDE_DIR}>
     $<BUILD_INTERFACE:${BULLET_INCLUDE_DIR}>
-    $<BUILD_INTERFACE:${IRRKLANG_INCLUDE_DIR}>
     $<BUILD_INTERFACE:${FFMPEG_INCLUDE_DIRS}>
     $<BUILD_INTERFACE:${ENET_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>
@@ -83,17 +104,44 @@ target_include_directories(axis_engine PUBLIC
 
 target_link_libraries(axis_engine PUBLIC
     GLFW3::GLFW3
-    opengl32 
     ASSIMP::ASSIMP
     Bullet::Bullet
     Freetype::Freetype
-    IrrKlang::IrrKlang
     FFMPEG::FFMPEG
     Enet::Enet
-    dbghelp
-    winmm
-    ws2_32
 )
+
+if(AXIS_HAS_IRRKLANG_BACKEND)
+    target_include_directories(axis_engine PUBLIC
+        $<BUILD_INTERFACE:${IRRKLANG_INCLUDE_DIR}>
+    )
+    target_link_libraries(axis_engine PUBLIC IrrKlang::IrrKlang)
+endif()
+
+if(WIN32)
+    target_link_libraries(axis_engine PUBLIC
+        opengl32
+        dbghelp
+        winmm
+        ws2_32
+    )
+elseif(APPLE)
+    find_library(COCOA_LIBRARY Cocoa REQUIRED)
+    find_library(IOKIT_LIBRARY IOKit REQUIRED)
+    find_library(COREVIDEO_LIBRARY CoreVideo REQUIRED)
+    target_link_libraries(axis_engine PUBLIC
+        OpenGL::GL
+        ${COCOA_LIBRARY}
+        ${IOKIT_LIBRARY}
+        ${COREVIDEO_LIBRARY}
+    )
+else()
+    target_link_libraries(axis_engine PUBLIC
+        OpenGL::GL
+        pthread
+        dl
+    )
+endif()
 
 # Editor Library
 if(ENABLE_EDITOR)
@@ -137,15 +185,17 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    FILES_MATCHING PATTERN "*.lib"
-)
+if(WIN32)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        FILES_MATCHING PATTERN "*.lib"
+    )
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/dlls/
-    DESTINATION ${CMAKE_INSTALL_BINDIR}
-    FILES_MATCHING PATTERN "*.dll"
-)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/dlls/
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        FILES_MATCHING PATTERN "*.dll"
+    )
+endif()
 
 install(EXPORT AxisEngineTargets
     FILE AxisEngineTargets.cmake
@@ -186,7 +236,9 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
     endif()
 
     add_executable(axis_samples ${SAMPLE_SOURCES})
-    target_compile_options(axis_samples PRIVATE /FS)
+    if(MSVC)
+        target_compile_options(axis_samples PRIVATE /FS)
+    endif()
 
     target_include_directories(axis_samples PRIVATE
         sample/src
@@ -195,21 +247,28 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
     target_link_libraries(axis_samples PRIVATE
         axis_editor
         axis_engine
-        dxgi
-        pdh
     )
+
+    if(WIN32)
+        target_link_libraries(axis_samples PRIVATE
+            dxgi
+            pdh
+        )
+    endif()
 
     if(MSVC)
         target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_engine")
         target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_editor")
     endif()
 
-    # Copy DLLs post-build
-    add_custom_command(TARGET axis_samples POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/dlls"
-            "$<TARGET_FILE_DIR:axis_samples>"
-    )
+    if(WIN32)
+        # Copy DLLs post-build
+        add_custom_command(TARGET axis_samples POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/dlls"
+                "$<TARGET_FILE_DIR:axis_samples>"
+        )
+    endif()
 endif()
 
 if(ENABLE_TESTS)
