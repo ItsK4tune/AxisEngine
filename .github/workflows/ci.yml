@@ -49,11 +49,12 @@ jobs:
         run: |
           $logPath = "build-${{ matrix.preset }}.log"
           cmake --build --preset=ci-${{ matrix.preset }} 2>&1 | Tee-Object -FilePath $logPath
-          if ($LASTEXITCODE -ne 0) {
-            $tail = Get-Content $logPath -Tail 120 -Raw
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            $tail = (Get-Content $logPath -Tail 120) -join "`n"
             $message = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
             Write-Host "::error title=Build failed (${{ matrix.os }})::$message"
-            exit $LASTEXITCODE
+            exit $exitCode
           }
 
       - name: Run Tests
