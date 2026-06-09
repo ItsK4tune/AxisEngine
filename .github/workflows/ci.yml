@@ -45,7 +45,16 @@ jobs:
         run: cmake --preset=ci-${{ matrix.preset }}
 
       - name: Build Engine
-        run: cmake --build --preset=ci-${{ matrix.preset }}
+        shell: pwsh
+        run: |
+          $logPath = "build-${{ matrix.preset }}.log"
+          cmake --build --preset=ci-${{ matrix.preset }} 2>&1 | Tee-Object -FilePath $logPath
+          if ($LASTEXITCODE -ne 0) {
+            $tail = Get-Content $logPath -Tail 120 -Raw
+            $message = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=Build failed (${{ matrix.os }})::$message"
+            exit $LASTEXITCODE
+          }
 
       - name: Run Tests
         run: ctest --preset=ci-tests-${{ matrix.preset }} -C Release
