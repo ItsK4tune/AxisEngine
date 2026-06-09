@@ -14,7 +14,7 @@ public:
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
-        return "State Machine [Ctrl+9]";
+        return "State Machine [Ctrl+8]";
     }
     PanelGroup GetGroup() const override
     {

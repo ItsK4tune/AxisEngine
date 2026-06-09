@@ -2,6 +2,7 @@
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
+#include <core/logic/runtime_profiler.h>
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
@@ -13,10 +14,18 @@
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <resource/logic/resource_manager.h>
+#include <chrono>
 #include <cmath>
 
 namespace
 {
+using ProfileClock = std::chrono::steady_clock;
+
+float ElapsedMs(ProfileClock::time_point start, ProfileClock::time_point end)
+{
+    return std::chrono::duration<float, std::milli>(end - start).count();
+}
+
 bool IsUsableTemporalMatrix(const glm::mat4& matrix)
 {
     for (int col = 0; col < 4; ++col)
@@ -452,6 +461,8 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
 
 void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
 {
+    const auto bloomStart = ProfileClock::now();
+
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& tm = m_Context->GetTextureManager();
     auto& bm = m_Context->GetBufferManager();
@@ -513,6 +524,8 @@ void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D,
                              m_PingPong.color[1]->Get(), 0);
     dc.SetViewport(0, 0, m_Width, m_Height);
+
+    RuntimeProfiler::Instance().SetPassTime(ProfiledRenderPass::Bloom, ElapsedMs(bloomStart, ProfileClock::now()));
 }
 
 void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4& prevViewProj,

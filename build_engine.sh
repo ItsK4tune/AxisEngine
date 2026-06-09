@@ -27,8 +27,8 @@ show_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  -a, --action <1-3>      1: Full Rebuild, 2: Quick Build, 3: Build Tests"
-    echo "  -c, --compiler <1-4>    1: Unix Makefiles, 2: Ninja, 3: Xcode (macOS), 4: Auto-Detect"
-    echo "  -t, --type <1-4>        1: Debug, 2: Release, 3: RelWithDebInfo, 4: MinSizeRel"
+    echo "  -c, --compiler <1-4>    1: Auto-Detect, 2: Unix Makefiles, 3: Ninja, 4: Xcode (macOS)"
+    echo "  -t, --type <1-4>        1: Release, 2: Debug, 3: RelWithDebInfo, 4: MinSizeRel"
     echo "  -e, --editor <yes/no>   Enable or disable Editor (ImGui)"
     echo "  -s, --samples <yes/no>  Build samples (only if Editor is enabled)"
     echo "  -y, --yes               Skip confirmation prompts"
@@ -104,21 +104,22 @@ if [ -z "$COMPILER_CHOICE" ] && [ "$ACTION_CHOICE" != "2" ]; then
     echo "=========================================="
     echo "       SELECT COMPILER / GENERATOR"
     echo "=========================================="
-    echo " 1. Unix Makefiles (Default GCC/Clang)"
-    echo " 2. Ninja"
+    echo " 1. Auto-Detect (Default)"
+    echo " 2. Unix Makefiles"
+    echo " 3. Ninja"
     if $IS_MAC; then
-        echo " 3. Xcode"
+        echo " 4. Xcode"
     fi
-    echo " 4. Auto-Detect"
     echo "=========================================="
-    read -p "Enter number (Default: 4): " COMPILER_CHOICE
-    [ -z "$COMPILER_CHOICE" ] && COMPILER_CHOICE=4
+    read -p "Enter number (Default: 1): " COMPILER_CHOICE
+    [ -z "$COMPILER_CHOICE" ] && COMPILER_CHOICE=1
 fi
 
 GENERATOR=""
 case "$COMPILER_CHOICE" in
-    1) GENERATOR="Unix Makefiles" ;;
-    2)
+    1) GENERATOR="" ;;
+    2) GENERATOR="Unix Makefiles" ;;
+    3)
         if ! command -v ninja &> /dev/null; then
             echo -e "${YELLOW}[WARNING] Ninja not found! Falling back to Unix Makefiles.${NC}"
             GENERATOR="Unix Makefiles"
@@ -126,7 +127,7 @@ case "$COMPILER_CHOICE" in
             GENERATOR="Ninja"
         fi
         ;;
-    3)
+    4)
         if $IS_MAC; then
             GENERATOR="Xcode"
         else
@@ -134,7 +135,6 @@ case "$COMPILER_CHOICE" in
             exit 1
         fi
         ;;
-    4) GENERATOR="" ;;
     "") GENERATOR="" ;;
     *)
         echo -e "${RED}[ERROR] Invalid compiler selection!${NC}"
@@ -148,19 +148,19 @@ if [ -z "$TYPE_CHOICE" ] && [ "$ENABLE_TESTS" != "ON" ]; then
     echo "=========================================="
     echo "           SELECT BUILD TYPE"
     echo "=========================================="
-    echo " 1. Debug"
-    echo " 2. Release (Default)"
+    echo " 1. Release (Default)"
+    echo " 2. Debug"
     echo " 3. RelWithDebInfo"
     echo " 4. MinSizeRel"
     echo "=========================================="
-    read -p "Enter number (Default: 2): " TYPE_CHOICE
-    [ -z "$TYPE_CHOICE" ] && TYPE_CHOICE=2
+    read -p "Enter number (Default: 1): " TYPE_CHOICE
+    [ -z "$TYPE_CHOICE" ] && TYPE_CHOICE=1
 fi
 
 if [ "$ENABLE_TESTS" != "ON" ]; then
     case "$TYPE_CHOICE" in
-        1) BUILD_TYPE="Debug" ;;
-        2) BUILD_TYPE="Release" ;;
+        1) BUILD_TYPE="Release" ;;
+        2) BUILD_TYPE="Debug" ;;
         3) BUILD_TYPE="RelWithDebInfo" ;;
         4) BUILD_TYPE="MinSizeRel" ;;
         *) BUILD_TYPE="Release" ;;
@@ -173,15 +173,15 @@ if [ "$QUICK_BUILD" = "false" ] && [ -z "$CLEAN_MODE" ]; then
     echo "=========================================="
     echo "           SELECT CLEAN MODE"
     echo "=========================================="
-    echo " 1. Strict (Fail if cannot clean build)"
-    echo " 2. Soft   (Warning only if cannot clean) [Default]"
+    echo " 1. Soft   (Warning only if cannot clean) [Default]"
+    echo " 2. Strict (Fail if cannot clean build)"
     echo "=========================================="
-    read -p "Enter number (Default: 2): " CLEAN_CHOICE
-    [ -z "$CLEAN_CHOICE" ] && CLEAN_CHOICE=2
+    read -p "Enter number (Default: 1): " CLEAN_CHOICE
+    [ -z "$CLEAN_CHOICE" ] && CLEAN_CHOICE=1
     if [ "$CLEAN_CHOICE" = "1" ]; then
-        CLEAN_MODE="Strict"
-    else
         CLEAN_MODE="Soft"
+    else
+        CLEAN_MODE="Strict"
     fi
 fi
 

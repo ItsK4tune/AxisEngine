@@ -1,7 +1,16 @@
 #pragma once
 
 #include <ecs/interface/i_update_system.h>
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-enum-enum-conversion"
+#endif
 #include <enet/enet.h>
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
 #include <functional>
 #include <string>
 

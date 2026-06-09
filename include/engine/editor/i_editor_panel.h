@@ -35,5 +35,5 @@ public:
     }
 
 protected:
-    bool m_Open = true;
+    bool m_Open = false;
 };

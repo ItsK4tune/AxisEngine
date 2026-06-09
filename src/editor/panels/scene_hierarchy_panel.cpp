@@ -173,7 +173,7 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (rec && rec->isActive)
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
-        bool isOpen = ImGui::TreeNodeEx((void*)(intptr_t)sname.length(), flags, sname.c_str());
+        bool isOpen = ImGui::TreeNodeEx("SceneRoot", flags, "%s", sname.c_str());
         if (rec && rec->isActive)
             ImGui::PopStyleColor();
 
@@ -342,8 +342,6 @@ static void DrawComponent(const std::string& name, entt::registry& reg, entt::en
 
     if (auto* component = reg.try_get<T>(entity))
     {
-        ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
-
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{4, 4});
         float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
         ImGui::Separator();
@@ -1038,7 +1036,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         {
             auto& eff = pp.effects[i];
             ImGui::PushID((int)i);
-            if (ImGui::TreeNode(eff.shaderName.c_str()))
+            if (ImGui::TreeNode(static_cast<const void*>(&eff), "%s", eff.shaderName.c_str()))
             {
                 ImGui::Checkbox("Enabled", &eff.enabled);
                 ImGui::Checkbox("Affect UI", &eff.affectUI);
@@ -1314,7 +1312,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             {
                 for (auto& entNode : entitiesNode->children)
                 {
-                    if (ImGui::TreeNode(entNode.key.c_str()))
+                    if (ImGui::TreeNode(static_cast<const void*>(&entNode), "%s", entNode.key.c_str()))
                     {
                         YAMLNode* targetEntityOverride = nullptr;
                         for (auto& root : overrideRoots)

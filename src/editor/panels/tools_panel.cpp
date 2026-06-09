@@ -155,17 +155,19 @@ void ToolsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::Checkbox("Grid Snapping (Ctrl+G)", &conf.debug.gridSnapEnabled))
             changed = true;
-        if (ImGui::Checkbox("Grid Indicator (Shift+G)", &conf.debug.gridIndicatorEnabled))
-            changed = true;
-        if (conf.debug.gridSnapEnabled || conf.debug.gridIndicatorEnabled)
+        if (conf.debug.gridSnapEnabled)
         {
+            ImGui::Indent();
             if (ImGui::SliderFloat("Translation Snap", &conf.debug.gridSnapTranslation, 0.1f, 10.0f))
                 changed = true;
             if (ImGui::SliderFloat("Rotation Snap", &conf.debug.gridSnapRotation, 1.0f, 90.0f))
                 changed = true;
             if (ImGui::SliderFloat("Scale Snap", &conf.debug.gridSnapScale, 0.05f, 5.0f))
                 changed = true;
+            ImGui::Unindent();
         }
+        if (ImGui::Checkbox("Grid Indicator (Ctrl+H)", &conf.debug.gridIndicatorEnabled))
+            changed = true;
         if (ImGui::Checkbox("Light Gizmos (F3)", &conf.debug.lightGizmos))
             changed = true;
     }

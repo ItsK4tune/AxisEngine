@@ -14,7 +14,7 @@ public:
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
-        return "Network Controller";
+        return "Network Controller [Ctrl+9]";
     }
     PanelGroup GetGroup() const override
     {

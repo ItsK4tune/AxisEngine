@@ -4,6 +4,7 @@
 #include <core/logic/event_manager.h>
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
+#include <core/logic/runtime_profiler.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
 #include <ecs/interface/i_base_system.h>
@@ -24,9 +25,89 @@
 #include <render/interface/i_texture_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
+#include <glad/glad.h>
 #include <algorithm>
+#include <chrono>
 #include <future>
 #include <stdexcept>
+
+namespace
+{
+using ProfileClock = std::chrono::steady_clock;
+
+float ElapsedMs(ProfileClock::time_point start, ProfileClock::time_point end)
+{
+    return std::chrono::duration<float, std::milli>(end - start).count();
+}
+
+template <typename Fn>
+void ProfilePass(ProfiledRenderPass pass, Fn&& fn)
+{
+    const auto start = ProfileClock::now();
+    fn();
+    RuntimeProfiler::Instance().AddPassTime(pass, ElapsedMs(start, ProfileClock::now()));
+}
+
+ProfiledRenderPass GetPassForSystem(const std::string& name)
+{
+    if (name == "GeometrySystem")
+        return ProfiledRenderPass::Geometry;
+    if (name == "LightingSystem")
+        return ProfiledRenderPass::Lighting;
+    if (name == "PostProcessSystem")
+        return ProfiledRenderPass::PostProcess;
+    return ProfiledRenderPass::Alpha;
+}
+
+class ScopedGpuFrameTimer
+{
+public:
+    ScopedGpuFrameTimer()
+    {
+        if (!glGenQueries || !glBeginQuery || !glEndQuery || !glGetQueryObjectuiv || !glGetQueryObjectui64v)
+            return;
+
+        if (s_Queries[0] == 0)
+        {
+            glGenQueries(2, s_Queries);
+        }
+
+        const int previous = 1 - s_CurrentIndex;
+        if (s_Submitted[previous])
+        {
+            GLuint available = GL_FALSE;
+            glGetQueryObjectuiv(s_Queries[previous], GL_QUERY_RESULT_AVAILABLE, &available);
+            if (available == GL_TRUE)
+            {
+                GLuint64 elapsedNs = 0;
+                glGetQueryObjectui64v(s_Queries[previous], GL_QUERY_RESULT, &elapsedNs);
+                RuntimeProfiler::Instance().SetGpuFrameTime(static_cast<float>(elapsedNs) / 1000000.0f);
+                s_Submitted[previous] = false;
+            }
+        }
+
+        glBeginQuery(GL_TIME_ELAPSED, s_Queries[s_CurrentIndex]);
+        m_Active = true;
+    }
+
+    ~ScopedGpuFrameTimer()
+    {
+        if (!m_Active)
+            return;
+
+        glEndQuery(GL_TIME_ELAPSED);
+        s_Submitted[s_CurrentIndex] = true;
+        s_CurrentIndex = 1 - s_CurrentIndex;
+    }
+
+private:
+    bool m_Active = false;
+
+    static inline GLuint s_Queries[2] = {0, 0};
+    static inline bool s_Submitted[2] = {false, false};
+    static inline int s_CurrentIndex = 0;
+};
+}  // namespace
 
 SystemManager::SystemManager()
 {
@@ -442,19 +523,26 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
     if (!graphicsContext)
         return;
 
+    auto& profiler = RuntimeProfiler::Instance();
+    profiler.BeginFrame();
+    const auto frameStart = ProfileClock::now();
+    ScopedGpuFrameTimer gpuTimer;
+
     // 1. Shadow Pass
-    RenderShadows(scene, width, height, alpha);
+    ProfilePass(ProfiledRenderPass::Shadow, [&]() { RenderShadows(scene, width, height, alpha); });
 
     // 2. Capture Pass (Optional)
     bool captured = false;
-    for (IRenderSystem* sys : m_RenderCaptureSystems)
-    {
-        if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem")
+    ProfilePass(ProfiledRenderPass::Capture, [&]() {
+        for (IRenderSystem* sys : m_RenderCaptureSystems)
         {
-            sys->RenderCapturePass(scene, width, height);
-            captured = true;
+            if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem")
+            {
+                sys->RenderCapturePass(scene, width, height);
+                captured = true;
+            }
         }
-    }
+    });
 
     // 2.5 Rebuild Main Queue if any capture occurred (Capture passes override the global RenderQueueObj)
     if (captured)
@@ -474,14 +562,16 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
     for (IRenderSystem* sys : m_RenderMainSystems)
     {
         if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem")
-            sys->Render(scene);
+        {
+            ProfilePass(GetPassForSystem(sys->GetName()), [&]() { sys->Render(scene); });
+        }
     }
 
     // 4. Alpha Pass
     for (IRenderSystem* sys : m_RenderAlphaSystems)
     {
         if (sys->IsEnabled())
-            sys->RenderAlphaPass(scene, width, height, alpha);
+            ProfilePass(ProfiledRenderPass::Alpha, [&]() { sys->RenderAlphaPass(scene, width, height, alpha); });
     }
 
     if (auto* rs = sl.Resolve<IRenderService>())
@@ -493,14 +583,17 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
     for (IRenderSystem* sys : m_RenderTransparentSystems)
     {
         if (sys->IsEnabled())
-            sys->RenderTransparentPass(scene, width, height, alpha);
+        {
+            ProfilePass(ProfiledRenderPass::Transparent,
+                        [&]() { sys->RenderTransparentPass(scene, width, height, alpha); });
+        }
     }
 
     // 6. PostProcess
     for (IRenderSystem* sys : m_PostProcessSystems)
     {
         if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem")
-            sys->Render(scene);
+            ProfilePass(ProfiledRenderPass::PostProcess, [&]() { sys->Render(scene); });
     }
 
     // 7. UI Pass
@@ -508,8 +601,14 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
     for (IRenderSystem* sys : m_RenderUISystems)
     {
         if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem")
-            sys->RenderUIPass(scene, (float)width, (float)height, *rsm);
+        {
+            ProfilePass(ProfiledRenderPass::UI, [&]() { sys->RenderUIPass(scene, (float)width, (float)height, *rsm); });
+        }
     }
+
+    const float frameMs = ElapsedMs(frameStart, ProfileClock::now());
+    profiler.SetCpuFrameTime(frameMs);
+    profiler.SetPassTime(ProfiledRenderPass::TotalFrame, frameMs);
 }
 
 void SystemManager::UpdateDebug(float realDeltaTime)

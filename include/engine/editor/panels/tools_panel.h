@@ -14,7 +14,7 @@ public:
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
-        return "Tools [Ctrl+3]";
+        return "Tools [Ctrl+4]";
     }
     PanelGroup GetGroup() const override
     {

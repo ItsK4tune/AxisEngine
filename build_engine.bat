@@ -51,27 +51,27 @@ cls
 echo ==========================================
 echo       SELECT COMPILER / GENERATOR
 echo ==========================================
-echo  1. Visual Studio 6 (2000-ish) [Legacy]
-echo  2. Visual Studio 2005
-echo  3. Visual Studio 2008
-echo  4. Visual Studio 2010
-echo  5. Visual Studio 2012
-echo  6. Visual Studio 2013
-echo  7. Visual Studio 2015
-echo  8. Visual Studio 2017
-echo  9. Visual Studio 2019
-echo 10. Visual Studio 2022
-echo 11. Visual Studio 2026
-echo 12. MinGW (MinGW Makefiles)
-echo 13. Clang (Ninja / NMake)
-echo 14. Auto-Detect (Default - CMake will pick latest VS)
+echo  1. Auto-Detect (Default - CMake will pick latest VS)
+echo  2. Visual Studio 2022
+echo  3. Visual Studio 2026
+echo  4. Visual Studio 2019
+echo  5. Visual Studio 2017
+echo  6. Visual Studio 2015
+echo  7. Visual Studio 2013
+echo  8. Visual Studio 2012
+echo  9. Visual Studio 2010
+echo 10. Visual Studio 2008
+echo 11. Visual Studio 2005
+echo 12. Visual Studio 6 (2000-ish) [Legacy]
+echo 13. MinGW (MinGW Makefiles)
+echo 14. Clang (Ninja / NMake)
 echo ------------------------------------------
 echo  B. Back to Main Menu
 echo ==========================================
 set "comp_choice="
-set /p comp_choice="Enter number (Default: 14): "
+set /p comp_choice="Enter number (Default: 1): "
 
-if "%comp_choice%"=="" set comp_choice=14
+if "%comp_choice%"=="" set comp_choice=1
 if /i "%comp_choice%"=="b" goto SELECT_ACTION
 
 echo %comp_choice%| findstr /r "^[0-9]*$" >nul
@@ -91,20 +91,20 @@ goto SELECT_COMPILER
 :COMPILER_CHOSEN
 set GENERATOR=""
 
-if "%comp_choice%"=="1" set GENERATOR="Visual Studio 6"
-if "%comp_choice%"=="2" set GENERATOR="Visual Studio 8 2005"
-if "%comp_choice%"=="3" set GENERATOR="Visual Studio 9 2008"
-if "%comp_choice%"=="4" set GENERATOR="Visual Studio 10 2010"
-if "%comp_choice%"=="5" set GENERATOR="Visual Studio 11 2012"
-if "%comp_choice%"=="6" set GENERATOR="Visual Studio 12 2013"
-if "%comp_choice%"=="7" set GENERATOR="Visual Studio 14 2015"
-if "%comp_choice%"=="8" set GENERATOR="Visual Studio 15 2017"
-if "%comp_choice%"=="9" set GENERATOR="Visual Studio 16 2019"
-if "%comp_choice%"=="10" set GENERATOR="Visual Studio 17 2022"
-if "%comp_choice%"=="11" set GENERATOR="Visual Studio 18 2026" 
-if "%comp_choice%"=="12" set GENERATOR="MinGW Makefiles"
-if "%comp_choice%"=="13" set GENERATOR="Ninja"
-if "%comp_choice%"=="14" set "GENERATOR="
+if "%comp_choice%"=="1" set "GENERATOR="
+if "%comp_choice%"=="2" set GENERATOR="Visual Studio 17 2022"
+if "%comp_choice%"=="3" set GENERATOR="Visual Studio 18 2026"
+if "%comp_choice%"=="4" set GENERATOR="Visual Studio 16 2019"
+if "%comp_choice%"=="5" set GENERATOR="Visual Studio 15 2017"
+if "%comp_choice%"=="6" set GENERATOR="Visual Studio 14 2015"
+if "%comp_choice%"=="7" set GENERATOR="Visual Studio 12 2013"
+if "%comp_choice%"=="8" set GENERATOR="Visual Studio 11 2012"
+if "%comp_choice%"=="9" set GENERATOR="Visual Studio 10 2010"
+if "%comp_choice%"=="10" set GENERATOR="Visual Studio 9 2008"
+if "%comp_choice%"=="11" set GENERATOR="Visual Studio 8 2005"
+if "%comp_choice%"=="12" set GENERATOR="Visual Studio 6"
+if "%comp_choice%"=="13" set GENERATOR="MinGW Makefiles"
+if "%comp_choice%"=="14" set GENERATOR="Ninja"
 
 echo Selected Compiler Option: %comp_choice%
 if "%ENABLE_TESTS%"=="ON" goto CONFIRM_CONFIG
@@ -115,17 +115,17 @@ echo.
 echo ==========================================
 echo           SELECT BUILD TYPE
 echo ==========================================
-echo  1. Debug
-echo  2. Release (Default)
+echo  1. Release (Default)
+echo  2. Debug
 echo  3. RelWithDebInfo
 echo  4. MinSizeRel
 echo ------------------------------------------
 echo  B. Back
 echo ==========================================
 set "type_choice="
-set /p type_choice="Enter number (Default: 2): "
+set /p type_choice="Enter number (Default: 1): "
 
-if "%type_choice%"=="" set type_choice=2
+if "%type_choice%"=="" set type_choice=1
 if /i "%type_choice%"=="b" (
     if defined QUICK_BUILD goto SELECT_ACTION
     goto SELECT_COMPILER
@@ -147,8 +147,8 @@ goto SELECT_BUILD_TYPE
 
 :BUILD_TYPE_CHOSEN
 set BUILD_TYPE=Release
-if "%type_choice%"=="1" set BUILD_TYPE=Debug
-if "%type_choice%"=="2" set BUILD_TYPE=Release
+if "%type_choice%"=="1" set BUILD_TYPE=Release
+if "%type_choice%"=="2" set BUILD_TYPE=Debug
 if "%type_choice%"=="3" set BUILD_TYPE=RelWithDebInfo
 if "%type_choice%"=="4" set BUILD_TYPE=MinSizeRel
 
@@ -163,23 +163,23 @@ echo.
 echo ==========================================
 echo           SELECT CLEAN MODE
 echo ==========================================
-echo  1. Strict (Fail if cannot clean build/bin)
-echo  2. Soft   (Warning only if cannot clean) [Default]
+echo  1. Soft   (Warning only if cannot clean) [Default]
+echo  2. Strict (Fail if cannot clean build/bin)
 echo ------------------------------------------
 echo  B. Back
 echo ==========================================
 set "clean_mode_choice="
-set /p clean_mode_choice="Enter number (Default: 2): "
+set /p clean_mode_choice="Enter number (Default: 1): "
 
-if "%clean_mode_choice%"=="" set clean_mode_choice=2
+if "%clean_mode_choice%"=="" set clean_mode_choice=1
 if /i "%clean_mode_choice%"=="b" goto SELECT_BUILD_TYPE
 
 echo %clean_mode_choice%| findstr /r "^[1-2]$" >nul
 if errorlevel 1 goto RETRY_CLEAN_MODE
 
 set CLEAN_MODE=Soft
-if "%clean_mode_choice%"=="1" set CLEAN_MODE=Strict
-if "%clean_mode_choice%"=="2" set CLEAN_MODE=Soft
+if "%clean_mode_choice%"=="1" set CLEAN_MODE=Soft
+if "%clean_mode_choice%"=="2" set CLEAN_MODE=Strict
 
 echo Selected Clean Mode: %CLEAN_MODE%
 goto SELECT_EDITOR

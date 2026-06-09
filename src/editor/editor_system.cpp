@@ -116,14 +116,14 @@ void EditorSystem::Initialize()
     // Register Panels
     m_Panels.push_back(std::make_unique<SceneHierarchyPanel>());
     m_Panels.push_back(std::make_unique<ResourceBrowserPanel>());
+    m_Panels.push_back(std::make_unique<FileHierarchyPanel>());
     m_Panels.push_back(std::make_unique<ToolsPanel>());
     m_Panels.push_back(std::make_unique<SettingsPanel>());
-    m_Panels.push_back(std::make_unique<FileHierarchyPanel>());
-    m_Panels.push_back(std::make_unique<HelpPanel>());
-    m_Panels.push_back(std::make_unique<ConsolePanel>());
     m_Panels.push_back(std::make_unique<ProfilerPanel>());
+    m_Panels.push_back(std::make_unique<ConsolePanel>());
     m_Panels.push_back(std::make_unique<StatePanel>());
     m_Panels.push_back(std::make_unique<NetworkPanel>());
+    m_Panels.push_back(std::make_unique<HelpPanel>());
 
     for (auto& panel : m_Panels)
     {
@@ -169,10 +169,7 @@ void EditorSystem::OnUpdate(float dt)
 
     for (auto& panel : m_Panels)
     {
-        if (panel->IsOpen())
-        {
-            panel->OnUpdate(dt);
-        }
+        panel->OnUpdate(dt);
     }
 
     // Cursor & input management
@@ -516,11 +513,6 @@ void EditorSystem::OnUpdate(float dt)
                     conf.debug.gridSnapEnabled = !conf.debug.gridSnapEnabled;
                     changed = true;
                 }
-                else if (shift)
-                {
-                    conf.debug.gridIndicatorEnabled = !conf.debug.gridIndicatorEnabled;
-                    changed = true;
-                }
             }
         }
         else if (!kb.GetKey(Key::G))
@@ -633,7 +625,7 @@ void EditorSystem::OnUpdate(float dt)
             f6_pressed = false;
     }
 
-    // Panel toggle shortcuts (Ctrl+1 to Ctrl+9, and Ctrl+0 for NetworkPanel)
+    // Panel toggle shortcuts (Ctrl+1 to Ctrl+9, and Ctrl+0 for HelpPanel)
     static bool s_NumKeysPressed[10] = {false};
     Key numKeys[] = {Key::_1, Key::_2, Key::_3, Key::_4, Key::_5, Key::_6, Key::_7, Key::_8, Key::_9, Key::_0};
 
