@@ -47,4 +47,4 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Run Tests
-        run: ctest --preset=ci-tests -C Release
+        run: ctest --preset=ci-tests-${{ matrix.preset }} -C Release

@@ -216,36 +216,71 @@
   ],
   "buildPresets": [
     {
-      "name": "debug",
-      "displayName": "Debug Build",
+      "name": "windows-debug",
+      "displayName": "Windows MSVC Debug",
+      "configurePreset": "windows-msvc",
       "configuration": "Debug"
     },
     {
-      "name": "release",
-      "displayName": "Release Build",
+      "name": "windows-release",
+      "displayName": "Windows MSVC Release",
+      "configurePreset": "windows-msvc",
       "configuration": "Release"
     },
     {
-      "name": "relwithdebinfo",
-      "displayName": "RelWithDebInfo Build",
-      "configuration": "RelWithDebInfo"
+      "name": "linux-debug",
+      "displayName": "Linux Ninja Debug",
+      "configurePreset": "linux-ninja",
+      "configuration": "Debug"
     },
     {
-      "name": "minsizerel",
-      "displayName": "MinSizeRel Build",
-      "configuration": "MinSizeRel"
+      "name": "linux-release",
+      "displayName": "Linux Ninja Release",
+      "configurePreset": "linux-ninja",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-debug",
+      "displayName": "macOS Ninja Debug",
+      "configurePreset": "macos-ninja",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-release",
+      "displayName": "macOS Ninja Release",
+      "configurePreset": "macos-ninja",
+      "configuration": "Release"
     }
   ],
   "testPresets": [
     {
-      "name": "default-tests",
-      "displayName": "Run Automated Tests",
-      "configurePreset": "tests"
+      "name": "ci-tests-linux",
+      "displayName": "CI Linux Tests",
+      "configurePreset": "ci-linux",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
     },
     {
-      "name": "ci-tests",
-      "displayName": "CI Automated Tests",
-      "configurePreset": "ci-base",
+      "name": "ci-tests-macos",
+      "displayName": "CI macOS Tests",
+      "configurePreset": "ci-macos",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "ci-tests-windows",
+      "displayName": "CI Windows Tests",
+      "configurePreset": "ci-windows",
       "output": {
         "outputOnFailure": true
       },
