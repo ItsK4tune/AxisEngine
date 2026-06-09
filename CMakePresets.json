@@ -1,0 +1,258 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "displayName": "Base Configuration",
+      "description": "Base settings for all platforms",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ENABLE_EDITOR": "OFF",
+        "BUILD_SAMPLES": "OFF",
+        "ENABLE_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "editor",
+      "displayName": "Editor Configuration",
+      "description": "Base settings with Editor enabled",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "ENABLE_EDITOR": "ON",
+        "BUILD_SAMPLES": "ON"
+      }
+    },
+    {
+      "name": "tests",
+      "displayName": "Tests Configuration",
+      "description": "Base settings with Tests enabled",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "ENABLE_TESTS": "ON"
+      }
+    },
+    {
+      "name": "ci-base",
+      "displayName": "CI Base Configuration",
+      "hidden": true,
+      "cacheVariables": {
+        "ENABLE_TESTS": "ON",
+        "ENABLE_EDITOR": "OFF",
+        "BUILD_SAMPLES": "OFF"
+      }
+    },
+    {
+      "name": "sanitizers",
+      "displayName": "Sanitizers (ASan + UBSan)",
+      "description": "Build with Address and Undefined Behavior Sanitizers",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows MSVC",
+      "description": "Build on Windows using MSVC (Visual Studio 2022)",
+      "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-msvc-editor",
+      "displayName": "Windows MSVC with Editor",
+      "inherits": [
+        "windows-msvc",
+        "editor"
+      ]
+    },
+    {
+      "name": "ci-windows",
+      "displayName": "CI Windows MSVC",
+      "inherits": [
+        "windows-msvc",
+        "ci-base"
+      ]
+    },
+    {
+      "name": "windows-ninja",
+      "displayName": "Windows Ninja",
+      "description": "Build on Windows using Ninja",
+      "inherits": "base",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-ninja",
+      "displayName": "Linux Ninja",
+      "description": "Build on Linux using Ninja",
+      "inherits": "base",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-ninja-editor",
+      "displayName": "Linux Ninja with Editor",
+      "inherits": [
+        "linux-ninja",
+        "editor"
+      ]
+    },
+    {
+      "name": "linux-make",
+      "displayName": "Linux Makefiles",
+      "description": "Build on Linux using Unix Makefiles",
+      "inherits": "base",
+      "generator": "Unix Makefiles",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-make-editor",
+      "displayName": "Linux Makefiles with Editor",
+      "inherits": [
+        "linux-make",
+        "editor"
+      ]
+    },
+    {
+      "name": "ci-linux",
+      "displayName": "CI Linux Ninja",
+      "inherits": [
+        "linux-ninja",
+        "ci-base"
+      ]
+    },
+    {
+      "name": "linux-asan",
+      "displayName": "Linux Ninja + Sanitizers",
+      "inherits": [
+        "linux-ninja",
+        "sanitizers"
+      ]
+    },
+    {
+      "name": "macos-ninja",
+      "displayName": "macOS Ninja",
+      "description": "Build on macOS using Ninja",
+      "inherits": "base",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-ninja-editor",
+      "displayName": "macOS Ninja with Editor",
+      "inherits": [
+        "macos-ninja",
+        "editor"
+      ]
+    },
+    {
+      "name": "macos-xcode",
+      "displayName": "macOS Xcode",
+      "description": "Build on macOS using Xcode",
+      "inherits": "base",
+      "generator": "Xcode",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-xcode-editor",
+      "displayName": "macOS Xcode with Editor",
+      "inherits": [
+        "macos-xcode",
+        "editor"
+      ]
+    },
+    {
+      "name": "ci-macos",
+      "displayName": "CI macOS Ninja",
+      "inherits": [
+        "macos-ninja",
+        "ci-base"
+      ]
+    },
+    {
+      "name": "macos-asan",
+      "displayName": "macOS Ninja + Sanitizers",
+      "inherits": [
+        "macos-ninja",
+        "sanitizers"
+      ]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug Build",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Release Build",
+      "configuration": "Release"
+    },
+    {
+      "name": "relwithdebinfo",
+      "displayName": "RelWithDebInfo Build",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "minsizerel",
+      "displayName": "MinSizeRel Build",
+      "configuration": "MinSizeRel"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default-tests",
+      "displayName": "Run Automated Tests",
+      "configurePreset": "tests"
+    },
+    {
+      "name": "ci-tests",
+      "displayName": "CI Automated Tests",
+      "configurePreset": "ci-base",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    }
+  ]
+}

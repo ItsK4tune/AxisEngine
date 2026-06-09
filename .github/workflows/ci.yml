@@ -1,0 +1,50 @@
+name: Axis Engine CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            preset: linux
+            install-cmd: |
+              sudo apt-get update
+              sudo apt-get install -y ninja-build libglfw3-dev libglm-dev libbullet-dev libfreetype-dev libassimp-dev libenet-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev libopenal-dev
+          - os: macos-latest
+            preset: macos
+            install-cmd: |
+              brew install ninja glfw glm bullet freetype assimp enet ffmpeg
+          - os: windows-latest
+            preset: windows
+            install-cmd: "" # Dependencies are pre-committed under lib/ and dlls/
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        if: matrix.install-cmd != ''
+        run: ${{ matrix.install-cmd }}
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.20.x'
+
+      - name: Configure CMake
+        run: cmake --preset=ci-${{ matrix.preset }}
+
+      - name: Build Engine
+        run: cmake --build build --config Release
+
+      - name: Run Tests
+        run: ctest --preset=ci-tests -C Release
