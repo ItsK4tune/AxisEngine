@@ -10,6 +10,8 @@
 #include <physics/logic/physics_query_service.h>
 #include <physics/unit/ray.h>
 #include <audio/logic/audio_service.h>
+#include <core/logic/backend_registry.h>
+#include <core/logic/config_manager.h>
 #include <audio/interface/i_sound.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/network_components.h>
@@ -2415,15 +2417,6 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Network Messaging (ENet)");
         ImGui::Text("Status: %s", m_S30Status.c_str());
         ImGui::Checkbox("Host as Server", &m_S30IsServer);
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Use IPv6", &m_S30UseIPv6))
-        {
-            // Update default host when toggling
-            if (m_S30UseIPv6)
-                strncpy(m_S30Host, "::1", sizeof(m_S30Host));
-            else
-                strncpy(m_S30Host, "127.0.0.1", sizeof(m_S30Host));
-        }
         ImGui::InputText("Host IP", m_S30Host, sizeof(m_S30Host));
         ImGui::InputInt("Port", &m_S30Port);
         m_S30Port = glm::clamp(m_S30Port, 1024, 65535);
@@ -2446,7 +2439,7 @@ void SampleState::DrawGUI()
                     NetworkConfig config;
                     config.port = static_cast<uint16_t>(m_S30Port);
                     config.maxClients = 32;
-                    config.useIPv6 = m_S30UseIPv6;
+                    config.useIPv6 = false;
                     m_S30Messages.clear();
 
                     if (m_S30IsServer)
@@ -2592,7 +2585,13 @@ void SampleState::DrawGUI()
     }
     else if (m_CurrentScenario == 31)
     {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "irrKlang Audio Test");
+        std::string backendName = "Unknown";
+        if (auto* configMgr = Resolve<ConfigManager>())
+        {
+            backendName = BackendRegistry::ToString(configMgr->GetConfig().audioBackend);
+        }
+        std::string title = backendName + " Audio Test";
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "%s", title.c_str());
         bool audioSettingsChanged = false;
         ImGui::SliderFloat("Orbit Speed", &m_S31Speed, 0.1f, 5.0f);
         audioSettingsChanged |= ImGui::SliderFloat("2D Volume", &m_S31Volume2D, 0.0f, kScenario31MaxVolume);

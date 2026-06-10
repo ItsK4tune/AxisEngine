@@ -4,12 +4,25 @@
 # ASSIMP_FOUND - system has Assimp
 # ASSIMP_INCLUDE_DIR - the Assimp include directories
 # ASSIMP_LIBRARIES - link these to use Assimp
+FIND_PACKAGE(assimp CONFIG QUIET)
+IF(TARGET assimp::assimp)
+	SET(ASSIMP_FOUND TRUE)
+	SET(ASSIMP_LIBRARIES assimp::assimp)
+	GET_PROPERTY(ASSIMP_INCLUDE_DIR TARGET assimp::assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+	IF(NOT TARGET ASSIMP::ASSIMP)
+		ADD_LIBRARY(ASSIMP::ASSIMP INTERFACE IMPORTED)
+		SET_TARGET_PROPERTIES(ASSIMP::ASSIMP PROPERTIES
+			INTERFACE_LINK_LIBRARIES assimp::assimp
+		)
+	ENDIF()
+	RETURN()
+ENDIF()
+
 FIND_PATH( ASSIMP_INCLUDE_DIR assimp/mesh.h
 	/usr/include
 	/usr/local/include
 	/opt/local/include
 	/opt/homebrew/include
-	${CMAKE_SOURCE_DIR}/include
 )
 FIND_LIBRARY( ASSIMP_LIBRARY
 	NAMES assimp-vc143-mt assimp
@@ -19,7 +32,6 @@ FIND_LIBRARY( ASSIMP_LIBRARY
 	/usr/local/lib
 	/opt/local/lib
 	/opt/homebrew/lib
-	${CMAKE_SOURCE_DIR}/lib
 )
 IF(ASSIMP_INCLUDE_DIR AND ASSIMP_LIBRARY)
 	SET( ASSIMP_FOUND TRUE )

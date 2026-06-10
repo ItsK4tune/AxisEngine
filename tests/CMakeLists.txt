@@ -35,7 +35,6 @@ target_include_directories(axis_test PRIVATE
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/engine
-    ${CMAKE_SOURCE_DIR}/include/entt
 )
 
 target_compile_definitions(axis_test PRIVATE AXIS_TESTING)
@@ -44,14 +43,6 @@ target_link_libraries(axis_test PRIVATE axis_engine)
 
 if(TARGET axis_editor)
     target_link_libraries(axis_test PRIVATE axis_editor)
-endif()
-
-if(WIN32)
-    add_custom_command(TARGET axis_test POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/dlls"
-            "$<TARGET_FILE_DIR:axis_test>"
-    )
 endif()
 
 add_test(NAME axis_test COMMAND axis_test)

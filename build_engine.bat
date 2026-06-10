@@ -107,7 +107,7 @@ if "%comp_choice%"=="13" set GENERATOR="MinGW Makefiles"
 if "%comp_choice%"=="14" set GENERATOR="Ninja"
 
 echo Selected Compiler Option: %comp_choice%
-if "%ENABLE_TESTS%"=="ON" goto CONFIRM_CONFIG
+if "%ENABLE_TESTS%"=="ON" goto SELECT_BACKENDS
 
 :SELECT_BUILD_TYPE
 cls
@@ -154,7 +154,7 @@ if "%type_choice%"=="4" set BUILD_TYPE=MinSizeRel
 
 echo Selected Build Type: %BUILD_TYPE%
 
-if defined QUICK_BUILD goto CONFIRM_CONFIG
+if defined QUICK_BUILD goto SELECT_BACKENDS
 goto SELECT_CLEAN_MODE
 
 :SELECT_CLEAN_MODE
@@ -214,7 +214,7 @@ if "%editor_choice%"=="2" set ENABLE_EDITOR=ON
 
 if "%ENABLE_EDITOR%"=="ON" goto SELECT_BUILD_SAMPLES
 set BUILD_SAMPLES=OFF
-goto CONFIRM_CONFIG
+goto SELECT_BACKENDS
 
 :RETRY_EDITOR
 echo [ERROR] Invalid selection!
@@ -244,12 +244,130 @@ if errorlevel 1 goto RETRY_BUILD_SAMPLES
 set BUILD_SAMPLES=ON
 if "%sample_choice%"=="2" set BUILD_SAMPLES=OFF
 
-goto CONFIRM_CONFIG
+goto SELECT_BACKENDS
 
 :RETRY_BUILD_SAMPLES
 echo [ERROR] Invalid selection!
 pause
 goto SELECT_BUILD_SAMPLES
+
+:SELECT_BACKENDS
+cls
+echo.
+echo ==========================================
+echo           SELECT ENGINE BACKENDS
+echo ==========================================
+echo Graphics Backend:
+echo  1. OpenGL (Default)
+echo  2. Vulkan [Not implemented]
+echo  3. DirectX [Not implemented]
+echo ------------------------------------------
+echo  B. Back
+echo ==========================================
+set "graphics_choice="
+set /p graphics_choice="Enter number (Default: 1): "
+
+if "%graphics_choice%"=="" set graphics_choice=1
+if /i "%graphics_choice%"=="b" (
+    if "%ENABLE_TESTS%"=="ON" goto SELECT_COMPILER
+    if defined QUICK_BUILD goto SELECT_BUILD_TYPE
+    if "%ENABLE_EDITOR%"=="ON" goto SELECT_BUILD_SAMPLES
+    goto SELECT_EDITOR
+)
+
+echo %graphics_choice%| findstr /r "^[1-3]$" >nul
+if errorlevel 1 goto RETRY_BACKENDS
+
+set GRAPHICS_BACKEND=OpenGL
+if "%graphics_choice%"=="2" set GRAPHICS_BACKEND=Vulkan
+if "%graphics_choice%"=="3" set GRAPHICS_BACKEND=DirectX
+
+echo.
+echo Physics Backend:
+echo  1. Bullet (Default)
+echo  2. PhysX [Not implemented]
+set "physics_choice="
+set /p physics_choice="Enter number (Default: 1): "
+
+if "%physics_choice%"=="" set physics_choice=1
+echo %physics_choice%| findstr /r "^[1-2]$" >nul
+if errorlevel 1 goto RETRY_BACKENDS
+
+set PHYSICS_BACKEND=Bullet
+if "%physics_choice%"=="2" set PHYSICS_BACKEND=PhysX
+
+echo.
+echo Audio Backend:
+echo  1. Null (Default, no audio output)
+echo  2. FMOD (requires FMOD SDK / FMOD_ROOT_DIR)
+echo  3. IrrKlang (requires irrKlang SDK / IRRKLANG_ROOT_DIR)
+set "audio_choice="
+set /p audio_choice="Enter number (Default: 1): "
+
+if "%audio_choice%"=="" set audio_choice=1
+echo %audio_choice%| findstr /r "^[1-3]$" >nul
+if errorlevel 1 goto RETRY_BACKENDS
+
+set AUDIO_BACKEND=Null
+if "%audio_choice%"=="2" set AUDIO_BACKEND=FMOD
+if "%audio_choice%"=="3" set AUDIO_BACKEND=IrrKlang
+
+call :VALIDATE_AUDIO_BACKEND
+if errorlevel 1 goto SELECT_BACKENDS
+
+goto CONFIRM_CONFIG
+
+:VALIDATE_AUDIO_BACKEND
+if /i "%AUDIO_BACKEND%"=="IrrKlang" (
+    set "IRRKLANG_SDK_FOUND="
+    if defined IRRKLANG_ROOT_DIR (
+        if exist "!IRRKLANG_ROOT_DIR!\include\irrKlang.h" set "IRRKLANG_SDK_FOUND=1"
+        if exist "!IRRKLANG_ROOT_DIR!\irrKlang.h" set "IRRKLANG_SDK_FOUND=1"
+        if exist "!IRRKLANG_ROOT_DIR!\irrKlang\irrKlang.h" set "IRRKLANG_SDK_FOUND=1"
+    )
+    if exist "C:\Program Files\irrKlang\include\irrKlang.h" set "IRRKLANG_SDK_FOUND=1"
+    if exist "C:\Program Files (x86)\irrKlang\include\irrKlang.h" set "IRRKLANG_SDK_FOUND=1"
+    if not defined IRRKLANG_SDK_FOUND (
+        echo.
+        echo [WARN] IrrKlang SDK not found. Set IRRKLANG_ROOT_DIR or choose Null audio.
+        set "audio_fallback="
+        set /p audio_fallback="Fallback to Null audio? (Y/N) [Default: Y]: "
+        if "!audio_fallback!"=="" set "audio_fallback=Y"
+        if /i "!audio_fallback!"=="Y" (
+            set "AUDIO_BACKEND=Null"
+            exit /b 0
+        )
+        exit /b 1
+    )
+)
+if /i "%AUDIO_BACKEND%"=="FMOD" (
+    set "FMOD_SDK_FOUND="
+    if defined FMOD_ROOT_DIR (
+        if exist "!FMOD_ROOT_DIR!\api\core\inc\fmod.hpp" set "FMOD_SDK_FOUND=1"
+        if exist "!FMOD_ROOT_DIR!\inc\fmod.hpp" set "FMOD_SDK_FOUND=1"
+        if exist "!FMOD_ROOT_DIR!\include\fmod.hpp" set "FMOD_SDK_FOUND=1"
+    )
+    if exist "C:\Program Files\FMOD SoundSystem\FMOD Studio API Windows\api\core\inc\fmod.hpp" set "FMOD_SDK_FOUND=1"
+    if exist "C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\core\inc\fmod.hpp" set "FMOD_SDK_FOUND=1"
+    if not defined FMOD_SDK_FOUND (
+        echo.
+        echo [WARN] FMOD SDK not found. Set FMOD_ROOT_DIR or choose Null audio.
+        set "audio_fallback="
+        set /p audio_fallback="Fallback to Null audio? (Y/N) [Default: Y]: "
+        if "!audio_fallback!"=="" set "audio_fallback=Y"
+        if /i "!audio_fallback!"=="Y" (
+            set "AUDIO_BACKEND=Null"
+            exit /b 0
+        )
+        exit /b 1
+    )
+)
+exit /b 0
+
+:RETRY_BACKENDS
+echo [ERROR] Invalid backend selection!
+pause
+goto SELECT_BACKENDS
 
 :CONFIRM_CONFIG
 cls
@@ -264,6 +382,9 @@ if not defined GENERATOR (
     echo  Generator:  %GENERATOR%
 )
 echo  Build Type: %BUILD_TYPE%
+echo  Graphics:   %GRAPHICS_BACKEND%
+echo  Physics:    %PHYSICS_BACKEND%
+echo  Audio:      %AUDIO_BACKEND%
 if defined QUICK_BUILD (
     echo  Build Mode: QUICK
 ) else (
@@ -278,10 +399,7 @@ set /p confirm="Do you want to proceed? (Y/N, B=Back) [Default: Y]: "
 if "%confirm%"=="" set confirm=y
 
 if /i "%confirm%"=="b" (
-    if "%ENABLE_TESTS%"=="ON" goto SELECT_ACTION
-    if defined QUICK_BUILD goto SELECT_BUILD_TYPE
-    if "%ENABLE_EDITOR%"=="ON" goto SELECT_BUILD_SAMPLES
-    goto SELECT_EDITOR
+    goto SELECT_BACKENDS
 )
 if /i "%confirm%"=="n" goto SELECT_ACTION
 if /i "%confirm%"=="y" (
@@ -371,22 +489,38 @@ if not errorlevel 1 (
     )
 )
 
+set "DEPENDENCY_CMAKE_FLAGS="
+if defined VCPKG_ROOT (
+    set "VCPKG_TOOLCHAIN=!VCPKG_ROOT!\scripts\buildsystems\vcpkg.cmake"
+    if exist "!VCPKG_TOOLCHAIN!" (
+        set "DEPENDENCY_CMAKE_FLAGS=-DCMAKE_TOOLCHAIN_FILE=!VCPKG_TOOLCHAIN!"
+        if exist "cmake\vcpkg-overlay-ports" (
+            set "DEPENDENCY_CMAKE_FLAGS=!DEPENDENCY_CMAKE_FLAGS! -DVCPKG_OVERLAY_PORTS=%CD%\cmake\vcpkg-overlay-ports"
+        )
+        echo [INFO] Using vcpkg toolchain: !VCPKG_TOOLCHAIN!
+    )
+)
+
 if not defined QUICK_BUILD (
+    set "BACKEND_CMAKE_FLAGS=-DAXIS_GRAPHICS_BACKEND=!GRAPHICS_BACKEND! -DAXIS_PHYSICS_BACKEND=!PHYSICS_BACKEND! -DAXIS_AUDIO_BACKEND=!AUDIO_BACKEND!"
     if not defined GENERATOR (
-        "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
+        "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
     ) else (
-        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
+        "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
     )
 ) else (
+    set "BACKEND_CMAKE_FLAGS=-DAXIS_GRAPHICS_BACKEND=!GRAPHICS_BACKEND! -DAXIS_PHYSICS_BACKEND=!PHYSICS_BACKEND! -DAXIS_AUDIO_BACKEND=!AUDIO_BACKEND!"
     if "%ENABLE_TESTS%"=="ON" (
         if not defined GENERATOR (
-            "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
+            "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
         ) else (
-            "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS!
+            "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
         )
     ) else (
-        if not exist "build" (
-            "!CMAKE_CMD!" -B build -DENABLE_TESTS=!ENABLE_TESTS!
+        if not defined GENERATOR (
+            "!CMAKE_CMD!" -B build -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
+        ) else (
+            "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
         )
     )
 )
@@ -412,7 +546,7 @@ echo.
 echo ==========================================
 echo        BUILD SUCCESS: LIBS GENERATED
 echo ==========================================
-echo Libraries (axis_engine.lib, etc.) are located in: lib\
+echo Libraries (axis_engine.lib, etc.) are located in: build\lib\
 
 :EXIT_SCRIPT
 exit /b %ERRORLEVEL%

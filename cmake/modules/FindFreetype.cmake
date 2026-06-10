@@ -5,6 +5,14 @@
 # FREETYPE_INCLUDE_DIR - the FreeType include directories
 # FREETYPE_LIBRARIES - link these to use FreeType
 
+FIND_PACKAGE(Freetype CONFIG QUIET)
+IF(TARGET Freetype::Freetype)
+    SET(FREETYPE_FOUND TRUE)
+    SET(Freetype_FOUND TRUE)
+    SET(FREETYPE_LIBRARIES Freetype::Freetype)
+    RETURN()
+ENDIF()
+
 FIND_PATH(FREETYPE_INCLUDE_DIR ft2build.h
     PATH_SUFFIXES freetype freetype2
     PATHS
@@ -16,8 +24,6 @@ FIND_PATH(FREETYPE_INCLUDE_DIR ft2build.h
     /usr/local/include
     /opt/local/include
     /opt/homebrew/include
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/freetype
 )
 
 FIND_LIBRARY(FREETYPE_LIBRARY freetype
@@ -26,7 +32,6 @@ FIND_LIBRARY(FREETYPE_LIBRARY freetype
     /usr/local/lib
     /opt/local/lib
     /opt/homebrew/lib
-    ${CMAKE_SOURCE_DIR}/lib
 )
 
 IF(FREETYPE_INCLUDE_DIR AND FREETYPE_LIBRARY)

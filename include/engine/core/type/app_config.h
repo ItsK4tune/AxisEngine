@@ -16,6 +16,9 @@
 #ifndef AXIS_HAS_IRRKLANG_BACKEND
 #define AXIS_HAS_IRRKLANG_BACKEND 1
 #endif
+#ifndef AXIS_HAS_FMOD_BACKEND
+#define AXIS_HAS_FMOD_BACKEND 0
+#endif
 
 struct WindowConfig
 {
@@ -93,6 +96,8 @@ struct AudioConfig
 {
 #if AXIS_HAS_IRRKLANG_BACKEND
     AudioBackend audioBackend = AudioBackend::IrrKlang;
+#elif AXIS_HAS_FMOD_BACKEND
+    AudioBackend audioBackend = AudioBackend::FMOD;
 #else
     AudioBackend audioBackend = AudioBackend::Null;
 #endif

@@ -1,0 +1,38 @@
+{
+  "name": "axis-engine",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "assimp",
+    "bullet3",
+    "enet",
+    "entt",
+    "ffmpeg",
+    "freetype",
+    "glad",
+    "glfw3",
+    "glm",
+    {
+      "name": "imgui",
+      "features": [
+        "docking-experimental",
+        "glfw-binding",
+        "opengl3-binding"
+      ]
+    },
+    "stb"
+  ],
+  "features": {
+    "fmod": {
+      "description": "Use a locally installed FMOD Core SDK through the AxisEngine vcpkg overlay port.",
+      "dependencies": [
+        "fmod"
+      ]
+    },
+    "irrklang": {
+      "description": "Use a locally installed irrKlang SDK through the AxisEngine vcpkg overlay port.",
+      "dependencies": [
+        "irrklang"
+      ]
+    }
+  }
+}

@@ -1,5 +1,4 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-#define ENET_IMPLEMENTATION
 #include <engine/network/network_system.h>
 #include <ecs/logic/system_factory.h>
 #include <core/logic/logger.h>
@@ -54,9 +53,14 @@ void NetworkSystem::Update(Scene& scene, float dt)
 bool NetworkSystem::StartServer(const NetworkConfig& config)
 {
     Stop();
-    m_useIPv6 = config.useIPv6;
+    m_useIPv6 = false;
+    if (config.useIPv6)
+    {
+        LOGGER_WARN("NetworkSystem") << "IPv6 was requested, but the linked ENet build exposes IPv4-only addresses; "
+                                     << "falling back to IPv4";
+    }
 
-    LOGGER_INFO("NetworkSystem") << "Starting " << (m_useIPv6 ? "IPv6" : "IPv4") << " server on port " << config.port
+    LOGGER_INFO("NetworkSystem") << "Starting IPv4 server on port " << config.port
                                  << " with max clients: " << config.maxClients;
 
     ENetAddress address{};
@@ -74,7 +78,6 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
         address.host = ENET_HOST_ANY;
     }
     address.port = config.port;
-    address.sin6_scope_id = 0;
 
     host = enet_host_create(&address, config.maxClients, config.channels, config.incomingBandwidth,
                             config.outgoingBandwidth);
@@ -86,7 +89,6 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
         ENetAddress fallbackAddress{};
         fallbackAddress.host = ENET_HOST_ANY;
         fallbackAddress.port = config.port;
-        fallbackAddress.sin6_scope_id = 0;
         host = enet_host_create(&fallbackAddress, config.maxClients, config.channels, config.incomingBandwidth,
                                 config.outgoingBandwidth);
     }
@@ -108,10 +110,14 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
 bool NetworkSystem::StartClient(const NetworkConfig& config)
 {
     Stop();
-    m_useIPv6 = config.useIPv6;
+    m_useIPv6 = false;
+    if (config.useIPv6)
+    {
+        LOGGER_WARN("NetworkSystem") << "IPv6 was requested, but the linked ENet build exposes IPv4-only addresses; "
+                                     << "falling back to IPv4";
+    }
 
-    LOGGER_INFO("NetworkSystem") << "Connecting " << (m_useIPv6 ? "IPv6" : "IPv4") << " client to "
-                                 << config.host << ":" << config.port;
+    LOGGER_INFO("NetworkSystem") << "Connecting IPv4 client to " << config.host << ":" << config.port;
 
     host = enet_host_create(nullptr, 1, config.channels, config.incomingBandwidth, config.outgoingBandwidth);
     if (!host)
@@ -121,46 +127,16 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
     }
 
     ENetAddress address{};
-    const char* hostName = config.host.empty() ? (m_useIPv6 ? "::1" : "127.0.0.1") : config.host.c_str();
+    const char* hostName = config.host.empty() ? "127.0.0.1" : config.host.c_str();
 
-    if (!m_useIPv6)
+    if (enet_address_set_host_ip(&address, hostName) != 0 && enet_address_set_host(&address, hostName) != 0)
     {
-        // Manually map IPv4 address to ::ffff:x.x.x.x for the dual-stack socket
-        struct sockaddr_in sin4{};
-        sin4.sin_family = AF_INET;
-        if (inet_pton(AF_INET, hostName, &sin4.sin_addr) != 1)
-        {
-            // Not a numeric IPv4, try DNS
-            struct addrinfo hints{}, *res = nullptr;
-            hints.ai_family = AF_INET;
-            if (getaddrinfo(hostName, nullptr, &hints, &res) != 0 || !res)
-            {
-                LOGGER_ERROR("NetworkSystem") << "Failed to resolve IPv4 host " << hostName;
-                enet_host_destroy(host);
-                host = nullptr;
-                return false;
-            }
-            sin4.sin_addr = reinterpret_cast<struct sockaddr_in*>(res->ai_addr)->sin_addr;
-            freeaddrinfo(res);
-        }
-        // Build ::ffff:x.x.x.x
-        memset(&address.host, 0, sizeof(address.host));
-        address.host.s6_addr[10] = 0xff;
-        address.host.s6_addr[11] = 0xff;
-        memcpy(&address.host.s6_addr[12], &sin4.sin_addr.s_addr, 4);
-    }
-    else
-    {
-        if (enet_address_set_host_ip(&address, hostName) != 0 && enet_address_set_host(&address, hostName) != 0)
-        {
-            LOGGER_ERROR("NetworkSystem") << "Failed to resolve host " << hostName;
-            enet_host_destroy(host);
-            host = nullptr;
-            return false;
-        }
+        LOGGER_ERROR("NetworkSystem") << "Failed to resolve host " << hostName;
+        enet_host_destroy(host);
+        host = nullptr;
+        return false;
     }
     address.port = config.port;
-    address.sin6_scope_id = 0;
 
     serverPeer = enet_host_connect(host, &address, config.channels, 0);
     if (!serverPeer)

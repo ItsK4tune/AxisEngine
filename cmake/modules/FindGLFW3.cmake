@@ -14,17 +14,38 @@
 # 
 # Cmake file from: https://github.com/daw42/glslcookbook
 
+find_package(glfw3 CONFIG QUIET)
+if(TARGET glfw)
+    set(GLFW3_FOUND TRUE)
+    set(GLFW3_LIBRARY glfw)
+    if(NOT TARGET GLFW3::GLFW3)
+        add_library(GLFW3::GLFW3 INTERFACE IMPORTED)
+        set_target_properties(GLFW3::GLFW3 PROPERTIES
+            INTERFACE_LINK_LIBRARIES glfw
+        )
+    endif()
+    return()
+elseif(TARGET glfw3::glfw)
+    set(GLFW3_FOUND TRUE)
+    set(GLFW3_LIBRARY glfw3::glfw)
+    if(NOT TARGET GLFW3::GLFW3)
+        add_library(GLFW3::GLFW3 INTERFACE IMPORTED)
+        set_target_properties(GLFW3::GLFW3 PROPERTIES
+            INTERFACE_LINK_LIBRARIES glfw3::glfw
+        )
+    endif()
+    return()
+endif()
+
 set( _glfw3_HEADER_SEARCH_DIRS
 "/usr/include"
 "/usr/local/include"
 "/opt/homebrew/include"
-"${CMAKE_SOURCE_DIR}/include"
 "C:/Program Files (x86)/glfw/include" )
 set( _glfw3_LIB_SEARCH_DIRS
 "/usr/lib"
 "/usr/local/lib"
 "/opt/homebrew/lib"
-"${CMAKE_SOURCE_DIR}/lib"
 "C:/Program Files (x86)/glfw/lib-msvc110" )
 
 # Check environment for root search directory

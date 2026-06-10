@@ -19,46 +19,34 @@ FIND_PATH(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
     /usr/local/include
     /opt/local/include
     /opt/homebrew/include
-    ${CMAKE_SOURCE_DIR}/include/ffmpeg
-    ${CMAKE_SOURCE_DIR}/include
 )
 
 # --- Libraries ---
 FIND_LIBRARY(AVCODEC_LIBRARY avcodec
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/lib/ffmpeg
     /usr/lib
     /usr/local/lib
     /opt/homebrew/lib
 )
 
 FIND_LIBRARY(AVFORMAT_LIBRARY avformat
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/lib/ffmpeg
     /usr/lib
     /usr/local/lib
     /opt/homebrew/lib
 )
 
 FIND_LIBRARY(AVUTIL_LIBRARY avutil
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/lib/ffmpeg
     /usr/lib
     /usr/local/lib
     /opt/homebrew/lib
 )
 
 FIND_LIBRARY(SWSCALE_LIBRARY swscale
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/lib/ffmpeg
     /usr/lib
     /usr/local/lib
     /opt/homebrew/lib
 )
 
 FIND_LIBRARY(SWRESAMPLE_LIBRARY swresample
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/lib/ffmpeg
     /usr/lib
     /usr/local/lib
     /opt/homebrew/lib

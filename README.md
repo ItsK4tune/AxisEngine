@@ -36,7 +36,7 @@
 
 **AXIS Engine** is a high-performance **hybrid modular** multimedia framework built with C++20. It leverages an interface-driven architecture to abstract hardware backends, providing a unified, data-oriented runtime via ECS (`entt`).
 
-Designed for scalability and technical precision, AXIS keeps rendering, physics, and audio behind interface boundaries while the current build ships OpenGL, Bullet, and irrKlang providers.
+Designed for scalability and technical precision, AXIS keeps rendering, physics, and audio behind interface boundaries while the current build ships OpenGL, Bullet, Null audio, and optional FMOD/irrKlang providers.
 
 ---
 
@@ -45,7 +45,7 @@ Designed for scalability and technical precision, AXIS keeps rendering, physics,
 ## ✨ Features
 
 ### 🏗️ **Hybrid Architecture**
-- **Modular Backends**: Interface-driven providers for Graphics, Physics, and Audio. This build includes OpenGL, Bullet, and IrrKlang.
+- **Modular Backends**: Interface-driven providers for Graphics, Physics, and Audio. This build includes OpenGL, Bullet, Null audio, and optional FMOD/irrKlang.
 - **Data-Oriented Runtime**: High-performance entity management using [EnTT](https://github.com/skypjack/entt) with contiguous memory layout.
 - **Multithreaded Job System**: Thread-pool task distribution for asset decoding and snapshot-safe parallel system work.
 
@@ -84,8 +84,15 @@ Designed for scalability and technical precision, AXIS keeps rendering, physics,
 
 ### Prerequisites
 - **Compiler**: MSVC 2019+ (Visual Studio 2019 or newer)
-- **CMake**: 3.15 or higher
+- **CMake**: 3.20 or higher
 - **Windows**: Windows 10/11 (64-bit)
+- **Dependencies**: Install third-party libraries outside the repository. On Windows, vcpkg manifest mode is recommended:
+
+  ```powershell
+  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
+  ```
+
+  FMOD and irrKlang are not vendored. Select them with `-DAXIS_AUDIO_BACKEND=FMOD -DFMOD_ROOT_DIR=<sdk>` or `-DAXIS_AUDIO_BACKEND=IrrKlang -DIRRKLANG_ROOT_DIR=<sdk>`.
 
 ### Build & Run
 
@@ -101,9 +108,9 @@ Designed for scalability and technical precision, AXIS keeps rendering, physics,
    ```
    This script will:
    - Configure CMake
-   - Build dependencies
+   - Resolve installed dependencies
    - Compile the engine and game project
-   - Output executable to `bin/Release/`
+   - Output build products under `build/`
 
 3. **Run the engine**
    ```bash
@@ -265,6 +272,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Assimp](https://www.assimp.org/) - Model loading
 - [stb_image](https://github.com/nothings/stb) - Image loading
 - [FreeType](https://www.freetype.org/) - Font rendering
+- [FMOD](https://www.fmod.com/) - Optional audio engine
 - [irrKlang](https://www.ambiera.com/irrklang/) - Audio engine
 - [FFmpeg](https://ffmpeg.org/) - Video decoding
 

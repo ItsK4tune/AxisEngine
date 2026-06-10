@@ -8,6 +8,25 @@
 #   BULLET_COLLISION_LIB   - BulletCollision
 #   BULLET_LINEARMATH_LIB  - LinearMath
 
+FIND_PACKAGE(Bullet CONFIG QUIET)
+IF(TARGET BulletDynamics AND TARGET BulletCollision AND TARGET LinearMath)
+    SET(BULLET_FOUND TRUE)
+    SET(Bullet_FOUND TRUE)
+    SET(BULLET_LIBRARIES BulletDynamics BulletCollision LinearMath)
+    IF(NOT TARGET Bullet::Bullet)
+        ADD_LIBRARY(Bullet::Bullet INTERFACE IMPORTED)
+        SET_TARGET_PROPERTIES(Bullet::Bullet PROPERTIES
+            INTERFACE_LINK_LIBRARIES "${BULLET_LIBRARIES}"
+        )
+        IF(BULLET_INCLUDE_DIRS)
+            SET_TARGET_PROPERTIES(Bullet::Bullet PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${BULLET_INCLUDE_DIRS}"
+            )
+        ENDIF()
+    ENDIF()
+    RETURN()
+ENDIF()
+
 # --- Include directory ---
 FIND_PATH(BULLET_INCLUDE_DIR btBulletDynamicsCommon.h
     PATH_SUFFIXES bullet
@@ -16,8 +35,6 @@ FIND_PATH(BULLET_INCLUDE_DIR btBulletDynamicsCommon.h
     /usr/local/include
     /opt/local/include
     /opt/homebrew/include
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/bullet
 )
 
 # --- Library: BulletDynamics ---
@@ -27,7 +44,6 @@ FIND_LIBRARY(BULLET_DYNAMICS_LIB BulletDynamics
     /usr/local/lib
     /opt/local/lib
     /opt/homebrew/lib
-    ${CMAKE_SOURCE_DIR}/lib
 )
 
 FIND_LIBRARY(BULLET_DYNAMICS_DEBUG_LIB BulletDynamics_Debug
@@ -36,7 +52,6 @@ FIND_LIBRARY(BULLET_DYNAMICS_DEBUG_LIB BulletDynamics_Debug
     /usr/local/lib
     /opt/local/lib
     /opt/homebrew/lib
-    ${CMAKE_SOURCE_DIR}/lib
 )
 
 # --- Library: BulletCollision ---
@@ -46,7 +61,6 @@ FIND_LIBRARY(BULLET_COLLISION_LIB BulletCollision
     /usr/local/lib
     /opt/local/lib
     /opt/homebrew/lib
-    ${CMAKE_SOURCE_DIR}/lib
 )
 
 FIND_LIBRARY(BULLET_COLLISION_DEBUG_LIB BulletCollision_Debug
@@ -55,7 +69,6 @@ FIND_LIBRARY(BULLET_COLLISION_DEBUG_LIB BulletCollision_Debug
     /usr/local/lib
     /opt/local/lib
     /opt/homebrew/lib
-    ${CMAKE_SOURCE_DIR}/lib
 )
 
 # --- Library: LinearMath ---
@@ -65,7 +78,6 @@ FIND_LIBRARY(BULLET_LINEARMATH_LIB LinearMath
     /usr/local/lib
     /opt/local/lib
     /opt/homebrew/lib
-    ${CMAKE_SOURCE_DIR}/lib
 )
 
 FIND_LIBRARY(BULLET_LINEARMATH_DEBUG_LIB LinearMath_Debug
@@ -74,7 +86,6 @@ FIND_LIBRARY(BULLET_LINEARMATH_DEBUG_LIB LinearMath_Debug
     /usr/local/lib
     /opt/local/lib
     /opt/homebrew/lib
-    ${CMAKE_SOURCE_DIR}/lib
 )
 
 # --- Validate ---

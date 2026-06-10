@@ -62,6 +62,10 @@ void AudioSystem::Update(Scene& scene, float dt)
     if (!audioService)
         return;
 
+    auto* engine = audioService->GetEngine();
+    if (!engine)
+        return;
+
     entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity != entt::null)
     {
@@ -76,7 +80,7 @@ void AudioSystem::Update(Scene& scene, float dt)
 
     auto view = scene.GetRegistry().view<AudioSourceComponent, InfoComponent>();
 
-    audioService->GetEngine()->SetGlobalVolume(m_GlobalVolume);
+    engine->SetGlobalVolume(m_GlobalVolume);
 
     for (auto entity : view)
     {
@@ -115,11 +119,11 @@ void AudioSystem::Update(Scene& scene, float dt)
                 {
                     PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
                     glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
-                    audio.sound = audioService->GetEngine()->Play3D(audio.source.get(), pos, audio.loop);
+                    audio.sound = engine->Play3D(audio.source.get(), pos, audio.loop);
                 }
                 else
                 {
-                    audio.sound = audioService->GetEngine()->Play2D(audio.source.get(), audio.loop);
+                    audio.sound = engine->Play2D(audio.source.get(), audio.loop);
                 }
             }
             else if (!audio.filePath.empty())
@@ -128,11 +132,11 @@ void AudioSystem::Update(Scene& scene, float dt)
                 {
                     PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
                     glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
-                    audio.sound = audioService->GetEngine()->Play3D(audio.filePath, pos, audio.loop);
+                    audio.sound = engine->Play3D(audio.filePath, pos, audio.loop);
                 }
                 else
                 {
-                    audio.sound = audioService->GetEngine()->Play2D(audio.filePath, audio.loop);
+                    audio.sound = engine->Play2D(audio.filePath, audio.loop);
                 }
             }
 
@@ -140,12 +144,15 @@ void AudioSystem::Update(Scene& scene, float dt)
             {
                 audio.sound->SetVolume(audio.volume);
                 audio.sound->SetPitch(audio.pitch * audio.speed);
-                audio.sound->SetPan(audio.pan);
                 if (audio.is3D)
                 {
                     audio.sound->SetMinDistance(audio.minDistance);
                     audio.sound->SetMaxDistance(audio.maxDistance);
                     audio.sound->SetVelocity(audio.velocity);
+                }
+                else
+                {
+                    audio.sound->SetPan(audio.pan);
                 }
             }
         }
@@ -154,7 +161,6 @@ void AudioSystem::Update(Scene& scene, float dt)
         {
             audio.sound->SetVolume(audio.volume);
             audio.sound->SetPitch(audio.pitch * audio.speed);
-            audio.sound->SetPan(audio.pan);
 
             if (audio.is3D)
             {
@@ -167,6 +173,10 @@ void AudioSystem::Update(Scene& scene, float dt)
                 audio.sound->SetMinDistance(audio.minDistance);
                 audio.sound->SetMaxDistance(audio.maxDistance);
             }
+            else
+            {
+                audio.sound->SetPan(audio.pan);
+            }
         }
 
         if (audio.sound && audio.sound->IsFinished())
@@ -174,6 +184,8 @@ void AudioSystem::Update(Scene& scene, float dt)
             audio.sound = nullptr;
         }
     }
+
+    engine->Update();
 }
 
 void AudioSystem::OnAudioSourceDestroyed(entt::registry& registry, entt::entity entity)

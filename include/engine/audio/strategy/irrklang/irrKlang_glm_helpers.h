@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <irrKlang/irrKlang.h>
+#include <irrKlang.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 

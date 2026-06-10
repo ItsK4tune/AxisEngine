@@ -36,7 +36,7 @@ jobs:
               fi
           - os: windows-latest
             preset: windows
-            install-cmd: "" # Dependencies are pre-committed under lib/ and dlls/
+            install-cmd: "" # Dependencies are resolved from vcpkg.json.
 
     steps:
       - name: Checkout Code
@@ -52,8 +52,46 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Restore vcpkg cache
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: |
+            .vcpkg-cache
+            .vcpkg-downloads
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg-triplets/*.cmake') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Setup vcpkg
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $vcpkgRoot = Join-Path $env:RUNNER_TEMP "vcpkg"
+          git clone --depth 1 https://github.com/microsoft/vcpkg $vcpkgRoot
+          & "$vcpkgRoot\bootstrap-vcpkg.bat" -disableMetrics
+
+          $binaryCache = Join-Path $env:GITHUB_WORKSPACE ".vcpkg-cache"
+          $downloads = Join-Path $env:GITHUB_WORKSPACE ".vcpkg-downloads"
+          New-Item -ItemType Directory -Force -Path $binaryCache, $downloads | Out-Null
+
+          "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "VCPKG_DEFAULT_BINARY_CACHE=$binaryCache" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "VCPKG_DOWNLOADS=$downloads" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Configure CMake
+        if: matrix.os != 'windows-latest'
         run: cmake --preset=ci-${{ matrix.preset }}
+
+      - name: Configure CMake
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cmake --preset=ci-${{ matrix.preset }} `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_OVERLAY_PORTS="${{ github.workspace }}\cmake\vcpkg-overlay-ports" `
+            -DVCPKG_OVERLAY_TRIPLETS="${{ github.workspace }}\cmake\vcpkg-triplets" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-release
 
       - name: Build Engine
         shell: pwsh

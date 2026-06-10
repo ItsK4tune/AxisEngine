@@ -31,6 +31,9 @@ show_help() {
     echo "  -t, --type <1-4>        1: Release, 2: Debug, 3: RelWithDebInfo, 4: MinSizeRel"
     echo "  -e, --editor <yes/no>   Enable or disable Editor (ImGui)"
     echo "  -s, --samples <yes/no>  Build samples (only if Editor is enabled)"
+    echo "  --graphics <backend>    Graphics backend: OpenGL, Vulkan, or DirectX"
+    echo "  --physics <backend>     Physics backend: Bullet or PhysX"
+    echo "  --audio <backend>       Audio backend: Null, IrrKlang, or FMOD"
     echo "  -y, --yes               Skip confirmation prompts"
     echo "  -h, --help              Show this help message"
 }
@@ -48,6 +51,9 @@ while [[ "$#" -gt 0 ]]; do
         -s|--samples) 
             if [ "$2" = "yes" ]; then BUILD_SAMPLES="ON"; else BUILD_SAMPLES="OFF"; fi
             shift ;;
+        --graphics) AXIS_GRAPHICS_BACKEND="$2"; shift ;;
+        --physics) AXIS_PHYSICS_BACKEND="$2"; shift ;;
+        --audio) AXIS_AUDIO_BACKEND="$2"; shift ;;
         -y|--yes) SKIP_PROMPTS=true ;;
         -h|--help) show_help; exit 0 ;;
         *) echo "Unknown parameter passed: $1"; show_help; exit 1 ;;
@@ -223,7 +229,129 @@ elif [ -z "$BUILD_SAMPLES" ]; then
     BUILD_SAMPLES="OFF"
 fi
 
-# 7. CONFIRM CONFIGURATION
+# 7. SELECT BACKENDS
+canonical_backend() {
+    local value
+    value=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+    case "$value" in
+        opengl) echo "OpenGL" ;;
+        vulkan) echo "Vulkan" ;;
+        directx|dx|d3d) echo "DirectX" ;;
+        bullet) echo "Bullet" ;;
+        physx) echo "PhysX" ;;
+        null|none) echo "Null" ;;
+        irrklang) echo "IrrKlang" ;;
+        fmod) echo "FMOD" ;;
+        *) echo "" ;;
+    esac
+}
+
+if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
+    clear
+    echo "=========================================="
+    echo "          SELECT GRAPHICS BACKEND"
+    echo "=========================================="
+    echo " 1. OpenGL (Default)"
+    echo " 2. Vulkan [Not implemented]"
+    echo " 3. DirectX [Not implemented]"
+    echo "=========================================="
+    read -p "Enter number (Default: 1): " GRAPHICS_CHOICE
+    [ -z "$GRAPHICS_CHOICE" ] && GRAPHICS_CHOICE=1
+    case "$GRAPHICS_CHOICE" in
+        1) AXIS_GRAPHICS_BACKEND="OpenGL" ;;
+        2) AXIS_GRAPHICS_BACKEND="Vulkan" ;;
+        3) AXIS_GRAPHICS_BACKEND="DirectX" ;;
+        *) echo -e "${RED}[ERROR] Invalid graphics backend selection!${NC}"; exit 1 ;;
+    esac
+else
+    AXIS_GRAPHICS_BACKEND=$(canonical_backend "$AXIS_GRAPHICS_BACKEND")
+fi
+
+if [ -z "$AXIS_PHYSICS_BACKEND" ]; then
+    clear
+    echo "=========================================="
+    echo "          SELECT PHYSICS BACKEND"
+    echo "=========================================="
+    echo " 1. Bullet (Default)"
+    echo " 2. PhysX [Not implemented]"
+    echo "=========================================="
+    read -p "Enter number (Default: 1): " PHYSICS_CHOICE
+    [ -z "$PHYSICS_CHOICE" ] && PHYSICS_CHOICE=1
+    case "$PHYSICS_CHOICE" in
+        1) AXIS_PHYSICS_BACKEND="Bullet" ;;
+        2) AXIS_PHYSICS_BACKEND="PhysX" ;;
+        *) echo -e "${RED}[ERROR] Invalid physics backend selection!${NC}"; exit 1 ;;
+    esac
+else
+    AXIS_PHYSICS_BACKEND=$(canonical_backend "$AXIS_PHYSICS_BACKEND")
+fi
+
+if [ -z "$AXIS_AUDIO_BACKEND" ]; then
+    clear
+    echo "=========================================="
+    echo "           SELECT AUDIO BACKEND"
+    echo "=========================================="
+    echo " 1. Null (Default, no audio output)"
+    echo " 2. FMOD (requires FMOD SDK / FMOD_ROOT_DIR)"
+    echo " 3. IrrKlang (requires irrKlang SDK)"
+    echo "=========================================="
+    read -p "Enter number (Default: 1): " AUDIO_CHOICE
+    [ -z "$AUDIO_CHOICE" ] && AUDIO_CHOICE=1
+    case "$AUDIO_CHOICE" in
+        1) AXIS_AUDIO_BACKEND="Null" ;;
+        2) AXIS_AUDIO_BACKEND="FMOD" ;;
+        3) AXIS_AUDIO_BACKEND="IrrKlang" ;;
+        *) echo -e "${RED}[ERROR] Invalid audio backend selection!${NC}"; exit 1 ;;
+    esac
+else
+    AXIS_AUDIO_BACKEND=$(canonical_backend "$AXIS_AUDIO_BACKEND")
+fi
+
+if [ -z "$AXIS_GRAPHICS_BACKEND" ] || [ -z "$AXIS_PHYSICS_BACKEND" ] || [ -z "$AXIS_AUDIO_BACKEND" ]; then
+    echo -e "${RED}[ERROR] Invalid backend argument.${NC}"
+    exit 1
+fi
+
+audio_sdk_available() {
+    case "$AXIS_AUDIO_BACKEND" in
+        Null) return 0 ;;
+        IrrKlang)
+            [ -n "$IRRKLANG_ROOT_DIR" ] && {
+                [ -f "$IRRKLANG_ROOT_DIR/include/irrKlang.h" ] ||
+                [ -f "$IRRKLANG_ROOT_DIR/irrKlang.h" ] ||
+                [ -f "$IRRKLANG_ROOT_DIR/irrKlang/irrKlang.h" ]
+            } && return 0
+            [ -f "/usr/include/irrKlang.h" ] || [ -f "/usr/local/include/irrKlang.h" ] && return 0
+            return 1
+            ;;
+        FMOD)
+            [ -n "$FMOD_ROOT_DIR" ] && {
+                [ -f "$FMOD_ROOT_DIR/api/core/inc/fmod.hpp" ] ||
+                [ -f "$FMOD_ROOT_DIR/inc/fmod.hpp" ] ||
+                [ -f "$FMOD_ROOT_DIR/include/fmod.hpp" ]
+            } && return 0
+            [ -f "/opt/fmod/api/core/inc/fmod.hpp" ] || [ -f "/usr/include/fmod.hpp" ] || [ -f "/usr/local/include/fmod.hpp" ] && return 0
+            return 1
+            ;;
+    esac
+}
+
+if ! audio_sdk_available; then
+    echo -e "${YELLOW}[WARNING]${NC} $AXIS_AUDIO_BACKEND SDK not found."
+    if [ "$SKIP_PROMPTS" = "true" ]; then
+        echo -e "${RED}[ERROR]${NC} Set ${AXIS_AUDIO_BACKEND}_ROOT_DIR or use --audio Null."
+        exit 1
+    fi
+    read -p "Fallback to Null audio? (Y/N) [Default: Y]: " AUDIO_FALLBACK
+    [ -z "$AUDIO_FALLBACK" ] && AUDIO_FALLBACK="y"
+    if [[ "$AUDIO_FALLBACK" =~ ^[Yy]$ ]]; then
+        AXIS_AUDIO_BACKEND="Null"
+    else
+        exit 1
+    fi
+fi
+
+# 8. CONFIRM CONFIGURATION
 if [ "$SKIP_PROMPTS" = "false" ]; then
     clear
     echo "=========================================="
@@ -235,6 +363,9 @@ if [ "$SKIP_PROMPTS" = "false" ]; then
         echo -e "  Generator:  $GENERATOR"
     fi
     echo -e "  Build Type: $BUILD_TYPE"
+    echo -e "  Graphics:   $AXIS_GRAPHICS_BACKEND"
+    echo -e "  Physics:    $AXIS_PHYSICS_BACKEND"
+    echo -e "  Audio:      $AXIS_AUDIO_BACKEND"
     if [ "$QUICK_BUILD" = "true" ]; then
         echo -e "  Build Mode: QUICK"
     else
@@ -292,7 +423,22 @@ echo -e "\n=========================================="
 echo -e "      CONFIGURING AND BUILDING..."
 echo -e "=========================================="
 
-CMAKE_FLAGS=("-DENABLE_EDITOR=$ENABLE_EDITOR" "-DBUILD_SAMPLES=$BUILD_SAMPLES" "-DENABLE_TESTS=$ENABLE_TESTS")
+CMAKE_FLAGS=(
+    "-DENABLE_EDITOR=$ENABLE_EDITOR"
+    "-DBUILD_SAMPLES=$BUILD_SAMPLES"
+    "-DENABLE_TESTS=$ENABLE_TESTS"
+    "-DAXIS_GRAPHICS_BACKEND=$AXIS_GRAPHICS_BACKEND"
+    "-DAXIS_PHYSICS_BACKEND=$AXIS_PHYSICS_BACKEND"
+    "-DAXIS_AUDIO_BACKEND=$AXIS_AUDIO_BACKEND"
+)
+
+if [ -n "$VCPKG_ROOT" ] && [ -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ]; then
+    CMAKE_FLAGS+=("-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake")
+    if [ -d "cmake/vcpkg-overlay-ports" ]; then
+        CMAKE_FLAGS+=("-DVCPKG_OVERLAY_PORTS=$PWD/cmake/vcpkg-overlay-ports")
+    fi
+    echo -e "${BLUE}[INFO]${NC} Using vcpkg toolchain: $VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+fi
 
 # For single-config generators, we must supply the build type during configure
 if [ -n "$BUILD_TYPE" ]; then

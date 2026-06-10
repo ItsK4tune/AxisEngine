@@ -1,155 +1,89 @@
-set(AXIS_ENGINE_SOURCES
-    ${CMAKE_SOURCE_DIR}/src/audio/logic/audio_service.cpp
-    ${CMAKE_SOURCE_DIR}/src/audio/strategy/null/null_audio_engine.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/app/application.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/app/engine_accessor.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/app/engine_loop.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/app/runtime_core.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/app/state_machine.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/app_builder.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/config_loader.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/event_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/job_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/loader_strategies.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/localization_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/log_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/logger.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/data_node_serializer.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/data_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/logic/yaml_parser.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/animation_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/audio_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/camera_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/decal_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/entity_builder.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/fragment_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/geometry_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/lighting_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/particle_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/physics_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/planar_reflection_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/post_process_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/reflection_probe_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/render_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/scriptable_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/shadow_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/skybox_render_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/streaming_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/system_factory.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/system_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/terrain_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/transform_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/transparent_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/ui_interact_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/ui_render_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/ecs/logic/video_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/network/logic/network_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/glad.c
-    ${CMAKE_SOURCE_DIR}/src/external/stb_image.cpp
-    ${CMAKE_SOURCE_DIR}/src/navigation/logic/navigation_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/navigation/logic/navmesh_generator.cpp
-    ${CMAKE_SOURCE_DIR}/src/navigation/logic/pathfinding.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/logic/collision_matrix.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/logic/physics_collision_dispatcher.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/logic/physics_loader.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/logic/physics_query_service.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/logic/physics_transform_sync.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/logic/ray.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_character_controller.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_collision_shape.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_debug_drawer.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_physics_world.cpp
-    ${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet/bullet_rigid_body.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/input_serializer.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/input_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/io_handler.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/keyboard_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/monitor_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/mouse_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/logic/platform_services.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform/strategy/opengl/glfw_window.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/animation.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/animator.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/bone.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/compute_shader.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/font.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/frustum.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/frustum_culler.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/gbuffer.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/light_renderer.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/material_renderer.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/mesh.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/occlusion_culler.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/particle_emitter.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/post_process_pipeline.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/render_core.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/render_queue.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/render_service_impl.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/renderer_initializer.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/shadow.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/shadow_renderer.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/skybox.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/static_batch_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/texture_atlas.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/ui_model.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/logic/video_decoder.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/strategy/opengl/opengl_context.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/strategy/opengl/opengl_draw_context.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/strategy/opengl/opengl_query_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/strategy/opengl/opengl_render_state_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/type/graphics_types.cpp
-    ${CMAKE_SOURCE_DIR}/src/render/unit/camera.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/animation_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/audio_asset_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/font_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/fragment_asset_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/model_instance_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/model_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/resource_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/resource_watcher.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/shader_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/skybox_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/texture_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/logic/video_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/unit/model.cpp
-    ${CMAKE_SOURCE_DIR}/src/resource/unit/shader.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/binary_scene_serializer.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/component_loader.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/fragment_loader.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/octree.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/scene.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/scene_manager.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/scene_serializer.cpp
-    ${CMAKE_SOURCE_DIR}/src/scene/logic/scene_validator.cpp
-    ${CMAKE_SOURCE_DIR}/src/script/logic/default_camera_controller.cpp
-    ${CMAKE_SOURCE_DIR}/src/script/logic/script_registry.cpp
-    ${CMAKE_SOURCE_DIR}/src/script/logic/scriptable.cpp
+function(axis_append_sources_from_dir target_var source_dir)
+    if(NOT EXISTS "${source_dir}")
+        return()
+    endif()
+
+    file(GLOB_RECURSE _axis_sources CONFIGURE_DEPENDS
+        "${source_dir}/*.c"
+        "${source_dir}/*.cc"
+        "${source_dir}/*.cpp"
+        "${source_dir}/*.cxx"
+    )
+
+    if(_axis_sources)
+        list(APPEND ${target_var} ${_axis_sources})
+        set(${target_var} "${${target_var}}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+file(GLOB_RECURSE AXIS_ENGINE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/*.c"
+    "${CMAKE_SOURCE_DIR}/src/*.cc"
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/*.cxx"
 )
 
-set(AXIS_EDITOR_SOURCES
-    ${CMAKE_SOURCE_DIR}/src/editor/editor_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/imgui_layer.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/modules/camera_editor_module.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/modules/general_editor_module.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/modules/gizmo_editor_module.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/modules/physics_editor_module.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/modules/render_editor_module.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/console_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/file_hierarchy_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/help_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/profiler_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/resource_browser_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/scene_hierarchy_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/settings_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/stats_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/state_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/network_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/editor/panels/tools_panel.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/imgui.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/imgui_demo.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/imgui_draw.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/imgui_impl_glfw.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/imgui_impl_opengl3.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/imgui_tables.cpp
-    ${CMAKE_SOURCE_DIR}/src/external/imgui_widgets.cpp
+set(_AXIS_ENGINE_EXCLUDED_PATTERNS
+    "/src/audio/strategy/"
+    "/src/editor/"
+    "/src/physics/strategy/"
+    "/src/platform/strategy/"
+    "/src/render/strategy/"
+    "/src/external/"
 )
+
+set(_AXIS_FILTERED_ENGINE_SOURCES)
+foreach(_axis_source IN LISTS AXIS_ENGINE_SOURCES)
+    file(TO_CMAKE_PATH "${_axis_source}" _axis_source_norm)
+    set(_axis_excluded FALSE)
+    foreach(_axis_pattern IN LISTS _AXIS_ENGINE_EXCLUDED_PATTERNS)
+        if(_axis_source_norm MATCHES "${_axis_pattern}")
+            set(_axis_excluded TRUE)
+            break()
+        endif()
+    endforeach()
+
+    if(NOT _axis_excluded)
+        list(APPEND _AXIS_FILTERED_ENGINE_SOURCES "${_axis_source}")
+    endif()
+endforeach()
+set(AXIS_ENGINE_SOURCES ${_AXIS_FILTERED_ENGINE_SOURCES})
+
+axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/audio/strategy/null")
+
+if(AXIS_HAS_IRRKLANG_BACKEND)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/audio/strategy/irrklang")
+endif()
+
+if(AXIS_HAS_FMOD_BACKEND)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/audio/strategy/fmod")
+endif()
+
+if(AXIS_HAS_BULLET_BACKEND)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet")
+endif()
+
+if(AXIS_HAS_OPENGL_BACKEND)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/platform/strategy/opengl")
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/render/strategy/opengl")
+endif()
+
+if(WIN32)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/platform/strategy/windows")
+elseif(APPLE)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/platform/strategy/macos")
+else()
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/platform/strategy/posix")
+endif()
+
+list(REMOVE_DUPLICATES AXIS_ENGINE_SOURCES)
+list(SORT AXIS_ENGINE_SOURCES)
+
+file(GLOB_RECURSE AXIS_EDITOR_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/editor/*.cc"
+    "${CMAKE_SOURCE_DIR}/src/editor/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/*.cxx"
+)
+
+list(REMOVE_DUPLICATES AXIS_EDITOR_SOURCES)
+list(SORT AXIS_EDITOR_SOURCES)

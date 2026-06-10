@@ -22,7 +22,7 @@ struct NetworkConfig
     size_t channels = 2;
     uint32_t incomingBandwidth = 0;
     uint32_t outgoingBandwidth = 0;
-    bool useIPv6 = false;  // Default: IPv4
+    bool useIPv6 = false;  // Official ENet 1.3.x from vcpkg is IPv4-only; true is accepted but falls back to IPv4.
 };
 
 class NetworkSystem : public IUpdateSystem
@@ -100,11 +100,11 @@ public:
     }
     bool IsIPv6() const
     {
-        return m_useIPv6;
+        return false;
     }
     void UseIPv6(bool useIPv6)
     {
-        m_useIPv6 = useIPv6;
+        m_useIPv6 = false;
     }
     ENetHost* GetHost()
     {

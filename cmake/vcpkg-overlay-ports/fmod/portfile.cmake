@@ -1,0 +1,112 @@
+if(NOT VCPKG_TARGET_IS_WINDOWS)
+    message(FATAL_ERROR "The AxisEngine FMOD overlay port currently supports Windows only.")
+endif()
+
+if(NOT DEFINED ENV{FMOD_ROOT_DIR})
+    message(FATAL_ERROR "FMOD_ROOT_DIR is not set. Install the FMOD Studio API SDK and set FMOD_ROOT_DIR to its root.")
+endif()
+
+set(FMOD_ROOT "$ENV{FMOD_ROOT_DIR}")
+set(FMOD_ARCH_DIR "x64")
+if(VCPKG_TARGET_ARCHITECTURE STREQUAL "x86")
+    set(FMOD_ARCH_DIR "x86")
+endif()
+
+find_path(FMOD_INCLUDE_DIR
+    NAMES fmod.hpp
+    PATHS
+        "${FMOD_ROOT}/api/core/inc"
+        "${FMOD_ROOT}/inc"
+        "${FMOD_ROOT}/include"
+    NO_DEFAULT_PATH
+)
+
+find_path(FMOD_LIBRARY_DIR
+    NAMES fmod_vc.lib fmod.dll
+    PATHS
+        "${FMOD_ROOT}/api/core/lib/${FMOD_ARCH_DIR}"
+        "${FMOD_ROOT}/lib/${FMOD_ARCH_DIR}"
+        "${FMOD_ROOT}/lib"
+    NO_DEFAULT_PATH
+)
+
+if(NOT FMOD_INCLUDE_DIR OR NOT FMOD_LIBRARY_DIR)
+    message(FATAL_ERROR "Could not locate FMOD Core headers/libs under FMOD_ROOT_DIR='${FMOD_ROOT}'.")
+endif()
+
+file(INSTALL "${FMOD_INCLUDE_DIR}/" DESTINATION "${CURRENT_PACKAGES_DIR}/include")
+
+find_file(FMOD_RELEASE_IMPLIB NAMES fmod_vc.lib fmod.lib fmod64.lib PATHS "${FMOD_LIBRARY_DIR}" NO_DEFAULT_PATH)
+find_file(FMOD_RELEASE_RUNTIME NAMES fmod.dll PATHS "${FMOD_LIBRARY_DIR}" NO_DEFAULT_PATH)
+find_file(FMOD_DEBUG_IMPLIB NAMES fmodL_vc.lib fmodL.lib fmodL64.lib PATHS "${FMOD_LIBRARY_DIR}" NO_DEFAULT_PATH)
+find_file(FMOD_DEBUG_RUNTIME NAMES fmodL.dll PATHS "${FMOD_LIBRARY_DIR}" NO_DEFAULT_PATH)
+
+if(NOT FMOD_RELEASE_IMPLIB OR NOT FMOD_RELEASE_RUNTIME)
+    message(FATAL_ERROR "Could not locate FMOD release import library/runtime in '${FMOD_LIBRARY_DIR}'.")
+endif()
+
+file(MAKE_DIRECTORY
+    "${CURRENT_PACKAGES_DIR}/lib"
+    "${CURRENT_PACKAGES_DIR}/bin"
+    "${CURRENT_PACKAGES_DIR}/debug/lib"
+    "${CURRENT_PACKAGES_DIR}/debug/bin"
+    "${CURRENT_PACKAGES_DIR}/share/fmod"
+)
+
+file(INSTALL "${FMOD_RELEASE_IMPLIB}" DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
+file(INSTALL "${FMOD_RELEASE_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/bin")
+
+if(FMOD_DEBUG_IMPLIB AND FMOD_DEBUG_RUNTIME)
+    file(INSTALL "${FMOD_DEBUG_IMPLIB}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib")
+    file(INSTALL "${FMOD_DEBUG_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin")
+else()
+    file(INSTALL "${FMOD_RELEASE_IMPLIB}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib")
+    file(INSTALL "${FMOD_RELEASE_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin")
+endif()
+
+set(FMOD_CONFIG_CONTENT [=[
+get_filename_component(_FMOD_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+
+find_path(FMOD_INCLUDE_DIR fmod.hpp PATHS "${_FMOD_PREFIX}/include" NO_DEFAULT_PATH)
+find_library(FMOD_LIBRARY_RELEASE NAMES fmod_vc fmod fmod64 PATHS "${_FMOD_PREFIX}/lib" NO_DEFAULT_PATH)
+find_library(FMOD_LIBRARY_DEBUG NAMES fmodL_vc fmodL fmodL64 fmod_vc fmod fmod64 PATHS "${_FMOD_PREFIX}/debug/lib" "${_FMOD_PREFIX}/lib" NO_DEFAULT_PATH)
+find_file(FMOD_RUNTIME_LIBRARY_RELEASE NAMES fmod.dll PATHS "${_FMOD_PREFIX}/bin" NO_DEFAULT_PATH)
+find_file(FMOD_RUNTIME_LIBRARY_DEBUG NAMES fmodL.dll fmod.dll PATHS "${_FMOD_PREFIX}/debug/bin" "${_FMOD_PREFIX}/bin" NO_DEFAULT_PATH)
+
+set(FMOD_FOUND FALSE)
+set(fmod_FOUND FALSE)
+if(FMOD_INCLUDE_DIR AND FMOD_LIBRARY_RELEASE AND FMOD_RUNTIME_LIBRARY_RELEASE)
+    set(FMOD_FOUND TRUE)
+    set(fmod_FOUND TRUE)
+    set(FMOD_INCLUDE_DIRS "${FMOD_INCLUDE_DIR}")
+    set(FMOD_LIBRARIES "${FMOD_LIBRARY_RELEASE}")
+    set(FMOD_RUNTIME_LIBRARY "${FMOD_RUNTIME_LIBRARY_RELEASE}")
+
+    if(NOT TARGET FMOD::FMOD)
+        add_library(FMOD::FMOD SHARED IMPORTED)
+        set_target_properties(FMOD::FMOD PROPERTIES
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE;RELWITHDEBINFO;MINSIZEREL"
+            INTERFACE_INCLUDE_DIRECTORIES "${FMOD_INCLUDE_DIR}"
+            IMPORTED_IMPLIB "${FMOD_LIBRARY_RELEASE}"
+            IMPORTED_LOCATION "${FMOD_RUNTIME_LIBRARY_RELEASE}"
+            IMPORTED_IMPLIB_RELEASE "${FMOD_LIBRARY_RELEASE}"
+            IMPORTED_LOCATION_RELEASE "${FMOD_RUNTIME_LIBRARY_RELEASE}"
+            IMPORTED_IMPLIB_DEBUG "${FMOD_LIBRARY_DEBUG}"
+            IMPORTED_LOCATION_DEBUG "${FMOD_RUNTIME_LIBRARY_DEBUG}"
+            IMPORTED_IMPLIB_RELWITHDEBINFO "${FMOD_LIBRARY_RELEASE}"
+            IMPORTED_LOCATION_RELWITHDEBINFO "${FMOD_RUNTIME_LIBRARY_RELEASE}"
+            IMPORTED_IMPLIB_MINSIZEREL "${FMOD_LIBRARY_RELEASE}"
+            IMPORTED_LOCATION_MINSIZEREL "${FMOD_RUNTIME_LIBRARY_RELEASE}"
+        )
+    endif()
+endif()
+]=])
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/fmod/fmod-config.cmake" "${FMOD_CONFIG_CONTENT}")
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/fmod/fmodConfig.cmake" "include(\"\${CMAKE_CURRENT_LIST_DIR}/fmod-config.cmake\")\n")
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/fmod/FMODConfig.cmake" "include(\"\${CMAKE_CURRENT_LIST_DIR}/fmod-config.cmake\")\n")
+
+if(EXISTS "${FMOD_ROOT}/license.txt")
+    file(INSTALL "${FMOD_ROOT}/license.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/fmod" RENAME copyright)
+else()
+    file(WRITE "${CURRENT_PACKAGES_DIR}/share/fmod/copyright" "FMOD SDK files are provided by the locally installed FMOD SDK. Review your FMOD license before redistribution.\n")
+endif()

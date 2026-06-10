@@ -1,0 +1,8 @@
+{
+  "name": "fmod",
+  "version-string": "sdk",
+  "description": "FMOD Core SDK wrapper. Requires FMOD_ROOT_DIR to point to a locally installed FMOD Studio API SDK.",
+  "homepage": "https://www.fmod.com/",
+  "license": null,
+  "supports": "windows"
+}

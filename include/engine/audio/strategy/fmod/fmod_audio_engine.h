@@ -3,19 +3,24 @@
 #include <audio/interface/i_audio_engine.h>
 #include <audio/interface/i_audio_source.h>
 #include <audio/interface/i_sound.h>
-#include <irrKlang.h>
 #include <map>
 #include <memory>
 #include <vector>
 
-class IrrKlangAudioSource;
-class IrrKlangSound;
+namespace FMOD
+{
+class ChannelGroup;
+class System;
+}  // namespace FMOD
 
-class IrrKlangAudioEngine : public IAudioEngine
+class FMODAudioSource;
+class FMODSound;
+
+class FMODAudioEngine final : public IAudioEngine
 {
 public:
-    IrrKlangAudioEngine();
-    ~IrrKlangAudioEngine() override;
+    FMODAudioEngine();
+    ~FMODAudioEngine() override;
 
     bool Initialize() override;
     void Update() override;
@@ -36,7 +41,14 @@ public:
     void StopAllSounds() override;
 
 private:
-    irrklang::ISoundEngine* m_Engine = nullptr;
-    std::map<std::string, std::shared_ptr<IrrKlangAudioSource>> m_Sources;
-    std::vector<std::shared_ptr<IrrKlangSound>> m_ActiveSounds;
+    std::shared_ptr<ISound> PlaySource(FMODAudioSource& source, bool is3D, const glm::vec3& pos, bool loop,
+                                       bool startPaused);
+    std::shared_ptr<ISound> PlayOwnedSound(const std::string& filename, bool is3D, const glm::vec3& pos, bool loop,
+                                           bool startPaused);
+
+    FMOD::System* m_System = nullptr;
+    FMOD::ChannelGroup* m_MasterChannelGroup = nullptr;
+    std::map<std::string, std::shared_ptr<FMODAudioSource>> m_Sources;
+    std::vector<std::shared_ptr<FMODSound>> m_ActiveSounds;
+    float m_GlobalVolume = 100.0f;
 };

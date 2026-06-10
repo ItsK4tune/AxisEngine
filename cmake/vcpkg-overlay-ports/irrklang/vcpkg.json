@@ -1,0 +1,8 @@
+{
+  "name": "irrklang",
+  "version-string": "sdk",
+  "description": "irrKlang SDK wrapper. Requires IRRKLANG_ROOT_DIR to point to a locally installed irrKlang SDK.",
+  "homepage": "https://www.ambiera.com/irrklang/",
+  "license": null,
+  "supports": "windows"
+}

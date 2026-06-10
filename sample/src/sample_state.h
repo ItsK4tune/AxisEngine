@@ -1042,7 +1042,6 @@ private:
     char m_S30MessageText[128] = "Hello from AxisEngine";
     char m_S30Host[64] = "127.0.0.1";
     int m_S30Port = 12345;
-    bool m_S30UseIPv6 = false;
 
     // Scenario 31 UI variables
     static constexpr float kScenario31MaxVolume = 100.0f;

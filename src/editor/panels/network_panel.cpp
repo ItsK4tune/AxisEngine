@@ -114,7 +114,7 @@ void NetworkPanel::OnImGui(Scene& scene)
                     ImGui::TableSetupColumn("Address");
                     ImGui::TableSetupColumn("Ping (RTT)");
                     ImGui::TableSetupColumn("Loss");
-                    ImGui::TableSetupColumn("Sent / Recv (Data)");
+                    ImGui::TableSetupColumn("Throttle");
                     ImGui::TableSetupColumn("Actions");
                     ImGui::TableHeadersRow();
 
@@ -140,8 +140,7 @@ void NetworkPanel::OnImGui(Scene& scene)
                         ImGui::Text("%.1f%%", (float)peer->packetLoss * 100.0f / 65536.0f);
 
                         ImGui::TableSetColumnIndex(4);
-                        ImGui::Text("%.1f KB / %.1f KB", (float)peer->totalDataSent / 1024.0f,
-                                    (float)peer->totalDataReceived / 1024.0f);
+                        ImGui::Text("%u", peer->packetThrottle);
 
                         ImGui::TableSetColumnIndex(5);
                         ImGui::PushID(static_cast<int>(i));

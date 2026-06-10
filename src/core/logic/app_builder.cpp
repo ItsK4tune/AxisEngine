@@ -12,6 +12,10 @@
 #include <audio/strategy/irrklang/irrklang_audio_engine.h>
 #endif
 
+#if AXIS_HAS_FMOD_BACKEND
+#include <audio/strategy/fmod/fmod_audio_engine.h>
+#endif
+
 namespace
 {
 [[noreturn]] void ThrowUnsupportedBackend(const char* category, std::string_view requested, const char* supported)
@@ -66,6 +70,12 @@ std::unique_ptr<IAudioEngine> AppBuilder::CreateAudioEngine(const AppConfig& con
             break;
 #endif
         case AudioBackend::FMOD:
+#if AXIS_HAS_FMOD_BACKEND
+            LOGGER_INFO("AppBuilder") << "Initializing Audio Backend: FMOD";
+            return std::make_unique<FMODAudioEngine>();
+#else
+            break;
+#endif
         case AudioBackend::OpenAL:
             break;
     }

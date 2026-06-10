@@ -29,11 +29,33 @@
 # License text for the above reference.)
 # default search dirs
 
+FIND_PACKAGE(glm CONFIG QUIET)
+IF(TARGET glm::glm)
+	SET(GLM_FOUND TRUE)
+	SET(GLM_INCLUDE_DIRS "")
+	IF(NOT TARGET GLM::GLM)
+		ADD_LIBRARY(GLM::GLM INTERFACE IMPORTED)
+		SET_TARGET_PROPERTIES(GLM::GLM PROPERTIES
+			INTERFACE_LINK_LIBRARIES glm::glm
+		)
+	ENDIF()
+	RETURN()
+ELSEIF(TARGET glm::glm-header-only)
+	SET(GLM_FOUND TRUE)
+	SET(GLM_INCLUDE_DIRS "")
+	IF(NOT TARGET GLM::GLM)
+		ADD_LIBRARY(GLM::GLM INTERFACE IMPORTED)
+		SET_TARGET_PROPERTIES(GLM::GLM PROPERTIES
+			INTERFACE_LINK_LIBRARIES glm::glm-header-only
+		)
+	ENDIF()
+	RETURN()
+ENDIF()
+
 SET(_glm_HEADER_SEARCH_DIRS
 "/usr/include"
 "/usr/local/include"
 "/opt/homebrew/include"
-"${CMAKE_SOURCE_DIR}/include"
 "C:/Program Files (x86)/glm" )
 # check environment variable
 SET(_glm_ENV_ROOT_DIR "$ENV{GLM_ROOT_DIR}")

@@ -18,7 +18,7 @@ axis_scene:
     FPS: 120
     GRAPHICS_API: OPENGL
     PHYSICS_ENGINE: BULLET
-    AUDIO_ENGINE: IRRKLANG
+    AUDIO_ENGINE: NULL
     SHADOWS: 1
     CULL_FACE: 1 BACK
     DEPTH_TEST: 1 LESS
@@ -133,10 +133,10 @@ Directly selects the module implementation for each interface.
 |:---|:---|:---|
 | `GRAPHICS_API` | Core rendering implementation | `OPENGL` |
 | `PHYSICS_ENGINE` | Simulation implementation | `BULLET` |
-| `AUDIO_ENGINE` | Sound processing implementation | `IRRKLANG` |
+| `AUDIO_ENGINE` | Sound processing implementation | `NULL`, `IRRKLANG`, `FMOD` |
 | `RENDER_PATH` | Geometry processing strategy | `FORWARD`, `DEFERRED` |
 
-Unsupported backend values such as `VULKAN`, `DIRECTX`, `PHYSX`, `FMOD`, or `OPENAL` are rejected by `ConfigLoader`/`AppBuilder` unless their provider is actually compiled into the build.
+Unsupported backend values such as `VULKAN`, `DIRECTX`, `PHYSX`, or `OPENAL` are rejected by `ConfigLoader`/`AppBuilder` unless their provider is actually compiled into the build.
 
 ## 2. CMake Build System
 
@@ -146,14 +146,20 @@ The project uses CMake for cross-platform build generation.
 - **Debug**: Includes symbols, no optimization. Uses `MDd` runtime library.
 - **Release**: Optimized. Uses `MD` runtime library.
 
-### DLL Management
-The build system automatically copies required DLLs (from `dlls/`) to the target output directory under the CMake build tree (for example `build/bin/`).
+### Dependency Management
+Third-party libraries are intentionally not vendored in this repository. Install them with the OS package manager, vcpkg, Homebrew, or a vendor SDK, then expose them through CMake prefixes/toolchains.
 
-> **Important**: When adding a new library, ensure its `.dll` is placed in the `dlls/` folder so it can be found at runtime.
+On Windows, the recommended path is vcpkg manifest mode:
+
+```powershell
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
+cmake --build build --config Debug
+```
+
+Commercial SDKs are not part of the manifest. Use `-DAXIS_AUDIO_BACKEND=FMOD -DFMOD_ROOT_DIR=<sdk>` or `-DAXIS_AUDIO_BACKEND=IrrKlang -DIRRKLANG_ROOT_DIR=<sdk>` when those SDKs are installed.
 
 ### Adding Libraries
 To integrate a new third-party library:
-1.  **Headers**: Place `.h` files in `include/`.
-2.  **Static Libs**: Place `.lib` files in `lib/`.
-3.  **Dynamic Libs**: Place `.dll` files in `dlls/`.
-4.  **CMake**: Update `CMakeLists.txt` to find and link the library.
+1. Add it to the package manifest or document the system package/SDK requirement.
+2. Add a focused `Find<Package>.cmake` only if the package does not provide a reliable CMake config.
+3. Link an imported target from CMake; do not commit third-party `.lib`, `.dll`, `.h`, `.c`, or `.cpp` files into the source tree.

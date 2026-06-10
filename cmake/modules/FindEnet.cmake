@@ -5,12 +5,25 @@
 # ENET_INCLUDE_DIR - the ENet include directories
 # ENET_LIBRARIES - link these to use ENet
 
+FIND_PACKAGE(unofficial-enet CONFIG QUIET)
+IF(TARGET unofficial::enet::enet)
+	SET( ENET_FOUND TRUE )
+	SET( Enet_FOUND TRUE )
+	SET( ENET_LIBRARIES unofficial::enet::enet )
+	IF(NOT TARGET Enet::Enet)
+		ADD_LIBRARY(Enet::Enet INTERFACE IMPORTED)
+		SET_TARGET_PROPERTIES(Enet::Enet PROPERTIES
+			INTERFACE_LINK_LIBRARIES unofficial::enet::enet
+		)
+	ENDIF()
+	RETURN()
+ENDIF()
+
 FIND_PATH( ENET_INCLUDE_DIR enet/enet.h
 	/usr/include
 	/usr/local/include
 	/opt/local/include
 	/opt/homebrew/include
-	${CMAKE_SOURCE_DIR}/include
 )
 
 FIND_LIBRARY( ENET_LIBRARY enet
@@ -19,7 +32,6 @@ FIND_LIBRARY( ENET_LIBRARY enet
 	/usr/local/lib
 	/opt/local/lib
 	/opt/homebrew/lib
-	${CMAKE_SOURCE_DIR}/lib
 )
 
 IF(ENET_INCLUDE_DIR AND ENET_LIBRARY)
