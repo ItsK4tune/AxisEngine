@@ -6,9 +6,15 @@ on:
   pull_request:
     branches: [ main, master, test_cicd ]
 
+env:
+  FMOD_ROOT_DIR: ${{ vars.FMOD_ROOT_DIR }}
+  IRRKLANG_ROOT_DIR: ${{ vars.IRRKLANG_ROOT_DIR }}
+  FMOD_SDK_URL: ${{ secrets.FMOD_SDK_URL }}
+  IRRKLANG_SDK_URL: ${{ secrets.IRRKLANG_SDK_URL }}
+
 jobs:
   build:
-    name: Build (${{ matrix.os }})
+    name: Build (${{ matrix.os }}, ${{ matrix.audio-backend }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -16,13 +22,17 @@ jobs:
         include:
           - os: ubuntu-latest
             preset: linux
+            audio-backend: Null
+            vcpkg-features: ""
             install-cmd: |
               sudo apt-get update
-              sudo apt-get install -y ninja-build libglfw3-dev libglm-dev libbullet-dev libfreetype-dev libassimp-dev libenet-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev libopenal-dev
+              sudo apt-get install -y ninja-build libglfw3-dev libglm-dev libentt-dev libstb-dev libglad-dev libbullet-dev libfreetype-dev libassimp-dev libenet-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev libopenal-dev
           - os: macos-latest
             preset: macos
+            audio-backend: Null
+            vcpkg-features: ""
             install-cmd: |
-              packages=(ninja glfw glm bullet freetype assimp enet ffmpeg)
+              packages=(ninja glfw glm entt stb glad bullet freetype assimp enet ffmpeg)
               missing=()
               for package in "${packages[@]}"; do
                 if ! brew list --formula "$package" >/dev/null 2>&1; then
@@ -36,6 +46,18 @@ jobs:
               fi
           - os: windows-latest
             preset: windows
+            audio-backend: Null
+            vcpkg-features: ""
+            install-cmd: "" # Dependencies are resolved from vcpkg.json.
+          - os: windows-latest
+            preset: windows
+            audio-backend: FMOD
+            vcpkg-features: fmod
+            install-cmd: "" # Requires FMOD_ROOT_DIR or FMOD_SDK_URL.
+          - os: windows-latest
+            preset: windows
+            audio-backend: IrrKlang
+            vcpkg-features: irrklang
             install-cmd: "" # Dependencies are resolved from vcpkg.json.
 
     steps:
@@ -52,19 +74,94 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Prepare optional audio SDK
+        id: audio-sdk
+        if: matrix.os == 'windows-latest' && matrix.audio-backend != 'Null'
+        shell: pwsh
+        run: |
+          $backend = "${{ matrix.audio-backend }}"
+          $rootVar = if ($backend -eq "FMOD") { "FMOD_ROOT_DIR" } else { "IRRKLANG_ROOT_DIR" }
+          $urlVar = if ($backend -eq "FMOD") { "FMOD_SDK_URL" } else { "IRRKLANG_SDK_URL" }
+          $headerName = if ($backend -eq "FMOD") { "fmod.hpp" } else { "irrKlang.h" }
+
+          function Test-SdkRoot([string]$Backend, [string]$Path) {
+            if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path $Path)) {
+              return $false
+            }
+
+            if ($Backend -eq "FMOD") {
+              return (Test-Path (Join-Path $Path "api/core/inc/fmod.hpp")) -or
+                (Test-Path (Join-Path $Path "inc/fmod.hpp")) -or
+                (Test-Path (Join-Path $Path "include/fmod.hpp"))
+            }
+
+            return (Test-Path (Join-Path $Path "include/irrKlang.h")) -or
+              (Test-Path (Join-Path $Path "include/irrKlang/irrKlang.h")) -or
+              (Test-Path (Join-Path $Path "irrKlang.h")) -or
+              (Test-Path (Join-Path $Path "irrKlang/irrKlang.h"))
+          }
+
+          function Find-SdkRoot([string]$Backend, [string]$StartPath) {
+            $candidate = $StartPath
+            while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+              if (Test-SdkRoot $Backend $candidate) {
+                return $candidate
+              }
+
+              $parent = Split-Path $candidate -Parent
+              if ($parent -eq $candidate) {
+                break
+              }
+              $candidate = $parent
+            }
+
+            return $null
+          }
+
+          $root = [Environment]::GetEnvironmentVariable($rootVar)
+          if (Test-SdkRoot $backend $root) {
+            "available=true" >> $env:GITHUB_OUTPUT
+            "$rootVar=$root" >> $env:GITHUB_ENV
+            Write-Host "$backend SDK found at $root"
+            exit 0
+          }
+
+          $url = [Environment]::GetEnvironmentVariable($urlVar)
+          if (-not [string]::IsNullOrWhiteSpace($url)) {
+            $downloadPath = Join-Path $env:RUNNER_TEMP "$backend-sdk.zip"
+            $extractPath = Join-Path $env:RUNNER_TEMP "$backend-sdk"
+            Invoke-WebRequest -Uri $url -OutFile $downloadPath
+            Expand-Archive -Path $downloadPath -DestinationPath $extractPath -Force
+
+            $header = Get-ChildItem -Path $extractPath -Recurse -Filter $headerName -File | Select-Object -First 1
+            if ($header) {
+              $root = Find-SdkRoot $backend $header.Directory.FullName
+              if (Test-SdkRoot $backend $root) {
+                "available=true" >> $env:GITHUB_OUTPUT
+                "$rootVar=$root" >> $env:GITHUB_ENV
+                Write-Host "$backend SDK extracted to $root"
+                exit 0
+              }
+            }
+          }
+
+          "available=false" >> $env:GITHUB_OUTPUT
+          Write-Host "::notice title=$backend backend skipped::$rootVar or $urlVar is not configured, so this optional backend build was skipped."
+
       - name: Restore vcpkg cache
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && (matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true')
         uses: actions/cache@v4
         with:
           path: |
             .vcpkg-cache
             .vcpkg-downloads
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg-triplets/*.cmake') }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.audio-backend }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg-triplets/*.cmake', 'cmake/vcpkg-overlay-ports/**') }}
           restore-keys: |
+            vcpkg-${{ runner.os }}-${{ matrix.audio-backend }}-
             vcpkg-${{ runner.os }}-
 
       - name: Setup vcpkg
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && (matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true')
         shell: pwsh
         run: |
           $vcpkgRoot = Join-Path $env:RUNNER_TEMP "vcpkg"
@@ -80,23 +177,33 @@ jobs:
           "VCPKG_DOWNLOADS=$downloads" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Configure CMake
-        if: matrix.os != 'windows-latest'
-        run: cmake --preset=ci-${{ matrix.preset }}
+        if: matrix.os != 'windows-latest' && (matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true')
+        run: cmake --preset=ci-${{ matrix.preset }} -DAXIS_AUDIO_BACKEND=${{ matrix.audio-backend }}
 
       - name: Configure CMake
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && (matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true')
         shell: pwsh
         run: |
-          cmake --preset=ci-${{ matrix.preset }} `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
-            -DVCPKG_OVERLAY_PORTS="${{ github.workspace }}\cmake\vcpkg-overlay-ports" `
-            -DVCPKG_OVERLAY_TRIPLETS="${{ github.workspace }}\cmake\vcpkg-triplets" `
-            -DVCPKG_TARGET_TRIPLET=x64-windows-release
+          $cmakeArgs = @(
+            "--preset=ci-${{ matrix.preset }}",
+            "-DAXIS_AUDIO_BACKEND=${{ matrix.audio-backend }}",
+            "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake",
+            "-DVCPKG_OVERLAY_PORTS=${{ github.workspace }}\cmake\vcpkg-overlay-ports",
+            "-DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}\cmake\vcpkg-triplets",
+            "-DVCPKG_TARGET_TRIPLET=x64-windows-release"
+          )
+
+          if ("${{ matrix.vcpkg-features }}" -ne "") {
+            $cmakeArgs += "-DVCPKG_MANIFEST_FEATURES=${{ matrix.vcpkg-features }}"
+          }
+
+          cmake @cmakeArgs
 
       - name: Build Engine
+        if: matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true'
         shell: pwsh
         run: |
-          $logPath = "build-${{ matrix.preset }}.log"
+          $logPath = "build-${{ matrix.preset }}-${{ matrix.audio-backend }}.log"
           cmake --build --preset=ci-${{ matrix.preset }} 2>&1 | Tee-Object -FilePath $logPath
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0) {
@@ -109,4 +216,5 @@ jobs:
           }
 
       - name: Run Tests
+        if: matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true'
         run: ctest --preset=ci-tests-${{ matrix.preset }} -C Release
