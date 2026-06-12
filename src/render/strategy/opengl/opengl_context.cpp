@@ -1,6 +1,7 @@
 #include <render/strategy/opengl/opengl_context.h>
 #include <core/logic/backend_factory_registry.h>
 #include <core/logic/logger.h>
+#include <render/rhi/rhi_graphics_context.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <algorithm>
@@ -129,6 +130,6 @@ namespace axis::backend
 void RegisterOpenGLBackendFactories()
 {
     BackendFactoryRegistry::RegisterGraphics(
-        GraphicsBackend::OpenGL, [](const AppConfig&) { return std::make_unique<OpenGLContext>(); });
+        GraphicsBackend::OpenGL, [](const AppConfig& config) { return std::make_unique<RhiGraphicsContext>(config); });
 }
 }  // namespace axis::backend

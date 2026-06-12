@@ -10,7 +10,7 @@ option(BUILD_SAMPLES "Build sample application when editor is enabled" ON)
 option(ENABLE_TESTS "Build AxisEngine automated tests" OFF)
 
 set(AXIS_GRAPHICS_BACKEND "OpenGL" CACHE STRING "Graphics backend to compile")
-set_property(CACHE AXIS_GRAPHICS_BACKEND PROPERTY STRINGS OpenGL Vulkan DirectX)
+set_property(CACHE AXIS_GRAPHICS_BACKEND PROPERTY STRINGS OpenGL Vulkan DirectX Null)
 
 set(AXIS_PHYSICS_BACKEND "Bullet" CACHE STRING "Physics backend to compile")
 set_property(CACHE AXIS_PHYSICS_BACKEND PROPERTY STRINGS Bullet PhysX)
@@ -52,7 +52,7 @@ string(TOUPPER "${AXIS_AUDIO_BACKEND}" AXIS_AUDIO_BACKEND_UPPER)
 set(AXIS_HAS_OPENGL_BACKEND 0)
 set(AXIS_HAS_VULKAN_BACKEND 0)
 set(AXIS_HAS_DIRECTX_BACKEND 0)
-set(AXIS_HAS_NULL_GRAPHICS_BACKEND 0)
+set(AXIS_HAS_NULL_GRAPHICS_BACKEND 1)
 if(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "OPENGL")
     find_package(Glad REQUIRED)
     set(AXIS_HAS_OPENGL_BACKEND 1)
@@ -65,7 +65,7 @@ elseif(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "DIRECTX")
     endif()
     set(AXIS_HAS_DIRECTX_BACKEND 1)
 elseif(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "NULL")
-    set(AXIS_HAS_NULL_GRAPHICS_BACKEND 1)
+    message(STATUS "Graphics backend selected: Null")
 else()
     message(FATAL_ERROR "Unknown AXIS_GRAPHICS_BACKEND='${AXIS_GRAPHICS_BACKEND}'. Expected OpenGL, Vulkan, DirectX, or Null.")
 endif()
@@ -123,14 +123,11 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/sources.cmake)
 
-set(AXIS_RHI_SHADER_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/include/engine/asset/shaders/rhi")
+set(AXIS_SHADER_ROOT_DIR "${CMAKE_SOURCE_DIR}/include/engine/asset/shaders")
 
 #Engine Core Library
 add_library(axis_engine STATIC ${AXIS_ENGINE_SOURCES})
 add_library(Axis::Engine ALIAS axis_engine)
-if(TARGET axis_rhi_shaders)
-    add_dependencies(axis_engine axis_rhi_shaders)
-endif()
 
 target_compile_features(axis_engine PUBLIC cxx_std_20)
 
@@ -145,7 +142,7 @@ target_compile_definitions(axis_engine PUBLIC
     AXIS_HAS_FMOD_BACKEND=${AXIS_HAS_FMOD_BACKEND}
     AXIS_HAS_OPENAL_BACKEND=0
     AXIS_HAS_NULL_AUDIO_BACKEND=${AXIS_HAS_NULL_AUDIO_BACKEND}
-    AXIS_RHI_SHADER_DIR="${AXIS_RHI_SHADER_OUTPUT_DIR}"
+    AXIS_SHADER_ROOT_DIR="${AXIS_SHADER_ROOT_DIR}"
 )
 
 if(MSVC)
@@ -375,7 +372,7 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/cmake/modules/
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine/modules
 )
 
-# Generate Config file
+#Generate Config file
 include(CMakePackageConfigHelpers)
 set(AXIS_CONFIG_IMGUI_DEPENDENCY "")
 if(ENABLE_EDITOR)
@@ -417,7 +414,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/AxisEngine
 )
 
-# Sample app
+#Sample app
 if(ENABLE_EDITOR AND BUILD_SAMPLES)
     file(GLOB SAMPLE_SCENARIO_SOURCES CONFIGURE_DEPENDS
         sample/src/scenarios/*.cpp

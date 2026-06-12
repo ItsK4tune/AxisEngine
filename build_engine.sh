@@ -31,7 +31,7 @@ show_help() {
     echo "  -t, --type <1-4>        1: Release, 2: Debug, 3: RelWithDebInfo, 4: MinSizeRel"
     echo "  -e, --editor <yes/no>   Enable or disable Editor (ImGui)"
     echo "  -s, --samples <yes/no>  Build samples (only if Editor is enabled)"
-    echo "  --graphics <backend>    Graphics backend: OpenGL, Vulkan, or DirectX"
+    echo "  --graphics <backend>    Graphics backend: OpenGL, Vulkan, DirectX, or Null"
     echo "  --physics <backend>     Physics backend: Bullet or PhysX"
     echo "  --audio <backend>       Audio backend: Null, IrrKlang, or FMOD"
     echo "  -y, --yes               Skip confirmation prompts"
@@ -254,6 +254,7 @@ if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
     echo " 1. OpenGL (Default)"
     echo " 2. Vulkan"
     echo " 3. DirectX"
+    echo " 4. Null"
     echo "=========================================="
     read -p "Enter number (Default: 1): " GRAPHICS_CHOICE
     [ -z "$GRAPHICS_CHOICE" ] && GRAPHICS_CHOICE=1
@@ -261,6 +262,7 @@ if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
         1) AXIS_GRAPHICS_BACKEND="OpenGL" ;;
         2) AXIS_GRAPHICS_BACKEND="Vulkan" ;;
         3) AXIS_GRAPHICS_BACKEND="DirectX" ;;
+        4) AXIS_GRAPHICS_BACKEND="Null" ;;
         *) echo -e "${RED}[ERROR] Invalid graphics backend selection!${NC}"; exit 1 ;;
     esac
 else

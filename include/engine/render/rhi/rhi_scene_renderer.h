@@ -3,6 +3,7 @@
 #include <render/rhi/rhi_types.h>
 #include <glm/glm.hpp>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -38,7 +39,7 @@ private:
     rhi::PipelineHandle GetOrCreateSkyboxPipeline();
     void DestroyPipelines();
 
-    std::vector<uint8_t> LoadShaderBinary(const char* fileName) const;
+    std::vector<uint8_t> LoadShaderFile(const std::string& relativePath) const;
 
     rhi::IRenderBackend& m_Backend;
     rhi::ImageHandle m_DepthImage;

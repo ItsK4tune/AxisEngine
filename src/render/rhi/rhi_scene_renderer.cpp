@@ -15,9 +15,10 @@
 #include <fstream>
 #include <filesystem>
 #include <cstdlib>
+#include <system_error>
 
-#ifndef AXIS_RHI_SHADER_DIR
-#define AXIS_RHI_SHADER_DIR ""
+#ifndef AXIS_SHADER_ROOT_DIR
+#define AXIS_SHADER_ROOT_DIR ""
 #endif
 
 namespace
@@ -31,14 +32,9 @@ std::string FindDxcPath()
         if (std::filesystem::exists(p))
             return p.string();
     }
-    std::string defaults[] = {
-        "C:/VulkanSDK/1.4.350.0/Bin/dxc.exe",
-        "C:/VulkanSDK/1.3.290.0/Bin/dxc.exe",
-        "C:/VulkanSDK/1.3.283.0/Bin/dxc.exe",
-        "C:/VulkanSDK/1.3.275.0/Bin/dxc.exe",
-        "C:/VulkanSDK/1.3.268.0/Bin/dxc.exe",
-        "C:/VulkanSDK/1.3.250.1/Bin/dxc.exe"
-    };
+    std::string defaults[] = {"C:/VulkanSDK/1.4.350.0/Bin/dxc.exe", "C:/VulkanSDK/1.3.290.0/Bin/dxc.exe",
+                              "C:/VulkanSDK/1.3.283.0/Bin/dxc.exe", "C:/VulkanSDK/1.3.275.0/Bin/dxc.exe",
+                              "C:/VulkanSDK/1.3.268.0/Bin/dxc.exe", "C:/VulkanSDK/1.3.250.1/Bin/dxc.exe"};
     for (const auto& d : defaults)
     {
         if (std::filesystem::exists(d))
@@ -47,7 +43,8 @@ std::string FindDxcPath()
     return "dxc.exe";
 }
 
-bool CompileHLSLShader(const std::string& hlslPath, const std::string& entryPoint, rhi::ShaderStage stage, const std::string& outputPath, rhi::BackendType backend)
+bool CompileHLSLShader(const std::string& hlslPath, const std::string& entryPoint, rhi::ShaderStage stage,
+                       const std::string& outputPath, rhi::BackendType backend)
 {
     namespace fs = std::filesystem;
     if (!fs::exists(hlslPath))
@@ -55,6 +52,9 @@ bool CompileHLSLShader(const std::string& hlslPath, const std::string& entryPoin
         LOGGER_ERROR("ShaderCompiler") << "HLSL source file does not exist: " << hlslPath;
         return false;
     }
+
+    std::error_code ec;
+    fs::create_directories(fs::path(outputPath).parent_path(), ec);
 
     bool needCompile = true;
     if (fs::exists(outputPath))
@@ -74,39 +74,44 @@ bool CompileHLSLShader(const std::string& hlslPath, const std::string& entryPoin
 
     std::string dxc = FindDxcPath();
     std::string target = (stage == rhi::ShaderStage::Vertex) ? "vs_6_0" : "ps_6_0";
-    
+
     std::string cmd;
     if (backend == rhi::BackendType::Vulkan)
     {
-        cmd = "\"" + dxc + "\" -HV 2021 -T " + target + " -E " + entryPoint + " -spirv -fspv-target-env=vulkan1.2 -DAXIS_VULKAN=1 -Fo \"" + outputPath + "\" \"" + hlslPath + "\"";
+        cmd = "\"" + dxc + "\" -HV 2021 -T " + target + " -E " + entryPoint +
+              " -spirv -fspv-target-env=vulkan1.2 -DAXIS_VULKAN=1 -Fo \"" + outputPath + "\" \"" + hlslPath + "\"";
     }
     else
     {
-        cmd = "\"" + dxc + "\" -HV 2021 -T " + target + " -E " + entryPoint + " -Fo \"" + outputPath + "\" \"" + hlslPath + "\"";
+        cmd = "\"" + dxc + "\" -HV 2021 -T " + target + " -E " + entryPoint + " -Fo \"" + outputPath + "\" \"" +
+              hlslPath + "\"";
     }
 
     LOGGER_INFO("ShaderCompiler") << "Compiling HLSL: " << cmd;
     int result = std::system(cmd.c_str());
     if (result != 0)
     {
-        LOGGER_ERROR("ShaderCompiler") << "Failed to compile HLSL shader: " << hlslPath << " (Error code: " << result << ")";
+        LOGGER_ERROR("ShaderCompiler") << "Failed to compile HLSL shader: " << hlslPath << " (Error code: " << result
+                                       << ")";
         return false;
     }
 
     return fs::exists(outputPath);
 }
-std::string JoinPath(const std::string& base, const char* fileName)
+
+std::string ShaderAssetPath(const std::string& relativePath)
 {
-    if (base.empty())
-        return fileName;
-    const char last = base.back();
-    if (last == '/' || last == '\\')
-        return base + fileName;
-    return base + "/" + fileName;
+    std::filesystem::path root = AXIS_SHADER_ROOT_DIR;
+    if (!root.empty())
+        return (root / relativePath).string();
+    return FileSystem::getPath((std::filesystem::path("include/engine/asset/shaders") / relativePath).string());
 }
 
 glm::mat4 MakeClipSpaceProjection(glm::mat4 projection, rhi::BackendType backend)
 {
+    if (backend == rhi::BackendType::OpenGL)
+        return projection;
+
     glm::mat4 clip(1.0f);
     if (backend == rhi::BackendType::Vulkan)
         clip[1][1] = -1.0f;
@@ -135,10 +140,10 @@ struct PbrPushConstants
     glm::mat4 mvp;
     glm::mat4 model;
     glm::vec4 color;
-    glm::vec4 pbrParams; // x = roughness, y = metallic, z = ao, w = unused
+    glm::vec4 pbrParams;  // x = roughness, y = metallic, z = ao, w = unused
     glm::vec4 cameraPos;
-    glm::vec4 dirLightDir; // direction (xyz) + active (w)
-    glm::vec4 dirLightColor; // color (rgb) + intensity (w)
+    glm::vec4 dirLightDir;    // direction (xyz) + active (w)
+    glm::vec4 dirLightColor;  // color (rgb) + intensity (w)
 };
 
 struct DecalPushConstants
@@ -146,7 +151,7 @@ struct DecalPushConstants
     glm::mat4 mvp;
     glm::mat4 model;
     glm::vec4 tintColor;
-    glm::vec4 decalParams; // x = roughness, y = metallic, z = reflectivity, w = lightingMode
+    glm::vec4 decalParams;  // x = roughness, y = metallic, z = reflectivity, w = lightingMode
 };
 }  // namespace
 
@@ -166,7 +171,8 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
 
     auto& swapchain = m_Backend.GetSwapchain();
     rhi::ImageHandle backBuffer = swapchain.GetCurrentBackBuffer();
-    if (!backBuffer)
+    const bool usesDefaultBackBuffer = m_Backend.GetBackendType() == rhi::BackendType::OpenGL;
+    if (!backBuffer && !usesDefaultBackBuffer)
     {
         LOGGER_INFO("Render") << "No backbuffer, return false";
         return false;
@@ -242,8 +248,8 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
     beginInfo.renderArea = {0, 0, extent.width, extent.height};
 
     commandList.BeginRendering(beginInfo);
-    commandList.SetViewport(rhi::Viewport{0.0f, 0.0f, static_cast<float>(extent.width),
-                                          static_cast<float>(extent.height), 0.0f, 1.0f});
+    commandList.SetViewport(
+        rhi::Viewport{0.0f, 0.0f, static_cast<float>(extent.width), static_cast<float>(extent.height), 0.0f, 1.0f});
     commandList.SetScissor(rhi::Rect2D{0, 0, extent.width, extent.height});
 
     uint32_t totalEntities = 0;
@@ -263,7 +269,7 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
             SkyboxPushConstants push;
             glm::mat4 skyboxView = glm::mat4(glm::mat3(camera.viewMatrix));
             push.mvp = glm::transpose(projection * skyboxView);
-            push.intensity = 1.0f; // Default skybox intensity fallback
+            push.intensity = 1.0f;  // Default skybox intensity fallback
 
             commandList.BindPipeline(skyboxPipeline);
             commandList.BindVertexBuffer(0, m_SkyboxVbo);
@@ -321,7 +327,6 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
 
             if (isPbr)
             {
-                LOGGER_INFO("Render") << "Binding PBR pipeline for stride " << mesh.m_VertexStride;
                 rhi::PipelineHandle pipeline = GetOrCreateLitPipeline(static_cast<uint32_t>(mesh.m_VertexStride));
                 if (!pipeline)
                     continue;
@@ -330,7 +335,8 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
                 push.mvp = glm::transpose(viewProjection * modelMatrix);
                 push.model = glm::transpose(modelMatrix);
                 push.color = color;
-                push.pbrParams = glm::vec4(material->desc.pbr.roughness, material->desc.pbr.metallic, material->desc.pbr.ao, 1.0f);
+                push.pbrParams =
+                    glm::vec4(material->desc.pbr.roughness, material->desc.pbr.metallic, material->desc.pbr.ao, 1.0f);
                 push.cameraPos = glm::vec4(cameraPos, 1.0f);
                 push.dirLightDir = dirLightDirVec;
                 push.dirLightColor = dirLightColorVec;
@@ -365,7 +371,7 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
     // 3. Render Decals
     LOGGER_INFO("Render") << "Rendering decals";
     auto decalView = scene.View<DecalComponent, PositionComponent>();
-    rhi::PipelineHandle decalPipeline = GetOrCreateDecalPipeline(32); // Stride 32 for our quad layout
+    rhi::PipelineHandle decalPipeline = GetOrCreateDecalPipeline(32);  // Stride 32 for our quad layout
     if (decalPipeline && m_DecalQuadVbo)
     {
         for (auto entity : decalView)
@@ -378,7 +384,8 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
             glm::quat rotation = rotComp ? rotComp->value : glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
             glm::vec3 scale = scaleComp ? scaleComp->value : glm::vec3(1.0f);
 
-            glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), pos.value) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale);
+            glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), pos.value) * glm::mat4_cast(rotation) *
+                                    glm::scale(glm::mat4(1.0f), scale);
             // Match legacy forward scale factor
             modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f));
 
@@ -386,7 +393,8 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
             push.mvp = glm::transpose(viewProjection * modelMatrix);
             push.model = glm::transpose(modelMatrix);
             push.tintColor = decal.tintColor * decal.opacity;
-            push.decalParams = glm::vec4(decal.roughness, decal.metallic, decal.reflectivity, static_cast<float>(decal.lightingMode));
+            push.decalParams =
+                glm::vec4(decal.roughness, decal.metallic, decal.reflectivity, static_cast<float>(decal.lightingMode));
 
             LOGGER_INFO("Render") << "Submitting decal draw call";
             commandList.BindPipeline(decalPipeline);
@@ -404,10 +412,10 @@ bool RhiSceneRenderer::Render(Scene& scene, int width, int height, float alpha)
 
     if (!m_FirstFrameLogged && (totalEntities > 0 || modelEntities > 0 || drawCalls > 0))
     {
-        LOGGER_INFO("RhiSceneRenderer") << "Native scene frame: total=" << totalEntities
-                                        << " active=" << activeEntities << " modelEntities=" << modelEntities
-                                        << " readyMeshes=" << readyMeshes << " drawCalls=" << drawCalls
-                                        << " extent=" << extent.width << "x" << extent.height;
+        LOGGER_INFO("RhiSceneRenderer") << "Native scene frame: total=" << totalEntities << " active=" << activeEntities
+                                        << " modelEntities=" << modelEntities << " readyMeshes=" << readyMeshes
+                                        << " drawCalls=" << drawCalls << " extent=" << extent.width << "x"
+                                        << extent.height;
         m_FirstFrameLogged = true;
     }
 
@@ -433,19 +441,63 @@ void RhiSceneRenderer::Shutdown()
 {
     auto& device = m_Backend.GetDevice();
     DestroyPipelines();
-    
-    if (m_VertexShader) { device.DestroyShaderModule(m_VertexShader); m_VertexShader = {}; }
-    if (m_FragmentShader) { device.DestroyShaderModule(m_FragmentShader); m_FragmentShader = {}; }
-    if (m_SkyboxVS) { device.DestroyShaderModule(m_SkyboxVS); m_SkyboxVS = {}; }
-    if (m_SkyboxPS) { device.DestroyShaderModule(m_SkyboxPS); m_SkyboxPS = {}; }
-    if (m_LitVS) { device.DestroyShaderModule(m_LitVS); m_LitVS = {}; }
-    if (m_LitPS) { device.DestroyShaderModule(m_LitPS); m_LitPS = {}; }
-    if (m_DecalVS) { device.DestroyShaderModule(m_DecalVS); m_DecalVS = {}; }
-    if (m_DecalPS) { device.DestroyShaderModule(m_DecalPS); m_DecalPS = {}; }
 
-    if (m_DepthImage) { device.DestroyImage(m_DepthImage); m_DepthImage = {}; }
-    if (m_SkyboxVbo) { device.DestroyBuffer(m_SkyboxVbo); m_SkyboxVbo = {}; }
-    if (m_DecalQuadVbo) { device.DestroyBuffer(m_DecalQuadVbo); m_DecalQuadVbo = {}; }
+    if (m_VertexShader)
+    {
+        device.DestroyShaderModule(m_VertexShader);
+        m_VertexShader = {};
+    }
+    if (m_FragmentShader)
+    {
+        device.DestroyShaderModule(m_FragmentShader);
+        m_FragmentShader = {};
+    }
+    if (m_SkyboxVS)
+    {
+        device.DestroyShaderModule(m_SkyboxVS);
+        m_SkyboxVS = {};
+    }
+    if (m_SkyboxPS)
+    {
+        device.DestroyShaderModule(m_SkyboxPS);
+        m_SkyboxPS = {};
+    }
+    if (m_LitVS)
+    {
+        device.DestroyShaderModule(m_LitVS);
+        m_LitVS = {};
+    }
+    if (m_LitPS)
+    {
+        device.DestroyShaderModule(m_LitPS);
+        m_LitPS = {};
+    }
+    if (m_DecalVS)
+    {
+        device.DestroyShaderModule(m_DecalVS);
+        m_DecalVS = {};
+    }
+    if (m_DecalPS)
+    {
+        device.DestroyShaderModule(m_DecalPS);
+        m_DecalPS = {};
+    }
+
+    if (m_DepthImage)
+    {
+        device.DestroyImage(m_DepthImage);
+        m_DepthImage = {};
+    }
+    if (m_SkyboxVbo)
+    {
+        device.DestroyBuffer(m_SkyboxVbo);
+        m_SkyboxVbo = {};
+    }
+    if (m_DecalQuadVbo)
+    {
+        device.DestroyBuffer(m_DecalQuadVbo);
+        m_DecalQuadVbo = {};
+    }
 
     m_DepthWidth = 0;
     m_DepthHeight = 0;
@@ -460,49 +512,23 @@ bool RhiSceneRenderer::EnsureResources(uint32_t width, uint32_t height)
 
     if (!m_SkyboxVbo)
     {
-        float skyboxVertices[] = {
-            -1.0f,  1.0f, -1.0f,
-            -1.0f, -1.0f, -1.0f,
-             1.0f, -1.0f, -1.0f,
-             1.0f, -1.0f, -1.0f,
-             1.0f,  1.0f, -1.0f,
-            -1.0f,  1.0f, -1.0f,
+        float skyboxVertices[] = {-1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
+                                  1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
 
-            -1.0f, -1.0f,  1.0f,
-            -1.0f, -1.0f, -1.0f,
-            -1.0f,  1.0f, -1.0f,
-            -1.0f,  1.0f, -1.0f,
-            -1.0f,  1.0f,  1.0f,
-            -1.0f, -1.0f,  1.0f,
+                                  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
+                                  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
 
-             1.0f, -1.0f, -1.0f,
-             1.0f, -1.0f,  1.0f,
-             1.0f,  1.0f,  1.0f,
-             1.0f,  1.0f,  1.0f,
-             1.0f,  1.0f, -1.0f,
-             1.0f, -1.0f, -1.0f,
+                                  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
+                                  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
 
-            -1.0f, -1.0f,  1.0f,
-            -1.0f,  1.0f,  1.0f,
-             1.0f,  1.0f,  1.0f,
-             1.0f,  1.0f,  1.0f,
-             1.0f, -1.0f,  1.0f,
-            -1.0f, -1.0f,  1.0f,
+                                  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+                                  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
 
-            -1.0f,  1.0f, -1.0f,
-             1.0f,  1.0f, -1.0f,
-             1.0f,  1.0f,  1.0f,
-             1.0f,  1.0f,  1.0f,
-            -1.0f,  1.0f,  1.0f,
-            -1.0f,  1.0f, -1.0f,
+                                  -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
+                                  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
 
-            -1.0f, -1.0f, -1.0f,
-            -1.0f, -1.0f,  1.0f,
-             1.0f, -1.0f, -1.0f,
-             1.0f, -1.0f, -1.0f,
-            -1.0f, -1.0f,  1.0f,
-             1.0f, -1.0f,  1.0f
-        };
+                                  -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
+                                  1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f};
         rhi::BufferDesc vboDesc;
         vboDesc.size = sizeof(skyboxVertices);
         vboDesc.usage = rhi::BufferUsage::Vertex;
@@ -512,15 +538,11 @@ bool RhiSceneRenderer::EnsureResources(uint32_t width, uint32_t height)
 
     if (!m_DecalQuadVbo)
     {
-        float decalQuadVertices[] = {
-            -0.5f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f,
-            -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,
-             0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,
+        float decalQuadVertices[] = {-0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f,  0.0f, 1.0f, -0.5f, -0.5f, 0.0f, 0.0f,
+                                     0.0f,  1.0f, 0.0f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f,  1.0f,  1.0f, 0.0f,
 
-            -0.5f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f,
-             0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,
-             0.5f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 1.0f
-        };
+                                     -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f,  0.0f, 1.0f, 0.5f,  -0.5f, 0.0f, 0.0f,
+                                     0.0f,  1.0f, 1.0f, 0.0f, 0.5f, 0.5f,  0.0f, 0.0f, 0.0f,  1.0f,  1.0f, 1.0f};
         rhi::BufferDesc vboDesc;
         vboDesc.size = sizeof(decalQuadVertices);
         vboDesc.usage = rhi::BufferUsage::Vertex;
@@ -556,24 +578,10 @@ bool RhiSceneRenderer::EnsureShaders()
     if (m_ShaderLoadFailed)
         return false;
 
-    const bool isVulkan = m_Backend.GetBackendType() == rhi::BackendType::Vulkan;
-    const rhi::ShaderSourceType sourceType =
-        isVulkan ? rhi::ShaderSourceType::SpirVBinary : rhi::ShaderSourceType::DxilBinary;
+    const rhi::BackendType backend = m_Backend.GetBackendType();
 
-    auto loadShader = [&](const char* vkFile, const char* dxFile, rhi::ShaderStage stage, const char* debugName) -> rhi::ShaderModuleHandle {
-        const char* file = isVulkan ? vkFile : dxFile;
-        std::string binaryFileName = file;
-        size_t firstDot = binaryFileName.find('.');
-        if (firstDot != std::string::npos)
-        {
-            std::string prefix = binaryFileName.substr(0, firstDot);
-            std::string hlslPath = FileSystem::getPath("include/engine/asset/shaders/rhi/" + prefix + ".hlsl");
-            std::string outputPath = FileSystem::getPath("include/engine/asset/shaders/rhi/" + binaryFileName);
-            std::string entry = (stage == rhi::ShaderStage::Vertex) ? "VSMain" : "PSMain";
-            CompileHLSLShader(hlslPath, entry, stage, outputPath, m_Backend.GetBackendType());
-        }
-
-        std::vector<uint8_t> bytes = LoadShaderBinary(file);
+    auto createModule = [&](const std::vector<uint8_t>& bytes, rhi::ShaderStage stage, rhi::ShaderSourceType sourceType,
+                            const char* entryPoint, const char* debugName) -> rhi::ShaderModuleHandle {
         if (bytes.empty())
         {
             m_ShaderLoadFailed = true;
@@ -584,24 +592,80 @@ bool RhiSceneRenderer::EnsureShaders()
         desc.sourceType = sourceType;
         desc.data = bytes.data();
         desc.size = bytes.size();
-        desc.entryPoint = (stage == rhi::ShaderStage::Vertex) ? "VSMain" : "PSMain";
+        desc.entryPoint = entryPoint;
         desc.debugName = debugName;
         return m_Backend.GetDevice().CreateShaderModule(desc);
     };
 
-    m_VertexShader = loadShader("rhi_forward_unlit.vs.spv", "rhi_forward_unlit.vs.dxil", rhi::ShaderStage::Vertex, "RHI Forward Unlit VS");
-    m_FragmentShader = loadShader("rhi_forward_unlit.ps.spv", "rhi_forward_unlit.ps.dxil", rhi::ShaderStage::Fragment, "RHI Forward Unlit PS");
-    
-    m_SkyboxVS = loadShader("rhi_skybox.vs.spv", "rhi_skybox.vs.dxil", rhi::ShaderStage::Vertex, "RHI Skybox VS");
-    m_SkyboxPS = loadShader("rhi_skybox.ps.spv", "rhi_skybox.ps.dxil", rhi::ShaderStage::Fragment, "RHI Skybox PS");
+    if (backend == rhi::BackendType::OpenGL)
+    {
+        auto loadGlsl = [&](const char* file, rhi::ShaderStage stage,
+                            const char* debugName) -> rhi::ShaderModuleHandle {
+            std::vector<uint8_t> bytes = LoadShaderFile(std::string("opengl/rhi/") + file);
+            return createModule(bytes, stage, rhi::ShaderSourceType::SourceText, "main", debugName);
+        };
 
-    m_LitVS = loadShader("rhi_pbr_lit.vs.spv", "rhi_pbr_lit.vs.dxil", rhi::ShaderStage::Vertex, "RHI Lit VS");
-    m_LitPS = loadShader("rhi_pbr_lit.ps.spv", "rhi_pbr_lit.ps.dxil", rhi::ShaderStage::Fragment, "RHI Lit PS");
+        m_VertexShader = loadGlsl("rhi_forward_unlit.vert.glsl", rhi::ShaderStage::Vertex, "RHI Forward Unlit VS");
+        m_FragmentShader = loadGlsl("rhi_forward_unlit.frag.glsl", rhi::ShaderStage::Fragment, "RHI Forward Unlit PS");
 
-    m_DecalVS = loadShader("rhi_decal.vs.spv", "rhi_decal.vs.dxil", rhi::ShaderStage::Vertex, "RHI Decal VS");
-    m_DecalPS = loadShader("rhi_decal.ps.spv", "rhi_decal.ps.dxil", rhi::ShaderStage::Fragment, "RHI Decal PS");
+        m_SkyboxVS = loadGlsl("rhi_skybox.vert.glsl", rhi::ShaderStage::Vertex, "RHI Skybox VS");
+        m_SkyboxPS = loadGlsl("rhi_skybox.frag.glsl", rhi::ShaderStage::Fragment, "RHI Skybox PS");
 
-    if (!m_VertexShader || !m_FragmentShader || !m_SkyboxVS || !m_SkyboxPS || !m_LitVS || !m_LitPS || !m_DecalVS || !m_DecalPS)
+        m_LitVS = loadGlsl("rhi_pbr_lit.vert.glsl", rhi::ShaderStage::Vertex, "RHI Lit VS");
+        m_LitPS = loadGlsl("rhi_pbr_lit.frag.glsl", rhi::ShaderStage::Fragment, "RHI Lit PS");
+
+        m_DecalVS = loadGlsl("rhi_decal.vert.glsl", rhi::ShaderStage::Vertex, "RHI Decal VS");
+        m_DecalPS = loadGlsl("rhi_decal.frag.glsl", rhi::ShaderStage::Fragment, "RHI Decal PS");
+    }
+    else
+    {
+        const bool isVulkan = backend == rhi::BackendType::Vulkan;
+        const rhi::ShaderSourceType sourceType =
+            isVulkan ? rhi::ShaderSourceType::SpirVBinary : rhi::ShaderSourceType::DxilBinary;
+        const char* backendDir = isVulkan ? "vulkan/rhi/" : "directx/rhi/";
+
+        auto loadCompiledHlsl = [&](const char* sourceBase, const char* spirvFile, const char* dxilFile,
+                                    rhi::ShaderStage stage, const char* debugName) -> rhi::ShaderModuleHandle {
+            const char* binaryFile = isVulkan ? spirvFile : dxilFile;
+            const std::string relativeOutput = std::string(backendDir) + binaryFile;
+            const std::string hlslPath = ShaderAssetPath(std::string("shared/rhi/") + sourceBase + ".hlsl");
+            const std::string outputPath = ShaderAssetPath(relativeOutput);
+            const std::string entry = (stage == rhi::ShaderStage::Vertex) ? "VSMain" : "PSMain";
+
+            if (!CompileHLSLShader(hlslPath, entry, stage, outputPath, backend))
+            {
+                m_ShaderLoadFailed = true;
+                return {};
+            }
+
+            std::vector<uint8_t> bytes = LoadShaderFile(relativeOutput);
+            return createModule(bytes, stage, sourceType, entry.c_str(), debugName);
+        };
+
+        m_VertexShader = loadCompiledHlsl("rhi_forward_unlit", "rhi_forward_unlit.vs.spv", "rhi_forward_unlit.vs.dxil",
+                                          rhi::ShaderStage::Vertex, "RHI Forward Unlit VS");
+        m_FragmentShader =
+            loadCompiledHlsl("rhi_forward_unlit", "rhi_forward_unlit.ps.spv", "rhi_forward_unlit.ps.dxil",
+                             rhi::ShaderStage::Fragment, "RHI Forward Unlit PS");
+
+        m_SkyboxVS = loadCompiledHlsl("rhi_skybox", "rhi_skybox.vs.spv", "rhi_skybox.vs.dxil", rhi::ShaderStage::Vertex,
+                                      "RHI Skybox VS");
+        m_SkyboxPS = loadCompiledHlsl("rhi_skybox", "rhi_skybox.ps.spv", "rhi_skybox.ps.dxil",
+                                      rhi::ShaderStage::Fragment, "RHI Skybox PS");
+
+        m_LitVS = loadCompiledHlsl("rhi_pbr_lit", "rhi_pbr_lit.vs.spv", "rhi_pbr_lit.vs.dxil", rhi::ShaderStage::Vertex,
+                                   "RHI Lit VS");
+        m_LitPS = loadCompiledHlsl("rhi_pbr_lit", "rhi_pbr_lit.ps.spv", "rhi_pbr_lit.ps.dxil",
+                                   rhi::ShaderStage::Fragment, "RHI Lit PS");
+
+        m_DecalVS = loadCompiledHlsl("rhi_decal", "rhi_decal.vs.spv", "rhi_decal.vs.dxil", rhi::ShaderStage::Vertex,
+                                     "RHI Decal VS");
+        m_DecalPS = loadCompiledHlsl("rhi_decal", "rhi_decal.ps.spv", "rhi_decal.ps.dxil", rhi::ShaderStage::Fragment,
+                                     "RHI Decal PS");
+    }
+
+    if (!m_VertexShader || !m_FragmentShader || !m_SkyboxVS || !m_SkyboxPS || !m_LitVS || !m_LitPS || !m_DecalVS ||
+        !m_DecalPS)
     {
         m_ShaderLoadFailed = true;
         LOGGER_ERROR("RhiSceneRenderer") << "Failed to create RHI scene shader modules.";
@@ -620,8 +684,7 @@ rhi::PipelineHandle RhiSceneRenderer::GetOrCreatePipeline(uint32_t vertexStride)
     desc.vertexShader = m_VertexShader;
     desc.fragmentShader = m_FragmentShader;
     desc.debugName = "RHI Forward Unlit";
-    desc.vertexInput.bindings.push_back(
-        rhi::VertexBindingDesc{0, vertexStride, rhi::VertexInputRate::PerVertex});
+    desc.vertexInput.bindings.push_back(rhi::VertexBindingDesc{0, vertexStride, rhi::VertexInputRate::PerVertex});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{0, 0, rhi::VertexFormat::Float3, 0});
     desc.topology = rhi::PrimitiveTopology::TriangleList;
     desc.rasterizer.cullMode = rhi::CullMode::None;
@@ -654,8 +717,7 @@ rhi::PipelineHandle RhiSceneRenderer::GetOrCreateSkyboxPipeline()
     desc.vertexShader = m_SkyboxVS;
     desc.fragmentShader = m_SkyboxPS;
     desc.debugName = "RHI Skybox";
-    desc.vertexInput.bindings.push_back(
-        rhi::VertexBindingDesc{0, 12, rhi::VertexInputRate::PerVertex});
+    desc.vertexInput.bindings.push_back(rhi::VertexBindingDesc{0, 12, rhi::VertexInputRate::PerVertex});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{0, 0, rhi::VertexFormat::Float3, 0});
     desc.topology = rhi::PrimitiveTopology::TriangleList;
     desc.rasterizer.cullMode = rhi::CullMode::None;
@@ -681,8 +743,7 @@ rhi::PipelineHandle RhiSceneRenderer::GetOrCreateLitPipeline(uint32_t vertexStri
     desc.vertexShader = m_LitVS;
     desc.fragmentShader = m_LitPS;
     desc.debugName = "RHI Lit PBR";
-    desc.vertexInput.bindings.push_back(
-        rhi::VertexBindingDesc{0, vertexStride, rhi::VertexInputRate::PerVertex});
+    desc.vertexInput.bindings.push_back(rhi::VertexBindingDesc{0, vertexStride, rhi::VertexInputRate::PerVertex});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{0, 0, rhi::VertexFormat::Float3, 0});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{1, 0, rhi::VertexFormat::Float3, 12});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{2, 0, rhi::VertexFormat::Float2, 24});
@@ -712,8 +773,7 @@ rhi::PipelineHandle RhiSceneRenderer::GetOrCreateDecalPipeline(uint32_t vertexSt
     desc.vertexShader = m_DecalVS;
     desc.fragmentShader = m_DecalPS;
     desc.debugName = "RHI Decal";
-    desc.vertexInput.bindings.push_back(
-        rhi::VertexBindingDesc{0, vertexStride, rhi::VertexInputRate::PerVertex});
+    desc.vertexInput.bindings.push_back(rhi::VertexBindingDesc{0, vertexStride, rhi::VertexInputRate::PerVertex});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{0, 0, rhi::VertexFormat::Float3, 0});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{1, 0, rhi::VertexFormat::Float3, 12});
     desc.vertexInput.attributes.push_back(rhi::VertexAttributeDesc{2, 0, rhi::VertexFormat::Float2, 24});
@@ -775,19 +835,18 @@ void RhiSceneRenderer::DestroyPipelines()
     }
 }
 
-std::vector<uint8_t> RhiSceneRenderer::LoadShaderBinary(const char* fileName) const
+std::vector<uint8_t> RhiSceneRenderer::LoadShaderFile(const std::string& relativePath) const
 {
-    std::string shaderDir = AXIS_RHI_SHADER_DIR;
-    std::string path = JoinPath(shaderDir, fileName);
+    std::string path = ShaderAssetPath(relativePath);
     std::ifstream file(path, std::ios::binary);
     if (!file)
     {
-        path = FileSystem::getPath(JoinPath("include/engine/asset/shaders/rhi", fileName));
+        path = FileSystem::getPath((std::filesystem::path("include/engine/asset/shaders") / relativePath).string());
         file.open(path, std::ios::binary);
     }
     if (!file)
     {
-        LOGGER_ERROR("RhiSceneRenderer") << "Missing RHI shader binary: " << fileName;
+        LOGGER_ERROR("RhiSceneRenderer") << "Missing RHI shader file: " << relativePath;
         return {};
     }
 

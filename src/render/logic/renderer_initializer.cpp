@@ -15,6 +15,9 @@
 
 void RendererInitializer::Initialize(IGraphicsContext& context)
 {
+    if (!context.SupportsLegacyRenderPipeline())
+        return;
+
     Mesh::SetManagers(&context.GetBufferManager(), &context.GetTextureManager(), &context.GetDrawContext());
 
     Shadow::SetManagers(&context.GetRenderTargetManager(), &context.GetTextureManager(), &context.GetDrawContext());

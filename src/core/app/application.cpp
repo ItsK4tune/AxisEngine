@@ -24,7 +24,6 @@
 #include <platform/logic/monitor_manager.h>
 #include <platform/unit/io_context.h>
 #include <render/interface/i_graphics_context.h>
-#include <render/strategy/null/null_graphics_context.h>
 #include <render/logic/post_process_pipeline.h>
 #include <render/logic/render_service_impl.h>
 #include <render/logic/renderer_initializer.h>
@@ -157,8 +156,16 @@ void Application::Shutdown()
 
 bool Application::Initialize(const AppConfig& config)
 {
-    JobSystem::Instance().Initialize(config.numJobThreads);
-    LogManager::Instance().Initialize(config.logLevel);
+    AppConfig runtimeConfig = config;
+    if (runtimeConfig.headlessMode || runtimeConfig.graphicsBackend == GraphicsBackend::Null)
+    {
+        runtimeConfig.headlessMode = true;
+        runtimeConfig.graphicsBackend = GraphicsBackend::Null;
+        runtimeConfig.audioBackend = AudioBackend::Null;
+    }
+
+    JobSystem::Instance().Initialize(runtimeConfig.numJobThreads);
+    LogManager::Instance().Initialize(runtimeConfig.logLevel);
 
     std::signal(SIGINT, HandleQuitSignal);
     std::signal(SIGTERM, HandleQuitSignal);
@@ -168,14 +175,14 @@ bool Application::Initialize(const AppConfig& config)
     m_Impl->m_RuntimeCore = std::make_unique<RuntimeCore>();
     m_Impl->m_SystemManager = std::make_unique<SystemManager>();
     m_Impl->m_ConfigManager = std::make_unique<ConfigManager>();
-    m_Impl->m_ConfigManager->Initialize(config);
+    m_Impl->m_ConfigManager->Initialize(runtimeConfig);
     m_Impl->m_TimeService = std::make_unique<DefaultTimeService>();
 
     m_Impl->m_ScriptRegistry = std::make_unique<ScriptRegistry>();
     m_Impl->m_CollisionMatrix = std::make_unique<CollisionMatrix>();
     m_Impl->m_DataManager = std::make_unique<DataManager>();
 
-    bool effectiveHeadless = config.headlessMode || (config.graphicsBackend == GraphicsBackend::Null);
+    bool effectiveHeadless = runtimeConfig.graphicsBackend == GraphicsBackend::Null;
 #ifdef ENABLE_EDITOR
     if (effectiveHeadless)
     {
@@ -185,17 +192,18 @@ bool Application::Initialize(const AppConfig& config)
 
     if (!effectiveHeadless)
     {
-        m_Impl->m_GraphicsContext = AppBuilder::CreateGraphicsContext(config);
-        auto audioEngine = AppBuilder::CreateAudioEngine(config);
-        auto window = AppBuilder::MakeWindow(config);
+        m_Impl->m_GraphicsContext = AppBuilder::CreateGraphicsContext(runtimeConfig);
+        auto audioEngine = AppBuilder::CreateAudioEngine(runtimeConfig);
+        auto window = AppBuilder::MakeWindow(runtimeConfig);
 
         m_Impl->m_IOHandler = std::make_unique<IOHandler>();
         m_Impl->m_AudioService = std::make_unique<AudioService>();
         m_Impl->m_AudioService->Initialize(std::move(audioEngine));
 
-        if (!m_Impl->m_IOHandler->Initialize(std::move(window), config.title, config.width, config.height,
-                                             (int)config.windowMode, config.monitorIndex, config.refreshRate,
-                                             config.vsync, config.frameRateLimit))
+        if (!m_Impl->m_IOHandler->Initialize(std::move(window), runtimeConfig.title, runtimeConfig.width,
+                                             runtimeConfig.height, (int)runtimeConfig.windowMode,
+                                             runtimeConfig.monitorIndex, runtimeConfig.refreshRate, runtimeConfig.vsync,
+                                             runtimeConfig.frameRateLimit))
         {
             AXIS_ASSERT(false, "Failed to initialize IOHandler - graphics/audio device error?");
             return false;
@@ -203,6 +211,9 @@ bool Application::Initialize(const AppConfig& config)
 
         auto& mm = m_Impl->m_IOHandler->GetMonitorManager();
         m_Impl->m_ConfigManager->SetResolution(mm.GetWidth(), mm.GetHeight());
+
+        IWindow* appWindow = m_Impl->m_IOHandler->GetMonitorManager().GetWindow();
+        m_Impl->m_GraphicsContext->SetWindow(appWindow);
 
         if (!m_Impl->m_GraphicsContext->Initialize())
         {
@@ -214,15 +225,14 @@ bool Application::Initialize(const AppConfig& config)
         auto& context = *m_Impl->m_GraphicsContext;
         RendererInitializer::Initialize(context);
 
-        if (!config.depthTestEnabled)
+        if (!runtimeConfig.depthTestEnabled)
             context.SetDepthTest(false);
-        context.SetCullFace(config.cullFaceEnabled);
+        context.SetCullFace(runtimeConfig.cullFaceEnabled);
 
         auto* configMgr = m_Impl->m_ConfigManager.get();
         auto* ioHandler = m_Impl->m_IOHandler.get();
         auto* graphicsCtx = m_Impl->m_GraphicsContext.get();
 
-        IWindow* appWindow = m_Impl->m_IOHandler->GetMonitorManager().GetWindow();
         appWindow->SetResizeCallback([configMgr, ioHandler, graphicsCtx](int width, int height) {
             EventManager::Instance().Publish(WindowResizedEvent{width, height});
             if (configMgr)
@@ -260,37 +270,44 @@ bool Application::Initialize(const AppConfig& config)
                 EventManager::Instance().Publish(KeyReleasedEvent{key, mods});
         });
 
-        if (!config.audioDevice.empty() && config.audioDevice != "default")
+        if (!runtimeConfig.audioDevice.empty() && runtimeConfig.audioDevice != "default")
         {
-            LOGGER_INFO("Application") << "Audio device preference: " << config.audioDevice;
+            LOGGER_INFO("Application") << "Audio device preference: " << runtimeConfig.audioDevice;
         }
     }
     else
     {
-        LOGGER_INFO("Application") << "Running in HEADLESS MODE. Graphics, Window, and Audio engine skipped.";
-        m_Impl->m_GraphicsContext = std::make_unique<NullGraphicsContext>();
-        auto audioEngine = BackendFactoryRegistry::CreateAudio(AudioBackend::Null, config);
+        LOGGER_INFO("Application") << "Running in HEADLESS MODE through the Null graphics backend.";
+        m_Impl->m_GraphicsContext = AppBuilder::CreateGraphicsContext(runtimeConfig);
+        auto audioEngine = AppBuilder::CreateAudioEngine(runtimeConfig);
         m_Impl->m_AudioService = std::make_unique<AudioService>();
         m_Impl->m_AudioService->Initialize(std::move(audioEngine));
     }
 
-    m_Impl->m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(config);
+    m_Impl->m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(runtimeConfig);
     m_Impl->m_PhysicsWorld->Initialize();
 
     if (!effectiveHeadless && m_Impl->m_GraphicsContext && m_Impl->m_AudioService)
     {
-        m_Impl->m_ResourceManager->Initialize(&m_Impl->m_GraphicsContext->GetShaderManager(),
-                                              &m_Impl->m_GraphicsContext->GetTextureManager(),
-                                              *m_Impl->m_AudioService->GetEngine());
+        if (m_Impl->m_GraphicsContext->SupportsLegacyRenderPipeline())
+        {
+            m_Impl->m_ResourceManager->Initialize(&m_Impl->m_GraphicsContext->GetShaderManager(),
+                                                  &m_Impl->m_GraphicsContext->GetTextureManager(),
+                                                  *m_Impl->m_AudioService->GetEngine());
+        }
+        else
+        {
+            m_Impl->m_ResourceManager->Initialize(nullptr, nullptr, *m_Impl->m_AudioService->GetEngine(), true);
+        }
     }
     else
     {
         m_Impl->m_ResourceManager->InitializeHeadless();
     }
 
-    m_Impl->m_ResourceManager->SetTextureAsyncEnabled(config.asyncResourceLoading);
-    m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(config.maxAnisotropy);
-    m_Impl->m_ResourceManager->SetStrictAssetLoading(config.strictAssetLoading);
+    m_Impl->m_ResourceManager->SetTextureAsyncEnabled(runtimeConfig.asyncResourceLoading);
+    m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(runtimeConfig.maxAnisotropy);
+    m_Impl->m_ResourceManager->SetStrictAssetLoading(runtimeConfig.strictAssetLoading);
     m_Impl->m_Scene->InitializeManagers();
 
     auto& sl = ServiceLocator::Instance();
@@ -373,12 +390,12 @@ bool Application::Initialize(const AppConfig& config)
     m_Impl->m_SceneManager->LoadScene("include/engine/asset/load.axs", true);
     m_Impl->m_ResourceManager->InitializePostLoad();
 
-    m_Impl->m_SystemManager->Initialize(*m_Impl->m_ResourceManager, config.width, config.height);
+    m_Impl->m_SystemManager->Initialize(*m_Impl->m_ResourceManager, runtimeConfig.width, runtimeConfig.height);
 
-    if (!config.iconPath.empty() && m_Impl->m_IOHandler)
+    if (!runtimeConfig.iconPath.empty() && m_Impl->m_IOHandler)
     {
-        LOGGER_INFO("Application") << "Setting window icon from: " << config.iconPath;
-        m_Impl->m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(config.iconPath));
+        LOGGER_INFO("Application") << "Setting window icon from: " << runtimeConfig.iconPath;
+        m_Impl->m_IOHandler->GetMonitorManager().SetWindowIcon(FileSystem::getPath(runtimeConfig.iconPath));
     }
 
     LOGGER_INFO("Application") << "Application initialized successfully.";

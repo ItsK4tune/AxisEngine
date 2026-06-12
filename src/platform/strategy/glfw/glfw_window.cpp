@@ -146,6 +146,8 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 #endif
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_DEPTH_BITS, 24);
+        glfwWindowHint(GLFW_STENCIL_BITS, 8);
         if (msaaSamples > 0)
             glfwWindowHint(GLFW_SAMPLES, msaaSamples);
     }

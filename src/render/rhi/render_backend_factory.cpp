@@ -37,6 +37,8 @@ std::unique_ptr<IRenderBackend> CreateRenderBackend(GraphicsBackend backend)
 #else
             break;
 #endif
+        case GraphicsBackend::Null:
+            break;
     }
 
     LOGGER_ERROR("RenderBackendFactory") << "Requested graphics backend is not compiled into this build.";

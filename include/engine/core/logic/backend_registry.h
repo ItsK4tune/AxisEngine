@@ -128,8 +128,15 @@ constexpr bool IsSupported(AudioBackend backend)
 
 inline const char* SupportedGraphicsBackends()
 {
-#if AXIS_HAS_OPENGL_BACKEND && !AXIS_HAS_VULKAN_BACKEND && !AXIS_HAS_DIRECTX_BACKEND
-    return "OpenGL";
+#if AXIS_HAS_OPENGL_BACKEND && !AXIS_HAS_VULKAN_BACKEND && !AXIS_HAS_DIRECTX_BACKEND && AXIS_HAS_NULL_GRAPHICS_BACKEND
+    return "OpenGL, Null";
+#elif AXIS_HAS_VULKAN_BACKEND && !AXIS_HAS_OPENGL_BACKEND && !AXIS_HAS_DIRECTX_BACKEND && AXIS_HAS_NULL_GRAPHICS_BACKEND
+    return "Vulkan, Null";
+#elif AXIS_HAS_DIRECTX_BACKEND && !AXIS_HAS_OPENGL_BACKEND && !AXIS_HAS_VULKAN_BACKEND && AXIS_HAS_NULL_GRAPHICS_BACKEND
+    return "DirectX, Null";
+#elif AXIS_HAS_NULL_GRAPHICS_BACKEND && !AXIS_HAS_OPENGL_BACKEND && !AXIS_HAS_VULKAN_BACKEND && \
+    !AXIS_HAS_DIRECTX_BACKEND
+    return "Null";
 #else
     return "the graphics backends compiled into this build";
 #endif

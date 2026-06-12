@@ -11,8 +11,6 @@
 
 #ifdef ENABLE_EDITOR
 
-struct GLFWwindow;
-
 #include <audio/logic/audio_service.h>
 #include <core/app/runtime_core.h>
 #include <core/logic/log_manager.h>
@@ -116,7 +114,7 @@ void EditorSystem::Initialize()
         auto* window = ioHandler->GetMonitorManager().GetWindow();
         if (window && window->GetNativeWindow())
         {
-            m_ImGuiLayer.Initialize(reinterpret_cast<GLFWwindow*>(window->GetNativeWindow()));
+            m_ImGuiLayer.Initialize(window->GetNativeWindow());
         }
     }
 

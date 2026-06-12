@@ -1,6 +1,7 @@
 #include <render/strategy/opengl/opengl_render_backend.h>
 #include <core/logic/logger.h>
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cstring>
 
@@ -349,6 +350,56 @@ bool CheckProgramLink(uint32_t program, const char* debugName)
     LOGGER_ERROR("OpenGLRHI") << "Program link failed (" << (debugName ? debugName : "unnamed") << "): " << infoLog;
     return false;
 }
+
+void SetUniformMat4(uint32_t program, const char* name, const void* data, uint32_t size, uint32_t offset)
+{
+    if (!data || offset + sizeof(float) * 16 > size)
+        return;
+
+    const GLint location = glGetUniformLocation(program, name);
+    if (location >= 0)
+        glUniformMatrix4fv(location, 1, GL_FALSE,
+                           reinterpret_cast<const float*>(static_cast<const uint8_t*>(data) + offset));
+}
+
+void SetUniformVec4(uint32_t program, const char* name, const void* data, uint32_t size, uint32_t offset)
+{
+    if (!data || offset + sizeof(float) * 4 > size)
+        return;
+
+    const GLint location = glGetUniformLocation(program, name);
+    if (location >= 0)
+        glUniform4fv(location, 1, reinterpret_cast<const float*>(static_cast<const uint8_t*>(data) + offset));
+}
+
+void SetUniformFloat(uint32_t program, const char* name, const void* data, uint32_t size, uint32_t offset)
+{
+    if (!data || offset + sizeof(float) > size)
+        return;
+
+    const GLint location = glGetUniformLocation(program, name);
+    if (location >= 0)
+        glUniform1f(location, *reinterpret_cast<const float*>(static_cast<const uint8_t*>(data) + offset));
+}
+
+void ApplyPushConstants(uint32_t program, const void* data, uint32_t size)
+{
+    constexpr uint32_t kMat4 = sizeof(float) * 16;
+    constexpr uint32_t kVec4 = sizeof(float) * 4;
+
+    SetUniformMat4(program, "u_Mvp", data, size, 0);
+    SetUniformVec4(program, "u_Color", data, size, kMat4);
+    SetUniformFloat(program, "u_Intensity", data, size, kMat4);
+
+    SetUniformMat4(program, "u_Model", data, size, kMat4);
+    SetUniformVec4(program, "u_Color", data, size, kMat4 * 2);
+    SetUniformVec4(program, "u_TintColor", data, size, kMat4 * 2);
+    SetUniformVec4(program, "u_PbrParams", data, size, kMat4 * 2 + kVec4);
+    SetUniformVec4(program, "u_DecalParams", data, size, kMat4 * 2 + kVec4);
+    SetUniformVec4(program, "u_CameraPos", data, size, kMat4 * 2 + kVec4 * 2);
+    SetUniformVec4(program, "u_DirLightDir", data, size, kMat4 * 2 + kVec4 * 3);
+    SetUniformVec4(program, "u_DirLightColor", data, size, kMat4 * 2 + kVec4 * 4);
+}
 }  // namespace
 
 OpenGLCommandList::OpenGLCommandList(OpenGLRenderDevice& device) : m_Device(device)
@@ -509,9 +560,13 @@ void OpenGLCommandList::BindIndexBuffer(rhi::BufferHandle buffer, rhi::IndexType
 void OpenGLCommandList::PushConstants(rhi::ShaderStage stages, const void* data, uint32_t size, uint32_t offset)
 {
     (void)stages;
-    (void)data;
-    (void)size;
     (void)offset;
+    const auto* pipeline = m_Device.GetPipeline(m_CurrentPipeline);
+    if (!pipeline || pipeline->program == 0 || !data || size == 0)
+        return;
+
+    glUseProgram(pipeline->program);
+    ApplyPushConstants(pipeline->program, data, size);
 }
 
 void OpenGLCommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
@@ -1050,6 +1105,14 @@ bool OpenGLRenderBackend::Initialize(const rhi::RenderBackendCreateInfo& createI
 {
     if (m_Initialized)
         return true;
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        LOGGER_ERROR("OpenGLRHI") << "Failed to initialize GLAD";
+        return false;
+    }
+
+    LOGGER_INFO("OpenGLRHI") << "OpenGL RHI initialized: " << glGetString(GL_VERSION);
 
     glGenVertexArrays(1, &m_DefaultVertexArray);
     glBindVertexArray(m_DefaultVertexArray);

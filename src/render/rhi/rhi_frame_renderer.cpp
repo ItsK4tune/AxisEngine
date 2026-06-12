@@ -9,7 +9,8 @@ bool RhiFrameRenderer::RenderSwapchainClear(const float (&clearColor)[4])
 {
     auto& swapchain = m_Backend.GetSwapchain();
     rhi::ImageHandle backBuffer = swapchain.GetCurrentBackBuffer();
-    if (!backBuffer)
+    const bool usesDefaultBackBuffer = m_Backend.GetBackendType() == rhi::BackendType::OpenGL;
+    if (!backBuffer && !usesDefaultBackBuffer)
         return false;
 
     rhi::Extent2D extent = swapchain.GetExtent();
