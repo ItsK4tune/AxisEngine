@@ -49,9 +49,12 @@ void DecalSystem::Initialize()
 
     if (!m_DecalShader || !m_ForwardShader)
     {
-        LOGGER_ERROR("DecalSystem") << "FAILED to load decal shaders! "
-                                    << "[Deferred: " << (m_DecalShader ? "OK" : "MISSING") << ", "
-                                    << "Forward: " << (m_ForwardShader ? "OK" : "MISSING") << "]";
+        if (!resources->IsNativeRhiMode())
+        {
+            LOGGER_ERROR("DecalSystem") << "FAILED to load decal shaders! "
+                                        << "[Deferred: " << (m_DecalShader ? "OK" : "MISSING") << ", "
+                                        << "Forward: " << (m_ForwardShader ? "OK" : "MISSING") << "]";
+        }
     }
     else
     {
@@ -157,6 +160,8 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         m_RenderService = sl.Resolve<IRenderService>();
     if (!m_GraphicsContext)
         m_GraphicsContext = sl.Resolve<IGraphicsContext>();
+    if (!m_GraphicsContext || !m_GraphicsContext->SupportsLegacyRenderPipeline())
+        return;
 
     auto* geoSys = m_GeoService;
     if (isDeferred && !geoSys)

@@ -12,12 +12,15 @@
 #include <audio/logic/audio_service.h>
 #include <core/logic/backend_registry.h>
 #include <core/logic/config_manager.h>
+#include <core/logic/runtime_profiler.h>
+#include <core/logic/service_locator.h>
 #include <audio/interface/i_sound.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/network_components.h>
 #include <ecs/unit/reflection_components.h>
 #include <ecs/interface/i_render_state_service.h>
 #include <ecs/unit/light_probe_components.h>
+#include <render/interface/i_graphics_context.h>
 #include <resource/type/resource_events.h>
 #include <scene/logic/scene_serializer.h>
 #ifdef ENABLE_EDITOR
@@ -36,10 +39,8 @@
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <dxgi1_4.h>
 #include <pdh.h>
 
-#pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "pdh.lib")
 
 #ifdef GetCurrentTime
@@ -143,33 +144,24 @@ PerfStats QueryPerfStats()
         }
     }
 
-    IDXGIFactory1* factory = nullptr;
-    if (CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(&factory)) == S_OK && factory)
-    {
-        IDXGIAdapter1* adapter = nullptr;
-        for (UINT i = 0; factory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
-        {
-            DXGI_ADAPTER_DESC1 desc{};
-            adapter->GetDesc1(&desc);
-            if ((desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0)
-                break;
-            adapter->Release();
-            adapter = nullptr;
-        }
+    const RuntimeProfilerStats& runtimeStats = RuntimeProfiler::Instance().GetStats();
+    if (runtimeStats.hasGpuUsage || runtimeStats.hasGpuFrameTime)
+        stats.gpu = runtimeStats.gpuUsagePercent;
 
-        IDXGIAdapter3* adapter3 = nullptr;
-        if (adapter && adapter->QueryInterface(__uuidof(IDXGIAdapter3), reinterpret_cast<void**>(&adapter3)) == S_OK)
-        {
-            DXGI_QUERY_VIDEO_MEMORY_INFO info{};
-            if (adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info) == S_OK && info.Budget > 0)
-                stats.vram = glm::clamp(static_cast<float>(static_cast<double>(info.CurrentUsage) /
-                                                           static_cast<double>(info.Budget) * 100.0),
-                                        0.0f, 100.0f);
-            adapter3->Release();
-        }
-        if (adapter)
-            adapter->Release();
-        factory->Release();
+    uint64_t vramUsedBytes = 0;
+    uint64_t vramTotalBytes = 0;
+    if (auto* graphics = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+        graphics && graphics->TryGetVramUsage(vramUsedBytes, vramTotalBytes) && vramTotalBytes > 0)
+    {
+        stats.vram = glm::clamp(static_cast<float>(static_cast<double>(vramUsedBytes) /
+                                                   static_cast<double>(vramTotalBytes) * 100.0),
+                                0.0f, 100.0f);
+    }
+    else if (runtimeStats.hasVram && runtimeStats.vramTotalBytes > 0)
+    {
+        stats.vram = glm::clamp(static_cast<float>(static_cast<double>(runtimeStats.vramUsedBytes) /
+                                                   static_cast<double>(runtimeStats.vramTotalBytes) * 100.0),
+                                0.0f, 100.0f);
     }
 
     if (!hasSmoothed)
@@ -512,6 +504,12 @@ void SampleState::OnEnter()
 
     srand(static_cast<unsigned int>(time(nullptr)));
 
+    const auto config = GetConfig();
+    if (config.headlessMode || config.graphicsBackend == GraphicsBackend::Null)
+    {
+        m_S1EntityCount = 10;
+    }
+
     // Load initial scenario (Scene 1)
     LoadScenario(1);
 }
@@ -534,6 +532,19 @@ void SampleState::ResetDefaultPlayerBindings()
 
 void SampleState::OnUpdate(float dt)
 {
+    const auto config = GetConfig();
+    if (config.headlessMode || config.graphicsBackend == GraphicsBackend::Null)
+    {
+        static int headlessFrameCount = 0;
+        headlessFrameCount++;
+        if (headlessFrameCount > 10)
+        {
+            LOGGER_INFO("SampleState") << "Headless execution limit reached (10 frames). Stopping engine loop.";
+            ServiceLocator::Instance().Require<RuntimeCore>().GetEngineLoop().Stop();
+            return;
+        }
+    }
+
     // Process deferred scenario switch (set by DrawGUI in OnRender previous frame)
     if (m_PendingScenario >= 0)
     {
@@ -1311,6 +1322,12 @@ void SampleState::OnUpdate(float dt)
 
 void SampleState::OnRender()
 {
+    const auto config = GetConfig();
+    if (config.headlessMode || config.graphicsBackend == GraphicsBackend::Null)
+    {
+        return;
+    }
+
     OnRenderDebug();
 #ifdef ENABLE_EDITOR
     if (m_EditorImGuiLayer && !m_EditorSystemEnabled)
@@ -1422,7 +1439,7 @@ void SampleState::OnRenderDebug()
                     auto* graphics = Resolve<IGraphicsContext>();
                     auto* io = Resolve<IOHandler>();
 
-                    if (physicsSystem && resources && graphics && io)
+                    if (physicsSystem && resources && graphics && io && graphics->SupportsLegacyRenderPipeline())
                     {
                         auto* window = io->GetMonitorManager().GetWindow();
                         auto shader = resources->GetShader("debug_line");

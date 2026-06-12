@@ -84,8 +84,10 @@ public:
                                    bool startPaused = false) override;
     std::shared_ptr<IAudioSource> AddSoundSourceFromFile(const std::string& filename) override;
     void StopAllSounds() override;
+    IAudioListener* GetListener() override;
 
 private:
+    std::unique_ptr<IAudioListener> m_Listener;
     std::vector<std::shared_ptr<NullSound>> m_ActiveSounds;
     float m_GlobalVolume = 100.0f;
 };

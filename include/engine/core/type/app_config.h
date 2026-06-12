@@ -13,6 +13,26 @@
 #include <string>
 #include <utility>
 
+#ifndef AXIS_HAS_OPENGL_BACKEND
+#define AXIS_HAS_OPENGL_BACKEND 1
+#endif
+#ifndef AXIS_HAS_VULKAN_BACKEND
+#define AXIS_HAS_VULKAN_BACKEND 0
+#endif
+#ifndef AXIS_HAS_DIRECTX_BACKEND
+#define AXIS_HAS_DIRECTX_BACKEND 0
+#endif
+#ifndef AXIS_HAS_NULL_GRAPHICS_BACKEND
+#define AXIS_HAS_NULL_GRAPHICS_BACKEND 1
+#endif
+
+#ifndef AXIS_HAS_BULLET_BACKEND
+#define AXIS_HAS_BULLET_BACKEND 1
+#endif
+#ifndef AXIS_HAS_PHYSX_BACKEND
+#define AXIS_HAS_PHYSX_BACKEND 0
+#endif
+
 #ifndef AXIS_HAS_IRRKLANG_BACKEND
 #define AXIS_HAS_IRRKLANG_BACKEND 1
 #endif
@@ -33,7 +53,17 @@ struct WindowConfig
 
 struct GraphicsConfig
 {
+#if AXIS_HAS_OPENGL_BACKEND
     GraphicsBackend graphicsBackend = GraphicsBackend::OpenGL;
+#elif AXIS_HAS_VULKAN_BACKEND
+    GraphicsBackend graphicsBackend = GraphicsBackend::Vulkan;
+#elif AXIS_HAS_DIRECTX_BACKEND
+    GraphicsBackend graphicsBackend = GraphicsBackend::DirectX;
+#elif AXIS_HAS_NULL_GRAPHICS_BACKEND
+    GraphicsBackend graphicsBackend = GraphicsBackend::Null;
+#else
+    GraphicsBackend graphicsBackend = GraphicsBackend::Null;
+#endif
     int msaaSamples = 4;
     int antialiasing = 1;
     float maxAnisotropy = 16.0f;
@@ -73,7 +103,13 @@ struct ShadowConfig
 
 struct PhysicsConfig
 {
+#if AXIS_HAS_BULLET_BACKEND
     PhysicsBackend physicsBackend = PhysicsBackend::Bullet;
+#elif AXIS_HAS_PHYSX_BACKEND
+    PhysicsBackend physicsBackend = PhysicsBackend::PhysX;
+#else
+    PhysicsBackend physicsBackend = PhysicsBackend::Bullet;
+#endif
     PhysicsMode physicsMode = PhysicsMode::Balanced;
     float gravity[3] = {0.0f, -9.81f, 0.0f};
     int maxSubSteps = 10;

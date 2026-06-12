@@ -866,7 +866,7 @@ void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, cons
 
     if (!comp.skybox)
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer skybox not found: " << skyboxName;
-    if (comp.shader.expired())
+    if (!res.IsNativeRhiMode() && comp.shader.expired())
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer shader not found: " << shaderName;
     scene.SetActiveSkybox(entity);
 }

@@ -55,6 +55,12 @@ void GeometrySystem::Initialize()
         return;
     }
 
+    if (!m_GraphicsContext->SupportsLegacyRenderPipeline())
+    {
+        LOGGER_INFO("GeometrySystem") << "Legacy render pipeline dormant; skipping GeometrySystem initialization.";
+        return;
+    }
+
     auto& context = *m_GraphicsContext;
     auto* resources = sl.Resolve<ResourceManager>();
     if (!resources)

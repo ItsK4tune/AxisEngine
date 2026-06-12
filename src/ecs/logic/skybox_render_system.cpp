@@ -68,7 +68,7 @@ std::vector<entt::id_type> SkyboxRenderSystem::GetWriteComponents() const
 
 void SkyboxRenderSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
 {
-    if (!m_Enabled || !m_Context)
+    if (!m_Enabled || !m_Context || !m_Context->SupportsLegacyRenderPipeline())
         return;
 
     entt::entity camEntity = scene.GetActiveCamera();
@@ -83,7 +83,7 @@ void SkyboxRenderSystem::RenderAlphaPass(Scene& scene, int width, int height, fl
 void SkyboxRenderSystem::RenderAlphaPassWithCamera(Scene& scene, const glm::mat4& view, const glm::mat4& proj,
                                                    int width, int height, uint32_t targetFBO)
 {
-    if (!m_Enabled || !m_Context)
+    if (!m_Enabled || !m_Context || !m_Context->SupportsLegacyRenderPipeline())
         return;
 
     auto& rsm = m_Context->GetRenderStateManager();

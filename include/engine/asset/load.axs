@@ -2,165 +2,165 @@ axis_scene:
   Resources:
     Shader:
       Name: forward_pbr_lit
-      Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
-      Fragment: include/engine/asset/shaders/forward_pbr_lit.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_pbr_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_pbr_lit.fs
     Shader:
       Name: forward_pbr_lit_shadow
-      Vertex: include/engine/asset/shaders/forward_pbr_lit_shadow.vs
-      Fragment: include/engine/asset/shaders/forward_pbr_lit_shadow.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_pbr_lit_shadow.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_pbr_lit_shadow.fs
     Shader:
       Name: forward_unlit
-      Vertex: include/engine/asset/shaders/forward_unlit.vs
-      Fragment: include/engine/asset/shaders/forward_unlit.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_unlit.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_unlit.fs
     Shader:
       Name: uiShader
-      Vertex: include/engine/asset/shaders/ui.vs
-      Fragment: include/engine/asset/shaders/ui.fs
+      Vertex: include/engine/asset/shaders/opengl/ui.vs
+      Fragment: include/engine/asset/shaders/opengl/ui.fs
     Shader:
       Name: textShader
-      Vertex: include/engine/asset/shaders/text.vs
-      Fragment: include/engine/asset/shaders/text.fs
+      Vertex: include/engine/asset/shaders/opengl/text.vs
+      Fragment: include/engine/asset/shaders/opengl/text.fs
     Shader:
       Name: particle
-      Vertex: include/engine/asset/shaders/forward_particle.vs
-      Fragment: include/engine/asset/shaders/forward_particle.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_particle.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_particle.fs
     Shader:
       Name: videomapShader
-      Vertex: include/engine/asset/shaders/videomap.vs
-      Fragment: include/engine/asset/shaders/videomap.fs
+      Vertex: include/engine/asset/shaders/opengl/videomap.vs
+      Fragment: include/engine/asset/shaders/opengl/videomap.fs
     Shader:
       Name: skyboxShader
-      Vertex: include/engine/asset/shaders/skybox.vs
-      Fragment: include/engine/asset/shaders/skybox.fs
+      Vertex: include/engine/asset/shaders/opengl/skybox.vs
+      Fragment: include/engine/asset/shaders/opengl/skybox.fs
     Shader:
       Name: deferred_lit
-      Vertex: include/engine/asset/shaders/deferred_lit.vs
-      Fragment: include/engine/asset/shaders/deferred_lit.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/deferred_lit.fs
     Shader:
       Name: deferred_lit_shadow
-      Vertex: include/engine/asset/shaders/deferred_lit.vs
-      Fragment: include/engine/asset/shaders/deferred_lit_shadow.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/deferred_lit_shadow.fs
     Shader:
       Name: deferred_unlit
-      Vertex: include/engine/asset/shaders/deferred_unlit.vs
-      Fragment: include/engine/asset/shaders/deferred_unlit.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_unlit.vs
+      Fragment: include/engine/asset/shaders/opengl/deferred_unlit.fs
     Shader:
       Name: deferred_decal
-      Vertex: include/engine/asset/shaders/deferred_decal.vs
-      Fragment: include/engine/asset/shaders/deferred_decal.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_decal.vs
+      Fragment: include/engine/asset/shaders/opengl/deferred_decal.fs
     Shader:
       Name: forward_decal
-      Vertex: include/engine/asset/shaders/forward_decal.vs
-      Fragment: include/engine/asset/shaders/forward_decal.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_decal.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_decal.fs
     Shader:
       Name: deferred_light
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/deferred_light.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/deferred_light.fs
     Shader:
       Name: shadow_depth
-      Vertex: include/engine/asset/shaders/shadow_depth.vs
-      Fragment: include/engine/asset/shaders/shadow_depth.fs
+      Vertex: include/engine/asset/shaders/opengl/shadow_depth.vs
+      Fragment: include/engine/asset/shaders/opengl/shadow_depth.fs
     Shader:
       Name: shadow_point
-      Vertex: include/engine/asset/shaders/shadow_point.vs
-      Fragment: include/engine/asset/shaders/shadow_point.fs
-      Geometry: include/engine/asset/shaders/shadow_point.gs
+      Vertex: include/engine/asset/shaders/opengl/shadow_point.vs
+      Fragment: include/engine/asset/shaders/opengl/shadow_point.fs
+      Geometry: include/engine/asset/shaders/opengl/shadow_point.gs
     Shader:
       Name: shadow_spot
-      Vertex: include/engine/asset/shaders/shadow_spot.vs
-      Fragment: include/engine/asset/shaders/shadow_spot.fs
+      Vertex: include/engine/asset/shaders/opengl/shadow_spot.vs
+      Fragment: include/engine/asset/shaders/opengl/shadow_spot.fs
     Shader:
       Name: fxaa
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/fxaa.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/fxaa.fs
     Shader:
       Name: taa
-      Vertex: include/engine/asset/shaders/taa.vs
-      Fragment: include/engine/asset/shaders/taa.fs
+      Vertex: include/engine/asset/shaders/opengl/taa.vs
+      Fragment: include/engine/asset/shaders/opengl/taa.fs
     Shader:
       Name: bloom_down
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/bloom_downsample.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/bloom_downsample.fs
     Shader:
       Name: bloom_up
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/bloom_upsample.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/bloom_upsample.fs
     Shader:
       Name: hdr_final
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/hdr_final.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/hdr_final.fs
     Shader:
       Name: debug_text
-      Vertex: include/engine/asset/shaders/text.vs
-      Fragment: include/engine/asset/shaders/text.fs
+      Vertex: include/engine/asset/shaders/opengl/text.vs
+      Fragment: include/engine/asset/shaders/opengl/text.fs
     Shader:
       Name: occlusion
-      Vertex: include/engine/asset/shaders/occlusion_query.vs
-      Fragment: include/engine/asset/shaders/occlusion_query.fs
+      Vertex: include/engine/asset/shaders/opengl/occlusion_query.vs
+      Fragment: include/engine/asset/shaders/opengl/occlusion_query.fs
     Shader:
       Name: terrain
-      Vertex: include/engine/asset/shaders/forward_terrain.vs
-      Fragment: include/engine/asset/shaders/forward_terrain.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_terrain.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_terrain.fs
     Shader:
       Name: terrain_gbuffer
-      Vertex: include/engine/asset/shaders/deferred_terrain.vs
-      Fragment: include/engine/asset/shaders/deferred_terrain.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_terrain.vs
+      Fragment: include/engine/asset/shaders/opengl/deferred_terrain.fs
     Shader:
       Name: debug_line
-      Vertex: include/engine/asset/shaders/debug_line.vs
-      Fragment: include/engine/asset/shaders/debug_line.fs
+      Vertex: include/engine/asset/shaders/opengl/debug_line.vs
+      Fragment: include/engine/asset/shaders/opengl/debug_line.fs
     Shader:
       Name: vignette
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/vignette.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/vignette.fs
     Shader:
       Name: glitch
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/glitch.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/glitch.fs
     Shader:
       Name: film_grain
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/film_grain.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/film_grain.fs
     Shader:
       Name: grayscale
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/grayscale.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/grayscale.fs
     Shader:
       Name: dither
-      Vertex: include/engine/asset/shaders/fxaa.vs
-      Fragment: include/engine/asset/shaders/dither.fs
+      Vertex: include/engine/asset/shaders/opengl/fxaa.vs
+      Fragment: include/engine/asset/shaders/opengl/dither.fs
     Shader:
       Name: error_forward
-      Vertex: include/engine/asset/shaders/forward_unlit.vs
-      Fragment: include/engine/asset/shaders/error_forward.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_unlit.vs
+      Fragment: include/engine/asset/shaders/opengl/error_forward.fs
     Shader:
       Name: error_deferred
-      Vertex: include/engine/asset/shaders/deferred_unlit.vs
-      Fragment: include/engine/asset/shaders/error_deferred.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_unlit.vs
+      Fragment: include/engine/asset/shaders/opengl/error_deferred.fs
     Shader:
       Name: forward_reflect
-      Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
-      Fragment: include/engine/asset/shaders/forward_reflect.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_pbr_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_reflect.fs
     Shader:
       Name: forward_reflect_shadow
-      Vertex: include/engine/asset/shaders/forward_pbr_lit_shadow.vs
-      Fragment: include/engine/asset/shaders/forward_reflect_shadow.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_pbr_lit_shadow.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_reflect_shadow.fs
     Shader:
       Name: deferred_reflect
-      Vertex: include/engine/asset/shaders/deferred_lit.vs
-      Fragment: include/engine/asset/shaders/deferred_reflect.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/deferred_reflect.fs
     Shader:
       Name: forward_transparent
-      Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
-      Fragment: include/engine/asset/shaders/transparent.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_pbr_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/transparent.fs
     Shader:
       Name: deferred_transparent
-      Vertex: include/engine/asset/shaders/deferred_lit.vs
-      Fragment: include/engine/asset/shaders/transparent.fs
+      Vertex: include/engine/asset/shaders/opengl/deferred_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/transparent.fs
     Shader:
       Name: forward_pbr_env
-      Vertex: include/engine/asset/shaders/forward_pbr_lit.vs
-      Fragment: include/engine/asset/shaders/forward_pbr_env.fs
+      Vertex: include/engine/asset/shaders/opengl/forward_pbr_lit.vs
+      Fragment: include/engine/asset/shaders/opengl/forward_pbr_env.fs
     Texture:
       Name: error_texture
       Path: include/engine/asset/textures/error_checkerboard.tga

@@ -16,9 +16,18 @@
       "features": [
         "docking-experimental",
         "glfw-binding",
-        "opengl3-binding"
+        "opengl3-binding",
+        "vulkan-binding"
       ]
     },
+    {
+      "name": "imgui",
+      "features": [
+        "dx12-binding"
+      ],
+      "platform": "windows"
+    },
+    "physx",
     "stb"
   ],
   "features": {

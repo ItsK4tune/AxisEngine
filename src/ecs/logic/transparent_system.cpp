@@ -36,7 +36,7 @@ void TransparentSystem::RenderAlphaPass(Scene& scene, int width, int height, flo
         return;
 
     auto* context = sl.Resolve<IGraphicsContext>();
-    if (!context)
+    if (!context || !context->SupportsLegacyRenderPipeline())
         return;
 
     auto& rsm = context->GetRenderStateManager();
@@ -83,7 +83,7 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
         return;
 
     auto* context = sl.Resolve<IGraphicsContext>();
-    if (!context)
+    if (!context || !context->SupportsLegacyRenderPipeline())
         return;
 
     auto& rsm = context->GetRenderStateManager();

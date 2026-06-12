@@ -15,4 +15,8 @@ public:
 
     virtual bool IsResultAvailable(uint32_t queryId) = 0;
     virtual uint32_t GetQueryResult(uint32_t queryId) = 0;
+    virtual uint64_t GetQueryResult64(uint32_t queryId)
+    {
+        return GetQueryResult(queryId);
+    }
 };

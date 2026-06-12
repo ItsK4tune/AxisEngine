@@ -2,7 +2,6 @@
 #include <core/logic/service_locator.h>
 #include <ecs/unit/core_components.h>
 #include <physics/interface/i_physics_world.h>
-#include <physics/strategy/bullet/bullet_glm_helpers.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <scene/logic/scene.h>

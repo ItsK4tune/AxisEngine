@@ -27,7 +27,7 @@ void PlanarReflectionSystem::Initialize()
 
 void PlanarReflectionSystem::Shutdown()
 {
-    if (!m_Context)
+    if (!m_Context || !m_Context->SupportsLegacyRenderPipeline())
         return;
 
     auto& rtm = m_Context->GetRenderTargetManager();
@@ -51,7 +51,7 @@ void PlanarReflectionSystem::Shutdown()
 
 void PlanarReflectionSystem::Render(Scene& scene)
 {
-    if (!m_Enabled || !m_Context || !m_RenderService)
+    if (!m_Enabled || !m_Context || !m_Context->SupportsLegacyRenderPipeline() || !m_RenderService)
         return;
 
     auto view = scene.View<PlanarReflectionComponent, PositionComponent, RotationComponent>();

@@ -23,16 +23,18 @@ jobs:
           - os: ubuntu-latest
             preset: linux
             audio-backend: Null
+            physics-backend: Bullet
             vcpkg-features: ""
             install-cmd: |
               sudo apt-get update
-              sudo apt-get install -y ninja-build libglfw3-dev libglm-dev libentt-dev libstb-dev libglad-dev libbullet-dev libfreetype-dev libassimp-dev libenet-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev libopenal-dev
+              sudo apt-get install -y ninja-build libglfw3-dev libglm-dev libbullet-dev libfreetype-dev libassimp-dev libenet-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev libopenal-dev
           - os: macos-latest
             preset: macos
             audio-backend: Null
+            physics-backend: Bullet
             vcpkg-features: ""
             install-cmd: |
-              packages=(ninja glfw glm entt stb glad bullet freetype assimp enet ffmpeg)
+              packages=(ninja glfw glm bullet freetype assimp enet ffmpeg)
               missing=()
               for package in "${packages[@]}"; do
                 if ! brew list --formula "$package" >/dev/null 2>&1; then
@@ -47,16 +49,25 @@ jobs:
           - os: windows-latest
             preset: windows
             audio-backend: Null
+            physics-backend: Bullet
             vcpkg-features: ""
             install-cmd: "" # Dependencies are resolved from vcpkg.json.
           - os: windows-latest
             preset: windows
+            audio-backend: Null
+            physics-backend: PhysX
+            vcpkg-features: ""
+            install-cmd: ""
+          - os: windows-latest
+            preset: windows
             audio-backend: FMOD
+            physics-backend: Bullet
             vcpkg-features: fmod
             install-cmd: "" # Requires FMOD_ROOT_DIR or FMOD_SDK_URL.
           - os: windows-latest
             preset: windows
             audio-backend: IrrKlang
+            physics-backend: Bullet
             vcpkg-features: irrklang
             install-cmd: "" # Dependencies are resolved from vcpkg.json.
 
@@ -69,6 +80,28 @@ jobs:
       - name: Install System Dependencies
         if: matrix.install-cmd != ''
         run: ${{ matrix.install-cmd }}
+
+      - name: Install Header/Loader Dependencies
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          vcpkg_root="${RUNNER_TEMP}/vcpkg-small-deps"
+          git clone --depth 1 https://github.com/microsoft/vcpkg "${vcpkg_root}"
+          "${vcpkg_root}/bootstrap-vcpkg.sh" -disableMetrics
+
+          triplet="x64-linux"
+          if [ "${RUNNER_OS}" = "macOS" ]; then
+            if [ "$(uname -m)" = "arm64" ]; then
+              triplet="arm64-osx"
+            else
+              triplet="x64-osx"
+            fi
+          fi
+
+          "${vcpkg_root}/vcpkg" install entt stb glad --triplet "${triplet}"
+          echo "AXIS_SMALL_DEPS_ROOT=${vcpkg_root}/installed/${triplet}" >> "${GITHUB_ENV}"
 
       - name: Setup MSVC Developer Command Prompt
         if: matrix.os == 'windows-latest'
@@ -178,7 +211,13 @@ jobs:
 
       - name: Configure CMake
         if: matrix.os != 'windows-latest' && (matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true')
-        run: cmake --preset=ci-${{ matrix.preset }} -DAXIS_AUDIO_BACKEND=${{ matrix.audio-backend }}
+        run: >
+          cmake --preset=ci-${{ matrix.preset }}
+          -DAXIS_AUDIO_BACKEND=${{ matrix.audio-backend }}
+          -DAXIS_PHYSICS_BACKEND=${{ matrix.physics-backend }}
+          -DEnTT_ROOT_DIR="${AXIS_SMALL_DEPS_ROOT}"
+          -DSTB_ROOT_DIR="${AXIS_SMALL_DEPS_ROOT}"
+          -DGlad_ROOT_DIR="${AXIS_SMALL_DEPS_ROOT}"
 
       - name: Configure CMake
         if: matrix.os == 'windows-latest' && (matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true')
@@ -187,6 +226,7 @@ jobs:
           $cmakeArgs = @(
             "--preset=ci-${{ matrix.preset }}",
             "-DAXIS_AUDIO_BACKEND=${{ matrix.audio-backend }}",
+            "-DAXIS_PHYSICS_BACKEND=${{ matrix.physics-backend }}",
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake",
             "-DVCPKG_OVERLAY_PORTS=${{ github.workspace }}\cmake\vcpkg-overlay-ports",
             "-DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}\cmake\vcpkg-triplets",

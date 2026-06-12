@@ -57,6 +57,23 @@ public:
         glTexParameterfv(GLTranslator::ToGL(target), GLTranslator::ToGL(pname), params);
     }
 
+    void TexParameteriv(TextureType target, TextureParameter pname, const int* params) override
+    {
+        if (pname == TextureParameter::SwizzleRGBA)
+        {
+            GLint glParams[4] = {
+                static_cast<GLint>(GLTranslator::ToGL(static_cast<TextureSwizzle>(params[0]))),
+                static_cast<GLint>(GLTranslator::ToGL(static_cast<TextureSwizzle>(params[1]))),
+                static_cast<GLint>(GLTranslator::ToGL(static_cast<TextureSwizzle>(params[2]))),
+                static_cast<GLint>(GLTranslator::ToGL(static_cast<TextureSwizzle>(params[3]))),
+            };
+            glTexParameteriv(GLTranslator::ToGL(target), GLTranslator::ToGL(pname), glParams);
+            return;
+        }
+
+        glTexParameteriv(GLTranslator::ToGL(target), GLTranslator::ToGL(pname), params);
+    }
+
     void GenerateMipmap(TextureType target) override
     {
         glGenerateMipmap(GLTranslator::ToGL(target));
@@ -98,6 +115,11 @@ public:
     void PixelStorei(PixelStoreParam pname, int param) override
     {
         glPixelStorei(GLTranslator::ToGL(pname), param);
+    }
+
+    void* GetNativeTextureHandle(unsigned int texture) const override
+    {
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(texture));
     }
 
     const char* GetBackendName() const override

@@ -1,13 +1,16 @@
 #pragma once
 
+#include <core/type/graphics_backend.h>
 #include <platform/interface/i_window.h>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <string>
+#include <vector>
+
+struct GLFWwindow;
 
 class GLFWWindow : public IWindow
 {
 public:
-    GLFWWindow();
+    explicit GLFWWindow(GraphicsBackend backend = GraphicsBackend::OpenGL);
     ~GLFWWindow() override;
 
     bool Initialize(int width, int height, const std::string& title, int msaaSamples = 0) override;
@@ -64,6 +67,9 @@ public:
     }
 
 private:
+    bool UsesOpenGLContext() const;
+
+    GraphicsBackend m_Backend = GraphicsBackend::OpenGL;
     GLFWwindow* m_Window = nullptr;
     int m_Width = 0;
     int m_Height = 0;
@@ -79,6 +85,4 @@ private:
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-
-    int MapInputKeyToGLFW(int key);
 };

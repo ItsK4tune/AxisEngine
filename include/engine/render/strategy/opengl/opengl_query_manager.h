@@ -13,4 +13,5 @@ public:
 
     bool IsResultAvailable(uint32_t queryId) override;
     uint32_t GetQueryResult(uint32_t queryId) override;
+    uint64_t GetQueryResult64(uint32_t queryId) override;
 };

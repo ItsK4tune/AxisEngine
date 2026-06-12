@@ -9,6 +9,8 @@
 #include <resource/unit/model.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <render/interface/i_graphics_context.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/logic/assimp_glm_helpers.h>
 #include <resource/logic/stb_image_loader.h>
@@ -554,6 +556,15 @@ void Model::UploadToGPU()
 {
     if (m_ReadyToRender)
         return;
+
+    auto* graphicsContext = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (graphicsContext && !graphicsContext->SupportsLegacyRenderPipeline())
+    {
+        for (auto& mesh : meshes)
+            mesh.setupMesh();
+        m_ReadyToRender = true;
+        return;
+    }
 
     auto& tm = Mesh::GetTextureManager();
 

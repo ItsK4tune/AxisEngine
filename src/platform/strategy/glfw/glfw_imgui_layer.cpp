@@ -3,11 +3,16 @@
 #ifdef ENABLE_EDITOR
 
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/rhi/i_render_backend.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
+#if AXIS_HAS_OPENGL_BACKEND
 #include <imgui_impl_opengl3.h>
+#endif
 
-void ImGuiLayer::Initialize(GLFWwindow* window)
+void ImGuiLayer::Initialize(void* nativeWindow)
 {
     if (m_Initialized)
         return;
@@ -70,18 +75,41 @@ void ImGuiLayer::Initialize(GLFWwindow* window)
     colors[ImGuiCol_Text] = ImVec4(0.90f, 0.90f, 0.92f, 1.00f);
     colors[ImGuiCol_TextDisabled] = ImVec4(0.45f, 0.45f, 0.50f, 1.00f);
 
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
+#if AXIS_HAS_OPENGL_BACKEND
+    ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(nativeWindow), true);
     ImGui_ImplOpenGL3_Init("#version 460");
+#else
+    ImGui_ImplGlfw_InitForOther(static_cast<GLFWwindow*>(nativeWindow), true);
+    auto& sl = ServiceLocator::Instance();
+    if (auto* graphicsCtx = sl.Resolve<IGraphicsContext>())
+    {
+        if (auto* backend = graphicsCtx->GetRenderBackend())
+        {
+            backend->ImGuiInit(nativeWindow);
+        }
+    }
+#endif
 
     m_Initialized = true;
-    LOGGER_INFO("ImGuiLayer") << "ImGui initialized (docking branch, OpenGL3 backend).";
+    LOGGER_INFO("ImGuiLayer") << "ImGui initialized (docking branch).";
 }
 
 void ImGuiLayer::BeginFrame()
 {
     if (!m_Initialized)
         return;
+#if AXIS_HAS_OPENGL_BACKEND
     ImGui_ImplOpenGL3_NewFrame();
+#else
+    auto& sl = ServiceLocator::Instance();
+    if (auto* graphicsCtx = sl.Resolve<IGraphicsContext>())
+    {
+        if (auto* backend = graphicsCtx->GetRenderBackend())
+        {
+            backend->ImGuiNewFrame();
+        }
+    }
+#endif
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
@@ -91,14 +119,36 @@ void ImGuiLayer::EndFrame()
     if (!m_Initialized)
         return;
     ImGui::Render();
+#if AXIS_HAS_OPENGL_BACKEND
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+#else
+    auto& sl = ServiceLocator::Instance();
+    if (auto* graphicsCtx = sl.Resolve<IGraphicsContext>())
+    {
+        if (auto* backend = graphicsCtx->GetRenderBackend())
+        {
+            backend->ImGuiRender();
+        }
+    }
+#endif
 }
 
 void ImGuiLayer::Shutdown()
 {
     if (!m_Initialized)
         return;
+#if AXIS_HAS_OPENGL_BACKEND
     ImGui_ImplOpenGL3_Shutdown();
+#else
+    auto& sl = ServiceLocator::Instance();
+    if (auto* graphicsCtx = sl.Resolve<IGraphicsContext>())
+    {
+        if (auto* backend = graphicsCtx->GetRenderBackend())
+        {
+            backend->ImGuiShutdown();
+        }
+    }
+#endif
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     m_Initialized = false;

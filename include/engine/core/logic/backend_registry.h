@@ -14,6 +14,9 @@
 #ifndef AXIS_HAS_DIRECTX_BACKEND
 #define AXIS_HAS_DIRECTX_BACKEND 0
 #endif
+#ifndef AXIS_HAS_NULL_GRAPHICS_BACKEND
+#define AXIS_HAS_NULL_GRAPHICS_BACKEND 1
+#endif
 #ifndef AXIS_HAS_BULLET_BACKEND
 #define AXIS_HAS_BULLET_BACKEND 1
 #endif
@@ -45,6 +48,8 @@ constexpr std::string_view ToString(GraphicsBackend backend)
             return "Vulkan";
         case GraphicsBackend::DirectX:
             return "DirectX";
+        case GraphicsBackend::Null:
+            return "Null";
     }
     return "Unknown Graphics Backend";
 }
@@ -87,6 +92,8 @@ constexpr bool IsSupported(GraphicsBackend backend)
             return AXIS_HAS_VULKAN_BACKEND != 0;
         case GraphicsBackend::DirectX:
             return AXIS_HAS_DIRECTX_BACKEND != 0;
+        case GraphicsBackend::Null:
+            return AXIS_HAS_NULL_GRAPHICS_BACKEND != 0;
     }
     return false;
 }

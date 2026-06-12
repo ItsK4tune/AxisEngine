@@ -118,6 +118,18 @@ void RenderServiceImpl::Initialize()
     m_Context = context_ptr;
     m_ConfigManager = configMgr_ptr;
 
+    if (!m_Context)
+    {
+        LOGGER_INFO("RenderSystem") << "Initialized in HEADLESS mode (Rendering Services dormant)";
+        return;
+    }
+
+    if (!m_Context->SupportsLegacyRenderPipeline())
+    {
+        LOGGER_INFO("RenderSystem") << "Native RHI backend active; legacy OpenGL render service is dormant.";
+        return;
+    }
+
     auto config = m_ConfigManager->GetConfig();
     auto* shaderLib = sl.Resolve<ResourceManager>();
 
@@ -130,12 +142,6 @@ void RenderServiceImpl::Initialize()
     this->SetFilterLayerMask(config.filterLayerMask);
     this->SetFaceCulling(config.cullFaceEnabled);
     this->SetDepthTest(config.depthTestEnabled);
-
-    if (!m_Context)
-    {
-        LOGGER_INFO("RenderSystem") << "Initialized in HEADLESS mode (Rendering Services dormant)";
-        return;
-    }
 
     auto& context = *m_Context;
     auto& shaderLibRef = *shaderLib;

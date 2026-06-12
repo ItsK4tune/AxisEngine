@@ -11,6 +11,8 @@
 
 #ifdef ENABLE_EDITOR
 
+struct GLFWwindow;
+
 #include <audio/logic/audio_service.h>
 #include <core/app/runtime_core.h>
 #include <core/logic/log_manager.h>
@@ -64,6 +66,11 @@ REGISTER_SYSTEM(EditorSystem)
 void EditorSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    if (sl.Require<ConfigManager>().IsHeadless())
+    {
+        m_Enabled = false;
+        return;
+    }
     auto* res = sl.Resolve<ResourceManager>();
     if (!res)
     {
@@ -146,6 +153,10 @@ void EditorSystem::Initialize()
 
 void EditorSystem::Shutdown()
 {
+    if (ServiceLocator::Instance().Require<ConfigManager>().IsHeadless())
+    {
+        return;
+    }
     m_ImGuiLayer.Shutdown();
 }
 

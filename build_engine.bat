@@ -259,8 +259,9 @@ echo           SELECT ENGINE BACKENDS
 echo ==========================================
 echo Graphics Backend:
 echo  1. OpenGL (Default)
-echo  2. Vulkan [Not implemented]
-echo  3. DirectX [Not implemented]
+echo  2. Vulkan
+echo  3. DirectX
+echo  4. Null
 echo ------------------------------------------
 echo  B. Back
 echo ==========================================
@@ -275,17 +276,18 @@ if /i "%graphics_choice%"=="b" (
     goto SELECT_EDITOR
 )
 
-echo %graphics_choice%| findstr /r "^[1-3]$" >nul
+echo %graphics_choice%| findstr /r "^[1-4]$" >nul
 if errorlevel 1 goto RETRY_BACKENDS
 
 set GRAPHICS_BACKEND=OpenGL
 if "%graphics_choice%"=="2" set GRAPHICS_BACKEND=Vulkan
 if "%graphics_choice%"=="3" set GRAPHICS_BACKEND=DirectX
+if "%graphics_choice%"=="4" set GRAPHICS_BACKEND=Null
 
 echo.
 echo Physics Backend:
 echo  1. Bullet (Default)
-echo  2. PhysX [Not implemented]
+echo  2. PhysX
 set "physics_choice="
 set /p physics_choice="Enter number (Default: 1): "
 

@@ -59,6 +59,10 @@ void TerrainSystem::Shutdown()
 
 void TerrainSystem::Update(Scene& scene, float dt)
 {
+    auto* gc = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (gc && !gc->SupportsLegacyRenderPipeline())
+        return;
+
     if (m_LastScene != &scene)
     {
         if (m_LastScene)
@@ -89,6 +93,12 @@ void TerrainSystem::Render(Scene& scene)
     if (!m_Enabled)
         return;
 
+    auto& sl = ServiceLocator::Instance();
+    auto* gc_ptr = sl.Resolve<IGraphicsContext>();
+    auto* resources = sl.Resolve<ResourceManager>();
+    if (!gc_ptr || !gc_ptr->SupportsLegacyRenderPipeline() || !resources)
+        return;
+
     entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
         return;
@@ -96,12 +106,6 @@ void TerrainSystem::Render(Scene& scene)
     auto& cam = scene.GetComponent<CameraComponent>(camEntity);
     auto* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
-
-    auto& sl = ServiceLocator::Instance();
-    auto* gc_ptr = sl.Resolve<IGraphicsContext>();
-    auto* resources = sl.Resolve<ResourceManager>();
-    if (!gc_ptr || !resources)
-        return;
 
     auto& gc = *gc_ptr;
     auto& dc = gc.GetDrawContext();
@@ -238,7 +242,7 @@ void TerrainSystem::RenderShadowPass(Scene& scene, Shader& shader, const Frustum
 
     auto& sl = ServiceLocator::Instance();
     auto* gc_ptr = sl.Resolve<IGraphicsContext>();
-    if (!gc_ptr)
+    if (!gc_ptr || !gc_ptr->SupportsLegacyRenderPipeline())
         return;
 
     auto& bm = gc_ptr->GetBufferManager();

@@ -51,6 +51,12 @@ void LightingSystem::Initialize()
         return;
     }
 
+    if (!m_GraphicsContext->SupportsLegacyRenderPipeline())
+    {
+        LOGGER_INFO("LightingSystem") << "Legacy render pipeline dormant; skipping LightingSystem initialization.";
+        return;
+    }
+
     auto* resources = sl.Resolve<ResourceManager>();
     if (!resources)
         return;

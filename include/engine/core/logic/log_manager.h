@@ -63,6 +63,7 @@ public:
     using LogCallback = std::function<void(LogType, const std::string&, const std::string&)>;
     void SetEditorLogCallback(LogCallback cb)
     {
+        std::lock_guard<std::mutex> lock(m_LogMutex);
         m_EditorLogCallback = std::move(cb);
     }
 #endif

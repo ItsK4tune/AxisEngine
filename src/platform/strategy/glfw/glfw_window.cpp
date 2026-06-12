@@ -1,19 +1,21 @@
-#include <platform/strategy/opengl/glfw_window.h>
+#include <platform/strategy/glfw/glfw_window.h>
+#include <core/logic/backend_factory_registry.h>
+#include <core/logic/config_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
-#include <platform/strategy/opengl/glfw_translator.h>
-#include <resource/logic/stb_image_loader.h>
 #include <core/logic/service_locator.h>
-#include <core/logic/config_manager.h>
+#include <platform/strategy/glfw/glfw_translator.h>
+#include <resource/logic/stb_image_loader.h>
+#include <memory>
+#include <GLFW/glfw3.h>
 
 #ifdef _WIN32
 #undef APIENTRY
-#include <windows.h>
 #include <asset/project/resource.h>
+#include <windows.h>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
-
 #endif
 
 namespace
@@ -106,13 +108,22 @@ bool ApplyEmbeddedWindowIcon(GLFWwindow* window)
 #endif
 }  // namespace
 
-GLFWWindow::GLFWWindow()
+GLFWWindow::GLFWWindow(GraphicsBackend backend) : m_Backend(backend)
 {
 }
 
 GLFWWindow::~GLFWWindow()
 {
     Shutdown();
+}
+
+bool GLFWWindow::UsesOpenGLContext() const
+{
+#if AXIS_HAS_OPENGL_BACKEND
+    return m_Backend == GraphicsBackend::OpenGL;
+#else
+    return false;
+#endif
 }
 
 bool GLFWWindow::Initialize(int width, int height, const std::string& title, int msaaSamples)
@@ -123,18 +134,25 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
         return false;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-#else
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-#endif
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    if (msaaSamples > 0)
+    glfwDefaultWindowHints();
+#if AXIS_HAS_OPENGL_BACKEND
+    if (UsesOpenGLContext())
     {
-        glfwWindowHint(GLFW_SAMPLES, msaaSamples);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+#else
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+#endif
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        if (msaaSamples > 0)
+            glfwWindowHint(GLFW_SAMPLES, msaaSamples);
+    }
+    else
+#endif
+    {
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     }
 
 #ifdef _WIN32
@@ -172,7 +190,10 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
     }
 #endif
 
-    glfwMakeContextCurrent(m_Window);
+#if AXIS_HAS_OPENGL_BACKEND
+    if (UsesOpenGLContext())
+        glfwMakeContextCurrent(m_Window);
+#endif
     glfwSetWindowUserPointer(m_Window, this);
 
     glfwSetFramebufferSizeCallback(m_Window, framebuffer_size_callback);
@@ -210,8 +231,12 @@ void GLFWWindow::SetIcon(int width, int height, unsigned char* pixels)
 
 void GLFWWindow::SetVsync(bool enabled)
 {
-    if (m_Window)
+#if AXIS_HAS_OPENGL_BACKEND
+    if (m_Window && UsesOpenGLContext())
         glfwSwapInterval(enabled ? 1 : 0);
+#else
+    (void)enabled;
+#endif
 }
 
 void GLFWWindow::Update()
@@ -242,7 +267,10 @@ void GLFWWindow::SetShouldClose(bool value)
 
 void GLFWWindow::SwapBuffers()
 {
-    glfwSwapBuffers(m_Window);
+#if AXIS_HAS_OPENGL_BACKEND
+    if (m_Window && UsesOpenGLContext())
+        glfwSwapBuffers(m_Window);
+#endif
 }
 
 void GLFWWindow::PollEvents()
@@ -254,6 +282,7 @@ int GLFWWindow::GetWidth() const
 {
     return m_Width;
 }
+
 int GLFWWindow::GetHeight() const
 {
     return m_Height;
@@ -267,22 +296,16 @@ void GLFWWindow::SetCursorMode(CursorMode mode)
     auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
     bool enableRaw = false;
     if (cm && cm->GetConfig().input.rawMouseInput && (mode == CursorMode::Locked || mode == CursorMode::LockedHidden))
-    {
         enableRaw = true;
-    }
 
     if (glfwRawMouseMotionSupported())
-    {
         glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, enableRaw ? GLFW_TRUE : GLFW_FALSE);
-    }
 }
 
 void GLFWWindow::SetAspectRatio(int numerator, int denominator)
 {
     if (m_Window)
-    {
         glfwSetWindowAspectRatio(m_Window, numerator, denominator);
-    }
 }
 
 void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, int monitorIndex, int refreshRate)
@@ -378,7 +401,6 @@ void GLFWWindow::SetWindowConfiguration(int width, int height, WindowMode mode, 
         m_Width = width;
         m_Height = height;
 
-        // Force a viewport update
         if (m_ResizeCallback)
             m_ResizeCallback(m_Width, m_Height);
 
@@ -505,34 +527,35 @@ void GLFWWindow::key_callback(GLFWwindow* window, int key, int scancode, int act
 {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self && self->m_KeyCallback)
-    {
         self->m_KeyCallback((int)GLFWTranslator::ToInputKey(key), scancode, action, mods);
-    }
 }
 
 void GLFWWindow::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self && self->m_MouseButtonCallback)
-    {
         self->m_MouseButtonCallback((int)GLFWTranslator::ToInputMouse(button), action, mods);
-    }
 }
 
 void GLFWWindow::cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self && self->m_CursorPosCallback)
-    {
         self->m_CursorPosCallback(xpos, ypos);
-    }
 }
 
 void GLFWWindow::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     auto self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (self && self->m_ScrollCallback)
-    {
         self->m_ScrollCallback(xoffset, yoffset);
-    }
 }
+
+namespace axis::backend
+{
+void RegisterGLFWPlatformBackendFactories()
+{
+    BackendFactoryRegistry::RegisterWindow(
+        [](const AppConfig& config) { return std::make_unique<GLFWWindow>(config.graphicsBackend); });
+}
+}  // namespace axis::backend

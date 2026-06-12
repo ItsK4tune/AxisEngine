@@ -30,9 +30,9 @@ void ReflectionProbeSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     auto* context = sl.Resolve<IGraphicsContext>();
-    if (!context)
+    if (!context || !context->SupportsLegacyRenderPipeline())
     {
-        LOGGER_WARN("ReflectionProbeSystem") << "Skipping full initialization (missing GraphicsContext)";
+        LOGGER_INFO("ReflectionProbeSystem") << "Skipping legacy initialization in native RHI mode.";
         return;
     }
 
@@ -48,7 +48,7 @@ void ReflectionProbeSystem::Shutdown()
 {
     auto& sl = ServiceLocator::Instance();
     auto* context = sl.Resolve<IGraphicsContext>();
-    if (context)
+    if (context && context->SupportsLegacyRenderPipeline())
     {
         auto& rtm = context->GetRenderTargetManager();
         rtm.DeleteFramebuffer(m_CaptureFBO);
@@ -62,6 +62,11 @@ void ReflectionProbeSystem::Update(Scene& scene, float dt)
 
 void ReflectionProbeSystem::RenderCapturePass(Scene& scene, int width, int height)
 {
+    auto& sl = ServiceLocator::Instance();
+    auto* context = sl.Resolve<IGraphicsContext>();
+    if (!context || !context->SupportsLegacyRenderPipeline())
+        return;
+
     auto view = scene.View<PositionComponent, ReflectionProbeComponent>();
     for (auto entity : view)
     {

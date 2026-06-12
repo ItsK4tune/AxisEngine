@@ -261,8 +261,31 @@ public:
                 return GL_TEXTURE_WRAP_R;
             case TextureParameter::BorderColor:
                 return GL_TEXTURE_BORDER_COLOR;
+            case TextureParameter::SwizzleRGBA:
+                return GL_TEXTURE_SWIZZLE_RGBA;
             default:
                 return GL_TEXTURE_MIN_FILTER;
+        }
+    }
+
+    static GLenum ToGL(TextureSwizzle swizzle)
+    {
+        switch (swizzle)
+        {
+            case TextureSwizzle::Red:
+                return GL_RED;
+            case TextureSwizzle::Green:
+                return GL_GREEN;
+            case TextureSwizzle::Blue:
+                return GL_BLUE;
+            case TextureSwizzle::Alpha:
+                return GL_ALPHA;
+            case TextureSwizzle::Zero:
+                return GL_ZERO;
+            case TextureSwizzle::One:
+                return GL_ONE;
+            default:
+                return GL_RED;
         }
     }
 

@@ -64,12 +64,13 @@ std::vector<std::string> ResourceManager::GetRegisteredLoaderTypes() const
 }
 
 void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager* textureManager,
-                                 IAudioEngine& audioEngine)
+                                 IAudioEngine& audioEngine, bool nativeRhiMode)
 {
     m_IsShutdown = false;
     if (m_ReloadListenerId == -1)
         SubscribeReloadEvents();
-    m_HeadlessMode = (shaderManager == nullptr && textureManager == nullptr);
+    m_NativeRhiMode = nativeRhiMode;
+    m_HeadlessMode = !m_NativeRhiMode && shaderManager == nullptr && textureManager == nullptr;
 
     if (shaderManager)
         m_ShaderManager = std::make_unique<ShaderManager>(*shaderManager);
@@ -98,6 +99,7 @@ void ResourceManager::InitializeHeadless()
     if (m_ReloadListenerId == -1)
         SubscribeReloadEvents();
     m_HeadlessMode = true;
+    m_NativeRhiMode = false;
     m_ModelManager = std::make_unique<ModelManager>(m_ModelInstanceManager);
     m_FragmentManager = std::make_unique<FragmentAssetManager>();
     m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);

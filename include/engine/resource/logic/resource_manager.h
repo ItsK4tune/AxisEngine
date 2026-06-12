@@ -33,7 +33,7 @@ public:
     ResourceManager();
     ~ResourceManager();
 
-    void Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine& audioEngine);
+    void Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine& audioEngine, bool nativeRhiMode = false);
     void InitializeHeadless();  // No GPU managers, no audio engine
     void InitializePostLoad();
 
@@ -122,6 +122,10 @@ public:
     void RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy);
     bool LoadUnified(const std::string& type, const std::string& path);
     std::vector<std::string> GetRegisteredLoaderTypes() const;
+    bool IsNativeRhiMode() const
+    {
+        return m_NativeRhiMode;
+    }
 
 private:
     void SubscribeReloadEvents();
@@ -149,6 +153,7 @@ private:
     std::vector<ResourceDefinition> m_ResourceDefinitions;
 
     bool m_HeadlessMode = false;
+    bool m_NativeRhiMode = false;
     bool m_StrictAssetLoading = false;
     int m_ReloadListenerId = -1;
     bool m_IsShutdown = false;

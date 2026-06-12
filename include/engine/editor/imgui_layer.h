@@ -2,12 +2,10 @@
 
 #ifdef ENABLE_EDITOR
 
-struct GLFWwindow;
-
 class ImGuiLayer
 {
 public:
-    void Initialize(GLFWwindow* window);
+    void Initialize(void* nativeWindow);
     void BeginFrame();
     void EndFrame();
     void Shutdown();

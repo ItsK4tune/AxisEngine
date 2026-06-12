@@ -30,6 +30,10 @@ public:
     {
         return m_Engine.get();
     }
+    IAudioDevice* GetDevice() const
+    {
+        return m_Engine.get();
+    }
     bool IsInitialized() const
     {
         return m_Engine != nullptr;

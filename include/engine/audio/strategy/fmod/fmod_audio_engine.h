@@ -40,7 +40,10 @@ public:
 
     void StopAllSounds() override;
 
+    IAudioListener* GetListener() override;
+
 private:
+    std::unique_ptr<IAudioListener> m_Listener;
     std::shared_ptr<ISound> PlaySource(FMODAudioSource& source, bool is3D, const glm::vec3& pos, bool loop,
                                        bool startPaused);
     std::shared_ptr<ISound> PlayOwnedSound(const std::string& filename, bool is3D, const glm::vec3& pos, bool loop,

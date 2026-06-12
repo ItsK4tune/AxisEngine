@@ -9,24 +9,15 @@ find_dependency(GLFW3)
 find_dependency(GLM)
 find_dependency(EnTT)
 find_dependency(STB)
-if(@ENABLE_EDITOR@)
-    find_dependency(ImGui)
-endif()
-if(@AXIS_HAS_BULLET_BACKEND@)
-    find_dependency(Bullet)
-endif()
+@AXIS_CONFIG_IMGUI_DEPENDENCY@
+@AXIS_CONFIG_BULLET_DEPENDENCY@
 find_dependency(Freetype)
-if(@AXIS_HAS_IRRKLANG_BACKEND@)
-    find_dependency(IrrKlang)
-endif()
-if(@AXIS_HAS_FMOD_BACKEND@)
-    find_dependency(FMOD)
-endif()
+@AXIS_CONFIG_IRRKLANG_DEPENDENCY@
+@AXIS_CONFIG_FMOD_DEPENDENCY@
 find_dependency(FFMPEG)
 find_dependency(Enet)
-if(@AXIS_HAS_OPENGL_BACKEND@)
-    find_dependency(Glad)
-endif()
+@AXIS_CONFIG_GLAD_DEPENDENCY@
+@AXIS_CONFIG_VULKAN_DEPENDENCY@
 list(POP_FRONT CMAKE_PREFIX_PATH)
 list(POP_FRONT CMAKE_MODULE_PATH)
 

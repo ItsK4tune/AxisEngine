@@ -76,6 +76,12 @@ void LogManager::Initialize(LogLevel level)
 
 void LogManager::Shutdown()
 {
+    {
+        std::lock_guard<std::mutex> lock(m_LogMutex);
+#ifdef ENABLE_EDITOR
+        m_EditorLogCallback = nullptr;
+#endif
+    }
     if (m_ConfigListenerId != -1)
     {
         if (auto* es = ServiceLocator::Instance().Resolve<EventManager>())

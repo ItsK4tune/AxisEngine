@@ -33,6 +33,12 @@ void ShadowSystem::Initialize()
         return;
     }
 
+    if (!context->SupportsLegacyRenderPipeline())
+    {
+        LOGGER_INFO("ShadowSystem") << "Legacy render pipeline dormant; skipping ShadowSystem initialization.";
+        return;
+    }
+
     auto config = configManager->GetConfig();
 
     m_ShadowRenderer.Initialize(*context, *resources);

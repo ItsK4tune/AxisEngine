@@ -1,5 +1,6 @@
 #include <ecs/logic/system_manager.h>
 #include <audio/interface/i_audio_engine.h>
+#include <audio/interface/i_audio_device.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/job_system.h>
@@ -19,13 +20,13 @@
 #include <ecs/logic/system_factory.h>
 #include <engine/platform/logic/io_handler.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/interface/i_query_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_shader_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
-#include <glad/glad.h>
 #include <algorithm>
 #include <chrono>
 #include <future>
@@ -62,48 +63,47 @@ ProfiledRenderPass GetPassForSystem(const std::string& name)
 class ScopedGpuFrameTimer
 {
 public:
-    ScopedGpuFrameTimer()
+    explicit ScopedGpuFrameTimer(IQueryManager* queryManager) : m_QueryManager(queryManager)
     {
-        if (!glGenQueries || !glBeginQuery || !glEndQuery || !glGetQueryObjectuiv || !glGetQueryObjectui64v)
+        if (!m_QueryManager)
             return;
 
         if (s_Queries[0] == 0)
         {
-            glGenQueries(2, s_Queries);
+            s_Queries[0] = m_QueryManager->GenQuery();
+            s_Queries[1] = m_QueryManager->GenQuery();
         }
 
         const int previous = 1 - s_CurrentIndex;
         if (s_Submitted[previous])
         {
-            GLuint available = GL_FALSE;
-            glGetQueryObjectuiv(s_Queries[previous], GL_QUERY_RESULT_AVAILABLE, &available);
-            if (available == GL_TRUE)
+            if (m_QueryManager->IsResultAvailable(s_Queries[previous]))
             {
-                GLuint64 elapsedNs = 0;
-                glGetQueryObjectui64v(s_Queries[previous], GL_QUERY_RESULT, &elapsedNs);
+                const uint64_t elapsedNs = m_QueryManager->GetQueryResult64(s_Queries[previous]);
                 RuntimeProfiler::Instance().SetGpuFrameTime(static_cast<float>(elapsedNs) / 1000000.0f);
                 s_Submitted[previous] = false;
             }
         }
 
-        glBeginQuery(GL_TIME_ELAPSED, s_Queries[s_CurrentIndex]);
+        m_QueryManager->BeginQuery(QueryType::TimeElapsed, s_Queries[s_CurrentIndex]);
         m_Active = true;
     }
 
     ~ScopedGpuFrameTimer()
     {
-        if (!m_Active)
+        if (!m_Active || !m_QueryManager)
             return;
 
-        glEndQuery(GL_TIME_ELAPSED);
+        m_QueryManager->EndQuery(QueryType::TimeElapsed);
         s_Submitted[s_CurrentIndex] = true;
         s_CurrentIndex = 1 - s_CurrentIndex;
     }
 
 private:
+    IQueryManager* m_QueryManager = nullptr;
     bool m_Active = false;
 
-    static inline GLuint s_Queries[2] = {0, 0};
+    static inline uint32_t s_Queries[2] = {0, 0};
     static inline bool s_Submitted[2] = {false, false};
     static inline int s_CurrentIndex = 0;
 };
@@ -219,8 +219,8 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
     if (sl.Has<IOHandler>())
         m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Input);
 
-    // Audio check: only available if IAudioEngine service is registered
-    if (sl.Has<IAudioEngine>())
+    // Audio check: only available if IAudioDevice service is registered
+    if (sl.Has<IAudioDevice>())
     {
         m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Audio);
     }
@@ -522,11 +522,13 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
     auto* graphicsContext = sl.Resolve<IGraphicsContext>();
     if (!graphicsContext)
         return;
+    if (!graphicsContext->SupportsLegacyRenderPipeline())
+        return;
 
     auto& profiler = RuntimeProfiler::Instance();
     profiler.BeginFrame();
     const auto frameStart = ProfileClock::now();
-    ScopedGpuFrameTimer gpuTimer;
+    ScopedGpuFrameTimer gpuTimer(&graphicsContext->GetQueryManager());
 
     // 1. Shadow Pass
     ProfilePass(ProfiledRenderPass::Shadow, [&]() { RenderShadows(scene, width, height, alpha); });
@@ -626,7 +628,7 @@ void SystemManager::RenderDebug(Scene& scene)
         if ((sys->GetCategory() & SystemCategory::EditorOverlay) != SystemCategory::None)
         {
             auto* context = ServiceLocator::Instance().Resolve<IGraphicsContext>();
-            if (context)
+            if (context && context->SupportsLegacyRenderPipeline())
             {
                 auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
                 if (io)

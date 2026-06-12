@@ -252,8 +252,8 @@ if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
     echo "          SELECT GRAPHICS BACKEND"
     echo "=========================================="
     echo " 1. OpenGL (Default)"
-    echo " 2. Vulkan [Not implemented]"
-    echo " 3. DirectX [Not implemented]"
+    echo " 2. Vulkan"
+    echo " 3. DirectX"
     echo "=========================================="
     read -p "Enter number (Default: 1): " GRAPHICS_CHOICE
     [ -z "$GRAPHICS_CHOICE" ] && GRAPHICS_CHOICE=1
@@ -273,7 +273,7 @@ if [ -z "$AXIS_PHYSICS_BACKEND" ]; then
     echo "          SELECT PHYSICS BACKEND"
     echo "=========================================="
     echo " 1. Bullet (Default)"
-    echo " 2. PhysX [Not implemented]"
+    echo " 2. PhysX"
     echo "=========================================="
     read -p "Enter number (Default: 1): " PHYSICS_CHOICE
     [ -z "$PHYSICS_CHOICE" ] && PHYSICS_CHOICE=1

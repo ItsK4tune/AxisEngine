@@ -13,7 +13,7 @@ public:
     }
 };
 
-int main()
+int main(int argc, char* argv[])
 {
     auto app = std::make_shared<SampleApplication>();
 
@@ -24,6 +24,24 @@ int main()
     config.logLevel = LogLevel::Verbose;
     config.antialiasing = 2;
     config.headlessMode = false;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        std::string arg = argv[i];
+        if (arg == "--headless" || arg == "-h")
+        {
+            config.headlessMode = true;
+            config.graphicsBackend = GraphicsBackend::Null;
+        }
+        else if (arg == "--graphics" && i + 1 < argc)
+        {
+            std::string backend = argv[++i];
+            if (backend == "null" || backend == "Null" || backend == "NULL")
+            {
+                config.graphicsBackend = GraphicsBackend::Null;
+            }
+        }
+    }
 
     if (app->Initialize(config))
     {

@@ -6,6 +6,8 @@
 #include <audio/interface/i_audio_source.h>
 #include <audio/interface/i_sound.h>
 #include <core/logic/service_locator.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_texture_manager.h>
 #include <render/logic/video_decoder.h>
 #include <render/type/graphics_types.h>
 #include <render/unit/skybox.h>
@@ -14,7 +16,6 @@
 #include <resource/unit/animation.h>
 #include <resource/unit/font.h>
 #include <resource/unit/model.h>
-#include <glad/glad.h>
 #include <imgui.h>
 #include <algorithm>
 #include <cmath>
@@ -496,10 +497,18 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                 ImGui::Text("Resolution: %d x %d", texture->width, texture->height);
                 ImGui::Text("Components: %d", texture->nrComponents);
                 ImGui::Text("Path: %s", texture->path.c_str());
-                ImGui::Text("OpenGL Texture ID: %u", texture->id);
+                ImGui::Text("GPU Texture ID: %u", texture->id);
 
+                void* nativeTextureHandle = nullptr;
+                if (auto* graphics = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+                    graphics && graphics->SupportsLegacyRenderPipeline())
+                {
+                    nativeTextureHandle = graphics->GetTextureManager().GetNativeTextureHandle(texture->id);
+                }
+
+                ImGui::Text("Preview Handle: %p", nativeTextureHandle);
                 ImGui::Spacing();
-                if (texture->id != 0)
+                if (nativeTextureHandle)
                 {
                     float aspect = (float)texture->width / (texture->height > 0 ? (float)texture->height : 1.0f);
                     ImVec2 imgSize(256.0f, 256.0f / aspect);
@@ -515,12 +524,12 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                     }
 
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "2D Preview:");
-                    ImGui::Image((void*)(intptr_t)texture->id, imgSize, ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 1),
+                    ImGui::Image(nativeTextureHandle, imgSize, ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 1),
                                  ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
                 }
                 else
                 {
-                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "No GPU texture loaded.");
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Preview unavailable for current backend.");
                 }
             }
         }
@@ -684,7 +693,7 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                 ImGui::Text("Skybox loaded successfully.");
                 if (skybox->GetTextureID() != 0)
                 {
-                    ImGui::Text("OpenGL Texture ID: %u", skybox->GetTextureID());
+                    ImGui::Text("GPU Texture ID: %u", skybox->GetTextureID());
                 }
             }
         }
@@ -726,11 +735,6 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                             float topY = startCursor.y + baselineY - ch.bearing.y;
 
                             ImGui::SetCursorPos(ImVec2(currentX, topY));
-
-                            // Apply swizzle mask so standard RGBA shader reads GL_RED properly!
-                            glBindTexture(GL_TEXTURE_2D, ch.textureID);
-                            GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_RED};
-                            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
 
                             // Render with standard OpenGL texture coordinates & custom cyan/blue tinting
                             ImGui::Image((void*)(intptr_t)ch.textureID, glyphSize, ImVec2(0, 0), ImVec2(1, 1),

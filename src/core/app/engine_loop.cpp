@@ -13,6 +13,7 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/interface/i_render_state_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
@@ -237,6 +238,69 @@ void EngineLoop::Render()
     if (!sl.Has<IGraphicsContext>())
         return;
 
+    auto& graphicsContext = sl.Require<IGraphicsContext>();
+    if (!graphicsContext.BeginFrame())
+        return;
+
+    const auto endFrame = [&graphicsContext]() { graphicsContext.EndFrame(); };
+
+    if (!graphicsContext.SupportsLegacyRenderPipeline())
+    {
+        auto& sysMgr = sl.Require<SystemManager>();
+        auto& rtCore = sl.Require<RuntimeCore>();
+        auto io = sl.Resolve<IOHandler>();
+        auto& scene = sl.Require<Scene>();
+
+        int w = 0, h = 0;
+        if (io)
+        {
+            w = io->GetMonitorManager().GetWidth();
+            h = io->GetMonitorManager().GetHeight();
+        }
+
+        graphicsContext.RenderNativeScene(scene, w, h, m_Alpha);
+
+#ifdef ENABLE_EDITOR
+        if (auto* editorSys = sysMgr.GetSystem("EditorSystem"))
+        {
+            if (editorSys->IsEnabled())
+            {
+                if (auto* renderSys = dynamic_cast<IRenderSystem*>(editorSys))
+                {
+                    class DummyRenderStateManager : public IRenderStateManager
+                    {
+                    public:
+                        void Enable(ServerCapability) override {}
+                        void Disable(ServerCapability) override {}
+                        void SetBlendFunc(BlendFactor, BlendFactor) override {}
+                        void SetBlendEquation(BlendEquation) override {}
+                        void SetDepthFunc(CompareFunc) override {}
+                        void SetDepthMask(bool) override {}
+                        void SetStencilFunc(CompareFunc, int, unsigned int) override {}
+                        void SetStencilOp(StencilOp, StencilOp, StencilOp) override {}
+                        void SetStencilMask(unsigned int) override {}
+                        void SetCullFace(CullMode) override {}
+                        void SetFrontFace(FrontFace) override {}
+                        void SetViewport(int, int, int, int) override {}
+                        void SetScissor(int, int, int, int) override {}
+                        void SetPolygonMode(CullMode, PolygonMode) override {}
+                        PolygonMode GetPolygonMode() const override { return PolygonMode::Fill; }
+                        void SetLineWidth(float) override {}
+                        void SetPointSize(float) override {}
+                        void SetColorMask(bool, bool, bool, bool) override {}
+                        const char* GetBackendName() const override { return "Dummy"; }
+                    } dummyRsm;
+                    renderSys->RenderUIPass(scene, (float)w, (float)h, dummyRsm);
+                }
+            }
+        }
+#endif
+
+        rtCore.GetStateMachine().Render();
+        endFrame();
+        return;
+    }
+
     auto& sysMgr = sl.Require<SystemManager>();
     auto io = sl.Resolve<IOHandler>();
     auto& rtCore = sl.Require<RuntimeCore>();
@@ -252,6 +316,7 @@ void EngineLoop::Render()
     sysMgr.Render(scene, width, height, m_Alpha);
     rtCore.GetStateMachine().Render();
     sysMgr.RenderDebug(scene);
+    endFrame();
 }
 
 void EngineLoop::SetPhysicsStep(float step)

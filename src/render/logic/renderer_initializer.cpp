@@ -1,5 +1,5 @@
 #include <render/logic/renderer_initializer.h>
-#include <physics/strategy/bullet/bullet_debug_drawer.h>
+#include <core/logic/backend_factory_registry.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/logic/particle_emitter.h>
 #include <render/logic/static_batch_manager.h>
@@ -25,5 +25,5 @@ void RendererInitializer::Initialize(IGraphicsContext& context)
     TextureAtlas::SetTextureManager(context.GetTextureManager());
     UIModel::SetManagers(context.GetBufferManager(), context.GetTextureManager(), context.GetDrawContext());
     StaticBatchManager::SetManagers(context.GetBufferManager(), context.GetDrawContext());
-    BulletDebugDrawer::SetManagers(context.GetBufferManager(), context.GetDrawContext());
+    BackendFactoryRegistry::ConfigurePhysicsDebugRenderer(context.GetBufferManager(), context.GetDrawContext());
 }

@@ -44,9 +44,6 @@ find_package(STB REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(FFMPEG REQUIRED)
 find_package(Enet REQUIRED)
-if(ENABLE_EDITOR)
-    find_package(ImGui REQUIRED)
-endif()
 
 string(TOUPPER "${AXIS_GRAPHICS_BACKEND}" AXIS_GRAPHICS_BACKEND_UPPER)
 string(TOUPPER "${AXIS_PHYSICS_BACKEND}" AXIS_PHYSICS_BACKEND_UPPER)
@@ -55,15 +52,30 @@ string(TOUPPER "${AXIS_AUDIO_BACKEND}" AXIS_AUDIO_BACKEND_UPPER)
 set(AXIS_HAS_OPENGL_BACKEND 0)
 set(AXIS_HAS_VULKAN_BACKEND 0)
 set(AXIS_HAS_DIRECTX_BACKEND 0)
+set(AXIS_HAS_NULL_GRAPHICS_BACKEND 0)
 if(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "OPENGL")
     find_package(Glad REQUIRED)
     set(AXIS_HAS_OPENGL_BACKEND 1)
 elseif(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "VULKAN")
-    message(FATAL_ERROR "AXIS_GRAPHICS_BACKEND=Vulkan was selected, but the Vulkan renderer is not implemented yet.")
+    find_package(Vulkan REQUIRED)
+    set(AXIS_HAS_VULKAN_BACKEND 1)
 elseif(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "DIRECTX")
-    message(FATAL_ERROR "AXIS_GRAPHICS_BACKEND=DirectX was selected, but the DirectX renderer is not implemented yet.")
+    if(NOT WIN32)
+        message(FATAL_ERROR "AXIS_GRAPHICS_BACKEND=DirectX requires Windows.")
+    endif()
+    set(AXIS_HAS_DIRECTX_BACKEND 1)
+elseif(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "NULL")
+    set(AXIS_HAS_NULL_GRAPHICS_BACKEND 1)
 else()
-    message(FATAL_ERROR "Unknown AXIS_GRAPHICS_BACKEND='${AXIS_GRAPHICS_BACKEND}'. Expected OpenGL, Vulkan, or DirectX.")
+    message(FATAL_ERROR "Unknown AXIS_GRAPHICS_BACKEND='${AXIS_GRAPHICS_BACKEND}'. Expected OpenGL, Vulkan, DirectX, or Null.")
+endif()
+
+if(ENABLE_EDITOR AND NOT AXIS_HAS_OPENGL_BACKEND)
+    message(STATUS "ENABLE_EDITOR enabled with native RHI backend. ImGui will use the selected backend adapter.")
+endif()
+
+if(ENABLE_EDITOR)
+    find_package(ImGui REQUIRED)
 endif()
 
 set(AXIS_HAS_BULLET_BACKEND 0)
@@ -72,7 +84,8 @@ if(AXIS_PHYSICS_BACKEND_UPPER STREQUAL "BULLET")
     find_package(Bullet REQUIRED)
     set(AXIS_HAS_BULLET_BACKEND 1)
 elseif(AXIS_PHYSICS_BACKEND_UPPER STREQUAL "PHYSX")
-    message(FATAL_ERROR "AXIS_PHYSICS_BACKEND=PhysX was selected, but the PhysX backend is not implemented yet.")
+    find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
+    set(AXIS_HAS_PHYSX_BACKEND 1)
 else()
     message(FATAL_ERROR "Unknown AXIS_PHYSICS_BACKEND='${AXIS_PHYSICS_BACKEND}'. Expected Bullet or PhysX.")
 endif()
@@ -110,9 +123,14 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/sources.cmake)
 
-# Engine Core Library
+set(AXIS_RHI_SHADER_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/include/engine/asset/shaders/rhi")
+
+#Engine Core Library
 add_library(axis_engine STATIC ${AXIS_ENGINE_SOURCES})
 add_library(Axis::Engine ALIAS axis_engine)
+if(TARGET axis_rhi_shaders)
+    add_dependencies(axis_engine axis_rhi_shaders)
+endif()
 
 target_compile_features(axis_engine PUBLIC cxx_std_20)
 
@@ -120,12 +138,14 @@ target_compile_definitions(axis_engine PUBLIC
     AXIS_HAS_OPENGL_BACKEND=${AXIS_HAS_OPENGL_BACKEND}
     AXIS_HAS_VULKAN_BACKEND=${AXIS_HAS_VULKAN_BACKEND}
     AXIS_HAS_DIRECTX_BACKEND=${AXIS_HAS_DIRECTX_BACKEND}
+    AXIS_HAS_NULL_GRAPHICS_BACKEND=${AXIS_HAS_NULL_GRAPHICS_BACKEND}
     AXIS_HAS_BULLET_BACKEND=${AXIS_HAS_BULLET_BACKEND}
     AXIS_HAS_PHYSX_BACKEND=${AXIS_HAS_PHYSX_BACKEND}
     AXIS_HAS_IRRKLANG_BACKEND=${AXIS_HAS_IRRKLANG_BACKEND}
     AXIS_HAS_FMOD_BACKEND=${AXIS_HAS_FMOD_BACKEND}
     AXIS_HAS_OPENAL_BACKEND=0
     AXIS_HAS_NULL_AUDIO_BACKEND=${AXIS_HAS_NULL_AUDIO_BACKEND}
+    AXIS_RHI_SHADER_DIR="${AXIS_RHI_SHADER_OUTPUT_DIR}"
 )
 
 if(MSVC)
@@ -158,8 +178,36 @@ if(AXIS_HAS_BULLET_BACKEND)
     target_link_libraries(axis_engine PUBLIC Bullet::Bullet)
 endif()
 
+if(AXIS_HAS_PHYSX_BACKEND)
+    target_link_libraries(axis_engine PUBLIC unofficial::omniverse-physx-sdk::sdk)
+    if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
+        add_custom_command(TARGET axis_engine POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-library>
+                        $<TARGET_FILE_DIR:axis_engine>)
+        if(WIN32)
+            add_custom_command(TARGET axis_engine POST_BUILD
+                            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
+                            $<TARGET_FILE_DIR:axis_engine>)
+        endif()
+    endif()
+endif()
+
 if(AXIS_HAS_OPENGL_BACKEND)
     target_link_libraries(axis_engine PUBLIC Glad::Glad)
+endif()
+
+if(AXIS_HAS_VULKAN_BACKEND)
+    target_link_libraries(axis_engine PUBLIC Vulkan::Vulkan)
+endif()
+
+if(AXIS_HAS_DIRECTX_BACKEND)
+    target_link_libraries(axis_engine PUBLIC
+        d3d12
+        dxgi
+        dxguid
+    )
 endif()
 
 if(AXIS_HAS_IRRKLANG_BACKEND)
@@ -217,30 +265,36 @@ endif()
 
 if(WIN32)
     target_link_libraries(axis_engine PUBLIC
-        opengl32
         dbghelp
         winmm
         ws2_32
     )
+    if(AXIS_HAS_OPENGL_BACKEND)
+        target_link_libraries(axis_engine PUBLIC opengl32)
+    endif()
 elseif(APPLE)
     find_library(COCOA_LIBRARY Cocoa REQUIRED)
     find_library(IOKIT_LIBRARY IOKit REQUIRED)
     find_library(COREVIDEO_LIBRARY CoreVideo REQUIRED)
     target_link_libraries(axis_engine PUBLIC
-        OpenGL::GL
         ${COCOA_LIBRARY}
         ${IOKIT_LIBRARY}
         ${COREVIDEO_LIBRARY}
     )
+    if(AXIS_HAS_OPENGL_BACKEND)
+        target_link_libraries(axis_engine PUBLIC OpenGL::GL)
+    endif()
 else()
     target_link_libraries(axis_engine PUBLIC
-        OpenGL::GL
         pthread
         dl
     )
+    if(AXIS_HAS_OPENGL_BACKEND)
+        target_link_libraries(axis_engine PUBLIC OpenGL::GL)
+    endif()
 endif()
 
-# Editor Library
+#Editor Library
 if(ENABLE_EDITOR)
     add_library(axis_editor STATIC ${AXIS_EDITOR_SOURCES})
     add_library(Axis::Editor ALIAS axis_editor)
@@ -260,7 +314,7 @@ if(ENABLE_EDITOR)
     )
 endif()
 
-# Installation & Export Setup
+#Installation& Export Setup
 include(GNUInstallDirs)
 
 install(TARGETS axis_engine
@@ -323,6 +377,36 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/cmake/modules/
 
 # Generate Config file
 include(CMakePackageConfigHelpers)
+set(AXIS_CONFIG_IMGUI_DEPENDENCY "")
+if(ENABLE_EDITOR)
+    set(AXIS_CONFIG_IMGUI_DEPENDENCY "find_dependency(ImGui)")
+endif()
+
+set(AXIS_CONFIG_BULLET_DEPENDENCY "")
+if(AXIS_HAS_BULLET_BACKEND)
+    set(AXIS_CONFIG_BULLET_DEPENDENCY "find_dependency(Bullet)")
+endif()
+
+set(AXIS_CONFIG_IRRKLANG_DEPENDENCY "")
+if(AXIS_HAS_IRRKLANG_BACKEND)
+    set(AXIS_CONFIG_IRRKLANG_DEPENDENCY "find_dependency(IrrKlang)")
+endif()
+
+set(AXIS_CONFIG_FMOD_DEPENDENCY "")
+if(AXIS_HAS_FMOD_BACKEND)
+    set(AXIS_CONFIG_FMOD_DEPENDENCY "find_dependency(FMOD)")
+endif()
+
+set(AXIS_CONFIG_GLAD_DEPENDENCY "")
+if(AXIS_HAS_OPENGL_BACKEND)
+    set(AXIS_CONFIG_GLAD_DEPENDENCY "find_dependency(Glad)")
+endif()
+
+set(AXIS_CONFIG_VULKAN_DEPENDENCY "")
+if(AXIS_HAS_VULKAN_BACKEND)
+    set(AXIS_CONFIG_VULKAN_DEPENDENCY "find_dependency(Vulkan)")
+endif()
+
 configure_package_config_file(
     ${CMAKE_SOURCE_DIR}/cmake/AxisEngineConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/AxisEngineConfig.cmake

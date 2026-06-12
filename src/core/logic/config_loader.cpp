@@ -95,7 +95,8 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
         GraphicsBackend requested = ResolveEnum(val,
                                                 {{"OPENGL", GraphicsBackend::OpenGL},
                                                  {"VULKAN", GraphicsBackend::Vulkan},
-                                                 {"DIRECTX", GraphicsBackend::DirectX}},
+                                                 {"DIRECTX", GraphicsBackend::DirectX},
+                                                 {"NULL", GraphicsBackend::Null}},
                                                 config.graphicsBackend);
         AcceptSupportedBackend("GRAPHICS_API", requested, config.graphicsBackend,
                                BackendRegistry::SupportedGraphicsBackends());

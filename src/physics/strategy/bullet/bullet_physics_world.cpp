@@ -1,4 +1,5 @@
 #include <physics/strategy/bullet/bullet_physics_world.h>
+#include <core/logic/backend_factory_registry.h>
 #include <core/logic/logger.h>
 #include <physics/interface/i_collision_shape.h>
 #include <physics/strategy/bullet/bullet_character_controller.h>
@@ -606,3 +607,16 @@ void BulletPhysicsWorld::CollectActiveCollisions(std::vector<CollisionInfo>& col
         }
     }
 }
+
+namespace axis::backend
+{
+void RegisterBulletPhysicsBackendFactories()
+{
+    BackendFactoryRegistry::RegisterPhysics(
+        PhysicsBackend::Bullet, [](const AppConfig&) { return std::make_unique<BulletPhysicsWorld>(); });
+    BackendFactoryRegistry::RegisterPhysicsDebugRenderSetup(
+        [](IBufferManager& bufferManager, IDrawContext& drawContext) {
+            BulletDebugDrawer::SetManagers(bufferManager, drawContext);
+        });
+}
+}  // namespace axis::backend

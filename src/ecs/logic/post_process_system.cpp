@@ -30,6 +30,12 @@ void PostProcessSystem::Initialize()
         return;
     }
 
+    if (!context->SupportsLegacyRenderPipeline())
+    {
+        LOGGER_INFO("PostProcessSystem") << "Legacy render pipeline dormant; skipping PostProcessSystem initialization.";
+        return;
+    }
+
     auto config = configManager->GetConfig();
 
     m_Pipeline.Initialize(*context, config.width, config.height, *resources);

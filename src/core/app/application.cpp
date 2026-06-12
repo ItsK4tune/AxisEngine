@@ -1,4 +1,5 @@
 #include <core/app/application.h>
+#include <core/logic/backend_factory_registry.h>
 #include <core/logic/data_manager.h>
 #include <audio/logic/audio_service.h>
 #include <core/logic/axis_assert.h>
@@ -23,6 +24,7 @@
 #include <platform/logic/monitor_manager.h>
 #include <platform/unit/io_context.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/strategy/null/null_graphics_context.h>
 #include <render/logic/post_process_pipeline.h>
 #include <render/logic/render_service_impl.h>
 #include <render/logic/renderer_initializer.h>
@@ -173,12 +175,11 @@ bool Application::Initialize(const AppConfig& config)
     m_Impl->m_CollisionMatrix = std::make_unique<CollisionMatrix>();
     m_Impl->m_DataManager = std::make_unique<DataManager>();
 
-    bool effectiveHeadless = config.headlessMode;
+    bool effectiveHeadless = config.headlessMode || (config.graphicsBackend == GraphicsBackend::Null);
 #ifdef ENABLE_EDITOR
     if (effectiveHeadless)
     {
-        LOGGER_INFO("Application") << "ENABLE_EDITOR active: overriding headless -> headfull (editor requires window).";
-        effectiveHeadless = false;
+        LOGGER_INFO("Application") << "Running headless mode. Editor system UI rendering will be bypassed.";
     }
 #endif
 
@@ -186,7 +187,7 @@ bool Application::Initialize(const AppConfig& config)
     {
         m_Impl->m_GraphicsContext = AppBuilder::CreateGraphicsContext(config);
         auto audioEngine = AppBuilder::CreateAudioEngine(config);
-        auto window = AppBuilder::MakeWindow();
+        auto window = AppBuilder::MakeWindow(config);
 
         m_Impl->m_IOHandler = std::make_unique<IOHandler>();
         m_Impl->m_AudioService = std::make_unique<AudioService>();
@@ -267,13 +268,16 @@ bool Application::Initialize(const AppConfig& config)
     else
     {
         LOGGER_INFO("Application") << "Running in HEADLESS MODE. Graphics, Window, and Audio engine skipped.";
-        m_Impl->m_AudioService = nullptr;
+        m_Impl->m_GraphicsContext = std::make_unique<NullGraphicsContext>();
+        auto audioEngine = BackendFactoryRegistry::CreateAudio(AudioBackend::Null, config);
+        m_Impl->m_AudioService = std::make_unique<AudioService>();
+        m_Impl->m_AudioService->Initialize(std::move(audioEngine));
     }
 
     m_Impl->m_PhysicsWorld = AppBuilder::CreatePhysicsWorld(config);
     m_Impl->m_PhysicsWorld->Initialize();
 
-    if (m_Impl->m_GraphicsContext && m_Impl->m_AudioService)
+    if (!effectiveHeadless && m_Impl->m_GraphicsContext && m_Impl->m_AudioService)
     {
         m_Impl->m_ResourceManager->Initialize(&m_Impl->m_GraphicsContext->GetShaderManager(),
                                               &m_Impl->m_GraphicsContext->GetTextureManager(),

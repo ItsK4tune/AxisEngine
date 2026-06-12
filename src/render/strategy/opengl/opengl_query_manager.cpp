@@ -37,3 +37,10 @@ uint32_t OpenGLQueryManager::GetQueryResult(uint32_t queryId)
     glGetQueryObjectuiv(queryId, GL_QUERY_RESULT, &result);
     return result;
 }
+
+uint64_t OpenGLQueryManager::GetQueryResult64(uint32_t queryId)
+{
+    uint64_t result = 0;
+    glGetQueryObjectui64v(queryId, GL_QUERY_RESULT, &result);
+    return result;
+}

@@ -3,9 +3,12 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <resource/unit/mesh.h>
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <render/interface/i_graphics_context.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
+#include <render/rhi/i_render_backend.h>
 #include <render/type/graphics_types.h>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -127,7 +130,10 @@ Mesh::Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStr
       VAO(0),
       VBO(0),
       EBO(0),
-      instanceVBO(0)
+      instanceVBO(0),
+      m_RhiVbo({}),
+      m_RhiEbo({}),
+      m_RhiInstanceVbo({})
 {
     if (setupGPU)
     {
@@ -157,25 +163,55 @@ Mesh::Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStr
 
 Mesh::~Mesh()
 {
-    if (m_Initialized && s_BufferManager)
+    if (m_Initialized)
     {
-        try
+        auto* gc = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+        if (gc && !gc->SupportsLegacyRenderPipeline())
         {
-            s_BufferManager->DeleteVertexArray(VAO);
-            s_BufferManager->DeleteBuffer(VBO);
-            s_BufferManager->DeleteBuffer(EBO);
-            if (instanceVBO != 0)
-                s_BufferManager->DeleteBuffer(instanceVBO);
+            auto* backend = gc->GetRenderBackend();
+            if (backend)
+            {
+                auto& device = backend->GetDevice();
+                if (m_RhiVbo) device.DestroyBuffer(m_RhiVbo);
+                if (m_RhiEbo) device.DestroyBuffer(m_RhiEbo);
+                if (m_RhiInstanceVbo) device.DestroyBuffer(m_RhiInstanceVbo);
+            }
         }
-        catch (...)
+        else if (s_BufferManager)
         {
-            LOGGER_ERROR("Mesh") << "Destructor: CRASH during buffer deletion";
+            try
+            {
+                s_BufferManager->DeleteVertexArray(VAO);
+                s_BufferManager->DeleteBuffer(VBO);
+                s_BufferManager->DeleteBuffer(EBO);
+                if (instanceVBO != 0)
+                    s_BufferManager->DeleteBuffer(instanceVBO);
+            }
+            catch (...)
+            {
+                LOGGER_ERROR("Mesh") << "Destructor: CRASH during buffer deletion";
+            }
         }
     }
 }
 
 void Mesh::Draw(Shader& shader, bool bindTextures)
 {
+    auto* gc = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (gc && !gc->SupportsLegacyRenderPipeline())
+    {
+        auto* backend = gc->GetRenderBackend();
+        if (backend)
+        {
+            auto& device = backend->GetDevice();
+            auto& commandList = device.BeginCommandList(rhi::CommandQueueType::Graphics);
+            commandList.BindVertexBuffer(0, m_RhiVbo);
+            commandList.BindIndexBuffer(m_RhiEbo, rhi::IndexType::UInt32);
+            commandList.DrawIndexed(static_cast<uint32_t>(indices.size()));
+        }
+        return;
+    }
+
     auto& tm = GetTextureManager();
     auto& dm = GetDrawContext();
     auto& bm = GetBufferManager();
@@ -193,6 +229,39 @@ void Mesh::Draw(Shader& shader, bool bindTextures)
 
 void Mesh::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, bool bindTextures)
 {
+    auto* gc = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (gc && !gc->SupportsLegacyRenderPipeline())
+    {
+        auto* backend = gc->GetRenderBackend();
+        if (backend)
+        {
+            auto& device = backend->GetDevice();
+            auto& commandList = device.BeginCommandList(rhi::CommandQueueType::Graphics);
+
+            size_t requiredSize = models.size() * sizeof(glm::mat4);
+            if (requiredSize > m_InstanceBufferCapacity)
+            {
+                m_InstanceBufferCapacity = requiredSize;
+                device.DestroyBuffer(m_RhiInstanceVbo);
+                rhi::BufferDesc instDesc;
+                instDesc.size = m_InstanceBufferCapacity;
+                instDesc.usage = rhi::BufferUsage::Vertex;
+                instDesc.memoryUsage = rhi::MemoryUsage::CpuToGpu;
+                m_RhiInstanceVbo = device.CreateBuffer(instDesc, models.data());
+            }
+            else
+            {
+                device.UpdateBuffer(m_RhiInstanceVbo, 0, requiredSize, models.data());
+            }
+
+            commandList.BindVertexBuffer(0, m_RhiVbo);
+            commandList.BindVertexBuffer(1, m_RhiInstanceVbo);
+            commandList.BindIndexBuffer(m_RhiEbo, rhi::IndexType::UInt32);
+            commandList.DrawIndexed(static_cast<uint32_t>(indices.size()), static_cast<uint32_t>(models.size()));
+        }
+        return;
+    }
+
     auto& tm = GetTextureManager();
     auto& dm = GetDrawContext();
     auto& bm = GetBufferManager();
@@ -227,7 +296,43 @@ void Mesh::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, b
 
 void Mesh::setupMesh()
 {
-    if (m_Initialized || !s_BufferManager)
+    if (m_Initialized)
+        return;
+
+    auto* gc = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (gc && !gc->SupportsLegacyRenderPipeline())
+    {
+        auto* backend = gc->GetRenderBackend();
+        if (backend)
+        {
+            auto& device = backend->GetDevice();
+
+            rhi::BufferDesc vboDesc;
+            vboDesc.size = m_VertexData.size();
+            vboDesc.usage = rhi::BufferUsage::Vertex;
+            vboDesc.memoryUsage = rhi::MemoryUsage::GpuOnly;
+            m_RhiVbo = device.CreateBuffer(vboDesc, m_VertexData.data());
+
+            rhi::BufferDesc eboDesc;
+            eboDesc.size = indices.size() * sizeof(unsigned int);
+            eboDesc.usage = rhi::BufferUsage::Index;
+            eboDesc.memoryUsage = rhi::MemoryUsage::GpuOnly;
+            m_RhiEbo = device.CreateBuffer(eboDesc, indices.data());
+
+            rhi::BufferDesc instDesc;
+            instDesc.size = sizeof(glm::mat4);
+            instDesc.usage = rhi::BufferUsage::Vertex;
+            instDesc.memoryUsage = rhi::MemoryUsage::CpuToGpu;
+            glm::mat4 identity(1.0f);
+            m_RhiInstanceVbo = device.CreateBuffer(instDesc, &identity);
+            m_InstanceBufferCapacity = sizeof(glm::mat4);
+
+            m_Initialized = true;
+            return;
+        }
+    }
+
+    if (!s_BufferManager)
         return;
     auto& bm = GetBufferManager();
 

@@ -63,9 +63,26 @@ if(AXIS_HAS_BULLET_BACKEND)
     axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/physics/strategy/bullet")
 endif()
 
+if(AXIS_HAS_PHYSX_BACKEND)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/physics/strategy/physx")
+endif()
+
+axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/platform/strategy/glfw")
+
+axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/render/rhi")
+
 if(AXIS_HAS_OPENGL_BACKEND)
-    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/platform/strategy/opengl")
     axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/render/strategy/opengl")
+endif()
+
+axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/render/strategy/null")
+
+if(AXIS_HAS_VULKAN_BACKEND)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/render/strategy/vulkan")
+endif()
+
+if(AXIS_HAS_DIRECTX_BACKEND)
+    axis_append_sources_from_dir(AXIS_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/render/strategy/directx")
 endif()
 
 if(WIN32)

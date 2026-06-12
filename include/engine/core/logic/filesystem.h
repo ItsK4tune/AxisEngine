@@ -64,6 +64,11 @@ private:
         if (binPos != std::string::npos)
         {
             cachedRoot = path.substr(0, binPos);
+            size_t buildPos = cachedRoot.rfind("/build");
+            if (buildPos != std::string::npos && buildPos + 6 == cachedRoot.length())
+            {
+                cachedRoot = cachedRoot.substr(0, buildPos);
+            }
             return cachedRoot;
         }
 

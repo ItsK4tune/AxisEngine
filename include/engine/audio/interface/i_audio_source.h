@@ -1,8 +1,9 @@
 #pragma once
 
+#include <audio/interface/i_audio_stream.h>
 #include <string>
 
-class IAudioSource
+class IAudioSource : public IAudioStream
 {
 public:
     virtual ~IAudioSource() = default;
@@ -20,5 +21,13 @@ public:
     virtual void SetDefaultSpeed(float speed) = 0;
     virtual float GetDefaultSpeed() const = 0;
 
-    virtual std::string GetName() const = 0;
+    virtual std::string GetName() const override = 0;
+    virtual bool IsStreaming() const override
+    {
+        return false;
+    }
+    virtual uint64_t GetLengthMs() const override
+    {
+        return 0;
+    }
 };

@@ -15,6 +15,8 @@ class ITextureManager;
 
 #define MAX_BONE_INFLUENCE 4
 
+#include <render/rhi/rhi_types.h>
+
 class Mesh
 {
 public:
@@ -54,8 +56,15 @@ public:
         return *s_DrawContext;
     }
 
+    rhi::BufferHandle GetRhiVbo() const { return m_RhiVbo; }
+    rhi::BufferHandle GetRhiEbo() const { return m_RhiEbo; }
+    rhi::BufferHandle GetRhiInstanceVbo() const { return m_RhiInstanceVbo; }
+
 private:
     unsigned int VBO, EBO, instanceVBO;
+    rhi::BufferHandle m_RhiVbo;
+    rhi::BufferHandle m_RhiEbo;
+    rhi::BufferHandle m_RhiInstanceVbo;
     bool m_Initialized = false;
     size_t m_InstanceBufferCapacity = 0;
 

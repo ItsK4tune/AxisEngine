@@ -1,10 +1,12 @@
 #include <audio/strategy/fmod/fmod_audio_engine.h>
+#include <core/logic/backend_factory_registry.h>
 #include <core/logic/logger.h>
 
 #include <fmod.hpp>
 #include <fmod_errors.h>
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <utility>
 
 namespace
@@ -69,6 +71,106 @@ FMOD_MODE BuildSoundMode(bool is3D, bool loop)
     return mode;
 }
 }  // namespace
+
+#include <audio/interface/i_audio_listener.h>
+#include <audio/interface/i_audio_event.h>
+#include <audio/interface/i_audio_stream.h>
+
+class FMODAudioListener final : public IAudioListener
+{
+public:
+    FMODAudioListener(FMOD::System* system) : m_System(system) {}
+    ~FMODAudioListener() override = default;
+
+    void SetPosition(const glm::vec3& pos) override
+    {
+        m_Position = pos;
+        UpdateAttributes();
+    }
+
+    glm::vec3 GetPosition() const override
+    {
+        return m_Position;
+    }
+
+    void SetOrientation(const glm::vec3& forward, const glm::vec3& up) override
+    {
+        m_Forward = forward;
+        m_Up = up;
+        UpdateAttributes();
+    }
+
+    glm::vec3 GetForward() const override
+    {
+        return m_Forward;
+    }
+
+    glm::vec3 GetUp() const override
+    {
+        return m_Up;
+    }
+
+    void SetVelocity(const glm::vec3& vel) override
+    {
+        m_Velocity = vel;
+        UpdateAttributes();
+    }
+
+    glm::vec3 GetVelocity() const override
+    {
+        return m_Velocity;
+    }
+
+private:
+    void UpdateAttributes()
+    {
+        if (!m_System) return;
+        FMOD_VECTOR fmodPos = ToFMODVector(m_Position);
+        FMOD_VECTOR fmodVel = ToFMODVector(m_Velocity);
+        FMOD_VECTOR fmodForward = ToFMODVector(m_Forward);
+        FMOD_VECTOR fmodUp = ToFMODVector(m_Up);
+        m_System->set3DListenerAttributes(0, &fmodPos, &fmodVel, &fmodForward, &fmodUp);
+    }
+
+    FMOD::System* m_System = nullptr;
+    glm::vec3 m_Position{0.0f};
+    glm::vec3 m_Forward{0.0f, 0.0f, -1.0f};
+    glm::vec3 m_Up{0.0f, 1.0f, 0.0f};
+    glm::vec3 m_Velocity{0.0f};
+};
+
+class FMODAudioEvent final : public IAudioEvent
+{
+public:
+    FMODAudioEvent(std::string name) : m_Name(std::move(name)) {}
+    ~FMODAudioEvent() override = default;
+
+    std::string GetName() const override { return m_Name; }
+    void Play() override { m_Playing = true; }
+    void Stop() override { m_Playing = false; }
+    void Pause() override { m_Playing = false; }
+    void Resume() override { m_Playing = true; }
+    bool IsPlaying() const override { return m_Playing; }
+    void SetVolume(float volume) override { m_Volume = volume; }
+    float GetVolume() const override { return m_Volume; }
+
+private:
+    std::string m_Name;
+    float m_Volume = 100.0f;
+    bool m_Playing = false;
+};
+
+class FMODAudioStream final : public IAudioStream
+{
+public:
+    FMODAudioStream(std::string name) : m_Name(std::move(name)) {}
+    ~FMODAudioStream() override = default;
+
+    std::string GetName() const override { return m_Name; }
+
+private:
+    std::string m_Name;
+};
 
 class FMODAudioSource final : public IAudioSource
 {
@@ -461,6 +563,8 @@ bool FMODAudioEngine::Initialize()
     CheckFMOD(m_System->getMasterChannelGroup(&m_MasterChannelGroup), "System::getMasterChannelGroup");
     SetGlobalVolume(m_GlobalVolume);
 
+    m_Listener = std::make_unique<FMODAudioListener>(m_System);
+
     LOGGER_INFO("FMODAudioEngine") << "FMOD initialized.";
     return true;
 }
@@ -481,6 +585,7 @@ void FMODAudioEngine::Shutdown()
     StopAllSounds();
     m_Sources.clear();
     m_MasterChannelGroup = nullptr;
+    m_Listener.reset();
 
     if (m_System)
     {
@@ -657,3 +762,17 @@ std::shared_ptr<ISound> FMODAudioEngine::PlayOwnedSound(const std::string& filen
     m_ActiveSounds.push_back(wrapped);
     return wrapped;
 }
+
+IAudioListener* FMODAudioEngine::GetListener()
+{
+    return m_Listener.get();
+}
+
+namespace axis::backend
+{
+void RegisterFMODAudioBackendFactories()
+{
+    BackendFactoryRegistry::RegisterAudio(
+        AudioBackend::FMOD, [](const AppConfig&) { return std::make_unique<FMODAudioEngine>(); });
+}
+}  // namespace axis::backend

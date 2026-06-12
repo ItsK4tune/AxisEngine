@@ -8,36 +8,16 @@
 #include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
+#include <render/interface/i_graphics_context.h>
 #include <imgui.h>
 
 #ifdef _WIN32
-#include <dxgi.h>
 #include <intrin.h>
-#include <wrl/client.h>
-
-#pragma comment(lib, "dxgi.lib")
 #endif
 
 void SettingsPanel::Initialize()
 {
 #ifdef _WIN32
-    // GPU Detection
-    Microsoft::WRL::ComPtr<IDXGIFactory> factory;
-    if (SUCCEEDED(CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)factory.GetAddressOf())))
-    {
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
-        if (SUCCEEDED(factory->EnumAdapters(0, adapter.GetAddressOf())))
-        {
-            DXGI_ADAPTER_DESC desc;
-            if (SUCCEEDED(adapter->GetDesc(&desc)))
-            {
-                char buf[128] = {};
-                WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, buf, sizeof(buf), nullptr, nullptr);
-                m_GpuName = std::string(buf);
-            }
-        }
-    }
-
     // CPU Detection
     int cpuInfo[4] = {0};
     char cpuBrandString[0x40] = {0};
@@ -69,6 +49,8 @@ void SettingsPanel::OnImGui(Scene& scene)
 
     auto conf = cm->GetConfig();
     bool changed = false;
+    if (auto* graphics = ServiceLocator::Instance().Resolve<IGraphicsContext>())
+        m_GpuName = graphics->GetDeviceName();
 
     if (ImGui::CollapsingHeader("Core", ImGuiTreeNodeFlags_DefaultOpen))
     {

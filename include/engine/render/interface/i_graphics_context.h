@@ -1,5 +1,6 @@
 #pragma once
 
+#include <platform/interface/i_window.h>
 #include <render/type/graphics_types.h>
 #include <string>
 
@@ -10,6 +11,12 @@ class IRenderStateManager;
 class IRenderTargetManager;
 class IShaderManager;
 class ITextureManager;
+struct Scene;
+
+namespace rhi
+{
+class IRenderBackend;
+}
 
 class IGraphicsContext
 {
@@ -18,6 +25,33 @@ public:
 
     virtual bool Initialize() = 0;
     virtual void Shutdown() = 0;
+    virtual void SetWindow(IWindow* window)
+    {
+        (void)window;
+    }
+
+    virtual bool BeginFrame()
+    {
+        return true;
+    }
+
+    virtual void EndFrame()
+    {
+    }
+
+    virtual bool SupportsLegacyRenderPipeline() const
+    {
+        return true;
+    }
+
+    virtual bool RenderNativeScene(Scene& scene, int width, int height, float alpha)
+    {
+        (void)scene;
+        (void)width;
+        (void)height;
+        (void)alpha;
+        return false;
+    }
 
     virtual void SetViewport(int x, int y, int width, int height) = 0;
     virtual void SetDepthTest(bool enabled) = 0;
@@ -34,6 +68,22 @@ public:
     virtual IRenderStateManager& GetRenderStateManager() = 0;
     virtual IDrawContext& GetDrawContext() = 0;
     virtual IQueryManager& GetQueryManager() = 0;
+    virtual rhi::IRenderBackend* GetRenderBackend()
+    {
+        return nullptr;
+    }
+
+    virtual bool TryGetVramUsage(uint64_t& usedBytes, uint64_t& totalBytes) const
+    {
+        (void)usedBytes;
+        (void)totalBytes;
+        return false;
+    }
 
     virtual std::string GetName() const = 0;
+
+    virtual std::string GetDeviceName() const
+    {
+        return GetName();
+    }
 };

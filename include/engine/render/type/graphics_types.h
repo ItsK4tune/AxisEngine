@@ -150,7 +150,18 @@ enum class TextureParameter
     WrapT,
     WrapR,
     BorderColor,
-    TextureMaxAnisotropy
+    TextureMaxAnisotropy,
+    SwizzleRGBA
+};
+
+enum class TextureSwizzle
+{
+    Red,
+    Green,
+    Blue,
+    Alpha,
+    Zero,
+    One
 };
 
 enum class TextureUnit

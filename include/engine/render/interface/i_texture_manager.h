@@ -17,6 +17,7 @@ public:
     virtual void TexParameteri(TextureType target, TextureParameter pname, int param) = 0;
     virtual void TexParameterf(TextureType target, TextureParameter pname, float param) = 0;
     virtual void TexParameterfv(TextureType target, TextureParameter pname, const float* params) = 0;
+    virtual void TexParameteriv(TextureType target, TextureParameter pname, const int* params) = 0;
     virtual void GenerateMipmap(TextureType target) = 0;
 
     virtual void TexImage1D(TextureType target, int level, InternalFormat internalFormat, int width, int border,
@@ -30,6 +31,12 @@ public:
 
     virtual void ActiveTexture(TextureUnit unit) = 0;
     virtual void PixelStorei(PixelStoreParam pname, int param) = 0;
+
+    virtual void* GetNativeTextureHandle(unsigned int texture) const
+    {
+        (void)texture;
+        return nullptr;
+    }
 
     virtual const char* GetBackendName() const = 0;
 };

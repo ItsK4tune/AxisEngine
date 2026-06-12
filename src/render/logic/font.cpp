@@ -93,6 +93,9 @@ bool Font::Load(const std::string& fontPath, unsigned int fontSize)
                              static_cast<int>(TextureFilter::Linear));
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
                              static_cast<int>(TextureFilter::Linear));
+            const int redSwizzle[] = {static_cast<int>(TextureSwizzle::Red), static_cast<int>(TextureSwizzle::Red),
+                                      static_cast<int>(TextureSwizzle::Red), static_cast<int>(TextureSwizzle::Red)};
+            tm.TexParameteriv(TextureType::Texture2D, TextureParameter::SwizzleRGBA, redSwizzle);
 
             Character character = {Texture, glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
                                    glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),

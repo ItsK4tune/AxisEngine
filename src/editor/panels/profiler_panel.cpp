@@ -14,9 +14,9 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/terrain_component.h>
 #include <ecs/unit/ui_components.h>
+#include <render/interface/i_graphics_context.h>
 #include <render/unit/render_queue.h>
 #include <scene/logic/scene.h>
-#include <glad/glad.h>
 #include <imgui.h>
 #include <algorithm>
 #include <cctype>
@@ -42,16 +42,6 @@
 
 namespace
 {
-#ifndef GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
-#define GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047
-#endif
-#ifndef GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX
-#define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
-#endif
-#ifndef GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
-#define GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
-#endif
-
 struct RenderPanelStats
 {
     int drawCalls = 0;
@@ -287,41 +277,10 @@ bool TryReadLinuxVram(uint64_t& usedBytes, uint64_t& totalBytes)
     return false;
 }
 
-bool HasOpenGLExtension(const char* name)
+bool TryReadGraphicsContextVram(uint64_t& usedBytes, uint64_t& totalBytes)
 {
-    if (!glGetIntegerv || !glGetStringi || !name)
-        return false;
-
-    GLint extensionCount = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
-    for (GLint i = 0; i < extensionCount; ++i)
-    {
-        const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)));
-        if (extension && std::strcmp(extension, name) == 0)
-            return true;
-    }
-    return false;
-}
-
-bool TryReadOpenGLVram(uint64_t& usedBytes, uint64_t& totalBytes)
-{
-    if (!glGetIntegerv || !HasOpenGLExtension("GL_NVX_gpu_memory_info"))
-        return false;
-
-    GLint dedicatedKb = 0;
-    GLint totalKb = 0;
-    GLint availableKb = 0;
-    glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &dedicatedKb);
-    glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalKb);
-    glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &availableKb);
-
-    const GLint effectiveTotalKb = dedicatedKb > 0 ? dedicatedKb : totalKb;
-    if (effectiveTotalKb <= 0 || availableKb < 0)
-        return false;
-
-    totalBytes = static_cast<uint64_t>(effectiveTotalKb) * 1024ULL;
-    usedBytes = static_cast<uint64_t>((std::max)(effectiveTotalKb - availableKb, 0)) * 1024ULL;
-    return true;
+    auto* context = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    return context ? context->TryGetVramUsage(usedBytes, totalBytes) : false;
 }
 
 float GetSmoothingAlpha(float dt, float smoothingWindowSeconds)
@@ -675,7 +634,7 @@ void ProfilerPanel::UpdateSystemStats(float dt)
 
     uint64_t vramUsedBytes = 0;
     uint64_t vramTotalBytes = 0;
-    if (TryReadLinuxVram(vramUsedBytes, vramTotalBytes) || TryReadOpenGLVram(vramUsedBytes, vramTotalBytes))
+    if (TryReadLinuxVram(vramUsedBytes, vramTotalBytes) || TryReadGraphicsContextVram(vramUsedBytes, vramTotalBytes))
     {
         runtimeProfiler.SetVramUsage(vramUsedBytes, vramTotalBytes);
     }
@@ -816,8 +775,15 @@ void ProfilerPanel::OnImGui(Scene& scene)
         DrawMetric("Post Process Time", "%.2f ms",
                    m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::PostProcess)]);
         ImGui::Columns(1);
+#if AXIS_HAS_OPENGL_BACKEND
         ImGui::TextDisabled(
-            "Pass timings are CPU wall-clock times; GPU frame time uses OpenGL timer query when available.");
+            "Pass timings are CPU wall-clock times; GPU frame time uses OpenGL timer query when "
+            "available.");
+#else
+        ImGui::TextDisabled(
+            "Pass timings are CPU wall-clock times; GPU frame time depends on active backend "
+            "instrumentation.");
+#endif
 
         ImGui::Separator();
         ImGui::Text("Scene");

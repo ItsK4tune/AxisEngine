@@ -4,6 +4,7 @@
 #include <render/strategy/opengl/opengl_buffer_manager.h>
 #include <render/strategy/opengl/opengl_draw_context.h>
 #include <render/strategy/opengl/opengl_query_manager.h>
+#include <render/strategy/opengl/opengl_render_backend.h>
 #include <render/strategy/opengl/opengl_render_state_manager.h>
 #include <render/strategy/opengl/opengl_render_target_manager.h>
 #include <render/strategy/opengl/opengl_shader_manager.h>
@@ -52,11 +53,19 @@ public:
     {
         return m_QueryManager;
     }
+    rhi::IRenderBackend* GetRenderBackend() override
+    {
+        return &m_RenderBackend;
+    }
+
+    bool TryGetVramUsage(uint64_t& usedBytes, uint64_t& totalBytes) const override;
 
     std::string GetName() const override
     {
         return "OpenGL";
     }
+
+    std::string GetDeviceName() const override;
 
 private:
     OpenGLBufferManager m_BufferManager;
@@ -66,4 +75,5 @@ private:
     OpenGLRenderStateManager m_RenderStateManager;
     OpenGLDrawContext m_DrawContext;
     OpenGLQueryManager m_QueryManager;
+    OpenGLRenderBackend m_RenderBackend;
 };

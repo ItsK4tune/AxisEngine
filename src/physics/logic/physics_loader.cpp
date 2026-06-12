@@ -3,7 +3,6 @@
 #include <core/logic/logger.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
-#include <physics/strategy/bullet/bullet_glm_helpers.h>
 #include <iostream>
 #include <sstream>
 #include <string>

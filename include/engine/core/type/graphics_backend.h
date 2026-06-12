@@ -4,5 +4,6 @@ enum class GraphicsBackend
 {
     OpenGL,
     Vulkan,
-    DirectX
+    DirectX,
+    Null
 };

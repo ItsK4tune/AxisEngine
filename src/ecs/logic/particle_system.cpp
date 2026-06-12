@@ -21,7 +21,7 @@ void ParticleSystem::Initialize()
     auto& sl = ServiceLocator::Instance();
     sl.Register<ParticleSystem>(this);
     m_Context = sl.Resolve<IGraphicsContext>();
-    if (m_Context)
+    if (m_Context && m_Context->SupportsLegacyRenderPipeline())
     {
         auto& tm = m_Context->GetTextureManager();
         m_DefaultTexture = tm.GenTexture();
@@ -88,7 +88,7 @@ void ParticleSystem::RenderTransparentPass(Scene& scene, int width, int height, 
 
 void ParticleSystem::RenderParticles(Scene& scene, int width, int height, float alpha)
 {
-    if (!m_Enabled || !m_Context)
+    if (!m_Enabled || !m_Context || !m_Context->SupportsLegacyRenderPipeline())
         return;
 
     auto& sl = ServiceLocator::Instance();

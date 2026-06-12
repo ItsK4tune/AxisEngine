@@ -17,8 +17,8 @@ void ShaderManager::Initialize()
         shader->SetAllowErrorFallback(true);
 
         // Construct full paths relative to the engine's asset directory
-        std::string vsPath = FileSystem::getPath("include/engine/asset/shaders/" + vsName);
-        std::string fsPath = FileSystem::getPath("include/engine/asset/shaders/" + fsName);
+        std::string vsPath = FileSystem::getPath("include/engine/asset/shaders/opengl/" + vsName);
+        std::string fsPath = FileSystem::getPath("include/engine/asset/shaders/opengl/" + fsName);
 
         try
         {

@@ -2,6 +2,7 @@
 
 #include <typeindex>
 #include <algorithm>
+#include <atomic>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -13,7 +14,7 @@ namespace internal
 {
 inline int GetNextEventId()
 {
-    static int id = 0;
+    static std::atomic<int> id{0};
     return id++;
 }
 }  // namespace internal

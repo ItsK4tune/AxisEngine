@@ -1,0 +1,38 @@
+#pragma once
+
+#include <audio/interface/i_audio_source.h>
+#include <audio/interface/i_sound.h>
+#include <audio/interface/i_audio_listener.h>
+#include <glm/glm.hpp>
+#include <memory>
+#include <string>
+
+class IAudioDevice
+{
+public:
+    virtual ~IAudioDevice() = default;
+
+    virtual bool Initialize() = 0;
+    virtual void Update() = 0;
+    virtual void Shutdown() = 0;
+
+    virtual void SetListenerPosition(const glm::vec3& pos, const glm::vec3& lookDir) = 0;
+    virtual void SetGlobalVolume(float volume) = 0;
+
+    virtual std::shared_ptr<ISound> Play2D(const std::string& filename, bool loop = false,
+                                           bool startPaused = false) = 0;
+    virtual std::shared_ptr<ISound> Play2D(IAudioSource* source, bool loop = false, bool startPaused = false) = 0;
+    virtual std::shared_ptr<ISound> Play3D(const std::string& filename, const glm::vec3& pos, bool loop = false,
+                                           bool startPaused = false) = 0;
+    virtual std::shared_ptr<ISound> Play3D(IAudioSource* source, const glm::vec3& pos, bool loop = false,
+                                           bool startPaused = false) = 0;
+
+    virtual std::shared_ptr<IAudioSource> AddSoundSourceFromFile(const std::string& filename) = 0;
+
+    virtual void StopAllSounds() = 0;
+
+    virtual IAudioListener* GetListener()
+    {
+        return nullptr;
+    }
+};

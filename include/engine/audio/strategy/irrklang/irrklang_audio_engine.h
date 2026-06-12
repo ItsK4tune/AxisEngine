@@ -35,7 +35,10 @@ public:
 
     void StopAllSounds() override;
 
+    IAudioListener* GetListener() override;
+
 private:
+    std::unique_ptr<IAudioListener> m_Listener;
     irrklang::ISoundEngine* m_Engine = nullptr;
     std::map<std::string, std::shared_ptr<IrrKlangAudioSource>> m_Sources;
     std::vector<std::shared_ptr<IrrKlangSound>> m_ActiveSounds;
