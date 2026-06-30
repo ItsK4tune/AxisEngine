@@ -246,70 +246,134 @@ canonical_backend() {
     esac
 }
 
-if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
-    clear
-    echo "=========================================="
-    echo "          SELECT GRAPHICS BACKEND"
-    echo "=========================================="
-    echo " 1. OpenGL (Default)"
-    echo " 2. Vulkan [Not implemented]"
-    echo " 3. DirectX [Not implemented]"
-    echo "=========================================="
-    read -p "Enter number (Default: 1): " GRAPHICS_CHOICE
-    [ -z "$GRAPHICS_CHOICE" ] && GRAPHICS_CHOICE=1
-    case "$GRAPHICS_CHOICE" in
-        1) AXIS_GRAPHICS_BACKEND="OpenGL" ;;
-        2) AXIS_GRAPHICS_BACKEND="Vulkan" ;;
-        3) AXIS_GRAPHICS_BACKEND="DirectX" ;;
-        *) echo -e "${RED}[ERROR] Invalid graphics backend selection!${NC}"; exit 1 ;;
-    esac
-else
-    AXIS_GRAPHICS_BACKEND=$(canonical_backend "$AXIS_GRAPHICS_BACKEND")
-fi
+if [ "$QUICK_BUILD" = "false" ]; then
+    if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
+        clear
+        echo "=========================================="
+        echo "          SELECT GRAPHICS BACKEND"
+        echo "=========================================="
+        echo " 1. OpenGL (Default)"
+        echo " 2. Vulkan [Not implemented]"
+        echo " 3. DirectX [Not implemented]"
+        echo "=========================================="
+        read -p "Enter number (Default: 1): " GRAPHICS_CHOICE
+        [ -z "$GRAPHICS_CHOICE" ] && GRAPHICS_CHOICE=1
+        case "$GRAPHICS_CHOICE" in
+            1) AXIS_GRAPHICS_BACKEND="OpenGL" ;;
+            2) AXIS_GRAPHICS_BACKEND="Vulkan" ;;
+            3) AXIS_GRAPHICS_BACKEND="DirectX" ;;
+            *) echo -e "${RED}[ERROR] Invalid graphics backend selection!${NC}"; exit 1 ;;
+        esac
+    else
+        AXIS_GRAPHICS_BACKEND=$(canonical_backend "$AXIS_GRAPHICS_BACKEND")
+    fi
 
-if [ -z "$AXIS_PHYSICS_BACKEND" ]; then
-    clear
-    echo "=========================================="
-    echo "          SELECT PHYSICS BACKEND"
-    echo "=========================================="
-    echo " 1. Bullet (Default)"
-    echo " 2. PhysX [Not implemented]"
-    echo "=========================================="
-    read -p "Enter number (Default: 1): " PHYSICS_CHOICE
-    [ -z "$PHYSICS_CHOICE" ] && PHYSICS_CHOICE=1
-    case "$PHYSICS_CHOICE" in
-        1) AXIS_PHYSICS_BACKEND="Bullet" ;;
-        2) AXIS_PHYSICS_BACKEND="PhysX" ;;
-        *) echo -e "${RED}[ERROR] Invalid physics backend selection!${NC}"; exit 1 ;;
-    esac
-else
-    AXIS_PHYSICS_BACKEND=$(canonical_backend "$AXIS_PHYSICS_BACKEND")
-fi
+    if [ -z "$AXIS_PHYSICS_BACKEND" ]; then
+        clear
+        echo "=========================================="
+        echo "          SELECT PHYSICS BACKEND"
+        echo "=========================================="
+        echo " 1. Bullet (Default)"
+        echo " 2. PhysX [Not implemented]"
+        echo "=========================================="
+        read -p "Enter number (Default: 1): " PHYSICS_CHOICE
+        [ -z "$PHYSICS_CHOICE" ] && PHYSICS_CHOICE=1
+        case "$PHYSICS_CHOICE" in
+            1) AXIS_PHYSICS_BACKEND="Bullet" ;;
+            2) AXIS_PHYSICS_BACKEND="PhysX" ;;
+            *) echo -e "${RED}[ERROR] Invalid physics backend selection!${NC}"; exit 1 ;;
+        esac
+    else
+        AXIS_PHYSICS_BACKEND=$(canonical_backend "$AXIS_PHYSICS_BACKEND")
+    fi
 
-if [ -z "$AXIS_AUDIO_BACKEND" ]; then
-    clear
-    echo "=========================================="
-    echo "           SELECT AUDIO BACKEND"
-    echo "=========================================="
-    echo " 1. Null (Default, no audio output)"
-    echo " 2. FMOD (requires FMOD SDK / FMOD_ROOT_DIR)"
-    echo " 3. IrrKlang (requires irrKlang SDK)"
-    echo "=========================================="
-    read -p "Enter number (Default: 1): " AUDIO_CHOICE
-    [ -z "$AUDIO_CHOICE" ] && AUDIO_CHOICE=1
-    case "$AUDIO_CHOICE" in
-        1) AXIS_AUDIO_BACKEND="Null" ;;
-        2) AXIS_AUDIO_BACKEND="FMOD" ;;
-        3) AXIS_AUDIO_BACKEND="IrrKlang" ;;
-        *) echo -e "${RED}[ERROR] Invalid audio backend selection!${NC}"; exit 1 ;;
-    esac
-else
-    AXIS_AUDIO_BACKEND=$(canonical_backend "$AXIS_AUDIO_BACKEND")
-fi
+    if [ -z "$AXIS_AUDIO_BACKEND" ]; then
+        clear
+        echo "=========================================="
+        echo "           SELECT AUDIO BACKEND"
+        echo "=========================================="
+        echo " 1. Null (Default, no audio output)"
+        echo " 2. FMOD (requires FMOD SDK / FMOD_ROOT_DIR)"
+        echo " 3. IrrKlang (requires irrKlang SDK)"
+        echo "=========================================="
+        read -p "Enter number (Default: 1): " AUDIO_CHOICE
+        [ -z "$AUDIO_CHOICE" ] && AUDIO_CHOICE=1
+        case "$AUDIO_CHOICE" in
+            1) AXIS_AUDIO_BACKEND="Null" ;;
+            2) AXIS_AUDIO_BACKEND="FMOD" ;;
+            3) AXIS_AUDIO_BACKEND="IrrKlang" ;;
+            *) echo -e "${RED}[ERROR] Invalid audio backend selection!${NC}"; exit 1 ;;
+        esac
+    else
+        AXIS_AUDIO_BACKEND=$(canonical_backend "$AXIS_AUDIO_BACKEND")
+    fi
 
-if [ -z "$AXIS_GRAPHICS_BACKEND" ] || [ -z "$AXIS_PHYSICS_BACKEND" ] || [ -z "$AXIS_AUDIO_BACKEND" ]; then
-    echo -e "${RED}[ERROR] Invalid backend argument.${NC}"
-    exit 1
+    if [ -z "$AXIS_GRAPHICS_BACKEND" ] || [ -z "$AXIS_PHYSICS_BACKEND" ] || [ -z "$AXIS_AUDIO_BACKEND" ]; then
+        echo -e "${RED}[ERROR] Invalid backend argument.${NC}"
+        exit 1
+    fi
+
+    if ! audio_sdk_available; then
+        echo -e "${YELLOW}[WARNING]${NC} $AXIS_AUDIO_BACKEND SDK not found."
+        if [ "$SKIP_PROMPTS" = "true" ]; then
+            echo -e "${RED}[ERROR]${NC} Set ${AXIS_AUDIO_BACKEND}_ROOT_DIR or use --audio Null."
+            exit 1
+        fi
+        read -p "Fallback to Null audio? (Y/N) [Default: Y]: " AUDIO_FALLBACK
+        [ -z "$AUDIO_FALLBACK" ] && AUDIO_FALLBACK="y"
+        if [[ "$AUDIO_FALLBACK" =~ ^[Yy]$ ]]; then
+            AXIS_AUDIO_BACKEND="Null"
+        else
+            exit 1
+        fi
+    fi
+else
+    if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
+        if [ -f "build/CMakeCache.txt" ]; then
+            AXIS_GRAPHICS_BACKEND=$(grep "AXIS_GRAPHICS_BACKEND:STRING=" build/CMakeCache.txt | cut -d'=' -f2)
+        fi
+        AXIS_GRAPHICS_BACKEND=${AXIS_GRAPHICS_BACKEND:-"OpenGL"}
+    else
+        AXIS_GRAPHICS_BACKEND=$(canonical_backend "$AXIS_GRAPHICS_BACKEND")
+    fi
+
+    if [ -z "$AXIS_PHYSICS_BACKEND" ]; then
+        if [ -f "build/CMakeCache.txt" ]; then
+            AXIS_PHYSICS_BACKEND=$(grep "AXIS_PHYSICS_BACKEND:STRING=" build/CMakeCache.txt | cut -d'=' -f2)
+        fi
+        AXIS_PHYSICS_BACKEND=${AXIS_PHYSICS_BACKEND:-"Bullet"}
+    else
+        AXIS_PHYSICS_BACKEND=$(canonical_backend "$AXIS_PHYSICS_BACKEND")
+    fi
+
+    if [ -z "$AXIS_AUDIO_BACKEND" ]; then
+        if [ -f "build/CMakeCache.txt" ]; then
+            AXIS_AUDIO_BACKEND=$(grep "AXIS_AUDIO_BACKEND:STRING=" build/CMakeCache.txt | cut -d'=' -f2)
+        fi
+        AXIS_AUDIO_BACKEND=${AXIS_AUDIO_BACKEND:-"Null"}
+    else
+        AXIS_AUDIO_BACKEND=$(canonical_backend "$AXIS_AUDIO_BACKEND")
+    fi
+
+    CLEAN_MODE="N/A (Quick Build)"
+    if [ -z "$ENABLE_EDITOR" ]; then
+        if [ -f "build/CMakeCache.txt" ]; then
+            ENABLE_EDITOR=$(grep "ENABLE_EDITOR:BOOL=" build/CMakeCache.txt | cut -d'=' -f2)
+        fi
+        ENABLE_EDITOR=${ENABLE_EDITOR:-"OFF"}
+    fi
+    if [ -z "$BUILD_SAMPLES" ]; then
+        if [ -f "build/CMakeCache.txt" ]; then
+            BUILD_SAMPLES=$(grep "BUILD_SAMPLES:BOOL=" build/CMakeCache.txt | cut -d'=' -f2)
+        fi
+        BUILD_SAMPLES=${BUILD_SAMPLES:-"OFF"}
+    fi
+    if [ -z "$ENABLE_TESTS" ]; then
+        if [ -f "build/CMakeCache.txt" ]; then
+            ENABLE_TESTS=$(grep "ENABLE_TESTS:BOOL=" build/CMakeCache.txt | cut -d'=' -f2)
+        fi
+        ENABLE_TESTS=${ENABLE_TESTS:-"OFF"}
+    fi
 fi
 
 audio_sdk_available() {
@@ -336,18 +400,20 @@ audio_sdk_available() {
     esac
 }
 
-if ! audio_sdk_available; then
-    echo -e "${YELLOW}[WARNING]${NC} $AXIS_AUDIO_BACKEND SDK not found."
-    if [ "$SKIP_PROMPTS" = "true" ]; then
-        echo -e "${RED}[ERROR]${NC} Set ${AXIS_AUDIO_BACKEND}_ROOT_DIR or use --audio Null."
-        exit 1
-    fi
-    read -p "Fallback to Null audio? (Y/N) [Default: Y]: " AUDIO_FALLBACK
-    [ -z "$AUDIO_FALLBACK" ] && AUDIO_FALLBACK="y"
-    if [[ "$AUDIO_FALLBACK" =~ ^[Yy]$ ]]; then
-        AXIS_AUDIO_BACKEND="Null"
-    else
-        exit 1
+if [ "$QUICK_BUILD" = "false" ]; then
+    if ! audio_sdk_available; then
+        echo -e "${YELLOW}[WARNING]${NC} $AXIS_AUDIO_BACKEND SDK not found."
+        if [ "$SKIP_PROMPTS" = "true" ]; then
+            echo -e "${RED}[ERROR]${NC} Set ${AXIS_AUDIO_BACKEND}_ROOT_DIR or use --audio Null."
+            exit 1
+        fi
+        read -p "Fallback to Null audio? (Y/N) [Default: Y]: " AUDIO_FALLBACK
+        [ -z "$AUDIO_FALLBACK" ] && AUDIO_FALLBACK="y"
+        if [[ "$AUDIO_FALLBACK" =~ ^[Yy]$ ]]; then
+            AXIS_AUDIO_BACKEND="Null"
+        else
+            exit 1
+        fi
     fi
 fi
 
@@ -366,16 +432,12 @@ if [ "$SKIP_PROMPTS" = "false" ]; then
     echo -e "  Graphics:   $AXIS_GRAPHICS_BACKEND"
     echo -e "  Physics:    $AXIS_PHYSICS_BACKEND"
     echo -e "  Audio:      $AXIS_AUDIO_BACKEND"
-    if [ "$QUICK_BUILD" = "true" ]; then
-        echo -e "  Build Mode: QUICK"
-    else
-        echo -e "  Clean Mode: $CLEAN_MODE"
-        echo -e "  Editor:     $ENABLE_EDITOR"
-        if [ "$ENABLE_EDITOR" = "ON" ]; then
-            echo -e "  Samples:    $BUILD_SAMPLES"
-        fi
-        echo -e "  Tests:      $ENABLE_TESTS"
+    echo -e "  Clean Mode: $CLEAN_MODE"
+    echo -e "  Editor:     $ENABLE_EDITOR"
+    if [ "$ENABLE_EDITOR" = "ON" ]; then
+        echo -e "  Samples:    $BUILD_SAMPLES"
     fi
+    echo -e "  Tests:      $ENABLE_TESTS"
     echo "=========================================="
     read -p "Do you want to proceed? (Y/N) [Default: Y]: " CONFIRM
     [ -z "$CONFIRM" ] && CONFIRM="y"
@@ -427,10 +489,11 @@ CMAKE_FLAGS=(
     "-DENABLE_EDITOR=$ENABLE_EDITOR"
     "-DBUILD_SAMPLES=$BUILD_SAMPLES"
     "-DENABLE_TESTS=$ENABLE_TESTS"
-    "-DAXIS_GRAPHICS_BACKEND=$AXIS_GRAPHICS_BACKEND"
-    "-DAXIS_PHYSICS_BACKEND=$AXIS_PHYSICS_BACKEND"
-    "-DAXIS_AUDIO_BACKEND=$AXIS_AUDIO_BACKEND"
 )
+
+[ -n "$AXIS_GRAPHICS_BACKEND" ] && CMAKE_FLAGS+=("-DAXIS_GRAPHICS_BACKEND=$AXIS_GRAPHICS_BACKEND")
+[ -n "$AXIS_PHYSICS_BACKEND" ] && CMAKE_FLAGS+=("-DAXIS_PHYSICS_BACKEND=$AXIS_PHYSICS_BACKEND")
+[ -n "$AXIS_AUDIO_BACKEND" ] && CMAKE_FLAGS+=("-DAXIS_AUDIO_BACKEND=$AXIS_AUDIO_BACKEND")
 
 if [ -n "$VCPKG_ROOT" ] && [ -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ]; then
     CMAKE_FLAGS+=("-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake")
@@ -457,4 +520,38 @@ cmake --build build --config "$BUILD_TYPE"
 echo -e "\n=========================================="
 echo -e "        BUILD SUCCESS: LIBS GENERATED"
 echo -e "=========================================="
-echo -e "Libraries (libaxis_engine.a, etc.) are located in: build/lib/"
+echo -e "Copying engine and dependency libraries to '$PWD/build/lib' and '$PWD/build/bin'..."
+
+TARGET_LIB="$PWD/build/lib"
+TARGET_BIN="$PWD/build/bin"
+
+mkdir -p "$TARGET_LIB"
+mkdir -p "$TARGET_BIN"
+
+TRIPLET=$(ls vcpkg_installed 2>/dev/null | grep -v 'vcpkg' | head -n 1)
+if [ -n "$BUILD_TYPE" ] && [ "$BUILD_TYPE" = "Debug" ]; then
+    VCPKG_SUB="${TRIPLET}/debug"
+else
+    VCPKG_SUB="${TRIPLET}"
+fi
+
+copy_files() {
+    local src_dir="$1"
+    local dst_dir="$2"
+    shift 2
+    local exts=("$@")
+    if [ -d "$src_dir" ]; then
+        for ext in "${exts[@]}"; do
+            for file in "$src_dir"/*"$ext"; do
+                [ -e "$file" ] && cp -f "$file" "$dst_dir/"
+            done
+        done
+    fi
+}
+
+if [ -n "$TRIPLET" ]; then
+    copy_files "vcpkg_installed/${VCPKG_SUB}/lib" "$TARGET_LIB" ".lib" ".a" ".so" ".dylib"
+    copy_files "vcpkg_installed/${VCPKG_SUB}/bin" "$TARGET_BIN" ".dll" ".so" ".dylib"
+fi
+
+echo -e "${GREEN}[SUCCESS]${NC} Libraries and DLLs copied successfully to AxisEngine/build/lib/ and AxisEngine/build/bin/!"

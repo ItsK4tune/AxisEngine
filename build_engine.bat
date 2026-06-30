@@ -154,7 +154,24 @@ if "%type_choice%"=="4" set BUILD_TYPE=MinSizeRel
 
 echo Selected Build Type: %BUILD_TYPE%
 
-if defined QUICK_BUILD goto SELECT_BACKENDS
+if defined QUICK_BUILD (
+    set "GRAPHICS_BACKEND=OpenGL"
+    set "PHYSICS_BACKEND=Bullet"
+    set "AUDIO_BACKEND=Null"
+    set "CLEAN_MODE=N/A (Quick Build)"
+    set "ENABLE_EDITOR=OFF"
+    set "BUILD_SAMPLES=OFF"
+    set "ENABLE_TESTS=OFF"
+    if exist "build\CMakeCache.txt" (
+        for /f "tokens=2 delims==" %%i in ('findstr /C:"AXIS_GRAPHICS_BACKEND:STRING=" build\CMakeCache.txt') do set "GRAPHICS_BACKEND=%%i"
+        for /f "tokens=2 delims==" %%i in ('findstr /C:"AXIS_PHYSICS_BACKEND:STRING=" build\CMakeCache.txt') do set "PHYSICS_BACKEND=%%i"
+        for /f "tokens=2 delims==" %%i in ('findstr /C:"AXIS_AUDIO_BACKEND:STRING=" build\CMakeCache.txt') do set "AUDIO_BACKEND=%%i"
+        for /f "tokens=2 delims==" %%i in ('findstr /C:"ENABLE_EDITOR:BOOL=" build\CMakeCache.txt') do set "ENABLE_EDITOR=%%i"
+        for /f "tokens=2 delims==" %%i in ('findstr /C:"BUILD_SAMPLES:BOOL=" build\CMakeCache.txt') do set "BUILD_SAMPLES=%%i"
+        for /f "tokens=2 delims==" %%i in ('findstr /C:"ENABLE_TESTS:BOOL=" build\CMakeCache.txt') do set "ENABLE_TESTS=%%i"
+    )
+    goto CONFIRM_CONFIG
+)
 goto SELECT_CLEAN_MODE
 
 :SELECT_CLEAN_MODE
@@ -385,21 +402,21 @@ echo  Build Type: %BUILD_TYPE%
 echo  Graphics:   %GRAPHICS_BACKEND%
 echo  Physics:    %PHYSICS_BACKEND%
 echo  Audio:      %AUDIO_BACKEND%
-if defined QUICK_BUILD (
-    echo  Build Mode: QUICK
-) else (
-    echo  Clean Mode: %CLEAN_MODE%
-    echo  Editor:     %ENABLE_EDITOR%
-    if "%ENABLE_EDITOR%"=="ON" echo  Samples:    %BUILD_SAMPLES%
-    echo  Tests:      %ENABLE_TESTS%
-)
+echo  Clean Mode: %CLEAN_MODE%
+echo  Editor:     %ENABLE_EDITOR%
+if "%ENABLE_EDITOR%"=="ON" echo  Samples:    %BUILD_SAMPLES%
+echo  Tests:      %ENABLE_TESTS%
 echo ==========================================
 set "confirm="
 set /p confirm="Do you want to proceed? (Y/N, B=Back) [Default: Y]: "
 if "%confirm%"=="" set confirm=y
 
 if /i "%confirm%"=="b" (
-    goto SELECT_BACKENDS
+    if defined QUICK_BUILD (
+        goto SELECT_BUILD_TYPE
+    ) else (
+        goto SELECT_BACKENDS
+    )
 )
 if /i "%confirm%"=="n" goto SELECT_ACTION
 if /i "%confirm%"=="y" (
@@ -509,7 +526,7 @@ if not defined QUICK_BUILD (
         "!CMAKE_CMD!" -G %GENERATOR% -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
     )
 ) else (
-    set "BACKEND_CMAKE_FLAGS=-DAXIS_GRAPHICS_BACKEND=!GRAPHICS_BACKEND! -DAXIS_PHYSICS_BACKEND=!PHYSICS_BACKEND! -DAXIS_AUDIO_BACKEND=!AUDIO_BACKEND!"
+    set "BACKEND_CMAKE_FLAGS="
     if "%ENABLE_TESTS%"=="ON" (
         if not defined GENERATOR (
             "!CMAKE_CMD!" -B build -DENABLE_EDITOR=!ENABLE_EDITOR! -DBUILD_SAMPLES=!BUILD_SAMPLES! -DENABLE_TESTS=!ENABLE_TESTS! !BACKEND_CMAKE_FLAGS! !DEPENDENCY_CMAKE_FLAGS!
@@ -546,7 +563,17 @@ echo.
 echo ==========================================
 echo        BUILD SUCCESS: LIBS GENERATED
 echo ==========================================
-echo Libraries (axis_engine.lib, etc.) are located in: build\lib\
+echo Copying engine and dependency libraries to '%CD%\build\lib' and '%CD%\build\bin'...
+
+powershell -NoProfile -Command ^
+    "$BuildType='%BUILD_TYPE%';" ^
+    "$TargetLib='%CD%\build\lib';" ^
+    "$TargetBin='%CD%\build\bin';" ^
+    "$VcpkgSub = if ($BuildType -eq 'Debug') { 'x64-windows\debug' } else { 'x64-windows' };" ^
+    "New-Item -ItemType Directory -Force -Path $TargetLib, $TargetBin | Out-Null;" ^
+    "if (Test-Path \"vcpkg_installed\$VcpkgSub\lib\*.lib\") { Copy-Item \"vcpkg_installed\$VcpkgSub\lib\*.lib\" $TargetLib -Force };" ^
+    "if (Test-Path \"vcpkg_installed\$VcpkgSub\bin\*.dll\") { Copy-Item \"vcpkg_installed\$VcpkgSub\bin\*.dll\" $TargetBin -Force };" ^
+    "Write-Host 'Libraries and DLLs copied successfully to AxisEngine/build/lib/ and AxisEngine/build/bin/!';"
 
 :EXIT_SCRIPT
 exit /b %ERRORLEVEL%

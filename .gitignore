@@ -8,3 +8,5 @@ build_engine.lock
 logs/
 
 imgui.ini
+
+vcpkg_installed/
