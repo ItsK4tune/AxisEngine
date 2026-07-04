@@ -18,6 +18,7 @@ add_executable(axis_test
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario01.cpp
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario03.cpp
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario07.cpp
+    ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario11.cpp
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario21.cpp
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario23.cpp
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario25.cpp

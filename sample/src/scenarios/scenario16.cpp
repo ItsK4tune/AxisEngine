@@ -17,7 +17,7 @@ void SampleState::LoadScene16()
     EntityBuilder(scene, res, "scenario")
         .WithName("UIRootTitle")
         .WithUIChild(root, glm::vec2(-5.0f, 30.0f), glm::vec2(560.0f, 54.0f), 11)
-        .WithUIText("UI Showcase - transform / text / texture / pivot / rotation / flip", "time", 1.05f,
+        .WithUIText("UI Showcase - transform / text / texture / pivot / rotation / flip", "time", 0.2625f,
                     glm::vec4(0.65f, 0.95f, 1.0f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 540.0f)
         .Build();
@@ -47,7 +47,7 @@ void SampleState::LoadScene16()
     EntityBuilder(scene, res, "scenario")
         .WithName("UICardText")
         .WithUIChild(m_S16CardEntity, glm::vec2(12.0f, 16.0f), glm::vec2(196.0f, 78.0f), 14)
-        .WithUIText("Pivoted card\nRotation slider updates this card.\nThe logo tile can be hidden.", "time", 0.9f,
+        .WithUIText("Pivoted card\nRotation slider updates this card.\nThe logo tile can be hidden.", "time", 0.225f,
                     glm::vec4(0.95f, 0.95f, 0.95f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 190.0f)
         .Build();
@@ -63,7 +63,7 @@ void SampleState::LoadScene16()
         .WithName("UICreditText")
         .WithUIChild(footer, glm::vec2(0.0f), glm::vec2(332.0f, 84.0f), 13)
         .WithUIText("This scene exercises static UI transform, child hierarchy, rotated UI, and wrapped text.", "time",
-                    0.84f, glm::vec4(0.82f, 0.88f, 0.95f, 1.0f))
+                    0.21f, glm::vec4(0.82f, 0.88f, 0.95f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 310.0f)
         .Build();
 
@@ -94,7 +94,7 @@ void SampleState::LoadScene16()
     EntityBuilder(scene, res, "scenario")
         .WithName("ResponsiveTitle")
         .WithUIChild(leftColumn, glm::vec2(0.0f), glm::vec2(260.0f, 48.0f), 10)
-        .WithUIText("Responsive UI", "time", 1.0f, glm::vec4(0.9f, 0.95f, 1.0f, 1.0f))
+        .WithUIText("Responsive UI", "time", 0.25f, glm::vec4(0.9f, 0.95f, 1.0f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, false, 0.0f)
         .Build();
 
@@ -104,7 +104,7 @@ void SampleState::LoadScene16()
         .WithUIText(
             "Resize the window and compare compact, expanded, and stacked layouts. This block should reflow from "
             "the anchored root without needing reload.",
-            "time", 0.86f, glm::vec4(0.84f, 0.9f, 0.94f, 1.0f))
+            "time", 0.215f, glm::vec4(0.84f, 0.9f, 0.94f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 280.0f)
         .Build();
 
@@ -123,7 +123,7 @@ void SampleState::LoadScene16()
             .WithUIChild(metricsRow, glm::vec2(0.0f), glm::vec2(80.0f, 52.0f), 11)
             .WithUIRenderer(std::string("ui_metric_") + metricLabels[i],
                             glm::vec4(0.16f + 0.06f * i, 0.20f, 0.28f, 0.95f))
-            .WithUIText(metricLabels[i], "time", 0.82f, glm::vec4(1.0f))
+            .WithUIText(metricLabels[i], "time", 0.205f, glm::vec4(1.0f))
             .Build();
     }
 
@@ -145,7 +145,7 @@ void SampleState::LoadScene16()
     EntityBuilder(scene, res, "scenario")
         .WithName("ResponsivePreviewCaption")
         .WithUIChild(rightColumn, glm::vec2(0.0f), glm::vec2(220.0f, 64.0f), 11)
-        .WithUIText("This block anchors and resizes with the viewport.\nLayout mode changes its flow.", "time", 0.8f,
+        .WithUIText("This block anchors and resizes with the viewport.\nLayout mode changes its flow.", "time", 0.2f,
                     glm::vec4(0.92f, 0.92f, 0.96f, 1.0f))
         .WithUITextAlignment(TextAlignment::Center, true, 200.0f)
         .Build();

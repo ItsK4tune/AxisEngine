@@ -177,6 +177,13 @@ AXIS_TEST_CASE("Sample Scenario 01 creates requested render entity stress set")
     AXIS_CHECK(fixture.scene.HasAllComponents<MaterialComponent>(first));
 }
 
+AXIS_TEST_CASE("Sample Scenario 11 loads successfully")
+{
+    SampleScenarioFixture fixture;
+    fixture.state.LoadScene11();
+    fixture.systems.Update(fixture.scene, 0.016f);
+}
+
 AXIS_TEST_CASE("Sample Scenario 03 creates shadow casting light rig")
 {
     SampleScenarioFixture fixture;

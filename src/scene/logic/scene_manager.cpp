@@ -197,7 +197,7 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     }
 
     SceneLoadResult res = SceneSerializer::Deserialize(filePath, scene, resources, physics, audio);
-    if (res.entities.empty() && !res.hasConfig)
+    if (res.entities.empty())
     {
         LOGGER_ERROR("SceneManager") << "Failed to deserialize scene or scene is empty: " << filePath;
         return;
@@ -216,13 +216,6 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     rec.ownedSkyboxes = std::move(res.loadedSkyboxes);
     rec.ownedAnimations = std::move(res.loadedAnimations);
     rec.ownedSounds = std::move(res.loadedSounds);
-    rec.appliedConfig = res.appliedConfig;
-    rec.hasConfig = res.hasConfig;
-
-    if (rec.hasConfig)
-    {
-        ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(rec.appliedConfig);
-    }
 
     m_LoadedScenes.push_back(std::move(rec));
     EventManager::Instance().Publish(SceneLoadedEvent{filePath});
@@ -482,14 +475,6 @@ void SceneManager::Internal_UnloadOrphanedResources(const SceneRecord& rec)
     for (const auto& sky : rec.ownedSkyboxes) resources.UnloadSkybox(sky);
     for (const auto& anim : rec.ownedAnimations) resources.UnloadAnimation(anim);
     for (const auto& sound : rec.ownedSounds) resources.UnloadSound(sound);
-}
-
-void SceneManager::Internal_RollbackConfig(const SceneRecord& removed)
-{
-    if (removed.hasConfig)
-    {
-        LOGGER_INFO("SceneManager") << "Scene with config removed: " << removed.name;
-    }
 }
 
 void SceneManager::Internal_ReindexScenes()

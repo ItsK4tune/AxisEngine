@@ -23,9 +23,6 @@ struct SceneRecord
     std::vector<std::string> ownedSkyboxes;
     std::vector<std::string> ownedAnimations;
     std::vector<std::string> ownedSounds;
-
-    AppConfig appliedConfig;
-    bool hasConfig = false;
 };
 
 struct SceneLoadResult
@@ -39,7 +36,4 @@ struct SceneLoadResult
     std::vector<std::string> loadedSkyboxes;
     std::vector<std::string> loadedAnimations;
     std::vector<std::string> loadedSounds;
-
-    AppConfig appliedConfig;
-    bool hasConfig = false;
 };

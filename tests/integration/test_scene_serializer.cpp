@@ -2,6 +2,7 @@
 #include "test_support.h"
 
 #include <core/logic/config_manager.h>
+#include <core/logic/config_serializer.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
 #include <scene/logic/scene_manager.h>
@@ -84,32 +85,7 @@ AXIS_TEST_CASE("SceneSerializer resolves deferred parent by name")
     AXIS_CHECK(scene.GetComponent<HierarchyComponent>(root).children[0] == child);
 }
 
-AXIS_TEST_CASE("SceneSerializer applies Config block")
-{
-    axis_test_support::HeadlessResourceFixture fixture;
-    Scene scene;
-    ConfigManager configManager;
-    InitializeConfigManager(configManager);
-    ServiceLocator::Instance().Register<ConfigManager>(&configManager);
-    auto path = axis_test_support::WriteTempFile(
-        "ss_config.axs",
-        "axis_scene:\n"
-        "  Config:\n"
-        "    WINDOW_WIDTH: 1280\n"
-        "    GRAVITY: 0 -12 0\n"
-        "    PHYSICS_TICKRATE: 120\n"
-        "  Entities:\n"
-        "    ConfigEntity:\n"
-        "      Component: Transform\n");
 
-    auto result = SceneSerializer::Deserialize(path.string(), scene, fixture.resources, nullptr, nullptr);
-
-    AXIS_CHECK(result.hasConfig);
-    AXIS_CHECK(result.appliedConfig.window.width == 1280);
-    AXIS_CHECK_NEAR(result.appliedConfig.physics.gravity[1], -12.0f, 0.0001f);
-    AXIS_CHECK_NEAR(result.appliedConfig.physics.physicsTickRate, 120.0f, 0.0001f);
-    AXIS_CHECK(configManager.GetConfig().window.width == 1280);
-}
 
 AXIS_TEST_CASE("SceneValidator creates fallback camera for renderable scene")
 {
@@ -204,5 +180,23 @@ AXIS_TEST_CASE("SceneSerializer skips transient entities")
 
     AXIS_CHECK(text.find("PersistentEntity:") != std::string::npos);
     AXIS_CHECK(text.find("TransientEntity:") == std::string::npos);
+}
+
+AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
+{
+    axis_test_support::ResetServices();
+    AppConfig config;
+    config.window.width = 1024;
+    config.window.height = 768;
+    config.physics.gravity[1] = -9.81f;
+
+    auto path = axis_test_support::TempPath("test_config.axs");
+    AXIS_CHECK(ConfigSerializer::Serialize(path.string(), config));
+
+    AppConfig loadedConfig;
+    AXIS_CHECK(ConfigSerializer::Deserialize(path.string(), loadedConfig));
+    AXIS_CHECK(loadedConfig.window.width == 1024);
+    AXIS_CHECK(loadedConfig.window.height == 768);
+    AXIS_CHECK_NEAR(loadedConfig.physics.gravity[1], -9.81f, 0.0001f);
 }
 

@@ -167,7 +167,7 @@ axis_scene:
     Font:
       Name: time
       Path: include/engine/asset/fonts/time.ttf
-      Size: 16
+      Size: 64
     Font:
       Name: debug_font
       Path: include/engine/asset/fonts/time.ttf

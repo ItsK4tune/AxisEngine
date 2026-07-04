@@ -44,7 +44,7 @@ bool SceneSerializer::Serialize(const std::string& filepath, const Scene& scene)
 bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene)
 {
     SceneLoadResult res = Deserialize(filepath, scene, m_Res, m_Phys, m_Audio);
-    return !res.entities.empty() || res.hasConfig;
+    return !res.entities.empty();
 }
 
 SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res,
@@ -80,25 +80,9 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
     {
         activeRoots = roots[0].children;
     }
-
     for (auto& root : activeRoots)
     {
-        if (root.key == "Config")
-        {
-            auto& sl = ServiceLocator::Instance();
-            auto& configMgr = sl.Require<ConfigManager>();
-            AppConfig tempConfig = configMgr.GetConfig();
-            for (auto& cfgNode : root.children)
-            {
-                std::stringstream ss;
-                ss << cfgNode.key << " " << cfgNode.value;
-                ConfigLoader::LoadConfig(ss, tempConfig, configMgr.IsHeadless());
-            }
-            configMgr.UpdateConfig(tempConfig);
-            result.hasConfig = true;
-            result.appliedConfig = tempConfig;
-        }
-        else if (root.key == "Resources")
+        if (root.key == "Resources")
         {
             for (auto& resNode : root.children)
             {
@@ -870,87 +854,8 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
     f << "axis_scene:\n";
 
     std::string normName = SceneSerializer::NormalizeSceneName(sceneName);
-    auto& sl = ServiceLocator::Instance();
-    auto& configMgr = sl.Require<ConfigManager>();
-    auto* sceneMgr = sl.Resolve<SceneManager>();
+    auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
     const SceneRecord* rec = sceneMgr ? sceneMgr->GetSceneByName(normName) : nullptr;
-
-    if (rec && rec->hasConfig)
-    {
-        AppConfig cfg = configMgr.GetConfig();
-        f << "  Config:\n";
-        SerialWriteKV(f, 2, "WINDOW_WIDTH", std::to_string(cfg.window.width));
-        SerialWriteKV(f, 2, "WINDOW_HEIGHT", std::to_string(cfg.window.height));
-
-        auto WindowModeToStr = [](WindowMode mode) {
-            switch (mode)
-            {
-                case WindowMode::Fullscreen:
-                    return "FULLSCREEN";
-                case WindowMode::Borderless:
-                    return "BORDERLESS";
-                case WindowMode::BorderlessFullscreen:
-                    return "BORDERLESS_FULLSCREEN";
-                default:
-                    return "WINDOWED";
-            }
-        };
-        SerialWriteKV(f, 2, "WINDOW_MODE", WindowModeToStr(cfg.window.windowMode));
-        SerialWriteKV(f, 2, "VSYNC", cfg.window.vsync ? "1" : "0");
-
-        SerialWriteKV(f, 2, "MSAA", std::to_string(cfg.graphics.msaaSamples));
-        SerialWriteKV(f, 2, "RENDER_SCALE", FloatStr(cfg.graphics.renderScale));
-        SerialWriteKV(f, 2, "ASYNC_RESOURCES", cfg.graphics.asyncResourceLoading ? "1" : "0");
-        SerialWriteKV(f, 2, "STRICT_ASSET_LOADING", cfg.graphics.strictAssetLoading ? "1" : "0");
-
-        SerialWriteKV(f, 2, "HDR_ENABLED", cfg.render.hdrEnabled ? "1" : "0");
-        SerialWriteKV(f, 2, "BLOOM_ENABLED", cfg.render.bloomEnabled ? "1" : "0");
-        SerialWriteKV(f, 2, "GAMMA", FloatStr(cfg.render.gamma));
-        SerialWriteKV(f, 2, "EXPOSURE", FloatStr(cfg.render.exposure));
-        SerialWriteKV(f, 2, "SKYBOX_INTENSITY", FloatStr(cfg.render.skyboxIntensity));
-        SerialWriteKV(f, 2, "AMBIENT_INTENSITY", FloatStr(cfg.render.ambientIntensity));
-        SerialWriteKV(f, 2, "UI_REFERENCE_SIZE",
-                      Vec2Str(glm::vec2(cfg.render.uiReferenceWidth, cfg.render.uiReferenceHeight)));
-
-        auto TonemappingToStr = [](TonemappingMode mode) {
-            switch (mode)
-            {
-                case TonemappingMode::ACES:
-                    return "ACES";
-                case TonemappingMode::Reinhard:
-                    return "REINHARD";
-                default:
-                    return "NONE";
-            }
-        };
-        SerialWriteKV(f, 2, "TONEMAPPING", TonemappingToStr(cfg.render.tonemappingMode));
-        SerialWriteKV(f, 2, "SHADOWS_ENABLED", cfg.shadow.shadowsEnabled ? "1" : "0");
-        SerialWriteKV(f, 2, "SHADOW_RESOLUTION", std::to_string(cfg.shadow.shadowMapResolution));
-        SerialWriteKV(f, 2, "SHADOW_BIAS", FloatStr(cfg.shadow.shadowBias));
-        SerialWriteKV(f, 2, "SHADOW_SOFTNESS", std::to_string(cfg.shadow.shadowSoftness));
-
-        SerialWriteKV(f, 2, "VOLUME", FloatStr(cfg.audio.masterVolume));
-
-        SerialWriteKV(f, 2, "GRAVITY",
-                      Vec3Str(glm::vec3(cfg.physics.gravity[0], cfg.physics.gravity[1], cfg.physics.gravity[2])));
-        SerialWriteKV(f, 2, "MAX_SUBSTEPS", std::to_string(cfg.physics.maxSubSteps));
-        SerialWriteKV(f, 2, "PHYSICS_TICKRATE", FloatStr(cfg.physics.physicsTickRate));
-
-        auto LightingModeToStr = [](LightingMode mode) {
-            switch (mode)
-            {
-                case LightingMode::Bake:
-                    return "BAKE";
-                case LightingMode::LightProbe:
-                    return "LIGHT_PROBE";
-                case LightingMode::ReflectionProbes:
-                    return "REFLECTION_PROBES";
-                default:
-                    return "REAL_TIME";
-            }
-        };
-        SerialWriteKV(f, 2, "LIGHTING_MODE", LightingModeToStr(cfg.lightingMode));
-    }
 
     UsedResources ur;
     auto view = scene.View<InfoComponent>();

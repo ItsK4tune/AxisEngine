@@ -98,7 +98,7 @@ unsigned int ReflectionProbeSystem::CreateCubemap(int resolution)
     for (unsigned int i = 0; i < 6; ++i)
     {
         tm.TexImage2D((TextureType)((int)TextureType::CubeMapPositiveX + i), 0, InternalFormat::RGBA16F, resolution,
-                      resolution, 0, TextureFormat::RGB, DataType::Float, nullptr);
+                      resolution, 0, TextureFormat::RGBA, DataType::Float, nullptr);
     }
 
     tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::MinFilter, (int)TextureFilter::LinearMipmapLinear);

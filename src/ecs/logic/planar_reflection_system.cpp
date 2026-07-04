@@ -16,6 +16,7 @@
 #include <render/unit/render_queue.h>
 #include <scene/logic/scene_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <render/logic/render_core.h>
 
 REGISTER_SYSTEM(PlanarReflectionSystem)
 
@@ -214,11 +215,14 @@ void PlanarReflectionSystem::Render(Scene& scene)
             lightingService->UploadLightData(sceneData);
         }
 
+        auto* core = ServiceLocator::Instance().Resolve<RenderCore>();
+        MaterialRenderer* matRenderer = core ? &core->GetMaterialRenderer() : nullptr;
+
         const auto& defQ = m_RenderService->GetRenderQueueObj().GetDeferredOpaqueQueue();
-        m_RenderService->ExecuteQueue(defQ, RenderQueuePass::DeferredGeometry, nullptr, nullptr, nullptr);
+        m_RenderService->ExecuteQueue(defQ, RenderQueuePass::DeferredGeometry, nullptr, matRenderer, nullptr);
 
         const auto& fwdQ = m_RenderService->GetRenderQueueObj().GetForwardOpaqueQueue();
-        m_RenderService->ExecuteQueue(fwdQ, RenderQueuePass::ForwardOpaque, nullptr, nullptr, nullptr);
+        m_RenderService->ExecuteQueue(fwdQ, RenderQueuePass::ForwardOpaque, nullptr, matRenderer, nullptr);
 
         rsm.SetCullFace(CullMode::Back);
         m_RenderService->SetMainFBO(tempFB);

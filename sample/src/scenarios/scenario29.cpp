@@ -49,14 +49,14 @@ void SampleState::LoadScene29()
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nPanelTitle")
         .WithUIChild(panel, glm::vec2(20.0f, 20.0f), glm::vec2(520.0f, 48.0f), 25)
-        .WithUIText(l10n.Get("app.title"), "time", 1.05f, glm::vec4(0.65f, 0.95f, 1.0f, 1.0f))
+        .WithUIText(l10n.Get("app.title"), "time", 0.2625f, glm::vec4(0.65f, 0.95f, 1.0f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nCurrentLanguageText")
         .WithUIChild(panel, glm::vec2(20.0f, 74.0f), glm::vec2(520.0f, 42.0f), 25)
-        .WithUIText(l10n.GetFormat("l10n.preview.current_language", l10n.GetLanguage()), "time", 0.86f,
+        .WithUIText(l10n.GetFormat("l10n.preview.current_language", l10n.GetLanguage()), "time", 0.215f,
                     glm::vec4(0.95f, 0.95f, 0.95f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
         .Build();
@@ -64,7 +64,7 @@ void SampleState::LoadScene29()
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nScenarioLabelText")
         .WithUIChild(panel, glm::vec2(20.0f, 120.0f), glm::vec2(520.0f, 42.0f), 25)
-        .WithUIText(l10n.Get("menu.select_scenario"), "time", 0.86f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
+        .WithUIText(l10n.Get("menu.select_scenario"), "time", 0.215f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
         .Build();
 
@@ -72,14 +72,14 @@ void SampleState::LoadScene29()
         .WithName("L10nEntityCountText")
         .WithUIChild(panel, glm::vec2(20.0f, 166.0f), glm::vec2(520.0f, 42.0f), 25)
         .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)scene.View<InfoComponent>().size())),
-                    "time", 0.86f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
+                    "time", 0.215f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
         .Build();
 
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nReloadText")
         .WithUIChild(panel, glm::vec2(20.0f, 212.0f), glm::vec2(520.0f, 58.0f), 25)
-        .WithUIText(l10n.Get("l10n.preview.description") + "\n" + l10n.Get("menu.reload_scenario"), "time", 0.82f,
+        .WithUIText(l10n.Get("l10n.preview.description") + "\n" + l10n.Get("menu.reload_scenario"), "time", 0.205f,
                     glm::vec4(1.0f, 0.88f, 0.48f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
         .Build();

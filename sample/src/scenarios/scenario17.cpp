@@ -254,7 +254,7 @@ entt::entity CreateScenarioControl(Scene& scene, ResourceManager& res, entt::ent
     auto label = EntityBuilder(scene, res, "scenario")
                      .WithName(name + "_Label")
                      .WithUIChild(control, glm::vec2(18.0f, 18.0f), glm::vec2(size.x - 36.0f, size.y - 36.0f), 35)
-                     .WithUIText(name + "\nReady", "time", 0.9f, glm::vec4(0.96f, 0.98f, 1.0f, 1.0f))
+                     .WithUIText(name + "\nReady", "time", 0.225f, glm::vec4(0.96f, 0.98f, 1.0f, 1.0f))
                      .WithUITextAlignment(TextAlignment::Left, true, size.x - 48.0f)
                      .Build();
 
@@ -291,7 +291,7 @@ void SampleState::LoadScene17()
     EntityBuilder(scene, res, "scenario")
         .WithName("ScenarioTitle")
         .WithUIChild(root, glm::vec2(32.0f, 24.0f), glm::vec2(600.0f, 64.0f), 30)
-        .WithUIText("Interactive UI Callbacks", "time", 1.08f, glm::vec4(0.94f, 0.97f, 1.0f, 1.0f))
+        .WithUIText("Interactive UI Callbacks", "time", 0.27f, glm::vec4(0.94f, 0.97f, 1.0f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 560.0f)
         .Build();
 
@@ -299,7 +299,7 @@ void SampleState::LoadScene17()
                       .WithName("ScenarioStatus")
                       .WithUIChild(root, glm::vec2(32.0f, 548.0f), glm::vec2(600.0f, 64.0f), 35)
                       .WithUIRenderer("Scenario_status_bg", glm::vec4(0.13f, 0.14f, 0.16f, 0.92f))
-                      .WithUIText("Latest event: Ready", "time", 0.82f, glm::vec4(0.78f, 0.88f, 0.96f, 1.0f))
+                      .WithUIText("Latest event: Ready", "time", 0.205f, glm::vec4(0.78f, 0.88f, 0.96f, 1.0f))
                       .WithUITextAlignment(TextAlignment::Left, true, 560.0f)
                       .Build();
 

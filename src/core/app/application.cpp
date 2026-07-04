@@ -3,6 +3,7 @@
 #include <audio/logic/audio_service.h>
 #include <core/logic/axis_assert.h>
 #include <core/logic/config_manager.h>
+#include <core/logic/config_serializer.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/job_system.h>
@@ -153,8 +154,11 @@ void Application::Shutdown()
     ServiceLocator::Instance().ClearAll();
 }
 
-bool Application::Initialize(const AppConfig& config)
+bool Application::Initialize(const AppConfig& incomingConfig)
 {
+    AppConfig config = incomingConfig;
+    ConfigSerializer::Deserialize("include/engine/asset/config.axs", config, config.headlessMode);
+
     JobSystem::Instance().Initialize(config.numJobThreads);
     LogManager::Instance().Initialize(config.logLevel);
 

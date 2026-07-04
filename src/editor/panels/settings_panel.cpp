@@ -2,6 +2,7 @@
 
 #ifdef ENABLE_EDITOR
 #include <core/logic/config_manager.h>
+#include <core/logic/config_serializer.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/type/tonemapping_mode.h>
@@ -256,6 +257,12 @@ void SettingsPanel::OnImGui(Scene& scene)
     if (changed || ImGui::IsItemDeactivatedAfterEdit())
     {
         cm->UpdateConfig(conf, ConfigChangedEvent::All);
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button("Save Config"))
+    {
+        ConfigSerializer::Serialize("include/engine/asset/config.axs", conf);
     }
 
     ImGui::End();

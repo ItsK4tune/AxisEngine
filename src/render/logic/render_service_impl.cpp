@@ -1363,8 +1363,12 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         }
         lastHadProbe = (item.reflection != nullptr);
 
-        bool matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor,
+        bool matBound = false;
+        if (materialRenderer)
+        {
+            matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor,
                                                                 m_Flags.debugNoTexture, m_Flags.wireframe);
+        }
 
         auto canInstanceWith = [&](const RenderItem& other) {
             return m_Flags.instanceBatchingEnabled && pass != RenderQueuePass::Transparent && !overrideShader &&

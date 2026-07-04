@@ -92,7 +92,6 @@ private:
 
     void Internal_DestroySceneEntities(SceneRecord& rec);
     void Internal_UnloadOrphanedResources(const SceneRecord& rec);
-    void Internal_RollbackConfig(const SceneRecord& removed);
     void Internal_UnloadRecord(SceneRecord& rec);
     void Internal_ReindexScenes();
 

@@ -25,7 +25,7 @@ FIND_PATH( ASSIMP_INCLUDE_DIR assimp/mesh.h
 	/opt/homebrew/include
 )
 FIND_LIBRARY( ASSIMP_LIBRARY
-	NAMES assimp-vc143-mt assimp
+	NAMES assimp-vc145-mt assimp-vc143-mt assimp
 	PATHS
 	/usr/lib64
 	/usr/lib
