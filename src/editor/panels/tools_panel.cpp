@@ -147,11 +147,23 @@ void ToolsPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("Debug Vis", ImGuiTreeNodeFlags_DefaultOpen))
     {
+        if (ImGui::Checkbox("Wireframe Mode", &conf.debug.wireframeMode))
+            changed = true;
+        if (ImGui::Checkbox("No Texture", &conf.debug.noTexture))
+            changed = true;
         if (ImGui::Checkbox("Physics Debug (F8)", &conf.debug.physicsDebug))
+            changed = true;
+        if (ImGui::Checkbox("Editor UI Enabled", &conf.debug.uiEnabled))
             changed = true;
         if (ImGui::Checkbox("Entity Names (F1)", &conf.debug.entityNames))
             changed = true;
         if (ImGui::Checkbox("Gizmos (F2)", &conf.debug.gizmos))
+            changed = true;
+        if (ImGui::Checkbox("Light Gizmos (F3)", &conf.debug.lightGizmos))
+            changed = true;
+        if (ImGui::Checkbox("Audio Debug", &conf.debug.audioDebug))
+            changed = true;
+        if (ImGui::Checkbox("Particle Debug", &conf.debug.particleDebug))
             changed = true;
         if (ImGui::Checkbox("Grid Snapping (Ctrl+G)", &conf.debug.gridSnapEnabled))
             changed = true;
@@ -167,8 +179,6 @@ void ToolsPanel::OnImGui(Scene& scene)
             ImGui::Unindent();
         }
         if (ImGui::Checkbox("Grid Indicator (Ctrl+H)", &conf.debug.gridIndicatorEnabled))
-            changed = true;
-        if (ImGui::Checkbox("Light Gizmos (F3)", &conf.debug.lightGizmos))
             changed = true;
     }
 

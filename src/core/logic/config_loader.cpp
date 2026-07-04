@@ -415,4 +415,139 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
                                            {"REALTIME", LightingMode::RealTime}},
                                           LightingMode::RealTime);
     }
+    else if (subCmd == "ANTIALIASING")
+    {
+        std::string val;
+        ss >> val;
+        config.antialiasing = ResolveEnum(val,
+                                          {{"NONE", 0},
+                                           {"OFF", 0},
+                                           {"FXAA", 1},
+                                           {"TAA", 2}},
+                                          1);
+    }
+    else if (subCmd == "HEADLESS")
+    {
+        int enable;
+        ss >> enable;
+        config.headlessMode = (enable != 0);
+    }
+    else if (subCmd == "TITLE")
+    {
+        std::string val;
+        std::getline(ss >> std::ws, val);
+        config.title = val;
+    }
+    else if (subCmd == "ICON_PATH")
+    {
+        std::string val;
+        ss >> val;
+        config.iconPath = val;
+    }
+    else if (subCmd == "CLEAR_COLOR")
+    {
+        ss >> config.clearColor[0] >> config.clearColor[1] >> config.clearColor[2] >> config.clearColor[3];
+    }
+    else if (subCmd == "AUDIO_DEVICE")
+    {
+        std::string val;
+        ss >> val;
+        config.audioDevice = val;
+    }
+    else if (subCmd == "OCCLUSION_CULLING")
+    {
+        int enable;
+        ss >> enable;
+        config.occlusionCullingEnabled = (enable != 0);
+    }
+    else if (subCmd == "RENDER_ORDER")
+    {
+        int enable;
+        ss >> enable;
+        config.renderOrderEnabled = (enable != 0);
+    }
+    else if (subCmd == "FILTER_LAYER")
+    {
+        uint32_t mask;
+        ss >> mask;
+        config.filterLayerMask = mask;
+    }
+    else if (subCmd == "WIREFRAME_MODE")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.wireframeMode = (enable != 0);
+    }
+    else if (subCmd == "NO_TEXTURE")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.noTexture = (enable != 0);
+    }
+    else if (subCmd == "PHYSICS_DEBUG")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.physicsDebug = (enable != 0);
+    }
+    else if (subCmd == "UI_ENABLED")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.uiEnabled = (enable != 0);
+    }
+    else if (subCmd == "GIZMOS")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.gizmos = (enable != 0);
+    }
+    else if (subCmd == "LIGHT_GIZMOS")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.lightGizmos = (enable != 0);
+    }
+    else if (subCmd == "ENTITY_NAMES")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.entityNames = (enable != 0);
+    }
+    else if (subCmd == "AUDIO_DEBUG")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.audioDebug = (enable != 0);
+    }
+    else if (subCmd == "PARTICLE_DEBUG")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.particleDebug = (enable != 0);
+    }
+    else if (subCmd == "GRID_SNAP_ENABLED")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.gridSnapEnabled = (enable != 0);
+    }
+    else if (subCmd == "GRID_INDICATOR_ENABLED")
+    {
+        int enable;
+        ss >> enable;
+        config.debug.gridIndicatorEnabled = (enable != 0);
+    }
+    else if (subCmd == "GRID_SNAP_TRANSLATION")
+    {
+        ss >> config.debug.gridSnapTranslation;
+    }
+    else if (subCmd == "GRID_SNAP_ROTATION")
+    {
+        ss >> config.debug.gridSnapRotation;
+    }
+    else if (subCmd == "GRID_SNAP_SCALE")
+    {
+        ss >> config.debug.gridSnapScale;
+    }
 }

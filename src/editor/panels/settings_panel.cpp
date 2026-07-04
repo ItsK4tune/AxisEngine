@@ -73,8 +73,29 @@ void SettingsPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("Core", ImGuiTreeNodeFlags_DefaultOpen))
     {
+        char titleBuf[256];
+        strncpy(titleBuf, conf.title.c_str(), sizeof(titleBuf));
+        titleBuf[sizeof(titleBuf) - 1] = '\0';
+        if (ImGui::InputText("Title", titleBuf, sizeof(titleBuf)))
+        {
+            conf.title = titleBuf;
+            changed = true;
+        }
+
+        static const char* logLevels[] = {"None", "Minimal", "Flex", "Verbose", "Debug"};
+        int currentLogLevel = (int)conf.logLevel;
+        if (ImGui::Combo("Log Level", &currentLogLevel, logLevels, IM_ARRAYSIZE(logLevels)))
+        {
+            conf.logLevel = (LogLevel)currentLogLevel;
+            changed = true;
+        }
+
+        if (ImGui::InputInt("Job Threads", &conf.numJobThreads))
+            changed = true;
+
         if (ImGui::SliderFloat("Time Scale", &conf.timeScale, 0.0f, 5.0f))
             changed = true;
+
         if (ImGui::Checkbox("Headless Mode", &conf.headlessMode))
             changed = true;
     }
@@ -97,10 +118,18 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::SliderInt("Frame Rate Limit", &conf.window.frameRateLimit, 0, 360))
             changed = true;
+        if (ImGui::InputInt("Refresh Rate", &conf.window.refreshRate))
+            changed = true;
     }
 
     if (ImGui::CollapsingHeader("Graphics"))
     {
+        static const char* apis[] = {"OpenGL", "Vulkan", "DirectX"};
+        int currentApi = (int)conf.graphics.graphicsBackend;
+        ImGui::BeginDisabled();
+        ImGui::Combo("Graphics API (Restart Required)", &currentApi, apis, IM_ARRAYSIZE(apis));
+        ImGui::EndDisabled();
+
         if (ImGui::SliderInt("MSAA Samples", &conf.graphics.msaaSamples, 1, 16))
             changed = true;
 
@@ -111,9 +140,13 @@ void SettingsPanel::OnImGui(Scene& scene)
             conf.graphics.antialiasing = current_aa;
             changed = true;
         }
+        if (ImGui::SliderFloat("Max Anisotropy", &conf.graphics.maxAnisotropy, 1.0f, 16.0f))
+            changed = true;
         if (ImGui::SliderFloat("Render Scale", &conf.graphics.renderScale, 0.1f, 2.0f))
             changed = true;
         if (ImGui::Checkbox("Async Resource Loading", &conf.graphics.asyncResourceLoading))
+            changed = true;
+        if (ImGui::Checkbox("Strict Asset Loading", &conf.graphics.strictAssetLoading))
             changed = true;
     }
 
@@ -161,25 +194,81 @@ void SettingsPanel::OnImGui(Scene& scene)
         ImGui::Separator();
         if (ImGui::SliderFloat("Skybox Intensity", &conf.render.skyboxIntensity, 0.0f, 5.0f))
             changed = true;
+        if (ImGui::SliderFloat("Ambient Intensity", &conf.render.ambientIntensity, 0.0f, 5.0f))
+            changed = true;
+
+        float uiRef[2] = { conf.render.uiReferenceWidth, conf.render.uiReferenceHeight };
+        if (ImGui::DragFloat2("UI Reference Size", uiRef, 1.0f, 100.0f, 8192.0f))
+        {
+            conf.render.uiReferenceWidth = uiRef[0];
+            conf.render.uiReferenceHeight = uiRef[1];
+            changed = true;
+        }
+
+        static const char* lightingModes[] = {"Bake", "Light Probe", "Reflection Probes", "Real Time"};
+        int currentLighting = (int)conf.lightingMode;
+        if (ImGui::Combo("Lighting Mode", &currentLighting, lightingModes, IM_ARRAYSIZE(lightingModes)))
+        {
+            conf.lightingMode = (LightingMode)currentLighting;
+            changed = true;
+        }
     }
 
     if (ImGui::CollapsingHeader("Shadows"))
     {
         if (ImGui::Checkbox("Shadows Enabled", &conf.shadow.shadowsEnabled))
             changed = true;
+
+        if (!conf.shadow.shadowsEnabled)
+            ImGui::BeginDisabled();
+
+        static const char* shadowModes[] = {"Off (None)", "Single Light", "Multi Lights"};
+        int currentShadowMode = conf.shadow.shadowMode;
+        if (ImGui::Combo("Shadow Mode", &currentShadowMode, shadowModes, IM_ARRAYSIZE(shadowModes)))
+        {
+            conf.shadow.shadowMode = currentShadowMode;
+            changed = true;
+        }
+
         if (ImGui::SliderInt("Shadow Map Resolution", &conf.shadow.shadowMapResolution, 512, 8192))
             changed = true;
         if (ImGui::SliderFloat("Shadow Projection Size", &conf.shadow.shadowProjectionSize, 10.0f, 500.0f))
             changed = true;
+        if (ImGui::Checkbox("Shadow Frustum Culling", &conf.shadow.shadowFrustumCullingEnabled))
+            changed = true;
+
+        if (!conf.shadow.shadowFrustumCullingEnabled)
+            ImGui::BeginDisabled();
+        if (ImGui::SliderFloat("Shadow Distance Culling", &conf.shadow.shadowDistanceCulling, 10.0f, 1000.0f))
+            changed = true;
+        if (!conf.shadow.shadowFrustumCullingEnabled)
+            ImGui::EndDisabled();
+
         if (ImGui::SliderFloat("Shadow Bias", &conf.shadow.shadowBias, 0.001f, 0.1f))
             changed = true;
         if (ImGui::SliderInt("Shadow Softness", &conf.shadow.shadowSoftness, 0, 5))
             changed = true;
+
+        if (!conf.shadow.shadowsEnabled)
+            ImGui::EndDisabled();
     }
 
     if (ImGui::CollapsingHeader("Physics"))
     {
-        // Physics Backend & Mode are enums, let's keep it simple with gravity/substeps
+        static const char* physEngines[] = {"Bullet", "PhysX"};
+        int currentPhysEngine = (int)conf.physics.physicsBackend;
+        ImGui::BeginDisabled();
+        ImGui::Combo("Physics Engine (Restart Required)", &currentPhysEngine, physEngines, IM_ARRAYSIZE(physEngines));
+        ImGui::EndDisabled();
+
+        static const char* physModes[] = {"Fast", "Balanced", "Accurate"};
+        int currentPhysMode = (int)conf.physics.physicsMode;
+        if (ImGui::Combo("Physics Mode", &currentPhysMode, physModes, IM_ARRAYSIZE(physModes)))
+        {
+            conf.physics.physicsMode = (PhysicsMode)currentPhysMode;
+            changed = true;
+        }
+
         if (ImGui::DragFloat3("Gravity", conf.physics.gravity, 0.1f))
             changed = true;
         if (ImGui::SliderInt("Max SubSteps", &conf.physics.maxSubSteps, 1, 20))
@@ -188,6 +277,14 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::Checkbox("CCD Enabled", &conf.physics.ccdEnabled))
             changed = true;
+
+        if (!conf.physics.ccdEnabled)
+            ImGui::BeginDisabled();
+        if (ImGui::SliderFloat("CCD Threshold", &conf.physics.ccdThreshold, 0.0f, 100.0f))
+            changed = true;
+        if (!conf.physics.ccdEnabled)
+            ImGui::EndDisabled();
+
         if (ImGui::SliderInt("Solver Iterations", &conf.physics.solverIterations, 1, 50))
             changed = true;
     }
@@ -204,11 +301,28 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::Checkbox("Raw Mouse Input", &conf.input.rawMouseInput))
             changed = true;
+
+        ImGui::Separator();
+        static const char* audioEngines[] = {"Null", "IrrKlang", "FMOD", "OpenAL"};
+        int currentAudioEngine = (int)conf.audio.audioBackend;
+        ImGui::BeginDisabled();
+        ImGui::Combo("Audio Engine (Restart Required)", &currentAudioEngine, audioEngines, IM_ARRAYSIZE(audioEngines));
+        ImGui::EndDisabled();
+
         if (ImGui::SliderFloat("Master Volume", &conf.audio.masterVolume, 0.0f, 100.0f))
             changed = true;
+
+        char audioDevBuf[256];
+        strncpy(audioDevBuf, conf.audio.audioDevice.c_str(), sizeof(audioDevBuf));
+        audioDevBuf[sizeof(audioDevBuf) - 1] = '\0';
+        if (ImGui::InputText("Audio Device", audioDevBuf, sizeof(audioDevBuf)))
+        {
+            conf.audio.audioDevice = audioDevBuf;
+            changed = true;
+        }
     }
 
-    if (ImGui::CollapsingHeader("Hardware & Devices", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::CollapsingHeader("Hardware & Devices"))
     {
         ImGui::Text("CPU: %s", m_CpuName.c_str());
         ImGui::Text("GPU: %s", m_GpuName.c_str());
@@ -252,7 +366,24 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::Checkbox("Cull Face", &conf.culling.cullFaceEnabled))
             changed = true;
+        if (ImGui::Checkbox("Occlusion Culling", &conf.culling.occlusionCullingEnabled))
+            changed = true;
+        if (ImGui::Checkbox("Instance Batching", &conf.culling.instanceBatchingEnabled))
+            changed = true;
+        if (ImGui::Checkbox("Render Order Sorting", &conf.culling.renderOrderEnabled))
+            changed = true;
+        
+        int mask = (int)conf.culling.filterLayerMask;
+        if (ImGui::InputInt("Filter Layer Mask", &mask))
+        {
+            conf.culling.filterLayerMask = (uint32_t)mask;
+            changed = true;
+        }
+        if (ImGui::SliderFloat("Distance Culling", &conf.culling.distanceCulling, 0.0f, 5000.0f))
+            changed = true;
     }
+
+    // Debug Configurations moved to Tools Panel
 
     if (changed || ImGui::IsItemDeactivatedAfterEdit())
     {
