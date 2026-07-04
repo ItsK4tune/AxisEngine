@@ -412,6 +412,9 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     std::string name = info ? info->name : ("Entity_" + std::to_string((uint32_t)entity));
     std::string targetScene = SceneSerializer::NormalizeSceneName(sceneName);
 
+    if (info && info->isTransient)
+        return;
+
     if (info && !targetScene.empty() && SceneSerializer::NormalizeSceneName(info->sceneName) != targetScene)
         return;
 
@@ -954,6 +957,8 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
+        if (info.isTransient)
+            continue;
         if (!normName.empty() && SceneSerializer::NormalizeSceneName(info.sceneName) != normName)
             continue;
 
@@ -1079,6 +1084,8 @@ bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, Resou
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
+        if (info.isTransient)
+            continue;
         if (!normName.empty() && SceneSerializer::NormalizeSceneName(info.sceneName) != normName)
             continue;
 

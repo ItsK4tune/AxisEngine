@@ -143,6 +143,7 @@ EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources, const std
 
     auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
     info.sceneName = sceneName;
+    info.isTransient = true;
 
     if (auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>())
     {
@@ -249,6 +250,13 @@ EntityBuilder& EntityBuilder::WithScene(const std::string& sceneName)
         }
         sceneMgr->AddEntity(m_Entity, sceneName);
     }
+    return *this;
+}
+
+EntityBuilder& EntityBuilder::WithTransient(bool transient)
+{
+    auto& info = m_Scene.GetOrAddComponent<InfoComponent>(m_Entity);
+    info.isTransient = transient;
     return *this;
 }
 

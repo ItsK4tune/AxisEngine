@@ -183,3 +183,26 @@ AXIS_TEST_CASE("SceneSerializer deduplicates resources owned by another scene")
     AXIS_CHECK(text.find("Name: shared") == std::string::npos);
     AXIS_CHECK(text.find("Target:") != std::string::npos);
 }
+
+AXIS_TEST_CASE("SceneSerializer skips transient entities")
+{
+    axis_test_support::HeadlessResourceFixture fixture;
+    Scene scene;
+    ConfigManager configManager;
+    InitializeConfigManager(configManager);
+    ServiceLocator::Instance().Register<ConfigManager>(&configManager);
+
+    auto entityA = scene.CreateEntity("PersistentEntity");
+    auto entityB = scene.CreateEntity("TransientEntity");
+    scene.GetComponent<InfoComponent>(entityA).sceneName = "A";
+    scene.GetComponent<InfoComponent>(entityB).sceneName = "A";
+    scene.GetComponent<InfoComponent>(entityB).isTransient = true;
+
+    auto output = axis_test_support::TempPath("ss_transient_output.axs");
+    AXIS_CHECK(SceneSerializer::Serialize(output.string(), scene, fixture.resources, "A"));
+    const std::string text = ReadText(output);
+
+    AXIS_CHECK(text.find("PersistentEntity:") != std::string::npos);
+    AXIS_CHECK(text.find("TransientEntity:") == std::string::npos);
+}
+

@@ -70,6 +70,7 @@ public:
     EntityBuilder& WithActive(bool active);
     EntityBuilder& WithRenderOrder(int renderOrder);
     EntityBuilder& WithScene(const std::string& sceneName);
+    EntityBuilder& WithTransient(bool transient = true);
 
     EntityBuilder& WithTransform(const glm::vec3& pos = glm::vec3(0.0f), const glm::vec3& rot = glm::vec3(0.0f),
                                  const glm::vec3& scale = glm::vec3(1.0f));

@@ -15,6 +15,7 @@ struct InfoComponent
     uint32_t layer = 1;
     int renderOrder = 0;
     bool isActive = true;
+    bool isTransient = false;
 };
 
 struct CameraComponent

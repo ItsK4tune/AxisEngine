@@ -67,7 +67,7 @@ void SceneManager::AddEntity(entt::entity entity, const std::string& sceneName)
     // Create a new SceneRecord dynamically if it doesn't exist
     SceneRecord newRec;
     newRec.name = normName.empty() ? sceneName : normName;
-    newRec.filePath = sceneName;
+    newRec.filePath = "";
     newRec.loadOrder = m_NextLoadOrder++;
     newRec.persistent = false;
     newRec.isActive = true;
@@ -155,7 +155,7 @@ void SceneManager::RebuildEntityRecords(Scene& scene)
         {
             SceneRecord rec;
             rec.name = sceneName;
-            rec.filePath = sceneName;
+            rec.filePath = "";
             rec.loadOrder = m_NextLoadOrder++;
             rec.persistent = false;
             rec.isActive = true;
