@@ -99,37 +99,70 @@ void OctreeNode::Remove(entt::entity entity)
     }
 }
 
-void OctreeNode::Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const
+void OctreeNode::Query(const Frustum& frustum, std::vector<entt::entity>& out_entities, bool fullyInside) const
 {
-    if (!frustum.IsBoxVisible(m_Boundary))
+    if (fullyInside)
+    {
+        for (const auto& el : m_Elements)
+        {
+            out_entities.push_back(el.entity);
+        }
+        if (!IsLeaf())
+        {
+            for (int i = 0; i < 8; ++i) m_Children[i]->Query(frustum, out_entities, true);
+        }
         return;
+    }
+
+    int state = frustum.ContainsBoxState(m_Boundary);
+    if (state == 0) // Outside
+        return;
+
+    bool nextFullyInside = (state == 2); // 2: Fully Inside
 
     for (const auto& el : m_Elements)
     {
-        if (frustum.IsBoxVisible(el.aabb))
+        if (nextFullyInside || frustum.IsBoxVisible(el.aabb))
             out_entities.push_back(el.entity);
     }
 
     if (!IsLeaf())
     {
-        for (int i = 0; i < 8; ++i) m_Children[i]->Query(frustum, out_entities);
+        for (int i = 0; i < 8; ++i) m_Children[i]->Query(frustum, out_entities, nextFullyInside);
     }
 }
 
-void OctreeNode::Query(const AABB& aabb, std::vector<entt::entity>& out_entities) const
+void OctreeNode::Query(const AABB& aabb, std::vector<entt::entity>& out_entities, bool fullyInside) const
 {
+    if (fullyInside)
+    {
+        for (const auto& el : m_Elements)
+        {
+            out_entities.push_back(el.entity);
+        }
+        if (!IsLeaf())
+        {
+            for (int i = 0; i < 8; ++i) m_Children[i]->Query(aabb, out_entities, true);
+        }
+        return;
+    }
+
     if (!m_Boundary.Overlaps(aabb))
         return;
 
+    bool nextFullyInside = (m_Boundary.minBound.x >= aabb.minBound.x && m_Boundary.maxBound.x <= aabb.maxBound.x) &&
+                           (m_Boundary.minBound.y >= aabb.minBound.y && m_Boundary.maxBound.y <= aabb.maxBound.y) &&
+                           (m_Boundary.minBound.z >= aabb.minBound.z && m_Boundary.maxBound.z <= aabb.maxBound.z);
+
     for (const auto& el : m_Elements)
     {
-        if (el.aabb.Overlaps(aabb))
+        if (nextFullyInside || el.aabb.Overlaps(aabb))
             out_entities.push_back(el.entity);
     }
 
     if (!IsLeaf())
     {
-        for (int i = 0; i < 8; ++i) m_Children[i]->Query(aabb, out_entities);
+        for (int i = 0; i < 8; ++i) m_Children[i]->Query(aabb, out_entities, nextFullyInside);
     }
 }
 

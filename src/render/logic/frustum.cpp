@@ -42,18 +42,46 @@ bool Frustum::IsBoxVisible(const glm::vec3& minBound, const glm::vec3& maxBound)
 {
     for (int i = 0; i < 6; ++i)
     {
-        glm::vec3 p = minBound;
-        if (planes[i].normal.x >= 0)
-            p.x = maxBound.x;
-        if (planes[i].normal.y >= 0)
-            p.y = maxBound.y;
-        if (planes[i].normal.z >= 0)
-            p.z = maxBound.z;
+        glm::vec3 pMax(
+            planes[i].normal.x >= 0.0f ? maxBound.x : minBound.x,
+            planes[i].normal.y >= 0.0f ? maxBound.y : minBound.y,
+            planes[i].normal.z >= 0.0f ? maxBound.z : minBound.z
+        );
 
-        if (glm::dot(planes[i].normal, p) + planes[i].distance < 0)
+        if (glm::dot(planes[i].normal, pMax) + planes[i].distance < 0.0f)
         {
             return false;
         }
     }
     return true;
+}
+
+int Frustum::ContainsBoxState(const glm::vec3& minBound, const glm::vec3& maxBound) const
+{
+    bool fullyInside = true;
+    for (int i = 0; i < 6; ++i)
+    {
+        glm::vec3 pMax(
+            planes[i].normal.x >= 0.0f ? maxBound.x : minBound.x,
+            planes[i].normal.y >= 0.0f ? maxBound.y : minBound.y,
+            planes[i].normal.z >= 0.0f ? maxBound.z : minBound.z
+        );
+
+        if (glm::dot(planes[i].normal, pMax) + planes[i].distance < 0.0f)
+        {
+            return 0; // Outside
+        }
+
+        glm::vec3 pMin(
+            planes[i].normal.x >= 0.0f ? minBound.x : maxBound.x,
+            planes[i].normal.y >= 0.0f ? minBound.y : maxBound.y,
+            planes[i].normal.z >= 0.0f ? minBound.z : maxBound.z
+        );
+
+        if (glm::dot(planes[i].normal, pMin) + planes[i].distance < 0.0f)
+        {
+            fullyInside = false; // Intersects plane
+        }
+    }
+    return fullyInside ? 2 : 1;
 }

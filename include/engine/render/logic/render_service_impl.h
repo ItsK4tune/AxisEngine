@@ -264,8 +264,21 @@ private:
 
     std::vector<entt::entity> m_CameraEntitiesCache;
     std::vector<entt::entity> m_ShadowEntitiesCache;
-    std::vector<uint32_t> m_VisitedGenerations;
+    std::vector<uint32_t> m_CameraVisitedGenerations;
+    std::vector<uint32_t> m_ShadowVisitedGenerations;
     uint32_t m_CurrentFrameGeneration = 1;
+
+    struct ProbeData
+    {
+        ReflectionProbeComponent* component;
+        glm::vec3 position;
+        entt::entity entity;
+    };
+
+    void BuildRenderQueuesWithOctreeHelper(Scene& scene, const RenderViewParams& params, float lodFactor, const std::vector<ProbeData>& probes, const std::unordered_map<std::string, const ProbeData*>& probesByTarget, uint32_t cameraGen);
+    void BuildRenderQueuesLinearHelper(Scene& scene, const RenderViewParams& params, float lodFactor, const std::vector<ProbeData>& probes, const std::unordered_map<std::string, const ProbeData*>& probesByTarget);
+
+    std::vector<entt::entity> m_CandidatesCache;
 
     std::unique_ptr<RenderCore> m_RenderCore;
     CommandQueue m_CommandQueue;

@@ -27,6 +27,11 @@ public:
     {
         return IsBoxVisible(aabb.minBound, aabb.maxBound);
     }
+    int ContainsBoxState(const glm::vec3& minBound, const glm::vec3& maxBound) const;
+    int ContainsBoxState(const AABB& aabb) const
+    {
+        return ContainsBoxState(aabb.minBound, aabb.maxBound);
+    }
 
 private:
     Plane planes[6];
