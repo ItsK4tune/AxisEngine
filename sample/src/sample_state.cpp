@@ -1856,6 +1856,7 @@ void SampleState::DrawGUI()
         ImGui::SliderInt("Entities count", &m_S1EntityCount, 1000, 50000);
         ImGui::Combo("Mesh Type", &m_S1MeshType, "Sphere\0Cube\0Cylinder\0Capsule\0");
         ImGui::Checkbox("Unique Tint (break batches)", &m_S1UniqueTint);
+        ImGui::Checkbox("Randomize Positions", &m_S1RandomizePositions);
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
     }
     else if (m_CurrentScenario == 3)

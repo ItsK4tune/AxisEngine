@@ -22,6 +22,7 @@ public:
     void Insert(entt::entity entity, const AABB& aabb);
     void Remove(entt::entity entity);
     void Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const;
+    void Query(const AABB& aabb, std::vector<entt::entity>& out_entities) const;
 
     void Rebuild(const std::vector<OctreeElement>& elements);
 
@@ -48,6 +49,7 @@ public:
     void Insert(entt::entity entity, const AABB& aabb);
     void Remove(entt::entity entity);
     void Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const;
+    void Query(const AABB& aabb, std::vector<entt::entity>& out_entities) const;
 
     void Rebuild(const std::vector<OctreeElement>& elements);
 

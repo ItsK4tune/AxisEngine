@@ -36,6 +36,7 @@
 #include <glm/gtx/norm.hpp>
 #include <cstring>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace
 {
@@ -442,26 +443,123 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
     auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
 
-    for (auto entity : renderView)
-    {
-        if (entity == params.excludeEntity)
-            continue;
+    const size_t entityCount = renderView.size_hint();
+    // Only use Octree if frustum culling is enabled, Octree exists, and the scene is large enough (>= 3000 objects)
+    const bool useOctree = m_Flags.frustumCullingEnabled && scene.GetOctree() && (entityCount >= 3000);
 
-        auto& info = renderView.get<InfoComponent>(entity);
+    // Rebuild Octree only when using Octree and scene is dirty
+    if (useOctree && scene.IsOctreeDirty())
+    {
+        std::vector<OctreeElement> octreeElements;
+        octreeElements.reserve(entityCount);
+        for (auto entity : renderView)
+        {
+            auto& info = renderView.get<InfoComponent>(entity);
+            if (!info.isActive)
+                continue;
+            auto& renderer = renderView.get<MeshRendererComponent>(entity);
+            if (!renderer.model)
+                continue;
+            auto& world = renderView.get<WorldTransformComponent>(entity);
+            const bool useCurrentWorldMatrix = lodFactor >= 0.9999f;
+            glm::mat4 modelMatrix = useCurrentWorldMatrix ? world.worldMatrix : world.GetInterpolated(lodFactor);
+            AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
+            octreeElements.push_back({entity, worldAABB});
+        }
+        scene.GetOctree()->Rebuild(octreeElements);
+        scene.SetOctreeDirty(false);
+    }
+
+    std::vector<entt::entity> candidates;
+    if (useOctree)
+    {
+        m_CameraEntitiesCache.clear();
+        scene.GetOctree()->Query(m_FrustumCuller.GetFrustum(), m_CameraEntitiesCache);
+
+        m_ShadowEntitiesCache.clear();
+        float shadowDistance = 100.0f;
+        if (m_ConfigManager)
+        {
+            shadowDistance = m_ConfigManager->GetConfig().shadowDistanceCulling;
+        }
+        if (shadowDistance <= 0.0f)
+        {
+            shadowDistance = 1000.0f;
+        }
+        AABB shadowArea(params.cameraPos - glm::vec3(shadowDistance), params.cameraPos + glm::vec3(shadowDistance));
+        scene.GetOctree()->Query(shadowArea, m_ShadowEntitiesCache);
+
+        // Deduplicate using visited generation to avoid memory clearing
+        size_t maxEntityIndex = 0;
+        for (auto entity : m_CameraEntitiesCache)
+        {
+            size_t idx = static_cast<size_t>(entity);
+            if (idx > maxEntityIndex) maxEntityIndex = idx;
+        }
+        for (auto entity : m_ShadowEntitiesCache)
+        {
+            size_t idx = static_cast<size_t>(entity);
+            if (idx > maxEntityIndex) maxEntityIndex = idx;
+        }
+
+        if (maxEntityIndex >= m_VisitedGenerations.size())
+        {
+            m_VisitedGenerations.resize(maxEntityIndex + 1, 0);
+        }
+
+        m_CurrentFrameGeneration++;
+        if (m_CurrentFrameGeneration == 0) // Handle wrap-around
+        {
+            std::fill(m_VisitedGenerations.begin(), m_VisitedGenerations.end(), 0);
+            m_CurrentFrameGeneration = 1;
+        }
+
+        candidates.reserve(m_CameraEntitiesCache.size() + m_ShadowEntitiesCache.size());
+
+        for (auto entity : m_CameraEntitiesCache)
+        {
+            size_t idx = static_cast<size_t>(entity);
+            if (m_VisitedGenerations[idx] != m_CurrentFrameGeneration)
+            {
+                m_VisitedGenerations[idx] = m_CurrentFrameGeneration;
+                candidates.push_back(entity);
+            }
+        }
+        for (auto entity : m_ShadowEntitiesCache)
+        {
+            size_t idx = static_cast<size_t>(entity);
+            if (m_VisitedGenerations[idx] != m_CurrentFrameGeneration)
+            {
+                m_VisitedGenerations[idx] = m_CurrentFrameGeneration;
+                candidates.push_back(entity);
+            }
+        }
+    }
+    auto processEntity = [&](entt::entity entity) {
+        if (entity == params.excludeEntity)
+            return;
+
+        auto* infoPtr = scene.TryGetComponent<InfoComponent>(entity);
+        auto* worldPtr = scene.TryGetComponent<WorldTransformComponent>(entity);
+        auto* rendererPtr = scene.TryGetComponent<MeshRendererComponent>(entity);
+        if (!infoPtr || !worldPtr || !rendererPtr)
+            return;
+
+        auto& info = *infoPtr;
         if (!info.isActive)
-            continue;
+            return;
 
         uint32_t layer = info.layer;
         if ((m_Flags.filterLayerMask & layer) == 0 || (params.cullingMask & layer) == 0)
-            continue;
+            return;
 
-        auto& world = renderView.get<WorldTransformComponent>(entity);
+        auto& world = *worldPtr;
         const bool useCurrentWorldMatrix = lodFactor >= 0.9999f;
         glm::mat4 modelMatrix = useCurrentWorldMatrix ? world.worldMatrix : world.GetInterpolated(lodFactor);
 
-        auto& renderer = renderView.get<MeshRendererComponent>(entity);
+        auto& renderer = *rendererPtr;
         if (!renderer.model)
-            continue;
+            return;
 
         const bool depthOverlay = renderer.ignoreDepth;
         const bool castsSceneShadow = renderer.castShadow && !depthOverlay;
@@ -474,7 +572,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
 
         if (m_IsCapturingProbe && worldAABB.Contains(params.cameraPos))
-            continue;
+            return;
 
         if (m_Flags.frustumCullingEnabled && !m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
         {
@@ -482,7 +580,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         }
 
         if (!visibleToCamera && !castsSceneShadow && !depthOverlay)
-            continue;
+            return;
 
         Model* activeModel = renderer.model.get();
         Shader* itemShader = renderer.shader.lock().get();
@@ -511,7 +609,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         }
 
         if (!visibleByOcclusion && !castsSceneShadow && !depthOverlay)
-            continue;
+            return;
 
         bool isTransparent = false;
         auto* material = scene.TryGetComponent<MaterialComponent>(entity);
@@ -665,6 +763,21 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         }
         if (castsSceneShadow)
             m_RenderQueueObj.AddShadow(item);
+    };
+
+    if (useOctree)
+    {
+        for (auto entity : candidates)
+        {
+            processEntity(entity);
+        }
+    }
+    else
+    {
+        for (auto entity : renderView)
+        {
+            processEntity(entity);
+        }
     }
 
     const float ambientIntensity =

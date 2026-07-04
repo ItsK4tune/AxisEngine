@@ -262,6 +262,11 @@ private:
     FrustumCuller m_FrustumCuller;
     OcclusionCuller m_OcclusionCuller;
 
+    std::vector<entt::entity> m_CameraEntitiesCache;
+    std::vector<entt::entity> m_ShadowEntitiesCache;
+    std::vector<uint32_t> m_VisitedGenerations;
+    uint32_t m_CurrentFrameGeneration = 1;
+
     std::unique_ptr<RenderCore> m_RenderCore;
     CommandQueue m_CommandQueue;
     RenderCommandBuffer m_RenderCommandBuffer;

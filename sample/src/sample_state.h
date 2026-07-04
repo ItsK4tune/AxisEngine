@@ -934,6 +934,7 @@ private:
     int m_S1EntityCount = 10000;
     int m_S1MeshType = 0;  // 0: Sphere, 1: Cube, 2: Cylinder, 3: Capsule
     bool m_S1UniqueTint = false;
+    bool m_S1RandomizePositions = false;
 
     // Scenario 20 parameters
     int m_S20EntityCount = 100;  // Default lower to be safe

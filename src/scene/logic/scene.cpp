@@ -25,10 +25,23 @@ Scene::~Scene()
 void Scene::InitializeManagers()
 {
     m_Octree = std::make_unique<Octree>(AABB(glm::vec3(-1000.0f), glm::vec3(1000.0f)));
+    m_OctreeDirty = true;
+
+    registry.on_update<PositionComponent>().connect<&Scene::OnOctreeDirty>(this);
+    registry.on_update<RotationComponent>().connect<&Scene::OnOctreeDirty>(this);
+    registry.on_update<ScaleComponent>().connect<&Scene::OnOctreeDirty>(this);
+    registry.on_construct<MeshRendererComponent>().connect<&Scene::OnOctreeDirty>(this);
+    registry.on_destroy<MeshRendererComponent>().connect<&Scene::OnOctreeDirty>(this);
 }
 
 void Scene::ShutdownManagers()
 {
+    registry.on_update<PositionComponent>().disconnect<&Scene::OnOctreeDirty>(this);
+    registry.on_update<RotationComponent>().disconnect<&Scene::OnOctreeDirty>(this);
+    registry.on_update<ScaleComponent>().disconnect<&Scene::OnOctreeDirty>(this);
+    registry.on_construct<MeshRendererComponent>().disconnect<&Scene::OnOctreeDirty>(this);
+    registry.on_destroy<MeshRendererComponent>().disconnect<&Scene::OnOctreeDirty>(this);
+
     m_Octree.reset();
 }
 

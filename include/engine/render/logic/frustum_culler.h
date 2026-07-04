@@ -11,6 +11,7 @@ public:
     bool IsVisible(const glm::vec3& minBound, const glm::vec3& maxBound) const;
     bool IsVisible(Scene& scene, entt::entity entity, float alpha) const;
     void Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt::entity>& outVisibleEntities, float alpha) const;
+    const Frustum& GetFrustum() const { return m_Frustum; }
 
 private:
     Frustum m_Frustum;

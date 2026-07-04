@@ -47,6 +47,10 @@ struct Scene
         return m_Octree.get();
     }
 
+    bool IsOctreeDirty() const { return m_OctreeDirty; }
+    void SetOctreeDirty(bool dirty) { m_OctreeDirty = dirty; }
+    void OnOctreeDirty(entt::registry&, entt::entity) { m_OctreeDirty = true; }
+
     void InitializeManagers();
     void ShutdownManagers();
 
@@ -163,6 +167,7 @@ struct Scene
 
 private:
     std::unique_ptr<Octree> m_Octree;
+    bool m_OctreeDirty = true;
 
     entt::entity m_ActiveSkybox = entt::null;
     entt::entity m_ActiveCamera = entt::null;

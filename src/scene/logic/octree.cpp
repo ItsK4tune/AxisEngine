@@ -116,6 +116,23 @@ void OctreeNode::Query(const Frustum& frustum, std::vector<entt::entity>& out_en
     }
 }
 
+void OctreeNode::Query(const AABB& aabb, std::vector<entt::entity>& out_entities) const
+{
+    if (!m_Boundary.Overlaps(aabb))
+        return;
+
+    for (const auto& el : m_Elements)
+    {
+        if (el.aabb.Overlaps(aabb))
+            out_entities.push_back(el.entity);
+    }
+
+    if (!IsLeaf())
+    {
+        for (int i = 0; i < 8; ++i) m_Children[i]->Query(aabb, out_entities);
+    }
+}
+
 void OctreeNode::Rebuild(const std::vector<OctreeElement>& elements)
 {
     m_Elements.clear();
@@ -145,6 +162,11 @@ void Octree::Remove(entt::entity entity)
 void Octree::Query(const Frustum& frustum, std::vector<entt::entity>& out_entities) const
 {
     m_Root->Query(frustum, out_entities);
+}
+
+void Octree::Query(const AABB& aabb, std::vector<entt::entity>& out_entities) const
+{
+    m_Root->Query(aabb, out_entities);
 }
 
 void Octree::Rebuild(const std::vector<OctreeElement>& elements)

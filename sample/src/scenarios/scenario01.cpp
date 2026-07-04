@@ -24,9 +24,21 @@ void SampleState::LoadScene1()
         {
             for (int z = 0; z < size && count < m_S1EntityCount; ++z)
             {
-                glm::vec3 pos(offset + x * spacing + static_cast<float>(rand() % 100) / 200.0f,
-                              y * spacing + static_cast<float>(rand() % 100) / 200.0f,
-                              offset + z * spacing + static_cast<float>(rand() % 100) / 200.0f);
+                glm::vec3 pos;
+                if (m_S1RandomizePositions)
+                {
+                    pos = glm::vec3(
+                        (static_cast<float>(rand() % 20000) / 20000.0f - 0.5f) * 800.0f,
+                        (static_cast<float>(rand() % 20000) / 20000.0f - 0.5f) * 800.0f,
+                        (static_cast<float>(rand() % 20000) / 20000.0f - 0.5f) * 800.0f
+                    );
+                }
+                else
+                {
+                    pos = glm::vec3(offset + x * spacing + static_cast<float>(rand() % 100) / 200.0f,
+                                    y * spacing + static_cast<float>(rand() % 100) / 200.0f,
+                                    offset + z * spacing + static_cast<float>(rand() % 100) / 200.0f);
+                }
 
                 auto entity =
                     EntityBuilder(scene, res, "scenario")

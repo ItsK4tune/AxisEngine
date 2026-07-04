@@ -32,50 +32,57 @@ void FrustumCuller::Cull(Scene& scene, bool frustumCullEnabled, std::vector<entt
 {
     outVisibleEntities.clear();
 
-    auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent>();
-
-    outVisibleEntities.reserve(renderView.size_hint());
-
-    for (auto entity : renderView)
+    if (frustumCullEnabled && scene.GetOctree())
     {
-        auto& renderer = renderView.get<MeshRendererComponent>(entity);
-        if (!renderer.model)
-        {
-            outVisibleEntities.push_back(entity);
-            continue;
-        }
+        scene.GetOctree()->Query(m_Frustum, outVisibleEntities);
+    }
+    else
+    {
+        auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent>();
 
-        if (!frustumCullEnabled)
-        {
-            outVisibleEntities.push_back(entity);
-            continue;
-        }
+        outVisibleEntities.reserve(renderView.size_hint());
 
-        auto& world = renderView.get<WorldTransformComponent>(entity);
-        glm::mat4 modelMatrix = (alpha >= 0.99f) ? world.worldMatrix : world.GetInterpolated(alpha);
-
-        bool isFinite = true;
-        for (int c = 0; c < 4; c++)
+        for (auto entity : renderView)
         {
-            for (int r = 0; r < 4; r++)
+            auto& renderer = renderView.get<MeshRendererComponent>(entity);
+            if (!renderer.model)
             {
-                if (!std::isfinite(modelMatrix[c][r]))
+                outVisibleEntities.push_back(entity);
+                continue;
+            }
+
+            if (!frustumCullEnabled)
+            {
+                outVisibleEntities.push_back(entity);
+                continue;
+            }
+
+            auto& world = renderView.get<WorldTransformComponent>(entity);
+            glm::mat4 modelMatrix = (alpha >= 0.99f) ? world.worldMatrix : world.GetInterpolated(alpha);
+
+            bool isFinite = true;
+            for (int c = 0; c < 4; c++)
+            {
+                for (int r = 0; r < 4; r++)
                 {
-                    isFinite = false;
-                    break;
+                    if (!std::isfinite(modelMatrix[c][r]))
+                    {
+                        isFinite = false;
+                        break;
+                    }
                 }
+                if (!isFinite)
+                    break;
             }
             if (!isFinite)
-                break;
-        }
-        if (!isFinite)
-            continue;
+                continue;
 
-        AABB transformedAABB = renderer.model->aabb.Transform(modelMatrix);
+            AABB transformedAABB = renderer.model->aabb.Transform(modelMatrix);
 
-        if (IsVisible(transformedAABB.minBound, transformedAABB.maxBound))
-        {
-            outVisibleEntities.push_back(entity);
+            if (IsVisible(transformedAABB.minBound, transformedAABB.maxBound))
+            {
+                outVisibleEntities.push_back(entity);
+            }
         }
     }
 }
