@@ -10,6 +10,7 @@
 #include <resource/logic/resource_manager.h>
 #include <resource/type/resource_events.h>
 #include <scene/logic/scene_serializer.h>
+#include <scene/logic/binary_scene_serializer.h>
 #include <scene/type/scene_events.h>
 #include <algorithm>
 
@@ -196,7 +197,22 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
         return;
     }
 
-    SceneLoadResult res = SceneSerializer::Deserialize(filePath, scene, resources, physics, audio);
+    SceneLoadResult res;
+    if (filePath.ends_with(".axsb"))
+    {
+        BinarySceneSerializer serializer;
+        if (!serializer.Deserialize(filePath, scene, res))
+        {
+            LOGGER_ERROR("SceneManager") << "Failed to deserialize binary scene: " << filePath;
+            return;
+        }
+    }
+    else
+    {
+        SceneSerializer serializer(resources, physics, audio);
+        serializer.Deserialize(filePath, scene, res);
+    }
+
     if (res.entities.empty())
     {
         LOGGER_ERROR("SceneManager") << "Failed to deserialize scene or scene is empty: " << filePath;

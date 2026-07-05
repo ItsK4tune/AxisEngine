@@ -26,6 +26,7 @@
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
+#include <scene/logic/binary_scene_serializer.h>
 #include <scene/type/scene_events.h>
 #include <glm/gtx/quaternion.hpp>
 #include <imgui.h>
@@ -203,7 +204,18 @@ void EditorSystem::OnUpdate(float dt)
             {
                 if (!rec.filePath.empty())
                 {
-                    SceneSerializer::Serialize(rec.filePath, globalScene, *resourceManager, rec.name);
+                    if (rec.filePath.ends_with(".axsb"))
+                    {
+                        BinarySceneSerializer serializer;
+                        serializer.Serialize(rec.filePath, globalScene);
+                    }
+                    else
+                    {
+                        auto* phys = sl.Resolve<IPhysicsWorld>();
+                        auto* audio = sl.Resolve<AudioService>();
+                        SceneSerializer serializer(*resourceManager, phys, audio);
+                        serializer.Serialize(rec.filePath, globalScene, rec.name);
+                    }
                     LOGGER_INFO("EditorSystem") << "Saved scene: " << rec.name;
                 }
             }
@@ -748,8 +760,18 @@ void EditorSystem::DrawMenuBar()
                     {
                         if (!sceneRecord.filePath.empty())
                         {
-                            SceneSerializer::Serialize(sceneRecord.filePath, globalScene, *resourceManager,
-                                                       sceneRecord.name);
+                            if (sceneRecord.filePath.ends_with(".axsb"))
+                            {
+                                BinarySceneSerializer serializer;
+                                serializer.Serialize(sceneRecord.filePath, globalScene);
+                            }
+                            else
+                            {
+                                auto* phys = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+                                auto* audio = ServiceLocator::Instance().Resolve<AudioService>();
+                                SceneSerializer serializer(*resourceManager, phys, audio);
+                                serializer.Serialize(sceneRecord.filePath, globalScene, sceneRecord.name);
+                            }
                             LOGGER_INFO("EditorSystem")
                                 << "Saved scene: " << sceneRecord.name << " to " << sceneRecord.filePath;
                         }
@@ -821,7 +843,10 @@ static std::string CaptureEditorSceneState(Scene& scene)
         return {};
 
     const std::string tempFile = "temp_undo.axs";
-    if (!SceneSerializer::Serialize(tempFile, scene, *rm))
+    auto* phys = sl.Resolve<IPhysicsWorld>();
+    auto* audio = sl.Resolve<AudioService>();
+    SceneSerializer serializer(*rm, phys, audio);
+    if (!serializer.Serialize(tempFile, scene))
         return {};
 
     std::ifstream f(tempFile, std::ios::binary);
@@ -858,7 +883,8 @@ static void RestoreEditorSceneState(Scene& scene, const std::string& state)
     f.close();
 
     scene.GetRegistry().clear();
-    SceneSerializer::Deserialize(tempRestoreFile, scene, *rm, phys, audio);
+    SceneSerializer serializer(*rm, phys, audio);
+    serializer.Deserialize(tempRestoreFile, scene);
     if (sceneMgr)
         sceneMgr->RebuildEntityRecords(scene);
 

@@ -2148,8 +2148,9 @@ void SampleState::DrawGUI()
                 const std::string path = std::filesystem::exists(SamplePath(kScenario25ScenePath))
                                              ? SamplePath(kScenario25ScenePath)
                                              : SamplePath(kScenario25SceneLegacyPath);
-                SceneLoadResult res =
-                    SceneSerializer::Deserialize(path, GetScene(), Get<ResourceManager>(), phys, audio);
+                SceneSerializer serializer(Get<ResourceManager>(), phys, audio);
+                SceneLoadResult res;
+                serializer.Deserialize(path, GetScene(), res);
                 if (!res.entities.empty())
                 {
                     for (auto entity : res.entities)
@@ -2196,7 +2197,10 @@ void SampleState::DrawGUI()
         }
         if (ImGui::Button("Save Current Scene (Serialize)", ImVec2(360, 24)))
         {
-            bool ok = SceneSerializer::Serialize(kScenario25ScenePath, GetScene(), Get<ResourceManager>(), "scenario");
+            auto* phys  = Resolve<IPhysicsWorld>();
+            auto* audio = Resolve<AudioService>();
+            SceneSerializer serializer(Get<ResourceManager>(), phys, audio);
+            bool ok = serializer.Serialize(kScenario25ScenePath, GetScene(), "scenario");
             if (ok)
             {
                 m_S25Status = "Serialized current scene to sample.axs!";

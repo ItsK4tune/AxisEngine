@@ -381,3 +381,21 @@ if(ENABLE_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# Scene compiler utility
+add_executable(axis_compile EXCLUDE_FROM_ALL compiler/src/main.cpp)
+if(MSVC)
+    target_compile_options(axis_compile PRIVATE /FS)
+endif()
+target_link_libraries(axis_compile PRIVATE
+    axis_engine
+)
+if(WIN32)
+    target_link_libraries(axis_compile PRIVATE
+        dxgi
+        pdh
+    )
+endif()
+if(MSVC)
+    target_link_options(axis_compile PRIVATE "/WHOLEARCHIVE:axis_engine")
+endif()

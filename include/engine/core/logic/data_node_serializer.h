@@ -13,6 +13,6 @@ public:
     bool Serialize(const std::string& filepath, const std::unordered_map<std::string, DataNode>& data) override;
     bool Deserialize(const std::string& filepath, std::unordered_map<std::string, DataNode>& data) override;
 
-    static std::unordered_map<std::string, DataNode> Parse(const std::vector<YAMLNode>& roots);
-    static void Serialize(std::ostream& stream, const std::unordered_map<std::string, DataNode>& data);
+    std::unordered_map<std::string, DataNode> Parse(const std::vector<YAMLNode>& roots);
+    void Serialize(std::ostream& stream, const std::unordered_map<std::string, DataNode>& data);
 };

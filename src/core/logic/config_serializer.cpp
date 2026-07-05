@@ -19,8 +19,9 @@ static std::string FormatGravity(const float gravity[3])
     return FloatStr(gravity[0]) + " " + FloatStr(gravity[1]) + " " + FloatStr(gravity[2]);
 }
 
-bool ConfigSerializer::Deserialize(const std::string& filepath, AppConfig& config, bool headless)
+bool ConfigSerializer::Deserialize(const std::string& filepath, AppConfig& config)
 {
+    bool headless = m_Headless;
     if (!std::filesystem::exists(filepath))
     {
         return false;

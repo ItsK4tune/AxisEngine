@@ -16,6 +16,10 @@
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
+#include <core/logic/config_serializer.h>
+#include <scene/logic/scene_serializer.h>
+#include <scene/logic/binary_scene_serializer.h>
+#include <physics/interface/i_physics_world.h>
 
 Scene& EngineAccessor::GetScene() const
 {
@@ -59,6 +63,49 @@ bool EngineAccessor::SaveDataNodes(const std::string& path)
     {
         DataNodeSerializer serializer;
         return serializer.Serialize(path, dm->GetDataNodes());
+    }
+    return false;
+}
+bool EngineAccessor::LoadConfig(const std::string& path)
+{
+    if (auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>())
+    {
+        AppConfig config = cm->GetConfig();
+        ConfigSerializer serializer(config.headlessMode);
+        if (serializer.Deserialize(path, config))
+        {
+            cm->UpdateConfig(config);
+            return true;
+        }
+    }
+    return false;
+}
+bool EngineAccessor::SaveConfig(const std::string& path)
+{
+    if (auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>())
+    {
+        ConfigSerializer serializer;
+        return serializer.Serialize(path, cm->GetConfig());
+    }
+    return false;
+}
+bool EngineAccessor::SaveScene(const std::string& path, const std::string& sceneName)
+{
+    if (path.ends_with(".axsb"))
+    {
+        BinarySceneSerializer serializer;
+        return serializer.Serialize(path, GetScene());
+    }
+    else
+    {
+        auto* rm = Resolve<ResourceManager>();
+        auto* phys = Resolve<IPhysicsWorld>();
+        auto* audio = Resolve<AudioService>();
+        if (rm)
+        {
+            SceneSerializer serializer(*rm, phys, audio);
+            return serializer.Serialize(path, GetScene(), sceneName);
+        }
     }
     return false;
 }

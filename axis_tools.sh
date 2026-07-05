@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==========================================
-#          AXIS ENGINE BUILDER (UNIX)
+#          AXIS ENGINE TOOLS (UNIX)
 # ==========================================
 
 set -e
@@ -20,13 +20,13 @@ if [ "$OS_NAME" = "Darwin" ]; then
 fi
 
 # Trap Ctrl+C to exit cleanly
-trap 'echo -e "\n${RED}[ABORTED]${NC} Build process interrupted by user."; exit 1' INT
+trap 'echo -e "\n${RED}[ABORTED]${NC} Process interrupted by user."; exit 1' INT
 
 # Help function
 show_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  -a, --action <1-3>      1: Full Rebuild, 2: Quick Build, 3: Build Tests"
+    echo "  -a, --action <1-4>      1: Full Rebuild, 2: Quick Build, 3: Build Tests, 4: Compile Scenes"
     echo "  -c, --compiler <1-4>    1: Auto-Detect, 2: Unix Makefiles, 3: Ninja, 4: Xcode (macOS)"
     echo "  -t, --type <1-4>        1: Release, 2: Debug, 3: RelWithDebInfo, 4: MinSizeRel"
     echo "  -e, --editor <yes/no>   Enable or disable Editor (ImGui)"
@@ -71,15 +71,122 @@ fi
 if [ -z "$ACTION_CHOICE" ]; then
     clear
     echo "=========================================="
-    echo "           GAME ENGINE LAUNCHER"
+    echo "           AXIS ENGINE TOOLS"
     echo "=========================================="
     echo " 1. Full Rebuild (Clean + Build)"
     echo " 2. Quick Build (Build - FAST)"
     echo " 3. Build Tests (Clean + Build Tests)"
+    echo " 4. Compile Scenes (.axs -> .axsb)"
     echo "=========================================="
     read -p "Enter number (Default: 1): " ACTION_CHOICE
     [ -z "$ACTION_CHOICE" ] && ACTION_CHOICE=1
 fi
+
+# Handle scene compilation directly
+if [ "$ACTION_CHOICE" = "4" ]; then
+    clear
+    echo "=========================================="
+    echo "        COMPILE SCENES (.axs -> .axsb)"
+    echo "=========================================="
+    echo " 1. Compile Single File"
+    echo " 2. Compile Directory (Recursive)"
+    echo "=========================================="
+    read -p "Enter choice (Default: 1): " COMPILE_CHOICE
+    [ -z "$COMPILE_CHOICE" ] && COMPILE_CHOICE=1
+
+    echo ""
+    echo "=========================================="
+    echo "           SELECT BUILD TYPE"
+    echo "=========================================="
+    echo " 1. Release (Default)"
+    echo " 2. Debug"
+    echo "=========================================="
+    read -p "Enter number (Default: 1): " COMPILE_TYPE_CHOICE
+    [ -z "$COMPILE_TYPE_CHOICE" ] && COMPILE_TYPE_CHOICE=1
+    COMPILE_BUILD_TYPE="Release"
+    [ "$COMPILE_TYPE_CHOICE" = "2" ] && COMPILE_BUILD_TYPE="Debug"
+
+    if [ "$COMPILE_CHOICE" = "1" ]; then
+        clear
+        echo "=========================================="
+        echo "         COMPILE SINGLE FILE"
+        echo "=========================================="
+        read -p "Enter path to .axs file: " INPUT_FILE
+        if [ ! -f "$INPUT_FILE" ]; then
+            echo -e "${RED}[ERROR] Input file does not exist: $INPUT_FILE${NC}"
+            exit 1
+        fi
+        OUTPUT_FILE="${INPUT_FILE%.axs}.axsb"
+
+        echo ""
+        echo "[INFO] Configuring cmake (ENABLE_EDITOR=OFF BUILD_SAMPLES=OFF ENABLE_TESTS=OFF)..."
+        set +e
+        cmake -B build -DENABLE_EDITOR=OFF -DBUILD_SAMPLES=OFF -DENABLE_TESTS=OFF
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}[ERROR] CMake configuration failed!${NC}"
+            exit 1
+        fi
+
+        echo "[INFO] Building axis_compile in $COMPILE_BUILD_TYPE..."
+        cmake --build build --config "$COMPILE_BUILD_TYPE" --target axis_compile --parallel 4
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}[ERROR] Failed to build axis_compile!${NC}"
+            exit 1
+        fi
+        set -e
+
+        echo "Compiling $INPUT_FILE to $OUTPUT_FILE..."
+        if [ -f "build/bin/axis_compile" ]; then
+            ./build/bin/axis_compile "$INPUT_FILE" "$OUTPUT_FILE"
+        elif [ -f "build/bin/axis_compile.exe" ]; then
+            ./build/bin/axis_compile.exe "$INPUT_FILE" "$OUTPUT_FILE"
+        fi
+        echo -e "${GREEN}[SUCCESS] Compilation completed.${NC}"
+        exit 0
+
+    elif [ "$COMPILE_CHOICE" = "2" ]; then
+        clear
+        echo "=========================================="
+        echo "         COMPILE DIRECTORY"
+        echo "=========================================="
+        read -p "Enter path to folder: " INPUT_DIR
+        if [ ! -d "$INPUT_DIR" ]; then
+            echo -e "${RED}[ERROR] Folder does not exist: $INPUT_DIR${NC}"
+            exit 1
+        fi
+
+        echo ""
+        echo "[INFO] Configuring cmake (ENABLE_EDITOR=OFF BUILD_SAMPLES=OFF ENABLE_TESTS=OFF)..."
+        set +e
+        cmake -B build -DENABLE_EDITOR=OFF -DBUILD_SAMPLES=OFF -DENABLE_TESTS=OFF
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}[ERROR] CMake configuration failed!${NC}"
+            exit 1
+        fi
+
+        echo "[INFO] Building axis_compile in $COMPILE_BUILD_TYPE..."
+        cmake --build build --config "$COMPILE_BUILD_TYPE" --target axis_compile --parallel 4
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}[ERROR] Failed to build axis_compile!${NC}"
+            exit 1
+        fi
+        set -e
+
+        echo "Compiling all .axs files in $INPUT_DIR..."
+        find "$INPUT_DIR" -name "*.axs" | while read -r infile; do
+            outfile="${infile%.axs}.axsb"
+            echo "Compiling $infile -> $outfile..."
+            if [ -f "build/bin/axis_compile" ]; then
+                ./build/bin/axis_compile "$infile" "$outfile"
+            elif [ -f "build/bin/axis_compile.exe" ]; then
+                ./build/bin/axis_compile.exe "$infile" "$outfile"
+            fi
+        done
+        echo -e "${GREEN}[SUCCESS] All files compiled.${NC}"
+        exit 0
+    fi
+fi
+
 
 case "$ACTION_CHOICE" in
     1)
@@ -246,6 +353,30 @@ canonical_backend() {
     esac
 }
 
+audio_sdk_available() {
+    case "$AXIS_AUDIO_BACKEND" in
+        Null) return 0 ;;
+        IrrKlang)
+            [ -n "$IRRKLANG_ROOT_DIR" ] && {
+                [ -f "$IRRKLANG_ROOT_DIR/include/irrKlang.h" ] ||
+                [ -f "$IRRKLANG_ROOT_DIR/irrKlang.h" ] ||
+                [ -f "$IRRKLANG_ROOT_DIR/irrKlang/irrKlang.h" ]
+            } && return 0
+            [ -f "/usr/include/irrKlang.h" ] || [ -f "/usr/local/include/irrKlang.h" ] && return 0
+            return 1
+            ;;
+        FMOD)
+            [ -n "$FMOD_ROOT_DIR" ] && {
+                [ -f "$FMOD_ROOT_DIR/api/core/inc/fmod.hpp" ] ||
+                [ -f "$FMOD_ROOT_DIR/inc/fmod.hpp" ] ||
+                [ -f "$FMOD_ROOT_DIR/include/fmod.hpp" ]
+            } && return 0
+            [ -f "/opt/fmod/api/core/inc/fmod.hpp" ] || [ -f "/usr/include/fmod.hpp" ] || [ -f "/usr/local/include/fmod.hpp" ] && return 0
+            return 1
+            ;;
+    esac
+}
+
 if [ "$QUICK_BUILD" = "false" ]; then
     if [ -z "$AXIS_GRAPHICS_BACKEND" ]; then
         clear
@@ -375,30 +506,6 @@ else
         ENABLE_TESTS=${ENABLE_TESTS:-"OFF"}
     fi
 fi
-
-audio_sdk_available() {
-    case "$AXIS_AUDIO_BACKEND" in
-        Null) return 0 ;;
-        IrrKlang)
-            [ -n "$IRRKLANG_ROOT_DIR" ] && {
-                [ -f "$IRRKLANG_ROOT_DIR/include/irrKlang.h" ] ||
-                [ -f "$IRRKLANG_ROOT_DIR/irrKlang.h" ] ||
-                [ -f "$IRRKLANG_ROOT_DIR/irrKlang/irrKlang.h" ]
-            } && return 0
-            [ -f "/usr/include/irrKlang.h" ] || [ -f "/usr/local/include/irrKlang.h" ] && return 0
-            return 1
-            ;;
-        FMOD)
-            [ -n "$FMOD_ROOT_DIR" ] && {
-                [ -f "$FMOD_ROOT_DIR/api/core/inc/fmod.hpp" ] ||
-                [ -f "$FMOD_ROOT_DIR/inc/fmod.hpp" ] ||
-                [ -f "$FMOD_ROOT_DIR/include/fmod.hpp" ]
-            } && return 0
-            [ -f "/opt/fmod/api/core/inc/fmod.hpp" ] || [ -f "/usr/include/fmod.hpp" ] || [ -f "/usr/local/include/fmod.hpp" ] && return 0
-            return 1
-            ;;
-    esac
-}
 
 if [ "$QUICK_BUILD" = "false" ]; then
     if ! audio_sdk_available; then

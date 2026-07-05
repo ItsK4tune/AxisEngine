@@ -2,23 +2,24 @@
 setlocal enabledelayedexpansion
 
 :MAIN_LOGIC
-title Axis Engine Builder
+title Axis Engine Tools
 
 :SELECT_ACTION
 cls
 echo ==========================================
-echo           GAME ENGINE LAUNCHER
+echo           AXIS ENGINE TOOLS
 echo ==========================================
-echo  1. Full Rebuild (Clean + Build + Run)
-echo  2. Quick Build (Build + Run - FAST)
+echo  1. Full Rebuild (Clean + Build)
+echo  2. Quick Build (Build - FAST)
 echo  3. Build Tests (Clean + Build Tests)
+echo  4. Compile Scenes (.axs -^> .axsb)
 echo ==========================================
 set "action_choice="
 set /p action_choice="Enter number (Default: 1): "
 
 if "%action_choice%"=="" set action_choice=1
 
-echo %action_choice%| findstr /r "^[1-3]$" >nul
+echo %action_choice%| findstr /r "^[1-4]$" >nul
 if errorlevel 1 goto RETRY_ACTION
 
 if "%action_choice%"=="1" (
@@ -40,11 +41,109 @@ if "%action_choice%"=="3" (
     set "BUILD_SAMPLES=OFF"
     goto SELECT_COMPILER
 )
+if "%action_choice%"=="4" (
+    goto COMPILE_SCENES
+)
 
 :RETRY_ACTION
 echo [ERROR] Invalid selection!
 pause
 goto SELECT_ACTION
+
+:COMPILE_SCENES
+cls
+echo ==========================================
+echo        COMPILE SCENES (.axs -^> .axsb)
+echo ==========================================
+echo  1. Compile Single File
+echo  2. Compile Directory (Recursive)
+echo ------------------------------------------
+echo  B. Back to Main Menu
+echo ==========================================
+set "compile_choice="
+set /p compile_choice="Enter choice (Default: 1): "
+if "%compile_choice%"=="" set compile_choice=1
+if /i "%compile_choice%"=="b" goto SELECT_ACTION
+
+echo.
+echo ==========================================
+echo           SELECT BUILD TYPE
+echo ==========================================
+echo  1. Release (Default)
+echo  2. Debug
+echo ==========================================
+set "compile_type_choice="
+set /p compile_type_choice="Enter number (Default: 1): "
+if "%compile_type_choice%"=="" set compile_type_choice=1
+set COMPILE_BUILD_TYPE=Release
+if "%compile_type_choice%"=="2" set COMPILE_BUILD_TYPE=Debug
+
+if "%compile_choice%"=="1" (
+    cls
+    echo ==========================================
+    echo         COMPILE SINGLE FILE
+    echo ==========================================
+    set /p input_file="Enter path to .axs file: "
+    set "input_file=!input_file:"=!"
+    if not exist "!input_file!" (
+        echo [ERROR] Input file does not exist: !input_file!
+        pause
+        goto COMPILE_SCENES
+    )
+    set "output_file=!input_file:.axs=.axsb!"
+    goto DO_BUILD_AND_COMPILE_FILE
+)
+
+if "%compile_choice%"=="2" (
+    cls
+    echo ==========================================
+    echo         COMPILE DIRECTORY
+    echo ==========================================
+    set /p input_dir="Enter path to folder: "
+    set "input_dir=!input_dir:"=!"
+    if not exist "!input_dir!" (
+        echo [ERROR] Folder does not exist: !input_dir!
+        pause
+        goto COMPILE_SCENES
+    )
+    goto DO_BUILD_AND_COMPILE_DIR
+)
+goto COMPILE_SCENES
+
+:DO_BUILD_AND_COMPILE_FILE
+echo.
+echo [INFO] Configuring cmake (ENABLE_EDITOR=OFF, BUILD_SAMPLES=OFF, ENABLE_TESTS=OFF)...
+cmake -B build -DENABLE_EDITOR=OFF -DBUILD_SAMPLES=OFF -DENABLE_TESTS=OFF
+if errorlevel 1 ( echo [ERROR] CMake configuration failed! & pause & goto SELECT_ACTION )
+echo [INFO] Building axis_compile in %COMPILE_BUILD_TYPE%...
+cmake --build build --config %COMPILE_BUILD_TYPE% --target axis_compile --parallel 4
+if errorlevel 1 ( echo [ERROR] Build failed! & pause & goto SELECT_ACTION )
+echo.
+echo Compiling !input_file! to !output_file!...
+build\bin\axis_compile.exe "!input_file!" "!output_file!"
+if errorlevel 1 ( echo [ERROR] Compilation failed! ) else ( echo [SUCCESS] Done! )
+pause
+goto COMPILE_SCENES
+
+:DO_BUILD_AND_COMPILE_DIR
+echo.
+echo [INFO] Configuring cmake (ENABLE_EDITOR=OFF, BUILD_SAMPLES=OFF, ENABLE_TESTS=OFF)...
+cmake -B build -DENABLE_EDITOR=OFF -DBUILD_SAMPLES=OFF -DENABLE_TESTS=OFF
+if errorlevel 1 ( echo [ERROR] CMake configuration failed! & pause & goto SELECT_ACTION )
+echo [INFO] Building axis_compile in %COMPILE_BUILD_TYPE%...
+cmake --build build --config %COMPILE_BUILD_TYPE% --target axis_compile --parallel 4
+if errorlevel 1 ( echo [ERROR] Build failed! & pause & goto SELECT_ACTION )
+echo.
+echo Compiling all .axs files in !input_dir!...
+for /r "!input_dir!" %%f in (*.axs) do (
+    set "infile=%%f"
+    set "outfile=%%~dpnf.axsb"
+    echo Compiling %%~nxf...
+    build\bin\axis_compile.exe "!infile!" "!outfile!"
+)
+echo [INFO] Done compilation.
+pause
+goto COMPILE_SCENES
 
 :SELECT_COMPILER
 cls
@@ -58,10 +157,10 @@ echo  4. Visual Studio 2019
 echo  5. Visual Studio 2017
 echo  6. Visual Studio 2015
 echo  7. Visual Studio 2013
-echo  8. Visual Studio 2012
-echo  9. Visual Studio 2010
-echo 10. Visual Studio 2008
-echo 11. Visual Studio 2005
+echo  8. Visual Studio 11 2012
+echo  9. Visual Studio 10 2010
+echo 10. Visual Studio 9 2008
+echo 11. Visual Studio 8 2005
 echo 12. Visual Studio 6 (2000-ish) [Legacy]
 echo 13. MinGW (MinGW Makefiles)
 echo 14. Clang (Ninja / NMake)
@@ -425,8 +524,6 @@ if /i "%confirm%"=="y" (
 )
 goto CONFIRM_CONFIG
 
-
-
 :CLEAN_FOLDERS
 echo.
 echo ==========================================
@@ -483,7 +580,7 @@ if exist "bin\%BUILD_TYPE%" (
 
 :SKIP_CLEAN
 
-title Axis Engine Builder - Building...
+title Axis Engine Tools - Building...
 echo.
 echo ==========================================
 echo      CONFIGURING AND BUILDING...
@@ -503,7 +600,7 @@ if not errorlevel 1 (
              pause
              exit /b 1
          )
-    )
+     )
 )
 
 set "DEPENDENCY_CMAKE_FLAGS="

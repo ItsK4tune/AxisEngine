@@ -44,7 +44,9 @@ AXIS_TEST_CASE("SceneSerializer deserializes minimal entity")
         "        Rotation: 0 90 0\n"
         "        Scale: 2 2 2\n");
 
-    auto result = SceneSerializer::Deserialize(path.string(), scene, fixture.resources, nullptr, nullptr);
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    SceneLoadResult result;
+    serializer.Deserialize(path.string(), scene, result);
     auto player = scene.FindByName("Player");
 
     AXIS_CHECK(result.entities.size() == 1);
@@ -73,7 +75,9 @@ AXIS_TEST_CASE("SceneSerializer resolves deferred parent by name")
         "      Parent: Root\n"
         "      Component: Transform\n");
 
-    auto result = SceneSerializer::Deserialize(path.string(), scene, fixture.resources, nullptr, nullptr);
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    SceneLoadResult result;
+    serializer.Deserialize(path.string(), scene, result);
     auto root = scene.FindByName("Root");
     auto child = scene.FindByName("Child");
 
@@ -117,7 +121,8 @@ AXIS_TEST_CASE("SceneSerializer serializes sceneName filter")
     scene.GetComponent<InfoComponent>(entityB).sceneName = "B";
 
     auto output = axis_test_support::TempPath("ss_filter_output.axs");
-    AXIS_CHECK(SceneSerializer::Serialize(output.string(), scene, fixture.resources, "A"));
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    AXIS_CHECK(serializer.Serialize(output.string(), scene, "A"));
     const std::string text = ReadText(output);
 
     AXIS_CHECK(text.find("EntityA:") != std::string::npos);
@@ -153,7 +158,8 @@ AXIS_TEST_CASE("SceneSerializer deduplicates resources owned by another scene")
     material.desc.albedoPath = "shared.png";
 
     auto output = axis_test_support::TempPath("ss_resource_dedup_output.axs");
-    AXIS_CHECK(SceneSerializer::Serialize(output.string(), fixture.scene, fixture.resources, "target_scene"));
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    AXIS_CHECK(serializer.Serialize(output.string(), fixture.scene, "target_scene"));
     const std::string text = ReadText(output);
 
     AXIS_CHECK(text.find("Name: shared") == std::string::npos);
@@ -175,7 +181,8 @@ AXIS_TEST_CASE("SceneSerializer skips transient entities")
     scene.GetComponent<InfoComponent>(entityB).isTransient = true;
 
     auto output = axis_test_support::TempPath("ss_transient_output.axs");
-    AXIS_CHECK(SceneSerializer::Serialize(output.string(), scene, fixture.resources, "A"));
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    AXIS_CHECK(serializer.Serialize(output.string(), scene, "A"));
     const std::string text = ReadText(output);
 
     AXIS_CHECK(text.find("PersistentEntity:") != std::string::npos);
@@ -191,10 +198,11 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     config.physics.gravity[1] = -9.81f;
 
     auto path = axis_test_support::TempPath("test_config.axs");
-    AXIS_CHECK(ConfigSerializer::Serialize(path.string(), config));
+    ConfigSerializer serializer;
+    AXIS_CHECK(serializer.Serialize(path.string(), config));
 
     AppConfig loadedConfig;
-    AXIS_CHECK(ConfigSerializer::Deserialize(path.string(), loadedConfig));
+    AXIS_CHECK(serializer.Deserialize(path.string(), loadedConfig));
     AXIS_CHECK(loadedConfig.window.width == 1024);
     AXIS_CHECK(loadedConfig.window.height == 768);
     AXIS_CHECK_NEAR(loadedConfig.physics.gravity[1], -9.81f, 0.0001f);

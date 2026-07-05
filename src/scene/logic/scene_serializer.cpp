@@ -1,4 +1,5 @@
 #include <scene/logic/scene_serializer.h>
+#include <scene/logic/binary_scene_serializer.h>
 #include <audio/interface/i_audio_engine.h>
 #include <audio/logic/audio_service.h>
 #include <core/logic/config_loader.h>
@@ -38,18 +39,20 @@ SceneSerializer::SceneSerializer(ResourceManager& res, IPhysicsWorld* phys, Audi
 
 bool SceneSerializer::Serialize(const std::string& filepath, const Scene& scene)
 {
-    return Serialize(filepath, const_cast<Scene&>(scene), m_Res, "");
+    return Serialize(filepath, scene, "");
 }
 
 bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene)
 {
-    SceneLoadResult res = Deserialize(filepath, scene, m_Res, m_Phys, m_Audio);
-    return !res.entities.empty();
+    SceneLoadResult dummy;
+    return Deserialize(filepath, scene, dummy);
 }
 
-SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res,
-                                             IPhysicsWorld* phys, AudioService* sound)
+bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, SceneLoadResult& outResult)
 {
+    ResourceManager& res = m_Res;
+    IPhysicsWorld* phys = m_Phys;
+    AudioService* sound = m_Audio;
     SceneLoadResult result;
     std::string fullPath = FileSystem::getPath(filepath);
     auto roots = YAMLParser::Parse(fullPath);
@@ -63,7 +66,8 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
         {
             LOGGER_ERROR("SceneSerializer") << "Failed to parse AXS file (empty or malformed): " << fullPath;
         }
-        return result;
+        outResult = std::move(result);
+        return false;
     }
 
     std::string sceneName = filepath;
@@ -219,7 +223,8 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
     SceneHandlers::SceneValidator::ValidateCamera(scene);
 
     LOGGER_INFO("SceneSerializer") << "Finished parsing AXS file: " << fullPath;
-    return result;
+    outResult = std::move(result);
+    return !outResult.entities.empty();
 }
 
 // ========== Phase 4: Scene Serialization ==========
@@ -861,9 +866,11 @@ static bool HasSerializableComponents(entt::registry& reg, entt::entity entity)
                       NetworkComponent, FragmentComponent>(entity);
 }
 
-bool SceneSerializer::Serialize(const std::string& filepath, Scene& scene, ResourceManager& res,
+bool SceneSerializer::Serialize(const std::string& filepath, const Scene& constScene,
                                 const std::string& sceneName)
 {
+    ResourceManager& res = m_Res;
+    Scene& scene = const_cast<Scene&>(constScene);
     std::ofstream f(filepath);
     if (!f.is_open())
         return false;

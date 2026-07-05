@@ -27,6 +27,9 @@
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
+#include <scene/logic/binary_scene_serializer.h>
+#include <audio/logic/audio_service.h>
+#include <physics/interface/i_physics_world.h>
 #include <script/logic/script_registry.h>
 #include <script/logic/scriptable.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -192,7 +195,18 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
                 auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
                 if (rec && res)
                 {
-                    SceneSerializer::Serialize(rec->filePath, scene, *res, sname);
+                    if (rec->filePath.ends_with(".axsb"))
+                    {
+                        BinarySceneSerializer serializer;
+                        serializer.Serialize(rec->filePath, scene);
+                    }
+                    else
+                    {
+                        auto* phys = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+                        auto* audio = ServiceLocator::Instance().Resolve<AudioService>();
+                        SceneSerializer serializer(*res, phys, audio);
+                        serializer.Serialize(rec->filePath, scene, sname);
+                    }
                 }
             }
             if (ImGui::MenuItem("Add Entity"))

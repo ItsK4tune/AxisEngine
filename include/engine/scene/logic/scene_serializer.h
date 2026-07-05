@@ -21,10 +21,8 @@ public:
     bool Serialize(const std::string& filepath, const Scene& scene) override;
     bool Deserialize(const std::string& filepath, Scene& scene) override;
 
-    static SceneLoadResult Deserialize(const std::string& filepath, Scene& scene, ResourceManager& res,
-                                       IPhysicsWorld* phys, AudioService* audio);
-    static bool Serialize(const std::string& filepath, Scene& scene, ResourceManager& res,
-                          const std::string& sceneName = "");
+    bool Deserialize(const std::string& filepath, Scene& scene, SceneLoadResult& outResult);
+    bool Serialize(const std::string& filepath, const Scene& scene, const std::string& sceneName);
 
     static std::string NormalizeSceneName(const std::string& name);
     static std::string NormalizePath(const std::string& path);

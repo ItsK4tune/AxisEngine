@@ -393,7 +393,8 @@ void SettingsPanel::OnImGui(Scene& scene)
     ImGui::Separator();
     if (ImGui::Button("Save Config"))
     {
-        ConfigSerializer::Serialize("include/engine/asset/config.axs", conf);
+        ConfigSerializer serializer;
+        serializer.Serialize("include/engine/asset/config.axs", conf);
     }
 
     ImGui::End();

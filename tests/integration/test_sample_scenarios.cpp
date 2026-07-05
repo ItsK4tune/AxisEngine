@@ -284,11 +284,13 @@ AXIS_TEST_CASE("Sample Scenario 25 scene save and reload roundtrip keeps base en
 
     fixture.state.LoadScene25();
     auto output = axis_test_support::TempPath("mr_scenario25.axs");
-    AXIS_CHECK(SceneSerializer::Serialize(output.string(), fixture.scene, fixture.resources, "scenario_base"));
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    AXIS_CHECK(serializer.Serialize(output.string(), fixture.scene, "scenario_base"));
     const std::string serialized = ReadText(output);
 
     Scene reloaded;
-    auto result = SceneSerializer::Deserialize(output.string(), reloaded, fixture.resources, nullptr, nullptr);
+    SceneLoadResult result;
+    serializer.Deserialize(output.string(), reloaded, result);
     AXIS_CHECK(serialized.find("Ground:") != std::string::npos);
     AXIS_CHECK(result.entities.size() >= 2);
     AXIS_CHECK(FindByName(reloaded, "Ground") != entt::null);

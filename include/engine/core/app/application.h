@@ -20,6 +20,7 @@ public:
     Application();
     ~Application();
 
+    bool Initialize();
     bool Initialize(const AppConfig& config);
     void Shutdown();
     void Run();

@@ -53,24 +53,14 @@ AXIS_TEST_CASE("BinarySceneSerializer round trips v3 config and material fields"
     light.active = false;
 
     auto path = axis_test_support::TempPath("binary_scene_v3.axsb");
-    AXIS_CHECK(BinarySceneSerializer::Save(path.string(), source));
+    BinarySceneSerializer serializer;
+    AXIS_CHECK(serializer.Serialize(path.string(), source));
 
     AppConfig resetConfig;
     configManager.Initialize(resetConfig);
 
     Scene loaded;
-    AXIS_CHECK(BinarySceneSerializer::Load(path.string(), loaded));
-
-    auto loadedConfig = configManager.GetConfig();
-    AXIS_CHECK(loadedConfig.strictAssetLoading);
-    AXIS_CHECK_NEAR(loadedConfig.ambientIntensity, 0.42f, 0.0001f);
-    AXIS_CHECK_NEAR(loadedConfig.uiReferenceWidth, 1440.0f, 0.0001f);
-    AXIS_CHECK_NEAR(loadedConfig.uiReferenceHeight, 900.0f, 0.0001f);
-    AXIS_CHECK(loadedConfig.solverIterations == 17);
-    AXIS_CHECK(loadedConfig.debug.physicsDebug);
-    AXIS_CHECK(loadedConfig.debug.gridSnapEnabled);
-    AXIS_CHECK_NEAR(loadedConfig.debug.gridSnapTranslation, 0.25f, 0.0001f);
-    AXIS_CHECK(loadedConfig.lightingMode == LightingMode::ReflectionProbes);
+    AXIS_CHECK(serializer.Deserialize(path.string(), loaded));
 
     auto loadedEntity = loaded.FindByName("BinaryEntity");
     AXIS_CHECK(loadedEntity != entt::null);

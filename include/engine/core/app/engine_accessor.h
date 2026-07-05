@@ -63,12 +63,15 @@ public:
     void QueuePopScene();
     bool IsSceneLoaded(const std::string& path);
     void LogAllScenes();
+    bool SaveScene(const std::string& path, const std::string& sceneName = "");
     std::vector<const SceneRecord*> GetScenes();
 
     bool LoadInputBindings(const std::string& path);
     bool SaveInputBindings(const std::string& path);
     bool LoadDataNodes(const std::string& path);
     bool SaveDataNodes(const std::string& path);
+    bool LoadConfig(const std::string& path);
+    bool SaveConfig(const std::string& path);
     bool GetAction(const std::string& name) const;
     bool GetActionDown(const std::string& name) const;
     bool GetActionUp(const std::string& name) const;
