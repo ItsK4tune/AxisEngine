@@ -16,6 +16,7 @@ public:
 
     virtual void OnCreate() = 0;
     virtual void OnUpdate(float dt) = 0;
+    virtual void OnFixedUpdate(float fixedDt) = 0;
     virtual void OnDestroy() = 0;
 
     virtual void OnEnable() = 0;

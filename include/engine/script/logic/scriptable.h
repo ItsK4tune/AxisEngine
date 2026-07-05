@@ -31,6 +31,9 @@ public:
     virtual void OnUpdate(float dt)
     {
     }
+    virtual void OnFixedUpdate(float fixedDt) override
+    {
+    }
     virtual void OnDestroy()
     {
     }

@@ -2113,6 +2113,7 @@ void SampleState::DrawGUI()
                     .WithTransform(glm::vec3(x, size * 0.5f, z), glm::vec3(0.0f, rand() % 360, 0.0f), glm::vec3(size))
                     .WithPBRMesh((m_S25RandomEntityCount % 2) ? "cubeModel" : "sphereModel", "deferred_lit", 0.1f, 0.5f,
                                  1.0f)
+                    .WithTransient(false)
                     .Build();
             m_S25RandomEntities.push_back(entity);
             if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))

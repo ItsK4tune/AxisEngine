@@ -591,6 +591,44 @@ void ScriptableSystem::Update(Scene& scene, float dt)
     DispatchUIInput(scene, dt, m_ScriptEntities);
 }
 
+void ScriptableSystem::FixedUpdate(Scene& scene, float fixedDt)
+{
+    if (!m_Enabled)
+        return;
+
+    auto entities = m_ScriptEntities;
+    for (auto entity : entities)
+    {
+        if (!scene.GetRegistry().valid(entity))
+            continue;
+
+        auto* info = scene.GetRegistry().try_get<InfoComponent>(entity);
+        if (!info || !info->isActive)
+            continue;
+
+        auto* script = scene.GetRegistry().try_get<ScriptComponent>(entity);
+        if (script && script->instance && script->instance->IsEnabled())
+        {
+            try
+            {
+                script->instance->OnFixedUpdate(fixedDt);
+            }
+            catch (const std::exception& e)
+            {
+                LOGGER_ERROR("ScriptableSystem")
+                    << "Script FixedUpdate CRASH on entity " << (uint32_t)entity << ": " << e.what();
+                script->instance->SetEnabled(false);
+            }
+            catch (...)
+            {
+                LOGGER_ERROR("ScriptableSystem")
+                    << "Script FixedUpdate UNKNOWN CRASH on entity " << (uint32_t)entity;
+                script->instance->SetEnabled(false);
+            }
+        }
+    }
+}
+
 std::vector<entt::id_type> ScriptableSystem::GetReadComponents() const
 {
     return {entt::type_id<ScriptComponent>().hash()};

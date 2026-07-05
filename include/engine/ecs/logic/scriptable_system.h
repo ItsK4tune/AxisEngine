@@ -37,6 +37,11 @@ public:
         return SystemCategory::Script | SystemCategory::Update;
     }
     void Update(Scene& scene, float dt) override;
+    bool WantsFixedUpdate() const override
+    {
+        return true;
+    }
+    void FixedUpdate(Scene& scene, float fixedDt) override;
 
     void OnSceneChanged(const SceneChangedEvent& e);
     void OnScriptComponentConstructed(entt::registry& reg, entt::entity entity);
