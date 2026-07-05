@@ -32,6 +32,14 @@ bool ConfigSerializer::Deserialize(const std::string& filepath, AppConfig& confi
         return false;
     }
 
+    for (const auto& root : roots)
+    {
+        if (root.key.rfind("axis_", 0) == 0 && root.key != "axis_config" && root.key != "axis_scene")
+        {
+            LOGGER_WARN("ConfigSerializer") << "Potential typo in root key: '" << root.key << "', expected 'axis_config' in " << filepath;
+        }
+    }
+
     std::vector<YAMLNode> activeRoots;
     if (roots.size() == 1 && roots[0].key == "axis_config")
     {

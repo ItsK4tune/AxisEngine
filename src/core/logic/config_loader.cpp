@@ -550,4 +550,11 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     {
         ss >> config.debug.gridSnapScale;
     }
+    else
+    {
+        if (!subCmd.empty())
+        {
+            LOGGER_WARN("ConfigLoader") << "Unknown config key: " << subCmd;
+        }
+    }
 }

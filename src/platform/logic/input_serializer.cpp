@@ -42,6 +42,14 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
         return false;
     }
 
+    for (auto& root : roots)
+    {
+        if (root.key.rfind("axis_", 0) == 0 && root.key != "axis_input" && root.key != "axis_scene")
+        {
+            LOGGER_WARN("InputSerializer") << "Potential typo in root key: '" << root.key << "', expected 'axis_input' in " << filepath;
+        }
+    }
+
     YAMLNode* bindingsNode = nullptr;
 
     for (auto& root : roots)

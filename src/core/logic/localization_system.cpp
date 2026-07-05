@@ -34,6 +34,15 @@ void LocalizationSystem::LoadLanguage(const std::string& path, const std::string
 
     std::vector<YAMLNode> roots = YAMLParser::Parse(path);
     std::unordered_map<std::string, std::string> entries;
+
+    for (const auto& root : roots)
+    {
+        if (root.key.rfind("axis_", 0) == 0 && root.key != "axis_localization" && root.key != "axis_scene")
+        {
+            LOGGER_WARN("LocalizationSystem") << "Potential typo in root key: '" << root.key << "', expected 'axis_localization' in " << path;
+        }
+    }
+
     for (const auto& root : roots)
     {
         if (root.key == "axis_localization")
@@ -43,6 +52,10 @@ void LocalizationSystem::LoadLanguage(const std::string& path, const std::string
                 if (section.key == "Entries")
                 {
                     FlattenNode(section, "", entries);
+                }
+                else
+                {
+                    LOGGER_WARN("LocalizationSystem") << "Unknown block '" << section.key << "' in axis_localization in " << path;
                 }
             }
         }

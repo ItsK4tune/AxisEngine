@@ -74,6 +74,14 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
     if (dotPos != std::string::npos)
         sceneName = sceneName.substr(0, dotPos);
 
+    for (auto& root : roots)
+    {
+        if (root.key.rfind("axis_", 0) == 0 && root.key != "axis_scene")
+        {
+            LOGGER_WARN("SceneSerializer") << "Potential typo in root key: '" << root.key << "', expected 'axis_scene' in " << filepath;
+        }
+    }
+
     std::map<entt::entity, std::vector<std::string>> deferredChildren;
     std::vector<YAMLNode> activeRoots = roots;
     if (roots.size() == 1 && roots[0].key == "axis_scene")
@@ -117,7 +125,7 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
                 {
                     std::string name = resNode.GetChildValue("Name");
                     std::string path = resNode.GetChildValue("Path");
-                    unsigned int size = std::stoul(resNode.GetChildValue("Size", "16"));
+                    unsigned int size = LoaderUtils::SafeStoul(resNode.GetChildValue("Size", "16"));
                     res.LoadFont(name, path, size);
                     result.loadedFonts.push_back(name);
                 }
@@ -147,6 +155,10 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
                         res.LoadSound(name, path, sound->GetEngine());
                         result.loadedSounds.push_back(name);
                     }
+                }
+                else
+                {
+                    LOGGER_WARN("SceneSerializer") << "Unknown resource type '" << resNode.key << "' in Resources block";
                 }
             }
         }
@@ -194,6 +206,10 @@ SceneLoadResult SceneSerializer::Deserialize(const std::string& filepath, Scene&
             };
 
             for (auto& entNode : root.children) ParseEntity(entNode, entt::null);
+        }
+        else
+        {
+            LOGGER_WARN("SceneSerializer") << "Unknown root block '" << root.key << "' in axis_scene";
         }
     }
 

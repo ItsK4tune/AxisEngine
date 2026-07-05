@@ -201,7 +201,7 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
 
     std::string modelName = node.GetChildValue("Model");
     std::string shaderName = node.GetChildValue("Shader");
-    int order = std::stoi(node.GetChildValue("Order", "0"));
+    int order = LoaderUtils::SafeStoi(node.GetChildValue("Order", "0"));
     bool castShadow =
         node.GetChildValue("CastShadow", "1") == "1" || node.GetChildValue("CastShadow", "true") == "true";
     bool receiveShadow =
@@ -242,7 +242,7 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     r.receiveShadow = receiveShadow;
     r.ignoreDepth = ignoreDepth;
     r.color = color;
-    int renderModeValue = std::stoi(node.GetChildValue("RenderMode", "0"));
+    int renderModeValue = LoaderUtils::SafeStoi(node.GetChildValue("RenderMode", "0"));
     r.renderMode = (renderModeValue == (int)RenderMode::ForceForward) ? RenderMode::ForceForward : RenderMode::Auto;
 
     if (!r.model)
@@ -272,10 +272,10 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, const YAML
         }
     }
 
-    a.speed = std::stof(node.GetChildValue("Speed", "1.0"));
-    a.startTime = std::stof(node.GetChildValue("StartTime", "0.0"));
-    a.rate = std::stof(node.GetChildValue("Rate", "30.0"));
-    a.blendFactor = std::stof(node.GetChildValue("BlendFactor", "0.0"));
+    a.speed = LoaderUtils::SafeStof(node.GetChildValue("Speed", "1.0"));
+    a.startTime = LoaderUtils::SafeStof(node.GetChildValue("StartTime", "0.0"));
+    a.rate = LoaderUtils::SafeStof(node.GetChildValue("Rate", "30.0"));
+    a.blendFactor = LoaderUtils::SafeStof(node.GetChildValue("BlendFactor", "0.0"));
 
     if (a.speed < 0.0f)
         LOGGER_WARN("ComponentLoader") << "Animator Speed should not be negative: " << a.speed;
@@ -355,7 +355,7 @@ void ComponentLoader::LoadPostProcess(Scene& scene, entt::entity entity, const Y
             {
                 try
                 {
-                    effect.priority = std::stoi(parts[1]);
+                    effect.priority = LoaderUtils::SafeStoi(parts[1]);
                 }
                 catch (...)
                 {
@@ -365,10 +365,10 @@ void ComponentLoader::LoadPostProcess(Scene& scene, entt::entity entity, const Y
             {
                 try
                 {
-                    effect.x = std::stoi(parts[2]);
-                    effect.y = std::stoi(parts[3]);
-                    effect.w = std::stoi(parts[4]);
-                    effect.h = std::stoi(parts[5]);
+                    effect.x = LoaderUtils::SafeStoi(parts[2]);
+                    effect.y = LoaderUtils::SafeStoi(parts[3]);
+                    effect.w = LoaderUtils::SafeStoi(parts[4]);
+                    effect.h = LoaderUtils::SafeStoi(parts[5]);
                 }
                 catch (...)
                 {
@@ -388,9 +388,9 @@ void ComponentLoader::LoadReflective(Scene& scene, entt::entity entity, const YA
     LoaderUtils::ValidateKeys(node, {"Active", "Reflectivity", "FresnelPower", "FresnelBias", "Probe"}, "Reflective");
     auto& ref = scene.AddComponent<ReflectiveComponent>(entity);
     ref.enabled = node.GetChildValue("Active", "true") == "true";
-    ref.reflectivity = std::stof(node.GetChildValue("Reflectivity", "1.0"));
-    ref.fresnelPower = std::stof(node.GetChildValue("FresnelPower", "5.0"));
-    ref.fresnelBias = std::stof(node.GetChildValue("FresnelBias", "0.04"));
+    ref.reflectivity = LoaderUtils::SafeStof(node.GetChildValue("Reflectivity", "1.0"));
+    ref.fresnelPower = LoaderUtils::SafeStof(node.GetChildValue("FresnelPower", "5.0"));
+    ref.fresnelBias = LoaderUtils::SafeStof(node.GetChildValue("FresnelBias", "0.04"));
     ref.targetProbe = node.GetChildValue("Probe", "");
 }
 
@@ -401,14 +401,14 @@ void ComponentLoader::LoadCamera(Scene& scene, entt::entity entity, const YAMLNo
     auto& c = scene.AddComponent<CameraComponent>(entity);
     c.isPrimary = node.GetChildValue("Primary", "1") == "1" || node.GetChildValue("Primary", "true") == "true";
 
-    c.aspectRatio = std::stof(node.GetChildValue("AspectRatio", "0.0"));
+    c.aspectRatio = LoaderUtils::SafeStof(node.GetChildValue("AspectRatio", "0.0"));
 
-    c.fov = std::stof(node.GetChildValue("FOV", "45.0"));
+    c.fov = LoaderUtils::SafeStof(node.GetChildValue("FOV", "45.0"));
     if (c.fov <= 0.0f || c.fov >= 180.0f)
         LOGGER_WARN("ComponentLoader") << "Camera FOV out of bounds (0-180): " << c.fov;
 
-    float yaw = std::stof(node.GetChildValue("Yaw", "-90.0"));
-    float pitch = std::stof(node.GetChildValue("Pitch", "0.0"));
+    float yaw = LoaderUtils::SafeStof(node.GetChildValue("Yaw", "-90.0"));
+    float pitch = LoaderUtils::SafeStof(node.GetChildValue("Pitch", "0.0"));
     if (pitch < -89.0f || pitch > 89.0f)
         LOGGER_WARN("ComponentLoader") << "Camera Pitch out of bounds (-89 to 89): " << pitch;
 
@@ -428,8 +428,8 @@ void ComponentLoader::LoadCamera(Scene& scene, entt::entity entity, const YAMLNo
     rotComp.value = rotation;
     rotComp.prev = rotation;
 
-    c.nearPlane = std::stof(node.GetChildValue("Near", "0.1"));
-    c.farPlane = std::stof(node.GetChildValue("Far", "1000.0"));
+    c.nearPlane = LoaderUtils::SafeStof(node.GetChildValue("Near", "0.1"));
+    c.farPlane = LoaderUtils::SafeStof(node.GetChildValue("Far", "1000.0"));
 
     if (c.nearPlane <= 0.0f)
         LOGGER_WARN("ComponentLoader") << "Camera Near plane should be > 0";
@@ -455,13 +455,13 @@ void ComponentLoader::LoadLightDir(Scene& scene, entt::entity entity, const YAML
     colorSS >> r >> g >> b;
     l.color = glm::vec3(r, g, b);
 
-    l.intensity = std::stof(node.GetChildValue("Intensity", "1.0"));
+    l.intensity = LoaderUtils::SafeStof(node.GetChildValue("Intensity", "1.0"));
     if (l.intensity < 0.0f)
         LOGGER_WARN("ComponentLoader") << "LightDir Intensity should not be negative: " << l.intensity;
 
-    l.ambient = std::stof(node.GetChildValue("Ambient", "0.1"));
-    l.diffuse = std::stof(node.GetChildValue("Diffuse", "0.8"));
-    l.specular = std::stof(node.GetChildValue("Specular", "0.5"));
+    l.ambient = LoaderUtils::SafeStof(node.GetChildValue("Ambient", "0.1"));
+    l.diffuse = LoaderUtils::SafeStof(node.GetChildValue("Diffuse", "0.8"));
+    l.specular = LoaderUtils::SafeStof(node.GetChildValue("Specular", "0.5"));
 }
 
 void ComponentLoader::LoadLightPoint(Scene& scene, entt::entity entity, const YAMLNode& node)
@@ -481,21 +481,21 @@ void ComponentLoader::LoadLightPoint(Scene& scene, entt::entity entity, const YA
     colorSS >> r >> g >> b;
     l.color = glm::vec3(r, g, b);
 
-    l.intensity = std::stof(node.GetChildValue("Intensity", "1.0"));
+    l.intensity = LoaderUtils::SafeStof(node.GetChildValue("Intensity", "1.0"));
     if (l.intensity < 0.0f)
         LOGGER_WARN("ComponentLoader") << "LightPoint Intensity should not be negative: " << l.intensity;
 
-    l.radius = std::stof(node.GetChildValue("Radius", "10.0"));
+    l.radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "10.0"));
     if (l.radius <= 0.0f)
         LOGGER_WARN("ComponentLoader") << "LightPoint Radius should be positive: " << l.radius;
 
-    l.constant = std::stof(node.GetChildValue("Constant", "1.0"));
-    l.linear = std::stof(node.GetChildValue("Linear", "0.09"));
-    l.quadratic = std::stof(node.GetChildValue("Quadratic", "0.032"));
+    l.constant = LoaderUtils::SafeStof(node.GetChildValue("Constant", "1.0"));
+    l.linear = LoaderUtils::SafeStof(node.GetChildValue("Linear", "0.09"));
+    l.quadratic = LoaderUtils::SafeStof(node.GetChildValue("Quadratic", "0.032"));
 
-    l.ambient = std::stof(node.GetChildValue("Ambient", "0.1"));
-    l.diffuse = std::stof(node.GetChildValue("Diffuse", "0.8"));
-    l.specular = std::stof(node.GetChildValue("Specular", "0.5"));
+    l.ambient = LoaderUtils::SafeStof(node.GetChildValue("Ambient", "0.1"));
+    l.diffuse = LoaderUtils::SafeStof(node.GetChildValue("Diffuse", "0.8"));
+    l.specular = LoaderUtils::SafeStof(node.GetChildValue("Specular", "0.5"));
 }
 
 void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAMLNode& node)
@@ -515,15 +515,15 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAM
     colorSS >> r >> g >> b;
     l.color = glm::vec3(r, g, b);
 
-    l.intensity = std::stof(node.GetChildValue("Intensity", "1.0"));
+    l.intensity = LoaderUtils::SafeStof(node.GetChildValue("Intensity", "1.0"));
     if (l.intensity < 0.0f)
         LOGGER_WARN("ComponentLoader") << "LightSpot Intensity should not be negative: " << l.intensity;
-    l.radius = std::stof(node.GetChildValue("Radius", "50.0"));
+    l.radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "50.0"));
     if (l.radius <= 0.0f)
         LOGGER_WARN("ComponentLoader") << "LightSpot Radius should be positive: " << l.radius;
 
-    float cutOffAng = std::stof(node.GetChildValue("CutOff", "12.5"));
-    float outerCutOffAng = std::stof(node.GetChildValue("OuterCutOff", "17.5"));
+    float cutOffAng = LoaderUtils::SafeStof(node.GetChildValue("CutOff", "12.5"));
+    float outerCutOffAng = LoaderUtils::SafeStof(node.GetChildValue("OuterCutOff", "17.5"));
 
     if (cutOffAng < 0.0f || cutOffAng > 90.0f)
         LOGGER_WARN("ComponentLoader") << "LightSpot CutOff out of bounds (0-90): " << cutOffAng;
@@ -535,13 +535,13 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAM
     l.cutOff = glm::cos(glm::radians(cutOffAng));
     l.outerCutOff = glm::cos(glm::radians(outerCutOffAng));
 
-    l.constant = std::stof(node.GetChildValue("Constant", "1.0"));
-    l.linear = std::stof(node.GetChildValue("Linear", "0.09"));
-    l.quadratic = std::stof(node.GetChildValue("Quadratic", "0.032"));
+    l.constant = LoaderUtils::SafeStof(node.GetChildValue("Constant", "1.0"));
+    l.linear = LoaderUtils::SafeStof(node.GetChildValue("Linear", "0.09"));
+    l.quadratic = LoaderUtils::SafeStof(node.GetChildValue("Quadratic", "0.032"));
 
-    l.ambient = std::stof(node.GetChildValue("Ambient", "0.1"));
-    l.diffuse = std::stof(node.GetChildValue("Diffuse", "0.8"));
-    l.specular = std::stof(node.GetChildValue("Specular", "0.5"));
+    l.ambient = LoaderUtils::SafeStof(node.GetChildValue("Ambient", "0.1"));
+    l.diffuse = LoaderUtils::SafeStof(node.GetChildValue("Diffuse", "0.8"));
+    l.specular = LoaderUtils::SafeStof(node.GetChildValue("Specular", "0.5"));
 }
 
 void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const YAMLNode& node)
@@ -573,7 +573,7 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
                 p = false;
             try
             {
-                v = std::stof(t);
+                v = LoaderUtils::SafeStof(t);
             }
             catch (...)
             {
@@ -594,10 +594,10 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
                value == "Yes" || value == "on" || value == "On";
     };
 
-    ui.zIndex = std::stoi(node.GetChildValue("ZOrder", "0"));
+    ui.zIndex = LoaderUtils::SafeStoi(node.GetChildValue("ZOrder", "0"));
     std::string zLabel = node.GetChildValue("zIndex");
     if (!zLabel.empty())
-        ui.zIndex = std::stoi(zLabel);
+        ui.zIndex = LoaderUtils::SafeStoi(zLabel);
 
     parseVec2Percent(node.GetChildValue("anchorMin"), ui.anchorMin, ui.anchorMinIsPercent, glm::vec2(0.5f));
     parseVec2Percent(node.GetChildValue("anchorMax"), ui.anchorMax, ui.anchorMaxIsPercent, glm::vec2(0.5f));
@@ -699,10 +699,10 @@ void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, con
     auto& pe = scene.AddComponent<ParticleEmitterComponent>(entity);
 
     pe.isActive = node.GetChildValue("Active", "true") == "true";
-    pe.emitter.SpawnRate = std::stof(node.GetChildValue("SpawnRate", "10.0"));
-    pe.emitter.LifeTime = std::stof(node.GetChildValue("Lifetime", "2.0"));
-    pe.emitter.StartSize = std::stof(node.GetChildValue("StartSize", "0.1"));
-    pe.emitter.EndSize = std::stof(node.GetChildValue("EndSize", "0.1"));
+    pe.emitter.SpawnRate = LoaderUtils::SafeStof(node.GetChildValue("SpawnRate", "10.0"));
+    pe.emitter.LifeTime = LoaderUtils::SafeStof(node.GetChildValue("Lifetime", "2.0"));
+    pe.emitter.StartSize = LoaderUtils::SafeStof(node.GetChildValue("StartSize", "0.1"));
+    pe.emitter.EndSize = LoaderUtils::SafeStof(node.GetChildValue("EndSize", "0.1"));
 
     std::string texName = node.GetChildValue("Texture");
     if (!texName.empty())
@@ -755,7 +755,7 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
     if (fontName.empty())
         fontName = StripQuotes(node.GetChildValue("Font"));
 
-    int fontSize = std::stoi(node.GetChildValue("fontSize", "60"));
+    int fontSize = LoaderUtils::SafeStoi(node.GetChildValue("fontSize", "60"));
     txt.fontName = fontName;
     txt.font = res.GetFontAuto(fontName, fontSize);
 
@@ -764,9 +764,9 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
         colorSS.str(node.GetChildValue("Color", "1 1 1 1"));
     colorSS >> txt.color.r >> txt.color.g >> txt.color.b >> txt.color.a;
 
-    txt.scale = std::stof(node.GetChildValue("scale", "1.0"));
+    txt.scale = LoaderUtils::SafeStof(node.GetChildValue("scale", "1.0"));
     if (node.GetChildValue("scale").empty())
-        txt.scale = std::stof(node.GetChildValue("Scale", "1.0"));
+        txt.scale = LoaderUtils::SafeStof(node.GetChildValue("Scale", "1.0"));
 
     std::string alignStr = node.GetChildValue("alignment", "Left");
     if (alignStr == "Center")
@@ -777,7 +777,7 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
         txt.alignment = TextAlignment::Left;
 
     txt.wordWrap = node.GetChildValue("wordWrap", "0") == "1" || node.GetChildValue("wordWrap", "true") == "true";
-    txt.maxWidth = std::stof(node.GetChildValue("maxWidth", "0.0"));
+    txt.maxWidth = LoaderUtils::SafeStof(node.GetChildValue("maxWidth", "0.0"));
 
     if (!res.GetUIModel("default_text_rect"))
         res.CreateUIModel("default_text_rect", ::UIType::Text);
@@ -794,7 +794,7 @@ void ComponentLoader::LoadUIFlex(Scene& scene, entt::entity entity, const YAMLNo
     std::string dirStr = node.GetChildValue("direction", "Column");
     flex.direction = (dirStr == "Row") ? FlexDirection::Row : FlexDirection::Column;
 
-    flex.spacing = std::stof(node.GetChildValue("spacing", "5.0"));
+    flex.spacing = LoaderUtils::SafeStof(node.GetChildValue("spacing", "5.0"));
 
     std::stringstream padSS(node.GetChildValue("padding", "0 0 0 0"));
     padSS >> flex.padding.x >> flex.padding.y >> flex.padding.z >> flex.padding.w;
@@ -882,7 +882,7 @@ void ComponentLoader::LoadReflectionProbe(Scene& scene, entt::entity entity, con
     comp.type =
         (typeStr == "Dynamic" || typeStr == "DYNAMIC") ? ReflectionProbeType::Dynamic : ReflectionProbeType::Static;
 
-    comp.resolution = std::stoi(node.GetChildValue("Resolution", "512"));
+    comp.resolution = LoaderUtils::SafeStoi(node.GetChildValue("Resolution", "512"));
     comp.boxProjection = node.GetChildValue("BoxProjection", "true") == "true";
 
     if (!node.GetChildValue("BoxMin").empty())
@@ -895,7 +895,7 @@ void ComponentLoader::LoadReflectionProbe(Scene& scene, entt::entity entity, con
         std::stringstream ss(node.GetChildValue("BoxMax"));
         ss >> comp.boxMax.x >> comp.boxMax.y >> comp.boxMax.z;
     }
-    comp.blendDistance = std::stof(node.GetChildValue("BlendDistance", "1.0"));
+    comp.blendDistance = LoaderUtils::SafeStof(node.GetChildValue("BlendDistance", "1.0"));
     comp.lastResolution = 0;  // Force cubemap allocation on first capture
 }
 
@@ -933,12 +933,12 @@ void ComponentLoader::LoadAudioSource(Scene& scene, entt::entity entity, const Y
         node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
     audio.loop = node.GetChildValue("Loop", "0") == "1" || node.GetChildValue("Loop", "true") == "true";
     audio.is3D = node.GetChildValue("Is3d", "0") == "1" || node.GetChildValue("Is3d", "false") == "true";
-    audio.volume = std::stof(node.GetChildValue("Volume", "100.0"));
-    audio.pitch = std::stof(node.GetChildValue("Pitch", "1.0"));
-    audio.pan = std::stof(node.GetChildValue("Pan", "0.0"));
-    audio.speed = std::stof(node.GetChildValue("Speed", "1.0"));
-    audio.minDistance = std::stof(node.GetChildValue("MinDistance", "1.0"));
-    audio.maxDistance = std::stof(node.GetChildValue("MaxDistance", "100.0"));
+    audio.volume = LoaderUtils::SafeStof(node.GetChildValue("Volume", "100.0"));
+    audio.pitch = LoaderUtils::SafeStof(node.GetChildValue("Pitch", "1.0"));
+    audio.pan = LoaderUtils::SafeStof(node.GetChildValue("Pan", "0.0"));
+    audio.speed = LoaderUtils::SafeStof(node.GetChildValue("Speed", "1.0"));
+    audio.minDistance = LoaderUtils::SafeStof(node.GetChildValue("MinDistance", "1.0"));
+    audio.maxDistance = LoaderUtils::SafeStof(node.GetChildValue("MaxDistance", "100.0"));
 
     scene.AddComponent<AudioSourceComponent>(entity, audio);
 }
@@ -951,12 +951,12 @@ void ComponentLoader::LoadVideoPlayer(Scene& scene, entt::entity entity, const Y
     video.filePath = FileSystem::getPath(node.GetChildValue("Path"));
     video.isLooping = node.GetChildValue("Loop", "0") == "1" || node.GetChildValue("Loop", "true") == "true";
 
-    video.speed = std::stof(node.GetChildValue("Speed", "1.0"));
+    video.speed = LoaderUtils::SafeStof(node.GetChildValue("Speed", "1.0"));
     if (video.speed < 0.0f)
         LOGGER_WARN("ComponentLoader") << "VideoPlayer Speed must be positive: " << video.speed;
 
-    video.volume = std::stof(node.GetChildValue("Volume", "1.0"));
-    video.maxDecodes = std::stoi(node.GetChildValue("MaxDecodes", "1"));
+    video.volume = LoaderUtils::SafeStof(node.GetChildValue("Volume", "1.0"));
+    video.maxDecodes = LoaderUtils::SafeStoi(node.GetChildValue("MaxDecodes", "1"));
 
     video.playOnAwake =
         node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
@@ -972,11 +972,11 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAML
          "SpecularMap", "Emission", "AlphaCutoff", "UVScale", "UVOffset", "AO_Map"},
         "Material");
     auto& mat = scene.AddComponent<MaterialComponent>(entity);
-    mat.desc.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
-    mat.desc.pbr.roughness = std::stof(node.GetChildValue("Roughness", "0.5"));
-    mat.desc.pbr.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
-    mat.desc.pbr.ao = std::stof(node.GetChildValue("AO", "1.0"));
-    mat.desc.alphaCutoff = std::stof(node.GetChildValue("AlphaCutoff", "0.5"));
+    mat.desc.opacity = LoaderUtils::SafeStof(node.GetChildValue("Opacity", "1.0"));
+    mat.desc.pbr.roughness = LoaderUtils::SafeStof(node.GetChildValue("Roughness", "0.5"));
+    mat.desc.pbr.metallic = LoaderUtils::SafeStof(node.GetChildValue("Metallic", "0.0"));
+    mat.desc.pbr.ao = LoaderUtils::SafeStof(node.GetChildValue("AO", "1.0"));
+    mat.desc.alphaCutoff = LoaderUtils::SafeStof(node.GetChildValue("AlphaCutoff", "0.5"));
 
     std::stringstream emSS(node.GetChildValue("Emission", "0 0 0"));
     emSS >> mat.desc.emission.x >> mat.desc.emission.y >> mat.desc.emission.z;
@@ -1035,17 +1035,17 @@ void ComponentLoader::LoadFragment(Scene& scene, entt::entity entity, const YAML
 void ComponentLoader::LoadPathFollower(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
     auto& pf = scene.AddComponent<PathFollowerComponent>(entity);
-    pf.moveSpeed = std::stof(node.GetChildValue("MoveSpeed", "5.0"));
-    pf.arrivalDistance = std::stof(node.GetChildValue("ArrivalDistance", "0.5"));
+    pf.moveSpeed = LoaderUtils::SafeStof(node.GetChildValue("MoveSpeed", "5.0"));
+    pf.arrivalDistance = LoaderUtils::SafeStof(node.GetChildValue("ArrivalDistance", "0.5"));
 }
 
 void ComponentLoader::LoadDecal(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     auto& d = scene.AddComponent<DecalComponent>(entity);
-    d.opacity = std::stof(node.GetChildValue("Opacity", "1.0"));
-    d.roughness = std::stof(node.GetChildValue("Roughness", "1.0"));
-    d.metallic = std::stof(node.GetChildValue("Metallic", "0.0"));
-    d.reflectivity = std::stof(node.GetChildValue("Reflectivity", "0.0"));
+    d.opacity = LoaderUtils::SafeStof(node.GetChildValue("Opacity", "1.0"));
+    d.roughness = LoaderUtils::SafeStof(node.GetChildValue("Roughness", "1.0"));
+    d.metallic = LoaderUtils::SafeStof(node.GetChildValue("Metallic", "0.0"));
+    d.reflectivity = LoaderUtils::SafeStof(node.GetChildValue("Reflectivity", "0.0"));
 
     std::stringstream ss(node.GetChildValue("TintColor", "1 1 1 1"));
     ss >> d.tintColor.r >> d.tintColor.g >> d.tintColor.b >> d.tintColor.a;
@@ -1055,7 +1055,7 @@ void ComponentLoader::LoadDecal(Scene& scene, entt::entity entity, const YAMLNod
 void ComponentLoader::LoadPlanarReflection(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
     auto& pr = scene.AddComponent<PlanarReflectionComponent>(entity);
-    pr.resolution = std::stoi(node.GetChildValue("Resolution", "1024"));
+    pr.resolution = LoaderUtils::SafeStoi(node.GetChildValue("Resolution", "1024"));
     std::stringstream ss(node.GetChildValue("Normal", "0 1 0"));
     ss >> pr.normal.x >> pr.normal.y >> pr.normal.z;
 }
@@ -1063,8 +1063,8 @@ void ComponentLoader::LoadPlanarReflection(Scene& scene, entt::entity entity, co
 void ComponentLoader::LoadLightProbe(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
     auto& lp = scene.AddComponent<LightProbeComponent>(entity);
-    lp.intensity = std::stof(node.GetChildValue("Intensity", "1.0"));
-    lp.radius = std::stof(node.GetChildValue("Radius", "5.0"));
+    lp.intensity = LoaderUtils::SafeStof(node.GetChildValue("Intensity", "1.0"));
+    lp.radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "5.0"));
 }
 
 void ComponentLoader::LoadTerrain(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
@@ -1073,8 +1073,8 @@ void ComponentLoader::LoadTerrain(Scene& scene, entt::entity entity, const YAMLN
     t.heightMapName = node.GetChildValue("HeightMap");
     std::stringstream ss(node.GetChildValue("Size", "512 50 512"));
     ss >> t.terrainSize.x >> t.terrainSize.y >> t.terrainSize.z;
-    t.resolution = std::stoi(node.GetChildValue("Resolution", "1024"));
-    t.textureScale = std::stof(node.GetChildValue("TextureScale", "1.0"));
+    t.resolution = LoaderUtils::SafeStoi(node.GetChildValue("Resolution", "1024"));
+    t.textureScale = LoaderUtils::SafeStof(node.GetChildValue("TextureScale", "1.0"));
     t.castShadows = node.GetChildValue("CastShadows", "true") == "true";
     t.customShader = node.GetChildValue("Shader");
 }
@@ -1082,7 +1082,7 @@ void ComponentLoader::LoadTerrain(Scene& scene, entt::entity entity, const YAMLN
 void ComponentLoader::LoadNetwork(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
     auto& net = scene.AddComponent<NetworkComponent>(entity);
-    net.networkId = std::stoul(node.GetChildValue("NetworkId", "0"));
-    net.ownerId = std::stoul(node.GetChildValue("OwnerId", "0"));
+    net.networkId = LoaderUtils::SafeStoul(node.GetChildValue("NetworkId", "0"));
+    net.ownerId = LoaderUtils::SafeStoul(node.GetChildValue("OwnerId", "0"));
     net.isLocal = node.GetChildValue("IsLocal", "false") == "true";
 }

@@ -1,6 +1,7 @@
 #include <core/logic/data_node_serializer.h>
 #include <core/logic/yaml_parser.h>
 #include <core/logic/filesystem.h>
+#include <core/logic/logger.h>
 #include <fstream>
 
 std::unordered_map<std::string, DataNode> DataNodeSerializer::Parse(const std::vector<YAMLNode>& roots)
@@ -81,6 +82,14 @@ bool DataNodeSerializer::Deserialize(const std::string& filepath, std::unordered
     auto roots = YAMLParser::Parse(fullPath);
 
     data = Parse(roots);
+
+    for (auto& r : roots)
+    {
+        if (r.key.rfind("axis_", 0) == 0 && r.key != "axis_data" && r.key != "axis_scene")
+        {
+            LOGGER_WARN("DataNodeSerializer") << "Potential typo in root key: '" << r.key << "', expected 'axis_data' in " << filepath;
+        }
+    }
 
     // Fallback: If no "axis_data" root was found but other non-scene roots exist, treat them as data
     bool hasAxisDataRoot = false;
