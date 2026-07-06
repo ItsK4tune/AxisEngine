@@ -364,6 +364,8 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::Checkbox("Depth Test", &conf.culling.depthTestEnabled))
             changed = true;
+        if (ImGui::Checkbox("Stencil Test", &conf.culling.stencilTestEnabled))
+            changed = true;
         if (ImGui::Checkbox("Cull Face", &conf.culling.cullFaceEnabled))
             changed = true;
         if (ImGui::Checkbox("Occlusion Culling", &conf.culling.occlusionCullingEnabled))
@@ -373,12 +375,31 @@ void SettingsPanel::OnImGui(Scene& scene)
         if (ImGui::Checkbox("Render Order Sorting", &conf.culling.renderOrderEnabled))
             changed = true;
         
-        int mask = (int)conf.culling.filterLayerMask;
-        if (ImGui::InputInt("Filter Layer Mask", &mask))
+        ImGui::Text("Filter Layers (0-7):");
+        for (int i = 0; i < 8; ++i)
         {
-            conf.culling.filterLayerMask = (uint32_t)mask;
+            bool layerActive = (conf.culling.filterLayerMask & (1 << i)) != 0;
+            char label[16];
+            sprintf(label, "L%d", i);
+            if (i > 0)
+                ImGui::SameLine();
+            if (ImGui::Checkbox(label, &layerActive))
+            {
+                if (layerActive)
+                    conf.culling.filterLayerMask |= (1 << i);
+                else
+                    conf.culling.filterLayerMask &= ~(1 << i);
+                changed = true;
+            }
+        }
+        
+        unsigned int hexMask = conf.culling.filterLayerMask;
+        if (ImGui::InputScalar("Filter Mask (Hex)", ImGuiDataType_U32, &hexMask, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal))
+        {
+            conf.culling.filterLayerMask = hexMask;
             changed = true;
         }
+
         if (ImGui::SliderFloat("Distance Culling", &conf.culling.distanceCulling, 0.0f, 5000.0f))
             changed = true;
     }

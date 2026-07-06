@@ -70,6 +70,7 @@ private:
     void LoadScene29();  // Localization
     void LoadScene30();  // Network Messaging
     void LoadScene31();  // Audio 2D & 3D
+    void LoadScene32();  // Outline & Portal (Generic Stencil Test)
     void StopScenario31Audio();
     AudioSourceComponent* FindScenario31AudioSource(const char* name);
     void ApplyScenario31AudioSettings();
@@ -384,4 +385,17 @@ private:
     entt::entity m_S16CardEntity = entt::null;
     entt::entity m_S16TextureEntity = entt::null;
     entt::entity m_S16RootPanel = entt::null;
+
+    // Scenario 32 UI variables
+    float m_S32OutlineColor[3] = {1.0f, 0.5f, 0.0f};
+    float m_S32OutlineWidth = 1.05f;
+    float m_S32PortalAngle = 0.0f;
+    bool m_S32PortalRotationActive = true;
+
+    // Cached entities for Scenario 32
+    entt::entity m_S32OutlineSphere = entt::null;
+    entt::entity m_S32PortalPlane = entt::null;
+    entt::entity m_S32PortalCamera = entt::null;
+    entt::entity m_S32PortalTarget = entt::null;
+    entt::entity m_S32PortalTargetVirtual = entt::null;
 };

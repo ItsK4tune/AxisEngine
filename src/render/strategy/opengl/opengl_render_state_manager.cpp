@@ -1,9 +1,20 @@
 #include <render/strategy/opengl/opengl_render_state_manager.h>
 #include <render/strategy/opengl/opengl_translator.h>
 #include <glad/glad.h>
+#include <core/logic/service_locator.h>
+#include <core/logic/config_manager.h>
 
 void OpenGLRenderStateManager::Enable(ServerCapability cap)
 {
+    if (cap == ServerCapability::StencilTest)
+    {
+        auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+        if (cm && !cm->GetConfig().culling.stencilTestEnabled)
+        {
+            return;
+        }
+    }
+
     if (!m_Capabilities[cap])
     {
         m_Capabilities[cap] = true;

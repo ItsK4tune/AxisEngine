@@ -361,7 +361,15 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     }
 
     rsm.SetDepthMask(true);
-    rsm.Enable(ServerCapability::DepthTest);
+    auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
+    if (cm && !cm->GetConfig().culling.depthTestEnabled)
+    {
+        rsm.Disable(ServerCapability::DepthTest);
+    }
+    else
+    {
+        rsm.Enable(ServerCapability::DepthTest);
+    }
 }
 
 std::vector<entt::id_type> LightingSystem::GetReadComponents() const

@@ -34,6 +34,43 @@ struct CameraComponent
     bool isOrthographic = false;
     float orthoSize = 5.0f;
     uint32_t cullingMask = 0xFFFFFFFF;
+
+    void EnableLayer(uint32_t layerIndex)
+    {
+        if (layerIndex < 32)
+            cullingMask |= (1 << layerIndex);
+    }
+
+    void DisableLayer(uint32_t layerIndex)
+    {
+        if (layerIndex < 32)
+            cullingMask &= ~(1 << layerIndex);
+    }
+
+    void SetLayerState(uint32_t layerIndex, bool enabled)
+    {
+        if (enabled)
+            EnableLayer(layerIndex);
+        else
+            DisableLayer(layerIndex);
+    }
+
+    bool IsLayerEnabled(uint32_t layerIndex) const
+    {
+        if (layerIndex >= 32)
+            return false;
+        return (cullingMask & (1 << layerIndex)) != 0;
+    }
+
+    void EnableAllLayers()
+    {
+        cullingMask = 0xFFFFFFFF;
+    }
+
+    void DisableAllLayers()
+    {
+        cullingMask = 0;
+    }
 };
 
 #define GLM_ENABLE_EXPERIMENTAL

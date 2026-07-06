@@ -109,6 +109,7 @@ struct CullingConfig
 {
     bool cullFaceEnabled = true;
     bool depthTestEnabled = true;
+    bool stencilTestEnabled = true;
     bool frustumCullingEnabled = true;
     bool occlusionCullingEnabled = false;
     bool instanceBatchingEnabled = true;
@@ -222,6 +223,7 @@ struct AppConfig
 
     bool& cullFaceEnabled = culling.cullFaceEnabled;
     bool& depthTestEnabled = culling.depthTestEnabled;
+    bool& stencilTestEnabled = culling.stencilTestEnabled;
     bool& frustumCullingEnabled = culling.frustumCullingEnabled;
     bool& occlusionCullingEnabled = culling.occlusionCullingEnabled;
     bool& instanceBatchingEnabled = culling.instanceBatchingEnabled;

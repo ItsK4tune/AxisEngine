@@ -687,9 +687,11 @@ void RenderServiceImpl::BuildRenderQueuesWithOctreeHelper(Scene& scene, const Re
             continue;
 
         uint32_t layer = info.layer;
-        int32_t filterMask = static_cast<int32_t>(m_Flags.filterLayerMask);
-        if (filterMask != -1 && static_cast<uint32_t>(filterMask) != layer)
-            continue;
+        if (m_Flags.filterLayerMask != 0xFFFFFFFF)
+        {
+            if (layer >= 32 || (m_Flags.filterLayerMask & (1 << layer)) == 0)
+                continue;
+        }
 
         if (params.cullingMask != 0xFFFFFFFF)
         {
@@ -912,9 +914,11 @@ void RenderServiceImpl::BuildRenderQueuesLinearHelper(Scene& scene, const Render
             continue;
 
         uint32_t layer = info.layer;
-        int32_t filterMask = static_cast<int32_t>(m_Flags.filterLayerMask);
-        if (filterMask != -1 && static_cast<uint32_t>(filterMask) != layer)
-            continue;
+        if (m_Flags.filterLayerMask != 0xFFFFFFFF)
+        {
+            if (layer >= 32 || (m_Flags.filterLayerMask & (1 << layer)) == 0)
+                continue;
+        }
 
         if (params.cullingMask != 0xFFFFFFFF)
         {

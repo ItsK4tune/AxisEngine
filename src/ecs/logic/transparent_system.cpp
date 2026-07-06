@@ -1,5 +1,6 @@
 #include <ecs/logic/transparent_system.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/config_manager.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
@@ -52,7 +53,11 @@ void TransparentSystem::RenderAlphaPass(Scene& scene, int width, int height, flo
     {
         // Forced-forward opaque runs after skybox. Depth-ignored 3D overlays are drawn after transparent objects.
         rsm.Disable(ServerCapability::Blend);
-        rsm.Enable(ServerCapability::DepthTest);
+        auto* cm = sl.Resolve<ConfigManager>();
+        if (cm && !cm->GetConfig().culling.depthTestEnabled)
+            rsm.Disable(ServerCapability::DepthTest);
+        else
+            rsm.Enable(ServerCapability::DepthTest);
         rsm.SetDepthMask(true);
 
         FramebufferAttachment colorAttachment = FramebufferAttachment::Color0;
@@ -97,7 +102,11 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
 
     rsm.Enable(ServerCapability::Blend);
     rsm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
-    rsm.Enable(ServerCapability::DepthTest);
+    auto* cm = sl.Resolve<ConfigManager>();
+    if (cm && !cm->GetConfig().culling.depthTestEnabled)
+        rsm.Disable(ServerCapability::DepthTest);
+    else
+        rsm.Enable(ServerCapability::DepthTest);
     rsm.SetDepthMask(false);
 
     if (core)
@@ -124,7 +133,10 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
     rsm.SetViewport(0, 0, width, height);
     rsm.Disable(ServerCapability::Blend);
     context->Clear(BufferBit::Depth);
-    rsm.Enable(ServerCapability::DepthTest);
+    if (cm && !cm->GetConfig().culling.depthTestEnabled)
+        rsm.Disable(ServerCapability::DepthTest);
+    else
+        rsm.Enable(ServerCapability::DepthTest);
     rsm.SetDepthFunc(CompareFunc::Less);
     rsm.SetDepthMask(true);
 

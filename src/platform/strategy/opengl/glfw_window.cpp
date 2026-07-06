@@ -137,6 +137,8 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
         glfwWindowHint(GLFW_SAMPLES, msaaSamples);
     }
 
+    glfwWindowHint(GLFW_STENCIL_BITS, 8);
+
 #ifdef _WIN32
     SetProcessAppUserModelId();
 #endif
