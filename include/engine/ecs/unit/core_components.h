@@ -12,7 +12,7 @@ struct InfoComponent
     std::string name = "Entity";
     std::string tag = "Default";
     std::string sceneName = "";
-    uint32_t layer = 1;
+    uint32_t layer = 0;
     int renderOrder = 0;
     bool isActive = true;
     bool isTransient = false;

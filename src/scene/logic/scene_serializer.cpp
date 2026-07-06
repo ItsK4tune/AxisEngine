@@ -183,6 +183,10 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
 
                 auto& info = scene.GetComponent<InfoComponent>(currentEntity);
                 info.sceneName = entNode.GetChildValue("Scene", entNode.GetChildValue("SceneName", sceneName));
+                if (auto* layerNode = entNode.GetChild("Layer"))
+                {
+                    info.layer = std::stoul(layerNode->value);
+                }
                 result.entities.push_back(currentEntity);
 
                 if (parent != entt::null)

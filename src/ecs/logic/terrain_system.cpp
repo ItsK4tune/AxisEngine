@@ -113,6 +113,11 @@ void TerrainSystem::Render(Scene& scene)
     FrustumCuller culler;
     culler.BuildFrustum(cam.projectionMatrix * cam.viewMatrix);
 
+    auto* configMgr = sl.Resolve<ConfigManager>();
+    auto config = configMgr ? configMgr->GetConfig() : AppConfig{};
+    bool frustumCull = config.culling.frustumCullingEnabled;
+    float distCullVal = config.culling.distanceCulling;
+
     auto* geoSys = sl.Resolve<IGeometryService>();
 
     auto view = scene.View<TerrainComponent, PositionComponent>();
@@ -121,7 +126,13 @@ void TerrainSystem::Render(Scene& scene)
         auto& terrain = view.get<TerrainComponent>(entity);
         auto& pos = view.get<PositionComponent>(entity);
 
-        if (auto* info = scene.TryGetComponent<InfoComponent>(entity); info && !info->isActive)
+        auto* info = scene.TryGetComponent<InfoComponent>(entity);
+        if (info && !info->isActive)
+            continue;
+
+        uint32_t terrainLayer = info ? info->layer : 0;
+        int32_t filterMask = static_cast<int32_t>(config.culling.filterLayerMask);
+        if (filterMask != -1 && static_cast<uint32_t>(filterMask) != terrainLayer)
             continue;
 
         auto it = m_TerrainCache.find(entity);
@@ -193,12 +204,17 @@ void TerrainSystem::Render(Scene& scene)
 
         for (auto& chunk : data.chunks)
         {
-            if (!culler.IsVisible(chunk.minBound + pos.value, chunk.maxBound + pos.value))
+            if (frustumCull && !culler.IsVisible(chunk.minBound + pos.value, chunk.maxBound + pos.value))
             {
                 continue;
             }
 
             float dist = glm::distance(camPos, (chunk.minBound + chunk.maxBound) * 0.5f + pos.value);
+            if (distCullVal > 0.0f && dist > distCullVal)
+            {
+                continue;
+            }
+
             int lod = 0;
             if (dist > 300.0f)
                 lod = 3;

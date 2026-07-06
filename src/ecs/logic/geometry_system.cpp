@@ -162,10 +162,25 @@ void GeometrySystem::Render(Scene& scene)
     dc.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     dc.Clear(BufferBit::Color | BufferBit::Depth);
 
-    rsm.Enable(ServerCapability::DepthTest);
-    rsm.SetDepthFunc(CompareFunc::Less);
-    rsm.Enable(ServerCapability::CullFace);
-    rsm.SetCullFace(CullMode::Back);
+    if (config.culling.depthTestEnabled)
+    {
+        rsm.Enable(ServerCapability::DepthTest);
+        rsm.SetDepthFunc(CompareFunc::Less);
+    }
+    else
+    {
+        rsm.Disable(ServerCapability::DepthTest);
+    }
+
+    if (config.culling.cullFaceEnabled)
+    {
+        rsm.Enable(ServerCapability::CullFace);
+        rsm.SetCullFace(CullMode::Back);
+    }
+    else
+    {
+        rsm.Disable(ServerCapability::CullFace);
+    }
 
     auto& sl = ServiceLocator::Instance();
     auto* shadowSys = sl.Resolve<IShadowService>();

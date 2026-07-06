@@ -117,10 +117,16 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                 scene.AddComponent<HierarchyComponent>(currentEntity);
                 auto& wt = scene.AddComponent<WorldTransformComponent>(currentEntity);
                 wt.isDirty = true;
+                uint32_t entityLayer = 1;
+                if (auto* layerNode = entNode.GetChild("Layer"))
+                {
+                    entityLayer = std::stoul(layerNode->value);
+                }
                 scene.AddComponent<InfoComponent>(currentEntity, namespacedName, namespacedTag);
 
                 auto& info = scene.GetComponent<InfoComponent>(currentEntity);
                 info.sceneName = fragmentName;
+                info.layer = entityLayer;
 
                 // Set parent to the provided parent by default
                 if (parent != entt::null)

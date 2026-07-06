@@ -14,7 +14,7 @@ void SampleState::LoadScene8()
 
     EntityBuilder(scene, res, "scenario")
         .WithName("LayerFloor")
-        .WithLayer(0x1)
+        .WithLayer(0)
         .WithTransform(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
         .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.8f, 1.0f)
         .Build();
@@ -23,7 +23,7 @@ void SampleState::LoadScene8()
     {
         auto cube = EntityBuilder(scene, res, "scenario")
             .WithName("LayerRedCube_" + std::to_string(i))
-            .WithLayer(0x2)
+            .WithLayer(1)
             .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, -8.0f), glm::vec3(0.0f, i * 20.0f, 0.0f), glm::vec3(2.0f))
             .WithPBRMesh("cubeModel", "deferred_lit", 0.0f, 0.55f, 1.0f)
             .Build();
@@ -31,7 +31,7 @@ void SampleState::LoadScene8()
 
         auto sphere = EntityBuilder(scene, res, "scenario")
             .WithName("LayerBlueSphere_" + std::to_string(i))
-            .WithLayer(0x4)
+            .WithLayer(2)
             .WithTransform(glm::vec3(-18.0f + i * 5.0f, 2.0f, 8.0f), glm::vec3(0.0f), glm::vec3(2.0f))
             .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.35f, 1.0f)
             .Build();

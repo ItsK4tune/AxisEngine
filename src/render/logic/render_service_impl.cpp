@@ -687,8 +687,15 @@ void RenderServiceImpl::BuildRenderQueuesWithOctreeHelper(Scene& scene, const Re
             continue;
 
         uint32_t layer = info.layer;
-        if ((m_Flags.filterLayerMask & layer) == 0 || (params.cullingMask & layer) == 0)
+        int32_t filterMask = static_cast<int32_t>(m_Flags.filterLayerMask);
+        if (filterMask != -1 && static_cast<uint32_t>(filterMask) != layer)
             continue;
+
+        if (params.cullingMask != 0xFFFFFFFF)
+        {
+            if (layer >= 32 || (params.cullingMask & (1 << layer)) == 0)
+                continue;
+        }
 
         auto& world = renderView.get<WorldTransformComponent>(entity);
         const bool useCurrentWorldMatrix = lodFactor >= 0.9999f;
@@ -905,8 +912,15 @@ void RenderServiceImpl::BuildRenderQueuesLinearHelper(Scene& scene, const Render
             continue;
 
         uint32_t layer = info.layer;
-        if ((m_Flags.filterLayerMask & layer) == 0 || (params.cullingMask & layer) == 0)
+        int32_t filterMask = static_cast<int32_t>(m_Flags.filterLayerMask);
+        if (filterMask != -1 && static_cast<uint32_t>(filterMask) != layer)
             continue;
+
+        if (params.cullingMask != 0xFFFFFFFF)
+        {
+            if (layer >= 32 || (params.cullingMask & (1 << layer)) == 0)
+                continue;
+        }
 
         auto& world = renderView.get<WorldTransformComponent>(entity);
         const bool useCurrentWorldMatrix = lodFactor >= 0.9999f;
