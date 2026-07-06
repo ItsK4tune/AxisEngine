@@ -1,0 +1,12 @@
+#pragma once
+#include "orbit_script.h"
+#include "pulse_scale_script.h"
+#include "color_shift_script.h"
+#include "random_move_script.h"
+#include "rotate_script.h"
+#include "bouncing_script.h"
+#include "player_control_script.h"
+#include "character_controller_demo_script.h"
+#include "scenario26_character_controller_script.h"
+#include "scenario26_fps_camera_script.h"
+#include "collision_reporter_script.h"

@@ -160,7 +160,7 @@ public:
     EntityBuilder& WithUIFlex(FlexDirection dir, float spacing = 5.0f);
     EntityBuilder& WithUIText(const std::string& text, const std::string& fontName, float scale = 1.0f,
                               const glm::vec4& color = glm::vec4(1.0f));
-    EntityBuilder& WithUITextAlignment(TextAlignment align, bool wrap = false, float maxWidth = 0.0f);
+    EntityBuilder& WithUITextAlignment(TextAlignment align, bool wrap = false, float maxWidth = 0.0f, bool wrapByWord = true);
     EntityBuilder& WithUIRenderer(const std::string& textureName, const glm::vec4& color = glm::vec4(1.0f));
     EntityBuilder& WithUITexture(const std::string& textureNameOrPath, const glm::vec4& color = glm::vec4(1.0f),
                                  const std::string& uiModelName = "");

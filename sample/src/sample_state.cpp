@@ -378,23 +378,15 @@ void SetUITextByName(Scene& scene, const std::string& name, const std::string& t
 void UpdateScenario29LocalizedUI(Scene& scene, LocalizationSystem& l10n)
 {
     const int entityCount = static_cast<int>(scene.View<InfoComponent>().size());
-    int rigidBodyCount = 0;
-    auto rbView = scene.View<RigidBodyComponent>();
-    for (auto entity : rbView)
-    {
-        if (rbView.get<RigidBodyComponent>(entity).body)
-            ++rigidBodyCount;
-    }
 
     SetUITextByName(scene, "L10nPanelTitle", l10n.Get("app.title"));
     SetUITextByName(scene, "L10nCurrentLanguageText",
                     l10n.GetFormat("l10n.preview.current_language", l10n.GetLanguage()));
-    SetUITextByName(scene, "L10nScenarioLabelText", l10n.Get("menu.select_scenario"));
     SetUITextByName(scene, "L10nEntityCountText",
                     l10n.GetFormat("scenario.active_entities", std::to_string(entityCount)));
-    SetUITextByName(scene, "L10nReloadText",
-                    l10n.Get("l10n.preview.description") + "\n" +
-                        l10n.GetFormat("scenario.active_rigid_bodies", std::to_string(rigidBodyCount)));
+    SetUITextByName(scene, "L10nTestWelcomeText", l10n.Get("l10n.test.welcome"));
+    SetUITextByName(scene, "L10nTestParameterizedText", l10n.GetFormat("l10n.test.parameterized", "42", "HelloWorld"));
+    SetUITextByName(scene, "L10nTestMultiLineText", l10n.Get("l10n.test.multi_line") + "\n\n" + l10n.Get("menu.reload_scenario"));
 }
 
 struct Scenario30SpawnCommand
@@ -760,10 +752,29 @@ void SampleState::OnUpdate(float dt)
 
     if (m_CurrentScenario == 16)
     {
+        auto& scene = GetScene();
+        auto findEntity = [&](const std::string& name) -> entt::entity {
+            auto view = scene.View<InfoComponent>();
+            for (auto entity : view)
+            {
+                if (view.get<InfoComponent>(entity).name == name)
+                    return entity;
+            }
+            return entt::null;
+        };
+
         if (m_S16CardEntity != entt::null && GetScene().IsValid(m_S16CardEntity))
         {
             if (auto* transform = GetScene().TryGetComponent<UITransformComponent>(m_S16CardEntity))
                 transform->rotation = m_S16RotateCard;
+
+            // Find and rotate the card text entity as well
+            if (auto cardText = findEntity("UICardText"); cardText != entt::null)
+            {
+                if (auto* transform = scene.TryGetComponent<UITransformComponent>(cardText))
+                    transform->rotation = m_S16RotateCard;
+            }
+
             if (m_S16TextureEntity != entt::null && GetScene().IsValid(m_S16TextureEntity))
             {
                 if (auto* info = GetScene().TryGetComponent<InfoComponent>(m_S16TextureEntity))
@@ -777,7 +788,6 @@ void SampleState::OnUpdate(float dt)
         }
         if (m_S16RootPanel != entt::null && GetScene().IsValid(m_S16RootPanel))
         {
-            auto& scene = GetScene();
             if (auto* renderer = scene.TryGetComponent<UIRendererComponent>(m_S16RootPanel))
             {
                 renderer->color.a = m_S16PanelAlpha;
@@ -786,8 +796,82 @@ void SampleState::OnUpdate(float dt)
             {
                 flex->direction = (m_S16LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
                 flex->spacing = (m_S16LayoutMode == 1) ? 18.0f : 10.0f;
+                // Add top padding in Column (stacked) layout to prevent title text overflow
+                flex->padding = (m_S16LayoutMode == 2) ? glm::vec4(16.0f, 40.0f, 16.0f, 16.0f) : glm::vec4(16.0f, 16.0f, 16.0f, 16.0f);
             }
         }
+
+        // Animate dynamic showcase panel & wrap width
+        static float s_AnimTime = 0.0f;
+        s_AnimTime += dt;
+
+        float activeY = m_S16ShowcaseX;
+        float activeScale = m_S16ShowcaseScale;
+        float activeRot = m_S16ShowcaseRot;
+
+        if (m_S16ShowcaseAnim)
+        {
+            activeY = 630.0f + 30.0f * sin(s_AnimTime * 2.5f);
+            activeScale = m_S16ShowcaseScale * (1.0f + 0.15f * sin(s_AnimTime * 3.0f));
+            activeRot = m_S16ShowcaseRot + 8.0f * sin(s_AnimTime * 1.8f);
+        }
+
+        if (auto p = findEntity("S16_ShowcasePanel"); p != entt::null)
+        {
+            if (auto* transform = scene.TryGetComponent<UITransformComponent>(p))
+            {
+                transform->position = glm::vec2(-1472.0f, activeY);
+                transform->size = glm::vec2(m_S16ShowcaseW, m_S16ShowcaseH) * activeScale;
+                transform->rotation = activeRot;
+            }
+        }
+        else
+        {
+            static float s_LogTimer = 0.0f;
+            s_LogTimer += dt;
+            if (s_LogTimer >= 2.5f)
+            {
+                LOGGER_WARN("Scenario16") << "S16_ShowcasePanel not found in registry!";
+                s_LogTimer = 0.0f;
+            }
+        }
+
+        if (auto t = findEntity("S16_ShowcaseText"); t != entt::null)
+        {
+            if (auto* transform = scene.TryGetComponent<UITransformComponent>(t))
+            {
+                if (auto p = findEntity("S16_ShowcasePanel"); p != entt::null)
+                {
+                    if (auto* pTrans = scene.TryGetComponent<UITransformComponent>(p))
+                    {
+                        transform->size = pTrans->size - glm::vec2(40.0f * activeScale);
+                        if (auto* textComp = scene.TryGetComponent<UITextComponent>(t))
+                        {
+                            textComp->scale = 0.44f * activeScale;
+                            textComp->maxWidth = transform->size.x - 10.0f;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Toggle word wrapping for all Scenario 16 UIText elements dynamically
+        auto findAndSetWordWrap = [&](const std::string& name, bool wrap) {
+            auto view = scene.View<InfoComponent, UITextComponent>();
+            for (auto entity : view)
+            {
+                if (view.get<InfoComponent>(entity).name == name)
+                {
+                    view.get<UITextComponent>(entity).wordWrap = wrap;
+                    break;
+                }
+            }
+        };
+        findAndSetWordWrap("UICardText", m_S16WordWrap);
+        findAndSetWordWrap("UICreditText", m_S16WordWrap);
+        findAndSetWordWrap("ResponsiveBody", m_S16WordWrap);
+        findAndSetWordWrap("ResponsivePreviewCaption", m_S16WordWrap);
+        findAndSetWordWrap("S16_ShowcaseText", m_S16WordWrap);
     }
 
     if (m_CurrentScenario == 14 && m_S14SpawnPhysicsBalls)
@@ -2821,9 +2905,22 @@ void SampleState::DrawGUI()
         ImGui::Checkbox("Flip Texture X", &m_S16FlipTextureX);
         ImGui::SameLine();
         ImGui::Checkbox("Flip Texture Y", &m_S16FlipTextureY);
+        ImGui::Checkbox("Word Wrapping", &m_S16WordWrap);
         ImGui::Separator();
         ImGui::Combo("Layout Mode", &m_S16LayoutMode, "Compact\0Expanded\0Stacked\0");
         ImGui::SliderFloat("Panel Alpha", &m_S16PanelAlpha, 0.1f, 1.0f);
+        ImGui::Separator();
+        ImGui::Text("Showcase Panel Customization:");
+        ImGui::Checkbox("Animate Showcase Panel", &m_S16ShowcaseAnim);
+        if (m_S16ShowcaseAnim)
+            ImGui::BeginDisabled();
+        ImGui::SliderFloat("Showcase Y Offset", &m_S16ShowcaseX, 500.0f, 750.0f);
+        ImGui::SliderFloat("Showcase Width", &m_S16ShowcaseW, 400.0f, 700.0f);
+        ImGui::SliderFloat("Showcase Height", &m_S16ShowcaseH, 150.0f, 350.0f);
+        ImGui::SliderFloat("Showcase Rotation", &m_S16ShowcaseRot, -45.0f, 45.0f);
+        ImGui::SliderFloat("Showcase Scale", &m_S16ShowcaseScale, 0.5f, 2.0f);
+        if (m_S16ShowcaseAnim)
+            ImGui::EndDisabled();
         ImGui::Text("This merged scene mixes transform, text, image, flex and anchors.");
     }
     else if (m_CurrentScenario == 17)

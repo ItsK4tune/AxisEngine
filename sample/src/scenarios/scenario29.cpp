@@ -5,82 +5,67 @@ void SampleState::LoadScene29()
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
 
-    EntityBuilder(scene, res, "scenario")
-        .WithName("Ground")
-        .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(80.0f, 1.0f, 80.0f))
-        .WithPBRMesh("planeModel", "deferred_lit", 0.1f, 0.1f, 0.1f)
-        .Build();
-
-    EntityBuilder(scene, res, "scenario")
-        .WithName("DirLight")
-        .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
-        .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
-        .Build();
-
     auto& l10n = GetSystem<LocalizationSystem>();
     l10n.LoadLanguage("sample/resource/l10n/vi.axs", "vi");
     l10n.LoadLanguage("sample/resource/l10n/en.axs", "en");
     l10n.SetLanguage("en");
 
-    auto viCube = EntityBuilder(scene, res, "scenario")
-        .WithName("viCube")
-        .WithTransform(glm::vec3(-10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
-        .WithPBRMesh("cubeModel", "deferred_lit", 1.0f, 0.1f, 0.1f)
-        .Build();
-    auto* rVi = scene.TryGetComponent<MeshRendererComponent>(viCube);
-    if (rVi) rVi->color = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f);
-
-    auto enCube = EntityBuilder(scene, res, "scenario")
-        .WithName("enCube")
-        .WithTransform(glm::vec3(10.0f, 3.0f, 0.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(4.0f))
-        .WithPBRMesh("cubeModel", "deferred_lit", 0.1f, 0.1f, 1.0f)
-        .Build();
-    auto* rEn = scene.TryGetComponent<MeshRendererComponent>(enCube);
-    if (rEn) rEn->color = glm::vec4(0.1f, 0.1f, 1.0f, 1.0f);
-
+    // A beautiful centered panel for testing localization (size doubled to 1200x880, shifted to the right)
     auto panel = EntityBuilder(scene, res, "scenario")
         .WithName("L10nPreviewPanel")
-        .WithUIAnchored(glm::vec2(1.0f, 0.0f), glm::vec2(-620.0f, 24.0f), glm::vec2(560.0f, 300.0f), 24)
-        .WithUIRenderer("l10n_preview_panel", glm::vec4(0.08f, 0.10f, 0.13f, 0.94f))
-        .WithUIFlex(FlexDirection::Column, 12.0f)
+        .WithUIAnchored(glm::vec2(0.5f, 0.5f), glm::vec2(-500.0f, -440.0f), glm::vec2(1200.0f, 880.0f), 24)
+        .WithUIRenderer("l10n_preview_panel", glm::vec4(0.08f, 0.10f, 0.14f, 0.96f))
         .Build();
-    scene.GetComponent<UIFlexLayoutComponent>(panel).autoSize = false;
 
+    // Title (doubled size and Y offsets)
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nPanelTitle")
-        .WithUIChild(panel, glm::vec2(20.0f, 20.0f), glm::vec2(520.0f, 48.0f), 25)
-        .WithUIText(l10n.Get("app.title"), "time", 0.2625f, glm::vec4(0.65f, 0.95f, 1.0f, 1.0f))
-        .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
+        .WithUIChild(panel, glm::vec2(60.0f, 60.0f), glm::vec2(1080.0f, 96.0f), 25)
+        .WithUIText(l10n.Get("app.title"), "time", 0.64f, glm::vec4(0.65f, 0.95f, 1.0f, 1.0f))
+        .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
         .Build();
 
+    // Current Language
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nCurrentLanguageText")
-        .WithUIChild(panel, glm::vec2(20.0f, 74.0f), glm::vec2(520.0f, 42.0f), 25)
-        .WithUIText(l10n.GetFormat("l10n.preview.current_language", l10n.GetLanguage()), "time", 0.215f,
+        .WithUIChild(panel, glm::vec2(60.0f, 160.0f), glm::vec2(1080.0f, 72.0f), 25)
+        .WithUIText(l10n.GetFormat("l10n.preview.current_language", l10n.GetLanguage()), "time", 0.44f,
                     glm::vec4(0.95f, 0.95f, 0.95f, 1.0f))
-        .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
+        .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
         .Build();
 
-    EntityBuilder(scene, res, "scenario")
-        .WithName("L10nScenarioLabelText")
-        .WithUIChild(panel, glm::vec2(20.0f, 120.0f), glm::vec2(520.0f, 42.0f), 25)
-        .WithUIText(l10n.Get("menu.select_scenario"), "time", 0.215f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
-        .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
-        .Build();
-
+    // Active Entities
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nEntityCountText")
-        .WithUIChild(panel, glm::vec2(20.0f, 166.0f), glm::vec2(520.0f, 42.0f), 25)
+        .WithUIChild(panel, glm::vec2(60.0f, 240.0f), glm::vec2(1080.0f, 72.0f), 25)
         .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)scene.View<InfoComponent>().size())),
-                    "time", 0.215f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
-        .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
+                    "time", 0.44f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
+        .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
         .Build();
 
+    // Test Welcome
     EntityBuilder(scene, res, "scenario")
-        .WithName("L10nReloadText")
-        .WithUIChild(panel, glm::vec2(20.0f, 212.0f), glm::vec2(520.0f, 58.0f), 25)
-        .WithUIText(l10n.Get("l10n.preview.description") + "\n" + l10n.Get("menu.reload_scenario"), "time", 0.205f,
+        .WithName("L10nTestWelcomeText")
+        .WithUIChild(panel, glm::vec2(60.0f, 320.0f), glm::vec2(1080.0f, 72.0f), 25)
+        .WithUIText(l10n.Get("l10n.test.welcome"), "time", 0.44f, glm::vec4(0.95f, 0.95f, 0.95f, 1.0f))
+        .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
+        .Build();
+
+    // Test Parameterized
+    EntityBuilder(scene, res, "scenario")
+        .WithName("L10nTestParameterizedText")
+        .WithUIChild(panel, glm::vec2(60.0f, 400.0f), glm::vec2(1080.0f, 72.0f), 25)
+        .WithUIText(l10n.GetFormat("l10n.test.parameterized", "42", "HelloWorld"), "time", 0.44f,
+                    glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
+        .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
+        .Build();
+
+    // Test MultiLine & Reload Info
+    EntityBuilder(scene, res, "scenario")
+        .WithName("L10nTestMultiLineText")
+        .WithUIChild(panel, glm::vec2(60.0f, 480.0f), glm::vec2(1080.0f, 260.0f), 25)
+        .WithUIText(l10n.Get("l10n.test.multi_line") + "\n\n" + l10n.Get("menu.reload_scenario"), "time", 0.42f,
                     glm::vec4(1.0f, 0.88f, 0.48f, 1.0f))
-        .WithUITextAlignment(TextAlignment::Left, true, 500.0f)
+        .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
         .Build();
 }

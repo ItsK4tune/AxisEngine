@@ -697,6 +697,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
                            : (uitext->alignment == TextAlignment::Right ? "Right" : "Left")));
         SerialWriteKV(f, ti, "wordWrap", uitext->wordWrap ? "true" : "false");
         SerialWriteKV(f, ti, "maxWidth", FloatStr(uitext->maxWidth));
+        SerialWriteKV(f, ti, "wrapByWord", uitext->wrapByWord ? "true" : "false");
         if (!uitext->fontName.empty())
             SerialWriteKV(f, ti, "font", uitext->fontName);
     }

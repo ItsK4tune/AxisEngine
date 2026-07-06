@@ -877,12 +877,13 @@ EntityBuilder& EntityBuilder::WithUIFlex(FlexDirection dir, float spacing)
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithUITextAlignment(TextAlignment align, bool wrap, float maxWidth)
+EntityBuilder& EntityBuilder::WithUITextAlignment(TextAlignment align, bool wrap, float maxWidth, bool wrapByWord)
 {
     auto& text = m_Scene.GetOrAddComponent<UITextComponent>(m_Entity);
     text.alignment = align;
     text.wordWrap = wrap;
     text.maxWidth = maxWidth;
+    text.wrapByWord = wrapByWord;
     return *this;
 }
 

@@ -12,6 +12,7 @@
 #include <render/interface/i_texture_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include <sstream>
 
 struct UIRect
 {
@@ -200,29 +201,132 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                 std::vector<std::string> lines;
                 if (textComp->wordWrap && textComp->maxWidth > 0)
                 {
-                    std::string currentLine;
-                    float currentWidth = 0;
-                    for (char c : text)
+                    if (textComp->wrapByWord)
                     {
-                        const Character& ch = textComp->font->GetCharacter(c);
-                        float charWidth = (ch.advance >> 6) * scale;
-                        if (currentWidth + charWidth > textComp->maxWidth)
+                        std::string currentLine;
+                        float currentLineWidth = 0.0f;
+                        std::string currentWord;
+                        float wordWidth = 0.0f;
+
+                        for (size_t i = 0; i < text.length(); ++i)
                         {
-                            lines.push_back(currentLine);
-                            currentLine = c;
-                            currentWidth = charWidth;
+                            char c = text[i];
+                            if (c == '\n')
+                            {
+                                currentLine += currentWord;
+                                lines.push_back(currentLine);
+                                currentLine.clear();
+                                currentWord.clear();
+                                currentLineWidth = 0.0f;
+                                wordWidth = 0.0f;
+                                continue;
+                            }
+
+                            const Character& ch = textComp->font->GetCharacter(c);
+                            float charWidth = (ch.advance >> 6) * scale;
+
+                            if (c == ' ')
+                            {
+                                if (currentLineWidth + wordWidth + charWidth > textComp->maxWidth)
+                                {
+                                    if (!currentLine.empty())
+                                    {
+                                        lines.push_back(currentLine);
+                                        currentLine = currentWord;
+                                        currentLineWidth = wordWidth;
+                                    }
+                                    else
+                                    {
+                                        currentLine = currentWord;
+                                        lines.push_back(currentLine);
+                                        currentLine.clear();
+                                        currentLineWidth = 0.0f;
+                                    }
+                                    currentWord.clear();
+                                    wordWidth = 0.0f;
+                                }
+                                else
+                                {
+                                    currentLine += currentWord + " ";
+                                    currentLineWidth += wordWidth + charWidth;
+                                    currentWord.clear();
+                                    wordWidth = 0.0f;
+                                }
+                            }
+                            else
+                            {
+                                currentWord += c;
+                                wordWidth += charWidth;
+
+                                if (currentLineWidth + wordWidth > textComp->maxWidth)
+                                {
+                                    if (!currentLine.empty())
+                                    {
+                                        lines.push_back(currentLine);
+                                        currentLine.clear();
+                                        currentLineWidth = 0.0f;
+                                    }
+                                    else
+                                    {
+                                        currentLine = currentWord;
+                                        lines.push_back(currentLine);
+                                        currentLine.clear();
+                                        currentWord.clear();
+                                        currentLineWidth = 0.0f;
+                                        wordWidth = 0.0f;
+                                    }
+                                }
+                            }
                         }
-                        else
+
+                        if (!currentWord.empty() || !currentLine.empty())
                         {
-                            currentLine += c;
-                            currentWidth += charWidth;
+                            currentLine += currentWord;
+                            lines.push_back(currentLine);
                         }
                     }
-                    lines.push_back(currentLine);
+                    else
+                    {
+                        std::string currentLine;
+                        float currentWidth = 0;
+                        for (char c : text)
+                        {
+                            if (c == '\n')
+                            {
+                                lines.push_back(currentLine);
+                                currentLine.clear();
+                                currentWidth = 0;
+                                continue;
+                            }
+                            const Character& ch = textComp->font->GetCharacter(c);
+                            float charWidth = (ch.advance >> 6) * scale;
+                            if (currentWidth + charWidth > textComp->maxWidth)
+                            {
+                                lines.push_back(currentLine);
+                                currentLine = c;
+                                currentWidth = charWidth;
+                            }
+                            else
+                            {
+                                currentLine += c;
+                                currentWidth += charWidth;
+                            }
+                        }
+                        lines.push_back(currentLine);
+                    }
                 }
                 else
                 {
-                    lines.push_back(text);
+                    std::stringstream ss(text);
+                    std::string line;
+                    while (std::getline(ss, line, '\n'))
+                    {
+                        lines.push_back(line);
+                    }
+                    if (lines.empty())
+                    {
+                        lines.push_back("");
+                    }
                 }
 
                 float startY = finalPos.y;

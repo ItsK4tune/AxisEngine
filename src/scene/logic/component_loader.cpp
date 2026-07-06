@@ -736,7 +736,7 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
 {
     LoaderUtils::ValidateKeys(node,
                               {"Text", "text", "Font", "font", "fontSize", "Color", "color", "Scale", "scale",
-                               "Alignment", "alignment", "wordWrap", "maxWidth"},
+                               "Alignment", "alignment", "wordWrap", "maxWidth", "wrapByWord"},
                               "UIText");
     auto& txt = scene.AddComponent<UITextComponent>(entity);
 
@@ -778,6 +778,7 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
 
     txt.wordWrap = node.GetChildValue("wordWrap", "0") == "1" || node.GetChildValue("wordWrap", "true") == "true";
     txt.maxWidth = LoaderUtils::SafeStof(node.GetChildValue("maxWidth", "0.0"));
+    txt.wrapByWord = node.GetChildValue("wrapByWord", "true") == "true" || node.GetChildValue("wrapByWord", "1") == "1";
 
     if (!res.GetUIModel("default_text_rect"))
         res.CreateUIModel("default_text_rect", ::UIType::Text);

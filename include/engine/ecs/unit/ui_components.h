@@ -78,6 +78,7 @@ struct UITextComponent
     TextAlignment alignment = TextAlignment::Left;
     bool wordWrap = false;
     float maxWidth = 0.0f;
+    bool wrapByWord = true;
 };
 
 struct UIFlexLayoutComponent

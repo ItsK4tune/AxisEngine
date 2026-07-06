@@ -338,11 +338,15 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
     file(GLOB SAMPLE_SCENARIO_SOURCES CONFIGURE_DEPENDS
         sample/src/scenarios/*.cpp
     )
+    file(GLOB SAMPLE_SCRIPTABLE_SOURCES CONFIGURE_DEPENDS
+        sample/src/scriptable/*.cpp
+    )
 
     set(SAMPLE_SOURCES
         sample/src/main.cpp
         sample/src/sample_state.cpp
         ${SAMPLE_SCENARIO_SOURCES}
+        ${SAMPLE_SCRIPTABLE_SOURCES}
     )
 
     if(WIN32)
