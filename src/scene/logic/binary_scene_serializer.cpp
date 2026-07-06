@@ -630,7 +630,7 @@ bool BinarySceneSerializer::Serialize(const std::string& filepath, const Scene& 
         return false;
 
     WriteValue(os, scene::BINARY_MAGIC);
-    WriteValue(os, scene::BINARY_VERSION);
+    WriteValue(os, VERSION);
 
     auto& mutableScene = const_cast<Scene&>(scene);
     auto view = mutableScene.View<InfoComponent>();

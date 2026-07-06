@@ -1,5 +1,6 @@
 #include <scene/logic/scene_serializer.h>
 #include <scene/logic/binary_scene_serializer.h>
+#include <core/logic/yaml_writer.h>
 #include <audio/interface/i_audio_engine.h>
 #include <audio/logic/audio_service.h>
 #include <core/logic/config_loader.h>
@@ -605,20 +606,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
             if (!overrideRoots.empty())
             {
                 f << std::string(ti * 2, ' ') << "Overrides:\n";
-                std::function<void(const YAMLNode&, int)> writeOverrideNode = [&](const YAMLNode& n, int depth) {
-                    f << std::string(depth * 2, ' ') << n.key;
-                    if (!n.value.empty())
-                        f << ": " << n.value;
-                    f << (n.value.empty() ? ":" : "") << "\n";
-                    for (const auto& child : n.children)
-                    {
-                        writeOverrideNode(child, depth + 1);
-                    }
-                };
-                for (const auto& root : overrideRoots)
-                {
-                    writeOverrideNode(root, ti + 1);
-                }
+                YAMLWriter::Write(f, overrideRoots, (ti + 1) * YAMLWriter::IndentWidth);
             }
         }
     }

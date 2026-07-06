@@ -6,6 +6,7 @@ add_executable(axis_test
     unit/test_pathfinding.cpp
     unit/test_texture_ownership.cpp
     unit/test_yaml_parser.cpp
+    unit/test_yaml_writer.cpp
     integration/test_binary_scene_serializer.cpp
     integration/test_navigation_system.cpp
     integration/test_physics_system.cpp

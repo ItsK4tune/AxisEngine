@@ -2,6 +2,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/yaml_parser.h>
+#include <core/logic/yaml_writer.h>
 #include <platform/interface/input_codes.h>
 #include <platform/logic/input_manager.h>
 #include <unordered_map>
@@ -345,39 +346,36 @@ bool InputSerializer::Serialize(const std::string& filepath, const InputManager&
         reverseMapsInitialized = true;
     }
 
-    f << "axis_input:\n";
-    f << "  Bindings:\n";
+    // Build YAMLNode tree: axis_input -> Bindings -> [action -> [list items]]
+    YAMLNode bindingsNode{"Bindings", "", {}};
     for (const auto& [actionName, actionBinding] : inputManager.GetActionMap())
     {
-        f << "    " << actionName << ":\n";
+        YAMLNode actionNode{actionName, "", {}};
         for (const auto& binding : actionBinding.bindings)
         {
             if (binding.type == InputType::Key)
             {
                 auto it = keyToStringMap.find(binding.code);
                 if (it != keyToStringMap.end())
-                {
-                    f << "      - Key: " << it->second << "\n";
-                }
+                    actionNode.children.push_back({"- Key", it->second, {}});
             }
             else if (binding.type == InputType::MouseButton)
             {
                 auto it = mouseToStringMap.find(binding.code);
                 if (it != mouseToStringMap.end())
-                {
-                    f << "      - Mouse: " << it->second << "\n";
-                }
+                    actionNode.children.push_back({"- Mouse", it->second, {}});
             }
             else if (binding.type == InputType::GamepadButton)
             {
                 auto it = gamepadToStringMap.find(binding.code);
                 if (it != gamepadToStringMap.end())
-                {
-                    f << "      - Gamepad: " << it->second << "\n";
-                }
+                    actionNode.children.push_back({"- Gamepad", it->second, {}});
             }
         }
+        bindingsNode.children.push_back(std::move(actionNode));
     }
+
+    YAMLWriter::WriteSection(f, "axis_input", {bindingsNode});
 
     LOGGER_INFO("InputSerializer") << "Successfully saved input bindings to " << filepath;
     return true;

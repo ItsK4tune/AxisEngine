@@ -1,5 +1,6 @@
 #include <core/logic/data_node_serializer.h>
 #include <core/logic/yaml_parser.h>
+#include <core/logic/yaml_writer.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <fstream>
@@ -58,22 +59,18 @@ void DataNodeSerializer::Serialize(std::ostream& stream, const std::unordered_ma
     if (data.empty())
         return;
 
-    stream << "axis_data:\n";
+    // Build a YAMLNode tree and delegate to YAMLWriter
+    std::vector<YAMLNode> nodes;
+    nodes.reserve(data.size());
     for (const auto& [key, val] : data)
     {
-        if (val.attributes.empty())
-        {
-            stream << "  " << key << ": " << val.value << "\n";
-        }
-        else
-        {
-            stream << "  " << key << ": " << val.value << "\n";
-            for (const auto& [attrKey, attrVal] : val.attributes)
-            {
-                stream << "    " << attrKey << ": " << attrVal << "\n";
-            }
-        }
+        YAMLNode node{key, val.value, {}};
+        for (const auto& [attrKey, attrVal] : val.attributes)
+            node.children.push_back({attrKey, attrVal, {}});
+        nodes.push_back(std::move(node));
     }
+
+    YAMLWriter::WriteSection(stream, "axis_data", nodes);
 }
 
 bool DataNodeSerializer::Deserialize(const std::string& filepath, std::unordered_map<std::string, DataNode>& data)
