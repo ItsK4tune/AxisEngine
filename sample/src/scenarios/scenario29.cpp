@@ -38,7 +38,7 @@ void SampleState::LoadScene29()
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nEntityCountText")
         .WithUIChild(panel, glm::vec2(60.0f, 240.0f), glm::vec2(1080.0f, 72.0f), 25)
-        .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)scene.View<InfoComponent>().size())),
+        .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)GetEntityCount())),
                     "time", 0.44f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
         .Build();

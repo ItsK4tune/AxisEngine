@@ -40,9 +40,7 @@ void SampleState::LoadScene10()
             .WithPBRMesh("sphereModel", "deferred_lit", 0.0f, 0.1f, 1.0f)
             .Build();
 
-        auto& mat = scene.GetComponent<MaterialComponent>(ent);
-        mat.desc.emission = g.emissionColor;
-        mat.gpu.dirty = true;
+        Entity(ent, &scene).SetEmission(g.emissionColor);
 
         EntityBuilder(scene, res, "scenario")
             .WithName("GlowLight_" + std::to_string(index))
@@ -75,21 +73,5 @@ void SampleState::LoadScene10()
         .WithPostProcess(PostProcessComponent{true, {}})
         .Build();
 
-    auto* sysMgr = Resolve<SystemManager>();
-    if (sysMgr)
-    {
-        auto* ppSys = dynamic_cast<PostProcessSystem*>(sysMgr->GetSystem("PostProcessSystem"));
-        if (ppSys)
-        {
-            auto& pipeline = ppSys->GetPipeline();
-            pipeline.SetHDREnabled(m_PPHdrEnabled);
-            pipeline.SetBloomEnabled(m_PPBloomEnabled);
-            pipeline.SetBloomThreshold(m_PPBloomThreshold);
-            pipeline.SetBloomIntensity(m_PPBloomIntensity);
-            pipeline.SetBloomRadius(m_PPBloomRadius);
-            pipeline.SetExposure(m_PPExposure);
-            pipeline.SetGamma(m_PPGamma);
-            pipeline.SetTonemappingMode(m_PPTonemappingMode);
-        }
-    }
+    ConfigurePostProcessing(m_PPHdrEnabled, m_PPBloomEnabled, m_PPBloomThreshold, m_PPBloomIntensity, m_PPBloomRadius, m_PPExposure, m_PPGamma, m_PPTonemappingMode);
 }

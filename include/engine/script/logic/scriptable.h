@@ -7,6 +7,7 @@
 #include <platform/interface/key.h>
 #include <platform/interface/mouse.h>
 #include <scene/logic/scene.h>
+#include <ecs/logic/entity.h>
 #include <entt/entt.hpp>
 #include <functional>
 #include <string>
@@ -15,6 +16,8 @@
 class Scriptable : public EngineAccessor, public IScriptable
 {
 public:
+    Entity GetEntity() { return Entity(m_Entity, &GetScene()); }
+
     virtual ~Scriptable()
     {
     }

@@ -1430,232 +1430,128 @@ void SampleState::OnRender()
     if (m_CurrentScenario == 32)
     {
         auto& scene = GetScene();
-        auto& registry = scene.GetRegistry();
-        auto& sl = ServiceLocator::Instance();
-        auto* context = sl.Resolve<IGraphicsContext>();
-        auto* renderService = sl.Resolve<IRenderService>();
-        auto* resMgr = sl.Resolve<ResourceManager>();
-        if (context && renderService && resMgr)
+        Entity sphere(m_S32OutlineSphere, &scene);
+        Entity portal(m_S32PortalPlane, &scene);
+        Entity portalCam(m_S32PortalCamera, &scene);
+
+        if (sphere && portal && portalCam)
         {
-            auto& rsm = context->GetRenderStateManager();
-            auto& rtm = context->GetRenderTargetManager();
-
-            // Fetch shaders
-            auto forwardUnlit = resMgr->GetShader("forward_unlit");
-            auto forwardPbrLit = resMgr->GetShader("forward_pbr_lit");
-
-            // Verify models and transforms
-            auto* sphereRenderer = registry.try_get<MeshRendererComponent>(m_S32OutlineSphere);
-            auto* sphereWorld = registry.try_get<WorldTransformComponent>(m_S32OutlineSphere);
-            
-            auto* portalRenderer = registry.try_get<MeshRendererComponent>(m_S32PortalPlane);
-            auto* portalWorld = registry.try_get<WorldTransformComponent>(m_S32PortalPlane);
-
-            auto* portalCameraPos = registry.try_get<PositionComponent>(m_S32PortalCamera);
-            auto* portalCameraWorld = registry.try_get<WorldTransformComponent>(m_S32PortalCamera);
-            auto* portalCameraComp = registry.try_get<CameraComponent>(m_S32PortalCamera);
-
             // ─── 1. Outline Rendering ───
-            if (sphereRenderer && sphereWorld && sphereRenderer->model && forwardUnlit)
-            {
-                // Clear stencil buffer for outline
-                glClear(GL_STENCIL_BUFFER_BIT);
+            // Clear stencil buffer for outline
+            ClearStencilBuffer();
 
-                // Step A: Draw the mask to stencil buffer
-                rsm.Enable(ServerCapability::StencilTest);
-                glStencilMask(0xFF);
-                rsm.SetStencilFunc(CompareFunc::Always, 1, 0xFF);
-                rsm.SetStencilOp(StencilOp::Keep, StencilOp::Keep, StencilOp::Replace);
-                rsm.SetDepthFunc(CompareFunc::Lequal);
+            // Step A: Draw the mask to stencil buffer
+            SetRenderStateEnabled(ServerCapability::StencilTest, true);
+            SetStencilMask(0xFF);
+            SetStencilFunc(CompareFunc::Always, 1, 0xFF);
+            SetStencilOp(StencilOp::Keep, StencilOp::Keep, StencilOp::Replace);
+            SetDepthFunc(CompareFunc::Lequal);
 
-                // Disable color/depth writes
-                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-                glDepthMask(GL_FALSE);
+            // Disable color/depth writes
+            SetColorWriteMask(false, false, false, false);
+            SetDepthWriteMask(false);
 
-                // Use unlit shader to draw the sphere mask
-                forwardUnlit->use();
-                glm::mat4 mtx = sphereWorld->worldMatrix * sphereRenderer->model->GetRootTransform();
-                forwardUnlit->setMat4("u_Model", mtx);
-                forwardUnlit->setVec4("u_BaseColor", glm::vec4(1.0f));
-                forwardUnlit->setBool("debug_noTexture", true);
-                sphereRenderer->model->Draw(*forwardUnlit, true);
+            // Draw sphere mask
+            DrawEntityMesh(sphere, "forward_unlit", sphere.GetWorldMatrix(), glm::vec4(1.0f));
 
-                // Restore color/depth writes
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-                glDepthMask(GL_TRUE);
-                rsm.SetDepthFunc(CompareFunc::Less);
+            // Restore color/depth writes
+            SetColorWriteMask(true, true, true, true);
+            SetDepthWriteMask(true);
+            SetDepthFunc(CompareFunc::Less);
 
-                // Step B: Draw outline (scaled up sphere) where stencil != 1
-                rsm.SetStencilFunc(CompareFunc::NotEqual, 1, 0xFF);
-                glStencilMask(0x00); // disable write
-                rsm.Disable(ServerCapability::DepthTest);
+            // Step B: Draw outline (scaled up sphere) where stencil != 1
+            SetStencilFunc(CompareFunc::NotEqual, 1, 0xFF);
+            SetStencilMask(0x00); // disable write
+            SetRenderStateEnabled(ServerCapability::DepthTest, false);
 
-                forwardUnlit->use();
-                glm::mat4 scaleMtx = glm::scale(sphereWorld->worldMatrix, glm::vec3(m_S32OutlineWidth));
-                glm::mat4 mtxOutline = scaleMtx * sphereRenderer->model->GetRootTransform();
-                forwardUnlit->setMat4("u_Model", mtxOutline);
-                forwardUnlit->setVec4("u_BaseColor", glm::vec4(m_S32OutlineColor[0], m_S32OutlineColor[1], m_S32OutlineColor[2], 1.0f));
-                forwardUnlit->setBool("debug_noTexture", true);
-                sphereRenderer->model->Draw(*forwardUnlit, true);
+            glm::mat4 scaleMtx = glm::scale(sphere.GetWorldMatrix(), glm::vec3(m_S32OutlineWidth));
+            DrawEntityMesh(sphere, "forward_unlit", scaleMtx, glm::vec4(m_S32OutlineColor[0], m_S32OutlineColor[1], m_S32OutlineColor[2], 1.0f));
 
-                // Restore culling/stencil settings
-                rsm.Enable(ServerCapability::DepthTest);
-                rsm.Disable(ServerCapability::StencilTest);
-                glStencilMask(0xFF);
-            }
+            // Restore culling/stencil settings
+            SetRenderStateEnabled(ServerCapability::DepthTest, true);
+            SetRenderStateEnabled(ServerCapability::StencilTest, false);
+            SetStencilMask(0xFF);
 
             // ─── 2. Portal Rendering ───
-            if (portalRenderer && portalWorld && portalRenderer->model && portalCameraComp && forwardUnlit && forwardPbrLit)
+            // Clear stencil buffer for portal
+            ClearStencilBuffer();
+
+            // Step A: Draw portal frame mask to stencil buffer
+            SetRenderStateEnabled(ServerCapability::StencilTest, true);
+            SetStencilMask(0xFF);
+            SetStencilFunc(CompareFunc::Always, 1, 0xFF);
+            SetStencilOp(StencilOp::Keep, StencilOp::Keep, StencilOp::Replace);
+            SetRenderStateEnabled(ServerCapability::DepthTest, false);
+
+            // Disable color/depth writes
+            SetColorWriteMask(false, false, false, false);
+            SetDepthWriteMask(false);
+
+            DrawEntityMesh(portal, "forward_unlit", portal.GetWorldMatrix(), glm::vec4(1.0f));
+
+            // Step B: Draw portal outline where stencil != 1 (colored border)
+            SetStencilFunc(CompareFunc::NotEqual, 1, 0xFF);
+            SetStencilMask(0x00); // disable write
+            SetColorWriteMask(true, true, true, true);
+
+            // Scale slightly on X and Z for the border (Z is height due to X rotation)
+            glm::mat4 outlineScaleMtx = glm::scale(portal.GetWorldMatrix(), glm::vec3(1.03f, 1.0f, 1.03f));
+            DrawEntityMesh(portal, "forward_unlit", outlineScaleMtx, glm::vec4(0.2f, 0.8f, 0.8f, 1.0f));
+
+            // Step C: Set stencil test to pass only inside portal mask (stencil == 1)
+            SetStencilFunc(CompareFunc::Equal, 1, 0xFF);
+            SetStencilMask(0x00); // disable write
+            SetRenderStateEnabled(ServerCapability::DepthTest, true);
+            SetDepthWriteMask(true);
+
+            // Clear depth within the portal frame so virtual scene renders properly
+            ClearDepthBuffer();
+
+            // Synchronize portal camera position relative to main camera and portal plane
+            glm::vec3 mainCamPos;
+            glm::mat4 mainView;
+            glm::mat4 mainProj;
+            float originalNear;
+            float originalFar;
+            GetCameraRenderState(mainCamPos, mainView, mainProj, originalNear, originalFar);
+
+            // Entrance plane position (portal plane):
+            glm::vec3 entrancePlanePos = glm::vec3(portal.GetWorldMatrix()[3]);
+            // Exit plane position:
+            glm::vec3 exitPlanePos = glm::vec3(-50.0f, 2.5f, -50.0f);
+
+            glm::vec3 relativePos = mainCamPos - entrancePlanePos;
+            glm::vec3 portalCameraPosVal = exitPlanePos + relativePos;
+            portalCam.SetPosition(portalCameraPosVal);
+
+            // Construct perfect rotation-preserving view matrix
+            glm::mat4 portalView = mainView;
+            glm::vec3 col3 = - (glm::vec3(mainView[0]) * portalCameraPosVal.x +
+                                glm::vec3(mainView[1]) * portalCameraPosVal.y +
+                                glm::vec3(mainView[2]) * portalCameraPosVal.z);
+            portalView[3] = glm::vec4(col3, 1.0f);
+
+            SetCameraRenderState(portalView, mainProj, portalCameraPosVal, originalNear, originalFar);
+
+            // Render all meshes in the scene from portal camera's perspective, using forward_pbr_lit to match lighting
+            for (auto entityHandle : scene.GetRegistry().view<PositionComponent>())
             {
-                // Clear stencil buffer for portal
-                glClear(GL_STENCIL_BUFFER_BIT);
+                if (entityHandle == m_S32PortalPlane)
+                    continue;
 
-                // Step A: Draw portal frame mask to stencil buffer
-                rsm.Enable(ServerCapability::StencilTest);
-                glStencilMask(0xFF);
-                rsm.SetStencilFunc(CompareFunc::Always, 1, 0xFF);
-                rsm.SetStencilOp(StencilOp::Keep, StencilOp::Keep, StencilOp::Replace);
-                rsm.Disable(ServerCapability::DepthTest);
-
-                // Disable color/depth writes
-                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-                glDepthMask(GL_FALSE);
-
-                forwardUnlit->use();
-                glm::mat4 portalMtx = portalWorld->worldMatrix * portalRenderer->model->GetRootTransform();
-                forwardUnlit->setMat4("u_Model", portalMtx);
-                forwardUnlit->setVec4("u_BaseColor", glm::vec4(1.0f));
-                forwardUnlit->setBool("debug_noTexture", true);
-                portalRenderer->model->Draw(*forwardUnlit, true);
-
-                // Step B: Draw portal outline where stencil != 1 (colored border)
-                rsm.SetStencilFunc(CompareFunc::NotEqual, 1, 0xFF);
-                glStencilMask(0x00); // disable write
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-                // Scale slightly on X and Z for the border (Z is height due to X rotation)
-                glm::mat4 outlineScaleMtx = glm::scale(portalWorld->worldMatrix, glm::vec3(1.03f, 1.0f, 1.03f));
-                glm::mat4 portalOutlineMtx = outlineScaleMtx * portalRenderer->model->GetRootTransform();
-                forwardUnlit->setMat4("u_Model", portalOutlineMtx);
-                // Use a cyan/blue color for the portal outline
-                forwardUnlit->setVec4("u_BaseColor", glm::vec4(0.2f, 0.8f, 0.8f, 1.0f));
-                portalRenderer->model->Draw(*forwardUnlit, true);
-
-                // Step C: Set stencil test to pass only inside portal mask (stencil == 1)
-                rsm.SetStencilFunc(CompareFunc::Equal, 1, 0xFF);
-                glStencilMask(0x00); // disable write
-                rsm.Enable(ServerCapability::DepthTest);
-                glDepthMask(GL_TRUE);
-
-                // Clear depth within the portal frame so virtual scene renders properly
-                glClear(GL_DEPTH_BUFFER_BIT);
-
-                // Synchronize portal camera position relative to main camera and portal plane
-                glm::vec3 mainCamPos = renderService->GetCameraPosition();
-                glm::mat4 mainView = renderService->GetViewMatrix();
-                glm::mat4 mainProj = renderService->GetProjectionMatrix();
-                float originalNear = renderService->GetNearPlane();
-                float originalFar = renderService->GetFarPlane();
-
-                // Entrance plane position (portal plane):
-                glm::vec3 entrancePlanePos = glm::vec3(portalWorld->worldMatrix[3]);
-                // Exit plane position (where portal camera is looking at, in this case (-50.0f, 2.5f, -50.0f)):
-                glm::vec3 exitPlanePos = glm::vec3(-50.0f, 2.5f, -50.0f);
-
-                // Portal camera is shifted by Z = -10 (which is exitPlanePos - entrancePlanePos)
-                glm::vec3 relativePos = mainCamPos - entrancePlanePos;
-                glm::vec3 portalCameraPosVal = exitPlanePos + relativePos;
-                if (portalCameraPos)
-                    portalCameraPos->value = portalCameraPosVal;
-                if (portalCameraWorld)
-                    portalCameraWorld->isDirty = true;
-
-                // Update portal camera matrices
-                portalCameraComp->projectionMatrix = mainProj;
-                
-                // Construct perfect rotation-preserving view matrix
-                glm::mat4 portalView = mainView;
-                glm::vec3 col3 = - (glm::vec3(mainView[0]) * portalCameraPosVal.x +
-                                    glm::vec3(mainView[1]) * portalCameraPosVal.y +
-                                    glm::vec3(mainView[2]) * portalCameraPosVal.z);
-                portalView[3] = glm::vec4(col3, 1.0f);
-                portalCameraComp->viewMatrix = portalView;
-
-                // Save main camera state
-                glm::mat4 originalView = mainView;
-                glm::mat4 originalProj = mainProj;
-                glm::vec3 originalCamPos = mainCamPos;
-
-                // Upload portal camera state to GPU UBO
-                GPUCameraData portalCamUbo;
-                std::memcpy(portalCamUbo.projection, &portalCameraComp->projectionMatrix[0][0], 16 * sizeof(float));
-                std::memcpy(portalCamUbo.view, &portalCameraComp->viewMatrix[0][0], 16 * sizeof(float));
-                std::memcpy(portalCamUbo.viewPos, &portalCameraPosVal[0], 3 * sizeof(float));
-                portalCamUbo.viewPos[3] = 1.0f;
-                glm::mat4 invProj = glm::inverse(portalCameraComp->projectionMatrix);
-                glm::mat4 invView = glm::inverse(portalCameraComp->viewMatrix);
-                std::memcpy(portalCamUbo.invProjection, &invProj[0][0], 16 * sizeof(float));
-                std::memcpy(portalCamUbo.invView, &invView[0][0], 16 * sizeof(float));
-                std::memcpy(portalCamUbo.stableProjection, &portalCameraComp->projectionMatrix[0][0], 16 * sizeof(float));
-                std::memcpy(portalCamUbo.invStableProjection, &invProj[0][0], 16 * sizeof(float));
-
-                renderService->UploadCameraUBO(portalCamUbo);
-                renderService->RestoreCameraState(portalCameraComp->viewMatrix, portalCameraComp->projectionMatrix, portalCameraPosVal, originalNear, originalFar);
-
-                // Render all meshes in the scene from portal camera's perspective, using forward_pbr_lit to match lighting
-                auto virtualView = scene.View<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
-                for (auto entity : virtualView)
+                Entity ent(entityHandle, &scene);
+                if (ent.IsValid())
                 {
-                    if (entity == m_S32PortalPlane)
-                        continue;
-
-                    auto& meshComp = virtualView.get<MeshRendererComponent>(entity);
-                    auto& transComp = virtualView.get<WorldTransformComponent>(entity);
-                    if (meshComp.model)
-                    {
-                        forwardPbrLit->use();
-                        glm::mat4 modelMtx = transComp.worldMatrix * meshComp.model->GetRootTransform();
-                        forwardPbrLit->setMat4("u_Model", modelMtx);
-                        forwardPbrLit->setVec4("u_BaseColor", meshComp.color);
-                        forwardPbrLit->setBool("debug_noTexture", true);
-
-                        float metallic = 0.0f;
-                        float roughness = 0.5f;
-                        float ao = 1.0f;
-                        if (auto* pbr = registry.try_get<MaterialComponent>(entity))
-                        {
-                            metallic = pbr->desc.pbr.metallic;
-                            roughness = pbr->desc.pbr.roughness;
-                            ao = pbr->desc.pbr.ao;
-                        }
-                        forwardPbrLit->setFloat("u_Metallic", metallic);
-                        forwardPbrLit->setFloat("u_Roughness", roughness);
-                        forwardPbrLit->setFloat("u_AO", ao);
-
-                        meshComp.model->Draw(*forwardPbrLit, true);
-                    }
+                    DrawEntityMesh(ent, "forward_pbr_lit", ent.GetWorldMatrix(), ent.GetColor());
                 }
-
-                // Restore main camera state
-                GPUCameraData restoreCam;
-                std::memcpy(restoreCam.projection, &originalProj[0][0], 16 * sizeof(float));
-                std::memcpy(restoreCam.view, &originalView[0][0], 16 * sizeof(float));
-                std::memcpy(restoreCam.viewPos, &originalCamPos[0], 3 * sizeof(float));
-                restoreCam.viewPos[3] = 1.0f;
-                glm::mat4 rInvProj = glm::inverse(originalProj);
-                glm::mat4 rInvView = glm::inverse(originalView);
-                std::memcpy(restoreCam.invProjection, &rInvProj[0][0], 16 * sizeof(float));
-                std::memcpy(restoreCam.invView, &rInvView[0][0], 16 * sizeof(float));
-                std::memcpy(restoreCam.stableProjection, &originalProj[0][0], 16 * sizeof(float));
-                std::memcpy(restoreCam.invStableProjection, &rInvProj[0][0], 16 * sizeof(float));
-
-                renderService->UploadCameraUBO(restoreCam);
-                renderService->RestoreCameraState(originalView, originalProj, originalCamPos, originalNear, originalFar);
-
-                // Restore state
-                rsm.Disable(ServerCapability::StencilTest);
-                glStencilMask(0xFF);
             }
+
+            // Restore main camera state
+            SetCameraRenderState(mainView, mainProj, mainCamPos, originalNear, originalFar);
+
+            // Restore state
+            SetRenderStateEnabled(ServerCapability::StencilTest, false);
+            SetStencilMask(0xFF);
         }
     }
 

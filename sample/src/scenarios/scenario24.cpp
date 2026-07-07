@@ -56,14 +56,13 @@ void SampleState::LoadScene24()
             .WithScript(scriptName)
             .Build();
 
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))
         {
             float hue = static_cast<float>(i) * 0.0618f;
-            renderer->color = glm::vec4(
+            Entity(entity, &scene).SetColor(glm::vec4(
                 0.35f + 0.65f * (0.5f + 0.5f * sin(hue * 6.28318f)),
                 0.35f + 0.65f * (0.5f + 0.5f * sin(hue * 6.28318f + 2.09439f)),
                 0.35f + 0.65f * (0.5f + 0.5f * sin(hue * 6.28318f + 4.18879f)),
-                1.0f);
+                1.0f));
         }
     }
 }

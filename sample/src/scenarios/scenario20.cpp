@@ -4,10 +4,7 @@ void SampleState::LoadScene20()
 {
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
-    if (auto* physics = Resolve<IPhysicsWorld>())
-    {
-        physics->SetGravity(m_S20Gravity);
-    }
+    SetPhysicsGravity(m_S20Gravity);
 
     EntityBuilder(scene, res, "scenario")
         .WithName("DirLight")
@@ -53,25 +50,13 @@ void SampleState::LoadScene20()
             .Build();
     }
 
-    auto& physicsSystem = GetSystem<PhysicsSystem>();
-    physicsSystem.Update(scene, 0.0f);
+    ForcePhysicsUpdate(0.0f);
     if (m_S20InitialImpulse > 0.0f)
+    for (auto entity : GetEntitiesWithNamePrefix("PhysicsEntity_"))
     {
-        auto view = scene.View<RigidBodyComponent, InfoComponent>();
-        for (auto entity : view)
-        {
-            auto& info = view.get<InfoComponent>(entity);
-            if (info.name.rfind("PhysicsEntity_", 0) != 0)
-                continue;
-            auto& rb = view.get<RigidBodyComponent>(entity);
-            if (rb.body)
-            {
-                float impulse = m_S20InitialImpulse * (0.75f + static_cast<float>(rand() % 100) / 100.0f);
-                float angle = static_cast<float>(rand() % 628) * 0.01f;
-                glm::vec3 direction = glm::normalize(glm::vec3(std::cos(angle), 0.18f, std::sin(angle)));
-                rb.body->Activate(true);
-                rb.body->ApplyCentralImpulse(direction * impulse);
-            }
-        }
+        float impulse = m_S20InitialImpulse * (0.75f + static_cast<float>(rand() % 100) / 100.0f);
+        float angle = static_cast<float>(rand() % 628) * 0.01f;
+        glm::vec3 direction = glm::normalize(glm::vec3(std::cos(angle), 0.18f, std::sin(angle)));
+        entity.ApplyCentralImpulse(direction * impulse);
     }
 }

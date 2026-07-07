@@ -51,9 +51,8 @@ void SampleState::LoadScene32()
         .WithTransform(glm::vec3(-50.0f, 2.5f, -50.0f), glm::vec3(0.0f), glm::vec3(1.0f))
         .WithCamera(45.0f, 0.1f, 1000.0f)
         .Build();
-    
     // Deactivate virtual camera from main renderer so it doesn't render normally
-    auto& cam = scene.GetRegistry().get<CameraComponent>(m_S32PortalCamera);
-    cam.isPrimary = false;
-    cam.cullingMask = 0; // Don't draw main scene
+    Entity portalCam(m_S32PortalCamera, &scene);
+    portalCam.SetCameraPrimary(false);
+    portalCam.SetCameraCullingMask(0); // Don't draw main scene
 }

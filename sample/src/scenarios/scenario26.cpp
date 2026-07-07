@@ -11,17 +11,9 @@ void SampleState::LoadScene26()
     Scenario26FpsCameraScript::s_Yaw = -90.0f;
     Scenario26FpsCameraScript::s_Pitch = -8.0f;
 
-    entt::entity camera = entt::null;
-    auto cameraView = scene.View<InfoComponent>();
-    for (auto entity : cameraView)
-    {
-        if (cameraView.get<InfoComponent>(entity).name == "MainCamera")
-        {
-            camera = entity;
-            break;
-        }
-    }
-    if (camera != entt::null && scene.IsValid(camera))
+    auto cams = GetEntitiesWithName("MainCamera");
+    Entity camera = cams.empty() ? Entity() : cams[0];
+    if (camera)
     {
         EntityBuilder(scene, res, camera)
             .WithPosition(glm::vec3(0.0f, 4.45f, 10.0f))
@@ -90,8 +82,7 @@ void SampleState::LoadScene26()
             .WithRigidShape(ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.85f)
             .WithRigidBody(0.0f, true)
             .Build();
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(scene.FindByName(spec.name)))
-            renderer->color = spec.color;
+        Entity(scene.FindByName(spec.name), &scene).SetColor(spec.color);
     }
 
     auto triggerZone = EntityBuilder(scene, res, "scenario")
@@ -102,12 +93,10 @@ void SampleState::LoadScene26()
                            .WithRigidShape(ShapeType::Box)
                            .WithRigidBody(0.0f, true, true)
                            .Build();
-    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(triggerZone))
-        renderer->color = glm::vec4(0.1f, 0.75f, 1.0f, 0.24f);
-    if (auto* mat = scene.TryGetComponent<MaterialComponent>(triggerZone))
     {
-        mat->desc.opacity = 0.24f;
-        mat->gpu.dirty = true;
+        Entity zone(triggerZone, &scene);
+        zone.SetColor(glm::vec4(0.1f, 0.75f, 1.0f, 0.24f));
+        zone.SetOpacity(0.24f);
     }
 
     const auto createEffectZone = [&](const char* name, const glm::vec3& position, const glm::vec3& scale,
@@ -120,12 +109,10 @@ void SampleState::LoadScene26()
                         .WithRigidShape(ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.05f)
                         .WithRigidBody(0.0f, true, true)
                         .Build();
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(zone))
-            renderer->color = color;
-        if (auto* mat = scene.TryGetComponent<MaterialComponent>(zone))
         {
-            mat->desc.opacity = color.a;
-            mat->gpu.dirty = true;
+            Entity z(zone, &scene);
+            z.SetColor(color);
+            z.SetOpacity(color.a);
         }
         return zone;
     };
@@ -150,10 +137,9 @@ void SampleState::LoadScene26()
             .WithRigidShape(ShapeType::Box)
             .WithRigidBody(0.0f, true)
             .Build();
-    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(callbackBlock))
-        renderer->color = glm::vec4(0.95f, 0.55f, 0.18f, 1.0f);
+    callbackBlock.SetColor(glm::vec4(0.95f, 0.55f, 0.18f, 1.0f));
 
-    std::vector<entt::entity> fixedParts;
+    std::vector<Entity> fixedParts;
     fixedParts.reserve(2);
     for (int i = 0; i < 2; ++i)
     {
@@ -164,8 +150,7 @@ void SampleState::LoadScene26()
                         .WithRigidShape(ShapeType::Box)
                         .WithRigidBody(1.0f, false, false, 0.2f, 0.35f)
                         .Build();
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(part))
-            renderer->color = glm::vec4(0.72f, 0.38f, 0.95f, 1.0f);
+        part.SetColor(glm::vec4(0.72f, 0.38f, 0.95f, 1.0f));
         fixedParts.push_back(part);
     }
 
@@ -181,8 +166,7 @@ void SampleState::LoadScene26()
                           .WithRigidShape(sphere ? ShapeType::Sphere : ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.65f, 0.25f)
                           .WithRigidBody(1.0f, false, false, 0.25f, 0.45f)
                           .Build();
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(target))
-            renderer->color = sphere ? glm::vec4(0.95f, 0.42f, 0.22f, 1.0f) : glm::vec4(0.28f, 0.78f, 0.95f, 1.0f);
+        target.SetColor(sphere ? glm::vec4(0.95f, 0.42f, 0.22f, 1.0f) : glm::vec4(0.28f, 0.78f, 0.95f, 1.0f));
     }
 
     const float initialMoveSpeed = m_S26MoveSpeed;
@@ -212,8 +196,7 @@ void SampleState::LoadScene26()
                                     return script;
                                 })
                                 .Build();
-    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S26ControllerEntity))
-        renderer->color = glm::vec4(0.2f, 0.95f, 0.35f, 1.0f);
+    Entity(m_S26ControllerEntity, &scene).SetColor(glm::vec4(0.2f, 0.95f, 0.35f, 1.0f));
 
     if (phys)
     {
@@ -224,7 +207,7 @@ void SampleState::LoadScene26()
             controller->SetWorldTransform(glm::vec3(0.0f, 3.0f, 10.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             controller->SetMaxSlope(glm::radians(m_S26MaxSlope));
             controller->SetJumpSpeed(m_S26JumpSpeed);
-            controller->SetUserPointer((void*)((uintptr_t)m_S26ControllerEntity + 1));
+            controller->SetUserPointer((void*)((uintptr_t)(entt::entity)m_S26ControllerEntity + 1));
             phys->AddCharacterController(controller.get());
             EntityBuilder(scene, res, m_S26ControllerEntity)
                 .WithCharacterController(controller, m_S26StepHeight, m_S26MaxSlope);
@@ -236,21 +219,9 @@ void SampleState::LoadScene26()
     transformSys.Update(scene, 0.0f);
     GetSystem<PhysicsSystem>().Update(scene, 0.0f);
 
-    if (phys && fixedParts.size() == 2)
+    if (fixedParts.size() == 2)
     {
-        auto& rbA = scene.GetComponent<RigidBodyComponent>(fixedParts[0]);
-        auto& rbB = scene.GetComponent<RigidBodyComponent>(fixedParts[1]);
-        if (rbA.body && rbB.body)
-        {
-            auto constraint = phys->CreateFixedConstraint(
-                rbA.body, rbB.body, glm::vec3(1.1f, 0.0f, 0.0f), glm::vec3(-1.1f, 0.0f, 0.0f),
-                glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            if (constraint)
-            {
-                rbA.constraints.push_back(constraint);
-                rbB.constraints.push_back(constraint);
-                phys->AddConstraint(constraint);
-            }
-        }
+        CreateFixedConstraint(fixedParts[0], fixedParts[1], glm::vec3(1.1f, 0.0f, 0.0f), glm::vec3(-1.1f, 0.0f, 0.0f),
+                              glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
     }
 }

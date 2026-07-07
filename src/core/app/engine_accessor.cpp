@@ -1,4 +1,16 @@
 #include <core/app/engine_accessor.h>
+#include <ecs/logic/entity.h>
+#include <physics/logic/collision_matrix.h>
+#include <ecs/unit/physics_components.h>
+#include <ecs/logic/physics_system.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_render_state_manager.h>
+#include <ecs/interface/i_render_service.h>
+#include <resource/unit/shader.h>
+#include <resource/unit/model.h>
+#include <ecs/unit/render_components.h>
+#include <ecs/unit/core_components.h>
+#include <navigation/unit/navmesh_component.h>
 #include <audio/logic/audio_service.h>
 #include <core/app/runtime_core.h>
 #include <core/logic/config_loader.h>
@@ -10,6 +22,7 @@
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
 #include <ecs/logic/system_manager.h>
+#include <ecs/logic/post_process_system.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/input_serializer.h>
 #include <platform/logic/input_manager.h>
@@ -225,4 +238,334 @@ AppConfig EngineAccessor::GetConfig() const
 void EngineAccessor::ApplyConfig(const AppConfig& config)
 {
     ServiceLocator::Instance().Require<ConfigManager>().UpdateConfig(config);
+}
+
+void EngineAccessor::SetPhysicsGravity(const glm::vec3& gravity)
+{
+    if (auto* physics = Resolve<IPhysicsWorld>())
+    {
+        physics->SetGravity(gravity);
+    }
+}
+
+void EngineAccessor::SetPhysicsSolverIterations(int iterations)
+{
+    if (auto* physics = Resolve<IPhysicsWorld>())
+    {
+        physics->SetSolverIterations(iterations);
+    }
+}
+
+void EngineAccessor::IgnoreTagCollision(const std::string& tag1, const std::string& tag2)
+{
+    if (auto* matrix = Resolve<CollisionMatrix>())
+    {
+        matrix->IgnoreTagCollision(tag1, tag2);
+    }
+}
+
+void EngineAccessor::ForcePhysicsUpdate(float dt)
+{
+    GetSystem<PhysicsSystem>().Update(GetScene(), dt);
+}
+
+void EngineAccessor::CreateHingeConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::vec3& axisA, const glm::vec3& axisB)
+{
+    auto* physics = Resolve<IPhysicsWorld>();
+    if (!physics) return;
+
+    auto& reg = GetScene().GetRegistry();
+    if (reg.all_of<RigidBodyComponent>(entityA) && reg.all_of<RigidBodyComponent>(entityB))
+    {
+        auto& rbA = reg.get<RigidBodyComponent>(entityA);
+        auto& rbB = reg.get<RigidBodyComponent>(entityB);
+        if (rbA.body && rbB.body)
+        {
+            auto constraint = physics->CreateHingeConstraint(rbA.body, rbB.body, pivotA, pivotB, axisA, axisB);
+            if (constraint)
+            {
+                physics->AddConstraint(constraint);
+                rbA.constraints.push_back(constraint);
+            }
+        }
+    }
+}
+
+void EngineAccessor::CreatePointToPointConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB)
+{
+    auto* physics = Resolve<IPhysicsWorld>();
+    if (!physics) return;
+
+    auto& reg = GetScene().GetRegistry();
+    if (reg.all_of<RigidBodyComponent>(entityA) && reg.all_of<RigidBodyComponent>(entityB))
+    {
+        auto& rbA = reg.get<RigidBodyComponent>(entityA);
+        auto& rbB = reg.get<RigidBodyComponent>(entityB);
+        if (rbA.body && rbB.body)
+        {
+            auto constraint = physics->CreatePoint2PointConstraint(rbA.body, rbB.body, pivotA, pivotB);
+            if (constraint)
+            {
+                physics->AddConstraint(constraint);
+                rbA.constraints.push_back(constraint);
+            }
+        }
+    }
+}
+
+void EngineAccessor::CreateFixedConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::quat& rotA, const glm::quat& rotB)
+{
+    auto* physics = Resolve<IPhysicsWorld>();
+    if (!physics) return;
+
+    auto& reg = GetScene().GetRegistry();
+    if (reg.all_of<RigidBodyComponent>(entityA) && reg.all_of<RigidBodyComponent>(entityB))
+    {
+        auto& rbA = reg.get<RigidBodyComponent>(entityA);
+        auto& rbB = reg.get<RigidBodyComponent>(entityB);
+        if (rbA.body && rbB.body)
+        {
+            auto constraint = physics->CreateFixedConstraint(rbA.body, rbB.body, pivotA, pivotB, rotA, rotB);
+            if (constraint)
+            {
+                physics->AddConstraint(constraint);
+                rbA.constraints.push_back(constraint);
+                rbB.constraints.push_back(constraint);
+            }
+        }
+    }
+}
+
+void EngineAccessor::ClearStencilBuffer()
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->Clear(BufferBit::Stencil);
+    }
+}
+
+void EngineAccessor::ClearDepthBuffer()
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->Clear(BufferBit::Depth);
+    }
+}
+
+void EngineAccessor::SetRenderStateEnabled(ServerCapability capability, bool enable)
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        if (enable)
+            context->GetRenderStateManager().Enable(capability);
+        else
+            context->GetRenderStateManager().Disable(capability);
+    }
+}
+
+void EngineAccessor::SetStencilMask(uint32_t mask)
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->GetRenderStateManager().SetStencilMask(mask);
+    }
+}
+
+void EngineAccessor::SetStencilFunc(CompareFunc func, int ref, uint32_t mask)
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->GetRenderStateManager().SetStencilFunc(func, ref, mask);
+    }
+}
+
+void EngineAccessor::SetStencilOp(StencilOp sfail, StencilOp dpfail, StencilOp dppass)
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->GetRenderStateManager().SetStencilOp(sfail, dpfail, dppass);
+    }
+}
+
+void EngineAccessor::SetDepthFunc(CompareFunc func)
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->GetRenderStateManager().SetDepthFunc(func);
+    }
+}
+
+void EngineAccessor::SetColorWriteMask(bool r, bool g, bool b, bool a)
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->GetRenderStateManager().SetColorMask(r, g, b, a);
+    }
+}
+
+void EngineAccessor::SetDepthWriteMask(bool enable)
+{
+    if (auto* context = Resolve<IGraphicsContext>())
+    {
+        context->GetRenderStateManager().SetDepthMask(enable);
+    }
+}
+
+void EngineAccessor::GetCameraRenderState(glm::vec3& outPos, glm::mat4& outView, glm::mat4& outProj, float& outNear, float& outFar)
+{
+    if (auto* render = Resolve<IRenderService>())
+    {
+        outPos = render->GetCameraPosition();
+        outView = render->GetViewMatrix();
+        outProj = render->GetProjectionMatrix();
+        outNear = render->GetNearPlane();
+        outFar = render->GetFarPlane();
+    }
+}
+
+void EngineAccessor::SetCameraRenderState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane)
+{
+    if (auto* render = Resolve<IRenderService>())
+    {
+        GPUCameraData camData;
+        std::memcpy(camData.projection, &proj[0][0], 16 * sizeof(float));
+        std::memcpy(camData.view, &view[0][0], 16 * sizeof(float));
+        std::memcpy(camData.viewPos, &pos[0], 3 * sizeof(float));
+        camData.viewPos[3] = 1.0f;
+        glm::mat4 invProj = glm::inverse(proj);
+        glm::mat4 invView = glm::inverse(view);
+        std::memcpy(camData.invProjection, &invProj[0][0], 16 * sizeof(float));
+        std::memcpy(camData.invView, &invView[0][0], 16 * sizeof(float));
+        std::memcpy(camData.stableProjection, &proj[0][0], 16 * sizeof(float));
+        std::memcpy(camData.invStableProjection, &invProj[0][0], 16 * sizeof(float));
+
+        render->UploadCameraUBO(camData);
+        render->RestoreCameraState(view, proj, pos, nearPlane, farPlane);
+    }
+}
+
+void EngineAccessor::DrawEntityMesh(Entity entity, const std::string& shaderName, const glm::mat4& customWorldTransform, const glm::vec4& color, float metallic, float roughness, float ao)
+{
+    auto& reg = GetScene().GetRegistry();
+    if (reg.all_of<MeshRendererComponent>(entity))
+    {
+        auto& mesh = reg.get<MeshRendererComponent>(entity);
+        if (mesh.model)
+        {
+            auto* resMgr = Resolve<ResourceManager>();
+            if (resMgr)
+            {
+                auto shader = resMgr->GetShader(shaderName);
+                if (shader)
+                {
+                    shader->use();
+                    glm::mat4 modelMtx = customWorldTransform * mesh.model->GetRootTransform();
+                    shader->setMat4("u_Model", modelMtx);
+                    shader->setVec4("u_BaseColor", color);
+                    shader->setBool("debug_noTexture", true);
+                    shader->setFloat("u_Metallic", metallic);
+                    shader->setFloat("u_Roughness", roughness);
+                    shader->setFloat("u_AO", ao);
+
+                    mesh.model->Draw(*shader, true);
+                }
+            }
+        }
+    }
+}
+
+void EngineAccessor::ConfigurePostProcessing(bool hdr, bool bloom, float threshold, float intensity, float radius, float exposure, float gamma, int tonemappingMode)
+{
+    if (auto* sysMgr = Resolve<SystemManager>())
+    {
+        if (auto* ppSys = dynamic_cast<PostProcessSystem*>(sysMgr->GetSystem("PostProcessSystem")))
+        {
+            auto& pipeline = ppSys->GetPipeline();
+            pipeline.SetHDREnabled(hdr);
+            pipeline.SetBloomEnabled(bloom);
+            pipeline.SetBloomThreshold(threshold);
+            pipeline.SetBloomIntensity(intensity);
+            pipeline.SetBloomRadius(radius);
+            pipeline.SetExposure(exposure);
+            pipeline.SetGamma(gamma);
+            pipeline.SetTonemappingMode(tonemappingMode);
+        }
+    }
+}
+
+std::vector<Entity> EngineAccessor::GetEntitiesWithName(const std::string& name) const
+{
+    std::vector<Entity> result;
+    if (m_ActiveScene)
+    {
+        auto view = m_ActiveScene->GetRegistry().view<InfoComponent>();
+        for (auto entity : view)
+        {
+            if (view.get<InfoComponent>(entity).name == name)
+            {
+                result.push_back(Entity(entity, m_ActiveScene));
+            }
+        }
+    }
+    return result;
+}
+
+std::vector<Entity> EngineAccessor::GetEntitiesWithNamePrefix(const std::string& prefix) const
+{
+    std::vector<Entity> result;
+    if (m_ActiveScene)
+    {
+        auto view = m_ActiveScene->GetRegistry().view<InfoComponent>();
+        for (auto entity : view)
+        {
+            if (view.get<InfoComponent>(entity).name.rfind(prefix, 0) == 0)
+            {
+                result.push_back(Entity(entity, m_ActiveScene));
+            }
+        }
+    }
+    return result;
+}
+
+std::vector<Entity> EngineAccessor::GetCameraEntities() const
+{
+    std::vector<Entity> result;
+    if (m_ActiveScene)
+    {
+        auto view = m_ActiveScene->GetRegistry().view<CameraComponent>();
+        for (auto entity : view)
+        {
+            result.push_back(Entity(entity, m_ActiveScene));
+        }
+    }
+    return result;
+}
+
+size_t EngineAccessor::GetEntityCount() const
+{
+    if (m_ActiveScene)
+    {
+        return m_ActiveScene->GetRegistry().view<InfoComponent>().size();
+    }
+    return 0;
+}
+
+void EngineAccessor::UpdateNavMeshHeightsAndTags(std::function<void(const glm::vec3& pos, glm::vec3& outPos, std::string& outTag)> modifier)
+{
+    if (m_ActiveScene && modifier)
+    {
+        auto view = m_ActiveScene->GetRegistry().view<NavMeshComponent>();
+        for (auto entity : view)
+        {
+            auto& navMesh = view.get<NavMeshComponent>(entity);
+            for (auto& tri : navMesh.triangles)
+            {
+                modifier(tri.center, tri.center, tri.tag);
+            }
+            for (auto& node : navMesh.nodes)
+            {
+                modifier(node.position, node.position, node.tag);
+            }
+        }
+    }
 }

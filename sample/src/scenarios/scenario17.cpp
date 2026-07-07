@@ -1,6 +1,4 @@
 #include "sample_scenario_common.h"
-
-#include <ecs/unit/script_component.h>
 #include <script/logic/input_scriptable.h>
 #include <algorithm>
 #include <cmath>
@@ -18,28 +16,18 @@ namespace
 namespace
 {
 
-void AttachScenarioControl(Scene& scene, entt::entity control, entt::entity label, entt::entity status,
-                             entt::entity meter, ScenarioMode mode, const std::string& title,
+void AttachScenarioControl(Scene& scene, Entity control, Entity label, Entity status,
+                             Entity meter, ScenarioMode mode, const std::string& title,
                              const glm::vec4& baseColor, const glm::vec4& hoverColor,
                              const glm::vec4& activeColor)
 {
-    auto& script = scene.AddOrReplaceComponent<ScriptComponent>(control);
-    script.className = "ScenarioInteractiveControl";
-    script.InstantiateScript = [label, status, meter, mode, title, baseColor, hoverColor, activeColor]() {
-        return std::make_unique<ScenarioInteractiveControl>(label, status, meter, mode, title, baseColor, hoverColor,
-                                                              activeColor);
-    };
-    script.DestroyScript = [](ScriptComponent* sc) {
-        sc->instance.reset();
-        sc->scriptableInstance = nullptr;
-        sc->inputScriptableInstance = nullptr;
-    };
+    Entity(control, &scene).AddScript<ScenarioInteractiveControl>(label, status, meter, mode, title, baseColor, hoverColor, activeColor);
 }
 
-entt::entity CreateScenarioControl(Scene& scene, ResourceManager& res, entt::entity root, entt::entity status,
-                                     const std::string& name, const glm::vec2& pos, const glm::vec2& size,
-                                     ScenarioMode mode, const glm::vec4& baseColor, const glm::vec4& hoverColor,
-                                     const glm::vec4& activeColor)
+Entity CreateScenarioControl(Scene& scene, ResourceManager& res, Entity root, Entity status,
+                               const std::string& name, const glm::vec2& pos, const glm::vec2& size,
+                               ScenarioMode mode, const glm::vec4& baseColor, const glm::vec4& hoverColor,
+                               const glm::vec4& activeColor)
 {
     auto control = EntityBuilder(scene, res, "scenario")
                        .WithName(name)
@@ -47,7 +35,7 @@ entt::entity CreateScenarioControl(Scene& scene, ResourceManager& res, entt::ent
                        .WithUIRenderer(name + "_background", baseColor)
                        .Build();
 
-    entt::entity meter = entt::null;
+    Entity meter;
     if (mode == ScenarioMode::Hold)
     {
         EntityBuilder(scene, res, "scenario")

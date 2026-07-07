@@ -1,5 +1,4 @@
 #include "sample_scenario_common.h"
-#include <ecs/unit/terrain_component.h>
 #include <core/logic/logger.h>
 #include <fstream>
 #include <filesystem>
@@ -243,15 +242,10 @@ void SampleState::LoadScene14()
                                   randomOffsetX, randomOffsetZ, 150, glm::vec3(1.5f));
 
     // 7. Set camera position to overview the terrain
-    auto camView = scene.View<CameraComponent, PositionComponent, RotationComponent>();
-    for (auto camEntity : camView)
+    for (auto camEntity : GetCameraEntities())
     {
-        auto& pos = camView.get<PositionComponent>(camEntity);
-        auto& rot = camView.get<RotationComponent>(camEntity);
-        pos.value = glm::vec3(0.0f, m_S14TerrainHeight + 35.0f, m_S14TerrainLength * 0.65f);
-        rot.value = glm::quat(glm::radians(glm::vec3(-22.0f, 0.0f, 0.0f)));
-        if (auto* world = scene.TryGetComponent<WorldTransformComponent>(camEntity))
-            world->isDirty = true;
+        camEntity.SetPosition(glm::vec3(0.0f, m_S14TerrainHeight + 35.0f, m_S14TerrainLength * 0.65f));
+        camEntity.SetRotation(glm::quat(glm::radians(glm::vec3(-22.0f, 0.0f, 0.0f))));
     }
 
     m_S14SpawnTimer = 0.0f;

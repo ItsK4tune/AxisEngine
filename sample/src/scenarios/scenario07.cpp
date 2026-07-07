@@ -21,18 +21,11 @@ const OrderVisual kOrderVisuals[] = {
 
 void SampleState::ApplyScenario7RenderOrder()
 {
-    auto& scene = GetScene();
-    auto view = scene.View<MeshRendererComponent, InfoComponent>();
-    for (auto entity : view)
+    for (const auto& visual : kOrderVisuals)
     {
-        auto& info = view.get<InfoComponent>(entity);
-        for (const auto& visual : kOrderVisuals)
+        for (auto entity : GetEntitiesWithName(visual.name))
         {
-            if (info.name != visual.name)
-                continue;
-
-            auto& renderer = view.get<MeshRendererComponent>(entity);
-            renderer.order = m_S7ReverseOrder ? visual.reverseOrder : visual.normalOrder;
+            entity.SetRenderOrder(m_S7ReverseOrder ? visual.reverseOrder : visual.normalOrder);
         }
     }
 }
@@ -75,16 +68,14 @@ void SampleState::LoadScene7()
             .WithTransform(panel.position, panel.rotation, glm::vec3(8.0f, 5.5f, 0.15f))
             .WithPBRMesh("cubeModel", "forward_transparent", 0.0f, 0.2f, 1.0f)
             .Build();
-        auto& renderer = scene.GetComponent<MeshRendererComponent>(entity);
-        renderer.renderMode = RenderMode::ForceForward;
-        renderer.castShadow = false;
-        renderer.color = panel.color;
-
-        auto& mat = scene.GetComponent<MaterialComponent>(entity);
-        mat.desc.opacity = panel.color.a;
-        mat.desc.blendSrc = BlendFactor::SrcAlpha;
-        mat.desc.blendDst = BlendFactor::OneMinusSrcAlpha;
-        mat.gpu.dirty = true;
+        {
+            Entity r(entity, &scene);
+            r.SetRenderMode(RenderMode::ForceForward);
+            r.SetCastShadow(false);
+            r.SetColor(panel.color);
+            r.SetOpacity(panel.color.a);
+            r.SetBlendFactors(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+        }
     }
 
     struct SolidDef
@@ -106,16 +97,15 @@ void SampleState::LoadScene7()
             .WithTransform(solid.position, glm::vec3(0.0f), glm::vec3(3.5f, 3.5f, 3.5f))
             .WithPBRMesh("cubeModel", "forward_pbr_lit", 0.0f, 0.5f, 1.0f)
             .Build();
-        auto& renderer = scene.GetComponent<MeshRendererComponent>(entity);
-        renderer.renderMode = RenderMode::ForceForward;
-        renderer.castShadow = false;
-        renderer.receiveShadow = false;
-        renderer.ignoreDepth = true;
-        renderer.color = solid.color;
-
-        auto& mat = scene.GetComponent<MaterialComponent>(entity);
-        mat.desc.opacity = 1.0f;
-        mat.gpu.dirty = true;
+        {
+            Entity r(entity, &scene);
+            r.SetRenderMode(RenderMode::ForceForward);
+            r.SetCastShadow(false);
+            r.SetReceiveShadow(false);
+            r.SetIgnoreDepth(true);
+            r.SetColor(solid.color);
+            r.SetOpacity(1.0f);
+        }
     }
 
     ApplyScenario7RenderOrder();

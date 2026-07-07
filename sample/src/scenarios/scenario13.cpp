@@ -20,30 +20,27 @@ void SampleState::LoadScene13()
             .WithTransform(glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(-45.0f, -45.0f, 0.0f), glm::vec3(1.0f))
             .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), m_S13LightColor, m_S13LightIntensity)
             .Build();
-    if (auto* dir = scene.TryGetComponent<DirectionalLightComponent>(m_S13DirLightEntity))
-        dir->isCastShadow = true;
+    Entity(m_S13DirLightEntity, &scene).SetLightCastShadow(true);
 
     m_S13PointLightEntity = EntityBuilder(scene, res, "scenario")
                                 .WithName("DecalPointLight")
                                 .WithPointLightAt(glm::vec3(-12.0f, 14.0f, 4.0f), m_S13PointLightColor,
                                                   m_S13PointLightIntensity, m_S13PointLightRadius)
                                 .Build();
-    if (auto* light = scene.TryGetComponent<PointLightComponent>(m_S13PointLightEntity))
     {
-        light->active = m_S13UsePointLight;
-        light->isCastShadow = true;
-        light->linear = 0.045f;
-        light->quadratic = 0.0075f;
+        Entity light(m_S13PointLightEntity, &scene);
+        light.SetLightActive(m_S13UsePointLight);
+        light.SetLightCastShadow(true);
+        light.SetLightAttenuation(0.045f, 0.0075f);
     }
 
     m_S13PointLightMarkerEntity = EntityBuilder(scene, res, "scenario")
-                                      .WithName("DecalPointLightMarker")
-                                      .WithTransform(glm::vec3(-12.0f, 14.0f, 4.0f), glm::vec3(0.0f), glm::vec3(1.2f))
-                                      .WithPBRMesh("sphereModel", "deferred_unlit", 0.0f, 0.25f, 1.0f)
-                                      .WithMaterialEmission(m_S13PointLightColor * 3.0f)
-                                      .Build();
-    if (auto* marker = scene.TryGetComponent<MeshRendererComponent>(m_S13PointLightMarkerEntity))
-        marker->color = glm::vec4(m_S13PointLightColor, 1.0f);
+                                       .WithName("DecalPointLightMarker")
+                                       .WithTransform(glm::vec3(-12.0f, 14.0f, 4.0f), glm::vec3(0.0f), glm::vec3(1.2f))
+                                       .WithPBRMesh("sphereModel", "deferred_unlit", 0.0f, 0.25f, 1.0f)
+                                       .WithMaterialEmission(m_S13PointLightColor * 3.0f)
+                                       .Build();
+    Entity(m_S13PointLightMarkerEntity, &scene).SetColor(glm::vec4(m_S13PointLightColor, 1.0f));
 
     // 2. Spawn a large central wall to project decals onto
     EntityBuilder(scene, res, "scenario")
@@ -63,11 +60,11 @@ void SampleState::LoadScene13()
             .WithRigidShape(ShapeType::Box)
             .WithRigidBody(0.0f, true)
             .Build();
-    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S13ShadowCasterEntity))
     {
-        renderer->color = glm::vec4(0.12f, 0.12f, 0.14f, 1.0f);
-        renderer->castShadow = true;
-        renderer->receiveShadow = false;
+        Entity renderer(m_S13ShadowCasterEntity, &scene);
+        renderer.SetColor(glm::vec4(0.12f, 0.12f, 0.14f, 1.0f));
+        renderer.SetCastShadow(true);
+        renderer.SetReceiveShadow(false);
     }
 
     // 3. Use tint-only decals. The decal shader falls back to a white source when no texture is assigned.

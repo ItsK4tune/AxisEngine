@@ -1,20 +1,48 @@
 #include "sample_scenario_common.h"
+#include <physics/type/shape_type.h>
+
+namespace
+{
+struct Scenario21ShapeSpec
+{
+    const char* mesh;
+    ShapeType shape;
+    glm::vec3 visualScale;
+    glm::vec3 boxSize;
+    float radius;
+    float height;
+};
+
+Scenario21ShapeSpec GetScenario21ShapeSpec(int shapeIndex, bool payload)
+{
+    switch (shapeIndex)
+    {
+        case 1:
+            return {"sphereModel", ShapeType::Sphere,    payload ? glm::vec3(1.65f) : glm::vec3(0.85f), glm::vec3(1.0f),
+                    0.5f,          payload ? 1.0f : 0.8f};
+        case 2:
+            return {"capsuleModel",
+                    ShapeType::Capsule,
+                    payload ? glm::vec3(1.35f, 1.9f, 1.35f) : glm::vec3(0.65f, 1.15f, 0.65f),
+                    glm::vec3(1.0f),
+                    0.5f,
+                    payload ? 1.05f : 0.85f};
+        default:
+            return {"cubeModel",     ShapeType::Box,        payload ? glm::vec3(1.6f) : glm::vec3(0.75f, 0.95f, 0.75f),
+                    glm::vec3(0.5f), payload ? 1.0f : 0.5f, payload ? 1.0f : 0.8f};
+    }
+}
+} // namespace
 
 void SampleState::LoadScene21()
 {
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
-    if (auto* physics = Resolve<IPhysicsWorld>())
-    {
-        physics->SetGravity(m_S21Gravity);
-        physics->SetSolverIterations(24);
-    }
-    if (auto* collisionMatrix = Resolve<CollisionMatrix>())
-    {
-        collisionMatrix->IgnoreTagCollision("chain_link", "chain_link");
-        collisionMatrix->IgnoreTagCollision("chain_anchor", "chain_link");
-        collisionMatrix->IgnoreTagCollision("chain_link", "chain_payload");
-    }
+    SetPhysicsGravity(m_S21Gravity);
+    SetPhysicsSolverIterations(24);
+    IgnoreTagCollision("chain_link", "chain_link");
+    IgnoreTagCollision("chain_anchor", "chain_link");
+    IgnoreTagCollision("chain_link", "chain_payload");
 
     // 1. Static Floor & Lights
     EntityBuilder(scene, res, "scenario")
@@ -101,64 +129,29 @@ void SampleState::LoadScene21()
     }
 
     // Force PhysicsSystem to initialize bullet body structures immediately
-    auto& physicsSys = GetSystem<PhysicsSystem>();
-    physicsSys.Update(scene, 0.0f);
+    ForcePhysicsUpdate(0.0f);
 
     // 4. Create constraints between consecutive chain links
-    auto physics_ptr = Resolve<IPhysicsWorld>();
-    if (physics_ptr)
+    for (size_t i = 1; i + 1 < m_S21ChainEntities.size(); ++i)
     {
-        for (size_t i = 1; i + 1 < m_S21ChainEntities.size(); ++i)
-        {
-            entt::entity prevEntity = m_S21ChainEntities[i - 1];
-            entt::entity link = m_S21ChainEntities[i];
+        Entity prevEntity(m_S21ChainEntities[i - 1], &scene);
+        Entity link(m_S21ChainEntities[i], &scene);
 
-            auto& prevRBComp = scene.GetComponent<RigidBodyComponent>(prevEntity);
-            auto& linkRBComp = scene.GetComponent<RigidBodyComponent>(link);
+        // Anchor is first element (index 0)
+        glm::vec3 pivotA = (i == 1) ? glm::vec3(0.0f, -0.72f, 0.0f) : glm::vec3(0.0f, -0.48f, 0.0f);
+        glm::vec3 pivotB = glm::vec3(0.0f, 0.48f, 0.0f);
 
-            if (prevRBComp.body && linkRBComp.body)
-            {
-                // Anchor is first element (index 0)
-                glm::vec3 pivotA = (i == 1) ? glm::vec3(0.0f, -0.72f, 0.0f) : glm::vec3(0.0f, -0.48f, 0.0f);
-                glm::vec3 pivotB = glm::vec3(0.0f, 0.48f, 0.0f);
-
-                auto constraint =
-                    physics_ptr->CreateHingeConstraint(prevRBComp.body, linkRBComp.body, pivotA, pivotB,
-                                                       glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-                if (constraint)
-                {
-                    physics_ptr->AddConstraint(constraint);
-                    prevRBComp.constraints.push_back(constraint);
-                }
-            }
-        }
-
-        if (m_S21ChainEntities.size() >= 2)
-        {
-            entt::entity prevEntity = m_S21ChainEntities[m_S21ChainEntities.size() - 2];
-            entt::entity payloadEntity = m_S21ChainEntities.back();
-            auto& prevRBComp = scene.GetComponent<RigidBodyComponent>(prevEntity);
-            auto& payloadRBComp = scene.GetComponent<RigidBodyComponent>(payloadEntity);
-            if (prevRBComp.body && payloadRBComp.body)
-            {
-                auto constraint = physics_ptr->CreatePoint2PointConstraint(
-                    prevRBComp.body, payloadRBComp.body, glm::vec3(0.0f, -0.48f, 0.0f), glm::vec3(0.0f, 0.85f, 0.0f));
-                if (constraint)
-                {
-                    physics_ptr->AddConstraint(constraint);
-                    prevRBComp.constraints.push_back(constraint);
-                }
-            }
-        }
-
-        // Apply a starting side kick so it swings immediately
-        auto lastLink = m_S21ChainEntities.back();
-        auto* rbLast = scene.GetComponent<RigidBodyComponent>(lastLink).body.get();
-        if (rbLast)
-        {
-            rbLast->Activate(true);
-            rbLast->ApplyCentralImpulse(glm::vec3(m_S21KickForce, 0.0f, 0.0f));
-        }
+        CreateHingeConstraint(prevEntity, link, pivotA, pivotB, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     }
+
+    if (m_S21ChainEntities.size() >= 2)
+    {
+        Entity prevEntity(m_S21ChainEntities[m_S21ChainEntities.size() - 2], &scene);
+        Entity payloadEntity(m_S21ChainEntities.back(), &scene);
+        CreatePointToPointConstraint(prevEntity, payloadEntity, glm::vec3(0.0f, -0.48f, 0.0f), glm::vec3(0.0f, 0.85f, 0.0f));
+    }
+
+    // Apply a starting side kick so it swings immediately
+    Entity lastLink(m_S21ChainEntities.back(), &scene);
+    lastLink.ApplyCentralImpulse(glm::vec3(m_S21KickForce, 0.0f, 0.0f));
 }

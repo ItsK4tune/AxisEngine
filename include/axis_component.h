@@ -15,4 +15,5 @@
 #include <ecs/unit/ui_components.h>
 #include <ecs/unit/decal_component.h>
 #include <ecs/logic/entity_builder.h>
+#include <ecs/logic/entity.h>
 #include <render/logic/particle_emitter.h>

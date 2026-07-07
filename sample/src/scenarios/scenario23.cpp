@@ -23,8 +23,7 @@ void SampleState::LoadScene23()
                       .WithTransform(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f), glm::vec3(50.0f, 1.0f, 50.0f))
                       .WithPBRMesh("planeModel", "deferred_lit", 0.0f, 0.9f, 1.0f)
                       .Build();
-    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(ground))
-        renderer->color = glm::vec4(0.1f, 0.85f, 0.2f, 1.0f);
+    Entity(ground, &scene).SetColor(glm::vec4(0.1f, 0.85f, 0.2f, 1.0f));
 
     EntityBuilder(scene, res, "scenario")
         .WithName("NavigationGridSurface")
@@ -41,8 +40,7 @@ void SampleState::LoadScene23()
                         .WithTransform(pos, glm::vec3(0.0f), scale)
                         .WithPBRMesh("cubeModel", "deferred_unlit", 0.0f, 0.55f, 1.0f)
                         .Build();
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(road))
-            renderer->color = glm::vec4(0.08f, 0.09f, 0.1f, 1.0f);
+        Entity(road, &scene).SetColor(glm::vec4(0.08f, 0.09f, 0.1f, 1.0f));
     };
     makeRoad("RoadNorthSouth", glm::vec3(-20.0f, 0.08f, 0.0f), glm::vec3(5.0f, 0.1f, 45.0f));
     makeRoad("RoadEastWest", glm::vec3(0.0f, 0.09f, -20.0f), glm::vec3(45.0f, 0.1f, 5.0f));
@@ -75,8 +73,7 @@ void SampleState::LoadScene23()
                             .WithTransform(glm::vec3(ox, obstacleHeight * 0.5f, oz), glm::vec3(0.0f), obstacleScale)
                             .WithPBRMesh("cubeModel", "deferred_lit", 0.3f, 0.3f, 1.0f)
                             .Build();
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(obstacle))
-            renderer->color = glm::vec4(0.9f, 0.08f, 0.05f, 1.0f);
+        Entity(obstacle, &scene).SetColor(glm::vec4(0.9f, 0.08f, 0.05f, 1.0f));
 
         EntityBuilder(scene, res, "scenario")
             .WithName("ObstacleCollider_" + std::to_string(i))
@@ -97,18 +94,9 @@ void SampleState::LoadScene23()
                         .WithPBRMesh("capsuleModel", "deferred_lit", 0.1f, 0.5f, 1.0f)
                         .WithPathFollower(m_S23FollowerSpeed, 15.0f, 30.0f, 60.0f)
                         .Build();
-    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_NavFollower))
-        renderer->color = glm::vec4(0.1f, 0.9f, 0.25f, 1.0f);
-
-    auto& pf = scene.GetComponent<PathFollowerComponent>(m_NavFollower);
-    pf.lockXPitch = m_S23LockXPitch;
-    pf.lockYYaw = m_S23LockYYaw;
-    pf.lockZRoll = m_S23LockZRoll;
-    pf.lockMoveX = m_S23LockMoveX;
-    pf.lockMoveY = m_S23LockMoveY;
-    pf.lockMoveZ = m_S23LockMoveZ;
-    ConfigureScenario23PathOptions(pf, m_S23PathfindingCriteria);
-    pf.recordDebugPath = true;
+    Entity follower(m_NavFollower, &scene);
+    follower.SetColor(glm::vec4(0.1f, 0.9f, 0.25f, 1.0f));
+    follower.ConfigurePathFollower(m_S23LockXPitch, m_S23LockYYaw, m_S23LockZRoll, m_S23LockMoveX, m_S23LockMoveY, m_S23LockMoveZ, true, m_S23PathfindingCriteria);
 
     const auto waypoint = [this](float x, float z) {
         return glm::vec3(x, Scenario23WaypointY(m_S23PathfindingCriteria, x, z), z);
@@ -144,10 +132,7 @@ void SampleState::LoadScene23()
     m_CurrentWaypointIndex = 1;
     if (!m_NavWaypoints.empty())
     {
-        if (auto* pos = scene.TryGetComponent<PositionComponent>(m_NavFollower))
-            pos->value = m_NavWaypoints.front();
-        if (auto* world = scene.TryGetComponent<WorldTransformComponent>(m_NavFollower))
-            world->isDirty = true;
+        follower.SetPosition(m_NavWaypoints.front());
     }
     m_S23LastPathfindingCriteria = m_S23PathfindingCriteria;
     m_S23RepathRequested = false;
@@ -159,25 +144,11 @@ void SampleState::LoadScene23()
     auto& physicsSystem = GetSystem<PhysicsSystem>();
     physicsSystem.Update(scene, 0.0f);
     navSystem.Update(scene, 0.0f);
-    auto navMeshView = scene.View<NavMeshComponent>();
-    for (auto entity : navMeshView)
-    {
-        auto& navMesh = navMeshView.get<NavMeshComponent>(entity);
-        for (auto& tri : navMesh.triangles)
-        {
-            bool onRoad = (std::abs(tri.center.x + 20.0f) <= 2.9f && tri.center.z >= -22.5f && tri.center.z <= 22.5f) ||
-                          (std::abs(tri.center.z + 20.0f) <= 2.9f && tri.center.x >= -22.5f && tri.center.x <= 22.5f);
-            tri.tag = onRoad ? "road" : "walkable";
-            tri.center.y = onRoad ? 0.5f : Scenario23NavHeight(tri.center.x, tri.center.z);
-        }
-        for (auto& node : navMesh.nodes)
-        {
-            bool onRoad =
-                (std::abs(node.position.x + 20.0f) <= 2.9f && node.position.z >= -22.5f && node.position.z <= 22.5f) ||
-                (std::abs(node.position.z + 20.0f) <= 2.9f && node.position.x >= -22.5f && node.position.x <= 22.5f);
-            node.tag = onRoad ? "road" : "walkable";
-            node.position.y = onRoad ? 0.5f : Scenario23NavHeight(node.position.x, node.position.z);
-        }
-    }
+    UpdateNavMeshHeightsAndTags([](const glm::vec3& pos, glm::vec3& outPos, std::string& outTag) {
+        bool onRoad = (std::abs(pos.x + 20.0f) <= 2.9f && pos.z >= -22.5f && pos.z <= 22.5f) ||
+                      (std::abs(pos.z + 20.0f) <= 2.9f && pos.x >= -22.5f && pos.x <= 22.5f);
+        outTag = onRoad ? "road" : "walkable";
+        outPos.y = onRoad ? 0.5f : Scenario23NavHeight(pos.x, pos.z);
+    });
     navSystem.MoveTo(scene, m_NavFollower, m_NavWaypoints[m_CurrentWaypointIndex]);
 }

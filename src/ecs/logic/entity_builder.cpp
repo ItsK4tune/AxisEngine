@@ -1,4 +1,5 @@
 #include <ecs/logic/entity_builder.h>
+#include <ecs/logic/entity.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/physics_components.h>
@@ -1253,11 +1254,11 @@ EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float ma
     return *this;
 }
 
-entt::entity EntityBuilder::SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
-                                        const std::string& fragmentPath, const glm::vec3& pos,
-                                        const glm::vec3& scale)
+Entity EntityBuilder::SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
+                                  const std::string& fragmentPath, const glm::vec3& pos,
+                                  const glm::vec3& scale)
 {
-    auto e = EntityBuilder(scene, res, sceneName)
+    Entity e = EntityBuilder(scene, res, sceneName)
         .WithName("ProceduralObject")
         .WithTransform(pos, glm::vec3(0.0f, rand() % 360, 0.0f), scale)
         .Build();
@@ -1405,7 +1406,7 @@ EntityBuilder& EntityBuilder::WithSkybox(const SkyboxRenderComponent& skybox)
     return *this;
 }
 
-entt::entity EntityBuilder::Build()
+Entity EntityBuilder::Build()
 {
-    return m_Entity;
+    return Entity(m_Entity, &m_Scene);
 }

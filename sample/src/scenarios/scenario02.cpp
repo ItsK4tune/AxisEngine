@@ -28,7 +28,7 @@ void SampleState::LoadScene2()
     {
         float radius = 10.0f + static_cast<float>(rand() % 40);
         float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
-        float h = 1.0f + static_cast<float>(rand() % 100) / 10.0f;
+        float h = 5.0f + static_cast<float>(rand() % 100) / 10.0f;
         glm::vec3 pPos(cos(angle) * radius, h, sin(angle) * radius);
         glm::vec3 pColor = m_S2PointColor * (0.5f + static_cast<float>(rand() % 50) / 100.0f);
         EntityBuilder(scene, res, "scenario")
@@ -46,20 +46,13 @@ void SampleState::LoadScene2()
             .Build();
     }
 
-    auto spotView = scene.View<PositionComponent, RotationComponent, SpotLightComponent, InfoComponent>();
-    for (auto entity : spotView)
+    for (auto entity : GetEntitiesWithNamePrefix("SpotLight_"))
     {
-        auto& info = spotView.get<InfoComponent>(entity);
-        if (info.name.rfind("SpotLight_", 0) != 0)
-            continue;
-        auto& pos = spotView.get<PositionComponent>(entity);
-        auto& rot = spotView.get<RotationComponent>(entity);
-        auto& spot = spotView.get<SpotLightComponent>(entity);
-        spot.direction = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) - pos.value);
-        spot.cutOff = glm::cos(glm::radians(20.0f));
-        spot.outerCutOff = glm::cos(glm::radians(30.0f));
-        spot.linear = 0.07f;
-        spot.quadratic = 0.017f;
-        rot.value = RotationFromNegativeY(spot.direction);
+        glm::vec3 pos = entity.GetPosition();
+        glm::vec3 dir = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) - pos);
+        entity.SetLightDirection(dir);
+        entity.SetSpotLightCutOff(20.0f, 30.0f);
+        entity.SetLightAttenuation(0.07f, 0.017f);
+        entity.SetRotation(RotationFromNegativeY(dir));
     }
 }

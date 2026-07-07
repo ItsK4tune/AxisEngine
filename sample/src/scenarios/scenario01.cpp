@@ -49,10 +49,7 @@ void SampleState::LoadScene1()
                 if (m_S1UniqueTint)
                 {
                     float hue = static_cast<float>(count % 157) / 157.0f;
-                    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))
-                    {
-                        renderer->color = glm::vec4(0.35f + 0.55f * hue, 0.75f - 0.25f * hue, 1.0f - 0.45f * hue, 1.0f);
-                    }
+                    Entity(entity, &scene).SetColor(glm::vec4(0.35f + 0.55f * hue, 0.75f - 0.25f * hue, 1.0f - 0.45f * hue, 1.0f));
                 }
 
                 count++;

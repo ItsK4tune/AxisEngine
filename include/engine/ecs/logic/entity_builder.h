@@ -23,6 +23,7 @@
 class ResourceManager;
 class IRigidBody;
 class ICharacterController;
+class Entity;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
@@ -250,7 +251,7 @@ public:
     EntityBuilder& WithSkybox(const std::string& skyboxName, const std::string& shaderName, bool isPrimary = true);
     EntityBuilder& WithSkybox(const SkyboxRenderComponent& skybox);
 
-    static entt::entity SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
+    static Entity SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
                                     const std::string& fragmentPath, const glm::vec3& pos,
                                     const glm::vec3& scale = glm::vec3(1.0f));
 
@@ -260,7 +261,7 @@ public:
                                float terrainLength, float terrainHeight, float waterLevel, float randomOffsetX,
                                float randomOffsetZ, int attempts = 200, const glm::vec3& scale = glm::vec3(1.0f));
 
-    entt::entity Build();
+    Entity Build();
 
 private:
     Scene& m_Scene;

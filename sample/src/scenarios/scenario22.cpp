@@ -32,8 +32,7 @@ void SampleState::LoadScene22()
                              .WithTransform(m_S22RayOrigin, glm::vec3(0.0f), glm::vec3(1.2f))
                              .WithPBRMesh("cubeModel", "deferred_lit", 0.05f, 0.35f, 1.0f)
                              .Build();
-    if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(m_S22EmitterEntity))
-        renderer->color = glm::vec4(0.1f, 0.85f, 1.0f, 1.0f);
+    Entity(m_S22EmitterEntity, &scene).SetColor(glm::vec4(0.1f, 0.85f, 1.0f, 1.0f));
 
     struct TargetSpec
     {
@@ -69,12 +68,10 @@ void SampleState::LoadScene22()
                           .WithRigidShape(spec.shape, glm::vec3(1.0f), 1.0f, 2.0f, 0.55f, 0.4f)
                           .WithRigidBody(1.0f, false, false, 0.35f, 0.55f)
                           .Build();
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(target))
-            renderer->color = spec.color;
+        Entity(target, &scene).SetColor(spec.color);
 
         m_S22Targets.push_back(target);
     }
 
-    auto& physicsSystem = GetSystem<PhysicsSystem>();
-    physicsSystem.Update(scene, 0.0f);
+    ForcePhysicsUpdate(0.0f);
 }

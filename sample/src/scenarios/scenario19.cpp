@@ -37,25 +37,6 @@ void SampleState::LoadScene19()
         .WithAnimation("spin")
         .Build();
 
-    auto& defeatedAnim = scene.GetComponent<AnimationComponent>(defeatedEntity);
-    defeatedAnim.animations.push_back("spin");
-    if (defeatedAnim.animator)
-    {
-        auto spinAnim = res.GetAnimation("spin");
-        if (spinAnim)
-        {
-            defeatedAnim.animator->AddAnimation("spin", spinAnim);
-        }
-    }
-
-    auto& spinAnimComp = scene.GetComponent<AnimationComponent>(spinEntity);
-    spinAnimComp.animations.push_back("defeated");
-    if (spinAnimComp.animator)
-    {
-        auto defeatedAnimClip = res.GetAnimation("defeated");
-        if (defeatedAnimClip)
-        {
-            spinAnimComp.animator->AddAnimation("defeated", defeatedAnimClip);
-        }
-    }
+    Entity(defeatedEntity, &scene).AddAnimationClip("spin", res.GetAnimation("spin"));
+    Entity(spinEntity, &scene).AddAnimationClip("defeated", res.GetAnimation("defeated"));
 }

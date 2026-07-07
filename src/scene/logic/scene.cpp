@@ -45,145 +45,145 @@ void Scene::ShutdownManagers()
     m_Octree.reset();
 }
 
-void Scene::Destroy(entt::entity entity)
+void Scene::Destroy(Entity entity)
 {
-    if (entity != entt::null && registry.valid(entity))
+    if (entity && registry.valid(entity))
     {
         DestroyEntity(entity);
     }
 }
 
-entt::entity Scene::FindByName(const std::string& name)
+Entity Scene::FindByName(const std::string& name)
 {
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).name == name)
-            return entity;
+            return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-entt::entity Scene::FindByTag(const std::string& tag)
+Entity Scene::FindByTag(const std::string& tag)
 {
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).tag == tag)
-            return entity;
+            return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-entt::entity Scene::FindByNameAndTag(const std::string& name, const std::string& tag)
+Entity Scene::FindByNameAndTag(const std::string& name, const std::string& tag)
 {
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
     {
         const auto& info = view.get<InfoComponent>(entity);
         if (info.name == name && info.tag == tag)
-            return entity;
+            return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-entt::entity Scene::FindByNameTagAndScene(const std::string& name, const std::string& tag,
-                                         const std::string& sceneName)
+Entity Scene::FindByNameTagAndScene(const std::string& name, const std::string& tag,
+                                    const std::string& sceneName)
 {
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
     {
         const auto& info = view.get<InfoComponent>(entity);
         if (info.name == name && info.tag == tag && info.sceneName == sceneName)
-            return entity;
+            return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-std::vector<entt::entity> Scene::FindAllByName(const std::string& name)
+std::vector<Entity> Scene::FindAllByName(const std::string& name)
 {
-    std::vector<entt::entity> results;
+    std::vector<Entity> results;
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).name == name)
-            results.push_back(entity);
+            results.push_back(Entity(entity, this));
     }
     return results;
 }
 
-std::vector<entt::entity> Scene::FindAllByTag(const std::string& tag)
+std::vector<Entity> Scene::FindAllByTag(const std::string& tag)
 {
-    std::vector<entt::entity> results;
+    std::vector<Entity> results;
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).tag == tag)
-            results.push_back(entity);
+            results.push_back(Entity(entity, this));
     }
     return results;
 }
 
-std::vector<entt::entity> Scene::FindAllBySceneName(const std::string& sceneName)
+std::vector<Entity> Scene::FindAllBySceneName(const std::string& sceneName)
 {
-    std::vector<entt::entity> results;
+    std::vector<Entity> results;
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).sceneName == sceneName)
-            results.push_back(entity);
+            results.push_back(Entity(entity, this));
     }
     return results;
 }
 
-entt::entity Scene::GetCameraByName(const std::string& name)
+Entity Scene::GetCameraByName(const std::string& name)
 {
     auto view = registry.view<CameraComponent, InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).name == name)
-            return entity;
+            return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-entt::entity Scene::GetCameraByTag(const std::string& tag)
+Entity Scene::GetCameraByTag(const std::string& tag)
 {
     auto view = registry.view<CameraComponent, InfoComponent>();
     for (auto entity : view)
     {
         if (view.get<InfoComponent>(entity).tag == tag)
-            return entity;
+            return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-std::vector<entt::entity> Scene::GetAllCameras()
+std::vector<Entity> Scene::GetAllCameras()
 {
-    std::vector<entt::entity> cameras;
+    std::vector<Entity> cameras;
     auto view = registry.view<CameraComponent>();
-    for (auto entity : view) cameras.push_back(entity);
+    for (auto entity : view) cameras.push_back(Entity(entity, this));
     return cameras;
 }
 
-entt::entity Scene::GetActiveCamera()
+Entity Scene::GetActiveCamera()
 {
     auto view = registry.view<CameraComponent>();
     for (auto entity : view)
     {
         if (view.get<CameraComponent>(entity).isPrimary)
         {
-            return entity;
+            return Entity(entity, this);
         }
     }
     for (auto entity : view)
     {
-        return entity;
+        return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-void Scene::SetActiveCamera(entt::entity entity)
+void Scene::SetActiveCamera(Entity entity)
 {
     auto view = registry.view<CameraComponent>();
     for (auto camEntity : view)
@@ -192,24 +192,24 @@ void Scene::SetActiveCamera(entt::entity entity)
     }
 }
 
-entt::entity Scene::GetActiveSkybox()
+Entity Scene::GetActiveSkybox()
 {
     auto view = registry.view<SkyboxRenderComponent>();
     for (auto entity : view)
     {
         if (view.get<SkyboxRenderComponent>(entity).isPrimary)
         {
-            return entity;
+            return Entity(entity, this);
         }
     }
     for (auto entity : view)
     {
-        return entity;
+        return Entity(entity, this);
     }
-    return entt::null;
+    return Entity();
 }
 
-void Scene::SetActiveSkybox(entt::entity entity)
+void Scene::SetActiveSkybox(Entity entity)
 {
     auto view = registry.view<SkyboxRenderComponent>();
     for (auto skyEntity : view)
@@ -218,7 +218,7 @@ void Scene::SetActiveSkybox(entt::entity entity)
     }
 }
 
-entt::entity Scene::CreateEntity(const std::string& name, const std::string& tag)
+Entity Scene::CreateEntity(const std::string& name, const std::string& tag)
 {
     entt::entity entity = registry.create();
     registry.emplace<PositionComponent>(entity);
@@ -227,13 +227,13 @@ entt::entity Scene::CreateEntity(const std::string& name, const std::string& tag
     registry.emplace<HierarchyComponent>(entity);
     registry.emplace<WorldTransformComponent>(entity);
     registry.emplace<InfoComponent>(entity, name, tag);
-    return entity;
+    return Entity(entity, this);
 }
 
-entt::entity Scene::CreateEntityWithTransform(const std::string& name, const glm::vec3& position,
+Entity Scene::CreateEntityWithTransform(const std::string& name, const glm::vec3& position,
                                               const glm::vec3& rotation, const glm::vec3& scale)
 {
-    entt::entity entity = CreateEntity(name);
+    Entity entity = CreateEntity(name);
 
     if (auto* p = registry.try_get<PositionComponent>(entity))
         p->value = p->prev = position;
@@ -245,57 +245,46 @@ entt::entity Scene::CreateEntityWithTransform(const std::string& name, const glm
     return entity;
 }
 
-entt::entity Scene::CreateEmptyEntity(const std::string& name)
+Entity Scene::CreateEmptyEntity(const std::string& name)
 {
     return CreateEntityWithTransform(name, glm::vec3(0.0f));
 }
 
-entt::entity Scene::CreateCube(const std::string& name, const glm::vec3& position)
-{
-    return CreateEntityWithTransform(name, position);
-}
 
-entt::entity Scene::CreateSphere(const std::string& name, const glm::vec3& position)
+void Scene::SetParent(Entity child, Entity parent, bool keepWorldTransform)
 {
-    return CreateEntityWithTransform(name, position);
-}
+    entt::entity childHandle = child;
+    entt::entity parentHandle = parent;
 
-entt::entity Scene::CreatePlane(const std::string& name, const glm::vec3& position)
-{
-    return CreateEntityWithTransform(name, position);
-}
-
-void Scene::SetParent(entt::entity child, entt::entity parent, bool keepWorldTransform)
-{
-    if (!registry.valid(child) || !registry.valid(parent))
+    if (!registry.valid(childHandle) || !registry.valid(parentHandle))
     {
         LOGGER_WARN("Scene") << "Invalid child or parent entity";
         return;
     }
 
-    if (!registry.all_of<HierarchyComponent>(child) || !registry.all_of<HierarchyComponent>(parent))
+    if (!registry.all_of<HierarchyComponent>(childHandle) || !registry.all_of<HierarchyComponent>(parentHandle))
     {
         LOGGER_WARN("Scene") << "Child or parent missing HierarchyComponent";
         return;
     }
 
-    auto& childH = registry.get<HierarchyComponent>(child);
-    if (child == parent)
+    auto& childH = registry.get<HierarchyComponent>(childHandle);
+    if (childHandle == parentHandle)
     {
-        LOGGER_WARN("Scene") << "Attempted to set entity as its own parent: " << (uint32_t)child;
+        LOGGER_WARN("Scene") << "Attempted to set entity as its own parent: " << (uint32_t)childHandle;
         return;
     }
 
-    if (childH.parent == parent)
+    if (childH.parent == parentHandle)
         return;
 
-    entt::entity current = parent;
+    entt::entity current = parentHandle;
     while (current != entt::null)
     {
-        if (current == child)
+        if (current == childHandle)
         {
-            LOGGER_WARN("Scene") << "Cycle detected in hierarchy! Cannot set " << (uint32_t)child << " as child of "
-                                 << (uint32_t)parent;
+            LOGGER_WARN("Scene") << "Cycle detected in hierarchy! Cannot set " << (uint32_t)childHandle << " as child of "
+                                 << (uint32_t)parentHandle;
             return;
         }
         if (auto* pH = registry.try_get<HierarchyComponent>(current))
@@ -307,49 +296,50 @@ void Scene::SetParent(entt::entity child, entt::entity parent, bool keepWorldTra
     if (registry.valid(childH.parent) && registry.all_of<HierarchyComponent>(childH.parent))
     {
         auto& oldParentH = registry.get<HierarchyComponent>(childH.parent);
-        oldParentH.children.erase(std::remove(oldParentH.children.begin(), oldParentH.children.end(), child),
+        oldParentH.children.erase(std::remove(oldParentH.children.begin(), oldParentH.children.end(), childHandle),
                                   oldParentH.children.end());
     }
 
-    childH.parent = parent;
-    auto& parentH = registry.get<HierarchyComponent>(parent);
-    parentH.children.push_back(child);
+    childH.parent = parentHandle;
+    auto& parentH = registry.get<HierarchyComponent>(parentHandle);
+    parentH.children.push_back(childHandle);
 
-    if (auto* w = registry.try_get<WorldTransformComponent>(child))
+    if (auto* w = registry.try_get<WorldTransformComponent>(childHandle))
         w->isDirty = true;
 }
 
-void Scene::AddChild(entt::entity parent, entt::entity child, bool keepWorldTransform)
+void Scene::AddChild(Entity parent, Entity child, bool keepWorldTransform)
 {
     SetParent(child, parent, keepWorldTransform);
 }
 
-void Scene::DestroyEntity(entt::entity entity, SceneManager* manager)
+void Scene::DestroyEntity(Entity entity, SceneManager* manager)
 {
-    if (!registry.valid(entity))
+    entt::entity handle = entity;
+    if (!registry.valid(handle))
         return;
 
-    if (auto* h = registry.try_get<HierarchyComponent>(entity))
+    if (auto* h = registry.try_get<HierarchyComponent>(handle))
     {
         if (registry.valid(h->parent) && registry.all_of<HierarchyComponent>(h->parent))
         {
             auto& parentH = registry.get<HierarchyComponent>(h->parent);
-            parentH.children.erase(std::remove(parentH.children.begin(), parentH.children.end(), entity),
+            parentH.children.erase(std::remove(parentH.children.begin(), parentH.children.end(), handle),
                                    parentH.children.end());
         }
 
         std::vector<entt::entity> childrenCopy = h->children;
-        for (auto child : childrenCopy)
+        for (auto childNode : childrenCopy)
         {
-            if (registry.valid(child) && registry.all_of<HierarchyComponent>(child))
+            if (registry.valid(childNode) && registry.all_of<HierarchyComponent>(childNode))
             {
-                auto& childH = registry.get<HierarchyComponent>(child);
+                auto& childH = registry.get<HierarchyComponent>(childNode);
                 childH.parent = entt::null;
             }
         }
     }
 
-    if (auto sc = registry.try_get<ScriptComponent>(entity))
+    if (auto sc = registry.try_get<ScriptComponent>(handle))
     {
         if (sc->instance && sc->DestroyScript)
             sc->DestroyScript(sc);
@@ -358,7 +348,7 @@ void Scene::DestroyEntity(entt::entity entity, SceneManager* manager)
         sc->inputScriptableInstance = nullptr;
     }
 
-    if (auto rb = registry.try_get<RigidBodyComponent>(entity))
+    if (auto rb = registry.try_get<RigidBodyComponent>(handle))
     {
         if (rb->body)
         {
@@ -379,57 +369,58 @@ void Scene::DestroyEntity(entt::entity entity, SceneManager* manager)
         }
     }
 
-    if (auto mesh = registry.try_get<MeshRendererComponent>(entity))
+    if (auto mesh = registry.try_get<MeshRendererComponent>(handle))
     {
         mesh->model = nullptr;
         mesh->shader.reset();
     }
 
-    if (auto anim = registry.try_get<AnimationComponent>(entity))
+    if (auto anim = registry.try_get<AnimationComponent>(handle))
     {
         anim->animator = nullptr;
     }
 
-    if (auto ui = registry.try_get<UIRendererComponent>(entity))
+    if (auto ui = registry.try_get<UIRendererComponent>(handle))
     {
         ui->model = nullptr;
         ui->shader = nullptr;
     }
 
-    if (auto text = registry.try_get<UITextComponent>(entity))
+    if (auto text = registry.try_get<UITextComponent>(handle))
     {
         text->model = nullptr;
         text->shader = nullptr;
         text->font = nullptr;
     }
 
-    if (auto sky = registry.try_get<SkyboxRenderComponent>(entity))
+    if (auto sky = registry.try_get<SkyboxRenderComponent>(handle))
     {
         sky->skybox = nullptr;
         sky->shader.reset();
     }
 
     if (manager)
-        manager->RemoveEntity(entity);
+        manager->RemoveEntity(handle);
 
-    registry.destroy(entity);
+    registry.destroy(handle);
 }
 
-void Scene::DestroyEntityWithChildren(entt::entity entity, SceneManager* manager)
+void Scene::DestroyEntityWithChildren(Entity entity, SceneManager* manager)
 {
-    if (!registry.valid(entity))
+    entt::entity handle = entity;
+    if (!registry.valid(handle))
         return;
 
     std::vector<entt::entity> children;
-    if (registry.all_of<HierarchyComponent>(entity))
+    if (registry.all_of<HierarchyComponent>(handle))
     {
-        const auto& hier = registry.get<HierarchyComponent>(entity);
+        const auto& hier = registry.get<HierarchyComponent>(handle);
         children = hier.children;
     }
 
     for (auto child : children)
     {
-        DestroyEntityWithChildren(child, manager);
+        DestroyEntityWithChildren(Entity(child, this), manager);
     }
 
     DestroyEntity(entity, manager);

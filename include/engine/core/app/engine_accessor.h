@@ -5,10 +5,13 @@
 #include <core/logic/service_locator.h>
 #include <platform/interface/cursor_mode.h>
 #include <ecs/logic/system_manager.h>
+#include <render/type/graphics_types.h>
 #include <string>
 #include <vector>
+#include <functional>
 
 struct Scene;
+class Entity;
 class SceneManager;
 class ResourceManager;
 class AudioService;
@@ -141,6 +144,38 @@ public:
 
     AppConfig GetConfig() const;
     void ApplyConfig(const AppConfig& config);
+
+    // High-level Physics / Collisions API
+    void SetPhysicsGravity(const glm::vec3& gravity);
+    void SetPhysicsSolverIterations(int iterations);
+    void IgnoreTagCollision(const std::string& tag1, const std::string& tag2);
+    void ForcePhysicsUpdate(float dt);
+    void CreateHingeConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::vec3& axisA, const glm::vec3& axisB);
+    void CreatePointToPointConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB);
+    void CreateFixedConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::quat& rotA, const glm::quat& rotB);
+
+    // High-level Rendering / Stencil API
+    void ClearStencilBuffer();
+    void ClearDepthBuffer();
+    void SetRenderStateEnabled(ServerCapability capability, bool enable);
+    void SetStencilMask(uint32_t mask);
+    void SetStencilFunc(CompareFunc func, int ref, uint32_t mask);
+    void SetStencilOp(StencilOp sfail, StencilOp dpfail, StencilOp dppass);
+    void SetDepthFunc(CompareFunc func);
+    void SetColorWriteMask(bool r, bool g, bool b, bool a);
+    void SetDepthWriteMask(bool enable);
+    void ConfigurePostProcessing(bool hdr, bool bloom, float threshold, float intensity, float radius, float exposure, float gamma, int tonemappingMode);
+
+    void GetCameraRenderState(glm::vec3& outPos, glm::mat4& outView, glm::mat4& outProj, float& outNear, float& outFar);
+    void SetCameraRenderState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane);
+    void DrawEntityMesh(Entity entity, const std::string& shaderName, const glm::mat4& customWorldTransform, const glm::vec4& color, float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f);
+
+    // High-level ECS Queries
+    std::vector<Entity> GetEntitiesWithName(const std::string& name) const;
+    std::vector<Entity> GetEntitiesWithNamePrefix(const std::string& prefix) const;
+    std::vector<Entity> GetCameraEntities() const;
+    size_t GetEntityCount() const;
+    void UpdateNavMeshHeightsAndTags(std::function<void(const glm::vec3& pos, glm::vec3& outPos, std::string& outTag)> modifier);
 
     void SetActiveScene(Scene* scene)
     {

@@ -19,15 +19,14 @@ void SampleState::LoadScene28()
         .WithDirectionalLight(glm::normalize(glm::vec3(-0.7f, -1.0f, -0.7f)), glm::vec3(1.0f), 1.5f)
         .Build();
 
+    const bool ok = LoadInputBindings("sample/resource/binding/binding.axs");
     if (auto* io = Resolve<IOHandler>())
     {
-        InputSerializer serializer;
-        const bool ok = serializer.Deserialize("sample/resource/binding/binding.axs", io->GetInputManager());
         EnsureScenario28AuxBindings(io->GetInputManager());
-        m_S28Status =
-            ok ? "Loaded sample/resource/binding/binding.axs. Press mapped controls to light pads and move the capsule."
-               : "Failed to load binding.axs on scene entry.";
     }
+    m_S28Status =
+        ok ? "Loaded sample/resource/binding/binding.axs. Press mapped controls to light pads and move the capsule."
+           : "Failed to load binding.axs on scene entry.";
 
     auto player = EntityBuilder(scene, res, "scenario")
                       .WithName("BindingPlayer")
@@ -43,12 +42,9 @@ void SampleState::LoadScene28()
                       .WithRigidBody(1.0f, false, false)
                       .Build();
 
-    if (auto* rb = scene.TryGetComponent<RigidBodyComponent>(player))
-    {
-        rb->isKinematic = true;
-        rb->linearFactor = glm::vec3(1.0f);
-        rb->angularFactor = glm::vec3(0.0f, 1.0f, 0.0f);
-    }
+    player.SetKinematic(true);
+    player.SetLinearFactor(glm::vec3(1.0f));
+    player.SetAngularFactor(glm::vec3(0.0f, 1.0f, 0.0f));
 
     struct InputPad
     {
@@ -73,7 +69,6 @@ void SampleState::LoadScene28()
                              .WithPBRMesh("cubeModel", "deferred_unlit", 0.0f, 0.5f, 1.0f)
                              .Build();
 
-        if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(padEntity))
-            renderer->color = glm::vec4(0.18f, 0.2f, 0.24f, 1.0f);
+        padEntity.SetColor(glm::vec4(0.18f, 0.2f, 0.24f, 1.0f));
     }
 }
