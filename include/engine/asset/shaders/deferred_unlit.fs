@@ -13,7 +13,6 @@ in vec3 Normal;
 uniform sampler2D u_AlbedoMap;
 uniform vec4 u_BaseColor = vec4(1.0);
 uniform uint u_EntityID;
-uniform bool u_IsWireframe;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;
@@ -41,9 +40,4 @@ void main()
     gEmissive = finalColor;
 
     gPBRParams = vec4(0.0, 1.0, 0.0, 0.05); // Metallic=0, Roughness=1, Reflectivity=0, packed(noProbe + 5/100)
-
-    if (u_IsWireframe) {
-        gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);
-        gEmissive = vec3(0.0);
-    }
 }

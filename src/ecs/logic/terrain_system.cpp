@@ -37,8 +37,6 @@ void TerrainSystem::Initialize()
             {
             }
         }));
-    m_EventSubscriptions.Add(EventManager::Instance().Subscribe<DebugNoTextureChangedEvent>(
-        [this](const DebugNoTextureChangedEvent& e) { SetDebugNoTexture(e.enabled); }));
 }
 
 void TerrainSystem::Shutdown()
@@ -184,7 +182,6 @@ void TerrainSystem::Render(Scene& scene)
         actShader->setFloat("maxHeight", terrain.maxHeight);
         actShader->setVec2("terrainSize", glm::vec2(terrain.terrainSize.x, terrain.terrainSize.z));
         actShader->setFloat("textureScale", terrain.textureScale);
-        actShader->setBool("debug_noTexture", m_DebugNoTexture);
 
         tm.ActiveTexture(TextureUnit::Texture26);
         tm.BindTexture(TextureType::Texture2D, terrain.heightMap);

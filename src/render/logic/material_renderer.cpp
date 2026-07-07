@@ -58,23 +58,18 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     locs.u_IrradianceMap = shader->GetUniformLocation("u_IrradianceMap");
     locs.u_PrefilterMap = shader->GetUniformLocation("u_PrefilterMap");
     locs.u_BrdfLUT = shader->GetUniformLocation("u_BrdfLUT");
-    locs.u_isWireframe = shader->GetUniformLocation("u_IsWireframe");
 
     locs.initialized = true;
     return locs;
 }
 
 bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* material,
-                                             const RenderSceneData& sceneData, const glm::vec4& tintColor,
-                                             bool debugNoTexture, bool isWireframe)
+                                             const RenderSceneData& sceneData, const glm::vec4& tintColor)
 {
     if (!m_Context)
         return false;
     const auto& locs = GetLocations(shader);
     auto& tm = m_Context->GetTextureManager();
-
-    if (locs.u_isWireframe != -1)
-        shader->setBool(locs.u_isWireframe, isWireframe);
 
     bool boundSomething = false;
     if (material)
@@ -170,42 +165,29 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* 
             shader->setVec2(locs.u_UVOffset, mat.desc.uvOffset);
         shader->setCustomPorts(mat.desc.ports);
 
-        if (debugNoTexture)
-        {
-            if (m_LastBoundTextures[0] != m_WhiteTextureID)
+        auto setTex = [&](int texUnit, unsigned int texID, int loc) {
+            unsigned int targetTex = texID != 0 ? texID : (texUnit == 5 ? m_BlackTextureID : m_WhiteTextureID);
+            if (m_LastBoundTextures[texUnit] != targetTex)
             {
-                tm.ActiveTexture(TextureUnit::Texture0);
-                tm.BindTexture(TextureType::Texture2D, m_WhiteTextureID);
-                m_LastBoundTextures[0] = m_WhiteTextureID;
+                tm.ActiveTexture(static_cast<TextureUnit>(texUnit));
+                tm.BindTexture(TextureType::Texture2D, targetTex);
+                m_LastBoundTextures[texUnit] = targetTex;
             }
-            if (locs.u_AlbedoMap != -1)
-                shader->setInt(locs.u_AlbedoMap, 0);
-        }
-        else
-        {
-            auto setTex = [&](int texUnit, unsigned int texID, int loc) {
-                unsigned int targetTex = texID != 0 ? texID : (texUnit == 5 ? m_BlackTextureID : m_WhiteTextureID);
-                if (m_LastBoundTextures[texUnit] != targetTex)
-                {
-                    tm.ActiveTexture(static_cast<TextureUnit>(texUnit));
-                    tm.BindTexture(TextureType::Texture2D, targetTex);
-                    m_LastBoundTextures[texUnit] = targetTex;
-                }
-                if (loc != -1)
-                    shader->setInt(loc, texUnit);
-            };
+            if (loc != -1)
+                shader->setInt(loc, texUnit);
+        };
 
-            setTex(0, mat.gpu.albedoMap, locs.u_AlbedoMap);
-            if (mat.gpu.albedoMap != 0)
-                boundSomething = true;
+        setTex(0, mat.gpu.albedoMap, locs.u_AlbedoMap);
+        if (mat.gpu.albedoMap != 0)
+            boundSomething = true;
 
-            setTex(1, mat.gpu.normalMap, locs.u_NormalMap);
-            setTex(2, mat.gpu.metallicMap, locs.u_MetallicMap);
-            setTex(3, mat.gpu.roughnessMap, locs.u_RoughnessMap);
-            setTex(4, mat.gpu.aoMap, locs.u_AOMap);
-            setTex(5, mat.gpu.emissiveMap, locs.u_EmissiveMap);
-            setTex(9, mat.gpu.specularMap, locs.u_SpecularMap);
-        }
+        setTex(1, mat.gpu.normalMap, locs.u_NormalMap);
+        setTex(2, mat.gpu.metallicMap, locs.u_MetallicMap);
+        setTex(3, mat.gpu.roughnessMap, locs.u_RoughnessMap);
+        setTex(4, mat.gpu.aoMap, locs.u_AOMap);
+        setTex(5, mat.gpu.emissiveMap, locs.u_EmissiveMap);
+        setTex(9, mat.gpu.specularMap, locs.u_SpecularMap);
+
         return boundSomething;
     }
     else

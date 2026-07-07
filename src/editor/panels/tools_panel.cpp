@@ -147,10 +147,6 @@ void ToolsPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("Debug Vis", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        if (ImGui::Checkbox("Wireframe Mode", &conf.debug.wireframeMode))
-            changed = true;
-        if (ImGui::Checkbox("No Texture", &conf.debug.noTexture))
-            changed = true;
         if (ImGui::Checkbox("Physics Debug (F8)", &conf.debug.physicsDebug))
             changed = true;
         if (ImGui::Checkbox("Editor UI Enabled", &conf.debug.uiEnabled))

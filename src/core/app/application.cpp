@@ -359,11 +359,7 @@ bool Application::Initialize()
             if (m_Impl->m_IOHandler)
             {
                 auto mode = m_Impl->m_IOHandler->GetMouse().GetCursorMode();
-                auto* window = m_Impl->m_IOHandler->GetMonitorManager().GetWindow();
-                if (window)
-                {
-                    window->SetCursorMode(mode);
-                }
+                m_Impl->m_IOHandler->GetMouse().SetCursorMode(mode);
             }
         }
     });
@@ -589,11 +585,7 @@ bool Application::Initialize(const AppConfig& incomingConfig)
             if (m_Impl->m_IOHandler)
             {
                 auto mode = m_Impl->m_IOHandler->GetMouse().GetCursorMode();
-                auto* window = m_Impl->m_IOHandler->GetMonitorManager().GetWindow();
-                if (window)
-                {
-                    window->SetCursorMode(mode);
-                }
+                m_Impl->m_IOHandler->GetMouse().SetCursorMode(mode);
             }
         }
     });

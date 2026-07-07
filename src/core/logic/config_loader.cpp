@@ -472,18 +472,7 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
         ss >> mask;
         config.filterLayerMask = mask;
     }
-    else if (subCmd == "WIREFRAME_MODE")
-    {
-        int enable;
-        ss >> enable;
-        config.debug.wireframeMode = (enable != 0);
-    }
-    else if (subCmd == "NO_TEXTURE")
-    {
-        int enable;
-        ss >> enable;
-        config.debug.noTexture = (enable != 0);
-    }
+
     else if (subCmd == "PHYSICS_DEBUG")
     {
         int enable;

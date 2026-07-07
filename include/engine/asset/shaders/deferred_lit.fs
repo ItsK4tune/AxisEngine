@@ -32,9 +32,7 @@ uniform float u_Metallic;
 uniform float u_AO;
 uniform vec3 u_Emission;
 uniform vec4 u_BaseColor; // rgb: tint, a: u_Opacity
-uniform bool debug_noTexture;
 uniform uint u_EntityID;
-uniform bool u_IsWireframe;
 uniform bool u_ProbeUnlit;
 uniform float u_Reflectivity;
 uniform float u_FresnelPower;
@@ -44,16 +42,9 @@ void main()
     gPosition = FragPos;
     gNormal = vec4(normalize(Normal), 0.0);
     
-    vec4 texColor;
-    float _roughness;
-    if (debug_noTexture) {
-        texColor = vec4(1.0);
-        _roughness = u_Roughness;
-    } else {
-        texColor = texture(u_AlbedoMap, TexCoords);
-        texColor.rgb = pow(texColor.rgb, vec3(2.2));
-        _roughness = texture(u_RoughnessMap, TexCoords).r * u_Roughness;
-    }
+    vec4 texColor = texture(u_AlbedoMap, TexCoords);
+    texColor.rgb = pow(texColor.rgb, vec3(2.2));
+    float _roughness = texture(u_RoughnessMap, TexCoords).r * u_Roughness;
     
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
     gAlbedoSpec.a = 0.04; // Default FresnelBias for non-reflective objects (roughness stored in gPBRParams.g)
@@ -63,9 +54,4 @@ void main()
     // R: Metallic, G: Roughness, B: Reflectivity, A: packed(ProbeIndex+1 + FresnelPower/100)
     float packedReflection = clamp(u_FresnelPower / 100.0, 0.0, 0.99); // ProbeIndex=-1 → int part = 0
     gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, packedReflection);
-
-    if (u_IsWireframe) {
-        gAlbedoSpec.rgb = vec3(0.0, 1.0, 0.0);
-        gEmissive = vec3(0.0);
-    }
 }

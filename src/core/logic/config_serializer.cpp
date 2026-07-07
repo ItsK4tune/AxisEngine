@@ -259,8 +259,7 @@ bool ConfigSerializer::Serialize(const std::string& filepath, const AppConfig& c
     kv("DISTANCE", FloatStr(cfg.culling.distanceCulling));
 
     // --- Debug Settings ---
-    kv("WIREFRAME_MODE", cfg.debug.wireframeMode ? "1" : "0");
-    kv("NO_TEXTURE", cfg.debug.noTexture ? "1" : "0");
+
     kv("PHYSICS_DEBUG", cfg.debug.physicsDebug ? "1" : "0");
     kv("UI_ENABLED", cfg.debug.uiEnabled ? "1" : "0");
     kv("GIZMOS", cfg.debug.gizmos ? "1" : "0");

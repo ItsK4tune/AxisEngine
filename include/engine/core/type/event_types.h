@@ -146,11 +146,6 @@ struct FrameRenderDataEvent
     FrameRenderData data;
 };
 
-struct DebugNoTextureChangedEvent
-{
-    bool enabled;
-};
-
 struct PhysicsDebugRenderEvent
 {
     struct Scene* scene;

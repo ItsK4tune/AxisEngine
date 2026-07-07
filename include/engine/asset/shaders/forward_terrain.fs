@@ -82,51 +82,19 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 
 uniform float textureScale;
 
-uniform bool debug_noTexture;
-
-
-
 void main()
-
 {
+    vec4 splat = texture(splatMap, TexCoords);
+    vec2 tiledCoords = TexCoords * textureScale;
+    vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
+    vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
+    vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
+    vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
 
-
-
-    vec3 albedo;
-
-    if (debug_noTexture) {
-
-        albedo = vec3(1.0);
-
-    } else {
-
-        vec4 splat = texture(splatMap, TexCoords);
-
-        vec2 tiledCoords = TexCoords * textureScale;
-
-        vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
-
-        vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
-
-        vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
-
-        vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
-
-        
-
-        albedo = col0 * splat.r + 
-
+    vec3 albedo = col0 * splat.r + 
                  col1 * splat.g + 
-
                  col2 * splat.b + 
-
                  col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
-
-    }
-
-    
-
-
 
     vec3 N = normalize(Normal);
 

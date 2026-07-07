@@ -18,8 +18,6 @@ struct RenderFlagsState
     bool instanceBatchingEnabled = true;
     bool frustumCullingEnabled = true;
     bool occlusionCullingEnabled = false;
-    bool debugNoTexture = false;
-    bool wireframe = false;
     bool renderOrderEnabled = true;
     uint32_t filterLayerMask = 0xFFFFFFFF;
     float distanceCullingSq = 0.0f;

@@ -67,7 +67,6 @@ uniform float u_Shininess;
 uniform vec3 u_Specular;
 uniform vec3 u_Emission;
 uniform vec4 u_BaseColor;
-uniform bool debug_noTexture;
 
 vec3 CalcDirLight(DirLight pLight, vec3 normal, vec3 viewDir, vec3 albedo, vec3 specularMap);
 vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 albedo, vec3 specularMap);
@@ -78,16 +77,10 @@ void main()
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(camera.viewPos.xyz - FragPos);
 
-    vec4 texColor = vec4(1.0);
-    vec3 albedo = u_BaseColor.rgb;
-    if (debug_noTexture) {
-        texColor = vec4(1.0);
-    } else {
-        texColor = texture(u_AlbedoMap, TexCoords);
-        albedo = pow(texColor.rgb, vec3(2.2)) * u_BaseColor.rgb;
-    }
+    vec4 texColor = texture(u_AlbedoMap, TexCoords);
+    vec3 albedo = pow(texColor.rgb, vec3(2.2)) * u_BaseColor.rgb;
 
-    vec3 specularMap = debug_noTexture ? vec3(0.5) : texture(u_SpecularMap, TexCoords).rgb;
+    vec3 specularMap = texture(u_SpecularMap, TexCoords).rgb;
     vec3 result = albedo * 0.03;
 
     for(int i = 0; i < light.numDirLights; i++)
@@ -99,7 +92,7 @@ void main()
     for(int i = 0; i < light.nrSpotLights; i++)
         result += CalcSpotLight(spotLights[i], norm, FragPos, viewDir, albedo, specularMap);
 
-    vec3 emissive = u_Emission + (debug_noTexture ? vec3(0.0) : pow(texture(u_EmissiveMap, TexCoords).rgb, vec3(2.2)));
+    vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, TexCoords).rgb, vec3(2.2));
     
     vec3 color = result + emissive;
     FragColor = vec4(color, clamp(texColor.a * u_BaseColor.a, 0.0, 1.0));

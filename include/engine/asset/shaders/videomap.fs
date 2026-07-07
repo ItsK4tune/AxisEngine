@@ -9,17 +9,9 @@ uniform vec4 u_TintColor;
 uniform vec4 u_BaseColor = vec4(1.0);
 uniform vec2 u_UVScale = vec2(1.0, 1.0);
 uniform vec2 u_UVOffset = vec2(0.0, 0.0);
-uniform bool debug_noTexture;
 
 void main()
 {
-    if (debug_noTexture)
-    {
-        FragColor = vec4(1.0, 1.0, 1.0, u_BaseColor.a) * u_TintColor;
-    }
-    else
-    {
-        vec4 texColor = texture(u_AlbedoMap, TexCoords * u_UVScale + u_UVOffset);
-        FragColor = vec4(texColor.rgb, texColor.a * u_BaseColor.a) * u_TintColor;
-    }
+    vec4 texColor = texture(u_AlbedoMap, TexCoords * u_UVScale + u_UVOffset);
+    FragColor = vec4(texColor.rgb, texColor.a * u_BaseColor.a) * u_TintColor;
 }

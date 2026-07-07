@@ -14,38 +14,14 @@ uniform vec4 u_BaseColor;
 
 
 
-uniform bool debug_noTexture;
-
-uniform bool u_IsWireframe;
-
-
-
 void main()
 
 {    
 
-    if (u_IsWireframe) {
+     vec4 texColor = texture(u_AlbedoMap, TexCoords);
 
-        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+     texColor.rgb = pow(texColor.rgb, vec3(2.2));
 
-        return;
-
-    }
-
-    if (debug_noTexture) {
-
-         FragColor = u_BaseColor;
-
-    } else {
-
-         vec4 texColor = texture(u_AlbedoMap, TexCoords);
-
-         texColor.rgb = pow(texColor.rgb, vec3(2.2));
-
-         FragColor = vec4(texColor.rgb, texColor.a) * u_BaseColor;
-
-    }
+     FragColor = vec4(texColor.rgb, texColor.a) * u_BaseColor;
 
 }
-
-

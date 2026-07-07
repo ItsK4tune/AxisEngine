@@ -462,7 +462,6 @@ void EngineAccessor::DrawEntityMesh(Entity entity, const std::string& shaderName
                     glm::mat4 modelMtx = customWorldTransform * mesh.model->GetRootTransform();
                     shader->setMat4("u_Model", modelMtx);
                     shader->setVec4("u_BaseColor", color);
-                    shader->setBool("debug_noTexture", true);
                     shader->setFloat("u_Metallic", metallic);
                     shader->setFloat("u_Roughness", roughness);
                     shader->setFloat("u_AO", ao);

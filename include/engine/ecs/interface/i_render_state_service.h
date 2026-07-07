@@ -17,11 +17,6 @@ public:
     virtual glm::mat4 GetCurrViewProj() const = 0;
     virtual glm::vec2 GetJitterOffset() const = 0;
 
-    virtual bool IsDebugNoTexture() const = 0;
-    virtual void SetDebugNoTexture(bool enable) = 0;
-
-    virtual bool IsWireframe() const = 0;
-    virtual void SetWireframe(bool enable) = 0;
 
     virtual bool IsOcclusionCullingEnabled() const = 0;
     virtual void SetOcclusionCulling(bool enable) = 0;

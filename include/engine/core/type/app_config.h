@@ -120,8 +120,6 @@ struct CullingConfig
 
 struct DebugConfig
 {
-    bool wireframeMode = false;
-    bool noTexture = false;
     bool physicsDebug = false;
 #ifdef ENABLE_EDITOR
     bool uiEnabled = true;

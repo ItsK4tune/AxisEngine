@@ -1796,8 +1796,6 @@ void SampleState::LoadScenario(int index)
     if (auto* renderState = Resolve<IRenderStateService>())
     {
         renderState->SetOcclusionCulling(false);
-        renderState->SetDebugNoTexture(false);
-        renderState->SetWireframe(false);
     }
 
     // Reset camera for all scenarios

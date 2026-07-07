@@ -34,7 +34,6 @@ struct MaterialUniformLocations
     int u_IrradianceMap = -1;
     int u_PrefilterMap = -1;
     int u_BrdfLUT = -1;
-    int u_isWireframe = -1;
 
     bool initialized = false;
 };
@@ -47,7 +46,7 @@ public:
     void Initialize(IGraphicsContext* context, ResourceManager* resourceManager, unsigned int whiteTextureId,
                     unsigned int blackTextureId = 0, unsigned int flatNormalTextureId = 0);
     bool SetupMaterialUniforms(Shader* shader, MaterialComponent* material, const RenderSceneData& sceneData,
-                               const glm::vec4& tintColor, bool debugNoTexture = false, bool isWireframe = false);
+                               const glm::vec4& tintColor);
 
     void ResetTextureState()
     {

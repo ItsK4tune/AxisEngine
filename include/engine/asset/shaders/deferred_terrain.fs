@@ -29,7 +29,6 @@ layout (binding = 30) uniform sampler2D textureLayer2;
 layout (binding = 31) uniform sampler2D textureLayer3;
 
 uniform float textureScale;
-uniform bool debug_noTexture;
 uniform float maxHeight;
 
 void main()
@@ -40,28 +39,24 @@ void main()
     vec3 albedo;
     vec4 pbrParams = vec4(0.0, 0.85, 0.0, 0.0); // Metallic=0.0, Roughness=0.85, Reflectivity=0.0
     
-    if (debug_noTexture) {
-        albedo = vec3(1.0);
-    } else {
-        vec4 splat = texture(splatMap, TexCoords);
-        vec2 tiledCoords = TexCoords * textureScale;
-        
-        vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
-        vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
-        vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
-        vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
-        
-        albedo = col0 * splat.r + 
-                 col1 * splat.g + 
-                 col2 * splat.b + 
-                 col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
-                 
-        // Draw shiny blue water below waterLevel (0.15 * maxHeight)
-        float waterHeight = 0.15 * maxHeight;
-        if (WorldPos.y < waterHeight + 0.15) {
-            albedo = vec3(0.06, 0.20, 0.48); // Deep blue water
-            pbrParams = vec4(0.0, 0.05, 0.95, 0.0); // Roughness=0.05, Reflectivity=0.95 (Shiny!)
-        }
+    vec4 splat = texture(splatMap, TexCoords);
+    vec2 tiledCoords = TexCoords * textureScale;
+    
+    vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
+    vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
+    vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
+    vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
+    
+    albedo = col0 * splat.r + 
+             col1 * splat.g + 
+             col2 * splat.b + 
+             col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
+             
+    // Draw shiny blue water below waterLevel (0.15 * maxHeight)
+    float waterHeight = 0.15 * maxHeight;
+    if (WorldPos.y < waterHeight + 0.15) {
+        albedo = vec3(0.06, 0.20, 0.48); // Deep blue water
+        pbrParams = vec4(0.0, 0.05, 0.95, 0.0); // Roughness=0.05, Reflectivity=0.95 (Shiny!)
     }
     
     gAlbedoSpec.rgb = albedo;

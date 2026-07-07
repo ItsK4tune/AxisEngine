@@ -1384,8 +1384,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         bool matBound = false;
         if (materialRenderer)
         {
-            matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor,
-                                                                m_Flags.debugNoTexture, m_Flags.wireframe);
+            matBound = materialRenderer->SetupMaterialUniforms(shader, material, sceneData, item.tintColor);
         }
 
         auto canInstanceWith = [&](const RenderItem& other) {

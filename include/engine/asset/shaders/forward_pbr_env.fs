@@ -74,7 +74,6 @@ uniform float u_Metallic;
 uniform float u_AO;
 uniform vec3 u_Emission;
 uniform vec4 u_BaseColor;
-uniform bool debug_noTexture;
 
 uniform float u_Reflectivity;
 uniform float u_ReflectionIntensity;
@@ -128,24 +127,10 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness);
 
 void main()
 {
-    vec3 albedo;
-    float metallic;
-    float roughness;
-    float ao;
-
-    if (debug_noTexture) {
-        albedo = u_BaseColor.rgb;
-        metallic = u_Metallic;
-        roughness = u_Roughness;
-        ao = u_AO;
-    } else {
-        albedo = pow(texture(u_AlbedoMap, TexCoords).rgb, vec3(2.2)) * u_BaseColor.rgb;
-        metallic = texture(u_MetallicMap, TexCoords).r * u_Metallic;
-        roughness = texture(u_RoughnessMap, TexCoords).r * u_Roughness;
-        ao = texture(u_AOMap, TexCoords).r * u_AO;
-    }
-    metallic = clamp(metallic, 0.0, 1.0);
-    roughness = clamp(roughness, 0.04, 1.0);
+    vec3 albedo = pow(texture(u_AlbedoMap, TexCoords).rgb, vec3(2.2)) * u_BaseColor.rgb;
+    float metallic = clamp(texture(u_MetallicMap, TexCoords).r * u_Metallic, 0.0, 1.0);
+    float roughness = clamp(texture(u_RoughnessMap, TexCoords).r * u_Roughness, 0.04, 1.0);
+    float ao = texture(u_AOMap, TexCoords).r * u_AO;
 
     vec3 N = normalize(Normal);
     vec3 V = normalize(camera.viewPos.xyz - FragPos);

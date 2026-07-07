@@ -96,22 +96,7 @@ public:
     {
         return m_GlobalState.jitterOffset;
     }
-    bool IsDebugNoTexture() const override
-    {
-        return m_Flags.debugNoTexture;
-    }
-    void SetDebugNoTexture(bool enable) override
-    {
-        m_Flags.debugNoTexture = enable;
-    }
-    bool IsWireframe() const override
-    {
-        return m_Flags.wireframe;
-    }
-    void SetWireframe(bool enable) override
-    {
-        m_Flags.wireframe = enable;
-    }
+
     bool IsOcclusionCullingEnabled() const override
     {
         return m_Flags.occlusionCullingEnabled;

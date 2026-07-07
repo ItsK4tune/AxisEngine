@@ -229,8 +229,6 @@ void WriteAppConfigV3(std::ostream& os, const AppConfig& config)
     WriteValue(os, config.filterLayerMask);
     WriteValue(os, config.distanceCulling);
 
-    WriteBool(os, config.debug.wireframeMode);
-    WriteBool(os, config.debug.noTexture);
     WriteBool(os, config.debug.physicsDebug);
     WriteBool(os, config.debug.uiEnabled);
     WriteBool(os, config.debug.gizmos);
@@ -322,8 +320,6 @@ void ReadAppConfigV3(std::istream& is, AppConfig& config)
     ReadValue(is, config.filterLayerMask);
     ReadValue(is, config.distanceCulling);
 
-    ReadBool(is, config.debug.wireframeMode);
-    ReadBool(is, config.debug.noTexture);
     ReadBool(is, config.debug.physicsDebug);
     ReadBool(is, config.debug.uiEnabled);
     ReadBool(is, config.debug.gizmos);

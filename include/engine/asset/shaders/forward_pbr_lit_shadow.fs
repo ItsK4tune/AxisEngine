@@ -76,8 +76,6 @@ uniform vec3 u_Emission;
 uniform vec4 u_BaseColor;
 uniform vec2 u_UVScale = vec2(1.0);
 uniform vec2 u_UVOffset = vec2(0.0);
-uniform bool debug_noTexture;
-uniform bool u_IsWireframe;
 
 uniform float u_ShadowBias = 0.005;
 uniform int u_ShadowSoftness = 1;
@@ -95,24 +93,10 @@ float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, 
 void main()
 {
     vec2 finalTexCoords = TexCoords * u_UVScale + u_UVOffset;
-    vec3 albedo;
-    float metallic;
-    float roughness;
-    float ao;
-
-    if (debug_noTexture) {
-        albedo = u_BaseColor.rgb;
-        metallic = u_Metallic;
-        roughness = u_Roughness;
-        ao = u_AO;
-    } else {
-        albedo = pow(texture(u_AlbedoMap, finalTexCoords).rgb, vec3(2.2)) * u_BaseColor.rgb;
-        metallic = texture(u_MetallicMap, finalTexCoords).r * u_Metallic;
-        roughness = texture(u_RoughnessMap, finalTexCoords).r * u_Roughness;
-        ao = texture(u_AOMap, finalTexCoords).r * u_AO;
-    }
-    metallic = clamp(metallic, 0.0, 1.0);
-    roughness = clamp(roughness, 0.04, 1.0);
+    vec3 albedo = pow(texture(u_AlbedoMap, finalTexCoords).rgb, vec3(2.2)) * u_BaseColor.rgb;
+    float metallic = clamp(texture(u_MetallicMap, finalTexCoords).r * u_Metallic, 0.0, 1.0);
+    float roughness = clamp(texture(u_RoughnessMap, finalTexCoords).r * u_Roughness, 0.04, 1.0);
+    float ao = texture(u_AOMap, finalTexCoords).r * u_AO;
 
     vec3 N = normalize(Normal);
     vec3 V = normalize(camera.viewPos.xyz - FragPos);
@@ -200,10 +184,6 @@ void main()
     
     vec3 finalColor = u_Ambient + Lo + emissive;
     FragColor = vec4(finalColor, u_BaseColor.a);
-
-    if (u_IsWireframe) {
-        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-    }
 }
 
 float DistributionGGX(vec3 N, vec3 H, float u_Roughness) {
