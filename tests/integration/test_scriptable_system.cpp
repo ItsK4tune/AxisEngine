@@ -160,7 +160,7 @@ AXIS_TEST_CASE("ScriptableSystem collision event dispatches to both scripts")
 
     system.Update(scene, 0.0f);
     system.OnEntityCollision(
-        EntityCollisionEvent{static_cast<uint32_t>(entityA), static_cast<uint32_t>(entityB), CollisionEventType::Enter});
+        EntityCollisionEvent{static_cast<uint32_t>(entityA.GetHandle()), static_cast<uint32_t>(entityB.GetHandle()), CollisionEventType::Enter});
 
     AXIS_CHECK(stateA.collisionEnterCount == 1);
     AXIS_CHECK(stateB.collisionEnterCount == 1);
