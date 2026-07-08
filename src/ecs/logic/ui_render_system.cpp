@@ -2,7 +2,6 @@
 #include <core/logic/config_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <ecs/interface/i_ui_service.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/ui_components.h>
@@ -88,7 +87,6 @@ REGISTER_SYSTEM(UIRenderSystem)
 void UIRenderSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
-    sl.Register<IUIService>(this);
     sl.Register<UIRenderSystem>(this);
 }
 

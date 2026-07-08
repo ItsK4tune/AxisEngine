@@ -23,9 +23,29 @@
 #include <resource/unit/animator.h>
 #include <algorithm>
 #include <iostream>
+#include <utility>
 
 std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> ComponentLoader::s_Factories;
-std::unordered_map<std::string, ComponentLoaderFunc> ComponentLoader::s_Loaders;
+
+namespace
+{
+class FunctionComponentLoaderFactory final : public IComponentLoaderFactory
+{
+public:
+    explicit FunctionComponentLoaderFactory(ComponentLoaderFunc func) : m_Func(std::move(func))
+    {
+    }
+
+    void Load(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res,
+              IPhysicsWorld* phys) override
+    {
+        m_Func(scene, entity, node, res, phys);
+    }
+
+private:
+    ComponentLoaderFunc m_Func;
+};
+}  // namespace
 
 void ComponentLoader::RegisterLoader(const std::string& type, std::shared_ptr<IComponentLoaderFactory> factory)
 {
@@ -34,17 +54,12 @@ void ComponentLoader::RegisterLoader(const std::string& type, std::shared_ptr<IC
 
 void ComponentLoader::RegisterLoader(const std::string& type, ComponentLoaderFunc func)
 {
-    s_Loaders[type] = std::move(func);
+    RegisterLoader(type, std::make_shared<FunctionComponentLoaderFactory>(std::move(func)));
 }
 
 bool ComponentLoader::Load(const std::string& type, Scene& scene, entt::entity entity, const YAMLNode& node,
                            ResourceManager& res, IPhysicsWorld* phys)
 {
-    if (auto it = s_Loaders.find(type); it != s_Loaders.end())
-    {
-        it->second(scene, entity, node, res, phys);
-        return true;
-    }
     if (auto it = s_Factories.find(type); it != s_Factories.end())
     {
         it->second->Load(scene, entity, node, res, phys);

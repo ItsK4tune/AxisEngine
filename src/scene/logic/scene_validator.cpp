@@ -4,6 +4,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <scene/logic/scene_validator.h>
 #include <core/logic/logger.h>
+#include <ecs/interface/i_script_registry.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/media_components.h>
@@ -14,7 +15,6 @@
 #include <physics/interface/i_rigid_body.h>
 #include <platform/logic/monitor_manager.h>
 #include <scene/logic/scene.h>
-#include <script/logic/script_registry.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -128,7 +128,7 @@ void SceneValidator::ValidateCamera(Scene& scene)
         cam.aspectRatio = 16.0f / 9.0f;
     }
 
-    auto scriptRegistry = ServiceLocator::Instance().Resolve<ScriptRegistry>();
+    auto scriptRegistry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
     auto scriptInstance = scriptRegistry ? scriptRegistry->Create(scriptName) : nullptr;
 
     if (scriptInstance)
@@ -137,7 +137,7 @@ void SceneValidator::ValidateCamera(Scene& scene)
         scriptComp.className = scriptName;
         scriptComp.instance = std::move(scriptInstance);
         scriptComp.InstantiateScript = [scriptName]() {
-            auto registry = ServiceLocator::Instance().Resolve<ScriptRegistry>();
+            auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
             return registry ? registry->Create(scriptName) : nullptr;
         };
         scriptComp.DestroyScript = [](ScriptComponent* nsc) {

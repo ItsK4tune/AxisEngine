@@ -1,5 +1,5 @@
 #pragma once
-#include <ecs/interface/i_base_system.h>
+#include <core/interface/i_base_system.h>
 #include <glm/glm.hpp>
 
 class ISkyboxService : virtual public IBaseSystem

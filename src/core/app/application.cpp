@@ -309,6 +309,7 @@ bool Application::Initialize()
         sl.Register<IGraphicsContext>(m_Impl->m_GraphicsContext.get());
     sl.Register<ConfigManager>(m_Impl->m_ConfigManager.get());
     sl.Register<TimeService>(m_Impl->m_TimeService.get());
+    sl.Register<IScriptRegistry>(m_Impl->m_ScriptRegistry.get());
     sl.Register<ScriptRegistry>(m_Impl->m_ScriptRegistry.get());
     sl.Register<CollisionMatrix>(m_Impl->m_CollisionMatrix.get());
     sl.Register<DataManager>(m_Impl->m_DataManager.get());
@@ -535,6 +536,7 @@ bool Application::Initialize(const AppConfig& incomingConfig)
         sl.Register<IGraphicsContext>(m_Impl->m_GraphicsContext.get());
     sl.Register<ConfigManager>(m_Impl->m_ConfigManager.get());
     sl.Register<TimeService>(m_Impl->m_TimeService.get());
+    sl.Register<IScriptRegistry>(m_Impl->m_ScriptRegistry.get());
     sl.Register<ScriptRegistry>(m_Impl->m_ScriptRegistry.get());
     sl.Register<CollisionMatrix>(m_Impl->m_CollisionMatrix.get());
     sl.Register<DataManager>(m_Impl->m_DataManager.get());

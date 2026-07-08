@@ -6,6 +6,7 @@
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/type/tonemapping_mode.h>
+#include <platform/interface/i_device_manager.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
@@ -18,6 +19,24 @@
 
 #pragma comment(lib, "dxgi.lib")
 #endif
+
+namespace
+{
+void DrawDeviceSelector(const char* label, IDeviceManager& deviceManager)
+{
+    ImGui::Text("%s", label);
+    auto devices = deviceManager.GetAllDevices();
+    auto current = deviceManager.GetCurrentDevice();
+    for (const auto& device : devices)
+    {
+        bool isSelected = (device.id == current.id);
+        if (ImGui::RadioButton((device.name + "##" + device.id).c_str(), isSelected))
+        {
+            deviceManager.SetActiveDevice(device.id);
+        }
+    }
+}
+}  // namespace
 
 void SettingsPanel::Initialize()
 {
@@ -331,30 +350,12 @@ void SettingsPanel::OnImGui(Scene& scene)
         if (io)
         {
             ImGui::Separator();
-            ImGui::Text("Active Monitor:");
-            auto monitors = io->GetMonitorManager().GetAllDevices();
-            auto currentMon = io->GetMonitorManager().GetCurrentDevice();
-            for (const auto& mon : monitors)
-            {
-                bool isSelected = (mon.id == currentMon.id);
-                if (ImGui::RadioButton((mon.name + "##" + mon.id).c_str(), isSelected))
-                {
-                    io->GetMonitorManager().SetActiveDevice(mon.id);
-                }
-            }
+            IDeviceManager& monitorDevices = io->GetMonitorManager();
+            DrawDeviceSelector("Active Monitor:", monitorDevices);
 
             ImGui::Separator();
-            ImGui::Text("Input Devices:");
-            auto inputs = io->GetInputManager().GetAllDevices();
-            auto currentInput = io->GetInputManager().GetCurrentDevice();
-            for (const auto& input : inputs)
-            {
-                bool isSelected = (input.id == currentInput.id);
-                if (ImGui::RadioButton((input.name + "##" + input.id).c_str(), isSelected))
-                {
-                    io->GetInputManager().SetActiveDevice(input.id);
-                }
-            }
+            IDeviceManager& inputDevices = io->GetInputManager();
+            DrawDeviceSelector("Input Devices:", inputDevices);
         }
     }
 

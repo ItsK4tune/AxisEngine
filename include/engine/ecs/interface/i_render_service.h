@@ -1,6 +1,6 @@
 #pragma once
 #include <core/type/render_path.h>
-#include <ecs/interface/i_base_system.h>
+#include <core/interface/i_base_system.h>
 #include <render/type/graphics_types.h>
 #include <glm/glm.hpp>
 

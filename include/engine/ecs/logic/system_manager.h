@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/logic/event_manager.h>
-#include <ecs/interface/i_base_system.h>
+#include <core/interface/i_base_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
 #include <entt/entt.hpp>

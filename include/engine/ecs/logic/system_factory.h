@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ecs/interface/i_base_system.h>
+#include <core/interface/i_base_system.h>
 #include <functional>
 #include <map>
 #include <memory>

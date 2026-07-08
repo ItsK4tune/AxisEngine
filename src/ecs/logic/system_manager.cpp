@@ -7,7 +7,7 @@
 #include <core/logic/runtime_profiler.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
-#include <ecs/interface/i_base_system.h>
+#include <core/interface/i_base_system.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_lighting_service.h>
@@ -15,7 +15,6 @@
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <ecs/interface/i_skybox_service.h>
-#include <ecs/interface/i_ui_service.h>
 #include <ecs/logic/system_factory.h>
 #include <engine/platform/logic/io_handler.h>
 #include <render/interface/i_graphics_context.h>

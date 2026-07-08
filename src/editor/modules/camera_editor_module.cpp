@@ -7,13 +7,13 @@
 #include <core/app/runtime_core.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
+#include <ecs/interface/i_script_registry.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
 #include <script/logic/default_camera_controller.h>
-#include <script/logic/script_registry.h>
 #include <vector>
 
 namespace
@@ -79,7 +79,7 @@ void AttachDebugCameraScript(Scene& scene, entt::entity camera)
     auto& scriptComp = scene.GetOrAddComponent<ScriptComponent>(camera);
     scriptComp.className = kDefaultCameraController;
     scriptComp.InstantiateScript = []() {
-        return ServiceLocator::Instance().Require<ScriptRegistry>().Create(kDefaultCameraController);
+        return ServiceLocator::Instance().Require<IScriptRegistry>().Create(kDefaultCameraController);
     };
     scriptComp.DestroyScript = ResetScriptInstance;
 

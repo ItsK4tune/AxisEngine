@@ -59,5 +59,4 @@ public:
 
 private:
     static std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> s_Factories;
-    static std::unordered_map<std::string, ComponentLoaderFunc> s_Loaders;
 };
