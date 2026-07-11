@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <fstream>
 #include <map>
+#include <cmath>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -335,43 +336,121 @@ void ReadAppConfigV3(std::istream& is, AppConfig& config)
 
     ReadEnum(is, config.lightingMode);
 }
+void SkipLegacyBytes(std::istream& is, std::streamsize count);
+void ReadLegacyBool(std::istream& is, bool& value);
 
 void ReadLegacyAppConfigV2(std::istream& is, AppConfig& config)
 {
     config.title = ReadString(is);
-    is.read(reinterpret_cast<char*>(&config.logLevel), sizeof(config.logLevel));
-    is.read(reinterpret_cast<char*>(&config.numJobThreads), sizeof(config.numJobThreads));
-    is.read(reinterpret_cast<char*>(&config.timeScale), sizeof(config.timeScale));
+    ReadEnum(is, config.logLevel);
+    ReadValue(is, config.numJobThreads);
+    ReadValue(is, config.timeScale);
     config.iconPath = ReadString(is);
     config.audioDevice = ReadString(is);
-    is.read(reinterpret_cast<char*>(&config.width), 4 * 7);
-    is.read(reinterpret_cast<char*>(&config.graphicsBackend), sizeof(config.graphicsBackend));
-    is.read(reinterpret_cast<char*>(&config.msaaSamples), 4 * 3);
-    is.read(reinterpret_cast<char*>(&config.renderScale), 4 * 1);
-    is.read(reinterpret_cast<char*>(&config.asyncResourceLoading), sizeof(bool));
-    is.read(reinterpret_cast<char*>(&config.tonemappingMode), sizeof(config.tonemappingMode));
-    is.read(reinterpret_cast<char*>(&config.hdrEnabled), sizeof(bool) * 2);
-    is.read(reinterpret_cast<char*>(&config.gamma), 4 * 6);
-    is.read(reinterpret_cast<char*>(&config.clearColor), 4 * 4);
-    is.read(reinterpret_cast<char*>(&config.shadowsEnabled), sizeof(bool));
-    is.read(reinterpret_cast<char*>(&config.shadowMode), 4 * 3);
-    is.read(reinterpret_cast<char*>(&config.shadowFrustumCullingEnabled), sizeof(bool));
-    is.read(reinterpret_cast<char*>(&config.shadowDistanceCulling), 4 * 3);
-    is.read(reinterpret_cast<char*>(&config.physicsBackend), sizeof(config.physicsBackend));
-    is.read(reinterpret_cast<char*>(&config.physicsMode), sizeof(config.physicsMode));
-    is.read(reinterpret_cast<char*>(&config.gravity), 4 * 3);
-    is.read(reinterpret_cast<char*>(&config.maxSubSteps), 4 * 2);
-    is.read(reinterpret_cast<char*>(&config.ccdEnabled), sizeof(bool));
-    is.read(reinterpret_cast<char*>(&config.ccdThreshold), 4 * 2);
-    is.read(reinterpret_cast<char*>(&config.mouseSensitivityX), 4 * 2);
-    is.read(reinterpret_cast<char*>(&config.mouseInvertX), sizeof(bool) * 2);
-    is.read(reinterpret_cast<char*>(&config.audioBackend), sizeof(config.audioBackend));
-    is.read(reinterpret_cast<char*>(&config.masterVolume), 4);
-    is.read(reinterpret_cast<char*>(&config.cullFaceEnabled), sizeof(bool) * 5);
-    is.read(reinterpret_cast<char*>(&config.renderOrderEnabled), sizeof(bool));
-    is.read(reinterpret_cast<char*>(&config.filterLayerMask), 4 * 2);
+
+    ReadValue(is, config.width);
+    ReadValue(is, config.height);
+    ReadEnum(is, config.windowMode);
+    ReadLegacyBool(is, config.vsync);
+    SkipLegacyBytes(is, 3);
+    ReadValue(is, config.monitorIndex);
+    ReadValue(is, config.refreshRate);
+    ReadValue(is, config.frameRateLimit);
+
+    ReadEnum(is, config.graphicsBackend);
+    ReadValue(is, config.msaaSamples);
+    ReadValue(is, config.antialiasing);
+    ReadValue(is, config.maxAnisotropy);
+    ReadValue(is, config.renderScale);
+    ReadLegacyBool(is, config.asyncResourceLoading);
+    ReadEnum(is, config.tonemappingMode);
+    ReadLegacyBool(is, config.hdrEnabled);
+    ReadLegacyBool(is, config.bloomEnabled);
+    ReadValue(is, config.gamma);
+    ReadValue(is, config.exposure);
+    ReadValue(is, config.bloomIntensity);
+    ReadValue(is, config.bloomThreshold);
+    ReadValue(is, config.bloomRadius);
+    ReadValue(is, config.skyboxIntensity);
+    for (float& channel : config.clearColor) ReadValue(is, channel);
+
+    ReadLegacyBool(is, config.shadowsEnabled);
+    ReadValue(is, config.shadowMode);
+    ReadValue(is, config.shadowMapResolution);
+    ReadValue(is, config.shadowProjectionSize);
+    ReadLegacyBool(is, config.shadowFrustumCullingEnabled);
+    ReadValue(is, config.shadowDistanceCulling);
+    ReadValue(is, config.shadowBias);
+    ReadValue(is, config.shadowSoftness);
+
+    ReadEnum(is, config.physicsBackend);
+    ReadEnum(is, config.physicsMode);
+    for (float& axis : config.gravity) ReadValue(is, axis);
+    ReadValue(is, config.maxSubSteps);
+    ReadValue(is, config.physicsTickRate);
+    ReadLegacyBool(is, config.ccdEnabled);
+    ReadValue(is, config.ccdThreshold);
+    ReadValue(is, config.solverIterations);
+
+    ReadValue(is, config.mouseSensitivityX);
+    ReadValue(is, config.mouseSensitivityY);
+    ReadLegacyBool(is, config.mouseInvertX);
+    ReadLegacyBool(is, config.mouseInvertY);
+
+    ReadEnum(is, config.audioBackend);
+    ReadValue(is, config.masterVolume);
+
+    ReadLegacyBool(is, config.cullFaceEnabled);
+    ReadLegacyBool(is, config.depthTestEnabled);
+    ReadLegacyBool(is, config.stencilTestEnabled);
+    ReadLegacyBool(is, config.frustumCullingEnabled);
+    ReadLegacyBool(is, config.occlusionCullingEnabled);
+    ReadLegacyBool(is, config.renderOrderEnabled);
+    ReadValue(is, config.filterLayerMask);
+    ReadValue(is, config.distanceCulling);
 }
 
+template <typename T>
+bool EnumInRange(T value, int minValue, int maxValue)
+{
+    int raw = static_cast<int>(value);
+    return raw >= minValue && raw <= maxValue;
+}
+
+bool IsSaneAppConfig(const AppConfig& config)
+{
+    return EnumInRange(config.logLevel, 0, 4) && EnumInRange(config.windowMode, 0, 3) &&
+           EnumInRange(config.graphicsBackend, 0, 2) && EnumInRange(config.tonemappingMode, 0, 2) &&
+           EnumInRange(config.physicsBackend, 0, 1) && EnumInRange(config.physicsMode, 0, 2) &&
+           EnumInRange(config.audioBackend, 0, 3) && EnumInRange(config.lightingMode, 0, 3) &&
+           config.width > 0 && config.width <= 32768 && config.height > 0 && config.height <= 32768 &&
+           config.msaaSamples >= 0 && config.msaaSamples <= 64 && config.maxSubSteps >= 0 &&
+           config.maxSubSteps <= 1024 && config.physicsTickRate > 0.0f &&
+           config.physicsTickRate <= 10000.0f && config.uiReferenceWidth > 0.0f &&
+           config.uiReferenceHeight > 0.0f && std::isfinite(config.timeScale) &&
+           std::isfinite(config.renderScale) && std::isfinite(config.physicsTickRate);
+}
+
+bool TryReadLegacyEmbeddedConfig(std::istream& is, uint32_t version, AppConfig& config)
+{
+    std::streampos configStart = is.tellg();
+    AppConfig candidate = config;
+
+    if (version >= 3)
+        ReadAppConfigV3(is, candidate);
+    else
+        ReadLegacyAppConfigV2(is, candidate);
+
+    if (!is.good() || !IsSaneAppConfig(candidate))
+    {
+        is.clear();
+        is.seekg(configStart);
+        return false;
+    }
+
+    config = candidate;
+    return true;
+}
 void WriteMaterialDescriptor(std::ostream& os, const MaterialDescriptor& desc)
 {
     WriteValue(os, desc.pbr.roughness);
@@ -754,24 +833,13 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
     if (version < 4)
     {
         auto* configMgr = ServiceLocator::Instance().Resolve<ConfigManager>();
-        if (version >= 2 && configMgr)
+        if (version >= 2)
         {
-            AppConfig config = configMgr->GetConfig();
-            if (version >= 3)
-                ReadAppConfigV3(is, config);
-            else
-                ReadLegacyAppConfigV2(is, config);
-            configMgr->UpdateConfig(config);
-        }
-        else if (version >= 3)
-        {
-            AppConfig ignored;
-            ReadAppConfigV3(is, ignored);
-        }
-        else if (version >= 2)
-        {
-            AppConfig ignored;
-            ReadLegacyAppConfigV2(is, ignored);
+            AppConfig config = configMgr ? configMgr->GetConfig() : AppConfig{};
+            if (TryReadLegacyEmbeddedConfig(is, version, config) && configMgr)
+            {
+                configMgr->UpdateConfig(config);
+            }
         }
     }
 

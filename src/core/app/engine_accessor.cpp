@@ -190,6 +190,14 @@ bool EngineAccessor::IsSceneLoaded(const std::string& path)
 
 void EngineAccessor::EnableSystem(const std::string& systemName, bool enable)
 {
+    if (auto* systemManager = ServiceLocator::Instance().Resolve<SystemManager>())
+    {
+        if (auto* system = systemManager->GetSystem(systemName))
+        {
+            system->SetEnabled(enable);
+        }
+    }
+
     EventManager::Instance().Publish(SystemEnabledEvent{systemName, enable});
 }
 

@@ -541,7 +541,7 @@ void EditorSystem::OnUpdate(float dt)
             h_pressed = false;
 
         if (changed)
-            cm->UpdateConfig(conf, ConfigChangedEvent::All);
+            cm->UpdateConfig(conf, ConfigChangedEvent::Debug);
 
         // Reload Active Scene (Ctrl+R)
         static bool r_pressed = false;

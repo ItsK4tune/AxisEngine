@@ -88,3 +88,54 @@ AXIS_TEST_CASE("BinarySceneSerializer round trips v3 config and material fields"
 
     axis_test_support::ResetServices();
 }
+
+AXIS_TEST_CASE("BinarySceneSerializer does not treat configless v3 scenes as config")
+{
+    axis_test_support::ResetServices();
+
+    ConfigManager configManager;
+    AppConfig config;
+    config.debug.lightGizmos = false;
+    configManager.Initialize(config);
+    ServiceLocator::Instance().Register<ConfigManager>(&configManager);
+
+    auto path = axis_test_support::TempPath("configless_v3_scene.axsb");
+    {
+        std::ofstream os(path, std::ios::binary);
+        auto writeU32 = [&](uint32_t value) { os.write(reinterpret_cast<const char*>(&value), sizeof(value)); };
+        auto writeI32 = [&](int32_t value) { os.write(reinterpret_cast<const char*>(&value), sizeof(value)); };
+        auto writeBool = [&](bool value) {
+            uint8_t raw = value ? 1 : 0;
+            os.write(reinterpret_cast<const char*>(&raw), sizeof(raw));
+        };
+        auto writeString = [&](const std::string& value) {
+            writeU32(static_cast<uint32_t>(value.size()));
+            os.write(value.data(), static_cast<std::streamsize>(value.size()));
+        };
+
+        writeU32(0x41585342);
+        writeU32(3);
+        writeU32(1);
+        writeString("ConfiglessV3Entity");
+        writeString("Default");
+        writeU32(1);
+        writeBool(false);
+        writeBool(false);
+        writeBool(false);
+        writeI32(-1);
+        writeBool(false);
+        writeBool(false);
+        writeBool(false);
+        writeBool(false);
+        writeBool(false);
+        writeBool(false);
+        writeBool(false);
+    }
+
+    Scene loaded;
+    BinarySceneSerializer serializer;
+    AXIS_CHECK(serializer.Deserialize(path.string(), loaded));
+    AXIS_CHECK(!configManager.GetConfig().debug.lightGizmos);
+
+    axis_test_support::ResetServices();
+}

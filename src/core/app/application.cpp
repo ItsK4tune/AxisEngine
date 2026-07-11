@@ -349,7 +349,7 @@ bool Application::Initialize()
                 m_Impl->m_IOHandler->GetMonitorManager().SetFrameRateLimit(e.config.frameRateLimit);
             }
         }
-        if (m_Impl->m_ResourceManager)
+        if (m_Impl->m_ResourceManager && (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
         {
             m_Impl->m_ResourceManager->SetTextureAsyncEnabled(e.config.asyncResourceLoading);
             m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(e.config.maxAnisotropy);
@@ -576,7 +576,7 @@ bool Application::Initialize(const AppConfig& incomingConfig)
                 m_Impl->m_IOHandler->GetMonitorManager().SetFrameRateLimit(e.config.frameRateLimit);
             }
         }
-        if (m_Impl->m_ResourceManager)
+        if (m_Impl->m_ResourceManager && (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
         {
             m_Impl->m_ResourceManager->SetTextureAsyncEnabled(e.config.asyncResourceLoading);
             m_Impl->m_ResourceManager->SetTextureMaxAnisotropy(e.config.maxAnisotropy);

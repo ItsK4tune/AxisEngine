@@ -488,7 +488,7 @@ void PhysicsEditorModule::ProcessInput(KeyboardManager& keyboard)
             {
                 auto conf = cm->GetConfig();
                 conf.debug.audioDebug = !conf.debug.audioDebug;
-                cm->UpdateConfig(conf);
+                cm->UpdateConfig(conf, ConfigChangedEvent::Debug);
             }
         }
         else
@@ -506,7 +506,7 @@ void PhysicsEditorModule::ProcessInput(KeyboardManager& keyboard)
             {
                 auto conf = cm->GetConfig();
                 conf.debug.particleDebug = !conf.debug.particleDebug;
-                cm->UpdateConfig(conf);
+                cm->UpdateConfig(conf, ConfigChangedEvent::Debug);
             }
         }
         else
@@ -531,7 +531,7 @@ void PhysicsEditorModule::TogglePhysicsDebug()
         return;
     auto conf = cm->GetConfig();
     conf.debug.physicsDebug = !conf.debug.physicsDebug;
-    cm->UpdateConfig(conf);
+    cm->UpdateConfig(conf, ConfigChangedEvent::Debug);
 }
 
 void PhysicsEditorModule::ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState,

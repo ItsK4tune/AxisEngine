@@ -73,7 +73,7 @@ void GizmoEditorModule::ToggleEntityNames()
     {
         auto c = cm->GetConfig();
         c.debug.entityNames = !c.debug.entityNames;
-        cm->UpdateConfig(c);
+        cm->UpdateConfig(c, ConfigChangedEvent::Debug);
     }
 }
 void GizmoEditorModule::ToggleTransformGizmos()
@@ -83,7 +83,7 @@ void GizmoEditorModule::ToggleTransformGizmos()
     {
         auto c = cm->GetConfig();
         c.debug.gizmos = !c.debug.gizmos;
-        cm->UpdateConfig(c);
+        cm->UpdateConfig(c, ConfigChangedEvent::Debug);
     }
 }
 void GizmoEditorModule::ToggleLightGizmos()
@@ -93,7 +93,7 @@ void GizmoEditorModule::ToggleLightGizmos()
     {
         auto c = cm->GetConfig();
         c.debug.lightGizmos = !c.debug.lightGizmos;
-        cm->UpdateConfig(c);
+        cm->UpdateConfig(c, ConfigChangedEvent::Debug);
     }
 }
 

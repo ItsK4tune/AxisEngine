@@ -2,10 +2,106 @@
 #include <core/logic/logger.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
+#include <cstdint>
 #include <fstream>
+#include <limits>
 
 IBufferManager* StaticBatchManager::s_BufferManager = nullptr;
 IDrawContext* StaticBatchManager::s_DrawContext = nullptr;
+
+namespace
+{
+constexpr uint32_t BATCH_FILE_MAGIC = 0x48435442;
+constexpr uint32_t BATCH_FILE_VERSION = 2;
+
+struct BatchFileHeader
+{
+    uint32_t magic = BATCH_FILE_MAGIC;
+    uint32_t version = BATCH_FILE_VERSION;
+    uint32_t vertexCount = 0;
+    uint32_t indexCount = 0;
+};
+
+template <typename T>
+bool ReadScalar(std::istream& file, T& value)
+{
+    file.read(reinterpret_cast<char*>(&value), sizeof(T));
+    return file.good();
+}
+
+template <typename T>
+void WriteScalar(std::ostream& file, T value)
+{
+    file.write(reinterpret_cast<const char*>(&value), sizeof(T));
+}
+
+bool ReadHeader(std::istream& file, BatchFileHeader& header)
+{
+    return ReadScalar(file, header.magic) && ReadScalar(file, header.version) && ReadScalar(file, header.vertexCount) &&
+           ReadScalar(file, header.indexCount);
+}
+
+void WriteHeader(std::ostream& file, const BatchFileHeader& header)
+{
+    WriteScalar(file, header.magic);
+    WriteScalar(file, header.version);
+    WriteScalar(file, header.vertexCount);
+    WriteScalar(file, header.indexCount);
+}
+
+void WriteVertex(std::ostream& file, const StaticVertex& vertex)
+{
+    WriteScalar(file, vertex.Position.x);
+    WriteScalar(file, vertex.Position.y);
+    WriteScalar(file, vertex.Position.z);
+    WriteScalar(file, vertex.Normal.x);
+    WriteScalar(file, vertex.Normal.y);
+    WriteScalar(file, vertex.Normal.z);
+    WriteScalar(file, vertex.TexCoords.x);
+    WriteScalar(file, vertex.TexCoords.y);
+}
+
+bool ReadVertex(std::istream& file, StaticVertex& vertex)
+{
+    return ReadScalar(file, vertex.Position.x) && ReadScalar(file, vertex.Position.y) &&
+           ReadScalar(file, vertex.Position.z) && ReadScalar(file, vertex.Normal.x) &&
+           ReadScalar(file, vertex.Normal.y) && ReadScalar(file, vertex.Normal.z) &&
+           ReadScalar(file, vertex.TexCoords.x) && ReadScalar(file, vertex.TexCoords.y);
+}
+
+bool ReadPortableBatchData(std::istream& file, const BatchFileHeader& header, std::vector<StaticVertex>& vertices,
+                           std::vector<unsigned int>& indices)
+{
+    vertices.resize(header.vertexCount);
+    indices.resize(header.indexCount);
+
+    for (auto& vertex : vertices)
+    {
+        if (!ReadVertex(file, vertex))
+            return false;
+    }
+
+    for (auto& index : indices)
+    {
+        uint32_t rawIndex = 0;
+        if (!ReadScalar(file, rawIndex))
+            return false;
+        index = static_cast<unsigned int>(rawIndex);
+    }
+
+    return true;
+}
+
+bool ReadLegacyBatchData(std::istream& file, const BatchFileHeader& header, std::vector<StaticVertex>& vertices,
+                         std::vector<unsigned int>& indices)
+{
+    vertices.resize(header.vertexCount);
+    indices.resize(header.indexCount);
+    file.read(reinterpret_cast<char*>(vertices.data()), static_cast<std::streamsize>(vertices.size() * sizeof(StaticVertex)));
+    file.read(reinterpret_cast<char*>(indices.data()), static_cast<std::streamsize>(indices.size() * sizeof(unsigned int)));
+    return file.good();
+}
+} // namespace
 
 void StaticBatchManager::SetManagers(IBufferManager& bufferManager, IDrawContext& drawContext)
 {
@@ -192,30 +288,40 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
         return false;
     }
 
-    struct BatchFileHeader
-    {
-        uint32_t magic;
-        uint32_t version;
-        uint32_t vertexCount;
-        uint32_t indexCount;
-    };
-
     BatchFileHeader header;
-    file.read(reinterpret_cast<char*>(&header), sizeof(BatchFileHeader));
+    if (!ReadHeader(file, header))
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Truncated batch file header: " << path;
+        return false;
+    }
 
-    if (header.magic != 0x48435442)
+    if (header.magic != BATCH_FILE_MAGIC)
     {
         LOGGER_ERROR("StaticBatchManager") << "Invalid batch file magic";
         return false;
     }
 
-    std::vector<StaticVertex> vertices(header.vertexCount);
-    std::vector<unsigned int> indices(header.indexCount);
+    if (header.version != 1 && header.version != BATCH_FILE_VERSION)
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Unsupported batch file version: " << header.version;
+        return false;
+    }
 
-    file.read(reinterpret_cast<char*>(vertices.data()), header.vertexCount * sizeof(StaticVertex));
-    file.read(reinterpret_cast<char*>(indices.data()), header.indexCount * sizeof(unsigned int));
+    if (header.indexCount > static_cast<uint32_t>((std::numeric_limits<unsigned int>::max)()))
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Batch file index count is too large";
+        return false;
+    }
 
-    file.close();
+    std::vector<StaticVertex> vertices;
+    std::vector<unsigned int> indices;
+    bool loaded = header.version == BATCH_FILE_VERSION ? ReadPortableBatchData(file, header, vertices, indices)
+                                                       : ReadLegacyBatchData(file, header, vertices, indices);
+    if (!loaded)
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Truncated batch file data: " << path;
+        return false;
+    }
 
     BatchData batch;
     batch.vertices = vertices;
@@ -239,18 +345,17 @@ void StaticBatchManager::SaveBatchToFile(const std::string& name, const std::str
         return;
     }
 
-    struct BatchFileHeader
-    {
-        uint32_t magic;
-        uint32_t version;
-        uint32_t vertexCount;
-        uint32_t indexCount;
-    };
-
     const BatchData& batch = it->second;
     if (batch.vertices.empty() || batch.indices.empty())
     {
         LOGGER_ERROR("StaticBatchManager") << "Batch has no CPU-side mesh data to save: " << name;
+        return;
+    }
+
+    if (batch.vertices.size() > (std::numeric_limits<uint32_t>::max)() ||
+        batch.indices.size() > (std::numeric_limits<uint32_t>::max)())
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Batch is too large to save: " << name;
         return;
     }
 
@@ -262,14 +367,24 @@ void StaticBatchManager::SaveBatchToFile(const std::string& name, const std::str
     }
 
     BatchFileHeader header;
-    header.magic = 0x48435442;
-    header.version = 1;
     header.vertexCount = static_cast<uint32_t>(batch.vertices.size());
     header.indexCount = static_cast<uint32_t>(batch.indices.size());
 
-    file.write(reinterpret_cast<const char*>(&header), sizeof(BatchFileHeader));
-    file.write(reinterpret_cast<const char*>(batch.vertices.data()), batch.vertices.size() * sizeof(StaticVertex));
-    file.write(reinterpret_cast<const char*>(batch.indices.data()), batch.indices.size() * sizeof(unsigned int));
+    WriteHeader(file, header);
+    for (const auto& vertex : batch.vertices)
+    {
+        WriteVertex(file, vertex);
+    }
+    for (unsigned int index : batch.indices)
+    {
+        WriteScalar(file, static_cast<uint32_t>(index));
+    }
+
+    if (!file.good())
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Failed while writing batch file: " << path;
+        return;
+    }
 
     LOGGER_INFO("StaticBatchManager") << "Saved batch to file: " << path;
 }

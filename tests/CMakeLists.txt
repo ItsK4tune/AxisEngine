@@ -4,6 +4,7 @@ add_executable(axis_test
     unit/test_entity_manager.cpp
     unit/test_event_manager.cpp
     unit/test_pathfinding.cpp
+    unit/test_static_batch_manager.cpp
     unit/test_texture_ownership.cpp
     unit/test_yaml_parser.cpp
     unit/test_yaml_writer.cpp

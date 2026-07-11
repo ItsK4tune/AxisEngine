@@ -24,7 +24,7 @@ void ToolsPanel::OnImGui(Scene& scene)
     }
 
     auto conf = cm->GetConfig();
-    bool changed = false;
+    uint32_t changeMask = ConfigChangedEvent::None;
     if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
     {
         auto& mouse = io->GetMouse();
@@ -73,9 +73,9 @@ void ToolsPanel::OnImGui(Scene& scene)
     {
         // No Texture mode removed from editor UI
         if (ImGui::Checkbox("Enable Shadows", &conf.shadow.shadowsEnabled))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Graphics;
         if (ImGui::SliderFloat("Skybox Intensity", &conf.render.skyboxIntensity, 0.0f, 2.0f))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Graphics;
     }
 
     auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
@@ -148,39 +148,39 @@ void ToolsPanel::OnImGui(Scene& scene)
     if (ImGui::CollapsingHeader("Debug Vis", ImGuiTreeNodeFlags_DefaultOpen))
     {
         if (ImGui::Checkbox("Physics Debug (F8)", &conf.debug.physicsDebug))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Editor UI Enabled", &conf.debug.uiEnabled))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Entity Names (F1)", &conf.debug.entityNames))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Gizmos (F2)", &conf.debug.gizmos))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Light Gizmos (F3)", &conf.debug.lightGizmos))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Audio Debug", &conf.debug.audioDebug))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Particle Debug", &conf.debug.particleDebug))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Grid Snapping (Ctrl+G)", &conf.debug.gridSnapEnabled))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
         if (conf.debug.gridSnapEnabled)
         {
             ImGui::Indent();
             if (ImGui::SliderFloat("Translation Snap", &conf.debug.gridSnapTranslation, 0.1f, 10.0f))
-                changed = true;
+                changeMask |= ConfigChangedEvent::Debug;
             if (ImGui::SliderFloat("Rotation Snap", &conf.debug.gridSnapRotation, 1.0f, 90.0f))
-                changed = true;
+                changeMask |= ConfigChangedEvent::Debug;
             if (ImGui::SliderFloat("Scale Snap", &conf.debug.gridSnapScale, 0.05f, 5.0f))
-                changed = true;
+                changeMask |= ConfigChangedEvent::Debug;
             ImGui::Unindent();
         }
         if (ImGui::Checkbox("Grid Indicator (Ctrl+H)", &conf.debug.gridIndicatorEnabled))
-            changed = true;
+            changeMask |= ConfigChangedEvent::Debug;
     }
 
-    if (changed)
+    if (changeMask != ConfigChangedEvent::None)
     {
-        cm->UpdateConfig(conf, ConfigChangedEvent::All);
+        cm->UpdateConfig(conf, changeMask);
     }
 
     ImGui::End();

@@ -95,6 +95,7 @@ struct ConfigChangedEvent
         Audio = 1 << 3,
         Input = 1 << 4,
         General = 1 << 5,
+        Debug = 1 << 6,
         All = 0xFFFFFFFF
     };
     uint32_t bitmask = All;
