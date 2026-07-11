@@ -41,7 +41,6 @@ struct Scene
     friend class SceneManager;
     friend class ComponentLoader;
     friend class FragmentLoader;
-    friend class SceneValidator;
 
     Octree* GetOctree()
     {

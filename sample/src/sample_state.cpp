@@ -1542,7 +1542,7 @@ void SampleState::OnRender()
                 Entity ent(entityHandle, &scene);
                 if (ent.IsValid())
                 {
-                    DrawEntityMesh(ent, "forward_pbr_lit", ent.GetWorldMatrix(), ent.GetColor());
+                    DrawEntityMesh(ent, "forward_unlit", ent.GetWorldMatrix(), ent.GetColor());
                 }
             }
 

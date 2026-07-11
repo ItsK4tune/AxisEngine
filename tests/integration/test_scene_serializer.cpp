@@ -6,8 +6,8 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
 #include <scene/logic/scene_manager.h>
+#include <scene/logic/scene_post_load_fixup.h>
 #include <scene/logic/scene_serializer.h>
-#include <scene/logic/scene_validator.h>
 #include <fstream>
 #include <sstream>
 
@@ -46,7 +46,8 @@ AXIS_TEST_CASE("SceneSerializer deserializes minimal entity")
 
     SceneSerializer serializer(fixture.resources, nullptr, nullptr);
     SceneLoadResult result;
-    serializer.Deserialize(path.string(), scene, result);
+    AXIS_CHECK(serializer.Deserialize(path.string(), scene, result));
+    AXIS_CHECK(!result.validation.HasErrors());
     auto player = scene.FindByName("Player");
 
     AXIS_CHECK(result.entities.size() == 1);
@@ -77,7 +78,8 @@ AXIS_TEST_CASE("SceneSerializer resolves deferred parent by name")
 
     SceneSerializer serializer(fixture.resources, nullptr, nullptr);
     SceneLoadResult result;
-    serializer.Deserialize(path.string(), scene, result);
+    AXIS_CHECK(serializer.Deserialize(path.string(), scene, result));
+    AXIS_CHECK(!result.validation.HasErrors());
     auto root = scene.FindByName("Root");
     auto child = scene.FindByName("Child");
 
@@ -98,9 +100,10 @@ AXIS_TEST_CASE("SceneValidator creates fallback camera for renderable scene")
     auto entity = scene.CreateEntity("Renderable");
     scene.AddComponent<MeshRendererComponent>(entity);
 
-    SceneHandlers::SceneValidator::ValidateCamera(scene);
+    const bool created = SceneHandlers::ScenePostLoadFixup::EnsureFallbackCamera(scene);
 
     auto camera = scene.GetActiveCamera();
+    AXIS_CHECK(created);
     AXIS_CHECK(camera != entt::null);
     AXIS_CHECK(scene.GetComponent<InfoComponent>(camera).name == "Default Spectator Camera");
     AXIS_CHECK(scene.GetComponent<CameraComponent>(camera).isPrimary);
@@ -207,4 +210,3 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     AXIS_CHECK(loadedConfig.window.height == 768);
     AXIS_CHECK_NEAR(loadedConfig.physics.gravity[1], -9.81f, 0.0001f);
 }
-

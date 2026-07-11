@@ -3,7 +3,8 @@
 #include <core/logic/logger.h>
 #include <ecs/unit/core_components.h>
 #include <scene/logic/component_loader.h>
-#include <scene/logic/scene_validator.h>
+#include <scene/logic/scene_load_finalizer.h>
+#include <scene/type/scene_record.h>
 
 std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAsset& asset, Scene& scene,
                                                                 entt::entity parent, ResourceManager& res,
@@ -226,10 +227,22 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
 
                 scene.GetRegistry().patch<HierarchyComponent>(entity, [&](auto& h) { h.parent = internalParent; });
                 scene.GetRegistry().patch<HierarchyComponent>(internalParent,
-                                                         [&](auto& ph) { ph.children.push_back(entity); });
+                                                              [&](auto& ph) { ph.children.push_back(entity); });
             }
         }
     }
+
+    SceneLoadResult loadResult;
+    loadResult.entities.reserve(instantiatedEntities.size());
+    for (const auto& [name, entity] : instantiatedEntities)
+    {
+        (void)name;
+        loadResult.entities.push_back(entity);
+    }
+    SceneHandlers::SceneLoadFinalizeOptions finalizeOptions;
+    finalizeOptions.ensureFallbackCamera = false;
+    if (!SceneHandlers::SceneLoadFinalizer::Finalize(scene, loadResult, phys, {}, finalizeOptions))
+        return {};
 
     return instantiatedEntities;
 }

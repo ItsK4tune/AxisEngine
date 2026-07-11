@@ -28,7 +28,7 @@
 #include <scene/interface/i_component_loader_factory.h>
 #include <scene/logic/component_loader.h>
 #include <scene/logic/scene_manager.h>
-#include <scene/logic/scene_validator.h>
+#include <scene/logic/scene_load_finalizer.h>
 #include <algorithm>
 #include <filesystem>
 #include <set>
@@ -222,10 +222,11 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
         }
     }
 
-    SceneHandlers::SceneValidator::ValidateParentChildRelationships(scene, deferredChildren);
-    SceneHandlers::SceneValidator::ValidateLights(scene);
-    SceneHandlers::SceneValidator::ValidatePhysicsSync(scene, phys);
-    SceneHandlers::SceneValidator::ValidateCamera(scene);
+    if (!SceneHandlers::SceneLoadFinalizer::Finalize(scene, result, phys, deferredChildren))
+    {
+        outResult = std::move(result);
+        return false;
+    }
 
     LOGGER_INFO("SceneSerializer") << "Finished parsing AXS file: " << fullPath;
     outResult = std::move(result);

@@ -210,7 +210,11 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     else
     {
         SceneSerializer serializer(resources, physics, audio);
-        serializer.Deserialize(filePath, scene, res);
+        if (!serializer.Deserialize(filePath, scene, res))
+        {
+            LOGGER_ERROR("SceneManager") << "Failed to deserialize scene: " << filePath;
+            return;
+        }
     }
 
     if (res.entities.empty())

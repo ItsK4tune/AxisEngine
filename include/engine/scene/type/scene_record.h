@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/logic/config_loader.h>
+#include <scene/type/scene_validation.h>
 #include <entt/entt.hpp>
 #include <string>
 #include <vector>
@@ -36,4 +37,7 @@ struct SceneLoadResult
     std::vector<std::string> loadedSkyboxes;
     std::vector<std::string> loadedAnimations;
     std::vector<std::string> loadedSounds;
+
+    SceneValidationResult validation;
+    bool usedFallbackCamera = false;
 };

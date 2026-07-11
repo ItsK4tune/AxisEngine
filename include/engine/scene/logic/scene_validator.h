@@ -1,12 +1,7 @@
 #pragma once
 
-#include <entt/entt.hpp>
-#include <map>
-#include <string>
-#include <vector>
+#include <scene/type/scene_validation.h>
 
-class Application;
-class IPhysicsWorld;
 struct Scene;
 
 namespace SceneHandlers
@@ -14,10 +9,8 @@ namespace SceneHandlers
 class SceneValidator
 {
 public:
-    static void ValidateLights(Scene& scene);
-    static void ValidateCamera(Scene& scene);
-    static void ValidatePhysicsSync(Scene& scene, IPhysicsWorld* phys);
-    static void ValidateParentChildRelationships(
-        Scene& scene, const std::map<entt::entity, std::vector<std::string>>& deferredChildren);
+    static SceneValidationResult Validate(const Scene& scene,
+                                          const SceneValidationOptions& options = SceneValidationOptions{});
+    static void LogIssues(const SceneValidationResult& result);
 };
 }  // namespace SceneHandlers

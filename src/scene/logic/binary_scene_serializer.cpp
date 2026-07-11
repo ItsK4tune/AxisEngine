@@ -9,6 +9,8 @@
 #include <resource/logic/resource_manager.h>
 #include <resource/unit/model.h>
 #include <resource/unit/shader.h>
+#include <physics/interface/i_physics_world.h>
+#include <scene/logic/scene_load_finalizer.h>
 #include <scene/type/scene_types.h>
 #include <algorithm>
 #include <cstdint>
@@ -1034,6 +1036,10 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
     }
 
     outResult.entities = entities;
+
+    if (!SceneHandlers::SceneLoadFinalizer::Finalize(scene, outResult,
+                                                     ServiceLocator::Instance().Resolve<IPhysicsWorld>()))
+        return false;
 
     LOGGER_INFO("BinarySceneSerializer") << "Deserialized scene: " << path;
     return true;

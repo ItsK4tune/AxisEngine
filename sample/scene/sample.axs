@@ -269,7 +269,7 @@ axis_scene:
       Tag: Default
       Component: Transform
         Position: 17.000000 1.250000 -16.200001
-        Rotation: 0.000000 -39.000023 0.000000
+        Rotation: 0.000000 -39.000027 0.000000
         Scale: 2.500000 2.500000 2.500000
       Component: Renderer
         Model: cubeModel
@@ -279,6 +279,198 @@ axis_scene:
         ReceiveShadow: true
         IgnoreDepth: false
         Color: 0.310000 0.680000 0.130000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_13:
+      Tag: Default
+      Component: Transform
+        Position: 9.100000 1.850000 4.800000
+        Rotation: 0.000000 82.000015 0.000000
+        Scale: 3.700000 3.700000 3.700000
+      Component: Renderer
+        Model: cubeModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.660000 0.020000 0.950000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_14:
+      Tag: Default
+      Component: Transform
+        Position: -9.300000 0.400000 4.700000
+        Rotation: -180.000000 -34.999992 -180.000000
+        Scale: 0.800000 0.800000 0.800000
+      Component: Renderer
+        Model: sphereModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.940000 0.470000 0.820000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_15:
+      Tag: Default
+      Component: Transform
+        Position: 7.000000 0.900000 -13.900000
+        Rotation: -180.000000 -20.999992 -180.000000
+        Scale: 1.800000 1.800000 1.800000
+      Component: Renderer
+        Model: cubeModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.000000 0.190000 0.010000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_16:
+      Tag: Default
+      Component: Transform
+        Position: -8.600000 1.150000 2.000000
+        Rotation: 0.000000 2.000000 0.000000
+        Scale: 2.300000 2.300000 2.300000
+      Component: Renderer
+        Model: sphereModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.420000 0.470000 0.330000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_17:
+      Tag: Default
+      Component: Transform
+        Position: 18.799999 0.800000 15.200000
+        Rotation: 0.000000 -27.999996 0.000000
+        Scale: 1.600000 1.600000 1.600000
+      Component: Renderer
+        Model: cubeModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.020000 0.370000 0.870000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_18:
+      Tag: Default
+      Component: Transform
+        Position: -12.500000 1.550000 -12.300000
+        Rotation: -180.000000 -39.000008 -180.000000
+        Scale: 3.100000 3.100000 3.100000
+      Component: Renderer
+        Model: sphereModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.420000 0.620000 0.530000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_19:
+      Tag: Default
+      Component: Transform
+        Position: -8.200000 1.250000 3.500000
+        Rotation: -180.000000 -36.000000 -180.000000
+        Scale: 2.500000 2.500000 2.500000
+      Component: Renderer
+        Model: cubeModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.540000 0.370000 0.060000 1.000000
+        RenderMode: 0
+      Component: Material
+        Opacity: 1.000000
+        Roughness: 0.500000
+        Metallic: 0.100000
+        AO: 1.000000
+        AlphaCutoff: 0.500000
+        Emission: 0.000000 0.000000 0.000000
+        UVScale: 1.000000 1.000000
+        UVOffset: 0.000000 0.000000
+    S25Random_20:
+      Tag: Default
+      Component: Transform
+        Position: 15.200000 0.700000 -17.900000
+        Rotation: 0.000000 24.000004 0.000000
+        Scale: 1.400000 1.400000 1.400000
+      Component: Renderer
+        Model: sphereModel
+        Shader: deferred_lit
+        Order: 0
+        CastShadow: true
+        ReceiveShadow: true
+        IgnoreDepth: false
+        Color: 0.420000 0.440000 0.930000 1.000000
         RenderMode: 0
       Component: Material
         Opacity: 1.000000

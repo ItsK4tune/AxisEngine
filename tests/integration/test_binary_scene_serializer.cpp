@@ -60,7 +60,9 @@ AXIS_TEST_CASE("BinarySceneSerializer round trips v3 config and material fields"
     configManager.Initialize(resetConfig);
 
     Scene loaded;
-    AXIS_CHECK(serializer.Deserialize(path.string(), loaded));
+    SceneLoadResult loadResult;
+    AXIS_CHECK(serializer.Deserialize(path.string(), loaded, loadResult));
+    AXIS_CHECK(!loadResult.validation.HasErrors());
 
     auto loadedEntity = loaded.FindByName("BinaryEntity");
     AXIS_CHECK(loadedEntity != entt::null);
