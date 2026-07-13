@@ -19,6 +19,8 @@
 #include <core/logic/service_locator.h>
 #include <scene/logic/scene_manager.h>
 #include <algorithm>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace
 {
@@ -40,6 +42,69 @@ void MarkWorldDirty(Scene& scene, entt::entity entity)
 {
     auto& world = scene.GetOrAddComponent<WorldTransformComponent>(entity);
     world.isDirty = true;
+}
+
+bool TryResolveWorldMatrix(Scene& scene, entt::entity entity, std::vector<entt::entity>& traversal,
+                           glm::mat4& result)
+{
+    auto& registry = scene.GetRegistry();
+    if (!registry.valid(entity) || std::find(traversal.begin(), traversal.end(), entity) != traversal.end())
+        return false;
+
+    auto* position = registry.try_get<PositionComponent>(entity);
+    auto* rotation = registry.try_get<RotationComponent>(entity);
+    auto* scale = registry.try_get<ScaleComponent>(entity);
+    if (!position || !rotation || !scale)
+        return false;
+
+    traversal.push_back(entity);
+
+    glm::mat4 parentMatrix(1.0f);
+    if (auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
+        hierarchy && hierarchy->parent != entt::null)
+    {
+        if (!registry.valid(hierarchy->parent))
+        {
+            traversal.pop_back();
+            return false;
+        }
+
+        auto* parentWorld = registry.try_get<WorldTransformComponent>(hierarchy->parent);
+        if (parentWorld && !parentWorld->isDirty && parentWorld->version > 0)
+        {
+            parentMatrix = parentWorld->worldMatrix;
+        }
+        else if (!TryResolveWorldMatrix(scene, hierarchy->parent, traversal, parentMatrix))
+        {
+            traversal.pop_back();
+            return false;
+        }
+    }
+
+    const glm::mat4 localMatrix = glm::translate(glm::mat4(1.0f), position->value) *
+                                  glm::toMat4(rotation->value) * glm::scale(glm::mat4(1.0f), scale->value);
+    result = parentMatrix * localMatrix;
+    traversal.pop_back();
+    return true;
+}
+
+void InitializeWorldTransform(Scene& scene, entt::entity entity)
+{
+    auto* world = scene.TryGetComponent<WorldTransformComponent>(entity);
+    if (!world || !world->isDirty)
+        return;
+
+    std::vector<entt::entity> traversal;
+    glm::mat4 resolvedWorld(1.0f);
+    if (!TryResolveWorldMatrix(scene, entity, traversal, resolvedWorld))
+        return;
+
+    // A built entity can be rendered before the next TransformSystem update.
+    // Publish a valid, non-interpolating transform for its first render frame.
+    world->worldMatrix = resolvedWorld;
+    world->prevWorldMatrix = resolvedWorld;
+    world->isDirty = false;
+    world->version++;
 }
 
 void BindMaterialTexture(MaterialComponent& mat, MaterialTextureSlot slot, const std::string& textureNameOrPath,
@@ -1408,5 +1473,6 @@ EntityBuilder& EntityBuilder::WithSkybox(const SkyboxRenderComponent& skybox)
 
 Entity EntityBuilder::Build()
 {
+    InitializeWorldTransform(m_Scene, m_Entity);
     return Entity(m_Entity, &m_Scene);
 }

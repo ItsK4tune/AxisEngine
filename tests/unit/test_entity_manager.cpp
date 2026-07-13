@@ -1,5 +1,7 @@
 #include "test_framework.h"
+#include <ecs/logic/entity_builder.h>
 #include <ecs/unit/core_components.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 
 AXIS_TEST_CASE("EntityManager creates entity with default core components")
@@ -17,6 +19,34 @@ AXIS_TEST_CASE("EntityManager creates entity with default core components")
     AXIS_CHECK(scene.HasAllComponents<WorldTransformComponent>(entity));
     AXIS_CHECK(scene.GetComponent<InfoComponent>(entity).name == "Player");
     AXIS_CHECK(scene.GetComponent<InfoComponent>(entity).tag == "player");
+}
+
+AXIS_TEST_CASE("EntityBuilder publishes world transforms before the next transform-system update")
+{
+    Scene scene;
+    ResourceManager resources;
+
+    auto parent = EntityBuilder(scene, resources, "test")
+                      .WithTransform({10.0f, 2.0f, -3.0f})
+                      .Build();
+    auto child = EntityBuilder(scene, resources, "test")
+                     .WithParent(parent)
+                     .WithTransform({1.0f, 4.0f, 2.0f})
+                     .Build();
+
+    const auto& parentWorld = scene.GetComponent<WorldTransformComponent>(parent);
+    const auto& childWorld = scene.GetComponent<WorldTransformComponent>(child);
+
+    AXIS_CHECK_NEAR(parentWorld.worldMatrix[3].x, 10.0f, 0.0001f);
+    AXIS_CHECK_NEAR(parentWorld.prevWorldMatrix[3].x, 10.0f, 0.0001f);
+    AXIS_CHECK_NEAR(childWorld.worldMatrix[3].x, 11.0f, 0.0001f);
+    AXIS_CHECK_NEAR(childWorld.worldMatrix[3].y, 6.0f, 0.0001f);
+    AXIS_CHECK_NEAR(childWorld.worldMatrix[3].z, -1.0f, 0.0001f);
+    AXIS_CHECK_NEAR(childWorld.prevWorldMatrix[3].x, 11.0f, 0.0001f);
+    AXIS_CHECK(!parentWorld.isDirty);
+    AXIS_CHECK(!childWorld.isDirty);
+    AXIS_CHECK(parentWorld.version > 0);
+    AXIS_CHECK(childWorld.version > 0);
 }
 
 AXIS_TEST_CASE("EntityManager finds entities by name tag and scene")
